@@ -31,6 +31,14 @@ import {
 
 // ─── Types ───────────────────────────────────────────────────
 
+interface GoalAlignmentSlim {
+  aligned: number;
+  partial: number;
+  conflicts: number;
+  missing: number;
+  unknown: number;
+}
+
 interface DiscoveryItem {
   name: string;
   shareCode: string;
@@ -50,6 +58,8 @@ interface DiscoveryItem {
   server?: string;
   memberCount: number;
   lastUpdated?: string;
+  objectiveCategories?: string[];
+  goalAlignment?: GoalAlignmentSlim | null;
 }
 
 interface DiscoveryResponse {
@@ -114,6 +124,20 @@ const STATUS_COLORS: Record<string, string> = {
   closed: 'bg-status-error/20 text-status-error border-status-error/30',
 };
 
+const GOAL_CATEGORY_LABELS: Record<string, string> = {
+  ultimate_clear:     'Ultimate — Clear',
+  ultimate_farm:      'Ultimate — Farm',
+  savage_bis:         'Savage — BiS',
+  savage_mount:       'Savage — Mount',
+  savage_achievement: 'Savage — Achievement',
+  savage_alt_jobs:    'Savage — Alt Jobs',
+  criterion_title:    'Criterion — Title',
+  gil_farm:           'Gil Farm',
+  loot_farm:          'Loot Farm',
+  mount_farm:         'Mount Farm',
+  custom:             'Custom',
+};
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 function langName(code: string): string {
@@ -141,8 +165,23 @@ function isSafeUrl(url: string): boolean {
   return lower.startsWith('https://') || lower.startsWith('http://');
 }
 
+const GOAL_CATEGORY_OPTIONS = [
+  { value: '', label: 'Any objectives' },
+  { value: 'ultimate_clear',     label: 'Ultimate — Clear' },
+  { value: 'ultimate_farm',      label: 'Ultimate — Farm' },
+  { value: 'savage_bis',         label: 'Savage — BiS' },
+  { value: 'savage_mount',       label: 'Savage — Mount' },
+  { value: 'savage_achievement', label: 'Savage — Achievement' },
+  { value: 'savage_alt_jobs',    label: 'Savage — Alt Jobs' },
+  { value: 'criterion_title',    label: 'Criterion — Title' },
+  { value: 'gil_farm',           label: 'Gil Farm' },
+  { value: 'loot_farm',          label: 'Loot Farm' },
+  { value: 'mount_farm',         label: 'Mount Farm' },
+  { value: 'custom',             label: 'Custom' },
+];
+
 /** Filter keys that map 1:1 to URL params and API query params */
-const FILTER_KEYS = ['role', 'job', 'intensity', 'recruitmentStatus', 'dataCenter', 'server', 'timezone', 'language'] as const;
+const FILTER_KEYS = ['role', 'job', 'intensity', 'recruitmentStatus', 'dataCenter', 'server', 'timezone', 'language', 'goalCategory'] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 
 // ─── Page Component ──────────────────────────────────────────
@@ -164,6 +203,7 @@ export function Discover() {
   // Search + filters + sort — initialised from URL
   const [searchText, setSearchText] = useState(readParam('q'));
   const [sort, setSort] = useState(readParam('sort') || 'recent');
+  const [hideConflicts, setHideConflicts] = useState(() => searchParams.get('hideConflicts') === 'true');
   const [filters, setFilters] = useState<Record<FilterKey, string>>(() => {
     const init = {} as Record<FilterKey, string>;
     for (const k of FILTER_KEYS) init[k] = readParam(k);
@@ -197,8 +237,8 @@ export function Discover() {
   }, []);
 
   const hasFilters = useMemo(() =>
-    FILTER_KEYS.some(k => filters[k] !== ''),
-    [filters],
+    FILTER_KEYS.some(k => filters[k] !== '') || hideConflicts,
+    [filters, hideConflicts],
   );
 
   const filterCount = useMemo(() =>
@@ -211,6 +251,7 @@ export function Discover() {
     for (const k of FILTER_KEYS) cleared[k] = '';
     setFilters(cleared);
     setSearchText('');
+    setHideConflicts(false);
   }, []);
 
   // Sync filters → URL
@@ -218,11 +259,12 @@ export function Discover() {
     const params = new URLSearchParams();
     if (debouncedSearch) params.set('q', debouncedSearch);
     if (sort && sort !== 'recent') params.set('sort', sort);
+    if (hideConflicts) params.set('hideConflicts', 'true');
     for (const k of FILTER_KEYS) {
       if (filters[k]) params.set(k, filters[k]);
     }
     setSearchParams(params, { replace: true });
-  }, [debouncedSearch, sort, filters, setSearchParams]);
+  }, [debouncedSearch, sort, hideConflicts, filters, setSearchParams]);
 
   // Fetch results
   const fetchResults = useCallback(async () => {
@@ -232,6 +274,7 @@ export function Discover() {
     const params = new URLSearchParams();
     if (debouncedSearch) params.set('q', debouncedSearch);
     if (sort) params.set('sort', sort);
+    if (hideConflicts) params.set('hideConflicts', 'true');
     for (const k of FILTER_KEYS) {
       if (filters[k]) params.set(k, filters[k]);
     }
@@ -248,7 +291,7 @@ export function Discover() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, sort, filters]);
+  }, [debouncedSearch, sort, hideConflicts, filters]);
 
   useEffect(() => {
     fetchResults();
@@ -340,6 +383,32 @@ export function Discover() {
               </div>
             </div>
           </div>
+          {/* Goal objectives */}
+          <div>
+            <p className="text-text-muted text-[10px] font-semibold uppercase tracking-wider mb-2">Objectives &amp; Alignment</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+              <div>
+                <Label htmlFor="f-goalcat">Objective Category</Label>
+                <Select id="f-goalcat" value={filters.goalCategory} onChange={v => setFilter('goalCategory', v)} options={GOAL_CATEGORY_OPTIONS} />
+              </div>
+              {user && (
+                <div className="flex items-center gap-2 pb-1">
+                  {/* design-system-ignore: filter toggle checkbox inline with label */}
+                  <input
+                    id="f-hideconflicts"
+                    type="checkbox"
+                    checked={hideConflicts}
+                    onChange={e => setHideConflicts(e.target.checked)}
+                    className="w-4 h-4 rounded accent-accent cursor-pointer"
+                  />
+                  <Label htmlFor="f-hideconflicts" className="text-sm cursor-pointer select-none">
+                    Hide goal conflicts
+                  </Label>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Location & schedule */}
           <div>
             <p className="text-text-muted text-[10px] font-semibold uppercase tracking-wider mb-2">Location &amp; Schedule</p>
@@ -527,6 +596,41 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
                   {j}
                 </span>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Static objectives */}
+        {item.objectiveCategories && item.objectiveCategories.length > 0 && (
+          <div className="mb-2.5">
+            <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Objectives</p>
+            <div className="flex flex-wrap gap-1">
+              {item.objectiveCategories.map((cat) => (
+                <span key={cat} className="px-2 py-0.5 bg-surface-elevated text-text-secondary border border-border-default rounded text-xs">
+                  {GOAL_CATEGORY_LABELS[cat] ?? cat}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Goal alignment (logged-in users only) */}
+        {item.goalAlignment && (
+          <div className="mb-2.5">
+            <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Your Goal Match</p>
+            <div className="flex items-center gap-2 text-xs flex-wrap">
+              {item.goalAlignment.aligned > 0 && (
+                <span className="text-status-success font-medium">{item.goalAlignment.aligned} aligned</span>
+              )}
+              {item.goalAlignment.partial > 0 && (
+                <span className="text-status-warning font-medium">{item.goalAlignment.partial} partial</span>
+              )}
+              {item.goalAlignment.conflicts > 0 && (
+                <span className="text-status-error font-medium">{item.goalAlignment.conflicts} conflict{item.goalAlignment.conflicts !== 1 ? 's' : ''}</span>
+              )}
+              {item.goalAlignment.missing > 0 && (
+                <span className="text-text-muted">{item.goalAlignment.missing} missing</span>
+              )}
             </div>
           </div>
         )}

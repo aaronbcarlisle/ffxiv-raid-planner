@@ -17,6 +17,9 @@ from ..models.static_objective_goal import (
     VALID_OBJECTIVE_CATEGORIES,
     VALID_OBJECTIVE_PRIORITIES,
 )
+from ..models.membership import Membership
+from ..models.player_profile import PlayerProfile
+from ..models.user import User as UserModel
 from ..permissions import NotFound, get_static_group, require_can_manage_members, require_membership
 from ..schemas.objective_goals import (
     StaticObjectiveGoalCreate,
@@ -271,3 +274,109 @@ async def get_goal_alignment(
             for item in items
         ],
     )
+
+
+# ---------------------------------------------------------------------------
+# Roster alignment — per-member summary for leads/owners
+# ---------------------------------------------------------------------------
+
+class RosterMemberAlignment(GoalAlignmentSummary):
+    """GoalAlignmentSummary extended with member identity for roster view."""
+    user_id: str
+    profile_id: str | None
+    display_name: str | None
+
+
+@router.get(
+    "/static-groups/{group_id}/roster-alignment",
+    response_model=list[RosterMemberAlignment],
+)
+async def get_roster_alignment(
+    group_id: str,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[RosterMemberAlignment]:
+    """Compute goal alignment summary for every member of the static.
+
+    Only includes members who have a public player profile with at least one
+    public goal. Members with no public goals get a null-equivalent summary
+    (all zeros). Requires lead or owner — members should not see each other's
+    goal alignment breakdowns.
+
+    Private goals are never included.
+    """
+    await get_static_group(session, group_id)
+    await require_can_manage_members(session, current_user.id, group_id)
+
+    # Fetch static objective goals once
+    og_result = await session.execute(
+        select(StaticObjectiveGoal)
+        .where(StaticObjectiveGoal.static_group_id == group_id)
+        .order_by(StaticObjectiveGoal.created_at)
+    )
+    static_goals = [
+        {"id": g.id, "category": g.category, "priority": g.priority, "title": g.title}
+        for g in og_result.scalars().all()
+    ]
+
+    # Fetch all members with their user info
+    member_result = await session.execute(
+        select(Membership, UserModel)
+        .join(UserModel, UserModel.id == Membership.user_id)
+        .where(Membership.static_group_id == group_id)
+    )
+    rows = member_result.all()
+
+    out: list[RosterMemberAlignment] = []
+    for membership, user in rows:
+        # Try to find a public profile for this user
+        profile_result = await session.execute(
+            select(PlayerProfile)
+            .where(
+                PlayerProfile.user_id == user.id,
+                PlayerProfile.visibility == "public",
+            )
+            .limit(1)
+        )
+        profile = profile_result.scalar_one_or_none()
+
+        if profile is None or not static_goals:
+            out.append(RosterMemberAlignment(
+                user_id=user.id,
+                profile_id=None,
+                display_name=getattr(user, "display_name", None),
+                aligned=0, partial=0, conflicts=0, missing=0, unknown=0,
+            ))
+            continue
+
+        # Fetch public goals for this profile
+        goal_result = await session.execute(
+            select(PlayerGoal).where(
+                PlayerGoal.profile_id == profile.id,
+                PlayerGoal.is_public == True,  # noqa: E712
+            )
+        )
+        player_goals = [
+            {
+                "id": g.id,
+                "goal_type": g.goal_type,
+                "category": g.category,
+                "intent_level": g.intent_level,
+            }
+            for g in goal_result.scalars().all()
+        ]
+
+        alignment = compute_alignment(player_goals, static_goals)
+        s = alignment["summary"]
+        out.append(RosterMemberAlignment(
+            user_id=user.id,
+            profile_id=profile.id,
+            display_name=getattr(user, "display_name", None),
+            aligned=s["aligned"],
+            partial=s["partial"],
+            conflicts=s["conflicts"],
+            missing=s["missing"],
+            unknown=s["unknown"],
+        ))
+
+    return out

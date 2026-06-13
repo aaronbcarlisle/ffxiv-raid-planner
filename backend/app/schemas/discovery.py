@@ -36,6 +36,15 @@ class DiscoverySettings(CamelModel):
     show_member_count: bool = False
 
 
+class GoalAlignmentSummarySlim(CamelModel):
+    """Compact alignment summary for discovery cards."""
+    aligned: int = 0
+    partial: int = 0
+    conflicts: int = 0
+    missing: int = 0
+    unknown: int = 0
+
+
 class DiscoveryListItem(CamelModel):
     """Public-safe DTO returned by the discovery endpoint"""
 
@@ -57,6 +66,9 @@ class DiscoveryListItem(CamelModel):
     server: str | None = None
     member_count: int = 0
     last_updated: str | None = None
+    # Goal fields (public — only official static objective categories)
+    objective_categories: list[str] = Field(default_factory=list)
+    goal_alignment: GoalAlignmentSummarySlim | None = None
 
 
 class DiscoveryListResponse(CamelModel):

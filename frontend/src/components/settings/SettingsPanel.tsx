@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { Settings, ListOrdered, Users, Mail, Globe, UserPlus } from 'lucide-react';
+import { Settings, ListOrdered, Users, Mail, Globe, UserPlus, Target } from 'lucide-react';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
 import { GeneralTab } from './GeneralTab';
@@ -15,12 +15,14 @@ import { DiscoveryTab } from './DiscoveryTab';
 import { MembersPanel } from '../static-group/MembersPanel';
 import { InvitationsPanel } from '../static-group/InvitationsPanel';
 import { JoinRequestsPanel } from '../static-group/JoinRequestsPanel';
+import { ObjectiveGoalsPanel } from '../static-group/ObjectiveGoalsPanel';
+import { ContentSuggestionsPanel } from '../static-group/ContentSuggestionsPanel';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import type { JoinRequest, StaticGroup, SnapshotPlayer } from '../../types';
 
-export type SettingsTab = 'general' | 'priority' | 'discovery' | 'members' | 'invitations' | 'requests';
+export type SettingsTab = 'general' | 'priority' | 'discovery' | 'goals' | 'members' | 'invitations' | 'requests';
 
-const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'discovery', 'members', 'invitations', 'requests'];
+const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'discovery', 'goals', 'members', 'invitations', 'requests'];
 
 interface TabItem {
   id: SettingsTab;
@@ -33,6 +35,7 @@ const TAB_ITEMS: TabItem[] = [
   { id: 'general', label: 'General', icon: Settings },
   { id: 'priority', label: 'Priority', icon: ListOrdered },
   { id: 'discovery', label: 'Listing', icon: Globe },
+  { id: 'goals', label: 'Goals', icon: Target },
   { id: 'members', label: 'Members', icon: Users },
   { id: 'invitations', label: 'Invitations', icon: Mail },
   { id: 'requests', label: 'Requests', icon: UserPlus, requiresManage: true },
@@ -161,6 +164,15 @@ export function SettingsPanel({
               group={group}
               onClose={onClose}
             />
+          )}
+
+          {activeTab === 'goals' && (
+            <div className="space-y-6">
+              <ObjectiveGoalsPanel groupId={group.id} canManage={canManage} />
+              <div className="border-t border-border-default pt-5">
+                <ContentSuggestionsPanel groupId={group.id} canManage={canManage} />
+              </div>
+            </div>
           )}
 
           {activeTab === 'members' && (

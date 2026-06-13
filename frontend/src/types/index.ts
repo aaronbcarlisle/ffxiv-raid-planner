@@ -850,6 +850,14 @@ export interface JoinRequest {
   characterDcAtApply?: string;
   characterAvatarUrlAtApply?: string;
   characterLodestoneIdAtApply?: string;
+  // Goal alignment snapshot captured at apply time
+  goalAlignmentSnapshot?: {
+    aligned: number;
+    partial: number;
+    conflicts: number;
+    missing: number;
+    unknown: number;
+  } | null;
   // Roster onboarding
   rosterPlayerId?: string;
   createdAt: string;

@@ -58,6 +58,32 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  // ── Feature branch: Goals Alignment V1.1 ────────────────────────────────
+  {
+    version: 'Unreleased',
+    date: '2026-06-13T00:00:00Z',
+    items: [
+      {
+        category: 'feature',
+        title: 'Static Objectives & Content Suggestions',
+        description:
+          'Leads can now define static objective goals (Savage BiS, Ultimate Clear, Mount Farm, etc.) with priority levels (Required, Preferred, Optional). Any member can propose content suggestions and the group votes on them; leads can promote a winning suggestion directly into a static objective goal.',
+      },
+      {
+        category: 'feature',
+        title: 'Goal alignment on join requests',
+        description:
+          "Applicant goal alignment is now captured at apply time and shown in the Recruitment Dossier. Leaders instantly see how well each applicant's public goals match the static's objectives — without the applicant needing to change anything.",
+      },
+      {
+        category: 'improvement',
+        title: 'Discovery page filters by objective category and hides goal conflicts',
+        description:
+          "Static listing cards now show the group's objective categories (e.g., Savage BiS, Ultimate Farm). Logged-in users with a public Player Hub profile can filter by objective category and optionally hide statics whose goals conflict with their own.",
+      },
+    ],
+    internal: true,
+  },
   // ── Feature branch: Solo Player Hub & Join Requests ─────────────────────
   {
     version: 'Unreleased',

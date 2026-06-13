@@ -635,6 +635,7 @@ export function JoinRequestReviewModal({
                   <GoalAlignmentSummary
                     groupId={groupId ?? request.staticGroupId}
                     profileId={request.playerProfileId}
+                    snapshot={request.goalAlignmentSnapshot}
                   />
                 </div>
               )}

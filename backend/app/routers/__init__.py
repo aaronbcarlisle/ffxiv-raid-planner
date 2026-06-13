@@ -1,6 +1,7 @@
 """API Routers"""
 
 from .analytics import router as analytics_router
+from .content_suggestions import router as content_suggestions_router
 from .api_keys import router as api_keys_router
 from .auth import router as auth_router
 from .bis import router as bis_router
@@ -23,6 +24,7 @@ from .tiers import router as tiers_router
 
 __all__ = [
     "analytics_router",
+    "content_suggestions_router",
     "api_keys_router",
     "auth_router",
     "bis_router",

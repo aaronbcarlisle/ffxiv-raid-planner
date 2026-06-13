@@ -42,9 +42,21 @@ export interface GoalAlignmentResult {
   items: GoalAlignmentItem[];
 }
 
+export interface RosterMemberAlignment {
+  userId: string;
+  profileId: string | null;
+  displayName: string;
+  aligned: number;
+  partial: number;
+  conflicts: number;
+  missing: number;
+  unknown: number;
+}
+
 interface ObjectiveGoalState {
   objectives: StaticObjectiveGoal[];
   alignment: GoalAlignmentResult | null;
+  rosterAlignment: RosterMemberAlignment[] | null;
   loading: boolean;
   error: string | null;
 
@@ -60,11 +72,13 @@ interface ObjectiveGoalState {
   ) => Promise<void>;
   deleteObjective: (groupId: string, id: string) => Promise<void>;
   fetchAlignment: (groupId: string, profileId: string) => Promise<void>;
+  fetchRosterAlignment: (groupId: string) => Promise<void>;
 }
 
 export const useObjectiveGoalStore = create<ObjectiveGoalState>((set, get) => ({
   objectives: [],
   alignment: null,
+  rosterAlignment: null,
   loading: false,
   error: null,
 
@@ -125,6 +139,20 @@ export const useObjectiveGoalStore = create<ObjectiveGoalState>((set, get) => ({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load alignment';
       logger.error('fetchAlignment failed', { error: message });
+      set({ error: message, loading: false });
+    }
+  },
+
+  fetchRosterAlignment: async (groupId) => {
+    set({ loading: true, error: null });
+    try {
+      const result = await api.get<RosterMemberAlignment[]>(
+        `/api/static-groups/${groupId}/roster-alignment`
+      );
+      set({ rosterAlignment: result, loading: false });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load roster alignment';
+      logger.error('fetchRosterAlignment failed', { error: message });
       set({ error: message, loading: false });
     }
   },
