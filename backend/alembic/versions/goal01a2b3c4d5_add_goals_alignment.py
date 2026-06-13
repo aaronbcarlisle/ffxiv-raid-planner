@@ -31,8 +31,8 @@ def upgrade():
         # Add nullable first — SQLite rejects ADD COLUMN NOT NULL without a
         # literal DEFAULT clause in the DDL (Alembic's server_default= is not
         # rendered into ALTER TABLE for SQLite).
-        op.add_column('player_goals', sa.Column('is_public', sa.Boolean(), nullable=True, server_default=sa.text('0')))
-        op.execute(sa.text("UPDATE player_goals SET is_public = 0 WHERE is_public IS NULL"))
+        op.add_column('player_goals', sa.Column('is_public', sa.Boolean(), nullable=True, server_default=sa.text('false')))
+        op.execute(sa.text("UPDATE player_goals SET is_public = false WHERE is_public IS NULL"))
         # Tighten to NOT NULL on Postgres after backfill.
         # SQLite does not support ALTER COLUMN; the ORM enforces the invariant there.
         if bind.dialect.name != 'sqlite':
