@@ -337,6 +337,9 @@ async def upsert_vote(
 
     await session.commit()
 
+    # Expire so the re-fetch reloads the votes collection from DB
+    session.expire(suggestion)
+
     # Re-fetch with fresh votes
     result = await session.execute(
         select(StaticContentSuggestion)
@@ -368,8 +371,7 @@ async def delete_vote(
     await get_static_group(session, group_id)
     await require_membership(session, current_user.id, group_id)
 
-    # Verify suggestion exists
-    await _get_suggestion(session, group_id, suggestion_id)
+    suggestion = await _get_suggestion(session, group_id, suggestion_id)
 
     existing_result = await session.execute(
         select(StaticContentSuggestionVote).where(
@@ -381,6 +383,9 @@ async def delete_vote(
     if existing_vote:
         await session.delete(existing_vote)
         await session.commit()
+
+    # Expire so the re-fetch reloads the votes collection from DB
+    session.expire(suggestion)
 
     # Re-fetch with fresh votes
     result = await session.execute(
