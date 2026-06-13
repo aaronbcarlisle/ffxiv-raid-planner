@@ -71,9 +71,12 @@ def _find_best_player_goal(
         if g.get("category") == static_category:
             return g
 
-    # Priority 2: goal_type match via the mapping table
+    # Priority 2: goal_type match via the mapping table.
+    # Skip goals that already have an explicit category — if a goal was declared
+    # with a specific objective category, it should only match via Priority 1 so
+    # it doesn't accidentally align with unrelated static goals.
     for g in player_goals:
-        if g.get("goal_type") in mapped_types:
+        if g.get("category") is None and g.get("goal_type") in mapped_types:
             return g
 
     return None
