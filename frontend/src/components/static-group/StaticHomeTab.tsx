@@ -22,6 +22,8 @@ import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
+import { useContentSuggestionStore } from '../../stores/contentSuggestionStore';
+import { HEADER_EVENTS } from '../layout/Header';
 import type { MountFarmData, FarmScore } from '../../stores/mountFarmStore';
 import type { CollectionGoal } from '../../stores/collectionGoalStore';
 import { getAllTrialIds, getTierById, getTrialById } from '../../gamedata';
@@ -1168,6 +1170,82 @@ function CollectionGoalsModule({
 }
 
 /**
+ * Content Suggestions — compact overview widget for all members.
+ *
+ * Shows open suggestion count and top suggestions so members can see what's
+ * been proposed. The "Suggest content" CTA opens Settings → Goals tab where
+ * members can vote on and propose new suggestions.
+ */
+function ContentSuggestionsModule({
+  suggestions,
+  canManage,
+}: {
+  suggestions: import('../../stores/contentSuggestionStore').ContentSuggestion[];
+  canManage: boolean;
+}) {
+  const open = suggestions.filter((s) => s.status === 'open');
+  const top = open.slice(0, 3);
+
+  const openGoalsTab = () => {
+    window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'goals' } }));
+  };
+
+  return (
+    <div className="bg-surface-card border border-border-default rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border-subtle">
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-secondary uppercase tracking-wide">
+          <Target className="w-3.5 h-3.5" />
+          Content Suggestions
+        </div>
+        {open.length > 0 && (
+          <span className="text-[10px] text-text-muted">{open.length} open</span>
+        )}
+      </div>
+
+      {top.length === 0 ? (
+        <div className="px-3 py-4 text-center">
+          <p className="text-[11px] text-text-muted mb-2">
+            No suggestions yet. Propose content your static should tackle.
+          </p>
+          <button
+            type="button"
+            onClick={openGoalsTab}
+            className="text-[11px] text-accent hover:underline"
+          >
+            Suggest content →
+          </button>
+        </div>
+      ) : (
+        <>
+          <ul className="divide-y divide-border-subtle">
+            {top.map((s) => (
+              <li key={s.id} className="px-3 py-2 flex items-center justify-between gap-2">
+                <span className="text-[12px] text-text-primary truncate flex-1">{s.title}</span>
+                <span className="text-[10px] text-text-muted flex-shrink-0">
+                  {s.voteSummary.total} vote{s.voteSummary.total !== 1 ? 's' : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="px-3 py-2 flex items-center justify-between border-t border-border-subtle">
+            <button
+              type="button"
+              onClick={openGoalsTab}
+              className="text-[11px] text-accent hover:underline"
+            >
+              {canManage ? 'Manage suggestions →' : 'Vote & suggest →'}
+            </button>
+            {open.length > 3 && (
+              <span className="text-[10px] text-text-muted">+{open.length - 3} more</span>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
  * Recent Activity — derives privacy-filtered activity rows from mount farm progress.
  *
  * Privacy rules (enforced in deriveActivityItems):
@@ -1324,17 +1402,19 @@ export function StaticHomeTab({
   const { sessions, fetchSessions, isLoading: sessLoading } = useScheduleStore();
   const { data: farmData, recommendations, isLoadingRecs, fetchRecommendations, fetchProgress } = useMountFarmStore();
   const { goals, isLoading: goalsLoading, fetchGoals, deleteGoal } = useCollectionGoalStore();
+  const { suggestions, fetchSuggestions } = useContentSuggestionStore();
 
   useEffect(() => {
     if (group.id) {
-      fetchGroupRequests(group.id);
+      if (canManage) fetchGroupRequests(group.id);
       fetchSessions(group.id);
       fetchRecommendations(group.id);
       // Fetch full farm progress so Recent Activity is populated on first Overview visit
       fetchProgress(group.id, getAllTrialIds());
       fetchGoals(group.id);
+      fetchSuggestions(group.id);
     }
-  }, [group.id, fetchGroupRequests, fetchSessions, fetchRecommendations, fetchProgress, fetchGoals]);
+  }, [group.id, canManage, fetchGroupRequests, fetchSessions, fetchRecommendations, fetchProgress, fetchGoals, fetchSuggestions]);
 
   const tierPlayers = tier?.players;
   const players = tierPlayers ?? [];
@@ -1427,6 +1507,10 @@ export function StaticHomeTab({
             canManage={canManage}
             onCreateGoal={() => setShowCreateGoalModal(true)}
             onDeleteGoal={handleDeleteGoal}
+          />
+          <ContentSuggestionsModule
+            suggestions={suggestions}
+            canManage={canManage}
           />
         </div>
       </div>
