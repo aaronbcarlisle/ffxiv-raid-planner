@@ -33,7 +33,7 @@ import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
 import { StaticHomeTab } from '../components/static-group/StaticHomeTab';
-import { SettingsPanel, type SettingsTab } from '../components/settings';
+import { SettingsPanel, type SettingsTab, type RecruitmentSection } from '../components/settings';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useGroupViewState } from '../hooks/useGroupViewState';
@@ -144,6 +144,7 @@ export function GroupView() {
 
   // Settings panel options (for opening to specific tab with highlight)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('general');
+  const [recruitmentSection, setRecruitmentSection] = useState<RecruitmentSection | undefined>();
   const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
   const [errorCopied, setErrorCopied] = useState(false);
   const [showControlsSheet, setShowControlsSheet] = useState(false);
@@ -500,23 +501,26 @@ export function GroupView() {
     const handleNewTierEvent = () => { setShowCreateTierModal(true); };
     const handleRolloverEvent = () => { setShowRolloverDialog(true); };
     const handleSettingsEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ tab?: SettingsTab }>;
+      const customEvent = e as CustomEvent<{ tab?: SettingsTab; section?: RecruitmentSection }>;
       const requestedTab = customEvent.detail?.tab || 'general';
+      const requestedSection = customEvent.detail?.section;
       const isOpen = settingsModalRef.current;
       const currentTab = settingsTabRef.current;
 
-      if (isOpen && requestedTab === currentTab) {
-        // Same tab requested while open - close the panel
+      if (isOpen && requestedTab === currentTab && !requestedSection) {
+        // Same tab requested while open (no specific section) - close the panel
         setShowSettingsModal(false);
       } else {
-        // Different tab or panel was closed - open/switch to requested tab
+        // Different tab, or explicit section routing, or panel was closed
         setSettingsTab(requestedTab);
-        setHighlightCreateInvite(requestedTab === 'recruitment');
+        if (requestedSection) setRecruitmentSection(requestedSection);
+        setHighlightCreateInvite(requestedTab === 'recruitment' && !requestedSection);
         setShowSettingsModal(true);
       }
     };
     const handleOpenSettingsInvitationsEvent = () => {
       setSettingsTab('recruitment');
+      setRecruitmentSection('invitations');
       setHighlightCreateInvite(true);
       setShowSettingsModal(true);
     };
@@ -936,6 +940,7 @@ export function GroupView() {
               canManage={canManageRoster(userRole).allowed}
               onOpenRequests={() => {
                 setSettingsTab('recruitment');
+                setRecruitmentSection('requests');
                 setShowSettingsModal(true);
               }}
               onScheduleFarm={(trial) => {
@@ -1180,6 +1185,7 @@ export function GroupView() {
           onClose={() => {
             setShowSettingsModal(false);
             setSettingsTab('general');
+            setRecruitmentSection(undefined);
             setHighlightCreateInvite(false);
           }}
           group={currentGroup}
@@ -1187,6 +1193,7 @@ export function GroupView() {
           tierId={currentTier?.tierId}
           isAdmin={isAdmin}
           initialTab={settingsTab}
+          initialRecruitmentSection={recruitmentSection}
           highlightCreateInvite={highlightCreateInvite}
           onAddToRoster={(request) => {
             if (request.rosterPlayerId) {

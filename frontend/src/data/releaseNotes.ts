@@ -58,6 +58,31 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  // ── Settings IA second pass ──────────────────────────────────────────────
+  {
+    version: 'Unreleased',
+    date: '2026-06-14T00:00:00Z',
+    title: 'Settings IA — Recruitment & Goals sub-navigation',
+    internal: true,
+    items: [
+      {
+        category: 'improvement',
+        title: 'Recruitment tab now has four sub-sections',
+        description:
+          'Recruitment is no longer one long scroll. It splits into Overview (status cards, pending application CTA), Listing (the full Static Finder form with its own Save), Requests (join request review), and Invitations — each independently scrollable. Badge clicks from the Overview rail and header gear icon route directly to the Requests section.',
+        pr: 133,
+        prTitle: 'feat(settings): Recruitment & Goals & Farms sub-navigation UX pass',
+      },
+      {
+        category: 'improvement',
+        title: 'Goals & Farms tab now has four sub-sections',
+        description:
+          'Goals & Farms separates Official Objectives, Collection Goals (farms), and Content Suggestions into their own sub-sections under an Overview card that shows counts and CTAs at a glance.',
+        pr: 133,
+        prTitle: 'feat(settings): Recruitment & Goals & Farms sub-navigation UX pass',
+      },
+    ],
+  },
   // ── Notification Center ──────────────────────────────────────────────────
   {
     version: 'Unreleased',
