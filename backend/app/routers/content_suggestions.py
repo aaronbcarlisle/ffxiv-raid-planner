@@ -20,6 +20,7 @@ from ..models.static_content_suggestion import (
 )
 from ..models.static_objective_goal import StaticObjectiveGoal, VALID_OBJECTIVE_PRIORITIES
 from ..permissions import NotFound, PermissionDenied, get_static_group, require_can_manage_members, require_membership
+from .notifications import create_notification
 from ..schemas.content_suggestions import (
     PromoteToGoalRequest,
     SuggestionCreate,
@@ -31,6 +32,14 @@ from ..schemas.content_suggestions import (
 
 router = APIRouter(prefix="/api", tags=["content-suggestions"])
 logger = get_logger(__name__)
+
+_VOTE_LABELS = {
+    "must_have": "Must Have",
+    "want": "Want",
+    "willing": "Willing",
+    "not_interested": "Not Interested",
+    "avoid": "Avoid",
+}
 
 
 def _build_vote_summary(votes: list[StaticContentSuggestionVote]) -> VoteSummary:
@@ -319,6 +328,7 @@ async def upsert_vote(
     )
     existing_vote = existing_result.scalar_one_or_none()
 
+    is_new_vote = existing_vote is None
     if existing_vote:
         existing_vote.vote = body.vote
         existing_vote.note = body.note
@@ -334,6 +344,19 @@ async def upsert_vote(
             updated_at=now,
         )
         session.add(new_vote)
+
+    # Notify the suggestion author on first vote (skip self-votes), in the same transaction
+    if is_new_vote and suggestion.suggested_by_user_id != current_user.id:
+        voter_name = current_user.display_name or current_user.discord_username or "A member"
+        vote_label = _VOTE_LABELS.get(body.vote, body.vote)
+        await create_notification(
+            session,
+            user_id=suggestion.suggested_by_user_id,
+            notification_type="suggestion_vote",
+            title=f"{voter_name} voted on your suggestion",
+            body=f'Voted "{vote_label}" on "{suggestion.title}"',
+            href=f"/group/{group_id}?tab=settings&settingsTab=goals",
+        )
 
     await session.commit()
 

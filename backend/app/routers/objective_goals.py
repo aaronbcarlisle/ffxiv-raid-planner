@@ -334,7 +334,7 @@ async def get_roster_alignment(
             select(PlayerProfile)
             .where(
                 PlayerProfile.user_id == user.id,
-                PlayerProfile.visibility == "public",
+                PlayerProfile.visibility == "discoverable",
             )
             .limit(1)
         )
