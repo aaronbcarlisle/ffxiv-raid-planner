@@ -445,3 +445,105 @@ async def test_invalid_objective_priority_rejected(
         headers=auth_headers,
     )
     assert resp.status_code == 422, resp.text
+
+
+# ---------------------------------------------------------------------------
+# 11. Roster alignment — visibility filter regression
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_roster_alignment_includes_discoverable_profiles(
+    client, auth_headers, session: AsyncSession, test_user: User, test_user_2: User
+):
+    """Roster alignment returns non-zero counts for discoverable profiles with public goals.
+
+    Regression: the endpoint previously filtered on visibility == "public" which is
+    not a valid value, causing every member to show all-zero alignment even when
+    they had a public profile and matching goals.
+    """
+    group = await create_static_group(session, owner=test_user)
+    await create_membership(session, test_user_2, group, role=MemberRole.MEMBER)
+
+    profile = PlayerProfile(
+        id=str(uuid.uuid4()),
+        user_id=test_user_2.id,
+        visibility="discoverable",
+        share_enabled=True,
+        share_code=str(uuid.uuid4())[:8].upper(),
+        created_at=_now(),
+        updated_at=_now(),
+    )
+    session.add(profile)
+    await session.flush()
+
+    await _create_goal(session, profile, goal_type="raid", intent_level="must_have", is_public=True)
+    await _create_objective(session, group, test_user, category="savage_bis", priority="required")
+    await session.commit()
+
+    resp = await client.get(
+        f"/api/static-groups/{group.id}/roster-alignment",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+
+    member_row = next((r for r in data if r["userId"] == test_user_2.id), None)
+    assert member_row is not None
+    assert member_row["profileId"] == profile.id
+    # raid + must_have vs savage_bis required → aligned
+    assert member_row["aligned"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_roster_alignment_excludes_private_profiles(
+    client, auth_headers, session: AsyncSession, test_user: User, test_user_2: User
+):
+    """Private profiles are not matched in roster alignment — member gets all-zero row."""
+    group = await create_static_group(session, owner=test_user)
+    await create_membership(session, test_user_2, group, role=MemberRole.MEMBER)
+
+    profile = PlayerProfile(
+        id=str(uuid.uuid4()),
+        user_id=test_user_2.id,
+        visibility="private",
+        share_enabled=False,
+        share_code=str(uuid.uuid4())[:8].upper(),
+        created_at=_now(),
+        updated_at=_now(),
+    )
+    session.add(profile)
+    await session.flush()
+
+    await _create_goal(session, profile, goal_type="raid", intent_level="must_have", is_public=True)
+    await _create_objective(session, group, test_user, category="savage_bis", priority="required")
+    await session.commit()
+
+    resp = await client.get(
+        f"/api/static-groups/{group.id}/roster-alignment",
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+
+    member_row = next((r for r in data if r["userId"] == test_user_2.id), None)
+    assert member_row is not None
+    assert member_row["profileId"] is None  # private profile not surfaced
+    assert member_row["aligned"] == 0
+    assert member_row["missing"] == 0
+
+
+@pytest.mark.asyncio
+async def test_roster_alignment_member_only_accessible_to_lead_or_owner(
+    client, auth_headers_user2, session: AsyncSession, test_user: User, test_user_2: User
+):
+    """Regular members cannot access the roster alignment endpoint."""
+    group = await create_static_group(session, owner=test_user)
+    await create_membership(session, test_user_2, group, role=MemberRole.MEMBER)
+    await session.commit()
+
+    resp = await client.get(
+        f"/api/static-groups/{group.id}/roster-alignment",
+        headers=auth_headers_user2,
+    )
+    assert resp.status_code == 403, resp.text

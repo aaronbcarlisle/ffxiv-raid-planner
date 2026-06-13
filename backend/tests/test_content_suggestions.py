@@ -4,10 +4,12 @@ import uuid
 from datetime import datetime, timezone
 
 import pytest
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import StaticGroup, User
 from app.models.membership import Membership, MemberRole
+from app.models.notification import Notification
 from app.models.static_content_suggestion import (
     StaticContentSuggestion,
     StaticContentSuggestionVote,
@@ -504,3 +506,119 @@ async def test_suggestions_deleted_with_group(
         sa_select(StaticContentSuggestion).where(StaticContentSuggestion.id == suggestion.id)
     )
     assert result.scalar_one_or_none() is None
+
+
+# ---------------------------------------------------------------------------
+# 10. Vote notifications — regression tests for suggestion_vote notify logic
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_vote_creates_notification_for_suggestion_author(
+    client, auth_headers_user2, session: AsyncSession, test_user: User, test_user_2: User
+):
+    """New vote on another user's suggestion notifies the suggestion author."""
+    group = await create_static_group(session, owner=test_user)
+    await create_membership(session, test_user_2, group, role=MemberRole.MEMBER)
+    suggestion = await _create_suggestion(session, group, test_user, title="Clear TOP")
+    await session.commit()
+
+    resp = await client.put(
+        f"/api/static-groups/{group.id}/content-suggestions/{suggestion.id}/vote",
+        json={"vote": "must_have"},
+        headers=auth_headers_user2,
+    )
+    assert resp.status_code == 200, resp.text
+
+    result = await session.execute(
+        sa_select(Notification).where(Notification.user_id == test_user.id)
+    )
+    notifications = result.scalars().all()
+    assert len(notifications) == 1
+    n = notifications[0]
+    assert n.notification_type == "suggestion_vote"
+    assert n.user_id == test_user.id
+    assert "testuser2" in n.title.lower() or "testuser" in n.title.lower()
+    assert "Must Have" in n.body
+    assert "Clear TOP" in n.body
+
+
+@pytest.mark.asyncio
+async def test_vote_update_does_not_create_duplicate_notification(
+    client, auth_headers_user2, session: AsyncSession, test_user: User, test_user_2: User
+):
+    """Updating an existing vote does not create a second notification."""
+    group = await create_static_group(session, owner=test_user)
+    await create_membership(session, test_user_2, group, role=MemberRole.MEMBER)
+    suggestion = await _create_suggestion(session, group, test_user)
+    await session.commit()
+
+    # First vote — creates notification
+    await client.put(
+        f"/api/static-groups/{group.id}/content-suggestions/{suggestion.id}/vote",
+        json={"vote": "want"},
+        headers=auth_headers_user2,
+    )
+    # Second vote on same suggestion — must not create another notification
+    await client.put(
+        f"/api/static-groups/{group.id}/content-suggestions/{suggestion.id}/vote",
+        json={"vote": "avoid"},
+        headers=auth_headers_user2,
+    )
+
+    result = await session.execute(
+        sa_select(Notification).where(Notification.user_id == test_user.id)
+    )
+    notifications = result.scalars().all()
+    assert len(notifications) == 1  # still exactly one from the first vote
+
+
+@pytest.mark.asyncio
+async def test_self_vote_does_not_create_notification(
+    client, auth_headers, session: AsyncSession, test_user: User
+):
+    """Voting on your own suggestion does not send a notification to yourself."""
+    group = await create_static_group(session, owner=test_user)
+    suggestion = await _create_suggestion(session, group, test_user)
+    await session.commit()
+
+    resp = await client.put(
+        f"/api/static-groups/{group.id}/content-suggestions/{suggestion.id}/vote",
+        json={"vote": "must_have"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200, resp.text
+
+    result = await session.execute(
+        sa_select(Notification).where(Notification.user_id == test_user.id)
+    )
+    notifications = result.scalars().all()
+    assert len(notifications) == 0
+
+
+@pytest.mark.asyncio
+async def test_vote_notification_payload(
+    client, auth_headers_user2, session: AsyncSession, test_user: User, test_user_2: User
+):
+    """Notification has correct type, vote label, suggestion title, and recipient."""
+    group = await create_static_group(session, owner=test_user)
+    await create_membership(session, test_user_2, group, role=MemberRole.MEMBER)
+    suggestion = await _create_suggestion(session, group, test_user, title="FRU Clear")
+    await session.commit()
+
+    await client.put(
+        f"/api/static-groups/{group.id}/content-suggestions/{suggestion.id}/vote",
+        json={"vote": "willing"},
+        headers=auth_headers_user2,
+    )
+
+    result = await session.execute(
+        sa_select(Notification).where(Notification.user_id == test_user.id)
+    )
+    n = result.scalar_one()
+    assert n.notification_type == "suggestion_vote"
+    assert n.user_id == test_user.id
+    assert "Willing" in n.body
+    assert "FRU Clear" in n.body
+    assert n.href is not None
+    assert "goals" in n.href
