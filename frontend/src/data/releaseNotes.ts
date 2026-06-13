@@ -61,7 +61,7 @@ export const RELEASES: Release[] = [
   // ── Feature branch: Solo Player Hub & Join Requests ─────────────────────
   {
     version: 'Unreleased',
-    date: '2026-06-12T00:00:00Z',
+    date: '2026-06-13T00:00:00Z',
     items: [
       {
         category: 'feature',
@@ -134,6 +134,11 @@ export const RELEASES: Release[] = [
         title: 'V2-7: pytest-mock added to dev dependencies',
         description:
           'test_httponly_cookies.py requires the mocker fixture from pytest-mock, which was listed in requirements-dev.txt but not installed in the venv. Fixed by running pip install pytest-mock in the backend venv.',
+      },
+      {
+        category: 'feature',
+        title: 'Goal alignment V1',
+        description: 'Backend and frontend infrastructure for personal/static goal matching: intent levels, is_public flag, static objective goals, and alignment scoring.',
       },
     ],
     internal: true,

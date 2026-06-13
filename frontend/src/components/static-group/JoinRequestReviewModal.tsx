@@ -20,6 +20,7 @@ import { JobIcon } from '../ui/JobIcon';
 import { SafeAvatar } from '../ui/SafeAvatar';
 import { ReadinessBadge } from '../profile/ReadinessBadge';
 import { SourceBadge } from '../profile/SourceBadge';
+import { GoalAlignmentSummary } from './GoalAlignmentSummary';
 import { formatSyncAge, getFreshness, freshnessColor } from '../profile/freshness';
 import { useModal } from '../../hooks/useModal';
 import { useDevice } from '../../hooks/useDevice';
@@ -51,6 +52,7 @@ interface JoinRequestReviewModalProps {
   onClose: () => void;
   request: JoinRequest;
   staticName: string;
+  groupId?: string;
   discoverySettings?: DiscoverySettings;
   onAccept: (id: string) => Promise<void>;
   onDecline: (id: string) => Promise<void>;
@@ -63,6 +65,7 @@ export function JoinRequestReviewModal({
   onClose,
   request,
   staticName,
+  groupId,
   discoverySettings,
   onAccept,
   onDecline,
@@ -620,6 +623,19 @@ export function JoinRequestReviewModal({
                       <span>{request.availabilityNote}</span>
                     </div>
                   ) : null}
+                </div>
+              )}
+
+              {/* Goal Alignment */}
+              {request.playerProfileId && (groupId ?? request.staticGroupId) && (
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.22em] mb-1.5" style={{ color: '#8b6914' }}>
+                    Goal Alignment
+                  </p>
+                  <GoalAlignmentSummary
+                    groupId={groupId ?? request.staticGroupId}
+                    profileId={request.playerProfileId}
+                  />
                 </div>
               )}
 

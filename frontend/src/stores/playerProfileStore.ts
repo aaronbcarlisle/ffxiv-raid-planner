@@ -161,6 +161,8 @@ export interface PlayerGoal {
   linkedCharacterId: string | null;
   linkedJob: string | null;
   dueDate: string | null;
+  intentLevel: string | null;
+  isPublic: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -228,6 +230,8 @@ interface PlayerProfileState {
     linkedCharacterId?: string;
     linkedJob?: string;
     dueDate?: string;
+    intentLevel?: string | null;
+    isPublic?: boolean;
   }) => Promise<void>;
   updateGoal: (id: string, data: {
     title?: string;
@@ -241,6 +245,8 @@ interface PlayerProfileState {
     linkedCharacterId?: string;
     linkedJob?: string;
     dueDate?: string;
+    intentLevel?: string | null;
+    isPublic?: boolean;
   }) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
 

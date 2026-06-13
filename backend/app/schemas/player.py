@@ -219,6 +219,8 @@ class PlayerGoalResponse(CamelModel):
     linked_character_id: str | None = None
     linked_job: str | None = None
     due_date: str | None = None
+    intent_level: str | None = None
+    is_public: bool = False
     created_at: str
     updated_at: str
 
@@ -238,6 +240,8 @@ class PlayerGoalCreate(CamelModel):
     linked_character_id: str | None = Field(default=None, max_length=36)
     linked_job: str | None = Field(default=None, max_length=10)
     due_date: str | None = Field(default=None, max_length=30)
+    intent_level: str | None = Field(default=None, max_length=20)
+    is_public: bool = Field(default=False)
 
 
 class PlayerGoalUpdate(CamelModel):
@@ -254,6 +258,37 @@ class PlayerGoalUpdate(CamelModel):
     linked_character_id: str | None = Field(default=None, max_length=36)
     linked_job: str | None = Field(default=None, max_length=10)
     due_date: str | None = Field(default=None, max_length=30)
+    intent_level: str | None = Field(default=None, max_length=20)
+    is_public: bool | None = Field(default=None)
+
+
+# --- Goal Alignment ---
+
+class GoalAlignmentItem(CamelModel):
+    """Single alignment result item for a static objective goal."""
+
+    category: str
+    static_title: str
+    player_intent: str | None
+    static_priority: str
+    status: str  # aligned, partial, conflict, missing, unknown
+
+
+class GoalAlignmentSummary(CamelModel):
+    """Summary counts for a goal alignment result."""
+
+    aligned: int
+    partial: int
+    conflicts: int
+    missing: int
+    unknown: int
+
+
+class GoalAlignmentResponse(CamelModel):
+    """Full goal alignment response."""
+
+    summary: GoalAlignmentSummary
+    items: list[GoalAlignmentItem]
 
 
 # --- Plugin Gear Sync ---

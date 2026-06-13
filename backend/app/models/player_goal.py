@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -15,6 +15,10 @@ if TYPE_CHECKING:
 VALID_GOAL_TYPES = frozenset({
     "collection", "mount_farm", "totem_farm", "weekly_clear",
     "personal", "gear", "raid", "custom",
+})
+
+VALID_INTENT_LEVELS = frozenset({
+    "must_have", "want", "willing", "not_interested", "avoid",
 })
 
 VALID_GOAL_STATUSES = frozenset({
@@ -69,6 +73,9 @@ class PlayerGoal(Base):
     linked_job: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     due_date: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    intent_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False,

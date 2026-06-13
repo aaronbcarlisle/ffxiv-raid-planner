@@ -38,6 +38,8 @@ const goals: PlayerGoal[] = [
     linkedCharacterId: null,
     linkedJob: null,
     dueDate: null,
+    intentLevel: null,
+    isPublic: false,
     createdAt: '2026-06-08T00:00:00Z',
     updatedAt: '2026-06-08T00:00:00Z',
   },

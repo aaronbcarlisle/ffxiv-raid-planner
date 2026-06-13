@@ -5,6 +5,7 @@ import { Badge } from '../primitives/Badge';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { TextArea } from '../ui/TextArea';
+import { Toggle } from '../ui/Toggle';
 import { Spinner } from '../ui/Spinner';
 import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import type { PlayerGoal } from '../../stores/playerProfileStore';
@@ -31,6 +32,20 @@ const GOAL_TYPE_OPTIONS = [
   { value: 'raid', label: 'Raid' },
   { value: 'custom', label: 'Custom' },
 ];
+
+const INTENT_LEVEL_OPTIONS = [
+  { value: '', label: 'Not set' },
+  { value: 'must_have', label: 'Must Have' },
+  { value: 'want', label: 'Want' },
+  { value: 'willing', label: 'Willing' },
+  { value: 'not_interested', label: 'Not Interested' },
+  { value: 'avoid', label: 'Avoid' },
+];
+
+// Goal types that can participate in static matching
+const INTENT_ELIGIBLE_TYPES = new Set([
+  'weekly_clear', 'personal', 'gear', 'raid', 'custom',
+]);
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
@@ -66,6 +81,8 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
   const [targetCount, setTargetCount] = useState(existing?.targetCount != null ? String(existing.targetCount) : '');
   const [sourceContent, setSourceContent] = useState(existing?.sourceContent ?? '');
   const [sourceItem, setSourceItem] = useState(existing?.sourceItem ?? '');
+  const [intentLevel, setIntentLevel] = useState<string>(existing?.intentLevel ?? '');
+  const [isPublic, setIsPublic] = useState(existing?.isPublic ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,6 +109,8 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         sourceItem: entry.totemName ?? entry.mountName,
         targetCount: entry.totemTarget,
         currentCount: 0,
+        intentLevel: intentLevel || null,
+        isPublic,
       });
       toast.success(`Added ${entry.mountName} mount farm`);
       onClose();
@@ -117,6 +136,8 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         sourceItem: sourceItem.trim() || undefined,
         currentCount: isCountBased ? Number(currentCount) || 0 : 0,
         targetCount: isCountBased ? Number(targetCount) : undefined,
+        intentLevel: intentLevel || null,
+        isPublic,
       };
 
       if (isEditing) {
@@ -244,6 +265,29 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
             />
           </div>
         )}
+
+        {/* Intent level (for types that participate in static matching) */}
+        {INTENT_ELIGIBLE_TYPES.has(goalType) && (
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1"> {/* design-system-ignore */}
+              How strongly do you want this?
+            </label>
+            <Select
+              value={intentLevel}
+              onChange={setIntentLevel}
+              options={INTENT_LEVEL_OPTIONS}
+            />
+          </div>
+        )}
+
+        {/* Share toggle */}
+        <div className="flex items-center justify-between rounded-lg border border-border-default bg-surface-elevated px-3 py-2.5">
+          <div>
+            <div className="text-sm font-medium text-text-primary">Share with my statics</div>
+            <div className="text-xs text-text-tertiary">Only shared goals can be used for static matching.</div>
+          </div>
+          <Toggle checked={isPublic} onChange={setIsPublic} size="sm" aria-label="Share goal with statics" />
+        </div>
 
         {/* Source fields for content-based goals */}
         {showSourceFields && (

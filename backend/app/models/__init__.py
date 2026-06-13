@@ -12,6 +12,7 @@ from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
 from .mount_farm_progress import MountFarmProgress
 from .player_goal import PlayerGoal
+from .static_objective_goal import StaticObjectiveGoal
 from .membership import Membership, MemberRole, ROLE_HIERARCHY
 from .page_ledger_entry import PageLedgerEntry
 from .player_character import PlayerCharacter
@@ -50,6 +51,7 @@ __all__ = [
     "MemberRole",
     "PageLedgerEntry",
     "PlayerGoal",
+    "StaticObjectiveGoal",
     "PlayerCharacter",
     "PlayerGearSnapshot",
     "PlayerJobProfile",
