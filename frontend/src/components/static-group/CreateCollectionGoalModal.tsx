@@ -310,8 +310,7 @@ export function CreateCollectionGoalModal({ isOpen, onClose, groupId }: CreateCo
               </div>
             ) : (
               <div className="space-y-1">
-                {/* design-system-ignore: no Label primitive in design system */}
-                <label className="text-xs font-medium text-text-secondary">
+                {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
                   Duty name
                   <span className="ml-1 font-normal text-text-muted">(optional)</span>
                 </label>
@@ -325,7 +324,7 @@ export function CreateCollectionGoalModal({ isOpen, onClose, groupId }: CreateCo
             )}
 
             <div className="flex items-center justify-between">
-              <button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+              {/* design-system-ignore: wizard step back navigation */}<button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
                 <ChevronLeft className="w-3 h-3" /> Back
               </button>
               <Button type="button" onClick={goNext}>
@@ -357,7 +356,7 @@ export function CreateCollectionGoalModal({ isOpen, onClose, groupId }: CreateCo
               ))}
             </div>
             <div className="flex items-center justify-between">
-              <button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+              {/* design-system-ignore: wizard step back navigation */}<button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
                 <ChevronLeft className="w-3 h-3" /> Back
               </button>
               <Button type="button" disabled={!form.rewardType} onClick={goNext}>
@@ -388,7 +387,7 @@ export function CreateCollectionGoalModal({ isOpen, onClose, groupId }: CreateCo
               ))}
             </div>
             <div className="flex items-center justify-between">
-              <button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+              {/* design-system-ignore: wizard step back navigation */}<button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
                 <ChevronLeft className="w-3 h-3" /> Back
               </button>
               <Button type="button" onClick={goNext}>
@@ -402,8 +401,7 @@ export function CreateCollectionGoalModal({ isOpen, onClose, groupId }: CreateCo
         {step === 'name' && (
           <div className="space-y-4">
             <div className="space-y-1">
-              {/* design-system-ignore: no Label primitive in design system */}
-              <label className="text-xs font-medium text-text-secondary">
+              {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
                 Goal name
                 {!form.titleEdited && form.title && (
                   <span className="ml-1.5 font-normal text-text-muted">auto-suggested</span>
@@ -421,15 +419,13 @@ export function CreateCollectionGoalModal({ isOpen, onClose, groupId }: CreateCo
             {form.rewardType === 'token' && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  {/* design-system-ignore */}
-                  <label className="text-xs font-medium text-text-secondary">
+                  {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
                     Target count <span className="font-normal text-text-muted">(optional)</span>
                   </label>
                   <Input value={form.targetCount} onChange={(v) => patch({ targetCount: v })} placeholder="e.g. 99" />
                 </div>
                 <div className="space-y-1">
-                  {/* design-system-ignore */}
-                  <label className="text-xs font-medium text-text-secondary">
+                  {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
                     Current count <span className="font-normal text-text-muted">(optional)</span>
                   </label>
                   <Input value={form.currentCount} onChange={(v) => patch({ currentCount: v })} placeholder="e.g. 40" />
@@ -438,8 +434,7 @@ export function CreateCollectionGoalModal({ isOpen, onClose, groupId }: CreateCo
             )}
 
             <div className="space-y-1">
-              {/* design-system-ignore */}
-              <label className="text-xs font-medium text-text-secondary">
+              {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
                 Internal note <span className="font-normal text-text-muted">(optional, lead-only)</span>
               </label>
               <Input value={form.note} onChange={(v) => patch({ note: v })} placeholder="e.g. Prioritise tanks first" />
@@ -474,7 +469,7 @@ export function CreateCollectionGoalModal({ isOpen, onClose, groupId }: CreateCo
             {error && <p className="text-sm text-status-error">{error}</p>}
 
             <div className="flex items-center justify-between pt-1">
-              <button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+              {/* design-system-ignore: wizard step back navigation */}<button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
                 <ChevronLeft className="w-3 h-3" /> Back
               </button>
               <div className="flex gap-2">

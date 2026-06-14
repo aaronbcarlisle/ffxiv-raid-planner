@@ -1176,7 +1176,7 @@ function GoalsFarmsModule({
               {activeObjectives.length > 3 && (
                 <div className="px-3 py-1 flex items-center justify-between">
                   <span className="text-[10px] text-text-muted">+{activeObjectives.length - 3} more</span>
-                  <button type="button" onClick={openGoalsTab} className="text-[10px] text-accent hover:underline">
+                  {/* design-system-ignore: inline text link within overflow panel */}<button type="button" onClick={openGoalsTab} className="text-[10px] text-accent hover:underline">
                     {canManage ? 'Manage →' : 'View →'}
                   </button>
                 </div>
