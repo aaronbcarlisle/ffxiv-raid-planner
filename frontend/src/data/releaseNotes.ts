@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.23.0';
+export const CURRENT_VERSION = '1.24.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -58,164 +58,14 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
-  // ── Objective Command Center ─────────────────────────────────────────────
+  // ── v1.24.0 ──────────────────────────────────────────────────────────────
   {
-    version: 'Unreleased',
-    date: '2026-06-14T00:00:00Z',
-    title: 'Objective Command Center',
-    internal: true,
-    items: [{
-      category: 'feature',
-      title: 'Objective Command Center',
-      description: 'Static leads can now see a per-objective dashboard card on the Overview that links roster readiness, goal alignment, BiS status, collection goals, and scheduled sessions into a single actionable summary with a suggested next step.',
-      pr: 133,
-      prTitle: 'feat(overview): Objective Command Center',
-    }],
-  },
-  // ── Static Finder fit score ──────────────────────────────────────────────
-  {
-    version: 'Unreleased',
-    date: '2026-06-14T00:00:00Z',
-    title: 'Static Finder Fit Score',
-    internal: true,
+    version: '1.24.0',
+    date: '2026-06-15T00:00:00Z',
+    title: 'Goals Alignment, Multi-BiS, and Recruitment Intelligence',
+    highlights: ['Static Objectives & goal alignment', 'Personalized fit scores on Static Finder'],
     items: [
-      {
-        category: 'feature',
-        title: 'Static Finder shows personalized fit scores',
-        description: 'Authenticated users with a Player Hub profile now see a deterministic fit summary on each static listing card: goal alignment, job match, schedule overlap, comms compatibility, and BiS readiness. Private goals and BiS targets are never used.',
-        pr: 135,
-        prTitle: 'feat(discovery): Static Finder fit score',
-      },
-      {
-        category: 'improvement',
-        title: 'Static Finder adds fit-based filters',
-        description: 'New filter controls let players hide goal conflicts, filter by recruiting job, require schedule overlap, and filter by language.',
-        pr: 135,
-        prTitle: 'feat(discovery): Static Finder fit score',
-      },
-    ],
-  },
-  // ── Application Review 2.0 ───────────────────────────────────────────────
-  {
-    version: 'Unreleased',
-    date: '2026-06-14T00:00:00Z',
-    title: 'Application Review 2.0',
-    internal: true,
-    items: [
-      {
-        category: 'improvement',
-        title: 'Application review modal reorganized into clear sections',
-        description: 'The join request review modal now shows applicant snapshot, job fit, gear/BiS fit (public only), goal alignment counts, schedule overlap, and comms fit as distinct sections.',
-        pr: 136,
-        prTitle: 'feat(recruitment): Application Review 2.0',
-      },
-      {
-        category: 'improvement',
-        title: 'Applications snapshot fit data at submission time',
-        description: 'When a player submits a join request, their public goals, public BiS target name, gear summary, and schedule overlap are snapshotted so leads see stable data even after profile changes.',
-        pr: 136,
-        prTitle: 'feat(recruitment): Application Review 2.0',
-      },
-    ],
-  },
-  // ── Settings IA second pass ──────────────────────────────────────────────
-  {
-    version: 'Unreleased',
-    date: '2026-06-14T00:00:00Z',
-    title: 'Settings IA — Recruitment & Goals sub-navigation',
-    internal: true,
-    items: [
-      {
-        category: 'improvement',
-        title: 'Collection Goals: Ultimate as a first-class content type',
-        description:
-          "Collection goals now separate what you're tracking (reward type: mount, weapon, title, clear count, etc.) from where it comes from (content type: Extreme, Savage, Ultimate, Criterion, Chaotic Alliance, Field Operation). Ultimate is no longer bundled under Savage — create an Ultimate goal, pick from six preset duties (FRU, TOP, DSR, TEA, UwU, UCoB), choose your reward type, and get an auto-named goal. The creation flow is now a guided 4–5-step wizard instead of a flat form.",
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-      {
-        category: 'improvement',
-        title: 'Recruitment tab now has four sub-sections',
-        description:
-          'Recruitment is no longer one long scroll. It splits into Overview (status cards, pending application CTA), Listing (the full Static Finder form with its own Save), Requests (join request review), and Invitations — each independently scrollable. Badge clicks from the Overview rail and header gear icon route directly to the Requests section.',
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-      {
-        category: 'improvement',
-        title: 'Goals & Farms tab now has four sub-sections',
-        description:
-          'Goals & Farms separates Official Objectives, Collection Goals (farms), and Content Suggestions into their own sub-sections under an Overview card that shows counts and CTAs at a glance.',
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-    ],
-  },
-  // ── Notification Center polish ───────────────────────────────────────────
-  {
-    version: 'Unreleased',
-    date: '2026-06-14T00:00:00Z',
-    title: 'Notification Center polish',
-    internal: true,
-    items: [
-      {
-        category: 'fix',
-        title: 'Self-vote no longer creates a spurious notification',
-        description:
-          'Voting on your own content suggestion no longer triggers a notification to yourself.',
-        pr: 134,
-        prTitle: 'fix(notifications): Notification Center polish',
-      },
-      {
-        category: 'fix',
-        title: 'Overview notification rail shows only current-static highlights',
-        description:
-          'The Overview rail now shows contextual static items (pending applications, upcoming sessions) rather than the global inbox.',
-        pr: 134,
-        prTitle: 'fix(notifications): Notification Center polish',
-      },
-    ],
-  },
-  // ── Notification Center ──────────────────────────────────────────────────
-  {
-    version: 'Unreleased',
-    date: '2026-06-14T00:00:00Z',
-    title: 'Notification Center',
-    internal: true,
-    items: [
-      {
-        category: 'feature',
-        title: 'Notification Center',
-        description:
-          'Clicking the unread badge in the user menu now opens a Notification Center modal instead of immediately marking everything as read. See notification titles, bodies, and timestamps; click any notification with a link to navigate directly; mark individual notifications read or use "Mark all read" at the bottom.',
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-      {
-        category: 'fix',
-        title: 'Unread count now correctly reflects server read state',
-        description:
-          'The notification store interface was using camelCase field names that did not match the snake_case JSON the API returns. This caused the unread count to always equal the total notification count regardless of actual read state. Fields are now correctly mapped.',
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-      {
-        category: 'fix',
-        title: 'Suggestion vote notifications link to Overview Goals & Farms',
-        description:
-          'Notifications created when a member votes on a content suggestion previously used the static UUID (not the share code) and linked to Settings → Goals. They now use the share code and link to the Overview Goals & Farms module where suggestions are displayed.',
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-    ],
-  },
-  // ── Feature branch: Goals Alignment V1.1 ────────────────────────────────
-  {
-    version: 'Unreleased',
-    date: '2026-06-13T00:00:00Z',
-    title: 'Goals Alignment V1.1',
-    internal: true,
-    items: [
+      // ── Goals Alignment V1.1 ────────────────────────────────────────────
       {
         category: 'feature',
         title: 'Static Objectives & Content Suggestions',
@@ -228,15 +78,39 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'Roster alignment badges per member',
         description:
-          'The Members panel now shows a compact color-coded badge for each member indicating how well their public goals align with the static\'s objectives: green dots for aligned goals, yellow for partial, red for conflicts, and grey for missing data. Hovering shows a breakdown count.',
+          "The Members panel now shows a compact color-coded badge for each member indicating how well their public goals align with the static's objectives: green dots for aligned goals, yellow for partial, red for conflicts, and grey for missing data. Hovering shows a breakdown count.",
         pr: 131,
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'feature',
-        title: 'Goal alignment on join requests',
+        title: 'Goal alignment captured on join requests',
         description:
           "Applicant goal alignment is now captured at apply time and shown in the Recruitment Dossier. Leaders instantly see how well each applicant's public goals match the static's objectives — without the applicant needing to change anything.",
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'feature',
+        title: 'Declare matchable personal goals using static objective categories',
+        description:
+          'The goal creation flow now lets you choose between a private personal task (no matching) and a matchable personal objective that uses the same category taxonomy as static goals (Savage BiS, Ultimate Clear, etc.). Matchable goals are used for roster alignment, Static Finder, and join-request scoring.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'feature',
+        title: 'Static Objectives widget on Overview',
+        description:
+          "The Overview page right column now shows a compact list of the static's active objective goals (category + priority). Owners and leads see a "Manage goals →" link; members see "View goals →".",
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'improvement',
+        title: 'Overview Goals & Farms module unifies objectives, farms, and suggestions',
+        description:
+          'The three separate Overview widgets (Static Objectives, Collection Goals, Member Interest) are now one cohesive "Goals & Farms" card with sub-sections for official objectives, active reward farms, and open member suggestions.',
         pr: 131,
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
@@ -244,7 +118,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Discovery page filters by objective category and hides goal conflicts',
         description:
-          "Static listing cards now show the group's objective categories (e.g., Savage BiS, Ultimate Farm). Logged-in users with a public Player Hub profile can filter by objective category and optionally hide statics whose goals conflict with their own.",
+          "Static listing cards now show the group's objective categories. Logged-in users with a public Player Hub profile can filter by objective category and optionally hide statics whose goals conflict with their own.",
         pr: 131,
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
@@ -257,42 +131,42 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
-        category: 'fix',
-        title: 'Applicants no longer see repeated permission errors on static pages',
-        description:
-          'Pending applicants visiting a discoverable static\'s Overview, Schedule, or Mount Farms pages no longer receive repeated "You are not a member" toast errors. Member-only API calls are now skipped until the join request is accepted.',
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-      {
-        category: 'feature',
-        title: 'Declare matchable personal goals using the same categories as static objectives',
-        description:
-          'The goal creation flow now lets you choose between a private personal task (no matching) and a matchable personal objective that uses the same category taxonomy as static goals (Savage BiS, Ultimate Clear, etc.). Matchable goals are used for roster alignment, Static Finder, and join-request scoring.',
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-      {
-        category: 'feature',
-        title: 'Static Objectives widget on Overview',
-        description:
-          'The Overview page right column now shows a compact list of the static\'s active objective goals (category + priority). Owners and leads see a "Manage goals →" link; members see "View goals →". The widget is used for matching and discovery — distinct from Collection Goals, which track reward farm progress.',
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-      {
-        category: 'improvement',
-        title: 'Overview Goals & Farms module unifies objectives, farms, and suggestions',
-        description:
-          'The three separate Overview widgets (Static Objectives, Collection Goals, Member Interest) are now one cohesive "Goals & Farms" card. Official objectives, active reward farms, and open member suggestions each appear in their own sub-section, making it clear what the static is actively pursuing and what is still a proposal.',
-        pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
-      },
-      {
         category: 'improvement',
         title: 'Settings tabs reduced from 7 to 5',
         description:
-          'Static Settings previously had 7 tabs (General, Priority, Listing, Goals, Members, Invitations, Requests) that caused horizontal scroll on smaller screens. Discovery, Invitations, and Join Requests are now consolidated into a single Recruitment tab, and Goals is relabelled "Goals & Farms".',
+          'Static Settings previously had 7 tabs that caused horizontal scroll on smaller screens. Discovery, Invitations, and Join Requests are now consolidated into a single Recruitment tab, and Goals is relabelled "Goals & Farms".',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'improvement',
+        title: 'Recruitment tab now has four focused sub-sections',
+        description:
+          'Recruitment splits into Overview (status cards, pending application CTA), Listing (the full Static Finder form), Requests (join request review), and Invitations — each independently scrollable.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'improvement',
+        title: 'Goals & Farms tab has four focused sub-sections',
+        description:
+          'Goals & Farms separates Official Objectives, Collection Goals (farms), and Content Suggestions into their own sub-sections under an Overview card that shows counts and CTAs at a glance.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'improvement',
+        title: 'Collection Goals: Ultimate as a first-class content type',
+        description:
+          "Collection goals now separate what you're tracking (reward type) from where it comes from (content type). Ultimate is no longer bundled under Savage — create an Ultimate goal, pick from six preset duties (FRU, TOP, DSR, TEA, UwU, UCoB), and the creation flow is now a guided wizard.",
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'fix',
+        title: 'Applicants no longer see repeated permission errors on static pages',
+        description:
+          "Pending applicants visiting a discoverable static's Overview, Schedule, or Mount Farms pages no longer receive repeated 'You are not a member' toast errors. Member-only API calls are now skipped until the join request is accepted.",
         pr: 131,
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
@@ -300,39 +174,65 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Objectives panel no longer shows "Failed to fetch" during unrelated errors',
         description:
-          'The Static Objectives panel in Settings previously shared a single error field with all other objective store operations. A failure in any operation (e.g. alignment fetch) would surface a raw "Failed to fetch" string in the panel. The objectives error is now tracked separately and shows a friendly "Couldn\'t load objectives." message with a Retry button.',
+          "The Static Objectives panel in Settings previously shared a single error field with all other objective store operations. A failure in any operation would surface a raw error string. The objectives error is now tracked separately with a friendly 'Couldn't load objectives.' message and Retry button.",
         pr: 131,
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
-    ],
-  },
-  // ── Feature branch: Multi-BiS persistence ───────────────────────────────
-  {
-    version: 'Unreleased',
-    date: '2026-06-14T00:00:00Z',
-    title: 'Multi-BiS: persistence, privacy, compare UI',
-    items: [
+      // ── Notification Center ──────────────────────────────────────────────
       {
-        category: 'improvement',
-        title: 'Multi-BiS: persistence, privacy, and expanded purposes',
+        category: 'feature',
+        title: 'Notification Center',
         description:
-          'BiS targets now persist to the backend exclusively — the old localStorage-only roster panel is retired. Targets support a new "visible to members" toggle (private by default in roster context, enforced server-side). Purpose options expanded to include Savage Prog, Savage Reclear, Week 1, Alt Job, and Parse. Job cards show a live compare status (On target / Missing pieces) when gear and an imported BiS target are both present, reading from the live store rather than stale embedded profile data.',
-        pr: 132,
-        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
+          'Clicking the unread badge in the user menu now opens a Notification Center modal. See notification titles, bodies, and timestamps; click any notification with a link to navigate directly; mark individual notifications read or use "Mark all read" at the bottom.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
+      {
+        category: 'fix',
+        title: 'Unread count now correctly reflects server read state',
+        description:
+          'The notification store was using camelCase field names that did not match the snake_case JSON the API returns, causing the unread count to always equal the total. Fields are now correctly mapped.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'fix',
+        title: 'Suggestion vote notifications link to the correct location',
+        description:
+          'Notifications created when a member votes on a content suggestion previously used the static UUID and linked to Settings → Goals. They now use the share code and link to the Overview Goals & Farms module.',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+      },
+      {
+        category: 'fix',
+        title: 'Self-vote no longer creates a spurious notification',
+        description:
+          'Voting on your own content suggestion no longer triggers a notification to yourself. Duplicate vote-update notifications are also suppressed.',
+        pr: 134,
+        prTitle: 'fix(notifications): Notification Center polish',
+      },
+      {
+        category: 'fix',
+        title: 'Overview notification rail shows only current-static highlights',
+        description:
+          'The Overview rail now shows contextual static items (pending applications, upcoming sessions) rather than items from the global inbox.',
+        pr: 134,
+        prTitle: 'fix(notifications): Notification Center polish',
+      },
+      // ── Multi-BiS ───────────────────────────────────────────────────────
       {
         category: 'feature',
         title: 'Shared Multi-BiS target system',
         description:
-          'BiS target sets are now shared across Player Hub and roster views via a unified backend table. Each player/job can hold multiple named targets (Savage, Farm, Speed, etc.); one is marked active at a time. A new BiS Target Manager modal with tabs for saved targets, preset picker (multi-select, job-aware), URL paste, and manual entry replaces both the old Player Hub modal and the localStorage-only roster panel.',
+          'BiS target sets are now shared across Player Hub and roster views via a unified backend table. Each player/job can hold multiple named targets (Savage, Farm, Speed, etc.); one is marked active at a time. A new BiS Target Manager modal replaces both the old Player Hub modal and the localStorage-only roster panel.',
         pr: 132,
         prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
-        title: 'Activity feed uses cleaner labels',
+        title: 'Multi-BiS: persistence, privacy, and expanded purposes',
         description:
-          'Anonymous totem updates now read "A member updated collection progress" instead of naming the currency, manual totem updates read "updated … progress" instead of "currency to N", and the plugin aggregate reads "Shared mount data updated" instead of "synced".',
+          'BiS targets now persist to the backend exclusively — the old localStorage-only roster panel is retired. Targets support a "visible to members" toggle (private by default). Purpose options expanded to include Savage Prog, Savage Reclear, Week 1, Alt Job, and Parse. Job cards show a live compare status when both gear and a BiS target are present.',
         pr: 132,
         prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
@@ -340,84 +240,78 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Sync tab restructured into five focused sections',
         description:
-          'The Player Hub Sync tab now has five clearly separated sections: Sync Status (plugin badge + character identity), Sync Sources (priority chain Plugin → Lodestone → Manual with Lodestone fallback explanation), Sync Coverage (compact job/gear counts and source distribution), Sync Log (recent sync entries derived from gear snapshot data), and Privacy (plain-language explanation of activity anonymization). The redundant full job list is removed — Jobs & Gear remains the editing surface.',
+          'The Player Hub Sync tab now has five clearly separated sections: Sync Status, Sync Sources, Sync Coverage, Sync Log, and Privacy — replacing one long undifferentiated panel.',
         pr: 132,
         prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
-        title: 'Jobs & Gear adds "Manage Sync" CTA',
+        title: 'Jobs & Gear adds "Manage Sync" shortcut',
         description:
-          '"Manage Sync" button in the Jobs & Gear header navigates directly to the Sync tab, making the connection between the two surfaces discoverable without requiring users to find the tab manually.',
+          '"Manage Sync" button in the Jobs & Gear header navigates directly to the Sync tab, making the connection between the two surfaces discoverable.',
         pr: 132,
         prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
-        title: 'Sync Coverage clarifies that readiness is not managed by sync',
+        title: 'Activity feed uses cleaner labels',
         description:
-          'The Sync Coverage module now includes "Readiness is managed in Jobs & Gear" to prevent confusion between gear data being synced and the readiness flag that players set manually.',
-        pr: 132,
-        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
-      },
-      {
-        category: 'improvement',
-        title: 'V2-1: BiS item import deferred — schema is ready',
-        description:
-          'items_json and item_level columns are present on bis_target_sets. Full Etro/XIVGear item-level import flow (fetching gear items and populating items_json) is the next milestone; the UI shows the external URL but does not yet resolve item data automatically.',
-        pr: 132,
-        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
-      },
-      {
-        category: 'improvement',
-        title: 'V2-2: Activity log persistence deferred',
-        description:
-          'The current Recent Activity feed derives rows from existing data at read time. A dedicated persisted activity_log table (with pagination and archiving) is deferred — the derived model is sufficient for the current feature set.',
-        pr: 132,
-        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
-      },
-      {
-        category: 'improvement',
-        title: 'V2-3: Notification read/unread state not yet persisted',
-        description:
-          'Notification badges reset on page reload. Per-user read/unread state requires a notifications table join; deferred to a follow-up milestone.',
+          'Anonymous totem updates now read "A member updated collection progress", manual updates read "updated … progress", and the plugin aggregate reads "Shared mount data updated".',
         pr: 132,
         prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'fix',
-        title: 'V2-4: Webhook failure persistence — failed deliveries silently dropped',
+        title: 'Rate limiter test isolation fixed',
         description:
-          'Discord webhook deliveries that fail after retries are currently logged and discarded. A webhook_delivery_log table to track failures, enable retries, and surface delivery status in the UI is deferred.',
+          'The shared in-memory rate limiter was causing order-dependent flakiness in the test suite. Fixed with a three-layer autouse fixture; tests that need real rate-limit behavior opt in explicitly.',
         pr: 132,
         prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
+      },
+      // ── Objective Command Center ─────────────────────────────────────────
+      {
+        category: 'feature',
+        title: 'Objective Command Center on Overview',
+        description:
+          'Static leads now see a per-objective dashboard card on the Overview that links roster readiness, goal alignment (public goals only), BiS readiness (public targets only), linked collection goals, next scheduled session, and a suggested next action into one actionable summary.',
+        pr: 133,
+        prTitle: 'feat(overview): Objective Command Center',
+      },
+      // ── Static Finder Fit Score ──────────────────────────────────────────
+      {
+        category: 'feature',
+        title: 'Static Finder shows personalized fit scores',
+        description:
+          'Authenticated users with a Player Hub profile now see a deterministic fit summary on each static listing card: goal alignment, job match, schedule overlap, comms compatibility, and BiS readiness. Private goals and BiS targets are never used.',
+        pr: 135,
+        prTitle: 'feat(discovery): Static Finder fit score',
       },
       {
         category: 'improvement',
-        title: 'V2-5: Activity privacy settings not yet user-configurable',
+        title: 'Static Finder adds fit-based filters',
         description:
-          'The anonymous/named split for activity feed rows is currently hardcoded by data source (plugin → anonymous, manual → named). A per-user privacy preference UI is deferred.',
-        pr: 132,
-        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
+          'New filter controls let players hide goal conflicts, require schedule overlap, and filter by language directly from the discovery page.',
+        pr: 135,
+        prTitle: 'feat(discovery): Static Finder fit score',
+      },
+      // ── Application Review 2.0 ───────────────────────────────────────────
+      {
+        category: 'improvement',
+        title: 'Application review modal reorganized into clear sections',
+        description:
+          'The join request review modal now shows Applicant Snapshot, Job Fit, Gear & BiS (public only), Goal Alignment counts, Schedule & Comms, and a sticky Decision Panel — replacing one long unsectioned form.',
+        pr: 136,
+        prTitle: 'feat(recruitment): Application Review 2.0',
       },
       {
-        category: 'fix',
-        title: 'V2-6: Rate limiter test isolation fixed',
+        category: 'improvement',
+        title: 'Applications snapshot fit data at submission time',
         description:
-          'The shared in-memory rate limiter was causing order-dependent flakiness in the test suite. Fixed with a three-layer autouse fixture in conftest.py: limiter.enabled=False, limiter.reset(), and patch on limiter.hit. Tests that need real rate-limit behavior opt in with @pytest.mark.rate_limit.',
-        pr: 132,
-        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
-      },
-      {
-        category: 'fix',
-        title: 'V2-7: pytest-mock added to dev dependencies',
-        description:
-          'test_httponly_cookies.py requires the mocker fixture from pytest-mock, which was listed in requirements-dev.txt but not installed in the venv. Fixed by running pip install pytest-mock in the backend venv.',
-        pr: 132,
-        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
+          "When a player submits a join request, their public goals, public BiS target name, gear summary, and schedule overlap are snapshotted so leads see stable data even after the applicant's profile changes.",
+        pr: 136,
+        prTitle: 'feat(recruitment): Application Review 2.0',
       },
     ],
-    internal: true,
   },
   {
     version: '1.23.8',
