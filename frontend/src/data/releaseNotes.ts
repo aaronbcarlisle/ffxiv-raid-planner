@@ -63,7 +63,6 @@ export const RELEASES: Release[] = [
     version: 'Unreleased',
     date: '2026-06-14T00:00:00Z',
     title: 'Multi-BiS: persistence, privacy, compare UI',
-    internal: true,
     items: [
       {
         category: 'improvement',
