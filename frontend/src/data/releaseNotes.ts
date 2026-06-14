@@ -58,6 +58,20 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  // ── Objective Command Center ─────────────────────────────────────────────
+  {
+    version: 'Unreleased',
+    date: '2026-06-14T00:00:00Z',
+    title: 'Objective Command Center',
+    internal: true,
+    items: [{
+      category: 'feature',
+      title: 'Objective Command Center',
+      description: 'Static leads can now see a per-objective dashboard card on the Overview that links roster readiness, goal alignment, BiS status, collection goals, and scheduled sessions into a single actionable summary with a suggested next step.',
+      pr: 133,
+      prTitle: 'feat(overview): Objective Command Center',
+    }],
+  },
   // ── Settings IA second pass ──────────────────────────────────────────────
   {
     version: 'Unreleased',

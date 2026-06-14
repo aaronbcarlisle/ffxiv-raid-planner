@@ -28,6 +28,7 @@ import { useContentSuggestionStore, type ContentSuggestion } from '../../stores/
 import { HEADER_EVENTS } from '../layout/Header';
 import type { MountFarmData, FarmScore } from '../../stores/mountFarmStore';
 import type { CollectionGoal } from '../../stores/collectionGoalStore';
+import { ObjectiveCommandCenter } from './ObjectiveCommandCenter';
 import { getAllTrialIds, getTierById, getTrialById } from '../../gamedata';
 import type { MountFarmTrial } from '../../gamedata';
 import { getJobDisplayName } from '../../gamedata/jobs';
@@ -1612,6 +1613,19 @@ export function StaticHomeTab({
             onOpenRequests={onOpenRequests}
             onNavigate={onNavigate}
           />
+
+          {/* ── Current Objectives (Objective Command Center) ── */}
+          {!!group.userRole && (
+            <div>
+              <SectionLabel icon={<Target className="w-3 h-3" />}>Current Objectives</SectionLabel>
+              <ObjectiveCommandCenter
+                groupId={group.id}
+                isMember={!!group.userRole}
+                onNavigate={onNavigate}
+              />
+            </div>
+          )}
+
           <GroupHeroPanel
             group={group}
             tier={tier}
