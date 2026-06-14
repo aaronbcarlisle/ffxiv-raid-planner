@@ -58,6 +58,9 @@ class JoinRequest(Base):
     character_dc_at_apply: Mapped[str | None] = mapped_column(String(50), nullable=True)
     character_avatar_url_at_apply: Mapped[str | None] = mapped_column(Text, nullable=True)
     character_lodestone_id_at_apply: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Goal alignment snapshot (counts only, no private goal details)
+    goal_alignment_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
     # Roster onboarding — tracks the SnapshotPlayer created from this application
     roster_player_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("snapshot_players.id", ondelete="SET NULL"), nullable=True

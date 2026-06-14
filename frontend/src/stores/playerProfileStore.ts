@@ -132,6 +132,9 @@ export interface PlayerGoal {
   description: string | null;
   goalType: string;
   category: string | null;
+  /** Constrained objective category (same taxonomy as StaticObjectiveGoal).
+   *  When set, this goal is a matchable personal objective used in alignment. */
+  objectiveCategory: string | null;
   status: string;
   currentCount: number;
   targetCount: number | null;
@@ -140,6 +143,8 @@ export interface PlayerGoal {
   linkedCharacterId: string | null;
   linkedJob: string | null;
   dueDate: string | null;
+  intentLevel: string | null;
+  isPublic: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -207,6 +212,8 @@ interface PlayerProfileState {
     linkedCharacterId?: string;
     linkedJob?: string;
     dueDate?: string;
+    intentLevel?: string | null;
+    isPublic?: boolean;
   }) => Promise<void>;
   updateGoal: (id: string, data: {
     title?: string;
@@ -220,6 +227,8 @@ interface PlayerProfileState {
     linkedCharacterId?: string;
     linkedJob?: string;
     dueDate?: string;
+    intentLevel?: string | null;
+    isPublic?: boolean;
   }) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
 

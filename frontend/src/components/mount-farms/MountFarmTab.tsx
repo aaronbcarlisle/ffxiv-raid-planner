@@ -63,12 +63,13 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
   const allTrials = getTrialsByExpansion(selectedExpansion);
 
   useEffect(() => {
-    if (groupId) {
+    // Skip member-only endpoints for applicants / non-members to avoid 403 toasts.
+    if (groupId && userRole) {
       const trialIds = getAllTrialIds();
       fetchProgress(groupId, trialIds);
       fetchRecommendations(groupId);
     }
-  }, [groupId, fetchProgress, fetchRecommendations]);
+  }, [groupId, userRole, fetchProgress, fetchRecommendations]);
 
   const handleRefresh = () => {
     const trialIds = getAllTrialIds();

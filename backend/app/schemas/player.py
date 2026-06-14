@@ -212,6 +212,7 @@ class PlayerGoalResponse(CamelModel):
     description: str | None = None
     goal_type: str
     category: str | None = None
+    objective_category: str | None = None
     status: str
     current_count: int = 0
     target_count: int | None = None
@@ -220,6 +221,8 @@ class PlayerGoalResponse(CamelModel):
     linked_character_id: str | None = None
     linked_job: str | None = None
     due_date: str | None = None
+    intent_level: str | None = None
+    is_public: bool = False
     created_at: str
     updated_at: str
 
@@ -231,6 +234,7 @@ class PlayerGoalCreate(CamelModel):
     description: str | None = Field(default=None, max_length=2000)
     goal_type: str = Field(..., max_length=30)
     category: str | None = Field(default=None, max_length=30)
+    objective_category: str | None = Field(default=None, max_length=30)
     status: str = Field(default="active", max_length=20)
     current_count: int = Field(default=0, ge=0)
     target_count: int | None = Field(default=None, ge=1)
@@ -239,6 +243,8 @@ class PlayerGoalCreate(CamelModel):
     linked_character_id: str | None = Field(default=None, max_length=36)
     linked_job: str | None = Field(default=None, max_length=10)
     due_date: str | None = Field(default=None, max_length=30)
+    intent_level: str | None = Field(default=None, max_length=20)
+    is_public: bool = Field(default=False)
 
 
 class PlayerGoalUpdate(CamelModel):
@@ -247,6 +253,7 @@ class PlayerGoalUpdate(CamelModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=2000)
     category: str | None = Field(default=None, max_length=30)
+    objective_category: str | None = Field(default=None, max_length=30)
     status: str | None = Field(default=None, max_length=20)
     current_count: int | None = Field(default=None, ge=0)
     target_count: int | None = Field(default=None, ge=1)
@@ -255,6 +262,37 @@ class PlayerGoalUpdate(CamelModel):
     linked_character_id: str | None = Field(default=None, max_length=36)
     linked_job: str | None = Field(default=None, max_length=10)
     due_date: str | None = Field(default=None, max_length=30)
+    intent_level: str | None = Field(default=None, max_length=20)
+    is_public: bool | None = Field(default=None)
+
+
+# --- Goal Alignment ---
+
+class GoalAlignmentItem(CamelModel):
+    """Single alignment result item for a static objective goal."""
+
+    category: str
+    static_title: str
+    player_intent: str | None
+    static_priority: str
+    status: str  # aligned, partial, conflict, missing, unknown
+
+
+class GoalAlignmentSummary(CamelModel):
+    """Summary counts for a goal alignment result."""
+
+    aligned: int
+    partial: int
+    conflicts: int
+    missing: int
+    unknown: int
+
+
+class GoalAlignmentResponse(CamelModel):
+    """Full goal alignment response."""
+
+    summary: GoalAlignmentSummary
+    items: list[GoalAlignmentItem]
 
 
 # --- Plugin Gear Sync ---

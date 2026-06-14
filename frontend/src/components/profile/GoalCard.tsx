@@ -4,6 +4,7 @@ import { IconButton } from '../primitives/IconButton';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useModal } from '../../hooks/useModal';
 import { GoalStatusBadge } from './GoalStatusBadge';
+import { GoalIntentBadge } from './GoalIntentBadge';
 import type { PlayerGoal } from '../../stores/playerProfileStore';
 import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import { toast } from '../../stores/toastStore';
@@ -81,6 +82,10 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
               {GOAL_TYPE_LABELS[goal.goalType] ?? goal.goalType}
             </Badge>
             <GoalStatusBadge status={goal.status} />
+            <GoalIntentBadge intentLevel={goal.intentLevel} />
+            <Badge variant={goal.isPublic ? 'success' : 'default'} size="sm">
+              {goal.isPublic ? 'Shared' : 'Private'}
+            </Badge>
           </div>
 
           {/* Source info */}

@@ -212,6 +212,7 @@ def _request_to_response(
         availability_summary=req.availability_summary,
         readiness_at_apply=req.readiness_at_apply,
         profile_share_code_at_apply=req.profile_share_code_at_apply,
+        goal_alignment_snapshot=getattr(req, 'goal_alignment_snapshot', None),
         profile_visibility_at_apply=req.profile_visibility_at_apply,
         profile_share_enabled_at_apply=req.profile_share_enabled_at_apply,
         character_name_at_apply=req.character_name_at_apply,
@@ -421,6 +422,43 @@ async def create_join_request(
             include_exact=data.include_exact_availability,
         )
 
+    # Snapshot goal alignment counts at apply time (no private goal details stored)
+    goal_alignment_snapshot: dict | None = None
+    if data.player_profile_id:
+        try:
+            from ..models.player_goal import PlayerGoal
+            from ..models.static_objective_goal import StaticObjectiveGoal
+            from ..services.goal_matching import compute_alignment
+
+            sg_result = await session.execute(
+                select(StaticObjectiveGoal)
+                .where(StaticObjectiveGoal.static_group_id == group.id)
+            )
+            static_goals_for_snapshot = [
+                {"id": g.id, "category": g.category, "priority": g.priority, "title": g.title}
+                for g in sg_result.scalars().all()
+            ]
+            if static_goals_for_snapshot:
+                pg_result = await session.execute(
+                    select(PlayerGoal).where(
+                        PlayerGoal.profile_id == data.player_profile_id,
+                        PlayerGoal.is_public == True,  # noqa: E712
+                    )
+                )
+                player_goals_for_snapshot = [
+                    {
+                        "id": g.id,
+                        "goal_type": g.goal_type,
+                        "category": g.objective_category or g.category,
+                        "intent_level": g.intent_level,
+                    }
+                    for g in pg_result.scalars().all()
+                ]
+                alignment_result = compute_alignment(player_goals_for_snapshot, static_goals_for_snapshot)
+                goal_alignment_snapshot = alignment_result["summary"]
+        except Exception:
+            pass  # Snapshot failure must never block the application
+
     now = datetime.now(timezone.utc).isoformat()
     join_request = JoinRequest(
         id=str(uuid.uuid4()),
@@ -443,6 +481,7 @@ async def create_join_request(
         profile_share_code_at_apply=profile_share_code_at_apply,
         profile_visibility_at_apply=profile_visibility_at_apply,
         profile_share_enabled_at_apply=profile_share_enabled_at_apply,
+        goal_alignment_snapshot=goal_alignment_snapshot,
         character_name_at_apply=char_name,
         character_world_at_apply=char_world,
         character_dc_at_apply=char_dc,

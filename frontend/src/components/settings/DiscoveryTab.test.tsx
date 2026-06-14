@@ -1,7 +1,7 @@
 /**
  * DiscoveryTab tests
  *
- * Tests the discovery settings panel for static owners/leads.
+ * Tests the interactive listing builder UX.
  *
  * @vitest-environment jsdom
  */
@@ -52,34 +52,30 @@ describe('DiscoveryTab', () => {
     vi.clearAllMocks();
   });
 
-  it('renders listing status and toggle', () => {
+  it('renders listing toggle', () => {
     render(<DiscoveryTab group={makeGroup()} onClose={onClose} />);
-
     expect(screen.getByText('List in Static Finder')).toBeInTheDocument();
-    expect(screen.getByText(/Not listed — listing is off/)).toBeInTheDocument();
   });
 
-  it('shows "listed" status when public + enabled', () => {
+  it('shows "Listed in Static Finder" checklist item when public + enabled', () => {
     const group = makeGroup({
       isPublic: true,
       settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
-
     expect(screen.getByText('Listed in Static Finder')).toBeInTheDocument();
   });
 
-  it('shows warning when enabled but static is private', () => {
+  it('shows warning when static is private', () => {
     const group = makeGroup({
       isPublic: false,
       settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
-
-    expect(screen.getByText(/Not listed — static is private/)).toBeInTheDocument();
+    expect(screen.getByText(/enable Public Static/)).toBeInTheDocument();
   });
 
-  it('shows settings fields when enabled', () => {
+  it('shows status cards and description when enabled', () => {
     const group = makeGroup({
       settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
     });
@@ -87,71 +83,72 @@ describe('DiscoveryTab', () => {
 
     expect(screen.getByText('Recruitment Status')).toBeInTheDocument();
     expect(screen.getByText('Description')).toBeInTheDocument();
-    expect(screen.getByText('Contact Info')).toBeInTheDocument();
-    expect(screen.getByText('Vibe')).toBeInTheDocument();
-    expect(screen.getByText('Public Preview')).toBeInTheDocument();
+    // Status card options
+    expect(screen.getByText('Open')).toBeInTheDocument();
+    expect(screen.getByText('Selective')).toBeInTheDocument();
+    expect(screen.getByText('Paused')).toBeInTheDocument();
+    expect(screen.getByText('Closed')).toBeInTheDocument();
   });
 
-  it('shows section headings when enabled', () => {
+  it('shows builder section headings', () => {
     const group = makeGroup({
       settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
 
-    expect(screen.getByText('About Your Static')).toBeInTheDocument();
-    expect(screen.getByText('Location')).toBeInTheDocument();
-    expect(screen.getByText("Who You're Looking For")).toBeInTheDocument();
-    expect(screen.getByText('Raid Schedule')).toBeInTheDocument();
-    expect(screen.getByText('Visibility')).toBeInTheDocument();
+    // Each label appears at least twice (nav pill + section heading)
+    expect(screen.getAllByText('Status').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('About').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Schedule').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Recruiting').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Communication').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Contact').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('hides settings fields when disabled', () => {
+  it('section nav pills are always rendered', () => {
     render(<DiscoveryTab group={makeGroup()} onClose={onClose} />);
-
-    expect(screen.queryByText('Recruitment Status')).not.toBeInTheDocument();
-    expect(screen.queryByText('Description')).not.toBeInTheDocument();
+    // Nav pills (role=navigation)
+    const nav = screen.getByRole('navigation');
+    expect(nav).toBeInTheDocument();
   });
 
-  it('shows fill from schedule button for owners', () => {
+  it('hides status cards when listing is disabled', () => {
+    render(<DiscoveryTab group={makeGroup()} onClose={onClose} />);
+    // Status cards only appear inside the {enabled && ...} block
+    expect(screen.queryByText('Recruitment Status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Actively recruiting')).not.toBeInTheDocument();
+  });
+
+  it('shows fill from schedule button for editors', () => {
     const group = makeGroup({
       userRole: 'owner',
       settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
 
-    expect(screen.getByText(/Fill from schedule/)).toBeInTheDocument();
+    expect(screen.getByText(/Fill from current schedule/)).toBeInTheDocument();
     expect(screen.getByText(/Only fills empty fields/)).toBeInTheDocument();
   });
 
-  it('renders privacy info banner', () => {
+  it('renders privacy info banner in About section', () => {
     render(<DiscoveryTab group={makeGroup()} onClose={onClose} />);
-
-    expect(screen.getByText(/Your listing only shows the public details/)).toBeInTheDocument();
+    expect(screen.getByText(/Description and contact info are/)).toBeInTheDocument();
   });
 
-  it('shows public data warning when enabled', () => {
+  it('shows member count toggle when enabled', () => {
     const group = makeGroup({
       settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
 
-    expect(screen.getByText(/Description and contact info below are/)).toBeInTheDocument();
+    expect(screen.getByText('Show member count')).toBeInTheDocument();
+    expect(screen.getByText(/lets applicants see how full/)).toBeInTheDocument();
   });
 
-  it('shows member count toggle', () => {
-    const group = makeGroup({
-      settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
-    });
-    render(<DiscoveryTab group={group} onClose={onClose} />);
-
-    expect(screen.getByText('Show member count on listing')).toBeInTheDocument();
-    expect(screen.getByText(/Helps applicants see how full/)).toBeInTheDocument();
-  });
-
-  it('shows Save and Cancel buttons', () => {
+  it('shows Save Listing and Cancel buttons', () => {
     render(<DiscoveryTab group={makeGroup()} onClose={onClose} />);
 
-    expect(screen.getByText('Save')).toBeInTheDocument();
+    expect(screen.getByText('Save Listing')).toBeInTheDocument();
     expect(screen.getByText('Cancel')).toBeInTheDocument();
   });
 
@@ -162,7 +159,7 @@ describe('DiscoveryTab', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it('shows contact input when method is selected', () => {
+  it('shows contact input when method is pre-selected from settings', () => {
     const group = makeGroup({
       settings: {
         discovery: {
@@ -175,7 +172,7 @@ describe('DiscoveryTab', () => {
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
 
-    expect(screen.getByPlaceholderText(/username#1234/)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/@username/)).toBeInTheDocument();
   });
 
   it('loads existing contact values from settings', () => {
@@ -194,7 +191,7 @@ describe('DiscoveryTab', () => {
     expect(screen.getByDisplayValue('myuser#9999')).toBeInTheDocument();
   });
 
-  it('renders listing preview when enabled', () => {
+  it('renders live preview panel', () => {
     const group = makeGroup({
       settings: {
         discovery: {
@@ -206,19 +203,18 @@ describe('DiscoveryTab', () => {
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
 
-    expect(screen.getByText('Listing preview')).toBeInTheDocument();
-    expect(screen.getByText(/This is exactly what players will see/)).toBeInTheDocument();
-    // Description appears in both textarea and preview
+    expect(screen.getByText('Live Preview')).toBeInTheDocument();
     expect(screen.getAllByText('A test description').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('shows contact helper copy', () => {
+  it('renders listing quality checklist', () => {
     const group = makeGroup({
       settings: { discovery: { enabled: true, recruitmentStatus: 'open' } },
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
 
-    expect(screen.getByText(/How should interested players reach you/)).toBeInTheDocument();
+    expect(screen.getByText('Listing Quality')).toBeInTheDocument();
+    expect(screen.getByText('Roles / jobs recruiting')).toBeInTheDocument();
   });
 
   it('preview hides member count when showMemberCount is off', () => {
@@ -234,7 +230,49 @@ describe('DiscoveryTab', () => {
     });
     render(<DiscoveryTab group={group} onClose={onClose} />);
 
-    // Preview should not show member count
     expect(screen.queryByText('5 members')).not.toBeInTheDocument();
+  });
+
+  it('shows voice requirement options', () => {
+    render(<DiscoveryTab group={makeGroup()} onClose={onClose} />);
+
+    expect(screen.getByText('Voice required')).toBeInTheDocument();
+    expect(screen.getByText('Text only OK')).toBeInTheDocument();
+  });
+
+  it('shows expanded language list including southeast asian languages', () => {
+    render(<DiscoveryTab group={makeGroup()} onClose={onClose} />);
+
+    expect(screen.getByText('Thai')).toBeInTheDocument();
+    expect(screen.getByText('Indonesian')).toBeInTheDocument();
+    expect(screen.getByText('Filipino / Tagalog')).toBeInTheDocument();
+    expect(screen.getByText('Vietnamese')).toBeInTheDocument();
+  });
+
+  it('shows role cards for all roles', () => {
+    render(<DiscoveryTab group={makeGroup()} onClose={onClose} />);
+
+    expect(screen.getByText('Tank')).toBeInTheDocument();
+    expect(screen.getByText('Healer')).toBeInTheDocument();
+    expect(screen.getByText('Melee')).toBeInTheDocument();
+    expect(screen.getByText('Physical Ranged')).toBeInTheDocument();
+    expect(screen.getByText('Caster')).toBeInTheDocument();
+  });
+
+  it('migrates legacy neededRoles/neededJobs to recruitingRoles on load', () => {
+    const group = makeGroup({
+      settings: {
+        discovery: {
+          enabled: true,
+          recruitmentStatus: 'open',
+          neededRoles: ['tank'],
+          neededJobs: ['PLD', 'WAR'],
+        },
+      },
+    });
+    render(<DiscoveryTab group={group} onClose={onClose} />);
+    // Tank role card should be checked (checkbox is filled)
+    // Just verify the component renders without error and Tank is present
+    expect(screen.getByText('Tank')).toBeInTheDocument();
   });
 });

@@ -4,12 +4,23 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-CollectionGoalType = Literal["mount", "token", "minion", "orchestrion", "glam", "custom_reward"]
+# Reward type — what is being tracked
+CollectionGoalType = Literal[
+    "mount", "token", "minion", "orchestrion", "glam", "custom_reward",
+    "weapon", "weapon_coffer", "title", "clear_count",
+]
 CollectionGoalStatus = Literal["wanted", "farming", "scheduled", "complete"]
+# Content type — where the reward comes from
+CollectionContentType = Literal[
+    "extreme", "savage", "ultimate", "criterion",
+    "chaotic_alliance", "field_operation", "custom",
+]
 
 
 class CollectionGoalCreate(BaseModel):
     goal_type: CollectionGoalType
+    content_type: CollectionContentType | None = None
+    content_key: str | None = Field(None, max_length=50)
     title: str = Field(..., min_length=1, max_length=200)
     status: CollectionGoalStatus = "wanted"
     summary: str | None = None
@@ -22,6 +33,8 @@ class CollectionGoalCreate(BaseModel):
 
 class CollectionGoalUpdate(BaseModel):
     goal_type: CollectionGoalType | None = None
+    content_type: CollectionContentType | None = None
+    content_key: str | None = Field(None, max_length=50)
     title: str | None = Field(None, min_length=1, max_length=200)
     status: CollectionGoalStatus | None = None
     summary: str | None = None
@@ -38,6 +51,8 @@ class CollectionGoalResponse(BaseModel):
     static_group_id: str
     created_by_id: str | None
     goal_type: str
+    content_type: str | None
+    content_key: str | None
     title: str
     status: str
     summary: str | None

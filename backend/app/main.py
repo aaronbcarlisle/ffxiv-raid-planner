@@ -26,6 +26,7 @@ from .tasks.auto_sync import auto_sync_loop
 from .tasks.schedule_reminders import schedule_reminder_loop
 from .routers import (
     analytics_router,
+    content_suggestions_router,
     api_keys_router,
     auth_router,
     bis_router,
@@ -38,6 +39,8 @@ from .routers import (
     loot_tracking_router,
     mount_farms_router,
     notifications_router,
+    objective_goals_router,
+    player_bis_targets_router,
     player_router,
     plugin_player_router,
     schedule_router,
@@ -163,6 +166,7 @@ app.include_router(auth_router)
 app.include_router(bis_router)
 app.include_router(bis_targets_router)
 app.include_router(collection_goals_router)
+app.include_router(content_suggestions_router)
 app.include_router(discovery_router)
 app.include_router(invitations_router)
 app.include_router(join_requests_router)
@@ -170,6 +174,8 @@ app.include_router(lodestone_router)
 app.include_router(loot_tracking_router)
 app.include_router(mount_farms_router)
 app.include_router(notifications_router)
+app.include_router(objective_goals_router)
+app.include_router(player_bis_targets_router)
 app.include_router(player_router)
 app.include_router(plugin_player_router)
 app.include_router(schedule_router)
