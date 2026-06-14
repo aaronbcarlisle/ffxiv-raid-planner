@@ -105,6 +105,8 @@ const MOCK_GOAL: CollectionGoal = {
   staticGroupId: 'g1',
   createdById: 'u1',
   goalType: 'mount',
+  contentType: null,
+  contentKey: null,
   title: 'Lynx of Fallen Shadow',
   status: 'farming',
   summary: null,

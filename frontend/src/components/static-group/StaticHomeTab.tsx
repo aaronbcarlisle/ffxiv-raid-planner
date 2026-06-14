@@ -1033,12 +1033,15 @@ const OBJECTIVE_PRIORITY_LABELS: Record<string, string> = {
 // ── Collection Goals constants ────────────────────────────────────────────────
 
 const GOAL_TYPE_LABELS: Record<string, string> = {
-  mount: 'Mount',
-  token: 'Token',
-  minion: 'Minion',
-  orchestrion: 'Orchestrion',
-  glam: 'Glamour',
-  custom_reward: 'Custom',
+  mount: 'Mount', token: 'Token', minion: 'Minion',
+  orchestrion: 'Orchestrion', glam: 'Glamour', custom_reward: 'Custom',
+  weapon: 'Weapon', weapon_coffer: 'Weapon Coffer',
+  title: 'Title', clear_count: 'Clear Count',
+};
+
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  extreme: 'EX', savage: 'Savage', ultimate: 'Ultimate',
+  criterion: 'Criterion', chaotic_alliance: 'Chaotic', field_operation: 'Field Op', custom: '',
 };
 
 const GOAL_STATUS_COLORS: Record<string, string> = {
@@ -1228,7 +1231,16 @@ function GoalsFarmsModule({
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-text-primary truncate">{goal.title}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
+                        <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                          {goal.contentType && CONTENT_TYPE_LABELS[goal.contentType] && (
+                            <span className={`text-[10px] font-semibold px-1 py-0.5 rounded ${
+                              goal.contentType === 'ultimate'
+                                ? 'bg-purple-500/10 text-purple-400'
+                                : 'bg-surface-elevated text-text-muted'
+                            }`}>
+                              {CONTENT_TYPE_LABELS[goal.contentType]}
+                            </span>
+                          )}
                           <span className="text-[10px] text-text-muted">{GOAL_TYPE_LABELS[goal.goalType] ?? goal.goalType}</span>
                           {goal.targetCount != null && (
                             <span className="text-[10px] text-text-muted">· {goal.currentCount ?? 0}/{goal.targetCount}</span>

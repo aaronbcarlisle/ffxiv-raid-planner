@@ -1,13 +1,24 @@
 import { create } from 'zustand';
 
-export type CollectionGoalType = 'mount' | 'token' | 'minion' | 'orchestrion' | 'glam' | 'custom_reward';
+/** Reward type — what is being tracked */
+export type CollectionGoalType =
+  | 'mount' | 'token' | 'minion' | 'orchestrion' | 'glam' | 'custom_reward'
+  | 'weapon' | 'weapon_coffer' | 'title' | 'clear_count';
+
 export type CollectionGoalStatus = 'wanted' | 'farming' | 'scheduled' | 'complete';
+
+/** Content type — where the reward comes from */
+export type CollectionContentType =
+  | 'extreme' | 'savage' | 'ultimate' | 'criterion'
+  | 'chaotic_alliance' | 'field_operation' | 'custom';
 
 export interface CollectionGoal {
   id: string;
   staticGroupId: string;
   createdById: string | null;
   goalType: CollectionGoalType;
+  contentType: CollectionContentType | null;
+  contentKey: string | null;
   title: string;
   status: CollectionGoalStatus;
   summary: string | null;
@@ -23,6 +34,8 @@ export interface CollectionGoal {
 
 export interface CollectionGoalCreate {
   goalType: CollectionGoalType;
+  contentType?: CollectionContentType | null;
+  contentKey?: string | null;
   title: string;
   status: CollectionGoalStatus;
   summary?: string | null;
@@ -35,6 +48,8 @@ export interface CollectionGoalCreate {
 
 export interface CollectionGoalUpdate {
   goalType?: CollectionGoalType;
+  contentType?: CollectionContentType | null;
+  contentKey?: string | null;
   title?: string;
   status?: CollectionGoalStatus;
   summary?: string | null;
@@ -51,6 +66,8 @@ interface ApiGoal {
   static_group_id: string;
   created_by_id: string | null;
   goal_type: string;
+  content_type: string | null;
+  content_key: string | null;
   title: string;
   status: string;
   summary: string | null;
@@ -70,6 +87,8 @@ function fromApi(g: ApiGoal): CollectionGoal {
     staticGroupId: g.static_group_id,
     createdById: g.created_by_id,
     goalType: g.goal_type as CollectionGoalType,
+    contentType: (g.content_type as CollectionContentType | null) ?? null,
+    contentKey: g.content_key ?? null,
     title: g.title,
     status: g.status as CollectionGoalStatus,
     summary: g.summary,
@@ -87,6 +106,8 @@ function fromApi(g: ApiGoal): CollectionGoal {
 function toApiCreate(c: CollectionGoalCreate): object {
   return {
     goal_type: c.goalType,
+    content_type: c.contentType ?? null,
+    content_key: c.contentKey ?? null,
     title: c.title,
     status: c.status,
     summary: c.summary ?? null,
@@ -101,6 +122,8 @@ function toApiCreate(c: CollectionGoalCreate): object {
 function toApiUpdate(u: CollectionGoalUpdate): object {
   const result: Record<string, unknown> = {};
   if (u.goalType !== undefined) result.goal_type = u.goalType;
+  if ('contentType' in u) result.content_type = u.contentType ?? null;
+  if ('contentKey' in u) result.content_key = u.contentKey ?? null;
   if (u.title !== undefined) result.title = u.title;
   if (u.status !== undefined) result.status = u.status;
   if ('summary' in u) result.summary = u.summary ?? null;

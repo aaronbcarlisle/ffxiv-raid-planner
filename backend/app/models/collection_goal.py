@@ -12,9 +12,18 @@ if TYPE_CHECKING:
     from .static_group import StaticGroup
     from .user import User
 
-# Valid goal_type values (stored as plain strings, validated in schema layer)
-COLLECTION_GOAL_TYPES = frozenset({"mount", "token", "minion", "orchestrion", "glam", "custom_reward"})
+# Reward types — what is being tracked
+COLLECTION_GOAL_TYPES = frozenset({
+    "mount", "token", "minion", "orchestrion", "glam", "custom_reward",
+    "weapon", "weapon_coffer", "title", "clear_count",
+})
 COLLECTION_GOAL_STATUSES = frozenset({"wanted", "farming", "scheduled", "complete"})
+
+# Content types — where the reward comes from
+COLLECTION_CONTENT_TYPES = frozenset({
+    "extreme", "savage", "ultimate", "criterion",
+    "chaotic_alliance", "field_operation", "custom",
+})
 
 
 class CollectionGoal(Base):
@@ -35,6 +44,8 @@ class CollectionGoal(Base):
     )
 
     goal_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    content_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    content_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="wanted")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)

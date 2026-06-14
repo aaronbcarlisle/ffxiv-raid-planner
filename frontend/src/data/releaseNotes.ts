@@ -67,6 +67,12 @@ export const RELEASES: Release[] = [
     items: [
       {
         category: 'improvement',
+        title: 'Collection Goals: Ultimate as a first-class content type',
+        description:
+          "Collection goals now separate what you're tracking (reward type: mount, weapon, title, clear count, etc.) from where it comes from (content type: Extreme, Savage, Ultimate, Criterion, Chaotic Alliance, Field Operation). Ultimate is no longer bundled under Savage — create an Ultimate goal, pick from six preset duties (FRU, TOP, DSR, TEA, UwU, UCoB), choose your reward type, and get an auto-named goal. The creation flow is now a guided 4–5-step wizard instead of a flat form.",
+      },
+      {
+        category: 'improvement',
         title: 'Recruitment tab now has four sub-sections',
         description:
           'Recruitment is no longer one long scroll. It splits into Overview (status cards, pending application CTA), Listing (the full Static Finder form with its own Save), Requests (join request review), and Invitations — each independently scrollable. Badge clicks from the Overview rail and header gear icon route directly to the Requests section.',
