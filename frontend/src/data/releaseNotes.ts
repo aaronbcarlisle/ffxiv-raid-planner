@@ -70,22 +70,24 @@ export const RELEASES: Release[] = [
         title: 'Collection Goals: Ultimate as a first-class content type',
         description:
           "Collection goals now separate what you're tracking (reward type: mount, weapon, title, clear count, etc.) from where it comes from (content type: Extreme, Savage, Ultimate, Criterion, Chaotic Alliance, Field Operation). Ultimate is no longer bundled under Savage — create an Ultimate goal, pick from six preset duties (FRU, TOP, DSR, TEA, UwU, UCoB), choose your reward type, and get an auto-named goal. The creation flow is now a guided 4–5-step wizard instead of a flat form.",
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'improvement',
         title: 'Recruitment tab now has four sub-sections',
         description:
           'Recruitment is no longer one long scroll. It splits into Overview (status cards, pending application CTA), Listing (the full Static Finder form with its own Save), Requests (join request review), and Invitations — each independently scrollable. Badge clicks from the Overview rail and header gear icon route directly to the Requests section.',
-        pr: 133,
-        prTitle: 'feat(settings): Recruitment & Goals & Farms sub-navigation UX pass',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'improvement',
         title: 'Goals & Farms tab now has four sub-sections',
         description:
           'Goals & Farms separates Official Objectives, Collection Goals (farms), and Content Suggestions into their own sub-sections under an Overview card that shows counts and CTAs at a glance.',
-        pr: 133,
-        prTitle: 'feat(settings): Recruitment & Goals & Farms sub-navigation UX pass',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
     ],
   },
@@ -101,24 +103,24 @@ export const RELEASES: Release[] = [
         title: 'Notification Center',
         description:
           'Clicking the unread badge in the user menu now opens a Notification Center modal instead of immediately marking everything as read. See notification titles, bodies, and timestamps; click any notification with a link to navigate directly; mark individual notifications read or use "Mark all read" at the bottom.',
-        pr: 132,
-        prTitle: 'feat(notifications): Notification Center modal with per-item read and filters',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'fix',
         title: 'Unread count now correctly reflects server read state',
         description:
           'The notification store interface was using camelCase field names that did not match the snake_case JSON the API returns. This caused the unread count to always equal the total notification count regardless of actual read state. Fields are now correctly mapped.',
-        pr: 132,
-        prTitle: 'feat(notifications): Notification Center modal with per-item read and filters',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'fix',
         title: 'Suggestion vote notifications link to Overview Goals & Farms',
         description:
           'Notifications created when a member votes on a content suggestion previously used the static UUID (not the share code) and linked to Settings → Goals. They now use the share code and link to the Overview Goals & Farms module where suggestions are displayed.',
-        pr: 132,
-        prTitle: 'feat(notifications): Notification Center modal with per-item read and filters',
+        pr: 131,
+        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
     ],
   },
