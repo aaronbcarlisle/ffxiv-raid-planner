@@ -68,17 +68,23 @@ export const TIMEZONES = [
   { value: 'UTC', label: 'UTC' },
 ];
 
-/** Common languages for FFXIV communities */
+/** Languages for FFXIV communities — codes stored as-is; custom entries use the full name as code */
 export const LANGUAGES = [
-  { code: 'en', label: 'English' },
-  { code: 'ja', label: 'Japanese' },
-  { code: 'de', label: 'German' },
-  { code: 'fr', label: 'French' },
-  { code: 'ko', label: 'Korean' },
-  { code: 'zh', label: 'Chinese' },
-  { code: 'es', label: 'Spanish' },
-  { code: 'pt', label: 'Portuguese' },
-  { code: 'th', label: 'Thai' },
+  { code: 'en',  label: 'English' },
+  { code: 'ja',  label: 'Japanese' },
+  { code: 'th',  label: 'Thai' },
+  { code: 'de',  label: 'German' },
+  { code: 'fr',  label: 'French' },
+  { code: 'ko',  label: 'Korean' },
+  { code: 'zh',  label: 'Chinese' },
+  { code: 'es',  label: 'Spanish' },
+  { code: 'pt',  label: 'Portuguese' },
+  { code: 'id',  label: 'Indonesian' },
+  { code: 'fil', label: 'Filipino / Tagalog' },
+  { code: 'vi',  label: 'Vietnamese' },
+  { code: 'ms',  label: 'Malay' },
+  { code: 'it',  label: 'Italian' },
+  { code: 'ru',  label: 'Russian' },
 ];
 
 /** Raid days */

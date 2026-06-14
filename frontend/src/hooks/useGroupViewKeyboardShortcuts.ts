@@ -184,9 +184,9 @@ export function useGroupViewKeyboardShortcuts(
           window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'members' } }));
         }
       }, requireAlt: true, alwaysEnabled: true },
-      { key: 'i', description: 'Settings: Invitations', action: () => {
+      { key: 'i', description: 'Settings: Recruitment', action: () => {
         if (canEdit) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'invitations' } }));
+          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'recruitment' } }));
         }
       }, requireAlt: true, alwaysEnabled: true },
 

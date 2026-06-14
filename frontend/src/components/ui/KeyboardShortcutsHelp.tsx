@@ -62,7 +62,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { key: 'Alt+G', description: 'General' },
       { key: 'Alt+P', description: 'Priority' },
       { key: 'Alt+M', description: 'Members' },
-      { key: 'Alt+I', description: 'Invitations' },
+      { key: 'Alt+I', description: 'Recruitment' },
     ],
   },
   {

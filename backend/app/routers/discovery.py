@@ -7,9 +7,14 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..models import Membership, StaticGroup
+from ..dependencies import get_current_user_optional
+from ..models import Membership, StaticGroup, User
+from ..models.player_goal import PlayerGoal
+from ..models.player_profile import PlayerProfile
+from ..models.static_objective_goal import StaticObjectiveGoal
 from ..rate_limit import limiter
-from ..schemas.discovery import DiscoveryListItem, DiscoveryListResponse
+from ..schemas.discovery import DiscoveryListItem, DiscoveryListResponse, GoalAlignmentSummarySlim
+from ..services.goal_matching import compute_alignment
 
 router = APIRouter(prefix="/api/discovery", tags=["discovery"])
 
@@ -74,7 +79,13 @@ def _sanitize_contact(method: str | None, value: str | None) -> tuple[str | None
     return method, clean
 
 
-def _to_list_item(group: StaticGroup, discovery: dict, member_count: int) -> DiscoveryListItem:
+def _to_list_item(
+    group: StaticGroup,
+    discovery: dict,
+    member_count: int,
+    objective_categories: list[str] | None = None,
+    goal_alignment: GoalAlignmentSummarySlim | None = None,
+) -> DiscoveryListItem:
     contact_method, contact_value = _sanitize_contact(
         discovery.get("contactMethod"), discovery.get("contactValue")
     )
@@ -99,6 +110,10 @@ def _to_list_item(group: StaticGroup, discovery: dict, member_count: int) -> Dis
         server=discovery.get("server"),
         member_count=member_count if show_count else 0,
         last_updated=group.updated_at,
+        recruiting_roles=discovery.get("recruitingRoles"),
+        communication_style=discovery.get("communicationStyle"),
+        objective_categories=objective_categories or [],
+        goal_alignment=goal_alignment,
     )
 
 
@@ -125,10 +140,13 @@ async def list_discoverable_statics(
     recruitment_status: str | None = Query(None, alias="recruitmentStatus", description="Filter by recruitment status"),
     data_center: str | None = Query(None, alias="dataCenter", description="Filter by data center"),
     server: str | None = Query(None, description="Filter by server"),
+    goal_category: str | None = Query(None, alias="goalCategory", description="Filter by static objective goal category"),
+    hide_conflicts: bool = Query(False, alias="hideConflicts", description="Hide statics that conflict with the authenticated user's public goals"),
     sort: SortOption = Query("recent", description="Sort order: recent, members, name"),
     limit: int = Query(50, ge=1, le=100, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
     session: AsyncSession = Depends(get_session),
+    current_user: User | None = Depends(get_current_user_optional),
 ) -> DiscoveryListResponse:
     stmt = (
         select(StaticGroup, func.count(Membership.id).label("member_count"))
@@ -139,6 +157,53 @@ async def list_discoverable_statics(
 
     result = await session.execute(stmt)
     rows = result.all()
+
+    # Load objective goals for all groups in one query
+    group_ids = [group.id for group, _ in rows]
+    obj_goals_map: dict[str, list[dict]] = {gid: [] for gid in group_ids}
+    if group_ids:
+        og_result = await session.execute(
+            select(StaticObjectiveGoal).where(
+                StaticObjectiveGoal.static_group_id.in_(group_ids)
+            )
+        )
+        for g in og_result.scalars().all():
+            obj_goals_map.setdefault(g.static_group_id, []).append({
+                "id": g.id, "category": g.category, "priority": g.priority, "title": g.title
+            })
+
+    # Load current user's public goals for alignment (if authenticated)
+    user_public_goals: list[dict] = []
+    if current_user:
+        profile_result = await session.execute(
+            select(PlayerProfile).where(
+                PlayerProfile.user_id == current_user.id,
+                PlayerProfile.visibility == "discoverable",
+            ).limit(1)
+        )
+        user_profile = profile_result.scalar_one_or_none()
+        if user_profile:
+            pg_result = await session.execute(
+                select(PlayerGoal).where(
+                    PlayerGoal.profile_id == user_profile.id,
+                    PlayerGoal.is_public == True,  # noqa: E712
+                )
+            )
+            user_public_goals = [
+                {
+                    "id": g.id,
+                    "goal_type": g.goal_type,
+                    # objective_category takes priority — it uses the same
+                    # constrained taxonomy as StaticObjectiveGoal so matching
+                    # is exact. Fall back to the free-form category for legacy goals.
+                    "category": g.objective_category or g.category,
+                    "intent_level": g.intent_level,
+                }
+                for g in pg_result.scalars().all()
+                # Only goals with an explicit matching category or a generic
+                # goal_type participate in alignment.
+                if g.objective_category is not None or g.goal_type is not None
+            ]
 
     items: list[DiscoveryListItem] = []
     for group, member_count in rows:
@@ -171,7 +236,30 @@ async def list_discoverable_statics(
         if server and not _matches_string_filter(server, discovery.get("server")):
             continue
 
-        items.append(_to_list_item(group, discovery, member_count))
+        static_goals = obj_goals_map.get(group.id, [])
+        categories = list({g["category"] for g in static_goals})
+
+        # Goal category filter
+        if goal_category and goal_category not in categories:
+            continue
+
+        # Compute alignment for authenticated users with public goals
+        goal_alignment: GoalAlignmentSummarySlim | None = None
+        if current_user and user_public_goals and static_goals:
+            alignment_result = compute_alignment(user_public_goals, static_goals)
+            s = alignment_result["summary"]
+            goal_alignment = GoalAlignmentSummarySlim(
+                aligned=s["aligned"],
+                partial=s["partial"],
+                conflicts=s["conflicts"],
+                missing=s["missing"],
+                unknown=s["unknown"],
+            )
+            # Hide statics with conflicts if requested
+            if hide_conflicts and s["conflicts"] > 0:
+                continue
+
+        items.append(_to_list_item(group, discovery, member_count, categories, goal_alignment))
 
     # Sort
     items = _sort_items(items, sort)

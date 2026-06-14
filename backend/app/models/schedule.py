@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text, Boolean, UniqueConstraint
+from sqlalchemy import ForeignKey, Integer, String, Text, Boolean, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -150,6 +150,9 @@ class DiscordMessageMapping(Base):
     last_posted_at: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_edited_at: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_rsvp_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_delivery_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_delivery_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delivery_retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )

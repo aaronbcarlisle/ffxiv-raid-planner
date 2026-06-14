@@ -19,6 +19,8 @@ import { Tooltip } from '../primitives/Tooltip';
 import { eventBus, Events } from '../../lib/eventBus';
 import type { Membership, MemberRole, LinkedPlayerInfo } from '../../types';
 import { ROLE_COLORS, ROLE_LABELS } from '../../utils/roleConstants';
+import { useObjectiveGoalStore } from '../../stores/objectiveGoalStore';
+import { RosterAlignmentBadge } from './RosterAlignmentBadge';
 
 interface MembersPanelProps {
   groupId: string;
@@ -44,6 +46,16 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
 
   const isOwner = currentUserRole === 'owner';
   const canManage = currentUserRole === 'owner' || currentUserRole === 'lead' || isAdmin;
+
+  const { rosterAlignment, fetchRosterAlignment } = useObjectiveGoalStore();
+
+  useEffect(() => {
+    if (canManage) fetchRosterAlignment(groupId);
+  }, [groupId, canManage, fetchRosterAlignment]);
+
+  const alignmentByUser = new Map(
+    (rosterAlignment ?? []).map((a) => [a.userId, a])
+  );
 
   const fetchData = useCallback(async () => {
     try {
@@ -216,6 +228,10 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
                     <span className={`text-xs px-2 py-0.5 rounded border ${ROLE_COLORS[membership.role]}`}>
                       {ROLE_LABELS[membership.role]}
                     </span>
+                  )}
+
+                  {canManage && alignmentByUser.has(member.id) && (
+                    <RosterAlignmentBadge alignment={alignmentByUser.get(member.id)!} size="sm" />
                   )}
 
                   {canEditThis && !isEditing && (

@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..models import JoinRequest, Membership, MemberRole, StaticGroup, User
+from .notifications import create_notification
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -211,6 +212,7 @@ def _request_to_response(
         availability_summary=req.availability_summary,
         readiness_at_apply=req.readiness_at_apply,
         profile_share_code_at_apply=req.profile_share_code_at_apply,
+        goal_alignment_snapshot=getattr(req, 'goal_alignment_snapshot', None),
         profile_visibility_at_apply=req.profile_visibility_at_apply,
         profile_share_enabled_at_apply=req.profile_share_enabled_at_apply,
         character_name_at_apply=req.character_name_at_apply,
@@ -420,6 +422,43 @@ async def create_join_request(
             include_exact=data.include_exact_availability,
         )
 
+    # Snapshot goal alignment counts at apply time (no private goal details stored)
+    goal_alignment_snapshot: dict | None = None
+    if data.player_profile_id:
+        try:
+            from ..models.player_goal import PlayerGoal
+            from ..models.static_objective_goal import StaticObjectiveGoal
+            from ..services.goal_matching import compute_alignment
+
+            sg_result = await session.execute(
+                select(StaticObjectiveGoal)
+                .where(StaticObjectiveGoal.static_group_id == group.id)
+            )
+            static_goals_for_snapshot = [
+                {"id": g.id, "category": g.category, "priority": g.priority, "title": g.title}
+                for g in sg_result.scalars().all()
+            ]
+            if static_goals_for_snapshot:
+                pg_result = await session.execute(
+                    select(PlayerGoal).where(
+                        PlayerGoal.profile_id == data.player_profile_id,
+                        PlayerGoal.is_public == True,  # noqa: E712
+                    )
+                )
+                player_goals_for_snapshot = [
+                    {
+                        "id": g.id,
+                        "goal_type": g.goal_type,
+                        "category": g.objective_category or g.category,
+                        "intent_level": g.intent_level,
+                    }
+                    for g in pg_result.scalars().all()
+                ]
+                alignment_result = compute_alignment(player_goals_for_snapshot, static_goals_for_snapshot)
+                goal_alignment_snapshot = alignment_result["summary"]
+        except Exception:
+            pass  # Snapshot failure must never block the application
+
     now = datetime.now(timezone.utc).isoformat()
     join_request = JoinRequest(
         id=str(uuid.uuid4()),
@@ -442,6 +481,7 @@ async def create_join_request(
         profile_share_code_at_apply=profile_share_code_at_apply,
         profile_visibility_at_apply=profile_visibility_at_apply,
         profile_share_enabled_at_apply=profile_share_enabled_at_apply,
+        goal_alignment_snapshot=goal_alignment_snapshot,
         character_name_at_apply=char_name,
         character_world_at_apply=char_world,
         character_dc_at_apply=char_dc,
@@ -452,6 +492,26 @@ async def create_join_request(
     )
     session.add(join_request)
     await session.flush()
+    await session.commit()
+
+    # Notify leads and owners of the new application
+    leads_result = await session.execute(
+        select(Membership).where(
+            Membership.static_group_id == group.id,
+            Membership.role.in_(["owner", "lead"]),
+        )
+    )
+    applicant_name = char_name or current_user.display_name or current_user.discord_username
+    for member in leads_result.scalars().all():
+        if member.user_id != current_user.id:
+            await create_notification(
+                session,
+                user_id=member.user_id,
+                notification_type="new_application",
+                title="New application received",
+                body=f"{applicant_name} applied to join {group.name}.",
+                href=f"/group/{group.share_code}",
+            )
     await session.commit()
 
     return _request_to_response(join_request, group_name=group.name)
@@ -599,6 +659,22 @@ async def accept_join_request(
     await session.flush()
     await session.commit()
 
+    if join_request.requester_user_id:
+        group_result = await session.execute(
+            select(StaticGroup).where(StaticGroup.id == join_request.static_group_id)
+        )
+        group = group_result.scalar_one_or_none()
+        group_name = group.name if group else "the static"
+        await create_notification(
+            session,
+            user_id=join_request.requester_user_id,
+            notification_type="application_accepted",
+            title="Application accepted",
+            body=f"Your application to {group_name} has been accepted. Welcome!",
+            href="/dashboard",
+        )
+        await session.commit()
+
     return _request_to_response(join_request, include_requester=True)
 
 
@@ -675,6 +751,21 @@ async def decline_join_request(
 
     await session.flush()
     await session.commit()
+
+    if join_request.requester_user_id:
+        group_result = await session.execute(
+            select(StaticGroup).where(StaticGroup.id == join_request.static_group_id)
+        )
+        group = group_result.scalar_one_or_none()
+        group_name = group.name if group else "the static"
+        await create_notification(
+            session,
+            user_id=join_request.requester_user_id,
+            notification_type="application_declined",
+            title="Application not accepted",
+            body=f"Your application to {group_name} was not accepted at this time.",
+        )
+        await session.commit()
 
     return _request_to_response(join_request, include_requester=True)
 

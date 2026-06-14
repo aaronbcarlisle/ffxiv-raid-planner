@@ -202,6 +202,7 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
   fetchUser: () => Promise<void>;
+  updatePreferences: (prefs: { activityDisplayMode?: 'named' | 'anonymous' }) => Promise<void>;
   clearError: () => void;
 }
 
@@ -505,6 +506,14 @@ export const useAuthStore = create<AuthState>()(
             });
           }
         }
+      },
+
+      updatePreferences: async (prefs) => {
+        const updated = await authRequest<User>('/api/auth/me/preferences', {
+          method: 'PATCH',
+          body: JSON.stringify(prefs),
+        });
+        set({ user: updated });
       },
 
       /**

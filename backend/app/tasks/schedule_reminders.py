@@ -291,7 +291,9 @@ async def run_schedule_reminder_cycle(now: datetime | None = None) -> int:
                         destination.mention_role_id,
                     )
                     payload = build_session_announcement_payload(data)
-                    ok = await post_schedule_webhook(destination, payload, timeout=10.0)
+                    ok, status_code, delivery_error = await post_schedule_webhook(
+                        destination, payload, timeout=10.0
+                    )
                     if not ok:
                         logger.warning(
                             "schedule_reminder_delivery_failed",
@@ -299,6 +301,8 @@ async def run_schedule_reminder_cycle(now: datetime | None = None) -> int:
                             session_id=schedule_session.id,
                             reminder_type=preset.reminder_type,
                             occurrence_start_time=occurrence_iso,
+                            http_status=status_code,
+                            error=delivery_error,
                         )
                         continue
 

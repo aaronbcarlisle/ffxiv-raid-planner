@@ -9,6 +9,7 @@ Permission model:
                         static group that owns the snapshot player
 """
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 
@@ -34,6 +35,18 @@ from ..models.user import User
 from ..permissions import require_can_edit_roster, require_membership
 from ..models.membership import MemberRole
 from ..schemas.bis_targets import BiSTargetSetCreate, BiSTargetSetResponse, BiSTargetSetUpdate
+from .bis import (
+    ETRO_SLOT_MAP,
+    XIVGEAR_SLOT_MAP,
+    determine_source,
+    extract_bis_path,
+    extract_etro_uuid,
+    fetch_bis_from_etro,
+    fetch_bis_from_github,
+    fetch_bis_from_shortlink,
+    fetch_item_from_garland,
+    fetch_materia_from_garland,
+)
 
 router = APIRouter(prefix="/api/bis-targets", tags=["bis-targets"])
 logger = get_logger(__name__)
@@ -290,6 +303,165 @@ async def delete_bis_target(
 
     await session.delete(b)
     await session.commit()
+
+
+async def _fetch_slots_xivgear(url: str) -> list[dict]:
+    """Fetch gear slots from a XIVGear URL and return serialisable slot dicts."""
+    try:
+        identifier, path_type = extract_bis_path(url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if path_type == "bis":
+        job_abbrev, tier = identifier.split("/")
+        data = await fetch_bis_from_github(job_abbrev, tier)
+    else:
+        data = await fetch_bis_from_shortlink(identifier)
+
+    items_data: dict = {}
+    if "sets" in data and data["sets"]:
+        for s in data["sets"]:
+            if not s.get("isSeparator"):
+                items_data = s.get("items", {})
+                break
+    elif "items" in data:
+        items_data = data["items"]
+
+    if not items_data:
+        raise HTTPException(status_code=400, detail="No gear items found in XIVGear set")
+
+    slots: list[dict] = []
+    for xivgear_slot, our_slot in XIVGEAR_SLOT_MAP.items():
+        item_data = items_data.get(xivgear_slot)
+        if item_data and "id" in item_data:
+            item_id = item_data["id"]
+            item_info = await fetch_item_from_garland(item_id)
+            source = determine_source(item_info["name"], item_info["level"], our_slot)
+            raw_materia = item_data.get("materia", [])
+            materia_ids = [
+                (m.get("id") if isinstance(m, dict) else m) for m in raw_materia
+            ]
+            materia_ids = [mid for mid in materia_ids if mid and mid > 0]
+            materia_list: list[dict] = []
+            if materia_ids:
+                results = await asyncio.gather(
+                    *[fetch_materia_from_garland(mid) for mid in materia_ids],
+                    return_exceptions=True,
+                )
+                for r in results:
+                    if r is not None and not isinstance(r, Exception):
+                        materia_list.append(r.model_dump())
+            slots.append({
+                "slot": our_slot, "source": source,
+                "itemId": item_id, "itemName": item_info["name"],
+                "itemLevel": item_info["level"], "itemIcon": item_info.get("icon"),
+                "itemStats": item_info.get("stats") or None, "materia": materia_list,
+            })
+        else:
+            slots.append({"slot": our_slot, "source": "raid"})
+    return slots
+
+
+async def _fetch_slots_etro(url: str) -> list[dict]:
+    """Fetch gear slots from an Etro URL and return serialisable slot dicts."""
+    try:
+        etro_uuid = extract_etro_uuid(url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    data = await fetch_bis_from_etro(etro_uuid)
+    etro_materia = data.get("materia", {})
+    slots: list[dict] = []
+
+    for etro_slot, our_slot in ETRO_SLOT_MAP.items():
+        item_id = data.get(etro_slot)
+        if item_id:
+            item_info = await fetch_item_from_garland(item_id)
+            source = determine_source(item_info["name"], item_info["level"], our_slot)
+            item_id_str = str(item_id)
+            if our_slot == "ring1":
+                materia_key = f"{item_id_str}L"
+            elif our_slot == "ring2":
+                materia_key = f"{item_id_str}R"
+            else:
+                materia_key = item_id_str
+            item_materia = etro_materia.get(materia_key, {}) or etro_materia.get(item_id_str, {})
+            materia_list: list[dict] = []
+            if item_materia:
+                materia_ids = [
+                    item_materia.get(str(i)) for i in range(1, 6)
+                    if item_materia.get(str(i)) and isinstance(item_materia.get(str(i)), int)
+                ]
+                if materia_ids:
+                    results = await asyncio.gather(
+                        *[fetch_materia_from_garland(mid) for mid in materia_ids],
+                        return_exceptions=True,
+                    )
+                    for r in results:
+                        if r is not None and not isinstance(r, Exception):
+                            materia_list.append(r.model_dump())
+            slots.append({
+                "slot": our_slot, "source": source,
+                "itemId": item_id, "itemName": item_info["name"],
+                "itemLevel": item_info["level"], "itemIcon": item_info.get("icon"),
+                "itemStats": item_info.get("stats") or None, "materia": materia_list,
+            })
+        else:
+            slots.append({"slot": our_slot, "source": "raid"})
+    return slots
+
+
+@router.post("/{target_id}/import", response_model=BiSTargetSetResponse)
+async def import_bis_target(
+    target_id: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Fetch gear data from external_url and populate items_json + item_level."""
+    result = await session.execute(
+        select(BiSTargetSet).where(BiSTargetSet.id == target_id)
+    )
+    b = result.scalar_one_or_none()
+    if not b:
+        raise HTTPException(status_code=404, detail="BiS target not found")
+
+    await _check_write_permission(session, user, b)
+
+    if not b.external_url:
+        raise HTTPException(status_code=400, detail="No external URL configured for this target")
+    if b.source_type not in ("xivgear", "etro"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Import not supported for source_type '{b.source_type}'",
+        )
+
+    try:
+        if b.source_type == "xivgear":
+            slots = await _fetch_slots_xivgear(b.external_url)
+        else:
+            slots = await _fetch_slots_etro(b.external_url)
+
+        item_levels = [s["itemLevel"] for s in slots if s.get("itemLevel")]
+        max_ilvl = max(item_levels) if item_levels else None
+        b.items_json = {"slots": slots}
+        if max_ilvl:
+            b.item_level = max_ilvl
+        b.import_status = "imported"
+    except HTTPException:
+        b.import_status = "import_failed"
+        b.updated_at = datetime.now(timezone.utc).isoformat()
+        await session.commit()
+        await session.refresh(b)
+        raise
+    except Exception as e:
+        logger.warning("bis_import_failed", target_id=target_id, error=str(e))
+        b.import_status = "import_failed"
+
+    b.updated_at = datetime.now(timezone.utc).isoformat()
+    await session.commit()
+    await session.refresh(b)
+    logger.info("bis_import_complete", target_id=target_id, status=b.import_status)
+    return _to_response(b)
 
 
 @router.post("/{target_id}/set-active", response_model=BiSTargetSetResponse)

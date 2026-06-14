@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..logging_config import get_logger
-from ..models import Membership, MemberRole, User
+from ..models import Membership, MemberRole, StaticActivityLog, User
 from ..models.mount_farm_progress import MountFarmProgress
 from ..models.player_goal import PlayerGoal
 from ..models.player_profile import PlayerProfile
@@ -143,6 +143,42 @@ def _is_plugin_catalog_entry(entry: dict) -> bool:
         and entry.get("content_type") == "extreme_trial"
         and isinstance(entry.get("mount_id"), int)
         and isinstance(entry.get("totem_item_id"), int)
+    )
+
+
+async def _write_activity_log(
+    db: AsyncSession,
+    *,
+    group_id: str,
+    actor_user: User,
+    subject_display_name: str | None = None,
+    event_type: str,
+    trial_id: str | None,
+    now: str,
+) -> None:
+    name = subject_display_name or actor_user.display_name or actor_user.discord_username
+    label_map = {
+        "mount_obtained": f"{name} obtained the mount",
+        "totem_updated": f"{name} updated collection progress",
+        "tracking_started": f"{name} started tracking",
+        "plugin_sync": "Shared mount data updated",
+    }
+    label = label_map.get(event_type, f"{name} updated progress")
+    actor_display = "system" if event_type == "plugin_sync" else "named"
+    actor_user_id = None if event_type == "plugin_sync" else actor_user.id
+    actor_display_name = None if event_type == "plugin_sync" else (actor_user.display_name or actor_user.discord_username)
+    db.add(
+        StaticActivityLog(
+            id=str(uuid.uuid4()),
+            static_group_id=group_id,
+            actor_user_id=actor_user_id,
+            actor_display_name=actor_display_name,
+            actor_display=actor_display,
+            event_type=event_type,
+            trial_id=trial_id,
+            label=label,
+            created_at=now,
+        )
     )
 
 
@@ -344,6 +380,29 @@ async def update_mount_farm_progress(
     target_user_result = await db.execute(select(User).where(User.id == target_user_id))
     target_user = target_user_result.scalar_one()
 
+    # Determine which event to log (only log meaningful state transitions)
+    if data.has_mount:
+        await _write_activity_log(
+            db, group_id=group_id, actor_user=user,
+            subject_display_name=target_user.display_name or target_user.discord_username if target_user_id != user.id else None,
+            event_type="mount_obtained", trial_id=data.trial_id, now=now,
+        )
+        await db.commit()
+    elif data.totem_count is not None:
+        await _write_activity_log(
+            db, group_id=group_id, actor_user=user,
+            subject_display_name=target_user.display_name or target_user.discord_username if target_user_id != user.id else None,
+            event_type="totem_updated", trial_id=data.trial_id, now=now,
+        )
+        await db.commit()
+    elif data.wants_mount:
+        await _write_activity_log(
+            db, group_id=group_id, actor_user=user,
+            subject_display_name=target_user.display_name or target_user.discord_username if target_user_id != user.id else None,
+            event_type="tracking_started", trial_id=data.trial_id, now=now,
+        )
+        await db.commit()
+
     return _build_member_progress(target_user, progress, data.trial_id)
 
 
@@ -428,6 +487,47 @@ async def bulk_update_mount_farm_progress(
         responses.append(_build_member_progress(target_user, progress, update.trial_id))
 
     return responses
+
+
+from pydantic import BaseModel  # noqa: E402  (after top-level imports for clarity)
+
+
+class ActivityLogItemResponse(BaseModel):
+    id: str
+    actor_user_id: str | None
+    actor_display_name: str | None
+    actor_display: str
+    event_type: str
+    trial_id: str | None
+    label: str
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+@router.get(
+    "/static-groups/{group_id}/activity-log",
+    response_model=list[ActivityLogItemResponse],
+)
+async def get_static_activity_log(
+    group_id: str,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> list[ActivityLogItemResponse]:
+    """Return the most recent activity log entries for a static group."""
+    await get_static_group(db, group_id)
+    await require_membership(db, user.id, group_id)
+
+    from sqlalchemy import desc
+    result = await db.execute(
+        select(StaticActivityLog)
+        .where(StaticActivityLog.static_group_id == group_id)
+        .order_by(desc(StaticActivityLog.created_at))
+        .limit(max(1, min(limit, 50)))
+    )
+    rows = list(result.scalars().all())
+    return [ActivityLogItemResponse.model_validate(r) for r in rows]
 
 
 @router.get(

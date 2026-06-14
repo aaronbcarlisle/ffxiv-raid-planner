@@ -1,6 +1,8 @@
 """SQLAlchemy models"""
 
+from .activity_log import StaticActivityLog
 from .analytics import AnalyticsDailyAggregate, AnalyticsEvent, ErrorReport
+from .notification import Notification
 from .api_key import ApiKey
 from .bis_target_set import BiSTargetSet, VALID_BIS_IMPORT_STATUSES, VALID_BIS_PURPOSES, VALID_BIS_SOURCE_TYPES, VALID_OWNER_TYPES
 from .collection_goal import CollectionGoal
@@ -10,6 +12,8 @@ from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
 from .mount_farm_progress import MountFarmProgress
 from .player_goal import PlayerGoal
+from .static_content_suggestion import StaticContentSuggestion, StaticContentSuggestionVote
+from .static_objective_goal import StaticObjectiveGoal
 from .membership import Membership, MemberRole, ROLE_HIERARCHY
 from .page_ledger_entry import PageLedgerEntry
 from .player_character import PlayerCharacter
@@ -27,6 +31,8 @@ from .user import User
 from .weekly_assignment import WeeklyAssignment
 
 __all__ = [
+    "StaticActivityLog",
+    "Notification",
     "AnalyticsDailyAggregate",
     "AnalyticsEvent",
     "ApiKey",
@@ -46,6 +52,9 @@ __all__ = [
     "MemberRole",
     "PageLedgerEntry",
     "PlayerGoal",
+    "StaticContentSuggestion",
+    "StaticContentSuggestionVote",
+    "StaticObjectiveGoal",
     "PlayerCharacter",
     "PlayerGearSnapshot",
     "PlayerJobProfile",

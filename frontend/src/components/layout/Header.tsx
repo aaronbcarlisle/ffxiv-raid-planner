@@ -313,7 +313,7 @@ export function Header() {
                       icon={<Settings className="w-5 h-5" />}
                       onClick={() => dispatchHeaderEvent(
                         HEADER_EVENTS.SETTINGS,
-                        pendingJoinRequests > 0 ? { tab: 'requests' } : undefined,
+                        pendingJoinRequests > 0 ? { tab: 'recruitment' } : undefined,
                       )}
                       variant="ghost"
                       aria-label="Static settings"
