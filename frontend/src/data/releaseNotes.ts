@@ -72,6 +72,29 @@ export const RELEASES: Release[] = [
       prTitle: 'feat(overview): Objective Command Center',
     }],
   },
+  // ── Static Finder fit score ──────────────────────────────────────────────
+  {
+    version: 'Unreleased',
+    date: '2026-06-14T00:00:00Z',
+    title: 'Static Finder Fit Score',
+    internal: true,
+    items: [
+      {
+        category: 'feature',
+        title: 'Static Finder shows personalized fit scores',
+        description: 'Authenticated users with a Player Hub profile now see a deterministic fit summary on each static listing card: goal alignment, job match, schedule overlap, comms compatibility, and BiS readiness. Private goals and BiS targets are never used.',
+        pr: 135,
+        prTitle: 'feat(discovery): Static Finder fit score',
+      },
+      {
+        category: 'improvement',
+        title: 'Static Finder adds fit-based filters',
+        description: 'New filter controls let players hide goal conflicts, filter by recruiting job, require schedule overlap, and filter by language.',
+        pr: 135,
+        prTitle: 'feat(discovery): Static Finder fit score',
+      },
+    ],
+  },
   // ── Settings IA second pass ──────────────────────────────────────────────
   {
     version: 'Unreleased',
