@@ -105,6 +105,31 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  // ── Notification Center polish ───────────────────────────────────────────
+  {
+    version: 'Unreleased',
+    date: '2026-06-14T00:00:00Z',
+    title: 'Notification Center polish',
+    internal: true,
+    items: [
+      {
+        category: 'fix',
+        title: 'Self-vote no longer creates a spurious notification',
+        description:
+          'Voting on your own content suggestion no longer triggers a notification to yourself.',
+        pr: 134,
+        prTitle: 'fix(notifications): Notification Center polish',
+      },
+      {
+        category: 'fix',
+        title: 'Overview notification rail shows only current-static highlights',
+        description:
+          'The Overview rail now shows contextual static items (pending applications, upcoming sessions) rather than the global inbox.',
+        pr: 134,
+        prTitle: 'fix(notifications): Notification Center polish',
+      },
+    ],
+  },
   // ── Notification Center ──────────────────────────────────────────────────
   {
     version: 'Unreleased',
