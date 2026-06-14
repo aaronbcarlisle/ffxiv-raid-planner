@@ -476,6 +476,7 @@ export interface User {
    * has been populated by the backend.
    */
   isAdmin?: boolean;
+  activityDisplayMode?: 'named' | 'anonymous';
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
@@ -535,9 +536,23 @@ export interface OwnerInfo {
 // Discovery settings for public static listing
 export type ContactMethod = 'discord' | 'discord_server' | 'url' | 'text';
 
+export type VoiceRequirement = 'required' | 'preferred' | 'listening_ok' | 'text_only';
+
+export interface CommunicationStyle {
+  voiceRequirement?: VoiceRequirement;
+  discordRequired?: boolean;
+}
+
+export interface RecruitingRoleEntry {
+  role: string;
+  priority: 'needed' | 'nice_to_have';
+  jobs: string[];
+}
+
 export interface DiscoverySettings {
   enabled: boolean;
-  recruitmentStatus: 'open' | 'limited' | 'closed';
+  /** 'limited' is a legacy value treated as 'selective' */
+  recruitmentStatus: 'open' | 'selective' | 'paused' | 'closed' | 'limited';
   description?: string;
   contactMethod?: ContactMethod;
   contactValue?: string;
@@ -546,12 +561,17 @@ export interface DiscoverySettings {
   dataCenter?: string;
   server?: string;
   timezone?: string;
+  /** Legacy — derived from recruitingRoles on save for backward compat */
   neededRoles?: string[];
+  /** Legacy — derived from recruitingRoles on save for backward compat */
   neededJobs?: string[];
   scheduleDays?: string[];
   scheduleStartTime?: string;
   scheduleEndTime?: string;
   showMemberCount?: boolean;
+  /** v2 structured recruiting (supersedes neededRoles/neededJobs) */
+  recruitingRoles?: RecruitingRoleEntry[];
+  communicationStyle?: CommunicationStyle;
 }
 
 // Static group settings (loot priority, etc.)
@@ -849,6 +869,14 @@ export interface JoinRequest {
   characterDcAtApply?: string;
   characterAvatarUrlAtApply?: string;
   characterLodestoneIdAtApply?: string;
+  // Goal alignment snapshot captured at apply time
+  goalAlignmentSnapshot?: {
+    aligned: number;
+    partial: number;
+    conflicts: number;
+    missing: number;
+    unknown: number;
+  } | null;
   // Roster onboarding
   rosterPlayerId?: string;
   createdAt: string;
@@ -956,7 +984,9 @@ export interface BiSPresetsResponse {
 // ==================== Multi-BiS V1 Types ====================
 
 export type BisTargetSource = 'manual' | 'etro' | 'xivgear' | 'ariyala' | 'external';
-export type BisTargetPurpose = 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom';
+export type BisTargetPurpose =
+  | 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom'
+  | 'savage_prog' | 'savage_reclear' | 'week1' | 'alt_job' | 'parse';
 
 // ==================== Shared BiS Target Types (V2 — backend-persisted) ====================
 
@@ -979,6 +1009,7 @@ export interface SharedBiSTargetSet {
   externalUrl?: string | null;
   importStatus: BiSImportStatus;
   isActive: boolean;
+  isPublic: boolean;
   patch?: string | null;
   itemLevel?: number | null;
   notes?: string | null;
@@ -997,6 +1028,7 @@ export interface SharedBiSTargetCreate {
   sourceType?: BiSSourceType;
   externalUrl?: string | null;
   importStatus?: BiSImportStatus;
+  isPublic?: boolean;
   patch?: string | null;
   itemLevel?: number | null;
   notes?: string | null;
@@ -1008,6 +1040,7 @@ export interface SharedBiSTargetUpdate {
   sourceType?: BiSSourceType;
   externalUrl?: string | null;
   importStatus?: BiSImportStatus;
+  isPublic?: boolean;
   patch?: string | null;
   itemLevel?: number | null;
   notes?: string | null;

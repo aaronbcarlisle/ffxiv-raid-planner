@@ -34,6 +34,9 @@ class User(Base):
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )
     last_login_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    activity_display_mode: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="named"
+    )
 
     # Relationships
     memberships: Mapped[list["Membership"]] = relationship(

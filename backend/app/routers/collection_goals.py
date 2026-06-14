@@ -57,6 +57,8 @@ async def create_collection_goal(
         static_group_id=group_id,
         created_by_id=current_user.id,
         goal_type=body.goal_type,
+        content_type=body.content_type,
+        content_key=body.content_key,
         title=body.title,
         status=body.status,
         summary=body.summary,

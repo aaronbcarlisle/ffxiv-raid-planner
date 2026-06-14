@@ -1,5 +1,13 @@
 """Pydantic schemas"""
 
+from .content_suggestions import (
+    PromoteToGoalRequest,
+    SuggestionCreate,
+    SuggestionResponse,
+    SuggestionUpdate,
+    SuggestionVoteUpsert,
+    VoteSummary,
+)
 from .analytics import (
     AnalyticsEventBatch,
     AnalyticsEventIn,
@@ -136,11 +144,19 @@ from .user import (
     DiscordCallback,
     RefreshTokenRequest,
     TokenResponse,
+    UserPreferencesUpdate,
     UserResponse,
     UserUpdate,
 )
 
 __all__ = [
+    # Content Suggestions
+    "PromoteToGoalRequest",
+    "SuggestionCreate",
+    "SuggestionResponse",
+    "SuggestionUpdate",
+    "SuggestionVoteUpsert",
+    "VoteSummary",
     # Analytics
     "AnalyticsEventBatch",
     "AnalyticsEventIn",
@@ -268,6 +284,7 @@ __all__ = [
     "DiscordCallback",
     "RefreshTokenRequest",
     "TokenResponse",
+    "UserPreferencesUpdate",
     "UserResponse",
     "UserUpdate",
 ]

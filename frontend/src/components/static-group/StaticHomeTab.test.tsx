@@ -22,6 +22,7 @@ import { StaticHomeTab } from './StaticHomeTab';
 import type { JoinRequest, StaticGroup } from '../../types';
 import type { MountFarmData, FarmScore } from '../../stores/mountFarmStore';
 import type { CollectionGoal } from '../../stores/collectionGoalStore';
+import type { StaticObjectiveGoal } from '../../stores/objectiveGoalStore';
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
@@ -104,6 +105,8 @@ const MOCK_GOAL: CollectionGoal = {
   staticGroupId: 'g1',
   createdById: 'u1',
   goalType: 'mount',
+  contentType: null,
+  contentKey: null,
   title: 'Lynx of Fallen Shadow',
   status: 'farming',
   summary: null,
@@ -137,6 +140,13 @@ const collectionGoalStoreState = {
   deleteGoal: vi.fn().mockResolvedValue(undefined),
 };
 
+const objectiveGoalStoreState = {
+  objectives: [] as StaticObjectiveGoal[],
+  loading: false,
+  objectivesError: null as string | null,
+  fetchObjectives: vi.fn().mockResolvedValue(undefined),
+};
+
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 vi.mock('../../stores/mountFarmStore', () => ({
@@ -145,6 +155,10 @@ vi.mock('../../stores/mountFarmStore', () => ({
 
 vi.mock('../../stores/collectionGoalStore', () => ({
   useCollectionGoalStore: () => collectionGoalStoreState,
+}));
+
+vi.mock('../../stores/objectiveGoalStore', () => ({
+  useObjectiveGoalStore: () => objectiveGoalStoreState,
 }));
 
 vi.mock('../../stores/joinRequestStore', () => ({
@@ -163,6 +177,13 @@ vi.mock('../../stores/scheduleStore', () => ({
     sessions: [],
     fetchSessions: vi.fn(),
     isLoading: false,
+  }),
+}));
+
+vi.mock('../../stores/contentSuggestionStore', () => ({
+  useContentSuggestionStore: () => ({
+    suggestions: [],
+    fetchSuggestions: vi.fn(),
   }),
 }));
 
@@ -296,13 +317,23 @@ function setGoalStore(overrides: Partial<typeof collectionGoalStoreState> = {}) 
   });
 }
 
+function setObjectiveGoalStore(overrides: Partial<typeof objectiveGoalStoreState> = {}) {
+  Object.assign(objectiveGoalStoreState, {
+    objectives: [],
+    loading: false,
+    objectivesError: null,
+    fetchObjectives: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  });
+}
+
 const onNavigate = vi.fn();
 const onOpenRequests = vi.fn();
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('StaticHomeTab — recruitment flow', () => {
-  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); });
+  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); setObjectiveGoalStore(); });
 
   it('renders the "Review Dossier" button when canManage is true and there is a pending request', () => {
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
@@ -346,7 +377,7 @@ describe('StaticHomeTab — recruitment flow', () => {
 });
 
 describe('StaticHomeTab — Command Brief', () => {
-  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); });
+  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); setObjectiveGoalStore(); });
 
   it('shows "pending application" chip when there is a pending request and canManage', () => {
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
@@ -375,7 +406,7 @@ describe('StaticHomeTab — Command Brief', () => {
 });
 
 describe('StaticHomeTab — notification feed', () => {
-  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); });
+  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); setObjectiveGoalStore(); });
 
   it('shows pending applications in the notification rail (not deduplicated from center teaser)', () => {
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
@@ -425,7 +456,7 @@ describe('StaticHomeTab — Raid Prep section', () => {
     ],
   } as unknown as import('../../types').TierSnapshot;
 
-  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); });
+  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); setObjectiveGoalStore(); });
 
   it('renders "Raid Prep" heading (not "Static Readiness" or "Roster Readiness")', () => {
     render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
@@ -444,7 +475,7 @@ describe('StaticHomeTab — Raid Prep section', () => {
 });
 
 describe('StaticHomeTab — Recent Activity', () => {
-  beforeEach(() => { vi.clearAllMocks(); setGoalStore(); });
+  beforeEach(() => { vi.clearAllMocks(); setGoalStore(); setObjectiveGoalStore(); });
 
   it('shows "No recent activity" empty state when no farm data is loaded', () => {
     setFarmStore({ data: null });
@@ -520,7 +551,7 @@ describe('StaticHomeTab — Recent Activity', () => {
 });
 
 describe('StaticHomeTab — Best Next Farm', () => {
-  beforeEach(() => { vi.clearAllMocks(); setGoalStore(); });
+  beforeEach(() => { vi.clearAllMocks(); setGoalStore(); setObjectiveGoalStore(); });
 
   it('shows empty state when no recommendations are available', () => {
     setFarmStore({ recommendations: [] });
@@ -561,7 +592,7 @@ describe('StaticHomeTab — Best Next Farm', () => {
 });
 
 describe('StaticHomeTab — Collection Goals', () => {
-  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); });
+  beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setObjectiveGoalStore(); });
 
   it('shows "No collection goals yet" empty state copy', () => {
     setGoalStore({ goals: [] });
@@ -648,7 +679,7 @@ function makePluginMemberProgress(overrides: Partial<{
 }
 
 describe('StaticHomeTab — Recent Activity privacy', () => {
-  beforeEach(() => { vi.clearAllMocks(); setGoalStore(); });
+  beforeEach(() => { vi.clearAllMocks(); setGoalStore(); setObjectiveGoalStore(); });
 
   it('manual-sourced mount shows actor name', () => {
     setFarmStore({ data: FARM_DATA_WITH_ACTIVITY });

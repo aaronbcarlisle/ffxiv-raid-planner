@@ -11,9 +11,10 @@ import { SourceBadge } from './SourceBadge';
 import { getFreshness, freshnessColor } from './freshness';
 import type { GearSnapshot, GearSlotData, PlayerJobProfile } from '../../stores/playerProfileStore';
 import { usePlayerProfileStore } from '../../stores/playerProfileStore';
+import { useSharedBisStore } from '../../stores/sharedBisStore';
 import { getJobDisplayName } from '../../gamedata/jobs';
 import { toast } from '../../stores/toastStore';
-import { formatGearActivity, getJobGearState } from './jobGearUtils';
+import { formatGearActivity, getJobGearState, getBiSCompareStatus } from './jobGearUtils';
 
 interface JobProfileCardProps {
   jobProfile: PlayerJobProfile;
@@ -54,10 +55,13 @@ function GearSlotCompactRow({ slot }: { slot: GearSlotData }) {
 const PURPOSE_LABELS: Record<string, string> = {
   savage: 'Savage', ultimate: 'Ultimate', prog: 'Prog',
   farm: 'Farm', speed: 'Speed', comfort: 'Comfort', custom: 'Custom',
+  savage_prog: 'Savage Prog', savage_reclear: 'Reclear',
+  week1: 'Week 1', alt_job: 'Alt Job', parse: 'Parse',
 };
 
 export function JobProfileCard({ jobProfile, resolvedSnapshot, onEdit, onManageBiS }: JobProfileCardProps) {
   const { deleteJobProfile } = usePlayerProfileStore();
+  const bisStore = useSharedBisStore();
   const deleteModal = useModal();
   const [expanded, setExpanded] = useState(false);
 
@@ -71,8 +75,12 @@ export function JobProfileCard({ jobProfile, resolvedSnapshot, onEdit, onManageB
   };
 
   const snapshot = resolvedSnapshot ?? jobProfile.gearSnapshot;
-  const activeBisTarget = (jobProfile.bisTargets ?? []).find((t) => t.isActive) ?? null;
-  const bisTargetCount = (jobProfile.bisTargets ?? []).length;
+  // Read from sharedBisStore (live, post-modal) and fall back to embedded profile data on first load
+  const storeTargets = bisStore.getTargets('player_job_profile', jobProfile.id);
+  const bisTargets = storeTargets.length > 0 ? storeTargets : (jobProfile.bisTargets ?? []);
+  const activeBisTarget = bisTargets.find((t) => t.isActive) ?? null;
+  const bisTargetCount = bisTargets.length;
+  const compareStatus = getBiSCompareStatus(snapshot, activeBisTarget);
   const freshness = snapshot ? getFreshness(snapshot.syncedAt) : 'none';
   const isStale = freshness === 'stale' || freshness === 'old';
   const gearState = getJobGearState(jobProfile, snapshot);
@@ -141,6 +149,12 @@ export function JobProfileCard({ jobProfile, resolvedSnapshot, onEdit, onManageB
                 </span>
                 {activeBisTarget.itemLevel != null && (
                   <span className="text-accent font-mono">iLv {activeBisTarget.itemLevel}</span>
+                )}
+                {compareStatus === 'on_target' && (
+                  <span className="rounded bg-status-success/10 px-1.5 py-0.5 text-status-success font-medium">On target</span>
+                )}
+                {compareStatus === 'missing_pieces' && (
+                  <span className="rounded bg-status-warning/10 px-1.5 py-0.5 text-status-warning font-medium">Missing pieces</span>
                 )}
                 {bisTargetCount > 1 && (
                   <span className="text-text-muted">+{bisTargetCount - 1} more</span>

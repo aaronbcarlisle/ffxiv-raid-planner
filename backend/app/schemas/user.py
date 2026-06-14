@@ -30,6 +30,7 @@ class UserResponse(CamelModel):
     avatar_url: str | None = None
     display_name: str | None = None
     is_admin: bool = False
+    activity_display_mode: str = "named"
     created_at: str
     updated_at: str
     last_login_at: str | None = None
@@ -39,6 +40,14 @@ class UserUpdate(CamelModel):
     """Schema for updating user profile"""
 
     display_name: str | None = Field(default=None, max_length=100)
+
+
+class UserPreferencesUpdate(CamelModel):
+    """Schema for updating user preferences"""
+
+    activity_display_mode: str | None = Field(
+        default=None, pattern=r"^(named|anonymous)$"
+    )
 
 
 class TokenResponse(CamelModel):

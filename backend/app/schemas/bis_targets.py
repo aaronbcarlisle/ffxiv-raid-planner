@@ -24,6 +24,7 @@ class BiSTargetSetResponse(CamelModel):
     external_url: str | None = None
     import_status: str
     is_active: bool
+    is_public: bool = False
     patch: str | None = None
     item_level: int | None = None
     notes: str | None = None
@@ -48,6 +49,7 @@ class BiSTargetSetCreate(CamelModel):
     source_type: str = Field(default="manual", max_length=20)
     external_url: str | None = Field(default=None, max_length=2000)
     import_status: str = Field(default="linked_only", max_length=20)
+    is_public: bool = False
     patch: str | None = Field(default=None, max_length=20)
     item_level: int | None = None
     notes: str | None = Field(default=None, max_length=500)
@@ -61,6 +63,7 @@ class BiSTargetSetUpdate(CamelModel):
     source_type: str | None = Field(default=None, max_length=20)
     external_url: str | None = Field(default=None, max_length=2000)
     import_status: str | None = Field(default=None, max_length=20)
+    is_public: bool | None = None
     patch: str | None = Field(default=None, max_length=20)
     item_level: int | None = None
     notes: str | None = Field(default=None, max_length=500)

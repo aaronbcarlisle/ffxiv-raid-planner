@@ -27,6 +27,7 @@ interface SharedBisState {
   updateTarget(id: string, data: SharedBiSTargetUpdate): Promise<SharedBiSTargetSet>;
   deleteTarget(id: string, ownerType: BiSOwnerType, ownerId: string): Promise<void>;
   setTargetActive(id: string, ownerType: BiSOwnerType, ownerId: string): Promise<void>;
+  importTarget(id: string, ownerType: BiSOwnerType, ownerId: string): Promise<SharedBiSTargetSet>;
 }
 
 export const useSharedBisStore = create<SharedBisState>((set, get) => ({
@@ -111,8 +112,13 @@ export const useSharedBisStore = create<SharedBisState>((set, get) => ({
 
   async setTargetActive(id, ownerType, ownerId) {
     await api.post<SharedBiSTargetSet>(`/api/bis-targets/${id}/set-active`);
-    // Re-fetch to get consistent active state across all siblings
     await get().fetchTargets(ownerType, ownerId);
+  },
+
+  async importTarget(id, ownerType, ownerId) {
+    const updated = await api.post<SharedBiSTargetSet>(`/api/bis-targets/${id}/import`);
+    await get().fetchTargets(ownerType, ownerId);
+    return updated;
   },
 }));
 
@@ -131,17 +137,24 @@ export function useSharedBisActiveTarget(
 
 export const PURPOSE_OPTIONS: { value: BisTargetPurpose; label: string }[] = [
   { value: 'savage', label: 'Savage prog/clear' },
+  { value: 'savage_prog', label: 'Savage prog' },
+  { value: 'savage_reclear', label: 'Savage reclear' },
+  { value: 'week1', label: 'Week 1 BiS' },
   { value: 'ultimate', label: 'Ultimate prog/clear' },
   { value: 'prog', label: 'General prog' },
   { value: 'farm', label: 'Farm set' },
-  { value: 'speed', label: 'Speed kill / parse' },
+  { value: 'speed', label: 'Speed kill' },
+  { value: 'parse', label: 'Parse set' },
   { value: 'comfort', label: 'Comfort / casual' },
+  { value: 'alt_job', label: 'Alt job' },
   { value: 'custom', label: 'Custom' },
 ];
 
 export const PURPOSE_LABELS: Record<string, string> = {
   savage: 'Savage', ultimate: 'Ultimate', prog: 'Prog',
   farm: 'Farm', speed: 'Speed', comfort: 'Comfort', custom: 'Custom',
+  savage_prog: 'Savage Prog', savage_reclear: 'Reclear',
+  week1: 'Week 1', alt_job: 'Alt Job', parse: 'Parse',
 };
 
 export const SOURCE_LABELS: Record<string, string> = {

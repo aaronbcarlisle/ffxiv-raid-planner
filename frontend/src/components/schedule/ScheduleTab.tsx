@@ -92,12 +92,17 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   );
 
   useEffect(() => {
-    void fetchSessions(groupId).catch(() => undefined);
-    void fetchSettings(groupId).catch(() => undefined);
+    // Only fetch member-only endpoints when the user has a role in this group.
+    // Applicants / non-members get a 403 from the backend; skipping the fetch
+    // prevents repeated error toasts on the Schedule tab.
+    if (userRole) {
+      void fetchSessions(groupId).catch(() => undefined);
+      void fetchSettings(groupId).catch(() => undefined);
+    }
     return () => {
       clearSessions();
     };
-  }, [groupId, fetchSessions, fetchSettings, clearSessions]);
+  }, [groupId, userRole, fetchSessions, fetchSettings, clearSessions]);
 
   useEffect(() => {
     if (!settings) return;

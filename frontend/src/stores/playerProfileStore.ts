@@ -8,6 +8,7 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 import { logger as baseLogger } from '../lib/logger';
+import type { SharedBiSTargetSet } from '../types';
 
 const logger = baseLogger.scope('playerProfile');
 
@@ -50,28 +51,6 @@ export interface GearSlotData {
   itemLevel?: number;
 }
 
-export type BisTargetPurpose = 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom';
-export type BisSourceType = 'etro' | 'xivgear' | 'ariyala' | 'manual' | 'custom_link';
-export type BisImportStatus = 'linked_only' | 'imported' | 'import_failed' | 'unsupported';
-
-export interface PlayerBisTargetSet {
-  id: string;
-  profileId: string;
-  jobProfileId: string;
-  job: string;
-  name: string;
-  purpose: BisTargetPurpose;
-  sourceType: BisSourceType;
-  externalUrl: string | null;
-  importStatus: BisImportStatus;
-  isActive: boolean;
-  itemLevel: number | null;
-  notes: string | null;
-  itemsJson: Record<string, unknown> | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface PlayerJobProfile {
   id: string;
   job: string;
@@ -81,7 +60,7 @@ export interface PlayerJobProfile {
   notes: string | null;
   gearSnapshotId: string | null;
   gearSnapshot: GearSnapshot | null;
-  bisTargets: PlayerBisTargetSet[];
+  bisTargets: SharedBiSTargetSet[];
   createdAt: string;
   updatedAt: string;
 }
@@ -153,6 +132,9 @@ export interface PlayerGoal {
   description: string | null;
   goalType: string;
   category: string | null;
+  /** Constrained objective category (same taxonomy as StaticObjectiveGoal).
+   *  When set, this goal is a matchable personal objective used in alignment. */
+  objectiveCategory: string | null;
   status: string;
   currentCount: number;
   targetCount: number | null;
@@ -161,6 +143,8 @@ export interface PlayerGoal {
   linkedCharacterId: string | null;
   linkedJob: string | null;
   dueDate: string | null;
+  intentLevel: string | null;
+  isPublic: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -228,6 +212,8 @@ interface PlayerProfileState {
     linkedCharacterId?: string;
     linkedJob?: string;
     dueDate?: string;
+    intentLevel?: string | null;
+    isPublic?: boolean;
   }) => Promise<void>;
   updateGoal: (id: string, data: {
     title?: string;
@@ -241,6 +227,8 @@ interface PlayerProfileState {
     linkedCharacterId?: string;
     linkedJob?: string;
     dueDate?: string;
+    intentLevel?: string | null;
+    isPublic?: boolean;
   }) => Promise<void>;
   deleteGoal: (id: string) => Promise<void>;
 
@@ -252,27 +240,6 @@ interface PlayerProfileState {
   rotateShareCode: () => Promise<void>;
   fetchPublicProfile: (shareCode: string) => Promise<PublicPlayerProfile>;
 
-  // BiS targets
-  bisTargets: Record<string, PlayerBisTargetSet[]>;
-  fetchBisTargets: (jobProfileId: string) => Promise<void>;
-  createBisTarget: (jobProfileId: string, data: {
-    name: string;
-    purpose: string;
-    sourceType: string;
-    externalUrl?: string;
-    importStatus?: string;
-    notes?: string;
-  }) => Promise<PlayerBisTargetSet>;
-  updateBisTarget: (jobProfileId: string, targetId: string, data: {
-    name?: string;
-    purpose?: string;
-    sourceType?: string;
-    externalUrl?: string;
-    importStatus?: string;
-    notes?: string;
-  }) => Promise<void>;
-  deleteBisTarget: (jobProfileId: string, targetId: string) => Promise<void>;
-  setBisTargetActive: (jobProfileId: string, targetId: string) => Promise<void>;
 }
 
 export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
@@ -281,7 +248,6 @@ export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
   goals: [],
   collectionSuggestions: [],
   staticSuggestions: [],
-  bisTargets: {},
   loading: false,
   syncing: false,
   error: null,
@@ -508,68 +474,4 @@ export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
     return profile;
   },
 
-  fetchBisTargets: async (jobProfileId) => {
-    try {
-      const targets = await api.get<PlayerBisTargetSet[]>(
-        `/api/player/jobs/${jobProfileId}/bis-targets`,
-      );
-      set((state) => ({ bisTargets: { ...state.bisTargets, [jobProfileId]: targets } }));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load BiS targets';
-      logger.error('fetchBisTargets failed', { error: message });
-    }
-  },
-
-  createBisTarget: async (jobProfileId, data) => {
-    try {
-      const target = await api.post<PlayerBisTargetSet>(
-        `/api/player/jobs/${jobProfileId}/bis-targets`,
-        data,
-      );
-      await get().fetchBisTargets(jobProfileId);
-      return target;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create BiS target';
-      logger.error('createBisTarget failed', { error: message });
-      throw err;
-    }
-  },
-
-  updateBisTarget: async (jobProfileId, targetId, data) => {
-    try {
-      await api.put(`/api/player/jobs/${jobProfileId}/bis-targets/${targetId}`, data);
-      await get().fetchBisTargets(jobProfileId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update BiS target';
-      logger.error('updateBisTarget failed', { error: message });
-      throw err;
-    }
-  },
-
-  deleteBisTarget: async (jobProfileId, targetId) => {
-    try {
-      await api.delete(`/api/player/jobs/${jobProfileId}/bis-targets/${targetId}`);
-      set((state) => ({
-        bisTargets: {
-          ...state.bisTargets,
-          [jobProfileId]: (state.bisTargets[jobProfileId] ?? []).filter((t) => t.id !== targetId),
-        },
-      }));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete BiS target';
-      logger.error('deleteBisTarget failed', { error: message });
-      throw err;
-    }
-  },
-
-  setBisTargetActive: async (jobProfileId, targetId) => {
-    try {
-      await api.post(`/api/player/jobs/${jobProfileId}/bis-targets/${targetId}/set-active`);
-      await get().fetchBisTargets(jobProfileId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to set BiS target active';
-      logger.error('setBisTargetActive failed', { error: message });
-      throw err;
-    }
-  },
 }));

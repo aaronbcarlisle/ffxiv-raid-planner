@@ -1,15 +1,15 @@
 /* eslint-disable design-system/no-raw-button */
 import { useState } from 'react';
-import { Target } from 'lucide-react';
+import { ChevronLeft, Target } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
-import { Select } from '../ui/Select';
 import { Button } from '../primitives/Button';
 import {
   useCollectionGoalStore,
   type CollectionGoalCreate,
   type CollectionGoalType,
   type CollectionGoalStatus,
+  type CollectionContentType,
 } from '../../stores/collectionGoalStore';
 
 interface CreateCollectionGoalModalProps {
@@ -18,77 +18,144 @@ interface CreateCollectionGoalModalProps {
   groupId: string;
 }
 
-const GOAL_TYPE_OPTIONS: { value: CollectionGoalType; label: string }[] = [
-  { value: 'mount', label: 'Mount' },
-  { value: 'token', label: 'Token / Totem' },
-  { value: 'minion', label: 'Minion' },
-  { value: 'orchestrion', label: 'Orchestrion Roll' },
-  { value: 'glam', label: 'Glamour / Other Item' },
-  { value: 'custom_reward', label: 'Custom / Other Reward' },
+// ── Static data ────────────────────────────────────────────────────────────
+
+const CONTENT_TYPE_OPTIONS: { value: CollectionContentType; label: string; description: string }[] = [
+  { value: 'extreme',          label: 'Extreme',           description: 'Extreme trials' },
+  { value: 'savage',           label: 'Savage',            description: 'Savage raids' },
+  { value: 'ultimate',         label: 'Ultimate',          description: 'Ultimate raids' },
+  { value: 'criterion',        label: 'Criterion',         description: 'Criterion dungeons' },
+  { value: 'chaotic_alliance', label: 'Chaotic Alliance',  description: 'Chaotic alliance raids' },
+  { value: 'field_operation',  label: 'Field Operation',   description: 'Bozja / Eureka / Occult Crescent' },
+  { value: 'custom',           label: 'Other / Custom',    description: 'Anything else' },
+];
+
+interface UltimateDuty {
+  key: string;
+  label: string;
+  shortName: string;
+}
+
+const ULTIMATE_DUTIES: UltimateDuty[] = [
+  { key: 'ucob', label: 'The Unending Coil of Bahamut (Ultimate)', shortName: 'UCoB' },
+  { key: 'uwu',  label: "The Weapon's Refrain (Ultimate)",          shortName: 'UwU'  },
+  { key: 'tea',  label: 'The Epic of Alexander (Ultimate)',         shortName: 'TEA'  },
+  { key: 'dsr',  label: "Dragonsong's Reprise (Ultimate)",          shortName: 'DSR'  },
+  { key: 'top',  label: 'The Omega Protocol (Ultimate)',            shortName: 'TOP'  },
+  { key: 'fru',  label: 'Futures Rewritten (Ultimate)',             shortName: 'FRU'  },
+];
+
+const REWARD_TYPE_OPTIONS: { value: CollectionGoalType; label: string; description: string }[] = [
+  { value: 'mount',         label: 'Mount',              description: 'Farmable mount from the content' },
+  { value: 'weapon',        label: 'Weapon',             description: 'Ultimate weapon / relic weapon' },
+  { value: 'weapon_coffer', label: 'Weapon Coffer',      description: 'Weapon token / coffer' },
+  { value: 'title',         label: 'Title',              description: 'Completion title' },
+  { value: 'clear_count',   label: 'Clear Count',        description: 'Track reclear runs' },
+  { value: 'token',         label: 'Token / Totem',      description: 'Currency or totem farming' },
+  { value: 'minion',        label: 'Minion',             description: 'Minion drop' },
+  { value: 'orchestrion',   label: 'Orchestrion Roll',   description: 'Music roll drop' },
+  { value: 'glam',          label: 'Glamour / Other Item', description: 'Gear cosmetic or misc item' },
+  { value: 'custom_reward', label: 'Custom / Other',     description: 'Anything not listed above' },
 ];
 
 const STATUS_OPTIONS: { value: CollectionGoalStatus; label: string }[] = [
-  { value: 'wanted', label: 'Wanted — planning to farm' },
-  { value: 'farming', label: 'Farming — actively running' },
+  { value: 'wanted',    label: 'Wanted — planning to farm' },
+  { value: 'farming',   label: 'Farming — actively running' },
   { value: 'scheduled', label: 'Scheduled — on the calendar' },
-  { value: 'complete', label: 'Complete — obtained' },
+  { value: 'complete',  label: 'Complete — obtained' },
 ];
 
-const GOAL_TYPE_PLACEHOLDERS: Record<CollectionGoalType, string> = {
-  mount: 'e.g. Lynx of Fallen Shadow',
-  token: 'e.g. Skyruin Totem ×99',
-  minion: 'e.g. Wind-up Zodiark',
-  orchestrion: 'e.g. Close in the Distance',
-  glam: 'e.g. Augmented Credendum Coat',
-  custom_reward: 'e.g. Gordian Weapon Coffer',
+// Auto-name suffix per reward type
+const REWARD_NAME_SUFFIX: Record<CollectionGoalType, string> = {
+  mount:         'mount farm',
+  weapon:        'weapon farm',
+  weapon_coffer: 'weapon coffer',
+  title:         'title clear',
+  clear_count:   'reclears',
+  token:         'token farm',
+  minion:        'minion farm',
+  orchestrion:   'orchestrion farm',
+  glam:          'glamour farm',
+  custom_reward: 'farm',
 };
 
+function buildAutoName(
+  contentType: CollectionContentType | null,
+  contentKey: string | null,
+  dutyLabel: string,
+  rewardType: CollectionGoalType | null,
+): string {
+  const suffix = rewardType ? REWARD_NAME_SUFFIX[rewardType] : '';
+  if (!suffix) return '';
+
+  if (contentType === 'ultimate') {
+    const duty = ULTIMATE_DUTIES.find((d) => d.key === contentKey);
+    const prefix = duty ? duty.shortName : (dutyLabel.trim() || 'Ultimate');
+    return `${prefix} ${suffix}`;
+  }
+
+  if (dutyLabel.trim()) return `${dutyLabel.trim()} ${suffix}`;
+
+  const ctLabel = CONTENT_TYPE_OPTIONS.find((c) => c.value === contentType)?.label ?? '';
+  return ctLabel ? `${ctLabel} ${suffix}` : suffix;
+}
+
+// ── Form state ─────────────────────────────────────────────────────────────
+
+type Step = 'content_type' | 'duty' | 'reward_type' | 'status' | 'name';
+
 interface FormState {
-  goalType: CollectionGoalType;
-  title: string;
+  contentType: CollectionContentType | null;
+  contentKey: string | null;   // slug for ultimate duties; null for free-text
+  dutyLabel: string;            // free-text duty name (non-ultimate or custom)
+  rewardType: CollectionGoalType | null;
   status: CollectionGoalStatus;
-  summary: string;
-  linkedDutyId: string;
+  title: string;
+  titleEdited: boolean;         // true once user manually edits name
+  note: string;
   targetCount: string;
   currentCount: string;
-  note: string;
 }
 
 const EMPTY_FORM: FormState = {
-  goalType: 'mount',
-  title: '',
-  status: 'wanted',
-  summary: '',
-  linkedDutyId: '',
-  targetCount: '',
-  currentCount: '',
-  note: '',
+  contentType: null, contentKey: null, dutyLabel: '',
+  rewardType: null, status: 'wanted',
+  title: '', titleEdited: false,
+  note: '', targetCount: '', currentCount: '',
 };
 
-export function CreateCollectionGoalModal({
-  isOpen,
-  onClose,
-  groupId,
-}: CreateCollectionGoalModalProps) {
+// ── Component ──────────────────────────────────────────────────────────────
+
+export function CreateCollectionGoalModal({ isOpen, onClose, groupId }: CreateCollectionGoalModalProps) {
   const { createGoal } = useCollectionGoalStore();
+  const [step, setStep] = useState<Step>('content_type');
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const patch = (update: Partial<FormState>) => setForm((prev) => ({ ...prev, ...update }));
+  const patch = (update: Partial<FormState>) =>
+    setForm((prev) => {
+      const next = { ...prev, ...update };
+      if (!next.titleEdited) {
+        next.title = buildAutoName(next.contentType, next.contentKey, next.dutyLabel, next.rewardType);
+      }
+      return next;
+    });
 
   const handleClose = () => {
+    setStep('content_type');
     setForm(EMPTY_FORM);
     setError(null);
     onClose();
   };
 
   const handleSave = async () => {
-    if (!form.title.trim()) { setError('Title is required.'); return; }
+    const title = form.title.trim();
+    if (!title) { setError('Title is required.'); return; }
+    if (!form.rewardType) { setError('Reward type is required.'); return; }
 
     const targetNum = form.targetCount.trim() ? parseInt(form.targetCount.trim(), 10) : null;
     const currentNum = form.currentCount.trim() ? parseInt(form.currentCount.trim(), 10) : null;
-
     if (form.targetCount.trim() && (isNaN(targetNum!) || targetNum! < 0)) {
       setError('Target count must be a non-negative whole number.'); return;
     }
@@ -97,14 +164,14 @@ export function CreateCollectionGoalModal({
     }
 
     const data: CollectionGoalCreate = {
-      goalType: form.goalType,
-      title: form.title.trim(),
+      goalType: form.rewardType,
+      contentType: form.contentType,
+      contentKey: form.contentKey || (form.dutyLabel.trim() || null),
+      title,
       status: form.status,
-      summary: form.summary.trim() || null,
-      linkedDutyId: form.linkedDutyId.trim() || null,
+      note: form.note.trim() || null,
       targetCount: targetNum,
       currentCount: currentNum,
-      note: form.note.trim() || null,
     };
 
     setIsSaving(true);
@@ -119,7 +186,39 @@ export function CreateCollectionGoalModal({
     }
   };
 
-  const showCountFields = form.goalType === 'token';
+  // ── Step navigation ──────────────────────────────────────────────────────
+
+  const goNext = () => {
+    if (step === 'content_type') {
+      // Skip duty step if content is "custom" with no duty needed
+      if (form.contentType === 'custom') { setStep('reward_type'); return; }
+      setStep('duty');
+      return;
+    }
+    if (step === 'duty')        { setStep('reward_type'); return; }
+    if (step === 'reward_type') { setStep('status'); return; }
+    if (step === 'status')      { setStep('name'); return; }
+  };
+
+  const goBack = () => {
+    if (step === 'name')        { setStep('status'); return; }
+    if (step === 'status')      { setStep('reward_type'); return; }
+    if (step === 'reward_type') {
+      if (form.contentType === 'custom') { setStep('content_type'); return; }
+      setStep('duty');
+      return;
+    }
+    if (step === 'duty')        { setStep('content_type'); return; }
+  };
+
+  // Progress indicator width
+  const totalSteps = form.contentType === 'custom' ? 4 : 5;
+  const effectiveIdx = step === 'content_type' ? 0
+    : step === 'duty' ? 1
+    : step === 'reward_type' ? (form.contentType === 'custom' ? 1 : 2)
+    : step === 'status' ? (form.contentType === 'custom' ? 2 : 3)
+    : (form.contentType === 'custom' ? 3 : 4);
+  const progressPct = Math.round((effectiveIdx / Math.max(totalSteps - 1, 1)) * 100);
 
   return (
     <Modal
@@ -133,102 +232,257 @@ export function CreateCollectionGoalModal({
       }
       size="lg"
     >
-      <div className="space-y-4">
-        {/* Type + Status row */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Type</label>
-            <Select
-              value={form.goalType}
-              onChange={(v) => patch({ goalType: v as CollectionGoalType, title: '' })}
-              options={GOAL_TYPE_OPTIONS}
-            />
-          </div>
-          <div className="space-y-1">
-            {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Status</label>
-            <Select
-              value={form.status}
-              onChange={(v) => patch({ status: v as CollectionGoalStatus })}
-              options={STATUS_OPTIONS}
-            />
-          </div>
-        </div>
-
-        {/* Title */}
-        <div className="space-y-1">
-          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">Title</label>
-          <Input
-            value={form.title}
-            onChange={(v) => patch({ title: v })}
-            placeholder={GOAL_TYPE_PLACEHOLDERS[form.goalType]}
-            autoFocus
+      <div className="space-y-5">
+        {/* Progress bar */}
+        <div className="h-1 w-full rounded-full bg-surface-elevated overflow-hidden">
+          <div
+            className="h-full bg-accent rounded-full transition-all duration-300"
+            style={{ width: `${step === 'name' ? 100 : progressPct}%` }}
           />
         </div>
 
-        {/* Summary (optional) */}
-        <div className="space-y-1">
-          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">
-            Summary
-            <span className="ml-1 font-normal text-text-muted">(optional)</span>
-          </label>
-          <Input
-            value={form.summary}
-            onChange={(v) => patch({ summary: v })}
-            placeholder="Short description shown on the overview card"
-          />
-        </div>
-
-        {/* Token/Totem count tracking */}
-        {showCountFields && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">
-                Target count
-                <span className="ml-1 font-normal text-text-muted">(optional)</span>
-              </label>
-              <Input
-                value={form.targetCount}
-                onChange={(v) => patch({ targetCount: v })}
-                placeholder="e.g. 99"
-              />
+        {/* ── Step 1: Content Type ─────────────────────────────────────── */}
+        {step === 'content_type' && (
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-text-secondary">What kind of content is this goal for?</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {CONTENT_TYPE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => patch({ contentType: opt.value, contentKey: null, dutyLabel: '' })}
+                  className={`flex flex-col items-start rounded-lg border px-3 py-2.5 text-left transition-colors ${
+                    form.contentType === opt.value
+                      ? 'border-accent/50 bg-accent/10 text-accent'
+                      : 'border-border-default bg-surface-elevated/50 text-text-secondary hover:border-accent/30 hover:text-text-primary'
+                  }`}
+                >
+                  <span className="text-sm font-semibold">{opt.label}</span>
+                  <span className="text-[11px] opacity-70 mt-0.5">{opt.description}</span>
+                </button>
+              ))}
             </div>
-            <div className="space-y-1">
-              {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">
-                Current count
-                <span className="ml-1 font-normal text-text-muted">(optional)</span>
-              </label>
-              <Input
-                value={form.currentCount}
-                onChange={(v) => patch({ currentCount: v })}
-                placeholder="e.g. 40"
-              />
+            <div className="flex justify-end">
+              <Button type="button" disabled={!form.contentType} onClick={goNext}>
+                Next
+              </Button>
             </div>
           </div>
         )}
 
-        {/* Note (optional) */}
-        <div className="space-y-1">
-          {/* design-system-ignore: no Label primitive in design system */}<label className="text-xs font-medium text-text-secondary">
-            Internal note
-            <span className="ml-1 font-normal text-text-muted">(optional, lead-only)</span>
-          </label>
-          <Input
-            value={form.note}
-            onChange={(v) => patch({ note: v })}
-            placeholder="e.g. Target week-1 drop, or save coffer for tank first"
-          />
-        </div>
+        {/* ── Step 2: Content / Duty ───────────────────────────────────── */}
+        {step === 'duty' && (
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-text-secondary">
+              {form.contentType === 'ultimate'
+                ? 'Which Ultimate duty?'
+                : 'Which specific duty or trial? (optional)'}
+            </p>
 
-        {error && <p className="text-sm text-status-error">{error}</p>}
+            {form.contentType === 'ultimate' ? (
+              <div className="space-y-1.5">
+                {ULTIMATE_DUTIES.map((duty) => (
+                  <button
+                    key={duty.key}
+                    type="button"
+                    onClick={() => patch({ contentKey: duty.key, dutyLabel: '' })}
+                    className={`w-full flex items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                      form.contentKey === duty.key
+                        ? 'border-accent/50 bg-accent/10 text-accent'
+                        : 'border-border-default bg-surface-elevated/50 text-text-secondary hover:border-accent/30 hover:text-text-primary'
+                    }`}
+                  >
+                    <span>{duty.label}</span>
+                    <span className="text-xs font-mono opacity-60 ml-2 flex-shrink-0">{duty.shortName}</span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => patch({ contentKey: 'custom', dutyLabel: '' })}
+                  className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                    form.contentKey === 'custom'
+                      ? 'border-accent/50 bg-accent/10 text-accent'
+                      : 'border-border-default bg-surface-elevated/50 text-text-secondary hover:border-accent/30 hover:text-text-primary'
+                  }`}
+                >
+                  Other / not listed
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
+                  Duty name
+                  <span className="ml-1 font-normal text-text-muted">(optional)</span>
+                </label>
+                <Input
+                  value={form.dutyLabel}
+                  onChange={(v) => patch({ dutyLabel: v, contentKey: null })}
+                  placeholder="e.g. Hephaiston (Extreme), P12S"
+                  autoFocus
+                />
+              </div>
+            )}
 
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={handleClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleSave} disabled={isSaving || !form.title.trim()}>
-            {isSaving ? 'Saving…' : 'Create Goal'}
-          </Button>
-        </div>
+            <div className="flex items-center justify-between">
+              {/* design-system-ignore: wizard step back navigation */}<button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+                <ChevronLeft className="w-3 h-3" /> Back
+              </button>
+              <Button type="button" onClick={goNext}>
+                {form.contentType === 'ultimate' && !form.contentKey ? 'Skip' : 'Next'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 3: Reward Type ──────────────────────────────────────── */}
+        {step === 'reward_type' && (
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-text-secondary">What are you tracking?</p>
+            <div className="grid grid-cols-2 gap-2">
+              {REWARD_TYPE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => patch({ rewardType: opt.value })}
+                  className={`flex flex-col items-start rounded-lg border px-3 py-2 text-left transition-colors ${
+                    form.rewardType === opt.value
+                      ? 'border-accent/50 bg-accent/10 text-accent'
+                      : 'border-border-default bg-surface-elevated/50 text-text-secondary hover:border-accent/30 hover:text-text-primary'
+                  }`}
+                >
+                  <span className="text-sm font-semibold">{opt.label}</span>
+                  <span className="text-[10px] opacity-70 mt-0.5">{opt.description}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-between">
+              {/* design-system-ignore: wizard step back navigation */}<button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+                <ChevronLeft className="w-3 h-3" /> Back
+              </button>
+              <Button type="button" disabled={!form.rewardType} onClick={goNext}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 4: Status ───────────────────────────────────────────── */}
+        {step === 'status' && (
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-text-secondary">Current status?</p>
+            <div className="space-y-1.5">
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => patch({ status: opt.value })}
+                  className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                    form.status === opt.value
+                      ? 'border-accent/50 bg-accent/10 text-accent'
+                      : 'border-border-default bg-surface-elevated/50 text-text-secondary hover:border-accent/30 hover:text-text-primary'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-between">
+              {/* design-system-ignore: wizard step back navigation */}<button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+                <ChevronLeft className="w-3 h-3" /> Back
+              </button>
+              <Button type="button" onClick={goNext}>
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 5: Name + confirm ───────────────────────────────────── */}
+        {step === 'name' && (
+          <div className="space-y-4">
+            <div className="space-y-1">
+              {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
+                Goal name
+                {!form.titleEdited && form.title && (
+                  <span className="ml-1.5 font-normal text-text-muted">auto-suggested</span>
+                )}
+              </label>
+              <Input
+                value={form.title}
+                onChange={(v) => setForm((prev) => ({ ...prev, title: v, titleEdited: v !== buildAutoName(prev.contentType, prev.contentKey, prev.dutyLabel, prev.rewardType) }))}
+                placeholder="e.g. FRU weapon farm"
+                autoFocus
+              />
+            </div>
+
+            {/* Token count fields */}
+            {form.rewardType === 'token' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
+                    Target count <span className="font-normal text-text-muted">(optional)</span>
+                  </label>
+                  <Input value={form.targetCount} onChange={(v) => patch({ targetCount: v })} placeholder="e.g. 99" />
+                </div>
+                <div className="space-y-1">
+                  {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
+                    Current count <span className="font-normal text-text-muted">(optional)</span>
+                  </label>
+                  <Input value={form.currentCount} onChange={(v) => patch({ currentCount: v })} placeholder="e.g. 40" />
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-1">
+              {/* design-system-ignore */}<label className="text-xs font-medium text-text-secondary">
+                Internal note <span className="font-normal text-text-muted">(optional, lead-only)</span>
+              </label>
+              <Input value={form.note} onChange={(v) => patch({ note: v })} placeholder="e.g. Prioritise tanks first" />
+            </div>
+
+            {/* Summary of selections */}
+            <div className="rounded-lg bg-surface-elevated/60 border border-border-subtle px-3 py-2 text-xs text-text-secondary space-y-0.5">
+              {form.contentType && (
+                <div>
+                  <span className="text-text-tertiary">Source: </span>
+                  {CONTENT_TYPE_OPTIONS.find((c) => c.value === form.contentType)?.label ?? form.contentType}
+                  {form.contentType === 'ultimate' && form.contentKey && form.contentKey !== 'custom' && (
+                    <span className="text-text-tertiary"> · {ULTIMATE_DUTIES.find((d) => d.key === form.contentKey)?.label}</span>
+                  )}
+                  {(form.contentType !== 'ultimate' && form.dutyLabel) && (
+                    <span className="text-text-tertiary"> · {form.dutyLabel}</span>
+                  )}
+                </div>
+              )}
+              {form.rewardType && (
+                <div>
+                  <span className="text-text-tertiary">Reward: </span>
+                  {REWARD_TYPE_OPTIONS.find((r) => r.value === form.rewardType)?.label ?? form.rewardType}
+                </div>
+              )}
+              <div>
+                <span className="text-text-tertiary">Status: </span>
+                {STATUS_OPTIONS.find((s) => s.value === form.status)?.label ?? form.status}
+              </div>
+            </div>
+
+            {error && <p className="text-sm text-status-error">{error}</p>}
+
+            <div className="flex items-center justify-between pt-1">
+              {/* design-system-ignore: wizard step back navigation */}<button type="button" onClick={goBack} className="flex items-center gap-1 text-xs text-text-tertiary hover:text-text-secondary transition-colors">
+                <ChevronLeft className="w-3 h-3" /> Back
+              </button>
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" onClick={handleClose} disabled={isSaving}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleSave} disabled={isSaving || !form.title.trim()}>
+                  {isSaving ? 'Saving…' : 'Create Goal'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   );

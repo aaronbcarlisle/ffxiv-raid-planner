@@ -50,6 +50,8 @@ class JoinRequestCreate(CamelModel):
     include_exact_availability: bool = Field(default=False)
     readiness_at_apply: str | None = Field(default=None)
     profile_share_code_at_apply: str | None = Field(default=None, max_length=8)
+    # Goal alignment snapshot (summary counts at apply time, no private goal details)
+    goal_alignment_snapshot: dict | None = Field(default=None)
     # Character identity snapshot
     character_name_at_apply: str | None = Field(default=None, max_length=100)
     character_world_at_apply: str | None = Field(default=None, max_length=50)
@@ -141,6 +143,7 @@ class JoinRequestResponse(CamelModel):
     availability_summary: dict | None = None
     readiness_at_apply: str | None = None
     profile_share_code_at_apply: str | None = None
+    goal_alignment_snapshot: dict | None = None
     profile_visibility_at_apply: str | None = None
     profile_share_enabled_at_apply: bool | None = None
     # Character identity snapshot
