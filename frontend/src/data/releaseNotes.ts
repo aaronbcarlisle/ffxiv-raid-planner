@@ -58,10 +58,12 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
-  // ── Feature branch: Solo Player Hub & Join Requests ─────────────────────
+  // ── Feature branch: Multi-BiS persistence ───────────────────────────────
   {
     version: 'Unreleased',
     date: '2026-06-14T00:00:00Z',
+    title: 'Multi-BiS: persistence, privacy, compare UI',
+    internal: true,
     items: [
       {
         category: 'improvement',
@@ -74,96 +76,96 @@ export const RELEASES: Release[] = [
         title: 'Shared Multi-BiS target system',
         description:
           'BiS target sets are now shared across Player Hub and roster views via a unified backend table. Each player/job can hold multiple named targets (Savage, Farm, Speed, etc.); one is marked active at a time. A new BiS Target Manager modal with tabs for saved targets, preset picker (multi-select, job-aware), URL paste, and manual entry replaces both the old Player Hub modal and the localStorage-only roster panel.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
         title: 'Activity feed uses cleaner labels',
         description:
           'Anonymous totem updates now read "A member updated collection progress" instead of naming the currency, manual totem updates read "updated … progress" instead of "currency to N", and the plugin aggregate reads "Shared mount data updated" instead of "synced".',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
         title: 'Sync tab restructured into five focused sections',
         description:
           'The Player Hub Sync tab now has five clearly separated sections: Sync Status (plugin badge + character identity), Sync Sources (priority chain Plugin → Lodestone → Manual with Lodestone fallback explanation), Sync Coverage (compact job/gear counts and source distribution), Sync Log (recent sync entries derived from gear snapshot data), and Privacy (plain-language explanation of activity anonymization). The redundant full job list is removed — Jobs & Gear remains the editing surface.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
         title: 'Jobs & Gear adds "Manage Sync" CTA',
         description:
           '"Manage Sync" button in the Jobs & Gear header navigates directly to the Sync tab, making the connection between the two surfaces discoverable without requiring users to find the tab manually.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
         title: 'Sync Coverage clarifies that readiness is not managed by sync',
         description:
           'The Sync Coverage module now includes "Readiness is managed in Jobs & Gear" to prevent confusion between gear data being synced and the readiness flag that players set manually.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
         title: 'V2-1: BiS item import deferred — schema is ready',
         description:
           'items_json and item_level columns are present on bis_target_sets. Full Etro/XIVGear item-level import flow (fetching gear items and populating items_json) is the next milestone; the UI shows the external URL but does not yet resolve item data automatically.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
         title: 'V2-2: Activity log persistence deferred',
         description:
           'The current Recent Activity feed derives rows from existing data at read time. A dedicated persisted activity_log table (with pagination and archiving) is deferred — the derived model is sufficient for the current feature set.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
         title: 'V2-3: Notification read/unread state not yet persisted',
         description:
           'Notification badges reset on page reload. Per-user read/unread state requires a notifications table join; deferred to a follow-up milestone.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'fix',
         title: 'V2-4: Webhook failure persistence — failed deliveries silently dropped',
         description:
           'Discord webhook deliveries that fail after retries are currently logged and discarded. A webhook_delivery_log table to track failures, enable retries, and surface delivery status in the UI is deferred.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'improvement',
         title: 'V2-5: Activity privacy settings not yet user-configurable',
         description:
           'The anonymous/named split for activity feed rows is currently hardcoded by data source (plugin → anonymous, manual → named). A per-user privacy preference UI is deferred.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'fix',
         title: 'V2-6: Rate limiter test isolation fixed',
         description:
           'The shared in-memory rate limiter was causing order-dependent flakiness in the test suite. Fixed with a three-layer autouse fixture in conftest.py: limiter.enabled=False, limiter.reset(), and patch on limiter.hit. Tests that need real rate-limit behavior opt in with @pytest.mark.rate_limit.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
       {
         category: 'fix',
         title: 'V2-7: pytest-mock added to dev dependencies',
         description:
           'test_httponly_cookies.py requires the mocker fixture from pytest-mock, which was listed in requirements-dev.txt but not installed in the venv. Fixed by running pip install pytest-mock in the backend venv.',
-        pr: 4,
-        prTitle: 'feat: shared multi-BiS targets, solo player hub, collection goals, CI hardening',
+        pr: 132,
+        prTitle: 'feat(bis): Multi-BiS persistence, privacy, compare UI, roster migration',
       },
     ],
     internal: true,
