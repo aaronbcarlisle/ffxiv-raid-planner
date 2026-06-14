@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Check, ExternalLink, Link2, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Check, ExternalLink, Globe, Link2, Lock, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Input } from '../ui/Input';
@@ -7,6 +7,7 @@ import { Select } from '../ui/Select';
 import { Label } from '../ui/Label';
 import { Badge } from '../primitives/Badge';
 import { Checkbox } from '../ui/Checkbox';
+import { Toggle } from '../ui/Toggle';
 import { toast } from '../../stores/toastStore';
 import {
   useSharedBisStore,
@@ -51,10 +52,11 @@ interface AddForm {
   externalUrl: string;
   patch: string;
   notes: string;
+  isPublic: boolean;
 }
 
 const EMPTY_FORM: AddForm = {
-  name: '', purpose: 'savage', sourceType: 'manual', externalUrl: '', patch: '', notes: '',
+  name: '', purpose: 'savage', sourceType: 'manual', externalUrl: '', patch: '', notes: '', isPublic: false,
 };
 
 type TabId = 'targets' | 'presets' | 'link' | 'manual';
@@ -212,6 +214,7 @@ export function BiSTargetManagerModal({
         importStatus: 'linked_only',
         patch: manualForm.patch.trim() || undefined,
         notes: manualForm.notes.trim() || undefined,
+        isPublic: manualForm.isPublic,
       });
       setManualForm(EMPTY_FORM);
       toast.success('BiS target added');
@@ -234,6 +237,7 @@ export function BiSTargetManagerModal({
         externalUrl: editForm.externalUrl.trim() || undefined,
         patch: editForm.patch.trim() || undefined,
         notes: editForm.notes.trim() || undefined,
+        isPublic: editForm.isPublic,
       });
       setEditingId(null);
       toast.success('BiS target updated');
@@ -286,6 +290,7 @@ export function BiSTargetManagerModal({
       externalUrl: target.externalUrl ?? '',
       patch: target.patch ?? '',
       notes: target.notes ?? '',
+      isPublic: target.isPublic ?? false,
     });
   };
 
@@ -351,6 +356,7 @@ export function BiSTargetManagerModal({
                     onCancel={() => setEditingId(null)}
                     saving={saving}
                     submitLabel="Save"
+                    showPublicToggle={ownerType === 'roster_member_job'}
                   />
                 ) : (
                   <div className="flex min-w-0 items-start justify-between gap-2">
@@ -370,6 +376,11 @@ export function BiSTargetManagerModal({
                         </span>
                         {target.patch && (
                           <span className="text-xs text-text-tertiary">Patch {target.patch}</span>
+                        )}
+                        {ownerType === 'roster_member_job' && (
+                          target.isPublic
+                            ? <span title="Visible to all members"><Globe className="h-3 w-3 text-status-success" /></span>
+                            : <span title="Only owner and leads can see"><Lock className="h-3 w-3 text-text-tertiary" /></span>
                         )}
                         {target.importStatus === 'imported' && (
                           <span className="text-xs text-status-success">
@@ -566,6 +577,7 @@ export function BiSTargetManagerModal({
             onCancel={() => setManualForm(EMPTY_FORM)}
             saving={saving}
             submitLabel="Add"
+            showPublicToggle={ownerType === 'roster_member_job'}
           />
         )}
       </div>
@@ -580,9 +592,10 @@ interface TargetFormProps {
   onCancel: () => void;
   saving: boolean;
   submitLabel: string;
+  showPublicToggle?: boolean;
 }
 
-function TargetForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }: TargetFormProps) {
+function TargetForm({ form, onChange, onSubmit, onCancel, saving, submitLabel, showPublicToggle }: TargetFormProps) {
   return (
     <div className="space-y-3">
       <div>
@@ -649,6 +662,15 @@ function TargetForm({ form, onChange, onSubmit, onCancel, saving, submitLabel }:
           data-testid="bis-notes-input"
         />
       </div>
+      {showPublicToggle && (
+        <Toggle
+          checked={form.isPublic}
+          onChange={(v) => onChange({ ...form, isPublic: v })}
+          label="Visible to all members"
+          hint="When off, only the owner and leads can see this target."
+          size="sm"
+        />
+      )}
       <div className="flex gap-2">
         <Button size="sm" onClick={onSubmit} disabled={!form.name.trim() || saving}>
           {submitLabel}

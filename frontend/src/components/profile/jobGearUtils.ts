@@ -1,4 +1,27 @@
 import type { GearSnapshot, PlayerJobProfile } from '../../stores/playerProfileStore';
+import type { SharedBiSTargetSet } from '../../types';
+
+export type BiSCompareStatus = 'on_target' | 'missing_pieces' | 'linked_only' | 'no_data';
+
+export function getBiSCompareStatus(
+  snapshot: GearSnapshot | null,
+  activeBisTarget: SharedBiSTargetSet | null,
+): BiSCompareStatus {
+  if (!activeBisTarget) return 'no_data';
+  if (activeBisTarget.importStatus !== 'imported' || !activeBisTarget.itemsJson) return 'linked_only';
+  if (!snapshot?.gear?.length) return 'no_data';
+
+  const bisItems = activeBisTarget.itemsJson as Record<string, { itemLevel?: number }>;
+  let allMet = true;
+  for (const [slot, bisSlot] of Object.entries(bisItems)) {
+    const bisIlv = bisSlot?.itemLevel;
+    if (!bisIlv) continue;
+    const currentSlot = snapshot.gear.find((g) => g.slot === slot);
+    const currentIlv = currentSlot?.equippedItemLevel ?? currentSlot?.itemLevel ?? 0;
+    if (currentIlv < bisIlv) { allMet = false; break; }
+  }
+  return allMet ? 'on_target' : 'missing_pieces';
+}
 
 function isSameJob(left: string | null | undefined, right: string | null | undefined): boolean {
   return Boolean(left && right && left.toUpperCase() === right.toUpperCase());

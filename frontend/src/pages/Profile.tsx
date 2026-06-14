@@ -25,6 +25,7 @@ import { ProfileBottomNav } from '../components/profile/ProfileBottomNav';
 import { PlayerAvailabilityTab } from '../components/profile/PlayerAvailabilityTab';
 import { usePlayerProfileStore } from '../stores/playerProfileStore';
 import type { PlayerJobProfile } from '../stores/playerProfileStore';
+import { useSharedBisStore } from '../stores/sharedBisStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useAuthStore } from '../stores/authStore';
 import { useDevice } from '../hooks/useDevice';
@@ -133,6 +134,7 @@ export default function Profile() {
     fetchGearSnapshots,
   } = usePlayerProfileStore();
   const { groups, fetchGroups } = useStaticGroupStore();
+  const { fetchTargets } = useSharedBisStore();
   const { isSmallScreen } = useDevice();
   const [activeTab, setActiveTab] = useState<ProfileTab>(() => parseProfileTab(location.search));
   const linkModal = useModal();
@@ -224,6 +226,15 @@ export default function Profile() {
       fetchGearSnapshots(character.id);
     }
   }, [characterIds, fetchGearSnapshots]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Seed sharedBisStore for every job profile so cards show live data immediately
+  const jobProfileIds = profile?.jobProfiles.map((j) => j.id).join(',') ?? '';
+  useEffect(() => {
+    if (!profile?.jobProfiles.length) return;
+    for (const jp of profile.jobProfiles) {
+      fetchTargets('player_job_profile', jp.id);
+    }
+  }, [jobProfileIds, fetchTargets]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!authInitialized || authLoading) {
     return (
@@ -438,7 +449,10 @@ export default function Profile() {
         <ManageBiSModal
           jobProfileId={managingBisJobId.id}
           job={managingBisJobId.job}
-          onClose={() => setManagingBisJobId(null)}
+          onClose={() => {
+            fetchTargets('player_job_profile', managingBisJobId.id);
+            setManagingBisJobId(null);
+          }}
         />
       )}
 

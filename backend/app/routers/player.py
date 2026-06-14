@@ -174,6 +174,7 @@ def _profile_to_response(profile: PlayerProfile) -> PlayerProfileResponse:
                     external_url=b.external_url,
                     import_status=b.import_status,
                     is_active=b.is_active,
+                    is_public=b.is_public,
                     patch=b.patch,
                     item_level=b.item_level,
                     notes=b.notes,

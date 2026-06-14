@@ -133,6 +133,7 @@ class PlayerBisTargetSetResponse(CamelModel):
     external_url: str | None = None
     import_status: str
     is_active: bool
+    is_public: bool = False
     patch: str | None = None
     item_level: int | None = None
     notes: str | None = None

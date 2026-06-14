@@ -30,7 +30,10 @@ VALID_OWNER_TYPES = frozenset({
 })
 
 VALID_BIS_PURPOSES = frozenset({
+    # Legacy short-form (kept for compatibility)
     "savage", "ultimate", "prog", "farm", "speed", "comfort", "custom",
+    # Expanded purpose vocabulary
+    "savage_prog", "savage_reclear", "week1", "alt_job", "parse",
 })
 
 VALID_BIS_SOURCE_TYPES = frozenset({
@@ -78,6 +81,7 @@ class BiSTargetSet(Base):
     external_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     import_status: Mapped[str] = mapped_column(String(20), nullable=False, default="linked_only")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     patch: Mapped[str | None] = mapped_column(String(20), nullable=True)
     item_level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

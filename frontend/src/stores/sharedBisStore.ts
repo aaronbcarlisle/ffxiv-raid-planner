@@ -137,17 +137,24 @@ export function useSharedBisActiveTarget(
 
 export const PURPOSE_OPTIONS: { value: BisTargetPurpose; label: string }[] = [
   { value: 'savage', label: 'Savage prog/clear' },
+  { value: 'savage_prog', label: 'Savage prog' },
+  { value: 'savage_reclear', label: 'Savage reclear' },
+  { value: 'week1', label: 'Week 1 BiS' },
   { value: 'ultimate', label: 'Ultimate prog/clear' },
   { value: 'prog', label: 'General prog' },
   { value: 'farm', label: 'Farm set' },
-  { value: 'speed', label: 'Speed kill / parse' },
+  { value: 'speed', label: 'Speed kill' },
+  { value: 'parse', label: 'Parse set' },
   { value: 'comfort', label: 'Comfort / casual' },
+  { value: 'alt_job', label: 'Alt job' },
   { value: 'custom', label: 'Custom' },
 ];
 
 export const PURPOSE_LABELS: Record<string, string> = {
   savage: 'Savage', ultimate: 'Ultimate', prog: 'Prog',
   farm: 'Farm', speed: 'Speed', comfort: 'Comfort', custom: 'Custom',
+  savage_prog: 'Savage Prog', savage_reclear: 'Reclear',
+  week1: 'Week 1', alt_job: 'Alt Job', parse: 'Parse',
 };
 
 export const SOURCE_LABELS: Record<string, string> = {

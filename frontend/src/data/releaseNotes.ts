@@ -61,8 +61,14 @@ export const RELEASES: Release[] = [
   // ── Feature branch: Solo Player Hub & Join Requests ─────────────────────
   {
     version: 'Unreleased',
-    date: '2026-06-12T00:00:00Z',
+    date: '2026-06-14T00:00:00Z',
     items: [
+      {
+        category: 'improvement',
+        title: 'Multi-BiS: persistence, privacy, and expanded purposes',
+        description:
+          'BiS targets now persist to the backend exclusively — the old localStorage-only roster panel is retired. Targets support a new "visible to members" toggle (private by default in roster context, enforced server-side). Purpose options expanded to include Savage Prog, Savage Reclear, Week 1, Alt Job, and Parse. Job cards show a live compare status (On target / Missing pieces) when gear and an imported BiS target are both present, reading from the live store rather than stale embedded profile data.',
+      },
       {
         category: 'feature',
         title: 'Shared Multi-BiS target system',

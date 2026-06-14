@@ -957,7 +957,9 @@ export interface BiSPresetsResponse {
 // ==================== Multi-BiS V1 Types ====================
 
 export type BisTargetSource = 'manual' | 'etro' | 'xivgear' | 'ariyala' | 'external';
-export type BisTargetPurpose = 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom';
+export type BisTargetPurpose =
+  | 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom'
+  | 'savage_prog' | 'savage_reclear' | 'week1' | 'alt_job' | 'parse';
 
 // ==================== Shared BiS Target Types (V2 — backend-persisted) ====================
 
@@ -980,6 +982,7 @@ export interface SharedBiSTargetSet {
   externalUrl?: string | null;
   importStatus: BiSImportStatus;
   isActive: boolean;
+  isPublic: boolean;
   patch?: string | null;
   itemLevel?: number | null;
   notes?: string | null;
@@ -998,6 +1001,7 @@ export interface SharedBiSTargetCreate {
   sourceType?: BiSSourceType;
   externalUrl?: string | null;
   importStatus?: BiSImportStatus;
+  isPublic?: boolean;
   patch?: string | null;
   itemLevel?: number | null;
   notes?: string | null;
@@ -1009,6 +1013,7 @@ export interface SharedBiSTargetUpdate {
   sourceType?: BiSSourceType;
   externalUrl?: string | null;
   importStatus?: BiSImportStatus;
+  isPublic?: boolean;
   patch?: string | null;
   itemLevel?: number | null;
   notes?: string | null;

@@ -1230,7 +1230,7 @@ function RecentActivityModule({
         };
       });
     }
-    return derivedItems;
+    return derivedItems.map((item) => ({ ...item, actorUserId: item.actorUserId ?? null }));
   }, [apiItems, derivedItems, currentUser?.id, currentUser?.activityDisplayMode]);
 
   function activityIcon(icon: StaticActivityItem['icon']) {

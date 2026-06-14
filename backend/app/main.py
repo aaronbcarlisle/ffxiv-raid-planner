@@ -38,7 +38,6 @@ from .routers import (
     loot_tracking_router,
     mount_farms_router,
     notifications_router,
-    player_bis_targets_router,
     player_router,
     plugin_player_router,
     schedule_router,
@@ -171,7 +170,6 @@ app.include_router(lodestone_router)
 app.include_router(loot_tracking_router)
 app.include_router(mount_farms_router)
 app.include_router(notifications_router)
-app.include_router(player_bis_targets_router)
 app.include_router(player_router)
 app.include_router(plugin_player_router)
 app.include_router(schedule_router)

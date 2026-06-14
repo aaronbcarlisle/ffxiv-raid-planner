@@ -44,6 +44,7 @@ function makeSharedTarget(overrides: Partial<SharedBiSTargetSet> = {}): SharedBi
     externalUrl: 'https://xivgear.app/share/test',
     importStatus: 'linked_only',
     isActive: false,
+    isPublic: false,
     patch: null,
     itemLevel: null,
     notes: null,
