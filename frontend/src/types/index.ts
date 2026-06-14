@@ -877,6 +877,24 @@ export interface JoinRequest {
     missing: number;
     unknown: number;
   } | null;
+  // Fit snapshot — public-only data frozen at submission time
+  fitSnapshot?: {
+    job: string | null;
+    altJobs: string[];
+    gearSummary: string | null;
+    selectedBisTargetName: string | null;
+    goalAlignment: {
+      aligned: number;
+      partial: number;
+      conflicts: number;
+      missing: number;
+      unknown: number;
+    } | null;
+    scheduleOverlap: string[] | null;
+    languages: string[];
+    commsPreference: string | null;
+    snapshotAt: string | null;
+  } | null;
   // Roster onboarding
   rosterPlayerId?: string;
   createdAt: string;

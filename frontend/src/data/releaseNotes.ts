@@ -95,6 +95,29 @@ export const RELEASES: Release[] = [
       },
     ],
   },
+  // ── Application Review 2.0 ───────────────────────────────────────────────
+  {
+    version: 'Unreleased',
+    date: '2026-06-14T00:00:00Z',
+    title: 'Application Review 2.0',
+    internal: true,
+    items: [
+      {
+        category: 'improvement',
+        title: 'Application review modal reorganized into clear sections',
+        description: 'The join request review modal now shows applicant snapshot, job fit, gear/BiS fit (public only), goal alignment counts, schedule overlap, and comms fit as distinct sections.',
+        pr: 136,
+        prTitle: 'feat(recruitment): Application Review 2.0',
+      },
+      {
+        category: 'improvement',
+        title: 'Applications snapshot fit data at submission time',
+        description: 'When a player submits a join request, their public goals, public BiS target name, gear summary, and schedule overlap are snapshotted so leads see stable data even after profile changes.',
+        pr: 136,
+        prTitle: 'feat(recruitment): Application Review 2.0',
+      },
+    ],
+  },
   // ── Settings IA second pass ──────────────────────────────────────────────
   {
     version: 'Unreleased',

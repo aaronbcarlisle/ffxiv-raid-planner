@@ -812,6 +812,62 @@ function ApplicationPreviewModal({
           </p>
         </div>
 
+        {/* AR 2.0 — fit snapshot disclosure: what the lead will see */}
+        <div
+          className="px-4 py-3 space-y-1.5"
+          style={{ borderTop: '1px solid rgba(184,147,58,0.15)', background: 'rgba(240,230,206,0.18)' }}
+        >
+          <p className="text-[9px] font-bold uppercase tracking-[0.25em]" style={{ color: '#8b6914' }}>
+            ✦ What the lead will see
+          </p>
+          <ul className="space-y-1">
+            <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
+              <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
+              <span>
+                <span style={{ fontWeight: 600 }}>Job:</span>{' '}
+                {jobProfile ? jobProfile.job.toUpperCase() : 'None selected'}
+                {includedAlts.length > 0 && ` · also ${includedAlts.map((a) => a.job.toUpperCase()).join(', ')}`}
+              </span>
+            </li>
+            <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
+              <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
+              <span>
+                <span style={{ fontWeight: 600 }}>Gear:</span>{' '}
+                {snapshot ? `iLv ${snapshot.avgItemLevel} avg` : 'No gear snapshot'}
+              </span>
+            </li>
+            <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
+              <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
+              <span>
+                <span style={{ fontWeight: 600 }}>Goals:</span>{' '}
+                Aligned/conflict counts from your{' '}
+                <span style={{ fontWeight: 600 }}>public</span> goals only.
+              </span>
+            </li>
+            <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
+              <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
+              <span>
+                <span style={{ fontWeight: 600 }}>BiS:</span>{' '}
+                Name of your active{' '}
+                <span style={{ fontWeight: 600 }}>public</span>{' '}
+                BiS target for this job (e.g. "Savage BiS"), or Private if not set.
+              </span>
+            </li>
+            <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
+              <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
+              <span>
+                <span style={{ fontWeight: 600 }}>Schedule:</span>{' '}
+                {availabilitySummary
+                  ? `${availabilitySummary.dayLabels?.join(', ') ?? 'configured days'} from your Player Hub availability.`
+                  : 'Not included.'}
+              </span>
+            </li>
+          </ul>
+          <p className="text-[10px] mt-1" style={{ color: '#8c7a60' }}>
+            Private goals and private BiS targets are never shared.
+          </p>
+        </div>
+
         {/* Gold bottom rule */}
         <div style={{ height: 2, background: 'linear-gradient(90deg, #8b6914, #b8933a, #d4aa4a, #b8933a, #8b6914)', flexShrink: 0 }} />
       </div>
