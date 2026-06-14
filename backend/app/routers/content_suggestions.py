@@ -355,7 +355,7 @@ async def upsert_vote(
             notification_type="suggestion_vote",
             title=f"{voter_name} voted on your suggestion",
             body=f'Voted "{vote_label}" on "{suggestion.title}"',
-            href=f"/group/{group.share_code}?tab=home",
+            href=f"/group/{group.share_code}?tab=goals",
         )
 
     await session.commit()
