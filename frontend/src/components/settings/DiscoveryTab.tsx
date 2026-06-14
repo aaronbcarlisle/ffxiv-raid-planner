@@ -208,7 +208,7 @@ function SectionBlock({
 }: {
   id: SectionId;
   title: string;
-  innerRef: React.RefObject<HTMLDivElement>;
+  innerRef: React.RefObject<HTMLDivElement | null>;
   children: React.ReactNode;
 }) {
   return (

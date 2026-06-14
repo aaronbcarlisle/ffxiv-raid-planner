@@ -1058,6 +1058,15 @@ const GOAL_STATUS_LABELS: Record<string, string> = {
   complete: 'Complete',
 };
 
+function SubLabel({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between px-3 py-1.5 bg-surface-elevated/60 border-b border-border-subtle">
+      <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">{children}</span>
+      {aside && <span className="text-[10px] text-text-muted">{aside}</span>}
+    </div>
+  );
+}
+
 /**
  * Goals & Farms — unified Overview module combining Official Objectives,
  * Active Farms (Collection Goals), and Member Interest (Content Suggestions).
@@ -1105,14 +1114,6 @@ function GoalsFarmsModule({
 
   const openSuggestions = suggestions.filter((s) => s.status === 'open');
   const topSuggestions = openSuggestions.slice(0, 3);
-
-  // Sub-section pill label
-  const SubLabel = ({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) => (
-    <div className="flex items-center justify-between px-3 py-1.5 bg-surface-elevated/60 border-b border-border-subtle">
-      <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wide">{children}</span>
-      {aside && <span className="text-[10px] text-text-muted">{aside}</span>}
-    </div>
-  );
 
   return (
     <div>
