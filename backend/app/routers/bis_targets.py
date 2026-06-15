@@ -450,14 +450,14 @@ async def import_bis_target(
 
     if not b.external_url:
         raise HTTPException(status_code=400, detail="No external URL configured for this target")
-    if b.source_type not in ("xivgear", "etro"):
+    if b.source_type not in ("xivgear", "etro", "preset"):
         raise HTTPException(
             status_code=400,
             detail=f"Import not supported for source_type '{b.source_type}'",
         )
 
     try:
-        if b.source_type == "xivgear":
+        if b.source_type in ("xivgear", "preset"):
             slots = await _fetch_slots_xivgear(b.external_url)
         else:
             slots = await _fetch_slots_etro(b.external_url)

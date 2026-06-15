@@ -24,6 +24,7 @@ from ..schemas.player import (
     PlayerBisTargetSetResponse as BiSTargetSetResponse,
     PlayerBisTargetSetUpdate as BiSTargetSetUpdate,
 )
+from .bis_targets import _fetch_slots_xivgear, _fetch_slots_etro
 
 router = APIRouter(prefix="/api/player/jobs", tags=["player-bis"])
 logger = get_logger(__name__)
@@ -245,3 +246,62 @@ async def set_bis_target_active(
     await session.commit()
     await session.refresh(active_target)
     return _to_response(active_target)
+
+
+@router.post(
+    "/{job_profile_id}/bis-targets/{target_id}/import",
+    response_model=BiSTargetSetResponse,
+)
+async def import_bis_target(
+    job_profile_id: str,
+    target_id: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """Fetch gear data from external_url and populate items_json + item_level."""
+    await _get_own_job_profile(session, user, job_profile_id)
+    result = await session.execute(
+        select(BiSTargetSet).where(
+            BiSTargetSet.id == target_id,
+            BiSTargetSet.job_profile_id == job_profile_id,
+        )
+    )
+    b = result.scalar_one_or_none()
+    if not b:
+        raise HTTPException(status_code=404, detail="BiS target not found")
+
+    if not b.external_url:
+        raise HTTPException(status_code=400, detail="No external URL configured for this target")
+    if b.source_type not in ("xivgear", "etro", "preset"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Import not supported for source_type '{b.source_type}'",
+        )
+
+    try:
+        if b.source_type in ("xivgear", "preset"):
+            slots = await _fetch_slots_xivgear(b.external_url)
+        else:
+            slots = await _fetch_slots_etro(b.external_url)
+
+        item_levels = [s["itemLevel"] for s in slots if s.get("itemLevel")]
+        max_ilvl = max(item_levels) if item_levels else None
+        b.items_json = {"slots": slots}
+        if max_ilvl:
+            b.item_level = max_ilvl
+        b.import_status = "imported"
+    except HTTPException:
+        b.import_status = "import_failed"
+        b.updated_at = datetime.now(timezone.utc).isoformat()
+        await session.commit()
+        await session.refresh(b)
+        raise
+    except Exception as e:
+        logger.warning("bis_import_failed", target_id=target_id, error=str(e))
+        b.import_status = "import_failed"
+
+    b.updated_at = datetime.now(timezone.utc).isoformat()
+    await session.commit()
+    await session.refresh(b)
+    logger.info("bis_import_complete", target_id=target_id, status=b.import_status)
+    return _to_response(b)
