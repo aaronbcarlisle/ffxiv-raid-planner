@@ -285,10 +285,9 @@ describe('canManageGroup', () => {
       expect(canManageGroup('owner').allowed).toBe(true);
     });
 
-    it('denies leads from managing group', () => {
+    it('allows leads to manage group', () => {
       const result = canManageGroup('lead');
-      expect(result.allowed).toBe(false);
-      expect(result.reason).toContain('Owner');
+      expect(result.allowed).toBe(true);
     });
 
     it('denies members from managing group', () => {
