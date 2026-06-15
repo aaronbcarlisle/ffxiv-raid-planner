@@ -1355,6 +1355,8 @@ export interface ScheduleSettings {
   calendarEnabled: boolean;
   calendarUrl?: string | null;
   calendarTokenCreatedAt?: string | null;
+  webhookLastDeliveryStatus?: number | null;
+  webhookLastDeliveryError?: string | null;
   canManage: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;

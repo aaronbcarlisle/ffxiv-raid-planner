@@ -61,15 +61,41 @@ export const RELEASES: Release[] = [
   {
     version: 'Unreleased',
     date: '2026-06-15T00:00:00Z',
-    title: 'Objective Command Center layout fix',
+    title: 'Follow-up fixes: notification sync, BiS presets, webhook delivery, activity privacy',
     internal: true,
-    items: [{
-      category: 'fix',
-      title: 'Objectives moved to compact right-rail panel',
-      description: 'The Objective Command Center no longer renders as large horizontal cards in the center column. Official Objectives, Active Farms, and Member Interest are now shown as compact rows in the right-side Goals & Objectives panel, keeping the Overview to one screen at 1080p.',
-      pr: 137,
-      prTitle: 'fix(overview): compact Goals & Objectives right-rail, remove center-column objective feed',
-    }],
+    items: [
+      {
+        category: 'fix',
+        title: 'Objectives panel moved to compact right-rail layout',
+        description: 'The Objective Command Center no longer renders as large horizontal cards in the center column. Official Objectives, Active Farms, and Member Interest are now shown as compact rows in the right-side Goals & Objectives panel, keeping the Overview to one screen at 1080p.',
+        pr: 137,
+        prTitle: 'fix(overview): compact Goals & Objectives right-rail, remove center-column objective feed',
+      },
+      {
+        category: 'fix',
+        title: 'Notification badge and panel count stay in sync',
+        description: 'The notification badge now reflects both server notifications and unread release notes, so the displayed count always matches what you see when the panel opens. The panel also fetches the latest server notifications each time it is opened, preventing stale counts mid-session.',
+        pr: 133,
+      },
+      {
+        category: 'fix',
+        title: 'Anonymous activity preference now applies to activity log entries',
+        description: 'Enabling "Anonymous Activity" in the user menu now correctly anonymizes your name in the static activity feed going forward. Previously the preference was stored but not applied when writing new entries, so your name would still appear regardless of the setting.',
+        pr: 133,
+      },
+      {
+        category: 'fix',
+        title: 'Discord webhook failures now alert leads and surface delivery status inline',
+        description: 'When a scheduled session or reminder fails to post to Discord, all group leads and the owner receive a notification with the HTTP error details. The Integrations settings panel now also shows the status code and error text from the most recent failed delivery beneath the webhook status chip.',
+        pr: 133,
+      },
+      {
+        category: 'fix',
+        title: 'BiS presets automatically fetch gear data when added',
+        description: 'Adding a preset from the "Add Preset" tab now immediately retrieves full gear slot data (item names, item level, materia) from XIVGear after the targets are created. The preset\'s purpose is also derived from its category (Savage, Ultimate, etc.) rather than always defaulting to Savage.',
+        pr: 133,
+      },
+    ],
   },
   // ── v1.24.0 ──────────────────────────────────────────────────────────────
   {

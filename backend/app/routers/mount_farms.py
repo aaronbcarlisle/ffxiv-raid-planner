@@ -164,7 +164,7 @@ async def _write_activity_log(
         "plugin_sync": "Shared mount data updated",
     }
     label = label_map.get(event_type, f"{name} updated progress")
-    actor_display = "system" if event_type == "plugin_sync" else "named"
+    actor_display = "system" if event_type == "plugin_sync" else (getattr(actor_user, "activity_display_mode", None) or "named")
     actor_user_id = None if event_type == "plugin_sync" else actor_user.id
     actor_display_name = None if event_type == "plugin_sync" else (actor_user.display_name or actor_user.discord_username)
     db.add(

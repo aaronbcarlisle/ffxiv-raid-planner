@@ -236,6 +236,8 @@ class ScheduleSettingsResponse(CamelModel):
     calendar_enabled: bool = False
     calendar_url: str | None = None
     calendar_token_created_at: str | None = None
+    webhook_last_delivery_status: int | None = None
+    webhook_last_delivery_error: str | None = None
     can_manage: bool = False
     created_at: str | None = None
     updated_at: str | None = None
