@@ -213,6 +213,7 @@ def _request_to_response(
         readiness_at_apply=req.readiness_at_apply,
         profile_share_code_at_apply=req.profile_share_code_at_apply,
         goal_alignment_snapshot=getattr(req, 'goal_alignment_snapshot', None),
+        fit_snapshot=getattr(req, 'fit_snapshot', None),
         profile_visibility_at_apply=req.profile_visibility_at_apply,
         profile_share_enabled_at_apply=req.profile_share_enabled_at_apply,
         character_name_at_apply=req.character_name_at_apply,
@@ -424,6 +425,8 @@ async def create_join_request(
 
     # Snapshot goal alignment counts at apply time (no private goal details stored)
     goal_alignment_snapshot: dict | None = None
+    # Fit snapshot — public-only data frozen at submission time
+    fit_snapshot: dict | None = None
     if data.player_profile_id:
         try:
             from ..models.player_goal import PlayerGoal
@@ -459,6 +462,76 @@ async def create_join_request(
         except Exception:
             pass  # Snapshot failure must never block the application
 
+    # Build fit_snapshot from public profile data only
+    try:
+        _snap_job = selected_job.upper() if selected_job else None
+        _snap_alt_jobs = [
+            entry["job"].upper()
+            for entry in (included_alt_jobs or [])
+            if isinstance(entry, dict) and isinstance(entry.get("job"), str)
+        ]
+
+        # Gear summary: "iLxxxx avg" from the gear snapshot summary
+        _snap_gear_summary: str | None = None
+        if isinstance(gear_snapshot_summary, dict):
+            avg_ilv = gear_snapshot_summary.get("avgItemLevel")
+            if avg_ilv is not None:
+                _snap_gear_summary = f"iL{avg_ilv} avg"
+
+        # Public BiS target name (only if profile is shareable/public, using active target set)
+        # Uses raw SQL to avoid ORM mapper initialization of PlayerBisTargetSet
+        # (which has a known reverse_property mismatch that could fail mapper configure).
+        _snap_bis_name: str | None = None
+        if profile and profile.visibility != "private" and _snap_job:
+            try:
+                from sqlalchemy import text as sql_text
+                bis_row = await session.execute(
+                    sql_text(
+                        "SELECT name FROM player_bis_target_sets"
+                        " WHERE profile_id = :profile_id AND job = :job AND is_active = 1"
+                        " LIMIT 1"
+                    ),
+                    {"profile_id": profile.id, "job": _snap_job},
+                )
+                bis_record = bis_row.fetchone()
+                if bis_record and bis_record[0]:
+                    _snap_bis_name = bis_record[0]
+            except Exception:
+                pass  # BiS lookup failure must never block the application
+
+        # Goal alignment counts from public goals only (already computed above)
+        _snap_goal_alignment: dict | None = goal_alignment_snapshot
+
+        # Schedule overlap: day labels that player is available
+        _snap_schedule_overlap: list[str] | None = None
+        if isinstance(availability_summary, dict):
+            day_labels = availability_summary.get("dayLabels")
+            if isinstance(day_labels, list) and day_labels:
+                _snap_schedule_overlap = [str(d) for d in day_labels if isinstance(d, str)]
+
+        # Languages and comms preference from profile (public data)
+        _snap_languages: list[str] = []
+        _snap_comms: str | None = None
+        if profile:
+            if hasattr(profile, "languages") and isinstance(profile.languages, list):
+                _snap_languages = [str(lang) for lang in profile.languages if lang]
+            if hasattr(profile, "comms_preference") and profile.comms_preference:
+                _snap_comms = str(profile.comms_preference)
+
+        fit_snapshot = {
+            "job": _snap_job,
+            "altJobs": _snap_alt_jobs,
+            "gearSummary": _snap_gear_summary,
+            "selectedBisTargetName": _snap_bis_name,
+            "goalAlignment": _snap_goal_alignment,
+            "scheduleOverlap": _snap_schedule_overlap,
+            "languages": _snap_languages,
+            "commsPreference": _snap_comms,
+            "snapshotAt": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception:
+        pass  # fit_snapshot failure must never block the application
+
     now = datetime.now(timezone.utc).isoformat()
     join_request = JoinRequest(
         id=str(uuid.uuid4()),
@@ -482,6 +555,7 @@ async def create_join_request(
         profile_visibility_at_apply=profile_visibility_at_apply,
         profile_share_enabled_at_apply=profile_share_enabled_at_apply,
         goal_alignment_snapshot=goal_alignment_snapshot,
+        fit_snapshot=fit_snapshot,
         character_name_at_apply=char_name,
         character_world_at_apply=char_world,
         character_dc_at_apply=char_dc,
@@ -511,6 +585,7 @@ async def create_join_request(
                 title="New application received",
                 body=f"{applicant_name} applied to join {group.name}.",
                 href=f"/group/{group.share_code}",
+                group_id=group.id,
             )
     await session.commit()
 
@@ -672,6 +747,7 @@ async def accept_join_request(
             title="Application accepted",
             body=f"Your application to {group_name} has been accepted. Welcome!",
             href="/dashboard",
+            group_id=group.id if group else None,
         )
         await session.commit()
 
@@ -764,6 +840,7 @@ async def decline_join_request(
             notification_type="application_declined",
             title="Application not accepted",
             body=f"Your application to {group_name} was not accepted at this time.",
+            group_id=group.id if group else None,
         )
         await session.commit()
 

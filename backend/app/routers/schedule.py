@@ -8,7 +8,7 @@ from datetime import date as date_type, datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, Query, Response, status
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -36,6 +36,8 @@ from ..services.schedule_webhooks import (
 )
 from ..exceptions import ValidationError
 from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User
+from ..models.notification import Notification
+from .notifications import create_notification
 from ..models.availability import AvailabilityTemplate, UserAvailability
 from ..models.schedule import DiscordMessageMapping, ScheduleRsvp, ScheduleSession, ScheduleSettings
 from ..permissions import (
@@ -214,6 +216,51 @@ async def _try_fire_webhook(
         )
 
 
+async def _notify_webhook_failure(
+    db: AsyncSession,
+    group_id: str,
+    error_text: str | None,
+) -> None:
+    """Send one webhook_failure notification per lead/owner — deduped on unread."""
+    try:
+        group_result = await db.execute(
+            select(StaticGroup).where(StaticGroup.id == group_id)
+        )
+        group = group_result.scalar_one_or_none()
+        if not group:
+            return
+        href = f"/group/{group.share_code}?tab=schedule&subtab=integrations"
+
+        leads_result = await db.execute(
+            select(Membership).where(
+                Membership.static_group_id == group_id,
+                Membership.role.in_(["owner", "lead"]),
+            )
+        )
+        for member in leads_result.scalars().all():
+            existing = await db.execute(
+                select(Notification).where(
+                    Notification.user_id == member.user_id,
+                    Notification.notification_type == "webhook_failure",
+                    Notification.href == href,
+                    Notification.is_read == False,  # noqa: E712
+                )
+            )
+            if existing.scalar_one_or_none():
+                continue
+            await create_notification(
+                db,
+                user_id=member.user_id,
+                notification_type="webhook_failure",
+                title=f"Discord webhook failed for {group.name}",
+                body=(error_text or "")[:200] or None,
+                href=href,
+                group_id=group.id,
+            )
+    except Exception as exc:
+        logger.warning("webhook_failure_notification_error", group_id=group_id, error=str(exc))
+
+
 async def _post_or_edit_webhook(
     db: AsyncSession,
     webhook_url: str,
@@ -272,6 +319,7 @@ async def _post_or_edit_webhook(
                         mapping.updated_at = now
                         await db.flush()
                         await db.commit()
+                        await _notify_webhook_failure(db, group_id, err)
                     return
 
                 if resp.status_code >= 400:
@@ -287,6 +335,7 @@ async def _post_or_edit_webhook(
                     mapping.updated_at = now
                     await db.flush()
                     await db.commit()
+                    await _notify_webhook_failure(db, group_id, err)
                     return
 
                 mapping.last_edited_at = now
@@ -340,6 +389,8 @@ def _settings_response(
     row: ScheduleSettings | None,
     group_id: str,
     can_manage: bool,
+    last_delivery_status: int | None = None,
+    last_delivery_error: str | None = None,
 ) -> ScheduleSettingsResponse:
     return ScheduleSettingsResponse(
         id=row.id if row else None,
@@ -359,6 +410,8 @@ def _settings_response(
         calendar_enabled=bool(row and row.calendar_enabled),
         calendar_url=_calendar_url(row.calendar_token) if row and row.calendar_enabled else None,
         calendar_token_created_at=row.calendar_token_created_at if row else None,
+        webhook_last_delivery_status=last_delivery_status if can_manage else None,
+        webhook_last_delivery_error=last_delivery_error if can_manage else None,
         can_manage=can_manage,
         created_at=row.created_at if row else None,
         updated_at=row.updated_at if row else None,
@@ -851,7 +904,25 @@ async def get_schedule_settings(
 
     row = await _get_schedule_settings(session, group_id)
     can_manage = membership.role in {"owner", "lead"} or current_user.is_admin
-    return _settings_response(row, group_id, can_manage)
+
+    last_delivery_status = None
+    last_delivery_error = None
+    if can_manage and row and row.webhook_url:
+        fail_result = await session.execute(
+            select(DiscordMessageMapping)
+            .where(
+                DiscordMessageMapping.static_group_id == group_id,
+                DiscordMessageMapping.last_delivery_status >= 400,
+            )
+            .order_by(desc(DiscordMessageMapping.updated_at))
+            .limit(1)
+        )
+        latest_fail = fail_result.scalar_one_or_none()
+        if latest_fail:
+            last_delivery_status = latest_fail.last_delivery_status
+            last_delivery_error = latest_fail.last_delivery_error
+
+    return _settings_response(row, group_id, can_manage, last_delivery_status, last_delivery_error)
 
 
 @router.put(

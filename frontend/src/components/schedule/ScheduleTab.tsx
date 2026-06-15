@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, Calendar, CalendarClock, Copy, LayoutGrid, List, Link2, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, Bell, Calendar, CalendarClock, Copy, LayoutGrid, List, Link2, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
 import { canManageRoster } from '../../utils/permissions';
@@ -435,6 +435,15 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                   <div className="mt-3 inline-flex rounded-full border border-border-subtle bg-surface-elevated px-3 py-1 text-xs text-text-secondary">
                     {settings?.webhookConfigured ? 'Webhook saved' : 'Not configured'}
                   </div>
+                  {canManage && settings?.webhookLastDeliveryStatus != null && settings.webhookLastDeliveryStatus >= 400 && (
+                    <div className="mt-2 flex items-start gap-2 rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-xs text-status-error">
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
+                      <span>
+                        Last delivery failed (HTTP {settings.webhookLastDeliveryStatus})
+                        {settings.webhookLastDeliveryError ? `: ${settings.webhookLastDeliveryError}` : ''}
+                      </span>
+                    </div>
+                  )}
                   {canManage ? (
                     <div className="mt-4 space-y-3">
                       {settings?.webhookConfigured && (

@@ -68,6 +68,7 @@ def _to_response(b: BiSTargetSet) -> BiSTargetSetResponse:
         external_url=b.external_url,
         import_status=b.import_status,
         is_active=b.is_active,
+        is_public=b.is_public,
         patch=b.patch,
         item_level=b.item_level,
         notes=b.notes,
@@ -188,11 +189,28 @@ async def list_bis_targets(
     result = await session.execute(stmt)
     targets = result.scalars().all()
 
-    # Permission: check against the first row if any; otherwise validate via owner
-    if targets:
-        await _check_read_permission(session, user, targets[0])
-    elif owner_type == "player_job_profile":
+    # Permission: check against the first row if any; otherwise validate via owner.
+    # For roster context, filter to is_public targets unless the viewer is an owner/lead.
+    if owner_type == "player_job_profile":
         await _require_owns_job_profile(session, user, owner_id)
+    elif owner_type == "roster_member_job":
+        if targets and targets[0].group_id:
+            await require_membership(session, user.id, targets[0].group_id, MemberRole.VIEWER)
+        # Only static owners/leads see private targets; plain members/viewers see public only
+        can_see_private = False
+        if targets and targets[0].group_id:
+            from ..models.membership import Membership as MembershipModel
+            mem_result = await session.execute(
+                select(MembershipModel).where(
+                    MembershipModel.static_group_id == targets[0].group_id,
+                    MembershipModel.user_id == user.id,
+                )
+            )
+            mem = mem_result.scalar_one_or_none()
+            if mem and mem.role in ("owner", "lead"):
+                can_see_private = True
+        if not can_see_private:
+            targets = [b for b in targets if b.is_public]
 
     return [_to_response(b) for b in targets]
 
@@ -224,6 +242,7 @@ async def create_bis_target(
         external_url=body.external_url,
         import_status=body.import_status,
         is_active=False,
+        is_public=body.is_public,
         patch=body.patch,
         item_level=body.item_level,
         notes=body.notes,
@@ -278,6 +297,8 @@ async def update_bis_target(
         b.item_level = body.item_level
     if body.notes is not None:
         b.notes = body.notes
+    if body.is_public is not None:
+        b.is_public = body.is_public
     b.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.commit()
@@ -429,14 +450,14 @@ async def import_bis_target(
 
     if not b.external_url:
         raise HTTPException(status_code=400, detail="No external URL configured for this target")
-    if b.source_type not in ("xivgear", "etro"):
+    if b.source_type not in ("xivgear", "etro", "preset"):
         raise HTTPException(
             status_code=400,
             detail=f"Import not supported for source_type '{b.source_type}'",
         )
 
     try:
-        if b.source_type == "xivgear":
+        if b.source_type in ("xivgear", "preset"):
             slots = await _fetch_slots_xivgear(b.external_url)
         else:
             slots = await _fetch_slots_etro(b.external_url)

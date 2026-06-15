@@ -144,6 +144,7 @@ class JoinRequestResponse(CamelModel):
     readiness_at_apply: str | None = None
     profile_share_code_at_apply: str | None = None
     goal_alignment_snapshot: dict | None = None
+    fit_snapshot: dict | None = None
     profile_visibility_at_apply: str | None = None
     profile_share_enabled_at_apply: bool | None = None
     # Character identity snapshot
@@ -158,6 +159,19 @@ class JoinRequestResponse(CamelModel):
     updated_at: str
     resolved_at: str | None = None
     resolved_by_user_id: str | None = None
+
+
+class FitSnapshot(CamelModel):
+    """Public-data snapshot computed at join-request submission time."""
+    job: str | None = None
+    alt_jobs: list[str] = []
+    gear_summary: str | None = None
+    selected_bis_target_name: str | None = None
+    goal_alignment: dict | None = None
+    schedule_overlap: list[str] | None = None
+    languages: list[str] = []
+    comms_preference: str | None = None
+    snapshot_at: str | None = None
 
 
 class LinkRosterRequest(CamelModel):

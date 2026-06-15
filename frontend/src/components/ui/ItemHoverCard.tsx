@@ -180,6 +180,7 @@ export function ItemHoverCard({
                 src={itemIcon}
                 alt={itemName}
                 className="w-10 h-10 rounded border border-border-default"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             )}
             <div className="flex-1 min-w-0">
@@ -265,6 +266,7 @@ export function ItemHoverCard({
                 src={equippedItemIcon}
                 alt={equippedItemName ?? 'Equipped item'}
                 className="w-7 h-7 rounded border border-border-default shrink-0"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             )}
             <div className="min-w-0">

@@ -16,6 +16,11 @@ from sqlalchemy.orm import selectinload
 from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
 from ..models import MemberRole, SnapshotPlayer, TierSnapshot, User, WeeklyAssignment
+from ..models.bis_target_set import BiSTargetSet
+from ..models.player_gear_snapshot import PlayerGearSnapshot
+from ..models.player_job_profile import PlayerJobProfile
+from ..models.player_profile import PlayerProfile
+from .bis_targets import _fetch_slots_xivgear, _fetch_slots_etro
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -1042,6 +1047,116 @@ async def delete_snapshot_player(
 # --- Player Ownership (Claim/Release) ---
 
 
+async def _auto_link_bis_from_hub(session: AsyncSession, player: SnapshotPlayer, user_id: str) -> None:
+    """Populate bis_link from the user's active Player Hub BiS target for the player's job.
+
+    Only runs when bis_link is not already set. Picks the active target for the
+    matching job; prefers savage/savage_prog purpose but falls back to any active target.
+    """
+    if player.bis_link or not player.job:
+        return
+
+    profile_result = await session.execute(
+        select(PlayerProfile).where(PlayerProfile.user_id == user_id)
+    )
+    profile = profile_result.scalar_one_or_none()
+    if not profile:
+        return
+
+    job_profile_result = await session.execute(
+        select(PlayerJobProfile).where(
+            PlayerJobProfile.profile_id == profile.id,
+            PlayerJobProfile.job == player.job,
+        )
+    )
+    job_profile = job_profile_result.scalar_one_or_none()
+    if not job_profile:
+        return
+
+    target_result = await session.execute(
+        select(BiSTargetSet).where(
+            BiSTargetSet.job_profile_id == job_profile.id,
+            BiSTargetSet.is_active == True,  # noqa: E712
+            BiSTargetSet.external_url.isnot(None),
+        )
+    )
+    target = target_result.scalar_one_or_none()
+    if not target or not target.external_url:
+        return
+
+    player.bis_link = target.external_url
+
+    # Ensure items_json is populated — fetch from the external URL if not yet imported.
+    slots: list[dict] | None = None
+    if target.items_json and target.items_json.get("slots"):
+        slots = target.items_json["slots"]
+    elif target.source_type in ("xivgear", "preset", "etro"):
+        try:
+            if target.source_type in ("xivgear", "preset"):
+                slots = await _fetch_slots_xivgear(target.external_url)
+            else:
+                slots = await _fetch_slots_etro(target.external_url)
+            # Persist on the Player Hub target so future claims skip the fetch
+            item_levels = [s["itemLevel"] for s in slots if s.get("itemLevel")]
+            target.items_json = {"slots": slots}
+            target.item_level = max(item_levels) if item_levels else None
+            target.import_status = "imported"
+            target.updated_at = datetime.now(timezone.utc).isoformat()
+        except Exception:
+            logger.warning("auto_bis_fetch_failed", player_id=player.id, url=target.external_url)
+
+    # Apply item data to the roster player's gear slots.
+    if slots:
+        bis_by_slot = {s["slot"]: s for s in slots}
+        updated_gear = []
+        for existing in (player.gear or []):
+            slot_name = existing.get("slot")
+            bis = bis_by_slot.get(slot_name)
+            if bis and not existing.get("itemName"):
+                updated_gear.append({
+                    **existing,
+                    "bisSource": bis.get("source", existing.get("bisSource", "raid")),
+                    "itemId": bis.get("itemId"),
+                    "itemName": bis.get("itemName"),
+                    "itemLevel": bis.get("itemLevel"),
+                    "itemIcon": bis.get("itemIcon"),
+                    "itemStats": bis.get("itemStats"),
+                    "materia": bis.get("materia", []),
+                })
+            else:
+                updated_gear.append(existing)
+        player.gear = updated_gear
+
+    # Pull equipped gear from the Player Hub gear snapshot so the "currently
+    # wearing vs BiS" comparison renders immediately without a separate sync.
+    if not player.last_sync and job_profile.gear_snapshot_id:
+        snap_result = await session.execute(
+            select(PlayerGearSnapshot).where(PlayerGearSnapshot.id == job_profile.gear_snapshot_id)
+        )
+        snap = snap_result.scalar_one_or_none()
+        if snap and snap.gear:
+            equipped_by_slot = {g["slot"]: g for g in snap.gear if g.get("slot")}
+            final_gear = []
+            for slot in (player.gear or []):
+                slot_name = slot.get("slot")
+                equipped = equipped_by_slot.get(slot_name, {})
+                eq_id = equipped.get("equippedItemId")
+                bis_id = slot.get("itemId")
+                final_gear.append({
+                    **slot,
+                    "equippedItemId": eq_id,
+                    "equippedItemName": equipped.get("equippedItemName"),
+                    "equippedItemLevel": equipped.get("equippedItemLevel"),
+                    "equippedItemIcon": equipped.get("equippedItemIcon"),
+                    "currentSource": equipped.get("currentSource", "unknown"),
+                    "hasItem": bool(eq_id and bis_id and eq_id == bis_id),
+                })
+            player.gear = final_gear
+            player.last_sync = snap.synced_at
+            player.last_sync_source = "player_hub"
+            player.last_synced_job = player.job
+
+
 @router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/claim", response_model=SnapshotPlayerResponse)
 async def claim_player(
     group_id: str,
@@ -1102,6 +1217,7 @@ async def claim_player(
 
     # Link the user
     player.user_id = current_user.id
+    await _auto_link_bis_from_hub(session, player, current_user.id)
     player.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
@@ -1273,6 +1389,7 @@ async def _assign_player_impl(
 
         # Assign the user
         player.user_id = target_user.id
+        await _auto_link_bis_from_hub(session, player, target_user.id)
     else:
         # Unassign (null user_id)
         player.user_id = None

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..logging_config import get_logger
-from ..models import User
+from ..models import Notification, User
 from ..models.static_content_suggestion import (
     StaticContentSuggestion,
     StaticContentSuggestionVote,
@@ -345,18 +345,32 @@ async def upsert_vote(
         )
         session.add(new_vote)
 
-    # Notify the suggestion author on first vote (skip self-votes), in the same transaction
+    # Notify the suggestion author on first vote — skip self-votes and duplicates.
+    # A duplicate can arise when the voter previously deleted their vote and re-votes:
+    # is_new_vote becomes True again but a notification was already sent in the earlier
+    # vote session.  Guard by checking for an existing notification row for this
+    # (recipient, suggestion_type, suggestion title) combination.
     if is_new_vote and suggestion.suggested_by_user_id != current_user.id:
-        voter_name = current_user.display_name or current_user.discord_username or "A member"
-        vote_label = _VOTE_LABELS.get(body.vote, body.vote)
-        await create_notification(
-            session,
-            user_id=suggestion.suggested_by_user_id,
-            notification_type="suggestion_vote",
-            title=f"{voter_name} voted on your suggestion",
-            body=f'Voted "{vote_label}" on "{suggestion.title}"',
-            href=f"/group/{group.share_code}?tab=goals",
+        dup_result = await session.execute(
+            select(Notification).where(
+                Notification.user_id == suggestion.suggested_by_user_id,
+                Notification.notification_type == "suggestion_vote",
+                Notification.body.contains(suggestion.title),
+            ).limit(1)
         )
+        already_notified = dup_result.scalar_one_or_none() is not None
+        if not already_notified:
+            voter_name = current_user.display_name or current_user.discord_username or "A member"
+            vote_label = _VOTE_LABELS.get(body.vote, body.vote)
+            await create_notification(
+                session,
+                user_id=suggestion.suggested_by_user_id,
+                notification_type="suggestion_vote",
+                title=f"{voter_name} voted on your suggestion",
+                body=f'Voted "{vote_label}" on "{suggestion.title}"',
+                href=f"/group/{group.share_code}?tab=goals",
+                group_id=group.id,
+            )
 
     await session.commit()
 

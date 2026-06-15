@@ -43,6 +43,7 @@ const ULTIMATE_DUTIES: UltimateDuty[] = [
   { key: 'dsr',  label: "Dragonsong's Reprise (Ultimate)",          shortName: 'DSR'  },
   { key: 'top',  label: 'The Omega Protocol (Ultimate)',            shortName: 'TOP'  },
   { key: 'fru',  label: 'Futures Rewritten (Ultimate)',             shortName: 'FRU'  },
+  { key: 'dmu',  label: 'Dancing Mad (Ultimate)',                   shortName: 'DMU'  },
 ];
 
 const REWARD_TYPE_OPTIONS: { value: CollectionGoalType; label: string; description: string }[] = [

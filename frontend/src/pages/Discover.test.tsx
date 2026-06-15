@@ -354,3 +354,116 @@ describe('Discover page', () => {
     expect(discordText.closest('a')).toBeNull();
   });
 });
+
+// ── Fit Summary section ───────────────────────────────────────
+
+const STRONG_FIT_SUMMARY = {
+  overall: 'strong' as const,
+  goals: { aligned: 2, partial: 0, conflicts: 0, missing: 0 },
+  jobs: { status: 'match' as const, matchedJobs: ['BRD'] },
+  schedule: { status: 'match' as const },
+  comms: { status: 'match' as const },
+  bis: { status: 'ready' as const },
+};
+
+const WEAK_FIT_SUMMARY = {
+  overall: 'weak' as const,
+  goals: { aligned: 0, partial: 0, conflicts: 1, missing: 0 },
+  jobs: { status: 'none' as const, matchedJobs: [] },
+  schedule: { status: 'conflict' as const },
+  comms: { status: 'unknown' as const },
+  bis: { status: 'unknown' as const },
+};
+
+describe('Fit Summary section', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders fit summary section when fitSummary is provided', async () => {
+    mockAuthRequest.mockResolvedValueOnce({
+      items: [{ ...MOCK_ITEMS[0], fitSummary: STRONG_FIT_SUMMARY }],
+      total: 1,
+    });
+
+    renderDiscover();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fit-summary')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('fit-overall')).toHaveTextContent('Strong fit');
+  });
+
+  it('hides fit summary section when fitSummary is null', async () => {
+    mockAuthRequest.mockResolvedValueOnce({
+      items: [{ ...MOCK_ITEMS[0], fitSummary: null }],
+      total: 1,
+    });
+
+    renderDiscover();
+
+    await waitFor(() => {
+      expect(screen.getByText('Crystal Raiders')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('fit-summary')).not.toBeInTheDocument();
+  });
+
+  it('hides fit summary section when fitSummary is undefined', async () => {
+    mockAuthRequest.mockResolvedValueOnce({
+      items: [{ ...MOCK_ITEMS[0] }],
+      total: 1,
+    });
+
+    renderDiscover();
+
+    await waitFor(() => {
+      expect(screen.getByText('Crystal Raiders')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('fit-summary')).not.toBeInTheDocument();
+  });
+
+  it('renders conflict warning with text-status-error class on weak fit', async () => {
+    mockAuthRequest.mockResolvedValueOnce({
+      items: [{ ...MOCK_ITEMS[0], fitSummary: WEAK_FIT_SUMMARY }],
+      total: 1,
+    });
+
+    renderDiscover();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fit-overall')).toBeInTheDocument();
+    });
+    const overallEl = screen.getByTestId('fit-overall');
+    expect(overallEl).toHaveTextContent('Weak fit');
+    expect(overallEl.className).toContain('text-status-error');
+  });
+
+  it('renders strong fit label with text-status-success class', async () => {
+    mockAuthRequest.mockResolvedValueOnce({
+      items: [{ ...MOCK_ITEMS[0], fitSummary: STRONG_FIT_SUMMARY }],
+      total: 1,
+    });
+
+    renderDiscover();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fit-overall')).toBeInTheDocument();
+    });
+    const overallEl = screen.getByTestId('fit-overall');
+    expect(overallEl.className).toContain('text-status-success');
+  });
+
+  it('shows matched job name in fit summary tokens', async () => {
+    mockAuthRequest.mockResolvedValueOnce({
+      items: [{ ...MOCK_ITEMS[0], fitSummary: STRONG_FIT_SUMMARY }],
+      total: 1,
+    });
+
+    renderDiscover();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('fit-summary')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/BRD wanted/)).toBeInTheDocument();
+  });
+});

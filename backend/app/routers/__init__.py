@@ -15,9 +15,9 @@ from .loot_tracking import router as loot_tracking_router
 from .mount_farms import router as mount_farms_router
 from .notifications import router as notifications_router
 from .objective_goals import router as objective_goals_router
+from .player_bis_targets import router as player_bis_targets_router
 from .player import plugin_router as plugin_player_router
 from .player import router as player_router
-from .player_bis_targets import router as player_bis_targets_router
 from .schedule import router as schedule_router
 from .static_groups import router as static_groups_router
 from .tiers import router as tiers_router

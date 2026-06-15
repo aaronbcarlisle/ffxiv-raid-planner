@@ -3,8 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, String, Text, Index
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy import Boolean, ForeignKey, JSON, String, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -60,6 +59,9 @@ class JoinRequest(Base):
     character_lodestone_id_at_apply: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Goal alignment snapshot (counts only, no private goal details)
     goal_alignment_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Fit snapshot — computed at submission time from public data only
+    # Uses JSON (SQLite-compatible); migration uses JSONB for PostgreSQL GIN indexing
+    fit_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Roster onboarding — tracks the SnapshotPlayer created from this application
     roster_player_id: Mapped[str | None] = mapped_column(

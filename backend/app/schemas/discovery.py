@@ -47,6 +47,49 @@ class GoalAlignmentSummarySlim(CamelModel):
     unknown: int = 0
 
 
+class FitGoals(CamelModel):
+    """Goal dimension of the fit summary."""
+    aligned: int = 0
+    partial: int = 0
+    conflicts: int = 0
+    missing: int = 0
+
+
+class FitJobs(CamelModel):
+    """Job dimension of the fit summary."""
+    status: str = "unknown"  # "match"|"partial"|"none"|"unknown"
+    matched_jobs: list[str] = Field(default_factory=list)
+
+
+class FitSchedule(CamelModel):
+    """Schedule dimension of the fit summary."""
+    status: str = "unknown"  # "match"|"partial"|"conflict"|"unknown"
+
+
+class FitComms(CamelModel):
+    """Communications/language dimension of the fit summary."""
+    status: str = "unknown"  # "match"|"partial"|"conflict"|"unknown"
+
+
+class FitBis(CamelModel):
+    """BiS readiness dimension of the fit summary."""
+    status: str = "unknown"  # "ready"|"partial"|"unknown"
+
+
+class FitSummary(CamelModel):
+    """Deterministic, explainable fit summary for a player vs. a static listing.
+
+    Only computed for authenticated users with a discoverable PlayerProfile.
+    Private goals and BiS targets are never used.
+    """
+    overall: str  # "strong"|"good"|"partial"|"weak"|"unknown"
+    goals: FitGoals
+    jobs: FitJobs
+    schedule: FitSchedule
+    comms: FitComms
+    bis: FitBis
+
+
 class DiscoveryListItem(CamelModel):
     """Public-safe DTO returned by the discovery endpoint"""
 
@@ -73,6 +116,8 @@ class DiscoveryListItem(CamelModel):
     # Goal fields (public — only official static objective categories)
     objective_categories: list[str] = Field(default_factory=list)
     goal_alignment: GoalAlignmentSummarySlim | None = None
+    # Fit summary — None when unauthenticated or player has no discoverable profile
+    fit_summary: FitSummary | None = None
 
 
 class DiscoveryListResponse(CamelModel):

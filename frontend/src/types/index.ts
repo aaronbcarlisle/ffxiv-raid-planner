@@ -877,6 +877,24 @@ export interface JoinRequest {
     missing: number;
     unknown: number;
   } | null;
+  // Fit snapshot — public-only data frozen at submission time
+  fitSnapshot?: {
+    job: string | null;
+    altJobs: string[];
+    gearSummary: string | null;
+    selectedBisTargetName: string | null;
+    goalAlignment: {
+      aligned: number;
+      partial: number;
+      conflicts: number;
+      missing: number;
+      unknown: number;
+    } | null;
+    scheduleOverlap: string[] | null;
+    languages: string[];
+    commsPreference: string | null;
+    snapshotAt: string | null;
+  } | null;
   // Roster onboarding
   rosterPlayerId?: string;
   createdAt: string;
@@ -984,7 +1002,9 @@ export interface BiSPresetsResponse {
 // ==================== Multi-BiS V1 Types ====================
 
 export type BisTargetSource = 'manual' | 'etro' | 'xivgear' | 'ariyala' | 'external';
-export type BisTargetPurpose = 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom';
+export type BisTargetPurpose =
+  | 'savage' | 'ultimate' | 'prog' | 'farm' | 'speed' | 'comfort' | 'custom'
+  | 'savage_prog' | 'savage_reclear' | 'week1' | 'alt_job' | 'parse';
 
 // ==================== Shared BiS Target Types (V2 — backend-persisted) ====================
 
@@ -1007,6 +1027,7 @@ export interface SharedBiSTargetSet {
   externalUrl?: string | null;
   importStatus: BiSImportStatus;
   isActive: boolean;
+  isPublic: boolean;
   patch?: string | null;
   itemLevel?: number | null;
   notes?: string | null;
@@ -1025,6 +1046,7 @@ export interface SharedBiSTargetCreate {
   sourceType?: BiSSourceType;
   externalUrl?: string | null;
   importStatus?: BiSImportStatus;
+  isPublic?: boolean;
   patch?: string | null;
   itemLevel?: number | null;
   notes?: string | null;
@@ -1036,6 +1058,7 @@ export interface SharedBiSTargetUpdate {
   sourceType?: BiSSourceType;
   externalUrl?: string | null;
   importStatus?: BiSImportStatus;
+  isPublic?: boolean;
   patch?: string | null;
   itemLevel?: number | null;
   notes?: string | null;
@@ -1332,6 +1355,8 @@ export interface ScheduleSettings {
   calendarEnabled: boolean;
   calendarUrl?: string | null;
   calendarTokenCreatedAt?: string | null;
+  webhookLastDeliveryStatus?: number | null;
+  webhookLastDeliveryError?: string | null;
   canManage: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;

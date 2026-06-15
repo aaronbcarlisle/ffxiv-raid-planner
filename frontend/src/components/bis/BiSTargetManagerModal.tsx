@@ -137,20 +137,34 @@ export function BiSTargetManagerModal({
         ownerId,
         groupId: groupId ?? undefined,
         name: p.name,
-        purpose: 'savage' as BisTargetPurpose,
+        purpose: (p.category as BisTargetPurpose) ?? 'savage',
         sourceType: 'preset' as BiSSourceType,
         externalUrl: p.uuid ? `https://xivgear.app/?page=sl%7C${p.uuid}` : undefined,
         importStatus: 'linked_only' as BiSImportStatus,
       }));
 
-      await store.createMultipleTargets(dataList);
+      const created = await store.createMultipleTargets(dataList);
       setSelectedPresetIds(new Set());
-      toast.success(
-        selected.length === 1
-          ? `"${selected[0].name}" added`
-          : `${selected.length} BiS targets added`,
-      );
       setActiveTab('targets');
+
+      const importable = created.filter((t) => t.externalUrl);
+      if (importable.length > 0) {
+        toast.success(
+          selected.length === 1
+            ? `"${selected[0].name}" added — importing gear data…`
+            : `${selected.length} BiS targets added — importing gear data…`,
+        );
+        await Promise.allSettled(
+          importable.map((t) => store.importTarget(t.id, ownerType, ownerId)),
+        );
+        toast.success('Gear data imported');
+      } else {
+        toast.success(
+          selected.length === 1
+            ? `"${selected[0].name}" added`
+            : `${selected.length} BiS targets added`,
+        );
+      }
     } catch {
       toast.error('Failed to add presets');
     } finally {
@@ -410,7 +424,7 @@ export function BiSTargetManagerModal({
                             Set active
                           </Button>
                         )}
-                        {(target.sourceType === 'xivgear' || target.sourceType === 'etro') &&
+                        {(target.sourceType === 'xivgear' || target.sourceType === 'etro' || target.sourceType === 'preset') &&
                           target.externalUrl && (
                             <Button
                               size="sm"
@@ -544,7 +558,7 @@ export function BiSTargetManagerModal({
             </div>
             <p className="text-xs text-text-tertiary flex items-center gap-1">
               <Link2 className="h-3 w-3" />
-              Linked only · comparison unavailable
+              Gear data will be fetched automatically for XIVGear and Etro links.
             </p>
             <Button
               size="sm"

@@ -13,7 +13,7 @@ import {
   Filter, X, ChevronDown, ChevronUp, Copy, Check, Info, MessageCircle, ExternalLink,
   Send, LogIn,
 } from 'lucide-react';
-import { Input, Select, Spinner, EmptyState, Label } from '../components/ui';
+import { Input, Select, Checkbox, Spinner, EmptyState, Label } from '../components/ui';
 import { Button } from '../components/primitives';
 import { authRequest } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
@@ -39,6 +39,39 @@ interface GoalAlignmentSlim {
   unknown: number;
 }
 
+interface FitGoals {
+  aligned: number;
+  partial: number;
+  conflicts: number;
+  missing: number;
+}
+
+interface FitJobs {
+  status: 'match' | 'partial' | 'none' | 'unknown';
+  matchedJobs: string[];
+}
+
+interface FitSchedule {
+  status: 'match' | 'partial' | 'conflict' | 'unknown';
+}
+
+interface FitComms {
+  status: 'match' | 'partial' | 'conflict' | 'unknown';
+}
+
+interface FitBis {
+  status: 'ready' | 'partial' | 'unknown';
+}
+
+interface FitSummary {
+  overall: 'strong' | 'good' | 'partial' | 'weak' | 'unknown';
+  goals: FitGoals;
+  jobs: FitJobs;
+  schedule: FitSchedule;
+  comms: FitComms;
+  bis: FitBis;
+}
+
 interface DiscoveryItem {
   name: string;
   shareCode: string;
@@ -60,6 +93,7 @@ interface DiscoveryItem {
   lastUpdated?: string;
   objectiveCategories?: string[];
   goalAlignment?: GoalAlignmentSlim | null;
+  fitSummary?: FitSummary | null;
 }
 
 interface DiscoveryResponse {
@@ -184,6 +218,14 @@ const GOAL_CATEGORY_OPTIONS = [
 const FILTER_KEYS = ['role', 'job', 'intensity', 'recruitmentStatus', 'dataCenter', 'server', 'timezone', 'language', 'goalCategory'] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 
+const FIT_OVERALL_LABELS: Record<string, { label: string; className: string }> = {
+  strong:  { label: 'Strong fit',  className: 'text-status-success' },
+  good:    { label: 'Good fit',    className: 'text-status-success' },
+  partial: { label: 'Partial fit', className: 'text-status-warning' },
+  weak:    { label: 'Weak fit',    className: 'text-status-error' },
+  unknown: { label: 'Fit unknown', className: 'text-text-muted' },
+};
+
 // ─── Page Component ──────────────────────────────────────────
 
 export function Discover() {
@@ -204,6 +246,8 @@ export function Discover() {
   const [searchText, setSearchText] = useState(readParam('q'));
   const [sort, setSort] = useState(readParam('sort') || 'recent');
   const [hideConflicts, setHideConflicts] = useState(() => searchParams.get('hideConflicts') === 'true');
+  const [hideGoalConflicts, setHideGoalConflicts] = useState(() => searchParams.get('hideGoalConflicts') === 'true');
+  const [scheduleOverlap, setScheduleOverlap] = useState(() => searchParams.get('scheduleOverlap') === 'true');
   const [filters, setFilters] = useState<Record<FilterKey, string>>(() => {
     const init = {} as Record<FilterKey, string>;
     for (const k of FILTER_KEYS) init[k] = readParam(k);
@@ -237,8 +281,8 @@ export function Discover() {
   }, []);
 
   const hasFilters = useMemo(() =>
-    FILTER_KEYS.some(k => filters[k] !== '') || hideConflicts,
-    [filters, hideConflicts],
+    FILTER_KEYS.some(k => filters[k] !== '') || hideConflicts || hideGoalConflicts || scheduleOverlap,
+    [filters, hideConflicts, hideGoalConflicts, scheduleOverlap],
   );
 
   const filterCount = useMemo(() =>
@@ -252,6 +296,8 @@ export function Discover() {
     setFilters(cleared);
     setSearchText('');
     setHideConflicts(false);
+    setHideGoalConflicts(false);
+    setScheduleOverlap(false);
   }, []);
 
   // Sync filters → URL
@@ -260,11 +306,13 @@ export function Discover() {
     if (debouncedSearch) params.set('q', debouncedSearch);
     if (sort && sort !== 'recent') params.set('sort', sort);
     if (hideConflicts) params.set('hideConflicts', 'true');
+    if (hideGoalConflicts) params.set('hideGoalConflicts', 'true');
+    if (scheduleOverlap) params.set('scheduleOverlap', 'true');
     for (const k of FILTER_KEYS) {
       if (filters[k]) params.set(k, filters[k]);
     }
     setSearchParams(params, { replace: true });
-  }, [debouncedSearch, sort, hideConflicts, filters, setSearchParams]);
+  }, [debouncedSearch, sort, hideConflicts, hideGoalConflicts, scheduleOverlap, filters, setSearchParams]);
 
   // Fetch results
   const fetchResults = useCallback(async () => {
@@ -275,6 +323,8 @@ export function Discover() {
     if (debouncedSearch) params.set('q', debouncedSearch);
     if (sort) params.set('sort', sort);
     if (hideConflicts) params.set('hideConflicts', 'true');
+    if (hideGoalConflicts) params.set('hideGoalConflicts', 'true');
+    if (scheduleOverlap) params.set('scheduleOverlap', 'true');
     for (const k of FILTER_KEYS) {
       if (filters[k]) params.set(k, filters[k]);
     }
@@ -291,7 +341,7 @@ export function Discover() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, sort, hideConflicts, filters]);
+  }, [debouncedSearch, sort, hideConflicts, hideGoalConflicts, scheduleOverlap, filters]);
 
   useEffect(() => {
     fetchResults();
@@ -392,17 +442,30 @@ export function Discover() {
                 <Select id="f-goalcat" value={filters.goalCategory} onChange={v => setFilter('goalCategory', v)} options={GOAL_CATEGORY_OPTIONS} />
               </div>
               {user && (
-                <div className="flex items-center gap-2 pb-1">
-                  {/* design-system-ignore: filter toggle checkbox inline with label */}
-                  <input
-                    id="f-hideconflicts"
-                    type="checkbox"
-                    checked={hideConflicts}
-                    onChange={e => setHideConflicts(e.target.checked)}
-                    className="w-4 h-4 rounded accent-accent cursor-pointer"
-                  />
-                  <Label htmlFor="f-hideconflicts" className="text-sm cursor-pointer select-none">
+                <div className="flex flex-col gap-2 pb-1">
+                  <Label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                    <Checkbox
+                      checked={hideConflicts}
+                      onChange={() => setHideConflicts(v => !v)}
+                      aria-label="Hide goal conflicts (legacy)"
+                    />
                     Hide goal conflicts
+                  </Label>
+                  <Label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                    <Checkbox
+                      checked={hideGoalConflicts}
+                      onChange={() => setHideGoalConflicts(v => !v)}
+                      aria-label="Hide fit score goal conflicts"
+                    />
+                    Hide fit conflicts
+                  </Label>
+                  <Label className="flex items-center gap-2 cursor-pointer select-none text-sm">
+                    <Checkbox
+                      checked={scheduleOverlap}
+                      onChange={() => setScheduleOverlap(v => !v)}
+                      aria-label="Require schedule overlap"
+                    />
+                    Schedule overlap only
                   </Label>
                 </div>
               )}
@@ -635,6 +698,11 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
           </div>
         )}
 
+        {/* Fit summary (authenticated users with player profile only) */}
+        {item.fitSummary && (
+          <FitSummarySection fit={item.fitSummary} />
+        )}
+
         {/* About */}
         {item.description && (
           <div className="mb-2.5">
@@ -748,6 +816,66 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         neededRoles={item.neededRoles}
         recruitmentStatus={item.recruitmentStatus}
       />
+    </div>
+  );
+}
+
+// ─── Fit Summary Section ─────────────────────────────────────
+
+function FitSummarySection({ fit }: { fit: FitSummary }) {
+  const overallInfo = FIT_OVERALL_LABELS[fit.overall] ?? FIT_OVERALL_LABELS.unknown;
+
+  // Build compact detail tokens
+  const tokens: { label: string; className?: string }[] = [];
+
+  if (fit.goals.aligned > 0) {
+    tokens.push({ label: `${fit.goals.aligned} goal${fit.goals.aligned !== 1 ? 's' : ''} aligned`, className: 'text-status-success' });
+  }
+  if (fit.goals.conflicts > 0) {
+    tokens.push({ label: `${fit.goals.conflicts} goal conflict${fit.goals.conflicts !== 1 ? 's' : ''}`, className: 'text-status-error' });
+  }
+  if (fit.jobs.status === 'match' && fit.jobs.matchedJobs.length > 0) {
+    tokens.push({ label: `${fit.jobs.matchedJobs.join(', ')} wanted`, className: 'text-status-success' });
+  } else if (fit.jobs.status === 'partial' && fit.jobs.matchedJobs.length > 0) {
+    tokens.push({ label: `${fit.jobs.matchedJobs.join(', ')} (alt)`, className: 'text-status-warning' });
+  } else if (fit.jobs.status === 'none') {
+    tokens.push({ label: 'job not wanted', className: 'text-status-error' });
+  }
+  if (fit.schedule.status === 'match') {
+    tokens.push({ label: 'schedule match' });
+  } else if (fit.schedule.status === 'partial') {
+    tokens.push({ label: 'schedule partial', className: 'text-status-warning' });
+  } else if (fit.schedule.status === 'conflict') {
+    tokens.push({ label: 'schedule conflict', className: 'text-status-error' });
+  }
+  if (fit.comms.status === 'match') {
+    tokens.push({ label: 'comms match' });
+  } else if (fit.comms.status === 'conflict') {
+    tokens.push({ label: 'comms conflict', className: 'text-status-error' });
+  }
+  if (fit.bis.status === 'ready') {
+    tokens.push({ label: 'BiS ready', className: 'text-status-success' });
+  }
+
+  return (
+    <div className="mb-2.5" data-testid="fit-summary">
+      <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Fit Score</p>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+        <span className={`font-semibold ${overallInfo.className}`} data-testid="fit-overall">
+          {overallInfo.label}
+        </span>
+        {tokens.length > 0 && (
+          <>
+            <span className="text-border-default">·</span>
+            {tokens.map((t, i) => (
+              <span key={i} className={t.className ?? 'text-text-secondary'}>
+                {t.label}
+                {i < tokens.length - 1 && <span className="text-border-default ml-2">·</span>}
+              </span>
+            ))}
+          </>
+        )}
+      </div>
     </div>
   );
 }

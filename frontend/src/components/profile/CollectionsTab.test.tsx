@@ -93,7 +93,7 @@ describe('CollectionsTab', () => {
     expect(screen.getAllByText(/Static farm matching will use your Wanted and Farming rewards later/i)).toHaveLength(1);
     expect(screen.getByText('Collaboration')).toBeInTheDocument();
     expect(screen.getAllByText('Pending exchange').length).toBeGreaterThan(0);
-    expect(screen.getByText('Ultimate')).toBeInTheDocument();
-    expect(screen.getAllByText('Weapon/token farm').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Ultimate').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/1 .* Totem for .* Weapons/i).length).toBeGreaterThan(0);
   });
 });

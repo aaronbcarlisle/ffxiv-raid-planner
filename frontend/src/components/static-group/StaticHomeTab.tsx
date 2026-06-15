@@ -1313,7 +1313,7 @@ function GoalsFarmsModule({
 
         {/* ── Member Interest (Content Suggestions) ── */}
         <div>
-          <SubLabel aside={openSuggestions.length > 0 ? `${openSuggestions.length} open` : undefined}>
+          <SubLabel aside="Not official yet">
             Member Interest
           </SubLabel>
           {topSuggestions.length === 0 ? (
@@ -1612,6 +1612,7 @@ export function StaticHomeTab({
             onOpenRequests={onOpenRequests}
             onNavigate={onNavigate}
           />
+
           <GroupHeroPanel
             group={group}
             tier={tier}
