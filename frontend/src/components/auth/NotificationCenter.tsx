@@ -80,12 +80,9 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
     setSyntheticNotifications(getSyntheticNotifications());
   }, []);
 
-  // Refresh server notifications and synthetic state whenever the modal opens
+  // Re-fetch server notifications whenever the panel opens
   useEffect(() => {
-    if (isOpen) {
-      fetchNotifications();
-      refreshSynthetic();
-    }
+    if (isOpen) fetchNotifications();
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const syntheticUnreadCount = syntheticNotifications.filter((n) => !n.is_read).length;
