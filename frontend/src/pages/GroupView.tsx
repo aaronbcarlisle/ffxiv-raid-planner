@@ -333,6 +333,20 @@ export function GroupView() {
     return () => { cancelled = true; };
   }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
 
+  // Keep roster gear current while the page is open — re-fetches every 30s
+  const rosterPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (!currentGroup?.id || !currentTier?.tierId) return;
+    const groupId = currentGroup.id;
+    const tierId = currentTier.tierId;
+    rosterPollRef.current = setInterval(() => {
+      fetchTier(groupId, tierId).catch(() => {});
+    }, 30_000);
+    return () => {
+      if (rosterPollRef.current) clearInterval(rosterPollRef.current);
+    };
+  }, [currentGroup?.id, currentTier?.tierId, fetchTier]);
+
   // Refresh tier data when member roles change (updates linkedUser.membershipRole on player cards)
   useEventBus<{ groupId: string; userId: string; role: string }>(
     Events.MEMBER_ROLE_CHANGED,

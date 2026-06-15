@@ -26,9 +26,11 @@ from ..models.player_job_profile import (
     VALID_READINESS_STATES,
 )
 from ..models.player_profile import PlayerProfile, VALID_VISIBILITIES
+from ..models.snapshot_player import SnapshotPlayer
 from ..models.user import User
 from ..rate_limit import RATE_LIMITS, limiter
 from ..models.bis_target_set import BiSTargetSet as PlayerBisTargetSet
+from .bis import build_icon_url_from_id
 from ..schemas.player import (
     GearSnapshotResponse,
     GearSyncRequest,
@@ -241,6 +243,71 @@ def _gear_payload_differs(existing: list[dict], incoming: list[dict]) -> bool:
     existing_set = sorted((_normalise(s) for s in existing), key=str)
     incoming_set = sorted((_normalise(s) for s in incoming), key=str)
     return existing_set != incoming_set
+
+
+async def _propagate_identity_to_rosters(
+    session: AsyncSession,
+    user_id: str,
+    character: "PlayerCharacter",
+    now: str,
+) -> None:
+    """Push Lodestone identity from a PlayerCharacter to all matching roster slots."""
+    result = await session.execute(
+        select(SnapshotPlayer).where(SnapshotPlayer.user_id == user_id)
+    )
+    players = result.scalars().all()
+    for player in players:
+        # Skip slots already linked to a different character
+        if player.lodestone_id and player.lodestone_id != character.lodestone_id:
+            continue
+        player.lodestone_id = character.lodestone_id
+        player.lodestone_name = character.name
+        player.lodestone_server = character.server
+        player.lodestone_avatar_url = character.avatar_url
+        player.updated_at = now
+
+
+async def _propagate_gear_to_rosters(
+    session: AsyncSession,
+    user_id: str,
+    job: str,
+    gear: list[dict],
+    sync_source: str,
+    synced_at: str,
+) -> None:
+    """Push equipped gear from a Player Hub sync into all matching roster slots."""
+    result = await session.execute(
+        select(SnapshotPlayer).where(
+            SnapshotPlayer.user_id == user_id,
+            SnapshotPlayer.job == job.upper(),
+        )
+    )
+    players = result.scalars().all()
+    if not players:
+        return
+
+    equipped_by_slot = {g["slot"]: g for g in gear if g.get("slot")}
+    for player in players:
+        updated = []
+        for slot in (player.gear or []):
+            slot_name = slot.get("slot")
+            equipped = equipped_by_slot.get(slot_name, {})
+            eq_id = equipped.get("equippedItemId")
+            bis_id = slot.get("itemId")
+            updated.append({
+                **slot,
+                "equippedItemId": eq_id,
+                "equippedItemName": equipped.get("equippedItemName"),
+                "equippedItemLevel": equipped.get("equippedItemLevel"),
+                "equippedItemIcon": equipped.get("equippedItemIcon"),
+                "currentSource": equipped.get("currentSource", "unknown"),
+                "hasItem": bool(eq_id and bis_id and eq_id == bis_id),
+            })
+        player.gear = updated
+        player.last_sync = synced_at
+        player.last_sync_source = sync_source
+        player.last_synced_job = job.upper()
+        player.updated_at = synced_at
 
 
 # ---------------------------------------------------------------------------
@@ -714,6 +781,7 @@ async def update_character(
 
     character.updated_at = now
     await session.flush()
+    await _propagate_identity_to_rosters(session, current_user.id, character, now)
     await session.commit()
 
     return PlayerCharacterResponse(
@@ -909,6 +977,8 @@ async def sync_character_gear(
         character.avatar_url = new_avatar
     character.updated_at = now
 
+    await _propagate_identity_to_rosters(session, current_user.id, character, now)
+
     # Upsert gear snapshot (one per character+job)
     result = await session.execute(
         select(PlayerGearSnapshot).where(
@@ -953,6 +1023,8 @@ async def sync_character_gear(
     if job_profile:
         job_profile.gear_snapshot_id = snapshot.id
         job_profile.updated_at = now
+
+    await _propagate_gear_to_rosters(session, current_user.id, synced_job_upper, gear, sync_source, now)
 
     await session.commit()
 
@@ -1640,7 +1712,7 @@ async def plugin_player_gear_sync(
             "equippedItemId": slot_data.item_id,
             "equippedItemName": slot_data.item_name,
             "equippedItemLevel": slot_data.item_level,
-            "equippedItemIcon": slot_data.item_icon,
+            "equippedItemIcon": build_icon_url_from_id(slot_data.item_icon),
             "itemLevel": slot_data.item_level,
         })
 
@@ -1653,6 +1725,8 @@ async def plugin_player_gear_sync(
 
     now = datetime.now(timezone.utc).isoformat()
     source = body.source if body.source in VALID_SYNC_SOURCES else "plugin"
+
+    await _propagate_identity_to_rosters(session, current_user.id, character, now)
 
     # Upsert gear snapshot
     result = await session.execute(
@@ -1701,6 +1775,8 @@ async def plugin_player_gear_sync(
     if job_profile:
         job_profile.gear_snapshot_id = snapshot.id
         job_profile.updated_at = now
+
+    await _propagate_gear_to_rosters(session, current_user.id, job_upper, gear, source, now)
 
     await session.commit()
 
@@ -1771,6 +1847,8 @@ async def plugin_batch_gearset_sync(
     now = datetime.now(timezone.utc).isoformat()
     job_results: list[PluginBatchGearsetSyncJobResult] = []
 
+    await _propagate_identity_to_rosters(session, current_user.id, character, now)
+
     for gs in body.gearsets:
         job_upper = gs.job.upper()
         if job_upper.lower() not in VALID_JOBS:
@@ -1791,7 +1869,7 @@ async def plugin_batch_gearset_sync(
                 "equippedItemId": slot_data.item_id,
                 "equippedItemName": slot_data.item_name,
                 "equippedItemLevel": slot_data.item_level,
-                "equippedItemIcon": slot_data.item_icon,
+                "equippedItemIcon": build_icon_url_from_id(slot_data.item_icon),
                 "itemLevel": slot_data.item_level,
             })
 
@@ -1850,6 +1928,8 @@ async def plugin_batch_gearset_sync(
         if job_profile:
             job_profile.gear_snapshot_id = snapshot.id
             job_profile.updated_at = now
+
+        await _propagate_gear_to_rosters(session, current_user.id, job_upper, gear, source, now)
 
         job_results.append(PluginBatchGearsetSyncJobResult(
             job=job_upper,

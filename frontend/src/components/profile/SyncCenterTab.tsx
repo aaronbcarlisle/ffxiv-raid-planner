@@ -84,13 +84,13 @@ export function SyncCenterTab({
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncCompleteAt, setSyncCompleteAt] = useState(0);
 
-  useEffect(() => {
-    fetchPersonalAvailability();
-  }, [fetchPersonalAvailability]);
-
   const allSnapshots = useMemo(() => Object.values(gearSnapshots).flat(), [gearSnapshots]);
   const trackedJobs = profile?.jobProfiles ?? [];
   const characters = profile?.characters ?? [];
+
+  useEffect(() => {
+    fetchPersonalAvailability();
+  }, [fetchPersonalAvailability]);
 
   const pluginSnapshots = useMemo(
     () => allSnapshots.filter((s) => s.source?.toLowerCase() === 'plugin' && hasUsableGearSnapshot(s)),
@@ -134,12 +134,11 @@ export function SyncCenterTab({
       await fetchGoals();
       await fetchCollectionSuggestions();
       await fetchStaticSuggestions();
-
       for (const character of characters) {
         try {
           await fetchGearSnapshots(character.id);
         } catch {
-          // Character gear fetch failed, skip
+          // skip failed characters
         }
       }
       toast.success('Status refreshed');

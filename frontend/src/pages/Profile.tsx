@@ -227,6 +227,21 @@ export default function Profile() {
     }
   }, [characterIds, fetchGearSnapshots]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Poll gear snapshots every 30s at page level so all tabs stay current without manual refresh
+  const gearPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (!characterIds) return;
+    const characters = profile?.characters ?? [];
+    gearPollRef.current = setInterval(() => {
+      for (const character of characters) {
+        fetchGearSnapshots(character.id).catch(() => {});
+      }
+    }, 30_000);
+    return () => {
+      if (gearPollRef.current) clearInterval(gearPollRef.current);
+    };
+  }, [characterIds, fetchGearSnapshots, profile?.characters]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Seed sharedBisStore for every job profile so cards show live data immediately
   const jobProfileIds = profile?.jobProfiles.map((j) => j.id).join(',') ?? '';
   useEffect(() => {
