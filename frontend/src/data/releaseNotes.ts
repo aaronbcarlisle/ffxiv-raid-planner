@@ -61,7 +61,7 @@ export const RELEASES: Release[] = [
   {
     version: 'Unreleased',
     date: '2026-06-15T00:00:00Z',
-    title: 'Follow-up fixes: notification sync, BiS presets, Player Hub auto-link, webhook delivery, activity privacy',
+    title: 'Follow-up fixes: notification sync, BiS presets, Player Hub auto-link, webhook delivery, activity privacy, "This static" filter',
     internal: true,
     items: [
       {
@@ -99,6 +99,12 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Claiming a roster slot now auto-links your Player Hub BiS',
         description: 'When a player claims their slot in the static roster, the roster BiS link is now automatically populated from their active Player Hub BiS target for the matching job — as long as one exists and no manual link is already set. Leads assigning a member to a slot receive the same auto-link. The BiS link can still be overridden manually at any time.',
+      },
+      {
+        category: 'fix',
+        title: '"This static" filter now correctly shows all group notifications',
+        description: 'Vote notifications, webhook failure alerts, and other group-scoped messages were previously excluded from the "This static" notification filter because they rely on URL matching, which could fail if the URL format varied. Notifications are now tagged with their group ID at creation time and matched precisely — no more missing notifications in this view.',
+        pr: 133,
       },
     ],
   },

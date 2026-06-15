@@ -255,6 +255,7 @@ async def _notify_webhook_failure(
                 title=f"Discord webhook failed for {group.name}",
                 body=(error_text or "")[:200] or None,
                 href=href,
+                group_id=group.id,
             )
     except Exception as exc:
         logger.warning("webhook_failure_notification_error", group_id=group_id, error=str(exc))

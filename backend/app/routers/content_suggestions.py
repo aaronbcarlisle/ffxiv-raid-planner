@@ -369,6 +369,7 @@ async def upsert_vote(
                 title=f"{voter_name} voted on your suggestion",
                 body=f'Voted "{vote_label}" on "{suggestion.title}"',
                 href=f"/group/{group.share_code}?tab=goals",
+                group_id=group.id,
             )
 
     await session.commit()

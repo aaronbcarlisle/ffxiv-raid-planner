@@ -21,6 +21,7 @@ class NotificationResponse(BaseModel):
     title: str
     body: str | None
     href: str | None
+    group_id: str | None
     is_read: bool
     created_at: str
 
@@ -105,6 +106,7 @@ async def create_notification(
     title: str,
     body: str | None = None,
     href: str | None = None,
+    group_id: str | None = None,
 ) -> None:
     now = datetime.now(timezone.utc).isoformat()
     db.add(
@@ -115,6 +117,7 @@ async def create_notification(
             title=title,
             body=body,
             href=href,
+            group_id=group_id,
             is_read=False,
             created_at=now,
         )

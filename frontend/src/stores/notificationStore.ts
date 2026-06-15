@@ -8,6 +8,7 @@ export interface AppNotification {
   title: string;
   body: string | null;
   href: string | null;
+  group_id: string | null;
   is_read: boolean;
   created_at: string;
 }

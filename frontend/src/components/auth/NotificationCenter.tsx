@@ -103,7 +103,9 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
     if (filter === 'unread') return !n.is_read;
     if (filter === 'static')
       return currentGroup
-        ? (n.href?.includes(`/group/${currentGroup.shareCode}`) ?? false)
+        ? (n.group_id
+            ? n.group_id === currentGroup.id
+            : (n.href?.includes(`/group/${currentGroup.shareCode}`) ?? false))
         : false;
     return true;
   });

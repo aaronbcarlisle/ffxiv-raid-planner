@@ -585,6 +585,7 @@ async def create_join_request(
                 title="New application received",
                 body=f"{applicant_name} applied to join {group.name}.",
                 href=f"/group/{group.share_code}",
+                group_id=group.id,
             )
     await session.commit()
 
@@ -746,6 +747,7 @@ async def accept_join_request(
             title="Application accepted",
             body=f"Your application to {group_name} has been accepted. Welcome!",
             href="/dashboard",
+            group_id=group.id if group else None,
         )
         await session.commit()
 
@@ -838,6 +840,7 @@ async def decline_join_request(
             notification_type="application_declined",
             title="Application not accepted",
             body=f"Your application to {group_name} was not accepted at this time.",
+            group_id=group.id if group else None,
         )
         await session.commit()
 

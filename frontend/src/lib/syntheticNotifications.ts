@@ -16,6 +16,7 @@ export function getSyntheticNotifications(): AppNotification[] {
       title: `v${r.version}${r.title ? ` — ${r.title}` : ''}`,
       body: (r.highlights?.[0] ?? r.items[0]?.description ?? r.items[0]?.title ?? null) as string | null,
       href: '/docs/release-notes',
+      group_id: null,
       is_read: seen.has(r.version),
       created_at: r.date,
     }));
