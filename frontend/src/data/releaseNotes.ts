@@ -506,7 +506,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.23.0',
-    date: '2026-06-08T00:00:00Z',
+    date: '2026-06-08T08:00:00Z',
     title: 'Solo Player Hub & Join Requests',
     highlights: [
       'Your raider profile for statics, schedules, and applications',
@@ -609,7 +609,7 @@ export const RELEASES: Release[] = [
   // ── Upstream entries (origin/main) ─────────────────────────────────────
   {
     version: '1.22.6',
-    date: '2026-06-10T00:00:00Z',
+    date: '2026-06-08T06:00:00Z',
     title: 'Release notes show pull requests',
     items: [
       {
@@ -624,7 +624,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.22.5',
-    date: '2026-06-10T00:00:00Z',
+    date: '2026-06-08T04:00:00Z',
     title: 'Release notes commit links',
     items: [
       {
@@ -639,7 +639,7 @@ export const RELEASES: Release[] = [
   },
   {
     version: '1.22.4',
-    date: '2026-06-10T00:00:00Z',
+    date: '2026-06-08T02:00:00Z',
     title: 'Player name editing fix',
     items: [
       {
