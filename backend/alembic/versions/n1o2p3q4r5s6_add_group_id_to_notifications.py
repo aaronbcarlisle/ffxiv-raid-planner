@@ -1,14 +1,14 @@
 """add group_id to notifications
 
-Revision ID: f4g5h6i7j8k9
-Revises: e3f4g5h6i7j8
+Revision ID: n1o2p3q4r5s6
+Revises: ar2_001fit2snap
 Create Date: 2026-06-15
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = 'f4g5h6i7j8k9'
-down_revision = 'e3f4g5h6i7j8'
+revision = 'n1o2p3q4r5s6'
+down_revision = 'ar2_001fit2snap'
 branch_labels = None
 depends_on = None
 

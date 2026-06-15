@@ -104,7 +104,6 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Player Hub syncs now propagate live to roster slots',
         description: 'When a player syncs in Player Hub (via plugin or Lodestone), all roster slots they hold are updated immediately. Gear data (equipped vs BiS comparison) propagates per-job. Character identity (name, world, avatar) propagates across all slots — so name changes, server transfers, and new avatar imports no longer require a re-claim or manual roster edit.',
-        internal: true,
       },
       {
         category: 'fix',
