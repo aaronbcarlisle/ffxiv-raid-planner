@@ -66,6 +66,13 @@ export const RELEASES: Release[] = [
     items: [
       {
         category: 'fix',
+        title: 'Leads can now access group settings',
+        description: 'The settings gear icon in the group header was previously only visible to the Owner. Leads can now open group settings to manage roster, tiers, invitations, and other options. The destructive "Delete Static" action remains restricted to the Owner only.',
+        pr: 134,
+        prTitle: 'hotfix: allow leads to access group settings',
+      },
+      {
+        category: 'fix',
         title: 'Ultimate farm catalog token metadata completed',
         description: 'Added curated one-token exchange metadata for all Ultimate reward farms, including Dreadwyrm, Ultima, Colossus, Dragonsong, Omega, Oracle, and Mad Harlequin totems with their weapon set exchanges.',
       },
