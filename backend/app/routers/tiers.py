@@ -1079,8 +1079,33 @@ async def _auto_link_bis_from_hub(session: AsyncSession, player: SnapshotPlayer,
         )
     )
     target = target_result.scalar_one_or_none()
-    if target and target.external_url:
-        player.bis_link = target.external_url
+    if not target or not target.external_url:
+        return
+
+    player.bis_link = target.external_url
+
+    # If the Player Hub BiS has already been imported, copy item data into the
+    # roster player's gear slots so the hover card renders without a manual import.
+    if target.items_json and target.items_json.get("slots"):
+        bis_by_slot = {s["slot"]: s for s in target.items_json["slots"]}
+        updated_gear = []
+        for existing in (player.gear or []):
+            slot_name = existing.get("slot")
+            bis = bis_by_slot.get(slot_name)
+            if bis and not existing.get("itemName"):
+                updated_gear.append({
+                    **existing,
+                    "bisSource": bis.get("source", existing.get("bisSource", "raid")),
+                    "itemId": bis.get("itemId"),
+                    "itemName": bis.get("itemName"),
+                    "itemLevel": bis.get("itemLevel"),
+                    "itemIcon": bis.get("itemIcon"),
+                    "itemStats": bis.get("itemStats"),
+                    "materia": bis.get("materia", []),
+                })
+            else:
+                updated_gear.append(existing)
+        player.gear = updated_gear
 
 
 @router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/claim", response_model=SnapshotPlayerResponse)

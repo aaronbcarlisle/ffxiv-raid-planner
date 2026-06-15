@@ -98,7 +98,7 @@ export const RELEASES: Release[] = [
       {
         category: 'fix',
         title: 'Claiming a roster slot now auto-links your Player Hub BiS',
-        description: 'When a player claims their slot in the static roster, the roster BiS link is now automatically populated from their active Player Hub BiS target for the matching job — as long as one exists and no manual link is already set. Leads assigning a member to a slot receive the same auto-link. The BiS link can still be overridden manually at any time.',
+        description: 'When a player claims their slot in the static roster, the BiS link and gear item data are now automatically populated from their active Player Hub BiS target for the matching job — as long as one exists and no manual link is already set. If the Player Hub BiS has already been imported, gear slot names, item levels, and materia appear in the roster immediately without a separate import step. Leads assigning a member receive the same auto-link. Everything can still be overridden manually.',
       },
       {
         category: 'fix',
