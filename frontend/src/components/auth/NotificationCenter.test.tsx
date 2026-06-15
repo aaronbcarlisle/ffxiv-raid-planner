@@ -35,10 +35,12 @@ vi.mock('../../stores/notificationStore', () => ({
   useNotificationStore: () => notificationStoreState,
 }));
 
+const staticGroupStoreState = {
+  currentGroup: null as { id: string; shareCode: string; name: string } | null,
+};
+
 vi.mock('../../stores/staticGroupStore', () => ({
-  useStaticGroupStore: () => ({
-    currentGroup: null,
-  }),
+  useStaticGroupStore: () => staticGroupStoreState,
 }));
 
 // ── React Router mock — avoid needing MemoryRouter ────────────────────────────
@@ -101,6 +103,7 @@ function makeNotification(overrides: Partial<AppNotification> = {}): AppNotifica
     title: 'Someone voted on your suggestion',
     body: 'Voted "Want" on "Farm BiS"',
     href: '/group/ABC123?tab=goals',
+    group_id: null,
     is_read: false,
     created_at: new Date(Date.now() - 60000).toISOString(),
     ...overrides,
@@ -125,6 +128,7 @@ describe('NotificationCenter', () => {
     notificationStoreState.unreadCount = 0;
     notificationStoreState.loading = false;
     notificationStoreState.error = null;
+    staticGroupStoreState.currentGroup = null;
     // Clear localStorage synthetic read state
     localStorage.clear();
   });
@@ -205,5 +209,80 @@ describe('NotificationCenter', () => {
     fireEvent.click(title.closest('[role="button"]') ?? title);
 
     expect(markRead).not.toHaveBeenCalled();
+  });
+
+  // ── "This static" filter ────────────────────────────────────────────────────
+
+  describe('"This static" filter', () => {
+    const group = { id: 'group-uuid-1', shareCode: 'ABC123', name: 'My Static' };
+
+    beforeEach(() => {
+      staticGroupStoreState.currentGroup = group;
+    });
+
+    it('shows notification whose group_id matches currentGroup.id', () => {
+      notificationStoreState.notifications = [
+        makeNotification({ group_id: group.id, href: '/group/ABC123?tab=goals' }),
+      ];
+
+      renderCenter();
+      fireEvent.click(screen.getByText('This static'));
+
+      expect(screen.getByText('Someone voted on your suggestion')).toBeInTheDocument();
+    });
+
+    it('hides notification whose group_id belongs to a different group', () => {
+      notificationStoreState.notifications = [
+        makeNotification({ group_id: 'other-group-uuid', href: '/group/XYZ999?tab=goals' }),
+      ];
+
+      renderCenter();
+      fireEvent.click(screen.getByText('This static'));
+
+      expect(screen.queryByText('Someone voted on your suggestion')).not.toBeInTheDocument();
+    });
+
+    it('shows legacy notification (no group_id) when href contains the share code', () => {
+      notificationStoreState.notifications = [
+        makeNotification({ group_id: null, href: `/group/${group.shareCode}` }),
+      ];
+
+      renderCenter();
+      fireEvent.click(screen.getByText('This static'));
+
+      expect(screen.getByText('Someone voted on your suggestion')).toBeInTheDocument();
+    });
+
+    it('hides legacy notification (no group_id) when href does not contain the share code', () => {
+      notificationStoreState.notifications = [
+        makeNotification({ group_id: null, href: '/group/ZZZDIFF' }),
+      ];
+
+      renderCenter();
+      fireEvent.click(screen.getByText('This static'));
+
+      expect(screen.queryByText('Someone voted on your suggestion')).not.toBeInTheDocument();
+    });
+
+    it('group_id match takes precedence — shows even when href share code does not match', () => {
+      // Simulates a notification created before share code changed (edge case)
+      notificationStoreState.notifications = [
+        makeNotification({ group_id: group.id, href: '/group/OLDCODE?tab=goals' }),
+      ];
+
+      renderCenter();
+      fireEvent.click(screen.getByText('This static'));
+
+      expect(screen.getByText('Someone voted on your suggestion')).toBeInTheDocument();
+    });
+
+    it('shows empty state when no notifications belong to this group', () => {
+      notificationStoreState.notifications = [];
+
+      renderCenter();
+      fireEvent.click(screen.getByText('This static'));
+
+      expect(screen.getByText('No notifications for this static.')).toBeInTheDocument();
+    });
   });
 });
