@@ -1,5 +1,5 @@
 /* eslint-disable design-system/no-raw-button */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell,
@@ -17,48 +17,13 @@ import { Button } from '../primitives';
 import { useNotificationStore } from '../../stores/notificationStore';
 import type { AppNotification } from '../../stores/notificationStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
-import { RELEASES } from '../../data/releaseNotes';
+import {
+  getSyntheticNotifications,
+  markSyntheticRead,
+  markAllSyntheticRead,
+} from '../../lib/syntheticNotifications';
 
 type Filter = 'all' | 'unread' | 'static' | 'system';
-
-// ─── Synthetic release notifications ─────────────────────────────────────────
-
-const SEEN_RELEASES_KEY = 'seen-release-notes';
-
-function getSyntheticNotifications(): AppNotification[] {
-  const seen = new Set(
-    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
-  );
-  return RELEASES
-    .filter((r) => r.version !== 'Unreleased' && !r.internal)
-    .slice(0, 5)
-    .map((r) => ({
-      id: `__release__${r.version}`,
-      notification_type: 'web_update',
-      title: `v${r.version}${r.title ? ` — ${r.title}` : ''}`,
-      body: (r.highlights?.[0] ?? r.items[0]?.description ?? r.items[0]?.title ?? null) as string | null,
-      href: '/docs/release-notes',
-      is_read: seen.has(r.version),
-      created_at: r.date,
-    }));
-}
-
-function markSyntheticRead(id: string) {
-  const version = id.replace('__release__', '');
-  const seen = new Set(
-    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
-  );
-  seen.add(version);
-  localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
-}
-
-function markAllSyntheticRead() {
-  const versions = RELEASES
-    .filter((r) => r.version !== 'Unreleased' && !r.internal)
-    .slice(0, 5)
-    .map((r) => r.version);
-  localStorage.setItem(SEEN_RELEASES_KEY, versions.join(','));
-}
 
 // ─── Type icon map ────────────────────────────────────────────────────────────
 
@@ -114,6 +79,14 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
   const refreshSynthetic = useCallback(() => {
     setSyntheticNotifications(getSyntheticNotifications());
   }, []);
+
+  // Refresh server notifications and synthetic state whenever the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchNotifications();
+      refreshSynthetic();
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const syntheticUnreadCount = syntheticNotifications.filter((n) => !n.is_read).length;
   const totalUnread = unreadCount + syntheticUnreadCount;

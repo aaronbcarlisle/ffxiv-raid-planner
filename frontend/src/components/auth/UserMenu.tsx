@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
+import { getSyntheticUnreadCount } from '../../lib/syntheticNotifications';
 import { NotificationCenter } from './NotificationCenter';
 import {
   Dropdown,
@@ -56,6 +57,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
   const apiKeysModal = useModal();
   const notificationsModal = useModal();
   const { unreadCount, fetchNotifications } = useNotificationStore();
+  const totalBadge = unreadCount + getSyntheticUnreadCount();
 
   useEffect(() => {
     if (user) fetchNotifications();
@@ -83,9 +85,9 @@ export function UserMenu({ className = '' }: UserMenuProps) {
               alt={displayName}
               className="w-8 h-8 rounded-full border-2 border-accent/50"
             />
-            {unreadCount > 0 && (
+            {totalBadge > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-status-error text-[9px] font-bold text-white flex items-center justify-center leading-none">
-                {unreadCount > 9 ? '9+' : unreadCount}
+                {totalBadge > 9 ? '9+' : totalBadge}
               </span>
             )}
           </span>
@@ -196,16 +198,16 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           icon={
             <span className="relative">
               <Bell className="w-4 h-4" />
-              {unreadCount > 0 && (
+              {totalBadge > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[10px] h-[10px] px-0.5 rounded-full bg-status-error text-[7px] font-bold text-white flex items-center justify-center leading-none">
-                  {unreadCount > 9 ? '9+' : unreadCount}
+                  {totalBadge > 9 ? '9+' : totalBadge}
                 </span>
               )}
             </span>
           }
           onSelect={() => notificationsModal.open()}
         >
-          {unreadCount > 0 ? `${unreadCount} unread notifications` : 'Notifications'}
+          {totalBadge > 0 ? `${totalBadge} unread notifications` : 'Notifications'}
         </DropdownItem>
 
         <DropdownItem
