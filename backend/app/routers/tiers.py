@@ -19,6 +19,7 @@ from ..models import MemberRole, SnapshotPlayer, TierSnapshot, User, WeeklyAssig
 from ..models.bis_target_set import BiSTargetSet
 from ..models.player_job_profile import PlayerJobProfile
 from ..models.player_profile import PlayerProfile
+from .bis_targets import _fetch_slots_xivgear, _fetch_slots_etro
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -1084,10 +1085,28 @@ async def _auto_link_bis_from_hub(session: AsyncSession, player: SnapshotPlayer,
 
     player.bis_link = target.external_url
 
-    # If the Player Hub BiS has already been imported, copy item data into the
-    # roster player's gear slots so the hover card renders without a manual import.
+    # Ensure items_json is populated — fetch from the external URL if not yet imported.
+    slots: list[dict] | None = None
     if target.items_json and target.items_json.get("slots"):
-        bis_by_slot = {s["slot"]: s for s in target.items_json["slots"]}
+        slots = target.items_json["slots"]
+    elif target.source_type in ("xivgear", "preset", "etro"):
+        try:
+            if target.source_type in ("xivgear", "preset"):
+                slots = await _fetch_slots_xivgear(target.external_url)
+            else:
+                slots = await _fetch_slots_etro(target.external_url)
+            # Persist on the Player Hub target so future claims skip the fetch
+            item_levels = [s["itemLevel"] for s in slots if s.get("itemLevel")]
+            target.items_json = {"slots": slots}
+            target.item_level = max(item_levels) if item_levels else None
+            target.import_status = "imported"
+            target.updated_at = datetime.now(timezone.utc).isoformat()
+        except Exception:
+            logger.warning("auto_bis_fetch_failed", player_id=player.id, url=target.external_url)
+
+    # Apply item data to the roster player's gear slots.
+    if slots:
+        bis_by_slot = {s["slot"]: s for s in slots}
         updated_gear = []
         for existing in (player.gear or []):
             slot_name = existing.get("slot")
