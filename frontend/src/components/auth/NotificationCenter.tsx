@@ -91,7 +91,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
   // Build the base list for the current filter before sub-filtering
   const baseList: AppNotification[] = (() => {
     if (filter === 'system') return syntheticNotifications;
-    if (filter === 'all') {
+    if (filter === 'all' || filter === 'unread') {
       return [...notifications, ...syntheticNotifications].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
