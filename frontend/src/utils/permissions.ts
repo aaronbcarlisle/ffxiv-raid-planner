@@ -315,11 +315,11 @@ export function canManageGroup(
     return { allowed: false, reason: 'You must be logged in' };
   }
 
-  if (effectiveRole === 'owner') {
+  if (effectiveRole === 'owner' || effectiveRole === 'lead') {
     return { allowed: true };
   }
 
-  return { allowed: false, reason: 'Only the Owner can edit group settings or delete the group' };
+  return { allowed: false, reason: 'Only Owners and Leads can access group settings' };
 }
 
 /**
