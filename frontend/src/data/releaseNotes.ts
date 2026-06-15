@@ -66,6 +66,11 @@ export const RELEASES: Release[] = [
     items: [
       {
         category: 'fix',
+        title: 'Ultimate farm catalog token metadata completed',
+        description: 'Added curated one-token exchange metadata for all Ultimate reward farms, including Dreadwyrm, Ultima, Colossus, Dragonsong, Omega, Oracle, and Mad Harlequin totems with their weapon set exchanges.',
+      },
+      {
+        category: 'fix',
         title: 'Objectives panel moved to compact right-rail layout',
         description: 'The Objective Command Center no longer renders as large horizontal cards in the center column. Official Objectives, Active Farms, and Member Interest are now shown as compact rows in the right-side Goals & Objectives panel, keeping the Overview to one screen at 1080p.',
         pr: 137,

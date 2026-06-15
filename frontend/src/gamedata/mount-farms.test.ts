@@ -38,6 +38,17 @@ const CURATED_ULTIMATE_DUTIES = [
   "Dragonsong's Reprise (Ultimate)",
   'The Omega Protocol (Ultimate)',
   'Futures Rewritten (Ultimate)',
+  'Dancing Mad (Ultimate)',
+];
+
+const CURATED_ULTIMATE_EXCHANGES = [
+  { id: 'ult-ucob', expansion: 'SB', patch: '4.11', dutyName: 'The Unending Coil of Bahamut (Ultimate)', rewardName: 'Ultimate Dreadwyrm Weapons', tokenName: 'Dreadwyrm Totem', exchangeNpc: 'Eschina', exchangeLocation: "Rhalgr's Reach" },
+  { id: 'ult-uwu', expansion: 'SB', patch: '4.31', dutyName: "The Weapon's Refrain (Ultimate)", rewardName: 'Ultima Weapons', tokenName: 'Ultima Totem', exchangeNpc: 'Eschina', exchangeLocation: "Rhalgr's Reach" },
+  { id: 'ult-tea', expansion: 'ShB', patch: '5.11', dutyName: 'The Epic of Alexander (Ultimate)', rewardName: 'Ultimate Alexander Weapons', tokenName: 'Colossus Totem', exchangeNpc: 'Bertana', exchangeLocation: 'Idyllshire' },
+  { id: 'ult-dsr', expansion: 'EW', patch: '6.11', dutyName: "Dragonsong's Reprise (Ultimate)", rewardName: 'Ultimate Weapons of the Heavens', tokenName: 'Dragonsong Totem', exchangeNpc: 'Nesvaaz', exchangeLocation: 'Radz-at-Han' },
+  { id: 'ult-top', expansion: 'EW', patch: '6.31', dutyName: 'The Omega Protocol (Ultimate)', rewardName: 'Ultimate Omega Weapons', tokenName: 'Omega Totem', exchangeNpc: 'Nesvaaz', exchangeLocation: 'Radz-at-Han' },
+  { id: 'ult-fru', expansion: 'DT', patch: '7.11', dutyName: 'Futures Rewritten (Ultimate)', rewardName: 'Ultimate Edenmorn Weapons', tokenName: 'Oracle Totem', exchangeNpc: "Uah'shepya", exchangeLocation: 'Solution Nine' },
+  { id: 'ult-dmu', expansion: 'DT', patch: '7.51', dutyName: 'Dancing Mad (Ultimate)', rewardName: 'Palazzo Diamond Weapons', tokenName: "Mad Harlequin's Totem", exchangeNpc: "Uah'shepya", exchangeLocation: 'Solution Nine' },
 ];
 
 describe('Mount Farm catalog', () => {
@@ -128,22 +139,49 @@ describe('Mount Farm catalog', () => {
     expect(getExchangeSummary(unmaking!)).toBe('Exchange not available yet');
   });
 
-  it('adds curated Ultimate weapon farms without mount or 99-token assumptions', () => {
+  it('adds curated Ultimate weapon farms with reviewed one-token exchange metadata', () => {
     const ultimateEntries = MOUNT_FARM_TRIALS.filter(trial => trial.contentType === 'ultimate');
 
     expect(ultimateEntries.map(trial => trial.dutyName)).toEqual(CURATED_ULTIMATE_DUTIES);
+    for (const expected of CURATED_ULTIMATE_EXCHANGES) {
+      const trial = getTrialById(expected.id);
+      expect(trial).toMatchObject({
+        expansion: expected.expansion,
+        patch: expected.patch,
+        dutyName: expected.dutyName,
+        rewardType: 'weapon',
+        contentType: 'ultimate',
+        category: 'ultimate',
+        mountName: expected.rewardName,
+        totemName: expected.tokenName,
+        currencyItemName: expected.tokenName,
+        currencyPerClear: 1,
+        exchangeCost: 1,
+        exchangeNpc: expected.exchangeNpc,
+        exchangeLocation: expected.exchangeLocation,
+        exchangeStatus: 'available',
+      });
+      expect(trial?.totemTarget).toBe(1);
+      expect(getRewardLabel(trial!)).toBe(expected.rewardName);
+      expect(getRewardNoun(trial!)).toBe('weapon');
+      expect(hasCurrencyTracking(trial!)).toBe(true);
+      expect(getExchangeSummary(trial!)).toBe(
+        `1 ${expected.tokenName} for ${expected.rewardName} at ${expected.exchangeNpc} in ${expected.exchangeLocation}`
+      );
+    }
+  });
+
+  it('keeps Ultimate entries out of mount-specific 99-token assumptions', () => {
+    const ultimateEntries = MOUNT_FARM_TRIALS.filter(trial => trial.contentType === 'ultimate');
+
     for (const trial of ultimateEntries) {
       expect(trial.rewardType).toBe('weapon');
       expect(trial.category).toBe('ultimate');
-      expect(trial.totemName).toBeNull();
-      expect(trial.currencyItemName).toBeNull();
-      expect(trial.totemTarget).toBe(0);
-      expect(trial.exchangeCost).toBeUndefined();
-      expect(trial.exchangeStatus).toBe('unknown');
-      expect(getRewardLabel(trial)).toBe('Ultimate weapon coffer / weapon exchange');
+      expect(trial.mountId).toBeNull();
+      expect(trial.totemTarget).not.toBe(99);
+      expect(trial.exchangeCost).not.toBe(99);
       expect(getRewardNoun(trial)).toBe('weapon');
-      expect(hasCurrencyTracking(trial)).toBe(false);
-      expect(getExchangeSummary(trial)).toBe('Weapon/token farm');
+      expect(getExchangeSummary(trial)).not.toMatch(/99/);
     }
   });
 
@@ -162,9 +200,8 @@ describe('Mount Farm catalog', () => {
     }));
 
     expect(screen.getByText('Futures Rewritten (Ultimate)')).toBeTruthy();
-    expect(screen.getByText('Weapon/token farm')).toBeTruthy();
+    expect(screen.getByText("1 Oracle Totem for Ultimate Edenmorn Weapons at Uah'shepya in Solution Nine")).toBeTruthy();
     expect(screen.getByText('Ultimate')).toBeTruthy();
-    expect(screen.queryByText(/totem/i)).toBeNull();
     expect(screen.queryByText(/99/)).toBeNull();
   });
 

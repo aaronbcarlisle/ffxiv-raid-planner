@@ -60,6 +60,72 @@ CURATED_ULTIMATE_DUTIES = [
     "Dragonsong's Reprise (Ultimate)",
     "The Omega Protocol (Ultimate)",
     "Futures Rewritten (Ultimate)",
+    "Dancing Mad (Ultimate)",
+]
+CURATED_ULTIMATE_EXCHANGES = [
+    {
+        "trial_id": "ult-ucob",
+        "expansion": "SB",
+        "duty_name": "The Unending Coil of Bahamut (Ultimate)",
+        "reward_name": "Ultimate Dreadwyrm Weapons",
+        "token_name": "Dreadwyrm Totem",
+        "exchange_npc": "Eschina",
+        "exchange_location": "Rhalgr's Reach",
+    },
+    {
+        "trial_id": "ult-uwu",
+        "expansion": "SB",
+        "duty_name": "The Weapon's Refrain (Ultimate)",
+        "reward_name": "Ultima Weapons",
+        "token_name": "Ultima Totem",
+        "exchange_npc": "Eschina",
+        "exchange_location": "Rhalgr's Reach",
+    },
+    {
+        "trial_id": "ult-tea",
+        "expansion": "ShB",
+        "duty_name": "The Epic of Alexander (Ultimate)",
+        "reward_name": "Ultimate Alexander Weapons",
+        "token_name": "Colossus Totem",
+        "exchange_npc": "Bertana",
+        "exchange_location": "Idyllshire",
+    },
+    {
+        "trial_id": "ult-dsr",
+        "expansion": "EW",
+        "duty_name": "Dragonsong's Reprise (Ultimate)",
+        "reward_name": "Ultimate Weapons of the Heavens",
+        "token_name": "Dragonsong Totem",
+        "exchange_npc": "Nesvaaz",
+        "exchange_location": "Radz-at-Han",
+    },
+    {
+        "trial_id": "ult-top",
+        "expansion": "EW",
+        "duty_name": "The Omega Protocol (Ultimate)",
+        "reward_name": "Ultimate Omega Weapons",
+        "token_name": "Omega Totem",
+        "exchange_npc": "Nesvaaz",
+        "exchange_location": "Radz-at-Han",
+    },
+    {
+        "trial_id": "ult-fru",
+        "expansion": "DT",
+        "duty_name": "Futures Rewritten (Ultimate)",
+        "reward_name": "Ultimate Edenmorn Weapons",
+        "token_name": "Oracle Totem",
+        "exchange_npc": "Uah'shepya",
+        "exchange_location": "Solution Nine",
+    },
+    {
+        "trial_id": "ult-dmu",
+        "expansion": "DT",
+        "duty_name": "Dancing Mad (Ultimate)",
+        "reward_name": "Palazzo Diamond Weapons",
+        "token_name": "Mad Harlequin's Totem",
+        "exchange_npc": "Uah'shepya",
+        "exchange_location": "Solution Nine",
+    },
 ]
 
 
@@ -124,21 +190,29 @@ class TestMountFarmCatalogValidation:
         assert by_id["dt-hell-on-rails"]["exchange_status"] == "not_yet_available"
         assert by_id["dt-unmaking"]["exchange_status"] == "not_yet_available"
 
-    async def test_ultimate_entries_are_weapon_farms_not_mounts(self):
+    async def test_ultimate_entries_have_curated_one_token_exchange_metadata(self):
         ultimate_entries = [
             entry for entry in MOUNT_FARM_CATALOG if entry["content_type"] == "ultimate"
         ]
         assert [entry["duty_name"] for entry in ultimate_entries] == CURATED_ULTIMATE_DUTIES
-        for entry in ultimate_entries:
+        by_id = {entry["trial_id"]: entry for entry in ultimate_entries}
+
+        for expected in CURATED_ULTIMATE_EXCHANGES:
+            entry = by_id[expected["trial_id"]]
+            assert entry["expansion"] == expected["expansion"]
+            assert entry["duty_name"] == expected["duty_name"]
             assert entry["reward_type"] == "weapon"
+            assert entry["content_type"] == "ultimate"
             assert entry["category"] == "ultimate"
-            assert entry["reward_name"] == "Ultimate weapon coffer / weapon exchange"
-            assert entry["totem_name"] is None
-            assert entry["currency_item_name"] is None
-            assert entry["totem_target"] == 0
-            assert entry["exchange_cost"] is None
-            assert entry["exchange_status"] == "unknown"
-            assert "Token item metadata pending" in entry["notes"]
+            assert entry["reward_name"] == expected["reward_name"]
+            assert entry["totem_name"] == expected["token_name"]
+            assert entry["currency_item_name"] == expected["token_name"]
+            assert entry["totem_target"] == 1
+            assert entry["currency_per_clear"] == 1
+            assert entry["exchange_cost"] == 1
+            assert entry["exchange_npc"] == expected["exchange_npc"]
+            assert entry["exchange_location"] == expected["exchange_location"]
+            assert entry["exchange_status"] == "available"
 
 
 class TestGetMountFarmProgress:
