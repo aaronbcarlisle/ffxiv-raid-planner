@@ -17,6 +17,7 @@ from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
 from ..models import MemberRole, SnapshotPlayer, TierSnapshot, User, WeeklyAssignment
 from ..models.bis_target_set import BiSTargetSet
+from ..models.player_gear_snapshot import PlayerGearSnapshot
 from ..models.player_job_profile import PlayerJobProfile
 from ..models.player_profile import PlayerProfile
 from .bis_targets import _fetch_slots_xivgear, _fetch_slots_etro
@@ -1125,6 +1126,35 @@ async def _auto_link_bis_from_hub(session: AsyncSession, player: SnapshotPlayer,
             else:
                 updated_gear.append(existing)
         player.gear = updated_gear
+
+    # Pull equipped gear from the Player Hub gear snapshot so the "currently
+    # wearing vs BiS" comparison renders immediately without a separate sync.
+    if not player.last_sync and job_profile.gear_snapshot_id:
+        snap_result = await session.execute(
+            select(PlayerGearSnapshot).where(PlayerGearSnapshot.id == job_profile.gear_snapshot_id)
+        )
+        snap = snap_result.scalar_one_or_none()
+        if snap and snap.gear:
+            equipped_by_slot = {g["slot"]: g for g in snap.gear if g.get("slot")}
+            final_gear = []
+            for slot in (player.gear or []):
+                slot_name = slot.get("slot")
+                equipped = equipped_by_slot.get(slot_name, {})
+                eq_id = equipped.get("equippedItemId")
+                bis_id = slot.get("itemId")
+                final_gear.append({
+                    **slot,
+                    "equippedItemId": eq_id,
+                    "equippedItemName": equipped.get("equippedItemName"),
+                    "equippedItemLevel": equipped.get("equippedItemLevel"),
+                    "equippedItemIcon": equipped.get("equippedItemIcon"),
+                    "currentSource": equipped.get("currentSource", "unknown"),
+                    "hasItem": bool(eq_id and bis_id and eq_id == bis_id),
+                })
+            player.gear = final_gear
+            player.last_sync = snap.synced_at
+            player.last_sync_source = "player_hub"
+            player.last_synced_job = player.job
 
 
 @router.post("/{group_id}/tiers/{tier_id}/players/{player_id}/claim", response_model=SnapshotPlayerResponse)

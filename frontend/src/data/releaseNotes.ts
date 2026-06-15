@@ -98,7 +98,7 @@ export const RELEASES: Release[] = [
       {
         category: 'fix',
         title: 'Claiming a roster slot now auto-links your Player Hub BiS',
-        description: 'When a player claims their slot in the static roster, gear item data is now automatically pulled from their active Player Hub BiS target for the matching job. If the BiS set has already been imported in Player Hub, the roster uses the cached data instantly. If not, it fetches from XIVGear or Etro automatically — no separate import step required. The cached data is also saved back to Player Hub so future operations are instant. Leads assigning a member receive the same auto-link. Everything can still be overridden manually.',
+        description: 'When a player claims their slot in the static roster, BiS gear items and currently-equipped gear are now both automatically pulled from Player Hub. The BiS target is fetched from XIVGear or Etro if not already cached. The player\'s latest gear snapshot from Player Hub is used to populate the "currently wearing" comparison immediately — showing BiS matched, upgrade needed, or not detected without requiring a Lodestone sync or manual import. Leads assigning a member receive the same treatment. Everything can still be overridden manually.',
       },
       {
         category: 'fix',
