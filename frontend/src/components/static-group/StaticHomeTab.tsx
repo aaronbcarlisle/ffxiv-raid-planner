@@ -28,7 +28,6 @@ import { useContentSuggestionStore, type ContentSuggestion } from '../../stores/
 import { HEADER_EVENTS } from '../layout/Header';
 import type { MountFarmData, FarmScore } from '../../stores/mountFarmStore';
 import type { CollectionGoal } from '../../stores/collectionGoalStore';
-import { ObjectiveCommandCenter } from './ObjectiveCommandCenter';
 import { getAllTrialIds, getTierById, getTrialById } from '../../gamedata';
 import type { MountFarmTrial } from '../../gamedata';
 import { getJobDisplayName } from '../../gamedata/jobs';
@@ -1314,7 +1313,7 @@ function GoalsFarmsModule({
 
         {/* ── Member Interest (Content Suggestions) ── */}
         <div>
-          <SubLabel aside={openSuggestions.length > 0 ? `${openSuggestions.length} open` : undefined}>
+          <SubLabel aside="Not official yet">
             Member Interest
           </SubLabel>
           {topSuggestions.length === 0 ? (
@@ -1613,18 +1612,6 @@ export function StaticHomeTab({
             onOpenRequests={onOpenRequests}
             onNavigate={onNavigate}
           />
-
-          {/* ── Current Objectives (Objective Command Center) ── */}
-          {!!group.userRole && (
-            <div>
-              <SectionLabel icon={<Target className="w-3 h-3" />}>Current Objectives</SectionLabel>
-              <ObjectiveCommandCenter
-                groupId={group.id}
-                isMember={!!group.userRole}
-                onNavigate={onNavigate}
-              />
-            </div>
-          )}
 
           <GroupHeroPanel
             group={group}

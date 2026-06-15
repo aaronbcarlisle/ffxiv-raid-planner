@@ -58,6 +58,19 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: 'Unreleased',
+    date: '2026-06-15T00:00:00Z',
+    title: 'Objective Command Center layout fix',
+    internal: true,
+    items: [{
+      category: 'fix',
+      title: 'Objectives moved to compact right-rail panel',
+      description: 'The Objective Command Center no longer renders as large horizontal cards in the center column. Official Objectives, Active Farms, and Member Interest are now shown as compact rows in the right-side Goals & Objectives panel, keeping the Overview to one screen at 1080p.',
+      pr: 137,
+      prTitle: 'fix(overview): compact Goals & Objectives right-rail, remove center-column objective feed',
+    }],
+  },
   // ── v1.24.0 ──────────────────────────────────────────────────────────────
   {
     version: '1.24.0',
@@ -102,7 +115,7 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'Static Objectives widget on Overview',
         description:
-          "The Overview page right column now shows a compact list of the static's active objective goals (category + priority). Owners and leads see a "Manage goals →" link; members see "View goals →".",
+          "The Overview page right column now shows a compact list of the static's active objective goals (category + priority). Owners and leads see a \"Manage goals →\" link; members see \"View goals →\".",
         pr: 131,
         prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },

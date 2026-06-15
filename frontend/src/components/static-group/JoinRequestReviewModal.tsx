@@ -533,8 +533,7 @@ export function JoinRequestReviewModal({
                       <div className="flex items-center justify-between mt-2">
                         <footer className="text-xs font-medium" style={{ color: '#8c7a60' }}>— {applicantName}</footer>
                         {request.message.length > 160 && (
-                          /* design-system-ignore: parchment inline expand toggle */
-                          <button type="button"
+                          <button type="button" /* design-system-ignore: parchment inline expand toggle */
                             onClick={() => setShowFullMessage(!showFullMessage)}
                             className="text-xs underline underline-offset-2 ml-2 flex-shrink-0"
                             style={{ color: '#8b6914' }}
@@ -814,8 +813,7 @@ export function JoinRequestReviewModal({
                                   )}
                                   {request.availabilitySummary?.detailLevel === 'exact' &&
                                     (request.availabilitySummary?.exactWindows?.length ?? 0) > 0 && (
-                                    /* design-system-ignore: parchment inline toggle */
-                                    <button type="button"
+                                    <button type="button" /* design-system-ignore: parchment inline toggle */
                                       onClick={() => setShowWindows(!showWindows)}
                                       className="text-xs underline underline-offset-2 transition-colors"
                                       style={{ color: '#8b6914' }}
@@ -1027,8 +1025,7 @@ export function JoinRequestReviewModal({
                               </span>
                               {request.availabilitySummary.detailLevel === 'exact' &&
                                 (request.availabilitySummary.exactWindows?.length ?? 0) > 0 && (
-                                /* design-system-ignore: parchment inline toggle */
-                                <button type="button"
+                                <button type="button" /* design-system-ignore: parchment inline toggle */
                                   onClick={() => setShowWindows(!showWindows)}
                                   className="text-xs underline underline-offset-2 transition-colors"
                                   style={{ color: '#8b6914' }}

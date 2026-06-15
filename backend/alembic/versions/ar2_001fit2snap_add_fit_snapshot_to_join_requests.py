@@ -1,7 +1,7 @@
 """add fit_snapshot to join_requests
 
 Revision ID: ar2_001fit2snap
-Revises: f4g5h6i7j8k9
+Revises: e3f4g5h6i7j8
 Create Date: 2026-06-14 00:00:00.000000
 
 """
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = 'ar2_001fit2snap'
-down_revision: Union[str, None] = 'f4g5h6i7j8k9'
+down_revision: Union[str, None] = 'e3f4g5h6i7j8'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
