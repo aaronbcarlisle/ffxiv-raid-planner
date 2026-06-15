@@ -61,7 +61,7 @@ export const RELEASES: Release[] = [
   {
     version: 'Unreleased',
     date: '2026-06-15T00:00:00Z',
-    title: 'Follow-up fixes: notification sync, BiS presets, webhook delivery, activity privacy',
+    title: 'Follow-up fixes: notification sync, BiS presets, Player Hub auto-link, webhook delivery, activity privacy',
     internal: true,
     items: [
       {
@@ -94,6 +94,11 @@ export const RELEASES: Release[] = [
         title: 'BiS presets automatically fetch gear data when added',
         description: 'Adding a preset from the "Add Preset" tab now immediately retrieves full gear slot data (item names, item level, materia) from XIVGear after the targets are created. The preset\'s purpose is also derived from its category (Savage, Ultimate, etc.) rather than always defaulting to Savage.',
         pr: 133,
+      },
+      {
+        category: 'fix',
+        title: 'Claiming a roster slot now auto-links your Player Hub BiS',
+        description: 'When a player claims their slot in the static roster, the roster BiS link is now automatically populated from their active Player Hub BiS target for the matching job — as long as one exists and no manual link is already set. Leads assigning a member to a slot receive the same auto-link. The BiS link can still be overridden manually at any time.',
       },
     ],
   },
