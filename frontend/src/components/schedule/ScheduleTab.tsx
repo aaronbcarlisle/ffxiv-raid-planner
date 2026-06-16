@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bell, Calendar, CalendarClock, Copy, LayoutGrid, List, Link2, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, Copy, LayoutGrid, List, Link2, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
 import { canManageRoster } from '../../utils/permissions';
@@ -50,6 +50,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     updateSession,
     deleteSession,
     submitRsvp,
+    syncDiscordMirror,
     clearSessions,
   } = useScheduleStore();
   const createModal = useModal();
@@ -70,6 +71,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
   const [integrationMessage, setIntegrationMessage] = useState<string | null>(null);
   const [postingPreview, setPostingPreview] = useState(false);
+  const [discordBotToken, setDiscordBotToken] = useState('');
+  const [discordGuildId, setDiscordGuildId] = useState('');
+  const [syncingDiscord, setSyncingDiscord] = useState(false);
   const [sessionViewMode, setSessionViewMode] = useState<'list' | 'tiles'>(() => {
     const saved = localStorage.getItem('schedule-session-view');
     return saved === 'tiles' ? 'tiles' : 'list';
@@ -118,6 +122,8 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     setMentionTarget(settings.mentionTarget || 'none');
     setMentionRoleId(settings.mentionRoleId || '');
     setMentionError(null);
+    setDiscordBotToken('');
+    setDiscordGuildId(settings.discordGuildId || '');
   }, [settings]);
 
   useEffect(() => {
@@ -211,6 +217,37 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     });
     setWebhookUrl('');
     setIntegrationMessage('Webhook saved.');
+  };
+
+  const handleSaveDiscordBot = async () => {
+    await updateSettings(groupId, {
+      discordBotToken: discordBotToken || undefined,
+      discordGuildId: discordGuildId || null,
+    });
+    setDiscordBotToken('');
+    setIntegrationMessage('Discord Guild Events settings saved.');
+  };
+
+  const handleSyncAllDiscord = async () => {
+    setSyncingDiscord(true);
+    setIntegrationMessage(null);
+    try {
+      const recurringSessions = sessions.filter(s => s.isRecurring);
+      if (recurringSessions.length === 0) {
+        setIntegrationMessage('No recurring sessions to sync.');
+        return;
+      }
+      let totalActions = 0;
+      for (const s of recurringSessions) {
+        const actions = await syncDiscordMirror(groupId, s.id);
+        totalActions += actions.length;
+      }
+      setIntegrationMessage(`Discord sync complete — ${totalActions} action(s) taken.`);
+    } catch {
+      setIntegrationMessage('Discord sync failed. Check bot token and guild ID.');
+    } finally {
+      setSyncingDiscord(false);
+    }
   };
 
   const handleCopyCalendarUrl = async () => {
@@ -638,6 +675,73 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Discord Guild Scheduled Events card */}
+          <div className="rounded-xl border border-border-default bg-surface-card/80 p-5">
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg border border-accent/20 bg-accent/10 p-2 text-accent">
+                <CalendarDays className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-lg text-text-primary">Discord Guild Scheduled Events</p>
+                <p className="mt-1 text-sm text-text-secondary">
+                  Mirror recurring raid sessions as native Discord events in your server (rolling 4-week window).
+                  Requires a Discord bot with <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">MANAGE_EVENTS</code> permission.
+                </p>
+                <div className="mt-3 inline-flex rounded-full border border-border-subtle bg-surface-elevated px-3 py-1 text-xs text-text-secondary">
+                  {settings?.discordBotConfigured ? 'Bot configured' : 'Not configured'}
+                  {settings?.discordGuildId && (
+                    <span className="ml-2 text-text-muted">Guild: {settings.discordGuildId}</span>
+                  )}
+                </div>
+                {canManage ? (
+                  <div className="mt-4 space-y-3">
+                    <Input
+                      value={discordBotToken}
+                      onChange={setDiscordBotToken}
+                      type="password"
+                      placeholder={settings?.discordBotConfigured ? 'Paste a new bot token to replace it' : 'Discord bot token'}
+                      fullWidth
+                    />
+                    <Input
+                      value={discordGuildId}
+                      onChange={setDiscordGuildId}
+                      placeholder="Discord server (guild) ID"
+                      fullWidth
+                    />
+                    <p className="text-xs text-text-muted">
+                      The guild ID is your Discord server's numeric ID. Right-click the server icon → Copy Server ID (Developer Mode must be on).
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => void handleSaveDiscordBot()}
+                        disabled={!discordBotToken && !discordGuildId}
+                      >
+                        Save bot settings
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        leftIcon={<RefreshCw className={`h-4 w-4 ${syncingDiscord ? 'animate-spin' : ''}`} />}
+                        onClick={() => void handleSyncAllDiscord()}
+                        disabled={syncingDiscord || !settings?.discordBotConfigured || !settings?.discordGuildId}
+                        title={!settings?.discordBotConfigured ? 'Configure bot token and guild ID first' : 'Sync all recurring sessions to Discord'}
+                      >
+                        {syncingDiscord ? 'Syncing…' : 'Sync now'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-lg border border-border-subtle bg-surface-elevated p-3 text-xs text-text-muted">
+                    Only Leads and Owners can manage Discord Guild Events settings.
+                  </div>
+                )}
               </div>
             </div>
           </div>

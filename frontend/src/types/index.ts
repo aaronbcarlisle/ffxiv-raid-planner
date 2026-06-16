@@ -1370,6 +1370,8 @@ export interface ScheduleSettings {
   calendarTokenCreatedAt?: string | null;
   webhookLastDeliveryStatus?: number | null;
   webhookLastDeliveryError?: string | null;
+  discordBotConfigured?: boolean;
+  discordGuildId?: string | null;
   canManage: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -1387,6 +1389,8 @@ export interface ScheduleSettingsUpdate {
   enable6hReminder?: boolean;
   enable12hReminder?: boolean;
   enableMissingRsvpReminder?: boolean;
+  discordBotToken?: string | null;
+  discordGuildId?: string | null;
 }
 
 export interface CalendarTokenResponse {

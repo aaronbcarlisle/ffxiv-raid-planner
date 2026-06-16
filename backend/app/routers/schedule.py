@@ -417,6 +417,8 @@ def _settings_response(
         calendar_token_created_at=row.calendar_token_created_at if row else None,
         webhook_last_delivery_status=last_delivery_status if can_manage else None,
         webhook_last_delivery_error=last_delivery_error if can_manage else None,
+        discord_bot_configured=bool(row and getattr(row, 'discord_bot_token', None)) if can_manage else False,
+        discord_guild_id=getattr(row, 'discord_guild_id', None) if row and can_manage else None,
         can_manage=can_manage,
         created_at=row.created_at if row else None,
         updated_at=row.updated_at if row else None,
@@ -970,6 +972,8 @@ async def update_schedule_settings(
         "enable_6h_reminder",
         "enable_12h_reminder",
         "enable_missing_rsvp_reminder",
+        "discord_bot_token",
+        "discord_guild_id",
     ):
         if field in update_data:
             value = update_data[field]

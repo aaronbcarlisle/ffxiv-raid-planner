@@ -269,6 +269,9 @@ class ScheduleSettingsUpdate(CamelModel):
     enable_6h_reminder: bool | None = Field(default=None, alias="enable6hReminder")
     enable_12h_reminder: bool | None = Field(default=None, alias="enable12hReminder")
     enable_missing_rsvp_reminder: bool | None = None
+    # Discord Guild Scheduled Events (optional bot integration)
+    discord_bot_token: str | None = None
+    discord_guild_id: str | None = None
 
     @field_validator("mention_role_id")
     @classmethod
@@ -302,6 +305,9 @@ class ScheduleSettingsResponse(CamelModel):
     calendar_token_created_at: str | None = None
     webhook_last_delivery_status: int | None = None
     webhook_last_delivery_error: str | None = None
+    # Discord Guild Scheduled Events
+    discord_bot_configured: bool = False
+    discord_guild_id: str | None = None
     can_manage: bool = False
     created_at: str | None = None
     updated_at: str | None = None
