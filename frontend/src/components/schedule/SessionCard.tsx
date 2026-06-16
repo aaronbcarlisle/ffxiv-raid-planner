@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, Swords, RotateCcw, Users, Gamepad2, MoreHorizontal } from 'lucide-react';
+import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, Swords, RotateCcw, Users, Gamepad2, MoreHorizontal, CalendarDays } from 'lucide-react';
 import { Button, IconButton, Tooltip } from '../primitives';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useModal } from '../../hooks/useModal';
 import { toast } from '../../stores/toastStore';
+import { OccurrenceListModal } from './OccurrenceListModal';
 import type { EventCategory, ScheduleSession, RsvpStatus } from '../../types';
 
 interface SessionCardProps {
@@ -14,6 +15,7 @@ interface SessionCardProps {
   canManage: boolean;
   canRsvp: boolean;
   compact?: boolean;
+  groupId?: string;
   onRsvp: (sessionId: string, status: RsvpStatus) => Promise<void>;
   onEdit: (session: ScheduleSession) => void;
   onDelete: (sessionId: string) => Promise<void>;
@@ -110,10 +112,11 @@ function buildDiscordMessage(session: ScheduleSession, rsvpSummary: Record<strin
   return lines.join('\n');
 }
 
-export function SessionCard({ session, currentUserId, shareCode, staticName, canManage, canRsvp, compact, onRsvp, onEdit, onDelete }: SessionCardProps) {
+export function SessionCard({ session, currentUserId, shareCode, staticName, canManage, canRsvp, compact, groupId, onRsvp, onEdit, onDelete }: SessionCardProps) {
   const [rsvpLoading, setRsvpLoading] = useState<RsvpStatus | null>(null);
   const [copied, setCopied] = useState(false);
   const deleteModal = useModal();
+  const occurrenceModal = useModal();
 
   const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const isLocalTzSame = localTz === session.timezone;
@@ -303,6 +306,11 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
           )}
         </div>
         <div className="flex gap-1 flex-shrink-0">
+          {session.isRecurring && groupId && (
+            <Tooltip content="View occurrences">
+              <IconButton icon={<CalendarDays className="w-4 h-4" />} aria-label="View occurrences" size="sm" onClick={occurrenceModal.open} />
+            </Tooltip>
+          )}
           <Tooltip content="Copy for Discord">
             <IconButton icon={<MessageSquare className="w-4 h-4" />} aria-label="Copy Discord message" size="sm" onClick={handleCopyDiscord} />
           </Tooltip>
@@ -379,6 +387,16 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
       )}
 
       <ConfirmModal isOpen={deleteModal.isOpen} title="Delete Session" message={`Are you sure you want to delete "${session.title}"? This will also remove all RSVPs.`} confirmLabel="Delete" variant="danger" onConfirm={handleDelete} onCancel={deleteModal.close} />
+
+      {session.isRecurring && groupId && (
+        <OccurrenceListModal
+          isOpen={occurrenceModal.isOpen}
+          onClose={occurrenceModal.close}
+          session={session}
+          groupId={groupId}
+          canManage={canManage}
+        />
+      )}
     </div>
   );
 }

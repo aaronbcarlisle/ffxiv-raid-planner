@@ -25,6 +25,8 @@ from ..models.player_job_profile import (
     VALID_JOB_PRIORITIES,
     VALID_READINESS_STATES,
 )
+from ..models.membership import Membership, MemberRole
+from ..models.mount_farm_progress import MountFarmProgress
 from ..models.player_profile import PlayerProfile, VALID_VISIBILITIES
 from ..models.snapshot_player import SnapshotPlayer
 from ..models.user import User
@@ -1364,6 +1366,69 @@ async def list_goals(
     return [_goal_to_response(g) for g in goals]
 
 
+async def _propagate_mount_goal_to_statics(
+    session: AsyncSession,
+    user: User,
+    trial_id: str,
+    totem_count: int,
+    has_mount: bool,
+    now: str,
+) -> None:
+    """Mirror a Player Hub mount_farm goal update into MountFarmProgress for all statics.
+
+    Respects manual overrides: if a lead or the user manually overrode the row more
+    recently than the goal was last updated, the override is kept.
+    Never raises — logged as a warning so goal saves are never blocked.
+    """
+    memberships_result = await session.execute(
+        select(Membership).where(
+            Membership.user_id == user.id,
+            Membership.role != MemberRole.VIEWER.value,
+        )
+    )
+    group_ids = [m.static_group_id for m in memberships_result.scalars().all()]
+    if not group_ids:
+        return
+
+    for group_id in group_ids:
+        row_result = await session.execute(
+            select(MountFarmProgress).where(
+                MountFarmProgress.static_group_id == group_id,
+                MountFarmProgress.user_id == user.id,
+                MountFarmProgress.trial_id == trial_id,
+            )
+        )
+        row = row_result.scalar_one_or_none()
+
+        if row:
+            # Skip if a more-recent manual override exists
+            if row.last_manual_override_at and row.last_manual_override_at >= now:
+                continue
+            # Only move counts forward, never regress
+            if totem_count > row.totem_count:
+                row.totem_count = totem_count
+                row.totem_source = "player_hub"
+            if has_mount and not row.has_mount:
+                row.has_mount = True
+                row.ownership_source = "player_hub"
+            row.updated_at = now
+            row.updated_by_id = user.id
+        else:
+            session.add(MountFarmProgress(
+                id=str(uuid.uuid4()),
+                static_group_id=group_id,
+                user_id=user.id,
+                trial_id=trial_id,
+                has_mount=has_mount,
+                wants_mount=True,
+                totem_count=totem_count,
+                ownership_source="player_hub" if has_mount else "manual",
+                totem_source="player_hub" if totem_count > 0 else "manual",
+                updated_at=now,
+                updated_by_id=user.id,
+            ))
+
+
 @router.post("/goals", response_model=PlayerGoalResponse, status_code=201)
 @limiter.limit(RATE_LIMITS["heavy"])
 async def create_goal(
@@ -1434,6 +1499,16 @@ async def create_goal(
     )
     session.add(goal)
     await session.flush()
+
+    if body.goal_type == "mount_farm" and body.source_content:
+        try:
+            await _propagate_mount_goal_to_statics(
+                session, current_user, body.source_content,
+                body.current_count or 0, body.status == "completed", now,
+            )
+        except Exception:
+            logger.warning("mount_goal_propagation_failed", user_id=current_user.id, trial_id=body.source_content)
+
     await session.commit()
 
     logger.info(
@@ -1526,6 +1601,16 @@ async def update_goal(
 
     goal.updated_at = now
     await session.flush()
+
+    if goal.goal_type == "mount_farm" and goal.source_content:
+        try:
+            await _propagate_mount_goal_to_statics(
+                session, current_user, goal.source_content,
+                goal.current_count or 0, goal.status == "completed", now,
+            )
+        except Exception:
+            logger.warning("mount_goal_propagation_failed", user_id=current_user.id, trial_id=goal.source_content)
+
     await session.commit()
 
     return _goal_to_response(goal)

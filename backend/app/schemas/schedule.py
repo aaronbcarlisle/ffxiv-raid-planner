@@ -62,6 +62,12 @@ def normalize_discord_role_id(value: str | None) -> str | None:
     return match.group(1)
 
 
+class BannerSourceTypeEnum(str, Enum):
+    UPLOADED = "uploaded"
+    DUTY_PRESET = "duty_preset"
+    EXTERNAL_URL = "external_url"
+
+
 class ScheduleSessionCreate(CamelModel):
     title: str
     description: str | None = None
@@ -75,6 +81,9 @@ class ScheduleSessionCreate(CamelModel):
     category: EventCategoryEnum | None = None
     content_id: str | None = None
     content_name: str | None = None
+    banner_url: str | None = None
+    banner_key: str | None = None
+    banner_source_type: BannerSourceTypeEnum | None = None
 
 
 class ScheduleSessionUpdate(CamelModel):
@@ -89,6 +98,9 @@ class ScheduleSessionUpdate(CamelModel):
     category: EventCategoryEnum | None = None
     content_id: str | None = None
     content_name: str | None = None
+    banner_url: str | None = None
+    banner_key: str | None = None
+    banner_source_type: BannerSourceTypeEnum | None = None
 
 
 class RsvpCreate(CamelModel):
@@ -121,9 +133,61 @@ class ScheduleSessionResponse(CamelModel):
     category: str | None = None
     content_id: str | None = None
     content_name: str | None = None
+    banner_url: str | None = None
+    banner_key: str | None = None
+    banner_source_type: str | None = None
     created_at: str
     updated_at: str
     rsvps: list[RsvpResponse] = []
+
+
+class ExceptionTypeEnum(str, Enum):
+    CANCELLED = "cancelled"
+    EDITED = "edited"
+
+
+class ScheduleExceptionCreate(CamelModel):
+    """Create or upsert an exception for one occurrence of a recurring session."""
+    occurrence_date: str          # ISO date e.g. "2025-07-06"
+    type: ExceptionTypeEnum
+    override_start_time: str | None = None
+    override_end_time: str | None = None
+    override_title: str | None = None
+    override_description: str | None = None
+    override_banner_url: str | None = None
+    override_banner_key: str | None = None
+    cancellation_reason: str | None = None
+
+
+class ScheduleExceptionResponse(CamelModel):
+    id: str
+    session_id: str
+    occurrence_date: str
+    type: str
+    override_start_time: str | None = None
+    override_end_time: str | None = None
+    override_title: str | None = None
+    override_description: str | None = None
+    override_banner_url: str | None = None
+    override_banner_key: str | None = None
+    cancellation_reason: str | None = None
+    created_by_id: str
+    created_at: str
+    updated_at: str
+
+
+class OccurrenceResponse(CamelModel):
+    """A single generated occurrence (may have exception overrides applied)."""
+    occurrence_date: str
+    start_time: str
+    end_time: str
+    title: str
+    description: str | None = None
+    banner_url: str | None = None
+    banner_key: str | None = None
+    banner_source_type: str | None = None
+    is_exception: bool = False
+    exception_id: str | None = None
 
 
 # ==================== Availability Schemas ====================

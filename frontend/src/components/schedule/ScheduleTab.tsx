@@ -377,6 +377,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                       canManage={canManage}
                       canRsvp={canRsvp}
                       compact={sessionViewMode === 'tiles'}
+                      groupId={groupId}
                       onRsvp={handleRsvp}
                       onEdit={handleEdit}
                       onDelete={handleDelete}

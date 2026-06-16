@@ -46,6 +46,11 @@ class ScheduleSession(Base):
     content_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     content_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
+    # Banner (optional) — sourceType: uploaded | duty_preset | external_url
+    banner_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    banner_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    banner_source_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -114,6 +119,11 @@ class ScheduleSettings(Base):
     calendar_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     calendar_token: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True, index=True)
     calendar_token_created_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Discord Guild Scheduled Events (bot, not webhook)
+    discord_bot_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    discord_guild_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -183,6 +193,100 @@ class ScheduleReminderDelivery(Base):
     reminder_type: Mapped[str] = mapped_column(String(50), nullable=False)
     occurrence_start_time: Mapped[str] = mapped_column(Text, nullable=False)
     sent_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+    session: Mapped["ScheduleSession"] = relationship("ScheduleSession")
+
+
+class ScheduleException(Base):
+    """An override for a single occurrence of a recurring series.
+
+    type='cancelled' — the occurrence is skipped entirely.
+    type='edited'    — occurrence inherits overrides for the set fields only.
+    """
+
+    __tablename__ = "schedule_exceptions"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "occurrence_date",
+            name="uq_schedule_exception_session_occurrence",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("schedule_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # ISO date of the occurrence being overridden, e.g. "2025-07-06"
+    occurrence_date: Mapped[str] = mapped_column(String(20), nullable=False)
+    # 'cancelled' or 'edited'
+    type: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    # Edited overrides — only non-null fields are applied; null means "inherit from series"
+    override_start_time: Mapped[str | None] = mapped_column(Text, nullable=True)
+    override_end_time: Mapped[str | None] = mapped_column(Text, nullable=True)
+    override_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    override_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    override_banner_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    override_banner_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    cancellation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_by_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+    session: Mapped["ScheduleSession"] = relationship("ScheduleSession")
+    created_by: Mapped["User"] = relationship("User", foreign_keys=[created_by_id])
+
+
+class ScheduleDiscordMirror(Base):
+    """Tracks a Discord Guild Scheduled Event that mirrors one app occurrence.
+
+    One row per (session_id, occurrence_date) pair pushed to Discord.
+    Recurring series creates one row per concrete mirrored occurrence.
+    """
+
+    __tablename__ = "schedule_discord_mirrors"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "session_id",
+            "occurrence_date",
+            name="uq_discord_mirror_session_occurrence",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("schedule_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # ISO date of the occurrence, e.g. "2025-07-06". None for single (non-recurring) events.
+    occurrence_date: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    discord_guild_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    discord_scheduled_event_id: Mapped[str] = mapped_column(Text, nullable=False)
+    discord_channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    # sync_status: not_synced | pending | synced | failed | manual_action_needed
+    sync_status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending")
+    last_synced_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Track whether the Discord event's cover image matches the current app banner
+    banner_hash_synced: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    created_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )
 

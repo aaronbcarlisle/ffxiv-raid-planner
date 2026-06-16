@@ -1424,6 +1424,62 @@ export interface ScheduleSessionUpdate {
   contentName?: string | null;
 }
 
+export interface OccurrenceResponse {
+  occurrenceDate: string;
+  startTime: string;
+  endTime: string;
+  title: string;
+  description: string | null;
+  bannerUrl: string | null;
+  bannerKey: string | null;
+  bannerSourceType: string | null;
+  isException: boolean;
+  exceptionId: string | null;
+}
+
+export type ExceptionType = 'cancelled' | 'edited';
+
+export interface ScheduleExceptionCreate {
+  occurrenceDate: string;
+  type: ExceptionType;
+  overrideStartTime?: string | null;
+  overrideEndTime?: string | null;
+  overrideTitle?: string | null;
+  overrideDescription?: string | null;
+  overrideBannerUrl?: string | null;
+  overrideBannerKey?: string | null;
+  cancellationReason?: string | null;
+}
+
+export interface ScheduleException {
+  id: string;
+  sessionId: string;
+  occurrenceDate: string;
+  type: ExceptionType;
+  overrideStartTime: string | null;
+  overrideEndTime: string | null;
+  overrideTitle: string | null;
+  overrideDescription: string | null;
+  overrideBannerUrl: string | null;
+  overrideBannerKey: string | null;
+  cancellationReason: string | null;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiscordMirrorStatus {
+  id: string;
+  sessionId: string;
+  occurrenceDate: string | null;
+  discordGuildId: string;
+  discordScheduledEventId: string;
+  syncStatus: 'not_synced' | 'pending' | 'synced' | 'failed' | 'manual_action_needed';
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  updatedAt: string;
+}
+
 // ==================== Availability Types ====================
 
 export interface UserAvailabilitySlot {

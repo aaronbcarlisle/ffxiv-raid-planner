@@ -60,10 +60,20 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: 'Unreleased',
-    date: '2026-06-15T00:00:00Z',
-    title: 'Follow-up fixes: notification sync, BiS presets, Player Hub auto-link, webhook delivery, activity privacy, "This static" filter',
+    date: '2026-06-16T00:00:00Z',
+    title: 'Recurring events, occurrence management, collection sync, and Discord Guild Scheduled Events',
     internal: true,
     items: [
+      {
+        category: 'feature',
+        title: 'Recurring events: view and cancel individual occurrences',
+        description: 'Recurring raid sessions now show a "View occurrences" calendar button that lists the next 4 weeks of upcoming dates. Leads can cancel individual occurrences without affecting the whole series, and restore them later.',
+      },
+      {
+        category: 'feature',
+        title: 'Discord Guild Scheduled Events mirror (opt-in)',
+        description: 'Statics that configure a Discord bot token and guild ID in schedule settings can now mirror upcoming raid occurrences as Discord Guild Scheduled Events, keeping a rolling 4-week window in sync automatically.',
+      },
       {
         category: 'fix',
         title: 'Leads can now access group settings',

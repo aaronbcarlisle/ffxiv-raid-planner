@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import date as date_type, datetime, timedelta, timezone
 
 import httpx
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,7 +39,9 @@ from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSn
 from ..models.notification import Notification
 from .notifications import create_notification
 from ..models.availability import AvailabilityTemplate, UserAvailability
-from ..models.schedule import DiscordMessageMapping, ScheduleRsvp, ScheduleSession, ScheduleSettings
+from ..models.schedule import DiscordMessageMapping, ScheduleDiscordMirror, ScheduleException, ScheduleRsvp, ScheduleSession, ScheduleSettings
+from ..services.recurrence import generate_occurrences, next_occurrence
+from ..services.discord_guild_events import sync_session_mirror
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -51,10 +53,13 @@ from ..schemas.schedule import (
     AvailabilityDateSummary,
     AvailabilitySubmit,
     InitialRsvpStatusEnum,
+    OccurrenceResponse,
     RsvpCreate,
     RsvpResponse,
     RsvpStatusEnum,
     CalendarTokenResponse,
+    ScheduleExceptionCreate,
+    ScheduleExceptionResponse,
     ScheduleSessionCreate,
     ScheduleSessionResponse,
     ScheduleSettingsResponse,
@@ -541,6 +546,9 @@ def session_to_response(session: ScheduleSession) -> ScheduleSessionResponse:
         category=getattr(session, 'category', None),
         content_id=getattr(session, 'content_id', None),
         content_name=getattr(session, 'content_name', None),
+        banner_url=getattr(session, 'banner_url', None),
+        banner_key=getattr(session, 'banner_key', None),
+        banner_source_type=getattr(session, 'banner_source_type', None),
         created_at=session.created_at,
         updated_at=session.updated_at,
         rsvps=rsvps,
@@ -603,6 +611,9 @@ async def create_schedule_session(
         category=data.category.value if data.category else None,
         content_id=data.content_id,
         content_name=data.content_name,
+        banner_url=data.banner_url,
+        banner_key=data.banner_key,
+        banner_source_type=data.banner_source_type.value if data.banner_source_type else None,
         created_at=now,
         updated_at=now,
     )
@@ -1425,3 +1436,383 @@ async def submit_availability_template(
         day_of_week=row.day_of_week,
         slots=json.loads(row.slots),
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Occurrence generation
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/static-groups/{group_id}/schedule/{session_id}/occurrences",
+    response_model=list[OccurrenceResponse],
+)
+async def list_session_occurrences(
+    group_id: str,
+    session_id: str,
+    count: int = Query(default=20, ge=1, le=100),
+    response: Response = None,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[OccurrenceResponse]:
+    """Generate upcoming occurrences for a recurring session.
+
+    For non-recurring sessions this returns the single session start if it is
+    in the future, otherwise an empty list.  Cancelled occurrences are excluded.
+    Edited occurrences have their overrides applied.
+    """
+    await get_static_group(db, group_id)
+    await require_membership(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleSession).where(
+            ScheduleSession.id == session_id,
+            ScheduleSession.static_group_id == group_id,
+        )
+    )
+    sched = result.scalar_one_or_none()
+    if not sched:
+        raise NotFound("Schedule session not found")
+
+    # Load exceptions keyed by occurrence_date
+    exc_result = await db.execute(
+        select(ScheduleException).where(ScheduleException.session_id == session_id)
+    )
+    exceptions: dict[str, ScheduleException] = {
+        e.occurrence_date: e for e in exc_result.scalars().all()
+    }
+
+    if not sched.is_recurring or not sched.recurrence_rule:
+        occ = next_occurrence(
+            sched.start_time, sched.end_time, None,
+            exceptions=exceptions,
+            session_title=sched.title,
+            session_description=sched.description,
+            session_banner_url=getattr(sched, 'banner_url', None),
+            session_banner_key=getattr(sched, 'banner_key', None),
+            session_banner_source_type=getattr(sched, 'banner_source_type', None),
+        )
+        occurrences = [occ] if occ else []
+    else:
+        occurrences = generate_occurrences(
+            sched.start_time, sched.end_time, sched.recurrence_rule,
+            count=count,
+            exceptions=exceptions,
+            session_title=sched.title,
+            session_description=sched.description,
+            session_banner_url=getattr(sched, 'banner_url', None),
+            session_banner_key=getattr(sched, 'banner_key', None),
+            session_banner_source_type=getattr(sched, 'banner_source_type', None),
+        )
+
+    return [
+        OccurrenceResponse(
+            occurrence_date=o.occurrence_date,
+            start_time=o.start_time,
+            end_time=o.end_time,
+            title=o.title,
+            description=o.description,
+            banner_url=o.banner_url,
+            banner_key=o.banner_key,
+            banner_source_type=o.banner_source_type,
+            is_exception=o.is_exception,
+            exception_id=o.exception_id,
+        )
+        for o in occurrences
+    ]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Schedule exceptions (cancel / edit one occurrence)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/static-groups/{group_id}/schedule/{session_id}/exceptions",
+    response_model=ScheduleExceptionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upsert_schedule_exception(
+    group_id: str,
+    session_id: str,
+    data: ScheduleExceptionCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> ScheduleExceptionResponse:
+    """Create or update an exception for one occurrence of a recurring session.
+
+    type='cancelled' — the occurrence is hidden from future-occurrence lists and
+    skipped when computing 'Next Raid'.
+    type='edited'    — the occurrence uses the override fields instead of series defaults.
+
+    Idempotent: if an exception already exists for this (session, occurrence_date)
+    pair, it is updated in-place.
+    """
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleSession).where(
+            ScheduleSession.id == session_id,
+            ScheduleSession.static_group_id == group_id,
+        )
+    )
+    sched = result.scalar_one_or_none()
+    if not sched:
+        raise NotFound("Schedule session not found")
+    if not sched.is_recurring:
+        raise HTTPException(status_code=400, detail="Exceptions can only be created for recurring sessions")
+
+    existing_result = await db.execute(
+        select(ScheduleException).where(
+            ScheduleException.session_id == session_id,
+            ScheduleException.occurrence_date == data.occurrence_date,
+        )
+    )
+    exc = existing_result.scalar_one_or_none()
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    if exc:
+        exc.type = data.type.value
+        exc.override_start_time = data.override_start_time
+        exc.override_end_time = data.override_end_time
+        exc.override_title = data.override_title
+        exc.override_description = data.override_description
+        exc.override_banner_url = data.override_banner_url
+        exc.override_banner_key = data.override_banner_key
+        exc.cancellation_reason = data.cancellation_reason
+        exc.updated_at = now
+    else:
+        exc = ScheduleException(
+            id=str(uuid.uuid4()),
+            session_id=session_id,
+            occurrence_date=data.occurrence_date,
+            type=data.type.value,
+            override_start_time=data.override_start_time,
+            override_end_time=data.override_end_time,
+            override_title=data.override_title,
+            override_description=data.override_description,
+            override_banner_url=data.override_banner_url,
+            override_banner_key=data.override_banner_key,
+            cancellation_reason=data.cancellation_reason,
+            created_by_id=current_user.id,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(exc)
+
+    await db.flush()
+    await db.commit()
+
+    logger.info(
+        "schedule_exception_upserted",
+        session_id=session_id,
+        occurrence_date=data.occurrence_date,
+        type=data.type.value,
+        user_id=current_user.id,
+    )
+
+    return ScheduleExceptionResponse(
+        id=exc.id,
+        session_id=exc.session_id,
+        occurrence_date=exc.occurrence_date,
+        type=exc.type,
+        override_start_time=exc.override_start_time,
+        override_end_time=exc.override_end_time,
+        override_title=exc.override_title,
+        override_description=exc.override_description,
+        override_banner_url=exc.override_banner_url,
+        override_banner_key=exc.override_banner_key,
+        cancellation_reason=exc.cancellation_reason,
+        created_by_id=exc.created_by_id,
+        created_at=exc.created_at,
+        updated_at=exc.updated_at,
+    )
+
+
+@router.get(
+    "/static-groups/{group_id}/schedule/{session_id}/exceptions",
+    response_model=list[ScheduleExceptionResponse],
+)
+async def list_schedule_exceptions(
+    group_id: str,
+    session_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[ScheduleExceptionResponse]:
+    """List all exceptions for a recurring session."""
+    await get_static_group(db, group_id)
+    await require_membership(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleException)
+        .where(ScheduleException.session_id == session_id)
+        .order_by(ScheduleException.occurrence_date)
+    )
+    exceptions = result.scalars().all()
+
+    return [
+        ScheduleExceptionResponse(
+            id=e.id,
+            session_id=e.session_id,
+            occurrence_date=e.occurrence_date,
+            type=e.type,
+            override_start_time=e.override_start_time,
+            override_end_time=e.override_end_time,
+            override_title=e.override_title,
+            override_description=e.override_description,
+            override_banner_url=e.override_banner_url,
+            override_banner_key=e.override_banner_key,
+            cancellation_reason=e.cancellation_reason,
+            created_by_id=e.created_by_id,
+            created_at=e.created_at,
+            updated_at=e.updated_at,
+        )
+        for e in exceptions
+    ]
+
+
+@router.delete(
+    "/static-groups/{group_id}/schedule/{session_id}/exceptions/{occurrence_date}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_schedule_exception(
+    group_id: str,
+    session_id: str,
+    occurrence_date: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Remove an exception, restoring the occurrence to series defaults."""
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleException).where(
+            ScheduleException.session_id == session_id,
+            ScheduleException.occurrence_date == occurrence_date,
+        )
+    )
+    exc = result.scalar_one_or_none()
+    if not exc:
+        raise NotFound("Exception not found")
+
+    await db.delete(exc)
+    await db.commit()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Discord Guild Scheduled Events mirror (V1 rolling window)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/static-groups/{group_id}/schedule/{session_id}/sync-discord",
+    status_code=status.HTTP_200_OK,
+)
+async def sync_session_discord_mirror(
+    group_id: str,
+    session_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Trigger a rolling 4-week Discord Guild Scheduled Events sync for one session.
+
+    Requires the group's ScheduleSettings to have discord_bot_token and
+    discord_guild_id configured.  Returns a log of actions taken.
+
+    Only leads and owners can trigger a sync.
+    """
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    sched_result = await db.execute(
+        select(ScheduleSession).where(
+            ScheduleSession.id == session_id,
+            ScheduleSession.static_group_id == group_id,
+        )
+    )
+    sched = sched_result.scalar_one_or_none()
+    if not sched:
+        raise NotFound("Schedule session not found")
+
+    settings_result = await db.execute(
+        select(ScheduleSettings).where(ScheduleSettings.static_group_id == group_id)
+    )
+    settings = settings_result.scalar_one_or_none()
+    if not settings or not settings.discord_bot_token or not settings.discord_guild_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Discord bot token and guild ID must be configured in schedule settings",
+        )
+
+    exc_result = await db.execute(
+        select(ScheduleException).where(ScheduleException.session_id == session_id)
+    )
+    exceptions: dict[str, ScheduleException] = {
+        e.occurrence_date: e for e in exc_result.scalars().all()
+    }
+
+    mirror_result = await db.execute(
+        select(ScheduleDiscordMirror).where(ScheduleDiscordMirror.session_id == session_id)
+    )
+    mirrors = mirror_result.scalars().all()
+
+    log = await sync_session_mirror(
+        session=sched,
+        settings=settings,
+        mirrors=list(mirrors),
+        exceptions=exceptions,
+        db_add=db.add,
+        db_delete=db.delete,
+    )
+
+    await db.commit()
+
+    logger.info(
+        "discord_mirror_synced",
+        session_id=session_id,
+        group_id=group_id,
+        user_id=current_user.id,
+        actions=len(log),
+    )
+
+    return {"actions": log}
+
+
+@router.get(
+    "/static-groups/{group_id}/schedule/{session_id}/discord-mirrors",
+    response_model=list[dict],
+)
+async def list_discord_mirrors(
+    group_id: str,
+    session_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """List Discord mirror rows for a session (sync status per occurrence)."""
+    await get_static_group(db, group_id)
+    await require_membership(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleDiscordMirror)
+        .where(ScheduleDiscordMirror.session_id == session_id)
+        .order_by(ScheduleDiscordMirror.occurrence_date)
+    )
+    mirrors = result.scalars().all()
+
+    return [
+        {
+            "id": m.id,
+            "sessionId": session_id,
+            "occurrenceDate": m.occurrence_date,
+            "discordGuildId": m.discord_guild_id,
+            "discordScheduledEventId": m.discord_scheduled_event_id,
+            "syncStatus": m.sync_status,
+            "lastSyncedAt": m.last_synced_at,
+            "lastError": m.last_error,
+            "updatedAt": m.updated_at,
+        }
+        for m in mirrors
+    ]
