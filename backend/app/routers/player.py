@@ -31,6 +31,7 @@ from ..models.user import User
 from ..rate_limit import RATE_LIMITS, limiter
 from ..models.bis_target_set import BiSTargetSet as PlayerBisTargetSet
 from .bis import build_icon_url_from_id
+from .lodestone import _apply_ring_slot_equivalence, _stored_gear_to_equipped_lookup
 from ..schemas.player import (
     GearSnapshotResponse,
     GearSyncRequest,
@@ -287,6 +288,7 @@ async def _propagate_gear_to_rosters(
         return
 
     equipped_by_slot = {g["slot"]: g for g in gear if g.get("slot")}
+    equipped_lookup = _stored_gear_to_equipped_lookup(gear)
     for player in players:
         updated = []
         for slot in (player.gear or []):
@@ -303,6 +305,7 @@ async def _propagate_gear_to_rosters(
                 "currentSource": equipped.get("currentSource", "unknown"),
                 "hasItem": bool(eq_id and bis_id and eq_id == bis_id),
             })
+        _apply_ring_slot_equivalence(updated, equipped_lookup)
         player.gear = updated
         player.last_sync = synced_at
         player.last_sync_source = sync_source

@@ -73,8 +73,33 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'fix',
+        title: 'Plugin collection sync now feeds Player Hub first',
+        description: 'Mount and token syncs from the plugin now update Player Hub collection goals first, then mirror that same collection progress into Static Mount Farms for every static the player belongs to.',
+      },
+      {
+        category: 'fix',
         title: 'Ultimate farm catalog token metadata completed',
         description: 'Added curated one-token exchange metadata for all Ultimate reward farms, including Dreadwyrm, Ultima, Colossus, Dragonsong, Omega, Oracle, and Mad Harlequin totems with their weapon set exchanges.',
+      },
+      {
+        category: 'fix',
+        title: 'BiS checks now handle swapped ring slots',
+        description: 'Gear sync now treats the two ring slots as an interchangeable pair, so correct Tome/Raid rings equipped in the opposite order no longer show as BiS mismatches.',
+      },
+      {
+        category: 'fix',
+        title: 'XIVGear links now populate selected BiS sets',
+        description: 'Pasted XIVGear sheet links now use the full URL import path and preserve the chosen set index, so linked BiS targets populate the intended gear check instead of silently using the wrong set.',
+      },
+      {
+        category: 'improvement',
+        title: 'XIVGear sheet imports can show multiple set options',
+        description: 'When a XIVGear sheet contains several sets, the BiS import flow now asks which set to link and shows labels with set name, job, GCD, and original set index.',
+      },
+      {
+        category: 'improvement',
+        title: 'Static invite links can be permanent',
+        description: 'Static leads can now create invite links that never expire. Existing 7-day invites still keep their normal expiration behavior, and revoked permanent invites remain disabled.',
       },
       {
         category: 'fix',

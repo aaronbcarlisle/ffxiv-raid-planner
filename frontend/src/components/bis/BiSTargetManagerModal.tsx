@@ -14,7 +14,7 @@ import {
   PURPOSE_LABELS,
   SOURCE_LABELS,
 } from '../../stores/sharedBisStore';
-import { fetchBiSPresets } from '../../services/api';
+import { fetchBiSFromXIVGear, fetchBiSPresets, withXivGearSetIndex } from '../../services/api';
 import { getJobDisplayName } from '../../gamedata/jobs';
 import type {
   SharedBiSTargetSet,
@@ -24,6 +24,7 @@ import type {
   BiSSourceType,
   BiSImportStatus,
   BiSPreset,
+  XivGearSetOption,
 } from '../../types';
 
 interface BiSTargetManagerModalProps {
@@ -57,6 +58,16 @@ const EMPTY_FORM: AddForm = {
   name: '', purpose: 'savage', sourceType: 'manual', externalUrl: '', patch: '', notes: '',
 };
 
+function formatXivGearOption(option: XivGearSetOption): string {
+  const details = [
+    option.job,
+    option.gcd ? `${option.gcd} GCD` : null,
+    option.dpsLabel,
+    `set ${option.index}`,
+  ].filter(Boolean);
+  return `${option.name}${details.length > 0 ? ` (${details.join(' • ')})` : ''}`;
+}
+
 type TabId = 'targets' | 'presets' | 'link' | 'manual';
 
 export function BiSTargetManagerModal({
@@ -84,6 +95,8 @@ export function BiSTargetManagerModal({
   const [linkUrl, setLinkUrl] = useState('');
   const [linkName, setLinkName] = useState('');
   const [linkPurpose, setLinkPurpose] = useState<BisTargetPurpose>('savage');
+  const [xivGearSetOptions, setXivGearSetOptions] = useState<XivGearSetOption[]>([]);
+  const [selectedXivGearSetIndex, setSelectedXivGearSetIndex] = useState('');
 
   // Fetch targets on mount and whenever ownerId changes
   useEffect(() => {
@@ -139,7 +152,9 @@ export function BiSTargetManagerModal({
         name: p.name,
         purpose: (p.category as BisTargetPurpose) ?? 'savage',
         sourceType: 'preset' as BiSSourceType,
-        externalUrl: p.uuid ? `https://xivgear.app/?page=sl%7C${p.uuid}` : undefined,
+        externalUrl: p.uuid
+          ? withXivGearSetIndex(`https://xivgear.app/?page=sl|${p.uuid}`, p.setIndex ?? 0)
+          : undefined,
         importStatus: 'linked_only' as BiSImportStatus,
       }));
 
@@ -182,16 +197,41 @@ export function BiSTargetManagerModal({
         url.includes('xivgear.app') ? 'xivgear' :
         'custom_link';
 
+      let externalUrl = url;
+      let selectedOption: XivGearSetOption | undefined;
+      if (sourceType === 'xivgear') {
+        const selectedSetIndex =
+          selectedXivGearSetIndex !== '' ? Number(selectedXivGearSetIndex) : null;
+
+        if (xivGearSetOptions.length > 0 && selectedSetIndex !== null) {
+          selectedOption = xivGearSetOptions.find((option) => option.index === selectedSetIndex);
+          externalUrl = withXivGearSetIndex(url, selectedSetIndex);
+        } else {
+          const preview = await fetchBiSFromXIVGear(url);
+          if (preview.requiresSelection && preview.setOptions?.length) {
+            setXivGearSetOptions(preview.setOptions);
+            setSelectedXivGearSetIndex(String(preview.setOptions[0].index));
+            toast.info('Choose which XIVGear set to link, then add it again.');
+            return;
+          }
+          if (preview.selectedSetIndex !== null && preview.selectedSetIndex !== undefined) {
+            externalUrl = withXivGearSetIndex(url, preview.selectedSetIndex);
+          }
+        }
+      }
+
       const created = await store.createTarget({
         ownerType, ownerId, groupId: groupId ?? undefined,
-        name: linkName.trim() || `${getJobDisplayName(job)} ${PURPOSE_LABELS[linkPurpose] ?? 'Set'}`,
+        name: linkName.trim() || selectedOption?.name || `${getJobDisplayName(job)} ${PURPOSE_LABELS[linkPurpose] ?? 'Set'}`,
         purpose: linkPurpose,
         sourceType,
-        externalUrl: url,
+        externalUrl,
         importStatus: 'linked_only',
       });
       setLinkUrl('');
       setLinkName('');
+      setXivGearSetOptions([]);
+      setSelectedXivGearSetIndex('');
 
       if (sourceType === 'xivgear' || sourceType === 'etro') {
         toast.success('BiS target linked — importing gear data…');
@@ -532,11 +572,33 @@ export function BiSTargetManagerModal({
               <Input
                 id="bis-link-url"
                 value={linkUrl}
-                onChange={setLinkUrl}
+                onChange={(value) => {
+                  setLinkUrl(value);
+                  setXivGearSetOptions([]);
+                  setSelectedXivGearSetIndex('');
+                }}
                 placeholder="https://xivgear.app/share/… or https://etro.gg/gearset/…"
                 data-testid="bis-link-url-input"
               />
             </div>
+            {xivGearSetOptions.length > 0 && (
+              <div>
+                <Label size="sm" htmlFor="bis-link-xivgear-set">XIVGear set</Label>
+                <Select
+                  id="bis-link-xivgear-set"
+                  value={selectedXivGearSetIndex}
+                  onChange={setSelectedXivGearSetIndex}
+                  options={xivGearSetOptions.map((option) => ({
+                    value: String(option.index),
+                    label: formatXivGearOption(option),
+                  }))}
+                  data-testid="bis-link-xivgear-set-select"
+                />
+                <p className="mt-1 text-xs text-text-tertiary">
+                  This sheet has multiple sets. Pick the exact set to use for gear checks.
+                </p>
+              </div>
+            )}
             <div>
               <Label size="sm" htmlFor="bis-link-name">Name (optional)</Label>
               <Input

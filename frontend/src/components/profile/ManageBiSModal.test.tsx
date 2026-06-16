@@ -17,8 +17,14 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
+
+Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+  configurable: true,
+  value: vi.fn(),
+});
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ManageBiSModal } from './ManageBiSModal';
+import { fetchBiSFromXIVGear } from '../../services/api';
 import type { SharedBiSTargetSet, BiSOwnerType } from '../../types';
 
 const mockFetchTargets = vi.fn().mockResolvedValue(undefined);
@@ -27,6 +33,7 @@ const mockUpdateTarget = vi.fn();
 const mockDeleteTarget = vi.fn();
 const mockSetTargetActive = vi.fn();
 const mockCreateMultipleTargets = vi.fn();
+const mockImportTarget = vi.fn();
 
 function makeSharedTarget(overrides: Partial<SharedBiSTargetSet> = {}): SharedBiSTargetSet {
   return {
@@ -80,6 +87,7 @@ vi.mock('../../stores/sharedBisStore', async () => {
       updateTarget: mockUpdateTarget,
       deleteTarget: mockDeleteTarget,
       setTargetActive: mockSetTargetActive,
+      importTarget: mockImportTarget,
     }),
   };
 });
@@ -90,6 +98,12 @@ vi.mock('../../stores/toastStore', () => ({
 
 vi.mock('../../services/api', () => ({
   fetchBiSPresets: vi.fn().mockResolvedValue({ job: 'BRD', presets: [] }),
+  fetchBiSFromXIVGear: vi.fn(),
+  withXivGearSetIndex: (url: string, setIndex: number) => {
+    const parsed = new URL(url);
+    parsed.searchParams.set('selectedIndex', String(setIndex));
+    return parsed.toString();
+  },
 }));
 
 function renderModal() {
@@ -107,6 +121,8 @@ describe('ManageBiSModal', () => {
     mockDeleteTarget.mockReset().mockResolvedValue(undefined);
     mockSetTargetActive.mockReset().mockResolvedValue(undefined);
     mockCreateMultipleTargets.mockReset().mockResolvedValue([]);
+    mockImportTarget.mockReset().mockResolvedValue(undefined);
+    vi.mocked(fetchBiSFromXIVGear).mockReset();
   });
 
   it('renders the modal title with job display name', () => {
@@ -180,6 +196,76 @@ describe('ManageBiSModal', () => {
       expect(mockCreateTarget).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Farm BiS', ownerType: 'player_job_profile', ownerId: 'jp-1' }),
       ),
+    );
+  });
+
+  it('requires selecting a XivGear set when a pasted sheet has multiple sets', async () => {
+    vi.mocked(fetchBiSFromXIVGear).mockResolvedValue({
+      name: 'WHM Sheet',
+      job: 'WHM',
+      slots: [],
+      requiresSelection: true,
+      selectedSetIndex: null,
+      originalUrl: 'https://xivgear.app/?page=sl|sheet-id',
+      setOptions: [
+        { index: 1, name: '2.44 Savage BiS', job: 'WHM', gcd: '2.44' },
+        { index: 2, name: '2.29 High DPS', job: 'WHM', gcd: '2.29' },
+      ],
+    });
+
+    renderModal();
+    fireEvent.click(screen.getByText('Paste Link'));
+    fireEvent.change(screen.getByTestId('bis-link-url-input'), {
+      target: { value: 'https://xivgear.app/?page=sl|sheet-id' },
+    });
+    const addButton = screen.getByTestId('add-link-btn');
+    await waitFor(() => expect(addButton).not.toBeDisabled());
+    fireEvent.click(addButton);
+
+    expect(await screen.findByText(/2.44 Savage BiS/)).toBeInTheDocument();
+    expect(fetchBiSFromXIVGear).toHaveBeenCalledWith('https://xivgear.app/?page=sl|sheet-id');
+    expect(mockCreateTarget).not.toHaveBeenCalled();
+  });
+
+  it('stores the chosen XivGear set index when adding a multi-set link', async () => {
+    vi.mocked(fetchBiSFromXIVGear).mockResolvedValue({
+      name: 'WHM Sheet',
+      job: 'WHM',
+      slots: [],
+      requiresSelection: true,
+      selectedSetIndex: null,
+      originalUrl: 'https://xivgear.app/?page=sl|sheet-id',
+      setOptions: [
+        { index: 1, name: '2.44 Savage BiS', job: 'WHM', gcd: '2.44' },
+        { index: 2, name: '2.29 High DPS', job: 'WHM', gcd: '2.29' },
+      ],
+    });
+    mockCreateTarget.mockResolvedValue(makeSharedTarget({ id: 'selected-set-target' }));
+
+    renderModal();
+    fireEvent.click(screen.getByText('Paste Link'));
+    fireEvent.change(screen.getByTestId('bis-link-url-input'), {
+      target: { value: 'https://xivgear.app/?page=sl|sheet-id' },
+    });
+    const addButton = screen.getByTestId('add-link-btn');
+    await waitFor(() => expect(addButton).not.toBeDisabled());
+    fireEvent.click(addButton);
+
+    await screen.findByText(/2.44 Savage BiS/);
+    fireEvent.click(addButton);
+
+    await waitFor(() =>
+      expect(mockCreateTarget).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: '2.44 Savage BiS',
+          externalUrl: expect.stringContaining('selectedIndex=1'),
+        }),
+      ),
+    );
+    expect(mockImportTarget).toHaveBeenCalledWith(
+      'selected-set-target',
+      'player_job_profile',
+      'jp-1',
     );
   });
 });

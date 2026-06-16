@@ -9,6 +9,7 @@ import {
   fetchBiSFromEtro,
   fetchBiSPresets,
   detectBiSSource,
+  withXivGearSetIndex,
 } from '../../services/api';
 import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, BIS_SOURCE_NAMES } from '../../types';
 import type {
@@ -18,6 +19,7 @@ import type {
   GearSlotStatus,
   GearSlot,
   SnapshotPlayer,
+  XivGearSetOption,
 } from '../../types';
 
 // Balance URL role mapping for job guide links
@@ -107,6 +109,16 @@ const parsePresetLink = (link: string): { type: 'bis' | 'sl'; job?: string; tier
   return null;
 };
 
+function formatXivGearSetOption(option: XivGearSetOption): string {
+  const details = [
+    option.job,
+    option.gcd ? `${option.gcd} GCD` : null,
+    option.dpsLabel,
+    `set ${option.index}`,
+  ].filter(Boolean);
+  return `${option.name}${details.length > 0 ? ` (${details.join(' • ')})` : ''}`;
+}
+
 export function BiSImportModal({ isOpen, onClose, player, contentType, onImport }: BiSImportModalProps) {
   const [inputValue, setInputValue] = useState('');
   const [state, setState] = useState<ModalState>('input');
@@ -120,6 +132,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
   const [presets, setPresets] = useState<BiSPreset[]>([]);
   const [presetsLoading, setPresetsLoading] = useState(false);
   const [selectedPresetIndex, setSelectedPresetIndex] = useState<string>('');
+  const [xivGearSetOptions, setXivGearSetOptions] = useState<XivGearSetOption[]>([]);
+  const [selectedXivGearSetIndex, setSelectedXivGearSetIndex] = useState('');
 
   // Fetch presets when modal opens (category determined by tier's contentType)
   // Also handles smart preset matching when player has an existing preset-format bisLink
@@ -212,6 +226,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
     setJobMismatch(false);
     setSelectedPresetIndex('');
     setPresets([]);
+    setXivGearSetOptions([]);
+    setSelectedXivGearSetIndex('');
   }, []);
 
   const handleClose = () => {
@@ -292,7 +308,18 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         if (source === 'etro') {
           data = await fetchBiSFromEtro(inputValue.trim());
         } else {
-          data = await fetchBiSFromXIVGear(inputValue.trim());
+          const selectedSetIndex =
+            xivGearSetOptions.length > 0 && selectedXivGearSetIndex !== ''
+              ? Number(selectedXivGearSetIndex)
+              : undefined;
+          data = await fetchBiSFromXIVGear(inputValue.trim(), selectedSetIndex);
+          if (data.requiresSelection && data.setOptions?.length) {
+            setXivGearSetOptions(data.setOptions);
+            setSelectedXivGearSetIndex(String(data.setOptions[0].index));
+            setState('input');
+            toast.info('Choose which XIVGear set to import, then preview again.');
+            return;
+          }
         }
       }
       setPreviewData(data);
@@ -442,7 +469,22 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
         bisLink = `bis|${player.job.toLowerCase()}|current|0`;
       }
     } else {
-      bisLink = inputValue.trim();
+      const manualSource = detectBiSSource(inputValue.trim());
+      if (
+        manualSource === 'xivgear' &&
+        xivGearSetOptions.length > 0 &&
+        selectedXivGearSetIndex !== ''
+      ) {
+        bisLink = withXivGearSetIndex(inputValue.trim(), Number(selectedXivGearSetIndex));
+      } else if (
+        manualSource === 'xivgear' &&
+        previewData.selectedSetIndex !== null &&
+        previewData.selectedSetIndex !== undefined
+      ) {
+        bisLink = withXivGearSetIndex(inputValue.trim(), previewData.selectedSetIndex);
+      } else {
+        bisLink = inputValue.trim();
+      }
     }
 
     onImport({
@@ -534,6 +576,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
                   value={selectedPresetIndex}
                   onChange={(value) => {
                     setSelectedPresetIndex(value);
+                    setXivGearSetOptions([]);
+                    setSelectedXivGearSetIndex('');
                     // Clear manual input when preset selected
                     if (value !== '') {
                       setInputValue('');
@@ -598,6 +642,8 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
               value={inputValue}
               onChange={(value) => {
                 setInputValue(value);
+                setXivGearSetOptions([]);
+                setSelectedXivGearSetIndex('');
                 // Clear preset selection when typing
                 if (value) {
                   setSelectedPresetIndex('');
@@ -612,6 +658,23 @@ export function BiSImportModal({ isOpen, onClose, player, contentType, onImport 
               <p className={`mt-1 text-xs ${urlValidation.isValid ? 'text-text-muted' : 'text-status-warning'}`}>
                 {urlValidation.hint}
               </p>
+            )}
+            {xivGearSetOptions.length > 0 && (
+              <div className="mt-3">
+                <Label htmlFor="xivGearSet">XIVGear set</Label>
+                <Select
+                  id="xivGearSet"
+                  value={selectedXivGearSetIndex}
+                  onChange={setSelectedXivGearSetIndex}
+                  options={xivGearSetOptions.map((option) => ({
+                    value: String(option.index),
+                    label: formatXivGearSetOption(option),
+                  }))}
+                />
+                <p className="mt-1 text-xs text-text-muted">
+                  This sheet has multiple sets. Pick the exact set to import.
+                </p>
+              </div>
             )}
           </div>
         </div>

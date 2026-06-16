@@ -45,7 +45,7 @@ export function InvitationsPanel({ groupId, canManage, highlightCreateButton = f
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newRole, setNewRole] = useState<MemberRole>('member');
-  const [expiresInDays, setExpiresInDays] = useState<number | null>(null);
+  const [expiresInDays, setExpiresInDays] = useState<number | null>(7);
   const [isUnlimited, setIsUnlimited] = useState(true);
   const [maxUses, setMaxUses] = useState<number | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export function InvitationsPanel({ groupId, canManage, highlightCreateButton = f
     try {
       await createInvitation(groupId, {
         role: newRole,
-        expiresInDays: expiresInDays ?? undefined,
+        expiresInDays,
         maxUses: isUnlimited ? undefined : (maxUses ?? 1),
       });
       setShowCreateForm(false);
@@ -199,7 +199,7 @@ export function InvitationsPanel({ groupId, canManage, highlightCreateButton = f
                   { value: '7', label: '7 days' },
                   { value: '14', label: '14 days' },
                   { value: '30', label: '30 days' },
-                  { value: 'never', label: 'Never' },
+                  { value: 'never', label: 'Never expires' },
                 ]}
               />
             </div>

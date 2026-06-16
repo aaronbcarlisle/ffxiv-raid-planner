@@ -37,13 +37,15 @@ from ..models.membership import MemberRole
 from ..schemas.bis_targets import BiSTargetSetCreate, BiSTargetSetResponse, BiSTargetSetUpdate
 from .bis import (
     ETRO_SLOT_MAP,
-    XIVGEAR_SLOT_MAP,
+    build_xivgear_set_options,
+    build_xivgear_slots,
     determine_source,
     extract_bis_path,
     extract_etro_uuid,
+    extract_xivgear_set_index,
     fetch_bis_from_etro,
     fetch_bis_from_github,
-    fetch_bis_from_shortlink,
+    fetch_bis_from_xivgear_url,
     fetch_item_from_garland,
     fetch_materia_from_garland,
 )
@@ -330,6 +332,7 @@ async def _fetch_slots_xivgear(url: str) -> list[dict]:
     """Fetch gear slots from a XIVGear URL and return serialisable slot dicts."""
     try:
         identifier, path_type = extract_bis_path(url)
+        requested_set_index = extract_xivgear_set_index(url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -337,50 +340,42 @@ async def _fetch_slots_xivgear(url: str) -> list[dict]:
         job_abbrev, tier = identifier.split("/")
         data = await fetch_bis_from_github(job_abbrev, tier)
     else:
-        data = await fetch_bis_from_shortlink(identifier)
+        data = await fetch_bis_from_xivgear_url(url)
 
     items_data: dict = {}
     if "sets" in data and data["sets"]:
-        for s in data["sets"]:
-            if not s.get("isSeparator"):
-                items_data = s.get("items", {})
-                break
+        sets = data["sets"]
+        set_options = build_xivgear_set_options(data)
+        selectable_indices = {option.index for option in set_options}
+
+        if requested_set_index is None and len(set_options) > 1:
+            raise HTTPException(
+                status_code=400,
+                detail="XIVGear sheet has multiple sets. Select a set before importing.",
+            )
+
+        selected_set_index: int | None
+        if requested_set_index is None:
+            selected_set_index = set_options[0].index if set_options else None
+        elif requested_set_index in selectable_indices:
+            selected_set_index = requested_set_index
+        elif requested_set_index == 0 and set_options:
+            # Legacy preset links sometimes stored setIndex=0 even when the first
+            # XIVGear row is a separator. Preserve those links by selecting the
+            # first real set.
+            selected_set_index = set_options[0].index
+        else:
+            raise HTTPException(status_code=400, detail="Selected XIVGear set was not found")
+
+        if selected_set_index is not None:
+            items_data = sets[selected_set_index].get("items", {})
     elif "items" in data:
         items_data = data["items"]
 
     if not items_data:
         raise HTTPException(status_code=400, detail="No gear items found in XIVGear set")
 
-    slots: list[dict] = []
-    for xivgear_slot, our_slot in XIVGEAR_SLOT_MAP.items():
-        item_data = items_data.get(xivgear_slot)
-        if item_data and "id" in item_data:
-            item_id = item_data["id"]
-            item_info = await fetch_item_from_garland(item_id)
-            source = determine_source(item_info["name"], item_info["level"], our_slot)
-            raw_materia = item_data.get("materia", [])
-            materia_ids = [
-                (m.get("id") if isinstance(m, dict) else m) for m in raw_materia
-            ]
-            materia_ids = [mid for mid in materia_ids if mid and mid > 0]
-            materia_list: list[dict] = []
-            if materia_ids:
-                results = await asyncio.gather(
-                    *[fetch_materia_from_garland(mid) for mid in materia_ids],
-                    return_exceptions=True,
-                )
-                for r in results:
-                    if r is not None and not isinstance(r, Exception):
-                        materia_list.append(r.model_dump())
-            slots.append({
-                "slot": our_slot, "source": source,
-                "itemId": item_id, "itemName": item_info["name"],
-                "itemLevel": item_info["level"], "itemIcon": item_info.get("icon"),
-                "itemStats": item_info.get("stats") or None, "materia": materia_list,
-            })
-        else:
-            slots.append({"slot": our_slot, "source": "raid"})
-    return slots
+    return [slot.model_dump() for slot in await build_xivgear_slots(items_data)]
 
 
 async def _fetch_slots_etro(url: str) -> list[dict]:

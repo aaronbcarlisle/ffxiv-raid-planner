@@ -325,6 +325,36 @@ export async function fetchBiSPresets(
 }
 
 /**
+ * Store a selected XIVGear set index on a pasted URL without mutating the
+ * sheet identifier. Legacy sl|uuid strings are preserved as sl|uuid|index.
+ */
+export function withXivGearSetIndex(urlOrId: string, setIndex: number): string {
+  const trimmed = urlOrId.trim();
+  if (!trimmed) return trimmed;
+
+  if (trimmed.startsWith('sl|')) {
+    const [prefix, uuid] = trimmed.split('|');
+    return uuid ? `${prefix}|${uuid}|${setIndex}` : trimmed;
+  }
+
+  if (trimmed.startsWith('bis|')) {
+    const parts = trimmed.split('|');
+    const base = parts.slice(0, 3).join('|');
+    return parts.length >= 3 ? `${base}|${setIndex}` : trimmed;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    url.searchParams.delete('onlySetIndex');
+    url.searchParams.delete('setIndex');
+    url.searchParams.set('selectedIndex', String(setIndex));
+    return url.toString();
+  } catch {
+    return trimmed;
+  }
+}
+
+/**
  * Fetch BiS gear set from XIVGear.app
  * Accepts UUID or full URL - backend handles extraction
  * @param uuidOrUrl - XIVGear UUID, share URL, or curated BiS path

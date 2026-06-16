@@ -146,6 +146,14 @@ def _is_plugin_catalog_entry(entry: dict) -> bool:
     )
 
 
+def _catalog_goal_target(entry: dict) -> int:
+    return entry.get("exchange_cost") or entry.get("totem_target", 99)
+
+
+def _catalog_currency_name(entry: dict) -> str | None:
+    return entry.get("currency_item_name") or entry.get("totem_name")
+
+
 async def _write_activity_log(
     db: AsyncSession,
     *,
@@ -655,18 +663,25 @@ async def get_mount_farm_catalog(
 async def _bridge_mount_farm_goals(
     db: AsyncSession, user: User, data: "PluginMountFarmSync", now: str,
 ) -> None:
-    """Bridge: upsert PlayerGoal entries for mount/totem data from plugin sync.
+    """Bridge plugin collection sync into Player Hub collection goals.
 
-    For each mount/totem the plugin reports, create or update a
-    corresponding PlayerGoal with goal_type="mount_farm" or "totem_farm".
-    Fails silently — group sync always succeeds regardless.
+    Player Hub is the durable personal collection surface. Static Mount Farms
+    mirror the same plugin snapshot for every static the user belongs to.
     """
     profile_result = await db.execute(
         select(PlayerProfile).where(PlayerProfile.user_id == user.id)
     )
     profile = profile_result.scalar_one_or_none()
     if not profile:
-        return
+        profile = PlayerProfile(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            visibility="private",
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(profile)
+        await db.flush()
 
     for mount_item in data.mounts:
         catalog_entry = None
@@ -690,6 +705,9 @@ async def _bridge_mount_farm_goals(
         if goal:
             if mount_item.owned and goal.status != "completed":
                 goal.status = "completed"
+                goal.current_count = _catalog_goal_target(catalog_entry)
+                goal.target_count = _catalog_goal_target(catalog_entry)
+                goal.source_item = catalog_entry["mount_name"]
                 goal.updated_at = now
         else:
             if mount_item.owned:
@@ -701,8 +719,8 @@ async def _bridge_mount_farm_goals(
                     status="completed",
                     source_content=trial_id,
                     source_item=catalog_entry["mount_name"],
-                    target_count=catalog_entry.get("totem_target", 99),
-                    current_count=catalog_entry.get("totem_target", 99),
+                    target_count=_catalog_goal_target(catalog_entry),
+                    current_count=_catalog_goal_target(catalog_entry),
                     created_at=now,
                     updated_at=now,
                 ))
@@ -727,8 +745,10 @@ async def _bridge_mount_farm_goals(
         goal = goal_result.scalar_one_or_none()
 
         if goal:
-            if totem_item.count > goal.current_count:
+            if goal.status != "completed" and goal.current_count != totem_item.count:
                 goal.current_count = totem_item.count
+                goal.target_count = _catalog_goal_target(catalog_entry)
+                goal.source_item = _catalog_currency_name(catalog_entry)
                 goal.updated_at = now
                 if goal.target_count and totem_item.count >= goal.target_count:
                     goal.status = "completed"
@@ -740,8 +760,8 @@ async def _bridge_mount_farm_goals(
                 goal_type="mount_farm",
                 status="active",
                 source_content=trial_id,
-                source_item=catalog_entry["totem_name"],
-                target_count=catalog_entry.get("totem_target", 99),
+                source_item=_catalog_currency_name(catalog_entry),
+                target_count=_catalog_goal_target(catalog_entry),
                 current_count=totem_item.count,
                 created_at=now,
                 updated_at=now,
@@ -761,12 +781,20 @@ async def plugin_sync_mount_farms(
 ) -> PluginSyncResult:
     """Process mount/totem data from the Dalamud plugin.
 
-    Updates mount_farm_progress for all static groups the user belongs to.
+    Updates Player Hub collection goals first, then mirrors the same snapshot
+    into mount_farm_progress for all static groups the user belongs to.
     Only the authenticated user's own progress is updated (never other members).
     Automation-first: plugin data overwrites unless a manual override is more recent.
     """
     now = data.synced_at or datetime.now(timezone.utc).isoformat()
     source = data.source or "plugin"
+
+    # Player Hub is the personal collection source. Run this even when the user
+    # is not currently in a static so plugin sync is never lost.
+    try:
+        await _bridge_mount_farm_goals(db, user, data, now)
+    except Exception:
+        logger.warning("mount_farm_goal_bridge_failed", user_id=user.id)
 
     # Find all groups the user belongs to (non-viewer)
     memberships_result = await db.execute(
@@ -779,6 +807,7 @@ async def plugin_sync_mount_farms(
     group_ids = [m.static_group_id for m in memberships]
 
     if not group_ids:
+        await db.commit()
         return PluginSyncResult(synced_at=now)
 
     mounts_updated = 0
@@ -927,12 +956,6 @@ async def plugin_sync_mount_farms(
                 else:
                     progress.last_plugin_sync_at = now
                     totems_unchanged += 1
-
-    # --- Bridge: also upsert PlayerGoal entries for solo profile ---
-    try:
-        await _bridge_mount_farm_goals(db, user, data, now)
-    except Exception:
-        logger.warning("mount_farm_goal_bridge_failed", user_id=user.id)
 
     await db.commit()
 

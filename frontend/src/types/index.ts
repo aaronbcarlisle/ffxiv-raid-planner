@@ -767,7 +767,7 @@ export interface Invitation {
   staticGroupId: string;
   inviteCode: string;
   role: MemberRole;
-  expiresAt?: string;
+  expiresAt?: string | null;
   maxUses?: number;
   useCount: number;
   isActive: boolean;
@@ -792,7 +792,7 @@ export interface InvitationPreview {
 // Invitation create request
 export interface InvitationCreate {
   role?: MemberRole;
-  expiresInDays?: number;
+  expiresInDays?: number | null;
   maxUses?: number;
 }
 
@@ -970,11 +970,24 @@ export interface BiSGearSlotData {
   materia?: MateriaSlot[];  // Melded materia
 }
 
+export interface XivGearSetOption {
+  index: number;
+  name: string;
+  job: string;
+  gcd?: string | null;
+  dpsLabel?: string | null;
+  description?: string | null;
+}
+
 // BiS import response from XIVGear
 export interface BiSImportData {
   name: string;
   job: string;
   slots: BiSGearSlotData[];
+  setOptions?: XivGearSetOption[];
+  selectedSetIndex?: number | null;
+  requiresSelection?: boolean;
+  originalUrl?: string | null;
 }
 
 // BiS preset option (for dropdown)

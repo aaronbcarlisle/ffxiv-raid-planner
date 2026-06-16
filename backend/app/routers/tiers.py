@@ -21,6 +21,7 @@ from ..models.player_gear_snapshot import PlayerGearSnapshot
 from ..models.player_job_profile import PlayerJobProfile
 from ..models.player_profile import PlayerProfile
 from .bis_targets import _fetch_slots_xivgear, _fetch_slots_etro
+from .lodestone import _apply_ring_slot_equivalence, _stored_gear_to_equipped_lookup
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -1136,6 +1137,7 @@ async def _auto_link_bis_from_hub(session: AsyncSession, player: SnapshotPlayer,
         snap = snap_result.scalar_one_or_none()
         if snap and snap.gear:
             equipped_by_slot = {g["slot"]: g for g in snap.gear if g.get("slot")}
+            equipped_lookup = _stored_gear_to_equipped_lookup(snap.gear)
             final_gear = []
             for slot in (player.gear or []):
                 slot_name = slot.get("slot")
@@ -1151,6 +1153,7 @@ async def _auto_link_bis_from_hub(session: AsyncSession, player: SnapshotPlayer,
                     "currentSource": equipped.get("currentSource", "unknown"),
                     "hasItem": bool(eq_id and bis_id and eq_id == bis_id),
                 })
+            _apply_ring_slot_equivalence(final_gear, equipped_lookup)
             player.gear = final_gear
             player.last_sync = snap.synced_at
             player.last_sync_source = "player_hub"
