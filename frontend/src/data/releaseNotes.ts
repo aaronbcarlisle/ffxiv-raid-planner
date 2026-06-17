@@ -61,7 +61,8 @@ export const RELEASES: Release[] = [
   {
     version: 'Unreleased',
     date: '2026-06-16T00:00:00Z',
-    title: 'Recurring events, occurrence management, collection sync, and Discord Guild Scheduled Events',
+    title: 'Player Hub gear sync, recurring scheduling, Discord delivery, and permanent invites',
+    highlights: ['Gear sync and BiS import fixes', 'Discord schedule delivery'],
     internal: true,
     items: [
       {
