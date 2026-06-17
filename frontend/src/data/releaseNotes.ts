@@ -77,6 +77,25 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'fix',
+        title: 'Stale app chunk recovery',
+        description: 'Minor bug fix: browsers with an older cached app shell now reload once and show a clear update message instead of getting stuck on a generic dynamic import error after deployments.',
+        pr: 136,
+        prTitle: 'fix: recover from stale app chunks',
+      },
+      {
+        category: 'fix',
+        title: 'Scheduler drag selection reliability',
+        description: 'Scheduler drag-selection no longer misses slots when selecting another column while previous slot updates are still saving or animating. Cross-midnight preset views now map after-midnight slots to the next day so Prime raid time, Evening, and Full day stay consistent.',
+        pr: 136,
+        prTitle: 'fix: recover stale chunks and stabilize scheduler availability',
+      },
+      {
+        category: 'fix',
+        title: 'Windows dev startup resilience',
+        description: 'The local development startup script now resolves Windows npm/pnpm command shims before launching the frontend server, preventing PowerShell from trying to execute a .ps1 shim as a Win32 application. The backend example env also documents optional Discord bot/interactions variables used by local Discord event testing.',
+      },
+      {
+        category: 'fix',
         title: 'Leads can now access group settings',
         description: 'The settings gear icon in the group header was previously only visible to the Owner. Leads can now open group settings to manage roster, tiers, invitations, and other options. The destructive "Delete Static" action remains restricted to the Owner only.',
         pr: 134,
