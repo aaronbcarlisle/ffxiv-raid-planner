@@ -17,6 +17,18 @@ type SchedulerSubTab = 'sessions' | 'availability' | 'integrations';
 type WebhookMentionTarget = 'none' | 'here' | 'role';
 
 const DISCORD_ROLE_ID_PATTERN = /^(?:<@&)?(\d{17,20})>?$/;
+const DISCORD_SCHEDULE_EVENT_PERMISSIONS = '17600775979008';
+const DISCORD_INSTALL_SCOPES = 'bot applications.commands';
+
+function buildDiscordInstallUrl(clientId?: string | null): string {
+  const params = new URLSearchParams({
+    client_id: clientId ?? '',
+    permissions: DISCORD_SCHEDULE_EVENT_PERMISSIONS,
+    integration_type: '0',
+    scope: DISCORD_INSTALL_SCOPES,
+  });
+  return `https://discord.com/oauth2/authorize?${params.toString()}`;
+}
 
 function normalizeDiscordRoleId(value: string): string {
   const match = value.trim().match(DISCORD_ROLE_ID_PATTERN);
@@ -936,7 +948,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                                 type="button"
                                 size="sm"
                                 leftIcon={<ExternalLink className="h-3 w-3" />}
-                                onClick={() => window.open(`https://discord.com/oauth2/authorize?client_id=${settings?.discordClientId ?? ''}&permissions=17600775979008&integration_type=0&scope=bot`, '_blank', 'noopener,noreferrer')}
+                                onClick={() => window.open(buildDiscordInstallUrl(settings?.discordClientId), '_blank', 'noopener,noreferrer')}
                                 disabled={!settings?.discordClientId}
                               >
                                 Re-invite bot
@@ -1017,7 +1029,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                                 size="sm"
                                 variant="ghost"
                                 rightIcon={<ExternalLink className="h-3 w-3" />}
-                                onClick={() => window.open(`https://discord.com/oauth2/authorize?client_id=${settings?.discordClientId ?? ''}&permissions=17600775979008&integration_type=0&scope=bot`, '_blank', 'noopener,noreferrer')}
+                                onClick={() => window.open(buildDiscordInstallUrl(settings?.discordClientId), '_blank', 'noopener,noreferrer')}
                                 disabled={!settings?.discordClientId}
                                 className="inline-flex"
                               >
