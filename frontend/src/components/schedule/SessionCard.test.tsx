@@ -18,6 +18,7 @@ const baseSession: ScheduleSession = {
   category: 'ultimate',
   contentId: 'ult-fru',
   contentName: 'Futures Rewritten (Ultimate)',
+  bannerUrl: null,
   createdAt: '2099-07-01T00:00:00+00:00',
   updatedAt: '2099-07-01T00:00:00+00:00',
   rsvps: [],

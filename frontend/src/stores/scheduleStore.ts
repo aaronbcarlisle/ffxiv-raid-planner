@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 import type {
+  DiscordInstallClaim,
+  StaticDiscordLink,
   ScheduleSession,
   ScheduleSessionCreate,
   ScheduleSessionUpdate,
@@ -37,8 +39,12 @@ interface ScheduleState {
   createException: (groupId: string, sessionId: string, data: ScheduleExceptionCreate) => Promise<ScheduleException>;
   deleteException: (groupId: string, sessionId: string, occurrenceDate: string) => Promise<void>;
   fetchExceptions: (groupId: string, sessionId: string) => Promise<ScheduleException[]>;
+  syncAllDiscordMirrors: (groupId: string) => Promise<string[]>;
   syncDiscordMirror: (groupId: string, sessionId: string) => Promise<string[]>;
   fetchDiscordMirrors: (groupId: string, sessionId: string) => Promise<DiscordMirrorStatus[]>;
+  createDiscordInstallClaim: (groupId: string) => Promise<DiscordInstallClaim>;
+  fetchDiscordLink: (groupId: string) => Promise<StaticDiscordLink | null>;
+  disconnectDiscordLink: (groupId: string) => Promise<void>;
   clearSessions: () => void;
 }
 
@@ -242,6 +248,13 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
     );
   },
 
+  syncAllDiscordMirrors: async (groupId: string) => {
+    const result = await api.post<{ actions: string[] }>(
+      `/api/static-groups/${groupId}/schedule/sync-discord`
+    );
+    return result.actions;
+  },
+
   syncDiscordMirror: async (groupId: string, sessionId: string) => {
     const result = await api.post<{ actions: string[] }>(
       `/api/static-groups/${groupId}/schedule/${sessionId}/sync-discord`
@@ -253,6 +266,29 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
     return api.get<DiscordMirrorStatus[]>(
       `/api/static-groups/${groupId}/schedule/${sessionId}/discord-mirrors`
     );
+  },
+
+  createDiscordInstallClaim: async (groupId: string) => {
+    return api.post<DiscordInstallClaim>(
+      `/api/static-groups/${groupId}/schedule-discord/install-claim`
+    );
+  },
+
+  fetchDiscordLink: async (groupId: string) => {
+    try {
+      return await api.get<StaticDiscordLink | null>(
+        `/api/static-groups/${groupId}/schedule-discord/link`
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  disconnectDiscordLink: async (groupId: string) => {
+    await api.delete(`/api/static-groups/${groupId}/schedule-discord/link`);
+    set((state) => state.settings ? {
+      settings: { ...state.settings, discordLinkStatus: 'disconnected', discordGuildName: null },
+    } : state);
   },
 
   clearSessions: () => set({

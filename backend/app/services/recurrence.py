@@ -240,8 +240,8 @@ def generate_occurrences(
 
         if not is_cancelled and current > after:
             # Apply any edited overrides
-            occ_start = session_start
-            occ_end = session_end
+            occ_start = current.isoformat()
+            occ_end = (current + duration).isoformat()
             title = session_title
             description = session_description
             banner_url = session_banner_url

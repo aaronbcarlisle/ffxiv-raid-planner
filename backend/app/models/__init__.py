@@ -23,7 +23,7 @@ from .player_profile import PlayerProfile
 from .plugin_auth_code import PluginAuthCode
 from .availability import AvailabilityTemplate, UserAvailability
 from .personal_availability import PersonalAvailabilityTemplate
-from .schedule import DiscordMessageMapping, ScheduleDiscordMirror, ScheduleException, ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings
+from .schedule import DiscordInstallClaim, DiscordMessageMapping, ScheduleDiscordMirror, ScheduleException, ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings, StaticDiscordLink
 from .snapshot_player import SnapshotPlayer
 from .static_group import StaticGroup
 from .tier_snapshot import TierSnapshot
@@ -61,9 +61,11 @@ __all__ = [
     "PlayerProfile",
     "PluginAuthCode",
     "ROLE_HIERARCHY",
+    "DiscordInstallClaim",
     "DiscordMessageMapping",
     "ScheduleDiscordMirror",
     "ScheduleException",
+    "StaticDiscordLink",
     "ScheduleRsvp",
     "ScheduleReminderDelivery",
     "ScheduleSession",

@@ -16,6 +16,10 @@ interface SessionCardProps {
   canRsvp: boolean;
   compact?: boolean;
   groupId?: string;
+  deliveryStatus?: {
+    mirrorState: 'synced' | 'failed' | 'pending' | 'disabled';
+    reminderLabel: string | null;
+  };
   onRsvp: (sessionId: string, status: RsvpStatus) => Promise<void>;
   onEdit: (session: ScheduleSession) => void;
   onDelete: (sessionId: string) => Promise<void>;
@@ -112,7 +116,7 @@ function buildDiscordMessage(session: ScheduleSession, rsvpSummary: Record<strin
   return lines.join('\n');
 }
 
-export function SessionCard({ session, currentUserId, shareCode, staticName, canManage, canRsvp, compact, groupId, onRsvp, onEdit, onDelete }: SessionCardProps) {
+export function SessionCard({ session, currentUserId, shareCode, staticName, canManage, canRsvp, compact, groupId, deliveryStatus, onRsvp, onEdit, onDelete }: SessionCardProps) {
   const [rsvpLoading, setRsvpLoading] = useState<RsvpStatus | null>(null);
   const [copied, setCopied] = useState(false);
   const deleteModal = useModal();
@@ -198,6 +202,21 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
             </div>
             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
               {session.category && <CategoryBadge category={session.category} />}
+              {deliveryStatus?.mirrorState === 'synced' && (
+                <span className="inline-flex items-center gap-1 rounded bg-blue-400/15 px-1.5 py-0.5 text-[10px] font-medium text-blue-300">
+                  <CalendarDays className="h-3 w-3" /> Discord
+                </span>
+              )}
+              {deliveryStatus?.mirrorState === 'failed' && (
+                <span className="inline-flex items-center gap-1 rounded bg-red-400/15 px-1.5 py-0.5 text-[10px] font-medium text-red-300">
+                  <XCircle className="h-3 w-3" /> Discord issue
+                </span>
+              )}
+              {deliveryStatus?.reminderLabel && (
+                <span className="inline-flex items-center gap-1 rounded bg-purple-400/15 px-1.5 py-0.5 text-[10px] font-medium text-purple-300">
+                  <MessageSquare className="h-3 w-3" /> {deliveryStatus.reminderLabel}
+                </span>
+              )}
               {session.contentName && (
                 <span className="text-[10px] text-text-tertiary truncate">{session.contentName}</span>
               )}
@@ -297,6 +316,21 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
               </Tooltip>
             )}
             {session.category && <CategoryBadge category={session.category} />}
+            {deliveryStatus?.mirrorState === 'synced' && (
+              <span className="inline-flex items-center gap-1 rounded bg-blue-400/15 px-1.5 py-0.5 text-[10px] font-medium text-blue-300">
+                <CalendarDays className="h-3 w-3" /> Discord Event synced
+              </span>
+            )}
+            {deliveryStatus?.mirrorState === 'failed' && (
+              <span className="inline-flex items-center gap-1 rounded bg-red-400/15 px-1.5 py-0.5 text-[10px] font-medium text-red-300">
+                <XCircle className="h-3 w-3" /> Discord delivery issue
+              </span>
+            )}
+            {deliveryStatus?.reminderLabel && (
+              <span className="inline-flex items-center gap-1 rounded bg-purple-400/15 px-1.5 py-0.5 text-[10px] font-medium text-purple-300">
+                <MessageSquare className="h-3 w-3" /> Reminders {deliveryStatus.reminderLabel}
+              </span>
+            )}
           </h3>
           {session.contentName && (
             <p className="mt-0.5 truncate text-sm text-text-tertiary">{session.contentName}</p>

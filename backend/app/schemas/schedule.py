@@ -84,6 +84,10 @@ class ScheduleSessionCreate(CamelModel):
     banner_url: str | None = None
     banner_key: str | None = None
     banner_source_type: BannerSourceTypeEnum | None = None
+    mirror_to_discord: bool = True
+    send_discord_reminders: bool = True
+    reminder_offsets_minutes: list[int] | None = None
+    missing_rsvp_reminder_enabled: bool | None = None
 
 
 class ScheduleSessionUpdate(CamelModel):
@@ -101,6 +105,10 @@ class ScheduleSessionUpdate(CamelModel):
     banner_url: str | None = None
     banner_key: str | None = None
     banner_source_type: BannerSourceTypeEnum | None = None
+    mirror_to_discord: bool | None = None
+    send_discord_reminders: bool | None = None
+    reminder_offsets_minutes: list[int] | None = None
+    missing_rsvp_reminder_enabled: bool | None = None
 
 
 class RsvpCreate(CamelModel):
@@ -136,6 +144,10 @@ class ScheduleSessionResponse(CamelModel):
     banner_url: str | None = None
     banner_key: str | None = None
     banner_source_type: str | None = None
+    mirror_to_discord: bool = True
+    send_discord_reminders: bool = True
+    reminder_offsets_minutes: list[int] | None = None
+    missing_rsvp_reminder_enabled: bool | None = None
     created_at: str
     updated_at: str
     rsvps: list[RsvpResponse] = []
@@ -305,9 +317,15 @@ class ScheduleSettingsResponse(CamelModel):
     calendar_token_created_at: str | None = None
     webhook_last_delivery_status: int | None = None
     webhook_last_delivery_error: str | None = None
-    # Discord Guild Scheduled Events
+    # Legacy per-static bot fields (kept for self-hosted setups)
     discord_bot_configured: bool = False
     discord_guild_id: str | None = None
+    # Official bot availability + invite URL client ID (safe to expose to clients)
+    discord_official_bot_available: bool = False
+    discord_client_id: str | None = None
+    # Official bot via install-claim flow
+    discord_link_status: str | None = None  # connected | permission_missing | disconnected | None
+    discord_guild_name: str | None = None
     can_manage: bool = False
     created_at: str | None = None
     updated_at: str | None = None
@@ -322,3 +340,34 @@ class CalendarTokenResponse(CamelModel):
     calendar_enabled: bool
     calendar_url: str | None = None
     calendar_token_created_at: str | None = None
+
+
+# ==================== Discord Install Claim Schemas ====================
+
+
+class DiscordInstallClaimResponse(CamelModel):
+    id: str
+    claim_code: str  # Plain-text — only returned once on create
+    expires_at: str
+    status: str
+
+
+class SlashCommandClaimRequest(CamelModel):
+    """Posted by the XIVRaidPlanner bot when /xrp link <code> is run in Discord."""
+    claim_code: str
+    discord_guild_id: str
+    discord_guild_name: str | None = None
+    discord_channel_id: str | None = None
+    discord_user_id: str  # Discord user who ran the slash command
+
+
+class StaticDiscordLinkResponse(CamelModel):
+    id: str
+    static_group_id: str
+    discord_guild_id: str
+    discord_guild_name: str | None = None
+    schedule_channel_id: str | None = None
+    status: str
+    last_permission_check_at: str | None = None
+    created_at: str
+    updated_at: str

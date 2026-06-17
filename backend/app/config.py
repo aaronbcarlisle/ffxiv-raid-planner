@@ -94,6 +94,12 @@ class Settings(BaseSettings):
     discord_client_secret: str = ""
     discord_redirect_uri: str = "http://localhost:5174/auth/callback"
 
+    # Official XIVRaidPlanner bot (server-side only — never sent to clients)
+    # Set via DISCORD_BOT_TOKEN env var.  The bot handles Guild Scheduled Events
+    # for all statics; individual statics never need their own bot token.
+    discord_bot_token: str = ""
+    discord_public_key: str = ""  # For verifying interaction payloads (optional)
+
     # JWT Configuration
     jwt_secret_key: str = ""  # Set via JWT_SECRET_KEY env var (required in production)
     jwt_algorithm: AllowedJWTAlgorithm = "HS256"  # Only allow secure HMAC algorithms

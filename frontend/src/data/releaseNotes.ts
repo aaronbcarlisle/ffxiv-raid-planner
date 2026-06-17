@@ -71,8 +71,8 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'feature',
-        title: 'Discord Guild Scheduled Events mirror (opt-in)',
-        description: 'Statics that configure a Discord bot token and guild ID in schedule settings can now mirror upcoming raid occurrences as Discord Guild Scheduled Events, keeping a rolling 4-week window in sync automatically.',
+        title: 'Discord Guild Events: official bot via install-claim flow',
+        description: 'Discord Events now use a shared XIVRaidPlanner bot instead of per-static bot tokens. Leads connect their server in one click — generate a link code, invite the bot, run /xrp link <code> — no token management required. The integrations panel shows connection status, permission health, and Sync/Disconnect actions.',
       },
       {
         category: 'fix',

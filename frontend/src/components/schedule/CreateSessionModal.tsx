@@ -5,7 +5,7 @@ import { Label } from '../ui/Label';
 import { Select } from '../ui/Select';
 import { Checkbox } from '../ui/Checkbox';
 import { Button } from '../primitives';
-import { Calendar } from 'lucide-react';
+import { Calendar, Upload } from 'lucide-react';
 import type { EventCategory, InitialRsvpStatus, ScheduleSession, ScheduleSessionCreate } from '../../types';
 import { RAID_TIERS, MOUNT_FARM_TRIALS } from '../../gamedata';
 import {
@@ -41,11 +41,20 @@ const DAYS_OF_WEEK = [
 ];
 
 const DEFAULT_DURATION_MS = 3 * 60 * 60 * 1000;
+const MAX_BANNER_UPLOAD_BYTES = 2 * 1024 * 1024;
 const INITIAL_RSVP_OPTIONS = [
   { value: 'no_response', label: 'No response' },
   { value: 'available', label: 'Available' },
   { value: 'tentative', label: 'Tentative' },
   { value: 'unavailable', label: 'Unavailable' },
+];
+const REMINDER_OPTIONS = [
+  { minutes: 1440, label: '24 hrs before' },
+  { minutes: 720, label: '12 hrs before' },
+  { minutes: 360, label: '6 hrs before' },
+  { minutes: 60, label: '1 hr before' },
+  { minutes: 15, label: '15 min before' },
+  { minutes: 0, label: 'At start' },
 ];
 
 interface CreateSessionModalProps {
@@ -54,6 +63,13 @@ interface CreateSessionModalProps {
   onSubmit: (data: ScheduleSessionCreate) => Promise<void>;
   editSession?: ScheduleSession | null;
   initialDraft?: ScheduleSessionCreate | null;
+  discordDeliverySummary?: {
+    serverLabel: string;
+    mirrorEnabled: boolean;
+    remindersEnabled: boolean;
+    reminderLabels: string[];
+    pingLabel: string;
+  };
 }
 
 function parseDaysFromRule(rule: string | null | undefined): Set<string> {
@@ -78,6 +94,19 @@ const EVENT_CATEGORIES: { value: EventCategory; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
+const BANNER_PRESETS = RAID_TIERS
+  .filter((tier) => Boolean(tier.banner))
+  .map((tier) => ({
+    value: tier.id,
+    label: tier.name,
+    url: tier.banner as string,
+  }));
+
+function toAbsoluteAssetUrl(path: string): string {
+  if (/^https?:\/\//.test(path) || path.startsWith('data:')) return path;
+  return `${window.location.origin}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 function getInitialFormState(editSession?: ScheduleSession | null, initialDraft?: ScheduleSessionCreate | null) {
   const source = editSession ?? initialDraft ?? null;
   const timezone = source?.timezone ?? getBrowserTimezone();
@@ -93,6 +122,13 @@ function getInitialFormState(editSession?: ScheduleSession | null, initialDraft?
     category: (source && 'category' in source ? source.category : null) as EventCategory | null,
     contentName: (source && 'contentName' in source ? source.contentName : null) as string | null,
     contentId: (source && 'contentId' in source ? source.contentId : null) as string | null,
+    bannerUrl: (source && 'bannerUrl' in source ? source.bannerUrl : null) as string | null,
+    bannerKey: (source && 'bannerKey' in source ? source.bannerKey : null) as string | null,
+    bannerSourceType: (source && 'bannerSourceType' in source ? source.bannerSourceType : null) as string | null,
+    mirrorToDiscord: source && 'mirrorToDiscord' in source ? source.mirrorToDiscord ?? true : true,
+    sendDiscordReminders: source && 'sendDiscordReminders' in source ? source.sendDiscordReminders ?? true : true,
+    reminderOffsetsMinutes: source && 'reminderOffsetsMinutes' in source ? source.reminderOffsetsMinutes ?? null : null,
+    missingRsvpReminderEnabled: source && 'missingRsvpReminderEnabled' in source ? source.missingRsvpReminderEnabled ?? null : null,
   };
 }
 
@@ -102,6 +138,7 @@ export function CreateSessionModal({
   onSubmit,
   editSession,
   initialDraft,
+  discordDeliverySummary,
 }: CreateSessionModalProps) {
   const initialState = getInitialFormState(editSession, initialDraft);
   const [title, setTitle] = useState(initialState.title);
@@ -116,6 +153,21 @@ export function CreateSessionModal({
   const [category, setCategory] = useState<EventCategory | null>(initialState.category);
   const [contentName, setContentName] = useState<string | null>(initialState.contentName);
   const [contentId, setContentId] = useState<string | null>(initialState.contentId);
+  const [bannerUrl, setBannerUrl] = useState<string>(initialState.bannerUrl ?? '');
+  const [bannerKey, setBannerKey] = useState<string | null>(initialState.bannerKey);
+  const [bannerSourceType, setBannerSourceType] = useState<string | null>(initialState.bannerSourceType);
+  const [bannerError, setBannerError] = useState<string | null>(null);
+  const [mirrorToDiscord, setMirrorToDiscord] = useState(initialState.mirrorToDiscord);
+  const [sendDiscordReminders, setSendDiscordReminders] = useState(initialState.sendDiscordReminders);
+  const [useReminderOverrides, setUseReminderOverrides] = useState(
+    initialState.reminderOffsetsMinutes !== null || initialState.missingRsvpReminderEnabled !== null
+  );
+  const [reminderOffsetsMinutes, setReminderOffsetsMinutes] = useState<number[]>(
+    initialState.reminderOffsetsMinutes ?? [1440, 60]
+  );
+  const [missingRsvpReminderEnabled, setMissingRsvpReminderEnabled] = useState(
+    initialState.missingRsvpReminderEnabled ?? true
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const initializedForRef = useRef<string | null>(null);
@@ -142,6 +194,15 @@ export function CreateSessionModal({
     setCategory(nextState.category);
     setContentName(nextState.contentName);
     setContentId(nextState.contentId);
+    setBannerUrl(nextState.bannerUrl ?? '');
+    setBannerKey(nextState.bannerKey);
+    setBannerSourceType(nextState.bannerSourceType);
+    setBannerError(null);
+    setMirrorToDiscord(nextState.mirrorToDiscord);
+    setSendDiscordReminders(nextState.sendDiscordReminders);
+    setUseReminderOverrides(nextState.reminderOffsetsMinutes !== null || nextState.missingRsvpReminderEnabled !== null);
+    setReminderOffsetsMinutes(nextState.reminderOffsetsMinutes ?? [1440, 60]);
+    setMissingRsvpReminderEnabled(nextState.missingRsvpReminderEnabled ?? true);
   }, [editSession, initialDraft, isOpen]);
 
   const toggleDay = (day: string) => {
@@ -154,6 +215,52 @@ export function CreateSessionModal({
       }
       return next;
     });
+  };
+
+  const toggleReminderOffset = (minutes: number) => {
+    setReminderOffsetsMinutes((prev) =>
+      prev.includes(minutes)
+        ? prev.filter((value) => value !== minutes)
+        : [...prev, minutes].sort((left, right) => right - left)
+    );
+  };
+
+  const handleBannerPresetChange = (presetId: string) => {
+    if (!presetId) {
+      setBannerKey(null);
+      setBannerSourceType(null);
+      setBannerUrl('');
+      setBannerError(null);
+      return;
+    }
+    const preset = BANNER_PRESETS.find((item) => item.value === presetId);
+    if (!preset) return;
+    setBannerKey(preset.value);
+    setBannerSourceType('duty_preset');
+    setBannerUrl(toAbsoluteAssetUrl(preset.url));
+    setBannerError(null);
+  };
+
+  const handleBannerUpload = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setBannerError('Choose an image file.');
+      return;
+    }
+    if (file.size > MAX_BANNER_UPLOAD_BYTES) {
+      setBannerError('Banner uploads must be 2 MB or smaller.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setBannerUrl(result);
+      setBannerKey(file.name);
+      setBannerSourceType('uploaded');
+      setBannerError(null);
+    };
+    reader.onerror = () => setBannerError('Could not read that image file.');
+    reader.readAsDataURL(file);
   };
 
   const handleStartChange = (value: string) => {
@@ -188,6 +295,13 @@ export function CreateSessionModal({
         category,
         contentId,
         contentName,
+        bannerUrl: bannerUrl.trim() || null,
+        bannerKey: bannerUrl.trim() ? bannerKey : null,
+        bannerSourceType: bannerUrl.trim() ? bannerSourceType || 'external_url' : null,
+        mirrorToDiscord,
+        sendDiscordReminders,
+        reminderOffsetsMinutes: useReminderOverrides ? reminderOffsetsMinutes : null,
+        missingRsvpReminderEnabled: useReminderOverrides ? missingRsvpReminderEnabled : null,
       });
       onClose();
     } finally {
@@ -247,6 +361,139 @@ export function CreateSessionModal({
             placeholder="e.g. M4S prog from adds phase"
           />
         </div>
+
+        <div className="space-y-2">
+          <Label size="sm">Banner image (optional)</Label>
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <Select
+              value={bannerSourceType === 'duty_preset' ? bannerKey ?? '' : ''}
+              onChange={handleBannerPresetChange}
+              options={[
+                { value: '', label: 'Choose preset banner' },
+                ...BANNER_PRESETS.map((preset) => ({ value: preset.value, label: preset.label })),
+              ]}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              leftIcon={<Upload className="h-4 w-4" />}
+              onClick={() => document.getElementById('schedule-banner-upload')?.click()}
+            >
+              Upload
+            </Button>
+          </div>
+          {/* eslint-disable-next-line design-system/no-raw-input */}
+          <input
+            id="schedule-banner-upload"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(event) => handleBannerUpload(event.target.files?.[0])}
+          />
+          <Input
+            value={bannerSourceType === 'uploaded' ? '' : bannerUrl}
+            onChange={(value) => {
+              setBannerUrl(value);
+              setBannerKey(null);
+              setBannerSourceType(value.trim() ? 'external_url' : null);
+              setBannerError(null);
+            }}
+            placeholder="Or paste a direct image URL"
+            disabled={bannerSourceType === 'uploaded'}
+          />
+          {bannerSourceType === 'uploaded' && (
+            <p className="text-xs text-text-muted">
+              Uploaded banner selected: {bannerKey}
+              <Button
+                type="button"
+                variant="link"
+                className="ml-2 align-baseline text-xs"
+                onClick={() => {
+                  setBannerUrl('');
+                  setBannerKey(null);
+                  setBannerSourceType(null);
+                  setBannerError(null);
+                }}
+              >
+                remove
+              </Button>
+            </p>
+          )}
+          <p className="text-xs text-text-muted">
+            Used as the event cover in the planner and Discord Events. Uploads are stored with this event.
+          </p>
+          {bannerError && <p className="text-xs text-status-error">{bannerError}</p>}
+        </div>
+
+        {bannerUrl.trim() && (
+          <div className="overflow-hidden rounded-lg border border-border-subtle bg-surface-elevated">
+            <img
+              src={bannerUrl.trim()}
+              alt=""
+              className="h-28 w-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
+        )}
+
+        {discordDeliverySummary && (
+          <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label size="sm">Discord Delivery</Label>
+              <span className="text-[11px] text-text-muted">Per-event controls</span>
+            </div>
+            <div className="mt-3 space-y-3">
+              <Checkbox
+                checked={mirrorToDiscord}
+                onChange={setMirrorToDiscord}
+                label={`Mirror to Discord Events${discordDeliverySummary.mirrorEnabled ? ` on ${discordDeliverySummary.serverLabel}` : ''}`}
+                description={discordDeliverySummary.mirrorEnabled ? 'Creates native Discord scheduled events for generated occurrences.' : 'Connect Discord Events in settings before this can publish.'}
+              />
+              <Checkbox
+                checked={sendDiscordReminders}
+                onChange={setSendDiscordReminders}
+                label={`Send Discord reminders${discordDeliverySummary.pingLabel !== 'No ping' ? ` with ${discordDeliverySummary.pingLabel}` : ''}`}
+                description={discordDeliverySummary.remindersEnabled ? 'Webhook reminders use the same occurrence times.' : 'Configure a reminder webhook in settings before reminders can send.'}
+              />
+              <Checkbox
+                checked={useReminderOverrides}
+                onChange={setUseReminderOverrides}
+                disabled={!sendDiscordReminders}
+                label="Override reminder offsets for this event"
+                description={useReminderOverrides ? 'Selected offsets below replace the static defaults.' : `Inherits: ${discordDeliverySummary.reminderLabels.join(', ') || 'no reminders'}`}
+              />
+              {useReminderOverrides && (
+                <div className="grid gap-2 rounded border border-border-subtle bg-surface-card p-2 sm:grid-cols-2">
+                  {REMINDER_OPTIONS.map((option) => (
+                    <Checkbox
+                      key={option.minutes}
+                      checked={reminderOffsetsMinutes.includes(option.minutes)}
+                      onChange={() => toggleReminderOffset(option.minutes)}
+                      disabled={!sendDiscordReminders}
+                      label={option.label}
+                    />
+                  ))}
+                  <Checkbox
+                    checked={missingRsvpReminderEnabled}
+                    onChange={setMissingRsvpReminderEnabled}
+                    disabled={!sendDiscordReminders}
+                    label="Missing RSVP"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="mt-2 space-y-1.5 text-xs text-text-secondary">
+              <p className="text-text-muted">
+                {isRecurring
+                  ? 'Recurring events mirror the next 4 weeks and reminders run for each generated occurrence.'
+                  : 'This event mirrors and reminds from the same saved event time.'}
+              </p>
+              <p className="text-text-muted">Banner: {bannerUrl.trim() ? 'sent as the Discord Event cover image' : 'no event banner selected'}</p>
+            </div>
+          </div>
+        )}
 
         <div>
           <Label size="sm">Category (optional)</Label>

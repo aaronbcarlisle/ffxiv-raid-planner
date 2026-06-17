@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { CalendarDays, XCircle, Edit2, Trash2, RefreshCw, RotateCcw } from 'lucide-react';
+import { CalendarDays, XCircle, RefreshCw, RotateCcw } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -82,8 +82,6 @@ export function OccurrenceListModal({
   useEffect(() => {
     load();
   }, [load]);
-
-  const exceptionByDate = Object.fromEntries(exceptions.map((e) => [e.occurrenceDate, e]));
 
   const handleCancel = async () => {
     if (!pendingDate) return;

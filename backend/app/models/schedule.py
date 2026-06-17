@@ -51,6 +51,12 @@ class ScheduleSession(Base):
     banner_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     banner_source_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
+    # Per-event Discord delivery controls. Null reminder fields inherit static defaults.
+    mirror_to_discord: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    send_discord_reminders: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    reminder_offsets_minutes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    missing_rsvp_reminder_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
     created_at: Mapped[str] = mapped_column(
         Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -245,6 +251,90 @@ class ScheduleException(Base):
 
     session: Mapped["ScheduleSession"] = relationship("ScheduleSession")
     created_by: Mapped["User"] = relationship("User", foreign_keys=[created_by_id])
+
+
+class DiscordInstallClaim(Base):
+    """Short-lived claim token used to link a static to a Discord guild.
+
+    Flow:
+      1. Lead clicks "Connect Discord" → POST /schedule-discord/install-claim
+         Backend creates this row and returns the plain claim_code to the frontend.
+      2. Lead invites the XIVRaidPlanner bot to their server.
+      3. Lead runs /xrp link <claim_code> in the server.
+      4. Bot POSTs /api/discord/slash-claim with code + guild info.
+      5. Backend hashes the code, finds this row, creates StaticDiscordLink.
+
+    The plain claim_code is NEVER stored — only SHA-256(code) is persisted.
+    """
+
+    __tablename__ = "discord_install_claims"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    static_group_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("static_groups.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_by_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+
+    claim_token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    oauth_state: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    expires_at: Mapped[str] = mapped_column(Text, nullable=False)
+    # pending | claimed | expired | revoked
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+
+    discord_guild_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    discord_channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    claimed_by_discord_user_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    created_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+    static_group: Mapped["StaticGroup"] = relationship("StaticGroup")
+    created_by: Mapped["User"] = relationship("User", foreign_keys=[created_by_id])
+
+
+class StaticDiscordLink(Base):
+    """Active link between one static group and a Discord guild.
+
+    Created when a DiscordInstallClaim is successfully claimed.
+    Multiple statics can link to the same guild (one row per static).
+    """
+
+    __tablename__ = "static_discord_links"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    static_group_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("static_groups.id", ondelete="CASCADE"),
+        nullable=False, unique=True, index=True
+    )
+    discord_guild_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    discord_guild_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    schedule_channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    announcement_channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    voice_channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    linked_by_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
+
+    # connected | permission_missing | disconnected
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="connected")
+
+    permissions_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    last_permission_check_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+    updated_at: Mapped[str] = mapped_column(
+        Text, nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
+    )
+
+    static_group: Mapped["StaticGroup"] = relationship("StaticGroup")
+    linked_by: Mapped["User"] = relationship("User", foreign_keys=[linked_by_user_id])
 
 
 class ScheduleDiscordMirror(Base):
