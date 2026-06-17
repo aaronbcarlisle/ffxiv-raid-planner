@@ -13,12 +13,54 @@ $BackendPort = 8001
 $LogDir = Join-Path $ProjectRoot ".logs"
 $VenvPython = Join-Path $ProjectRoot "backend\venv\Scripts\python.exe"
 $VenvUvicorn = Join-Path $ProjectRoot "backend\venv\Scripts\uvicorn.exe"
-$PnpmPath = (Get-Command pnpm -ErrorAction SilentlyContinue)?.Source
+
+function Resolve-Executable {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Name,
+        [string[]]$PreferredExtensions = @(".cmd", ".exe")
+    )
+
+    $commands = @(Get-Command $Name -All -ErrorAction SilentlyContinue)
+    foreach ($extension in $PreferredExtensions) {
+        $match = $commands |
+            Where-Object { $_.CommandType -eq 'Application' -and $_.Source -like "*$extension" } |
+            Select-Object -First 1
+        if ($match) {
+            return $match.Source
+        }
+    }
+
+    $application = $commands |
+        Where-Object { $_.CommandType -eq 'Application' } |
+        Select-Object -First 1
+    if ($application) {
+        return $application.Source
+    }
+
+    return $null
+}
+
+$PnpmPath = Resolve-Executable "pnpm"
+$NpmPath = Resolve-Executable "npm"
 
 function Write-Header {
     Write-Host ""
     Write-Host "  FFXIV Raid Planner - Development Servers" -ForegroundColor Cyan
     Write-Host ("  " + "=" * 47) -ForegroundColor Cyan
+}
+
+function Stop-ProcessTree {
+    param(
+        [Parameter(Mandatory=$true)]
+        [int]$ProcessId
+    )
+
+    $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$ProcessId" -ErrorAction SilentlyContinue)
+    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+    foreach ($child in $children) {
+        Stop-ProcessTree -ProcessId $child.ProcessId
+    }
 }
 
 function Stop-Servers {
@@ -29,8 +71,8 @@ function Stop-Servers {
     $backendProcs = Get-NetTCPConnection -LocalPort $BackendPort -ErrorAction SilentlyContinue |
         Where-Object State -eq 'Listen' |
         Select-Object -ExpandProperty OwningProcess -Unique
-    foreach ($pid in $backendProcs) {
-        Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+    foreach ($processId in $backendProcs) {
+        Stop-ProcessTree -ProcessId $processId
         $stopped = $true
     }
 
@@ -38,8 +80,8 @@ function Stop-Servers {
     $frontendProcs = Get-NetTCPConnection -LocalPort $FrontendPort -ErrorAction SilentlyContinue |
         Where-Object State -eq 'Listen' |
         Select-Object -ExpandProperty OwningProcess -Unique
-    foreach ($pid in $frontendProcs) {
-        Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+    foreach ($processId in $frontendProcs) {
+        Stop-ProcessTree -ProcessId $processId
         $stopped = $true
     }
 
@@ -89,13 +131,16 @@ function Start-Servers {
             -RedirectStandardOutput $frontendLog `
             -RedirectStandardError (Join-Path $LogDir "frontend-error.log") `
             -NoNewWindow -PassThru
-    } else {
-        $frontendProc = Start-Process -FilePath "npm" `
+    } elseif ($NpmPath) {
+        $frontendProc = Start-Process -FilePath $NpmPath `
             -ArgumentList "run", "dev", "--", "--port", $FrontendPort, "--strictPort" `
             -WorkingDirectory (Join-Path $ProjectRoot "frontend") `
             -RedirectStandardOutput $frontendLog `
             -RedirectStandardError (Join-Path $LogDir "frontend-error.log") `
             -NoNewWindow -PassThru
+    } else {
+        Write-Host "  ERROR: Neither pnpm nor npm was found on PATH." -ForegroundColor Red
+        return
     }
     Write-Host "  Frontend started (PID: $($frontendProc.Id), Port: $FrontendPort)" -ForegroundColor Green
 

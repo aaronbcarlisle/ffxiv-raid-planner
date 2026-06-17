@@ -93,6 +93,8 @@ class Settings(BaseSettings):
     discord_client_id: str = ""
     discord_client_secret: str = ""
     discord_redirect_uri: str = "http://localhost:5174/auth/callback"
+    discord_bot_token: str = ""
+    discord_public_key: str = ""
 
     # JWT Configuration
     jwt_secret_key: str = ""  # Set via JWT_SECRET_KEY env var (required in production)

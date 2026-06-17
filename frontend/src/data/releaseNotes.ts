@@ -80,6 +80,11 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'fix',
+        title: 'Windows dev startup resilience',
+        description: 'The local development startup script now resolves Windows npm/pnpm command shims before launching the frontend server, preventing PowerShell from trying to execute a .ps1 shim as a Win32 application. The backend example env also documents optional Discord bot/interactions variables used by local Discord event testing.',
+      },
+      {
+        category: 'fix',
         title: 'Leads can now access group settings',
         description: 'The settings gear icon in the group header was previously only visible to the Owner. Leads can now open group settings to manage roster, tiers, invitations, and other options. The destructive "Delete Static" action remains restricted to the Owner only.',
         pr: 134,
