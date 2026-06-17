@@ -66,6 +66,13 @@ export const RELEASES: Release[] = [
     items: [
       {
         category: 'fix',
+        title: 'Stale app chunk recovery',
+        description: 'Minor bug fix: browsers with an older cached app shell now reload once and show a clear update message instead of getting stuck on a generic dynamic import error after deployments.',
+        pr: 136,
+        prTitle: 'fix: recover from stale app chunks',
+      },
+      {
+        category: 'fix',
         title: 'Leads can now access group settings',
         description: 'The settings gear icon in the group header was previously only visible to the Owner. Leads can now open group settings to manage roster, tiers, invitations, and other options. The destructive "Delete Static" action remains restricted to the Owner only.',
         pr: 134,
