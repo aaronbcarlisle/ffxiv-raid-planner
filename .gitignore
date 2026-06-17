@@ -62,6 +62,10 @@ tmp/
 temp/
 *.bak
 
+# Local dev scripts (machine-specific, not for shipping)
+dev.ps1
+.logs/
+
 # Auto-generated session handoff files (Claude Code)
 **/SESSION_HANDOFF_AUTO_*.md
 

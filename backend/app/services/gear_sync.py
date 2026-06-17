@@ -7,13 +7,15 @@ from typing import Any
 from ..logging_config import get_logger
 from ..models.snapshot_player import SnapshotPlayer
 from ..routers.lodestone import (
+    _apply_ring_slot_equivalence,
     _build_equipped_slots,
     _calculate_has_item,
     _calculate_is_augmented,
     _coerce_int,
-    _derive_source_from_bis,
+    _copy_equipped_fields_to_gear_slot,
     _fetch_character_payload,
     _normalize_player_gear,
+    _resolve_current_source_for_equipped,
     _sanitize_avatar_url,
 )
 
@@ -217,7 +219,11 @@ async def sync_player_gear_from_provider(
             return _make_skip_result("skipped_lower_item_level")
 
     current_gear = [dict(g) for g in previous_gear]
-    updated_count = 0
+    previous_by_slot = {
+        gear_slot.get("slot"): dict(gear_slot)
+        for gear_slot in previous_gear
+        if gear_slot.get("slot")
+    }
     lower_slot_count = 0
     missing_slot_count = 0
 
@@ -227,13 +233,6 @@ async def sync_player_gear_from_provider(
             continue
 
         equipped = equipped_by_slot.get(slot_name)
-        previous_state = dict(gear_slot)
-        existing_source = gear_slot.get("currentSource")
-        exact_item_match = bool(
-            equipped
-            and _coerce_int(gear_slot.get("itemId"))
-            and _coerce_int(gear_slot.get("itemId")) == _coerce_int(equipped.get("item_id"))
-        )
 
         if not equipped:
             # --- Safety gate 5: Missing slot protection ---
@@ -258,12 +257,11 @@ async def sync_player_gear_from_provider(
                     lower_slot_count += 1
                     continue
 
-            next_source = equipped.get("current_source", "unknown")
-            if next_source == "unknown":
-                if exact_item_match:
-                    next_source = _derive_source_from_bis(gear_slot.get("bisSource"))
-                elif existing_source and existing_source != "unknown":
-                    next_source = existing_source
+            next_source = _resolve_current_source_for_equipped(
+                gear_slot,
+                equipped,
+                gear_slot.get("currentSource"),
+            )
 
             gear_slot["currentSource"] = next_source
             gear_slot["hasItem"] = _calculate_has_item(gear_slot, equipped)
@@ -273,13 +271,15 @@ async def sync_player_gear_from_provider(
                 bool(gear_slot["hasItem"]),
             )
             if equipped.get("has_equipped_item"):
-                gear_slot["equippedItemId"] = equipped.get("item_id")
-                gear_slot["equippedItemLevel"] = equipped.get("item_level")
-                gear_slot["equippedItemName"] = equipped.get("item_name")
-                gear_slot["equippedItemIcon"] = equipped.get("item_icon")
+                _copy_equipped_fields_to_gear_slot(gear_slot, equipped)
 
-        if gear_slot != previous_state:
-            updated_count += 1
+    _apply_ring_slot_equivalence(current_gear, equipped_by_slot)
+
+    updated_count = sum(
+        1
+        for gear_slot in current_gear
+        if gear_slot != previous_by_slot.get(gear_slot.get("slot"), {})
+    )
 
     diag.missing_slot_count = missing_slot_count
     diag.lower_slot_count = lower_slot_count

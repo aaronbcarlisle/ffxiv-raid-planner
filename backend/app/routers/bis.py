@@ -3,9 +3,11 @@
 import asyncio
 import re
 from typing import Optional
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
 import httpx
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ..cache import xivapi_item_cache
 from ..constants import VALID_JOBS
@@ -48,11 +50,26 @@ class GearSlotData(BaseModel):
     materia: list[MateriaSlot] = []  # Melded materia
 
 
+class XivGearSetOption(BaseModel):
+    """Selectable set option from a multi-set XIVGear sheet."""
+
+    index: int
+    name: str
+    job: str
+    gcd: Optional[str] = None
+    dpsLabel: Optional[str] = None
+    description: Optional[str] = None
+
+
 class BiSImportResponse(BaseModel):
     """Response from BiS import endpoint"""
     name: str
     job: str
     slots: list[GearSlotData]
+    setOptions: list[XivGearSetOption] = Field(default_factory=list)
+    selectedSetIndex: Optional[int] = None
+    requiresSelection: bool = False
+    originalUrl: Optional[str] = None
 
 
 class BiSPreset(BaseModel):
@@ -167,6 +184,170 @@ def extract_bis_path(url_or_uuid: str) -> tuple[str, str | None]:
         return any_uuid.group(1), None
 
     raise ValueError(f"Could not extract UUID or BiS path from: {url_or_uuid}")
+
+
+def normalise_xivgear_url(url_or_uuid: str) -> str:
+    """Return a full xivgear.app URL for API full-URL imports."""
+    raw = url_or_uuid.strip()
+    parsed = urlparse(raw)
+    if parsed.scheme in ("http", "https"):
+        if not parsed.netloc.lower().endswith("xivgear.app"):
+            raise ValueError("XIVGear import URL must be from xivgear.app")
+        return raw
+
+    if raw.startswith("sl|") or raw.startswith("bis|"):
+        return f"https://xivgear.app/?page={raw}"
+
+    identifier, path_type = extract_bis_path(raw)
+    if path_type == "bis":
+        job, tier = identifier.split("/")
+        return f"https://xivgear.app/?page=bis|{job}|{tier}"
+    return f"https://xivgear.app/?page=sl|{identifier}"
+
+
+def append_xivgear_set_index(url_or_uuid: str, set_index: int) -> str:
+    """Store selected XIVGear set index in a stable URL query parameter."""
+    full_url = normalise_xivgear_url(url_or_uuid)
+    parsed = urlparse(full_url)
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    query.pop("onlySetIndex", None)
+    query.pop("setIndex", None)
+    query["selectedIndex"] = [str(set_index)]
+    return urlunparse(parsed._replace(query=urlencode(query, doseq=True)))
+
+
+def extract_xivgear_set_index(url_or_uuid: str, set_index: int | None = None) -> int | None:
+    """Extract explicit set selection from query params or legacy pipe formats."""
+    if set_index is not None:
+        return set_index
+
+    raw = url_or_uuid.strip()
+    parsed = urlparse(raw)
+    if parsed.query:
+        query = parse_qs(parsed.query)
+        for key in ("onlySetIndex", "selectedIndex", "setIndex"):
+            raw_value = query.get(key, [None])[0]
+            if raw_value is not None:
+                try:
+                    return int(raw_value)
+                except ValueError:
+                    raise ValueError(f"Invalid XIVGear set index: {raw_value}")
+
+    if raw.startswith("sl|") or raw.startswith("bis|"):
+        parts = raw.split("|")
+        if len(parts) >= 3 and parts[0] == "sl":
+            try:
+                return int(parts[2])
+            except ValueError:
+                raise ValueError(f"Invalid XIVGear set index: {parts[2]}")
+        if len(parts) >= 4 and parts[0] == "bis":
+            try:
+                return int(parts[3])
+            except ValueError:
+                raise ValueError(f"Invalid XIVGear set index: {parts[3]}")
+
+    return None
+
+
+async def fetch_bis_from_xivgear_url(url_or_uuid: str) -> dict:
+    """Fetch base gear data from XIVGear's full-URL basedata endpoint."""
+    full_url = normalise_xivgear_url(url_or_uuid)
+    async with httpx.AsyncClient(follow_redirects=False) as client:
+        try:
+            response = await client.get(
+                "https://api.xivgear.app/basedata",
+                params={"url": full_url},
+                timeout=15.0,
+            )
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=504, detail="XIVGear API timeout")
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=502, detail=f"Failed to reach XIVGear: {e}")
+
+    if 300 <= response.status_code < 400:
+        logger.warning("xivgear_basedata_unexpected_redirect", status=response.status_code)
+        raise HTTPException(status_code=502, detail="External service returned unexpected redirect")
+    if response.status_code == 404:
+        raise HTTPException(status_code=404, detail="Gear set not found")
+    if response.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"XIVGear API error: {response.status_code}")
+
+    try:
+        return response.json()
+    except Exception:
+        raise HTTPException(status_code=502, detail="Invalid response from XIVGear")
+
+
+async def try_fetch_xivgear_full_data(url_or_uuid: str) -> dict | None:
+    """Fetch optional derived data from XIVGear without failing the import."""
+    full_url = normalise_xivgear_url(url_or_uuid)
+    async with httpx.AsyncClient(follow_redirects=False) as client:
+        try:
+            response = await client.get(
+                "https://api.xivgear.app/fulldata",
+                params={"url": full_url},
+                timeout=15.0,
+            )
+        except Exception as e:
+            logger.info("xivgear_fulldata_unavailable", error=str(e))
+            return None
+
+    if response.status_code != 200:
+        logger.info("xivgear_fulldata_unavailable", status=response.status_code)
+        return None
+    try:
+        return response.json()
+    except Exception as e:
+        logger.info("xivgear_fulldata_invalid", error=str(e))
+        return None
+
+
+def _extract_gcd_label(*values: str | None) -> str | None:
+    for value in values:
+        if not value:
+            continue
+        match = re.search(r"\b([12]\.\d{2})\b", value)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _extract_dps_label(bis_set: dict) -> str | None:
+    computed = bis_set.get("computedStats") if isinstance(bis_set, dict) else None
+    if not isinstance(computed, dict):
+        return None
+    for key in ("expectedDps", "dps", "mainDpsResult"):
+        value = computed.get(key)
+        if isinstance(value, (int, float)) and value > 0:
+            return f"{value:,.0f} DPS"
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def build_xivgear_set_options(data: dict, full_data: dict | None = None) -> list[XivGearSetOption]:
+    """Build selectable, non-separator set options from XIVGear sheet data."""
+    sets = data.get("sets", []) if isinstance(data, dict) else []
+    full_sets = full_data.get("sets", []) if isinstance(full_data, dict) else []
+    full_job = full_data.get("job") if isinstance(full_data, dict) else None
+    job = str(data.get("job") or full_job or "Unknown")
+
+    options: list[XivGearSetOption] = []
+    for index, bis_set in enumerate(sets):
+        if bis_set.get("isSeparator"):
+            continue
+        full_set = full_sets[index] if index < len(full_sets) and isinstance(full_sets[index], dict) else {}
+        name = bis_set.get("name") or f"Set {index + 1}"
+        description = bis_set.get("description") or None
+        options.append(XivGearSetOption(
+            index=index,
+            name=name,
+            job=job,
+            gcd=_extract_gcd_label(name, description, full_set.get("name")),
+            dpsLabel=_extract_dps_label(full_set),
+            description=description,
+        ))
+    return options
 
 
 def build_icon_url(icon_data: dict) -> str | None:
@@ -661,6 +842,52 @@ async def fetch_bis_from_etro(uuid: str) -> dict:
         raise HTTPException(status_code=502, detail="Invalid response from Etro")
 
 
+async def build_xivgear_slots(items_data: dict) -> list[GearSlotData]:
+    """Build app gear slot data from a selected XIVGear items object."""
+    slots: list[GearSlotData] = []
+
+    for xivgear_slot, our_slot in XIVGEAR_SLOT_MAP.items():
+        item_data = items_data.get(xivgear_slot)
+
+        if item_data and "id" in item_data:
+            item_id = item_data["id"]
+            item_info = await fetch_item_from_garland(item_id)
+            source = determine_source(item_info["name"], item_info["level"], our_slot)
+
+            raw_materia = item_data.get("materia", [])
+            materia_list: list[MateriaSlot] = []
+            if raw_materia:
+                materia_ids = [
+                    m.get("id") if isinstance(m, dict) else m
+                    for m in raw_materia
+                ]
+                materia_ids = [mid for mid in materia_ids if mid and mid > 0]
+
+                if materia_ids:
+                    materia_results = await asyncio.gather(
+                        *[fetch_materia_from_garland(mid) for mid in materia_ids],
+                        return_exceptions=True,
+                    )
+                    for result in materia_results:
+                        if isinstance(result, MateriaSlot):
+                            materia_list.append(result)
+
+            slots.append(GearSlotData(
+                slot=our_slot,
+                source=source,
+                itemId=item_id,
+                itemName=item_info["name"],
+                itemLevel=item_info["level"],
+                itemIcon=item_info.get("icon"),
+                itemStats=item_info.get("stats") or None,
+                materia=materia_list,
+            ))
+        else:
+            slots.append(GearSlotData(slot=our_slot, source="raid"))
+
+    return slots
+
+
 @router.get("/presets/{job}", response_model=BiSPresetsResponse)
 @limiter.limit(RATE_LIMITS["external_api"])
 async def get_bis_presets(request: Request, job: str, category: Optional[str] = None):
@@ -745,7 +972,7 @@ async def get_bis_presets(request: Request, job: str, category: Optional[str] = 
 
 @router.get("/xivgear/{uuid_or_url:path}", response_model=BiSImportResponse)
 @limiter.limit(RATE_LIMITS["external_api"])
-async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int = 0):
+async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int | None = None):
     """
     Fetch and parse a BiS set from XIVGear.app
 
@@ -757,6 +984,7 @@ async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int =
     """
     try:
         identifier, path_type = extract_bis_path(uuid_or_url)
+        requested_set_index = extract_xivgear_set_index(uuid_or_url, set_index)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -765,41 +993,52 @@ async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int =
         # Curated BiS from GitHub (e.g., "drg/current")
         job_abbrev, tier = identifier.split("/")
         data = await fetch_bis_from_github(job_abbrev, tier)
+        full_data = None
+        original_url = normalise_xivgear_url(uuid_or_url)
         # GitHub format has items at root level and job field
         set_name = f"{job_abbrev.upper()} {tier.title()} BiS"
     else:
-        # UUID shortlink
-        data = await fetch_bis_from_shortlink(identifier)
+        data = await fetch_bis_from_xivgear_url(uuid_or_url)
+        full_data = await try_fetch_xivgear_full_data(uuid_or_url)
+        original_url = normalise_xivgear_url(uuid_or_url)
         set_name = "Imported Set"
 
     # Extract set name and job from data (may override defaults)
     if "name" in data:
         set_name = data["name"]
     job = data.get("job", "Unknown")
+    set_options = build_xivgear_set_options(data, full_data)
 
     # Handle different data structures
     items_data = {}
+    selected_set_index: int | None = None
     if "sets" in data and data["sets"]:
-        # Multiple sets available - use set_index to select which one
         sets = data["sets"]
+        selectable_indices = {option.index for option in set_options}
 
-        # set_index is the ORIGINAL array index (from githubIndex in local presets)
-        # We need to handle two cases:
-        # 1. Original index mode: set_index points directly to a set in the original array
-        # 2. If that's a separator or out of range, fall back to first non-separator
+        if requested_set_index is None and len(set_options) > 1:
+            return BiSImportResponse(
+                name=set_name,
+                job=job,
+                slots=[],
+                setOptions=set_options,
+                selectedSetIndex=None,
+                requiresSelection=True,
+                originalUrl=original_url,
+            )
 
-        selected_set = None
-        if set_index < len(sets) and not sets[set_index].get("isSeparator"):
-            # Direct access by original index
-            selected_set = sets[set_index]
+        if requested_set_index is None:
+            selected_set_index = set_options[0].index if set_options else None
+        elif requested_set_index in selectable_indices:
+            selected_set_index = requested_set_index
+        elif requested_set_index == 0 and set_options:
+            # Legacy preset calls passed 0 even when index 0 was a separator.
+            selected_set_index = set_options[0].index
         else:
-            # Fallback: find first non-separator set
-            for s in sets:
-                if not s.get("isSeparator"):
-                    selected_set = s
-                    break
+            raise HTTPException(status_code=400, detail="Selected XIVGear set was not found")
 
-        if selected_set:
+        if selected_set_index is not None:
+            selected_set = sets[selected_set_index]
             items_data = selected_set.get("items", {})
             if selected_set.get("name"):
                 set_name = selected_set["name"]
@@ -810,62 +1049,16 @@ async def fetch_xivgear_bis(request: Request, uuid_or_url: str, set_index: int =
     if not items_data:
         raise HTTPException(status_code=400, detail="No gear items found in set")
 
-    # Build slot data with item lookups
-    slots: list[GearSlotData] = []
-
-    for xivgear_slot, our_slot in XIVGEAR_SLOT_MAP.items():
-        item_data = items_data.get(xivgear_slot)
-
-        if item_data and "id" in item_data:
-            item_id = item_data["id"]
-            # Fetch item details from Garland Tools
-            item_info = await fetch_item_from_garland(item_id)
-
-            source = determine_source(item_info["name"], item_info["level"], our_slot)
-
-            # Extract materia from item data
-            # XIVGear stores materia as array of objects: [{"id": 33942}, {"id": 33942}]
-            raw_materia = item_data.get("materia", [])
-            materia_list: list[MateriaSlot] = []
-            if raw_materia:
-                # Extract IDs from materia objects, filtering out empty slots (id=-1)
-                materia_ids = [
-                    m.get("id") if isinstance(m, dict) else m
-                    for m in raw_materia
-                ]
-                materia_ids = [mid for mid in materia_ids if mid and mid > 0]
-
-                if materia_ids:
-                    # Fetch materia details in parallel
-                    materia_results = await asyncio.gather(
-                        *[fetch_materia_from_garland(mid) for mid in materia_ids],
-                        return_exceptions=True
-                    )
-                    for result in materia_results:
-                        if isinstance(result, MateriaSlot):
-                            materia_list.append(result)
-
-            slots.append(GearSlotData(
-                slot=our_slot,
-                source=source,
-                itemId=item_id,
-                itemName=item_info["name"],
-                itemLevel=item_info["level"],
-                itemIcon=item_info.get("icon"),
-                itemStats=item_info.get("stats") or None,
-                materia=materia_list,
-            ))
-        else:
-            # No item in this slot - default to raid
-            slots.append(GearSlotData(
-                slot=our_slot,
-                source="raid",
-            ))
+    slots = await build_xivgear_slots(items_data)
 
     return BiSImportResponse(
         name=set_name,
         job=job,
         slots=slots,
+        setOptions=set_options,
+        selectedSetIndex=selected_set_index,
+        requiresSelection=False,
+        originalUrl=original_url,
     )
 
 

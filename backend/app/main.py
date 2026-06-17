@@ -25,6 +25,7 @@ from .tasks.analytics_retention import retention_loop
 from .tasks.auto_sync import auto_sync_loop
 from .tasks.schedule_reminders import schedule_reminder_loop
 from .routers import (
+    discord_interactions_router,
     analytics_router,
     content_suggestions_router,
     api_keys_router,
@@ -160,6 +161,7 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # Include routers
+app.include_router(discord_interactions_router)
 app.include_router(analytics_router)
 app.include_router(api_keys_router)
 app.include_router(auth_router)

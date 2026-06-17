@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.models import MemberRole
+from app.routers.lodestone import _apply_ring_slot_equivalence
 from app.services.tomestone_provider import (
     TomestoneProvider,
     _is_likely_character_avatar_url,
@@ -98,6 +99,17 @@ def _gear_slot(
         "currentSource": current_source,
         "hasItem": has_item,
         "isAugmented": is_augmented,
+    }
+
+
+def _equipped_slot(item_id: int, *, source: str = "savage", item_level: int = 790) -> dict:
+    return {
+        "has_equipped_item": True,
+        "item_id": item_id,
+        "item_name": f"Equipped Item {item_id}",
+        "item_level": item_level,
+        "item_icon": f"item-{item_id}.png",
+        "current_source": source,
     }
 
 
@@ -1469,6 +1481,163 @@ async def test_tomestone_real_shape_can_power_full_sync(
 # ---------------------------------------------------------------------------
 # Gear sync semantics — BiS matching, equipped item fields, bis_matched_count
 # ---------------------------------------------------------------------------
+
+
+def test_ring_equivalence_accepts_direct_match():
+    gear = [
+        _gear_slot(
+            slot="ring1",
+            bis_source="raid",
+            item_id=1001,
+            item_level=790,
+            item_name="Raid Ring",
+        ),
+        _gear_slot(
+            slot="ring2",
+            bis_source="tome",
+            item_id=1002,
+            item_level=790,
+            item_name="Tome Ring",
+        ),
+    ]
+
+    _apply_ring_slot_equivalence(
+        gear,
+        {
+            "ring1": _equipped_slot(1001),
+            "ring2": _equipped_slot(1002, source="tome_up"),
+        },
+    )
+
+    assert [slot["hasItem"] for slot in gear] == [True, True]
+    assert gear[0]["equippedItemId"] == 1001
+    assert gear[1]["equippedItemId"] == 1002
+
+
+def test_ring_equivalence_accepts_reversed_match():
+    gear = [
+        _gear_slot(
+            slot="ring1",
+            bis_source="raid",
+            item_id=1001,
+            item_level=790,
+            item_name="Raid Ring",
+        ),
+        _gear_slot(
+            slot="ring2",
+            bis_source="tome",
+            item_id=1002,
+            item_level=790,
+            item_name="Tome Ring",
+        ),
+    ]
+
+    _apply_ring_slot_equivalence(
+        gear,
+        {
+            "ring1": _equipped_slot(1002, source="tome_up"),
+            "ring2": _equipped_slot(1001),
+        },
+    )
+
+    assert [slot["hasItem"] for slot in gear] == [True, True]
+    assert gear[0]["equippedItemId"] == 1001
+    assert gear[1]["equippedItemId"] == 1002
+
+
+def test_ring_equivalence_rejects_wrong_ring_pair():
+    gear = [
+        _gear_slot(
+            slot="ring1",
+            bis_source="raid",
+            item_id=1001,
+            item_level=790,
+            item_name="Raid Ring",
+        ),
+        _gear_slot(
+            slot="ring2",
+            bis_source="tome",
+            item_id=1002,
+            item_level=790,
+            item_name="Tome Ring",
+        ),
+    ]
+
+    _apply_ring_slot_equivalence(
+        gear,
+        {
+            "ring1": _equipped_slot(1002, source="tome_up"),
+            "ring2": _equipped_slot(9999),
+        },
+    )
+
+    assert [slot["hasItem"] for slot in gear] == [False, False]
+    assert "equippedItemId" not in gear[0]
+    assert "equippedItemId" not in gear[1]
+
+
+def test_ring_equivalence_rejects_missing_ring():
+    gear = [
+        _gear_slot(
+            slot="ring1",
+            bis_source="raid",
+            item_id=1001,
+            item_level=790,
+            item_name="Raid Ring",
+        ),
+        _gear_slot(
+            slot="ring2",
+            bis_source="tome",
+            item_id=1002,
+            item_level=790,
+            item_name="Tome Ring",
+        ),
+    ]
+
+    _apply_ring_slot_equivalence(gear, {"ring1": _equipped_slot(1001)})
+
+    assert [slot["hasItem"] for slot in gear] == [False, False]
+
+
+def test_ring_equivalence_rejects_duplicate_false_positive_and_leaves_other_slots():
+    bracelet = _gear_slot(
+        slot="bracelet",
+        bis_source="raid",
+        item_id=2001,
+        item_level=790,
+        item_name="Raid Bracelet",
+    )
+    gear = [
+        _gear_slot(
+            slot="ring1",
+            bis_source="raid",
+            item_id=1001,
+            item_level=790,
+            item_name="Raid Ring",
+        ),
+        _gear_slot(
+            slot="ring2",
+            bis_source="tome",
+            item_id=1002,
+            item_level=790,
+            item_name="Tome Ring",
+        ),
+        bracelet,
+    ]
+
+    _apply_ring_slot_equivalence(
+        gear,
+        {
+            "ring1": _equipped_slot(1001),
+            "ring2": _equipped_slot(1001),
+            "bracelet": _equipped_slot(2001),
+        },
+    )
+
+    assert gear[0]["hasItem"] is False
+    assert gear[1]["hasItem"] is False
+    assert bracelet["hasItem"] is False
+    assert "equippedItemId" not in bracelet
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,6 @@
 """API router for schedule/session and availability operations"""
 
+import hashlib
 import json
 import secrets
 import uuid
@@ -7,7 +8,7 @@ from collections import defaultdict
 from datetime import date as date_type, datetime, timedelta, timezone
 
 import httpx
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import desc, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,7 +40,9 @@ from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSn
 from ..models.notification import Notification
 from .notifications import create_notification
 from ..models.availability import AvailabilityTemplate, UserAvailability
-from ..models.schedule import DiscordMessageMapping, ScheduleRsvp, ScheduleSession, ScheduleSettings
+from ..models.schedule import DiscordInstallClaim, DiscordMessageMapping, ScheduleDiscordMirror, ScheduleException, ScheduleRsvp, ScheduleSession, ScheduleSettings, StaticDiscordLink
+from ..services.recurrence import generate_occurrences, next_occurrence
+from ..services.discord_guild_events import check_bot_permissions, delete_session_mirrors, sync_group_sessions_for_discord_link, sync_session_mirror
 from ..permissions import (
     NotFound,
     PermissionDenied,
@@ -50,16 +53,22 @@ from ..permissions import (
 from ..schemas.schedule import (
     AvailabilityDateSummary,
     AvailabilitySubmit,
+    DiscordInstallClaimResponse,
     InitialRsvpStatusEnum,
+    OccurrenceResponse,
     RsvpCreate,
     RsvpResponse,
     RsvpStatusEnum,
     CalendarTokenResponse,
+    ScheduleExceptionCreate,
+    ScheduleExceptionResponse,
     ScheduleSessionCreate,
     ScheduleSessionResponse,
     ScheduleSettingsResponse,
     ScheduleSettingsUpdate,
     ScheduleSessionUpdate,
+    SlashCommandClaimRequest,
+    StaticDiscordLinkResponse,
     AvailabilityTemplateDaySummary,
     AvailabilityTemplateResponse,
     AvailabilityTemplateSubmit,
@@ -76,10 +85,51 @@ logger = get_logger(__name__)
 # The grid only renders a week at a time, so this leaves generous headroom
 # while preventing an unbounded date range from producing a huge response.
 MAX_AVAILABILITY_RANGE_DAYS = 62
+VALID_REMINDER_OFFSETS = {0, 15, 60, 360, 720, 1440}
 
 
 def _mask_webhook_url(webhook_url: str | None) -> str | None:
     return mask_webhook_url(webhook_url)
+
+
+def _serialize_reminder_offsets(offsets: list[int] | None) -> str | None:
+    if offsets is None:
+        return None
+    cleaned = sorted({int(offset) for offset in offsets if int(offset) in VALID_REMINDER_OFFSETS})
+    return json.dumps(cleaned)
+
+
+def _deserialize_reminder_offsets(value: str | None) -> list[int] | None:
+    if not value:
+        return None
+    try:
+        parsed = json.loads(value)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(parsed, list):
+        return None
+    return sorted({int(offset) for offset in parsed if isinstance(offset, int) and offset in VALID_REMINDER_OFFSETS})
+
+
+def _discord_client_id_from_settings() -> str | None:
+    """Return the Discord application (client) ID.
+
+    Prefers DISCORD_CLIENT_ID env var; falls back to extracting from the bot
+    token's first segment (base64-encoded application ID).  The client ID is
+    public information safe to send to the frontend.
+    """
+    import base64
+    cfg = get_settings()
+    if cfg.discord_client_id:
+        return cfg.discord_client_id
+    if cfg.discord_bot_token:
+        try:
+            part = cfg.discord_bot_token.split(".")[0]
+            padded = part + "=" * (-len(part) % 4)
+            return base64.b64decode(padded).decode("ascii")
+        except Exception:
+            pass
+    return None
 
 
 async def _get_member_count(db: AsyncSession, group_id: str) -> int:
@@ -391,7 +441,19 @@ def _settings_response(
     can_manage: bool,
     last_delivery_status: int | None = None,
     last_delivery_error: str | None = None,
+    discord_link: "StaticDiscordLink | None" = None,
 ) -> ScheduleSettingsResponse:
+    # Official bot link status (takes precedence in UI over legacy per-static token)
+    link_status: str | None = None
+    link_guild_name: str | None = None
+    if discord_link and can_manage:
+        link_status = discord_link.status
+        link_guild_name = discord_link.discord_guild_name
+
+    # Legacy fallback: per-static bot token
+    legacy_bot_configured = bool(row and getattr(row, 'discord_bot_token', None)) if can_manage else False
+    legacy_guild_id = getattr(row, 'discord_guild_id', None) if row and can_manage else None
+
     return ScheduleSettingsResponse(
         id=row.id if row else None,
         static_group_id=group_id,
@@ -412,6 +474,12 @@ def _settings_response(
         calendar_token_created_at=row.calendar_token_created_at if row else None,
         webhook_last_delivery_status=last_delivery_status if can_manage else None,
         webhook_last_delivery_error=last_delivery_error if can_manage else None,
+        discord_bot_configured=legacy_bot_configured,
+        discord_guild_id=legacy_guild_id,
+        discord_official_bot_available=bool(get_settings().discord_bot_token),
+        discord_client_id=_discord_client_id_from_settings(),
+        discord_link_status=link_status,
+        discord_guild_name=link_guild_name,
         can_manage=can_manage,
         created_at=row.created_at if row else None,
         updated_at=row.updated_at if row else None,
@@ -453,6 +521,141 @@ async def _get_or_create_schedule_settings(session: AsyncSession, group_id: str)
             "Ask the site maintainer to apply the schedule_settings migration."
         )
     return row
+
+
+async def _load_discord_sync_context(
+    db: AsyncSession,
+    group_id: str,
+    session_id: str,
+) -> tuple[ScheduleSettings | None, StaticDiscordLink | None, dict[str, ScheduleException], list[ScheduleDiscordMirror]]:
+    settings_result = await db.execute(
+        select(ScheduleSettings).where(ScheduleSettings.static_group_id == group_id)
+    )
+    schedule_settings = settings_result.scalar_one_or_none()
+
+    link_result = await db.execute(
+        select(StaticDiscordLink).where(StaticDiscordLink.static_group_id == group_id)
+    )
+    discord_link = link_result.scalar_one_or_none()
+
+    exc_result = await db.execute(
+        select(ScheduleException).where(ScheduleException.session_id == session_id)
+    )
+    exceptions = {exc.occurrence_date: exc for exc in exc_result.scalars().all()}
+
+    mirror_result = await db.execute(
+        select(ScheduleDiscordMirror).where(ScheduleDiscordMirror.session_id == session_id)
+    )
+    mirrors = mirror_result.scalars().all()
+
+    return schedule_settings, discord_link, exceptions, list(mirrors)
+
+
+def _has_discord_event_config(
+    schedule_settings: ScheduleSettings | None,
+    discord_link: StaticDiscordLink | None,
+) -> bool:
+    has_official_link = bool(
+        discord_link
+        and discord_link.status in {"connected", "permission_missing"}
+        and get_settings().discord_bot_token
+    )
+    has_legacy_token = bool(
+        schedule_settings
+        and getattr(schedule_settings, "discord_bot_token", None)
+        and getattr(schedule_settings, "discord_guild_id", None)
+    )
+    return has_official_link or has_legacy_token
+
+
+async def _sync_discord_mirror_best_effort(
+    db: AsyncSession,
+    *,
+    group_id: str,
+    sched: ScheduleSession,
+    reason: str,
+) -> list[str]:
+    """Sync Discord Events from app occurrences without blocking schedule saves."""
+    schedule_settings, discord_link, exceptions, mirrors = await _load_discord_sync_context(
+        db, group_id, sched.id
+    )
+    if not _has_discord_event_config(schedule_settings, discord_link):
+        return ["skipped: no connected Discord Events integration"]
+
+    try:
+        static_group = await get_static_group(db, group_id)
+        actions = await sync_session_mirror(
+            session=sched,
+            settings=schedule_settings,
+            discord_link=discord_link,
+            mirrors=mirrors,
+            exceptions=exceptions,
+            db_add=db.add,
+            db_delete=db.delete,
+            static_group_name=static_group.name,
+            static_share_code=static_group.share_code,
+        )
+        await db.commit()
+        logger.info(
+            "discord_mirror_auto_synced",
+            session_id=sched.id,
+            group_id=group_id,
+            reason=reason,
+            actions=len(actions),
+        )
+        return actions
+    except Exception as exc:
+        await db.rollback()
+        logger.warning(
+            "discord_mirror_auto_sync_failed",
+            session_id=sched.id,
+            group_id=group_id,
+            reason=reason,
+            error=str(exc),
+        )
+        return [f"failed: {exc}"]
+
+
+async def _delete_discord_mirrors_best_effort(
+    db: AsyncSession,
+    *,
+    group_id: str,
+    sched: ScheduleSession,
+    reason: str,
+) -> list[str]:
+    schedule_settings, discord_link, _exceptions, mirrors = await _load_discord_sync_context(
+        db, group_id, sched.id
+    )
+    if not mirrors:
+        return ["skipped: no discord mirrors"]
+
+    try:
+        actions = await delete_session_mirrors(
+            session=sched,
+            settings=schedule_settings,
+            discord_link=discord_link,
+            mirrors=mirrors,
+            db_delete=db.delete,
+        )
+        await db.flush()
+        logger.info(
+            "discord_mirrors_auto_deleted",
+            session_id=sched.id,
+            group_id=group_id,
+            reason=reason,
+            actions=len(actions),
+        )
+        return actions
+    except Exception as exc:
+        await db.rollback()
+        logger.warning(
+            "discord_mirrors_auto_delete_failed",
+            session_id=sched.id,
+            group_id=group_id,
+            reason=reason,
+            error=str(exc),
+        )
+        return [f"failed: {exc}"]
 
 
 def _escape_ical_text(value: str | None) -> str:
@@ -541,6 +744,13 @@ def session_to_response(session: ScheduleSession) -> ScheduleSessionResponse:
         category=getattr(session, 'category', None),
         content_id=getattr(session, 'content_id', None),
         content_name=getattr(session, 'content_name', None),
+        banner_url=getattr(session, 'banner_url', None),
+        banner_key=getattr(session, 'banner_key', None),
+        banner_source_type=getattr(session, 'banner_source_type', None),
+        mirror_to_discord=getattr(session, 'mirror_to_discord', True),
+        send_discord_reminders=getattr(session, 'send_discord_reminders', True),
+        reminder_offsets_minutes=_deserialize_reminder_offsets(getattr(session, 'reminder_offsets_minutes', None)),
+        missing_rsvp_reminder_enabled=getattr(session, 'missing_rsvp_reminder_enabled', None),
         created_at=session.created_at,
         updated_at=session.updated_at,
         rsvps=rsvps,
@@ -603,6 +813,13 @@ async def create_schedule_session(
         category=data.category.value if data.category else None,
         content_id=data.content_id,
         content_name=data.content_name,
+        banner_url=data.banner_url,
+        banner_key=data.banner_key,
+        banner_source_type=data.banner_source_type.value if data.banner_source_type else None,
+        mirror_to_discord=data.mirror_to_discord,
+        send_discord_reminders=data.send_discord_reminders,
+        reminder_offsets_minutes=_serialize_reminder_offsets(data.reminder_offsets_minutes),
+        missing_rsvp_reminder_enabled=data.missing_rsvp_reminder_enabled,
         created_at=now,
         updated_at=now,
     )
@@ -618,6 +835,13 @@ async def create_schedule_session(
         .options(selectinload(ScheduleSession.rsvps).selectinload(ScheduleRsvp.user))
     )
     created = result.scalar_one()
+
+    await _sync_discord_mirror_best_effort(
+        session,
+        group_id=group_id,
+        sched=created,
+        reason="session_created",
+    )
 
     # Fire Discord webhook after successful commit
     sched_settings = await _get_schedule_settings(session, group_id)
@@ -679,11 +903,20 @@ async def update_schedule_session(
         # Convert enum values to their string form for DB storage
         if hasattr(value, 'value'):
             value = value.value
+        if field == "reminder_offsets_minutes":
+            value = _serialize_reminder_offsets(value)
         setattr(schedule_session, field, value)
     schedule_session.updated_at = datetime.now(timezone.utc).isoformat()
 
     await session.flush()
     await session.commit()
+
+    await _sync_discord_mirror_best_effort(
+        session,
+        group_id=group_id,
+        sched=schedule_session,
+        reason="session_updated",
+    )
 
     # Fire Discord webhook after successful commit
     sched_settings = await _get_schedule_settings(session, group_id)
@@ -763,6 +996,13 @@ async def delete_schedule_session(
         mapping = map_result.scalar_one_or_none()
         if mapping:
             mapping_msg_id = mapping.webhook_message_id
+
+    await _delete_discord_mirrors_best_effort(
+        session,
+        group_id=group_id,
+        sched=schedule_session,
+        reason="session_deleted",
+    )
 
     await session.delete(schedule_session)
     await session.flush()
@@ -922,7 +1162,14 @@ async def get_schedule_settings(
             last_delivery_status = latest_fail.last_delivery_status
             last_delivery_error = latest_fail.last_delivery_error
 
-    return _settings_response(row, group_id, can_manage, last_delivery_status, last_delivery_error)
+    discord_link: StaticDiscordLink | None = None
+    if can_manage:
+        link_result = await session.execute(
+            select(StaticDiscordLink).where(StaticDiscordLink.static_group_id == group_id)
+        )
+        discord_link = link_result.scalar_one_or_none()
+
+    return _settings_response(row, group_id, can_manage, last_delivery_status, last_delivery_error, discord_link)
 
 
 @router.put(
@@ -959,6 +1206,8 @@ async def update_schedule_settings(
         "enable_6h_reminder",
         "enable_12h_reminder",
         "enable_missing_rsvp_reminder",
+        "discord_bot_token",
+        "discord_guild_id",
     ):
         if field in update_data:
             value = update_data[field]
@@ -972,7 +1221,12 @@ async def update_schedule_settings(
     await session.flush()
     await session.commit()
 
-    return _settings_response(row, group_id, True)
+    link_result = await session.execute(
+        select(StaticDiscordLink).where(StaticDiscordLink.static_group_id == group_id)
+    )
+    discord_link = link_result.scalar_one_or_none()
+
+    return _settings_response(row, group_id, True, discord_link=discord_link)
 
 
 @router.post(
@@ -1424,4 +1678,786 @@ async def submit_availability_template(
         username=current_user.discord_username,
         day_of_week=row.day_of_week,
         slots=json.loads(row.slots),
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Occurrence generation
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/static-groups/{group_id}/schedule/{session_id}/occurrences",
+    response_model=list[OccurrenceResponse],
+)
+async def list_session_occurrences(
+    group_id: str,
+    session_id: str,
+    count: int = Query(default=20, ge=1, le=100),
+    response: Response = None,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[OccurrenceResponse]:
+    """Generate upcoming occurrences for a recurring session.
+
+    For non-recurring sessions this returns the single session start if it is
+    in the future, otherwise an empty list.  Cancelled occurrences are excluded.
+    Edited occurrences have their overrides applied.
+    """
+    await get_static_group(db, group_id)
+    await require_membership(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleSession).where(
+            ScheduleSession.id == session_id,
+            ScheduleSession.static_group_id == group_id,
+        )
+    )
+    sched = result.scalar_one_or_none()
+    if not sched:
+        raise NotFound("Schedule session not found")
+
+    # Load exceptions keyed by occurrence_date
+    exc_result = await db.execute(
+        select(ScheduleException).where(ScheduleException.session_id == session_id)
+    )
+    exceptions: dict[str, ScheduleException] = {
+        e.occurrence_date: e for e in exc_result.scalars().all()
+    }
+
+    if not sched.is_recurring or not sched.recurrence_rule:
+        occ = next_occurrence(
+            sched.start_time, sched.end_time, None,
+            exceptions=exceptions,
+            session_title=sched.title,
+            session_description=sched.description,
+            session_banner_url=getattr(sched, 'banner_url', None),
+            session_banner_key=getattr(sched, 'banner_key', None),
+            session_banner_source_type=getattr(sched, 'banner_source_type', None),
+        )
+        occurrences = [occ] if occ else []
+    else:
+        occurrences = generate_occurrences(
+            sched.start_time, sched.end_time, sched.recurrence_rule,
+            count=count,
+            exceptions=exceptions,
+            session_title=sched.title,
+            session_description=sched.description,
+            session_banner_url=getattr(sched, 'banner_url', None),
+            session_banner_key=getattr(sched, 'banner_key', None),
+            session_banner_source_type=getattr(sched, 'banner_source_type', None),
+        )
+
+    return [
+        OccurrenceResponse(
+            occurrence_date=o.occurrence_date,
+            start_time=o.start_time,
+            end_time=o.end_time,
+            title=o.title,
+            description=o.description,
+            banner_url=o.banner_url,
+            banner_key=o.banner_key,
+            banner_source_type=o.banner_source_type,
+            is_exception=o.is_exception,
+            exception_id=o.exception_id,
+        )
+        for o in occurrences
+    ]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Schedule exceptions (cancel / edit one occurrence)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/static-groups/{group_id}/schedule/{session_id}/exceptions",
+    response_model=ScheduleExceptionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upsert_schedule_exception(
+    group_id: str,
+    session_id: str,
+    data: ScheduleExceptionCreate,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> ScheduleExceptionResponse:
+    """Create or update an exception for one occurrence of a recurring session.
+
+    type='cancelled' — the occurrence is hidden from future-occurrence lists and
+    skipped when computing 'Next Raid'.
+    type='edited'    — the occurrence uses the override fields instead of series defaults.
+
+    Idempotent: if an exception already exists for this (session, occurrence_date)
+    pair, it is updated in-place.
+    """
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleSession).where(
+            ScheduleSession.id == session_id,
+            ScheduleSession.static_group_id == group_id,
+        )
+    )
+    sched = result.scalar_one_or_none()
+    if not sched:
+        raise NotFound("Schedule session not found")
+    if not sched.is_recurring:
+        raise HTTPException(status_code=400, detail="Exceptions can only be created for recurring sessions")
+
+    existing_result = await db.execute(
+        select(ScheduleException).where(
+            ScheduleException.session_id == session_id,
+            ScheduleException.occurrence_date == data.occurrence_date,
+        )
+    )
+    exc = existing_result.scalar_one_or_none()
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    if exc:
+        exc.type = data.type.value
+        exc.override_start_time = data.override_start_time
+        exc.override_end_time = data.override_end_time
+        exc.override_title = data.override_title
+        exc.override_description = data.override_description
+        exc.override_banner_url = data.override_banner_url
+        exc.override_banner_key = data.override_banner_key
+        exc.cancellation_reason = data.cancellation_reason
+        exc.updated_at = now
+    else:
+        exc = ScheduleException(
+            id=str(uuid.uuid4()),
+            session_id=session_id,
+            occurrence_date=data.occurrence_date,
+            type=data.type.value,
+            override_start_time=data.override_start_time,
+            override_end_time=data.override_end_time,
+            override_title=data.override_title,
+            override_description=data.override_description,
+            override_banner_url=data.override_banner_url,
+            override_banner_key=data.override_banner_key,
+            cancellation_reason=data.cancellation_reason,
+            created_by_id=current_user.id,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(exc)
+
+    await db.flush()
+    await db.commit()
+
+    await _sync_discord_mirror_best_effort(
+        db,
+        group_id=group_id,
+        sched=sched,
+        reason=f"occurrence_{data.type.value}",
+    )
+
+    logger.info(
+        "schedule_exception_upserted",
+        session_id=session_id,
+        occurrence_date=data.occurrence_date,
+        type=data.type.value,
+        user_id=current_user.id,
+    )
+
+    return ScheduleExceptionResponse(
+        id=exc.id,
+        session_id=exc.session_id,
+        occurrence_date=exc.occurrence_date,
+        type=exc.type,
+        override_start_time=exc.override_start_time,
+        override_end_time=exc.override_end_time,
+        override_title=exc.override_title,
+        override_description=exc.override_description,
+        override_banner_url=exc.override_banner_url,
+        override_banner_key=exc.override_banner_key,
+        cancellation_reason=exc.cancellation_reason,
+        created_by_id=exc.created_by_id,
+        created_at=exc.created_at,
+        updated_at=exc.updated_at,
+    )
+
+
+@router.get(
+    "/static-groups/{group_id}/schedule/{session_id}/exceptions",
+    response_model=list[ScheduleExceptionResponse],
+)
+async def list_schedule_exceptions(
+    group_id: str,
+    session_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[ScheduleExceptionResponse]:
+    """List all exceptions for a recurring session."""
+    await get_static_group(db, group_id)
+    await require_membership(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleException)
+        .where(ScheduleException.session_id == session_id)
+        .order_by(ScheduleException.occurrence_date)
+    )
+    exceptions = result.scalars().all()
+
+    return [
+        ScheduleExceptionResponse(
+            id=e.id,
+            session_id=e.session_id,
+            occurrence_date=e.occurrence_date,
+            type=e.type,
+            override_start_time=e.override_start_time,
+            override_end_time=e.override_end_time,
+            override_title=e.override_title,
+            override_description=e.override_description,
+            override_banner_url=e.override_banner_url,
+            override_banner_key=e.override_banner_key,
+            cancellation_reason=e.cancellation_reason,
+            created_by_id=e.created_by_id,
+            created_at=e.created_at,
+            updated_at=e.updated_at,
+        )
+        for e in exceptions
+    ]
+
+
+@router.delete(
+    "/static-groups/{group_id}/schedule/{session_id}/exceptions/{occurrence_date}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_schedule_exception(
+    group_id: str,
+    session_id: str,
+    occurrence_date: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Remove an exception, restoring the occurrence to series defaults."""
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleException).where(
+            ScheduleException.session_id == session_id,
+            ScheduleException.occurrence_date == occurrence_date,
+        )
+    )
+    exc = result.scalar_one_or_none()
+    if not exc:
+        raise NotFound("Exception not found")
+
+    await db.delete(exc)
+    await db.commit()
+
+    sched_result = await db.execute(
+        select(ScheduleSession).where(
+            ScheduleSession.id == session_id,
+            ScheduleSession.static_group_id == group_id,
+        )
+    )
+    sched = sched_result.scalar_one_or_none()
+    if sched:
+        await _sync_discord_mirror_best_effort(
+            db,
+            group_id=group_id,
+            sched=sched,
+            reason="occurrence_restored",
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Discord Guild Scheduled Events mirror (V1 rolling window)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/static-groups/{group_id}/schedule/{session_id}/sync-discord",
+    status_code=status.HTTP_200_OK,
+)
+async def sync_session_discord_mirror(
+    group_id: str,
+    session_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Trigger a rolling 4-week Discord Guild Scheduled Events sync for one session.
+
+    Requires the group's ScheduleSettings to have discord_bot_token and
+    discord_guild_id configured.  Returns a log of actions taken.
+
+    Only leads and owners can trigger a sync.
+    """
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    sched_result = await db.execute(
+        select(ScheduleSession).where(
+            ScheduleSession.id == session_id,
+            ScheduleSession.static_group_id == group_id,
+        )
+    )
+    sched = sched_result.scalar_one_or_none()
+    if not sched:
+        raise NotFound("Schedule session not found")
+
+    # Preferred: official bot via StaticDiscordLink
+    link_result = await db.execute(
+        select(StaticDiscordLink).where(StaticDiscordLink.static_group_id == group_id)
+    )
+    discord_link = link_result.scalar_one_or_none()
+
+    # Fallback: legacy per-static bot token in ScheduleSettings
+    settings_result = await db.execute(
+        select(ScheduleSettings).where(ScheduleSettings.static_group_id == group_id)
+    )
+    settings = settings_result.scalar_one_or_none()
+
+    # Require either an active link or legacy token
+    has_official_link = (
+        discord_link
+        and discord_link.status in {"connected", "permission_missing"}
+        and get_settings().discord_bot_token
+    )
+    has_legacy_token = (
+        settings
+        and getattr(settings, "discord_bot_token", None)
+        and getattr(settings, "discord_guild_id", None)
+    )
+    if not has_official_link and not has_legacy_token:
+        raise HTTPException(
+            status_code=400,
+            detail="Connect Discord first (or configure a bot token in legacy settings)",
+        )
+
+    exc_result = await db.execute(
+        select(ScheduleException).where(ScheduleException.session_id == session_id)
+    )
+    exceptions: dict[str, ScheduleException] = {
+        e.occurrence_date: e for e in exc_result.scalars().all()
+    }
+
+    mirror_result = await db.execute(
+        select(ScheduleDiscordMirror).where(ScheduleDiscordMirror.session_id == session_id)
+    )
+    mirrors = mirror_result.scalars().all()
+    static_group = await get_static_group(db, group_id)
+
+    log = await sync_session_mirror(
+        session=sched,
+        settings=settings,
+        discord_link=discord_link,
+        mirrors=list(mirrors),
+        exceptions=exceptions,
+        db_add=db.add,
+        db_delete=db.delete,
+        static_group_name=static_group.name,
+        static_share_code=static_group.share_code,
+    )
+
+    await db.commit()
+
+    logger.info(
+        "discord_mirror_synced",
+        session_id=session_id,
+        group_id=group_id,
+        user_id=current_user.id,
+        actions=len(log),
+    )
+
+    return {"actions": log}
+
+
+@router.post(
+    "/static-groups/{group_id}/schedule/sync-discord",
+    status_code=status.HTTP_200_OK,
+)
+async def sync_group_discord_mirror(
+    group_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Trigger Discord Guild Scheduled Events sync for all sessions in a static."""
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    link_result = await db.execute(
+        select(StaticDiscordLink).where(StaticDiscordLink.static_group_id == group_id)
+    )
+    discord_link = link_result.scalar_one_or_none()
+
+    if discord_link and discord_link.status in {"connected", "permission_missing"} and get_settings().discord_bot_token:
+        actions = await sync_group_sessions_for_discord_link(
+            db=db,
+            group_id=group_id,
+            discord_link=discord_link,
+        )
+        await db.commit()
+    else:
+        settings_result = await db.execute(
+            select(ScheduleSettings).where(ScheduleSettings.static_group_id == group_id)
+        )
+        settings = settings_result.scalar_one_or_none()
+        if not settings or not getattr(settings, "discord_bot_token", None) or not getattr(settings, "discord_guild_id", None):
+            raise HTTPException(
+                status_code=400,
+                detail="Connect Discord first (or configure a bot token in legacy settings)",
+            )
+
+        sessions_result = await db.execute(
+            select(ScheduleSession)
+            .where(ScheduleSession.static_group_id == group_id)
+            .order_by(ScheduleSession.start_time.asc())
+        )
+        sessions = sessions_result.scalars().all()
+        actions: list[str] = []
+        for sched in sessions:
+            session_actions = await _sync_discord_mirror_best_effort(
+                db,
+                group_id=group_id,
+                sched=sched,
+                reason="manual_group_sync",
+            )
+            actions.extend(f"{sched.title}: {action}" for action in session_actions)
+        if not actions:
+            actions.append("skipped: no sessions to sync")
+
+    logger.info(
+        "discord_group_mirror_synced",
+        group_id=group_id,
+        user_id=current_user.id,
+        actions=len(actions),
+    )
+
+    return {"actions": actions}
+
+
+@router.get(
+    "/static-groups/{group_id}/schedule/{session_id}/discord-mirrors",
+    response_model=list[dict],
+)
+async def list_discord_mirrors(
+    group_id: str,
+    session_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """List Discord mirror rows for a session (sync status per occurrence)."""
+    await get_static_group(db, group_id)
+    await require_membership(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(ScheduleDiscordMirror)
+        .where(ScheduleDiscordMirror.session_id == session_id)
+        .order_by(ScheduleDiscordMirror.occurrence_date)
+    )
+    mirrors = result.scalars().all()
+
+    return [
+        {
+            "id": m.id,
+            "sessionId": session_id,
+            "occurrenceDate": m.occurrence_date,
+            "discordGuildId": m.discord_guild_id,
+            "discordScheduledEventId": m.discord_scheduled_event_id,
+            "syncStatus": m.sync_status,
+            "lastSyncedAt": m.last_synced_at,
+            "lastError": m.last_error,
+            "updatedAt": m.updated_at,
+        }
+        for m in mirrors
+    ]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Discord install-claim flow (official bot connection)
+# ──────────────────────────────────────────────────────────────────────────────
+
+_CLAIM_TTL_MINUTES = 15
+_CLAIM_CODE_BYTES = 6  # 6 random bytes → 12 hex chars → user-facing 8 alpha-num chars
+
+
+def _generate_claim_code() -> str:
+    """Generate a short, human-typable claim code (e.g. 'XRP-A3B7C2')."""
+    raw = secrets.token_hex(_CLAIM_CODE_BYTES).upper()[:8]
+    return f"XRP-{raw[:4]}-{raw[4:]}"
+
+
+def _hash_claim_code(plain: str) -> str:
+    return hashlib.sha256(plain.encode()).hexdigest()
+
+
+def _verify_bot_auth(request: Request) -> None:
+    """Raise 401 if the request does not carry the official bot token."""
+    bot_token = get_settings().discord_bot_token
+    if not bot_token:
+        raise HTTPException(status_code=503, detail="Official bot not configured on this server")
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header != f"Bot {bot_token}":
+        raise HTTPException(status_code=401, detail="Invalid bot authorization")
+
+
+@router.post(
+    "/static-groups/{group_id}/schedule-discord/install-claim",
+    response_model=DiscordInstallClaimResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_discord_install_claim(
+    group_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> DiscordInstallClaimResponse:
+    """Create a short-lived claim code for linking this static to a Discord guild.
+
+    The returned claim_code is shown to the lead, who runs
+    ``/xrp link <code>`` in their Discord server.  The code is stored as a
+    SHA-256 hash — only the hashed value is persisted.
+
+    Revokes any existing pending claim for this group before creating a new one.
+    Leads and owners only.
+    """
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    # Revoke any existing pending claims for this group
+    existing_result = await db.execute(
+        select(DiscordInstallClaim).where(
+            DiscordInstallClaim.static_group_id == group_id,
+            DiscordInstallClaim.status == "pending",
+        )
+    )
+    for existing in existing_result.scalars().all():
+        existing.status = "revoked"
+        existing.updated_at = now_iso
+    await db.flush()
+
+    plain_code = _generate_claim_code()
+    token_hash = _hash_claim_code(plain_code)
+    expires_at = (now + timedelta(minutes=_CLAIM_TTL_MINUTES)).isoformat()
+
+    claim = DiscordInstallClaim(
+        id=str(uuid.uuid4()),
+        static_group_id=group_id,
+        created_by_id=current_user.id,
+        claim_token_hash=token_hash,
+        expires_at=expires_at,
+        status="pending",
+        created_at=now_iso,
+        updated_at=now_iso,
+    )
+    db.add(claim)
+    await db.commit()
+
+    logger.info(
+        "discord_install_claim_created",
+        group_id=group_id,
+        user_id=current_user.id,
+        claim_id=claim.id,
+    )
+
+    return DiscordInstallClaimResponse(
+        id=claim.id,
+        claim_code=plain_code,
+        expires_at=expires_at,
+        status="pending",
+    )
+
+
+@router.post(
+    "/discord/slash-claim",
+    status_code=status.HTTP_200_OK,
+)
+async def slash_command_claim(
+    request: Request,
+    body: SlashCommandClaimRequest,
+    db: AsyncSession = Depends(get_session),
+) -> dict:
+    """Bot-to-server endpoint called when a user runs /xrp link <code>.
+
+    Authentication: the bot must send ``Authorization: Bot <DISCORD_BOT_TOKEN>``
+    matching the server's env var.  No user session required.
+
+    On success:
+      - Creates or updates StaticDiscordLink for the static.
+      - Marks the DiscordInstallClaim as claimed.
+      - Optionally checks bot permissions and sets link status accordingly.
+    """
+    _verify_bot_auth(request)
+
+    token_hash = _hash_claim_code(body.claim_code)
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+
+    claim_result = await db.execute(
+        select(DiscordInstallClaim).where(DiscordInstallClaim.claim_token_hash == token_hash)
+    )
+    claim = claim_result.scalar_one_or_none()
+
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim code not found")
+
+    if claim.status != "pending":
+        raise HTTPException(status_code=409, detail=f"Claim is already {claim.status}")
+
+    # Check expiry
+    try:
+        expires_dt = datetime.fromisoformat(claim.expires_at)
+        if expires_dt.tzinfo is None:
+            expires_dt = expires_dt.replace(tzinfo=timezone.utc)
+        if now > expires_dt:
+            claim.status = "expired"
+            claim.updated_at = now_iso
+            await db.commit()
+            raise HTTPException(status_code=410, detail="Claim code has expired")
+    except ValueError:
+        raise HTTPException(status_code=500, detail="Invalid claim expiry format")
+
+    group_id = claim.static_group_id
+
+    # Check bot permissions (soft — permission_missing doesn't block linking)
+    bot_token = get_settings().discord_bot_token
+    perm_status = "connected"
+    if bot_token:
+        perm = await check_bot_permissions(body.discord_guild_id, bot_token)
+        if not perm.get("ok"):
+            perm_status = "permission_missing"
+        elif not perm.get("has_manage_events", True):
+            perm_status = "permission_missing"
+
+    # Upsert StaticDiscordLink
+    link_result = await db.execute(
+        select(StaticDiscordLink).where(StaticDiscordLink.static_group_id == group_id)
+    )
+    link = link_result.scalar_one_or_none()
+
+    if link is None:
+        link = StaticDiscordLink(
+            id=str(uuid.uuid4()),
+            static_group_id=group_id,
+            discord_guild_id=body.discord_guild_id,
+            discord_guild_name=body.discord_guild_name,
+            schedule_channel_id=body.discord_channel_id,
+            linked_by_user_id=claim.created_by_id,
+            status=perm_status,
+            last_permission_check_at=now_iso,
+            created_at=now_iso,
+            updated_at=now_iso,
+        )
+        db.add(link)
+    else:
+        link.discord_guild_id = body.discord_guild_id
+        link.discord_guild_name = body.discord_guild_name
+        link.schedule_channel_id = body.discord_channel_id
+        link.status = perm_status
+        link.last_permission_check_at = now_iso
+        link.updated_at = now_iso
+
+    # Mark claim as claimed
+    claim.status = "claimed"
+    claim.discord_guild_id = body.discord_guild_id
+    claim.discord_channel_id = body.discord_channel_id
+    claim.claimed_by_discord_user_id = body.discord_user_id
+    claim.updated_at = now_iso
+
+    await db.commit()
+
+    initial_sync_actions = await sync_group_sessions_for_discord_link(
+        db=db,
+        group_id=group_id,
+        discord_link=link,
+    )
+    await db.commit()
+
+    logger.info(
+        "discord_install_claimed",
+        group_id=group_id,
+        guild_id=body.discord_guild_id,
+        discord_user=body.discord_user_id,
+        perm_status=perm_status,
+        initial_sync_actions=len(initial_sync_actions),
+    )
+
+    return {
+        "ok": True,
+        "status": perm_status,
+        "syncActions": initial_sync_actions,
+        "message": (
+            "Discord linked successfully."
+            if perm_status == "connected"
+            else "Linked, but the bot is missing the Manage Events permission. Grant it and sync again."
+        ),
+    }
+
+
+@router.get(
+    "/static-groups/{group_id}/schedule-discord/link",
+    response_model=StaticDiscordLinkResponse | None,
+)
+async def get_discord_link(
+    group_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> StaticDiscordLink | None:
+    """Return the current Discord guild link for this static (leads/owners only).
+
+    Returns null if no link exists.
+    """
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    result = await db.execute(
+        select(StaticDiscordLink).where(StaticDiscordLink.static_group_id == group_id)
+    )
+    return result.scalar_one_or_none()
+
+
+@router.delete(
+    "/static-groups/{group_id}/schedule-discord/link",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def disconnect_discord_link(
+    group_id: str,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Disconnect this static from its Discord guild.
+
+    Sets the link status to 'disconnected' (does not delete app-side data or
+    existing Discord scheduled events).  Revokes any pending install claims.
+    Leads and owners only.
+    """
+    await get_static_group(db, group_id)
+    await require_can_manage_members(db, current_user.id, group_id)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    link_result = await db.execute(
+        select(StaticDiscordLink).where(StaticDiscordLink.static_group_id == group_id)
+    )
+    link = link_result.scalar_one_or_none()
+    if link:
+        link.status = "disconnected"
+        link.updated_at = now_iso
+
+    # Revoke pending claims
+    claims_result = await db.execute(
+        select(DiscordInstallClaim).where(
+            DiscordInstallClaim.static_group_id == group_id,
+            DiscordInstallClaim.status == "pending",
+        )
+    )
+    for claim in claims_result.scalars().all():
+        claim.status = "revoked"
+        claim.updated_at = now_iso
+
+    await db.commit()
+
+    logger.info(
+        "discord_link_disconnected",
+        group_id=group_id,
+        user_id=current_user.id,
     )

@@ -767,7 +767,7 @@ export interface Invitation {
   staticGroupId: string;
   inviteCode: string;
   role: MemberRole;
-  expiresAt?: string;
+  expiresAt?: string | null;
   maxUses?: number;
   useCount: number;
   isActive: boolean;
@@ -792,7 +792,7 @@ export interface InvitationPreview {
 // Invitation create request
 export interface InvitationCreate {
   role?: MemberRole;
-  expiresInDays?: number;
+  expiresInDays?: number | null;
   maxUses?: number;
 }
 
@@ -970,11 +970,24 @@ export interface BiSGearSlotData {
   materia?: MateriaSlot[];  // Melded materia
 }
 
+export interface XivGearSetOption {
+  index: number;
+  name: string;
+  job: string;
+  gcd?: string | null;
+  dpsLabel?: string | null;
+  description?: string | null;
+}
+
 // BiS import response from XIVGear
 export interface BiSImportData {
   name: string;
   job: string;
   slots: BiSGearSlotData[];
+  setOptions?: XivGearSetOption[];
+  selectedSetIndex?: number | null;
+  requiresSelection?: boolean;
+  originalUrl?: string | null;
 }
 
 // BiS preset option (for dropdown)
@@ -1332,9 +1345,38 @@ export interface ScheduleSession {
   category: EventCategory | null;
   contentId: string | null;
   contentName: string | null;
+  bannerUrl: string | null;
+  bannerKey?: string | null;
+  bannerSourceType?: string | null;
+  mirrorToDiscord?: boolean;
+  sendDiscordReminders?: boolean;
+  reminderOffsetsMinutes?: number[] | null;
+  missingRsvpReminderEnabled?: boolean | null;
   createdAt: string;
   updatedAt: string;
   rsvps: ScheduleRsvp[];
+}
+
+export type DiscordInstallClaimStatus = 'pending' | 'claimed' | 'expired' | 'revoked';
+export type DiscordLinkStatus = 'connected' | 'permission_missing' | 'disconnected';
+
+export interface DiscordInstallClaim {
+  id: string;
+  claimCode: string;
+  expiresAt: string;
+  status: DiscordInstallClaimStatus;
+}
+
+export interface StaticDiscordLink {
+  id: string;
+  staticGroupId: string;
+  discordGuildId: string;
+  discordGuildName: string | null;
+  scheduleChannelId: string | null;
+  status: DiscordLinkStatus;
+  lastPermissionCheckAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ScheduleSettings {
@@ -1357,6 +1399,15 @@ export interface ScheduleSettings {
   calendarTokenCreatedAt?: string | null;
   webhookLastDeliveryStatus?: number | null;
   webhookLastDeliveryError?: string | null;
+  // Legacy per-static bot (kept for self-hosted setups)
+  discordBotConfigured?: boolean;
+  discordGuildId?: string | null;
+  // Official bot — availability + invite URL client ID (safe to expose)
+  discordOfficialBotAvailable?: boolean;
+  discordClientId?: string | null;
+  // Official bot link status
+  discordLinkStatus?: DiscordLinkStatus | null;
+  discordGuildName?: string | null;
   canManage: boolean;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -1374,6 +1425,9 @@ export interface ScheduleSettingsUpdate {
   enable6hReminder?: boolean;
   enable12hReminder?: boolean;
   enableMissingRsvpReminder?: boolean;
+  // Legacy self-hosted bot fields (not used by default UI)
+  discordBotToken?: string | null;
+  discordGuildId?: string | null;
 }
 
 export interface CalendarTokenResponse {
@@ -1395,6 +1449,13 @@ export interface ScheduleSessionCreate {
   category?: EventCategory | null;
   contentId?: string | null;
   contentName?: string | null;
+  bannerUrl?: string | null;
+  bannerKey?: string | null;
+  bannerSourceType?: string | null;
+  mirrorToDiscord?: boolean;
+  sendDiscordReminders?: boolean;
+  reminderOffsetsMinutes?: number[] | null;
+  missingRsvpReminderEnabled?: boolean | null;
 }
 
 export interface ScheduleSessionUpdate {
@@ -1409,6 +1470,69 @@ export interface ScheduleSessionUpdate {
   category?: EventCategory | null;
   contentId?: string | null;
   contentName?: string | null;
+  bannerUrl?: string | null;
+  bannerKey?: string | null;
+  bannerSourceType?: string | null;
+  mirrorToDiscord?: boolean;
+  sendDiscordReminders?: boolean;
+  reminderOffsetsMinutes?: number[] | null;
+  missingRsvpReminderEnabled?: boolean | null;
+}
+
+export interface OccurrenceResponse {
+  occurrenceDate: string;
+  startTime: string;
+  endTime: string;
+  title: string;
+  description: string | null;
+  bannerUrl: string | null;
+  bannerKey: string | null;
+  bannerSourceType: string | null;
+  isException: boolean;
+  exceptionId: string | null;
+}
+
+export type ExceptionType = 'cancelled' | 'edited';
+
+export interface ScheduleExceptionCreate {
+  occurrenceDate: string;
+  type: ExceptionType;
+  overrideStartTime?: string | null;
+  overrideEndTime?: string | null;
+  overrideTitle?: string | null;
+  overrideDescription?: string | null;
+  overrideBannerUrl?: string | null;
+  overrideBannerKey?: string | null;
+  cancellationReason?: string | null;
+}
+
+export interface ScheduleException {
+  id: string;
+  sessionId: string;
+  occurrenceDate: string;
+  type: ExceptionType;
+  overrideStartTime: string | null;
+  overrideEndTime: string | null;
+  overrideTitle: string | null;
+  overrideDescription: string | null;
+  overrideBannerUrl: string | null;
+  overrideBannerKey: string | null;
+  cancellationReason: string | null;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiscordMirrorStatus {
+  id: string;
+  sessionId: string;
+  occurrenceDate: string | null;
+  discordGuildId: string;
+  discordScheduledEventId: string;
+  syncStatus: 'not_synced' | 'pending' | 'synced' | 'failed' | 'manual_action_needed';
+  lastSyncedAt: string | null;
+  lastError: string | null;
+  updatedAt: string;
 }
 
 // ==================== Availability Types ====================

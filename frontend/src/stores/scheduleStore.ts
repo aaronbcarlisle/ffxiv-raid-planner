@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 import type {
+  DiscordInstallClaim,
+  StaticDiscordLink,
   ScheduleSession,
   ScheduleSessionCreate,
   ScheduleSessionUpdate,
@@ -9,6 +11,10 @@ import type {
   ScheduleSettings,
   ScheduleSettingsUpdate,
   CalendarTokenResponse,
+  OccurrenceResponse,
+  ScheduleException,
+  ScheduleExceptionCreate,
+  DiscordMirrorStatus,
 } from '../types';
 
 interface ScheduleState {
@@ -29,6 +35,16 @@ interface ScheduleState {
   updateSession: (groupId: string, sessionId: string, data: ScheduleSessionUpdate) => Promise<void>;
   deleteSession: (groupId: string, sessionId: string) => Promise<void>;
   submitRsvp: (groupId: string, sessionId: string, status: RsvpStatus, note?: string) => Promise<void>;
+  fetchOccurrences: (groupId: string, sessionId: string, count?: number) => Promise<OccurrenceResponse[]>;
+  createException: (groupId: string, sessionId: string, data: ScheduleExceptionCreate) => Promise<ScheduleException>;
+  deleteException: (groupId: string, sessionId: string, occurrenceDate: string) => Promise<void>;
+  fetchExceptions: (groupId: string, sessionId: string) => Promise<ScheduleException[]>;
+  syncAllDiscordMirrors: (groupId: string) => Promise<string[]>;
+  syncDiscordMirror: (groupId: string, sessionId: string) => Promise<string[]>;
+  fetchDiscordMirrors: (groupId: string, sessionId: string) => Promise<DiscordMirrorStatus[]>;
+  createDiscordInstallClaim: (groupId: string) => Promise<DiscordInstallClaim>;
+  fetchDiscordLink: (groupId: string) => Promise<StaticDiscordLink | null>;
+  disconnectDiscordLink: (groupId: string) => Promise<void>;
   clearSessions: () => void;
 }
 
@@ -205,6 +221,74 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
       set({ error: (err as Error).message });
       throw err;
     }
+  },
+
+  fetchOccurrences: async (groupId: string, sessionId: string, count = 20) => {
+    return api.get<OccurrenceResponse[]>(
+      `/api/static-groups/${groupId}/schedule/${sessionId}/occurrences?count=${count}`
+    );
+  },
+
+  createException: async (groupId: string, sessionId: string, data: ScheduleExceptionCreate) => {
+    return api.post<ScheduleException>(
+      `/api/static-groups/${groupId}/schedule/${sessionId}/exceptions`,
+      data
+    );
+  },
+
+  deleteException: async (groupId: string, sessionId: string, occurrenceDate: string) => {
+    await api.delete(
+      `/api/static-groups/${groupId}/schedule/${sessionId}/exceptions/${occurrenceDate}`
+    );
+  },
+
+  fetchExceptions: async (groupId: string, sessionId: string) => {
+    return api.get<ScheduleException[]>(
+      `/api/static-groups/${groupId}/schedule/${sessionId}/exceptions`
+    );
+  },
+
+  syncAllDiscordMirrors: async (groupId: string) => {
+    const result = await api.post<{ actions: string[] }>(
+      `/api/static-groups/${groupId}/schedule/sync-discord`
+    );
+    return result.actions;
+  },
+
+  syncDiscordMirror: async (groupId: string, sessionId: string) => {
+    const result = await api.post<{ actions: string[] }>(
+      `/api/static-groups/${groupId}/schedule/${sessionId}/sync-discord`
+    );
+    return result.actions;
+  },
+
+  fetchDiscordMirrors: async (groupId: string, sessionId: string) => {
+    return api.get<DiscordMirrorStatus[]>(
+      `/api/static-groups/${groupId}/schedule/${sessionId}/discord-mirrors`
+    );
+  },
+
+  createDiscordInstallClaim: async (groupId: string) => {
+    return api.post<DiscordInstallClaim>(
+      `/api/static-groups/${groupId}/schedule-discord/install-claim`
+    );
+  },
+
+  fetchDiscordLink: async (groupId: string) => {
+    try {
+      return await api.get<StaticDiscordLink | null>(
+        `/api/static-groups/${groupId}/schedule-discord/link`
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  disconnectDiscordLink: async (groupId: string) => {
+    await api.delete(`/api/static-groups/${groupId}/schedule-discord/link`);
+    set((state) => state.settings ? {
+      settings: { ...state.settings, discordLinkStatus: 'disconnected', discordGuildName: null },
+    } : state);
   },
 
   clearSessions: () => set({
