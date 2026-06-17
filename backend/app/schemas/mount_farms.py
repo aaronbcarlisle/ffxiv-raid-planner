@@ -35,14 +35,14 @@ class MountFarmProgressBulkUpdate(CamelModel):
 
 class MountSyncItem(CamelModel):
     """A single mount ownership entry from the plugin."""
-    mount_id: int
+    mount_id: int | str
     trial_id: str | None = None
     owned: bool = False
 
 
 class TotemSyncItem(CamelModel):
     """A single totem count entry from the plugin."""
-    item_id: int
+    item_id: int | str
     trial_id: str | None = None
     count: int = 0
     totem_name: str | None = None
