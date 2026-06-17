@@ -73,6 +73,13 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'fix',
+        title: 'Scheduler drag selection reliability',
+        description: 'Scheduler drag-selection no longer misses slots when selecting another column while previous slot updates are still saving or animating. Cross-midnight preset views now map after-midnight slots to the next day so Prime raid time, Evening, and Full day stay consistent.',
+        pr: 136,
+        prTitle: 'fix: recover stale chunks and stabilize scheduler availability',
+      },
+      {
+        category: 'fix',
         title: 'Leads can now access group settings',
         description: 'The settings gear icon in the group header was previously only visible to the Owner. Leads can now open group settings to manage roster, tiers, invitations, and other options. The destructive "Delete Static" action remains restricted to the Owner only.',
         pr: 134,
