@@ -1,13 +1,23 @@
 /**
  * SplitClearPlanner — unit tests
  *
- * Verifies:
- *   - Split mode off → disabled empty-state message rendered, no table
- *   - Split mode on → table rendered with all players
- *   - No alt character → warning shown
- *   - Run A and Run B same slot → warning shown
- *   - Overview/header summary counts alts correctly
- *   - Non-editor sees no Toggle (permission guard)
+ * Coverage:
+ *   - Split mode off → enable CTA (editor) or hidden (viewer)
+ *   - Split mode on → assistant card + board both render
+ *   - Source strip shows roster/alt/priority chips when draft exists
+ *   - Confidence badge renders with draft
+ *   - Issue list renders no-alt summary
+ *   - Apply bar shows change summary text
+ *   - Warnings shown per player (desktop + mobile in JSDOM, so use getAllBy*)
+ *   - Readiness summary text matches new "with alts" format
+ *   - Apply draft calls updateAssignment for each player
+ *   - Dismiss clears draft panel
+ *   - Blur-save preserves field-level PATCH safety
+ *   - Member/viewer cannot generate or apply draft
+ *
+ * Note: JSDOM does not apply CSS media queries, so both the desktop table
+ * and mobile cards render simultaneously in tests. Use getAllBy* for content
+ * that appears in both layouts; use getBy* only for content that is unique.
  *
  * @vitest-environment jsdom
  */
@@ -58,7 +68,7 @@ function makeAssignment(overrides: Record<string, unknown> = {}) {
   };
 }
 
-// ── Store mock state ───────────────────────────────────────────────────────────
+// ── Store mock ─────────────────────────────────────────────────────────────────
 
 const splitClearStoreState: {
   data: SplitClearData | null;
@@ -104,6 +114,8 @@ describe('SplitClearPlanner', () => {
     splitClearStoreState.resetWeek.mockResolvedValue(undefined);
   });
 
+  // ── Mode / visibility ───────────────────────────────────────────────────────
+
   it('renders nothing when data is null', () => {
     splitClearStoreState.data = null;
     const { container } = render(
@@ -130,7 +142,9 @@ describe('SplitClearPlanner', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders the table with all players when mode is on', () => {
+  // ── Board / mode on ─────────────────────────────────────────────────────────
+
+  it('renders the board and both player names when mode is on', () => {
     const players = [
       makePlayer({ id: 'p1', name: 'Aldric Stormcrest', job: 'WAR' }),
       makePlayer({ id: 'p2', name: 'Mirela Voss', job: 'WHM', sortOrder: 1 }),
@@ -139,9 +153,11 @@ describe('SplitClearPlanner', () => {
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={players} canEdit={true} />
     );
+    // Desktop table rendered with testid
     expect(screen.getByTestId('split-clear-board')).toBeTruthy();
-    expect(screen.getByText('Aldric Stormcrest')).toBeTruthy();
-    expect(screen.getByText('Mirela Voss')).toBeTruthy();
+    // Players appear in both desktop and mobile in JSDOM — at least one instance each
+    expect(screen.getAllByText('Aldric Stormcrest').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Mirela Voss').length).toBeGreaterThan(0);
   });
 
   it('shows warning when player has no alt character', () => {
@@ -153,44 +169,34 @@ describe('SplitClearPlanner', () => {
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[player]} canEdit={true} />
     );
-    expect(screen.getByText(/no alt character/i)).toBeTruthy();
+    expect(screen.getAllByText(/no alt character/i).length).toBeGreaterThan(0);
   });
 
   it('shows warning when run A and run B use the same slot type', () => {
     const player = makePlayer({ id: 'p1', name: 'DualMain', job: 'DRG' });
     splitClearStoreState.data = {
       enabled: true,
-      assignments: [
-        makeAssignment({
-          runACharacter: 'main',
-          runBCharacter: 'main',
-        }),
-      ],
+      assignments: [makeAssignment({ runACharacter: 'main', runBCharacter: 'main' })],
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[player]} canEdit={true} />
     );
-    expect(screen.getByText(/same character is assigned to both runs/i)).toBeTruthy();
+    expect(screen.getAllByText(/same character is assigned to both runs/i).length).toBeGreaterThan(0);
   });
 
   it('shows warning when loot target is funnel_job without a job specified', () => {
     const player = makePlayer({ id: 'p1', name: 'FunnelPlayer', job: 'RDM' });
     splitClearStoreState.data = {
       enabled: true,
-      assignments: [
-        makeAssignment({
-          lootTarget: 'funnel_job',
-          lootTargetJob: null,
-        }),
-      ],
+      assignments: [makeAssignment({ lootTarget: 'funnel_job', lootTargetJob: null })],
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[player]} canEdit={true} />
     );
-    expect(screen.getByText(/loot target job is not selected/i)).toBeTruthy();
+    expect(screen.getAllByText(/loot target job is not selected/i).length).toBeGreaterThan(0);
   });
 
-  it('summary counts alts assigned correctly', () => {
+  it('readiness summary shows alt count in "X/Y with alts" format', () => {
     const players = [
       makePlayer({ id: 'p1', name: 'P1', sortOrder: 0 }),
       makePlayer({ id: 'p2', name: 'P2', sortOrder: 1 }),
@@ -200,16 +206,14 @@ describe('SplitClearPlanner', () => {
       enabled: true,
       assignments: [
         makeAssignment({ snapshotPlayerId: 'p1', altCharacterName: 'AltOne', id: 'a1' }),
-        // p2 has assignment but no alt
         { ...makeAssignment({ snapshotPlayerId: 'p2', id: 'a2' }), altCharacterName: null },
-        // p3 has no assignment at all
       ],
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={players} canEdit={true} />
     );
-    // 1 out of 3 have alts
-    expect(screen.getByText(/1\/3 members have alts assigned/i)).toBeTruthy();
+    // The assistant card header shows "1/3 with alts"
+    expect(screen.getByText(/1\/3 with alts/i)).toBeTruthy();
   });
 
   it('does not show the Toggle for non-editors', () => {
@@ -217,7 +221,6 @@ describe('SplitClearPlanner', () => {
     const { container } = render(
       <SplitClearPlanner groupId={GROUP_ID} players={[]} canEdit={false} />
     );
-    // The Toggle is rendered inside a "Split mode" label wrapper — check it's absent
     expect(container.querySelector('[aria-label="split mode"]')).toBeNull();
     const allText = container.textContent ?? '';
     expect(allText).not.toMatch(/split mode/i);
@@ -237,7 +240,7 @@ describe('SplitClearPlanner', () => {
     expect(screen.queryByText(/reset week/i)).toBeNull();
   });
 
-  it('renders "OK" status for fully configured assignment', () => {
+  it('shows Ready status for a fully configured assignment', () => {
     const player = makePlayer({ id: 'p1', name: 'AllGood', job: 'SCH' });
     splitClearStoreState.data = {
       enabled: true,
@@ -246,7 +249,8 @@ describe('SplitClearPlanner', () => {
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[player]} canEdit={true} />
     );
-    expect(screen.getByText('Ready')).toBeTruthy();
+    // "Ready" appears in both desktop status column and mobile card badge
+    expect(screen.getAllByText('Ready').length).toBeGreaterThan(0);
   });
 
   it('renders the manual-tracking disclaimer footer', () => {
@@ -339,7 +343,7 @@ describe('SplitClearPlanner', () => {
     });
   });
 
-  it('draft shows funnel_main for player whose weapon is not yet received', async () => {
+  it('draft shows "Funnel to main" for player whose weapon is not yet received', async () => {
     const p = makePlayer({
       id: 'p1',
       job: 'DRG',
@@ -349,15 +353,87 @@ describe('SplitClearPlanner', () => {
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
-      expect(screen.getByText(/funnel → main/i)).toBeTruthy();
+      expect(screen.getByText(/funnel to main/i)).toBeTruthy();
     });
   });
+
+  // ── Source strip + confidence ────────────────────────────────────────────────
+
+  it('source strip shows Roster chip when draft exists', async () => {
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/roster 1\/1/i)).toBeTruthy();
+    });
+  });
+
+  it('source strip shows Alts chip reflecting how many players have alts', async () => {
+    const p = makePlayer({ id: 'p1' });
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => {
+      // No existing alt data → "Alts 0/1"
+      expect(screen.getByText(/alts 0\/1/i)).toBeTruthy();
+    });
+  });
+
+  it('confidence badge renders when draft exists', async () => {
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => {
+      // At least one confidence level badge must appear
+      const confidence = screen.queryByText(/confidence/i);
+      expect(confidence).toBeTruthy();
+    });
+  });
+
+  // ── Issue list + apply bar ───────────────────────────────────────────────────
+
+  it('issue list shows no-alt info when players lack alts', async () => {
+    const p = makePlayer({ id: 'p1' });
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    // "No alt character" appears in both the draft issue list and the board
+    // warning column (getSplitClearWarnings treats missing assignment as no-alt),
+    // so use getAllByText which returns the full set without throwing on >1 match.
+    await waitFor(() => {
+      expect(screen.getAllByText(/no alt character/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('apply bar shows change summary text', async () => {
+    const p = makePlayer({ id: 'p1', lodestoneName: 'Main Name', lodestoneServer: 'Tonberry' });
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => {
+      // Change summary should mention "Updates" and player count
+      expect(screen.getByText(/updates 1 player/i)).toBeTruthy();
+    });
+  });
+
+  it('button label changes to "Regenerate" after first draft', async () => {
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /regenerate/i })).toBeTruthy();
+    });
+  });
+
+  // ── Blur-save (PATCH safety) ─────────────────────────────────────────────────
 
   it('saves text fields as partial updates on blur', async () => {
     splitClearStoreState.data = { enabled: true, assignments: [makeAssignment()] };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
 
-    const input = screen.getByPlaceholderText('Character name');
+    // JSDOM renders both desktop and mobile layouts; grab the first match (desktop table)
+    const inputs = screen.getAllByPlaceholderText('Character name');
+    const input = inputs[0];
     fireEvent.change(input, { target: { value: 'Updated Main' } });
     fireEvent.blur(input);
 

@@ -62,12 +62,22 @@ export const RELEASES: Release[] = [
     version: '1.26.0',
     date: '2026-06-18T00:00:00Z',
     title: 'Split Clear Planner',
-    highlights: ['Track main/alt run assignments for split clears, with readiness warnings'],
+    highlights: [
+      'Track main/alt run assignments for split clears, with readiness warnings',
+      'Generate a draft split plan from roster and weapon priority data in one click',
+    ],
     items: [
       {
         category: 'feature',
         title: 'Split Clear Planner for raid statics',
-        description: 'Leads can now enable a split-clear planning board under the Roster tab. Each member gets a row for their main and alt character, Run A / Run B assignments, loot target notes, and per-run weekly clear checkboxes. The Overview tab shows a compact readiness summary. Assignment edits are field-level — changing a clear checkbox never wipes character names or loot targets. Weekly clear status is manually tracked; no lockout detection is performed automatically.',
+        description: 'Leads can now enable a split-clear planning board under the Roster tab. Each member gets a row for their main and alt character, Run A / Run B assignments, loot target notes, and per-run weekly clear checkboxes. Assignment edits are field-level and the board switches to mobile cards on small screens. Weekly clear status is manually tracked; no lockout detection is performed.',
+        pr: 139,
+        prTitle: 'feat: Split Clear Planner V1',
+      },
+      {
+        category: 'feature',
+        title: 'Generate Draft split plan',
+        description: 'The Split Clear Planner assistant card can generate a suggested draft from existing Lodestone data and weapon priorities. Leads see a source strip (Roster / Alts / Priority chips), a confidence badge (High / Medium / Low), per-player suggestions with a "Suggested" label, an issue list for missing data, and a change summary before applying. Dismissing the draft discards it without saving anything.',
         pr: 139,
         prTitle: 'feat: Split Clear Planner V1',
       },
