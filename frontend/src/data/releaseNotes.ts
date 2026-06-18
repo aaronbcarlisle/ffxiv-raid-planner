@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.24.0';
+export const CURRENT_VERSION = '1.25.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,28 +59,41 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-    version: 'Unreleased',
-    date: '2026-06-16T00:00:00Z',
-    title: 'Player Hub gear sync, recurring scheduling, Discord delivery, and permanent invites',
-    highlights: ['Gear sync and BiS import fixes', 'Discord schedule delivery'],
-    internal: true,
+    version: '1.25.0',
+    date: '2026-06-18T00:00:00Z',
+    title: 'Gear Sync, Scheduling, and Discord Delivery',
+    highlights: [
+      'Recurring raid schedules now power Discord events and reminders together',
+      'Gear imports, BiS comparisons, and Player Hub sync are more reliable',
+    ],
     items: [
       {
         category: 'feature',
         title: 'Recurring events: view and cancel individual occurrences',
         description: 'Recurring raid sessions now show a "View occurrences" calendar button that lists the next 4 weeks of upcoming dates. Leads can cancel individual occurrences without affecting the whole series, and restore them later.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
+      },
+      {
+        category: 'feature',
+        title: 'Discord events and reminders share one raid schedule',
+        description: 'Native Discord scheduled events and webhook reminders now derive from the same generated raid occurrence. Event edits, one-off cancellations, and recurring times stay aligned, while a failure in one Discord delivery path no longer blocks the other.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'feature',
         title: 'Discord Guild Events: official bot via install-claim flow',
-        description: 'Discord Events now use a shared XIVRaidPlanner bot instead of per-static bot tokens. Leads connect their server in one click — generate a link code, invite the bot, run /xrp link <code> — no token management required. The integrations panel shows connection status, permission health, and Sync/Disconnect actions.',
+        description: 'Discord Events now use a shared XIVRaidPlanner bot instead of per-static bot tokens. Leads connect their server in one click — generate a link code, invite the bot, run /xrp link <code> — no token management required. Upcoming occurrences can include their event banner and planner link, while the integrations panel shows connection status, permission health, and Sync/Disconnect actions.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Stale app chunk recovery',
         description: 'Minor bug fix: browsers with an older cached app shell now reload once and show a clear update message instead of getting stuck on a generic dynamic import error after deployments.',
         pr: 136,
-        prTitle: 'fix: recover from stale app chunks',
+        prTitle: 'fix: recover stale chunks and stabilize scheduler availability',
       },
       {
         category: 'fix',
@@ -93,6 +106,8 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Windows dev startup resilience',
         description: 'The local development startup script now resolves Windows npm/pnpm command shims before launching the frontend server, preventing PowerShell from trying to execute a .ps1 shim as a Win32 application. The backend example env also documents optional Discord bot/interactions variables used by local Discord event testing.',
+        pr: 136,
+        prTitle: 'fix: recover stale chunks and stabilize scheduler availability',
       },
       {
         category: 'fix',
@@ -105,78 +120,99 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Plugin collection sync now feeds Player Hub first',
         description: 'Mount and token syncs from the plugin now update Player Hub collection goals first, then mirror that same collection progress into Static Mount Farms for every static the player belongs to.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Ultimate farm catalog token metadata completed',
         description: 'Added curated one-token exchange metadata for all Ultimate reward farms, including Dreadwyrm, Ultima, Colossus, Dragonsong, Omega, Oracle, and Mad Harlequin totems with their weapon set exchanges.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'BiS checks now handle swapped ring slots',
         description: 'Gear sync now treats the two ring slots as an interchangeable pair, so correct Tome/Raid rings equipped in the opposite order no longer show as BiS mismatches.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'XIVGear links now populate selected BiS sets',
         description: 'Pasted XIVGear sheet links now use the full URL import path and preserve the chosen set index, so linked BiS targets populate the intended gear check instead of silently using the wrong set.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'improvement',
         title: 'XIVGear sheet imports can show multiple set options',
         description: 'When a XIVGear sheet contains several sets, the BiS import flow now asks which set to link and shows labels with set name, job, GCD, and original set index.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'improvement',
         title: 'Static invite links can be permanent',
         description: 'Static leads can now create invite links that never expire. Existing 7-day invites still keep their normal expiration behavior, and revoked permanent invites remain disabled.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Objectives panel moved to compact right-rail layout',
         description: 'The Objective Command Center no longer renders as large horizontal cards in the center column. Official Objectives, Active Farms, and Member Interest are now shown as compact rows in the right-side Goals & Objectives panel, keeping the Overview to one screen at 1080p.',
-        pr: 137,
-        prTitle: 'fix(overview): compact Goals & Objectives right-rail, remove center-column objective feed',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Notification badge and panel count stay in sync',
         description: 'The notification badge now reflects both server notifications and unread release notes, so the displayed count always matches what you see when the panel opens. The panel also fetches the latest server notifications each time it is opened, preventing stale counts mid-session.',
         pr: 133,
+        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
       {
         category: 'fix',
         title: 'Anonymous activity preference now applies to activity log entries',
         description: 'Enabling "Anonymous Activity" in the user menu now correctly anonymizes your name in the static activity feed going forward. Previously the preference was stored but not applied when writing new entries, so your name would still appear regardless of the setting.',
         pr: 133,
+        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
       {
         category: 'fix',
         title: 'Discord webhook failures now alert leads and surface delivery status inline',
         description: 'When a scheduled session or reminder fails to post to Discord, all group leads and the owner receive a notification with the HTTP error details. The Integrations settings panel now also shows the status code and error text from the most recent failed delivery beneath the webhook status chip.',
         pr: 133,
+        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
       {
         category: 'fix',
         title: 'BiS presets automatically fetch gear data when added',
         description: 'Adding a preset from the "Add Preset" tab now immediately retrieves full gear slot data (item names, item level, materia) from XIVGear after the targets are created. The preset\'s purpose is also derived from its category (Savage, Ultimate, etc.) rather than always defaulting to Savage.',
         pr: 133,
+        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
       {
         category: 'fix',
         title: 'Claiming a roster slot now auto-links your Player Hub BiS',
         description: 'When a player claims their slot in the static roster, BiS gear items and currently-equipped gear are now both automatically pulled from Player Hub. The BiS target is fetched from XIVGear or Etro if not already cached. The player\'s latest gear snapshot from Player Hub is used to populate the "currently wearing" comparison immediately — showing BiS matched, upgrade needed, or not detected without requiring a Lodestone sync or manual import. Leads assigning a member receive the same treatment. Everything can still be overridden manually.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Player Hub syncs now propagate live to roster slots',
         description: 'When a player syncs in Player Hub (via plugin or Lodestone), all roster slots they hold are updated immediately. Gear data (equipped vs BiS comparison) propagates per-job. Character identity (name, world, avatar) propagates across all slots — so name changes, server transfers, and new avatar imports no longer require a re-claim or manual roster edit.',
+        pr: 135,
+        prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: '"This static" filter now correctly shows all group notifications',
         description: 'Vote notifications, webhook failure alerts, and other group-scoped messages were previously excluded from the "This static" notification filter because they rely on URL matching, which could fail if the URL format varied. Notifications are now tagged with their group ID at creation time and matched precisely — no more missing notifications in this view.',
         pr: 133,
+        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
     ],
   },
