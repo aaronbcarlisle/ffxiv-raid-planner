@@ -258,6 +258,101 @@ describe('SplitClearPlanner', () => {
     expect(screen.getByText(/does not claim alt-character or lockout coverage/i)).toBeTruthy();
   });
 
+  // ── Draft generation ─────────────────────────────────────────────────────────
+
+  it('shows Generate draft button to editors when mode is on', () => {
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
+    expect(screen.getByRole('button', { name: /generate draft/i })).toBeTruthy();
+  });
+
+  it('hides Generate draft button from non-editors', () => {
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={false} />);
+    expect(screen.queryByRole('button', { name: /generate draft/i })).toBeNull();
+  });
+
+  it('clicking Generate draft shows the draft panel', async () => {
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
+    expect(screen.queryByTestId('split-clear-draft-panel')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy();
+    });
+  });
+
+  it('clicking Dismiss hides the draft panel', async () => {
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
+    await waitFor(() => {
+      expect(screen.queryByTestId('split-clear-draft-panel')).toBeNull();
+    });
+  });
+
+  it('draft panel shows a Suggested badge per player', async () => {
+    const players = [
+      makePlayer({ id: 'p1', name: 'Knight One', job: 'WAR' }),
+      makePlayer({ id: 'p2', name: 'Knight Two', job: 'GNB', sortOrder: 1 }),
+    ];
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={players} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => {
+      const badges = screen.getAllByText('Suggested');
+      expect(badges).toHaveLength(2);
+    });
+  });
+
+  it('clicking Apply draft calls updateAssignment for each player', async () => {
+    const p = makePlayer({
+      id: 'p1',
+      lodestoneName: 'Kaito Nakamura',
+      lodestoneServer: 'Tonberry',
+    });
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /apply draft/i }));
+    await waitFor(() => {
+      expect(splitClearStoreState.updateAssignment).toHaveBeenCalledWith(
+        GROUP_ID,
+        'p1',
+        expect.objectContaining({ mainCharacterName: 'Kaito Nakamura' }),
+      );
+    });
+  });
+
+  it('Apply draft hides the draft panel after completing', async () => {
+    const p = makePlayer({ id: 'p1' });
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /apply draft/i }));
+    await waitFor(() => {
+      expect(screen.queryByTestId('split-clear-draft-panel')).toBeNull();
+    });
+  });
+
+  it('draft shows funnel_main for player whose weapon is not yet received', async () => {
+    const p = makePlayer({
+      id: 'p1',
+      job: 'DRG',
+      weaponPriorities: [{ job: 'DRG', received: false }],
+    });
+    splitClearStoreState.data = { enabled: true, assignments: [] };
+    render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
+    fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/funnel → main/i)).toBeTruthy();
+    });
+  });
+
   it('saves text fields as partial updates on blur', async () => {
     splitClearStoreState.data = { enabled: true, assignments: [makeAssignment()] };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);

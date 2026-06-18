@@ -1,10 +1,14 @@
 import { type FocusEvent, useState } from 'react';
-import { AlertTriangle, CheckCircle2, RotateCcw, Scissors } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, RotateCcw, Scissors, Wand2 } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 import type { SplitClearAssignment, SplitLootTarget, SplitRunSlot } from '../../types';
 import type { SplitClearAssignmentUpdate } from '../../stores/splitClearStore';
 import { useSplitClearStore } from '../../stores/splitClearStore';
 import { getSplitClearReadiness, getSplitClearWarnings } from '../../utils/splitClear';
+import {
+  buildSplitClearDraft,
+  type SplitClearDraft,
+} from '../../utils/splitClearSuggestionService';
 import { Button } from '../primitives';
 import { Checkbox, Input, Select } from '../ui';
 import { JobIcon } from '../ui/JobIcon';
@@ -20,6 +24,12 @@ const LOOT_TARGET_OPTIONS = [
   { value: 'funnel_job', label: 'Funnel → Job' },
   { value: 'normal', label: 'Normal' },
 ];
+
+const LOOT_TARGET_LABELS: Record<SplitLootTarget, string> = {
+  funnel_main: 'Funnel → Main',
+  funnel_job: 'Funnel → Job',
+  normal: 'Normal',
+};
 
 const RUN_SLOT_OPTIONS = [
   { value: '', label: '—' },
@@ -222,6 +232,26 @@ function PlayerRow({ player, assignment, warnings, canEdit, onSave }: PlayerRowP
 export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlannerProps) {
   const { data, isSaving, error, toggleMode, updateAssignment, resetWeek } = useSplitClearStore();
   const [resetConfirm, setResetConfirm] = useState(false);
+  const [draft, setDraft] = useState<SplitClearDraft | null>(null);
+
+  async function handleApplyDraft() {
+    if (!draft) return;
+    await Promise.all(
+      draft.assignments.map(a =>
+        updateAssignment(groupId, a.playerId, {
+          mainCharacterName: a.mainCharacterName,
+          mainCharacterWorld: a.mainCharacterWorld,
+          altCharacterName: a.altCharacterName,
+          altCharacterWorld: a.altCharacterWorld,
+          runACharacter: a.runACharacter,
+          runBCharacter: a.runBCharacter,
+          lootTarget: a.lootTarget,
+          lootTargetJob: a.lootTargetJob,
+        }),
+      ),
+    );
+    setDraft(null);
+  }
 
   if (!data) return null;
 
@@ -284,6 +314,16 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
               type="button"
               size="sm"
               variant="secondary"
+              leftIcon={<Wand2 className="h-3.5 w-3.5" />}
+              onClick={() => setDraft(buildSplitClearDraft(players, data.assignments))}
+              disabled={isSaving}
+            >
+              Generate draft
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
               leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
               onClick={handleReset}
               disabled={isSaving}
@@ -298,6 +338,90 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
         <div className="flex items-center gap-2 rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-xs text-status-error">
           <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
           {error}
+        </div>
+      )}
+
+      {draft && (
+        <div
+          className="rounded-xl border border-accent/30 bg-accent/5 p-4 space-y-3"
+          data-testid="split-clear-draft-panel"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Wand2 className="h-4 w-4 text-accent" />
+              <span className="text-sm font-semibold text-text-primary">Draft suggestions</span>
+              <span className="text-xs text-text-muted">
+                {draft.assignments.length} player{draft.assignments.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setDraft(null)}
+              >
+                Dismiss
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="accent"
+                onClick={() => void handleApplyDraft()}
+                disabled={isSaving}
+              >
+                Apply draft
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            {draft.assignments.map(suggestion => {
+              const p = players.find(pl => pl.id === suggestion.playerId);
+              return (
+                <div
+                  key={suggestion.playerId}
+                  className="flex items-start gap-3 rounded-lg border border-border-subtle bg-surface-base px-3 py-2"
+                >
+                  <div className="flex items-center gap-2 w-32 shrink-0">
+                    {p?.job && <JobIcon job={p.job} size="sm" />}
+                    <span className="text-xs font-medium text-text-primary truncate">
+                      {p?.name ?? '—'}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-text-secondary flex-1 min-w-0">
+                    {suggestion.mainCharacterName && (
+                      <span>
+                        Main: <span className="text-text-primary">{suggestion.mainCharacterName}</span>
+                        {suggestion.mainCharacterWorld && (
+                          <span className="text-text-muted"> @ {suggestion.mainCharacterWorld}</span>
+                        )}
+                      </span>
+                    )}
+                    {suggestion.runACharacter && (
+                      <span>Run A: <span className="text-text-primary">{suggestion.runACharacter}</span></span>
+                    )}
+                    {suggestion.runBCharacter && (
+                      <span>Run B: <span className="text-text-primary">{suggestion.runBCharacter}</span></span>
+                    )}
+                    <span>
+                      Loot: <span className="text-text-primary">{LOOT_TARGET_LABELS[suggestion.lootTarget]}</span>
+                    </span>
+                    <span className="w-full text-text-muted italic">
+                      {suggestion.reasons[suggestion.reasons.length - 1]}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-accent/15 text-accent shrink-0 self-start">
+                    Suggested
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-[11px] text-text-muted">
+            Review suggestions above, then click Apply draft to save. Existing manual edits will be overwritten.
+          </p>
         </div>
       )}
 
