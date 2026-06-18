@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
 import type {
+  LinkedCharacterSummary,
   StaticCharacterRegistration,
   StaticCharacterRegistrationCreate,
   StaticCharacterRegistrationUpdate,
@@ -10,6 +11,8 @@ import type {
 interface StaticCharacterState {
   /** Registrations keyed by snapshotPlayerId, per group. */
   registrationsByGroup: Record<string, Record<string, StaticCharacterRegistration[]>>;
+  /** Player Hub characters available to link (not yet registered) keyed by snapshotPlayerId, per group. */
+  availableForLinkingByGroup: Record<string, Record<string, LinkedCharacterSummary[]>>;
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
@@ -24,6 +27,7 @@ interface StaticCharacterState {
 
 export const useStaticCharacterStore = create<StaticCharacterState>((set, _get) => ({
   registrationsByGroup: {},
+  availableForLinkingByGroup: {},
   isLoading: false,
   isSaving: false,
   error: null,
@@ -38,6 +42,10 @@ export const useStaticCharacterStore = create<StaticCharacterState>((set, _get) 
         registrationsByGroup: {
           ...state.registrationsByGroup,
           [groupId]: resp.registrations,
+        },
+        availableForLinkingByGroup: {
+          ...state.availableForLinkingByGroup,
+          [groupId]: resp.availableForLinking ?? {},
         },
         isLoading: false,
       }));
@@ -57,13 +65,19 @@ export const useStaticCharacterStore = create<StaticCharacterState>((set, _get) 
       set(state => {
         const current = state.registrationsByGroup[groupId] ?? {};
         const existing = current[reg.snapshotPlayerId] ?? [];
+        // Remove newly-linked char from availableForLinking
+        const availCurrent = state.availableForLinkingByGroup[groupId] ?? {};
+        const availPlayer = (availCurrent[reg.snapshotPlayerId] ?? []).filter(
+          c => c.id !== reg.playerCharacterId,
+        );
         return {
           registrationsByGroup: {
             ...state.registrationsByGroup,
-            [groupId]: {
-              ...current,
-              [reg.snapshotPlayerId]: [...existing, reg],
-            },
+            [groupId]: { ...current, [reg.snapshotPlayerId]: [...existing, reg] },
+          },
+          availableForLinkingByGroup: {
+            ...state.availableForLinkingByGroup,
+            [groupId]: { ...availCurrent, [reg.snapshotPlayerId]: availPlayer },
           },
           isSaving: false,
         };
@@ -151,9 +165,11 @@ export const useStaticCharacterStore = create<StaticCharacterState>((set, _get) 
 
   clearGroup: (groupId) => {
     set(state => {
-      const next = { ...state.registrationsByGroup };
-      delete next[groupId];
-      return { registrationsByGroup: next };
+      const nextRegs = { ...state.registrationsByGroup };
+      const nextAvail = { ...state.availableForLinkingByGroup };
+      delete nextRegs[groupId];
+      delete nextAvail[groupId];
+      return { registrationsByGroup: nextRegs, availableForLinkingByGroup: nextAvail };
     });
   },
 }));

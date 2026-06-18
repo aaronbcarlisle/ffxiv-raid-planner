@@ -108,8 +108,9 @@ export function CharacterSelector({
           leftIcon={<UserPlus className="h-3 w-3" aria-hidden="true" />}
           className="text-[10px]"
           disabled
+          title="Register characters in Roster → Characters"
         >
-          No linked characters
+          No registered characters
         </Button>
       </div>
     );

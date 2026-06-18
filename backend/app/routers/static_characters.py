@@ -23,8 +23,10 @@ from ..dependencies import get_current_user
 from ..models import SnapshotPlayer, User
 from ..models.player_character import PlayerCharacter
 from ..models.player_profile import PlayerProfile
+from ..models.snapshot_player import SnapshotPlayer as _SnapshotPlayer
 from ..models.static_character_registration import StaticCharacterRegistration
 from ..models.static_group import StaticGroup
+from ..models.tier_snapshot import TierSnapshot as _TierSnapshot
 from ..permissions import (
     NotFound,
     check_view_permission,
@@ -114,11 +116,10 @@ async def _get_group_and_player(
     if not player:
         raise NotFound("Roster player not found")
     # Confirm player belongs to this static (via any tier snapshot)
-    from ..models.tier_snapshot import TierSnapshot
     snap_result = await session.execute(
-        select(TierSnapshot).where(
-            TierSnapshot.id == player.tier_snapshot_id,
-            TierSnapshot.static_group_id == group_id,
+        select(_TierSnapshot).where(
+            _TierSnapshot.id == player.tier_snapshot_id,
+            _TierSnapshot.static_group_id == group_id,
         )
     )
     if not snap_result.scalar_one_or_none():
@@ -197,7 +198,14 @@ async def list_character_registrations(
     for reg in regs:
         by_player[reg.snapshot_player_id].append(_reg_to_response(reg))
 
-    return StaticCharacterRegistrationsResponse(registrations=dict(by_player))
+    # Build available_for_linking: Player Hub characters that belong to each
+    # roster player's user but are NOT yet linked in any registration here.
+    available = await _load_available_for_linking(session, group_id, regs)
+
+    return StaticCharacterRegistrationsResponse(
+        registrations=dict(by_player),
+        available_for_linking=available,
+    )
 
 
 # ── POST create registration ───────────────────────────────────────────────────
@@ -429,6 +437,82 @@ async def _get_snapshot_player(session: AsyncSession, player_id: str) -> Snapsho
     if not player:
         raise NotFound("Roster player not found")
     return player
+
+
+async def _load_available_for_linking(
+    session: AsyncSession,
+    group_id: str,
+    existing_regs: list[StaticCharacterRegistration],
+) -> dict[str, list[LinkedCharacterSummary]]:
+    """Return Player Hub characters available to link per roster player.
+
+    A character is *available* when:
+    - it belongs to the roster player's linked user account
+    - it is NOT already registered for this static (by player_character_id)
+    """
+    # Load all players in the active tier for this static
+    players_result = await session.execute(
+        select(_SnapshotPlayer)
+        .join(_TierSnapshot, _SnapshotPlayer.tier_snapshot_id == _TierSnapshot.id)
+        .where(
+            _TierSnapshot.static_group_id == group_id,
+            _TierSnapshot.is_active.is_(True),
+        )
+    )
+    players = players_result.scalars().all()
+
+    user_ids = {p.user_id for p in players if p.user_id}
+    if not user_ids:
+        return {}
+
+    # Load Player Hub profiles with characters and their gear snapshots
+    profiles_result = await session.execute(
+        select(PlayerProfile)
+        .options(
+            selectinload(PlayerProfile.characters).selectinload(PlayerCharacter.gear_snapshots)
+        )
+        .where(PlayerProfile.user_id.in_(user_ids))
+    )
+    user_to_chars: dict[str, list[PlayerCharacter]] = {
+        p.user_id: list(p.characters) for p in profiles_result.scalars().all()
+    }
+
+    # Collect already-registered player_character_ids per snapshot_player
+    registered_by_player: dict[str, set[str]] = defaultdict(set)
+    for reg in existing_regs:
+        if reg.player_character_id:
+            registered_by_player[reg.snapshot_player_id].add(reg.player_character_id)
+
+    out: dict[str, list[LinkedCharacterSummary]] = {}
+    for player in players:
+        if not player.user_id:
+            continue
+        all_chars = user_to_chars.get(player.user_id, [])
+        already_linked = registered_by_player.get(player.id, set())
+        available = [c for c in all_chars if c.id not in already_linked]
+        if available:
+            out[player.id] = [_char_to_linked_summary(c) for c in available]
+
+    return out
+
+
+def _char_to_linked_summary(char: PlayerCharacter) -> LinkedCharacterSummary:
+    last_synced_at: str | None = None
+    if char.gear_snapshots:
+        def _key(gs):  # type: ignore[no-untyped-def]
+            return max(gs.last_plugin_seen_at or "", gs.synced_at or "")
+        most_recent = max(char.gear_snapshots, key=_key, default=None)
+        if most_recent:
+            last_synced_at = most_recent.last_plugin_seen_at or most_recent.synced_at
+    return LinkedCharacterSummary(
+        id=char.id,
+        name=char.name,
+        server=char.server,
+        data_center=char.data_center,
+        is_main=char.is_main,
+        avatar_url=char.avatar_url,
+        last_synced_at=last_synced_at,
+    )
 
 
 async def _demote_existing_primary(

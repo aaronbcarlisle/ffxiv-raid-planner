@@ -60,13 +60,20 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '1.29.0',
-    date: '2026-06-18T22:00:00Z',
-    title: 'Static Character Registrations',
+    date: '2026-06-19T01:00:00Z',
+    title: 'Roster Characters Tab',
     highlights: [
-      'Players can now register their Player Hub characters for a specific static, forming a curated character roster',
+      'New "Characters" sub-tab in Roster: link Player Hub characters or add manual entries with main/alt/substitute roles',
       'Split Planner automatically prefers the curated character list when generating drafts',
     ],
     items: [
+      {
+        category: 'feature',
+        title: 'Roster → Characters sub-tab',
+        description: 'A new "Characters" sub-tab appears alongside Members and Split Planner in the Roster segmented control. Leads can link any Player Hub character from each member\'s profile directly into the static\'s character roster, or add a manual entry as a fallback. Each registration carries a role (main, alt, substitute), an optional job tag, and a primary flag. Players without Player Hub characters always have the manual path available.',
+        pr: 142,
+        prTitle: 'feat: static character registrations as shared identity layer',
+      },
       {
         category: 'feature',
         title: 'Per-static character registrations',

@@ -207,6 +207,8 @@ export interface StaticCharacterRegistrationUpdate {
 /** API response: registrations keyed by snapshotPlayerId. */
 export interface StaticCharacterRegistrationsResponse {
   registrations: Record<string, StaticCharacterRegistration[]>;
+  /** Player Hub characters available to link (not yet registered) keyed by snapshotPlayerId. */
+  availableForLinking: Record<string, LinkedCharacterSummary[]>;
 }
 
 // View mode for player cards

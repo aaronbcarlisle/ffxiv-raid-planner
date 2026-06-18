@@ -78,3 +78,5 @@ class CharacterRegistrationResponse(CamelModel):
 class StaticCharacterRegistrationsResponse(CamelModel):
     """All registrations for a static, keyed by snapshot_player_id."""
     registrations: dict[str, list[CharacterRegistrationResponse]]
+    # Player Hub characters available to link but not yet registered, keyed by snapshot_player_id.
+    available_for_linking: dict[str, list[LinkedCharacterSummary]] = {}

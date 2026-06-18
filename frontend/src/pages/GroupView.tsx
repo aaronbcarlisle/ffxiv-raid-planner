@@ -27,6 +27,7 @@ import { HistoryView } from '../components/history/HistoryView';
 import { ScheduleTab } from '../components/schedule';
 import { MountFarmTab } from '../components/mount-farms';
 import { SplitClearPlanner } from '../components/split-clear/SplitClearPlanner';
+import { RosterCharacterPanel } from '../components/roster/RosterCharacterPanel';
 import { useMountFarmStore } from '../stores/mountFarmStore';
 import { useSplitClearStore } from '../stores/splitClearStore';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
@@ -370,9 +371,8 @@ export function GroupView() {
   }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog, fetchMaterialLog]);
 
   // Split clear store
-  const { fetchData: fetchSplitClear, clearData: clearSplitClear, data: splitData } = useSplitClearStore();
-  const splitEnabled = splitData?.enabled ?? false;
-  const [rosterSubView, setRosterSubView] = useState<'members' | 'split-planner'>('members');
+  const { fetchData: fetchSplitClear, clearData: clearSplitClear } = useSplitClearStore();
+  const [rosterSubView, setRosterSubView] = useState<'members' | 'characters' | 'split-planner'>('members');
   useEffect(() => {
     if (pageMode === 'players' && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
@@ -995,50 +995,49 @@ export function GroupView() {
           {/* Players Tab */}
           {pageMode === 'players' && currentTier.players && (
             <>
-              {/* When mode is OFF: enable CTA renders inline above roster (SplitClearPlanner handles this) */}
-              {!splitEnabled && currentGroup && (
-                <SplitClearPlanner
-                  groupId={currentGroup.id}
-                  players={mainRosterPlayers}
-                  canEdit={canEdit}
-                />
-              )}
-
-              {/* When mode is ON: segmented control — Members | Split Planner */}
-              {splitEnabled && (
+              {/* Roster segmented control — Members | Characters | Split Planner */}
+              {currentGroup && (
                 <div className="flex gap-1 mb-3 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit" role="tablist" aria-label="Roster view">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={rosterSubView === 'members'}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      rosterSubView === 'members'
-                        ? 'bg-surface-base text-text-primary shadow-sm'
-                        : 'text-text-muted hover:text-text-primary'
-                    }`}
-                    onClick={() => setRosterSubView('members')}
-                  >
-                    Members
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={rosterSubView === 'split-planner'}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                      rosterSubView === 'split-planner'
-                        ? 'bg-surface-base text-text-primary shadow-sm'
-                        : 'text-text-muted hover:text-text-primary'
-                    }`}
-                    onClick={() => setRosterSubView('split-planner')}
-                  >
-                    Split Planner
-                  </button>
+                  {(['members', 'characters', 'split-planner'] as const).map(view => {
+                    const labels: Record<typeof view, string> = {
+                      members: 'Members',
+                      characters: 'Characters',
+                      'split-planner': 'Split Planner',
+                    };
+                    return (
+                      <button
+                        key={view}
+                        type="button"
+                        role="tab"
+                        aria-selected={rosterSubView === view}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                          rosterSubView === view
+                            ? 'bg-surface-base text-text-primary shadow-sm'
+                            : 'text-text-muted hover:text-text-primary'
+                        }`}
+                        onClick={() => setRosterSubView(view)}
+                      >
+                        {labels[view]}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
-              {/* Split Clear Composer — kept mounted to preserve draft state, hidden on Members tab */}
-              {splitEnabled && currentGroup && (
-                <div className={rosterSubView === 'members' ? 'hidden' : ''}>
+              {/* Characters tab */}
+              {currentGroup && (
+                <div className={rosterSubView !== 'characters' ? 'hidden' : ''}>
+                  <RosterCharacterPanel
+                    groupId={currentGroup.id}
+                    players={mainRosterPlayers}
+                    canEdit={canEdit}
+                  />
+                </div>
+              )}
+
+              {/* Split Clear Composer — kept mounted to preserve draft state */}
+              {currentGroup && (
+                <div className={rosterSubView !== 'split-planner' ? 'hidden' : ''}>
                   <SplitClearPlanner
                     groupId={currentGroup.id}
                     players={mainRosterPlayers}
@@ -1047,8 +1046,8 @@ export function GroupView() {
                 </div>
               )}
 
-              {/* Normal roster — hidden when Split Planner tab is active */}
-              <div className={splitEnabled && rosterSubView === 'split-planner' ? 'hidden' : ''}>
+              {/* Normal roster — hidden when Characters or Split Planner tab is active */}
+              <div className={rosterSubView !== 'members' ? 'hidden' : ''}>
               <DndContext
                 sensors={dnd.sensors}
                 collisionDetection={pointerWithin}
