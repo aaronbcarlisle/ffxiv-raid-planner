@@ -101,6 +101,32 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
 // Page navigation modes
 export type PageMode = 'home' | 'players' | 'loot' | 'stats' | 'history' | 'priority' | 'schedule' | 'mount-farms';
 
+// Split Clear Planner
+export type SplitRunSlot = 'main' | 'alt' | null;
+export type SplitLootTarget = 'funnel_main' | 'funnel_job' | 'normal';
+
+export interface SplitClearAssignment {
+  id: string;
+  snapshotPlayerId: string;
+  mainCharacterName: string | null;
+  mainCharacterWorld: string | null;
+  altCharacterName: string | null;
+  altCharacterWorld: string | null;
+  runACharacter: SplitRunSlot;
+  runBCharacter: SplitRunSlot;
+  lootTarget: SplitLootTarget;
+  lootTargetJob: string | null;
+  runACleared: boolean;
+  runBCleared: boolean;
+  notes: string | null;
+  updatedAt: string;
+}
+
+export interface SplitClearData {
+  enabled: boolean;
+  assignments: SplitClearAssignment[];
+}
+
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
 
@@ -587,6 +613,7 @@ export interface StaticGroupSettings {
   jobPriorityModifiers?: Record<string, number>;
   showPriorityScores?: boolean;
   enableEnhancedScoring?: boolean;
+  splitClearMode?: boolean;
   // New priority system (overrides legacy fields when set)
   prioritySettings?: StaticPrioritySettings;
   discovery?: DiscoverySettings;

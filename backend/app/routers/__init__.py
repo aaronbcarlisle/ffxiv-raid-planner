@@ -20,6 +20,7 @@ from .player_bis_targets import router as player_bis_targets_router
 from .player import plugin_router as plugin_player_router
 from .player import router as player_router
 from .schedule import router as schedule_router
+from .split_clear import router as split_clear_router
 from .static_groups import router as static_groups_router
 from .tiers import router as tiers_router
 
@@ -44,6 +45,7 @@ __all__ = [
     "player_router",
     "plugin_player_router",
     "schedule_router",
+    "split_clear_router",
     "static_groups_router",
     "tiers_router",
 ]

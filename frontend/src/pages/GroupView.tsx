@@ -26,7 +26,9 @@ import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { ScheduleTab } from '../components/schedule';
 import { MountFarmTab } from '../components/mount-farms';
+import { SplitClearPlanner } from '../components/split-clear/SplitClearPlanner';
 import { useMountFarmStore } from '../stores/mountFarmStore';
+import { useSplitClearStore } from '../stores/splitClearStore';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
@@ -366,6 +368,15 @@ export function GroupView() {
       fetchMaterialLog(currentGroup.id, currentTier.tierId);
     }
   }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog, fetchMaterialLog]);
+
+  // Split clear store
+  const { fetchData: fetchSplitClear, clearData: clearSplitClear } = useSplitClearStore();
+  useEffect(() => {
+    if (pageMode === 'players' && currentGroup?.id) {
+      void fetchSplitClear(currentGroup.id);
+    }
+  }, [pageMode, currentGroup?.id, fetchSplitClear]);
+  useEffect(() => { return () => clearSplitClear(); }, [clearSplitClear]);
 
   const handleTierChange = useCallback((tierId: string) => {
     if (currentGroup?.id) {
@@ -982,6 +993,13 @@ export function GroupView() {
           {/* Players Tab */}
           {pageMode === 'players' && currentTier.players && (
             <>
+              {currentGroup && (
+                <SplitClearPlanner
+                  groupId={currentGroup.id}
+                  players={mainRosterPlayers}
+                  canEdit={canEdit}
+                />
+              )}
               <DndContext
                 sensors={dnd.sensors}
                 collisionDetection={pointerWithin}

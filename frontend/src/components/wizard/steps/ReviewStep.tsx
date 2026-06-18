@@ -15,6 +15,7 @@ interface ReviewStepProps {
   staticName: string;
   tierId: string;
   isPublic: boolean;
+  splitClearEnabled: boolean;
   players: WizardPlayer[];
   isSubmitting: boolean;
   error: string | null;
@@ -34,6 +35,7 @@ export function ReviewStep({
   staticName,
   tierId,
   isPublic,
+  splitClearEnabled,
   players,
   isSubmitting,
   error,
@@ -87,6 +89,12 @@ export function ReviewStep({
             <span className="text-sm text-text-muted">Visibility</span>
             <span className="text-sm font-medium text-text-primary">
               {isPublic ? 'Public' : 'Private'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-sm text-text-muted">Split-clear planning</span>
+            <span className="text-sm font-medium text-text-primary">
+              {splitClearEnabled ? 'Enabled' : 'Off'}
             </span>
           </div>
         </div>

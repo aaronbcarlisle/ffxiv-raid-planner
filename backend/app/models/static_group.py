@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .join_request import JoinRequest
     from .membership import Membership
     from .schedule import ScheduleSession
+    from .split_clear import SplitClearAssignment
     from .static_content_suggestion import StaticContentSuggestion
     from .tier_snapshot import TierSnapshot
     from .user import User
@@ -91,6 +92,11 @@ class StaticGroup(Base):
     content_suggestions: Mapped[list["StaticContentSuggestion"]] = relationship(
         "StaticContentSuggestion",
         foreign_keys="[StaticContentSuggestion.static_group_id]",
+        cascade="all, delete-orphan",
+    )
+    split_clear_assignments: Mapped[list["SplitClearAssignment"]] = relationship(
+        "SplitClearAssignment",
+        back_populates="static_group",
         cascade="all, delete-orphan",
     )
 

@@ -23,6 +23,7 @@ import type { JoinRequest, StaticGroup } from '../../types';
 import type { MountFarmData, FarmScore } from '../../stores/mountFarmStore';
 import type { CollectionGoal } from '../../stores/collectionGoalStore';
 import type { StaticObjectiveGoal } from '../../stores/objectiveGoalStore';
+import type { SplitClearData } from '../../types';
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
@@ -147,6 +148,11 @@ const objectiveGoalStoreState = {
   fetchObjectives: vi.fn().mockResolvedValue(undefined),
 };
 
+const splitClearStoreState = {
+  data: null as SplitClearData | null,
+  fetchData: vi.fn().mockResolvedValue(undefined),
+};
+
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 vi.mock('../../stores/mountFarmStore', () => ({
@@ -159,6 +165,10 @@ vi.mock('../../stores/collectionGoalStore', () => ({
 
 vi.mock('../../stores/objectiveGoalStore', () => ({
   useObjectiveGoalStore: () => objectiveGoalStoreState,
+}));
+
+vi.mock('../../stores/splitClearStore', () => ({
+  useSplitClearStore: () => splitClearStoreState,
 }));
 
 vi.mock('../../stores/joinRequestStore', () => ({
@@ -327,6 +337,16 @@ function setObjectiveGoalStore(overrides: Partial<typeof objectiveGoalStoreState
   });
 }
 
+function setSplitClearStore(overrides: Partial<typeof splitClearStoreState> = {}) {
+  Object.assign(splitClearStoreState, {
+    data: null,
+    fetchData: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  });
+}
+
+beforeEach(() => setSplitClearStore());
+
 const onNavigate = vi.fn();
 const onOpenRequests = vi.fn();
 
@@ -470,6 +490,42 @@ describe('StaticHomeTab — Raid Prep section', () => {
     const raidPrepBtn = screen.getByRole('button', { name: /view warrior of light on roster/i });
     expect(raidPrepBtn).toBeInTheDocument();
     fireEvent.click(raidPrepBtn);
+    expect(onNavigate).toHaveBeenCalledWith('players');
+  });
+
+  it('hides split readiness when split mode is disabled', () => {
+    setSplitClearStore({ data: { enabled: false, assignments: [] } });
+    render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
+    expect(screen.queryByText('Split Clears')).not.toBeInTheDocument();
+  });
+
+  it('shows split readiness and opens the planner in Roster when enabled', () => {
+    setSplitClearStore({
+      data: {
+        enabled: true,
+        assignments: [{
+          id: 'split-1',
+          snapshotPlayerId: 'p1',
+          mainCharacterName: 'Main Character',
+          mainCharacterWorld: 'Tonberry',
+          altCharacterName: 'Alt Character',
+          altCharacterWorld: 'Kujata',
+          runACharacter: 'main',
+          runBCharacter: 'alt',
+          lootTarget: 'funnel_main',
+          lootTargetJob: null,
+          runACleared: false,
+          runBCleared: false,
+          notes: null,
+          updatedAt: '2026-06-18T00:00:00Z',
+        }],
+      },
+    });
+    render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
+
+    expect(screen.getByText('Split Clears')).toBeInTheDocument();
+    expect(screen.getByText('1/1')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /open split planner/i }));
     expect(onNavigate).toHaveBeenCalledWith('players');
   });
 });
