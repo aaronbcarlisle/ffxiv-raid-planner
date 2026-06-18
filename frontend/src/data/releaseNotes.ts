@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.27.0';
+export const CURRENT_VERSION = '1.28.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,38 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.28.0',
+    date: '2026-06-18T20:00:00Z',
+    title: 'Character-Linked Split Planner',
+    highlights: [
+      'Split Clear Planner now uses linked Player Hub characters and supports multiple alts per member',
+      'Smarter draft scoring weighs main/alt pairing, weapon priority, and sync freshness',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Character-linked split assignment composer',
+        description: 'Split Clear Planner now reads linked Player Hub characters instead of requiring manual text entry. Each roster member\'s available characters (one main, multiple alts) appear as selector chips; leads pick which character goes into Run A and which into Run B. Players without linked characters fall back to manual text fields.',
+        pr: 141,
+        prTitle: 'feat: character-linked split assignment composer',
+      },
+      {
+        category: 'improvement',
+        title: 'Weighted draft scoring with per-player reasons',
+        description: 'Draft generation now uses a weighted scoring system (different characters +40, main+alt pairing +30, weapon priority +20, sync freshness +10, same-character penalty −50) and surfaces per-player reasons in a collapsible "Why these assignments?" panel in the draft review.',
+        pr: 141,
+        prTitle: 'feat: character-linked split assignment composer',
+      },
+      {
+        category: 'improvement',
+        title: 'Run balancing and multiple-alt support',
+        description: 'The draft generator alternates which players put their main in Run A vs Run B to balance the group proportionally. Multiple alt characters per player are all available for selection; the scorer picks the best pair based on job, priority, and sync data.',
+        pr: 141,
+        prTitle: 'feat: character-linked split assignment composer',
+      },
+    ],
+  },
+  {
     version: '1.27.0',
     date: '2026-06-18T17:00:00Z',
     title: 'Split Clear Composer',
@@ -71,11 +103,15 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Split Clear Composer — redesigned planning flow',
         description: 'The split-clear board is now a three-state composer: an empty state with source previews, a draft-review panel with Run A / Run B side-by-side panels, and a manage board. Draft and manual board never appear simultaneously. The "Members | Split Planner" segmented control under the Roster tab keeps the two surfaces cleanly separated.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Composer polish pass',
       },
       {
         category: 'improvement',
         title: 'Compact warning chips and amber confidence badge',
         description: 'Per-row warnings in the assignment board are now compact chips ("No alt", "Duplicate", "No loot job") with accessible full-text aria-labels, reducing visual clutter. Low-confidence drafts show an amber "Needs review" badge rather than a red error state, reflecting that missing data is normal early in a tier.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Composer polish pass',
       },
     ],
   },

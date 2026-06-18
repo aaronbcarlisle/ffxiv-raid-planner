@@ -3,6 +3,10 @@ import { ApiError, api } from '../services/api';
 import type { SplitClearAssignment, SplitClearData, SplitLootTarget, SplitRunSlot } from '../types';
 
 export interface SplitClearAssignmentUpdate {
+  /** Player Hub character link IDs (preferred over text fields when available). */
+  runACharacterLinkId?: string | null;
+  runBCharacterLinkId?: string | null;
+  /** Legacy manual text fields — used as fallback for unlinked players. */
   mainCharacterName?: string | null;
   mainCharacterWorld?: string | null;
   altCharacterName?: string | null;
@@ -49,7 +53,9 @@ export const useSplitClearStore = create<SplitClearState>((set, get) => ({
   fetchData: async (groupId) => {
     set({ data: null, isLoading: true, error: null });
     try {
-      const data = await api.get<SplitClearData>(`/api/static-groups/${groupId}/split-clear`);
+      const raw = await api.get<SplitClearData>(`/api/static-groups/${groupId}/split-clear`);
+      // Ensure playerCharacters is always a defined object even on older API responses
+      const data: SplitClearData = { playerCharacters: {}, ...raw };
       set({ data, isLoading: false });
     } catch (err) {
       set({ error: loadError(err), isLoading: false });
@@ -59,10 +65,11 @@ export const useSplitClearStore = create<SplitClearState>((set, get) => ({
   toggleMode: async (groupId, enabled) => {
     set({ isSaving: true, error: null });
     try {
-      const data = await api.put<SplitClearData>(
+      const raw = await api.put<SplitClearData>(
         `/api/static-groups/${groupId}/split-clear/settings`,
         { enabled },
       );
+      const data: SplitClearData = { playerCharacters: {}, ...raw };
       set({ data, isSaving: false });
     } catch (err) {
       set({ error: saveError(err), isSaving: false });

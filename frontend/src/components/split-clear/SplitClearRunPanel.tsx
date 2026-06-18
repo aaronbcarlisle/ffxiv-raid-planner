@@ -1,6 +1,7 @@
 import type { SnapshotPlayer } from '../../types';
 import type { DraftPlayerAssignment } from '../../utils/splitClearSuggestionService';
 import { TONE_CHIP_CLASS, formatLootTarget } from '../../utils/splitClearHelpers';
+import { formatSyncLabel, isSyncStale } from '../../utils/splitClearScoringService';
 import { JobIcon } from '../ui/JobIcon';
 
 // ── Per-player row inside a run panel ──────────────────────────────────────────
@@ -13,27 +14,31 @@ interface RunPanelRowProps {
 }
 
 function RunPanelRow({ player, assignment, run, showLoot = false }: RunPanelRowProps) {
-  const slot = run === 'A' ? assignment.runACharacter : assignment.runBCharacter;
-  const charName = slot === 'main'
-    ? assignment.mainCharacterName
-    : slot === 'alt'
-      ? assignment.altCharacterName
-      : null;
-  const world = slot === 'main'
-    ? assignment.mainCharacterWorld
-    : slot === 'alt'
-      ? assignment.altCharacterWorld
-      : null;
+  const isRunA = run === 'A';
+
+  const charName   = isRunA ? assignment.runACharacterName   : assignment.runBCharacterName;
+  const charWorld  = isRunA ? assignment.runACharacterWorld  : assignment.runBCharacterWorld;
+  const isMain     = isRunA ? assignment.runAIsMain          : assignment.runBIsMain;
+  const lastSynced = isRunA ? assignment.runALastSyncedAt    : assignment.runBLastSyncedAt;
+  const hasLink    = isRunA ? !!assignment.runACharacterLinkId : !!assignment.runBCharacterLinkId;
+  const slotLabel  = isRunA ? assignment.runACharacter       : assignment.runBCharacter;
+
+  const isUnset = !charName;
 
   const chipClass =
-    slot === 'main' ? TONE_CHIP_CLASS.info :
-    slot === 'alt'  ? TONE_CHIP_CLASS.suggested :
-    TONE_CHIP_CLASS.warning;
+    isUnset ? TONE_CHIP_CLASS.warning :
+    isMain  ? TONE_CHIP_CLASS.info :
+              TONE_CHIP_CLASS.suggested;
 
   const chipLabel =
-    slot === 'main' ? 'Main' :
-    slot === 'alt'  ? 'Alt'  :
-    'Needs alt';
+    isUnset             ? 'Needs alt' :
+    hasLink && isMain   ? 'Main' :
+    hasLink && !isMain  ? 'Alt' :
+    slotLabel === 'main' ? 'Main' :
+    slotLabel === 'alt'  ? 'Alt' :
+    'Manual';
+
+  const syncStale = hasLink && !!lastSynced && isSyncStale(lastSynced);
 
   return (
     <div className="flex items-center gap-2 py-1.5 border-b border-border-subtle/40 last:border-0">
@@ -45,7 +50,7 @@ function RunPanelRow({ player, assignment, run, showLoot = false }: RunPanelRowP
         </span>
       </div>
 
-      {/* Slot chip + character name + optional loot */}
+      {/* Character info */}
       <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
         <span
           className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${chipClass}`}
@@ -53,11 +58,23 @@ function RunPanelRow({ player, assignment, run, showLoot = false }: RunPanelRowP
         >
           {chipLabel}
         </span>
+
         {charName && (
-          <span className="text-[10px] text-text-muted truncate max-w-[80px]" title={world ? `${charName} @ ${world}` : charName}>
+          <span
+            className="text-[10px] text-text-muted truncate max-w-[90px]"
+            title={charWorld ? `${charName} @ ${charWorld}` : charName}
+          >
             {charName}
+            {charWorld && <span className="opacity-60"> @ {charWorld}</span>}
           </span>
         )}
+
+        {syncStale && (
+          <span className="text-[9px] text-status-warning font-medium" title="Stale sync">
+            {formatSyncLabel(lastSynced, null)}
+          </span>
+        )}
+
         {showLoot && assignment.lootTarget !== 'normal' && (
           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${TONE_CHIP_CLASS.info}`}>
             {formatLootTarget(assignment.lootTarget)}
@@ -78,13 +95,14 @@ interface SplitClearRunPanelProps {
 
 export function SplitClearRunPanel({ run, assignments, players }: SplitClearRunPanelProps) {
   const playerMap = new Map(players.map(p => [p.id, p]));
+  const isRunA = run === 'A';
 
-  const mainCount = assignments.filter(a =>
-    (run === 'A' ? a.runACharacter : a.runBCharacter) === 'main'
-  ).length;
-  const altCount = assignments.filter(a =>
-    (run === 'A' ? a.runACharacter : a.runBCharacter) === 'alt'
-  ).length;
+  const mainCount = assignments.filter(a => (isRunA ? a.runAIsMain : a.runBIsMain)).length;
+  const altCount  = assignments.filter(a => {
+    const name = isRunA ? a.runACharacterName : a.runBCharacterName;
+    const isMn = isRunA ? a.runAIsMain        : a.runBIsMain;
+    return name && !isMn;
+  }).length;
 
   return (
     <div

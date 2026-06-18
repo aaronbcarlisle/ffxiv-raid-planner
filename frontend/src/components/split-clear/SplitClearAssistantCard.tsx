@@ -13,7 +13,6 @@ import {
   formatConfidenceLabel,
   formatLootTarget,
   formatRelativeTime,
-  getConfidenceTone,
   getRunSlotTone,
   formatRunSlot,
 } from '../../utils/splitClearHelpers';

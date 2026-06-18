@@ -9,6 +9,8 @@ from app.auth_utils import create_access_token
 from app.models import MemberRole, User
 from tests.factories import (
     create_membership,
+    create_player_character,
+    create_player_profile,
     create_snapshot_player,
     create_static_group,
     create_tier_snapshot,
@@ -329,3 +331,202 @@ async def test_reset_week_clears_all_flags(
     for a in r2.json()["assignments"]:
         assert a["runACleared"] is False
         assert a["runBCleared"] is False
+
+
+# ── Character link tests ──────────────────────────────────────────────────────
+
+@pytest_asyncio.fixture
+async def linked_player(session: AsyncSession, tier, owner: User):
+    """Roster player with user_id set so we can link characters."""
+    sp = await create_snapshot_player(session, tier, name="Linked Player", job="DRG")
+    sp.user_id = owner.id
+    await session.flush()
+    return sp
+
+
+@pytest_asyncio.fixture
+async def owner_profile(session: AsyncSession, owner: User):
+    return await create_player_profile(session, owner)
+
+
+@pytest_asyncio.fixture
+async def main_char(session: AsyncSession, owner_profile):
+    return await create_player_character(session, owner_profile, name="Rin Ivalice", server="Balmung", is_main=True)
+
+
+@pytest_asyncio.fixture
+async def alt_char(session: AsyncSession, owner_profile):
+    return await create_player_character(session, owner_profile, name="Rin Altone", server="Balmung", is_main=False)
+
+
+@pytest_asyncio.fixture
+async def alt_char2(session: AsyncSession, owner_profile):
+    return await create_player_character(session, owner_profile, name="Rin Healcat", server="Balmung", is_main=False)
+
+
+async def test_character_link_assigned_to_run_a(
+    client: AsyncClient, session: AsyncSession, group_with_lead,
+    linked_player, main_char, alt_char, owner_headers: dict,
+):
+    """A Player Hub character link can be set for Run A."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    r = await client.patch(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/{linked_player.id}",
+        json={"runACharacterLinkId": main_char.id, "runACharacter": "main"},
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["runACharacterLinkId"] == main_char.id
+    assert body["runACharacter"] == "main"
+
+
+async def test_second_alt_can_be_assigned_to_run_b(
+    client: AsyncClient, session: AsyncSession, group_with_lead,
+    linked_player, main_char, alt_char, alt_char2, owner_headers: dict,
+):
+    """The second alt character (not just the first) can be selected for Run B."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    r = await client.patch(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/{linked_player.id}",
+        json={
+            "runACharacterLinkId": main_char.id,
+            "runBCharacterLinkId": alt_char2.id,
+            "runACharacter": "main",
+            "runBCharacter": "alt",
+        },
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["runACharacterLinkId"] == main_char.id
+    assert body["runBCharacterLinkId"] == alt_char2.id
+
+
+async def test_same_character_in_both_runs_allowed(
+    client: AsyncClient, session: AsyncSession, group_with_lead,
+    linked_player, main_char, owner_headers: dict,
+):
+    """Same character in both runs is allowed at API level (UI warns, not server)."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    r = await client.patch(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/{linked_player.id}",
+        json={
+            "runACharacterLinkId": main_char.id,
+            "runBCharacterLinkId": main_char.id,
+        },
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["runACharacterLinkId"] == main_char.id
+    assert body["runBCharacterLinkId"] == main_char.id
+
+
+async def test_character_from_another_player_rejected(
+    client: AsyncClient, session: AsyncSession, group_with_lead,
+    player, main_char, owner_headers: dict,
+):
+    """A character that belongs to a different user cannot be linked."""
+    # `player` has no user_id set — so any character link attempt fails
+    await _enable(client, group_with_lead.id, owner_headers)
+    r = await client.patch(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/{player.id}",
+        json={"runACharacterLinkId": main_char.id},
+        headers=owner_headers,
+    )
+    assert r.status_code == 422
+
+
+async def test_character_from_another_user_rejected(
+    client: AsyncClient, session: AsyncSession, group_with_lead,
+    owner: User, owner_headers: dict, tier,
+):
+    """A character owned by a different user is rejected even with a valid user_id on the player."""
+    other_user = await create_user(session, discord_id="other_user_sc")
+    other_profile = await create_player_profile(session, other_user)
+    other_char = await create_player_character(session, other_profile, name="Intruder", is_main=True)
+
+    # Roster player is linked to owner, but character belongs to other_user
+    sp = await create_snapshot_player(session, tier, name="Owner Player", job="WAR", sort_order=5)
+    sp.user_id = owner.id
+    await session.flush()
+
+    await _enable(client, group_with_lead.id, owner_headers)
+    r = await client.patch(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/{sp.id}",
+        json={"runACharacterLinkId": other_char.id},
+        headers=owner_headers,
+    )
+    assert r.status_code == 422
+
+
+async def test_legacy_text_assignment_still_works(
+    client: AsyncClient, group_with_lead, player, owner_headers: dict
+):
+    """Manual text-only assignment (no character link) is still accepted."""
+    await _enable(client, group_with_lead.id, owner_headers)
+    r = await client.patch(
+        f"/api/static-groups/{group_with_lead.id}/split-clear/{player.id}",
+        json={
+            "mainCharacterName": "ManualMain",
+            "mainCharacterWorld": "Tonberry",
+            "altCharacterName": "ManualAlt",
+            "altCharacterWorld": "Tonberry",
+            "runACharacter": "main",
+            "runBCharacter": "alt",
+        },
+        headers=owner_headers,
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["mainCharacterName"] == "ManualMain"
+    assert body["runACharacterLinkId"] is None
+    assert body["runBCharacterLinkId"] is None
+
+
+async def test_get_returns_player_characters_dict(
+    client: AsyncClient, session: AsyncSession, group_with_lead,
+    linked_player, main_char, alt_char, owner_headers: dict,
+):
+    """GET returns playerCharacters dict with linked chars keyed by snapshot player id."""
+    r = await client.get(
+        f"/api/static-groups/{group_with_lead.id}/split-clear", headers=owner_headers
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "playerCharacters" in body
+    chars = body["playerCharacters"].get(linked_player.id, [])
+    # main first (is_main=True), then alts
+    names = [c["name"] for c in chars]
+    assert "Rin Ivalice" in names
+    assert "Rin Altone" in names
+    assert chars[0]["isMain"] is True
+
+
+async def test_multiple_alts_returned_for_roster_player(
+    client: AsyncClient, session: AsyncSession, group_with_lead,
+    linked_player, main_char, alt_char, alt_char2, owner_headers: dict,
+):
+    """All alt characters (including a second alt) appear in playerCharacters."""
+    r = await client.get(
+        f"/api/static-groups/{group_with_lead.id}/split-clear", headers=owner_headers
+    )
+    body = r.json()
+    chars = body["playerCharacters"].get(linked_player.id, [])
+    assert len(chars) == 3
+    alt_names = {c["name"] for c in chars if not c["isMain"]}
+    assert "Rin Altone" in alt_names
+    assert "Rin Healcat" in alt_names
+
+
+async def test_player_without_linked_user_has_no_characters(
+    client: AsyncClient, group_with_lead, player, owner_headers: dict
+):
+    """Players without user_id get an empty list in playerCharacters."""
+    r = await client.get(
+        f"/api/static-groups/{group_with_lead.id}/split-clear", headers=owner_headers
+    )
+    body = r.json()
+    # player has no user_id, so should not appear in playerCharacters at all
+    assert player.id not in body["playerCharacters"]

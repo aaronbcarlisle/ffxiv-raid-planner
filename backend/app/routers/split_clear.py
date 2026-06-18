@@ -6,10 +6,13 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..models import SnapshotPlayer, TierSnapshot, User
+from ..models.player_character import PlayerCharacter
+from ..models.player_profile import PlayerProfile
 from ..models.split_clear import SplitClearAssignment
 from ..models.static_group import StaticGroup
 from ..permissions import (
@@ -19,6 +22,7 @@ from ..permissions import (
     require_can_edit_roster,
 )
 from ..schemas.split_clear import (
+    SplitCharacterResponse,
     SplitClearAssignmentResponse,
     SplitClearAssignmentUpdate,
     SplitClearResponse,
@@ -27,14 +31,50 @@ from ..schemas.split_clear import (
 
 router = APIRouter(prefix="/api", tags=["split-clear"])
 
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _char_to_split_response(char: PlayerCharacter) -> SplitCharacterResponse:
+    """Convert a PlayerCharacter to the split-clear character response shape."""
+    last_synced_at: str | None = None
+    sync_source: str | None = None
+
+    if char.gear_snapshots:
+        # Pick the most recently active snapshot (prefer plugin seen time)
+        def _key(gs):  # type: ignore[no-untyped-def]
+            return max(gs.last_plugin_seen_at or "", gs.synced_at or "")
+
+        most_recent = max(char.gear_snapshots, key=_key, default=None)
+        if most_recent:
+            if most_recent.last_plugin_seen_at and (
+                not most_recent.synced_at
+                or most_recent.last_plugin_seen_at > most_recent.synced_at
+            ):
+                last_synced_at = most_recent.last_plugin_seen_at
+                sync_source = "plugin"
+            elif most_recent.synced_at:
+                last_synced_at = most_recent.synced_at
+                sync_source = most_recent.source
+
+    return SplitCharacterResponse(
+        id=char.id,
+        name=char.name,
+        server=char.server,
+        data_center=char.data_center,
+        is_main=char.is_main,
+        last_synced_at=last_synced_at,
+        sync_source=sync_source,
+    )
 
 
 def _assignment_to_response(a: SplitClearAssignment) -> SplitClearAssignmentResponse:
     return SplitClearAssignmentResponse(
         id=a.id,
         snapshot_player_id=a.snapshot_player_id,
+        run_a_character_link_id=a.run_a_character_link_id,
+        run_b_character_link_id=a.run_b_character_link_id,
         main_character_name=a.main_character_name,
         main_character_world=a.main_character_world,
         alt_character_name=a.alt_character_name,
@@ -55,6 +95,71 @@ def _split_clear_enabled(group: StaticGroup) -> bool:
     return bool(settings.get("splitClearMode", False))
 
 
+async def _load_player_characters(
+    session: AsyncSession, group_id: str
+) -> dict[str, list[SplitCharacterResponse]]:
+    """Return linked characters for every player in the group's active tier."""
+    players_result = await session.execute(
+        select(SnapshotPlayer)
+        .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
+        .where(
+            TierSnapshot.static_group_id == group_id,
+            TierSnapshot.is_active == True,  # noqa: E712
+        )
+    )
+    players = players_result.scalars().all()
+
+    user_ids = list({p.user_id for p in players if p.user_id})
+    if not user_ids:
+        return {}
+
+    profiles_result = await session.execute(
+        select(PlayerProfile)
+        .options(
+            selectinload(PlayerProfile.characters).selectinload(PlayerCharacter.gear_snapshots)
+        )
+        .where(PlayerProfile.user_id.in_(user_ids))
+    )
+    profiles = profiles_result.scalars().all()
+    user_profile_map = {p.user_id: p for p in profiles}
+
+    out: dict[str, list[SplitCharacterResponse]] = {}
+    for player in players:
+        if player.user_id and player.user_id in user_profile_map:
+            profile = user_profile_map[player.user_id]
+            # PlayerProfile.characters is ordered is_main desc, created_at asc
+            out[player.id] = [_char_to_split_response(c) for c in profile.characters]
+
+    return out
+
+
+async def _validate_character_ownership(
+    session: AsyncSession,
+    player: SnapshotPlayer,
+    character_link_id: str,
+    field_label: str,
+) -> None:
+    """Raise 422 if the character does not belong to the roster player's user."""
+    if not player.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"{field_label}: roster player has no linked user — cannot use character link",
+        )
+    char_result = await session.execute(
+        select(PlayerCharacter)
+        .join(PlayerProfile, PlayerCharacter.profile_id == PlayerProfile.id)
+        .where(
+            PlayerCharacter.id == character_link_id,
+            PlayerProfile.user_id == player.user_id,
+        )
+    )
+    if not char_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"{field_label}: character does not belong to this roster player",
+        )
+
+
 @router.get(
     "/static-groups/{group_id}/split-clear",
     response_model=SplitClearResponse,
@@ -64,7 +169,7 @@ async def get_split_clear(
     session: AsyncSession = Depends(get_session),
     current_user: User | None = Depends(get_current_user),
 ) -> SplitClearResponse:
-    """Get split-clear mode status and all assignments for the current tier's roster."""
+    """Get split-clear mode status, all assignments, and linked characters for the active tier."""
     group = await get_static_group(session, group_id)
     await check_view_permission(session, group, current_user)
 
@@ -73,9 +178,12 @@ async def get_split_clear(
     )
     assignments = result.scalars().all()
 
+    player_characters = await _load_player_characters(session, group_id)
+
     return SplitClearResponse(
         enabled=_split_clear_enabled(group),
         assignments=[_assignment_to_response(a) for a in assignments],
+        player_characters=player_characters,
     )
 
 
@@ -102,10 +210,12 @@ async def update_split_clear_settings(
         select(SplitClearAssignment).where(SplitClearAssignment.static_group_id == group_id)
     )
     assignments = result.scalars().all()
+    player_characters = await _load_player_characters(session, group_id)
 
     return SplitClearResponse(
         enabled=data.enabled,
         assignments=[_assignment_to_response(a) for a in assignments],
+        player_characters=player_characters,
     )
 
 
@@ -127,7 +237,7 @@ async def upsert_split_clear_assignment(
     if not _split_clear_enabled(group):
         raise HTTPException(status_code=409, detail="Split-clear mode is disabled")
 
-    # A player id from another static must never be attachable to this plan.
+    # A player from another static must never be attachable to this plan.
     player_result = await session.execute(
         select(SnapshotPlayer)
         .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
@@ -139,6 +249,18 @@ async def upsert_split_clear_assignment(
     player = player_result.scalar_one_or_none()
     if not player:
         raise NotFound("Player not found")
+
+    fields = data.model_fields_set
+
+    # Validate character link ownership before touching the DB
+    if "run_a_character_link_id" in fields and data.run_a_character_link_id:
+        await _validate_character_ownership(
+            session, player, data.run_a_character_link_id, "run_a_character_link_id"
+        )
+    if "run_b_character_link_id" in fields and data.run_b_character_link_id:
+        await _validate_character_ownership(
+            session, player, data.run_b_character_link_id, "run_b_character_link_id"
+        )
 
     result = await session.execute(
         select(SplitClearAssignment).where(
@@ -159,8 +281,9 @@ async def upsert_split_clear_assignment(
         )
         session.add(assignment)
 
-    fields = data.model_fields_set
     for field in (
+        "run_a_character_link_id",
+        "run_b_character_link_id",
         "main_character_name",
         "main_character_world",
         "alt_character_name",

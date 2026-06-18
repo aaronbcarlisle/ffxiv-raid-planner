@@ -1,4 +1,5 @@
-import { Info, AlertTriangle, AlertOctagon, X, Wand2 } from 'lucide-react';
+import { useState } from 'react';
+import { Info, AlertTriangle, AlertOctagon, X, Wand2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 import type { SplitClearData } from '../../types';
 import type { SplitClearDraft } from '../../utils/splitClearSuggestionService';
@@ -37,18 +38,17 @@ interface DraftIssue {
 function computeIssues(draft: SplitClearDraft, players: SnapshotPlayer[]): DraftIssue[] {
   const issues: DraftIssue[] = [];
 
-  const noMainNames = draft.assignments
-    .filter(a => !a.mainCharacterName)
+  const noRunANames = draft.assignments
+    .filter(a => !a.runACharacterName)
     .map(a => players.find(p => p.id === a.playerId)?.name ?? 'Unknown');
-
-  for (const name of noMainNames) {
-    issues.push({ message: `${name} needs a main character — fill in on the board`, severity: 'warning' });
+  for (const name of noRunANames) {
+    issues.push({ message: `${name}: Run A character not set — fill in on the board`, severity: 'warning' });
   }
 
-  const noAltCount = draft.assignments.filter(a => !a.altCharacterName).length;
-  if (noAltCount > 0) {
+  const noRunBCount = draft.assignments.filter(a => !a.runBCharacterName).length;
+  if (noRunBCount > 0) {
     issues.push({
-      message: `${noAltCount} player${noAltCount !== 1 ? 's' : ''}: No alt character assigned — set after applying or skip for now`,
+      message: `${noRunBCount} player${noRunBCount !== 1 ? 's' : ''}: No Run B character — link alts in Player Hub or enter manually`,
       severity: 'info',
     });
   }
@@ -91,15 +91,17 @@ export function SplitClearDraftReview({
   onApply,
   onRegenerate,
 }: SplitClearDraftReviewProps) {
+  const [showReasons, setShowReasons] = useState(false);
   const issues = computeIssues(draft, players);
   const changeSummary = getSplitChangeSummary(draft, data.assignments);
   const confidenceTone = getConfidenceTone(draft.confidence);
   const badgeVariant: 'success' | 'warning' = confidenceTone === 'success' ? 'success' : 'warning';
+  const playerMap = new Map(players.map(p => [p.id, p]));
 
   const willOverwrite =
     changeSummary.totalAffected > 0 &&
     data.assignments.some(
-      a => a.mainCharacterName || a.altCharacterName || a.runACharacter || a.runBCharacter,
+      a => a.runACharacterLinkId || a.runBCharacterLinkId || a.mainCharacterName || a.altCharacterName || a.runACharacter || a.runBCharacter,
     );
 
   return (
@@ -140,6 +142,10 @@ export function SplitClearDraftReview({
           active
         />
         <SourceChip
+          label={`Linked ${draft.sourceSummary.linkedCount}/${draft.sourceSummary.rosterCount}`}
+          active={draft.sourceSummary.linkedCount === draft.sourceSummary.rosterCount && draft.sourceSummary.rosterCount > 0}
+        />
+        <SourceChip
           label={`Alts ${draft.sourceSummary.altCount}/${draft.sourceSummary.rosterCount}`}
           active={draft.sourceSummary.altCount === draft.sourceSummary.rosterCount}
         />
@@ -147,8 +153,13 @@ export function SplitClearDraftReview({
           label={`Priority ${draft.sourceSummary.priorityCount > 0 ? '✓' : '—'}`}
           active={draft.sourceSummary.priorityCount > 0}
         />
-        <SourceChip label="Loot log —" active={false} />
-        <SourceChip label="Plugin —" active={false} />
+        {draft.sourceSummary.recentSyncCount > 0 && (
+          <SourceChip
+            label={`Sync ${draft.sourceSummary.recentSyncCount} recent${draft.sourceSummary.staleSyncCount > 0 ? ` / ${draft.sourceSummary.staleSyncCount} stale` : ''}`}
+            active={draft.sourceSummary.staleSyncCount === 0}
+          />
+        )}
+        <SourceChip label="Plugin — sync context only" active={false} />
       </div>
 
       {/* Run A / Run B panels — side by side on desktop, stacked on mobile */}
@@ -156,6 +167,42 @@ export function SplitClearDraftReview({
         <SplitClearRunPanel run="A" assignments={draft.assignments} players={players} />
         <SplitClearRunPanel run="B" assignments={draft.assignments} players={players} />
       </div>
+
+      {/* Scoring reasons (collapsible) */}
+      {draft.assignments.some(a => a.reasons.length > 0) && (
+        <div className="rounded-lg border border-border-subtle bg-surface-base">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between px-3 py-2 text-[11px] font-semibold text-text-muted hover:text-text-primary transition-colors"
+            onClick={() => setShowReasons(v => !v)}
+            aria-expanded={showReasons}
+          >
+            <span>Why these assignments?</span>
+            {showReasons
+              ? <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+              : <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+            }
+          </button>
+          {showReasons && (
+            <div className="px-3 pb-2.5 space-y-2 border-t border-border-subtle pt-2">
+              {draft.assignments.map(a => {
+                const p = playerMap.get(a.playerId);
+                if (!p || a.reasons.length === 0) return null;
+                return (
+                  <div key={a.playerId} className="space-y-0.5">
+                    <p className="text-[10px] font-semibold text-text-primary">{p.name}</p>
+                    <ul className="space-y-0.5 pl-2">
+                      {a.reasons.map((r, i) => (
+                        <li key={i} className="text-[10px] text-text-muted list-disc ml-2">{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Issue summary */}
       {issues.length > 0 && (

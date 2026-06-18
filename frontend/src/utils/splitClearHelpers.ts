@@ -56,11 +56,13 @@ export function getRunSlotTone(slot: SplitRunSlot): SplitTone {
 export function formatChangeSummary(summary: DraftChangeSummary): string {
   if (summary.totalAffected === 0) return 'No changes detected.';
   const parts: string[] = [];
+  if (summary.characterLinksSet > 0)
+    parts.push(`${summary.characterLinksSet} character link${summary.characterLinksSet !== 1 ? 's' : ''}`);
   if (summary.runAssignments > 0)
     parts.push(`${summary.runAssignments} run assignment${summary.runAssignments !== 1 ? 's' : ''}`);
   if (summary.lootTargetsChanged > 0)
     parts.push(`${summary.lootTargetsChanged} loot target${summary.lootTargetsChanged !== 1 ? 's' : ''}`);
-  if (summary.characterNamesSet > 0)
+  if (parts.length === 0 && summary.characterNamesSet > 0)
     parts.push(`${summary.characterNamesSet} character name${summary.characterNamesSet !== 1 ? 's' : ''}`);
   return `Updates ${summary.totalAffected} player${summary.totalAffected !== 1 ? 's' : ''}: ${parts.join(', ')}.`;
 }

@@ -105,9 +105,25 @@ export type PageMode = 'home' | 'players' | 'loot' | 'stats' | 'history' | 'prio
 export type SplitRunSlot = 'main' | 'alt' | null;
 export type SplitLootTarget = 'funnel_main' | 'funnel_job' | 'normal';
 
+/** A linked Player Hub character surfaced in the split planner context. */
+export interface SplitCharacterCandidate {
+  id: string;
+  name: string;
+  server: string;
+  dataCenter: string | null;
+  isMain: boolean;
+  lastSyncedAt: string | null;
+  syncSource: string | null;
+}
+
 export interface SplitClearAssignment {
   id: string;
   snapshotPlayerId: string;
+  /** Player Hub character link for Run A (null = manual or unset). */
+  runACharacterLinkId: string | null;
+  /** Player Hub character link for Run B (null = manual or unset). */
+  runBCharacterLinkId: string | null;
+  /** Legacy manual text fields — used as fallback when no link exists. */
   mainCharacterName: string | null;
   mainCharacterWorld: string | null;
   altCharacterName: string | null;
@@ -125,6 +141,8 @@ export interface SplitClearAssignment {
 export interface SplitClearData {
   enabled: boolean;
   assignments: SplitClearAssignment[];
+  /** Linked characters keyed by snapshotPlayerId (main first, then alts). */
+  playerCharacters: Record<string, SplitCharacterCandidate[]>;
 }
 
 // View mode for player cards

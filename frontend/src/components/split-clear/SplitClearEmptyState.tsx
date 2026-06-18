@@ -1,7 +1,7 @@
 import { Scissors, Wand2, Edit3 } from 'lucide-react';
-import type { SnapshotPlayer } from '../../types';
-import type { SplitClearData } from '../../types';
+import type { SnapshotPlayer, SplitClearData } from '../../types';
 import { TONE_CHIP_CLASS } from '../../utils/splitClearHelpers';
+import { computeCharacterSourceSummary } from '../../utils/splitClearScoringService';
 import { Button } from '../primitives';
 
 // ── Source preview chip ────────────────────────────────────────────────────────
@@ -38,8 +38,20 @@ export function SplitClearEmptyState({
   onStartManually,
 }: SplitClearEmptyStateProps) {
   const rosterCount = players.length;
-  const altCount = data.assignments.filter(a => a.altCharacterName).length;
   const priorityCount = players.filter(p => (p.weaponPriorities?.length ?? 0) > 0).length;
+
+  const playerCharacters = data.playerCharacters ?? {};
+  const charSummary = computeCharacterSourceSummary(
+    players.map(p => p.id),
+    playerCharacters,
+  );
+
+  const allLinked   = charSummary.linkedCount === rosterCount && rosterCount > 0;
+  const altsLabel   = charSummary.altCount === 0
+    ? `Alts — none`
+    : `Alts ${charSummary.altCount}/${rosterCount} members`;
+
+  const totalLinked = Object.values(playerCharacters).reduce((n, cs) => n + cs.length, 0);
 
   return (
     <div className="rounded-xl border border-accent/20 bg-surface-raised p-6 space-y-5">
@@ -64,15 +76,25 @@ export function SplitClearEmptyState({
         <div className="flex flex-wrap gap-1.5" aria-label="Available data sources">
           <SourcePreviewChip label={`Roster ${rosterCount}/${rosterCount}`} active />
           <SourcePreviewChip
-            label={`Alts ${altCount}/${rosterCount}${altCount < rosterCount ? ' missing' : ''}`}
-            active={altCount === rosterCount && rosterCount > 0}
+            label={`Linked chars ${charSummary.linkedCount}/${rosterCount}${totalLinked > 0 ? ` (${totalLinked} total)` : ''}`}
+            active={allLinked}
+          />
+          <SourcePreviewChip
+            label={altsLabel}
+            active={charSummary.altCount === rosterCount && rosterCount > 0}
           />
           <SourcePreviewChip
             label={priorityCount > 0 ? `Priority ${priorityCount}/${rosterCount}` : 'Priority missing'}
             active={priorityCount > 0}
           />
+          {charSummary.recentSyncCount > 0 && (
+            <SourcePreviewChip
+              label={`Sync ${charSummary.recentSyncCount} recent${charSummary.staleSyncCount > 0 ? ` / ${charSummary.staleSyncCount} stale` : ''}`}
+              active={charSummary.staleSyncCount === 0}
+            />
+          )}
           <SourcePreviewChip label="Loot log — not used" active={false} />
-          <SourcePreviewChip label="Plugin — not used" active={false} />
+          <SourcePreviewChip label="Plugin — sync context only" active={false} />
         </div>
       </div>
 

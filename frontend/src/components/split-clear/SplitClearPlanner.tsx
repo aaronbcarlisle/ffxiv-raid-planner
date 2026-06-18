@@ -75,7 +75,7 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
   }
 
   function handleGenerateDraft() {
-    setDraft(buildSplitClearDraft(players, data.assignments));
+    setDraft(buildSplitClearDraft(players, data.assignments, data.playerCharacters));
   }
 
   async function handleApplyDraft() {
@@ -83,10 +83,13 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
     await Promise.all(
       draft.assignments.map(a =>
         updateAssignment(groupId, a.playerId, {
-          mainCharacterName: a.mainCharacterName,
-          mainCharacterWorld: a.mainCharacterWorld,
-          altCharacterName: a.altCharacterName,
-          altCharacterWorld: a.altCharacterWorld,
+          runACharacterLinkId: a.runACharacterLinkId,
+          runBCharacterLinkId: a.runBCharacterLinkId,
+          // Mirror resolved names into legacy text fields for backward compat rendering
+          mainCharacterName: a.runACharacterName,
+          mainCharacterWorld: a.runACharacterWorld,
+          altCharacterName: a.runBCharacterName,
+          altCharacterWorld: a.runBCharacterWorld,
           runACharacter: a.runACharacter,
           runBCharacter: a.runBCharacter,
           lootTarget: a.lootTarget,

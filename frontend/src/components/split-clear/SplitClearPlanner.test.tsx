@@ -336,8 +336,8 @@ describe('SplitClearPlanner', () => {
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
-      // "No alt character assigned" appears in the issue summary list
-      expect(screen.getByText(/no alt character assigned/i)).toBeTruthy();
+      // "No Run B character" appears in the issue summary list
+      expect(screen.getByText(/no run b character/i)).toBeTruthy();
     });
   });
 

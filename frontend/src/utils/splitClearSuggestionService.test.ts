@@ -55,7 +55,7 @@ describe('priorityToSplitLootTarget', () => {
   it('returns normal when weaponPriorities is empty', () => {
     const result = priorityToSplitLootTarget(player({ weaponPriorities: [] }));
     expect(result.lootTarget).toBe('normal');
-    expect(result.reason).toContain('No weapon priority data');
+    expect(result.reason).toContain('Priority missing');
   });
 
   it('returns normal when weapon already received', () => {
@@ -118,9 +118,9 @@ describe('buildSplitClearDraft', () => {
     const p = player({ lodestoneName: 'Kaito Nakamura', lodestoneServer: 'Tonberry' });
     const draft = buildSplitClearDraft([p], []);
     const a = draft.assignments[0];
-    expect(a.mainCharacterName).toBe('Kaito Nakamura');
-    expect(a.mainCharacterWorld).toBe('Tonberry');
-    expect(a.reasons.some(r => r.includes('lodestone'))).toBe(true);
+    expect(a.runACharacterName).toBe('Kaito Nakamura');
+    expect(a.runACharacterWorld).toBe('Tonberry');
+    expect(a.reasons.some(r => r.includes('lodestone') || r.includes('Lodestone'))).toBe(true);
   });
 
   it('falls back to existing assignment main when no lodestone data', () => {
@@ -131,8 +131,8 @@ describe('buildSplitClearDraft', () => {
       mainCharacterWorld: 'Moogle',
     });
     const draft = buildSplitClearDraft([p], [existing]);
-    expect(draft.assignments[0].mainCharacterName).toBe('FallbackMain');
-    expect(draft.assignments[0].mainCharacterWorld).toBe('Moogle');
+    expect(draft.assignments[0].runACharacterName).toBe('FallbackMain');
+    expect(draft.assignments[0].runACharacterWorld).toBe('Moogle');
   });
 
   it('sets runA=main when main character is known', () => {
@@ -155,8 +155,8 @@ describe('buildSplitClearDraft', () => {
       altCharacterWorld: 'Moogle',
     });
     const draft = buildSplitClearDraft([p], [existing]);
-    expect(draft.assignments[0].altCharacterName).toBe('AltChar');
-    expect(draft.assignments[0].altCharacterWorld).toBe('Moogle');
+    expect(draft.assignments[0].runBCharacterName).toBe('AltChar');
+    expect(draft.assignments[0].runBCharacterWorld).toBe('Moogle');
     expect(draft.assignments[0].runBCharacter).toBe('alt');
   });
 
