@@ -46,6 +46,7 @@ from .routers import (
     plugin_player_router,
     schedule_router,
     split_clear_router,
+    static_characters_router,
     static_groups_router,
     tiers_router,
 )
@@ -183,6 +184,7 @@ app.include_router(player_router)
 app.include_router(plugin_player_router)
 app.include_router(schedule_router)
 app.include_router(split_clear_router)
+app.include_router(static_characters_router)
 app.include_router(static_groups_router)
 
 # Dev auth - only in development with explicit opt-in

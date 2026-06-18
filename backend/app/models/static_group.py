@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .membership import Membership
     from .schedule import ScheduleSession
     from .split_clear import SplitClearAssignment
+    from .static_character_registration import StaticCharacterRegistration
     from .static_content_suggestion import StaticContentSuggestion
     from .tier_snapshot import TierSnapshot
     from .user import User
@@ -98,6 +99,12 @@ class StaticGroup(Base):
         "SplitClearAssignment",
         back_populates="static_group",
         cascade="all, delete-orphan",
+    )
+    character_registrations: Mapped[list["StaticCharacterRegistration"]] = relationship(
+        "StaticCharacterRegistration",
+        back_populates="static_group",
+        cascade="all, delete-orphan",
+        order_by="StaticCharacterRegistration.created_at.asc()",
     )
 
     @property

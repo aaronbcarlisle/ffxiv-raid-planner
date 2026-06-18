@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.28.0';
+export const CURRENT_VERSION = '1.29.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -58,6 +58,31 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.29.0',
+    date: '2026-06-18T22:00:00Z',
+    title: 'Static Character Registrations',
+    highlights: [
+      'Players can now register their Player Hub characters for a specific static, forming a curated character roster',
+      'Split Planner automatically prefers the curated character list when generating drafts',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Per-static character registrations',
+        description: 'Roster members and leads can now register Player Hub characters (or manual fallback entries) for a specific static group. Registrations support main, alt, and substitute roles, with one primary character per player. This forms a curated character list independent of the global Player Hub profile — useful when a player brings a different main or set of alts to one static vs another.',
+        pr: 142,
+        prTitle: 'feat: static character registrations as shared identity layer',
+      },
+      {
+        category: 'improvement',
+        title: 'Split Planner uses curated character list',
+        description: 'The Split Clear Planner\'s draft generator now prefers static character registrations (when available) over the full Player Hub profile when building character candidate lists. This gives leads direct control over which characters appear as options for each roster slot.',
+        pr: 142,
+        prTitle: 'feat: static character registrations as shared identity layer',
+      },
+    ],
+  },
   {
     version: '1.28.0',
     date: '2026-06-18T20:00:00Z',

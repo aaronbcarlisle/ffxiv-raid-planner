@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from .loot_log_entry import LootLogEntry
     from .material_log_entry import MaterialLogEntry
     from .page_ledger_entry import PageLedgerEntry
+    from .static_character_registration import StaticCharacterRegistration
     from .tier_snapshot import TierSnapshot
     from .user import User
 
@@ -108,6 +109,13 @@ class SnapshotPlayer(Base):
         "MaterialLogEntry",
         back_populates="recipient_player",
         cascade="all, delete-orphan",
+    )
+
+    character_registrations: Mapped[list["StaticCharacterRegistration"]] = relationship(
+        "StaticCharacterRegistration",
+        back_populates="snapshot_player",
+        cascade="all, delete-orphan",
+        order_by="StaticCharacterRegistration.is_primary_for_static.desc(), StaticCharacterRegistration.created_at.asc()",
     )
 
     def __repr__(self) -> str:

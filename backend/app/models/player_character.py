@@ -11,6 +11,7 @@ from ..database import Base
 if TYPE_CHECKING:
     from .player_gear_snapshot import PlayerGearSnapshot
     from .player_profile import PlayerProfile
+    from .static_character_registration import StaticCharacterRegistration
 
 
 class PlayerCharacter(Base):
@@ -59,6 +60,10 @@ class PlayerCharacter(Base):
         "PlayerGearSnapshot",
         back_populates="character",
         cascade="all, delete-orphan",
+    )
+    static_registrations: Mapped[list["StaticCharacterRegistration"]] = relationship(
+        "StaticCharacterRegistration",
+        back_populates="player_character",
     )
 
     def __repr__(self) -> str:

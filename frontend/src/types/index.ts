@@ -145,6 +145,70 @@ export interface SplitClearData {
   playerCharacters: Record<string, SplitCharacterCandidate[]>;
 }
 
+// ==================== Static Character Registration Types ====================
+
+export type RoleInStatic = 'main' | 'alt' | 'substitute' | 'manual';
+export type RegistrationSource = 'player_hub' | 'lodestone' | 'manual';
+
+/** Minimal summary of the linked Player Hub character embedded in a registration. */
+export interface LinkedCharacterSummary {
+  id: string;
+  name: string;
+  server: string;
+  dataCenter: string | null;
+  isMain: boolean;
+  avatarUrl: string | null;
+  lastSyncedAt: string | null;
+}
+
+export interface StaticCharacterRegistration {
+  id: string;
+  staticGroupId: string;
+  snapshotPlayerId: string;
+  playerCharacterId: string | null;
+  manualCharacterName: string | null;
+  manualWorld: string | null;
+  manualDataCenter: string | null;
+  roleInStatic: RoleInStatic;
+  job: string | null;
+  isPrimaryForStatic: boolean;
+  source: RegistrationSource;
+  lastSyncedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Resolved display name (from linked character or manual fallback). */
+  resolvedName: string | null;
+  resolvedWorld: string | null;
+  resolvedDataCenter: string | null;
+  linkedCharacter: LinkedCharacterSummary | null;
+}
+
+export interface StaticCharacterRegistrationCreate {
+  snapshotPlayerId: string;
+  playerCharacterId?: string | null;
+  manualCharacterName?: string | null;
+  manualWorld?: string | null;
+  manualDataCenter?: string | null;
+  roleInStatic?: RoleInStatic;
+  job?: string | null;
+  isPrimaryForStatic?: boolean;
+  source?: RegistrationSource;
+}
+
+export interface StaticCharacterRegistrationUpdate {
+  roleInStatic?: RoleInStatic;
+  job?: string | null;
+  isPrimaryForStatic?: boolean;
+  manualCharacterName?: string | null;
+  manualWorld?: string | null;
+  manualDataCenter?: string | null;
+}
+
+/** API response: registrations keyed by snapshotPlayerId. */
+export interface StaticCharacterRegistrationsResponse {
+  registrations: Record<string, StaticCharacterRegistration[]>;
+}
+
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
 

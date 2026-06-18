@@ -14,6 +14,7 @@ from ..models import SnapshotPlayer, TierSnapshot, User
 from ..models.player_character import PlayerCharacter
 from ..models.player_profile import PlayerProfile
 from ..models.split_clear import SplitClearAssignment
+from ..models.static_character_registration import StaticCharacterRegistration
 from ..models.static_group import StaticGroup
 from ..permissions import (
     NotFound,
@@ -98,7 +99,12 @@ def _split_clear_enabled(group: StaticGroup) -> bool:
 async def _load_player_characters(
     session: AsyncSession, group_id: str
 ) -> dict[str, list[SplitCharacterResponse]]:
-    """Return linked characters for every player in the group's active tier."""
+    """Return linked characters for every player in the group's active tier.
+
+    Prefers StaticCharacterRegistration (curated per-static list) when available.
+    Falls back to all PlayerHub characters from the player's profile when no
+    registrations exist for that player.
+    """
     players_result = await session.execute(
         select(SnapshotPlayer)
         .join(TierSnapshot, SnapshotPlayer.tier_snapshot_id == TierSnapshot.id)
@@ -108,26 +114,68 @@ async def _load_player_characters(
         )
     )
     players = players_result.scalars().all()
-
-    user_ids = list({p.user_id for p in players if p.user_id})
-    if not user_ids:
+    if not players:
         return {}
 
-    profiles_result = await session.execute(
-        select(PlayerProfile)
-        .options(
-            selectinload(PlayerProfile.characters).selectinload(PlayerCharacter.gear_snapshots)
+    player_ids = [p.id for p in players]
+
+    # Load static character registrations for these players
+    reg_result = await session.execute(
+        select(StaticCharacterRegistration)
+        .where(
+            StaticCharacterRegistration.static_group_id == group_id,
+            StaticCharacterRegistration.snapshot_player_id.in_(player_ids),
+            StaticCharacterRegistration.player_character_id.is_not(None),
         )
-        .where(PlayerProfile.user_id.in_(user_ids))
+        .options(
+            selectinload(StaticCharacterRegistration.player_character).selectinload(
+                PlayerCharacter.gear_snapshots
+            )
+        )
+        .order_by(
+            StaticCharacterRegistration.snapshot_player_id,
+            StaticCharacterRegistration.is_primary_for_static.desc(),
+            StaticCharacterRegistration.created_at.asc(),
+        )
     )
-    profiles = profiles_result.scalars().all()
-    user_profile_map = {p.user_id: p for p in profiles}
+    regs = reg_result.scalars().all()
+
+    # Group registrations by player
+    regs_by_player: dict[str, list[StaticCharacterRegistration]] = {}
+    for reg in regs:
+        regs_by_player.setdefault(reg.snapshot_player_id, []).append(reg)
+
+    # For players without registrations, fall back to all PlayerHub chars
+    user_ids_for_fallback = list({
+        p.user_id
+        for p in players
+        if p.user_id and p.id not in regs_by_player
+    })
+    user_profile_map: dict[str, PlayerProfile] = {}
+    if user_ids_for_fallback:
+        profiles_result = await session.execute(
+            select(PlayerProfile)
+            .options(
+                selectinload(PlayerProfile.characters).selectinload(PlayerCharacter.gear_snapshots)
+            )
+            .where(PlayerProfile.user_id.in_(user_ids_for_fallback))
+        )
+        user_profile_map = {p.user_id: p for p in profiles_result.scalars().all()}
 
     out: dict[str, list[SplitCharacterResponse]] = {}
     for player in players:
-        if player.user_id and player.user_id in user_profile_map:
+        if player.id in regs_by_player:
+            # Use curated static registrations (primary first, then alts)
+            chars = [
+                reg.player_character
+                for reg in regs_by_player[player.id]
+                if reg.player_character is not None
+            ]
+            if chars:
+                out[player.id] = [_char_to_split_response(c) for c in chars]
+        elif player.user_id and player.user_id in user_profile_map:
+            # Fallback: all characters from PlayerHub profile
             profile = user_profile_map[player.user_id]
-            # PlayerProfile.characters is ordered is_main desc, created_at asc
             out[player.id] = [_char_to_split_response(c) for c in profile.characters]
 
     return out
