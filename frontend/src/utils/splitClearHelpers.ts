@@ -19,14 +19,14 @@ export const TONE_CHIP_CLASS: Record<SplitTone, string> = {
 export function getConfidenceTone(confidence: ConfidenceLevel): SplitTone {
   if (confidence === 'high') return 'success';
   if (confidence === 'medium') return 'warning';
-  return 'danger';
+  return 'warning'; // missing data is expected setup work, not a critical error
 }
 
 export function formatConfidenceLabel(confidence: ConfidenceLevel): string {
   const labels: Record<ConfidenceLevel, string> = {
     high: 'High confidence',
     medium: 'Medium confidence',
-    low: 'Low confidence',
+    low: 'Needs review',
   };
   return labels[confidence];
 }

@@ -370,7 +370,9 @@ export function GroupView() {
   }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog, fetchMaterialLog]);
 
   // Split clear store
-  const { fetchData: fetchSplitClear, clearData: clearSplitClear } = useSplitClearStore();
+  const { fetchData: fetchSplitClear, clearData: clearSplitClear, data: splitData } = useSplitClearStore();
+  const splitEnabled = splitData?.enabled ?? false;
+  const [rosterSubView, setRosterSubView] = useState<'members' | 'split-planner'>('members');
   useEffect(() => {
     if (pageMode === 'players' && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
@@ -993,13 +995,60 @@ export function GroupView() {
           {/* Players Tab */}
           {pageMode === 'players' && currentTier.players && (
             <>
-              {currentGroup && (
+              {/* When mode is OFF: enable CTA renders inline above roster (SplitClearPlanner handles this) */}
+              {!splitEnabled && currentGroup && (
                 <SplitClearPlanner
                   groupId={currentGroup.id}
                   players={mainRosterPlayers}
                   canEdit={canEdit}
                 />
               )}
+
+              {/* When mode is ON: segmented control — Members | Split Planner */}
+              {splitEnabled && (
+                <div className="flex gap-1 mb-3 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit" role="tablist" aria-label="Roster view">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={rosterSubView === 'members'}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      rosterSubView === 'members'
+                        ? 'bg-surface-base text-text-primary shadow-sm'
+                        : 'text-text-muted hover:text-text-primary'
+                    }`}
+                    onClick={() => setRosterSubView('members')}
+                  >
+                    Members
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={rosterSubView === 'split-planner'}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      rosterSubView === 'split-planner'
+                        ? 'bg-surface-base text-text-primary shadow-sm'
+                        : 'text-text-muted hover:text-text-primary'
+                    }`}
+                    onClick={() => setRosterSubView('split-planner')}
+                  >
+                    Split Planner
+                  </button>
+                </div>
+              )}
+
+              {/* Split Clear Composer — kept mounted to preserve draft state, hidden on Members tab */}
+              {splitEnabled && currentGroup && (
+                <div className={rosterSubView === 'members' ? 'hidden' : ''}>
+                  <SplitClearPlanner
+                    groupId={currentGroup.id}
+                    players={mainRosterPlayers}
+                    canEdit={canEdit}
+                  />
+                </div>
+              )}
+
+              {/* Normal roster — hidden when Split Planner tab is active */}
+              <div className={splitEnabled && rosterSubView === 'split-planner' ? 'hidden' : ''}>
               <DndContext
                 sensors={dnd.sensors}
                 collisionDetection={pointerWithin}
@@ -1072,6 +1121,7 @@ export function GroupView() {
                   })()}
                 </DragOverlay>
               </DndContext>
+              </div>{/* end roster hide wrapper */}
             </>
           )}
 

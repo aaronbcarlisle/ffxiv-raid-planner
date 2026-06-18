@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.26.0';
+export const CURRENT_VERSION = '1.27.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -58,6 +58,27 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.27.0',
+    date: '2026-06-18T17:00:00Z',
+    title: 'Split Clear Composer',
+    highlights: [
+      'Redesigned split-clear planning with a guided three-state composer flow',
+      'Run A / Run B panels show each player\'s slot and loot target side by side',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Split Clear Composer — redesigned planning flow',
+        description: 'The split-clear board is now a three-state composer: an empty state with source previews, a draft-review panel with Run A / Run B side-by-side panels, and a manage board. Draft and manual board never appear simultaneously. The "Members | Split Planner" segmented control under the Roster tab keeps the two surfaces cleanly separated.',
+      },
+      {
+        category: 'improvement',
+        title: 'Compact warning chips and amber confidence badge',
+        description: 'Per-row warnings in the assignment board are now compact chips ("No alt", "Duplicate", "No loot job") with accessible full-text aria-labels, reducing visual clutter. Low-confidence drafts show an amber "Needs review" badge rather than a red error state, reflecting that missing data is normal early in a tier.',
+      },
+    ],
+  },
   {
     version: '1.26.0',
     date: '2026-06-18T00:00:00Z',

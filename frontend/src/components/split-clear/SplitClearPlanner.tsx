@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Scissors } from 'lucide-react';
+import { Scissors, RotateCcw, Wand2 } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 import { useSplitClearStore } from '../../stores/splitClearStore';
 import { getSplitClearReadiness } from '../../utils/splitClear';
@@ -7,9 +8,9 @@ import {
   buildSplitClearDraft,
   type SplitClearDraft,
 } from '../../utils/splitClearSuggestionService';
-import { AlertTriangle } from 'lucide-react';
 import { Button } from '../primitives';
-import { SplitClearAssistantCard } from './SplitClearAssistantCard';
+import { SplitClearEmptyState } from './SplitClearEmptyState';
+import { SplitClearDraftReview } from './SplitClearDraftReview';
 import { SplitClearAssignmentBoard } from './SplitClearAssignmentBoard';
 
 interface SplitClearPlannerProps {
@@ -22,13 +23,12 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
   const { data, isSaving, error, toggleMode, updateAssignment, resetWeek } = useSplitClearStore();
   const [resetConfirm, setResetConfirm] = useState(false);
   const [draft, setDraft] = useState<SplitClearDraft | null>(null);
+  const [manualBoardOpen, setManualBoardOpen] = useState(false);
 
   if (!data) return null;
-
-  // Hidden from read-only members when the feature isn't active.
   if (!data.enabled && !canEdit) return null;
 
-  // Off-state: lead/owner sees an enable CTA.
+  // Mode OFF — lead/owner sees a compact enable CTA
   if (!data.enabled) {
     return (
       <div className="rounded-xl border border-border-subtle bg-surface-raised p-4 mb-4">
@@ -54,8 +54,15 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
     );
   }
 
+  // Mode ON — derive view state
   const assignmentMap = new Map(data.assignments.map(a => [a.snapshotPlayerId, a]));
   const readiness = getSplitClearReadiness(players, data.assignments);
+  const hasExistingAssignments = data.assignments.length > 0;
+
+  // Show board when: draft was just applied (manualBoardOpen), or saved assignments exist and no draft
+  const showBoard = !draft && (manualBoardOpen || hasExistingAssignments);
+  // Show empty state when: no draft, no board
+  const showEmptyState = !draft && !showBoard;
 
   function handleReset() {
     if (!resetConfirm) {
@@ -65,6 +72,10 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
     }
     setResetConfirm(false);
     void resetWeek(groupId);
+  }
+
+  function handleGenerateDraft() {
+    setDraft(buildSplitClearDraft(players, data.assignments));
   }
 
   async function handleApplyDraft() {
@@ -84,24 +95,79 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
       ),
     );
     setDraft(null);
+    setManualBoardOpen(true); // Always open board after apply
   }
 
   return (
-    <div className="space-y-4 mb-6">
-      <SplitClearAssistantCard
-        players={players}
-        data={data}
-        readiness={readiness}
-        draft={draft}
-        canEdit={canEdit}
-        isSaving={isSaving}
-        resetConfirm={resetConfirm}
-        onGenerateDraft={() => setDraft(buildSplitClearDraft(players, data.assignments))}
-        onDismissDraft={() => setDraft(null)}
-        onApplyDraft={() => void handleApplyDraft()}
-        onResetWeek={handleReset}
-      />
+    <div className="space-y-3 mb-6">
+      {/* ── Composer header ── */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Scissors className="h-4 w-4 text-accent shrink-0" aria-hidden="true" />
+          <span className="text-sm font-semibold text-text-primary">Split Clear Composer</span>
+          <span className="text-xs text-text-muted tabular-nums">
+            {readiness.altCount}/{readiness.memberCount} with alts
+            {readiness.issueMemberCount > 0 &&
+              ` · ${readiness.issueMemberCount} issue${readiness.issueMemberCount !== 1 ? 's' : ''}`}
+          </span>
+        </div>
 
+        {canEdit && (
+          <div className="flex gap-2 shrink-0">
+            {/* Generate draft shown in header when board is open (no draft) */}
+            {showBoard && (
+              <Button
+                type="button"
+                size="sm"
+                variant="accent-subtle"
+                leftIcon={<Wand2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                onClick={handleGenerateDraft}
+                disabled={isSaving}
+                aria-label="Generate draft plan"
+              >
+                Generate draft
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              leftIcon={<RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />}
+              onClick={handleReset}
+              disabled={isSaving}
+            >
+              {resetConfirm ? 'Confirm reset?' : 'Reset week'}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Draft Review (State 2) ── */}
+      {draft && (
+        <SplitClearDraftReview
+          draft={draft}
+          players={players}
+          data={data}
+          isSaving={isSaving}
+          onDismiss={() => setDraft(null)}
+          onApply={() => void handleApplyDraft()}
+          onRegenerate={handleGenerateDraft}
+        />
+      )}
+
+      {/* ── Empty / Compose State (State 1) ── */}
+      {showEmptyState && (
+        <SplitClearEmptyState
+          players={players}
+          data={data}
+          canEdit={canEdit}
+          isSaving={isSaving}
+          onGenerateDraft={handleGenerateDraft}
+          onStartManually={() => setManualBoardOpen(true)}
+        />
+      )}
+
+      {/* ── Error banner ── */}
       {error && (
         <div className="flex items-center gap-2 rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-xs text-status-error">
           <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
@@ -109,12 +175,15 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
         </div>
       )}
 
-      <SplitClearAssignmentBoard
-        players={players}
-        assignmentMap={assignmentMap}
-        canEdit={canEdit}
-        onUpdate={(playerId, update) => void updateAssignment(groupId, playerId, update)}
-      />
+      {/* ── Manual Assignment Board (State 3) ── */}
+      {showBoard && (
+        <SplitClearAssignmentBoard
+          players={players}
+          assignmentMap={assignmentMap}
+          canEdit={canEdit}
+          onUpdate={(playerId, update) => void updateAssignment(groupId, playerId, update)}
+        />
+      )}
     </div>
   );
 }
