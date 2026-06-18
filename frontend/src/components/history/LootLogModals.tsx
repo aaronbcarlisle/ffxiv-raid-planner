@@ -189,6 +189,7 @@ export function LootLogModals({
           presetSlot={gridModalState?.slot}
           settings={settings}
           lootLog={lootLog}
+          groupId={groupId}
         />
       )}
 

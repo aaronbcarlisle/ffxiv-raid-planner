@@ -8,7 +8,7 @@
 
 import { useState, useMemo, useCallback, useEffect, memo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { SnapshotPlayer, StaticSettings } from '../../types';
+import type { SnapshotPlayer, StaticSettings, StaticCharacterRegistration } from '../../types';
 import { getWeaponPriorityForJob, type WeaponPriorityEntry } from '../../utils/weaponPriority';
 import { RAID_JOBS } from '../../gamedata/jobs';
 import { JobIcon } from '../ui/JobIcon';
@@ -17,11 +17,37 @@ import { FilterBar } from './FilterBar';
 import { RoleSection } from './RoleSection';
 import { Tooltip } from '../primitives/Tooltip';
 import { useDevice } from '../../hooks/useDevice';
+import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
+import { getRegistrationForJob } from '../../utils/staticCharacterContextService';
 
 // Roll result for a player
 interface RollResult {
   playerId: string;
   roll: number;
+}
+
+// Character registration badge for a player+job combo
+function CharacterBadge({
+  playerId,
+  job,
+  registrationsByPlayer,
+}: {
+  playerId: string;
+  job: string;
+  registrationsByPlayer?: Record<string, StaticCharacterRegistration[]>;
+}) {
+  if (!registrationsByPlayer) return null;
+  const regs = registrationsByPlayer[playerId];
+  if (!regs?.length) return null;
+  const reg = getRegistrationForJob(regs, job);
+  if (!reg) return null;
+  const name = reg.resolvedName ?? reg.manualCharacterName;
+  if (!name) return null;
+  return (
+    <span className="flex-shrink-0 text-xs text-text-muted truncate max-w-[80px]" title={name}>
+      {name}
+    </span>
+  );
 }
 
 // Build tooltip content for score breakdown
@@ -68,6 +94,8 @@ interface WeaponPriorityCardProps {
   onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
   /** Visual style for displaying tied players. Defaults to 'connector'. */
   tieStyle?: TieStyle;
+  /** Per-player character registrations for character context badges. */
+  registrationsByPlayer?: Record<string, StaticCharacterRegistration[]>;
 }
 
 /**
@@ -81,6 +109,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
   showLogButtons,
   onLogClick,
   tieStyle = 'connector',
+  registrationsByPlayer,
 }: WeaponPriorityCardProps) {
   const [rollResults, setRollResults] = useState<Map<number, RollResult[]>>(new Map());
   // Track which tie groups are expanded (for connector style)
@@ -627,6 +656,11 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                         Main
                       </span>
                     )}
+                    <CharacterBadge
+                      playerId={entry.player.id}
+                      job={job}
+                      registrationsByPlayer={registrationsByPlayer}
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     {/* Log button - accent for top priority, gray for others */}
@@ -807,6 +841,8 @@ interface WeaponPriorityListProps {
   // Optional props for inline logging
   showLogButtons?: boolean;
   onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
+  /** Group ID — enables character registration context badges when provided */
+  groupId?: string;
 }
 
 export function WeaponPriorityList({
@@ -814,7 +850,13 @@ export function WeaponPriorityList({
   settings,
   showLogButtons = false,
   onLogClick,
+  groupId,
 }: WeaponPriorityListProps) {
+  const { registrationsByGroup } = useStaticCharacterStore();
+  const registrationsByPlayer = useMemo(() => {
+    if (!groupId) return undefined;
+    return registrationsByGroup[groupId];
+  }, [groupId, registrationsByGroup]);
   const { isSmallScreen } = useDevice();
 
   // URL params for deep linking
@@ -1030,6 +1072,7 @@ export function WeaponPriorityList({
                     priority={priority}
                     showLogButtons={showLogButtons}
                     onLogClick={onLogClick}
+                    registrationsByPlayer={registrationsByPlayer}
                   />
                 );
               });
@@ -1069,6 +1112,7 @@ export function WeaponPriorityList({
                     priority={priority}
                     showLogButtons={showLogButtons}
                     onLogClick={onLogClick}
+                    registrationsByPlayer={registrationsByPlayer}
                   />
                 );
               })}

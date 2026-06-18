@@ -1229,6 +1229,8 @@ export interface LootLogEntry {
   itemSlot: string;
   recipientPlayerId: string;
   recipientPlayerName: string;
+  recipientCharacterRegistrationId?: string | null;
+  recipientCharacterName?: string | null;
   method: LootMethod;
   notes?: string;
   weaponJob?: string;  // "DRG", "WHM", etc. for weapon slots
@@ -1329,6 +1331,8 @@ export interface LootLogEntryCreate {
   notes?: string;
   weaponJob?: string;  // "DRG", "WHM", etc. for weapon slots
   isExtra?: boolean;   // True if extra/off-job loot
+  recipientCharacterRegistrationId?: string | null;
+  recipientCharacterName?: string | null;
 }
 
 // Loot log entry update request
@@ -1341,6 +1345,8 @@ export interface LootLogEntryUpdate {
   notes?: string;
   weaponJob?: string;
   isExtra?: boolean;
+  recipientCharacterRegistrationId?: string | null;
+  recipientCharacterName?: string | null;
 }
 
 // Page ledger entry create request

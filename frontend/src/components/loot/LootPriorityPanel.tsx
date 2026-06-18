@@ -756,6 +756,7 @@ export function LootPriorityPanel({
             settings={settings}
             showLogButtons={!!canShowLogButtons}
             onLogClick={handleWeaponLogClick}
+            groupId={groupId}
           />
         </div>
       )}

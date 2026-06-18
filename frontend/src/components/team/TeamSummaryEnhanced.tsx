@@ -7,8 +7,11 @@
 
 import { useEffect, useMemo, memo, useState, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { JobIcon } from '../ui/JobIcon';
+import { Toggle } from '../ui/Toggle';
 import { calculatePlayerCompletion, calculatePlayerMaterials, calculatePlayerBooks } from '../../utils/calculations';
+import { playerHasMainRole } from '../../utils/staticCharacterContextService';
 import { Users, Target, Wrench, BookOpen, ChevronDown } from 'lucide-react';
 import type { RaidTier } from '../../gamedata/raid-tiers';
 import type { SnapshotPlayer, PageBalance, MaterialBalance } from '../../types';
@@ -139,6 +142,12 @@ export function TeamSummaryEnhanced({
     fetchMaterialBalances,
   } = useLootTrackingStore();
 
+  const { registrationsByGroup } = useStaticCharacterStore();
+  const registrationsByPlayer = useMemo(
+    () => registrationsByGroup[groupId] ?? {},
+    [registrationsByGroup, groupId],
+  );
+
   // Collapse state - defaults to collapsed on mobile, expanded on desktop
   const [statsExpanded, setStatsExpanded] = useState(() => {
     try {
@@ -151,6 +160,8 @@ export function TeamSummaryEnhanced({
     }
     return true; // Default to expanded on server
   });
+
+  const [showMainOnly, setShowMainOnly] = useState(false);
 
   // Persist preference
   const toggleStatsExpanded = useCallback(() => {
@@ -224,6 +235,13 @@ export function TeamSummaryEnhanced({
       });
   }, [players, pageBalanceMap, materialBalanceMap]);
 
+  const filteredSummaries = useMemo(() => {
+    if (!showMainOnly) return playerSummaries;
+    return playerSummaries.filter(row =>
+      playerHasMainRole(row.player.id, registrationsByPlayer),
+    );
+  }, [playerSummaries, showMainOnly, registrationsByPlayer]);
+
   // Calculate totals
   const totals = useMemo(() => {
     const result = {
@@ -234,9 +252,9 @@ export function TeamSummaryEnhanced({
       matsNeeded: { twine: 0, glaze: 0, solvent: 0 },
     };
 
-    if (playerSummaries.length === 0) return result;
+    if (filteredSummaries.length === 0) return result;
 
-    playerSummaries.forEach(row => {
+    filteredSummaries.forEach(row => {
       result.gearPercent += row.gearPercent;
       result.booksBalance.I += row.booksBalance.I;
       result.booksBalance.II += row.booksBalance.II;
@@ -254,14 +272,14 @@ export function TeamSummaryEnhanced({
       result.matsNeeded.solvent += row.matsNeeded.solvent;
     });
 
-    result.gearPercent = Math.round(result.gearPercent / playerSummaries.length);
+    result.gearPercent = Math.round(result.gearPercent / filteredSummaries.length);
     return result;
-  }, [playerSummaries]);
+  }, [filteredSummaries]);
 
   // Calculate aggregate stats for summary cards
   // Must be before early return to comply with Rules of Hooks
   const aggregateStats = useMemo(() => {
-    if (playerSummaries.length === 0) {
+    if (filteredSummaries.length === 0) {
       return {
         playerCount: 0,
         gearPercent: 0,
@@ -275,12 +293,12 @@ export function TeamSummaryEnhanced({
     const totalMatsHave = totals.matsReceived.twine + totals.matsReceived.glaze + totals.matsReceived.solvent;
 
     return {
-      playerCount: playerSummaries.length,
+      playerCount: filteredSummaries.length,
       gearPercent: totals.gearPercent,
       booksProgress: { have: totalBooksHave, need: totalBooksNeeded },
       matsProgress: { have: totalMatsHave, need: totalMatsNeeded },
     };
-  }, [totals, playerSummaries.length]);
+  }, [totals, filteredSummaries.length]);
 
   if (playerSummaries.length === 0) {
     return (
@@ -301,6 +319,15 @@ export function TeamSummaryEnhanced({
               Book and material progress for all players. Values show current balance vs. needed.
             </p>
           </div>
+          <div className="flex items-center gap-3">
+            {Object.keys(registrationsByPlayer).length > 0 && (
+              <Toggle
+                checked={showMainOnly}
+                onChange={setShowMainOnly}
+                label="Mains only"
+                size="sm"
+              />
+            )}
           {/* Collapse toggle - mobile only */}
           {/* design-system-ignore: Custom toggle button for collapsible section */}
           <button
@@ -314,6 +341,7 @@ export function TeamSummaryEnhanced({
               className={`w-4 h-4 transition-transform duration-200 ${statsExpanded ? 'rotate-180' : ''}`}
             />
           </button>
+          </div>
         </div>
 
         {/* Collapsed summary - show key stats inline when collapsed on mobile only */}
@@ -448,7 +476,7 @@ export function TeamSummaryEnhanced({
             </tr>
           </thead>
           <tbody>
-            {playerSummaries.map(row => (
+            {filteredSummaries.map(row => (
               <SummaryRow key={row.player.id} row={row} />
             ))}
           </tbody>

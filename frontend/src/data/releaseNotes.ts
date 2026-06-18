@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.29.0';
+export const CURRENT_VERSION = '1.30.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -58,6 +58,38 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.30.0',
+    date: '2026-06-19T03:00:00Z',
+    title: 'Character-Aware Loot, Priority & Summary',
+    highlights: [
+      'Loot Log now records which registered character received each item — main or alt',
+      'Team Summary gains a "Mains only" filter for statics that track both main and alt progress',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Loot Log records the receiving character',
+        description: 'When logging a drop or book purchase, a character picker appears for any player who has registered characters in the Roster. The primary character is pre-selected; you can switch to any alt. The character name is stored as a snapshot alongside the player entry, so it survives future roster changes.',
+        pr: 143,
+        prTitle: 'feat: connect static character registrations into loot log, priority, and summary',
+      },
+      {
+        category: 'improvement',
+        title: 'Priority view shows registered character context',
+        description: 'Weapon Priority cards now display the registered character name next to each entry when one is linked to that player and job. No existing priority data is changed — character context is additive and degrades gracefully when no registration exists.',
+        pr: 143,
+        prTitle: 'feat: connect static character registrations into loot log, priority, and summary',
+      },
+      {
+        category: 'improvement',
+        title: 'Team Summary "Mains only" filter',
+        description: 'A new toggle in the Team Summary header lets leads filter the progress table to roster players whose registered role is "main". The toggle is hidden for statics that have not yet set up character registrations, so it does not add clutter for simpler groups.',
+        pr: 143,
+        prTitle: 'feat: connect static character registrations into loot log, priority, and summary',
+      },
+    ],
+  },
   {
     version: '1.29.0',
     date: '2026-06-19T01:00:00Z',

@@ -10,6 +10,8 @@ import { Package } from 'lucide-react';
 import { Modal, Select, Checkbox, Label, NumberInput } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
+import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
+import { getPrimaryRegistration } from '../../utils/staticCharacterContextService';
 import { logLootAndUpdateGear, calculatePlayerLootStats, calculateAverageDrops } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
@@ -53,6 +55,13 @@ export function QuickLogDropModal({
   const [updateGear, setUpdateGear] = useState(true);
   const [isExtra, setIsExtra] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [recipientCharacterRegId, setRecipientCharacterRegId] = useState<string | null>(null);
+
+  const { registrationsByGroup } = useStaticCharacterStore();
+  const registrationsByPlayer = useMemo(
+    () => registrationsByGroup[groupId] ?? {},
+    [registrationsByGroup, groupId],
+  );
 
   const isWeapon = slot === 'weapon';
 
@@ -63,8 +72,16 @@ export function QuickLogDropModal({
       setSelectedWeek(maxWeek);
       setUpdateGear(true);
       setIsExtra(false); // For gear priority weapons, it's the player's main job so not extra
+      const primaryReg = getPrimaryRegistration(registrationsByPlayer[suggestedPlayer.id] ?? []);
+      setRecipientCharacterRegId(primaryReg?.id ?? null);
     }
-  }, [isOpen, suggestedPlayer.id, maxWeek]);
+  }, [isOpen, suggestedPlayer.id, maxWeek, registrationsByPlayer]);
+
+  // Auto-select primary character when player changes
+  useEffect(() => {
+    const primaryReg = getPrimaryRegistration(registrationsByPlayer[recipientPlayerId] ?? []);
+    setRecipientCharacterRegId(primaryReg?.id ?? null);
+  }, [recipientPlayerId, registrationsByPlayer]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +92,13 @@ export function QuickLogDropModal({
       const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
       // For weapon drops from gear priority, the weapon job is the recipient's main job
       const weaponJob = isWeapon ? recipient?.job : undefined;
+
+      const selectedReg = recipientCharacterRegId
+        ? (registrationsByPlayer[recipientPlayerId] ?? []).find(r => r.id === recipientCharacterRegId)
+        : undefined;
+      const charName = selectedReg
+        ? (selectedReg.resolvedName ?? selectedReg.manualCharacterName ?? undefined)
+        : undefined;
 
       await logLootAndUpdateGear(
         groupId,
@@ -88,6 +112,8 @@ export function QuickLogDropModal({
           weaponJob,
           isExtra,
           notes: isWeapon && weaponJob ? `${weaponJob} weapon${isExtra ? ' (extra)' : ''}` : undefined,
+          recipientCharacterRegistrationId: recipientCharacterRegId ?? undefined,
+          recipientCharacterName: charName,
         },
         {
           updateGear,
