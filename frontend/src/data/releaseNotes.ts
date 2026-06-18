@@ -88,6 +88,20 @@ export const RELEASES: Release[] = [
         pr: 143,
         prTitle: 'feat: connect static character registrations into loot log, priority, and summary',
       },
+      {
+        category: 'fix',
+        title: 'Recurring sessions display the next upcoming date',
+        description: 'Session cards for recurring events now show the next scheduled occurrence rather than the original creation date. The displayed date advances each week so the card always reflects when the next raid actually is.',
+        pr: 144,
+        prTitle: 'fix(schedule): show next occurrence date and add single-occurrence cancel',
+      },
+      {
+        category: 'fix',
+        title: 'Cancel a single occurrence without deleting the series',
+        description: 'The delete button on recurring session cards now opens a choice: "Cancel [date] only" or "Delete entire series." Cancelling one occurrence marks it as skipped for that week while leaving all future occurrences intact.',
+        pr: 144,
+        prTitle: 'fix(schedule): show next occurrence date and add single-occurrence cancel',
+      },
     ],
   },
   {
