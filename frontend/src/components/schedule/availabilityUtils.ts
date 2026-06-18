@@ -53,6 +53,46 @@ export function isSlotInPreset(slot: string, preset: TimePreset): boolean {
   return hour >= start && hour < end;
 }
 
+export function isAfterMidnightPresetSlot(slot: string, preset: TimePreset): boolean {
+  const { end, crossesMidnight } = TIME_PRESETS[preset];
+  if (!crossesMidnight) return false;
+  return Number(slot.split(':')[0]) < end;
+}
+
+function formatDate(value: Date): string {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
+}
+
+export function getNextAvailabilityColumn(column: string): string {
+  const dayIndex = DAYS_OF_WEEK.indexOf(column as DayOfWeek);
+  if (dayIndex >= 0) {
+    return DAYS_OF_WEEK[(dayIndex + 1) % DAYS_OF_WEEK.length];
+  }
+
+  const date = new Date(`${column}T12:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return column;
+  }
+  date.setDate(date.getDate() + 1);
+  return formatDate(date);
+}
+
+export function getAvailabilitySlotKeyForPresetColumn(
+  column: string,
+  slot: string,
+  preset: TimePreset
+): string {
+  const actualColumn = isAfterMidnightPresetSlot(slot, preset)
+    ? getNextAvailabilityColumn(column)
+    : column;
+  return `${actualColumn}|${slot}`;
+}
+
+export function splitAvailabilitySlotKey(key: string): { column: string; slot: string } {
+  const [column, slot] = key.split('|');
+  return { column, slot };
+}
+
 function resolveMemberName(member: Membership): string {
   return member.user?.displayName || member.user?.discordUsername || 'Unknown';
 }

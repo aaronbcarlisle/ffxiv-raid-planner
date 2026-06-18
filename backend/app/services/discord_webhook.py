@@ -128,6 +128,7 @@ class SessionAnnouncementData:
     mention_target: str = "none"
     mention_role_id: str | None = None
     track_availability: bool = True
+    discord_event_url: str | None = None
 
 
 def build_schedule_session_url(base_url: str, share_code: str, session_id: str | None = None) -> str:
@@ -370,6 +371,13 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
             "inline": False,
         })
 
+    if data.discord_event_url:
+        fields.append({
+            "name": "Discord Event",
+            "value": f"[Open event]({data.discord_event_url})",
+            "inline": True,
+        })
+
     embed: dict[str, Any] = {
         "title": data.session_title,
         "url": data.session_url,
@@ -382,7 +390,11 @@ def build_session_announcement_payload(data: SessionAnnouncementData) -> dict[st
         embed["description"] = data.session_description[:1024]
 
     mention, allowed_mentions = _mention_payload(data.mention_target, data.mention_role_id)
-    content = f"[View in planner]({data.session_url})"
+    link_parts = []
+    if data.discord_event_url:
+        link_parts.append(f"[Open Discord Event]({data.discord_event_url})")
+    link_parts.append(f"[RSVP / details]({data.session_url})")
+    content = " · ".join(link_parts)
     if mention:
         content = f"{mention}\n{content}"
 

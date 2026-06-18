@@ -16,6 +16,8 @@ import {
   TIME_PRESETS,
   filterSlotsByPreset,
   formatTimeLabel,
+  getAvailabilitySlotKeyForPresetColumn,
+  splitAvailabilitySlotKey,
   type TimePreset,
 } from '../schedule/availabilityUtils';
 
@@ -65,9 +67,29 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
   const selectModeRef = useRef<'add' | 'remove'>('add');
   const [, forceUpdate] = useState(0);
 
-  const handleCellMouseDown = useCallback((day: string, time: string) => {
+  const isCellSelected = useCallback((displayDay: string, time: string) => {
+    const { column: day, slot } = splitAvailabilitySlotKey(
+      getAvailabilitySlotKeyForPresetColumn(displayDay, time, timePreset)
+    );
+    return (localSlots[day] ?? new Set()).has(slot);
+  }, [localSlots, timePreset]);
+
+  const getDisplayDaySlotCount = useCallback((displayDay: string) => {
+    let total = 0;
+    for (const time of filteredTimeSlots) {
+      if (isCellSelected(displayDay, time)) {
+        total += 1;
+      }
+    }
+    return total;
+  }, [filteredTimeSlots, isCellSelected]);
+
+  const handleCellMouseDown = useCallback((displayDay: string, time: string) => {
+    const { column: day, slot } = splitAvailabilitySlotKey(
+      getAvailabilitySlotKeyForPresetColumn(displayDay, time, timePreset)
+    );
     const current = localSlots[day] ?? new Set();
-    const isSelected = current.has(time);
+    const isSelected = current.has(slot);
     selectModeRef.current = isSelected ? 'remove' : 'add';
     isSelectingRef.current = true;
 
@@ -75,32 +97,36 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
       const next = { ...prev };
       const set = new Set(prev[day] ?? []);
       if (selectModeRef.current === 'add') {
-        set.add(time);
+        set.add(slot);
       } else {
-        set.delete(time);
+        set.delete(slot);
       }
       next[day] = set;
       return next;
     });
     setDirty((prev) => new Set([...prev, day]));
-  }, [localSlots]);
+  }, [localSlots, timePreset]);
 
-  const handleCellMouseEnter = useCallback((day: string, time: string) => {
+  const handleCellMouseEnter = useCallback((displayDay: string, time: string) => {
     if (!isSelectingRef.current) return;
+
+    const { column: day, slot } = splitAvailabilitySlotKey(
+      getAvailabilitySlotKeyForPresetColumn(displayDay, time, timePreset)
+    );
 
     setLocalSlots((prev) => {
       const next = { ...prev };
       const set = new Set(prev[day] ?? []);
       if (selectModeRef.current === 'add') {
-        set.add(time);
+        set.add(slot);
       } else {
-        set.delete(time);
+        set.delete(slot);
       }
       next[day] = set;
       return next;
     });
     setDirty((prev) => new Set([...prev, day]));
-  }, []);
+  }, [timePreset]);
 
   useEffect(() => {
     const handleUp = () => {
@@ -121,6 +147,25 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
     setLocalSlots((prev) => ({ ...prev, [day]: new Set() }));
     setDirty((prev) => new Set([...prev, day]));
   }, []);
+
+  const handleClearDisplayDay = useCallback((displayDay: string) => {
+    const affectedDays = new Set<string>();
+    setLocalSlots((prev) => {
+      const next = { ...prev };
+      for (const time of filteredTimeSlots) {
+        const { column: day, slot } = splitAvailabilitySlotKey(
+          getAvailabilitySlotKeyForPresetColumn(displayDay, time, timePreset)
+        );
+        affectedDays.add(day);
+        next[day] = new Set(next[day] ?? []);
+        next[day].delete(slot);
+      }
+      return next;
+    });
+    setDirty((prev) => new Set([...prev, ...affectedDays]));
+  }, [filteredTimeSlots, timePreset]);
+
+  const handleClearColumn = timePreset === 'full' ? handleClearDay : handleClearDisplayDay;
 
   const handleCancel = () => {
     onDone?.();
@@ -205,17 +250,17 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
               <tr>
                 <th className="sticky left-0 z-10 bg-surface-card w-14 text-xs text-text-tertiary font-medium py-1" />
                 {DAYS_OF_WEEK.map((day) => {
-                  const slotCount = (localSlots[day] ?? new Set()).size;
+                  const slotCount = getDisplayDaySlotCount(day);
                   return (
-                    <th key={day} className="text-center px-0.5 py-1 min-w-[40px]">
-                      <div className="text-xs font-medium text-text-secondary">{DAY_LABELS[day]}</div>
-                      {slotCount > 0 && (
+                <th key={day} className="text-center px-0.5 py-1 min-w-[40px]">
+                  <div className="text-xs font-medium text-text-secondary">{DAY_LABELS[day]}</div>
+                  {slotCount > 0 && (
                         <div className="flex items-center justify-center gap-0.5 mt-0.5">
                           <Badge variant="info" size="sm">{slotCount}</Badge>
                           {/* design-system-ignore: Compact inline clear for day column */}
                           <button
                             type="button"
-                            onClick={() => handleClearDay(day)}
+                            onClick={() => handleClearColumn(day)}
                             className="text-text-tertiary hover:text-status-error transition-colors p-0.5"
                             title={`Clear ${DAY_LABELS[day]}`}
                             aria-label={`Clear ${DAY_LABELS[day]} availability`}
@@ -236,12 +281,14 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
                     {time.endsWith(':00') ? formatTimeLabel(time) : ''}
                   </td>
                   {DAYS_OF_WEEK.map((day) => {
-                    const isSelected = (localSlots[day] ?? new Set()).has(time);
+                    const isSelected = isCellSelected(day, time);
                     return (
                       <td
                         key={`${day}|${time}`}
                         onMouseDown={(e) => { e.preventDefault(); handleCellMouseDown(day, time); }}
                         onMouseEnter={() => handleCellMouseEnter(day, time)}
+                        onMouseMove={() => handleCellMouseEnter(day, time)}
+                        onMouseUp={() => handleCellMouseEnter(day, time)}
                         onTouchStart={(e) => { e.preventDefault(); handleCellMouseDown(day, time); }}
                         className={`
                           cursor-pointer border border-border-subtle transition-colors

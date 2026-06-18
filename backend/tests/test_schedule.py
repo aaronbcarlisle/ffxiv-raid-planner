@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.auth_utils import create_access_token
-from app.models import MemberRole, ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings, User
+from app.models import MemberRole, ScheduleDiscordMirror, ScheduleException, ScheduleReminderDelivery, ScheduleRsvp, ScheduleSession, ScheduleSettings, User
 from app.services.discord_webhook import (
     _next_occurrence_iso,
     _recurrence_rule_to_text,
@@ -1003,6 +1003,8 @@ class TestAutomaticScheduleReminders:
         *,
         start_time: str = "2099-07-05T12:00:00+00:00",
         track_availability: bool = True,
+        is_recurring: bool = False,
+        recurrence_rule: str | None = None,
     ) -> str:
         response = await client.post(
             f"/api/static-groups/{group_id}/schedule",
@@ -1013,7 +1015,8 @@ class TestAutomaticScheduleReminders:
                     datetime.fromisoformat(start_time.replace("Z", "+00:00")) + timedelta(hours=3)
                 ).isoformat(),
                 "timezone": "UTC",
-                "isRecurring": False,
+                "isRecurring": is_recurring,
+                "recurrenceRule": recurrence_rule,
                 "trackAvailability": track_availability,
             },
             headers=headers,
@@ -1083,6 +1086,80 @@ class TestAutomaticScheduleReminders:
         )
         assert result.scalar_one_or_none() is not None
 
+    async def test_automatic_reminder_includes_discord_event_link_when_mirror_exists(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+    ):
+        session_id = await self._create_session(client, test_group.id, auth_headers)
+        await self._enable_webhook(client, test_group.id, auth_headers)
+        session.add(
+            ScheduleDiscordMirror(
+                id="mirror-reminder-link",
+                session_id=session_id,
+                occurrence_date="2099-07-05",
+                discord_guild_id="987654321098765432",
+                discord_scheduled_event_id="123456789012345678",
+                sync_status="synced",
+            )
+        )
+        await session.flush()
+
+        mock_client = _mock_discord_post(204)
+        with patch("app.services.schedule_webhooks.httpx.AsyncClient", return_value=mock_client):
+            sent = await run_schedule_reminder_cycle(
+                datetime(2099, 7, 5, 11, 0, tzinfo=timezone.utc)
+            )
+
+        assert sent == 1
+        payload = mock_client.post.call_args[1]["json"]
+        assert "https://discord.com/events/987654321098765432/123456789012345678" in payload["content"]
+        assert any(
+            field["name"] == "Discord Event"
+            and "https://discord.com/events/987654321098765432/123456789012345678" in field["value"]
+            for field in payload["embeds"][0]["fields"]
+        )
+
+    async def test_cancelled_recurring_occurrence_skips_reminder_but_future_occurrence_sends(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+    ):
+        session_id = await self._create_session(
+            client,
+            test_group.id,
+            auth_headers,
+            is_recurring=True,
+            recurrence_rule="FREQ=WEEKLY;BYDAY=SU",
+        )
+        await self._enable_webhook(client, test_group.id, auth_headers)
+        session.add(
+            ScheduleException(
+                id="exception-cancelled-reminder",
+                session_id=session_id,
+                occurrence_date="2099-07-05",
+                type="cancelled",
+                created_by_id=test_group.owner_id,
+            )
+        )
+        await session.flush()
+
+        mock_client = _mock_discord_post(204)
+        with patch("app.services.schedule_webhooks.httpx.AsyncClient", return_value=mock_client):
+            cancelled_sent = await run_schedule_reminder_cycle(
+                datetime(2099, 7, 5, 11, 0, tzinfo=timezone.utc)
+            )
+            future_sent = await run_schedule_reminder_cycle(
+                datetime(2099, 7, 12, 11, 0, tzinfo=timezone.utc)
+            )
+
+        assert cancelled_sent == 0
+        assert future_sent == 1
+
     async def test_automatic_reminder_failure_does_not_record_delivery(
         self,
         client: AsyncClient,
@@ -1126,6 +1203,59 @@ class TestAutomaticScheduleReminders:
         assert first == 1
         assert second == 0
         mock_client.post.assert_called_once()
+
+    async def test_session_can_disable_automatic_reminders(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+    ):
+        session_id = await self._create_session(client, test_group.id, auth_headers)
+        await self._enable_webhook(client, test_group.id, auth_headers)
+        response = await client.put(
+            f"/api/static-groups/{test_group.id}/schedule/{session_id}",
+            json={"sendDiscordReminders": False},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+
+        mock_client = _mock_discord_post(204)
+        with patch("app.services.schedule_webhooks.httpx.AsyncClient", return_value=mock_client):
+            sent = await run_schedule_reminder_cycle(
+                datetime(2099, 7, 5, 11, 0, tzinfo=timezone.utc)
+            )
+
+        assert sent == 0
+        mock_client.post.assert_not_called()
+
+    async def test_session_reminder_offsets_override_static_defaults(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_group,
+        auth_headers,
+    ):
+        session_id = await self._create_session(client, test_group.id, auth_headers)
+        await self._enable_webhook(client, test_group.id, auth_headers)
+        response = await client.put(
+            f"/api/static-groups/{test_group.id}/schedule/{session_id}",
+            json={"reminderOffsetsMinutes": [15]},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+
+        mock_client = _mock_discord_post(204)
+        with patch("app.services.schedule_webhooks.httpx.AsyncClient", return_value=mock_client):
+            one_hour_sent = await run_schedule_reminder_cycle(
+                datetime(2099, 7, 5, 11, 0, tzinfo=timezone.utc)
+            )
+            fifteen_min_sent = await run_schedule_reminder_cycle(
+                datetime(2099, 7, 5, 11, 45, tzinfo=timezone.utc)
+            )
+
+        assert one_hour_sent == 0
+        assert fifteen_min_sent == 1
 
     async def test_manual_preview_and_automatic_reminder_use_same_webhook_destination(
         self,

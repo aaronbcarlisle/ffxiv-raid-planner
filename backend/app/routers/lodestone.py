@@ -5,6 +5,7 @@ import html
 import json
 import re
 from datetime import datetime, timezone
+from itertools import permutations
 from typing import Any
 
 import httpx
@@ -60,6 +61,7 @@ LODESTONE_SLOT_MAP = {
     "Ring1": "ring1",
     "Ring2": "ring2",
 }
+RING_SLOTS = ("ring1", "ring2")
 
 MOCK_ITEM_DETAILS: dict[int, dict[str, Any]] = {
     200001: {
@@ -1220,6 +1222,98 @@ def _calculate_is_augmented(
     return current_source == "tome_up"
 
 
+def _resolve_current_source_for_equipped(
+    gear_slot: dict[str, Any],
+    equipped: dict[str, Any] | None,
+    existing_source: str | None = None,
+) -> str:
+    if not equipped:
+        return "unknown"
+
+    next_source = equipped.get("current_source", "unknown")
+    exact_item_match = bool(
+        _coerce_int(gear_slot.get("itemId"))
+        and _coerce_int(gear_slot.get("itemId")) == _coerce_int(equipped.get("item_id"))
+    )
+    if next_source == "unknown":
+        if exact_item_match:
+            next_source = _derive_source_from_bis(gear_slot.get("bisSource"))
+        elif existing_source and existing_source != "unknown":
+            next_source = existing_source
+    return next_source
+
+
+def _copy_equipped_fields_to_gear_slot(
+    gear_slot: dict[str, Any],
+    equipped: dict[str, Any],
+) -> None:
+    if not equipped.get("has_equipped_item"):
+        return
+    gear_slot["equippedItemId"] = equipped.get("item_id")
+    gear_slot["equippedItemLevel"] = equipped.get("item_level")
+    gear_slot["equippedItemName"] = equipped.get("item_name")
+    gear_slot["equippedItemIcon"] = equipped.get("item_icon")
+
+
+def _stored_gear_to_equipped_lookup(gear: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Convert stored gear snapshot fields into the equipped lookup shape."""
+    equipped_by_slot: dict[str, dict[str, Any]] = {}
+    for slot in gear:
+        slot_name = slot.get("slot")
+        if not slot_name:
+            continue
+        item_id = slot.get("equippedItemId")
+        item_name = slot.get("equippedItemName")
+        item_level = slot.get("equippedItemLevel")
+        if not (item_id or item_name or item_level):
+            continue
+        equipped_by_slot[slot_name] = {
+            "has_equipped_item": True,
+            "item_id": item_id,
+            "item_name": item_name,
+            "item_level": item_level,
+            "item_icon": slot.get("equippedItemIcon"),
+            "current_source": slot.get("currentSource", "unknown"),
+        }
+    return equipped_by_slot
+
+
+def _apply_ring_slot_equivalence(
+    gear: list[dict[str, Any]],
+    equipped_by_slot: dict[str, dict[str, Any]],
+) -> None:
+    """Treat ring slots as an unordered pair for BiS matching."""
+    rings = [slot for slot in gear if slot.get("slot") in RING_SLOTS]
+    if len(rings) != 2 or any(not ring.get("bisSource") for ring in rings):
+        return
+
+    candidates = [
+        equipped_by_slot[slot_name]
+        for slot_name in RING_SLOTS
+        if equipped_by_slot.get(slot_name, {}).get("has_equipped_item")
+    ]
+    if len(candidates) != 2:
+        return
+
+    for candidate_order in permutations(candidates):
+        if all(_calculate_has_item(ring, equipped) for ring, equipped in zip(rings, candidate_order)):
+            for ring, equipped in zip(rings, candidate_order):
+                next_source = _resolve_current_source_for_equipped(
+                    ring,
+                    equipped,
+                    ring.get("currentSource"),
+                )
+                ring["currentSource"] = next_source
+                ring["hasItem"] = True
+                ring["isAugmented"] = _calculate_is_augmented(
+                    ring,
+                    {**equipped, "current_source": next_source},
+                    True,
+                )
+                _copy_equipped_fields_to_gear_slot(ring, equipped)
+            return
+
+
 @router.get("/search", response_model=CharacterSearchResponse)
 @limiter.limit(RATE_LIMITS["external_api"])
 async def search_characters(
@@ -1548,7 +1642,11 @@ async def sync_player_gear(
     _, equipped_by_slot = await _build_equipped_slots(gear_items)
 
     current_gear = [dict(gear_slot) for gear_slot in previous_gear]
-    updated_count = 0
+    previous_by_slot = {
+        gear_slot.get("slot"): dict(gear_slot)
+        for gear_slot in previous_gear
+        if gear_slot.get("slot")
+    }
 
     for gear_slot in current_gear:
         slot_name = gear_slot.get("slot")
@@ -1556,13 +1654,6 @@ async def sync_player_gear(
             continue
 
         equipped = equipped_by_slot.get(slot_name)
-        previous_state = dict(gear_slot)
-        existing_source = gear_slot.get("currentSource")
-        exact_item_match = bool(
-            equipped
-            and _coerce_int(gear_slot.get("itemId"))
-            and _coerce_int(gear_slot.get("itemId")) == _coerce_int(equipped.get("item_id"))
-        )
 
         if not equipped:
             gear_slot["currentSource"] = "unknown"
@@ -1574,12 +1665,11 @@ async def sync_player_gear(
             gear_slot.pop("equippedItemName", None)
             gear_slot.pop("equippedItemIcon", None)
         else:
-            next_source = equipped.get("current_source", "unknown")
-            if next_source == "unknown":
-                if exact_item_match:
-                    next_source = _derive_source_from_bis(gear_slot.get("bisSource"))
-                elif existing_source and existing_source != "unknown":
-                    next_source = existing_source
+            next_source = _resolve_current_source_for_equipped(
+                gear_slot,
+                equipped,
+                gear_slot.get("currentSource"),
+            )
 
             gear_slot["currentSource"] = next_source
             gear_slot["hasItem"] = _calculate_has_item(gear_slot, equipped)
@@ -1591,13 +1681,15 @@ async def sync_player_gear(
             # Store currently equipped item details separately from BiS target fields.
             # These are display-only — they do not affect BiS completion logic.
             if equipped.get("has_equipped_item"):
-                gear_slot["equippedItemId"] = equipped.get("item_id")
-                gear_slot["equippedItemLevel"] = equipped.get("item_level")
-                gear_slot["equippedItemName"] = equipped.get("item_name")
-                gear_slot["equippedItemIcon"] = equipped.get("item_icon")
+                _copy_equipped_fields_to_gear_slot(gear_slot, equipped)
 
-        if gear_slot != previous_state:
-            updated_count += 1
+    _apply_ring_slot_equivalence(current_gear, equipped_by_slot)
+
+    updated_count = sum(
+        1
+        for gear_slot in current_gear
+        if gear_slot != previous_by_slot.get(gear_slot.get("slot"), {})
+    )
 
     bis_matched_count = sum(1 for s in current_gear if s.get("hasItem"))
     payload_changed = updated_count > 0

@@ -8,6 +8,7 @@ import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
 import { analytics } from './services/analytics';
 import { errorReporter } from './services/errorReporter';
+import { attemptChunkReload, clearChunkReloadGuard, hasAttemptedChunkReload, isChunkLoadError } from './utils/chunkRecovery';
 
 // Lazy-loaded pages for code splitting
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
@@ -39,7 +40,42 @@ const UnderstandingPriority = lazy(() => import('./pages/UnderstandingPriority')
 const GearMathDocs = lazy(() => import('./pages/GearMathDocs'));
 const FAQDocs = lazy(() => import('./pages/FAQDocs'));
 
-function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+  const isStaleChunk = isChunkLoadError(error);
+  const alreadyTriedReload = isStaleChunk && hasAttemptedChunkReload();
+
+  useEffect(() => {
+    if (isStaleChunk && !alreadyTriedReload) {
+      attemptChunkReload();
+    }
+  }, [alreadyTriedReload, isStaleChunk]);
+
+  if (isStaleChunk) {
+    return (
+      <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
+        <div className="bg-surface-card border border-border-default rounded-lg p-6 max-w-md text-center">
+          <h2 className="text-xl font-display text-accent mb-2">The app was updated</h2>
+          <p className="text-text-secondary text-sm mb-4">
+            Please reload to get the latest version. If this keeps happening, use your browser refresh button once.
+          </p>
+          {!alreadyTriedReload && (
+            <p className="text-text-tertiary text-xs mb-4">Reloading once automatically...</p>
+          )}
+{/* design-system-ignore: error boundary uses inline button to minimize dependencies */}
+          <button
+            onClick={() => {
+              attemptChunkReload();
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+          >
+            Reload app
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
       <div className="bg-surface-card border border-border-default rounded-lg p-6 max-w-md text-center">
@@ -70,9 +106,32 @@ function App() {
 
   // Initialize auth on app load (check for existing session)
   useEffect(() => {
+    const clearReloadGuardTimer = window.setTimeout(() => {
+      clearChunkReloadGuard();
+    }, 5000);
     initializeAuth();
     analytics.init();
     errorReporter.init();
+
+    const handleWindowError = (event: ErrorEvent) => {
+      if (isChunkLoadError(event.error || event.message || event.filename)) {
+        attemptChunkReload();
+      }
+    };
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (isChunkLoadError(event.reason)) {
+        attemptChunkReload();
+      }
+    };
+
+    window.addEventListener('error', handleWindowError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.clearTimeout(clearReloadGuardTimer);
+      window.removeEventListener('error', handleWindowError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
   }, []);
 
   // Track page views on route changes

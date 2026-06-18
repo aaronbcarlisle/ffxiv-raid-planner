@@ -28,6 +28,10 @@ CSRF_EXEMPT_PATHS: Set[str] = {
     # the CSRF contract here.  The authorize endpoint (/plugin-auth/authorize) remains
     # CSRF-protected because it IS called from a logged-in browser session.
     "/api/auth/api-keys/plugin-auth/exchange",
+    # Discord bot endpoints — called by the gateway bot process, not a browser.
+    # Security is provided by Bot token auth (Authorization: Bot <token>).
+    "/api/discord/interactions",
+    "/api/discord/slash-claim",
 }
 
 # Paths where we should always generate a fresh CSRF token

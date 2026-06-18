@@ -62,6 +62,12 @@ def normalize_discord_role_id(value: str | None) -> str | None:
     return match.group(1)
 
 
+class BannerSourceTypeEnum(str, Enum):
+    UPLOADED = "uploaded"
+    DUTY_PRESET = "duty_preset"
+    EXTERNAL_URL = "external_url"
+
+
 class ScheduleSessionCreate(CamelModel):
     title: str
     description: str | None = None
@@ -75,6 +81,13 @@ class ScheduleSessionCreate(CamelModel):
     category: EventCategoryEnum | None = None
     content_id: str | None = None
     content_name: str | None = None
+    banner_url: str | None = None
+    banner_key: str | None = None
+    banner_source_type: BannerSourceTypeEnum | None = None
+    mirror_to_discord: bool = True
+    send_discord_reminders: bool = True
+    reminder_offsets_minutes: list[int] | None = None
+    missing_rsvp_reminder_enabled: bool | None = None
 
 
 class ScheduleSessionUpdate(CamelModel):
@@ -89,6 +102,13 @@ class ScheduleSessionUpdate(CamelModel):
     category: EventCategoryEnum | None = None
     content_id: str | None = None
     content_name: str | None = None
+    banner_url: str | None = None
+    banner_key: str | None = None
+    banner_source_type: BannerSourceTypeEnum | None = None
+    mirror_to_discord: bool | None = None
+    send_discord_reminders: bool | None = None
+    reminder_offsets_minutes: list[int] | None = None
+    missing_rsvp_reminder_enabled: bool | None = None
 
 
 class RsvpCreate(CamelModel):
@@ -121,9 +141,65 @@ class ScheduleSessionResponse(CamelModel):
     category: str | None = None
     content_id: str | None = None
     content_name: str | None = None
+    banner_url: str | None = None
+    banner_key: str | None = None
+    banner_source_type: str | None = None
+    mirror_to_discord: bool = True
+    send_discord_reminders: bool = True
+    reminder_offsets_minutes: list[int] | None = None
+    missing_rsvp_reminder_enabled: bool | None = None
     created_at: str
     updated_at: str
     rsvps: list[RsvpResponse] = []
+
+
+class ExceptionTypeEnum(str, Enum):
+    CANCELLED = "cancelled"
+    EDITED = "edited"
+
+
+class ScheduleExceptionCreate(CamelModel):
+    """Create or upsert an exception for one occurrence of a recurring session."""
+    occurrence_date: str          # ISO date e.g. "2025-07-06"
+    type: ExceptionTypeEnum
+    override_start_time: str | None = None
+    override_end_time: str | None = None
+    override_title: str | None = None
+    override_description: str | None = None
+    override_banner_url: str | None = None
+    override_banner_key: str | None = None
+    cancellation_reason: str | None = None
+
+
+class ScheduleExceptionResponse(CamelModel):
+    id: str
+    session_id: str
+    occurrence_date: str
+    type: str
+    override_start_time: str | None = None
+    override_end_time: str | None = None
+    override_title: str | None = None
+    override_description: str | None = None
+    override_banner_url: str | None = None
+    override_banner_key: str | None = None
+    cancellation_reason: str | None = None
+    created_by_id: str
+    created_at: str
+    updated_at: str
+
+
+class OccurrenceResponse(CamelModel):
+    """A single generated occurrence (may have exception overrides applied)."""
+    occurrence_date: str
+    start_time: str
+    end_time: str
+    title: str
+    description: str | None = None
+    banner_url: str | None = None
+    banner_key: str | None = None
+    banner_source_type: str | None = None
+    is_exception: bool = False
+    exception_id: str | None = None
 
 
 # ==================== Availability Schemas ====================
@@ -205,6 +281,9 @@ class ScheduleSettingsUpdate(CamelModel):
     enable_6h_reminder: bool | None = Field(default=None, alias="enable6hReminder")
     enable_12h_reminder: bool | None = Field(default=None, alias="enable12hReminder")
     enable_missing_rsvp_reminder: bool | None = None
+    # Discord Guild Scheduled Events (optional bot integration)
+    discord_bot_token: str | None = None
+    discord_guild_id: str | None = None
 
     @field_validator("mention_role_id")
     @classmethod
@@ -238,6 +317,15 @@ class ScheduleSettingsResponse(CamelModel):
     calendar_token_created_at: str | None = None
     webhook_last_delivery_status: int | None = None
     webhook_last_delivery_error: str | None = None
+    # Legacy per-static bot fields (kept for self-hosted setups)
+    discord_bot_configured: bool = False
+    discord_guild_id: str | None = None
+    # Official bot availability + invite URL client ID (safe to expose to clients)
+    discord_official_bot_available: bool = False
+    discord_client_id: str | None = None
+    # Official bot via install-claim flow
+    discord_link_status: str | None = None  # connected | permission_missing | disconnected | None
+    discord_guild_name: str | None = None
     can_manage: bool = False
     created_at: str | None = None
     updated_at: str | None = None
@@ -252,3 +340,34 @@ class CalendarTokenResponse(CamelModel):
     calendar_enabled: bool
     calendar_url: str | None = None
     calendar_token_created_at: str | None = None
+
+
+# ==================== Discord Install Claim Schemas ====================
+
+
+class DiscordInstallClaimResponse(CamelModel):
+    id: str
+    claim_code: str  # Plain-text — only returned once on create
+    expires_at: str
+    status: str
+
+
+class SlashCommandClaimRequest(CamelModel):
+    """Posted by the XIVRaidPlanner bot when /xrp link <code> is run in Discord."""
+    claim_code: str
+    discord_guild_id: str
+    discord_guild_name: str | None = None
+    discord_channel_id: str | None = None
+    discord_user_id: str  # Discord user who ran the slash command
+
+
+class StaticDiscordLinkResponse(CamelModel):
+    id: str
+    static_group_id: str
+    discord_guild_id: str
+    discord_guild_name: str | None = None
+    schedule_channel_id: str | None = None
+    status: str
+    last_permission_check_at: str | None = None
+    created_at: str
+    updated_at: str

@@ -684,6 +684,15 @@ class TestPluginMountGoalBridge:
         assert matching[0]["status"] == "active"
         assert matching[0]["currentCount"] == 35
 
+        progress = await client.get(
+            f"/api/static-groups/{test_group.id}/mount-farms?trial_ids=dt-valigarmanda",
+            headers=auth_headers,
+        )
+        assert progress.status_code == 200
+        member_progress = progress.json()["trials"][0]["memberProgress"][0]
+        assert member_progress["totemCount"] == 35
+        assert member_progress["totemSource"] == "plugin"
+
     async def test_plugin_sync_updates_existing_goal_count(
         self, client, session, test_user, test_group, auth_headers,
     ):
@@ -813,10 +822,10 @@ class TestPluginMountGoalBridge:
         assert len(matching) == 1
         assert matching[0]["status"] == "active"
 
-    async def test_plugin_sync_skips_bridge_when_no_profile(
+    async def test_plugin_sync_creates_profile_goal_when_profile_missing(
         self, client, session, test_user, test_group, auth_headers,
     ):
-        """If user has no profile, plugin sync still succeeds (bridge is silently skipped)."""
+        """Plugin collection sync creates Player Hub profile/goals before static mirroring."""
         r = await client.post(
             "/api/plugin/mount-farms/sync",
             headers=auth_headers,
@@ -829,3 +838,48 @@ class TestPluginMountGoalBridge:
             },
         )
         assert r.status_code == 200
+
+        profile_result = await session.execute(
+            select(PlayerProfile).where(PlayerProfile.user_id == test_user.id)
+        )
+        profile = profile_result.scalar_one_or_none()
+        assert profile is not None
+
+        goals = await client.get(
+            "/api/player/goals?goal_type=mount_farm", headers=auth_headers,
+        )
+        matching = [g for g in goals.json() if g["sourceContent"] == "dt-valigarmanda"]
+        assert len(matching) == 1
+        assert matching[0]["status"] == "completed"
+
+    async def test_plugin_sync_updates_player_hub_without_static_membership(
+        self, client, session, test_user_2, auth_headers_user2,
+    ):
+        """Plugin collection sync is preserved in Player Hub even before joining a static."""
+        r = await client.post(
+            "/api/plugin/mount-farms/sync",
+            headers=auth_headers_user2,
+            json={
+                "mounts": [],
+                "totems": [
+                    {"itemId": 44123, "trialId": "dt-valigarmanda", "count": 24},
+                ],
+                "source": "plugin",
+            },
+        )
+        assert r.status_code == 200
+        assert r.json()["mountsUpdated"] == 0
+        assert r.json()["totemsUpdated"] == 0
+
+        goals = await client.get(
+            "/api/player/goals?goal_type=mount_farm", headers=auth_headers_user2,
+        )
+        matching = [g for g in goals.json() if g["sourceContent"] == "dt-valigarmanda"]
+        assert len(matching) == 1
+        assert matching[0]["currentCount"] == 24
+        assert matching[0]["sourceItem"] == "Skyruin Totem"
+
+        progress_result = await session.execute(
+            select(MountFarmProgress).where(MountFarmProgress.user_id == test_user_2.id)
+        )
+        assert list(progress_result.scalars().all()) == []

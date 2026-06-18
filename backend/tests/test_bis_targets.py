@@ -6,7 +6,21 @@ Roster context tests require SnapshotPlayer + group membership and are
 covered in test_bis_targets_roster.py.
 """
 
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
+
 import pytest
+
+
+MULTI_SET_XIVGEAR_DATA = {
+    "name": "WHM Sheet",
+    "job": "WHM",
+    "sets": [
+        {"isSeparator": True, "name": "Savage"},
+        {"name": "2.44 Savage BiS", "items": {"Weapon": {"id": 101}}},
+        {"name": "2.29 High DPS", "items": {"Weapon": {"id": 202}}},
+    ],
+}
 
 
 @pytest.mark.asyncio
@@ -221,3 +235,84 @@ class TestBisTargetsPlayerHub:
         assert len(lr.json()) == 3
         active_count = sum(1 for t in lr.json() if t["isActive"])
         assert active_count <= 1
+
+    async def test_xivgear_multi_set_target_requires_selected_set(self, client, auth_headers):
+        """Linked XIVGear sheets with multiple sets must not import an arbitrary set."""
+        jp_id = await self._create_job_profile(client, auth_headers)
+        cr = await client.post(
+            "/api/bis-targets",
+            headers=auth_headers,
+            json={
+                "ownerType": "player_job_profile",
+                "ownerId": jp_id,
+                "name": "WHM Sheet",
+                "sourceType": "xivgear",
+                "externalUrl": "https://xivgear.app/?page=sl|73551d94-354a-4e30-9205-5d52d2efaf3f",
+                "importStatus": "linked_only",
+            },
+        )
+        tid = cr.json()["id"]
+
+        with patch(
+            "app.routers.bis_targets.fetch_bis_from_xivgear_url",
+            new=AsyncMock(return_value=MULTI_SET_XIVGEAR_DATA),
+        ):
+            response = await client.post(f"/api/bis-targets/{tid}/import", headers=auth_headers)
+
+        assert response.status_code == 400
+        assert "multiple sets" in response.json()["detail"]
+
+        lr = await client.get(
+            "/api/bis-targets",
+            headers=auth_headers,
+            params={"ownerType": "player_job_profile", "ownerId": jp_id},
+        )
+        assert lr.json()[0]["importStatus"] == "import_failed"
+
+    async def test_xivgear_selected_set_target_populates_items_json(self, client, auth_headers):
+        """The selected XIVGear set should populate the imported target gear data."""
+        jp_id = await self._create_job_profile(client, auth_headers)
+        cr = await client.post(
+            "/api/bis-targets",
+            headers=auth_headers,
+            json={
+                "ownerType": "player_job_profile",
+                "ownerId": jp_id,
+                "name": "WHM High DPS",
+                "sourceType": "xivgear",
+                "externalUrl": (
+                    "https://xivgear.app/?page=sl|73551d94-354a-4e30-9205-5d52d2efaf3f"
+                    "&selectedIndex=2"
+                ),
+                "importStatus": "linked_only",
+            },
+        )
+        tid = cr.json()["id"]
+
+        async def build_slots(items_data):
+            assert items_data["Weapon"]["id"] == 202
+            slot = {
+                "slot": "weapon",
+                "source": "raid",
+                "itemId": 202,
+                "itemName": "Imported Weapon 202",
+                "itemLevel": 790,
+                "itemIcon": "weapon-202.png",
+                "itemStats": None,
+                "materia": [],
+            }
+            return [SimpleNamespace(model_dump=lambda: slot)]
+
+        with (
+            patch(
+                "app.routers.bis_targets.fetch_bis_from_xivgear_url",
+                new=AsyncMock(return_value=MULTI_SET_XIVGEAR_DATA),
+            ),
+            patch("app.routers.bis_targets.build_xivgear_slots", new=AsyncMock(side_effect=build_slots)),
+        ):
+            response = await client.post(f"/api/bis-targets/{tid}/import", headers=auth_headers)
+
+        assert response.status_code == 200, response.json()
+        data = response.json()
+        assert data["importStatus"] == "imported"
+        assert data["itemsJson"]["slots"][0]["itemId"] == 202

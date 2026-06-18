@@ -26,13 +26,14 @@ import {
   formatDateHeader,
   formatHoveredSlotLabel,
   formatTimeLabel,
+  getAvailabilitySlotKeyForPresetColumn,
   getNextNDates,
   getScheduleReferenceTimezone,
   getUtcDateRange,
   isSlotInPreset,
   localSlotsToUtcMap,
+  splitAvailabilitySlotKey,
   TIME_PRESETS,
-  TIME_SLOTS,
   type TimePreset,
 } from './availabilityUtils';
 
@@ -105,8 +106,11 @@ export function AvailabilityGrid({
   const isSelectingRef = useRef(false);
   const selectModeRef = useRef<'add' | 'remove'>('add');
   const pendingCellsRef = useRef<Set<string>>(new Set());
+  const committedSlotsRef = useRef<Set<string>>(new Set());
+  const inFlightSavesRef = useRef(0);
   const [selectMode, setSelectMode] = useState<'add' | 'remove'>('add');
   const [pendingCellsSnapshot, setPendingCellsSnapshot] = useState<Set<string>>(() => new Set());
+  const [committedSlotsSnapshot, setCommittedSlotsSnapshot] = useState<Set<string>>(() => new Set());
   const [hoveredCell, setHoveredCell] = useState<string | null>(null);
 
   const utcRange = useMemo(() => getUtcDateRange(dates), [dates]);
@@ -133,6 +137,19 @@ export function AvailabilityGrid({
   // Active heat map / user slots depend on current mode
   const activeHeatMap = mode === 'typical-week' ? templateHeatMap : heatMap;
   const activeUserSlots = mode === 'typical-week' ? templateUserSlots : userSlots;
+  const activeUserSlotsKey = useMemo(
+    () => Array.from(activeUserSlots).sort().join('\u0000'),
+    [activeUserSlots]
+  );
+
+  useEffect(() => {
+    if (isSelectingRef.current || inFlightSavesRef.current > 0) {
+      return;
+    }
+    const nextCommittedSlots = new Set(activeUserSlots);
+    committedSlotsRef.current = nextCommittedSlots;
+    setCommittedSlotsSnapshot(nextCommittedSlots);
+  }, [activeUserSlotsKey, activeUserSlots, mode]);
 
   const trackedMembers = useMemo(
     () => members.filter((member) => member.role !== 'viewer'),
@@ -161,27 +178,40 @@ export function AvailabilityGrid({
     [recommendations]
   );
 
-  const stableRef = useRef({ userSlots, templateUserSlots, groupId, submitAvailability, submitTemplate, user, mode });
+  const stableRef = useRef({ groupId, submitAvailability, submitTemplate, user, mode });
   useEffect(() => {
-    stableRef.current = { userSlots, templateUserSlots, groupId, submitAvailability, submitTemplate, user, mode };
-  }, [groupId, submitAvailability, submitTemplate, user, userSlots, templateUserSlots, mode]);
+    stableRef.current = { groupId, submitAvailability, submitTemplate, user, mode };
+  }, [groupId, submitAvailability, submitTemplate, user, mode]);
 
   const getEffectiveSelection = (key: string): boolean => {
     if (pendingCellsSnapshot.has(key)) {
       return selectMode === 'add';
     }
-    return activeUserSlots.has(key);
+    return committedSlotsSnapshot.has(key);
   };
+
+  const effectiveSelectedSlots = useMemo(() => {
+    const slots = new Set(committedSlotsSnapshot);
+    for (const key of pendingCellsSnapshot) {
+      if (selectMode === 'add') {
+        slots.add(key);
+      } else {
+        slots.delete(key);
+      }
+    }
+    return slots;
+  }, [committedSlotsSnapshot, pendingCellsSnapshot, selectMode]);
 
   const saveIdRef = useRef(0);
 
-  const handleCellMouseDown = (date: string, time: string) => {
+  const handleCellMouseDown = (key: string) => {
     if (!canEditAvailability) {
       return;
     }
 
-    const key = `${date}|${time}`;
-    const isSelected = activeUserSlots.has(key);
+    const isSelected = pendingCellsRef.current.has(key)
+      ? selectModeRef.current === 'add'
+      : committedSlotsRef.current.has(key);
     const nextMode = isSelected ? 'remove' : 'add';
     selectModeRef.current = nextMode;
     setSelectMode(nextMode);
@@ -192,8 +222,7 @@ export function AvailabilityGrid({
     setPendingCellsSnapshot(nextPendingCells);
   };
 
-  const handleCellMouseEnter = (date: string, time: string) => {
-    const key = `${date}|${time}`;
+  const handleCellMouseEnter = (key: string) => {
     setHoveredCell(key);
     if (!isSelectingRef.current) {
       return;
@@ -211,8 +240,6 @@ export function AvailabilityGrid({
 
       const mySaveId = saveIdRef.current;
       const {
-        userSlots: currentSlots,
-        templateUserSlots: currentTemplateSlots,
         groupId: currentGroupId,
         submitAvailability: persistAvailability,
         submitTemplate: persistTemplate,
@@ -234,8 +261,8 @@ export function AvailabilityGrid({
         return;
       }
 
-      const activeSlots = currentMode === 'typical-week' ? currentTemplateSlots : currentSlots;
-      const nextUserSlots = new Set(activeSlots);
+      const previousCommittedSlots = new Set(committedSlotsRef.current);
+      const nextUserSlots = new Set(previousCommittedSlots);
       for (const cell of pending) {
         if (paintMode === 'add') {
           nextUserSlots.add(cell);
@@ -244,52 +271,64 @@ export function AvailabilityGrid({
         }
       }
 
+      committedSlotsRef.current = nextUserSlots;
+      setCommittedSlotsSnapshot(new Set(nextUserSlots));
+      inFlightSavesRef.current += 1;
+
       let anyFailed = false;
 
-      if (currentMode === 'typical-week') {
-        // Group updated slots by day-of-week and persist each day
-        const byDay = new Map<string, string[]>();
-        for (const key of nextUserSlots) {
-          const [day, time] = key.split('|');
-          if (!byDay.has(day)) byDay.set(day, []);
-          byDay.get(day)!.push(time);
-        }
-        // Also persist days where all slots were removed
-        const affectedDays = new Set([...pending].map((k) => k.split('|')[0]));
-        for (const day of affectedDays) {
-          if (!byDay.has(day)) byDay.set(day, []);
-        }
-        for (const [day, slots] of byDay.entries()) {
-          try {
-            await persistTemplate(currentGroupId, day, slots);
-          } catch {
-            anyFailed = true;
+      try {
+        if (currentMode === 'typical-week') {
+          // Group updated slots by day-of-week and persist each day
+          const byDay = new Map<string, string[]>();
+          for (const key of nextUserSlots) {
+            const [day, time] = key.split('|');
+            if (!byDay.has(day)) byDay.set(day, []);
+            byDay.get(day)!.push(time);
           }
-        }
-      } else {
-        const utcMap = localSlotsToUtcMap(nextUserSlots);
-        const previousUtcMap = localSlotsToUtcMap(currentSlots);
-        const allDates = new Set([...utcMap.keys(), ...previousUtcMap.keys()]);
-
-        for (const utcDate of allDates) {
-          const nextSlots = utcMap.get(utcDate) ?? [];
-          const previousSlots = new Set(previousUtcMap.get(utcDate) ?? []);
-          let changed = nextSlots.length !== previousSlots.size;
-          if (!changed) {
-            for (const slot of nextSlots) {
-              if (!previousSlots.has(slot)) { changed = true; break; }
+          // Also persist days where all slots were removed
+          const affectedDays = new Set([...pending].map((k) => k.split('|')[0]));
+          for (const day of affectedDays) {
+            if (!byDay.has(day)) byDay.set(day, []);
+          }
+          for (const [day, slots] of byDay.entries()) {
+            try {
+              await persistTemplate(currentGroupId, day, slots);
+            } catch {
+              anyFailed = true;
             }
           }
-          if (!changed) continue;
-          try {
-            await persistAvailability(currentGroupId, utcDate, nextSlots);
-          } catch {
-            anyFailed = true;
+        } else {
+          const utcMap = localSlotsToUtcMap(nextUserSlots);
+          const previousUtcMap = localSlotsToUtcMap(previousCommittedSlots);
+          const allDates = new Set([...utcMap.keys(), ...previousUtcMap.keys()]);
+
+          for (const utcDate of allDates) {
+            const nextSlots = utcMap.get(utcDate) ?? [];
+            const previousSlots = new Set(previousUtcMap.get(utcDate) ?? []);
+            let changed = nextSlots.length !== previousSlots.size;
+            if (!changed) {
+              for (const slot of nextSlots) {
+                if (!previousSlots.has(slot)) { changed = true; break; }
+              }
+            }
+            if (!changed) continue;
+            try {
+              await persistAvailability(currentGroupId, utcDate, nextSlots);
+            } catch {
+              anyFailed = true;
+            }
           }
         }
+      } finally {
+        inFlightSavesRef.current = Math.max(0, inFlightSavesRef.current - 1);
       }
 
       if (saveIdRef.current === mySaveId) {
+        if (anyFailed) {
+          committedSlotsRef.current = previousCommittedSlots;
+          setCommittedSlotsSnapshot(new Set(previousCommittedSlots));
+        }
         if (!anyFailed) {
           pendingCellsRef.current = new Set();
         }
@@ -305,14 +344,20 @@ export function AvailabilityGrid({
 
   const hiddenSlotCount = useMemo(() => {
     if (timePreset === 'full') return 0;
-    let count = 0;
+    const visibleSlotKeys = new Set<string>();
     for (const col of columns) {
-      for (const time of TIME_SLOTS) {
-        if (!isSlotInPreset(time, timePreset) && activeUserSlots.has(`${col}|${time}`)) count++;
+      for (const time of filteredTimeSlots) {
+        visibleSlotKeys.add(getAvailabilitySlotKeyForPresetColumn(col, time, timePreset));
       }
     }
+
+    let count = 0;
+    for (const key of effectiveSelectedSlots) {
+      const { slot } = splitAvailabilitySlotKey(key);
+      if (!isSlotInPreset(slot, timePreset) || !visibleSlotKeys.has(key)) count++;
+    }
     return count;
-  }, [timePreset, columns, activeUserSlots]);
+  }, [timePreset, columns, filteredTimeSlots, effectiveSelectedSlots]);
 
   const handlePresetChange = (next: TimePreset) => {
     setTimePreset(next);
@@ -336,20 +381,8 @@ export function AvailabilityGrid({
       : formatHoveredSlotLabel(hoveredCell)
     : null;
   const selectedSlotCount = useMemo(() => {
-    let total = 0;
-    for (const col of columns) {
-      for (const time of TIME_SLOTS) {
-        const key = `${col}|${time}`;
-        const isSelected = pendingCellsSnapshot.has(key)
-          ? selectMode === 'add'
-          : activeUserSlots.has(key);
-        if (isSelected) {
-          total += 1;
-        }
-      }
-    }
-    return total;
-  }, [columns, pendingCellsSnapshot, selectMode, activeUserSlots]);
+    return effectiveSelectedSlots.size;
+  }, [effectiveSelectedSlots]);
 
   const sharedWindowCount = useMemo(() => {
     const threshold = Math.max(1, Math.ceil(totalMembers / 2));
@@ -789,7 +822,7 @@ export function AvailabilityGrid({
                     )}
                   </div>,
                   ...columns.map((col) => {
-                    const key = `${col}|${time}`;
+                    const key = getAvailabilitySlotKeyForPresetColumn(col, time, timePreset);
                     const isUserSelected = getEffectiveSelection(key);
                     const heat = activeHeatMap.get(key);
                     const count = heat?.count ?? 0;
@@ -839,8 +872,10 @@ export function AvailabilityGrid({
                         className={`h-6 rounded-md border ${bgColor} ${borderColor} ${recommendationClass} transition-all duration-100 ${
                           isHovered ? 'scale-[1.02] ring-2 ring-inset ring-accent/50' : ''
                         } ${canEditAvailability ? 'cursor-pointer hover:border-accent/35' : ''}`}
-                        onMouseDown={() => handleCellMouseDown(col, time)}
-                        onMouseEnter={() => handleCellMouseEnter(col, time)}
+                        onMouseDown={() => handleCellMouseDown(key)}
+                        onMouseEnter={() => handleCellMouseEnter(key)}
+                        onMouseMove={() => handleCellMouseEnter(key)}
+                        onMouseUp={() => handleCellMouseEnter(key)}
                       >
                         {count > 0 && (
                           <div className="flex h-full w-full items-center justify-center">
