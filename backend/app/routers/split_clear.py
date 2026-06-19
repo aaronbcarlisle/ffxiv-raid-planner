@@ -23,6 +23,7 @@ from ..permissions import (
     require_can_edit_roster,
 )
 from ..schemas.split_clear import (
+    MarkSplitRunClearedRequest,
     SplitCharacterResponse,
     SplitClearAssignmentResponse,
     SplitClearAssignmentUpdate,
@@ -376,6 +377,34 @@ async def reset_split_clear_week(
     for assignment in result.scalars().all():
         assignment.run_a_cleared = False
         assignment.run_b_cleared = False
+        assignment.updated_at = _now()
+
+    await session.flush()
+    await session.commit()
+
+
+@router.post(
+    "/static-groups/{group_id}/split-clear/mark-run-cleared",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def mark_split_run_cleared(
+    group_id: str,
+    data: MarkSplitRunClearedRequest,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Mark all players in a split run (A or B) as cleared. Any member can mark their own run."""
+    group = await get_static_group(session, group_id)
+    await check_view_permission(session, group, current_user)
+
+    result = await session.execute(
+        select(SplitClearAssignment).where(SplitClearAssignment.static_group_id == group_id)
+    )
+    for assignment in result.scalars().all():
+        if data.run == "A":
+            assignment.run_a_cleared = True
+        else:
+            assignment.run_b_cleared = True
         assignment.updated_at = _now()
 
     await session.flush()

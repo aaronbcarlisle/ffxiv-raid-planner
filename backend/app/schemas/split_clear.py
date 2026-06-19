@@ -110,3 +110,9 @@ class SplitClearResponse(CamelModel):
     # Linked characters keyed by snapshot_player_id.  Only populated for players
     # in the active tier whose roster slot has a linked user account.
     player_characters: dict[str, list[SplitCharacterResponse]] = Field(default_factory=dict)
+
+
+class MarkSplitRunClearedRequest(CamelModel):
+    """Mark all players in a given run (A or B) as cleared for the current week."""
+
+    run: Literal["A", "B"]

@@ -43,6 +43,7 @@ import { useGroupViewState } from '../hooks/useGroupViewState';
 import { usePlayerActions } from '../hooks/usePlayerActions';
 import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShortcuts';
 import { useViewNavigation } from '../hooks/useViewNavigation';
+import { useVisibilityRefresh } from '../hooks/useVisibilityRefresh';
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { eventBus, useEventBus, Events } from '../lib/eventBus';
 import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
@@ -379,6 +380,14 @@ export function GroupView() {
     }
   }, [pageMode, currentGroup?.id, fetchSplitClear]);
   useEffect(() => { return () => clearSplitClear(); }, [clearSplitClear]);
+
+  // Silently refetch split-clear data when the user returns from another tab
+  // (e.g. after linking characters on the profile page).
+  useVisibilityRefresh(useCallback(() => {
+    if (pageMode === 'players' && currentGroup?.id) {
+      void fetchSplitClear(currentGroup.id);
+    }
+  }, [pageMode, currentGroup?.id, fetchSplitClear]));
 
   const handleTierChange = useCallback((tierId: string) => {
     if (currentGroup?.id) {

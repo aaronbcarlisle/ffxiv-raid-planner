@@ -144,6 +144,16 @@ export const RELEASES: Release[] = [
         title: 'Track whether a weapon was a direct drop or weapon coffer',
         description: 'The Quick Log Weapon modal now has a "Via weapon coffer" checkbox. The weapon priority card shows a Drop or Coffer badge next to each player who has already received their weapon this tier.',
       },
+      {
+        category: 'improvement',
+        title: 'Split Clear board auto-refreshes after linking characters',
+        description: 'Returning to the Roster tab after linking characters on the Profile page (Sync Center) now silently re-fetches split-clear data so the character chips appear without a manual page refresh.',
+      },
+      {
+        category: 'feature',
+        title: 'Dalamud plugin: Split Clear overlay',
+        description: 'The in-game plugin shows a Split Clear overlay when you enter a savage raid with split-clear mode active. It displays your run assignment (Run A or Run B), your character and world for that run, your loot target, and your teammates in the same run. A "Mark Run Cleared" button updates the split-clear status for all players in your run at once.',
+      },
     ],
     internal: true,
   },
