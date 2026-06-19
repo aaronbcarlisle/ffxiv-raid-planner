@@ -75,6 +75,7 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
   }
 
   function handleGenerateDraft() {
+    if (!data) return;
     setDraft(buildSplitClearDraft(players, data.assignments, data.playerCharacters));
   }
 

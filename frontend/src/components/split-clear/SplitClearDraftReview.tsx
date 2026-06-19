@@ -256,7 +256,7 @@ export function SplitClearDraftReview({
           <Button
             type="button"
             size="sm"
-            variant="accent"
+            variant="accent-subtle"
             onClick={onApply}
             disabled={isSaving}
           >

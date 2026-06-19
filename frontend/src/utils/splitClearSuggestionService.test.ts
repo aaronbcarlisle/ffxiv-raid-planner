@@ -33,6 +33,8 @@ function assignment(overrides: Partial<SplitClearAssignment> = {}): SplitClearAs
   return {
     id: 'a1',
     snapshotPlayerId: 'p1',
+    runACharacterLinkId: null,
+    runBCharacterLinkId: null,
     mainCharacterName: null,
     mainCharacterWorld: null,
     altCharacterName: null,
@@ -187,7 +189,7 @@ describe('buildSplitClearDraft', () => {
     const p = player({ lodestoneName: 'Same', lodestoneServer: 'Tonberry' });
     const d1 = buildSplitClearDraft([p], []);
     const d2 = buildSplitClearDraft([p], []);
-    expect(d1.assignments[0].mainCharacterName).toBe(d2.assignments[0].mainCharacterName);
+    expect(d1.assignments[0].runACharacterName).toBe(d2.assignments[0].runACharacterName);
     expect(d1.assignments[0].lootTarget).toBe(d2.assignments[0].lootTarget);
   });
 });

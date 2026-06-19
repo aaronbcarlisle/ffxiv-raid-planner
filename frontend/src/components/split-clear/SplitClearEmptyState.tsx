@@ -104,7 +104,7 @@ export function SplitClearEmptyState({
           <Button
             type="button"
             size="sm"
-            variant="accent"
+            variant="accent-subtle"
             leftIcon={<Wand2 className="h-3.5 w-3.5" aria-hidden="true" />}
             onClick={onGenerateDraft}
             disabled={isSaving}

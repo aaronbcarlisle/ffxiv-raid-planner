@@ -17,6 +17,8 @@ function assignment(overrides: Partial<SplitClearAssignment> = {}): SplitClearAs
   return {
     id: 'assignment-1',
     snapshotPlayerId: 'player-1',
+    runACharacterLinkId: null,
+    runBCharacterLinkId: null,
     mainCharacterName: 'Main Character',
     mainCharacterWorld: 'Tonberry',
     altCharacterName: 'Alt Character',

@@ -494,7 +494,7 @@ describe('StaticHomeTab — Raid Prep section', () => {
   });
 
   it('hides split readiness when split mode is disabled', () => {
-    setSplitClearStore({ data: { enabled: false, assignments: [] } });
+    setSplitClearStore({ data: { enabled: false, assignments: [], playerCharacters: {} } });
     render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     expect(screen.queryByText('Split Clears')).not.toBeInTheDocument();
   });
@@ -506,6 +506,8 @@ describe('StaticHomeTab — Raid Prep section', () => {
         assignments: [{
           id: 'split-1',
           snapshotPlayerId: 'p1',
+          runACharacterLinkId: null,
+          runBCharacterLinkId: null,
           mainCharacterName: 'Main Character',
           mainCharacterWorld: 'Tonberry',
           altCharacterName: 'Alt Character',
@@ -519,6 +521,7 @@ describe('StaticHomeTab — Raid Prep section', () => {
           notes: null,
           updatedAt: '2026-06-18T00:00:00Z',
         }],
+        playerCharacters: {},
       },
     });
     render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);

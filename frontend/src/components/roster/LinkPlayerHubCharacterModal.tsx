@@ -74,7 +74,7 @@ export function LinkPlayerHubCharacterModal({
           </Button>
           <Button
             type="button"
-            variant="accent"
+            variant="accent-subtle"
             size="sm"
             onClick={handleConfirm}
             disabled={!selectedId || saving}
@@ -143,7 +143,7 @@ export function LinkPlayerHubCharacterModal({
                         key={opt.value}
                         type="button"
                         size="sm"
-                        variant={role === opt.value ? 'accent' : 'secondary'}
+                        variant={role === opt.value ? 'accent-subtle' : 'secondary'}
                         onClick={() => setRole(opt.value)}
                       >
                         {opt.label}

@@ -55,7 +55,7 @@ export const useSplitClearStore = create<SplitClearState>((set, get) => ({
     try {
       const raw = await api.get<SplitClearData>(`/api/static-groups/${groupId}/split-clear`);
       // Ensure playerCharacters is always a defined object even on older API responses
-      const data: SplitClearData = { playerCharacters: {}, ...raw };
+      const data: SplitClearData = { ...raw, playerCharacters: raw.playerCharacters ?? {} };
       set({ data, isLoading: false });
     } catch (err) {
       set({ error: loadError(err), isLoading: false });
@@ -69,7 +69,7 @@ export const useSplitClearStore = create<SplitClearState>((set, get) => ({
         `/api/static-groups/${groupId}/split-clear/settings`,
         { enabled },
       );
-      const data: SplitClearData = { playerCharacters: {}, ...raw };
+      const data: SplitClearData = { ...raw, playerCharacters: raw.playerCharacters ?? {} };
       set({ data, isSaving: false });
     } catch (err) {
       set({ error: saveError(err), isSaving: false });

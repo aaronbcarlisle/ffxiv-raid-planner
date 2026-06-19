@@ -94,7 +94,7 @@ export function AddManualCharacterModal({
           </Button>
           <Button
             type="button"
-            variant="accent"
+            variant="accent-subtle"
             size="sm"
             onClick={handleSave}
             disabled={saving || !name.trim()}
@@ -138,7 +138,7 @@ export function AddManualCharacterModal({
                 key={opt.value}
                 type="button"
                 size="sm"
-                variant={role === opt.value ? 'accent' : 'secondary'}
+                variant={role === opt.value ? 'accent-subtle' : 'secondary'}
                 onClick={() => setRole(opt.value)}
               >
                 {opt.label}

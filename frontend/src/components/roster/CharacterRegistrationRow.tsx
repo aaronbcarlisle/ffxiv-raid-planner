@@ -52,7 +52,7 @@ export function CharacterRegistrationRow({
           {!reg.isPrimaryForStatic && (
             <Button
               type="button"
-              size="xs"
+              size="sm"
               variant="ghost"
               onClick={() => onSetPrimary(reg)}
               title="Set as primary"
@@ -63,7 +63,7 @@ export function CharacterRegistrationRow({
           )}
           <Button
             type="button"
-            size="xs"
+            size="sm"
             variant="ghost"
             onClick={() => onEdit(reg)}
             title="Edit"
@@ -73,7 +73,7 @@ export function CharacterRegistrationRow({
           </Button>
           <Button
             type="button"
-            size="xs"
+            size="sm"
             variant="ghost"
             onClick={() => onDelete(reg)}
             title="Remove"

@@ -43,6 +43,8 @@ function makeAssignment(overrides: Record<string, unknown> = {}) {
   return {
     id: 'a1',
     snapshotPlayerId: 'p1',
+    runACharacterLinkId: null,
+    runBCharacterLinkId: null,
     mainCharacterName: 'WarriorMain',
     mainCharacterWorld: 'Tonberry',
     altCharacterName: 'WarriorAlt',
@@ -116,7 +118,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('shows a compact enable action to editors when split mode is off', () => {
-    splitClearStoreState.data = { enabled: false, assignments: [] };
+    splitClearStoreState.data = { enabled: false, assignments: [], playerCharacters: {} };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />
     );
@@ -126,7 +128,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('stays hidden for non-editors when split mode is off', () => {
-    splitClearStoreState.data = { enabled: false, assignments: [] };
+    splitClearStoreState.data = { enabled: false, assignments: [], playerCharacters: {} };
     const { container } = render(
       <SplitClearPlanner groupId={GROUP_ID} players={[]} canEdit={false} />
     );
@@ -134,7 +136,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('does not show the Toggle for non-editors', () => {
-    splitClearStoreState.data = { enabled: false, assignments: [] };
+    splitClearStoreState.data = { enabled: false, assignments: [], playerCharacters: {} };
     const { container } = render(
       <SplitClearPlanner groupId={GROUP_ID} players={[]} canEdit={false} />
     );
@@ -144,7 +146,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('shows Reset Week button only to editors when mode is on', () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
 
     const { rerender } = render(
       <SplitClearPlanner groupId={GROUP_ID} players={[]} canEdit={true} />
@@ -160,7 +162,7 @@ describe('SplitClearPlanner', () => {
   // ── State 1 — Empty / Compose ───────────────────────────────────────────────
 
   it('shows the Split Clear Composer empty state when mode is on with no saved assignments', () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />
     );
@@ -171,20 +173,20 @@ describe('SplitClearPlanner', () => {
   });
 
   it('empty state shows Generate draft and Start manually buttons', () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     expect(screen.getByRole('button', { name: /generate draft/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /start manually/i })).toBeTruthy();
   });
 
   it('empty state does not show the assignment board', () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     expect(screen.queryByTestId('split-clear-board')).toBeNull();
   });
 
   it('Start manually opens the assignment board', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /start manually/i }));
     await waitFor(() => {
@@ -195,19 +197,19 @@ describe('SplitClearPlanner', () => {
   // ── State 2 — Draft Review ──────────────────────────────────────────────────
 
   it('shows Generate draft button to editors when mode is on', () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     expect(screen.getByRole('button', { name: /generate draft/i })).toBeTruthy();
   });
 
   it('hides Generate draft button from non-editors', () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={false} />);
     expect(screen.queryByRole('button', { name: /generate draft/i })).toBeNull();
   });
 
   it('clicking Generate draft shows the draft panel', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     expect(screen.queryByTestId('split-clear-draft-panel')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
@@ -217,7 +219,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('draft review shows Run A and Run B panels', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
@@ -227,7 +229,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('draft review does not show the manual board simultaneously', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
@@ -235,7 +237,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('confidence badge shows amber/warning label (not red) when data is incomplete', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
@@ -245,7 +247,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('clicking Dismiss hides the draft panel', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
@@ -257,7 +259,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('Dismiss with no saved assignments returns to empty state', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
@@ -269,7 +271,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('Regenerate replaces draft with a fresh one', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
@@ -287,7 +289,7 @@ describe('SplitClearPlanner', () => {
       job: 'DRG',
       weaponPriorities: [{ job: 'DRG', received: false }],
     });
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
@@ -298,7 +300,7 @@ describe('SplitClearPlanner', () => {
   // ── Source strip + confidence ────────────────────────────────────────────────
 
   it('source strip shows Roster chip when draft exists', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
@@ -308,7 +310,7 @@ describe('SplitClearPlanner', () => {
 
   it('source strip shows Alts chip reflecting how many players have alts', async () => {
     const p = makePlayer({ id: 'p1' });
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
@@ -318,7 +320,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('confidence badge renders when draft exists', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
@@ -332,7 +334,7 @@ describe('SplitClearPlanner', () => {
 
   it('issue list shows no-alt info when players lack alts', async () => {
     const p = makePlayer({ id: 'p1' });
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
@@ -343,7 +345,7 @@ describe('SplitClearPlanner', () => {
 
   it('apply bar shows change summary text', async () => {
     const p = makePlayer({ id: 'p1', lodestoneName: 'Main Name', lodestoneServer: 'Tonberry' });
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => {
@@ -356,6 +358,7 @@ describe('SplitClearPlanner', () => {
     splitClearStoreState.data = {
       enabled: true,
       assignments: [makeAssignment({ mainCharacterName: 'OldName' })],
+      playerCharacters: {},
     };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
@@ -372,7 +375,7 @@ describe('SplitClearPlanner', () => {
       lodestoneName: 'Kaito Nakamura',
       lodestoneServer: 'Tonberry',
     });
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
@@ -388,7 +391,7 @@ describe('SplitClearPlanner', () => {
 
   it('Apply draft hides the draft panel after completing', async () => {
     const p = makePlayer({ id: 'p1' });
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
@@ -400,7 +403,7 @@ describe('SplitClearPlanner', () => {
 
   it('Apply draft opens the assignment board after completing', async () => {
     const p = makePlayer({ id: 'p1' });
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[p]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
     await waitFor(() => expect(screen.getByTestId('split-clear-draft-panel')).toBeTruthy());
@@ -417,6 +420,7 @@ describe('SplitClearPlanner', () => {
     splitClearStoreState.data = {
       enabled: true,
       assignments: [makeAssignment()],
+      playerCharacters: {},
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[player]} canEdit={true} />
@@ -437,6 +441,7 @@ describe('SplitClearPlanner', () => {
         makeAssignment({ snapshotPlayerId: 'p1', id: 'a1' }),
         makeAssignment({ snapshotPlayerId: 'p2', id: 'a2' }),
       ],
+      playerCharacters: {},
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={players} canEdit={true} />
@@ -450,6 +455,7 @@ describe('SplitClearPlanner', () => {
     splitClearStoreState.data = {
       enabled: true,
       assignments: [makeAssignment({ altCharacterName: null, altCharacterWorld: null })],
+      playerCharacters: {},
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[player]} canEdit={true} />
@@ -463,6 +469,7 @@ describe('SplitClearPlanner', () => {
     splitClearStoreState.data = {
       enabled: true,
       assignments: [makeAssignment({ runACharacter: 'main', runBCharacter: 'main' })],
+      playerCharacters: {},
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[player]} canEdit={true} />
@@ -476,6 +483,7 @@ describe('SplitClearPlanner', () => {
     splitClearStoreState.data = {
       enabled: true,
       assignments: [makeAssignment({ lootTarget: 'funnel_job', lootTargetJob: null })],
+      playerCharacters: {},
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[player]} canEdit={true} />
@@ -488,6 +496,7 @@ describe('SplitClearPlanner', () => {
     splitClearStoreState.data = {
       enabled: true,
       assignments: [makeAssignment()],
+      playerCharacters: {},
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[player]} canEdit={true} />
@@ -499,6 +508,7 @@ describe('SplitClearPlanner', () => {
     splitClearStoreState.data = {
       enabled: true,
       assignments: [makeAssignment()], // has assignments → board auto-shows
+      playerCharacters: {},
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />
@@ -519,6 +529,7 @@ describe('SplitClearPlanner', () => {
         makeAssignment({ snapshotPlayerId: 'p1', altCharacterName: 'AltOne', id: 'a1' }),
         { ...makeAssignment({ snapshotPlayerId: 'p2', id: 'a2' }), altCharacterName: null },
       ],
+      playerCharacters: {},
     };
     render(
       <SplitClearPlanner groupId={GROUP_ID} players={players} canEdit={true} />
@@ -530,6 +541,7 @@ describe('SplitClearPlanner', () => {
     splitClearStoreState.data = {
       enabled: true,
       assignments: [makeAssignment()], // board auto-shows
+      playerCharacters: {},
     };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
     // Board is shown, Generate draft should appear in header
@@ -539,7 +551,7 @@ describe('SplitClearPlanner', () => {
   // ── Blur-save (PATCH safety) ─────────────────────────────────────────────────
 
   it('saves text fields as partial updates on blur', async () => {
-    splitClearStoreState.data = { enabled: true, assignments: [makeAssignment()] };
+    splitClearStoreState.data = { enabled: true, assignments: [makeAssignment()], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={true} />);
 
     // JSDOM renders both desktop and mobile; grab the first input (desktop table)
@@ -558,7 +570,7 @@ describe('SplitClearPlanner', () => {
   });
 
   it('member/viewer cannot generate or apply draft', () => {
-    splitClearStoreState.data = { enabled: true, assignments: [] };
+    splitClearStoreState.data = { enabled: true, assignments: [], playerCharacters: {} };
     render(<SplitClearPlanner groupId={GROUP_ID} players={[makePlayer()]} canEdit={false} />);
     expect(screen.queryByRole('button', { name: /generate draft/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /start manually/i })).toBeNull();
