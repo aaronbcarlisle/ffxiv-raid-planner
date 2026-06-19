@@ -21,7 +21,6 @@ import {
 } from './staticCharacterContextService';
 import {
   getEnhancedPriorityForSlot,
-  calculateAverageDrops,
 } from './lootCoordination';
 
 // ---------------------------------------------------------------------------
@@ -297,11 +296,8 @@ export function rankLootCandidates(
   const eligible = players.filter((p) => p.configured && !p.isSubstitute);
   if (eligible.length === 0) return [];
 
-  const playerIds = eligible.map((p) => p.id);
-  const averageDrops = calculateAverageDrops(playerIds, lootLog);
-
   // Build base priority rank map from existing priority system
-  let basePriorityRankMap = new Map<string, number>();
+  const basePriorityRankMap = new Map<string, number>();
   let weaponPriorityRankMap = new Map<string, number>();
 
   if (drop.dropType === 'weapon_coffer') {
@@ -416,7 +412,7 @@ function computeConfidence(
   return 'medium';
 }
 
-function buildExplanation(top: RankedCandidate, drop: LootDropInput): string {
+function buildExplanation(top: RankedCandidate, _drop: LootDropInput): string {
   const charLabel = top.characterName
     ? `${top.playerName} / ${top.characterName}`
     : top.playerName;

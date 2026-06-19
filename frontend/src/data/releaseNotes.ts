@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.31.0';
+export const CURRENT_VERSION = '1.25.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -58,204 +58,89 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  // ── UNRELEASED (branch work — internal draft, no PR yet) ─────────────────
   {
-    version: '1.31.0',
+    version: 'Unreleased',
     date: '2026-06-19T10:00:00Z',
-    title: 'Loot Intelligence V1',
-    highlights: [
-      'Loot Log now recommends who should receive each drop, ranked by BiS need, weapon priority, and loot history',
-      'Backend now auto-resolves character names for Player Hub linked registrations when logging loot',
-    ],
-    items: [
-      {
-        category: 'feature',
-        title: 'Loot drop recommendations in Log Loot',
-        description: 'When logging a drop or weapon coffer, a ranked candidate list appears showing who should receive the item and why. The recommendation combines registered character identity, weapon priority rank, BiS need, and loot log history. Leads can always override the suggestion — it is a guide, not automation.',
-        pr: 145,
-        prTitle: 'feat(loot): loot intelligence v1 — recommendation engine and candidate panel',
-      },
-      {
-        category: 'improvement',
-        title: 'Weapon coffers use existing weapon priority',
-        description: 'When logging a weapon coffer drop, the recommendation panel ranks candidates using the static\'s current weapon priority order. Priority rank #1 receives the highest bonus, with lower ranks scored proportionally. Players whose weapon is already marked as received are automatically deprioritised.',
-        pr: 145,
-        prTitle: 'feat(loot): loot intelligence v1 — recommendation engine and candidate panel',
-      },
-      {
-        category: 'improvement',
-        title: 'Character registration context in recommendations',
-        description: 'Main character registrations receive a bonus in the scoring model. Players without a linked character still appear as candidates but at lower confidence, with a hint to visit Roster → Characters to link their character for better recommendations.',
-        pr: 145,
-        prTitle: 'feat(loot): loot intelligence v1 — recommendation engine and candidate panel',
-      },
-      {
-        category: 'fix',
-        title: 'Backend resolves Player Hub character name when snapshotting loot',
-        description: 'Previously, loot log entries for Player Hub linked registrations stored no character name unless the client supplied one. The backend now resolves the name from the linked PlayerCharacter record automatically, so the name snapshot is always populated.',
-        pr: 145,
-        prTitle: 'feat(loot): loot intelligence v1 — recommendation engine and candidate panel',
-      },
-    ],
-  },
-  {
-    version: '1.30.0',
-    date: '2026-06-19T03:00:00Z',
-    title: 'Character-Aware Loot, Priority & Summary',
-    highlights: [
-      'Loot Log now records which registered character received each item — main or alt',
-      'Team Summary gains a "Mains only" filter for statics that track both main and alt progress',
-    ],
-    items: [
-      {
-        category: 'improvement',
-        title: 'Loot Log records the receiving character',
-        description: 'When logging a drop or book purchase, a character picker appears for any player who has registered characters in the Roster. The primary character is pre-selected; you can switch to any alt. The character name is stored as a snapshot alongside the player entry, so it survives future roster changes.',
-        pr: 143,
-        prTitle: 'feat: connect static character registrations into loot log, priority, and summary',
-      },
-      {
-        category: 'improvement',
-        title: 'Priority view shows registered character context',
-        description: 'Weapon Priority cards now display the registered character name next to each entry when one is linked to that player and job. No existing priority data is changed — character context is additive and degrades gracefully when no registration exists.',
-        pr: 143,
-        prTitle: 'feat: connect static character registrations into loot log, priority, and summary',
-      },
-      {
-        category: 'improvement',
-        title: 'Team Summary "Mains only" filter',
-        description: 'A new toggle in the Team Summary header lets leads filter the progress table to roster players whose registered role is "main". The toggle is hidden for statics that have not yet set up character registrations, so it does not add clutter for simpler groups.',
-        pr: 143,
-        prTitle: 'feat: connect static character registrations into loot log, priority, and summary',
-      },
-      {
-        category: 'fix',
-        title: 'Recurring sessions display the next upcoming date',
-        description: 'Session cards for recurring events now show the next scheduled occurrence rather than the original creation date. The displayed date advances each week so the card always reflects when the next raid actually is.',
-        pr: 144,
-        prTitle: 'fix(schedule): show next occurrence date and add single-occurrence cancel',
-      },
-      {
-        category: 'fix',
-        title: 'Cancel a single occurrence without deleting the series',
-        description: 'The delete button on recurring session cards now opens a choice: "Cancel [date] only" or "Delete entire series." Cancelling one occurrence marks it as skipped for that week while leaving all future occurrences intact.',
-        pr: 144,
-        prTitle: 'fix(schedule): show next occurrence date and add single-occurrence cancel',
-      },
-    ],
-  },
-  {
-    version: '1.29.0',
-    date: '2026-06-19T01:00:00Z',
-    title: 'Roster Characters Tab',
-    highlights: [
-      'New "Characters" sub-tab in Roster: link Player Hub characters or add manual entries with main/alt/substitute roles',
-      'Split Planner automatically prefers the curated character list when generating drafts',
-    ],
-    items: [
-      {
-        category: 'feature',
-        title: 'Roster → Characters sub-tab',
-        description: 'A new "Characters" sub-tab appears alongside Members and Split Planner in the Roster segmented control. Leads can link any Player Hub character from each member\'s profile directly into the static\'s character roster, or add a manual entry as a fallback. Each registration carries a role (main, alt, substitute), an optional job tag, and a primary flag. Players without Player Hub characters always have the manual path available.',
-        pr: 142,
-        prTitle: 'feat: static character registrations as shared identity layer',
-      },
-      {
-        category: 'feature',
-        title: 'Per-static character registrations',
-        description: 'Roster members and leads can now register Player Hub characters (or manual fallback entries) for a specific static group. Registrations support main, alt, and substitute roles, with one primary character per player. This forms a curated character list independent of the global Player Hub profile — useful when a player brings a different main or set of alts to one static vs another.',
-        pr: 142,
-        prTitle: 'feat: static character registrations as shared identity layer',
-      },
-      {
-        category: 'improvement',
-        title: 'Split Planner uses curated character list',
-        description: 'The Split Clear Planner\'s draft generator now prefers static character registrations (when available) over the full Player Hub profile when building character candidate lists. This gives leads direct control over which characters appear as options for each roster slot.',
-        pr: 142,
-        prTitle: 'feat: static character registrations as shared identity layer',
-      },
-    ],
-  },
-  {
-    version: '1.28.0',
-    date: '2026-06-18T20:00:00Z',
-    title: 'Character-Linked Split Planner',
-    highlights: [
-      'Split Clear Planner now uses linked Player Hub characters and supports multiple alts per member',
-      'Smarter draft scoring weighs main/alt pairing, weapon priority, and sync freshness',
-    ],
-    items: [
-      {
-        category: 'improvement',
-        title: 'Character-linked split assignment composer',
-        description: 'Split Clear Planner now reads linked Player Hub characters instead of requiring manual text entry. Each roster member\'s available characters (one main, multiple alts) appear as selector chips; leads pick which character goes into Run A and which into Run B. Players without linked characters fall back to manual text fields.',
-        pr: 141,
-        prTitle: 'feat: character-linked split assignment composer',
-      },
-      {
-        category: 'improvement',
-        title: 'Weighted draft scoring with per-player reasons',
-        description: 'Draft generation now uses a weighted scoring system (different characters +40, main+alt pairing +30, weapon priority +20, sync freshness +10, same-character penalty −50) and surfaces per-player reasons in a collapsible "Why these assignments?" panel in the draft review.',
-        pr: 141,
-        prTitle: 'feat: character-linked split assignment composer',
-      },
-      {
-        category: 'improvement',
-        title: 'Run balancing and multiple-alt support',
-        description: 'The draft generator alternates which players put their main in Run A vs Run B to balance the group proportionally. Multiple alt characters per player are all available for selection; the scorer picks the best pair based on job, priority, and sync data.',
-        pr: 141,
-        prTitle: 'feat: character-linked split assignment composer',
-      },
-    ],
-  },
-  {
-    version: '1.27.0',
-    date: '2026-06-18T17:00:00Z',
-    title: 'Split Clear Composer',
-    highlights: [
-      'Redesigned split-clear planning with a guided three-state composer flow',
-      'Run A / Run B panels show each player\'s slot and loot target side by side',
-    ],
-    items: [
-      {
-        category: 'improvement',
-        title: 'Split Clear Composer — redesigned planning flow',
-        description: 'The split-clear board is now a three-state composer: an empty state with source previews, a draft-review panel with Run A / Run B side-by-side panels, and a manage board. Draft and manual board never appear simultaneously. The "Members | Split Planner" segmented control under the Roster tab keeps the two surfaces cleanly separated.',
-        pr: 140,
-        prTitle: 'feat: Split Clear Composer polish pass',
-      },
-      {
-        category: 'improvement',
-        title: 'Compact warning chips and amber confidence badge',
-        description: 'Per-row warnings in the assignment board are now compact chips ("No alt", "Duplicate", "No loot job") with accessible full-text aria-labels, reducing visual clutter. Low-confidence drafts show an amber "Needs review" badge rather than a red error state, reflecting that missing data is normal early in a tier.',
-        pr: 140,
-        prTitle: 'feat: Split Clear Composer polish pass',
-      },
-    ],
-  },
-  {
-    version: '1.26.0',
-    date: '2026-06-18T00:00:00Z',
-    title: 'Split Clear Planner',
-    highlights: [
-      'Track main/alt run assignments for split clears, with readiness warnings',
-      'Generate a draft split plan from roster and weapon priority data in one click',
-    ],
+    title: 'Unreleased — Static Character / Split Planner / Loot Intelligence',
     items: [
       {
         category: 'feature',
         title: 'Split Clear Planner for raid statics',
-        description: 'Leads can now enable a split-clear planning board under the Roster tab. Each member gets a row for their main and alt character, Run A / Run B assignments, loot target notes, and per-run weekly clear checkboxes. Assignment edits are field-level and the board switches to mobile cards on small screens. Weekly clear status is manually tracked; no lockout detection is performed.',
-        pr: 139,
-        prTitle: 'feat: Split Clear Planner V1',
+        description: 'Leads can enable a split-clear planning board under the Roster tab. Each member gets a row for their main and alt character, Run A / Run B assignments, loot target notes, and per-run weekly clear checkboxes. Weekly clear status is manually tracked; no lockout detection is performed.',
       },
       {
         category: 'feature',
         title: 'Generate Draft split plan',
-        description: 'The Split Clear Planner assistant card can generate a suggested draft from existing Lodestone data and weapon priorities. Leads see a source strip (Roster / Alts / Priority chips), a confidence badge (High / Medium / Low), per-player suggestions with a "Suggested" label, an issue list for missing data, and a change summary before applying. Dismissing the draft discards it without saving anything.',
-        pr: 139,
-        prTitle: 'feat: Split Clear Planner V1',
+        description: 'The Split Clear Planner can generate a suggested draft from existing Lodestone data and weapon priorities with a confidence badge, per-player suggestions, and a change summary before applying. Dismissing the draft discards it without saving.',
+      },
+      {
+        category: 'improvement',
+        title: 'Split Clear Composer — redesigned planning flow',
+        description: 'The split-clear board is a three-state composer: empty state with source previews, draft-review panel with Run A / Run B side-by-side panels, and a manage board.',
+      },
+      {
+        category: 'improvement',
+        title: 'Character-linked split assignment composer',
+        description: 'Split Clear Planner reads linked Player Hub characters instead of requiring manual text entry. Each roster member\'s characters appear as selector chips; leads pick which goes into Run A and which into Run B.',
+      },
+      {
+        category: 'improvement',
+        title: 'Weighted draft scoring with per-player reasons',
+        description: 'Draft generation uses a weighted scoring system and surfaces per-player reasons in a collapsible "Why these assignments?" panel.',
+      },
+      {
+        category: 'feature',
+        title: 'Roster → Characters sub-tab',
+        description: 'A new "Characters" sub-tab in the Roster segmented control. Leads can link Player Hub characters or add manual entries with main/alt/substitute roles and an optional job tag.',
+      },
+      {
+        category: 'improvement',
+        title: 'Split Planner uses registered character list',
+        description: 'The draft generator prefers static character registrations (when available) over the full Player Hub profile when building character candidate lists.',
+      },
+      {
+        category: 'improvement',
+        title: 'Loot Log records the receiving character',
+        description: 'When logging a drop or book purchase, a character picker appears for any player who has registered characters. The primary character is pre-selected; you can switch to any alt.',
+      },
+      {
+        category: 'improvement',
+        title: 'Priority view shows registered character context',
+        description: 'Weapon Priority cards display the registered character name next to each entry when one is linked to that player and job. Character context is additive and degrades gracefully when no registration exists.',
+      },
+      {
+        category: 'improvement',
+        title: 'Team Summary "Mains only" filter',
+        description: 'A new toggle in the Team Summary header filters the progress table to roster players whose registered role is "main". Hidden for statics without character registrations.',
+      },
+      {
+        category: 'feature',
+        title: 'Loot drop recommendations in Log Loot',
+        description: 'When logging a drop or weapon coffer, a ranked candidate list shows who should receive the item and why. Combines registered character identity, weapon priority rank, BiS need, and loot log history. Leads can always override.',
+      },
+      {
+        category: 'improvement',
+        title: 'Weapon coffers use existing weapon priority',
+        description: 'The recommendation panel ranks weapon coffer candidates using the static\'s current weapon priority order. Priority rank #1 receives the highest bonus; players whose weapon is already received are deprioritised.',
+      },
+      {
+        category: 'fix',
+        title: 'Backend resolves Player Hub character name when snapshotting loot',
+        description: 'Loot log entries for Player Hub linked registrations now auto-resolve the character name from the linked PlayerCharacter record so the snapshot is always populated.',
+      },
+      {
+        category: 'fix',
+        title: 'Recurring sessions display the next upcoming date',
+        description: 'Session cards for recurring events now show the next scheduled occurrence rather than the original creation date.',
+      },
+      {
+        category: 'fix',
+        title: 'Cancel a single occurrence without deleting the series',
+        description: 'The delete button on recurring session cards opens a choice: "Cancel [date] only" or "Delete entire series." Cancelling one occurrence marks it as skipped while leaving all future occurrences intact.',
       },
     ],
+    internal: true,
   },
   {
     version: '1.25.0',
