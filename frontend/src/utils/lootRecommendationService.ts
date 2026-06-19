@@ -123,7 +123,7 @@ function playerAlreadyReceivedSlot(
 
 function resolveRegistration(
   regs: StaticCharacterRegistration[],
-  player: SnapshotPlayer,
+  _player: SnapshotPlayer,
   drop: LootDropInput,
 ): StaticCharacterRegistration | null {
   if (regs.length === 0) return null;
@@ -147,7 +147,7 @@ function resolveCharacterName(reg: StaticCharacterRegistration | null): string |
 
 function scoreWeaponCoffer(
   player: SnapshotPlayer,
-  reg: StaticCharacterRegistration | null,
+  _reg: StaticCharacterRegistration | null,
   drop: LootDropInput,
   lootLog: LootLogEntry[],
   weaponPriorityRank: number | null,

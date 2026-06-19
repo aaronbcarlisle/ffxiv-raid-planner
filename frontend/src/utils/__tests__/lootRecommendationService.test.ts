@@ -23,23 +23,24 @@ const DEFAULT_SETTINGS: StaticSettings = {
 
 function makePlayer(overrides: Partial<SnapshotPlayer> & { id: string; name: string }): SnapshotPlayer {
   return {
-    id: overrides.id,
     tierSnapshotId: 'tier-1',
-    name: overrides.name,
-    job: overrides.job ?? 'DRG',
-    role: overrides.role ?? 'melee',
+    job: 'DRG',
+    role: 'melee',
     configured: true,
     isSubstitute: false,
     sortOrder: 0,
-    gear: overrides.gear ?? [],
+    gear: [],
     tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
-    weaponPriorities: overrides.weaponPriorities ?? [],
+    weaponPriorities: [],
+    weaponPrioritiesLocked: false,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
     ...overrides,
-  };
+  } as SnapshotPlayer;
 }
 
 function makeGearSlot(slot: string, bisSource: 'raid' | 'tome', hasItem: boolean) {
-  return { slot, bisSource, hasItem, isAugmented: false };
+  return { slot: slot as import('../../types').GearSlot, bisSource, hasItem, isAugmented: false };
 }
 
 function makeReg(
@@ -50,11 +51,17 @@ function makeReg(
     id: `reg-${playerId}`,
     staticGroupId: 'group-1',
     snapshotPlayerId: playerId,
+    playerCharacterId: null,
     roleInStatic: 'main',
     isPrimaryForStatic: true,
     source: 'manual',
     manualCharacterName: 'Test Char',
+    manualWorld: null,
+    manualDataCenter: null,
     resolvedName: null,
+    resolvedWorld: null,
+    resolvedDataCenter: null,
+    linkedCharacter: null,
     job: null,
     lastSyncedAt: null,
     createdAt: '2026-01-01T00:00:00Z',
@@ -113,7 +120,7 @@ describe('rankLootCandidates — direct drop', () => {
     const p2 = makePlayer({ id: 'p2', name: 'Still Needs It', gear: [makeGearSlot('head', 'raid', false)] });
 
     const existingEntry: LootLogEntry = {
-      id: '1',
+      id: 1,
       tierSnapshotId: 'tier-1',
       weekNumber: 1,
       floor: 'M10S',
@@ -123,8 +130,6 @@ describe('rankLootCandidates — direct drop', () => {
       recipientCharacterRegistrationId: null,
       recipientCharacterName: null,
       method: 'drop',
-      notes: null,
-      weaponJob: null,
       isExtra: false,
       createdAt: '2026-01-01T00:00:00Z',
       createdByUserId: 'u1',

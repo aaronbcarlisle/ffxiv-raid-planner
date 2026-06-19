@@ -250,6 +250,7 @@ export interface TomeWeaponStatus {
 // Weapon priority entry (for multi-job weapon tracking)
 export interface WeaponPriority {
   job: string;
+  order?: number;
   weaponName?: string;
   received: boolean;
   receivedDate?: string;
