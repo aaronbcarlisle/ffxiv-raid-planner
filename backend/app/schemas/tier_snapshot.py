@@ -100,9 +100,11 @@ class WeaponPriority(CamelModel):
     """Weapon priority entry"""
 
     job: str
+    order: int | None = None
     weapon_name: str | None = None
     received: bool = False
     received_date: str | None = None
+    obtained_via: str | None = None
 
 
 # --- Linked User Info ---

@@ -86,6 +86,11 @@ function WeaponLogTooltip({ job, jobName, playerName }: { job: string; jobName: 
  */
 export type TieStyle = 'border' | 'sameRank' | 'rankNotation' | 'background' | 'connector';
 
+interface ReceivedPlayerEntry {
+  player: SnapshotPlayer;
+  obtainedVia?: 'drop' | 'coffer';
+}
+
 interface WeaponPriorityCardProps {
   job: string;
   jobName: string;
@@ -96,6 +101,8 @@ interface WeaponPriorityCardProps {
   tieStyle?: TieStyle;
   /** Per-player character registrations for character context badges. */
   registrationsByPlayer?: Record<string, StaticCharacterRegistration[]>;
+  /** Players who have already received this weapon this tier, with how they got it. */
+  receivedPlayers?: ReceivedPlayerEntry[];
 }
 
 /**
@@ -110,6 +117,7 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
   onLogClick,
   tieStyle = 'connector',
   registrationsByPlayer,
+  receivedPlayers,
 }: WeaponPriorityCardProps) {
   const [rollResults, setRollResults] = useState<Map<number, RollResult[]>>(new Map());
   // Track which tie groups are expanded (for connector style)
@@ -820,6 +828,25 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
           })}
         </div>
       )}
+
+      {/* Received players */}
+      {receivedPlayers && receivedPlayers.length > 0 && (
+        <div className="border-t border-border-subtle/50 pt-1 pb-1">
+          {receivedPlayers.map(({ player, obtainedVia }) => (
+            <div key={player.id} className="flex items-center justify-between px-2 py-0.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <JobIcon job={player.job} size="xs" />
+                <span className="text-xs text-text-muted truncate">{player.name}</span>
+              </div>
+              <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ml-2 ${
+                obtainedVia === 'coffer' ? 'bg-accent/10 text-accent' : 'bg-status-success/15 text-status-success'
+              }`}>
+                {obtainedVia === 'coffer' ? 'Coffer' : 'Drop'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
@@ -975,6 +1002,21 @@ export function WeaponPriorityList({
     });
   }, [setSearchParams]);
 
+  // Players who have received a weapon this tier, grouped by job
+  const receivedByJob = useMemo(() => {
+    const map = new Map<string, ReceivedPlayerEntry[]>();
+    for (const player of players) {
+      for (const wp of player.weaponPriorities || []) {
+        if (wp.received) {
+          const entries = map.get(wp.job) ?? [];
+          entries.push({ player, obtainedVia: wp.obtainedVia });
+          map.set(wp.job, entries);
+        }
+      }
+    }
+    return map;
+  }, [players]);
+
   // Get all jobs that appear in weapon priorities OR are main jobs
   // Every player's main job is a default weapon priority
   const allJobs = useMemo(() => {
@@ -1073,6 +1115,7 @@ export function WeaponPriorityList({
                     showLogButtons={showLogButtons}
                     onLogClick={onLogClick}
                     registrationsByPlayer={registrationsByPlayer}
+                    receivedPlayers={receivedByJob.get(job)}
                   />
                 );
               });
@@ -1113,6 +1156,7 @@ export function WeaponPriorityList({
                     showLogButtons={showLogButtons}
                     onLogClick={onLogClick}
                     registrationsByPlayer={registrationsByPlayer}
+                    receivedPlayers={receivedByJob.get(job)}
                   />
                 );
               })}

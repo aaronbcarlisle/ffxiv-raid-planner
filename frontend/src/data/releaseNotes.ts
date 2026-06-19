@@ -139,6 +139,11 @@ export const RELEASES: Release[] = [
         title: 'Cancel a single occurrence without deleting the series',
         description: 'The delete button on recurring session cards opens a choice: "Cancel [date] only" or "Delete entire series." Cancelling one occurrence marks it as skipped while leaving all future occurrences intact.',
       },
+      {
+        category: 'improvement',
+        title: 'Track whether a weapon was a direct drop or weapon coffer',
+        description: 'The Quick Log Weapon modal now has a "Via weapon coffer" checkbox. The weapon priority card shows a Drop or Coffer badge next to each player who has already received their weapon this tier.',
+      },
     ],
     internal: true,
   },

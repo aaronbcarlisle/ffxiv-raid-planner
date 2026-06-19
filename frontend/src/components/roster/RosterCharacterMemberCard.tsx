@@ -80,7 +80,7 @@ export function RosterCharacterMemberCard({
           <div className="flex gap-1 shrink-0">
             <Button
               type="button"
-              size="sm"
+              size="xs"
               variant="ghost"
               onClick={() => setShowLinkModal(true)}
               disabled={!hasLinkedChars && availableForLinking.length === 0}
@@ -91,7 +91,7 @@ export function RosterCharacterMemberCard({
             </Button>
             <Button
               type="button"
-              size="sm"
+              size="xs"
               variant="ghost"
               onClick={() => setShowManualModal(true)}
               title="Add manual character"
@@ -112,7 +112,7 @@ export function RosterCharacterMemberCard({
               {hasLinkedChars && (
                 <Button
                   type="button"
-                  size="sm"
+                  size="xs"
                   variant="secondary"
                   onClick={() => setShowLinkModal(true)}
                 >
@@ -121,7 +121,7 @@ export function RosterCharacterMemberCard({
               )}
               <Button
                 type="button"
-                size="sm"
+                size="xs"
                 variant="ghost"
                 onClick={() => setShowManualModal(true)}
               >

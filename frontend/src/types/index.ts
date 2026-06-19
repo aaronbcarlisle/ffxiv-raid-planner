@@ -142,7 +142,7 @@ export interface SplitClearData {
   enabled: boolean;
   assignments: SplitClearAssignment[];
   /** Linked characters keyed by snapshotPlayerId (main first, then alts). */
-  playerCharacters: Record<string, SplitCharacterCandidate[]>;
+  playerCharacters?: Record<string, SplitCharacterCandidate[]>;
 }
 
 // ==================== Static Character Registration Types ====================
@@ -254,6 +254,7 @@ export interface WeaponPriority {
   weaponName?: string;
   received: boolean;
   receivedDate?: string;
+  obtainedVia?: 'drop' | 'coffer';
 }
 
 // Player needs calculation result
