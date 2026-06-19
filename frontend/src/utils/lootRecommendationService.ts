@@ -168,9 +168,13 @@ function scoreWeaponCoffer(
     warnings.push('Not in weapon priority list');
   }
 
-  // Check if weapon is already received in weapon priority list
-  const weaponJob = drop.weaponJob ?? player.job;
-  const wp = (player.weaponPriorities ?? []).find((w) => w.job === weaponJob);
+  // When no explicit job is on the drop, find the player's highest-priority (lowest order)
+  // weapon entry — including received — so we can detect already-received weapons below.
+  const priorities = player.weaponPriorities ?? [];
+  const wp = drop.weaponJob
+    ? priorities.find((w) => w.job === drop.weaponJob)
+    : [...priorities].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+  const weaponJob = drop.weaponJob ?? wp?.job ?? player.job;
   if (wp?.received) {
     score += LOOT_SCORING_WEIGHTS.alreadyReceivedLoot;
     warnings.push('Weapon already marked as received in priority list');
@@ -249,21 +253,31 @@ function scoreDirectDrop(
 // Build weapon priority rank map from SnapshotPlayer data
 // ---------------------------------------------------------------------------
 
+/** Pick the best (lowest order, not yet received) weapon priority entry for a player. */
+function bestWeaponPriority(
+  player: SnapshotPlayer,
+  weaponJob?: string,
+) {
+  const priorities = player.weaponPriorities ?? [];
+  if (weaponJob) return priorities.find((w) => w.job === weaponJob);
+  // No job context → use the highest-priority (lowest order) non-received entry
+  return priorities
+    .filter((w) => !w.received)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+}
+
 function buildWeaponPriorityRankMap(
   players: SnapshotPlayer[],
   weaponJob?: string,
 ): Map<string, number> {
   // Collect players that have weapon priority entries for this job
-  type Entry = { playerId: string; order: number; received: boolean };
+  type Entry = { playerId: string; order: number };
   const entries: Entry[] = [];
 
   for (const p of players) {
-    const priorities = p.weaponPriorities ?? [];
-    const wp = weaponJob
-      ? priorities.find((w) => w.job === weaponJob)
-      : priorities[0];
+    const wp = bestWeaponPriority(p, weaponJob);
     if (wp && !wp.received) {
-      entries.push({ playerId: p.id, order: wp.order ?? priorities.indexOf(wp), received: false });
+      entries.push({ playerId: p.id, order: wp.order ?? 0 });
     }
   }
 

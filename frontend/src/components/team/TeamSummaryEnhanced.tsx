@@ -59,8 +59,22 @@ function ValueCell({
   );
 }
 
+type RoleLabel = 'main' | 'alt' | 'substitute' | null;
+
+const ROLE_CHIP: Record<NonNullable<RoleLabel>, { label: string; className: string }> = {
+  main:       { label: 'Main', className: 'bg-accent/20 text-accent' },
+  alt:        { label: 'Alt',  className: 'bg-purple-400/20 text-purple-300' },
+  substitute: { label: 'Sub',  className: 'bg-surface-elevated text-text-muted' },
+};
+
 // Memoized row component
-const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) {
+const SummaryRow = memo(function SummaryRow({
+  row,
+  roleLabel,
+}: {
+  row: PlayerSummaryRow;
+  roleLabel?: RoleLabel;
+}) {
   const { player, gearPercent, booksBalance, booksNeeded, matsReceived, matsNeeded } = row;
 
   // Get color class based on gear completion
@@ -71,6 +85,8 @@ const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) 
     return 'bg-text-muted';
   };
 
+  const chip = roleLabel ? ROLE_CHIP[roleLabel] : null;
+
   return (
     <tr className="border-b border-border-default last:border-b-0 hover:bg-surface-elevated/50 transition-colors">
       {/* Player */}
@@ -78,6 +94,11 @@ const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) 
         <div className="flex items-center gap-2">
           <JobIcon job={player.job} size="sm" />
           <span className="text-sm font-medium text-text-primary">{player.name}</span>
+          {chip && (
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${chip.className}`}>
+              {chip.label}
+            </span>
+          )}
         </div>
       </td>
 
@@ -241,6 +262,23 @@ export function TeamSummaryEnhanced({
       playerHasMainRole(row.player.id, registrationsByPlayer),
     );
   }, [playerSummaries, showMainOnly, registrationsByPlayer]);
+
+  // Role labels per player — shown as chips in the "all players" view so leads
+  // can see which roster slots are mains vs alts at a glance.
+  const hasAnyRegistrations = Object.keys(registrationsByPlayer).length > 0;
+  const roleLabelByPlayerId = useMemo<Record<string, RoleLabel>>(() => {
+    if (showMainOnly || !hasAnyRegistrations) return {};
+    const map: Record<string, RoleLabel> = {};
+    for (const [playerId, regs] of Object.entries(registrationsByPlayer)) {
+      if (!regs?.length) continue;
+      // Primary registration determines the displayed role
+      const primary = regs.find((r) => r.isPrimaryForStatic) ?? regs[0];
+      const role = primary?.roleInStatic;
+      map[playerId] =
+        role === 'main' || role === 'alt' || role === 'substitute' ? role : null;
+    }
+    return map;
+  }, [registrationsByPlayer, showMainOnly, hasAnyRegistrations]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -477,7 +515,11 @@ export function TeamSummaryEnhanced({
           </thead>
           <tbody>
             {filteredSummaries.map(row => (
-              <SummaryRow key={row.player.id} row={row} />
+              <SummaryRow
+                key={row.player.id}
+                row={row}
+                roleLabel={roleLabelByPlayerId[row.player.id] ?? null}
+              />
             ))}
           </tbody>
           <tfoot>
