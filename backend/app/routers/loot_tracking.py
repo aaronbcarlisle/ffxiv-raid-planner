@@ -20,6 +20,7 @@ from app.models import (
     MaterialLogEntry,
     MemberRole,
     PageLedgerEntry,
+    PlayerCharacter,
     SnapshotPlayer,
     StaticCharacterRegistration,
     TierSnapshot,
@@ -265,13 +266,21 @@ async def create_loot_log_entry(
                 status_code=400,
                 detail="Character registration not found or does not belong to this player/static",
             )
-        # Snapshot the name at log time if caller didn't provide one
+        # Snapshot the name at log time if caller didn't provide one.
+        # Prefer manual_character_name for manual registrations; for Player Hub
+        # linked registrations, fetch the character name from PlayerCharacter.
         if not char_name_snapshot:
-            char_name_snapshot = (
-                char_reg.manual_character_name
-                if char_reg.player_character_id is None
-                else None
-            )
+            if char_reg.manual_character_name:
+                char_name_snapshot = char_reg.manual_character_name
+            elif char_reg.player_character_id:
+                pc_result = await db.execute(
+                    select(PlayerCharacter).where(
+                        PlayerCharacter.id == char_reg.player_character_id
+                    )
+                )
+                pc = pc_result.scalar_one_or_none()
+                if pc:
+                    char_name_snapshot = pc.name
 
     # Create entry
     entry = LootLogEntry(

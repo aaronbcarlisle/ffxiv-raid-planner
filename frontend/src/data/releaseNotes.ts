@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.30.0';
+export const CURRENT_VERSION = '1.31.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -58,6 +58,45 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.31.0',
+    date: '2026-06-19T10:00:00Z',
+    title: 'Loot Intelligence V1',
+    highlights: [
+      'Loot Log now recommends who should receive each drop, ranked by BiS need, weapon priority, and loot history',
+      'Backend now auto-resolves character names for Player Hub linked registrations when logging loot',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Loot drop recommendations in Log Loot',
+        description: 'When logging a drop or weapon coffer, a ranked candidate list appears showing who should receive the item and why. The recommendation combines registered character identity, weapon priority rank, BiS need, and loot log history. Leads can always override the suggestion — it is a guide, not automation.',
+        pr: 145,
+        prTitle: 'feat(loot): loot intelligence v1 — recommendation engine and candidate panel',
+      },
+      {
+        category: 'improvement',
+        title: 'Weapon coffers use existing weapon priority',
+        description: 'When logging a weapon coffer drop, the recommendation panel ranks candidates using the static\'s current weapon priority order. Priority rank #1 receives the highest bonus, with lower ranks scored proportionally. Players whose weapon is already marked as received are automatically deprioritised.',
+        pr: 145,
+        prTitle: 'feat(loot): loot intelligence v1 — recommendation engine and candidate panel',
+      },
+      {
+        category: 'improvement',
+        title: 'Character registration context in recommendations',
+        description: 'Main character registrations receive a bonus in the scoring model. Players without a linked character still appear as candidates but at lower confidence, with a hint to visit Roster → Characters to link their character for better recommendations.',
+        pr: 145,
+        prTitle: 'feat(loot): loot intelligence v1 — recommendation engine and candidate panel',
+      },
+      {
+        category: 'fix',
+        title: 'Backend resolves Player Hub character name when snapshotting loot',
+        description: 'Previously, loot log entries for Player Hub linked registrations stored no character name unless the client supplied one. The backend now resolves the name from the linked PlayerCharacter record automatically, so the name snapshot is always populated.',
+        pr: 145,
+        prTitle: 'feat(loot): loot intelligence v1 — recommendation engine and candidate panel',
+      },
+    ],
+  },
   {
     version: '1.30.0',
     date: '2026-06-19T03:00:00Z',

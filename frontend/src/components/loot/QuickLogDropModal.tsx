@@ -13,6 +13,8 @@ import { JobIcon } from '../ui/JobIcon';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { getPrimaryRegistration } from '../../utils/staticCharacterContextService';
 import { logLootAndUpdateGear, calculatePlayerLootStats, calculateAverageDrops } from '../../utils/lootCoordination';
+import { recommendRecipientForDrop } from '../../utils/lootRecommendationService';
+import { LootRecommendationCandidates } from './LootRecommendationCandidates';
 import { toast } from '../../stores/toastStore';
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
 import type { SnapshotPlayer, GearSlot, StaticSettings, LootLogEntry } from '../../types';
@@ -64,6 +66,21 @@ export function QuickLogDropModal({
   );
 
   const isWeapon = slot === 'weapon';
+
+  // Loot recommendation
+  const lootRecommendation = useMemo(() => {
+    if (!slot || !isOpen) return null;
+    const dropType = isWeapon ? 'weapon_coffer' : 'direct_drop';
+    return recommendRecipientForDrop(
+      { slot: slot as GearSlot | 'ring', dropType, week: selectedWeek, floor },
+      allPlayers.filter((p) => p.configured && !p.isSubstitute),
+      settings,
+      registrationsByPlayer,
+      lootLog,
+      currentWeek,
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot, isWeapon, selectedWeek, floor, allPlayers, settings, registrationsByPlayer, lootLog, currentWeek, isOpen]);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -255,6 +272,18 @@ export function QuickLogDropModal({
             />
           </div>
         </div>
+
+        {/* Recommendation panel */}
+        {lootRecommendation && (
+          <LootRecommendationCandidates
+            recommendation={lootRecommendation}
+            selectedPlayerId={recipientPlayerId}
+            onSelectCandidate={(playerId, charRegId) => {
+              setRecipientPlayerId(playerId);
+              setRecipientCharacterRegId(charRegId);
+            }}
+          />
+        )}
 
         {/* Recipient selection */}
         <div>

@@ -21,6 +21,8 @@ import { calculatePlayerLootStats, calculateAverageDrops } from '../../utils/loo
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { getPrimaryRegistration, formatCharacterLabel } from '../../utils/staticCharacterContextService';
+import { recommendRecipientForDrop } from '../../utils/lootRecommendationService';
+import { LootRecommendationCandidates } from '../loot/LootRecommendationCandidates';
 import type { LootLogEntry, LootLogEntryCreate, LootLogEntryUpdate, LootMethod, SnapshotPlayer, GearSlot, StaticSettings } from '../../types';
 import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 
@@ -169,6 +171,20 @@ export function AddLootEntryModal({
     const playerIds = players.filter(p => p.configured && !p.isSubstitute).map((p) => p.id);
     return calculateAverageDrops(playerIds, lootLog);
   }, [lootLog, players]);
+
+  // Loot recommendation — only computed in add mode when a slot is chosen
+  const lootRecommendation = useMemo(() => {
+    if (isEditMode || !itemSlot) return null;
+    const dropType = itemSlot === 'weapon' ? 'weapon_coffer' : 'direct_drop';
+    return recommendRecipientForDrop(
+      { slot: itemSlot as GearSlot | 'ring', dropType, week: weekNumber, floor },
+      players.filter((p) => p.configured && !p.isSubstitute),
+      settings,
+      playerRegistrations,
+      lootLog,
+      currentWeek,
+    );
+  }, [isEditMode, itemSlot, weekNumber, floor, players, settings, playerRegistrations, lootLog, currentWeek]);
 
   // Get priority-sorted recipients for selected slot
   // Uses enhanced scoring (with loot history) to match Gear Priority panel
@@ -501,6 +517,19 @@ export function AddLootEntryModal({
             Showing items that drop from {floor}
           </div>
         </div>
+
+        {/* Recommendation panel — add mode only */}
+        {!isEditMode && lootRecommendation && (
+          <LootRecommendationCandidates
+            recommendation={lootRecommendation}
+            selectedPlayerId={recipientPlayerId}
+            onSelectCandidate={(playerId, charRegId) => {
+              setRecipientPlayerId(playerId);
+              setRecipientCharacterRegId(charRegId);
+            }}
+            visible={!!itemSlot}
+          />
+        )}
 
         {/* Recipient - sorted by priority */}
         <div>
