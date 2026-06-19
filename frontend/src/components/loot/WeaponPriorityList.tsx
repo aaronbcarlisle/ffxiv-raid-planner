@@ -8,7 +8,7 @@
 
 import { useState, useMemo, useCallback, useEffect, memo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { SnapshotPlayer, StaticSettings } from '../../types';
+import type { SnapshotPlayer, StaticSettings, StaticCharacterRegistration } from '../../types';
 import { getWeaponPriorityForJob, type WeaponPriorityEntry } from '../../utils/weaponPriority';
 import { RAID_JOBS } from '../../gamedata/jobs';
 import { JobIcon } from '../ui/JobIcon';
@@ -17,11 +17,37 @@ import { FilterBar } from './FilterBar';
 import { RoleSection } from './RoleSection';
 import { Tooltip } from '../primitives/Tooltip';
 import { useDevice } from '../../hooks/useDevice';
+import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
+import { getRegistrationForJob } from '../../utils/staticCharacterContextService';
 
 // Roll result for a player
 interface RollResult {
   playerId: string;
   roll: number;
+}
+
+// Character registration badge for a player+job combo
+function CharacterBadge({
+  playerId,
+  job,
+  registrationsByPlayer,
+}: {
+  playerId: string;
+  job: string;
+  registrationsByPlayer?: Record<string, StaticCharacterRegistration[]>;
+}) {
+  if (!registrationsByPlayer) return null;
+  const regs = registrationsByPlayer[playerId];
+  if (!regs?.length) return null;
+  const reg = getRegistrationForJob(regs, job);
+  if (!reg) return null;
+  const name = reg.resolvedName ?? reg.manualCharacterName;
+  if (!name) return null;
+  return (
+    <span className="flex-shrink-0 text-xs text-text-muted truncate max-w-[80px]" title={name}>
+      {name}
+    </span>
+  );
 }
 
 // Build tooltip content for score breakdown
@@ -60,6 +86,11 @@ function WeaponLogTooltip({ job, jobName, playerName }: { job: string; jobName: 
  */
 export type TieStyle = 'border' | 'sameRank' | 'rankNotation' | 'background' | 'connector';
 
+interface ReceivedPlayerEntry {
+  player: SnapshotPlayer;
+  obtainedVia?: 'drop' | 'coffer';
+}
+
 interface WeaponPriorityCardProps {
   job: string;
   jobName: string;
@@ -68,6 +99,10 @@ interface WeaponPriorityCardProps {
   onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
   /** Visual style for displaying tied players. Defaults to 'connector'. */
   tieStyle?: TieStyle;
+  /** Per-player character registrations for character context badges. */
+  registrationsByPlayer?: Record<string, StaticCharacterRegistration[]>;
+  /** Players who have already received this weapon this tier, with how they got it. */
+  receivedPlayers?: ReceivedPlayerEntry[];
 }
 
 /**
@@ -81,6 +116,8 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
   showLogButtons,
   onLogClick,
   tieStyle = 'connector',
+  registrationsByPlayer,
+  receivedPlayers,
 }: WeaponPriorityCardProps) {
   const [rollResults, setRollResults] = useState<Map<number, RollResult[]>>(new Map());
   // Track which tie groups are expanded (for connector style)
@@ -627,6 +664,11 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
                         Main
                       </span>
                     )}
+                    <CharacterBadge
+                      playerId={entry.player.id}
+                      job={job}
+                      registrationsByPlayer={registrationsByPlayer}
+                    />
                   </div>
                   <div className="flex items-center gap-2">
                     {/* Log button - accent for top priority, gray for others */}
@@ -786,6 +828,25 @@ export const WeaponPriorityCard = memo(function WeaponPriorityCard({
           })}
         </div>
       )}
+
+      {/* Received players */}
+      {receivedPlayers && receivedPlayers.length > 0 && (
+        <div className="border-t border-border-subtle/50 pt-1 pb-1">
+          {receivedPlayers.map(({ player, obtainedVia }) => (
+            <div key={player.id} className="flex items-center justify-between px-2 py-0.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <JobIcon job={player.job} size="xs" />
+                <span className="text-xs text-text-muted truncate">{player.name}</span>
+              </div>
+              <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ml-2 ${
+                obtainedVia === 'coffer' ? 'bg-accent/10 text-accent' : 'bg-status-success/15 text-status-success'
+              }`}>
+                {obtainedVia === 'coffer' ? 'Coffer' : 'Drop'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 });
@@ -807,6 +868,8 @@ interface WeaponPriorityListProps {
   // Optional props for inline logging
   showLogButtons?: boolean;
   onLogClick?: (weaponJob: string, player: SnapshotPlayer) => void;
+  /** Group ID — enables character registration context badges when provided */
+  groupId?: string;
 }
 
 export function WeaponPriorityList({
@@ -814,7 +877,13 @@ export function WeaponPriorityList({
   settings,
   showLogButtons = false,
   onLogClick,
+  groupId,
 }: WeaponPriorityListProps) {
+  const { registrationsByGroup } = useStaticCharacterStore();
+  const registrationsByPlayer = useMemo(() => {
+    if (!groupId) return undefined;
+    return registrationsByGroup[groupId];
+  }, [groupId, registrationsByGroup]);
   const { isSmallScreen } = useDevice();
 
   // URL params for deep linking
@@ -933,6 +1002,21 @@ export function WeaponPriorityList({
     });
   }, [setSearchParams]);
 
+  // Players who have received a weapon this tier, grouped by job
+  const receivedByJob = useMemo(() => {
+    const map = new Map<string, ReceivedPlayerEntry[]>();
+    for (const player of players) {
+      for (const wp of player.weaponPriorities || []) {
+        if (wp.received) {
+          const entries = map.get(wp.job) ?? [];
+          entries.push({ player, obtainedVia: wp.obtainedVia });
+          map.set(wp.job, entries);
+        }
+      }
+    }
+    return map;
+  }, [players]);
+
   // Get all jobs that appear in weapon priorities OR are main jobs
   // Every player's main job is a default weapon priority
   const allJobs = useMemo(() => {
@@ -1030,6 +1114,8 @@ export function WeaponPriorityList({
                     priority={priority}
                     showLogButtons={showLogButtons}
                     onLogClick={onLogClick}
+                    registrationsByPlayer={registrationsByPlayer}
+                    receivedPlayers={receivedByJob.get(job)}
                   />
                 );
               });
@@ -1069,6 +1155,8 @@ export function WeaponPriorityList({
                     priority={priority}
                     showLogButtons={showLogButtons}
                     onLogClick={onLogClick}
+                    registrationsByPlayer={registrationsByPlayer}
+                    receivedPlayers={receivedByJob.get(job)}
                   />
                 );
               })}

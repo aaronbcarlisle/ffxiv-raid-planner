@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User, LootLogEntry, WeeklyAssignment
+from app.models.player_character import PlayerCharacter
+from app.models.player_profile import PlayerProfile
+from app.models.static_character_registration import StaticCharacterRegistration
 
 
 async def create_user(
@@ -216,6 +219,83 @@ async def create_weekly_assignment(
     session.add(assignment)
     await session.flush()
     return assignment
+
+
+async def create_player_profile(
+    session: AsyncSession,
+    user: User,
+) -> PlayerProfile:
+    """Create a PlayerProfile for a user."""
+    profile = PlayerProfile(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        visibility="private",
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(profile)
+    await session.flush()
+    return profile
+
+
+async def create_player_character(
+    session: AsyncSession,
+    profile: PlayerProfile,
+    *,
+    name: str = "Test Character",
+    server: str = "Tonberry",
+    data_center: str = "Elemental",
+    lodestone_id: str | None = None,
+    is_main: bool = True,
+) -> PlayerCharacter:
+    """Create a PlayerCharacter linked to a PlayerProfile."""
+    char = PlayerCharacter(
+        id=str(uuid.uuid4()),
+        profile_id=profile.id,
+        lodestone_id=lodestone_id or str(uuid.uuid4())[:18],
+        name=name,
+        server=server,
+        data_center=data_center,
+        is_main=is_main,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(char)
+    await session.flush()
+    return char
+
+
+async def create_static_character_registration(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    snapshot_player: SnapshotPlayer,
+    *,
+    player_character: PlayerCharacter | None = None,
+    manual_character_name: str | None = None,
+    manual_world: str | None = None,
+    role_in_static: str = "alt",
+    job: str | None = None,
+    is_primary_for_static: bool = False,
+    source: str = "manual",
+) -> StaticCharacterRegistration:
+    """Create a StaticCharacterRegistration for testing."""
+    reg = StaticCharacterRegistration(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        snapshot_player_id=snapshot_player.id,
+        player_character_id=player_character.id if player_character else None,
+        manual_character_name=manual_character_name,
+        manual_world=manual_world,
+        role_in_static=role_in_static,
+        job=job,
+        is_primary_for_static=is_primary_for_static,
+        source=source if not player_character else "player_hub",
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(reg)
+    await session.flush()
+    return reg
 
 
 def _generate_share_code() -> str:

@@ -20,7 +20,9 @@ from app.models import (
     MaterialLogEntry,
     MemberRole,
     PageLedgerEntry,
+    PlayerCharacter,
     SnapshotPlayer,
+    StaticCharacterRegistration,
     TierSnapshot,
     User,
 )
@@ -174,6 +176,8 @@ async def get_loot_log(
             item_slot=entry.item_slot,
             recipient_player_id=entry.recipient_player_id,
             recipient_player_name=entry.recipient_player.name,
+            recipient_character_registration_id=entry.recipient_character_registration_id,
+            recipient_character_name=entry.recipient_character_name,
             method=entry.method,
             notes=entry.notes,
             weapon_job=entry.weapon_job,
@@ -246,6 +250,38 @@ async def create_loot_log_entry(
             if recipient_player.user_id != current_user.id:
                 raise PermissionDenied("Members can only log purchases for their own character")
 
+    # Optional: validate character registration belongs to this static and this player
+    char_name_snapshot = data.recipient_character_name
+    if data.recipient_character_registration_id:
+        char_result = await db.execute(
+            select(StaticCharacterRegistration).where(
+                StaticCharacterRegistration.id == data.recipient_character_registration_id,
+                StaticCharacterRegistration.static_group_id == group_id,
+                StaticCharacterRegistration.snapshot_player_id == data.recipient_player_id,
+            )
+        )
+        char_reg = char_result.scalar_one_or_none()
+        if not char_reg:
+            raise HTTPException(
+                status_code=400,
+                detail="Character registration not found or does not belong to this player/static",
+            )
+        # Snapshot the name at log time if caller didn't provide one.
+        # Prefer manual_character_name for manual registrations; for Player Hub
+        # linked registrations, fetch the character name from PlayerCharacter.
+        if not char_name_snapshot:
+            if char_reg.manual_character_name:
+                char_name_snapshot = char_reg.manual_character_name
+            elif char_reg.player_character_id:
+                pc_result = await db.execute(
+                    select(PlayerCharacter).where(
+                        PlayerCharacter.id == char_reg.player_character_id
+                    )
+                )
+                pc = pc_result.scalar_one_or_none()
+                if pc:
+                    char_name_snapshot = pc.name
+
     # Create entry
     entry = LootLogEntry(
         tier_snapshot_id=tier.id,
@@ -259,6 +295,8 @@ async def create_loot_log_entry(
         is_extra=data.is_extra,
         created_at=datetime.now(timezone.utc).isoformat(),
         created_by_user_id=current_user.id,
+        recipient_character_registration_id=data.recipient_character_registration_id,
+        recipient_character_name=char_name_snapshot,
     )
     db.add(entry)
 
@@ -340,6 +378,8 @@ async def create_loot_log_entry(
         item_slot=entry.item_slot,
         recipient_player_id=entry.recipient_player_id,
         recipient_player_name=entry.recipient_player.name,
+        recipient_character_registration_id=entry.recipient_character_registration_id,
+        recipient_character_name=entry.recipient_character_name,
         method=entry.method,
         notes=entry.notes,
         weapon_job=entry.weapon_job,
@@ -410,6 +450,24 @@ async def update_loot_log_entry(
         entry.weapon_job = data.weapon_job
     if data.is_extra is not None:
         entry.is_extra = data.is_extra
+    if data.recipient_character_registration_id is not None:
+        # Validate the character registration belongs to the (possibly updated) recipient player
+        effective_player_id = data.recipient_player_id or entry.recipient_player_id
+        char_result = await db.execute(
+            select(StaticCharacterRegistration).where(
+                StaticCharacterRegistration.id == data.recipient_character_registration_id,
+                StaticCharacterRegistration.static_group_id == group_id,
+                StaticCharacterRegistration.snapshot_player_id == effective_player_id,
+            )
+        )
+        if not char_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=400,
+                detail="Character registration not found or does not belong to this player/static",
+            )
+        entry.recipient_character_registration_id = data.recipient_character_registration_id
+    if data.recipient_character_name is not None:
+        entry.recipient_character_name = data.recipient_character_name
 
     await db.commit()
     await db.refresh(entry, ["recipient_player", "created_by"])
@@ -422,6 +480,8 @@ async def update_loot_log_entry(
         item_slot=entry.item_slot,
         recipient_player_id=entry.recipient_player_id,
         recipient_player_name=entry.recipient_player.name,
+        recipient_character_registration_id=entry.recipient_character_registration_id,
+        recipient_character_name=entry.recipient_character_name,
         method=entry.method,
         notes=entry.notes,
         weapon_job=entry.weapon_job,

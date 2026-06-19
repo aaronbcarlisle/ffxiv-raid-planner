@@ -7,6 +7,10 @@ Tracks individual loot drops and how they were obtained.
 from sqlalchemy import CheckConstraint, Integer, String, Text, ForeignKey, Enum as SQLEnum, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .static_character_registration import StaticCharacterRegistration
 
 
 class LootLogEntry(Base):
@@ -32,7 +36,19 @@ class LootLogEntry(Base):
     created_at: Mapped[str] = mapped_column(Text, nullable=False)  # ISO timestamp
     created_by_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False, index=True)
 
+    # Optional character identity snapshot (from StaticCharacterRegistration)
+    recipient_character_registration_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("static_character_registrations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    recipient_character_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     # Relationships
     tier_snapshot: Mapped["TierSnapshot"] = relationship("TierSnapshot", back_populates="loot_log_entries")
     recipient_player: Mapped["SnapshotPlayer"] = relationship("SnapshotPlayer", back_populates="loot_log_entries")
     created_by: Mapped["User"] = relationship("User")
+    recipient_character_registration: Mapped["StaticCharacterRegistration | None"] = relationship(
+        "StaticCharacterRegistration", foreign_keys=[recipient_character_registration_id]
+    )

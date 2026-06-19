@@ -119,6 +119,11 @@ export function LootLogPanel({
                   <span className="text-sm text-text-muted">→</span>
                   <span className="text-sm text-text-primary">
                     {entry.recipientPlayerName}
+                    {entry.recipientCharacterName && (
+                      <span className="text-xs text-text-muted ml-1">
+                        ({entry.recipientCharacterName})
+                      </span>
+                    )}
                   </span>
                   <span
                     className={`text-xs px-2 py-0.5 rounded ${
@@ -201,6 +206,7 @@ export function LootLogPanel({
           floors={floors}
           currentWeek={currentWeek}
           editEntry={entryToEdit || undefined}
+          groupId={groupId}
         />
       )}
 

@@ -3,11 +3,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
+  AlertTriangle,
   Bell,
   Calendar,
   ChevronRight,
   Mail,
   Plug,
+  Scissors,
   Shield,
   Sparkles,
   Swords,
@@ -21,6 +23,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
+import { useSplitClearStore } from '../../stores/splitClearStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { useObjectiveGoalStore } from '../../stores/objectiveGoalStore';
 import type { StaticObjectiveGoal } from '../../stores/objectiveGoalStore';
@@ -36,8 +39,9 @@ import { SafeAvatar } from '../ui/SafeAvatar';
 import { ReadinessBadge } from '../profile/ReadinessBadge';
 import { JoinRequestReviewModal } from './JoinRequestReviewModal';
 import { CreateCollectionGoalModal } from './CreateCollectionGoalModal';
-import type { JoinRequest, PageMode, SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
+import type { JoinRequest, PageMode, SnapshotPlayer, SplitClearData, StaticGroup, TierSnapshot } from '../../types';
 import { normalizeApplicationSnapshot } from '../../utils/applicationSnapshot';
+import { getSplitClearReadiness } from '../../utils/splitClear';
 import { api } from '../../services/api';
 
 // ─── Prop types ───────────────────────────────────────────────────────────────
@@ -1516,6 +1520,51 @@ function RecentActivityModule({
   );
 }
 
+// ─── Split Clear Readiness Card ───────────────────────────────────────────────
+
+interface SplitClearReadinessCardProps {
+  data: SplitClearData;
+  players: SnapshotPlayer[];
+  onNavigate: (tab: PageMode) => void;
+}
+
+function SplitClearReadinessCard({ data, players, onNavigate }: SplitClearReadinessCardProps) {
+  const readiness = getSplitClearReadiness(players, data.assignments);
+
+  return (
+    <div className="rounded-xl border border-border-subtle bg-surface-raised p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Scissors className="h-4 w-4 text-accent" />
+        <span className="text-sm font-semibold text-text-primary">Split Clears</span>
+      </div>
+
+      <div className="space-y-1.5 text-xs text-text-secondary">
+        <div className="flex items-center justify-between">
+          <span>Alts assigned</span>
+          <span className={`font-medium ${readiness.altCount === readiness.memberCount ? 'text-status-success' : 'text-text-primary'}`}>
+            {readiness.altCount}/{readiness.memberCount}
+          </span>
+        </div>
+        {readiness.issueMemberCount > 0 && (
+          <div className="flex items-center gap-1.5 text-status-warning">
+            <AlertTriangle className="h-3 w-3 flex-shrink-0" />
+            <span>{readiness.issueMemberCount} member{readiness.issueMemberCount !== 1 ? 's' : ''} need attention</span>
+          </div>
+        )}
+      </div>
+
+      {/* design-system-ignore: inline navigation link */}
+      <button
+        onClick={() => onNavigate('players')}
+        className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition-colors"
+      >
+        Open Split Planner
+        <ChevronRight className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function StaticHomeTab({
@@ -1529,6 +1578,7 @@ export function StaticHomeTab({
   const { groupRequests, fetchGroupRequests, acceptRequest, declineRequest, markUnderReview, isLoading: reqLoading } = useJoinRequestStore();
   const { sessions, fetchSessions, isLoading: sessLoading } = useScheduleStore();
   const { data: farmData, recommendations, isLoadingRecs, fetchRecommendations, fetchProgress } = useMountFarmStore();
+  const { data: splitClearData, fetchData: fetchSplitClear } = useSplitClearStore();
   const { goals, isLoading: goalsLoading, fetchGoals, deleteGoal } = useCollectionGoalStore();
   const { objectives, loading: objectivesLoading, objectivesError, fetchObjectives } = useObjectiveGoalStore();
   const { suggestions, fetchSuggestions } = useContentSuggestionStore();
@@ -1547,8 +1597,9 @@ export function StaticHomeTab({
       fetchGoals(group.id);
       fetchObjectives(group.id);
       fetchSuggestions(group.id);
+      void fetchSplitClear(group.id);
     }
-  }, [group.id, group.userRole, canManage, fetchGroupRequests, fetchSessions, fetchRecommendations, fetchProgress, fetchGoals, fetchObjectives, fetchSuggestions]);
+  }, [group.id, group.userRole, canManage, fetchGroupRequests, fetchSessions, fetchRecommendations, fetchProgress, fetchGoals, fetchObjectives, fetchSuggestions, fetchSplitClear]);
 
   const tierPlayers = tier?.players;
   const players = tierPlayers ?? [];
@@ -1647,6 +1698,14 @@ export function StaticHomeTab({
             onCreateGoal={() => setShowCreateGoalModal(true)}
             onDeleteGoal={handleDeleteGoal}
           />
+
+          {splitClearData?.enabled && (
+            <SplitClearReadinessCard
+              data={splitClearData}
+              players={players.filter((player) => player.configured && !player.isSubstitute)}
+              onNavigate={onNavigate}
+            />
+          )}
         </div>
       </div>
 

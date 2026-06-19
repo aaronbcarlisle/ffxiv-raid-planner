@@ -58,6 +58,105 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  // ── UNRELEASED (branch work — internal draft, no PR yet) ─────────────────
+  {
+    version: 'Unreleased',
+    date: '2026-06-19T10:00:00Z',
+    title: 'Unreleased — Static Character / Split Planner / Loot Intelligence',
+    items: [
+      {
+        category: 'feature',
+        title: 'Split Clear Planner for raid statics',
+        description: 'Leads can enable a split-clear planning board under the Roster tab. Each member gets a row for their main and alt character, Run A / Run B assignments, loot target notes, and per-run weekly clear checkboxes. Weekly clear status is manually tracked; no lockout detection is performed.',
+      },
+      {
+        category: 'feature',
+        title: 'Generate Draft split plan',
+        description: 'The Split Clear Planner can generate a suggested draft from existing Lodestone data and weapon priorities with a confidence badge, per-player suggestions, and a change summary before applying. Dismissing the draft discards it without saving.',
+      },
+      {
+        category: 'improvement',
+        title: 'Split Clear Composer — redesigned planning flow',
+        description: 'The split-clear board is a three-state composer: empty state with source previews, draft-review panel with Run A / Run B side-by-side panels, and a manage board.',
+      },
+      {
+        category: 'improvement',
+        title: 'Character-linked split assignment composer',
+        description: 'Split Clear Planner reads linked Player Hub characters instead of requiring manual text entry. Each roster member\'s characters appear as selector chips; leads pick which goes into Run A and which into Run B.',
+      },
+      {
+        category: 'improvement',
+        title: 'Weighted draft scoring with per-player reasons',
+        description: 'Draft generation uses a weighted scoring system and surfaces per-player reasons in a collapsible "Why these assignments?" panel.',
+      },
+      {
+        category: 'feature',
+        title: 'Roster → Characters sub-tab',
+        description: 'A new "Characters" sub-tab in the Roster segmented control. Leads can link Player Hub characters or add manual entries with main/alt/substitute roles and an optional job tag.',
+      },
+      {
+        category: 'improvement',
+        title: 'Split Planner uses registered character list',
+        description: 'The draft generator prefers static character registrations (when available) over the full Player Hub profile when building character candidate lists.',
+      },
+      {
+        category: 'improvement',
+        title: 'Loot Log records the receiving character',
+        description: 'When logging a drop or book purchase, a character picker appears for any player who has registered characters. The primary character is pre-selected; you can switch to any alt.',
+      },
+      {
+        category: 'improvement',
+        title: 'Priority view shows registered character context',
+        description: 'Weapon Priority cards display the registered character name next to each entry when one is linked to that player and job. Character context is additive and degrades gracefully when no registration exists.',
+      },
+      {
+        category: 'improvement',
+        title: 'Team Summary "Mains only" filter',
+        description: 'A new toggle in the Team Summary header filters the progress table to roster players whose registered role is "main". Hidden for statics without character registrations.',
+      },
+      {
+        category: 'feature',
+        title: 'Loot drop recommendations in Log Loot',
+        description: 'When logging a drop or weapon coffer, a ranked candidate list shows who should receive the item and why. Combines registered character identity, weapon priority rank, BiS need, and loot log history. Leads can always override.',
+      },
+      {
+        category: 'improvement',
+        title: 'Weapon coffers use existing weapon priority',
+        description: 'The recommendation panel ranks weapon coffer candidates using the static\'s current weapon priority order. Priority rank #1 receives the highest bonus; players whose weapon is already received are deprioritised.',
+      },
+      {
+        category: 'fix',
+        title: 'Backend resolves Player Hub character name when snapshotting loot',
+        description: 'Loot log entries for Player Hub linked registrations now auto-resolve the character name from the linked PlayerCharacter record so the snapshot is always populated.',
+      },
+      {
+        category: 'fix',
+        title: 'Recurring sessions display the next upcoming date',
+        description: 'Session cards for recurring events now show the next scheduled occurrence rather than the original creation date.',
+      },
+      {
+        category: 'fix',
+        title: 'Cancel a single occurrence without deleting the series',
+        description: 'The delete button on recurring session cards opens a choice: "Cancel [date] only" or "Delete entire series." Cancelling one occurrence marks it as skipped while leaving all future occurrences intact.',
+      },
+      {
+        category: 'improvement',
+        title: 'Track whether a weapon was a direct drop or weapon coffer',
+        description: 'The Quick Log Weapon modal now has a "Via weapon coffer" checkbox. The weapon priority card shows a Drop or Coffer badge next to each player who has already received their weapon this tier.',
+      },
+      {
+        category: 'improvement',
+        title: 'Split Clear board auto-refreshes after linking characters',
+        description: 'Returning to the Roster tab after linking characters on the Profile page (Sync Center) now silently re-fetches split-clear data so the character chips appear without a manual page refresh.',
+      },
+      {
+        category: 'feature',
+        title: 'Dalamud plugin: Split Clear overlay',
+        description: 'The in-game plugin shows a Split Clear overlay when you enter a savage raid with split-clear mode active. It displays your run assignment (Run A or Run B), your character and world for that run, your loot target, and your teammates in the same run. A "Mark Run Cleared" button updates the split-clear status for all players in your run at once.',
+      },
+    ],
+    internal: true,
+  },
   {
     version: '1.25.0',
     date: '2026-06-18T00:00:00Z',

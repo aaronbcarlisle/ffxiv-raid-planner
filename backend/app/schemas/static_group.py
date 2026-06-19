@@ -226,6 +226,10 @@ class StaticSettingsSchema(CamelModel):
         default=None,
         description="Discovery/recruitment settings for public static listing.",
     )
+    split_clear_mode: bool = Field(
+        default=False,
+        description="Whether the manual split-clear planner is enabled.",
+    )
 
     @field_validator("job_priority_modifiers")
     @classmethod

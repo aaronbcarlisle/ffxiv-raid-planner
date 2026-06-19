@@ -6,7 +6,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { Spinner } from '../ui/Spinner';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'accent-subtle' | 'ghost' | 'danger' | 'warning' | 'success' | 'link';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -40,6 +40,7 @@ const variantStyles: Record<ButtonVariant, string> = {
 
 // Touch-friendly sizes: minimum 44px height on mobile for accessibility
 const sizeStyles: Record<ButtonSize, string> = {
+  xs: 'px-2 py-0.5 text-xs gap-1',
   sm: 'px-3 py-1.5 text-sm gap-1.5 min-h-[44px] sm:min-h-0',
   md: 'px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0',
   lg: 'px-5 py-2.5 text-base gap-2.5',
