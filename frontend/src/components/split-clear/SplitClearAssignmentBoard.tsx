@@ -1,5 +1,6 @@
 import { type FocusEvent, useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Link2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type {
   SnapshotPlayer,
   SplitCharacterCandidate,
@@ -9,6 +10,7 @@ import type {
 } from '../../types';
 import type { SplitClearAssignmentUpdate } from '../../stores/splitClearStore';
 import { useSplitClearStore } from '../../stores/splitClearStore';
+import { useAuthStore } from '../../stores/authStore';
 import { getSplitClearWarnings } from '../../utils/splitClear';
 import { TONE_CHIP_CLASS } from '../../utils/splitClearHelpers';
 import { Checkbox, Input, Select } from '../ui';
@@ -173,10 +175,11 @@ interface PlayerRowProps {
   candidates: SplitCharacterCandidate[];
   warnings: string[];
   canEdit: boolean;
+  isOwnRow: boolean;
   onSave: (update: SplitClearAssignmentUpdate) => void;
 }
 
-function PlayerRow({ player, assignment, candidates, warnings, canEdit, onSave }: PlayerRowProps) {
+function PlayerRow({ player, assignment, candidates, warnings, canEdit, isOwnRow, onSave }: PlayerRowProps) {
   const a = assignment;
   const { mainName, setMainName, mainWorld, setMainWorld, altName, setAltName, altWorld, setAltWorld, saveOnBlur, patch } =
     usePlayerEdit({ assignment, canEdit, onSave });
@@ -223,6 +226,15 @@ function PlayerRow({ player, assignment, candidates, warnings, canEdit, onSave }
           </div>
         ) : (
           <div className="space-y-1.5">
+            {isOwnRow && canEdit && (
+              <Link
+                to="/profile?tab=sync"
+                className="inline-flex items-center gap-1 text-[10px] text-accent hover:text-accent-hover hover:underline"
+              >
+                <Link2 className="h-3 w-3" aria-hidden="true" />
+                Link your Player Hub characters
+              </Link>
+            )}
             <div>
               <p className="text-[10px] font-semibold text-text-muted mb-0.5">Main</p>
               <div className="flex gap-1">
@@ -374,10 +386,11 @@ interface MobileMemberCardProps {
   candidates: SplitCharacterCandidate[];
   warnings: string[];
   canEdit: boolean;
+  isOwnRow: boolean;
   onSave: (update: SplitClearAssignmentUpdate) => void;
 }
 
-function MobileMemberCard({ player, assignment, candidates, warnings, canEdit, onSave }: MobileMemberCardProps) {
+function MobileMemberCard({ player, assignment, candidates, warnings, canEdit, isOwnRow, onSave }: MobileMemberCardProps) {
   const a = assignment;
   const { mainName, setMainName, mainWorld, setMainWorld, altName, setAltName, altWorld, setAltWorld, saveOnBlur, patch } =
     usePlayerEdit({ assignment, canEdit, onSave });
@@ -441,6 +454,15 @@ function MobileMemberCard({ player, assignment, candidates, warnings, canEdit, o
         </div>
       ) : (
         <>
+          {isOwnRow && canEdit && (
+            <Link
+              to="/profile?tab=sync"
+              className="inline-flex items-center gap-1 text-[10px] text-accent hover:text-accent-hover hover:underline"
+            >
+              <Link2 className="h-3 w-3" aria-hidden="true" />
+              Link your Player Hub characters
+            </Link>
+          )}
           {/* Manual text inputs */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
@@ -573,6 +595,7 @@ export function SplitClearAssignmentBoard({
   onUpdate,
 }: SplitClearAssignmentBoardProps) {
   const playerCharacters = useSplitClearStore(s => s.data?.playerCharacters ?? {});
+  const currentUserId = useAuthStore(s => s.user?.id);
 
   return (
     <>
@@ -605,6 +628,7 @@ export function SplitClearAssignmentBoard({
                   candidates={candidates}
                   warnings={warnings}
                   canEdit={canEdit}
+                  isOwnRow={!!currentUserId && player.userId === currentUserId}
                   onSave={update => onUpdate(player.id, update)}
                 />
               );
@@ -634,6 +658,7 @@ export function SplitClearAssignmentBoard({
               candidates={candidates}
               warnings={warnings}
               canEdit={canEdit}
+              isOwnRow={!!currentUserId && player.userId === currentUserId}
               onSave={update => onUpdate(player.id, update)}
             />
           );
