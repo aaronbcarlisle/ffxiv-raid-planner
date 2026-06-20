@@ -60,6 +60,24 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '1.26.0',
+    date: '2026-06-21T00:00:00Z',
+    title: 'Collections catalog expanded — all expansions + Player Hub sync',
+    items: [
+      {
+        category: 'fix',
+        title: 'Collections catalog expanded to all expansions',
+        description: 'Browse Catalog now shows mounts and ultimate weapons for Shadowbringers, Stormblood, Heavensward, and A Realm Reborn. Endwalker data corrected (mount names, totem names, and missing Endsinger entry). All catalog entries now carry a source_duty_key matching the internal trial ID so the Player Hub collections tab and group catalog stay in sync.',
+      },
+      {
+        category: 'fix',
+        title: 'Player Hub collection suggestions include group goal participation',
+        description: 'When a static group tracks a Collection Goal and a member has logged participation, that farm now surfaces as a Player Hub collection suggestion — bridging group goal activity into the personal collections view.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.26.0',
     date: '2026-06-20T00:00:00Z',
     title: 'Collections & Farms Hub',
     items: [

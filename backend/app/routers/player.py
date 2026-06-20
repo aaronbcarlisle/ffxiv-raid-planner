@@ -555,9 +555,15 @@ async def get_collection_suggestions(
 ):
     """Return mount farm progress from statics that the user doesn't have solo goals for yet.
 
-    Bridges static mount farm data into solo collection suggestions.
+    Two sources:
+    1. MountFarmProgress — classic group mount farm tracker totem counts.
+    2. RewardParticipantState — Collections & Farms hub participant states, bridged
+       via catalog item source_duty_key matching a known MOUNT_FARM_CATALOG trial_id.
     """
+    from ..models.collection_catalog_item import CollectionCatalogItem
+    from ..models.collection_goal import CollectionGoal
     from ..models.mount_farm_progress import MountFarmProgress
+    from ..models.reward_participant_state import RewardParticipantState
     from .mount_farms import MOUNT_FARM_CATALOG
 
     catalog_by_id = {e["trial_id"]: e for e in MOUNT_FARM_CATALOG}
@@ -565,7 +571,7 @@ async def get_collection_suggestions(
     profile = await _get_or_create_profile(session, current_user)
     await session.commit()
 
-    # Get user's existing solo goals by trial_id
+    # Existing solo goals — skip trial_ids already tracked
     existing_result = await session.execute(
         select(PlayerGoal.source_content).where(
             PlayerGoal.profile_id == profile.id,
@@ -574,21 +580,20 @@ async def get_collection_suggestions(
     )
     existing_trials = {row[0] for row in existing_result if row[0]}
 
-    # Get user's group mount farm progress
+    # Source 1: group mount farm tracker progress
     progress_result = await session.execute(
-        select(MountFarmProgress).where(
-            MountFarmProgress.user_id == current_user.id,
-        )
+        select(MountFarmProgress).where(MountFarmProgress.user_id == current_user.id)
     )
     all_progress = progress_result.scalars().all()
 
-    # Deduplicate by trial_id (user may be in multiple groups)
     best_progress: dict[str, MountFarmProgress] = {}
     for p in all_progress:
         if p.trial_id not in best_progress or p.totem_count > best_progress[p.trial_id].totem_count:
             best_progress[p.trial_id] = p
 
     suggestions = []
+    seen_trial_ids: set[str] = set()
+
     for trial_id, progress in best_progress.items():
         if trial_id in existing_trials:
             continue
@@ -615,6 +620,57 @@ async def get_collection_suggestions(
             "hasMount": progress.has_mount,
             "source": "static_sync",
         })
+        seen_trial_ids.add(trial_id)
+
+    # Source 2: Collections & Farms hub participant states
+    # Joins RewardParticipantState → CollectionGoal → CollectionCatalogItem
+    # and bridges via source_duty_key matching a MOUNT_FARM_CATALOG trial_id.
+    participant_result = await session.execute(
+        select(
+            RewardParticipantState.token_count,
+            RewardParticipantState.state,
+            CollectionCatalogItem.source_duty_key,
+        )
+        .join(CollectionGoal, RewardParticipantState.goal_id == CollectionGoal.id)
+        .join(CollectionCatalogItem, CollectionGoal.catalog_item_id == CollectionCatalogItem.id)
+        .where(
+            RewardParticipantState.user_id == current_user.id,
+            CollectionGoal.catalog_item_id.isnot(None),
+            CollectionCatalogItem.source_duty_key.isnot(None),
+        )
+    )
+    participant_rows = participant_result.all()
+
+    for token_count, state, source_duty_key in participant_rows:
+        if not source_duty_key:
+            continue
+        trial_id = source_duty_key
+        if trial_id in existing_trials or trial_id in seen_trial_ids:
+            continue
+        catalog = catalog_by_id.get(trial_id)
+        if not catalog:
+            continue
+        if state == "pass" and not token_count:
+            continue
+
+        suggestions.append({
+            "trialId": trial_id,
+            "mountName": catalog["mount_name"],
+            "dutyName": catalog["duty_name"],
+            "sourceContent": catalog.get("source_content", catalog["duty_name"]),
+            "totemName": catalog.get("totem_name"),
+            "totemTarget": catalog.get("totem_target", 99),
+            "currencyPerClear": catalog.get("currency_per_clear", 1),
+            "exchangeCost": catalog.get("exchange_cost", 99),
+            "exchangeNpc": catalog.get("exchange_npc"),
+            "exchangeLocation": catalog.get("exchange_location"),
+            "exchangeStatus": catalog.get("exchange_status", "available"),
+            "category": catalog.get("category", "standard"),
+            "currentCount": token_count or 0,
+            "hasMount": state == "have",
+            "source": "group_goal",
+        })
+        seen_trial_ids.add(trial_id)
 
     return {"suggestions": suggestions}
 
