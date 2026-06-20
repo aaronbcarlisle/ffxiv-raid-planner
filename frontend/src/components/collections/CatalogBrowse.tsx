@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, AlertCircle, RefreshCw, Filter } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Filter, Music, Ghost } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import type { CatalogItem, CatalogCategory, CatalogExpansion, CollectionGoal } from '../../stores/collectionGoalStore';
@@ -81,6 +81,15 @@ export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }
 
   const hasActiveFilters = activeCategory !== 'all' || activeExpansion !== 'all';
 
+  // True when the selected category has zero items anywhere in the catalog
+  // (not a filter mismatch — the whole category is unpopulated)
+  const COLLECT_SYNCED_CATEGORIES: (CatalogCategory | 'all')[] = ['orchestrion', 'minion', 'other'];
+  const categoryTotallyEmpty =
+    activeCategory !== 'all' &&
+    !usingFallback &&
+    COLLECT_SYNCED_CATEGORIES.includes(activeCategory) &&
+    effectiveCatalog.filter((item) => item.category === activeCategory).length === 0;
+
   function clearFilters() {
     setActiveCategory('all');
     setActiveExpansion('all');
@@ -157,6 +166,26 @@ export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }
 
       {/* Catalog rows or empty state */}
       {sorted.length === 0 ? (
+        categoryTotallyEmpty ? (
+          <div className="flex flex-col items-center gap-3 py-10 text-text-muted">
+            {activeCategory === 'orchestrion' ? (
+              <Music size={32} className="opacity-30" />
+            ) : activeCategory === 'minion' ? (
+              <Ghost size={32} className="opacity-30" />
+            ) : (
+              <Filter size={32} className="opacity-30" />
+            )}
+            <p className="font-medium text-sm">
+              {activeCategory === 'orchestrion' ? 'Music rolls' : activeCategory === 'minion' ? 'Minions' : 'Items'} are loading from FFXIV Collect
+            </p>
+            <p className="text-xs opacity-60 text-center max-w-xs">
+              These populate automatically in the background. Refresh in a moment to see orchestrion rolls, minions, and other collectables.
+            </p>
+            <Button variant="ghost" size="sm" onClick={() => fetchCatalog()} className="flex items-center gap-1">
+              <RefreshCw size={13} /> Refresh
+            </Button>
+          </div>
+        ) : (
         <div className="flex flex-col items-center gap-3 py-10 text-text-muted">
           <Filter size={32} className="opacity-30" />
           <p className="font-medium text-sm">No items match these filters</p>
@@ -171,6 +200,7 @@ export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }
             </div>
           )}
         </div>
+        )
       ) : (
         <div className="flex flex-col gap-2">
           {sorted.map((item) => (

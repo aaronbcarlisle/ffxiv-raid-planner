@@ -60,6 +60,19 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '1.26.0',
+    date: '2026-06-21T12:00:00Z',
+    title: 'Music and Minions auto-sync from FFXIV Collect',
+    items: [
+      {
+        category: 'fix',
+        title: 'Music and Minion catalog categories auto-populate on startup',
+        description: 'The backend now runs a one-time FFXIV Collect sync in the background when Music and Minion categories are empty, so those catalog tabs fill in automatically without requiring a manual admin trigger. The Browse Catalog UI also shows a helpful syncing message instead of a blank state while the background fetch completes.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.26.0',
     date: '2026-06-21T00:00:00Z',
     title: 'Collections catalog expanded — all expansions + Player Hub sync',
     items: [

@@ -21,7 +21,12 @@ from .middleware import (
     SecurityHeadersMiddleware,
 )
 from .rate_limit import limiter
-from .services.catalog_import_service import is_catalog_seeded, seed_from_internal
+from .services.catalog_import_service import (
+    is_catalog_seeded,
+    is_collect_sync_needed,
+    seed_from_internal,
+    sync_from_ffxiv_collect,
+)
 from .tasks.analytics_retention import retention_loop
 from .tasks.auto_sync import auto_sync_loop
 from .tasks.schedule_reminders import schedule_reminder_loop
@@ -58,6 +63,23 @@ configure_logging(settings)
 logger = get_logger(__name__)
 
 
+async def _collect_sync_task() -> None:
+    """One-shot background task: sync minion/orchestrion from FFXIV Collect if empty."""
+    await asyncio.sleep(5)
+    try:
+        from .database import async_session_maker
+        async with async_session_maker() as session:
+            if not await is_collect_sync_needed(session):
+                return
+        async with async_session_maker() as session:
+            counts = await sync_from_ffxiv_collect(session)
+            logger.info("collect_sync_on_startup", counts=counts)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        logger.warning("collect_startup_sync_failed", error=str(exc))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler"""
@@ -90,14 +112,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     retention_task = asyncio.create_task(retention_loop())
     sync_task = asyncio.create_task(auto_sync_loop())
     schedule_reminder_task = asyncio.create_task(schedule_reminder_loop())
+    collect_sync_task = asyncio.create_task(_collect_sync_task())
 
     yield
 
     # Shutdown
+    collect_sync_task.cancel()
     schedule_reminder_task.cancel()
     sync_task.cancel()
     retention_task.cancel()
-    for task in (schedule_reminder_task, sync_task, retention_task):
+    for task in (collect_sync_task, schedule_reminder_task, sync_task, retention_task):
         try:
             await task
         except asyncio.CancelledError:

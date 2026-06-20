@@ -63,6 +63,16 @@ async def is_catalog_seeded(session: AsyncSession) -> bool:
     return result.scalar_one_or_none() is not None
 
 
+async def is_collect_sync_needed(session: AsyncSession) -> bool:
+    """Returns True if minion or orchestrion categories have no entries (need FFXIV Collect sync)."""
+    result = await session.execute(
+        select(CollectionCatalogItem)
+        .where(CollectionCatalogItem.category.in_(["minion", "orchestrion"]))
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is None
+
+
 # ── FFXIV Collect sync ─────────────────────────────────────────────────────────
 
 # Maps FFXIV Collect source type strings to internal categories
