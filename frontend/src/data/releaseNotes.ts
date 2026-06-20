@@ -61,12 +61,12 @@ export const RELEASES: Release[] = [
   {
     version: '1.26.0',
     date: '2026-06-21T12:00:00Z',
-    title: 'Music and Minions auto-sync from FFXIV Collect',
+    title: 'Full orchestrion roll catalog — all expansions, no live fetch',
     items: [
       {
         category: 'fix',
-        title: 'Music and Minion catalog categories auto-populate on startup',
-        description: 'The backend now runs a one-time FFXIV Collect sync in the background when Music and Minion categories are empty, so those catalog tabs fill in automatically without requiring a manual admin trigger. The Browse Catalog UI also shows a helpful syncing message instead of a blank state while the background fetch completes.',
+        title: 'Music tab populated with 38 curated orchestrion rolls (HW–DT)',
+        description: 'All orchestrion rolls farmable from extreme trials are now hardcoded in the curated catalog — no FFXIV Collect API call required. Data sourced from the FFXIV wiki covers every extreme from Heavensward through Dawntrail (38 rolls). Also corrects two previously wrong ShB entries: Castrum Marinum drops "The Black Wolf Stalks Again" (not "Rise") and Cloud Deck drops "In the Arms of War" (not "Black & White"). The background auto-sync that caused 5-minute startup hangs is removed.',
       },
     ],
     internal: true,
