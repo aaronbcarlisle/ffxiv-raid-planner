@@ -58,6 +58,8 @@ class LootLogEntryCreate(CamelModel):
     weapon_job: str | None = None  # "DRG", "WHM", etc. for weapon slots
     is_extra: bool = False  # True if extra/off-job loot
     mark_acquired: bool = False  # If True, also set hasItem=True on the player's gear slot (only applies to drop/book methods; ignored for purchase/tome)
+    recipient_character_registration_id: str | None = None  # FK to static_character_registrations
+    recipient_character_name: str | None = None  # Snapshot of character name at log time
 
 
 class LootLogEntryUpdate(CamelModel):
@@ -71,6 +73,8 @@ class LootLogEntryUpdate(CamelModel):
     notes: str | None = None
     weapon_job: str | None = None
     is_extra: bool | None = None
+    recipient_character_registration_id: str | None = None
+    recipient_character_name: str | None = None
 
 
 class LootLogEntryResponse(CamelModel):
@@ -83,6 +87,8 @@ class LootLogEntryResponse(CamelModel):
     item_slot: str
     recipient_player_id: str
     recipient_player_name: str  # Populated from join
+    recipient_character_registration_id: str | None = None
+    recipient_character_name: str | None = None
     method: str
     notes: str | None
     weapon_job: str | None  # "DRG", "WHM", etc. for weapon slots

@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, Swords, RotateCcw, Users, Gamepad2, MoreHorizontal, CalendarDays } from 'lucide-react';
 import { Button, IconButton, Tooltip } from '../primitives';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { Modal } from '../ui/Modal';
 import { useModal } from '../../hooks/useModal';
 import { toast } from '../../stores/toastStore';
+import { useScheduleStore } from '../../stores/scheduleStore';
 import { OccurrenceListModal } from './OccurrenceListModal';
+import { computeNextOccurrence } from '../../utils/recurrence';
 import type { EventCategory, ScheduleSession, RsvpStatus } from '../../types';
 
 interface SessionCardProps {
@@ -121,6 +124,35 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
   const [copied, setCopied] = useState(false);
   const deleteModal = useModal();
   const occurrenceModal = useModal();
+  const recurringDeleteModal = useModal();
+  const { createException } = useScheduleStore();
+
+  const displayStartTime = useMemo(() => {
+    if (!session.isRecurring || !session.recurrenceRule) return session.startTime;
+    const next = computeNextOccurrence(session.startTime, session.recurrenceRule);
+    return next ? next.toISOString() : session.startTime;
+  }, [session.startTime, session.recurrenceRule, session.isRecurring]);
+
+  const nextOccurrenceDate = displayStartTime.slice(0, 10);
+
+  const handleDeleteClick = () => {
+    if (session.isRecurring) {
+      recurringDeleteModal.open();
+    } else {
+      deleteModal.open();
+    }
+  };
+
+  const handleCancelOccurrence = async () => {
+    if (!groupId) return;
+    recurringDeleteModal.close();
+    try {
+      await createException(groupId, session.id, { occurrenceDate: nextOccurrenceDate, type: 'cancelled' });
+      toast.success(`Cancelled session for ${new Date(displayStartTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
+    } catch {
+      toast.error('Failed to cancel occurrence');
+    }
+  };
 
   const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const isLocalTzSame = localTz === session.timezone;
@@ -152,7 +184,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
   };
 
   const handleShare = async () => {
-    const timeStr = formatInTimezone(session.startTime, session.timezone);
+    const timeStr = formatInTimezone(displayStartTime, session.timezone);
     const durationStr = formatDuration(duration);
     const lines = [session.title, `${timeStr} (${durationStr})`];
     if (session.category) lines.push(`Type: ${CATEGORY_CONFIG[session.category]?.label ?? session.category}`);
@@ -227,7 +259,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
             {canManage && (
               <>
                 <IconButton icon={<Edit2 className="w-3.5 h-3.5" />} aria-label="Edit" size="sm" onClick={() => onEdit(session)} />
-                <IconButton icon={<Trash2 className="w-3.5 h-3.5" />} aria-label="Delete" size="sm" variant="danger" onClick={deleteModal.open} />
+                <IconButton icon={<Trash2 className="w-3.5 h-3.5" />} aria-label="Delete" size="sm" variant="danger" onClick={handleDeleteClick} />
               </>
             )}
           </div>
@@ -237,12 +269,12 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-xs">
             <MapPin className="w-3 h-3 text-accent flex-shrink-0" />
-            <span className="text-text-primary font-medium">{formatInTimezone(session.startTime, session.timezone)}</span>
+            <span className="text-text-primary font-medium">{formatInTimezone(displayStartTime, session.timezone)}</span>
             <span className="text-text-tertiary">({formatDuration(duration)})</span>
           </div>
           {!isLocalTzSame && (
             <div className="flex items-center gap-1.5 text-[11px] text-text-secondary ml-[18px]">
-              <span>Your time: {formatLocalTime(session.startTime)}</span>
+              <span>Your time: {formatLocalTime(displayStartTime)}</span>
             </div>
           )}
           {session.description && (
@@ -299,6 +331,22 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
         </div>
 
         <ConfirmModal isOpen={deleteModal.isOpen} title="Delete Session" message={`Delete "${session.title}"? This will also remove all RSVPs.`} confirmLabel="Delete" variant="danger" onConfirm={handleDelete} onCancel={deleteModal.close} />
+
+        {session.isRecurring && (
+          <Modal isOpen={recurringDeleteModal.isOpen} onClose={recurringDeleteModal.close} title="Recurring Session">
+            <div className="space-y-3">
+              <p className="text-sm text-text-secondary">This is a recurring session. What would you like to do?</p>
+              <div className="flex flex-col gap-2">
+                <Button variant="secondary" onClick={handleCancelOccurrence}>
+                  Cancel {new Date(displayStartTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} only
+                </Button>
+                <Button variant="danger" onClick={async () => { recurringDeleteModal.close(); await onDelete(session.id); }}>
+                  Delete entire series
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
       </div>
     );
   }
@@ -352,7 +400,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
           {canManage && (
             <>
               <IconButton icon={<Edit2 className="w-4 h-4" />} aria-label="Edit session" size="sm" onClick={() => onEdit(session)} />
-              <IconButton icon={<Trash2 className="w-4 h-4" />} aria-label="Delete session" size="sm" variant="danger" onClick={deleteModal.open} />
+              <IconButton icon={<Trash2 className="w-4 h-4" />} aria-label="Delete session" size="sm" variant="danger" onClick={handleDeleteClick} />
             </>
           )}
         </div>
@@ -362,12 +410,12 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
       <div className="space-y-1">
         <div className="flex items-center gap-2 text-sm">
           <MapPin className="w-4 h-4 text-accent shrink-0" />
-          <span className="text-text-primary font-medium">{formatInTimezone(session.startTime, session.timezone)}</span>
+          <span className="text-text-primary font-medium">{formatInTimezone(displayStartTime, session.timezone)}</span>
         </div>
         {!isLocalTzSame && (
           <div className="flex items-center gap-2 text-sm">
             <Clock className="w-4 h-4 text-text-muted shrink-0" />
-            <span className="text-text-secondary">Your time: {formatLocalTime(session.startTime)}</span>
+            <span className="text-text-secondary">Your time: {formatLocalTime(displayStartTime)}</span>
           </div>
         )}
         <div className="text-xs text-text-muted ml-6">Duration: {formatDuration(duration)}</div>
@@ -421,6 +469,22 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
       )}
 
       <ConfirmModal isOpen={deleteModal.isOpen} title="Delete Session" message={`Are you sure you want to delete "${session.title}"? This will also remove all RSVPs.`} confirmLabel="Delete" variant="danger" onConfirm={handleDelete} onCancel={deleteModal.close} />
+
+      {session.isRecurring && (
+        <Modal isOpen={recurringDeleteModal.isOpen} onClose={recurringDeleteModal.close} title="Recurring Session">
+          <div className="space-y-3">
+            <p className="text-sm text-text-secondary">This is a recurring session. What would you like to do?</p>
+            <div className="flex flex-col gap-2">
+              <Button variant="secondary" onClick={handleCancelOccurrence}>
+                Cancel {new Date(displayStartTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} only
+              </Button>
+              <Button variant="danger" onClick={async () => { recurringDeleteModal.close(); await onDelete(session.id); }}>
+                Delete entire series
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {session.isRecurring && groupId && (
         <OccurrenceListModal

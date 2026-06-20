@@ -101,6 +101,116 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
 // Page navigation modes
 export type PageMode = 'home' | 'players' | 'loot' | 'stats' | 'history' | 'priority' | 'schedule' | 'mount-farms';
 
+// Split Clear Planner
+export type SplitRunSlot = 'main' | 'alt' | null;
+export type SplitLootTarget = 'funnel_main' | 'funnel_job' | 'normal';
+
+/** A linked Player Hub character surfaced in the split planner context. */
+export interface SplitCharacterCandidate {
+  id: string;
+  name: string;
+  server: string;
+  dataCenter: string | null;
+  isMain: boolean;
+  lastSyncedAt: string | null;
+  syncSource: string | null;
+}
+
+export interface SplitClearAssignment {
+  id: string;
+  snapshotPlayerId: string;
+  /** Player Hub character link for Run A (null = manual or unset). */
+  runACharacterLinkId: string | null;
+  /** Player Hub character link for Run B (null = manual or unset). */
+  runBCharacterLinkId: string | null;
+  /** Legacy manual text fields — used as fallback when no link exists. */
+  mainCharacterName: string | null;
+  mainCharacterWorld: string | null;
+  altCharacterName: string | null;
+  altCharacterWorld: string | null;
+  runACharacter: SplitRunSlot;
+  runBCharacter: SplitRunSlot;
+  lootTarget: SplitLootTarget;
+  lootTargetJob: string | null;
+  runACleared: boolean;
+  runBCleared: boolean;
+  notes: string | null;
+  updatedAt: string;
+}
+
+export interface SplitClearData {
+  enabled: boolean;
+  assignments: SplitClearAssignment[];
+  /** Linked characters keyed by snapshotPlayerId (main first, then alts). */
+  playerCharacters?: Record<string, SplitCharacterCandidate[]>;
+}
+
+// ==================== Static Character Registration Types ====================
+
+export type RoleInStatic = 'main' | 'alt' | 'substitute' | 'manual';
+export type RegistrationSource = 'player_hub' | 'lodestone' | 'manual';
+
+/** Minimal summary of the linked Player Hub character embedded in a registration. */
+export interface LinkedCharacterSummary {
+  id: string;
+  name: string;
+  server: string;
+  dataCenter: string | null;
+  isMain: boolean;
+  avatarUrl: string | null;
+  lastSyncedAt: string | null;
+}
+
+export interface StaticCharacterRegistration {
+  id: string;
+  staticGroupId: string;
+  snapshotPlayerId: string;
+  playerCharacterId: string | null;
+  manualCharacterName: string | null;
+  manualWorld: string | null;
+  manualDataCenter: string | null;
+  roleInStatic: RoleInStatic;
+  job: string | null;
+  isPrimaryForStatic: boolean;
+  source: RegistrationSource;
+  lastSyncedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Resolved display name (from linked character or manual fallback). */
+  resolvedName: string | null;
+  resolvedWorld: string | null;
+  resolvedDataCenter: string | null;
+  linkedCharacter: LinkedCharacterSummary | null;
+}
+
+export interface StaticCharacterRegistrationCreate {
+  snapshotPlayerId: string;
+  playerCharacterId?: string | null;
+  manualCharacterName?: string | null;
+  manualWorld?: string | null;
+  manualDataCenter?: string | null;
+  roleInStatic?: RoleInStatic;
+  job?: string | null;
+  isPrimaryForStatic?: boolean;
+  source?: RegistrationSource;
+}
+
+export interface StaticCharacterRegistrationUpdate {
+  roleInStatic?: RoleInStatic;
+  job?: string | null;
+  isPrimaryForStatic?: boolean;
+  manualCharacterName?: string | null;
+  manualWorld?: string | null;
+  manualDataCenter?: string | null;
+}
+
+/** API response: registrations keyed by snapshotPlayerId. */
+export interface StaticCharacterRegistrationsResponse {
+  registrations: Record<string, StaticCharacterRegistration[]>;
+  /** Player Hub characters available to link (not yet registered) keyed by snapshotPlayerId. */
+  availableForLinking: Record<string, LinkedCharacterSummary[]>;
+}
+
 // View mode for player cards
 export type ViewMode = 'compact' | 'expanded';
 
@@ -140,9 +250,11 @@ export interface TomeWeaponStatus {
 // Weapon priority entry (for multi-job weapon tracking)
 export interface WeaponPriority {
   job: string;
+  order?: number;
   weaponName?: string;
   received: boolean;
   receivedDate?: string;
+  obtainedVia?: 'drop' | 'coffer';
 }
 
 // Player needs calculation result
@@ -587,6 +699,7 @@ export interface StaticGroupSettings {
   jobPriorityModifiers?: Record<string, number>;
   showPriorityScores?: boolean;
   enableEnhancedScoring?: boolean;
+  splitClearMode?: boolean;
   // New priority system (overrides legacy fields when set)
   prioritySettings?: StaticPrioritySettings;
   discovery?: DiscoverySettings;
@@ -1118,6 +1231,8 @@ export interface LootLogEntry {
   itemSlot: string;
   recipientPlayerId: string;
   recipientPlayerName: string;
+  recipientCharacterRegistrationId?: string | null;
+  recipientCharacterName?: string | null;
   method: LootMethod;
   notes?: string;
   weaponJob?: string;  // "DRG", "WHM", etc. for weapon slots
@@ -1218,6 +1333,8 @@ export interface LootLogEntryCreate {
   notes?: string;
   weaponJob?: string;  // "DRG", "WHM", etc. for weapon slots
   isExtra?: boolean;   // True if extra/off-job loot
+  recipientCharacterRegistrationId?: string | null;
+  recipientCharacterName?: string | null;
 }
 
 // Loot log entry update request
@@ -1230,6 +1347,8 @@ export interface LootLogEntryUpdate {
   notes?: string;
   weaponJob?: string;
   isExtra?: boolean;
+  recipientCharacterRegistrationId?: string | null;
+  recipientCharacterName?: string | null;
 }
 
 // Page ledger entry create request

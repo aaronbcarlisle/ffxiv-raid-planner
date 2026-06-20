@@ -28,6 +28,8 @@ export interface LogLootOptions {
   updateWeaponPriority?: boolean;
   /** Specific weapon job to mark as received (defaults to player's main job) */
   weaponJob?: string;
+  /** How the weapon was obtained — 'drop' (direct from chest) or 'coffer' (weapon coffer item) */
+  obtainedVia?: 'drop' | 'coffer';
 }
 
 export interface DeleteLootOptions {
@@ -131,7 +133,7 @@ export async function logLootAndUpdateGear(
       // Mark the target job's weapon as received
       const updatedPriorities = player.weaponPriorities.map((wp) =>
         wp.job === targetJob
-          ? { ...wp, received: true, receivedDate: new Date().toISOString() }
+          ? { ...wp, received: true, receivedDate: new Date().toISOString(), obtainedVia: options.obtainedVia ?? 'drop' }
           : wp
       );
       await tierStore.updateWeaponPriorities(

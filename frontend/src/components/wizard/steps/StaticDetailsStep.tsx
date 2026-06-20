@@ -11,18 +11,22 @@ interface StaticDetailsStepProps {
   staticName: string;
   tierId: string;
   isPublic: boolean;
+  splitClearEnabled: boolean;
   onStaticNameChange: (name: string) => void;
   onTierIdChange: (tierId: string) => void;
   onIsPublicChange: (isPublic: boolean) => void;
+  onSplitClearEnabledChange: (enabled: boolean) => void;
 }
 
 export function StaticDetailsStep({
   staticName,
   tierId,
   isPublic,
+  splitClearEnabled,
   onStaticNameChange,
   onTierIdChange,
   onIsPublicChange,
+  onSplitClearEnabledChange,
 }: StaticDetailsStepProps) {
   return (
     <div className="space-y-6">
@@ -69,6 +73,16 @@ export function StaticDetailsStep({
           onChange={onIsPublicChange}
           label="Make this static public"
           description="Public statics can be discovered by anyone with the share link"
+        />
+      </div>
+
+      <div>
+        <Checkbox
+          id="split-clear-enabled"
+          checked={splitClearEnabled}
+          onChange={onSplitClearEnabledChange}
+          label="Enable split-clear planning"
+          description="Adds manual main/alt Run A and Run B planning to this static's Roster."
         />
       </div>
 

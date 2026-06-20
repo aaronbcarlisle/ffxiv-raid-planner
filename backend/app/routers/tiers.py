@@ -195,9 +195,11 @@ def player_to_response(player: SnapshotPlayer, membership_role: str | None = Non
     weapon_priorities = [
         WeaponPriority(
             job=wp.get("job", ""),
+            order=wp.get("order"),
             weapon_name=wp.get("weaponName"),
             received=wp.get("received", False),
             received_date=wp.get("receivedDate"),
+            obtained_via=wp.get("obtainedVia"),
         )
         for wp in (player.weapon_priorities or [])
     ]

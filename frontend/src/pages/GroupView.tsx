@@ -26,7 +26,10 @@ import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { ScheduleTab } from '../components/schedule';
 import { MountFarmTab } from '../components/mount-farms';
+import { SplitClearPlanner } from '../components/split-clear/SplitClearPlanner';
+import { RosterCharacterPanel } from '../components/roster/RosterCharacterPanel';
 import { useMountFarmStore } from '../stores/mountFarmStore';
+import { useSplitClearStore } from '../stores/splitClearStore';
 import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
@@ -40,6 +43,7 @@ import { useGroupViewState } from '../hooks/useGroupViewState';
 import { usePlayerActions } from '../hooks/usePlayerActions';
 import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShortcuts';
 import { useViewNavigation } from '../hooks/useViewNavigation';
+import { useVisibilityRefresh } from '../hooks/useVisibilityRefresh';
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { eventBus, useEventBus, Events } from '../lib/eventBus';
 import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
@@ -366,6 +370,24 @@ export function GroupView() {
       fetchMaterialLog(currentGroup.id, currentTier.tierId);
     }
   }, [pageMode, currentGroup?.id, currentTier?.tierId, fetchCurrentWeek, fetchLootLog, fetchMaterialLog]);
+
+  // Split clear store
+  const { fetchData: fetchSplitClear, clearData: clearSplitClear } = useSplitClearStore();
+  const [rosterSubView, setRosterSubView] = useState<'members' | 'characters' | 'split-planner'>('members');
+  useEffect(() => {
+    if (pageMode === 'players' && currentGroup?.id) {
+      void fetchSplitClear(currentGroup.id);
+    }
+  }, [pageMode, currentGroup?.id, fetchSplitClear]);
+  useEffect(() => { return () => clearSplitClear(); }, [clearSplitClear]);
+
+  // Silently refetch split-clear data when the user returns from another tab
+  // (e.g. after linking characters on the profile page).
+  useVisibilityRefresh(useCallback(() => {
+    if (pageMode === 'players' && currentGroup?.id) {
+      void fetchSplitClear(currentGroup.id);
+    }
+  }, [pageMode, currentGroup?.id, fetchSplitClear]));
 
   const handleTierChange = useCallback((tierId: string) => {
     if (currentGroup?.id) {
@@ -982,6 +1004,59 @@ export function GroupView() {
           {/* Players Tab */}
           {pageMode === 'players' && currentTier.players && (
             <>
+              {/* Roster segmented control — Members | Characters | Split Planner */}
+              {currentGroup && (
+                <div className="flex gap-1 mb-3 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit" role="tablist" aria-label="Roster view">
+                  {(['members', 'characters', 'split-planner'] as const).map(view => {
+                    const labels: Record<typeof view, string> = {
+                      members: 'Members',
+                      characters: 'Characters',
+                      'split-planner': 'Split Planner',
+                    };
+                    return (
+                      <button
+                        key={view}
+                        type="button"
+                        role="tab"
+                        aria-selected={rosterSubView === view}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                          rosterSubView === view
+                            ? 'bg-surface-base text-text-primary shadow-sm'
+                            : 'text-text-muted hover:text-text-primary'
+                        }`}
+                        onClick={() => setRosterSubView(view)}
+                      >
+                        {labels[view]}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Characters tab */}
+              {currentGroup && (
+                <div className={rosterSubView !== 'characters' ? 'hidden' : ''}>
+                  <RosterCharacterPanel
+                    groupId={currentGroup.id}
+                    players={mainRosterPlayers}
+                    canEdit={canEdit}
+                  />
+                </div>
+              )}
+
+              {/* Split Clear Composer — kept mounted to preserve draft state */}
+              {currentGroup && (
+                <div className={rosterSubView !== 'split-planner' ? 'hidden' : ''}>
+                  <SplitClearPlanner
+                    groupId={currentGroup.id}
+                    players={mainRosterPlayers}
+                    canEdit={canEdit}
+                  />
+                </div>
+              )}
+
+              {/* Normal roster — hidden when Characters or Split Planner tab is active */}
+              <div className={rosterSubView !== 'members' ? 'hidden' : ''}>
               <DndContext
                 sensors={dnd.sensors}
                 collisionDetection={pointerWithin}
@@ -1054,6 +1129,7 @@ export function GroupView() {
                   })()}
                 </DragOverlay>
               </DndContext>
+              </div>{/* end roster hide wrapper */}
             </>
           )}
 

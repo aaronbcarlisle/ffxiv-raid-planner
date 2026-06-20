@@ -46,6 +46,7 @@ export function QuickLogWeaponModal({
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
   const [selectedWeek, setSelectedWeek] = useState(String(maxWeek));
   const [updateGear, setUpdateGear] = useState(true);
+  const [isCoffer, setIsCoffer] = useState(false);
   const [isExtra, setIsExtra] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -55,6 +56,7 @@ export function QuickLogWeaponModal({
       setRecipientPlayerId(suggestedPlayer.id);
       setSelectedWeek(String(maxWeek));
       setUpdateGear(true);
+      setIsCoffer(false);
       // Auto-detect if this is extra loot (weapon job doesn't match player's main job)
       setIsExtra(suggestedPlayer.job !== weaponJob);
     }
@@ -90,6 +92,7 @@ export function QuickLogWeaponModal({
         {
           updateGear,
           updateWeaponPriority: updateGear,
+          obtainedVia: isCoffer ? 'coffer' : 'drop',
         }
       );
 
@@ -212,6 +215,13 @@ export function QuickLogWeaponModal({
           checked={updateGear}
           onChange={setUpdateGear}
           label={`Mark weapon as acquired for ${selectedPlayer?.name || 'player'}`}
+        />
+
+        {/* Obtained via checkbox */}
+        <Checkbox
+          checked={isCoffer}
+          onChange={setIsCoffer}
+          label="Via weapon coffer (not a direct drop)"
         />
 
         {/* Extra loot checkbox */}

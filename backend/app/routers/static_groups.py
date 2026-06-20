@@ -641,7 +641,11 @@ async def update_static_group(
     if data.is_public is not None:
         group.is_public = data.is_public
     if data.settings is not None:
-        group.settings = data.settings.model_dump(by_alias=True)
+        settings = data.settings.model_dump(by_alias=True)
+        # Split-clear mode has a dedicated permission-checked endpoint. Preserve
+        # it when unrelated general, priority, or discovery settings are saved.
+        settings["splitClearMode"] = bool((group.settings or {}).get("splitClearMode", False))
+        group.settings = settings
 
     group.updated_at = datetime.now(timezone.utc).isoformat()
 

@@ -19,6 +19,10 @@ import { FLOOR_LOOT_TABLES, FLOOR_COLORS, parseFloorName } from '../../gamedata/
 import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
 import { calculatePlayerLootStats, calculateAverageDrops } from '../../utils/lootCoordination';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
+import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
+import { getPrimaryRegistration, formatCharacterLabel } from '../../utils/staticCharacterContextService';
+import { recommendRecipientForDrop } from '../../utils/lootRecommendationService';
+import { LootRecommendationCandidates } from '../loot/LootRecommendationCandidates';
 import type { LootLogEntry, LootLogEntryCreate, LootLogEntryUpdate, LootMethod, SnapshotPlayer, GearSlot, StaticSettings } from '../../types';
 import { GEAR_SLOT_NAMES, GEAR_SLOT_ICONS } from '../../types';
 
@@ -40,6 +44,8 @@ interface AddLootEntryModalProps {
   settings?: StaticSettings;
   /** Loot log for enhanced priority calculation (optional) */
   lootLog?: LootLogEntry[];
+  /** Group ID — enables character registration picker when provided */
+  groupId?: string;
 }
 
 // Map floor name to floor number (1-4)
@@ -74,6 +80,7 @@ export function AddLootEntryModal({
   presetSlot,
   settings = DEFAULT_SETTINGS,
   lootLog = [],
+  groupId,
 }: AddLootEntryModalProps) {
   const isEditMode = !!editEntry;
 
@@ -99,6 +106,16 @@ export function AddLootEntryModal({
   const [isSaving, setIsSaving] = useState(false);
   const [showAllRecipients, setShowAllRecipients] = useState(false);
   const [includeSubs, setIncludeSubs] = useState(false);
+  const [recipientCharacterRegId, setRecipientCharacterRegId] = useState<string | null>(
+    editEntry?.recipientCharacterRegistrationId ?? null
+  );
+
+  // Character registrations for the current group
+  const { registrationsByGroup } = useStaticCharacterStore();
+  const playerRegistrations = useMemo(() => {
+    if (!groupId) return {} as Record<string, typeof registrationsByGroup[string][string]>;
+    return registrationsByGroup[groupId] ?? {};
+  }, [groupId, registrationsByGroup]);
 
   // Reset form when modal opens with new preset values or edit entry
   useEffect(() => {
@@ -154,6 +171,20 @@ export function AddLootEntryModal({
     const playerIds = players.filter(p => p.configured && !p.isSubstitute).map((p) => p.id);
     return calculateAverageDrops(playerIds, lootLog);
   }, [lootLog, players]);
+
+  // Loot recommendation — only computed in add mode when a slot is chosen
+  const lootRecommendation = useMemo(() => {
+    if (isEditMode || !itemSlot) return null;
+    const dropType = itemSlot === 'weapon' ? 'weapon_coffer' : 'direct_drop';
+    return recommendRecipientForDrop(
+      { slot: itemSlot as GearSlot | 'ring', dropType, week: weekNumber, floor },
+      players.filter((p) => p.configured && !p.isSubstitute),
+      settings,
+      playerRegistrations,
+      lootLog,
+      currentWeek,
+    );
+  }, [isEditMode, itemSlot, weekNumber, floor, players, settings, playerRegistrations, lootLog, currentWeek]);
 
   // Get priority-sorted recipients for selected slot
   // Uses enhanced scoring (with loot history) to match Gear Priority panel
@@ -297,6 +328,29 @@ export function AddLootEntryModal({
     }
   }, [visibleRecipients, recipientPlayerId, editEntry]);
 
+  // Auto-select primary character registration when recipient changes
+  useEffect(() => {
+    if (!recipientPlayerId) { setRecipientCharacterRegId(null); return; }
+    const regs = playerRegistrations[recipientPlayerId] ?? [];
+    const primary = getPrimaryRegistration(regs);
+    setRecipientCharacterRegId(primary?.id ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipientPlayerId]);
+
+  // Character options for the selected recipient
+  const characterOptions = useMemo(() => {
+    if (!recipientPlayerId) return [];
+    const regs = playerRegistrations[recipientPlayerId] ?? [];
+    if (regs.length === 0) return [];
+    return [
+      { value: '', label: 'No character specified' },
+      ...regs.map(r => ({
+        value: r.id,
+        label: `${formatCharacterLabel(r)} (${r.roleInStatic})`,
+      })),
+    ];
+  }, [recipientPlayerId, playerRegistrations]);
+
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {
     if (!needsItem) return '';
@@ -338,6 +392,15 @@ export function AddLootEntryModal({
         // For weapon entries, include the recipient's job as weaponJob
         const weaponJob = itemSlot === 'weapon' ? selectedPlayer?.job : undefined;
 
+        // Resolve character name snapshot from registration
+        const selectedRegs = playerRegistrations[recipientPlayerId] ?? [];
+        const selectedReg = recipientCharacterRegId
+          ? selectedRegs.find(r => r.id === recipientCharacterRegId)
+          : null;
+        const charName = selectedReg
+          ? (selectedReg.resolvedName ?? selectedReg.manualCharacterName ?? null)
+          : null;
+
         await onSubmit(
           {
             weekNumber,
@@ -347,6 +410,8 @@ export function AddLootEntryModal({
             method,
             weaponJob,
             notes: notes || undefined,
+            recipientCharacterRegistrationId: recipientCharacterRegId,
+            recipientCharacterName: charName,
           },
           { updateGear: (method === 'drop' || method === 'book') && updateGear }
         );
@@ -453,6 +518,19 @@ export function AddLootEntryModal({
           </div>
         </div>
 
+        {/* Recommendation panel — add mode only */}
+        {!isEditMode && lootRecommendation && (
+          <LootRecommendationCandidates
+            recommendation={lootRecommendation}
+            selectedPlayerId={recipientPlayerId}
+            onSelectCandidate={(playerId, charRegId) => {
+              setRecipientPlayerId(playerId);
+              setRecipientCharacterRegId(charRegId);
+            }}
+            visible={!!itemSlot}
+          />
+        )}
+
         {/* Recipient - sorted by priority */}
         <div>
           <div className="flex items-center justify-between mb-1">
@@ -484,6 +562,19 @@ export function AddLootEntryModal({
             </div>
           )}
         </div>
+
+        {/* Character selector — only shown when registrations exist for the recipient */}
+        {!isEditMode && characterOptions.length > 0 && (
+          <div>
+            <Label htmlFor="character">Character (optional)</Label>
+            <Select
+              id="character"
+              value={recipientCharacterRegId ?? ''}
+              onChange={v => setRecipientCharacterRegId(v || null)}
+              options={characterOptions}
+            />
+          </div>
+        )}
 
         {/* Method */}
         <div>

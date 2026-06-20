@@ -7,8 +7,11 @@
 
 import { useEffect, useMemo, memo, useState, useCallback } from 'react';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { JobIcon } from '../ui/JobIcon';
+import { Toggle } from '../ui/Toggle';
 import { calculatePlayerCompletion, calculatePlayerMaterials, calculatePlayerBooks } from '../../utils/calculations';
+import { playerHasMainRole } from '../../utils/staticCharacterContextService';
 import { Users, Target, Wrench, BookOpen, ChevronDown } from 'lucide-react';
 import type { RaidTier } from '../../gamedata/raid-tiers';
 import type { SnapshotPlayer, PageBalance, MaterialBalance } from '../../types';
@@ -56,8 +59,22 @@ function ValueCell({
   );
 }
 
+type RoleLabel = 'main' | 'alt' | 'substitute' | null;
+
+const ROLE_CHIP: Record<NonNullable<RoleLabel>, { label: string; className: string }> = {
+  main:       { label: 'Main', className: 'bg-accent/20 text-accent' },
+  alt:        { label: 'Alt',  className: 'bg-purple-400/20 text-purple-300' },
+  substitute: { label: 'Sub',  className: 'bg-surface-elevated text-text-muted' },
+};
+
 // Memoized row component
-const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) {
+const SummaryRow = memo(function SummaryRow({
+  row,
+  roleLabel,
+}: {
+  row: PlayerSummaryRow;
+  roleLabel?: RoleLabel;
+}) {
   const { player, gearPercent, booksBalance, booksNeeded, matsReceived, matsNeeded } = row;
 
   // Get color class based on gear completion
@@ -68,6 +85,8 @@ const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) 
     return 'bg-text-muted';
   };
 
+  const chip = roleLabel ? ROLE_CHIP[roleLabel] : null;
+
   return (
     <tr className="border-b border-border-default last:border-b-0 hover:bg-surface-elevated/50 transition-colors">
       {/* Player */}
@@ -75,6 +94,11 @@ const SummaryRow = memo(function SummaryRow({ row }: { row: PlayerSummaryRow }) 
         <div className="flex items-center gap-2">
           <JobIcon job={player.job} size="sm" />
           <span className="text-sm font-medium text-text-primary">{player.name}</span>
+          {chip && (
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${chip.className}`}>
+              {chip.label}
+            </span>
+          )}
         </div>
       </td>
 
@@ -139,6 +163,12 @@ export function TeamSummaryEnhanced({
     fetchMaterialBalances,
   } = useLootTrackingStore();
 
+  const { registrationsByGroup } = useStaticCharacterStore();
+  const registrationsByPlayer = useMemo(
+    () => registrationsByGroup[groupId] ?? {},
+    [registrationsByGroup, groupId],
+  );
+
   // Collapse state - defaults to collapsed on mobile, expanded on desktop
   const [statsExpanded, setStatsExpanded] = useState(() => {
     try {
@@ -151,6 +181,8 @@ export function TeamSummaryEnhanced({
     }
     return true; // Default to expanded on server
   });
+
+  const [showMainOnly, setShowMainOnly] = useState(false);
 
   // Persist preference
   const toggleStatsExpanded = useCallback(() => {
@@ -224,6 +256,30 @@ export function TeamSummaryEnhanced({
       });
   }, [players, pageBalanceMap, materialBalanceMap]);
 
+  const filteredSummaries = useMemo(() => {
+    if (!showMainOnly) return playerSummaries;
+    return playerSummaries.filter(row =>
+      playerHasMainRole(row.player.id, registrationsByPlayer),
+    );
+  }, [playerSummaries, showMainOnly, registrationsByPlayer]);
+
+  // Role labels per player — shown as chips in the "all players" view so leads
+  // can see which roster slots are mains vs alts at a glance.
+  const hasAnyRegistrations = Object.keys(registrationsByPlayer).length > 0;
+  const roleLabelByPlayerId = useMemo<Record<string, RoleLabel>>(() => {
+    if (showMainOnly || !hasAnyRegistrations) return {};
+    const map: Record<string, RoleLabel> = {};
+    for (const [playerId, regs] of Object.entries(registrationsByPlayer)) {
+      if (!regs?.length) continue;
+      // Primary registration determines the displayed role
+      const primary = regs.find((r) => r.isPrimaryForStatic) ?? regs[0];
+      const role = primary?.roleInStatic;
+      map[playerId] =
+        role === 'main' || role === 'alt' || role === 'substitute' ? role : null;
+    }
+    return map;
+  }, [registrationsByPlayer, showMainOnly, hasAnyRegistrations]);
+
   // Calculate totals
   const totals = useMemo(() => {
     const result = {
@@ -234,9 +290,9 @@ export function TeamSummaryEnhanced({
       matsNeeded: { twine: 0, glaze: 0, solvent: 0 },
     };
 
-    if (playerSummaries.length === 0) return result;
+    if (filteredSummaries.length === 0) return result;
 
-    playerSummaries.forEach(row => {
+    filteredSummaries.forEach(row => {
       result.gearPercent += row.gearPercent;
       result.booksBalance.I += row.booksBalance.I;
       result.booksBalance.II += row.booksBalance.II;
@@ -254,14 +310,14 @@ export function TeamSummaryEnhanced({
       result.matsNeeded.solvent += row.matsNeeded.solvent;
     });
 
-    result.gearPercent = Math.round(result.gearPercent / playerSummaries.length);
+    result.gearPercent = Math.round(result.gearPercent / filteredSummaries.length);
     return result;
-  }, [playerSummaries]);
+  }, [filteredSummaries]);
 
   // Calculate aggregate stats for summary cards
   // Must be before early return to comply with Rules of Hooks
   const aggregateStats = useMemo(() => {
-    if (playerSummaries.length === 0) {
+    if (filteredSummaries.length === 0) {
       return {
         playerCount: 0,
         gearPercent: 0,
@@ -275,12 +331,12 @@ export function TeamSummaryEnhanced({
     const totalMatsHave = totals.matsReceived.twine + totals.matsReceived.glaze + totals.matsReceived.solvent;
 
     return {
-      playerCount: playerSummaries.length,
+      playerCount: filteredSummaries.length,
       gearPercent: totals.gearPercent,
       booksProgress: { have: totalBooksHave, need: totalBooksNeeded },
       matsProgress: { have: totalMatsHave, need: totalMatsNeeded },
     };
-  }, [totals, playerSummaries.length]);
+  }, [totals, filteredSummaries.length]);
 
   if (playerSummaries.length === 0) {
     return (
@@ -301,6 +357,15 @@ export function TeamSummaryEnhanced({
               Book and material progress for all players. Values show current balance vs. needed.
             </p>
           </div>
+          <div className="flex items-center gap-3">
+            {Object.keys(registrationsByPlayer).length > 0 && (
+              <Toggle
+                checked={showMainOnly}
+                onChange={setShowMainOnly}
+                label="Mains only"
+                size="sm"
+              />
+            )}
           {/* Collapse toggle - mobile only */}
           {/* design-system-ignore: Custom toggle button for collapsible section */}
           <button
@@ -314,6 +379,7 @@ export function TeamSummaryEnhanced({
               className={`w-4 h-4 transition-transform duration-200 ${statsExpanded ? 'rotate-180' : ''}`}
             />
           </button>
+          </div>
         </div>
 
         {/* Collapsed summary - show key stats inline when collapsed on mobile only */}
@@ -448,8 +514,12 @@ export function TeamSummaryEnhanced({
             </tr>
           </thead>
           <tbody>
-            {playerSummaries.map(row => (
-              <SummaryRow key={row.player.id} row={row} />
+            {filteredSummaries.map(row => (
+              <SummaryRow
+                key={row.player.id}
+                row={row}
+                roleLabel={roleLabelByPlayerId[row.player.id] ?? null}
+              />
             ))}
           </tbody>
           <tfoot>

@@ -21,7 +21,7 @@ export const DISCORD_BUG_REPORT_URL =
 
 // Public Discord community invite
 export const DISCORD_INVITE_URL =
-  import.meta.env.VITE_DISCORD_INVITE_URL || 'https://discord.gg/Ck2tBdzn';
+  import.meta.env.VITE_DISCORD_INVITE_URL || 'https://discord.gg/TBvJ4VNgyS';
 
 // Source repository
 export const GITHUB_REPO_URL =

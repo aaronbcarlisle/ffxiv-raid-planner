@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.25.0';
+export const CURRENT_VERSION = '1.26.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -58,6 +58,143 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.26.0',
+    date: '2026-06-19T10:00:00Z',
+    title: 'Split Clear Planner, Loot Intelligence & Character Registry',
+    highlights: [
+      'Plan main/alt split runs with per-player Run A / Run B assignments and weekly clear tracking',
+      'Loot drop recommendations rank candidates by character identity, weapon priority, and loot history',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Split Clear Planner for raid statics',
+        description: 'Leads can enable a split-clear planning board under the Roster tab. Each member gets a row for their main and alt character, Run A / Run B assignments, loot target notes, and per-run weekly clear checkboxes. Weekly clear status is manually tracked; no lockout detection is performed.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'feature',
+        title: 'Generate Draft split plan',
+        description: 'The Split Clear Planner can generate a suggested draft from existing Lodestone data and weapon priorities with a confidence badge, per-player suggestions, and a change summary before applying. Dismissing the draft discards it without saving.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Split Clear Composer — redesigned planning flow',
+        description: 'The split-clear board is a three-state composer: empty state with source previews, draft-review panel with Run A / Run B side-by-side panels, and a manage board.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Character-linked split assignment composer',
+        description: 'Split Clear Planner reads linked Player Hub characters instead of requiring manual text entry. Each roster member\'s characters appear as selector chips; leads pick which goes into Run A and which into Run B.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Weighted draft scoring with per-player reasons',
+        description: 'Draft generation uses a weighted scoring system and surfaces per-player reasons in a collapsible "Why these assignments?" panel.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'feature',
+        title: 'Roster → Characters sub-tab',
+        description: 'A new "Characters" sub-tab in the Roster segmented control. Leads can link Player Hub characters or add manual entries with main/alt/substitute roles and an optional job tag.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Split Planner uses registered character list',
+        description: 'The draft generator prefers static character registrations (when available) over the full Player Hub profile when building character candidate lists.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Loot Log records the receiving character',
+        description: 'When logging a drop or book purchase, a character picker appears for any player who has registered characters. The primary character is pre-selected; you can switch to any alt.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Priority view shows registered character context',
+        description: 'Weapon Priority cards display the registered character name next to each entry when one is linked to that player and job. Character context is additive and degrades gracefully when no registration exists.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Team Summary "Mains only" filter',
+        description: 'A new toggle in the Team Summary header filters the progress table to roster players whose registered role is "main". Hidden for statics without character registrations.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'feature',
+        title: 'Loot drop recommendations in Log Loot',
+        description: 'When logging a drop or weapon coffer, a ranked candidate list shows who should receive the item and why. Combines registered character identity, weapon priority rank, BiS need, and loot log history. Leads can always override.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Weapon coffers use existing weapon priority',
+        description: 'The recommendation panel ranks weapon coffer candidates using the static\'s current weapon priority order. Priority rank #1 receives the highest bonus; players whose weapon is already received are deprioritised.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'fix',
+        title: 'Backend resolves Player Hub character name when snapshotting loot',
+        description: 'Loot log entries for Player Hub linked registrations now auto-resolve the character name from the linked PlayerCharacter record so the snapshot is always populated.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'fix',
+        title: 'Recurring sessions display the next upcoming date',
+        description: 'Session cards for recurring events now show the next scheduled occurrence rather than the original creation date.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'fix',
+        title: 'Cancel a single occurrence without deleting the series',
+        description: 'The delete button on recurring session cards opens a choice: "Cancel [date] only" or "Delete entire series." Cancelling one occurrence marks it as skipped while leaving all future occurrences intact.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Track whether a weapon was a direct drop or weapon coffer',
+        description: 'The Quick Log Weapon modal now has a "Via weapon coffer" checkbox. The weapon priority card shows a Drop or Coffer badge next to each player who has already received their weapon this tier.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'improvement',
+        title: 'Split Clear board auto-refreshes after linking characters',
+        description: 'Returning to the Roster tab after linking characters on the Profile page (Sync Center) now silently re-fetches split-clear data so the character chips appear without a manual page refresh.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+      {
+        category: 'feature',
+        title: 'Dalamud plugin: Split Clear overlay',
+        description: 'The in-game plugin shows a Split Clear overlay when you enter a savage raid with split-clear mode active. It displays your run assignment (Run A or Run B), your character and world for that run, your loot target, and your teammates in the same run. A "Mark Run Cleared" button updates the split-clear status for all players in your run at once.',
+        pr: 140,
+        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+      },
+    ],
+  },
   {
     version: '1.25.0',
     date: '2026-06-18T00:00:00Z',
