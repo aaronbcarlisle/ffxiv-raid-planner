@@ -3,12 +3,20 @@
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
 from app.main import app
 from app.models import User
-from app.services.catalog_import_service import seed_from_internal, is_catalog_seeded
+from app.models.collection_catalog_item import CollectionCatalogItem
+from app.services.catalog_import_service import (
+    expansion_from_patch,
+    is_catalog_seeded,
+    seed_from_internal,
+    _extract_source_info,
+    _parse_owned_percent,
+)
 from tests.factories import create_membership, create_static_group, create_user
 
 pytestmark = pytest.mark.asyncio
@@ -39,6 +47,66 @@ async def group(session: AsyncSession, owner: User, member: User):
     g = await create_static_group(session, owner)
     await create_membership(session, member, g, role="member")
     return g
+
+
+# ── Unit: helper functions ────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("patch,expected", [
+    ("7.2", "dt"),
+    ("7.0", "dt"),
+    ("6.0", "ew"),
+    ("6.5", "ew"),
+    ("5.3", "shb"),
+    ("4.1", "sb"),
+    ("3.3", "hw"),
+    ("2.1", "arr"),
+    (None, None),
+    ("8.0", None),  # future expansion — no mapping yet
+])
+def test_expansion_from_patch(patch, expected):
+    assert expansion_from_patch(patch) == expected
+
+
+@pytest.mark.parametrize("owned,expected", [
+    ("0.5%", 0.5),
+    ("12.3%", 12.3),
+    ("0%", 0.0),
+    (0.5, 0.5),
+    (12, 12.0),
+    (None, None),
+])
+def test_parse_owned_percent(owned, expected):
+    assert _parse_owned_percent(owned) == expected
+
+
+def test_extract_source_info_extreme_trial():
+    sources = [{"type": "Trial", "text": "Worqor Lar Dor (Extreme)", "related_type": None}]
+    src_type, duty, text = _extract_source_info(sources)
+    assert src_type == "extreme"
+    assert duty == "Worqor Lar Dor (Extreme)"
+    assert text == "Worqor Lar Dor (Extreme)"
+
+
+def test_extract_source_info_ultimate():
+    sources = [{"type": "Ultimate", "text": "Futures Rewritten (Ultimate)", "related_type": None}]
+    src_type, duty, text = _extract_source_info(sources)
+    assert src_type == "ultimate"
+    assert duty == "Futures Rewritten (Ultimate)"
+
+
+def test_extract_source_info_achievement():
+    sources = [{"type": "Achievement", "text": "Some achievement reward", "related_type": None}]
+    src_type, duty, text = _extract_source_info(sources)
+    assert src_type == "other"
+    assert duty is None  # achievements don't have a duty name
+    assert text == "Some achievement reward"
+
+
+def test_extract_source_info_empty():
+    src_type, duty, text = _extract_source_info([])
+    assert src_type is None
+    assert duty is None
+    assert text is None
 
 
 # ── Internal seed ─────────────────────────────────────────────────────────────
@@ -106,17 +174,16 @@ async def test_token_data_present(session: AsyncSession):
 
 async def test_pending_exchange_items_have_null_token_cost(session: AsyncSession):
     await seed_from_internal(session)
-    from sqlalchemy import select
-    from app.models.collection_catalog_item import CollectionCatalogItem
     result = await session.execute(
         select(CollectionCatalogItem).where(
             CollectionCatalogItem.source_duty_key.in_([
-                "dt-hell-on-rails-ex", "dt-unmaking-ex"
-            ])
+                "dt-hell-on-rails", "dt-unmaking"
+            ]),
+            CollectionCatalogItem.category == "mount",
         )
     )
     items = list(result.scalars().all())
-    assert len(items) == 2
+    assert len(items) == 2, f"Expected 2 mount items, got {[i.name for i in items]}"
     for item in items:
         assert item.token_cost is None
         assert item.token_name is None
@@ -200,6 +267,72 @@ async def test_custom_goal_without_catalog(async_client: AsyncClient, group, own
     data = resp.json()
     assert data["catalog_item_id"] is None
     assert data["token_name"] is None
+
+
+async def test_catalog_category_counts_after_seed(session: AsyncSession):
+    """After internal seed, mount/orchestrion/weapon all have non-zero rows."""
+    await seed_from_internal(session)
+    result = await session.execute(
+        select(CollectionCatalogItem.category, CollectionCatalogItem.id)
+        .where(CollectionCatalogItem.is_active == True)  # noqa: E712
+    )
+    rows = result.all()
+    from collections import Counter
+    counts = Counter(r.category for r in rows)
+    assert counts["mount"] >= 41, f"Expected >=41 mounts, got {counts['mount']}"
+    assert counts["orchestrion"] >= 38, f"Expected >=38 orchestrion, got {counts['orchestrion']}"
+    assert counts["weapon"] >= 7, f"Expected >=7 weapons, got {counts['weapon']}"
+
+
+async def test_catalog_dedup_prefers_internal(async_client: AsyncClient, owner_headers, session: AsyncSession):
+    """When internal and ffxiv_collect rows share same name+category, API returns only one."""
+    # Seed internal rows
+    await seed_from_internal(session)
+    # Add a duplicate ffxiv_collect row with the same name
+    import uuid
+    from datetime import datetime, timezone
+    dup = CollectionCatalogItem(
+        id=str(uuid.uuid4()),
+        external_source="ffxiv_collect",
+        external_id="9999999",
+        name="Wings of Death",  # same as an internal entry
+        category="mount",
+        expansion="dt",
+        patch="7.2",
+        icon_url=None,
+        image_url=None,
+        source_text="Drop test",
+        source_type="extreme",
+        source_duty_name="Test duty",
+        source_duty_key=None,
+        token_name=None,
+        token_cost=None,
+        tradeable=False,
+        rarity_owned_percent=5.0,
+        is_curated=False,
+        is_active=True,
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(dup)
+    await session.commit()
+
+    resp = await async_client.get("/api/collection-catalog?category=mount&expansion=dt", headers=owner_headers)
+    assert resp.status_code == 200
+    items = resp.json()
+    wings_of_death = [i for i in items if i["name"] == "Wings of Death"]
+    assert len(wings_of_death) == 1, "Dedup should return exactly one Wings of Death"
+    # The internal (curated) row should win
+    assert wings_of_death[0]["is_curated"] is True
+
+
+async def test_expansion_filters_do_not_hide_all_rows(async_client: AsyncClient, owner_headers):
+    """Each expansion filter returns at least one row after internal seed."""
+    expansions = ["dt", "ew", "shb", "sb", "hw", "arr"]
+    for exp in expansions:
+        resp = await async_client.get(f"/api/collection-catalog?expansion={exp}", headers=owner_headers)
+        assert resp.status_code == 200
+        items = resp.json()
+        assert len(items) > 0, f"Expansion filter '{exp}' returned no rows"
 
 
 async def test_token_count_can_buy_check(async_client: AsyncClient, group, owner_headers, member_headers, member):

@@ -60,6 +60,19 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '1.26.0',
+    date: '2026-06-21T18:00:00Z',
+    title: 'FFXIV Collect background sync for mounts, minions, orchestrion',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Catalog auto-syncs from FFXIV Collect on first server start',
+        description: 'Background task runs 5 seconds after startup and imports mounts, minions, and orchestrion from FFXIV Collect if not already synced. Fixes pagination bug (count vs total), source duty name extraction, and owned-percent parsing. Curated internal rows always take precedence via Python-level deduplication.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.26.0',
     date: '2026-06-21T12:00:00Z',
     title: 'Full orchestrion roll catalog — all expansions, no live fetch',
     items: [
