@@ -72,8 +72,13 @@ async def _collect_sync_task() -> None:
             if not await is_collect_sync_needed(session):
                 return
         async with async_session_maker() as session:
-            counts = await sync_from_ffxiv_collect(session)
+            counts = await asyncio.wait_for(
+                sync_from_ffxiv_collect(session),
+                timeout=120.0,
+            )
             logger.info("collect_sync_on_startup", counts=counts)
+    except asyncio.TimeoutError:
+        logger.warning("collect_startup_sync_timeout", detail="FFXIV Collect API did not respond within 120s")
     except asyncio.CancelledError:
         raise
     except Exception as exc:

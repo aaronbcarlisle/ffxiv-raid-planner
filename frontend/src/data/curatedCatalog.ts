@@ -41,6 +41,38 @@ function mount(
   };
 }
 
+function orchestrion(
+  id: string,
+  name: string,
+  expansion: Exp,
+  sourceDutyName: string,
+  sourceDutyKey: string,
+  patch: string,
+  notes?: string,
+): CatalogItem {
+  return {
+    id: `fallback-${id}`,
+    externalSource: 'internal',
+    externalId: id,
+    name,
+    category: 'orchestrion',
+    expansion,
+    patch,
+    iconUrl: null,
+    imageUrl: null,
+    sourceText: `Rare drop — ${sourceDutyName}`,
+    sourceType: 'extreme',
+    sourceDutyName,
+    sourceDutyKey,
+    tokenName: null,
+    tokenCost: null,
+    tradeable: false,
+    rarityOwnedPercent: null,
+    isCurated: true,
+    notes: notes ?? null,
+  };
+}
+
 function weapon(
   id: string,
   name: string,
@@ -98,6 +130,9 @@ export const FALLBACK_CATALOG: CatalogItem[] = [
   // ── Endwalker Ultimates ───────────────────────────────────────────────────
   weapon('ew-ult1-weapons', 'Ultimate Weapons of the Heavens', 'ew', "Dragonsong's Reprise (Ultimate)", 'ult-dsr', '6.11', 'Dragonsong Totem', 7),
   weapon('ew-ult2-weapons', 'Ultimate Omega Weapons', 'ew', 'The Omega Protocol (Ultimate)', 'ult-top', '6.31', 'Omega Totem', 7),
+  // ── Shadowbringers Extreme Orchestrion ───────────────────────────────────────
+  orchestrion('shb-emerald-orch', 'Rise', 'shb', 'Castrum Marinum (Extreme)', 'shb-emerald', '5.4', 'Emerald Weapon (Extreme) rare drop'),
+  orchestrion('shb-diamond-orch', 'Black & White', 'shb', 'The Cloud Deck (Extreme)', 'shb-diamond', '5.5', 'Diamond Weapon (Extreme) rare drop'),
   // ── Shadowbringers Extreme Mounts ─────────────────────────────────────────
   mount('shb-titania-mount', 'Titania', 'shb', 'The Dancing Plague (Extreme)', 'shb-titania', '5.0', 'Fae Totem', 99),
   mount('shb-innocence-mount', 'Innocence', 'shb', 'The Crown of the Immaculate (Extreme)', 'shb-innocence', '5.0', 'Immaculate Totem', 99),

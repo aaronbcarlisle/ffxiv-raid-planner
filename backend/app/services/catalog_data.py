@@ -397,6 +397,37 @@ SHADOWBRINGERS_EXTREME_MOUNTS: list[CuratedItem] = [
     },
 ]
 
+SHADOWBRINGERS_EXTREME_ORCHESTRION: list[CuratedItem] = [
+    {
+        "source_key": "shb-emerald-orch",
+        "name": "Rise",
+        "category": "orchestrion",
+        "expansion": "shb",
+        "patch": "5.4",
+        "source_type": "extreme",
+        "source_duty_name": "Castrum Marinum (Extreme)",
+        "source_duty_key": "shb-emerald",
+        "source_text": "Rare drop — Castrum Marinum (Extreme)",
+        "token_name": None,
+        "token_cost": None,
+        "notes": "Emerald Weapon (Extreme) rare drop",
+    },
+    {
+        "source_key": "shb-diamond-orch",
+        "name": "Black & White",
+        "category": "orchestrion",
+        "expansion": "shb",
+        "patch": "5.5",
+        "source_type": "extreme",
+        "source_duty_name": "The Cloud Deck (Extreme)",
+        "source_duty_key": "shb-diamond",
+        "source_text": "Rare drop — The Cloud Deck (Extreme)",
+        "token_name": None,
+        "token_cost": None,
+        "notes": "Diamond Weapon (Extreme) rare drop",
+    },
+]
+
 SHADOWBRINGERS_ULTIMATE_WEAPONS: list[CuratedItem] = [
     {
         "source_key": "shb-ult-tea",
@@ -748,6 +779,7 @@ ALL_CURATED_ITEMS: list[CuratedItem] = [
     *ENDWALKER_EXTREME_MOUNTS,
     *ENDWALKER_ULTIMATE_WEAPONS,
     *SHADOWBRINGERS_EXTREME_MOUNTS,
+    *SHADOWBRINGERS_EXTREME_ORCHESTRION,
     *SHADOWBRINGERS_ULTIMATE_WEAPONS,
     *STORMBLOOD_EXTREME_MOUNTS,
     *STORMBLOOD_ULTIMATE_WEAPONS,
