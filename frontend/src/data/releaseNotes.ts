@@ -65,7 +65,6 @@ export const RELEASES: Release[] = [
     highlights: [
       'Plan main/alt split runs with per-player Run A / Run B assignments and weekly clear tracking',
       'Loot drop recommendations rank candidates by character identity, weapon priority, and loot history',
-      'Roster Characters sub-tab lets leads register Player Hub characters for each static member',
     ],
     items: [
       {
