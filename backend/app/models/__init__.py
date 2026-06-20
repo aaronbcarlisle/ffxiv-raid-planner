@@ -6,6 +6,8 @@ from .notification import Notification
 from .api_key import ApiKey
 from .bis_target_set import BiSTargetSet, VALID_BIS_IMPORT_STATUSES, VALID_BIS_PURPOSES, VALID_BIS_SOURCE_TYPES, VALID_OWNER_TYPES
 from .collection_goal import CollectionGoal
+from .reward_participant_state import RewardParticipantState
+from .reward_drop_log import RewardDropLog
 from .invitation import Invitation
 from .join_request import JoinRequest  # noqa: F811
 from .loot_log_entry import LootLogEntry
@@ -44,6 +46,8 @@ __all__ = [
     "VALID_BIS_SOURCE_TYPES",
     "VALID_OWNER_TYPES",
     "CollectionGoal",
+    "RewardParticipantState",
+    "RewardDropLog",
     "Invitation",
     "JoinRequest",
     "LootLogEntry",

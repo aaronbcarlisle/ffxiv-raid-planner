@@ -60,6 +60,19 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '1.26.0',
+    date: '2026-06-20T00:00:00Z',
+    title: 'Collections & Farms Hub',
+    items: [
+      {
+        category: 'feature',
+        title: 'Collections & Farms Hub',
+        description: 'Backend models, router, and store for collection goals with participant states (need/want/have/pass), drop log, priority modes, and participant summary counts on the goal list.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.26.0',
     date: '2026-06-19T10:00:00Z',
     title: 'Split Clear Planner, Loot Intelligence & Character Registry',
     highlights: [

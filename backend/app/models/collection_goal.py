@@ -56,6 +56,8 @@ class CollectionGoal(Base):
     target_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    priority_mode: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[str] = mapped_column(

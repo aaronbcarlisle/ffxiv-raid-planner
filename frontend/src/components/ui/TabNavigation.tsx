@@ -30,7 +30,7 @@ const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: str
   { id: 'history', label: 'Loot Log', hotkey: '3', description: 'Track weekly loot drops and history' },
   { id: 'stats', label: 'Summary', hotkey: '4', description: 'Team-wide gear statistics' },
   { id: 'schedule', label: 'Schedule', hotkey: '5', description: 'Raid schedule and RSVP across time zones' },
-  { id: 'mount-farms', label: 'Mount Farms', hotkey: '6', description: 'Track mount farm progress and totems' },
+  { id: 'mount-farms', label: 'Collections & Farms', hotkey: '6', description: 'Track mounts, music, rare drops, ownership, and farm plans' },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
