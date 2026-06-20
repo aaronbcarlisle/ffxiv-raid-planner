@@ -49,7 +49,19 @@ export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }
 
   // Fall back to static curated data if API failed or returned empty
   const usingFallback = !catalogLoading && (catalogError !== null || (catalogLoaded && catalog.length === 0));
-  const effectiveCatalog: CatalogItem[] = usingFallback ? FALLBACK_CATALOG : catalog;
+
+  // When the API is working but certain categories have no entries yet (e.g. orchestrion
+  // not yet seeded in this DB), supplement silently with the hardcoded fallback entries
+  // for those specific categories rather than showing a "loading" empty state.
+  const ALWAYS_SUPPLEMENT: CatalogCategory[] = ['orchestrion'];
+  const effectiveCatalog: CatalogItem[] = useMemo(() => {
+    if (usingFallback) return FALLBACK_CATALOG;
+    if (!catalogLoaded || catalogLoading) return [];
+    const missing = ALWAYS_SUPPLEMENT.filter(cat => !catalog.some(i => i.category === cat));
+    if (missing.length === 0) return catalog;
+    return [...catalog, ...FALLBACK_CATALOG.filter(i => missing.includes(i.category as CatalogCategory))];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog, catalogLoaded, catalogLoading, usingFallback]);
 
   // Build lookup: catalogItemId → goal
   const goalByCatalogId = useMemo(() => {
@@ -82,8 +94,9 @@ export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }
   const hasActiveFilters = activeCategory !== 'all' || activeExpansion !== 'all';
 
   // True when the selected category has zero items anywhere in the catalog
-  // (not a filter mismatch — the whole category is unpopulated)
-  const COLLECT_SYNCED_CATEGORIES: (CatalogCategory | 'all')[] = ['orchestrion', 'minion', 'other'];
+  // (not a filter mismatch — the whole category is unpopulated).
+  // Orchestrion is excluded because it is always supplemented from the fallback above.
+  const COLLECT_SYNCED_CATEGORIES: (CatalogCategory | 'all')[] = ['minion', 'other'];
   const categoryTotallyEmpty =
     activeCategory !== 'all' &&
     !usingFallback &&

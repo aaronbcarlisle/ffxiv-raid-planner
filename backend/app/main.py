@@ -21,7 +21,7 @@ from .middleware import (
     SecurityHeadersMiddleware,
 )
 from .rate_limit import limiter
-from .services.catalog_import_service import is_catalog_seeded, seed_from_internal
+from .services.catalog_import_service import seed_from_internal
 from .tasks.analytics_retention import retention_loop
 from .tasks.auto_sync import auto_sync_loop
 from .tasks.schedule_reminders import schedule_reminder_loop
@@ -76,13 +76,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.info("database_setup", mode="migrations")
 
-    # Seed catalog on startup if empty (ensures fresh DBs are usable immediately)
+    # Always upsert curated catalog on startup so new items added to catalog_data.py
+    # appear immediately after restart without requiring a DB wipe.
     try:
         from .database import get_session as _get_session
         async for _session in _get_session():
-            if not await is_catalog_seeded(_session):
-                _count = await seed_from_internal(_session)
-                logger.info("catalog_seeded_on_startup", count=_count)
+            _count = await seed_from_internal(_session)
+            logger.info("catalog_seeded_on_startup", count=_count)
             break
     except Exception as _exc:
         logger.warning("catalog_startup_seed_failed", error=str(_exc))
