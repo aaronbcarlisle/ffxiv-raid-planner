@@ -1,7 +1,7 @@
 """Add static_character_registrations table
 
 Revision ID: a8b9c0d1e2f3
-Revises: a7b8c9d0e1f2
+Revises: u2v3w4x5y6z7
 Create Date: 2026-06-18 20:30:00.000000
 """
 
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "a8b9c0d1e2f3"
-down_revision = "a7b8c9d0e1f2"
+down_revision = "u2v3w4x5y6z7"
 branch_labels = None
 depends_on = None
 
