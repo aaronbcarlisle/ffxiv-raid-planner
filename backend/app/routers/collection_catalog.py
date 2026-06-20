@@ -31,6 +31,10 @@ async def list_catalog_items(
     """
     List catalog items. Auto-seeds from internal curated data on first call
     if the catalog is empty.
+
+    Deduplication: when both an internal (curated) row and an ffxiv_collect row
+    exist for the same item (same name + category), only the internal/curated
+    row is returned. Preference order: is_curated=True > external_source='internal'.
     """
     if not await is_catalog_seeded(session):
         count = await seed_from_internal(session)
@@ -44,9 +48,10 @@ async def list_catalog_items(
     if source_type:
         stmt = stmt.where(CollectionCatalogItem.source_type == source_type)
 
-    # Sort: curated first, then by expansion (newest first), then alphabetically
+    # Sort: curated/internal first, then by expansion (newest first), then alphabetically
     stmt = stmt.order_by(
         CollectionCatalogItem.is_curated.desc(),
+        (CollectionCatalogItem.external_source == "internal").desc(),
         CollectionCatalogItem.expansion.desc().nulls_last(),
         CollectionCatalogItem.patch.desc().nulls_last(),
         CollectionCatalogItem.name,
@@ -54,7 +59,18 @@ async def list_catalog_items(
 
     result = await session.execute(stmt)
     items = list(result.scalars().all())
-    return [CatalogItemResponse.model_validate(item) for item in items]
+
+    # Deduplicate: when both internal and ffxiv_collect rows exist for the same
+    # (name.lower(), category), keep only the first occurrence (highest priority).
+    seen: set[tuple[str, str]] = set()
+    unique: list[CollectionCatalogItem] = []
+    for item in items:
+        key = (item.name.lower().strip(), item.category)
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+
+    return [CatalogItemResponse.model_validate(item) for item in unique]
 
 
 @router.post("/admin/collection-catalog/sync", response_model=CatalogSyncResult)

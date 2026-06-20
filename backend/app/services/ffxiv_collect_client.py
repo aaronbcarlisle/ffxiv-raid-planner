@@ -4,6 +4,11 @@ https://ffxivcollect.com/api/
 
 Fetches mounts, minions, and orchestrion catalog data.
 Results are returned as raw dicts — the import service maps them to catalog items.
+
+API response shape:
+  { "query": {...}, "count": <page_count>, "results": [...] }
+  NOTE: "count" is items returned in THIS page, not the global total.
+        Pagination terminates when len(batch) < limit.
 """
 
 import logging
@@ -15,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 BASE_URL = "https://ffxivcollect.com/api"
 DEFAULT_LIMIT = 500
-TIMEOUT_SECONDS = 30
+TIMEOUT_SECONDS = 20  # Per-request timeout; callers impose overall timeout via asyncio.wait_for
 
 
 class FfxivCollectError(Exception):
@@ -43,8 +48,9 @@ async def _fetch_collection(endpoint: str, limit: int = DEFAULT_LIMIT) -> list[d
             batch = data.get("results", [])
             results.extend(batch)
 
-            total = data.get("total", 0)
-            if len(results) >= total or len(batch) < limit:
+            # API returns "count" = items in this page, no global total field.
+            # Stop when page is not full (last page) or empty.
+            if not batch or len(batch) < limit:
                 break
             page += 1
 

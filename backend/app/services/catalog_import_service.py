@@ -4,14 +4,19 @@ Catalog import service.
 Two import paths:
 1. seed_from_internal() — seeds from curated internal data (always safe to run)
 2. sync_from_ffxiv_collect() — pulls from FFXIV Collect API and upserts
-   (admin-triggered; applies internal overrides on top)
+   (background task or admin-triggered; applies internal overrides on top)
+
+Deduplication strategy:
+  Both internal and ffxiv_collect rows may exist for the same item (e.g. "Wings of Ruin").
+  The catalog router deduplicates in Python, preferring is_curated / internal rows.
+  This service does NOT delete rows; it only upserts and enriches.
 """
 
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.collection_catalog_item import CollectionCatalogItem
@@ -64,10 +69,10 @@ async def is_catalog_seeded(session: AsyncSession) -> bool:
 
 
 async def is_collect_sync_needed(session: AsyncSession) -> bool:
-    """Returns True if minion or orchestrion categories have no entries (need FFXIV Collect sync)."""
+    """Returns True if no FFXIV Collect rows have been imported yet."""
     result = await session.execute(
         select(CollectionCatalogItem)
-        .where(CollectionCatalogItem.category.in_(["minion", "orchestrion"]))
+        .where(CollectionCatalogItem.external_source == "ffxiv_collect")
         .limit(1)
     )
     return result.scalar_one_or_none() is None
@@ -75,20 +80,27 @@ async def is_collect_sync_needed(session: AsyncSession) -> bool:
 
 # ── FFXIV Collect sync ─────────────────────────────────────────────────────────
 
-# Maps FFXIV Collect source type strings to internal categories
+# Maps FFXIV Collect source type strings to internal source_type values
 _SOURCE_TYPE_MAP: dict[str, str] = {
-    "Extreme": "extreme",
-    "Ultimate": "ultimate",
-    "Savage": "savage",
-    "Criterion": "criterion",
+    "Extreme":       "extreme",
+    "Trial":         "extreme",   # most extreme trials are labelled "Trial"
+    "Ultimate":      "ultimate",
+    "Savage":        "savage",
+    "Raid":          "savage",    # generic raid = savage-tier content
+    "Criterion":     "criterion",
     "Alliance Raid": "chaotic_alliance",
-    "Crafted": "crafted",
-    "NPC": "other",
-    "Achievement": "other",
-    "Trial": "extreme",
-    "Dungeon": "other",
-    "Raid": "savage",
+    "Crafted":       "crafted",
+    "NPC":           "other",
+    "Achievement":   "other",
+    "Dungeon":       "other",
+    "Quest":         "other",
+    "Event":         "other",
 }
+
+# Source types that represent actual in-game content (duty/encounter)
+_CONTENT_SOURCE_TYPES = frozenset({
+    "Extreme", "Trial", "Ultimate", "Savage", "Raid", "Criterion", "Alliance Raid",
+})
 
 # Maps FFXIV Collect patch prefixes to expansion slugs
 _EXPANSION_BY_PATCH: dict[str, str] = {
@@ -97,7 +109,8 @@ _EXPANSION_BY_PATCH: dict[str, str] = {
 }
 
 
-def _expansion_from_patch(patch: str | None) -> str | None:
+def expansion_from_patch(patch: str | None) -> str | None:
+    """Convert a patch string like '7.2' to an expansion slug like 'dt'."""
     if not patch:
         return None
     for prefix, exp in _EXPANSION_BY_PATCH.items():
@@ -106,16 +119,42 @@ def _expansion_from_patch(patch: str | None) -> str | None:
     return None
 
 
-def _extract_source_info(sources: list[dict[str, Any]]) -> tuple[str | None, str | None, str | None]:
-    """Return (source_type, duty_name, source_text) from FFXIV Collect sources list."""
+def _parse_owned_percent(owned: Any) -> float | None:
+    """Parse FFXIV Collect 'owned' field ('0.5%' or 0.5) to a float."""
+    if owned is None:
+        return None
+    if isinstance(owned, (int, float)):
+        return float(owned)
+    try:
+        return float(str(owned).rstrip("%"))
+    except (ValueError, TypeError):
+        return None
+
+
+def _extract_source_info(
+    sources: list[dict[str, Any]],
+) -> tuple[str | None, str | None, str | None]:
+    """
+    Return (source_type, duty_name, source_text) from FFXIV Collect sources list.
+
+    For content-type sources (Trial, Extreme, Ultimate, etc.) the 'text' field
+    contains the duty name (e.g. "Worqor Lar Dor (Extreme)").
+    For vendor/achievement sources 'text' is the acquisition description.
+    """
     for s in sources:
         stype = s.get("type", "")
-        related = s.get("related_type", "")
-        related_name = s.get("related", {}).get("name", "") if isinstance(s.get("related"), dict) else ""
-        text = s.get("text", "")
-        internal_type = _SOURCE_TYPE_MAP.get(stype) or _SOURCE_TYPE_MAP.get(related, "other")
-        duty = related_name or stype
-        return internal_type, duty or None, text or None
+        related_type = s.get("related_type") or ""
+        text = (s.get("text") or "").strip()
+
+        internal_type = _SOURCE_TYPE_MAP.get(stype) or _SOURCE_TYPE_MAP.get(related_type, "other")
+
+        # For content-type sources the text IS the duty/encounter name
+        if stype in _CONTENT_SOURCE_TYPES:
+            duty_name = text or None
+        else:
+            duty_name = None
+
+        return internal_type, duty_name, text or None
     return None, None, None
 
 
@@ -125,12 +164,13 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
     Applies internal curated overrides on top of API data.
     Returns counts per category.
     """
-    counts = {"mount": 0, "minion": 0, "orchestrion": 0}
+    counts: dict[str, int] = {"mount": 0, "minion": 0, "orchestrion": 0}
 
+    # ── Mounts ────────────────────────────────────────────────────────────────
     mount_data = await fetch_mounts()
     for item in mount_data:
-        patch = item.get("patch", "")
-        sources = item.get("sources", [])
+        patch = item.get("patch") or ""
+        sources = item.get("sources") or []
         src_type, duty_name, src_text = _extract_source_info(sources)
         await _upsert_catalog_item(
             session,
@@ -138,22 +178,24 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
             external_id=str(item["id"]),
             name=item.get("name", "Unknown"),
             category="mount",
-            expansion=_expansion_from_patch(patch),
+            expansion=expansion_from_patch(patch),
             patch=patch or None,
             icon_url=item.get("icon"),
             image_url=item.get("image"),
             source_text=src_text,
             source_type=src_type,
             source_duty_name=duty_name,
-            rarity_owned_percent=item.get("owned"),
+            tradeable=item.get("tradeable"),
+            rarity_owned_percent=_parse_owned_percent(item.get("owned")),
             is_curated=False,
         )
         counts["mount"] += 1
 
+    # ── Minions ───────────────────────────────────────────────────────────────
     minion_data = await fetch_minions()
     for item in minion_data:
-        patch = item.get("patch", "")
-        sources = item.get("sources", [])
+        patch = item.get("patch") or ""
+        sources = item.get("sources") or []
         src_type, duty_name, src_text = _extract_source_info(sources)
         await _upsert_catalog_item(
             session,
@@ -161,43 +203,50 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
             external_id=f"minion-{item['id']}",
             name=item.get("name", "Unknown"),
             category="minion",
-            expansion=_expansion_from_patch(patch),
+            expansion=expansion_from_patch(patch),
             patch=patch or None,
             icon_url=item.get("icon"),
             image_url=item.get("image"),
             source_text=src_text,
             source_type=src_type,
             source_duty_name=duty_name,
-            rarity_owned_percent=item.get("owned"),
+            tradeable=item.get("tradeable"),
+            rarity_owned_percent=_parse_owned_percent(item.get("owned")),
             is_curated=False,
         )
         counts["minion"] += 1
 
+    # ── Orchestrion ───────────────────────────────────────────────────────────
     orch_data = await fetch_orchestrion()
     for item in orch_data:
-        patch = item.get("patch", "")
-        sources = item.get("sources", [])
+        patch = item.get("patch") or ""
+        sources = item.get("sources") or []
         src_type, duty_name, src_text = _extract_source_info(sources)
+        # Orchestrion has a category sub-object; store it in source_text if no other source
+        category_name = (item.get("category") or {}).get("name") if isinstance(item.get("category"), dict) else None
         await _upsert_catalog_item(
             session,
             external_source="ffxiv_collect",
             external_id=f"orch-{item['id']}",
             name=item.get("name", "Unknown"),
             category="orchestrion",
-            expansion=_expansion_from_patch(patch),
+            expansion=expansion_from_patch(patch),
             patch=patch or None,
             icon_url=item.get("icon"),
-            source_text=src_text,
+            source_text=src_text or category_name,
             source_type=src_type,
             source_duty_name=duty_name,
-            rarity_owned_percent=item.get("owned"),
+            tradeable=item.get("tradeable"),
+            rarity_owned_percent=_parse_owned_percent(item.get("owned")),
             is_curated=False,
         )
         counts["orchestrion"] += 1
 
     await session.commit()
 
-    # Re-apply internal overrides after sync to ensure curated data isn't overwritten
+    # Re-apply internal overrides last — curated data always wins.
+    # Internal rows (is_curated=True, external_source='internal') coexist with
+    # ffxiv_collect rows. The catalog router deduplicates by preferring curated rows.
     await seed_from_internal(session)
 
     return counts
@@ -278,11 +327,13 @@ async def _upsert_catalog_item(
             item.source_duty_name = source_duty_name
         if source_duty_key is not None:
             item.source_duty_key = source_duty_key
-        # Curated data always wins for token info
+        # Curated data always wins for token and duty key info
         if is_curated or token_name is not None:
             item.token_name = token_name
         if is_curated or token_cost is not None:
             item.token_cost = token_cost
+        if tradeable is not None:
+            item.tradeable = tradeable
         if rarity_owned_percent is not None:
             item.rarity_owned_percent = rarity_owned_percent
         if is_curated:

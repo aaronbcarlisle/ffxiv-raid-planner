@@ -24,6 +24,7 @@ from .rate_limit import limiter
 from .services.catalog_import_service import seed_from_internal
 from .tasks.analytics_retention import retention_loop
 from .tasks.auto_sync import auto_sync_loop
+from .tasks.catalog_sync import catalog_sync_loop
 from .tasks.schedule_reminders import schedule_reminder_loop
 from .routers import (
     discord_interactions_router,
@@ -91,14 +92,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     retention_task = asyncio.create_task(retention_loop())
     sync_task = asyncio.create_task(auto_sync_loop())
     schedule_reminder_task = asyncio.create_task(schedule_reminder_loop())
+    catalog_task = asyncio.create_task(catalog_sync_loop())
 
     yield
 
     # Shutdown
+    catalog_task.cancel()
     schedule_reminder_task.cancel()
     sync_task.cancel()
     retention_task.cancel()
-    for task in (schedule_reminder_task, sync_task, retention_task):
+    for task in (catalog_task, schedule_reminder_task, sync_task, retention_task):
         try:
             await task
         except asyncio.CancelledError:
