@@ -1,5 +1,78 @@
 import { create } from 'zustand';
 
+// ── Catalog types ────────────────────────────────────────────────────────────
+
+export type CatalogExpansion = 'arr' | 'hw' | 'sb' | 'shb' | 'ew' | 'dt';
+export type CatalogCategory = 'mount' | 'orchestrion' | 'minion' | 'glam' | 'title' | 'weapon' | 'emote' | 'hairstyle' | 'card' | 'other';
+
+export interface CatalogItem {
+  id: string;
+  externalSource: string;
+  externalId: string | null;
+  name: string;
+  category: CatalogCategory;
+  expansion: CatalogExpansion | null;
+  patch: string | null;
+  iconUrl: string | null;
+  imageUrl: string | null;
+  sourceText: string | null;
+  sourceType: string | null;
+  sourceDutyName: string | null;
+  sourceDutyKey: string | null;
+  tokenName: string | null;
+  tokenCost: number | null;
+  tradeable: boolean | null;
+  rarityOwnedPercent: number | null;
+  isCurated: boolean;
+  notes: string | null;
+}
+
+interface ApiCatalogItem {
+  id: string;
+  external_source: string;
+  external_id: string | null;
+  name: string;
+  category: string;
+  expansion: string | null;
+  patch: string | null;
+  icon_url: string | null;
+  image_url: string | null;
+  source_text: string | null;
+  source_type: string | null;
+  source_duty_name: string | null;
+  source_duty_key: string | null;
+  token_name: string | null;
+  token_cost: number | null;
+  tradeable: boolean | null;
+  rarity_owned_percent: number | null;
+  is_curated: boolean;
+  notes: string | null;
+}
+
+function fromApiCatalogItem(c: ApiCatalogItem): CatalogItem {
+  return {
+    id: c.id,
+    externalSource: c.external_source,
+    externalId: c.external_id,
+    name: c.name,
+    category: c.category as CatalogCategory,
+    expansion: (c.expansion as CatalogExpansion | null) ?? null,
+    patch: c.patch,
+    iconUrl: c.icon_url,
+    imageUrl: c.image_url,
+    sourceText: c.source_text,
+    sourceType: c.source_type,
+    sourceDutyName: c.source_duty_name,
+    sourceDutyKey: c.source_duty_key,
+    tokenName: c.token_name,
+    tokenCost: c.token_cost,
+    tradeable: c.tradeable,
+    rarityOwnedPercent: c.rarity_owned_percent,
+    isCurated: c.is_curated,
+    notes: c.notes,
+  };
+}
+
 /** Reward type — what is being tracked */
 export type CollectionGoalType =
   | 'mount' | 'token' | 'minion' | 'orchestrion' | 'glam' | 'custom_reward'
@@ -73,6 +146,9 @@ export interface CollectionGoal {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  catalogItemId: string | null;
+  tokenName: string | null;
+  tokenCost: number | null;
   participantSummary: ParticipantSummary | null;
 }
 
@@ -89,6 +165,9 @@ export interface CollectionGoalCreate {
   targetCount?: number | null;
   currentCount?: number | null;
   note?: string | null;
+  catalogItemId?: string | null;
+  tokenName?: string | null;
+  tokenCost?: number | null;
 }
 
 export interface ParticipantStateUpsert {
@@ -140,6 +219,9 @@ interface ApiGoal {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  catalog_item_id: string | null;
+  token_name: string | null;
+  token_cost: number | null;
   participant_summary: { need: number; want: number; have: number; passing: number; total: number } | null;
 }
 
@@ -191,6 +273,9 @@ function fromApi(g: ApiGoal): CollectionGoal {
     createdAt: g.created_at,
     updatedAt: g.updated_at,
     completedAt: g.completed_at,
+    catalogItemId: g.catalog_item_id ?? null,
+    tokenName: g.token_name ?? null,
+    tokenCost: g.token_cost ?? null,
     participantSummary: g.participant_summary ?? null,
   };
 }
@@ -241,6 +326,9 @@ function toApiCreate(c: CollectionGoalCreate): object {
     target_count: c.targetCount ?? null,
     current_count: c.currentCount ?? null,
     note: c.note ?? null,
+    catalog_item_id: c.catalogItemId ?? null,
+    token_name: c.tokenName ?? null,
+    token_cost: c.tokenCost ?? null,
   };
 }
 
@@ -263,6 +351,12 @@ function toApiUpdate(u: CollectionGoalUpdate): object {
 }
 
 interface CollectionGoalStore {
+  // Catalog
+  catalog: CatalogItem[];
+  catalogLoading: boolean;
+  catalogLoaded: boolean;
+  fetchCatalog: (params?: { category?: string; expansion?: string }) => Promise<void>;
+
   goals: CollectionGoal[];
   isLoading: boolean;
   error: string | null;
@@ -290,6 +384,26 @@ interface CollectionGoalStore {
 }
 
 export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => ({
+  catalog: [],
+  catalogLoading: false,
+  catalogLoaded: false,
+
+  fetchCatalog: async (params = {}) => {
+    set({ catalogLoading: true });
+    try {
+      const qs = new URLSearchParams();
+      if (params.category) qs.set('category', params.category);
+      if (params.expansion) qs.set('expansion', params.expansion);
+      const url = `/api/collection-catalog${qs.toString() ? `?${qs}` : ''}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Catalog fetch failed: ${res.status}`);
+      const data: ApiCatalogItem[] = await res.json();
+      set({ catalog: data.map(fromApiCatalogItem), catalogLoaded: true, catalogLoading: false });
+    } catch {
+      set({ catalogLoading: false });
+    }
+  },
+
   goals: [],
   isLoading: false,
   error: null,

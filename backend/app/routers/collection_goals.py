@@ -84,6 +84,9 @@ def _goal_to_response(goal: CollectionGoal, summary: ParticipantSummary | None =
         created_at=goal.created_at,
         updated_at=goal.updated_at,
         completed_at=goal.completed_at,
+        catalog_item_id=goal.catalog_item_id,
+        token_name=goal.token_name,
+        token_cost=goal.token_cost,
         participant_summary=summary,
     )
 
@@ -145,6 +148,9 @@ async def create_collection_goal(
         target_count=body.target_count,
         current_count=body.current_count,
         note=body.note,
+        catalog_item_id=body.catalog_item_id,
+        token_name=body.token_name,
+        token_cost=body.token_cost,
         created_at=now,
         updated_at=now,
         completed_at=None,

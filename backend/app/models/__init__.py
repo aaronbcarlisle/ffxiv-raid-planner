@@ -5,6 +5,7 @@ from .analytics import AnalyticsDailyAggregate, AnalyticsEvent, ErrorReport
 from .notification import Notification
 from .api_key import ApiKey
 from .bis_target_set import BiSTargetSet, VALID_BIS_IMPORT_STATUSES, VALID_BIS_PURPOSES, VALID_BIS_SOURCE_TYPES, VALID_OWNER_TYPES
+from .collection_catalog_item import CollectionCatalogItem
 from .collection_goal import CollectionGoal
 from .reward_participant_state import RewardParticipantState
 from .reward_drop_log import RewardDropLog
@@ -45,6 +46,7 @@ __all__ = [
     "VALID_BIS_PURPOSES",
     "VALID_BIS_SOURCE_TYPES",
     "VALID_OWNER_TYPES",
+    "CollectionCatalogItem",
     "CollectionGoal",
     "RewardParticipantState",
     "RewardDropLog",

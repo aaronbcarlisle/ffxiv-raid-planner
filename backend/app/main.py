@@ -32,6 +32,7 @@ from .routers import (
     auth_router,
     bis_router,
     bis_targets_router,
+    collection_catalog_router,
     collection_goals_router,
     discovery_router,
     invitations_router,
@@ -169,6 +170,7 @@ app.include_router(api_keys_router)
 app.include_router(auth_router)
 app.include_router(bis_router)
 app.include_router(bis_targets_router)
+app.include_router(collection_catalog_router)
 app.include_router(collection_goals_router)
 app.include_router(content_suggestions_router)
 app.include_router(discovery_router)

@@ -1,4 +1,4 @@
-import { Trophy, Music, Package, Star, ChevronRight, ClipboardCopy, Plus } from 'lucide-react';
+import { Trophy, Music, Package, Star, ChevronRight, ClipboardCopy, Plus, Coins } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
 import { Tooltip } from '../primitives/Tooltip';
@@ -131,6 +131,39 @@ export function RewardGoalCard({ goal, participants, onView, onLogDrop, onCopyPl
             </Tooltip>
           )}
         </div>
+      )}
+
+      {/* Token progress bar */}
+      {goal.tokenCost != null && goal.tokenName && (
+        (() => {
+          const myEntry = participants.find((p) => p.userId === goal.createdById); // approximate — replaced by currentUserId when available
+          const tokenCount = myEntry?.tokenCount ?? null;
+          const canBuy = tokenCount != null && tokenCount >= goal.tokenCost;
+          const pct = tokenCount != null ? Math.min(100, Math.round((tokenCount / goal.tokenCost!) * 100)) : null;
+          return (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1 text-text-secondary">
+                  <Coins size={11} className="text-amber-400" />
+                  {goal.tokenName}: {tokenCount ?? '?'} / {goal.tokenCost}
+                </span>
+                {canBuy && (
+                  <span className="text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full font-semibold">
+                    Can buy
+                  </span>
+                )}
+              </div>
+              {pct != null && (
+                <div className="h-1 bg-surface-base rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${canBuy ? 'bg-green-500' : 'bg-accent'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })()
       )}
 
       {/* Next priority recipient */}

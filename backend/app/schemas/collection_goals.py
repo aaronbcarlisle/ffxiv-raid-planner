@@ -36,6 +36,9 @@ class CollectionGoalCreate(BaseModel):
     target_count: int | None = Field(None, ge=0)
     current_count: int | None = Field(None, ge=0)
     note: str | None = None
+    catalog_item_id: str | None = None
+    token_name: str | None = None
+    token_cost: int | None = Field(None, ge=0)
 
 
 class CollectionGoalUpdate(BaseModel):
@@ -52,6 +55,8 @@ class CollectionGoalUpdate(BaseModel):
     current_count: int | None = Field(None, ge=0)
     note: str | None = None
     completed_at: str | None = None
+    token_name: str | None = None
+    token_cost: int | None = Field(None, ge=0)
 
 
 class ParticipantSummary(BaseModel):
@@ -81,6 +86,9 @@ class CollectionGoalResponse(BaseModel):
     created_at: str
     updated_at: str
     completed_at: str | None
+    catalog_item_id: str | None = None
+    token_name: str | None = None
+    token_cost: int | None = None
     participant_summary: ParticipantSummary | None = None
 
     model_config = {"from_attributes": True}
