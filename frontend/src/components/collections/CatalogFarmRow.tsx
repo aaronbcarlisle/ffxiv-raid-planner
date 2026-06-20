@@ -9,6 +9,7 @@ interface CatalogFarmRowProps {
   groupId: string;
   existingGoal?: CollectionGoal;
   myTokenCount?: number;
+  trackDisabled?: boolean;
 }
 
 const EXPANSION_LABELS: Record<string, string> = {
@@ -20,7 +21,7 @@ const EXPANSION_LABELS: Record<string, string> = {
   dt: 'Dawntrail',
 };
 
-export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount }: CatalogFarmRowProps) {
+export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trackDisabled = false }: CatalogFarmRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
 
@@ -79,6 +80,8 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount }: Ca
             <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full flex-shrink-0">
               Tracking
             </span>
+          ) : trackDisabled ? (
+            <span className="text-xs text-text-muted flex-shrink-0 opacity-50">Track unavailable</span>
           ) : (
             <Button
               size="sm"

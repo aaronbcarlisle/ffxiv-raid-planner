@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { api } from '../services/api';
 
 // ── Catalog types ────────────────────────────────────────────────────────────
 
@@ -355,6 +356,7 @@ interface CollectionGoalStore {
   catalog: CatalogItem[];
   catalogLoading: boolean;
   catalogLoaded: boolean;
+  catalogError: string | null;
   fetchCatalog: (params?: { category?: string; expansion?: string }) => Promise<void>;
 
   goals: CollectionGoal[];
@@ -387,20 +389,21 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
   catalog: [],
   catalogLoading: false,
   catalogLoaded: false,
+  catalogError: null,
 
   fetchCatalog: async (params = {}) => {
-    set({ catalogLoading: true });
+    set({ catalogLoading: true, catalogError: null });
     try {
       const qs = new URLSearchParams();
       if (params.category) qs.set('category', params.category);
       if (params.expansion) qs.set('expansion', params.expansion);
-      const url = `/api/collection-catalog${qs.toString() ? `?${qs}` : ''}`;
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) throw new Error(`Catalog fetch failed: ${res.status}`);
-      const data: ApiCatalogItem[] = await res.json();
-      set({ catalog: data.map(fromApiCatalogItem), catalogLoaded: true, catalogLoading: false });
-    } catch {
-      set({ catalogLoading: false });
+      const endpoint = `/api/collection-catalog${qs.toString() ? `?${qs}` : ''}`;
+      const data = await api.get<ApiCatalogItem[]>(endpoint);
+      set({ catalog: data.map(fromApiCatalogItem), catalogLoaded: true, catalogLoading: false, catalogError: null });
+    } catch (err) {
+      // On error: mark as loaded so we don't retry automatically, but store the error
+      // so CatalogBrowse can show the fallback + retry button
+      set({ catalogLoading: false, catalogLoaded: true, catalogError: err instanceof Error ? err.message : 'Failed to load catalog' });
     }
   },
 
@@ -416,11 +419,7 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
   fetchGoals: async (groupId) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch(`/api/static-groups/${groupId}/collection-goals`, {
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error(`Failed to load collection goals: ${res.status}`);
-      const data: ApiGoal[] = await res.json();
+      const data = await api.get<ApiGoal[]>(`/api/static-groups/${groupId}/collection-goals`);
       set({ goals: data.map(fromApi), loadedGroupId: groupId, isLoading: false });
     } catch (err) {
       set({ isLoading: false, error: err instanceof Error ? err.message : 'Unknown error' });
@@ -428,59 +427,35 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
   },
 
   createGoal: async (groupId, data) => {
-    const res = await fetch(`/api/static-groups/${groupId}/collection-goals`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(toApiCreate(data)),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Failed to create goal' }));
-      throw new Error((err as { detail?: string }).detail ?? 'Failed to create goal');
-    }
-    const created: ApiGoal = await res.json();
+    const created = await api.post<ApiGoal>(
+      `/api/static-groups/${groupId}/collection-goals`,
+      toApiCreate(data),
+    );
     const goal = fromApi(created);
     set((s) => ({ goals: [...s.goals, goal] }));
     return goal;
   },
 
   updateGoal: async (groupId, goalId, data) => {
-    const res = await fetch(`/api/static-groups/${groupId}/collection-goals/${goalId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(toApiUpdate(data)),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Failed to update goal' }));
-      throw new Error((err as { detail?: string }).detail ?? 'Failed to update goal');
-    }
-    const updated: ApiGoal = await res.json();
+    const updated = await api.put<ApiGoal>(
+      `/api/static-groups/${groupId}/collection-goals/${goalId}`,
+      toApiUpdate(data),
+    );
     const goal = fromApi(updated);
     set((s) => ({ goals: s.goals.map((g) => (g.id === goalId ? goal : g)) }));
   },
 
   deleteGoal: async (groupId, goalId) => {
-    const res = await fetch(`/api/static-groups/${groupId}/collection-goals/${goalId}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Failed to delete goal' }));
-      throw new Error((err as { detail?: string }).detail ?? 'Failed to delete goal');
-    }
+    await api.delete<void>(`/api/static-groups/${groupId}/collection-goals/${goalId}`);
     set((s) => ({ goals: s.goals.filter((g) => g.id !== goalId) }));
   },
 
   fetchParticipants: async (groupId, goalId) => {
     set((s) => ({ participantsLoading: { ...s.participantsLoading, [goalId]: true } }));
     try {
-      const res = await fetch(
+      const data = await api.get<ApiParticipant[]>(
         `/api/static-groups/${groupId}/collection-goals/${goalId}/participants`,
-        { credentials: 'include' },
       );
-      if (!res.ok) throw new Error(`Failed to load participants: ${res.status}`);
-      const data: ApiParticipant[] = await res.json();
       set((s) => ({
         participants: { ...s.participants, [goalId]: data.map(fromApiParticipant) },
         participantsLoading: { ...s.participantsLoading, [goalId]: false },
@@ -491,63 +466,44 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
   },
 
   upsertMyState: async (groupId, goalId, data) => {
-    const res = await fetch(
+    const updated = await api.patch<ApiParticipant>(
       `/api/static-groups/${groupId}/collection-goals/${goalId}/participants`,
       {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          state: data.state,
-          token_count: data.tokenCount ?? null,
-          priority_rank: data.priorityRank ?? null,
-          notes: data.notes ?? null,
-        }),
+        state: data.state,
+        token_count: data.tokenCount ?? null,
+        priority_rank: data.priorityRank ?? null,
+        notes: data.notes ?? null,
       },
     );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Failed to update state' }));
-      throw new Error((err as { detail?: string }).detail ?? 'Failed to update state');
-    }
-    const updated = fromApiParticipant(await res.json() as ApiParticipant);
+    const participant = fromApiParticipant(updated);
     set((s) => {
       const existing = s.participants[goalId] ?? [];
-      const idx = existing.findIndex((p) => p.userId === updated.userId);
+      const idx = existing.findIndex((p) => p.userId === participant.userId);
       const next = idx >= 0
-        ? existing.map((p, i) => (i === idx ? updated : p))
-        : [...existing, updated];
+        ? existing.map((p, i) => (i === idx ? participant : p))
+        : [...existing, participant];
       return { participants: { ...s.participants, [goalId]: next } };
     });
-    // Refresh goal list to get updated summary counts
     await get().fetchGoals(groupId);
   },
 
   upsertStateForUser: async (groupId, goalId, targetUserId, data) => {
-    const res = await fetch(
+    const updated = await api.patch<ApiParticipant>(
       `/api/static-groups/${groupId}/collection-goals/${goalId}/participants/${targetUserId}`,
       {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          state: data.state,
-          token_count: data.tokenCount ?? null,
-          priority_rank: data.priorityRank ?? null,
-          notes: data.notes ?? null,
-        }),
+        state: data.state,
+        token_count: data.tokenCount ?? null,
+        priority_rank: data.priorityRank ?? null,
+        notes: data.notes ?? null,
       },
     );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Failed to update state' }));
-      throw new Error((err as { detail?: string }).detail ?? 'Failed to update state');
-    }
-    const updated = fromApiParticipant(await res.json() as ApiParticipant);
+    const participant = fromApiParticipant(updated);
     set((s) => {
       const existing = s.participants[goalId] ?? [];
-      const idx = existing.findIndex((p) => p.userId === updated.userId);
+      const idx = existing.findIndex((p) => p.userId === participant.userId);
       const next = idx >= 0
-        ? existing.map((p, i) => (i === idx ? updated : p))
-        : [...existing, updated];
+        ? existing.map((p, i) => (i === idx ? participant : p))
+        : [...existing, participant];
       return { participants: { ...s.participants, [goalId]: next } };
     });
     await get().fetchGoals(groupId);
@@ -556,12 +512,9 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
   fetchDrops: async (groupId, goalId) => {
     set((s) => ({ dropsLoading: { ...s.dropsLoading, [goalId]: true } }));
     try {
-      const res = await fetch(
+      const data = await api.get<ApiDrop[]>(
         `/api/static-groups/${groupId}/collection-goals/${goalId}/drops`,
-        { credentials: 'include' },
       );
-      if (!res.ok) throw new Error(`Failed to load drops: ${res.status}`);
-      const data: ApiDrop[] = await res.json();
       set((s) => ({
         drops: { ...s.drops, [goalId]: data.map(fromApiDrop) },
         dropsLoading: { ...s.dropsLoading, [goalId]: false },
@@ -572,29 +525,19 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
   },
 
   logDrop: async (groupId, goalId, data) => {
-    const res = await fetch(
+    const created = await api.post<ApiDrop>(
       `/api/static-groups/${groupId}/collection-goals/${goalId}/drops`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          recipient_user_id: data.recipientUserId ?? null,
-          quantity: data.quantity ?? 1,
-          dropped_at: data.droppedAt ?? null,
-          notes: data.notes ?? null,
-        }),
+        recipient_user_id: data.recipientUserId ?? null,
+        quantity: data.quantity ?? 1,
+        dropped_at: data.droppedAt ?? null,
+        notes: data.notes ?? null,
       },
     );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Failed to log drop' }));
-      throw new Error((err as { detail?: string }).detail ?? 'Failed to log drop');
-    }
-    const drop = fromApiDrop(await res.json() as ApiDrop);
+    const drop = fromApiDrop(created);
     set((s) => ({
       drops: { ...s.drops, [goalId]: [drop, ...(s.drops[goalId] ?? [])] },
     }));
-    // Refresh participant list — drop may have auto-advanced state
     await get().fetchParticipants(groupId, goalId);
     await get().fetchGoals(groupId);
     return drop;

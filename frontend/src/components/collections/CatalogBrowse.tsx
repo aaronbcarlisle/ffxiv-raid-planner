@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Filter } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
-import type { CatalogCategory, CatalogExpansion, CollectionGoal } from '../../stores/collectionGoalStore';
+import type { CatalogItem, CatalogCategory, CatalogExpansion, CollectionGoal } from '../../stores/collectionGoalStore';
+import { FALLBACK_CATALOG } from '../../data/curatedCatalog';
 import { CatalogFarmRow } from './CatalogFarmRow';
 
 interface CatalogBrowseProps {
   groupId: string;
   activeGoals: CollectionGoal[];
-  myParticipantTokenCounts: Record<string, number>; // catalogItemId → token count
+  myParticipantTokenCounts: Record<string, number>;
 }
 
 const CATEGORY_TABS: { key: CatalogCategory | 'all'; label: string }[] = [
@@ -31,14 +32,24 @@ const EXPANSION_FILTERS: { key: CatalogExpansion | 'all'; label: string }[] = [
 ];
 
 export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }: CatalogBrowseProps) {
-  const { catalog, catalogLoading, catalogLoaded, fetchCatalog } = useCollectionGoalStore();
+  const { catalog, catalogLoading, catalogLoaded, catalogError, fetchCatalog } = useCollectionGoalStore();
+
+  function retry() {
+    // Reset loaded state so the effect triggers again, then fetch
+    useCollectionGoalStore.setState({ catalogLoaded: false, catalogError: null });
+    fetchCatalog();
+  }
 
   const [activeCategory, setActiveCategory] = useState<CatalogCategory | 'all'>('all');
   const [activeExpansion, setActiveExpansion] = useState<CatalogExpansion | 'all'>('all');
 
   useEffect(() => {
-    if (!catalogLoaded) fetchCatalog();
-  }, [catalogLoaded, fetchCatalog]);
+    if (!catalogLoaded && !catalogLoading) fetchCatalog();
+  }, [catalogLoaded, catalogLoading, fetchCatalog]);
+
+  // Fall back to static curated data if API failed or returned empty
+  const usingFallback = !catalogLoading && (catalogError !== null || (catalogLoaded && catalog.length === 0));
+  const effectiveCatalog: CatalogItem[] = usingFallback ? FALLBACK_CATALOG : catalog;
 
   // Build lookup: catalogItemId → goal
   const goalByCatalogId = useMemo(() => {
@@ -50,24 +61,34 @@ export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }
   }, [activeGoals]);
 
   const filtered = useMemo(() => {
-    return catalog.filter((item) => {
+    return effectiveCatalog.filter((item) => {
       if (activeCategory !== 'all' && item.category !== activeCategory) return false;
       if (activeExpansion !== 'all' && item.expansion !== activeExpansion) return false;
       return true;
     });
-  }, [catalog, activeCategory, activeExpansion]);
+  }, [effectiveCatalog, activeCategory, activeExpansion]);
 
-  // Curated items first, then alphabetical
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
       if (a.isCurated !== b.isCurated) return a.isCurated ? -1 : 1;
+      // Expansion order: dt first, then ew, then older
+      const expOrder: Record<string, number> = { dt: 0, ew: 1, shb: 2, sb: 3, hw: 4, arr: 5 };
+      const expDiff = (expOrder[a.expansion ?? ''] ?? 9) - (expOrder[b.expansion ?? ''] ?? 9);
+      if (expDiff !== 0) return expDiff;
       return a.name.localeCompare(b.name);
     });
   }, [filtered]);
 
+  const hasActiveFilters = activeCategory !== 'all' || activeExpansion !== 'all';
+
+  function clearFilters() {
+    setActiveCategory('all');
+    setActiveExpansion('all');
+  }
+
   if (catalogLoading) {
     return (
-      <div className="flex items-center justify-center py-8 text-text-muted gap-2">
+      <div className="flex items-center justify-center py-12 text-text-muted gap-2">
         <Loader2 size={18} className="animate-spin" />
         <span>Loading catalog…</span>
       </div>
@@ -76,6 +97,26 @@ export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Fallback warning banner */}
+      {usingFallback && (
+        <div className="flex items-center gap-2 bg-status-warning/10 border border-status-warning/30 text-status-warning rounded-xl px-4 py-2.5 text-sm">
+          <AlertCircle size={15} className="flex-shrink-0" />
+          <span className="flex-1">
+            {catalogError
+              ? 'Catalog service unavailable — showing built-in curated farms. Track is disabled until the service recovers.'
+              : 'Catalog returned empty — showing built-in curated farms.'}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={retry}
+            className="flex items-center gap-1 text-status-warning hover:bg-status-warning/10"
+          >
+            <RefreshCw size={13} /> Retry
+          </Button>
+        </div>
+      )}
+
       {/* Category tabs */}
       <div className="flex gap-1 flex-wrap">
         {CATEGORY_TABS.map(({ key, label }) => (
@@ -114,11 +155,22 @@ export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }
         ))}
       </div>
 
-      {/* Catalog rows */}
+      {/* Catalog rows or empty state */}
       {sorted.length === 0 ? (
-        <p className="text-text-muted text-sm py-4 text-center">
-          No items match the current filters.
-        </p>
+        <div className="flex flex-col items-center gap-3 py-10 text-text-muted">
+          <Filter size={32} className="opacity-30" />
+          <p className="font-medium text-sm">No items match these filters</p>
+          {hasActiveFilters && (
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                Clear filters
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => { setActiveCategory('all'); setActiveExpansion('all'); }}>
+                Show all
+              </Button>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="flex flex-col gap-2">
           {sorted.map((item) => (
@@ -128,6 +180,7 @@ export function CatalogBrowse({ groupId, activeGoals, myParticipantTokenCounts }
               groupId={groupId}
               existingGoal={goalByCatalogId[item.id]}
               myTokenCount={myParticipantTokenCounts[item.id]}
+              trackDisabled={usingFallback}
             />
           ))}
         </div>
