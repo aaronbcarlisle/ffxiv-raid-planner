@@ -125,15 +125,34 @@ export function filterGroups(
     });
 }
 
-/** Count how many groups contain at least one reward of each category. */
-export function countByCategory(
-  groups: SourceFarmGroup[],
-): Record<string, number> {
+/**
+ * Count individual reward items per category across all groups.
+ * Use this for category filter chips so "Mounts 41" means 41 mount items,
+ * not "41 groups that contain a mount" — those two values diverge when a
+ * group has more than one item of the same category (e.g. two orchestrion tracks
+ * from the same extreme trial, or two minions from the same exchange).
+ */
+export function countByCategory(groups: SourceFarmGroup[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const g of groups) {
-    for (const cat of g.categories) {
-      counts[cat] = (counts[cat] ?? 0) + 1;
+    for (const r of g.rewards) {
+      if (r.category) counts[r.category] = (counts[r.category] ?? 0) + 1;
     }
   }
   return counts;
+}
+
+/** Count how many source groups exist per source type (extreme / ultimate / etc.). */
+export function countBySourceType(groups: SourceFarmGroup[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const g of groups) {
+    const st = g.sourceType ?? 'other';
+    counts[st] = (counts[st] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** Total reward item count across all groups. */
+export function totalRewardCount(groups: SourceFarmGroup[]): number {
+  return groups.reduce((sum, g) => sum + g.rewards.length, 0);
 }

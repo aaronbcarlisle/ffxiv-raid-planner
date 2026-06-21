@@ -13,7 +13,7 @@ import { Button } from '../primitives/Button';
 import { Input } from '../../components/ui/Input';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import type { CatalogCategory, CatalogExpansion, CollectionGoal } from '../../stores/collectionGoalStore';
-import { groupCatalogBySource, filterGroups, countByCategory } from '../../utils/collectionSourceGrouping';
+import { groupCatalogBySource, filterGroups, countByCategory, countBySourceType, totalRewardCount } from '../../utils/collectionSourceGrouping';
 import { SourceFarmCard } from './SourceFarmCard';
 import { FALLBACK_CATALOG } from '../../data/curatedCatalog';
 
@@ -23,6 +23,7 @@ interface CatalogBrowseProps {
 }
 
 // Categories shown as filter chips, in display order.
+// Chip counts = individual reward items, so "Mounts 41" = 41 mount items.
 const CHIP_CATEGORIES: { key: CatalogCategory; label: string }[] = [
   { key: 'mount',       label: 'Mounts'   },
   { key: 'orchestrion', label: 'Music'    },
@@ -31,11 +32,15 @@ const CHIP_CATEGORIES: { key: CatalogCategory; label: string }[] = [
   { key: 'other',       label: 'Rare'     },
 ];
 
-const SOURCE_TYPE_CHIPS: { key: string; label: string }[] = [
-  { key: 'extreme',  label: 'Extreme'  },
-  { key: 'savage',   label: 'Savage'   },
-  { key: 'ultimate', label: 'Ultimate' },
-];
+// Source type chips are built dynamically from data; never hardcoded.
+// This prevents showing "Savage" when there are zero Savage source groups.
+const SOURCE_TYPE_DISPLAY: Record<string, { label: string; activeClass: string }> = {
+  extreme:  { label: 'Extreme',  activeClass: 'bg-status-warning/20 text-status-warning ring-1 ring-status-warning/50' },
+  savage:   { label: 'Savage',   activeClass: 'bg-status-error/20 text-status-error ring-1 ring-status-error/50'       },
+  ultimate: { label: 'Ultimate', activeClass: 'bg-status-info/20 text-status-info ring-1 ring-status-info/50'          },
+};
+// Preferred display order for source type chips
+const SOURCE_TYPE_ORDER = ['ultimate', 'savage', 'extreme', 'criterion', 'other'];
 
 const EXPANSION_CHIPS: { key: CatalogExpansion; label: string }[] = [
   { key: 'dt',  label: 'DT'  },
@@ -76,8 +81,29 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
   // Group items by source/duty
   const allGroups = useMemo(() => groupCatalogBySource(effectiveCatalog), [effectiveCatalog]);
 
-  // Count per category for chip badges
+  // Category chips count individual reward items (not source groups) so numbers are consistent:
+  // "Mounts 41" = 41 mount items, "Music 38" = 38 orchestrion items, etc.
   const categoryCounts = useMemo(() => countByCategory(allGroups), [allGroups]);
+
+  // Total reward items across all groups — used for the "All rewards" chip label.
+  const totalRewards = useMemo(() => totalRewardCount(allGroups), [allGroups]);
+
+  // Source type counts (groups, not items) — chips are hidden when count is 0.
+  const sourceTypeCounts = useMemo(() => countBySourceType(allGroups), [allGroups]);
+
+  // Sorted, non-zero source type chips derived from actual data.
+  const sourceTypeChips = useMemo(
+    () =>
+      SOURCE_TYPE_ORDER
+        .filter(st => (sourceTypeCounts[st] ?? 0) > 0)
+        .map(st => ({
+          key: st,
+          label: SOURCE_TYPE_DISPLAY[st]?.label ?? st,
+          count: sourceTypeCounts[st] ?? 0,
+          activeClass: SOURCE_TYPE_DISPLAY[st]?.activeClass ?? 'bg-surface-raised text-text-primary ring-1 ring-accent',
+        })),
+    [sourceTypeCounts],
+  );
 
   // Apply filters
   const visibleGroups = useMemo(
@@ -160,7 +186,20 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
         )}
       </div>
 
-      {/* Category chips with counts */}
+      {/* Result summary — clarifies that "All 90" = rewards, not source groups */}
+      <p className="text-xs text-text-muted">
+        <span className="font-medium text-text-secondary">{allGroups.length}</span> farm sources
+        {' · '}
+        <span className="font-medium text-text-secondary">{totalRewards}</span> rewards
+        {hasActiveFilters && (
+          <>
+            {' · '}
+            <span className="text-accent font-medium">{visibleGroups.length} showing</span>
+          </>
+        )}
+      </p>
+
+      {/* Category chips — counts = individual reward items (same unit across all chips) */}
       <div className="flex gap-1.5 flex-wrap items-center">
         <Button
           variant="ghost"
@@ -173,7 +212,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
           }`}
         >
           All
-          <span className="ml-1.5 opacity-60 font-normal">{allGroups.length}</span>
+          <span className="ml-1.5 opacity-60 font-normal">{totalRewards}</span>
         </Button>
         {CHIP_CATEGORIES.map(({ key, label }) => {
           const count = categoryCounts[key] ?? 0;
@@ -199,9 +238,9 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
 
       {/* Source type + expansion chips */}
       <div className="flex gap-2 items-center flex-wrap">
-        {/* Source type */}
+        {/* Source type — built from actual data, hidden when count is 0 (no Savage if no Savage rows) */}
         <div className="flex gap-1 flex-wrap">
-          {SOURCE_TYPE_CHIPS.map(({ key, label }) => (
+          {sourceTypeChips.map(({ key, label, count, activeClass }) => (
             <Button
               key={key}
               variant="ghost"
@@ -209,15 +248,12 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
               onClick={() => setActiveSourceType(key === activeSourceType ? 'all' : key)}
               className={`rounded-md text-xs px-2.5 py-1 transition-colors ${
                 activeSourceType === key
-                  ? key === 'extreme'
-                    ? 'bg-status-warning/20 text-status-warning ring-1 ring-status-warning/50'
-                    : key === 'savage'
-                    ? 'bg-status-error/20 text-status-error ring-1 ring-status-error/50'
-                    : 'bg-status-info/20 text-status-info ring-1 ring-status-info/50'
+                  ? activeClass
                   : 'bg-surface-card text-text-muted hover:bg-surface-hover'
               }`}
             >
               {label}
+              <span className="ml-1 opacity-60 font-normal">{count}</span>
             </Button>
           ))}
         </div>

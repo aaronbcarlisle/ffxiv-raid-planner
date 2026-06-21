@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { groupCatalogBySource, filterGroups, countByCategory } from './collectionSourceGrouping';
+import { groupCatalogBySource, filterGroups, countByCategory, countBySourceType, totalRewardCount } from './collectionSourceGrouping';
 import type { CatalogItem } from '../stores/collectionGoalStore';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -228,22 +228,72 @@ describe('filterGroups', () => {
 // ── countByCategory ───────────────────────────────────────────────────────────
 
 describe('countByCategory', () => {
-  it('counts groups with at least one reward in each category', () => {
+  it('counts individual reward items per category (not source groups)', () => {
     const groups = groupCatalogBySource(ALL_ITEMS);
     const counts = countByCategory(groups);
-    // mount: windward + valigarmanda = 2
+    // mount: WINDWARD_MOUNT + VALIGARMANDA_MOUNT = 2 items
     expect(counts['mount']).toBe(2);
-    // minion: windward = 1
-    expect(counts['minion']).toBe(1);
-    // weapon: futures = 1
+    // minion: WINDWARD_MINION_1 + WINDWARD_MINION_2 = 2 items (both in same group)
+    // this verifies item count != group count (which would be 1)
+    expect(counts['minion']).toBe(2);
+    // weapon: FUTURES_WEAPON = 1 item
     expect(counts['weapon']).toBe(1);
-    // other: orphan = 1
+    // other: ORPHAN_ITEM = 1 item
     expect(counts['other']).toBe(1);
   });
 
-  it('returns 0 (or undefined) for categories with no groups', () => {
+  it('returns undefined for categories with no items', () => {
     const groups = groupCatalogBySource([VALIGARMANDA_MOUNT]);
     const counts = countByCategory(groups);
     expect(counts['orchestrion']).toBeUndefined();
+    expect(counts['minion']).toBeUndefined();
+  });
+
+  it('item count diverges from group count when a group has multiple same-category rewards', () => {
+    // dt-windward-wilds-ex has 2 minion items but is only 1 group.
+    // countByCategory should return 2 (items), not 1 (groups).
+    const groups = groupCatalogBySource([WINDWARD_MINION_1, WINDWARD_MINION_2]);
+    const counts = countByCategory(groups);
+    expect(counts['minion']).toBe(2); // 2 items
+    expect(groups.length).toBe(1);    // but only 1 source group
+  });
+});
+
+// ── countBySourceType ────────────────────────────────────────────────────────
+
+describe('countBySourceType', () => {
+  it('counts source groups (not items) per source type', () => {
+    const groups = groupCatalogBySource(ALL_ITEMS);
+    const counts = countBySourceType(groups);
+    // dt-windward-wilds-ex (extreme), dt-valigarmanda (extreme) = 2 extreme groups
+    // ew-futures-rewritten (ultimate) = 1 ultimate group
+    // _solo_orphan (extreme) = 1 extreme group
+    expect(counts['extreme']).toBe(3);
+    expect(counts['ultimate']).toBe(1);
+    expect(counts['savage']).toBeUndefined(); // no savage rows → chip should be hidden
+  });
+
+  it('returns only source types that actually exist in data — no phantom types', () => {
+    const groups = groupCatalogBySource([FUTURES_WEAPON]);
+    const counts = countBySourceType(groups);
+    expect(Object.keys(counts)).toEqual(['ultimate']);
+    expect(counts['extreme']).toBeUndefined();
+    expect(counts['savage']).toBeUndefined();
+  });
+});
+
+// ── totalRewardCount ──────────────────────────────────────────────────────────
+
+describe('totalRewardCount', () => {
+  it('returns total items across all groups', () => {
+    const groups = groupCatalogBySource(ALL_ITEMS);
+    // ALL_ITEMS: WINDWARD_MOUNT, WINDWARD_MINION_1, WINDWARD_MINION_2,
+    //            VALIGARMANDA_MOUNT, FUTURES_WEAPON, ORPHAN_ITEM = 6 items
+    expect(totalRewardCount(groups)).toBe(6);
+  });
+
+  it('equals the input item array length (no items lost or duplicated)', () => {
+    const groups = groupCatalogBySource(ALL_ITEMS);
+    expect(totalRewardCount(groups)).toBe(ALL_ITEMS.length);
   });
 });
