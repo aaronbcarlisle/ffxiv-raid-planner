@@ -270,7 +270,7 @@ async def test_custom_goal_without_catalog(async_client: AsyncClient, group, own
 
 
 async def test_catalog_category_counts_after_seed(session: AsyncSession):
-    """After internal seed, mount/orchestrion/weapon all have non-zero rows."""
+    """After internal seed, mount/orchestrion/weapon/minion all have non-zero rows."""
     await seed_from_internal(session)
     result = await session.execute(
         select(CollectionCatalogItem.category, CollectionCatalogItem.id)
@@ -282,6 +282,7 @@ async def test_catalog_category_counts_after_seed(session: AsyncSession):
     assert counts["mount"] >= 41, f"Expected >=41 mounts, got {counts['mount']}"
     assert counts["orchestrion"] >= 38, f"Expected >=38 orchestrion, got {counts['orchestrion']}"
     assert counts["weapon"] >= 7, f"Expected >=7 weapons, got {counts['weapon']}"
+    assert counts["minion"] >= 4, f"Expected >=4 minions (curated trial minions), got {counts['minion']}"
 
 
 async def test_catalog_dedup_prefers_internal(async_client: AsyncClient, owner_headers, session: AsyncSession):

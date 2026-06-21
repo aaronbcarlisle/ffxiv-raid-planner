@@ -60,6 +60,35 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '1.26.0',
+    date: '2026-06-21T20:00:00Z',
+    title: 'Collections redesigned as source/duty farm cards',
+    highlights: [
+      'Collections now shows one card per duty (mount + music + minions in one place)',
+      'Category chips hide when empty, Minions tab now has curated trial content',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Source/duty farm cards replace flat reward rows',
+        description:
+          'Collections & Farms groups all rewards from the same extreme/savage/ultimate into one card — mount, music, minion, and weapons appear together instead of as separate disconnected rows. Cards have colored left borders (amber=Extreme, red=Savage, blue=Ultimate) and expand to show participants, token exchange info, and a Copy Farm Plan button for Discord.',
+      },
+      {
+        category: 'improvement',
+        title: 'Category chips now show counts and hide when 0',
+        description:
+          'The Mounts/Music/Minions/Weapons/Rare filter chips only appear when there is at least one farm in that category. Selecting a chip narrows the visible cards without destroying the grouping. Search and source-type (Extreme/Savage/Ultimate) + expansion filters also apply.',
+      },
+      {
+        category: 'fix',
+        title: 'Minions tab no longer empty — curated trial minions added',
+        description:
+          'Four trial minions (Wind-up Ultros, Poogie, Seikret Fledgling, Vigorwasp) are now seeded as curated catalog entries so the Minions chip always has content even before the FFXIV Collect sync runs.',
+      },
+    ],
+  },
+  {
+    version: '1.26.0',
     date: '2026-06-21T18:00:00Z',
     title: 'FFXIV Collect background sync for mounts, minions, orchestrion',
     items: [

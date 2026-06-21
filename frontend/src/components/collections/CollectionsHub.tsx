@@ -174,7 +174,6 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
         <CatalogBrowse
           groupId={groupId}
           activeGoals={activeGoals}
-          myParticipantTokenCounts={myTokenCounts}
         />
       ) : (
         // Active farms tab

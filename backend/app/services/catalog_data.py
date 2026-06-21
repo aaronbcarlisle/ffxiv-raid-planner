@@ -1287,6 +1287,70 @@ ARR_EXTREME_MOUNTS: list[CuratedItem] = [
     },
 ]
 
+# ── Trial minions ─────────────────────────────────────────────────────────────
+# Raid-relevant minions that drop from extreme/trial content.
+# These ensure the Minions category is never empty while FFXIV Collect sync runs.
+
+TRIAL_MINIONS: list[CuratedItem] = [
+    {
+        "source_key": "arr-wind-up-ultros-minion",
+        "name": "Wind-up Ultros",
+        "category": "minion",
+        "expansion": "arr",
+        "patch": "2.4",
+        "source_type": "extreme",
+        "source_duty_name": "The Dragon's Neck",
+        "source_duty_key": "arr-ultros",
+        "source_text": "The Dragon's Neck — Ultros",
+        "token_name": None,
+        "token_cost": None,
+        "notes": None,
+    },
+    {
+        "source_key": "sb-poogie-minion",
+        "name": "Poogie",
+        "category": "minion",
+        "expansion": "sb",
+        "patch": "4.36",
+        "source_type": "extreme",
+        "source_duty_name": "The Great Hunt (Extreme)",
+        "source_duty_key": "sb-great-hunt-ex",
+        "source_text": "The Great Hunt (Extreme) — Monster Hunter collaboration",
+        "token_name": None,
+        "token_cost": None,
+        "notes": None,
+    },
+    {
+        "source_key": "dt-seikret-fledgling-minion",
+        "name": "Seikret Fledgling",
+        "category": "minion",
+        "expansion": "dt",
+        "patch": "7.35",
+        "source_type": "extreme",
+        "source_duty_name": "The Windward Wilds (Extreme)",
+        "source_duty_key": "dt-windward-wilds-ex",
+        "source_text": "Smithy — Tuliyollal — Guardian Scales exchange",
+        "token_name": "Guardian Scale",
+        "token_cost": 3,
+        "notes": None,
+    },
+    {
+        "source_key": "dt-vigorwasp-minion",
+        "name": "Vigorwasp",
+        "category": "minion",
+        "expansion": "dt",
+        "patch": "7.35",
+        "source_type": "extreme",
+        "source_duty_name": "The Windward Wilds (Extreme)",
+        "source_duty_key": "dt-windward-wilds-ex",
+        "source_text": "Smithy — Tuliyollal — Guardian Scales exchange",
+        "token_name": "Guardian Scale",
+        "token_cost": 3,
+        "notes": None,
+    },
+]
+
+
 # ── Assembled catalog ──────────────────────────────────────────────────────────
 
 ALL_CURATED_ITEMS: list[CuratedItem] = [
@@ -1305,4 +1369,5 @@ ALL_CURATED_ITEMS: list[CuratedItem] = [
     *HEAVENSWARD_EXTREME_MOUNTS,
     *HEAVENSWARD_EXTREME_ORCHESTRION,
     *ARR_EXTREME_MOUNTS,
+    *TRIAL_MINIONS,
 ]
