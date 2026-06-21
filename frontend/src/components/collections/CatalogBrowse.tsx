@@ -23,13 +23,16 @@ interface CatalogBrowseProps {
 }
 
 // Categories shown as filter chips, in display order.
-// Chip counts = individual reward items, so "Mounts 41" = 41 mount items.
+// Labels reflect what the curated catalog actually contains:
+//   Mounts / Music   = all extreme+ultimate trial rewards  (comprehensive)
+//   Trial Minions    = only farm-obtained minions, not vendor/achievement
+//   Ultimate Weapons = only ultimate weapon farm groups, not savage BiS drops
 const CHIP_CATEGORIES: { key: CatalogCategory; label: string }[] = [
-  { key: 'mount',       label: 'Mounts'   },
-  { key: 'orchestrion', label: 'Music'    },
-  { key: 'minion',      label: 'Minions'  },
-  { key: 'weapon',      label: 'Weapons'  },
-  { key: 'other',       label: 'Rare'     },
+  { key: 'mount',       label: 'Mounts'           },
+  { key: 'orchestrion', label: 'Music'             },
+  { key: 'minion',      label: 'Trial Minions'     },
+  { key: 'weapon',      label: 'Ultimate Weapons'  },
+  { key: 'other',       label: 'Rare'              },
 ];
 
 // Source type chips are built dynamically from data; never hardcoded.
