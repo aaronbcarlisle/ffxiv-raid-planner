@@ -75,6 +75,8 @@ export const RELEASES: Release[] = [
           'Each reward has a visibility control: Private (only you), Shared with statics (feeds Suggested Farms), or Public on dossier. ' +
           'A share prompt appears when a Hunting or Interested reward is left Private. ' +
           'Browse the full active catalog or filter to your personal list by category, expansion, or content type.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
         commits: [{ hash: '7d9e416', message: 'feat(collections): Collections & Farms hub with participant states and drop log' }],
       },
       {
@@ -82,6 +84,8 @@ export const RELEASES: Release[] = [
         title: 'Suggested Farms — smart duty cards surfaced from Player Hub intents',
         description:
           'Static Collections & Farms opens on a Suggested Farms tab driven by Player Hub reward intents and plugin-synced collection facts. Suggestions appear even with no manually created static goals — roster members who share their Player Hub preferences automatically surface their wants to static leads.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
         commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
       },
       {
@@ -91,6 +95,8 @@ export const RELEASES: Release[] = [
           'Static Collections → Browse Catalog now renders grouped duty cards: one card per duty showing all rewards (mount, music, weapons) together. ' +
           'Full source-type label (Extreme / Ultimate / Savage) and expansion name on desktop; compact labels on mobile. ' +
           'Token cost shown as an amber pill. Cards animate on expand/collapse. Badge colors shared from a single config across Player Hub and Static Browse.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
         commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
       },
       {
@@ -99,6 +105,8 @@ export const RELEASES: Release[] = [
         description:
           'Futures Rewritten, Dancing Mad, Dragonsong\'s Reprise, and The Omega Protocol ultimate weapon rows now show 1× totem per weapon — matching the actual in-game exchange. ' +
           'EX mount pity costs (99×) are unaffected. Can-buy scoring now correctly triggers at tokenCount ≥ 1 for ultimates.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
         commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
       },
       {
@@ -106,6 +114,8 @@ export const RELEASES: Release[] = [
         title: 'Public dossier — Hunting and Interested shown in separate sections',
         description:
           'The public profile dossier now renders "Actively Hunting" and "Interested In" as two distinct labelled sections instead of combining everything under a single "Hunting (N)" header.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
         commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
       },
       {
@@ -113,18 +123,24 @@ export const RELEASES: Release[] = [
         title: 'All 8 Dawntrail extreme trial mounts now plugin-ready',
         description:
           'game_mount_id and token_item_id populated for all 8 DT extreme trial farms (Wings of Ruin through Wings of Nihility). IDs verified against Garland Tools API and FFXIV Collect, matching Mount.exd and Item.exd RowIds used by the Dalamud plugin for automatic ownership detection.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
         commits: [{ hash: '1e329e3', message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync' }],
       },
       {
         category: 'improvement',
         title: 'Suggested Farms duty cards show expansion tag',
         description: 'Each duty card in Suggested Farms now displays the expansion abbreviation (e.g. DT, EW, SHB) alongside the content-type badge so leads can quickly identify which content tier a suggestion belongs to.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
         commits: [{ hash: '8cf366c', message: 'fix(collections): honest chip labels for curated-only categories' }],
       },
       {
         category: 'improvement',
         title: 'Player Hub write-through works without an existing Player Hub profile',
         description: 'Toggling "Wanted" on a mount farm now auto-creates a private Player Hub profile when the user has not yet visited Player Hub, ensuring the intent always reaches Suggested Farms.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
         commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
       },
       {
@@ -230,6 +246,8 @@ export const RELEASES: Release[] = [
         title: 'Source/duty farm cards replace flat reward rows',
         description:
           'Collections & Farms groups all rewards from the same extreme/savage/ultimate into one card — mount, music, minion, and weapons appear together instead of as separate disconnected rows. Cards have colored left borders (amber=Extreme, red=Savage, blue=Ultimate) and expand to show participants, token exchange info, and a Copy Farm Plan button for Discord.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
         commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
       },
       {
