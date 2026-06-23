@@ -392,7 +392,7 @@ function NotificationsModule({
                 onClick={() => {
                   if (item.id === 'session') onNavigate('schedule');
                   else if (onOpenRequests) onOpenRequests();
-                  else onNavigate('players');
+                  else onNavigate('roster');
                 }}
                 className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-surface-elevated transition-colors text-left group"
               >
@@ -577,12 +577,12 @@ function CommandBriefModule({
 }) {
   const chips: { key: string; label: string; accent: boolean; onClick: () => void }[] = [
     ...(canManage && pendingCount > 0
-      ? [{ key: 'pending', label: `${pendingCount} pending application${pendingCount > 1 ? 's' : ''}`, accent: true, onClick: onReviewRequest ?? (() => onNavigate('players')) }]
+      ? [{ key: 'pending', label: `${pendingCount} pending application${pendingCount > 1 ? 's' : ''}`, accent: true, onClick: onReviewRequest ?? (() => onNavigate('roster')) }]
       : []),
     ...(nextSession
       ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, accent: false, onClick: () => onNavigate('schedule') }]
       : [{ key: 'noraid', label: 'No sessions scheduled', accent: false, onClick: () => onNavigate('schedule') }]),
-    { key: 'roster', label: `${configuredCount}/8 roster configured`, accent: false, onClick: () => onNavigate('players') },
+    { key: 'roster', label: `${configuredCount}/8 roster configured`, accent: false, onClick: () => onNavigate('roster') },
   ];
 
   let ctaLabel: string | null = null;
@@ -593,7 +593,7 @@ function CommandBriefModule({
       ctaAction = () => onNavigate('schedule');
     } else if (configuredCount < 8) {
       ctaLabel = 'Set up roster';
-      ctaAction = () => onNavigate('players');
+      ctaAction = () => onNavigate('roster');
     }
   }
 
@@ -797,7 +797,7 @@ function GroupHeroPanel({
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => onNavigate('players')}
+                  onClick={() => onNavigate('roster')}
                   className="w-full flex items-center gap-2 py-1.5 border-b border-border-subtle last:border-0 min-w-0 hover:bg-surface-elevated/50 transition-colors rounded-md px-1 -mx-1 text-left"
                   aria-label={`View ${p.name} on roster`}
                 >
@@ -820,7 +820,7 @@ function GroupHeroPanel({
           </div>
           <button
             type="button"
-            onClick={() => onNavigate('players')}
+            onClick={() => onNavigate('roster')}
             className="w-full mt-2 mb-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-text-muted hover:text-accent transition-colors"
           >
             View full roster
@@ -836,7 +836,7 @@ function GroupHeroPanel({
           </p>
           <button
             type="button"
-            onClick={() => onNavigate('players')}
+            onClick={() => onNavigate('roster')}
             className="text-xs font-medium text-accent border border-accent/30 rounded-lg px-3 py-1.5 hover:bg-accent/10 transition-colors"
           >
             Open Roster
@@ -874,7 +874,7 @@ function RosterPresenceModule({
             <p className="text-[11px] text-text-muted mb-2.5">Add 8 players to start tracking progress</p>
             <button
               type="button"
-              onClick={() => onNavigate('players')}
+              onClick={() => onNavigate('roster')}
               className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
             >
               Set up roster
@@ -886,7 +886,7 @@ function RosterPresenceModule({
               <button
                 key={player.id}
                 type="button"
-                onClick={() => onNavigate('players')}
+                onClick={() => onNavigate('roster')}
                 className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-surface-elevated transition-colors text-left group"
               >
                 <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-surface-elevated border border-border-subtle">
@@ -915,7 +915,7 @@ function RosterPresenceModule({
           <div style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
             <button
               type="button"
-              onClick={() => onNavigate('players')}
+              onClick={() => onNavigate('roster')}
               className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
             >
               Open Roster
@@ -974,7 +974,7 @@ function BestNextFarmModule({
                 if (onScheduleFarm) {
                   onScheduleFarm(trialInfo);
                 } else {
-                  onNavigate('mount-farms');
+                  onNavigate('goals');
                 }
               }}
               className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
@@ -992,7 +992,7 @@ function BestNextFarmModule({
             </p>
             <button
               type="button"
-              onClick={() => onNavigate('mount-farms')}
+              onClick={() => onNavigate('goals')}
               className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
             >
               Open Mount Farms
@@ -1473,7 +1473,7 @@ function RecentActivityModule({
             {canManage && (
               <button
                 type="button"
-                onClick={() => onNavigate('mount-farms')}
+                onClick={() => onNavigate('goals')}
                 className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
               >
                 Open Mount Farms
@@ -1506,7 +1506,7 @@ function RecentActivityModule({
             <div style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
               <button
                 type="button"
-                onClick={() => onNavigate('mount-farms')}
+                onClick={() => onNavigate('goals')}
                 className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
               >
                 View all activity
@@ -1555,7 +1555,7 @@ function SplitClearReadinessCard({ data, players, onNavigate }: SplitClearReadin
 
       {/* design-system-ignore: inline navigation link */}
       <button
-        onClick={() => onNavigate('players')}
+        onClick={() => onNavigate('roster')}
         className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition-colors"
       >
         Open Split Planner

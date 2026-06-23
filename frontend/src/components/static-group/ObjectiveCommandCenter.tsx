@@ -75,19 +75,19 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
   function handleCta() {
     switch (card.nextActionTarget) {
       case 'roster':
-        onNavigate('players');
+        onNavigate('roster');
         break;
       case 'applicants':
-        onNavigate('players');
+        onNavigate('roster');
         break;
       case 'schedule':
         onNavigate('schedule');
         break;
       case 'collection':
-        onNavigate('mount-farms');
+        onNavigate('goals');
         break;
       case 'bis':
-        onNavigate('players');
+        onNavigate('roster');
         break;
       default:
         onNavigate('schedule');

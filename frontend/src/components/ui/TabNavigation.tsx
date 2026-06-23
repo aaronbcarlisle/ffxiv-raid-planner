@@ -1,36 +1,31 @@
 import type { ReactNode } from 'react';
 import type { PageMode } from '../../types';
-import { TAB_ICONS } from '../../types';
 import { Tooltip } from '../primitives/Tooltip';
 import { analytics } from '../../services/analytics';
-import { GameIcon } from '../ui/GameIcon';
+import { LayoutDashboard, Users, Shield, Calendar, Trophy, MoreHorizontal } from 'lucide-react';
 
 interface TabNavigationProps {
   activeTab: PageMode;
   onTabChange: (tab: PageMode) => void;
 }
 
-const PAGE_TO_ICON: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
-  players: 'party',
-  loot: 'loot',
-  stats: 'stats',
-  history: 'history',
-  schedule: 'schedule',
-  'mount-farms': 'mountFarms',
-};
 
 const PAGE_TO_LUCIDE_ICON: Partial<Record<PageMode, ReactNode>> = {
-  home: <GameIcon name="checklist" size="md" />,
+  overview: <LayoutDashboard size={20} />,
+  roster: <Users size={20} />,
+  gear: <Shield size={20} />,
+  schedule: <Calendar size={20} />,
+  goals: <Trophy size={20} />,
+  more: <MoreHorizontal size={20} />,
 };
 
 const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
-  { id: 'home', label: 'Overview', hotkey: '`', description: 'Static overview, next raid, and pending applications' },
-  { id: 'players', label: 'Roster', hotkey: '1', description: 'View and edit player gear progress' },
-  { id: 'loot', label: 'Priority', hotkey: '2', description: 'Loot priority rankings and who needs what' },
-  { id: 'history', label: 'Loot Log', hotkey: '3', description: 'Track weekly loot drops and history' },
-  { id: 'stats', label: 'Summary', hotkey: '4', description: 'Team-wide gear statistics' },
-  { id: 'schedule', label: 'Schedule', hotkey: '5', description: 'Raid schedule and RSVP across time zones' },
-  { id: 'mount-farms', label: 'Collections & Farms', hotkey: '6', description: 'Track mounts, music, rare drops, ownership, and farm plans' },
+  { id: 'overview', label: 'Overview', hotkey: '`', description: 'Static overview, next raid, and pending applications' },
+  { id: 'roster', label: 'Roster', hotkey: '1', description: 'View and edit player gear progress' },
+  { id: 'gear', label: 'Gear & Sync', hotkey: '2', description: 'Loot priority, loot log, and team summary' },
+  { id: 'goals', label: 'Goals & Farms', hotkey: '3', description: 'Track mounts, music, rare drops, ownership, and farm plans' },
+  { id: 'schedule', label: 'Schedule', hotkey: '4', description: 'Raid schedule and RSVP across time zones' },
+  { id: 'more', label: 'More', hotkey: '', description: 'Settings, integrations, and admin tools' },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
@@ -67,20 +62,10 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
               }
             `}
           >
-            {PAGE_TO_LUCIDE_ICON[tab.id] ? (
+            {PAGE_TO_LUCIDE_ICON[tab.id] && (
               <span className={`flex-shrink-0 transition-opacity ${activeTab === tab.id ? 'opacity-100' : 'opacity-45'}`}>
                 {PAGE_TO_LUCIDE_ICON[tab.id]}
               </span>
-            ) : (
-              // Sprite tabs: active = full opacity, inactive = dimmed to match lucide icon treatment
-              // Design guide: docs/UI_COMPONENTS.md — icon sizing w-5 h-5 (20px), active/inactive color via opacity
-              <img
-                src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}
-                alt=""
-                width={20}
-                height={20}
-                className={`rounded-sm transition-opacity ${activeTab === tab.id ? 'opacity-100' : 'opacity-45'}`}
-              />
             )}
             <span>{tab.label}</span>
           </button>

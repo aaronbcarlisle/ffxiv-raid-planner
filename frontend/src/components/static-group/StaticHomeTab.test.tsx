@@ -490,12 +490,12 @@ describe('StaticHomeTab — Raid Prep section', () => {
     expect(screen.getByText(/raid prep/i)).toBeInTheDocument();
   });
 
-  it('Raid Prep rows are buttons (keyboard-accessible, navigate to players)', () => {
+  it('Raid Prep rows are buttons (keyboard-accessible, navigate to roster)', () => {
     render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     const raidPrepBtn = screen.getByRole('button', { name: /view warrior of light on roster/i });
     expect(raidPrepBtn).toBeInTheDocument();
     fireEvent.click(raidPrepBtn);
-    expect(onNavigate).toHaveBeenCalledWith('players');
+    expect(onNavigate).toHaveBeenCalledWith('roster');
   });
 
   it('hides split readiness when split mode is disabled', () => {
@@ -534,7 +534,7 @@ describe('StaticHomeTab — Raid Prep section', () => {
     expect(screen.getByText('Split Clears')).toBeInTheDocument();
     expect(screen.getByText('1/1')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /open split planner/i }));
-    expect(onNavigate).toHaveBeenCalledWith('players');
+    expect(onNavigate).toHaveBeenCalledWith('roster');
   });
 });
 
@@ -563,11 +563,11 @@ describe('StaticHomeTab — Recent Activity', () => {
     expect(screen.getByText(/Dev Owner obtained Lynx of Fallen Shadow/i)).toBeInTheDocument();
   });
 
-  it('shows "View all activity" link that navigates to mount-farms', () => {
+  it('shows "View all activity" link that navigates to goals', () => {
     setFarmStore({ data: FARM_DATA_WITH_ACTIVITY });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByRole('button', { name: /view all activity/i }));
-    expect(onNavigate).toHaveBeenCalledWith('mount-farms');
+    expect(onNavigate).toHaveBeenCalledWith('goals');
   });
 
   it('never shows more than 5 activity rows', () => {
@@ -636,11 +636,11 @@ describe('StaticHomeTab — Best Next Farm', () => {
     expect(screen.getByText(/3 members still need this/i)).toBeInTheDocument();
   });
 
-  it('"Schedule Farm" falls back to mount-farms navigation when onScheduleFarm is not provided', () => {
+  it('"Schedule Farm" falls back to goals navigation when onScheduleFarm is not provided', () => {
     setFarmStore({ recommendations: [TOP_RECOMMENDATION] });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByTestId('schedule-farm-btn'));
-    expect(onNavigate).toHaveBeenCalledWith('mount-farms');
+    expect(onNavigate).toHaveBeenCalledWith('goals');
   });
 
   it('"Schedule Farm" calls onScheduleFarm with trial when provided — carries duty context', () => {
@@ -651,7 +651,7 @@ describe('StaticHomeTab — Best Next Farm', () => {
     expect(onScheduleFarm).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'ew-zodiark', dutyName: 'The Dark Inside (Extreme)' })
     );
-    expect(onNavigate).not.toHaveBeenCalledWith('mount-farms');
+    expect(onNavigate).not.toHaveBeenCalledWith('goals');
   });
 });
 
@@ -676,7 +676,7 @@ describe('StaticHomeTab — Collection Goals', () => {
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByTestId('create-collection-goal-btn'));
     expect(screen.getByTestId('create-collection-goal-modal')).toBeInTheDocument();
-    expect(onNavigate).not.toHaveBeenCalledWith('mount-farms');
+    expect(onNavigate).not.toHaveBeenCalledWith('goals');
   });
 
   it('Create Collection Goal modal can be closed', () => {

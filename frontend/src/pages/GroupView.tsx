@@ -30,7 +30,9 @@ import { SplitClearPlanner } from '../components/split-clear/SplitClearPlanner';
 import { RosterCharacterPanel } from '../components/roster/RosterCharacterPanel';
 import { useMountFarmStore } from '../stores/mountFarmStore';
 import { useSplitClearStore } from '../stores/splitClearStore';
-import { TabNavigation, ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
+import { ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
+import { SidebarNav } from '../components/layout/SidebarNav';
+import { MorePage } from '../components/group/MorePage';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
@@ -51,7 +53,7 @@ import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
 import { logger } from '../lib/logger';
 import { DISCORD_BUG_REPORT_URL } from '../config';
-import type { SnapshotPlayer, GearSlot, SortPreset } from '../types';
+import type { SnapshotPlayer, GearSlot, SortPreset, GearSubTab } from '../types';
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -81,6 +83,8 @@ export function GroupView() {
     setSearchParams,
     pageMode,
     setPageMode,
+    gearSubTab,
+    setGearSubTab,
     lootSubTab,
     setLootSubTab,
     viewMode,
@@ -230,7 +234,7 @@ export function GroupView() {
       const urlParams = new URLSearchParams(window.location.search);
       const urlTab = urlParams.get('tab');
       if (lastStaticId && lastStaticId !== currentGroup.id && !urlTab) {
-        setPageMode('players');
+        setPageMode('roster');
       }
       localStorage.setItem('last-static-id', currentGroup.id);
     } catch {
@@ -288,7 +292,7 @@ export function GroupView() {
     if (!playerParam || !currentTier?.players) return;
     const player = currentTier.players.find(p => p.id === playerParam);
     if (!player) return;
-    setPageMode('players');
+    setPageMode('roster');
     setHighlightedPlayerId(playerParam);
     setHighlightedSlot(null); // Clear any stale slot highlight from prior navigation
     setTimeout(() => {
@@ -364,7 +368,7 @@ export function GroupView() {
   // Initialize loot tracking store when Loot or Players tab is active
   const { currentWeek: storeCurrentWeek, maxWeek: storeMaxWeek, fetchCurrentWeek, fetchLootLog, lootLog, fetchMaterialLog, materialLog } = useLootTrackingStore();
   useEffect(() => {
-    if ((pageMode === 'loot' || pageMode === 'players') && currentGroup?.id && currentTier?.tierId) {
+    if ((pageMode === 'gear' || pageMode === 'roster') && currentGroup?.id && currentTier?.tierId) {
       fetchCurrentWeek(currentGroup.id, currentTier.tierId);
       fetchLootLog(currentGroup.id, currentTier.tierId);
       fetchMaterialLog(currentGroup.id, currentTier.tierId);
@@ -375,7 +379,7 @@ export function GroupView() {
   const { fetchData: fetchSplitClear, clearData: clearSplitClear } = useSplitClearStore();
   const [rosterSubView, setRosterSubView] = useState<'members' | 'characters' | 'split-planner'>('members');
   useEffect(() => {
-    if (pageMode === 'players' && currentGroup?.id) {
+    if (pageMode === 'roster' && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
   }, [pageMode, currentGroup?.id, fetchSplitClear]);
@@ -384,7 +388,7 @@ export function GroupView() {
   // Silently refetch split-clear data when the user returns from another tab
   // (e.g. after linking characters on the profile page).
   useVisibilityRefresh(useCallback(() => {
-    if (pageMode === 'players' && currentGroup?.id) {
+    if (pageMode === 'roster' && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
   }, [pageMode, currentGroup?.id, fetchSplitClear]));
@@ -451,6 +455,7 @@ export function GroupView() {
   // Use extracted navigation hook
   const { handleNavigateToPlayer, handleNavigateToLootEntry, handleNavigateToMaterialEntry, handleNavigateToBooksPanel } = useViewNavigation({
     setPageMode,
+    setGearSubTab,
     setHighlightedPlayerId,
     setHighlightedSlot,
     setHighlightedEntry,
@@ -679,6 +684,8 @@ export function GroupView() {
   useGroupViewKeyboardShortcuts({
     pageMode,
     setPageMode,
+    gearSubTab,
+    setGearSubTab,
     lootSubTab,
     setLootSubTab,
     viewMode,
@@ -739,7 +746,7 @@ export function GroupView() {
 
   const handleCopyUrl = useCallback((playerId: string) => {
     const url = new URL(window.location.href);
-    url.searchParams.set('tab', 'players');
+    url.searchParams.set('tab', 'roster');
     url.searchParams.set('player', playerId);
     navigator.clipboard.writeText(url.toString());
     toast.success('Link copied to clipboard');
@@ -825,9 +832,10 @@ export function GroupView() {
     );
   }
 
-  // Prevent page scroll for Log tab (internal scroll only)
-  // On mobile: also prevent for Loot tab
-  const preventPageScroll = pageMode === 'history' || (isSmallScreen && pageMode === 'loot');
+  // Prevent page scroll for Gear/History sub-tab (internal scroll only)
+  // On mobile: also prevent for Gear Priority sub-tab
+  const preventPageScroll = (pageMode === 'gear' && gearSubTab === 'history') ||
+    (isSmallScreen && pageMode === 'gear' && gearSubTab === 'priority');
 
   // Build container classes (extracted for readability)
   const containerClasses = [
@@ -878,352 +886,420 @@ export function GroupView() {
         </div>
       )}
 
-      {/* Content when tier exists */}
+      {/* Content when tier exists — sidebar + content shell */}
       {currentTier && (
         <>
-          {/* Toolbar: Tabs + Context Controls */}
-          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2 ${preventPageScroll ? 'flex-shrink-0' : ''}`}>
-            {/* TabNavigation - hidden on mobile, MobileBottomNav used instead */}
-            <div className="hidden sm:block">
-              <TabNavigation activeTab={pageMode} onTabChange={setPageMode} />
-            </div>
-            {/* Roster tab controls - only render when on players tab */}
-            {pageMode === 'players' && (
-              <>
-                {/* Desktop controls - hidden on mobile */}
-                <div className="hidden sm:flex items-center gap-3">
-                  {/* Add Player button - visible for leads/owners */}
-                  {canEdit && (
-                    <Tooltip
-                      content={
-                        <div>
-                          <div className="font-medium">Add Player</div>
-                          <div className="text-text-muted text-xs mt-1">
-                            <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+Shift+P</kbd>
+          {/* App shell: sidebar (desktop) + content */}
+          <div className={`flex flex-1 min-h-0 -mx-3 sm:-mx-6 ${preventPageScroll ? 'overflow-hidden' : ''}`}>
+            <SidebarNav activeTab={pageMode} onTabChange={setPageMode} />
+            <div className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : ''}`}>
+
+              {/* Roster toolbar controls */}
+              {pageMode === 'roster' && (
+                <div className={`flex-shrink-0 ${preventPageScroll ? '' : ''}`}>
+                  <div className="hidden sm:flex items-center gap-3 mb-2">
+                    {canEdit && (
+                      <Tooltip
+                        content={
+                          <div>
+                            <div className="font-medium">Add Player</div>
+                            <div className="text-text-muted text-xs mt-1">
+                              <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+Shift+P</kbd>
+                            </div>
                           </div>
-                        </div>
-                      }
-                    >
-                      <Button
-                        size="md"
-                        onClick={() => setShowAddPlayerModal(true)}
-                        disabled={isSaving}
+                        }
                       >
-                        + Add Player
-                      </Button>
-                    </Tooltip>
-                  )}
-                  {/* Divider */}
-                  {canEdit && <div className="h-6 border-l border-border-subtle" />}
-                  <SortModeSelector
-                    sortPreset={sortPreset}
-                    onPresetChange={setSortPresetWithTier}
-                  />
-                  <GroupViewToggle
-                    enabled={groupView}
-                    onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
-                    disabled={!hasPositionData}
-                  />
-                  {hasSubstitutes && (
-                    <Tooltip
-                      content={
-                        <div className="flex items-start gap-2">
-                          <svg className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <Button
+                          size="md"
+                          onClick={() => setShowAddPlayerModal(true)}
+                          disabled={isSaving}
+                        >
+                          + Add Player
+                        </Button>
+                      </Tooltip>
+                    )}
+                    {canEdit && <div className="h-6 border-l border-border-subtle" />}
+                    <SortModeSelector
+                      sortPreset={sortPreset}
+                      onPresetChange={setSortPresetWithTier}
+                    />
+                    <GroupViewToggle
+                      enabled={groupView}
+                      onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
+                      disabled={!hasPositionData}
+                    />
+                    {hasSubstitutes && (
+                      <Tooltip
+                        content={
+                          <div className="flex items-start gap-2">
+                            <svg className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                            </svg>
+                            <div>
+                              <div className="flex items-center gap-2 font-medium">
+                                {subsView ? 'Hide Substitutes Section' : 'Show Substitutes Section'}
+                                <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">S</kbd>
+                              </div>
+                              <div className="text-text-secondary text-xs mt-0.5">
+                                {subsView ? 'Merge subs back into main roster' : 'Separate substitute players into their own section'}
+                              </div>
+                            </div>
+                          </div>
+                        }
+                      >
+                        {/* design-system-ignore: Toggle button requires specific toggle styling */}
+                        <button
+                          onClick={() => setSubsView(!subsView)}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
+                            subsView
+                              ? 'bg-accent/20 text-accent border-accent/50'
+                              : 'bg-surface-raised border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
+                          }`}
+                          aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
+                          aria-pressed={subsView}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                           </svg>
-                          <div>
-                            <div className="flex items-center gap-2 font-medium">
-                              {subsView ? 'Hide Substitutes Section' : 'Show Substitutes Section'}
-                              <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">S</kbd>
-                            </div>
-                            <div className="text-text-secondary text-xs mt-0.5">
-                              {subsView ? 'Merge subs back into main roster' : 'Separate substitute players into their own section'}
-                            </div>
-                          </div>
-                        </div>
-                      }
+                          <span>Subs</span>
+                        </button>
+                      </Tooltip>
+                    )}
+                    <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+                  </div>
+                </div>
+              )}
+
+              {/* Gear sub-tab bar */}
+              {pageMode === 'gear' && (
+                <div className="flex gap-1 mb-4 p-1 bg-surface-raised rounded-lg w-fit flex-shrink-0">
+                  {([
+                    { id: 'priority' as GearSubTab, label: 'Priority' },
+                    { id: 'history' as GearSubTab, label: 'Loot Log' },
+                    { id: 'stats' as GearSubTab, label: 'Summary' },
+                    { id: 'weapon' as GearSubTab, label: 'Weapon' },
+                  ]).map(t => (
+                    /* design-system-ignore: sub-tab inline buttons */
+                    <button
+                      key={t.id}
+                      onClick={() => setGearSubTab(t.id)}
+                      className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                        gearSubTab === t.id
+                          ? 'bg-accent/20 text-accent'
+                          : 'text-text-secondary hover:text-text-primary'
+                      }`}
                     >
-                      {/* design-system-ignore: Toggle button requires specific toggle styling */}
-                      <button
-                        onClick={() => setSubsView(!subsView)}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
-                          subsView
-                            ? 'bg-accent/20 text-accent border-accent/50'
-                            : 'bg-surface-raised border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
-                        }`}
-                        aria-label={subsView ? 'Show substitutes with main roster' : 'Separate substitute players into their own section'}
-                        aria-pressed={subsView}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                        </svg>
-                        <span>Subs</span>
-                      </button>
-                    </Tooltip>
-                  )}
-                  <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Home Tab */}
-          {pageMode === 'home' && currentGroup && (
-            <StaticHomeTab
-              group={currentGroup}
-              tier={currentTier}
-              onNavigate={setPageMode}
-              canManage={canManageRoster(userRole).allowed}
-              onOpenRequests={() => {
-                setSettingsTab('recruitment');
-                setRecruitmentSection('requests');
-                setShowSettingsModal(true);
-              }}
-              onScheduleFarm={(trial) => {
-                const mountFarmData = useMountFarmStore.getState().data;
-                const trialData = mountFarmData?.trials.find(t => t.trialId === trial.id);
-                const missing = trialData?.membersMissing ?? 0;
-                const canBuy = trialData?.membersCanBuy ?? 0;
-                const wanting = trialData?.membersWanting ?? 0;
-                setPageMode('schedule');
-                setTimeout(() => {
-                  eventBus.emit(Events.MOUNT_FARM_SCHEDULE, {
-                    trialId: trial.id,
-                    trialName: trial.dutyName,
-                    contentType: trial.contentType,
-                    category: trial.contentType === 'ultimate' ? 'ultimate' : 'farm',
-                    missing,
-                    canBuy,
-                    wanting,
-                  });
-                }, 100);
-              }}
-            />
-          )}
-
-          {/* Players Tab */}
-          {pageMode === 'players' && currentTier.players && (
-            <>
-              {/* Roster segmented control — Members | Characters | Split Planner */}
-              {currentGroup && (
-                <div className="flex gap-1 mb-3 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit" role="tablist" aria-label="Roster view">
-                  {(['members', 'characters', 'split-planner'] as const).map(view => {
-                    const labels: Record<typeof view, string> = {
-                      members: 'Members',
-                      characters: 'Characters',
-                      'split-planner': 'Split Planner',
-                    };
-                    return (
-                      <button
-                        key={view}
-                        type="button"
-                        role="tab"
-                        aria-selected={rosterSubView === view}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                          rosterSubView === view
-                            ? 'bg-surface-base text-text-primary shadow-sm'
-                            : 'text-text-muted hover:text-text-primary'
-                        }`}
-                        onClick={() => setRosterSubView(view)}
-                      >
-                        {labels[view]}
-                      </button>
-                    );
-                  })}
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
               )}
 
-              {/* Characters tab */}
-              {currentGroup && (
-                <div className={rosterSubView !== 'characters' ? 'hidden' : ''}>
-                  <RosterCharacterPanel
-                    groupId={currentGroup.id}
-                    players={mainRosterPlayers}
-                    canEdit={canEdit}
-                  />
-                </div>
-              )}
-
-              {/* Split Clear Composer — kept mounted to preserve draft state */}
-              {currentGroup && (
-                <div className={rosterSubView !== 'split-planner' ? 'hidden' : ''}>
-                  <SplitClearPlanner
-                    groupId={currentGroup.id}
-                    players={mainRosterPlayers}
-                    canEdit={canEdit}
-                  />
-                </div>
-              )}
-
-              {/* Normal roster — hidden when Characters or Split Planner tab is active */}
-              <div className={rosterSubView !== 'members' ? 'hidden' : ''}>
-              <DndContext
-                sensors={dnd.sensors}
-                collisionDetection={pointerWithin}
-                onDragStart={dnd.handleDragStart}
-                onDragOver={dnd.handleDragOver}
-                onDragEnd={dnd.handleDragEnd}
-                onDragCancel={dnd.handleDragCancel}
-              >
-                <PlayerGrid
-                  players={sortedPlayers}
-                  groupedPlayers={groupedPlayers}
-                  groupView={groupView}
-                  subsView={subsView}
-                  viewMode={viewMode}
-                  contentType={currentTier?.contentType ?? 'savage'}
-                  editingPlayerId={editingPlayerId}
-                  clipboardPlayer={clipboardPlayer}
-                  highlightedPlayerId={highlightedPlayerId}
-                  highlightedSlot={highlightedSlot}
-                  dragState={dnd.dragState}
-                  canEdit={canEdit}
-                  effectiveUserId={effectiveUserId}
-                  userRole={userRole}
-                  userHasClaimedPlayer={userHasClaimedPlayer}
-                  isAdminAccess={isAdminAccess}
-                  isAdmin={isAdmin}
-                  viewAsUserId={viewAsUser?.userId}
-                  hideSetupBanners={currentGroup?.settings?.hideSetupBanners}
-                  hideBisBanners={currentGroup?.settings?.hideBisBanners}
-                  groupId={currentGroup!.id}
-                  tierId={currentTier!.tierId}
-                  playerSlotsWithLootEntries={playerSlotsWithLootEntries}
-                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries}
-                  onUpdatePlayer={playerActions.handleUpdatePlayer}
-                  onRemovePlayer={playerActions.handleRemovePlayer}
-                  onConfigurePlayer={playerActions.handleConfigurePlayer}
-                  onDuplicatePlayer={playerActions.handleDuplicatePlayer}
-                  onResetGear={playerActions.handleResetGear}
-                  onClaimPlayer={playerActions.handleClaimPlayer}
-                  onReleasePlayer={playerActions.handleReleasePlayer}
-                  onAdminAssignPlayer={playerActions.handleAdminAssignPlayer}
-                  onOwnerAssignPlayer={playerActions.handleOwnerAssignPlayer}
-                  onCopyPlayer={handleCopyPlayer}
-                  onPastePlayer={handlePastePlayer}
-                  onCopyUrl={handleCopyUrl}
-                  onNavigateToLootEntry={handleNavigateToLootEntry}
-                  onNavigateToMaterialEntry={handleNavigateToMaterialEntry}
-                  onNavigateToBooksPanel={handleNavigateToBooksPanel}
-                  onModalOpen={handlePlayerModalOpen}
-                  onModalClose={handlePlayerModalClose}
-                  onEditPlayer={setEditingPlayerId}
-                  onCancelEdit={() => setEditingPlayerId(null)}
+              {/* Overview Tab */}
+              {pageMode === 'overview' && currentGroup && (
+                <StaticHomeTab
+                  group={currentGroup}
+                  tier={currentTier}
+                  onNavigate={setPageMode}
+                  canManage={canManageRoster(userRole).allowed}
+                  onOpenRequests={() => {
+                    setSettingsTab('recruitment');
+                    setRecruitmentSection('requests');
+                    setShowSettingsModal(true);
+                  }}
+                  onScheduleFarm={(trial) => {
+                    const mountFarmData = useMountFarmStore.getState().data;
+                    const trialData = mountFarmData?.trials.find(t => t.trialId === trial.id);
+                    const missing = trialData?.membersMissing ?? 0;
+                    const canBuy = trialData?.membersCanBuy ?? 0;
+                    const wanting = trialData?.membersWanting ?? 0;
+                    setPageMode('schedule');
+                    setTimeout(() => {
+                      eventBus.emit(Events.MOUNT_FARM_SCHEDULE, {
+                        trialId: trial.id,
+                        trialName: trial.dutyName,
+                        contentType: trial.contentType,
+                        category: trial.contentType === 'ultimate' ? 'ultimate' : 'farm',
+                        missing,
+                        canBuy,
+                        wanting,
+                      });
+                    }, 100);
+                  }}
                 />
+              )}
 
-                {/* Drag overlay - ghost card that follows cursor */}
-                <DragOverlay dropAnimation={null}>
-                  {dnd.dragState.activeId && (() => {
-                    const draggedPlayer = sortedPlayers.find(p => p.id === dnd.dragState.activeId);
-                    if (!draggedPlayer || !draggedPlayer.configured) return null;
-                    return (
-                      <DragOverlayCard
-                        player={draggedPlayer}
-                        settings={DEFAULT_SETTINGS}
+              {/* Roster Tab */}
+              {pageMode === 'roster' && currentTier.players && (
+                <>
+                  {/* Roster segmented control — Members | Characters | Split Planner */}
+                  {currentGroup && (
+                    <div className="flex gap-1 mb-3 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit" role="tablist" aria-label="Roster view">
+                      {(['members', 'characters', 'split-planner'] as const).map(view => {
+                        const labels: Record<typeof view, string> = {
+                          members: 'Members',
+                          characters: 'Characters',
+                          'split-planner': 'Split Planner',
+                        };
+                        return (
+                          <button
+                            key={view}
+                            type="button"
+                            role="tab"
+                            aria-selected={rosterSubView === view}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                              rosterSubView === view
+                                ? 'bg-surface-base text-text-primary shadow-sm'
+                                : 'text-text-muted hover:text-text-primary'
+                            }`}
+                            onClick={() => setRosterSubView(view)}
+                          >
+                            {labels[view]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Characters tab */}
+                  {currentGroup && (
+                    <div className={rosterSubView !== 'characters' ? 'hidden' : ''}>
+                      <RosterCharacterPanel
+                        groupId={currentGroup.id}
+                        players={mainRosterPlayers}
+                        canEdit={canEdit}
+                      />
+                    </div>
+                  )}
+
+                  {/* Split Clear Composer — kept mounted to preserve draft state */}
+                  {currentGroup && (
+                    <div className={rosterSubView !== 'split-planner' ? 'hidden' : ''}>
+                      <SplitClearPlanner
+                        groupId={currentGroup.id}
+                        players={mainRosterPlayers}
+                        canEdit={canEdit}
+                      />
+                    </div>
+                  )}
+
+                  {/* Normal roster — hidden when Characters or Split Planner tab is active */}
+                  <div className={rosterSubView !== 'members' ? 'hidden' : ''}>
+                    <DndContext
+                      sensors={dnd.sensors}
+                      collisionDetection={pointerWithin}
+                      onDragStart={dnd.handleDragStart}
+                      onDragOver={dnd.handleDragOver}
+                      onDragEnd={dnd.handleDragEnd}
+                      onDragCancel={dnd.handleDragCancel}
+                    >
+                      <PlayerGrid
+                        players={sortedPlayers}
+                        groupedPlayers={groupedPlayers}
+                        groupView={groupView}
+                        subsView={subsView}
                         viewMode={viewMode}
                         contentType={currentTier?.contentType ?? 'savage'}
-                        groupId={currentGroup?.id ?? ''}
-                        tierId={currentTier?.tierId ?? ''}
+                        editingPlayerId={editingPlayerId}
+                        clipboardPlayer={clipboardPlayer}
+                        highlightedPlayerId={highlightedPlayerId}
+                        highlightedSlot={highlightedSlot}
+                        dragState={dnd.dragState}
+                        canEdit={canEdit}
+                        effectiveUserId={effectiveUserId}
+                        userRole={userRole}
+                        userHasClaimedPlayer={userHasClaimedPlayer}
+                        isAdminAccess={isAdminAccess}
+                        isAdmin={isAdmin}
+                        viewAsUserId={viewAsUser?.userId}
+                        hideSetupBanners={currentGroup?.settings?.hideSetupBanners}
+                        hideBisBanners={currentGroup?.settings?.hideBisBanners}
+                        groupId={currentGroup!.id}
+                        tierId={currentTier!.tierId}
+                        playerSlotsWithLootEntries={playerSlotsWithLootEntries}
+                        playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries}
+                        onUpdatePlayer={playerActions.handleUpdatePlayer}
+                        onRemovePlayer={playerActions.handleRemovePlayer}
+                        onConfigurePlayer={playerActions.handleConfigurePlayer}
+                        onDuplicatePlayer={playerActions.handleDuplicatePlayer}
+                        onResetGear={playerActions.handleResetGear}
+                        onClaimPlayer={playerActions.handleClaimPlayer}
+                        onReleasePlayer={playerActions.handleReleasePlayer}
+                        onAdminAssignPlayer={playerActions.handleAdminAssignPlayer}
+                        onOwnerAssignPlayer={playerActions.handleOwnerAssignPlayer}
+                        onCopyPlayer={handleCopyPlayer}
+                        onPastePlayer={handlePastePlayer}
+                        onCopyUrl={handleCopyUrl}
+                        onNavigateToLootEntry={handleNavigateToLootEntry}
+                        onNavigateToMaterialEntry={handleNavigateToMaterialEntry}
+                        onNavigateToBooksPanel={handleNavigateToBooksPanel}
+                        onModalOpen={handlePlayerModalOpen}
+                        onModalClose={handlePlayerModalClose}
+                        onEditPlayer={setEditingPlayerId}
+                        onCancelEdit={() => setEditingPlayerId(null)}
                       />
-                    );
-                  })()}
-                </DragOverlay>
-              </DndContext>
-              </div>{/* end roster hide wrapper */}
-            </>
-          )}
 
-          {/* Loot Tab */}
-          {pageMode === 'loot' && tierInfo && mainRosterPlayers.length > 0 && (
-            <LootPriorityPanel
-                players={mainRosterPlayers}
-                settings={{
-                  ...DEFAULT_SETTINGS,
-                  ...currentGroup?.settings,
-                }}
-                selectedFloor={selectedFloor}
-                floorName={tierInfo.floors[selectedFloor - 1]}
-                floors={tierInfo.floors}
-                dutyNames={tierInfo.dutyNames}
-                onFloorChange={setSelectedFloor}
-                showLogButtons={canEdit}
-                groupId={currentGroup?.id}
-                tierId={currentTier?.tierId}
-                currentWeek={storeCurrentWeek}
-                maxWeek={storeMaxWeek}
-                lootLog={lootLog}
-                materialLog={materialLog}
-                showEnhancedScores={true}
-                activeSubTab={lootSubTab}
-                onSubTabChange={setLootSubTab}
-                onLogSuccess={() => {
-                  if (currentGroup?.id && currentTier?.tierId) {
-                    fetchTier(currentGroup.id, currentTier.tierId);
-                  }
-                }}
-              />
-          )}
+                      {/* Drag overlay - ghost card that follows cursor */}
+                      <DragOverlay dropAnimation={null}>
+                        {dnd.dragState.activeId && (() => {
+                          const draggedPlayer = sortedPlayers.find(p => p.id === dnd.dragState.activeId);
+                          if (!draggedPlayer || !draggedPlayer.configured) return null;
+                          return (
+                            <DragOverlayCard
+                              player={draggedPlayer}
+                              settings={DEFAULT_SETTINGS}
+                              viewMode={viewMode}
+                              contentType={currentTier?.contentType ?? 'savage'}
+                              groupId={currentGroup?.id ?? ''}
+                              tierId={currentTier?.tierId ?? ''}
+                            />
+                          );
+                        })()}
+                      </DragOverlay>
+                    </DndContext>
+                  </div>{/* end roster hide wrapper */}
+                </>
+              )}
 
-          {/* Summary Tab */}
-          {pageMode === 'stats' && tierInfo && mainRosterPlayers.length > 0 && (
-            <TeamSummaryEnhanced
-              groupId={currentGroup!.id}
-              tierId={currentTier.tierId}
-              players={mainRosterPlayers}
-              tierInfo={tierInfo}
-            />
-          )}
+              {/* Gear Tab */}
+              {pageMode === 'gear' && (
+                <>
+                  {/* Priority sub-tab */}
+                  {gearSubTab === 'priority' && tierInfo && mainRosterPlayers.length > 0 && (
+                    <LootPriorityPanel
+                      players={mainRosterPlayers}
+                      settings={{
+                        ...DEFAULT_SETTINGS,
+                        ...currentGroup?.settings,
+                      }}
+                      selectedFloor={selectedFloor}
+                      floorName={tierInfo.floors[selectedFloor - 1]}
+                      floors={tierInfo.floors}
+                      dutyNames={tierInfo.dutyNames}
+                      onFloorChange={setSelectedFloor}
+                      showLogButtons={canEdit}
+                      groupId={currentGroup?.id}
+                      tierId={currentTier?.tierId}
+                      currentWeek={storeCurrentWeek}
+                      maxWeek={storeMaxWeek}
+                      lootLog={lootLog}
+                      materialLog={materialLog}
+                      showEnhancedScores={true}
+                      activeSubTab={lootSubTab}
+                      onSubTabChange={setLootSubTab}
+                      onLogSuccess={() => {
+                        if (currentGroup?.id && currentTier?.tierId) {
+                          fetchTier(currentGroup.id, currentTier.tierId);
+                        }
+                      }}
+                    />
+                  )}
 
-          {/* Log Tab - wrapped in flex-1 container for proper scroll containment */}
-          {pageMode === 'history' && currentTier?.players && tierInfo && (
-            <div className={preventPageScroll ? 'flex-1 min-h-0 flex flex-col w-full' : ''}>
-              <HistoryView
-                groupId={currentGroup!.id}
-                tierId={currentTier.tierId}
-                players={currentTier.players}
-                floors={tierInfo.floors}
-                userRole={userRole || 'viewer'}
-                isAdmin={isAdminAccess}
-                currentUserId={effectiveUserId}
-                highlightedBookPlayerId={highlightedBookPlayerId}
-                onNavigateToPlayer={handleNavigateToPlayer}
-                highlightedEntryId={highlightedEntry?.id}
-                highlightedEntryType={highlightedEntry?.type}
-                targetWeek={wizardTargetWeek ?? highlightedEntry?.week}
-                openLogLootModal={showLogLootModal}
-                onLogLootModalClose={() => setShowLogLootModal(false)}
-                openLogMaterialModal={showLogMaterialModal}
-                onLogMaterialModalClose={() => setShowLogMaterialModal(false)}
-                openMarkFloorClearedModal={showMarkFloorClearedModal}
-                onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
-                onLogWeek={(week) => { setLogWeekWizardFloor(null); setLogWeekWizardWeek(week); setShowLogWeekWizard(true); }}
-                onLogFloor={(floor) => { setLogWeekWizardFloor(floor); setShowLogWeekWizard(true); }}
-              />
-            </div>
-          )}
+                  {/* Loot Log sub-tab */}
+                  {gearSubTab === 'history' && currentTier?.players && tierInfo && (
+                    <div className={preventPageScroll ? 'flex-1 min-h-0 flex flex-col w-full' : ''}>
+                      <HistoryView
+                        groupId={currentGroup!.id}
+                        tierId={currentTier.tierId}
+                        players={currentTier.players}
+                        floors={tierInfo.floors}
+                        userRole={userRole || 'viewer'}
+                        isAdmin={isAdminAccess}
+                        currentUserId={effectiveUserId}
+                        highlightedBookPlayerId={highlightedBookPlayerId}
+                        onNavigateToPlayer={handleNavigateToPlayer}
+                        highlightedEntryId={highlightedEntry?.id}
+                        highlightedEntryType={highlightedEntry?.type}
+                        targetWeek={wizardTargetWeek ?? highlightedEntry?.week}
+                        openLogLootModal={showLogLootModal}
+                        onLogLootModalClose={() => setShowLogLootModal(false)}
+                        openLogMaterialModal={showLogMaterialModal}
+                        onLogMaterialModalClose={() => setShowLogMaterialModal(false)}
+                        openMarkFloorClearedModal={showMarkFloorClearedModal}
+                        onMarkFloorClearedModalClose={() => setShowMarkFloorClearedModal(false)}
+                        onLogWeek={(week) => { setLogWeekWizardFloor(null); setLogWeekWizardWeek(week); setShowLogWeekWizard(true); }}
+                        onLogFloor={(floor) => { setLogWeekWizardFloor(floor); setShowLogWeekWizard(true); }}
+                      />
+                    </div>
+                  )}
 
-          {/* Schedule Tab */}
-          {pageMode === 'schedule' && currentGroup && (
-            <ScheduleTab
-              groupId={currentGroup.id}
-              staticName={currentGroup.name}
-              shareCode={currentGroup.shareCode}
-              members={currentGroup.members || []}
-              userRole={userRole}
-            />
-          )}
+                  {/* Summary sub-tab */}
+                  {gearSubTab === 'stats' && tierInfo && mainRosterPlayers.length > 0 && (
+                    <TeamSummaryEnhanced
+                      groupId={currentGroup!.id}
+                      tierId={currentTier.tierId}
+                      players={mainRosterPlayers}
+                      tierInfo={tierInfo}
+                    />
+                  )}
 
-          {/* Collections & Farms Hub */}
-          {pageMode === 'mount-farms' && currentGroup && (
-            <CollectionsHub
-              groupId={currentGroup.id}
-              currentUserId={effectiveUserId ?? ''}
-              canManage={canManageRoster(userRole).allowed}
-            />
-          )}
+                  {/* Weapon Priority sub-tab */}
+                  {gearSubTab === 'weapon' && tierInfo && mainRosterPlayers.length > 0 && (
+                    <LootPriorityPanel
+                      players={mainRosterPlayers}
+                      settings={{
+                        ...DEFAULT_SETTINGS,
+                        ...currentGroup?.settings,
+                      }}
+                      selectedFloor={selectedFloor}
+                      floorName={tierInfo.floors[selectedFloor - 1]}
+                      floors={tierInfo.floors}
+                      dutyNames={tierInfo.dutyNames}
+                      onFloorChange={setSelectedFloor}
+                      showLogButtons={canEdit}
+                      groupId={currentGroup?.id}
+                      tierId={currentTier?.tierId}
+                      currentWeek={storeCurrentWeek}
+                      maxWeek={storeMaxWeek}
+                      lootLog={lootLog}
+                      materialLog={materialLog}
+                      showEnhancedScores={true}
+                      activeSubTab="weapon"
+                      onSubTabChange={setLootSubTab}
+                      onLogSuccess={() => {
+                        if (currentGroup?.id && currentTier?.tierId) {
+                          fetchTier(currentGroup.id, currentTier.tierId);
+                        }
+                      }}
+                    />
+                  )}
+                </>
+              )}
 
+              {/* Schedule Tab */}
+              {pageMode === 'schedule' && currentGroup && (
+                <ScheduleTab
+                  groupId={currentGroup.id}
+                  staticName={currentGroup.name}
+                  shareCode={currentGroup.shareCode}
+                  members={currentGroup.members || []}
+                  userRole={userRole}
+                />
+              )}
 
-          {/* Priority Tab removed - now a slide-out panel accessible from Loot tab */}
+              {/* Goals & Farms Tab */}
+              {pageMode === 'goals' && currentGroup && (
+                <CollectionsHub
+                  groupId={currentGroup.id}
+                  currentUserId={effectiveUserId ?? ''}
+                  canManage={canManageRoster(userRole).allowed}
+                />
+              )}
+
+              {/* More Tab */}
+              {pageMode === 'more' && currentGroup && (
+                <MorePage
+                  onOpenSettings={(tab) => {
+                    setSettingsTab(tab as import('../components/settings').SettingsTab ?? 'general');
+                    setShowSettingsModal(true);
+                  }}
+                  canManage={canManageRoster(userRole).allowed}
+                  userRole={userRole ?? null}
+                />
+              )}
+
+            </div>{/* end content area */}
+          </div>{/* end sidebar+content shell */}
         </>
       )}
 
@@ -1233,7 +1309,7 @@ export function GroupView() {
           groupId={currentGroup.id}
           existingTierIds={existingTierIds}
           onClose={() => setShowCreateTierModal(false)}
-          onCreate={() => setPageMode('players')}
+          onCreate={() => setPageMode('roster')}
         />
       )}
 
@@ -1377,9 +1453,8 @@ export function GroupView() {
         isOpen={showControlsSheet}
         onClose={() => setShowControlsSheet(false)}
         title={
-          pageMode === 'players' ? 'Roster Controls' :
-          pageMode === 'loot' ? 'Loot Controls' :
-          pageMode === 'history' ? 'Log Controls' :
+          pageMode === 'roster' ? 'Roster Controls' :
+          pageMode === 'gear' ? 'Gear Controls' :
           'Controls'
         }
         variant="sheet"
@@ -1401,7 +1476,7 @@ export function GroupView() {
           )}
 
           {/* Roster Tab Controls */}
-          {pageMode === 'players' && (
+          {pageMode === 'roster' && (
             <>
               {/* Sort */}
               <div>
@@ -1455,8 +1530,8 @@ export function GroupView() {
             </>
           )}
 
-          {/* Loot Tab Controls */}
-          {pageMode === 'loot' && (
+          {/* Gear Tab Controls */}
+          {pageMode === 'gear' && (
             <>
               {/* Sub-tab selector */}
               <div>
@@ -1507,8 +1582,8 @@ export function GroupView() {
             </>
           )}
 
-          {/* Log Tab Controls */}
-          {pageMode === 'history' && canManageRoster(userRole) && (
+          {/* Gear/Log Tab Controls */}
+          {pageMode === 'gear' && gearSubTab === 'history' && canManageRoster(userRole) && (
             <>
               {/* Reset Data Actions */}
               <div>
@@ -1562,7 +1637,7 @@ export function GroupView() {
       <RosterViewToggle
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        visible={isSmallScreen && pageMode === 'players' && !!currentTier}
+        visible={isSmallScreen && pageMode === 'roster' && !!currentTier}
       />
 
       {/* Mobile bottom navigation */}
@@ -1571,7 +1646,6 @@ export function GroupView() {
           activeTab={pageMode}
           onTabChange={setPageMode}
           onControlsClick={() => setShowControlsSheet(true)}
-          showPriorityTab={false}
         />
       )}
 

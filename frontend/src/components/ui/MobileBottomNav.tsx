@@ -6,7 +6,7 @@
  * Supports swipe left/right to change tabs.
  */
 
-import { LayoutDashboard, Settings2, SlidersHorizontal } from 'lucide-react';
+import { LayoutDashboard, Users, Trophy, Shield, MoreHorizontal, SlidersHorizontal, Calendar, type LucideProps } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { useDevice } from '../../hooks/useDevice';
@@ -16,34 +16,33 @@ interface MobileBottomNavProps {
   activeTab: PageMode;
   onTabChange: (tab: PageMode) => void;
   onControlsClick?: () => void;
-  /** Show the Weapon Priority tab (for leads/owners only) */
-  showPriorityTab?: boolean;
 }
 
-const PAGE_TO_ICON: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
-  players: 'party',
-  loot: 'loot',
-  stats: 'stats',
-  history: 'history',
-  schedule: 'schedule',
-  'mount-farms': 'mountFarms',
+type LucideIcon = React.FC<LucideProps>;
+
+const PAGE_TO_SPRITE: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {};
+
+const PAGE_TO_LUCIDE: Partial<Record<PageMode, LucideIcon>> = {
+  overview: LayoutDashboard,
+  roster: Users,
+  schedule: Calendar,
+  goals: Trophy,
+  gear: Shield,
+  more: MoreHorizontal,
 };
 
 const BASE_TABS: { id: PageMode; label: string }[] = [
-  { id: 'home', label: 'Overview' },
-  { id: 'players', label: 'Roster' },
-  { id: 'loot', label: 'Priority' },
-  { id: 'history', label: 'Loot Log' },
-  { id: 'stats', label: 'Summary' },
+  { id: 'overview', label: 'Overview' },
+  { id: 'roster', label: 'Roster' },
   { id: 'schedule', label: 'Schedule' },
-  { id: 'mount-farms', label: 'Mounts' },
+  { id: 'goals', label: 'Goals' },
+  { id: 'gear', label: 'Gear' },
+  { id: 'more', label: 'More' },
 ];
 
-const PRIORITY_TAB = { id: 'priority' as PageMode, label: 'Weapon' };
-
-export function MobileBottomNav({ activeTab, onTabChange, onControlsClick, showPriorityTab }: MobileBottomNavProps) {
+export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: MobileBottomNavProps) {
   const { isSmallScreen } = useDevice();
-  const TABS = showPriorityTab ? [...BASE_TABS, PRIORITY_TAB] : BASE_TABS;
+  const TABS = BASE_TABS;
 
   // Swipe handlers for tab navigation
   const tabIds = TABS.map(t => t.id);
@@ -108,17 +107,23 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick, showP
               aria-label={tab.label}
               aria-current={activeTab === tab.id ? 'page' : undefined}
             >
-              {tab.id === 'priority' ? (
-                <Settings2 className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />
-              ) : tab.id === 'home' ? (
-                <LayoutDashboard className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />
-              ) : (
-                <img
-                  src={TAB_ICONS[PAGE_TO_ICON[tab.id]!]}
-                  alt=""
-                  className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}
-                />
-              )}
+              {(() => {
+                const LucideIcon = PAGE_TO_LUCIDE[tab.id];
+                if (LucideIcon) {
+                  return <LucideIcon className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />;
+                }
+                const spriteKey = PAGE_TO_SPRITE[tab.id];
+                if (spriteKey) {
+                  return (
+                    <img
+                      src={TAB_ICONS[spriteKey]}
+                      alt=""
+                      className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}
+                    />
+                  );
+                }
+                return null;
+              })()}
               <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
             </button>
           ))}

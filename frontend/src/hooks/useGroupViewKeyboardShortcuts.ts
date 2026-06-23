@@ -7,13 +7,15 @@
 
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { HEADER_EVENTS } from '../components/layout/Header';
-import type { PageMode, ViewMode } from '../types';
+import type { PageMode, GearSubTab, ViewMode } from '../types';
 import type { TierSnapshot, StaticGroup } from '../types';
 
 export interface GroupViewShortcutParams {
   // Tab/view state
   pageMode: PageMode;
   setPageMode: (mode: PageMode) => void;
+  gearSubTab: GearSubTab;
+  setGearSubTab: (tab: GearSubTab) => void;
   lootSubTab: 'matrix' | 'gear' | 'weapon';
   setLootSubTab: (tab: 'matrix' | 'gear' | 'weapon') => void;
   viewMode: ViewMode;
@@ -50,7 +52,9 @@ export function useGroupViewKeyboardShortcuts(
   const {
     pageMode,
     setPageMode,
-    setLootSubTab,
+    gearSubTab: _gearSubTab,
+    setGearSubTab,
+    setLootSubTab: _setLootSubTab,
     viewMode,
     setViewMode,
     groupView,
@@ -75,74 +79,75 @@ export function useGroupViewKeyboardShortcuts(
   useKeyboardShortcuts({
     disabled: isAnyModalOpen,
     shortcuts: [
-      // ===== Main tab navigation (1-4) =====
-      { key: '1', description: 'Players tab', action: () => setPageMode('players') },
-      { key: '2', description: 'Priority tab', action: () => setPageMode('loot') },
-      { key: '3', description: 'Loot Log tab', action: () => setPageMode('history') },
-      { key: '4', description: 'Summary tab', action: () => setPageMode('stats') },
+      // ===== Main tab navigation =====
+      { key: '`', description: 'Overview tab', action: () => setPageMode('overview') },
+      { key: '1', description: 'Roster tab', action: () => setPageMode('roster') },
+      { key: '2', description: 'Gear & Sync tab', action: () => setPageMode('gear') },
+      { key: '3', description: 'Goals & Farms tab', action: () => setPageMode('goals') },
+      { key: '4', description: 'Schedule tab', action: () => setPageMode('schedule') },
 
       // ===== Sub tabs (Alt+1-3) =====
-      // Loot: Matrix (Who Needs It), Gear Priority, Weapon Priority
+      // Gear sub-tabs: Priority, Loot Log, Summary, Weapon
       // History/List: By Floor, Timeline
       // History/All Weeks: All, Gear, Materials
       { key: '1', description: 'Sub tab 1', action: () => {
-        if (pageMode === 'loot') setLootSubTab('matrix');
-        if (pageMode === 'history') {
+        if (pageMode === 'gear') setGearSubTab('priority');
+        if (pageMode === 'gear' && _gearSubTab === 'history') {
           window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'byFloor' }));
           window.dispatchEvent(new CustomEvent('log:set-entry-type', { detail: 'all' }));
         }
       }, requireAlt: true },
       { key: '2', description: 'Sub tab 2', action: () => {
-        if (pageMode === 'loot') setLootSubTab('gear');
-        if (pageMode === 'history') {
+        if (pageMode === 'gear') setGearSubTab('history');
+        if (pageMode === 'gear' && _gearSubTab === 'history') {
           window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'chronological' }));
           window.dispatchEvent(new CustomEvent('log:set-entry-type', { detail: 'loot' }));
         }
       }, requireAlt: true },
       { key: '3', description: 'Sub tab 3', action: () => {
-        if (pageMode === 'loot') setLootSubTab('weapon');
-        if (pageMode === 'history') {
+        if (pageMode === 'gear') setGearSubTab('stats');
+        if (pageMode === 'gear' && _gearSubTab === 'history') {
           window.dispatchEvent(new CustomEvent('log:set-entry-type', { detail: 'materials' }));
         }
       }, requireAlt: true },
 
       // ===== View controls =====
       { key: 'v', description: 'Toggle expand/collapse', action: () => {
-        if (pageMode === 'players') {
+        if (pageMode === 'roster') {
           setViewMode(viewMode === 'compact' ? 'expanded' : 'compact');
         }
-        // Expand/collapse all on Log tab
-        if (pageMode === 'history') {
+        // Expand/collapse all on Loot Log sub-tab
+        if (pageMode === 'gear' && _gearSubTab === 'history') {
           window.dispatchEvent(new CustomEvent('log:toggle-expand-all'));
         }
-        // Expand/collapse on Loot tab (weapon priorities)
-        if (pageMode === 'loot') {
+        // Expand/collapse on Gear Priority sub-tab (weapon priorities)
+        if (pageMode === 'gear' && _gearSubTab === 'priority') {
           window.dispatchEvent(new CustomEvent('loot:toggle-expand-all'));
         }
       }},
       { key: 'g', description: 'Toggle group/grid view', action: () => {
-        if (pageMode === 'players') {
+        if (pageMode === 'roster') {
           setGroupView(!groupView, currentGroup?.id);
         }
-        // Toggle grid/list on Log tab
-        if (pageMode === 'history') {
+        // Toggle grid/list on Loot Log sub-tab
+        if (pageMode === 'gear' && _gearSubTab === 'history') {
           window.dispatchEvent(new CustomEvent('log:toggle-layout'));
         }
       }},
       { key: 's', description: 'Toggle substitutes', action: () => {
-        if (pageMode === 'players' && hasSubstitutes) {
+        if (pageMode === 'roster' && hasSubstitutes) {
           setSubsView(!subsView);
         }
       }},
 
       // ===== Week navigation (Alt+Arrow) =====
       { key: 'ArrowLeft', description: 'Previous week', action: () => {
-        if (pageMode === 'history') {
+        if (pageMode === 'gear' && _gearSubTab === 'history') {
           window.dispatchEvent(new CustomEvent('log:prev-week'));
         }
       }, requireAlt: true },
       { key: 'ArrowRight', description: 'Next week', action: () => {
-        if (pageMode === 'history') {
+        if (pageMode === 'gear' && _gearSubTab === 'history') {
           window.dispatchEvent(new CustomEvent('log:next-week'));
         }
       }, requireAlt: true },
@@ -150,19 +155,22 @@ export function useGroupViewKeyboardShortcuts(
       // ===== Quick actions (Alt+letter) =====
       { key: 'l', description: 'Log Loot', action: () => {
         if (canEdit) {
-          setPageMode('history');
+          setPageMode('gear');
+          setGearSubTab('history');
           setShowLogLootModal(true);
         }
       }, requireAlt: true },
       { key: 'u', description: 'Log Material', action: () => {
         if (canEdit) {
-          setPageMode('history');
+          setPageMode('gear');
+          setGearSubTab('history');
           setShowLogMaterialModal(true);
         }
       }, requireAlt: true },
       { key: 'b', description: 'Mark Floor Cleared', action: () => {
         if (canEdit) {
-          setPageMode('history');
+          setPageMode('gear');
+          setGearSubTab('history');
           setShowMarkFloorClearedModal(true);
         }
       }, requireAlt: true },
@@ -222,7 +230,7 @@ export function useGroupViewKeyboardShortcuts(
 
       // ===== Management actions (Alt+Shift) =====
       { key: 'p', description: 'Add Player', action: () => {
-        if (canEdit && pageMode === 'players' && currentTier) {
+        if (canEdit && pageMode === 'roster' && currentTier) {
           window.dispatchEvent(new CustomEvent(HEADER_EVENTS.ADD_PLAYER));
         }
       }, requireAlt: true, requireShift: true },
