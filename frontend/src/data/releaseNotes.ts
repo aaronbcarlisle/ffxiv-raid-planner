@@ -37,6 +37,7 @@ export interface ReleaseItem {
   commits?: CommitInfo[]; // Related commits (real short SHAs only; complements `pr`)
   image?: string; // Path to image/gif shown when expanded
   link?: { href: string; label: string }; // Link to related page
+  internal?: boolean; // Hidden from users/banner; use for backend plumbing, CI fixes, refactors
 }
 
 export interface Release {

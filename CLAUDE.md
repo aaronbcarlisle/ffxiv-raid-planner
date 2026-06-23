@@ -88,7 +88,7 @@ A web tool for FFXIV static raid groups to track gear progress toward BiS and ma
 # Development
 ./dev.sh                          # Start both servers
 pnpm dev                          # Frontend only
-pnpm build && pnpm tsc --noEmit   # Build + type check
+pnpm build                        # Type check + bundle (runs tsc -b && vite build)
 pnpm lint                         # ESLint
 pnpm check:design-system          # Design system violations
 pnpm test                         # Frontend tests (Vitest)
@@ -364,7 +364,9 @@ cd frontend && python scripts/blend_tier_banners.py --fetch
 
 ## CI/CD
 
-PRs to main run: `tsc --noEmit`, `lint`, `check:design-system:strict`, `test`, `build`. All must pass.
+PRs to main run: `build` (`tsc -b && vite build`), `lint`, `check:design-system:strict`, `test`. All must pass.
+
+> **⚠️ `tsc --noEmit` ≠ `tsc -b`** — The build script runs `tsc -b` (project build mode), which is stricter than `tsc --noEmit`. Running `tsc --noEmit` locally will NOT catch all the same errors CI catches. Always run `pnpm build` before pushing to confirm the build is clean.
 
 ### Release Notes Requirement
 
