@@ -1,7 +1,7 @@
 /* eslint-disable design-system/no-raw-button */
 import {
   Users, Settings, Link2, Book, Sword, Download, Activity,
-  AlertTriangle, ChevronRight, Clock,
+  AlertTriangle, ChevronRight, Clock, ExternalLink,
 } from 'lucide-react';
 import type { MemberRole, PageMode, GearSubTab } from '../../types';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
@@ -12,6 +12,7 @@ interface MorePageProps {
   onOpenSettings: (tab?: string) => void;
   onNavigate: (tab: PageMode) => void;
   onSetGearSubTab: (sub: GearSubTab) => void;
+  onOpenSplitPlanner: () => void;
   canManage: boolean;
   userRole: MemberRole | null;
 }
@@ -24,6 +25,7 @@ export function MorePage({
   onOpenSettings,
   onNavigate,
   onSetGearSubTab,
+  onOpenSplitPlanner,
   canManage,
   userRole,
 }: MorePageProps) {
@@ -142,20 +144,23 @@ export function MorePage({
             </div>
           </button>
 
-          {/* Split Planner — Coming Soon */}
-          <div className="text-left bg-surface-card border border-border-subtle rounded-xl p-5 opacity-70">
+          {/* Split Planner — shortcut to Roster → Split Planner tab */}
+          <button
+            onClick={onOpenSplitPlanner}
+            className="group text-left bg-surface-card border border-border-default rounded-xl p-5 hover:border-accent/50 hover:bg-surface-raised transition-colors"
+          >
             <div className="flex items-center gap-2 mb-2">
-              <Sword size={16} className="text-text-tertiary" />
-              <span className="text-sm font-semibold text-text-secondary">Split Planner</span>
-              <span className="ml-auto text-xs bg-surface-raised text-text-secondary border border-border-subtle px-2 py-0.5 rounded-full">
-                Coming Soon
-              </span>
+              <Sword size={16} className="text-accent" />
+              <span className="text-sm font-semibold text-text-primary">Split Planner</span>
+              <ExternalLink size={12} className="ml-auto text-text-muted group-hover:text-accent transition-colors" />
             </div>
             <p className="text-xs text-text-secondary mb-4">
-              Plan loot splits for your static with ease.
+              Plan loot splits and assign roles for split clears.
             </p>
-            <p className="text-xs text-text-tertiary">Advanced split planning and templates.</p>
-          </div>
+            <div className="flex items-center gap-1 text-accent text-sm font-medium">
+              Open Split Planner <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </button>
 
           {/* Integrations */}
           <button

@@ -25,6 +25,7 @@ import { LootPriorityPanel, LogWeekWizard } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { ScheduleTab } from '../components/schedule';
+import { ScheduleUpcomingPanel } from '../components/schedule/ScheduleUpcomingPanel';
 import { SplitClearPlanner } from '../components/split-clear/SplitClearPlanner';
 import { RosterCharacterPanel } from '../components/roster/RosterCharacterPanel';
 import { useMountFarmStore } from '../stores/mountFarmStore';
@@ -380,6 +381,7 @@ export function GroupView() {
   // Split clear store
   const { fetchData: fetchSplitClear, clearData: clearSplitClear } = useSplitClearStore();
   const [rosterSubView, setRosterSubView] = useState<'members' | 'characters' | 'split-planner'>('members');
+  const [scheduleView, setScheduleView] = useState<'upcoming' | 'calendar'>('upcoming');
   useEffect(() => {
     if (pageMode === 'roster' && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
@@ -893,7 +895,7 @@ export function GroupView() {
         <>
           {/* App shell: sidebar (desktop) + content */}
           <div className={`flex flex-1 min-h-0 -mx-3 sm:-mx-6 ${preventPageScroll ? 'overflow-hidden' : ''}`}>
-            <SidebarNav activeTab={pageMode} onTabChange={setPageMode} />
+            <SidebarNav activeTab={pageMode} onTabChange={setPageMode} staticName={currentGroup?.name} />
             <div className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : ''}`}>
 
               {/* Roster toolbar controls */}
@@ -1256,13 +1258,46 @@ export function GroupView() {
 
               {/* Schedule Tab */}
               {pageMode === 'schedule' && currentGroup && (
-                <ScheduleTab
-                  groupId={currentGroup.id}
-                  staticName={currentGroup.name}
-                  shareCode={currentGroup.shareCode}
-                  members={currentGroup.members || []}
-                  userRole={userRole}
-                />
+                <>
+                  {/* Upcoming | Calendar view switcher */}
+                  <div className="flex gap-1 mb-5 p-1 bg-surface-raised rounded-lg w-fit flex-shrink-0 border border-border-subtle">
+                    {([
+                      { id: 'upcoming' as const, label: 'Upcoming' },
+                      { id: 'calendar' as const, label: 'Calendar' },
+                    ]).map(v => (
+                      /* design-system-ignore: view switcher inline button */
+                      <button
+                        key={v.id}
+                        onClick={() => setScheduleView(v.id)}
+                        className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                          scheduleView === v.id
+                            ? 'bg-accent/20 text-accent'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {scheduleView === 'upcoming' && (
+                    <ScheduleUpcomingPanel
+                      groupId={currentGroup.id}
+                      canManage={canManageRoster(userRole).allowed}
+                      onSwitchToCalendar={() => setScheduleView('calendar')}
+                    />
+                  )}
+
+                  {scheduleView === 'calendar' && (
+                    <ScheduleTab
+                      groupId={currentGroup.id}
+                      staticName={currentGroup.name}
+                      shareCode={currentGroup.shareCode}
+                      members={currentGroup.members || []}
+                      userRole={userRole}
+                    />
+                  )}
+                </>
               )}
 
               {/* Goals & Farms Tab */}
@@ -1283,6 +1318,10 @@ export function GroupView() {
                   }}
                   onNavigate={setPageMode}
                   onSetGearSubTab={setGearSubTab}
+                  onOpenSplitPlanner={() => {
+                    setPageMode('roster');
+                    setRosterSubView('split-planner');
+                  }}
                   canManage={canManageRoster(userRole).allowed}
                   userRole={userRole ?? null}
                 />
