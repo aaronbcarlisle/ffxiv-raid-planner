@@ -16,6 +16,13 @@ import type { CatalogCategory, CatalogExpansion, CollectionGoal } from '../../st
 import { groupCatalogBySource, filterGroups, countByCategory, countBySourceType, totalRewardCount } from '../../utils/collectionSourceGrouping';
 import { SourceFarmCard } from './SourceFarmCard';
 import { FALLBACK_CATALOG } from '../../data/curatedCatalog';
+import {
+  EXPANSION_FULL,
+  EXPANSION_SHORT,
+  EXPANSION_KEYS,
+  SOURCE_TYPE_BADGE,
+  SOURCE_TYPE_ACTIVE_CLASS,
+} from '../../utils/collectionBadgeConfig';
 
 interface CatalogBrowseProps {
   groupId: string;
@@ -37,22 +44,11 @@ const CHIP_CATEGORIES: { key: CatalogCategory; label: string }[] = [
 
 // Source type chips are built dynamically from data; never hardcoded.
 // This prevents showing "Savage" when there are zero Savage source groups.
-const SOURCE_TYPE_DISPLAY: Record<string, { label: string; activeClass: string }> = {
-  extreme:  { label: 'Extreme',  activeClass: 'bg-status-warning/20 text-status-warning ring-1 ring-status-warning/50' },
-  savage:   { label: 'Savage',   activeClass: 'bg-status-error/20 text-status-error ring-1 ring-status-error/50'       },
-  ultimate: { label: 'Ultimate', activeClass: 'bg-status-info/20 text-status-info ring-1 ring-status-info/50'          },
-};
-// Preferred display order for source type chips
-const SOURCE_TYPE_ORDER = ['ultimate', 'savage', 'extreme', 'criterion', 'other'];
+// Active classes imported from shared badge config.
+const SOURCE_TYPE_ORDER = ['ultimate', 'savage', 'extreme', 'criterion', 'chaotic_alliance', 'collaboration', 'field_operation'];
 
-const EXPANSION_CHIPS: { key: CatalogExpansion; label: string }[] = [
-  { key: 'dt',  label: 'DT'  },
-  { key: 'ew',  label: 'EW'  },
-  { key: 'shb', label: 'ShB' },
-  { key: 'sb',  label: 'SB'  },
-  { key: 'hw',  label: 'HW'  },
-  { key: 'arr', label: 'ARR' },
-];
+// Expansion chips use full names on sm+, abbreviations on mobile — labels resolved in JSX.
+const EXPANSION_CHIP_KEYS = EXPANSION_KEYS as unknown as CatalogExpansion[];
 
 export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
   const { catalog, catalogLoading, catalogLoaded, catalogError, fetchCatalog } = useCollectionGoalStore();
@@ -78,7 +74,6 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
     );
     if (missing.length === 0) return catalog;
     return [...catalog, ...FALLBACK_CATALOG.filter(i => missing.includes(i.category as CatalogCategory))];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, catalogLoaded, catalogLoading, usingFallback]);
 
   // Group items by source/duty
@@ -101,9 +96,9 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
         .filter(st => (sourceTypeCounts[st] ?? 0) > 0)
         .map(st => ({
           key: st,
-          label: SOURCE_TYPE_DISPLAY[st]?.label ?? st,
+          label: SOURCE_TYPE_BADGE[st]?.label ?? st,
           count: sourceTypeCounts[st] ?? 0,
-          activeClass: SOURCE_TYPE_DISPLAY[st]?.activeClass ?? 'bg-surface-raised text-text-primary ring-1 ring-accent',
+          activeClass: SOURCE_TYPE_ACTIVE_CLASS[st] ?? 'bg-surface-raised text-text-primary ring-1 ring-accent',
         })),
     [sourceTypeCounts],
   );
@@ -179,6 +174,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
           className="pl-8 pr-8"
         />
         {searchQuery && (
+          // eslint-disable-next-line design-system/no-raw-button
           <button
             type="button"
             onClick={() => setSearchQuery('')}
@@ -189,18 +185,30 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
         )}
       </div>
 
-      {/* Result summary — clarifies that "All 90" = rewards, not source groups */}
-      <p className="text-xs text-text-muted">
-        <span className="font-medium text-text-secondary">{allGroups.length}</span> farm sources
-        {' · '}
-        <span className="font-medium text-text-secondary">{totalRewards}</span> rewards
+      {/* Result summary + inline clear */}
+      <div className="flex items-center justify-between min-h-[20px]">
+        <p className="text-xs text-text-muted">
+          <span className="font-medium text-text-secondary">{allGroups.length}</span> farm sources
+          {' · '}
+          <span className="font-medium text-text-secondary">{totalRewards}</span> rewards
+          {hasActiveFilters && (
+            <>
+              {' · '}
+              <span className="text-accent font-medium">{visibleGroups.length} showing</span>
+            </>
+          )}
+        </p>
         {hasActiveFilters && (
-          <>
-            {' · '}
-            <span className="text-accent font-medium">{visibleGroups.length} showing</span>
-          </>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="flex items-center gap-1 text-text-muted hover:text-text-primary text-xs h-auto py-0.5 px-1.5"
+          >
+            <X size={11} /> Clear
+          </Button>
         )}
-      </p>
+      </div>
 
       {/* Category chips — counts = individual reward items (same unit across all chips) */}
       <div className="flex gap-1.5 flex-wrap items-center">
@@ -261,11 +269,11 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
           ))}
         </div>
 
-        <span className="text-border-default text-xs">|</span>
+        <span className="w-px h-4 bg-border-subtle self-center flex-shrink-0" />
 
         {/* Expansion */}
         <div className="flex gap-1 flex-wrap">
-          {EXPANSION_CHIPS.map(({ key, label }) => (
+          {EXPANSION_CHIP_KEYS.map(key => (
             <Button
               key={key}
               variant="ghost"
@@ -277,7 +285,9 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
                   : 'bg-surface-card text-text-muted hover:bg-surface-hover'
               }`}
             >
-              {label}
+              {/* Full expansion name on sm+, abbreviation on mobile */}
+              <span className="hidden sm:inline">{EXPANSION_FULL[key]}</span>
+              <span className="sm:hidden">{EXPANSION_SHORT[key]}</span>
             </Button>
           ))}
         </div>
@@ -297,7 +307,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2.5">
           {visibleGroups.map(group => (
             <SourceFarmCard
               key={group.sourceDutyKey}

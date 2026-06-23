@@ -41,6 +41,12 @@ class CollectionGoalCreate(BaseModel):
     token_cost: int | None = Field(None, ge=0)
 
 
+class CollectionGoalFromSuggestion(BaseModel):
+    """Create a goal pre-seeded with participant states from the suggestion engine."""
+    catalog_item_id: str
+    status: CollectionGoalStatus = "wanted"
+
+
 class CollectionGoalUpdate(BaseModel):
     goal_type: CollectionGoalType | None = None
     content_type: CollectionContentType | None = None
@@ -113,6 +119,7 @@ class ParticipantStateResponse(BaseModel):
     priority_rank: int | None
     source: str
     last_synced_at: str | None
+    last_manual_override_at: str | None = None
     notes: str | None
     updated_at: str
     # Resolved display fields

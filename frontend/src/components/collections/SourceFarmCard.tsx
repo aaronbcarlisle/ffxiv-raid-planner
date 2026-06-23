@@ -8,37 +8,25 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  ChevronDown, ChevronRight, PlusCircle, Coins,
-  Loader2, Sword, Music2, Rabbit, Shield, Gem, Copy, Check,
+  ChevronDown, PlusCircle, Coins,
+  Loader2, Copy, Check, Zap,
 } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
-import type { BadgeVariant } from '../primitives/Badge';
-import type { CatalogItem, CollectionGoal, ParticipantState } from '../../stores/collectionGoalStore';
+import type { CatalogItem, CollectionGoal, ParticipantSource, ParticipantState } from '../../stores/collectionGoalStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
+import { useCollectionIntentStore } from '../../stores/collectionIntentStore';
+import { SmartSuggestionsPanel } from './SmartSuggestionsPanel';
 import { TrackFromCatalogModal } from './TrackFromCatalogModal';
 import type { SourceFarmGroup } from '../../utils/collectionSourceGrouping';
+import {
+  SOURCE_TYPE_BADGE,
+  CATEGORY_BADGE as CATEGORY_BADGE_CONFIG,
+  expansionLabel,
+  expansionShortLabel,
+} from '../../utils/collectionBadgeConfig';
 
 // ── Config ────────────────────────────────────────────────────────────────────
-
-const SOURCE_TYPE_CONFIG: Record<string, { label: string; variant: BadgeVariant; border: string }> = {
-  extreme:  { label: 'EX',       variant: 'warning', border: 'border-l-status-warning' },
-  savage:   { label: 'Savage',   variant: 'error',   border: 'border-l-status-error'   },
-  ultimate: { label: 'Ultimate', variant: 'info',    border: 'border-l-status-info'    },
-  criterion:{ label: 'Criterion',variant: 'info',    border: 'border-l-status-info'    },
-};
-
-const EXPANSION_LABELS: Record<string, string> = {
-  arr: 'ARR', hw: 'HW', sb: 'SB', shb: 'ShB', ew: 'EW', dt: 'DT',
-};
-
-const CATEGORY_CONFIG: Record<string, { icon: typeof Sword; label: string; colorClass: string }> = {
-  mount:      { icon: Sword,   label: 'Mount',   colorClass: 'text-status-warning'  },
-  orchestrion:{ icon: Music2,  label: 'Music',   colorClass: 'text-status-info'     },
-  minion:     { icon: Rabbit,  label: 'Minion',  colorClass: 'text-status-success'  },
-  weapon:     { icon: Shield,  label: 'Weapon',  colorClass: 'text-role-melee'      },
-  other:      { icon: Gem,     label: 'Rare',    colorClass: 'text-text-secondary'  },
-};
 
 const STATE_DOT: Record<ParticipantState, string> = {
   need: 'bg-status-error',
@@ -63,18 +51,22 @@ function RewardChip({ item, existingGoal, groupId, trackDisabled }: {
   trackDisabled?: boolean;
 }) {
   const [trackOpen, setTrackOpen] = useState(false);
-  const catCfg = CATEGORY_CONFIG[item.category] ?? CATEGORY_CONFIG.other;
-  const Icon = catCfg.icon;
+  const catCfg = CATEGORY_BADGE_CONFIG[item.category] ?? CATEGORY_BADGE_CONFIG.other;
   const isTracked = Boolean(existingGoal);
 
   return (
     <>
-      <div className="flex items-center gap-2 py-1 group/chip">
-        <Icon size={13} className={`flex-shrink-0 ${catCfg.colorClass} opacity-70`} />
-        <span className={`text-xs font-semibold uppercase tracking-wide ${catCfg.colorClass} opacity-60 w-14 flex-shrink-0`}>
+      <div className="flex items-center gap-2.5 py-1.5 group/chip">
+        {/* Colored category badge pill */}
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-widest flex-shrink-0 ${catCfg.colorClass} ${catCfg.bgClass} ${catCfg.borderClass}`}>
           {catCfg.label}
         </span>
         <span className="text-sm text-text-primary flex-1 min-w-0 truncate">{item.name}</span>
+        {item.category === 'mount' && (
+          item.gameMountId != null
+            ? <Zap size={11} className="flex-shrink-0 text-status-info opacity-50" title="Plugin ready — ownership detected automatically" />
+            : <Zap size={11} className="flex-shrink-0 text-text-muted opacity-25" title="Manual only — no game ID yet" />
+        )}
         {isTracked ? (
           <Badge variant="success" size="sm" className="flex-shrink-0">Tracking</Badge>
         ) : trackDisabled ? null : (
@@ -82,7 +74,7 @@ function RewardChip({ item, existingGoal, groupId, trackDisabled }: {
             size="sm"
             variant="ghost"
             onClick={e => { e.stopPropagation(); setTrackOpen(true); }}
-            className="flex items-center gap-1 flex-shrink-0 text-accent hover:bg-accent/10 opacity-0 group-hover/chip:opacity-100 transition-opacity"
+            className="flex items-center gap-1 flex-shrink-0 text-accent hover:bg-accent/10 opacity-30 group-hover/chip:opacity-100 transition-opacity"
           >
             <PlusCircle size={12} /> Track
           </Button>
@@ -100,15 +92,26 @@ function RewardChip({ item, existingGoal, groupId, trackDisabled }: {
   );
 }
 
-function MemberRow({ participant }: { participant: { id: string; displayName: string | null; state: ParticipantState; tokenCount: number | null } }) {
+const SOURCE_BADGE: Partial<Record<ParticipantSource, { label: string; cls: string }>> = {
+  plugin:     { label: 'Plugin', cls: 'bg-status-info/15 text-status-info' },
+  player_hub: { label: 'Hub',    cls: 'bg-status-success/15 text-status-success' },
+};
+
+function MemberRow({ participant }: { participant: { id: string; displayName: string | null; state: ParticipantState; tokenCount: number | null; source?: ParticipantSource } }) {
   const cfg = { dot: STATE_DOT[participant.state], text: STATE_TEXT[participant.state] };
   const faded = participant.state === 'have' || participant.state === 'pass';
+  const sourceBadge = participant.source ? SOURCE_BADGE[participant.source] : undefined;
   return (
     <div className="flex items-center gap-2 text-xs py-0.5">
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
       <span className={`flex-1 min-w-0 truncate ${faded ? 'text-text-muted line-through opacity-60' : 'text-text-primary font-medium'}`}>
         {participant.displayName ?? 'Unknown'}
       </span>
+      {sourceBadge && (
+        <span className={`text-[10px] font-medium px-1 py-0.5 rounded ${sourceBadge.cls}`}>
+          {sourceBadge.label}
+        </span>
+      )}
       <span className={`font-semibold ${cfg.text}`}>
         {participant.state === 'need' ? 'Need' : participant.state === 'want' ? 'Want' : participant.state === 'have' ? 'Have' : 'Pass'}
       </span>
@@ -133,6 +136,7 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
   const [copied, setCopied] = useState(false);
 
   const { participants, participantsLoading, fetchParticipants } = useCollectionGoalStore();
+  const { suggestions, fetchSuggestions } = useCollectionIntentStore();
 
   // Collect tracked goals in this group
   const trackedGoals = group.rewards
@@ -156,13 +160,16 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
     { need: 0, want: 0, have: 0, passing: 0, total: 0 },
   );
 
-  // Fetch participants for all tracked goals when expanded
+  // Fetch participants + suggestions for all tracked goals when expanded
   useEffect(() => {
     if (!expanded) return;
     for (const goal of trackedGoals) {
       if (!participants[goal.id] && !participantsLoading[goal.id]) {
         fetchParticipants(groupId, goal.id);
       }
+    }
+    if (isAnyTracked) {
+      fetchSuggestions(groupId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded, groupId]);
@@ -197,12 +204,13 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
       '',
       'Rewards:',
       ...group.rewards.map(r => {
-        const cat = CATEGORY_CONFIG[r.category]?.label ?? r.category;
+        const cat = CATEGORY_BADGE_CONFIG[r.category]?.label ?? r.category;
         return `  ${cat}: ${r.name}`;
       }),
     ];
     if (group.tokenName && group.tokenCost) {
-      lines.push(`Currency: ${group.tokenCost}× ${group.tokenName}`);
+      const perWeapon = group.sourceType === 'ultimate' ? ' per weapon' : '';
+      lines.push(`Currency: ${group.tokenCost}× ${group.tokenName}${perWeapon}`);
     }
     if (members.length > 0) {
       lines.push('');
@@ -217,56 +225,62 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
     setTimeout(() => setCopied(false), 2000);
   }, [group, members]);
 
-  const srcCfg = group.sourceType ? SOURCE_TYPE_CONFIG[group.sourceType] : null;
-  const borderClass = srcCfg?.border ?? 'border-l-border-default';
+  const srcCfg = group.sourceType ? SOURCE_TYPE_BADGE[group.sourceType] : null;
+  const borderClass = srcCfg?.leftBorderClass ?? 'border-l-border-default';
 
   return (
     <div
-      className={`rounded-xl border border-border-subtle overflow-hidden transition-all border-l-4 ${borderClass} ${
-        isAnyTracked ? 'bg-accent/5' : 'bg-surface-card'
+      className={`rounded-xl border overflow-hidden transition-colors duration-150 border-l-4 ${borderClass} ${
+        isAnyTracked ? 'bg-accent/5 border-accent/25' : 'bg-surface-card border-border-subtle'
       }`}
     >
       {/* ── Header row ────────────────────────────────────────────────────── */}
       {/* design-system-ignore: expandable source card requires specific layout */}
       <button
         type="button"
-        className="w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-surface-hover/40 transition-colors"
+        className="w-full text-left flex items-start gap-3 px-4 py-4 hover:bg-surface-hover/40 transition-colors"
         onClick={() => setExpanded(e => !e)}
         aria-expanded={expanded}
       >
-        <span className="text-text-muted flex-shrink-0 mt-0.5">
-          {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
-        </span>
-
         {/* Source name + badges */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-text-primary leading-tight">{group.sourceDutyName}</span>
+          {/* Row 1: source type badge + expansion + reward count pill */}
+          <div className="flex items-center gap-2 flex-wrap mb-0.5">
             {srcCfg && (
-              <Badge variant={srcCfg.variant} size="sm">{srcCfg.label}</Badge>
-            )}
-            {group.expansion && (
-              <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted opacity-60">
-                {EXPANSION_LABELS[group.expansion] ?? group.expansion.toUpperCase()}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${srcCfg.colorClass}`}>
+                {srcCfg.label}
               </span>
             )}
+            {group.expansion && (
+              <span className="text-[10px] font-medium text-text-muted opacity-70 flex-shrink-0">
+                <span className="hidden sm:inline">{expansionLabel(group.expansion)}</span>
+                <span className="sm:hidden">{expansionShortLabel(group.expansion)}</span>
+              </span>
+            )}
+            <span className="text-[9px] font-medium bg-surface-raised text-text-muted border border-border-subtle/60 px-1.5 py-0.5 rounded-full flex-shrink-0 ml-auto tabular-nums">
+              {group.rewards.length}
+            </span>
           </div>
 
-          {/* Reward category pills — compact summary */}
+          {/* Row 2: duty name */}
+          <span className="text-base font-bold text-text-primary leading-snug block truncate">{group.sourceDutyName}</span>
+
+          {/* Row 3: reward category pills (collapsed only) */}
           {!expanded && (
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               {group.rewards.map(r => {
-                const catCfg = CATEGORY_CONFIG[r.category] ?? CATEGORY_CONFIG.other;
-                const Icon = catCfg.icon;
+                const catCfg = CATEGORY_BADGE_CONFIG[r.category] ?? CATEGORY_BADGE_CONFIG.other;
                 const tracked = Boolean(goalsByItemId[r.id]);
                 return (
                   <span
                     key={r.id}
-                    className={`flex items-center gap-1 text-xs ${catCfg.colorClass} ${tracked ? 'font-semibold' : 'opacity-60'}`}
+                    className={`flex items-center gap-1.5 text-xs ${tracked ? '' : 'opacity-55'}`}
                     title={r.name}
                   >
-                    <Icon size={11} />
-                    <span className="truncate max-w-[140px]">{r.name}</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-widest flex-shrink-0 ${catCfg.colorClass} ${catCfg.bgClass} ${catCfg.borderClass}`}>
+                      {catCfg.label}
+                    </span>
+                    <span className="truncate max-w-[130px] sm:max-w-[180px] text-text-secondary text-[11px]">{r.name}</span>
                     {tracked && <span className="w-1.5 h-1.5 rounded-full bg-status-success flex-shrink-0" />}
                   </span>
                 );
@@ -275,19 +289,20 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
           )}
         </div>
 
-        {/* Right side: token info + participant summary + copy */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Token cost */}
+        {/* Right side: token pill + participant dots + chevron */}
+        <div className="flex items-center gap-2.5 flex-shrink-0 mt-0.5">
+          {/* Token cost pill */}
           {group.tokenName && group.tokenCost && (
-            <div className="hidden sm:flex items-center gap-1 text-xs text-text-secondary whitespace-nowrap">
-              <Coins size={11} className="text-amber-400" />
+            <div className="hidden sm:flex items-center gap-1 text-[10px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-md whitespace-nowrap">
+              <Coins size={10} />
               {group.tokenCost}×
+              {group.sourceType === 'ultimate' && <span className="opacity-70 ml-0.5">/ weapon</span>}
             </div>
           )}
 
           {/* Participant summary dots (tracked only) */}
           {isAnyTracked && aggregateSummary.total > 0 && (
-            <div className="hidden sm:flex items-center gap-2 text-xs">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs">
               {aggregateSummary.need > 0 && (
                 <span className="flex items-center gap-1 text-status-error font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-status-error" />
@@ -308,11 +323,21 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
               )}
             </div>
           )}
+
+          {/* Chevron — rotates on expand */}
+          <ChevronDown
+            size={15}
+            className={`text-text-muted transition-transform duration-200 flex-shrink-0 ${expanded ? '' : '-rotate-90'}`}
+          />
         </div>
       </button>
 
-      {/* ── Expanded body ─────────────────────────────────────────────────── */}
-      {expanded && (
+      {/* ── Expanded body — CSS grid animation ───────────────────────────── */}
+      <div
+        className="grid transition-[grid-template-rows] duration-200 ease-in-out"
+        style={{ gridTemplateRows: expanded ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
         <div className="border-t border-border-subtle/50">
           {/* All rewards from this source */}
           <div className="px-4 pt-3 pb-2">
@@ -337,6 +362,9 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
                 <Coins size={12} className="text-amber-400" />
                 <span className="font-semibold">{group.tokenCost}×</span>
                 <span>{group.tokenName}</span>
+                {group.sourceType === 'ultimate' && (
+                  <span className="opacity-60">per weapon</span>
+                )}
               </div>
             </div>
           )}
@@ -357,25 +385,31 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
                   {members.map(m => <MemberRow key={m.id} participant={m} />)}
                 </div>
               ) : (
-                <p className="text-xs text-text-muted opacity-60">No members have set their state yet.</p>
+                <p className="text-xs text-text-muted opacity-60">No members have shared their Player Hub preferences with this static yet.</p>
               )}
             </div>
           )}
 
-          {/* Footer: meta + copy plan */}
+          {/* Smart Suggestions — shown only when tracked and suggestions are loaded */}
+          {isAnyTracked && (() => {
+            const groupSuggestions = suggestions[groupId] ?? [];
+            // Find the best-scored suggestion whose catalogItemId is one of this group's rewards
+            const rewardIds = new Set(group.rewards.map(r => r.id));
+            const match = groupSuggestions
+              .filter(s => rewardIds.has(s.catalogItemId))
+              .sort((a, b) => b.suggestedFarmScore - a.suggestedFarmScore)[0];
+            return match ? <SmartSuggestionsPanel suggestion={match} /> : null;
+          })()}
+
+          {/* Footer: patch · expansion + copy plan */}
           <div className="border-t border-border-subtle/40 px-4 py-2 flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs text-text-muted flex-wrap">
-              {group.sourceDutyName && <span>{group.sourceDutyName}</span>}
-              {group.patch && (
-                <>
-                  <span className="opacity-40">·</span>
-                  <span>Patch {group.patch}</span>
-                </>
-              )}
+              {group.patch && <span>Patch {group.patch}</span>}
+              {group.patch && group.expansion && <span className="opacity-40">·</span>}
               {group.expansion && (
                 <>
-                  <span className="opacity-40">·</span>
-                  <span>{EXPANSION_LABELS[group.expansion] ?? group.expansion}</span>
+                  <span className="hidden sm:inline">{expansionLabel(group.expansion)}</span>
+                  <span className="sm:hidden">{expansionShortLabel(group.expansion)}</span>
                 </>
               )}
             </div>
@@ -390,7 +424,8 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
             </Button>
           </div>
         </div>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -42,6 +42,12 @@ class CollectionCatalogItem(Base):
 
     token_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     token_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    token_item_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Stable game IDs from Mount.exd / Item.exd (via Lumina/SaintCoinach).
+    # Used by the Dalamud plugin for IsMountUnlocked() and InventoryManager scans.
+    # Null means IDs have not yet been verified for this entry.
+    game_mount_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     tradeable: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     rarity_owned_percent: Mapped[float | None] = mapped_column(Float, nullable=True)

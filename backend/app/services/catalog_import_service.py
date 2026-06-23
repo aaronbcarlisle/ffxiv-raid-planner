@@ -51,6 +51,8 @@ async def seed_from_internal(session: AsyncSession) -> int:
             source_duty_key=item.get("source_duty_key"),
             token_name=item.get("token_name"),
             token_cost=item.get("token_cost"),
+            game_mount_id=item.get("game_mount_id"),
+            token_item_id=item.get("token_item_id"),
             is_curated=True,
         )
         count += 1
@@ -100,6 +102,10 @@ _SOURCE_TYPE_MAP: dict[str, str] = {
 # Source types that represent actual in-game content (duty/encounter)
 _CONTENT_SOURCE_TYPES = frozenset({
     "Extreme", "Trial", "Ultimate", "Savage", "Raid", "Criterion", "Alliance Raid",
+})
+
+_FARM_RELEVANT_SOURCE_TYPES = frozenset({
+    "extreme", "ultimate", "savage", "criterion", "chaotic_alliance",
 })
 
 # Maps FFXIV Collect patch prefixes to expansion slugs
@@ -158,13 +164,24 @@ def _extract_source_info(
     return None, None, None
 
 
-async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
+async def sync_from_ffxiv_collect(session: AsyncSession) -> dict:
     """
     Fetch mounts, minions, and orchestrion from FFXIV Collect and upsert.
+    Only farm-relevant source types are imported (extreme/ultimate/savage/criterion/chaotic_alliance).
     Applies internal curated overrides on top of API data.
-    Returns counts per category.
+
+    Returns a report dict with keys:
+      imported            — count per category that was upserted
+      skipped             — total items skipped (non-farm source type)
+      skipped_by_source   — skipped count keyed by internal source type
+      category_count_after — total rows per category after upsert + seed
     """
-    counts: dict[str, int] = {"mount": 0, "minion": 0, "orchestrion": 0}
+    imported: dict[str, int] = {"mount": 0, "minion": 0, "orchestrion": 0}
+    skipped_by_source: dict[str, int] = {}
+
+    def _record_skip(src_type: str | None) -> None:
+        key = src_type or "unknown"
+        skipped_by_source[key] = skipped_by_source.get(key, 0) + 1
 
     # ── Mounts ────────────────────────────────────────────────────────────────
     mount_data = await fetch_mounts()
@@ -172,6 +189,9 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
         patch = item.get("patch") or ""
         sources = item.get("sources") or []
         src_type, duty_name, src_text = _extract_source_info(sources)
+        if src_type not in _FARM_RELEVANT_SOURCE_TYPES:
+            _record_skip(src_type)
+            continue
         await _upsert_catalog_item(
             session,
             external_source="ffxiv_collect",
@@ -189,7 +209,7 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
             rarity_owned_percent=_parse_owned_percent(item.get("owned")),
             is_curated=False,
         )
-        counts["mount"] += 1
+        imported["mount"] += 1
 
     # ── Minions ───────────────────────────────────────────────────────────────
     minion_data = await fetch_minions()
@@ -197,6 +217,9 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
         patch = item.get("patch") or ""
         sources = item.get("sources") or []
         src_type, duty_name, src_text = _extract_source_info(sources)
+        if src_type not in _FARM_RELEVANT_SOURCE_TYPES:
+            _record_skip(src_type)
+            continue
         await _upsert_catalog_item(
             session,
             external_source="ffxiv_collect",
@@ -214,7 +237,7 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
             rarity_owned_percent=_parse_owned_percent(item.get("owned")),
             is_curated=False,
         )
-        counts["minion"] += 1
+        imported["minion"] += 1
 
     # ── Orchestrion ───────────────────────────────────────────────────────────
     orch_data = await fetch_orchestrion()
@@ -222,6 +245,9 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
         patch = item.get("patch") or ""
         sources = item.get("sources") or []
         src_type, duty_name, src_text = _extract_source_info(sources)
+        if src_type not in _FARM_RELEVANT_SOURCE_TYPES:
+            _record_skip(src_type)
+            continue
         # Orchestrion has a category sub-object; store it in source_text if no other source
         category_name = (item.get("category") or {}).get("name") if isinstance(item.get("category"), dict) else None
         await _upsert_catalog_item(
@@ -240,7 +266,7 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
             rarity_owned_percent=_parse_owned_percent(item.get("owned")),
             is_curated=False,
         )
-        counts["orchestrion"] += 1
+        imported["orchestrion"] += 1
 
     await session.commit()
 
@@ -249,7 +275,20 @@ async def sync_from_ffxiv_collect(session: AsyncSession) -> dict[str, int]:
     # ffxiv_collect rows. The catalog router deduplicates by preferring curated rows.
     await seed_from_internal(session)
 
-    return counts
+    # Count rows per category after full import + seed
+    cat_result = await session.execute(
+        select(CollectionCatalogItem.category, func.count(CollectionCatalogItem.id))
+        .group_by(CollectionCatalogItem.category)
+    )
+    category_count_after = dict(cat_result.all())
+
+    total_skipped = sum(skipped_by_source.values())
+    return {
+        "imported": imported,
+        "skipped": total_skipped,
+        "skipped_by_source": skipped_by_source,
+        "category_count_after": category_count_after,
+    }
 
 
 # ── Core upsert ───────────────────────────────────────────────────────────────
@@ -271,6 +310,8 @@ async def _upsert_catalog_item(
     source_duty_key: str | None = None,
     token_name: str | None = None,
     token_cost: int | None = None,
+    game_mount_id: int | None = None,
+    token_item_id: int | None = None,
     tradeable: bool | None = None,
     rarity_owned_percent: float | None = None,
     is_curated: bool = False,
@@ -301,6 +342,8 @@ async def _upsert_catalog_item(
             source_duty_key=source_duty_key,
             token_name=token_name,
             token_cost=token_cost,
+            game_mount_id=game_mount_id,
+            token_item_id=token_item_id,
             tradeable=tradeable,
             rarity_owned_percent=rarity_owned_percent,
             is_curated=is_curated,
@@ -332,6 +375,11 @@ async def _upsert_catalog_item(
             item.token_name = token_name
         if is_curated or token_cost is not None:
             item.token_cost = token_cost
+        # Game IDs: curated data always wins; never overwrite a known ID with None
+        if is_curated or game_mount_id is not None:
+            item.game_mount_id = game_mount_id
+        if is_curated or token_item_id is not None:
+            item.token_item_id = token_item_id
         if tradeable is not None:
             item.tradeable = tradeable
         if rarity_owned_percent is not None:

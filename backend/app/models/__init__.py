@@ -14,6 +14,8 @@ from .join_request import JoinRequest  # noqa: F811
 from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
 from .mount_farm_progress import MountFarmProgress
+from .player_collection_snapshot import PlayerCollectionSnapshot
+from .player_collection_intent import PlayerCollectionIntent
 from .player_goal import PlayerGoal
 from .static_content_suggestion import StaticContentSuggestion, StaticContentSuggestionVote
 from .static_objective_goal import StaticObjectiveGoal
@@ -59,6 +61,8 @@ __all__ = [
     "Membership",
     "MemberRole",
     "PageLedgerEntry",
+    "PlayerCollectionSnapshot",
+    "PlayerCollectionIntent",
     "PlayerGoal",
     "StaticContentSuggestion",
     "StaticContentSuggestionVote",

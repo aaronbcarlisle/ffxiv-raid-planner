@@ -16,8 +16,14 @@ from ..models.membership import Membership
 from ..models.reward_drop_log import RewardDropLog
 from ..models.reward_participant_state import RewardParticipantState
 from ..permissions import NotFound, get_static_group, require_can_manage_members, require_membership
+from ..models.collection_catalog_item import CollectionCatalogItem
+from ..models.membership import MemberRole
+from ..models.player_collection_intent import PlayerCollectionIntent
+from ..models.player_collection_snapshot import PlayerCollectionSnapshot
+from ..models.player_profile import PlayerProfile
 from ..schemas.collection_goals import (
     CollectionGoalCreate,
+    CollectionGoalFromSuggestion,
     CollectionGoalResponse,
     CollectionGoalUpdate,
     ParticipantStateResponse,
@@ -162,6 +168,200 @@ async def create_collection_goal(
     return _goal_to_response(goal, ParticipantSummary())
 
 
+# ── Goal category → goal type mapping ────────────────────────────────────────
+_CATALOG_CATEGORY_TO_GOAL_TYPE: dict[str, str] = {
+    "mount": "mount",
+    "orchestrion": "orchestrion",
+    "minion": "minion",
+    "weapon": "weapon",
+    "glam": "glam",
+}
+_VALID_CONTENT_TYPES = {
+    "extreme", "savage", "ultimate", "criterion",
+    "chaotic_alliance", "field_operation", "custom",
+}
+
+
+@router.post(
+    "/static-groups/{group_id}/collection-goals/from-suggestion",
+    response_model=CollectionGoalResponse,
+    status_code=201,
+)
+async def create_goal_from_suggestion(
+    group_id: str,
+    body: CollectionGoalFromSuggestion,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> CollectionGoalResponse:
+    """Create a CollectionGoal from a suggestion and pre-seed participant states.
+
+    Participant states are derived from (in priority order):
+      PlayerCollectionSnapshot (plugin ownership) > PlayerCollectionIntent
+      (static_only/dossier_public only — never private) > MountFarmProgress legacy data.
+
+    Members with no signal default to state="want".
+    Existing RewardParticipantState rows are not overwritten.
+    """
+    from ..models.mount_farm_progress import MountFarmProgress
+    from ..services.legacy_mount_farm_bridge import get_legacy_farm_signals
+
+    await get_static_group(session, group_id)
+    await require_can_manage_members(session, current_user.id, group_id)
+
+    # ── Load catalog item ───────────────────────────────────────────────────
+    catalog_result = await session.execute(
+        select(CollectionCatalogItem).where(CollectionCatalogItem.id == body.catalog_item_id)
+    )
+    catalog_item = catalog_result.scalar_one_or_none()
+    if not catalog_item:
+        raise NotFound(f"Catalog item {body.catalog_item_id} not found")
+
+    now = _now()
+
+    # ── Create goal ─────────────────────────────────────────────────────────
+    goal_type = _CATALOG_CATEGORY_TO_GOAL_TYPE.get(catalog_item.category or "", "custom_reward")
+    content_type = (
+        catalog_item.source_type
+        if catalog_item.source_type in _VALID_CONTENT_TYPES
+        else None
+    )
+    goal = CollectionGoal(
+        id=str(uuid.uuid4()),
+        static_group_id=group_id,
+        created_by_id=current_user.id,
+        goal_type=goal_type,
+        content_type=content_type,
+        title=catalog_item.name,
+        status=body.status,
+        catalog_item_id=catalog_item.id,
+        token_name=catalog_item.token_name,
+        token_cost=catalog_item.token_cost,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(goal)
+    await session.flush()  # get goal.id without committing
+
+    # ── Collect member user IDs (non-viewers) ───────────────────────────────
+    members_result = await session.execute(
+        select(Membership.user_id).where(
+            Membership.static_group_id == group_id,
+            Membership.role != MemberRole.VIEWER,
+        )
+    )
+    member_user_ids = [r[0] for r in members_result.all()]
+
+    # ── Load profile IDs for members ────────────────────────────────────────
+    profiles_result = await session.execute(
+        select(PlayerProfile).where(PlayerProfile.user_id.in_(member_user_ids))
+    )
+    profile_by_user: dict[str, str] = {p.user_id: p.id for p in profiles_result.scalars().all()}
+    profile_ids = list(profile_by_user.values())
+
+    # ── Snapshots ───────────────────────────────────────────────────────────
+    snapshot_map: dict[str, PlayerCollectionSnapshot] = {}
+    if profile_ids:
+        snap_result = await session.execute(
+            select(PlayerCollectionSnapshot).where(
+                PlayerCollectionSnapshot.profile_id.in_(profile_ids),
+                PlayerCollectionSnapshot.catalog_item_id == catalog_item.id,
+            )
+        )
+        for s in snap_result.scalars().all():
+            snapshot_map[s.profile_id] = s
+
+    # ── Intents (static_only + dossier_public only — never private) ─────────
+    intent_map: dict[str, PlayerCollectionIntent] = {}
+    if profile_ids:
+        intent_result = await session.execute(
+            select(PlayerCollectionIntent).where(
+                PlayerCollectionIntent.profile_id.in_(profile_ids),
+                PlayerCollectionIntent.catalog_item_id == catalog_item.id,
+                PlayerCollectionIntent.visibility.in_(["static_only", "dossier_public"]),
+            )
+        )
+        for i in intent_result.scalars().all():
+            intent_map[i.profile_id] = i
+
+    # ── Legacy MountFarmProgress signals ────────────────────────────────────
+    legacy_map, _ = await get_legacy_farm_signals(session, group_id, member_user_ids)
+    # Filter to just this catalog item
+    legacy_for_item = {
+        user_id: sig
+        for (user_id, cid), sig in legacy_map.items()
+        if cid == catalog_item.id
+    }
+
+    # ── Pre-seed participant states ──────────────────────────────────────────
+    summary = ParticipantSummary()
+    for user_id in member_user_ids:
+        profile_id = profile_by_user.get(user_id)
+        snapshot = snapshot_map.get(profile_id) if profile_id else None
+        intent = intent_map.get(profile_id) if profile_id else None
+        legacy = legacy_for_item.get(user_id)
+
+        # Priority: snapshot > intent > legacy > default
+        if snapshot is not None and snapshot.ownership_state == "have":
+            state = "have"
+            token_count = snapshot.token_count
+            source = "plugin"
+        elif intent is not None and intent.intent == "pass":
+            state = "pass"
+            token_count = None
+            source = "player_hub"
+        elif intent is not None and intent.intent in ("hunting", "interested"):
+            state = "want"
+            token_count = snapshot.token_count if snapshot else None
+            source = "player_hub"
+        elif legacy is not None and legacy.has_mount:
+            state = "have"
+            token_count = None
+            source = "manual"
+        elif legacy is not None and legacy.wants_mount:
+            state = "want"
+            token_count = legacy.totem_count if legacy.totem_count > 0 else None
+            source = "manual"
+        elif snapshot is not None and snapshot.ownership_state == "missing":
+            state = "want"
+            token_count = snapshot.token_count
+            source = "plugin"
+        else:
+            state = "want"  # optimistic default — all members start as wanting
+            token_count = None
+            source = "manual"
+
+        participant = RewardParticipantState(
+            id=str(uuid.uuid4()),
+            goal_id=goal.id,
+            user_id=user_id,
+            static_group_id=group_id,
+            state=state,
+            token_count=token_count,
+            source=source,
+            updated_at=now,
+        )
+        session.add(participant)
+
+        # Tally summary
+        if state == "have":
+            summary.have += 1
+        elif state == "pass":
+            summary.passing += 1
+        else:
+            summary.want += 1
+        summary.total += 1
+
+    await session.commit()
+    await session.refresh(goal)
+    logger.info(
+        "collection_goal_created_from_suggestion",
+        group_id=group_id,
+        goal_id=goal.id,
+        catalog_item_id=catalog_item.id,
+    )
+    return _goal_to_response(goal, summary)
+
+
 @router.put(
     "/static-groups/{group_id}/collection-goals/{goal_id}",
     response_model=CollectionGoalResponse,
@@ -291,6 +491,7 @@ async def upsert_participant_state(
             priority_rank=body.priority_rank,
             source="manual",
             notes=body.notes,
+            last_manual_override_at=now,
             updated_at=now,
         )
         session.add(participant)
@@ -303,6 +504,7 @@ async def upsert_participant_state(
         if body.notes is not None:
             participant.notes = body.notes
         participant.source = "manual"
+        participant.last_manual_override_at = now
         participant.updated_at = now
 
     await session.commit()
@@ -321,6 +523,7 @@ async def upsert_participant_state(
         priority_rank=participant.priority_rank,
         source=participant.source,
         last_synced_at=participant.last_synced_at,
+        last_manual_override_at=participant.last_manual_override_at,
         notes=participant.notes,
         updated_at=participant.updated_at,
         display_name=user.display_name if user else None,
@@ -374,6 +577,7 @@ async def upsert_participant_state_for_user(
             priority_rank=body.priority_rank,
             source="manual",
             notes=body.notes,
+            last_manual_override_at=now,
             updated_at=now,
         )
         session.add(participant)
@@ -386,6 +590,7 @@ async def upsert_participant_state_for_user(
         if body.notes is not None:
             participant.notes = body.notes
         participant.source = "manual"
+        participant.last_manual_override_at = now
         participant.updated_at = now
 
     await session.commit()
@@ -404,6 +609,7 @@ async def upsert_participant_state_for_user(
         priority_rank=participant.priority_rank,
         source=participant.source,
         last_synced_at=participant.last_synced_at,
+        last_manual_override_at=participant.last_manual_override_at,
         notes=participant.notes,
         updated_at=participant.updated_at,
         display_name=user.display_name if user else None,

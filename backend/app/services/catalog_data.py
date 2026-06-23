@@ -23,11 +23,24 @@ class CuratedItem(TypedDict, total=False):
     source_text: str         # Full source description
     token_name: str | None   # Currency/totem name, or None if no exchange
     token_cost: int | None   # Cost in tokens, or None if no exchange
+    token_item_id: int | None  # Item.exd row ID for InventoryManager scan (None = not yet verified)
+    game_mount_id: int | None  # Mount.exd row ID for PlayerState.IsMountUnlocked() (None = not yet verified)
     notes: str | None        # Extra notes
 
 
 # ── Dawntrail (7.x) ───────────────────────────────────────────────────────────
 
+# Game IDs verified via Garland Tools API (SaintCoinach extract) and FFXIV Collect.
+# game_mount_id  = Mount.exd RowId  — used by IsMountUnlocked() in Dalamud plugin
+# token_item_id  = Item.exd RowId   — used by InventoryManager.Instance() in plugin
+#
+# Sources:
+#   Mount IDs: FFXIV Collect API (ffxivcollect.com/api/mounts/{id}) — mirrors Lumina Mount.exd RowId
+#   Item IDs:  Garland Tools API  (garlandtools.org/api/search.php?type=item) — mirrors Lumina Item.exd RowId
+#
+# Name note: Lumina Mount.Singular for dt-windward-wilds is "Felyne Support Team Cart"
+# (not "Felyne Support Team Cart Horn"). The resolver has an alias for this discrepancy.
+# Wings of Mist and Wings of Nihility have no token exchange yet (totem not released).
 DAWNTRAIL_EXTREME_MOUNTS: list[CuratedItem] = [
     {
         "source_key": "dt-ex2-mount",
@@ -41,6 +54,8 @@ DAWNTRAIL_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Worqor Lar Dor (Extreme) — Valigarmanda",
         "token_name": "Skyruin Totem",
         "token_cost": 99,
+        "game_mount_id": 345,    # Mount.exd RowId — Garland Tools / FFXIV Collect verified
+        "token_item_id": 43539,  # Item.exd RowId  — Garland Tools verified
         "notes": None,
     },
     {
@@ -55,6 +70,8 @@ DAWNTRAIL_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Everkeep (Extreme) — Zoraal Ja",
         "token_name": "Resilient Totem",
         "token_cost": 99,
+        "game_mount_id": 346,    # Mount.exd RowId — Garland Tools / FFXIV Collect verified
+        "token_item_id": 43540,  # Item.exd RowId  — Garland Tools verified
         "notes": None,
     },
     {
@@ -69,6 +86,8 @@ DAWNTRAIL_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Minstrel's Ballad: Sphene's Burden",
         "token_name": "Totem Eternal",
         "token_cost": 99,
+        "game_mount_id": 363,    # Mount.exd RowId — Garland Tools / FFXIV Collect verified
+        "token_item_id": 44718,  # Item.exd RowId  — Garland Tools verified
         "notes": None,
     },
     {
@@ -83,6 +102,8 @@ DAWNTRAIL_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Recollection (Extreme)",
         "token_name": "Knight Totem",
         "token_cost": 99,
+        "game_mount_id": 389,    # Mount.exd RowId — Garland Tools / FFXIV Collect verified
+        "token_item_id": 46720,  # Item.exd RowId  — Garland Tools verified
         "notes": None,
     },
     {
@@ -90,13 +111,15 @@ DAWNTRAIL_EXTREME_MOUNTS: list[CuratedItem] = [
         "name": "Wings of Death",
         "category": "mount",
         "expansion": "dt",
-        "patch": "7.2",
+        "patch": "7.3",
         "source_type": "extreme",
         "source_duty_name": "The Minstrel's Ballad: Necron's Embrace",
         "source_duty_key": "dt-necron-embrace",
         "source_text": "The Minstrel's Ballad: Necron's Embrace",
         "token_name": "Grave Totem",
         "token_cost": 99,
+        "game_mount_id": 407,    # Mount.exd RowId — Garland Tools / FFXIV Collect verified
+        "token_item_id": 46982,  # Item.exd RowId  — Garland Tools verified
         "notes": None,
     },
     {
@@ -104,13 +127,15 @@ DAWNTRAIL_EXTREME_MOUNTS: list[CuratedItem] = [
         "name": "Felyne Support Team Cart Horn",
         "category": "mount",
         "expansion": "dt",
-        "patch": "7.2",
+        "patch": "7.35",
         "source_type": "extreme",
         "source_duty_name": "The Windward Wilds (Extreme)",
         "source_duty_key": "dt-windward-wilds",
         "source_text": "The Windward Wilds (Extreme) — Arkveld (Monster Hunter Collab)",
         "token_name": "Guardian Arkveld Certificate",
         "token_cost": 99,
+        "game_mount_id": 399,    # Mount.exd RowId — FFXIV Collect verified (Lumina: "Felyne Support Team Cart")
+        "token_item_id": 47101,  # Item.exd RowId  — Garland Tools verified
         "notes": None,
     },
     {
@@ -118,13 +143,15 @@ DAWNTRAIL_EXTREME_MOUNTS: list[CuratedItem] = [
         "name": "Wings of Mist",
         "category": "mount",
         "expansion": "dt",
-        "patch": "7.25",
+        "patch": "7.4",
         "source_type": "extreme",
         "source_duty_name": "Hell on Rails (Extreme)",
         "source_duty_key": "dt-hell-on-rails",
         "source_text": "Hell on Rails (Extreme)",
         "token_name": None,
         "token_cost": None,
+        "game_mount_id": 422,    # Mount.exd RowId — FFXIV Collect verified
+        "token_item_id": None,   # Token exchange not yet released
         "notes": "Totem exchange not yet available",
     },
     {
@@ -132,13 +159,15 @@ DAWNTRAIL_EXTREME_MOUNTS: list[CuratedItem] = [
         "name": "Wings of Nihility",
         "category": "mount",
         "expansion": "dt",
-        "patch": "7.25",
+        "patch": "7.5",
         "source_type": "extreme",
         "source_duty_name": "The Unmaking (Extreme)",
         "source_duty_key": "dt-unmaking",
         "source_text": "The Unmaking (Extreme)",
         "token_name": None,
         "token_cost": None,
+        "game_mount_id": 444,    # Mount.exd RowId — FFXIV Collect verified
+        "token_item_id": None,   # Token exchange not yet released
         "notes": "Totem exchange not yet available",
     },
 ]
@@ -155,7 +184,7 @@ DAWNTRAIL_ULTIMATE_WEAPONS: list[CuratedItem] = [
         "source_duty_key": "ult-fru",
         "source_text": "Futures Rewritten (Ultimate) — Oracle of Darkness",
         "token_name": "Oracle Totem",
-        "token_cost": 7,
+        "token_cost": 1,
         "notes": None,
     },
     {
@@ -169,7 +198,7 @@ DAWNTRAIL_ULTIMATE_WEAPONS: list[CuratedItem] = [
         "source_duty_key": "ult-dmu",
         "source_text": "Dancing Mad (Ultimate) — The Emperor",
         "token_name": "Mad Harlequin's Totem",
-        "token_cost": 7,
+        "token_cost": 1,
         "notes": None,
     },
 ]
@@ -290,6 +319,8 @@ ENDWALKER_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Dark Inside (Extreme) — Zodiark",
         "token_name": "Zodiark Totem",
         "token_cost": 99,
+        "game_mount_id": 282,
+        "token_item_id": 36810,
         "notes": None,
     },
     {
@@ -304,6 +335,8 @@ ENDWALKER_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Mothercrystal (Extreme) — Hydaelyn",
         "token_name": "Hydaelyn Totem",
         "token_cost": 99,
+        "game_mount_id": 283,
+        "token_item_id": 36811,
         "notes": None,
     },
     {
@@ -318,6 +351,8 @@ ENDWALKER_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Final Day (Extreme) — Endsinger",
         "token_name": "Endsinger Totem",
         "token_cost": 99,
+        "game_mount_id": 295,
+        "token_item_id": 38263,
         "notes": None,
     },
     {
@@ -332,6 +367,8 @@ ENDWALKER_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Storm's Crown (Extreme) — Barbariccia",
         "token_name": "Barbariccia Totem",
         "token_cost": 99,
+        "game_mount_id": 301,
+        "token_item_id": 38949,
         "notes": None,
     },
     {
@@ -346,6 +383,8 @@ ENDWALKER_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Mount Ordeals (Extreme) — Rubicante",
         "token_name": "Rubicante Totem",
         "token_cost": 99,
+        "game_mount_id": 308,
+        "token_item_id": 39575,
         "notes": None,
     },
     {
@@ -360,6 +399,8 @@ ENDWALKER_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Voidcast Dais (Extreme) — Golbez",
         "token_name": "Golbez Totem",
         "token_cost": 99,
+        "game_mount_id": 314,
+        "token_item_id": 40201,
         "notes": None,
     },
     {
@@ -374,6 +415,8 @@ ENDWALKER_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Abyssal Fracture (Extreme) — Zeromus",
         "token_name": "Zeromus Totem",
         "token_cost": 99,
+        "game_mount_id": 320,
+        "token_item_id": 40827,
         "notes": None,
     },
 ]
@@ -390,7 +433,7 @@ ENDWALKER_ULTIMATE_WEAPONS: list[CuratedItem] = [
         "source_duty_key": "ult-dsr",
         "source_text": "Dragonsong's Reprise (Ultimate) — King Thordan",
         "token_name": "Dragonsong Totem",
-        "token_cost": 7,
+        "token_cost": 1,
         "notes": None,
     },
     {
@@ -404,7 +447,7 @@ ENDWALKER_ULTIMATE_WEAPONS: list[CuratedItem] = [
         "source_duty_key": "ult-top",
         "source_text": "The Omega Protocol (Ultimate) — Omega",
         "token_name": "Omega Totem",
-        "token_cost": 7,
+        "token_cost": 1,
         "notes": None,
     },
 ]
@@ -525,6 +568,8 @@ SHADOWBRINGERS_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Dancing Plague (Extreme) — Titania",
         "token_name": "Fae Totem",
         "token_cost": 99,
+        "game_mount_id": 232,
+        "token_item_id": 28636,
         "notes": None,
     },
     {
@@ -539,6 +584,8 @@ SHADOWBRINGERS_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Crown of the Immaculate (Extreme) — Innocence",
         "token_name": "Immaculate Totem",
         "token_cost": 99,
+        "game_mount_id": 233,
+        "token_item_id": 28637,
         "notes": None,
     },
     {
@@ -553,6 +600,8 @@ SHADOWBRINGERS_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Minstrel's Ballad: Hades's Elegy",
         "token_name": "Hades Totem",
         "token_cost": 99,
+        "game_mount_id": 241,
+        "token_item_id": 30109,
         "notes": None,
     },
     {
@@ -567,6 +616,8 @@ SHADOWBRINGERS_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Seat of Sacrifice (Extreme) — Warrior of Light",
         "token_name": "Warrior of Light Totem",
         "token_cost": 99,
+        "game_mount_id": 253,
+        "token_item_id": 31357,
         "notes": None,
     },
     {
@@ -581,6 +632,8 @@ SHADOWBRINGERS_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Castrum Marinum (Extreme) — Emerald Weapon",
         "token_name": "Emerald Totem",
         "token_cost": 99,
+        "game_mount_id": 261,
+        "token_item_id": 32799,
         "notes": None,
     },
     {
@@ -595,6 +648,8 @@ SHADOWBRINGERS_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Cloud Deck (Extreme) — Diamond Weapon",
         "token_name": "Diamond Totem",
         "token_cost": 99,
+        "game_mount_id": 270,
+        "token_item_id": 33691,
         "notes": None,
     },
 ]
@@ -732,6 +787,8 @@ STORMBLOOD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Pool of Tribute (Extreme) — Susano",
         "token_name": "Susano Totem",
         "token_cost": 99,
+        "game_mount_id": 169,
+        "token_item_id": 21197,
         "notes": None,
     },
     {
@@ -746,6 +803,8 @@ STORMBLOOD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Emanation (Extreme) — Lakshmi",
         "token_name": "Lakshmi Totem",
         "token_cost": 99,
+        "game_mount_id": 170,
+        "token_item_id": 21198,
         "notes": None,
     },
     {
@@ -760,6 +819,8 @@ STORMBLOOD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Minstrel's Ballad: Shinryu's Domain",
         "token_name": "Shinryu Totem",
         "token_cost": 99,
+        "game_mount_id": 179,
+        "token_item_id": 22027,
         "notes": None,
     },
     {
@@ -774,6 +835,8 @@ STORMBLOOD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Jade Stoa (Extreme) — Byakko",
         "token_name": "Byakko Totem",
         "token_cost": 99,
+        "game_mount_id": 183,
+        "token_item_id": 22637,
         "notes": None,
     },
     {
@@ -788,6 +851,8 @@ STORMBLOOD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Minstrel's Ballad: Tsukuyomi's Pain",
         "token_name": "Tsukuyomi Totem",
         "token_cost": 99,
+        "game_mount_id": 191,
+        "token_item_id": 23270,
         "notes": None,
     },
     {
@@ -802,6 +867,8 @@ STORMBLOOD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Hells' Kier (Extreme) — Suzaku",
         "token_name": "Suzaku Totem",
         "token_cost": 99,
+        "game_mount_id": 196,
+        "token_item_id": 24244,
         "notes": None,
     },
     {
@@ -816,6 +883,8 @@ STORMBLOOD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Wreath of Snakes (Extreme) — Seiryu",
         "token_name": "Seiryu Totem",
         "token_cost": 99,
+        "game_mount_id": 200,
+        "token_item_id": 24631,
         "notes": None,
     },
 ]
@@ -981,6 +1050,8 @@ HEAVENSWARD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Limitless Blue (Extreme) — Bismarck",
         "token_name": "Bismarck Totem",
         "token_cost": 99,
+        "game_mount_id": 70,
+        "token_item_id": 13619,
         "notes": None,
     },
     {
@@ -995,6 +1066,8 @@ HEAVENSWARD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Thok ast Thok (Extreme) — Ravana",
         "token_name": "Ravana Totem",
         "token_cost": 99,
+        "game_mount_id": 71,
+        "token_item_id": 13620,
         "notes": None,
     },
     {
@@ -1009,6 +1082,8 @@ HEAVENSWARD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Minstrel's Ballad: Thordan's Reign",
         "token_name": "Thordan Totem",
         "token_cost": 99,
+        "game_mount_id": 80,
+        "token_item_id": 14298,
         "notes": None,
     },
     {
@@ -1023,6 +1098,8 @@ HEAVENSWARD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Containment Bay S1T7 (Extreme) — Sephirot",
         "token_name": "Sephirot Totem",
         "token_cost": 99,
+        "game_mount_id": 90,
+        "token_item_id": 15431,
         "notes": None,
     },
     {
@@ -1037,6 +1114,8 @@ HEAVENSWARD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Minstrel's Ballad: Nidhogg's Rage",
         "token_name": "Nidhogg Totem",
         "token_cost": 99,
+        "game_mount_id": 98,
+        "token_item_id": 16133,
         "notes": None,
     },
     {
@@ -1051,6 +1130,8 @@ HEAVENSWARD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Containment Bay P1T6 (Extreme) — Sophia",
         "token_name": "Sophia Totem",
         "token_cost": 99,
+        "game_mount_id": 105,
+        "token_item_id": 16825,
         "notes": None,
     },
     {
@@ -1065,6 +1146,8 @@ HEAVENSWARD_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Containment Bay Z1T9 (Extreme) — Zurvan",
         "token_name": "Zurvan Totem",
         "token_cost": 99,
+        "game_mount_id": 112,
+        "token_item_id": 17461,
         "notes": None,
     },
 ]
@@ -1213,6 +1296,8 @@ ARR_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Howling Eye (Extreme) — Garuda",
         "token_name": "Garuda Totem",
         "token_cost": 99,
+        "game_mount_id": 18,
+        "token_item_id": 7812,
         "notes": None,
     },
     {
@@ -1227,6 +1312,8 @@ ARR_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Navel (Extreme) — Titan",
         "token_name": "Titan Totem",
         "token_cost": 99,
+        "game_mount_id": 19,
+        "token_item_id": 7813,
         "notes": None,
     },
     {
@@ -1241,6 +1328,8 @@ ARR_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Bowl of Embers (Extreme) — Ifrit",
         "token_name": "Ifrit Totem",
         "token_cost": 99,
+        "game_mount_id": 17,
+        "token_item_id": 7811,
         "notes": None,
     },
     {
@@ -1255,6 +1344,8 @@ ARR_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Whorleater (Extreme) — Leviathan",
         "token_name": "Leviathan Totem",
         "token_cost": 99,
+        "game_mount_id": 33,
+        "token_item_id": 8543,
         "notes": None,
     },
     {
@@ -1269,6 +1360,8 @@ ARR_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "The Striking Tree (Extreme) — Ramuh",
         "token_name": "Ramuh Totem",
         "token_cost": 99,
+        "game_mount_id": 38,
+        "token_item_id": 9383,
         "notes": None,
     },
     {
@@ -1283,6 +1376,8 @@ ARR_EXTREME_MOUNTS: list[CuratedItem] = [
         "source_text": "Akh Afah Amphitheatre (Extreme) — Shiva",
         "token_name": "Shiva Totem",
         "token_cost": 99,
+        "game_mount_id": 46,
+        "token_item_id": 10125,
         "notes": None,
     },
 ]

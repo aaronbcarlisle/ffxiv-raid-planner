@@ -117,8 +117,8 @@ export const FALLBACK_CATALOG: CatalogItem[] = [
   mount('dt-ex8-mount', 'Wings of Mist', 'dt', 'Hell on Rails (Extreme)', 'dt-hell-on-rails', '7.25', null, null, 'Totem exchange not yet available'),
   mount('dt-ex9-mount', 'Wings of Nihility', 'dt', 'The Unmaking (Extreme)', 'dt-unmaking', '7.25', null, null, 'Totem exchange not yet available'),
   // ── Dawntrail Ultimates ───────────────────────────────────────────────────
-  weapon('dt-ult1-weapons', 'Ultimate Edenmorn Weapons', 'dt', 'Futures Rewritten (Ultimate)', 'ult-fru', '7.0', 'Oracle Totem', 7),
-  weapon('dt-ult2-weapons', 'Palazzo Diamond Weapons', 'dt', 'Dancing Mad (Ultimate)', 'ult-dmu', '7.2', "Mad Harlequin's Totem", 7),
+  weapon('dt-ult1-weapons', 'Ultimate Edenmorn Weapons', 'dt', 'Futures Rewritten (Ultimate)', 'ult-fru', '7.0', 'Oracle Totem', 1),
+  weapon('dt-ult2-weapons', 'Palazzo Diamond Weapons', 'dt', 'Dancing Mad (Ultimate)', 'ult-dmu', '7.2', "Mad Harlequin's Totem", 1),
   // ── Endwalker Extreme Mounts ──────────────────────────────────────────────
   mount('ew-ex1-mount', 'Lynx of Fallen Shadow', 'ew', 'The Dark Inside (Extreme)', 'ew-zodiark', '6.0', 'Zodiark Totem', 99),
   mount('ew-ex2-mount', 'Lynx of Divine Light', 'ew', 'The Mothercrystal (Extreme)', 'ew-hydaelyn', '6.0', 'Hydaelyn Totem', 99),
@@ -128,8 +128,8 @@ export const FALLBACK_CATALOG: CatalogItem[] = [
   mount('ew-ex6-mount', 'Lynx of Righteous Fire', 'ew', 'The Voidcast Dais (Extreme)', 'ew-golbez', '6.4', 'Golbez Totem', 99),
   mount('ew-ex7-mount', 'Lynx of Imperious Wind', 'ew', 'The Abyssal Fracture (Extreme)', 'ew-zeromus', '6.5', 'Zeromus Totem', 99),
   // ── Endwalker Ultimates ───────────────────────────────────────────────────
-  weapon('ew-ult1-weapons', 'Ultimate Weapons of the Heavens', 'ew', "Dragonsong's Reprise (Ultimate)", 'ult-dsr', '6.11', 'Dragonsong Totem', 7),
-  weapon('ew-ult2-weapons', 'Ultimate Omega Weapons', 'ew', 'The Omega Protocol (Ultimate)', 'ult-top', '6.31', 'Omega Totem', 7),
+  weapon('ew-ult1-weapons', 'Ultimate Weapons of the Heavens', 'ew', "Dragonsong's Reprise (Ultimate)", 'ult-dsr', '6.11', 'Dragonsong Totem', 1),
+  weapon('ew-ult2-weapons', 'Ultimate Omega Weapons', 'ew', 'The Omega Protocol (Ultimate)', 'ult-top', '6.31', 'Omega Totem', 1),
   // ── Dawntrail Extreme Orchestrion ────────────────────────────────────────────
   orchestrion('dt-valigarmanda-orch', 'The Skyruin', 'dt', 'Worqor Lar Dor (Extreme)', 'dt-valigarmanda', '7.0'),
   orchestrion('dt-zoraal-ja-orch', 'Seeking Purpose', 'dt', 'Everkeep (Extreme)', 'dt-zoraal-ja', '7.0'),

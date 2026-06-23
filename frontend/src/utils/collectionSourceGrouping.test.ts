@@ -297,3 +297,50 @@ describe('totalRewardCount', () => {
     expect(totalRewardCount(groups)).toBe(ALL_ITEMS.length);
   });
 });
+
+// ── Curated catalog: Ultimate token costs ────────────────────────────────────
+
+import { FALLBACK_CATALOG } from '../data/curatedCatalog';
+
+describe('FALLBACK_CATALOG — Ultimate weapon token costs', () => {
+  const ultimateWeapons = FALLBACK_CATALOG.filter(
+    item => item.sourceType === 'ultimate' && item.category === 'weapon',
+  );
+
+  it('has at least one Ultimate weapon entry', () => {
+    expect(ultimateWeapons.length).toBeGreaterThan(0);
+  });
+
+  it('all Ultimate weapon rows use tokenCost = 1', () => {
+    const wrong = ultimateWeapons.filter(item => item.tokenCost !== 1);
+    expect(wrong.map(i => `${i.name} (${i.tokenCost})`)).toEqual([]);
+  });
+
+  it('no Ultimate weapon row uses tokenCost = 7 (old incorrect value)', () => {
+    const bad = ultimateWeapons.filter(item => item.tokenCost === 7);
+    expect(bad.map(i => i.name)).toEqual([]);
+  });
+
+  it('Futures Rewritten uses Oracle Totem with cost 1', () => {
+    const fru = FALLBACK_CATALOG.find(i => i.sourceDutyKey === 'ult-fru');
+    expect(fru).toBeDefined();
+    expect(fru!.tokenCost).toBe(1);
+    expect(fru!.tokenName).toBe('Oracle Totem');
+  });
+
+  it("Dancing Mad uses Mad Harlequin's Totem with cost 1", () => {
+    const dmu = FALLBACK_CATALOG.find(i => i.sourceDutyKey === 'ult-dmu');
+    expect(dmu).toBeDefined();
+    expect(dmu!.tokenCost).toBe(1);
+    expect(dmu!.tokenName).toContain('Harlequin');
+  });
+
+  it('EX mounts still use tokenCost = 99 (not affected by Ultimate fix)', () => {
+    const exMounts = FALLBACK_CATALOG.filter(
+      item => item.sourceType === 'extreme' && item.category === 'mount' && item.tokenCost != null,
+    );
+    expect(exMounts.length).toBeGreaterThan(0);
+    const nonNinetyNine = exMounts.filter(item => item.tokenCost !== 99);
+    expect(nonNinetyNine.map(i => `${i.name} (${i.tokenCost})`)).toEqual([]);
+  });
+});

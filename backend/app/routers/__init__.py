@@ -20,6 +20,8 @@ from .objective_goals import router as objective_goals_router
 from .player_bis_targets import router as player_bis_targets_router
 from .player import plugin_router as plugin_player_router
 from .player import router as player_router
+from .player_collection import router as player_collection_router
+from .plugin_collections import router as plugin_collections_router
 from .schedule import router as schedule_router
 from .split_clear import router as split_clear_router
 from .static_characters import router as static_characters_router
@@ -47,6 +49,8 @@ __all__ = [
     "player_bis_targets_router",
     "player_router",
     "plugin_player_router",
+    "player_collection_router",
+    "plugin_collections_router",
     "schedule_router",
     "split_clear_router",
     "static_characters_router",

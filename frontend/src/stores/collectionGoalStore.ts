@@ -22,6 +22,8 @@ export interface CatalogItem {
   sourceDutyKey: string | null;
   tokenName: string | null;
   tokenCost: number | null;
+  tokenItemId: number | null;
+  gameMountId: number | null;
   tradeable: boolean | null;
   rarityOwnedPercent: number | null;
   isCurated: boolean;
@@ -44,6 +46,8 @@ interface ApiCatalogItem {
   source_duty_key: string | null;
   token_name: string | null;
   token_cost: number | null;
+  token_item_id: number | null;
+  game_mount_id: number | null;
   tradeable: boolean | null;
   rarity_owned_percent: number | null;
   is_curated: boolean;
@@ -67,6 +71,8 @@ function fromApiCatalogItem(c: ApiCatalogItem): CatalogItem {
     sourceDutyKey: c.source_duty_key,
     tokenName: c.token_name,
     tokenCost: c.token_cost,
+    tokenItemId: c.token_item_id,
+    gameMountId: c.game_mount_id,
     tradeable: c.tradeable,
     rarityOwnedPercent: c.rarity_owned_percent,
     isCurated: c.is_curated,
@@ -151,6 +157,11 @@ export interface CollectionGoal {
   tokenName: string | null;
   tokenCost: number | null;
   participantSummary: ParticipantSummary | null;
+}
+
+export interface CollectionGoalFromSuggestion {
+  catalogItemId: string;
+  status?: CollectionGoalStatus;
 }
 
 export interface CollectionGoalCreate {
@@ -374,6 +385,7 @@ interface CollectionGoalStore {
 
   fetchGoals: (groupId: string) => Promise<void>;
   createGoal: (groupId: string, data: CollectionGoalCreate) => Promise<CollectionGoal>;
+  createGoalFromSuggestion: (groupId: string, data: CollectionGoalFromSuggestion) => Promise<CollectionGoal>;
   updateGoal: (groupId: string, goalId: string, data: CollectionGoalUpdate) => Promise<void>;
   deleteGoal: (groupId: string, goalId: string) => Promise<void>;
 
@@ -430,6 +442,16 @@ export const useCollectionGoalStore = create<CollectionGoalStore>((set, get) => 
     const created = await api.post<ApiGoal>(
       `/api/static-groups/${groupId}/collection-goals`,
       toApiCreate(data),
+    );
+    const goal = fromApi(created);
+    set((s) => ({ goals: [...s.goals, goal] }));
+    return goal;
+  },
+
+  createGoalFromSuggestion: async (groupId, data) => {
+    const created = await api.post<ApiGoal>(
+      `/api/static-groups/${groupId}/collection-goals/from-suggestion`,
+      { catalog_item_id: data.catalogItemId, status: data.status ?? 'wanted' },
     );
     const goal = fromApi(created);
     set((s) => ({ goals: [...s.goals, goal] }));

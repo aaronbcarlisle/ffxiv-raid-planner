@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trophy, BookOpen } from 'lucide-react';
+import { Plus, Trophy, BookOpen, Lightbulb } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { RewardGoalCard } from './RewardGoalCard';
 import { RewardGoalModal } from './RewardGoalModal';
 import { RewardGoalDetailModal } from './RewardGoalDetailModal';
 import { LogDropModal } from './LogDropModal';
 import { CatalogBrowse } from './CatalogBrowse';
+import { SuggestedFarmsTab } from './SuggestedFarmsTab';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import type { CollectionGoal, ParticipantStateEntry } from '../../stores/collectionGoalStore';
 import { useToastStore } from '../../stores/toastStore';
 import { Skeleton } from '../ui/Skeleton';
 
-type HubTab = 'catalog' | 'active';
+type HubTab = 'suggested' | 'active' | 'catalog';
 
 function buildDiscordPlan(goal: CollectionGoal, participants: ParticipantStateEntry[]): string {
   const needing = participants
@@ -62,7 +63,7 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
   const { goals, isLoading, participants, fetchGoals, fetchParticipants } = useCollectionGoalStore();
   const addToast = useToastStore((s) => s.addToast);
 
-  const [tab, setTab] = useState<HubTab>('catalog');
+  const [tab, setTab] = useState<HubTab>('suggested');
   const [showCreate, setShowCreate] = useState(false);
   const [editGoal, setEditGoal] = useState<CollectionGoal | null>(null);
   const [viewGoal, setViewGoal] = useState<CollectionGoal | null>(null);
@@ -110,8 +111,9 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
   }
 
   const tabDef: { id: HubTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'catalog', label: 'Browse Catalog', icon: <BookOpen size={14} /> },
-    { id: 'active', label: `Active Farms (${activeGoals.length})`, icon: <Trophy size={14} /> },
+    { id: 'suggested', label: 'Suggested',           icon: <Lightbulb size={14} /> },
+    { id: 'active',    label: `Active Farms (${activeGoals.length})`, icon: <Trophy size={14} /> },
+    { id: 'catalog',   label: 'Browse Catalog',      icon: <BookOpen size={14} /> },
   ];
 
   return (
@@ -170,7 +172,17 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
       )}
 
       {/* Tab content */}
-      {tab === 'catalog' ? (
+      {tab === 'suggested' ? (
+        <SuggestedFarmsTab
+          groupId={groupId}
+          canManage={canManage}
+          onViewGoal={setViewGoal}
+          onGoalCreated={(goal) => {
+            setTab('active');
+            setViewGoal(goal);
+          }}
+        />
+      ) : tab === 'catalog' ? (
         <CatalogBrowse
           groupId={groupId}
           activeGoals={activeGoals}
@@ -185,9 +197,12 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
           <div className="text-center py-16 text-text-muted">
             <Trophy size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No active farms yet.</p>
-            <p className="text-sm mt-1">Browse the catalog to start tracking something, or add a custom goal.</p>
+            <p className="text-sm mt-1">Promote a suggestion to an active farm, or browse the catalog to track something manually.</p>
             <div className="flex justify-center gap-2 mt-4 flex-wrap">
-              <Button onClick={() => setTab('catalog')}>Browse Catalog</Button>
+              <Button onClick={() => setTab('suggested')} className="flex items-center gap-1.5">
+                <Lightbulb size={14} /> View Suggestions
+              </Button>
+              <Button variant="secondary" onClick={() => setTab('catalog')}>Browse Catalog</Button>
               {canManage && (
                 <Button variant="secondary" onClick={() => setShowCreate(true)}>
                   <Plus size={14} className="mr-1" /> Custom Goal

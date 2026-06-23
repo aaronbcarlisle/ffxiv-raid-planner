@@ -37,6 +37,7 @@ class RewardParticipantState(Base):
     priority_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
     last_synced_at: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_manual_override_at: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     updated_at: Mapped[str] = mapped_column(

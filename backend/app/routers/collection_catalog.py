@@ -9,7 +9,9 @@ from ..dependencies import get_current_user
 from ..logging_config import get_logger
 from ..models import User
 from ..models.collection_catalog_item import CollectionCatalogItem
-from ..schemas.collection_catalog import CatalogItemResponse, CatalogSyncResult
+from ..schemas.collection_catalog import AuditEntry, CatalogAuditReport, CatalogItemResponse, CatalogSyncResult, DtAuditDetail, VerifiedIdImportResult, VerifiedIdMapping
+from ..services.catalog_audit_service import get_catalog_audit
+from ..services.catalog_id_import_service import import_verified_ids
 from ..services.catalog_import_service import (
     is_catalog_seeded,
     seed_from_internal,
@@ -90,6 +92,57 @@ async def sync_catalog(
     except Exception as exc:
         logger.error("catalog_sync_failed", error=str(exc))
         return CatalogSyncResult(synced_from_api=False, error=str(exc))
+
+
+@router.get("/admin/collection-catalog/audit", response_model=CatalogAuditReport)
+async def catalog_audit(
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> CatalogAuditReport:
+    """Admin-only: report plugin sync readiness for all catalog items."""
+    if not current_user.is_admin:
+        from ..permissions import Forbidden
+        raise Forbidden("Admin access required")
+
+    report = await get_catalog_audit(session)
+    return CatalogAuditReport(
+        total=report["total"],
+        plugin_ready_mounts=report["plugin_ready_mounts"],
+        manual_only_mounts=report["manual_only_mounts"],
+        plugin_ready_tokens=report["plugin_ready_tokens"],
+        manual_only_tokens=report["manual_only_tokens"],
+        by_category={k: AuditEntry(**v) for k, v in report["by_category"].items()},
+        by_expansion={k: AuditEntry(**v) for k, v in report["by_expansion"].items()},
+        dt_detail=DtAuditDetail(**report["dt_detail"]),
+    )
+
+
+@router.post("/admin/collection-catalog/import-verified-ids", response_model=VerifiedIdImportResult)
+async def import_catalog_verified_ids(
+    mappings: list[VerifiedIdMapping],
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> VerifiedIdImportResult:
+    """
+    Admin-only: ingest a list of verified game ID mappings from the plugin Lumina resolver
+    and idempotently update catalog rows.
+
+    Only entries with confidence==\"exact\" are processed.
+    game_mount_id and token_item_id are never overwritten if already set.
+    """
+    if not current_user.is_admin:
+        from ..permissions import Forbidden
+        raise Forbidden("Admin access required")
+
+    result = await import_verified_ids(session, mappings)
+    logger.info(
+        "catalog_id_import_complete",
+        updated=result.updated,
+        already_set=result.already_set,
+        skipped=result.skipped,
+        errors=len(result.errors),
+    )
+    return result
 
 
 @router.post("/admin/collection-catalog/seed", response_model=CatalogSyncResult)

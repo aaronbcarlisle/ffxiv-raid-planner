@@ -14,6 +14,7 @@ from app.services.catalog_import_service import (
     expansion_from_patch,
     is_catalog_seeded,
     seed_from_internal,
+    sync_from_ffxiv_collect,
     _extract_source_info,
     _parse_owned_percent,
 )
@@ -366,3 +367,141 @@ async def test_token_count_can_buy_check(async_client: AsyncClient, group, owner
     p = next(p for p in participants if p["user_id"] == member.id)
     assert p["token_count"] == 99
     # can_buy is a frontend concern — backend just stores token_count correctly
+
+
+# ── FFXIV Collect sync filter ─────────────────────────────────────────────────
+
+async def test_sync_skips_non_farm_source_types(session: AsyncSession, monkeypatch):
+    """sync_from_ffxiv_collect must not import items with source_type 'other', 'crafted', or None."""
+    fake_mounts = [
+        # farm-relevant: should be imported
+        {"id": 1, "name": "Extreme Mount", "patch": "7.0", "sources": [{"type": "Trial", "text": "Some Extreme", "related_type": None}], "icon": None, "image": None, "tradeable": False, "owned": None},
+        # non-farm: should be skipped
+        {"id": 2, "name": "Achievement Mount", "patch": "7.0", "sources": [{"type": "Achievement", "text": "Some achievement", "related_type": None}], "icon": None, "image": None, "tradeable": False, "owned": None},
+    ]
+    fake_minions = [
+        # farm-relevant: should be imported
+        {"id": 1, "name": "Extreme Minion", "patch": "6.0", "sources": [{"type": "Extreme", "text": "Some Extreme", "related_type": None}], "icon": None, "image": None, "tradeable": False, "owned": None},
+        # non-farm: should be skipped (crafted)
+        {"id": 2, "name": "Crafted Minion", "patch": "6.0", "sources": [{"type": "Crafted", "text": "Crafting recipe", "related_type": None}], "icon": None, "image": None, "tradeable": True, "owned": None},
+        # non-farm: should be skipped (NPC vendor → "other")
+        {"id": 3, "name": "NPC Minion", "patch": "6.0", "sources": [{"type": "NPC", "text": "Vendor", "related_type": None}], "icon": None, "image": None, "tradeable": False, "owned": None},
+        # non-farm: should be skipped (no sources → src_type is None)
+        {"id": 4, "name": "Sourceless Minion", "patch": "6.0", "sources": [], "icon": None, "image": None, "tradeable": False, "owned": None},
+    ]
+    fake_orchestrion = [
+        # non-farm: should be skipped
+        {"id": 1, "name": "Quest Track", "patch": "6.0", "sources": [{"type": "Quest", "text": "Some quest", "related_type": None}], "icon": None, "tradeable": False, "owned": None, "category": {"name": "Dungeons"}},
+    ]
+
+    async def _mounts(): return fake_mounts
+    async def _minions(): return fake_minions
+    async def _orchestrion(): return fake_orchestrion
+
+    import app.services.catalog_import_service as svc
+    monkeypatch.setattr(svc, "fetch_mounts", _mounts)
+    monkeypatch.setattr(svc, "fetch_minions", _minions)
+    monkeypatch.setattr(svc, "fetch_orchestrion", _orchestrion)
+
+    report = await sync_from_ffxiv_collect(session)
+
+    # Only the two farm-relevant items (1 mount + 1 minion) should be imported
+    counts = report["imported"]
+    assert counts["mount"] == 1
+    assert counts["minion"] == 1
+    assert counts["orchestrion"] == 0
+
+    # Skipped counts should reflect non-farm items
+    assert report["skipped"] == 5  # 1 achievement mount + 1 crafted + 1 NPC + 1 sourceless + 1 quest track
+    assert report["skipped_by_source"].get("other", 0) >= 1  # NPC→other, quest→other
+
+
+    # Verify the DB contains no items with non-farm source types from ffxiv_collect
+    result = await session.execute(
+        select(CollectionCatalogItem).where(
+            CollectionCatalogItem.external_source == "ffxiv_collect",
+            CollectionCatalogItem.source_type.in_(["other", "crafted"]),
+        )
+    )
+    non_farm_rows = result.scalars().all()
+    assert len(non_farm_rows) == 0, (
+        f"Expected no non-farm rows, found: {[r.name for r in non_farm_rows]}"
+    )
+
+    # Verify sourceless items (src_type=None) were also skipped
+    result2 = await session.execute(
+        select(CollectionCatalogItem).where(
+            CollectionCatalogItem.external_source == "ffxiv_collect",
+            CollectionCatalogItem.source_type.is_(None),
+        )
+    )
+    sourceless_rows = result2.scalars().all()
+    assert len(sourceless_rows) == 0, (
+        f"Expected no sourceless rows, found: {[r.name for r in sourceless_rows]}"
+    )
+
+
+# ── Ultimate weapon token cost ────────────────────────────────────────────────
+
+async def test_ultimate_weapon_token_cost_is_one(session: AsyncSession):
+    """All Ultimate weapon rows use token_cost = 1 (1 totem per weapon)."""
+    await seed_from_internal(session)
+    await session.commit()
+
+    result = await session.execute(
+        select(CollectionCatalogItem).where(
+            CollectionCatalogItem.source_type == "ultimate",
+            CollectionCatalogItem.category == "weapon",
+        )
+    )
+    rows = result.scalars().all()
+    assert len(rows) > 0, "Expected at least one Ultimate weapon row after seeding"
+    bad = [r.name for r in rows if r.token_cost != 1]
+    assert bad == [], f"Ultimate weapon rows with token_cost != 1: {bad}"
+
+
+async def test_fru_oracle_totem_cost_one(session: AsyncSession):
+    """Futures Rewritten (Ultimate) uses Oracle Totem with cost 1."""
+    await seed_from_internal(session)
+    await session.commit()
+
+    result = await session.execute(
+        select(CollectionCatalogItem).where(
+            CollectionCatalogItem.source_duty_key == "ult-fru",
+        )
+    )
+    row = result.scalar_one_or_none()
+    assert row is not None, "FRU weapon row not found after seeding"
+    assert row.token_cost == 1
+    assert row.token_name == "Oracle Totem"
+
+
+async def test_dancing_mad_harlequin_totem_cost_one(session: AsyncSession):
+    """Dancing Mad (Ultimate) uses Mad Harlequin's Totem with cost 1."""
+    await seed_from_internal(session)
+    await session.commit()
+
+    result = await session.execute(
+        select(CollectionCatalogItem).where(
+            CollectionCatalogItem.source_duty_key == "ult-dmu",
+        )
+    )
+    row = result.scalar_one_or_none()
+    assert row is not None, "Dancing Mad weapon row not found after seeding"
+    assert row.token_cost == 1
+    assert "Harlequin" in (row.token_name or "")
+
+
+async def test_no_ultimate_weapon_uses_seven_tokens(session: AsyncSession):
+    """No Ultimate weapon row may use token_cost = 7 (old incorrect value)."""
+    await seed_from_internal(session)
+    await session.commit()
+
+    result = await session.execute(
+        select(CollectionCatalogItem).where(
+            CollectionCatalogItem.source_type == "ultimate",
+            CollectionCatalogItem.token_cost == 7,
+        )
+    )
+    bad_rows = result.scalars().all()
+    assert bad_rows == [], f"Ultimate rows with token_cost=7 (should be 1): {[r.name for r in bad_rows]}"
