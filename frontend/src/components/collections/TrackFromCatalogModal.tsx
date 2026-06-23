@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Trophy } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Label } from '../ui/Label';
 import { Select } from '../ui/Select';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import type { CatalogItem, CollectionPriorityMode } from '../../stores/collectionGoalStore';
-import { useToastStore } from '../../stores/toastStore';
+import { toast } from '../../stores/toastStore';
 
 const PRIORITY_MODE_OPTIONS: { value: CollectionPriorityMode | ''; label: string }[] = [
   { value: 'everyone_gets_one', label: 'Everyone gets one' },
@@ -25,7 +24,6 @@ interface TrackFromCatalogModalProps {
 
 export function TrackFromCatalogModal({ isOpen, onClose, item, groupId }: TrackFromCatalogModalProps) {
   const { createGoal } = useCollectionGoalStore();
-  const addToast = useToastStore((s) => s.addToast);
 
   const [priorityMode, setPriorityMode] = useState<CollectionPriorityMode | ''>('everyone_gets_one');
   const [submitting, setSubmitting] = useState(false);
@@ -56,17 +54,17 @@ export function TrackFromCatalogModal({ isOpen, onClose, item, groupId }: TrackF
         linkedDutyId: item.sourceDutyKey,
         note: item.notes ?? undefined,
       });
-      addToast({ type: 'success', message: `Now tracking: ${item.name}` });
+      toast.success(`Now tracking: ${item.name}`);
       onClose();
     } catch (err) {
-      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to create farm goal' });
+      toast.error(err instanceof Error ? err.message : 'Failed to create farm goal');
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Track Farm Goal" icon={<Trophy size={20} />}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Track Farm Goal">
       <div className="flex flex-col gap-4">
         {/* Item summary */}
         <div className="bg-surface-base rounded-xl p-4 flex flex-col gap-1">

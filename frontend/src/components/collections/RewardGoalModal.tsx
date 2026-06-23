@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Trophy } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Input } from '../ui/Input';
@@ -7,7 +6,7 @@ import { Select } from '../ui/Select';
 import { Label } from '../ui/Label';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import type { CollectionGoal, CollectionGoalCreate, CollectionGoalUpdate, CollectionGoalType, CollectionGoalStatus, CollectionPriorityMode } from '../../stores/collectionGoalStore';
-import { useToastStore } from '../../stores/toastStore';
+import { toast } from '../../stores/toastStore';
 
 const GOAL_TYPE_OPTIONS: { value: CollectionGoalType; label: string }[] = [
   { value: 'mount', label: 'Mount' },
@@ -60,7 +59,6 @@ interface RewardGoalModalProps {
 
 export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGoalModalProps) {
   const { createGoal, updateGoal } = useCollectionGoalStore();
-  const addToast = useToastStore((s) => s.addToast);
 
   const [title, setTitle] = useState('');
   const [goalType, setGoalType] = useState<CollectionGoalType>('mount');
@@ -108,15 +106,15 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
       if (editGoal) {
         const data: CollectionGoalUpdate = baseData;
         await updateGoal(groupId, editGoal.id, data);
-        addToast({ type: 'success', message: 'Goal updated.' });
+        toast.success('Goal updated.');
       } else {
         const data: CollectionGoalCreate = baseData;
         await createGoal(groupId, data);
-        addToast({ type: 'success', message: 'Goal created.' });
+        toast.success('Goal created.');
       }
       onClose();
     } catch (err) {
-      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to save goal' });
+      toast.error(err instanceof Error ? err.message : 'Failed to save goal');
     } finally {
       setSubmitting(false);
     }
@@ -127,14 +125,13 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
       isOpen={isOpen}
       onClose={onClose}
       title={editGoal ? 'Edit Collection Goal' : 'New Collection Goal'}
-      icon={<Trophy size={20} />}
     >
       <div className="flex flex-col gap-4">
         <div>
           <Label className="block text-sm text-text-secondary mb-1">Title *</Label>
           <Input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={setTitle}
             placeholder="e.g. Valigarmanda EX Mount, Ultima Thule Orchestrion"
             autoFocus
           />
@@ -172,7 +169,7 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
             <Label className="block text-sm text-text-secondary mb-1">Content Key (optional)</Label>
             <Input
               value={contentKey}
-              onChange={(e) => setContentKey(e.target.value)}
+              onChange={setContentKey}
               placeholder="e.g. dt-valigarmanda"
             />
           </div>
@@ -191,7 +188,7 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
           <Label className="block text-sm text-text-secondary mb-1">Notes (optional)</Label>
           <Input
             value={summary}
-            onChange={(e) => setSummary(e.target.value)}
+            onChange={setSummary}
             placeholder="Any extra context for the static"
           />
         </div>

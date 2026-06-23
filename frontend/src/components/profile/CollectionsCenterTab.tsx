@@ -51,7 +51,7 @@ const VISIBILITY_OPTIONS = [
   { value: 'private',        label: 'Private — only you'          },
   { value: 'static_only',    label: 'Shared with statics'         },
   { value: 'dossier_public', label: 'Public on dossier'           },
-] as const;
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -231,9 +231,9 @@ function FilterBar({
 
 function VisibilityBadge({ visibility, intent }: { visibility: IntentVisibility | null; intent: IntentValue | null }) {
   if (!intent || (intent !== 'hunting' && intent !== 'interested')) return null;
-  if (visibility === 'static_only')   return <Users  size={11} className="text-accent flex-shrink-0" title="Shared with statics" />;
-  if (visibility === 'dossier_public') return <Globe  size={11} className="text-accent flex-shrink-0" title="Public on dossier" />;
-  return                                      <Lock   size={11} className="text-text-muted opacity-40 flex-shrink-0" title="Private" />;
+  if (visibility === 'static_only')   return <Users  size={11} className="text-accent flex-shrink-0" aria-label="Shared with statics" />;
+  if (visibility === 'dossier_public') return <Globe  size={11} className="text-accent flex-shrink-0" aria-label="Public on dossier" />;
+  return                                      <Lock   size={11} className="text-text-muted opacity-40 flex-shrink-0" aria-label="Private" />;
 }
 
 // ── Quick action buttons (always visible, no expansion required) ───────────────
@@ -454,7 +454,7 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
                 <p className="text-[10px] font-medium text-text-muted mb-1">Visibility</p>
                 <Select
                   value={currentVis}
-                  onChange={e => cbs.onVisibilityChange(id, e.target.value as IntentVisibility)}
+                  onChange={value => cbs.onVisibilityChange(id, value as IntentVisibility)}
                   options={VISIBILITY_OPTIONS}
                 />
               </div>
@@ -605,12 +605,12 @@ function MyPrioritiesView({ items, onBrowse, ...cbs }: { items: CatalogPlayerEnt
   };
   for (const item of items) if (item.intent) grouped[item.intent].push(item);
 
-  const sections: { key: IntentValue; label: string; items: CatalogPlayerEntry[] }[] = [
+  const sections = ([
     { key: 'hunting',    label: 'Want',    items: grouped.hunting    },
     { key: 'interested', label: 'Farming', items: grouped.interested },
     { key: 'pass',       label: 'Pass',    items: grouped.pass       },
     { key: 'hidden',     label: 'Hidden',  items: grouped.hidden     },
-  ].filter(s => s.items.length > 0);
+  ] as { key: IntentValue; label: string; items: CatalogPlayerEntry[] }[]).filter(s => s.items.length > 0);
 
   const sectionColorClass: Record<IntentValue, string> = {
     hunting:    'text-status-info',

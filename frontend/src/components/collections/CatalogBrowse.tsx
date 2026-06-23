@@ -169,7 +169,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
         <Input
           value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
+          onChange={setSearchQuery}
           placeholder="Search duties, rewards, tokens…"
           className="pl-8 pr-8"
         />

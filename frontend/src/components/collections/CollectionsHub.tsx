@@ -9,7 +9,7 @@ import { CatalogBrowse } from './CatalogBrowse';
 import { SuggestedFarmsTab } from './SuggestedFarmsTab';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import type { CollectionGoal, ParticipantStateEntry } from '../../stores/collectionGoalStore';
-import { useToastStore } from '../../stores/toastStore';
+import { toast } from '../../stores/toastStore';
 import { Skeleton } from '../ui/Skeleton';
 
 type HubTab = 'suggested' | 'active' | 'catalog';
@@ -61,7 +61,6 @@ interface CollectionsHubProps {
 
 export function CollectionsHub({ groupId, currentUserId, canManage }: CollectionsHubProps) {
   const { goals, isLoading, participants, fetchGoals, fetchParticipants } = useCollectionGoalStore();
-  const addToast = useToastStore((s) => s.addToast);
 
   const [tab, setTab] = useState<HubTab>('suggested');
   const [showCreate, setShowCreate] = useState(false);
@@ -105,8 +104,8 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
     const parts = participants[goal.id] ?? [];
     const text = buildDiscordPlan(goal, parts);
     navigator.clipboard.writeText(text).then(
-      () => addToast({ type: 'success', message: 'Farm plan copied to clipboard!' }),
-      () => addToast({ type: 'error', message: 'Failed to copy to clipboard' }),
+      () => toast.success('Farm plan copied to clipboard!'),
+      () => toast.error('Failed to copy to clipboard'),
     );
   }
 

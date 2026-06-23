@@ -196,7 +196,7 @@ export function RewardGoalCard({ goal, participants, onView, onLogDrop, onCopyPl
           <Tooltip content="Copy farm plan to clipboard">
             <IconButton
               icon={<ClipboardCopy size={14} />}
-              label="Copy farm plan"
+              aria-label="Copy farm plan"
               variant="ghost"
               size="sm"
               onClick={() => onCopyPlan(goal)}

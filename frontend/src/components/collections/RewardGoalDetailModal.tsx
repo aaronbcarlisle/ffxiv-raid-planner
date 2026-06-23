@@ -7,7 +7,7 @@ import { ParticipantsPanel } from './ParticipantsPanel';
 import { DropHistoryPanel } from './DropHistoryPanel';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import type { CollectionGoal, ParticipantState } from '../../stores/collectionGoalStore';
-import { useToastStore } from '../../stores/toastStore';
+import { toast } from '../../stores/toastStore';
 
 type DetailTab = 'who' | 'history';
 
@@ -31,7 +31,6 @@ export function RewardGoalDetailModal({
   onEdit,
 }: RewardGoalDetailModalProps) {
   const { upsertMyState, deleteGoal } = useCollectionGoalStore();
-  const addToast = useToastStore((s) => s.addToast);
 
   const [tab, setTab] = useState<DetailTab>('who');
   const [showDelete, setShowDelete] = useState(false);
@@ -39,19 +38,19 @@ export function RewardGoalDetailModal({
   async function handleSetMyState(state: ParticipantState) {
     try {
       await upsertMyState(groupId, goal.id, { state });
-      addToast({ type: 'success', message: `Status set to "${state}"` });
+      toast.success(`Status set to "${state}"`);
     } catch (err) {
-      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to set status' });
+      toast.error(err instanceof Error ? err.message : 'Failed to set status');
     }
   }
 
   async function handleDelete() {
     try {
       await deleteGoal(groupId, goal.id);
-      addToast({ type: 'success', message: 'Goal deleted.' });
+      toast.success('Goal deleted.');
       onClose();
     } catch (err) {
-      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to delete goal' });
+      toast.error(err instanceof Error ? err.message : 'Failed to delete goal');
     }
   }
 
@@ -126,7 +125,7 @@ export function RewardGoalDetailModal({
 
       <ConfirmModal
         isOpen={showDelete}
-        onClose={() => setShowDelete(false)}
+        onCancel={() => setShowDelete(false)}
         onConfirm={handleDelete}
         title="Delete Goal"
         message={`Delete "${goal.title}"? This will remove all participant states and drop history for this goal.`}

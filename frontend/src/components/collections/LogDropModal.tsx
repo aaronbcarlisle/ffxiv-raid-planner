@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Droplets } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Select } from '../ui/Select';
@@ -7,7 +6,7 @@ import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import type { CollectionGoal, ParticipantStateEntry } from '../../stores/collectionGoalStore';
-import { useToastStore } from '../../stores/toastStore';
+import { toast } from '../../stores/toastStore';
 
 interface LogDropModalProps {
   isOpen: boolean;
@@ -19,7 +18,6 @@ interface LogDropModalProps {
 
 export function LogDropModal({ isOpen, onClose, goal, groupId, participants }: LogDropModalProps) {
   const { logDrop } = useCollectionGoalStore();
-  const addToast = useToastStore((s) => s.addToast);
 
   const [recipientId, setRecipientId] = useState<string>('');
   const [notes, setNotes] = useState('');
@@ -51,19 +49,19 @@ export function LogDropModal({ isOpen, onClose, goal, groupId, participants }: L
         recipientUserId: recipientId || null,
         notes: notes.trim() || null,
       });
-      addToast({ type: 'success', message: 'Drop logged!' });
+      toast.success('Drop logged!');
       onClose();
       setRecipientId('');
       setNotes('');
     } catch (err) {
-      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to log drop' });
+      toast.error(err instanceof Error ? err.message : 'Failed to log drop');
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Log Drop" icon={<Droplets size={20} />}>
+    <Modal isOpen={isOpen} onClose={onClose} title="Log Drop">
       <div className="flex flex-col gap-4">
         <div>
           <p className="text-sm text-text-secondary mb-1">Reward</p>
@@ -88,7 +86,7 @@ export function LogDropModal({ isOpen, onClose, goal, groupId, participants }: L
           <Label className="block text-sm text-text-secondary mb-1">Notes (optional)</Label>
           <Input
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={setNotes}
             placeholder="e.g. Week 3 clear, lucky roll"
           />
         </div>

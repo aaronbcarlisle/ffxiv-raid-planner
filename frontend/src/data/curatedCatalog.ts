@@ -38,6 +38,8 @@ function mount(
     rarityOwnedPercent: null,
     isCurated: true,
     notes: notes ?? null,
+    tokenItemId: null,
+    gameMountId: null,
   };
 }
 
@@ -70,6 +72,8 @@ function orchestrion(
     rarityOwnedPercent: null,
     isCurated: true,
     notes: notes ?? null,
+    tokenItemId: null,
+    gameMountId: null,
   };
 }
 
@@ -103,6 +107,8 @@ function weapon(
     rarityOwnedPercent: null,
     isCurated: true,
     notes: null,
+    tokenItemId: null,
+    gameMountId: null,
   };
 }
 

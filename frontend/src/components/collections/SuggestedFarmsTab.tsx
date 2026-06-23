@@ -13,7 +13,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { DutyFarmCard } from './DutyFarmCard';
 import { useCollectionIntentStore } from '../../stores/collectionIntentStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
-import { useToastStore } from '../../stores/toastStore';
+import { toast } from '../../stores/toastStore';
 import type { CollectionGoal, CollectionGoalFromSuggestion } from '../../stores/collectionGoalStore';
 import { Info } from 'lucide-react';
 
@@ -27,7 +27,6 @@ interface SuggestedFarmsTabProps {
 export function SuggestedFarmsTab({ groupId, canManage, onViewGoal, onGoalCreated }: SuggestedFarmsTabProps) {
   const { suggestions, suggestionsLoading, fetchSuggestions } = useCollectionIntentStore();
   const { goals, createGoalFromSuggestion } = useCollectionGoalStore();
-  const addToast = useToastStore(s => s.addToast);
 
   const loading = suggestionsLoading[groupId] ?? false;
   const list = suggestions[groupId] ?? null;
@@ -48,20 +47,20 @@ export function SuggestedFarmsTab({ groupId, canManage, onViewGoal, onGoalCreate
     const data: CollectionGoalFromSuggestion = { catalogItemId };
     try {
       const goal = await createGoalFromSuggestion(groupId, data);
-      addToast({ type: 'success', message: `"${goal.title}" added as active farm. Participant states preloaded.` });
+      toast.success(`"${goal.title}" added as active farm. Participant states preloaded.`);
       // Refresh suggestions so the card shows "Active" badge
       fetchSuggestions(groupId);
       // Let parent switch to Active Farms tab and open the new goal
       onGoalCreated?.(goal);
     } catch {
-      addToast({ type: 'error', message: 'Failed to create farm goal.' });
+      toast.error('Failed to create farm goal.');
     }
   }
 
   function handleCopyPlan(text: string) {
     navigator.clipboard.writeText(text).then(
-      () => addToast({ type: 'success', message: 'Farm plan copied to clipboard!' }),
-      () => addToast({ type: 'error', message: 'Failed to copy to clipboard.' }),
+      () => toast.success('Farm plan copied to clipboard!'),
+      () => toast.error('Failed to copy to clipboard.'),
     );
   }
 

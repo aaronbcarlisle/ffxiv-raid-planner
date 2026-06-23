@@ -183,17 +183,6 @@ function fromApiSuggestion(s: ApiSuggestion): StaticCollectionSuggestion {
   };
 }
 
-function _fromApiDossierEntry(e: ApiDossierEntry): DossierHuntingEntry {
-  return {
-    catalogItemId: e.catalog_item_id,
-    catalogItemName: e.catalog_item_name,
-    catalogItemCategory: e.catalog_item_category,
-    sourceDutyName: e.source_duty_name,
-    sourceType: e.source_type,
-    intent: e.intent as IntentValue,
-    priority: e.priority as IntentPriority,
-  };
-}
 
 function fromApiCatalogEntry(e: ApiCatalogEntry): CatalogPlayerEntry {
   return {

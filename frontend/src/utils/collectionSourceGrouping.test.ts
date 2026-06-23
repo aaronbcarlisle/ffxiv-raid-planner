@@ -26,6 +26,8 @@ function makeItem(overrides: Partial<CatalogItem> & { id: string; name: string; 
     rarityOwnedPercent: null,
     isCurated: true,
     notes: null,
+    tokenItemId: null,
+    gameMountId: null,
     ...overrides,
   };
 }

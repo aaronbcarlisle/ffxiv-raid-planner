@@ -1,7 +1,7 @@
 """add_collection_plugin_sync
 
-Revision ID: a1b2c3d4e5f6
-Revises: z6a7b8c9d0e1
+Revision ID: fa1b2c3d4e5f
+Revises: e4f5g6h7i8j9
 Create Date: 2026-06-21
 
 Adds last_manual_override_at to reward_participant_states for collision avoidance
@@ -13,8 +13,8 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "a1b2c3d4e5f6"
-down_revision: Union[str, None] = "z6a7b8c9d0e1"
+revision: str = "fa1b2c3d4e5f"
+down_revision: Union[str, None] = "e4f5g6h7i8j9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

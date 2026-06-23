@@ -64,8 +64,8 @@ function RewardChip({ item, existingGoal, groupId, trackDisabled }: {
         <span className="text-sm text-text-primary flex-1 min-w-0 truncate">{item.name}</span>
         {item.category === 'mount' && (
           item.gameMountId != null
-            ? <Zap size={11} className="flex-shrink-0 text-status-info opacity-50" title="Plugin ready — ownership detected automatically" />
-            : <Zap size={11} className="flex-shrink-0 text-text-muted opacity-25" title="Manual only — no game ID yet" />
+            ? <Zap size={11} className="flex-shrink-0 text-status-info opacity-50" aria-label="Plugin ready — ownership detected automatically" />
+            : <Zap size={11} className="flex-shrink-0 text-text-muted opacity-25" aria-label="Manual only — no game ID yet" />
         )}
         {isTracked ? (
           <Badge variant="success" size="sm" className="flex-shrink-0">Tracking</Badge>
