@@ -1,7 +1,11 @@
 /* eslint-disable design-system/no-raw-button */
 import { useMemo } from 'react';
-import { CheckCircle, AlertCircle, AlertTriangle, Clock, BarChart3 } from 'lucide-react';
+import {
+  CheckCircle, AlertCircle, AlertTriangle, Clock, BarChart3,
+  Wifi, Target, Shield, UserX, Activity,
+} from 'lucide-react';
 import type { SnapshotPlayer, RaidPosition } from '../../types';
+import { DashboardCard, IconMedallion } from '../ui/DashboardCard';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -13,7 +17,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-const STALE_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+const STALE_MS = 3 * 24 * 60 * 60 * 1000;
 
 interface GearSyncDashboardProps {
   players: SnapshotPlayer[];
@@ -40,20 +44,11 @@ export function GearSyncDashboard({ players, onViewStats }: GearSyncDashboardPro
       : pct >= 40 ? 'warning'
       : 'stale';
 
-    return {
-      recent,
-      stale,
-      mostRecent: sorted[0] ?? null,
-      pct,
-      health,
-      total: configured.length,
-      recentActivity: sorted.slice(0, 5),
-    };
+    return { recent, stale, mostRecent: sorted[0] ?? null, pct, health, total: configured.length, recentActivity: sorted.slice(0, 5) };
   }, [configured]);
 
   const bisStats = useMemo(() => {
-    let targeted = 0;
-    let obtained = 0;
+    let targeted = 0, obtained = 0;
     for (const p of configured) {
       for (const slot of p.gear) {
         if (!slot.bisSource) continue;
@@ -70,32 +65,33 @@ export function GearSyncDashboard({ players, onViewStats }: GearSyncDashboardPro
       configured.map(p => p.position).filter((p): p is RaidPosition => !!p),
     );
     return [
-      { label: 'Tanks', slots: ['T1', 'T2'] as RaidPosition[] },
-      { label: 'Healers', slots: ['H1', 'H2'] as RaidPosition[] },
-      { label: 'Melee', slots: ['M1', 'M2'] as RaidPosition[] },
-      { label: 'Ranged', slots: ['R1', 'R2'] as RaidPosition[] },
+      { label: 'Tanks', slots: ['T1', 'T2'] as RaidPosition[], color: 'text-role-tank' },
+      { label: 'Healers', slots: ['H1', 'H2'] as RaidPosition[], color: 'text-role-healer' },
+      { label: 'Melee', slots: ['M1', 'M2'] as RaidPosition[], color: 'text-role-melee' },
+      { label: 'Ranged', slots: ['R1', 'R2'] as RaidPosition[], color: 'text-role-ranged' },
     ].map(r => ({ ...r, count: r.slots.filter(s => filled.has(s)).length }));
   }, [configured]);
 
   const topStale = syncStats.stale.slice(0, 3);
 
   const HEALTH_CFG = {
-    healthy: { Icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10', label: 'Healthy', sub: 'All data is up to date.' },
-    warning: { Icon: AlertTriangle, color: 'text-yellow-400', bg: 'bg-yellow-400/10', label: 'Attention needed', sub: `${syncStats.stale.length} member${syncStats.stale.length !== 1 ? 's' : ''} need sync.` },
-    stale: { Icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-400/10', label: 'Data stale', sub: 'Multiple members are out of sync.' },
-    'no-data': { Icon: Clock, color: 'text-text-secondary', bg: 'bg-surface-raised', label: 'No data', sub: 'Roster not configured yet.' },
+    healthy:  { Icon: CheckCircle, color: 'text-status-success', bg: 'bg-status-success/10',  border: 'border-status-success/20', label: 'Healthy',          sub: 'All data is up to date.' },
+    warning:  { Icon: AlertTriangle, color: 'text-status-warning', bg: 'bg-status-warning/10', border: 'border-status-warning/20', label: 'Attention needed', sub: `${syncStats.stale.length} member${syncStats.stale.length !== 1 ? 's' : ''} need sync.` },
+    stale:    { Icon: AlertCircle,   color: 'text-status-error',   bg: 'bg-status-error/10',   border: 'border-status-error/20',   label: 'Data stale',      sub: 'Multiple members are out of sync.' },
+    'no-data':{ Icon: Clock,         color: 'text-text-secondary', bg: 'bg-surface-raised',    border: 'border-border-subtle',     label: 'No data',         sub: 'Roster not configured yet.' },
   } as const;
   const healthCfg = HEALTH_CFG[syncStats.health];
   const { Icon: HealthIcon } = healthCfg;
+
+  const healthAccent = syncStats.health === 'healthy' ? 'teal' : syncStats.health === 'stale' ? 'red' : syncStats.health === 'warning' ? 'yellow' : undefined;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
       {/* Sync Health */}
-      <div className="bg-surface-card border border-border-default rounded-xl p-5">
-        <p className="text-xs font-semibold text-[#c9a84c] uppercase tracking-widest mb-4">Sync Health</p>
-        <div className={`flex items-center gap-3 p-3 rounded-lg ${healthCfg.bg} mb-4`}>
-          <HealthIcon size={22} className={healthCfg.color} />
+      <DashboardCard title="Sync Health" icon={<Wifi size={13} />} accentColor={healthAccent}>
+        <div className={`flex items-center gap-3 p-3 rounded-lg border ${healthCfg.bg} ${healthCfg.border} mb-4`}>
+          <IconMedallion icon={<HealthIcon size={16} />} color={syncStats.health === 'healthy' ? 'teal' : syncStats.health === 'stale' ? 'red' : syncStats.health === 'warning' ? 'yellow' : 'neutral'} size="sm" />
           <div>
             <p className={`text-sm font-semibold ${healthCfg.color}`}>{healthCfg.label}</p>
             <p className="text-xs text-text-secondary">{healthCfg.sub}</p>
@@ -116,38 +112,55 @@ export function GearSyncDashboard({ players, onViewStats }: GearSyncDashboardPro
           </div>
           <div className="flex justify-between">
             <span className="text-text-secondary">Data coverage</span>
-            <span className={`font-medium ${syncStats.pct >= 75 ? 'text-accent' : syncStats.pct >= 40 ? 'text-yellow-400' : syncStats.total === 0 ? 'text-text-secondary' : 'text-red-400'}`}>
+            <span className={`font-medium ${syncStats.pct >= 75 ? 'text-status-success' : syncStats.pct >= 40 ? 'text-status-warning' : syncStats.total === 0 ? 'text-text-secondary' : 'text-status-error'}`}>
               {syncStats.total === 0 ? '—' : syncStats.pct >= 75 ? 'High' : syncStats.pct >= 40 ? 'Medium' : 'Low'}
             </span>
           </div>
         </div>
-      </div>
+      </DashboardCard>
 
       {/* BiS Progress */}
-      <div className="bg-surface-card border border-border-default rounded-xl p-5">
-        <p className="text-xs font-semibold text-[#c9a84c] uppercase tracking-widest mb-4">BiS Progress</p>
+      <DashboardCard title="BiS Progress" icon={<Target size={13} />}>
         {bisStats.targeted === 0 ? (
-          <p className="text-sm text-text-secondary">No BiS targets set. Import BiS sets to track progress.</p>
+          <div className="flex flex-col items-center justify-center py-4 text-center">
+            <IconMedallion icon={<Target size={18} />} color="neutral" />
+            <p className="text-sm text-text-secondary mt-3 max-w-[160px]">
+              Import BiS sets to track gear progress.
+            </p>
+          </div>
         ) : (
           <>
             <div className="mb-3">
-              <p className="text-3xl font-bold text-text-primary">{bisStats.pct}<span className="text-lg text-text-secondary">%</span></p>
+              <p className="text-3xl font-display font-bold text-text-primary">
+                {bisStats.pct}<span className="text-base text-text-secondary font-normal">%</span>
+              </p>
               <p className="text-xs text-text-secondary mt-0.5">Overall BiS Complete</p>
             </div>
-            <div className="w-full bg-surface-raised rounded-full h-2 mb-4">
-              <div className="bg-accent h-2 rounded-full transition-all duration-500" style={{ width: `${bisStats.pct}%` }} />
+            <div className="w-full bg-surface-raised rounded-full h-1.5 mb-4 overflow-hidden">
+              <div
+                className="h-1.5 rounded-full transition-all duration-700"
+                style={{
+                  width: `${bisStats.pct}%`,
+                  background: 'linear-gradient(90deg, var(--color-accent-deep), var(--color-accent))',
+                }}
+              />
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-accent flex-shrink-0" />
                   <span className="text-text-secondary">Obtained</span>
                 </div>
-                <span className="text-text-primary font-medium">{bisStats.obtained} <span className="text-text-secondary font-normal">({Math.round(bisStats.obtained / bisStats.targeted * 100)}%)</span></span>
+                <span className="text-text-primary font-medium">
+                  {bisStats.obtained}
+                  <span className="text-text-secondary font-normal text-xs ml-1">
+                    ({Math.round((bisStats.obtained / bisStats.targeted) * 100)}%)
+                  </span>
+                </span>
               </div>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-yellow-400/60 flex-shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-yellow-400/60 flex-shrink-0" />
                   <span className="text-text-secondary">Missing</span>
                 </div>
                 <span className="text-text-primary font-medium">{bisStats.missing}</span>
@@ -155,102 +168,111 @@ export function GearSyncDashboard({ players, onViewStats }: GearSyncDashboardPro
             </div>
           </>
         )}
-      </div>
+      </DashboardCard>
 
       {/* Role Coverage */}
-      <div className="bg-surface-card border border-border-default rounded-xl p-5">
-        <p className="text-xs font-semibold text-[#c9a84c] uppercase tracking-widest mb-4">Role Coverage</p>
+      <DashboardCard title="Role Coverage" icon={<Shield size={13} />}>
         {configured.length === 0 ? (
-          <p className="text-sm text-text-secondary">No players configured.</p>
+          <div className="flex flex-col items-center justify-center py-4 text-center">
+            <IconMedallion icon={<Shield size={18} />} color="neutral" />
+            <p className="text-sm text-text-secondary mt-3">No players configured.</p>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {roleCoverage.map(role => (
-              <div key={role.label} className="flex items-center justify-between">
-                <span className="text-sm text-text-secondary">{role.label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-text-primary">{role.count} / {role.slots.length}</span>
-                  {role.count === role.slots.length ? (
-                    <CheckCircle size={14} className="text-green-400" />
-                  ) : (
-                    <AlertTriangle size={14} className="text-yellow-400" />
-                  )}
+          <div className="space-y-3.5">
+            {roleCoverage.map(role => {
+              const full = role.count === role.slots.length;
+              return (
+                <div key={role.label} className="flex items-center gap-3">
+                  <span className="text-sm text-text-secondary w-16 flex-shrink-0">{role.label}</span>
+                  <div className="flex-1 bg-surface-raised rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${full ? 'bg-status-success' : 'bg-status-warning'}`}
+                      style={{ width: `${(role.count / role.slots.length) * 100}%` }}
+                    />
+                  </div>
+                  <span className={`text-xs font-medium w-8 text-right ${full ? 'text-status-success' : role.color}`}>
+                    {role.count}/{role.slots.length}
+                  </span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-      </div>
+      </DashboardCard>
 
       {/* Stale Members */}
-      <div className="bg-surface-card border border-border-default rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <p className="text-xs font-semibold text-[#c9a84c] uppercase tracking-widest">Stale Members</p>
-          {topStale.length > 0 && (
-            <span className="bg-red-500/20 text-red-400 text-xs font-semibold px-1.5 py-0.5 rounded-full">{topStale.length}</span>
-          )}
-        </div>
+      <DashboardCard
+        title="Stale Members"
+        icon={<UserX size={13} />}
+        accentColor={topStale.length > 0 ? 'red' : undefined}
+        badge={topStale.length > 0 ? (
+          <span className="bg-status-error/20 text-status-error text-xs font-semibold px-1.5 py-0.5 rounded-full">
+            {topStale.length}
+          </span>
+        ) : undefined}
+      >
         {topStale.length === 0 ? (
-          <p className="text-sm text-text-secondary">{configured.length === 0 ? 'No players configured.' : 'All members are up to date.'}</p>
+          <div className="flex items-center gap-2.5 text-sm text-text-secondary">
+            <CheckCircle size={15} className="text-status-success flex-shrink-0" />
+            {configured.length === 0 ? 'No players configured.' : 'All members are up to date.'}
+          </div>
         ) : (
           <div className="space-y-3">
             {topStale.map(p => (
-              <div key={p.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full bg-surface-raised flex items-center justify-center text-xs font-semibold text-text-secondary flex-shrink-0">
-                    {p.name[0]}
-                  </div>
-                  <span className="text-sm text-text-primary truncate">{p.name}</span>
+              <div key={p.id} className="flex items-center gap-3 min-w-0">
+                <IconMedallion icon={<span className="text-xs font-bold">{p.name[0]}</span>} color="red" size="sm" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-primary truncate font-medium">{p.name}</p>
+                  <p className="text-xs text-status-error">
+                    {p.lastSync ? timeAgo(p.lastSync) : 'Never synced'}
+                  </p>
                 </div>
-                <span className="text-xs text-red-400 flex-shrink-0 ml-2">
-                  {p.lastSync ? timeAgo(p.lastSync) : 'Never synced'}
-                </span>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </DashboardCard>
 
       {/* Recent Sync Activity */}
-      <div className="bg-surface-card border border-border-default rounded-xl p-5">
-        <p className="text-xs font-semibold text-[#c9a84c] uppercase tracking-widest mb-3">Recent Sync Activity</p>
+      <DashboardCard title="Recent Sync Activity" icon={<Activity size={13} />}>
         {syncStats.recentActivity.length === 0 ? (
-          <p className="text-sm text-text-secondary">No recent sync activity.</p>
+          <div className="flex flex-col items-center py-4 text-center">
+            <IconMedallion icon={<Activity size={18} />} color="neutral" />
+            <p className="text-sm text-text-secondary mt-3">No recent sync activity.</p>
+          </div>
         ) : (
           <div className="space-y-3">
             {syncStats.recentActivity.map(p => (
-              <div key={p.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full bg-accent/15 flex items-center justify-center text-xs font-semibold text-accent flex-shrink-0">
-                    {p.name[0]}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-text-primary truncate">{p.name}</p>
-                    <p className="text-xs text-text-secondary capitalize">
-                      {p.lastSyncSource ? `via ${p.lastSyncSource.replace('_', ' ')}` : 'Synced gear'}
-                    </p>
-                  </div>
+              <div key={p.id} className="flex items-center gap-3 min-w-0">
+                <IconMedallion icon={<span className="text-xs font-bold">{p.name[0]}</span>} color="teal" size="sm" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-primary truncate font-medium">{p.name}</p>
+                  <p className="text-xs text-text-secondary capitalize">
+                    {p.lastSyncSource ? `via ${p.lastSyncSource.replace('_', ' ')}` : 'Synced gear'}
+                  </p>
                 </div>
-                <span className="text-xs text-text-secondary flex-shrink-0 ml-2">{timeAgo(p.lastSync!)}</span>
+                <span className="text-xs text-text-secondary flex-shrink-0">{timeAgo(p.lastSync!)}</span>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </DashboardCard>
 
       {/* Team Summary shortcut */}
-      <button
+      <DashboardCard
+        title="Team Summary"
+        icon={<BarChart3 size={13} />}
         onClick={onViewStats}
-        className="bg-surface-card border border-border-default rounded-xl p-5 text-left hover:border-accent/50 hover:bg-surface-raised transition-colors group"
+        accentColor="teal"
       >
-        <div className="flex items-center gap-2 mb-3">
-          <BarChart3 size={16} className="text-accent" />
-          <p className="text-xs font-semibold text-[#c9a84c] uppercase tracking-widest">Team Summary</p>
-        </div>
-        <p className="text-sm text-text-secondary mb-4">
+        <p className="text-sm text-text-secondary mb-4 leading-relaxed">
           View job distribution, BiS gaps by slot, and overall progress across all roster members.
         </p>
-        <span className="text-sm font-medium text-accent group-hover:underline">View summary →</span>
-      </button>
+        <div className="flex items-center gap-1.5 text-accent text-sm font-medium group-hover:underline">
+          <span>Open Team Summary</span>
+          <span className="text-xs">→</span>
+        </div>
+      </DashboardCard>
 
     </div>
   );

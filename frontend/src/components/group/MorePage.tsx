@@ -1,12 +1,13 @@
 /* eslint-disable design-system/no-raw-button */
 import {
   Users, Settings, Link2, Book, Sword, Download, Activity,
-  AlertTriangle, ChevronRight, Clock, ExternalLink,
+  AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle,
 } from 'lucide-react';
 import type { MemberRole, PageMode, GearSubTab } from '../../types';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { DashboardCard, IconMedallion, SectionLabel } from '../ui/DashboardCard';
 
 interface MorePageProps {
   onOpenSettings: (tab?: string) => void;
@@ -50,27 +51,30 @@ export function MorePage({
   return (
     <div className="flex flex-col gap-8">
 
-      {/* Primary tools */}
+      {/* Tools & Management */}
       <section>
-        <h2 className="text-xs font-semibold text-[#c9a84c] uppercase tracking-widest mb-3">
-          Tools & Management
-        </h2>
+        <SectionLabel className="mb-3">Tools & Management</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           {/* Requests */}
           {canManage && (
-            <button
+            <DashboardCard
+              title="Requests"
+              icon={<Users size={13} />}
+              accentColor={pendingCount > 0 ? 'teal' : undefined}
+              badge={pendingCount > 0 ? (
+                <span className="bg-accent/20 text-accent text-xs font-bold px-1.5 py-0.5 rounded-full">
+                  {pendingCount}
+                </span>
+              ) : undefined}
               onClick={() => onOpenSettings('recruitment')}
-              className="group text-left bg-surface-card border border-border-default rounded-xl p-5 hover:border-accent/50 hover:bg-surface-raised transition-colors"
             >
-              <div className="flex items-center gap-2 mb-2">
-                <Users size={16} className="text-accent" />
-                <span className="text-sm font-semibold text-text-primary">Requests</span>
-              </div>
-              <p className="text-xs text-text-secondary mb-4">Review and manage join requests.</p>
+              <p className="text-xs text-text-secondary mb-4">
+                Review and manage join requests from prospective members.
+              </p>
               <div className="space-y-1.5 text-sm mb-4">
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Pending requests</span>
+                  <span className="text-text-secondary">Pending</span>
                   <span className={`font-semibold ${pendingCount > 0 ? 'text-accent' : 'text-text-primary'}`}>
                     {pendingCount}
                   </span>
@@ -80,28 +84,25 @@ export function MorePage({
                   <span className="text-text-primary font-medium">{recentApps}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 text-accent text-sm font-medium">
-                Review requests <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+              <div className="flex items-center gap-1 text-accent text-xs font-medium">
+                Review requests <ChevronRight size={12} />
               </div>
-            </button>
+            </DashboardCard>
           )}
 
-          {/* Lead Tools / Settings */}
+          {/* Lead Tools */}
           {canManage && (
-            <button
+            <DashboardCard
+              title="Lead Tools"
+              icon={<Settings size={13} />}
               onClick={() => onOpenSettings('general')}
-              className="group text-left bg-surface-card border border-border-default rounded-xl p-5 hover:border-accent/50 hover:bg-surface-raised transition-colors"
             >
-              <div className="flex items-center gap-2 mb-2">
-                <Settings size={16} className="text-accent" />
-                <span className="text-sm font-semibold text-text-primary">Lead Tools</span>
-              </div>
               <p className="text-xs text-text-secondary mb-4">
-                Manage static details, roles, permissions, and membership.
+                Manage static details, roles, permissions, and membership settings.
               </p>
               <div className="space-y-1.5 text-sm mb-4">
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Static settings</span>
+                  <span className="text-text-secondary">Settings</span>
                   <span className="text-accent font-medium">Configure</span>
                 </div>
                 <div className="flex justify-between">
@@ -109,23 +110,20 @@ export function MorePage({
                   <span className="text-accent font-medium">Manage</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 text-accent text-sm font-medium">
-                Open lead tools <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+              <div className="flex items-center gap-1 text-accent text-xs font-medium">
+                Open lead tools <ChevronRight size={12} />
               </div>
-            </button>
+            </DashboardCard>
           )}
 
-          {/* Loot Log */}
-          <button
+          {/* Loot History */}
+          <DashboardCard
+            title="Loot History"
+            icon={<Book size={13} />}
             onClick={() => { onSetGearSubTab('history'); onNavigate('gear'); }}
-            className="group text-left bg-surface-card border border-border-default rounded-xl p-5 hover:border-accent/50 hover:bg-surface-raised transition-colors"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <Book size={16} className="text-accent" />
-              <span className="text-sm font-semibold text-text-primary">Loot Log</span>
-            </div>
             <p className="text-xs text-text-secondary mb-4">
-              Track loot history and drops across raids.
+              Track and review loot entries logged across all raid sessions.
             </p>
             <div className="space-y-1.5 text-sm mb-4">
               <div className="flex justify-between">
@@ -139,73 +137,72 @@ export function MorePage({
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-accent text-sm font-medium">
-              View loot log <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            <div className="flex items-center gap-1 text-accent text-xs font-medium">
+              View loot history <ChevronRight size={12} />
             </div>
-          </button>
+          </DashboardCard>
 
-          {/* Split Planner — shortcut to Roster → Split Planner tab */}
-          <button
+          {/* Split Planner — live shortcut */}
+          <DashboardCard
+            title="Split Planner"
+            icon={<Sword size={13} />}
+            accentColor="teal"
             onClick={onOpenSplitPlanner}
-            className="group text-left bg-surface-card border border-border-default rounded-xl p-5 hover:border-accent/50 hover:bg-surface-raised transition-colors"
+            badge={<ExternalLink size={11} className="text-text-muted" />}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <Sword size={16} className="text-accent" />
-              <span className="text-sm font-semibold text-text-primary">Split Planner</span>
-              <ExternalLink size={12} className="ml-auto text-text-muted group-hover:text-accent transition-colors" />
-            </div>
             <p className="text-xs text-text-secondary mb-4">
               Plan loot splits and assign roles for split clears.
             </p>
-            <div className="flex items-center gap-1 text-accent text-sm font-medium">
-              Open Split Planner <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            <div className="flex items-center gap-1 text-accent text-xs font-medium">
+              Open Split Planner <ChevronRight size={12} />
             </div>
-          </button>
+          </DashboardCard>
 
           {/* Integrations */}
-          <button
+          <DashboardCard
+            title="Integrations"
+            icon={<Link2 size={13} />}
+            accentColor={discordLinked || webhookOk ? 'teal' : undefined}
             onClick={() => onOpenSettings('integrations')}
-            className="group text-left bg-surface-card border border-border-default rounded-xl p-5 hover:border-accent/50 hover:bg-surface-raised transition-colors"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <Link2 size={16} className="text-accent" />
-              <span className="text-sm font-semibold text-text-primary">Integrations</span>
-            </div>
             <p className="text-xs text-text-secondary mb-4">
-              Connect with other services to enhance your workflow.
+              Connect Discord and other services to enhance scheduling and reminders.
             </p>
-            <div className="space-y-1.5 text-sm mb-4">
+            <div className="space-y-2 text-sm mb-4">
               <div className="flex justify-between items-center">
                 <span className="text-text-secondary">Discord</span>
                 {discordLinked || webhookOk ? (
-                  <span className="text-accent font-medium">
-                    {discordLinked && discordGuild ? discordGuild : 'Connected'}
-                  </span>
+                  <div className="flex items-center gap-1 text-status-success">
+                    <CheckCircle size={12} />
+                    <span className="text-xs font-medium">
+                      {discordLinked && discordGuild ? discordGuild : 'Connected'}
+                    </span>
+                  </div>
                 ) : (
-                  <span className="text-text-tertiary">Not connected</span>
+                  <div className="flex items-center gap-1 text-text-muted">
+                    <XCircle size={12} />
+                    <span className="text-xs">Not connected</span>
+                  </div>
                 )}
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-text-secondary">Plugin sync</span>
-                <span className="text-text-secondary font-medium">Via API key</span>
+                <span className="text-text-secondary text-xs">Via API key</span>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-accent text-sm font-medium">
-              Manage integrations <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            <div className="flex items-center gap-1 text-accent text-xs font-medium">
+              Manage integrations <ChevronRight size={12} />
             </div>
-          </button>
+          </DashboardCard>
 
           {/* Settings */}
-          <button
+          <DashboardCard
+            title="Settings"
+            icon={<Settings size={13} />}
             onClick={() => onOpenSettings('general')}
-            className="group text-left bg-surface-card border border-border-default rounded-xl p-5 hover:border-accent/50 hover:bg-surface-raised transition-colors"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <Settings size={16} className="text-accent" />
-              <span className="text-sm font-semibold text-text-primary">Settings</span>
-            </div>
             <p className="text-xs text-text-secondary mb-4">
-              Configure your static, notifications, and preferences.
+              Configure your static details, visibility, and member notifications.
             </p>
             <div className="space-y-1.5 text-sm mb-4">
               <div className="flex justify-between">
@@ -217,63 +214,56 @@ export function MorePage({
                 <span className="text-accent font-medium">Configure</span>
               </div>
             </div>
-            <div className="flex items-center gap-1 text-accent text-sm font-medium">
-              Open settings <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            <div className="flex items-center gap-1 text-accent text-xs font-medium">
+              Open settings <ChevronRight size={12} />
             </div>
-          </button>
+          </DashboardCard>
 
         </div>
       </section>
 
       {/* Data & History */}
       <section>
-        <h2 className="text-xs font-semibold text-[#c9a84c] uppercase tracking-widest mb-3">
-          Data & History
-        </h2>
+        <SectionLabel className="mb-3">Data & History</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-          {/* Exports */}
-          <div className="text-left bg-surface-card border border-border-subtle rounded-xl p-5 opacity-70">
-            <div className="flex items-center gap-2 mb-2">
-              <Download size={16} className="text-text-tertiary" />
-              <span className="text-sm font-semibold text-text-secondary">Exports</span>
-              <span className="ml-auto text-xs bg-surface-raised text-text-secondary border border-border-subtle px-2 py-0.5 rounded-full">
-                Coming Soon
-              </span>
-            </div>
-            <p className="text-xs text-text-secondary">Export data for backups or external tools.</p>
-          </div>
+          {/* Exports — coming soon */}
+          <DashboardCard
+            title="Exports"
+            icon={<Download size={13} />}
+            badge={<span className="text-xs bg-surface-raised text-text-secondary border border-border-subtle px-2 py-0.5 rounded-full">Coming soon</span>}
+            className="opacity-60"
+          >
+            <p className="text-xs text-text-secondary">
+              Export roster data, loot history, and gear snapshots for backups or external tools.
+            </p>
+          </DashboardCard>
 
-          {/* Activity Log */}
-          <div className="text-left bg-surface-card border border-border-subtle rounded-xl p-5 opacity-70">
-            <div className="flex items-center gap-2 mb-2">
-              <Activity size={16} className="text-text-tertiary" />
-              <span className="text-sm font-semibold text-text-secondary">Activity Log</span>
-              <span className="ml-auto text-xs bg-surface-raised text-text-secondary border border-border-subtle px-2 py-0.5 rounded-full">
-                Coming Soon
-              </span>
-            </div>
+          {/* Activity Log — coming soon */}
+          <DashboardCard
+            title="Activity Log"
+            icon={<Activity size={13} />}
+            badge={<span className="text-xs bg-surface-raised text-text-secondary border border-border-subtle px-2 py-0.5 rounded-full">Coming soon</span>}
+            className="opacity-60"
+          >
             <p className="text-xs text-text-secondary">
               View important changes and recent activity across your static.
             </p>
-          </div>
+          </DashboardCard>
 
-          {/* Schedule history shortcut */}
-          <button
+          {/* Session History */}
+          <DashboardCard
+            title="Session History"
+            icon={<Clock size={13} />}
             onClick={() => onNavigate('schedule')}
-            className="group text-left bg-surface-card border border-border-default rounded-xl p-5 hover:border-accent/50 hover:bg-surface-raised transition-colors"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <Clock size={16} className="text-accent" />
-              <span className="text-sm font-semibold text-text-primary">Session History</span>
-            </div>
-            <p className="text-xs text-text-secondary mb-3">
+            <p className="text-xs text-text-secondary mb-4">
               View past sessions, attendance records, and recurring event history.
             </p>
-            <div className="flex items-center gap-1 text-accent text-sm font-medium">
-              View schedule <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            <div className="flex items-center gap-1 text-accent text-xs font-medium">
+              View schedule <ChevronRight size={12} />
             </div>
-          </button>
+          </DashboardCard>
 
         </div>
       </section>
@@ -281,12 +271,16 @@ export function MorePage({
       {/* Danger Zone */}
       {isMember && (
         <section>
-          <h2 className="text-xs font-semibold text-red-400 uppercase tracking-widest mb-3">
-            Danger Zone
-          </h2>
-          <div className="bg-surface-card border border-red-500/30 rounded-xl p-5">
-            <div className="flex items-start gap-3 mb-4">
-              <AlertTriangle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+          <SectionLabel color="red" className="mb-3">Danger Zone</SectionLabel>
+          <div
+            className="rounded-xl p-5 border"
+            style={{
+              background: 'linear-gradient(160deg, rgba(14,8,8,1) 0%, rgba(10,6,6,0.95) 100%)',
+              borderColor: 'rgba(239,68,68,0.25)',
+            }}
+          >
+            <div className="flex items-start gap-3 mb-5">
+              <IconMedallion icon={<AlertTriangle size={16} />} color="red" size="sm" />
               <div>
                 <p className="text-sm font-semibold text-text-primary">Irreversible actions</p>
                 <p className="text-xs text-text-secondary mt-0.5">
@@ -298,7 +292,7 @@ export function MorePage({
               {!isOwner && (
                 <button
                   onClick={() => onOpenSettings('danger')}
-                  className="px-3 py-1.5 text-sm border border-red-500/40 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
+                  className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
                 >
                   Leave Static
                 </button>
@@ -307,13 +301,13 @@ export function MorePage({
                 <>
                   <button
                     onClick={() => onOpenSettings('danger')}
-                    className="px-3 py-1.5 text-sm border border-red-500/40 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
+                    className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
                   >
                     Archive Static
                   </button>
                   <button
                     onClick={() => onOpenSettings('danger')}
-                    className="px-3 py-1.5 text-sm border border-red-500/40 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
+                    className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
                   >
                     Delete Static
                   </button>
