@@ -11,9 +11,10 @@ const ACCENT_STYLES: Record<string, CSSProperties> = {
   yellow: { borderLeft: '2px solid rgba(234,179,8,0.55)' },
 };
 
-// Subtle inner gradient for glass feel — applied via inline style
+// Subtle inner gradient + top-edge highlight for glass feel — applied via inline style
 const GLASS_GRADIENT: CSSProperties = {
-  background: 'linear-gradient(160deg, #0e0e16 0%, #0a0a12 100%)',
+  background: 'linear-gradient(160deg, #0f0f18 0%, #0b0b13 100%)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.25)',
 };
 
 interface DashboardCardProps {
@@ -62,7 +63,7 @@ export function DashboardCard({
         onClick={onClick}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
         style={combinedStyle}
-        className={`border border-border-default rounded-xl p-5 cursor-pointer hover:border-accent/40 hover:brightness-110 transition-all ${className}`}
+        className={`border border-border-default rounded-xl p-5 cursor-pointer card-glow transition-all ${className}`}
       >
         <CardInner title={title} icon={icon} badge={badge}>{children}</CardInner>
       </div>

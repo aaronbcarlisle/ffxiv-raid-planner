@@ -896,7 +896,10 @@ export function GroupView() {
           {/* App shell: sidebar (desktop) + content */}
           <div className={`flex flex-1 min-h-0 -mx-3 sm:-mx-6 ${preventPageScroll ? 'overflow-hidden' : ''}`}>
             <SidebarNav activeTab={pageMode} onTabChange={setPageMode} staticName={currentGroup?.name} />
-            <div className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : ''}`}>
+            <div
+              className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : ''}`}
+              style={{ backgroundImage: 'radial-gradient(ellipse at 22% 0%, rgba(20,184,166,0.025) 0%, transparent 55%)' }}
+            >
 
               {/* Roster toolbar controls */}
               {pageMode === 'roster' && (
@@ -976,7 +979,7 @@ export function GroupView() {
 
               {/* Gear sub-tab bar */}
               {pageMode === 'gear' && (
-                <div className="flex gap-1 mb-4 p-1 bg-surface-raised rounded-lg w-fit flex-shrink-0">
+                <div className="flex gap-1 mb-4 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit flex-shrink-0">
                   {([
                     { id: 'sync' as GearSubTab, label: 'Sync' },
                     { id: 'priority' as GearSubTab, label: 'BiS' },

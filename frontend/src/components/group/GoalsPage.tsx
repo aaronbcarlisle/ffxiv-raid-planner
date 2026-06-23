@@ -21,7 +21,7 @@ export function GoalsPage({ groupId, currentUserId, canManage }: GoalsPageProps)
 
   return (
     <div>
-      <div className="flex gap-1 mb-6 p-1 bg-surface-raised rounded-lg w-fit">
+      <div className="flex gap-1 mb-6 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit">
         {GOALS_TABS.map(t => (
           <button
             key={t.id}
