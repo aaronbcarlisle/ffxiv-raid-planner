@@ -118,15 +118,6 @@ interface ApiSuggestion {
   members: ApiSuggestionMember[];
 }
 
-interface ApiDossierEntry {
-  catalog_item_id: string;
-  catalog_item_name: string;
-  catalog_item_category: string;
-  source_duty_name: string | null;
-  source_type: string | null;
-  intent: string;
-  priority: string;
-}
 
 interface ApiCatalogEntry {
   catalog_item_id: string;
