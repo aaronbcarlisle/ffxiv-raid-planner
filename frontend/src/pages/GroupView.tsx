@@ -25,14 +25,16 @@ import { LootPriorityPanel, LogWeekWizard } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { ScheduleTab } from '../components/schedule';
-import { CollectionsHub } from '../components/collections/CollectionsHub';
 import { SplitClearPlanner } from '../components/split-clear/SplitClearPlanner';
 import { RosterCharacterPanel } from '../components/roster/RosterCharacterPanel';
 import { useMountFarmStore } from '../stores/mountFarmStore';
 import { useSplitClearStore } from '../stores/splitClearStore';
 import { ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
 import { SidebarNav } from '../components/layout/SidebarNav';
+import { PageHeader } from '../components/layout/PageHeader';
 import { MorePage } from '../components/group/MorePage';
+import { GoalsPage } from '../components/group/GoalsPage';
+import { GearSyncDashboard } from '../components/group/GearSyncDashboard';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
@@ -974,10 +976,10 @@ export function GroupView() {
               {pageMode === 'gear' && (
                 <div className="flex gap-1 mb-4 p-1 bg-surface-raised rounded-lg w-fit flex-shrink-0">
                   {([
-                    { id: 'priority' as GearSubTab, label: 'Priority' },
-                    { id: 'history' as GearSubTab, label: 'Loot Log' },
-                    { id: 'stats' as GearSubTab, label: 'Summary' },
-                    { id: 'weapon' as GearSubTab, label: 'Weapon' },
+                    { id: 'sync' as GearSubTab, label: 'Sync' },
+                    { id: 'priority' as GearSubTab, label: 'BiS' },
+                    { id: 'stats' as GearSubTab, label: 'Jobs' },
+                    { id: 'history' as GearSubTab, label: 'History' },
                   ]).map(t => (
                     /* design-system-ignore: sub-tab inline buttons */
                     <button
@@ -994,6 +996,14 @@ export function GroupView() {
                   ))}
                 </div>
               )}
+
+              {/* Page headers */}
+              {pageMode === 'overview' && <PageHeader title="Overview" subtitle="Command center for your static." />}
+              {pageMode === 'roster' && <PageHeader title="Roster" subtitle="Manage members, roles, and characters." />}
+              {pageMode === 'schedule' && <PageHeader title="Schedule" subtitle="Plan sessions and manage recurring events." />}
+              {pageMode === 'goals' && <PageHeader title="Goals & Farms" subtitle="Track objectives, farms, and weekly goals." />}
+              {pageMode === 'gear' && <PageHeader title="Gear & Sync" subtitle="Jobs, BiS, and sync health." />}
+              {pageMode === 'more' && <PageHeader title="More" subtitle="Lead tools, requests, and settings." />}
 
               {/* Overview Tab */}
               {pageMode === 'overview' && currentGroup && (
@@ -1164,7 +1174,15 @@ export function GroupView() {
               {/* Gear Tab */}
               {pageMode === 'gear' && (
                 <>
-                  {/* Priority sub-tab */}
+                  {/* Sync dashboard sub-tab */}
+                  {gearSubTab === 'sync' && (
+                    <GearSyncDashboard
+                      players={mainRosterPlayers}
+                      onViewStats={() => setGearSubTab('stats')}
+                    />
+                  )}
+
+                  {/* BiS / Priority sub-tab */}
                   {gearSubTab === 'priority' && tierInfo && mainRosterPlayers.length > 0 && (
                     <LootPriorityPanel
                       players={mainRosterPlayers}
@@ -1233,36 +1251,6 @@ export function GroupView() {
                     />
                   )}
 
-                  {/* Weapon Priority sub-tab */}
-                  {gearSubTab === 'weapon' && tierInfo && mainRosterPlayers.length > 0 && (
-                    <LootPriorityPanel
-                      players={mainRosterPlayers}
-                      settings={{
-                        ...DEFAULT_SETTINGS,
-                        ...currentGroup?.settings,
-                      }}
-                      selectedFloor={selectedFloor}
-                      floorName={tierInfo.floors[selectedFloor - 1]}
-                      floors={tierInfo.floors}
-                      dutyNames={tierInfo.dutyNames}
-                      onFloorChange={setSelectedFloor}
-                      showLogButtons={canEdit}
-                      groupId={currentGroup?.id}
-                      tierId={currentTier?.tierId}
-                      currentWeek={storeCurrentWeek}
-                      maxWeek={storeMaxWeek}
-                      lootLog={lootLog}
-                      materialLog={materialLog}
-                      showEnhancedScores={true}
-                      activeSubTab="weapon"
-                      onSubTabChange={setLootSubTab}
-                      onLogSuccess={() => {
-                        if (currentGroup?.id && currentTier?.tierId) {
-                          fetchTier(currentGroup.id, currentTier.tierId);
-                        }
-                      }}
-                    />
-                  )}
                 </>
               )}
 
@@ -1279,7 +1267,7 @@ export function GroupView() {
 
               {/* Goals & Farms Tab */}
               {pageMode === 'goals' && currentGroup && (
-                <CollectionsHub
+                <GoalsPage
                   groupId={currentGroup.id}
                   currentUserId={effectiveUserId ?? ''}
                   canManage={canManageRoster(userRole).allowed}
@@ -1293,6 +1281,8 @@ export function GroupView() {
                     setSettingsTab(tab as import('../components/settings').SettingsTab ?? 'general');
                     setShowSettingsModal(true);
                   }}
+                  onNavigate={setPageMode}
+                  onSetGearSubTab={setGearSubTab}
                   canManage={canManageRoster(userRole).allowed}
                   userRole={userRole ?? null}
                 />

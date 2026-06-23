@@ -150,22 +150,27 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // ===== Gear sub-tab state: URL ?sub= > localStorage > default =====
   const [gearSubTab, setGearSubTabState] = useState<GearSubTab>(() => {
     const urlSub = searchParams.get('sub');
-    if (urlSub === 'priority' || urlSub === 'history' || urlSub === 'stats' || urlSub === 'weapon') {
+    if (urlSub === 'sync' || urlSub === 'priority' || urlSub === 'history' || urlSub === 'stats') {
       return urlSub;
     }
-    // Also handle old URL param mappings when landing via old tab= values
+    // Backward-compat: old sub param values
+    if (urlSub === 'weapon') return 'priority';
+    if (urlSub === 'summary') return 'stats';
+    // Also handle old URL tab= values that map to specific gear sub-tabs
     const urlTab = searchParams.get('tab');
     if (urlTab === 'loot' || urlTab === 'priority') return 'priority';
-    if (urlTab === 'weapon') return 'weapon';
+    if (urlTab === 'weapon') return 'priority';
     if (urlTab === 'log' || urlTab === 'history') return 'history';
     if (urlTab === 'summary') return 'stats';
     try {
       const saved = localStorage.getItem('gear-subtab');
-      if (saved === 'priority' || saved === 'history' || saved === 'stats' || saved === 'weapon') return saved;
+      if (saved === 'sync' || saved === 'priority' || saved === 'history' || saved === 'stats') return saved;
+      // Migrate old saved value 'weapon' → 'priority'
+      if (saved === 'weapon') return 'priority';
     } catch {
       // Ignore
     }
-    return 'priority';
+    return 'sync';
   });
 
   // Subtab state for loot panel: URL param > localStorage > default

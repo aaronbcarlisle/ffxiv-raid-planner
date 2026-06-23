@@ -100,7 +100,7 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
 
 // Page navigation modes
 export type PageMode = 'overview' | 'roster' | 'schedule' | 'goals' | 'gear' | 'more';
-export type GearSubTab = 'priority' | 'history' | 'stats' | 'weapon';
+export type GearSubTab = 'sync' | 'priority' | 'history' | 'stats';
 
 // Split Clear Planner
 export type SplitRunSlot = 'main' | 'alt' | null;
