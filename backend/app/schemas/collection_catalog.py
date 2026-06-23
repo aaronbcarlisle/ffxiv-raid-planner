@@ -1,6 +1,11 @@
 """Pydantic schemas for collection catalog items"""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+
+
+def _to_camel(string: str) -> str:
+    parts = string.split("_")
+    return parts[0] + "".join(p.capitalize() for p in parts[1:])
 
 
 class CatalogItemResponse(BaseModel):
@@ -58,6 +63,8 @@ class DtAuditDetail(BaseModel):
 class VerifiedIdMapping(BaseModel):
     """One entry from the plugin Lumina resolver — describes a single catalog row's resolved IDs."""
 
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True)
+
     source_duty_key: str
     reward_name: str
     game_mount_id: int | None = None
@@ -71,6 +78,8 @@ class VerifiedIdMapping(BaseModel):
 
 
 class VerifiedIdImportResult(BaseModel):
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, serialize_by_alias=True)
+
     updated: int = 0
     already_set: int = 0
     skipped: int = 0
