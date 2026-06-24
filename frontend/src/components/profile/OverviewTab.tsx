@@ -53,6 +53,21 @@ interface OverviewTabProps {
   focusAvailability?: boolean;
 }
 
+function SectionLabel({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 mb-2.5 select-none">
+      <h3
+        className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] flex-shrink-0 whitespace-nowrap"
+        style={{ color: 'rgba(20,184,166,0.65)' }}
+      >
+        {icon && <span style={{ opacity: 0.85 }}>{icon}</span>}
+        {children}
+      </h3>
+      <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(20,184,166,0.25) 0%, transparent 80%)' }} />
+    </div>
+  );
+}
+
 function DashboardCard({
   title,
   subtitle,
@@ -60,6 +75,7 @@ function DashboardCard({
   children,
   footer,
   className,
+  accent = false,
 }: {
   title: string;
   subtitle?: string;
@@ -67,22 +83,34 @@ function DashboardCard({
   children: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
+  accent?: boolean;
 }) {
   return (
-    <div className={`flex min-h-[116px] flex-col rounded-lg border border-border-default bg-surface-raised p-3 ${className ?? ''}`}>
-      <div className="mb-3 flex items-start gap-2">
-        {icon && (
-          <div className="mt-0.5 rounded-lg border border-border-subtle bg-surface-elevated p-1.5 text-accent">
-            {icon}
+    <div
+      className={`flex min-h-[116px] flex-col rounded-xl border border-border-subtle overflow-hidden ${className ?? ''}`}
+      style={{ background: accent ? 'linear-gradient(135deg, rgba(20,184,166,0.07) 0%, rgba(20,184,166,0.02) 100%)' : undefined }}
+    >
+      {accent && (
+        <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.55) 0%, rgba(20,184,166,0.12) 60%, transparent 100%)', flexShrink: 0 }} />
+      )}
+      <div className="flex flex-col flex-1 p-3">
+        <div className="mb-2.5 flex items-start gap-2">
+          {icon && (
+            <div
+              className="mt-0.5 rounded-lg p-1.5 text-accent flex-shrink-0"
+              style={{ background: 'rgba(20,184,166,0.1)', boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.2)' }}
+            >
+              {icon}
+            </div>
+          )}
+          <div className="min-w-0">
+            <h3 className="font-display text-sm font-semibold text-text-primary">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-xs text-text-tertiary">{subtitle}</p>}
           </div>
-        )}
-        <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-text-primary">{title}</h3>
-          {subtitle && <p className="mt-0.5 text-xs text-text-tertiary">{subtitle}</p>}
         </div>
+        <div className="flex-1">{children}</div>
+        {footer && <div className="mt-3 border-t border-border-subtle pt-3">{footer}</div>}
       </div>
-      <div className="flex-1">{children}</div>
-      {footer && <div className="mt-3 border-t border-border-subtle pt-3">{footer}</div>}
     </div>
   );
 }
@@ -238,11 +266,16 @@ export function OverviewTab({
 
   return (
     <motion.div {...staggerContainerProps} className="space-y-4">
-      <motion.div {...staggerItemProps} className="rounded-lg border border-accent/20 bg-surface-raised p-3 shadow-sm sm:p-4">
+      <motion.div {...staggerItemProps} className="rounded-xl border border-border-subtle overflow-hidden shadow-sm">
+        <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.65) 0%, rgba(20,184,166,0.18) 55%, transparent 100%)' }} />
+        <div
+          className="p-3 sm:p-4"
+          style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.06) 0%, rgba(20,184,166,0.015) 100%)' }}
+        >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-text-tertiary">Profile status</p>
-            <h2 className="truncate font-display text-base font-semibold text-text-primary">Ready at a glance</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] select-none" style={{ color: 'rgba(20,184,166,0.6)' }}>Profile status</p>
+            <h2 className="truncate font-display text-base font-semibold text-text-primary mt-0.5">Ready at a glance</h2>
           </div>
           <Badge
             variant={profile.visibility === 'private' ? 'default' : profile.visibility === 'shareable' ? 'info' : 'success'}
@@ -289,11 +322,14 @@ export function OverviewTab({
             icon={<Users className="h-3.5 w-3.5" />}
           />
         </div>
+        </div>
       </motion.div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <aside className="space-y-4 xl:order-2">
-          <motion.div {...staggerItemProps} className="rounded-lg border border-accent/20 bg-surface-raised p-3 sm:p-4">
+          <motion.div {...staggerItemProps} className="rounded-xl border border-border-subtle overflow-hidden">
+          <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.55) 0%, rgba(20,184,166,0.1) 55%, transparent 100%)' }} />
+          <div className="p-3 sm:p-4" style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.05) 0%, transparent 100%)' }}>
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-display text-sm font-semibold text-text-primary">{readyToApply ? 'Ready to apply' : 'Next step'}</h3>
@@ -401,6 +437,7 @@ export function OverviewTab({
                 ))}
               </div>
             )}
+          </div>
           </motion.div>
 
           {staticSuggestions.length > 0 && (
@@ -438,16 +475,14 @@ export function OverviewTab({
 
         <main className="space-y-4 xl:order-1">
           <motion.div {...staggerItemProps} className="space-y-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-text-tertiary">Raider Snapshot</p>
-              <h3 className="font-display text-lg text-text-primary">Profile systems at a glance</h3>
-            </div>
+            <SectionLabel icon={<Target className="h-3 w-3" />}>Raider Snapshot</SectionLabel>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <DashboardCard
                 title="Gear"
                 subtitle="Applications and roster links"
                 icon={<Briefcase className="h-4 w-4" />}
                 footer={<InlineLink to="/profile?tab=sync">Open Sync</InlineLink>}
+                accent
               >
                 {latestSnapshot ? (
                   <div className="space-y-2">

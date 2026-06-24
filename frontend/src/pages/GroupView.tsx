@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
@@ -1004,6 +1005,16 @@ export function GroupView() {
                 </div>
               )}
 
+              <AnimatePresence mode="wait">
+              <motion.div
+                key={pageMode}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
+                className={preventPageScroll ? 'flex flex-col flex-1 min-h-0' : undefined}
+              >
+
               {/* Page headers */}
               {pageMode === 'overview' && <PageHeader title="Overview" subtitle="Command center for your static." />}
               {pageMode === 'roster' && <PageHeader title="Roster" subtitle="Manage members, roles, and characters." />}
@@ -1336,6 +1347,8 @@ export function GroupView() {
                 />
               )}
 
+              </motion.div>
+              </AnimatePresence>
             </div>{/* end content area */}
           </div>{/* end sidebar+content shell */}
         </>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, ChevronDown, Users } from 'lucide-react';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
@@ -312,42 +312,58 @@ export default function Profile() {
 
   return (
     <div ref={pageRef} className="mx-auto flex w-full max-w-[1440px] flex-col px-3 py-2 sm:px-5 sm:py-4 lg:px-6">
-      {/* Header — compact on mobile */}
+      {/* Header — command center card */}
       <motion.div {...fadeInProps} className="mb-3 sm:mb-4">
-        <div className="flex items-center gap-3">
-          {/* User avatar */}
-          <div className="w-10 h-10 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-surface-elevated flex-shrink-0 border-2 border-accent/30">
-            {mainCharacter?.avatarUrl ? (
-              <img src={mainCharacter.avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-text-tertiary">
-                <GameIcon name="shield-person" size="lg" />
-              </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-2xl font-display font-bold text-text-primary truncate">
-              Player Hub
-            </h1>
-            {mainCharacter && (
-              <div className="text-xs sm:text-sm text-text-secondary truncate">
-                {mainCharacter.name} &middot; {mainCharacter.server}
-              </div>
-            )}
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              {mainJob && (
-                <Badge variant={mainJob.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster'} size="sm">
-                  {mainJob.job} Main
-                </Badge>
+        <div
+          className="rounded-xl border border-border-subtle overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, rgba(20,184,166,0.065) 0%, rgba(20,184,166,0.02) 60%, transparent 100%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+          }}
+        >
+          {/* Top accent rule */}
+          <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.7) 0%, rgba(20,184,166,0.2) 55%, transparent 100%)' }} />
+          <div className="flex items-center gap-3 px-3 py-3 sm:px-4 sm:py-4">
+            {/* User avatar */}
+            <div
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-surface-elevated flex-shrink-0"
+              style={{ boxShadow: '0 0 0 2px rgba(20,184,166,0.35), 0 0 14px rgba(20,184,166,0.15)' }}
+            >
+              {mainCharacter?.avatarUrl ? (
+                <img src={mainCharacter.avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-text-tertiary">
+                  <GameIcon name="shield-person" size="lg" />
+                </div>
               )}
-              <Badge variant={profile?.visibility === 'private' ? 'default' : 'info'} size="sm">
-                {profile?.visibility === 'private' ? 'Private' : profile?.shareEnabled ? 'Shared' : 'Not Shared'}
-              </Badge>
             </div>
-          </div>
-          {/* Static shortcut */}
-          <div className="flex-shrink-0 hidden sm:block">
-            <StaticShortcut groups={groups} />
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] mb-0.5 select-none" style={{ color: 'rgba(20,184,166,0.6)' }}>
+                Player Hub
+              </div>
+              <h1 className="text-base sm:text-xl font-display font-bold text-text-primary truncate leading-tight">
+                {mainCharacter?.name ?? 'Your Character'}
+              </h1>
+              {mainCharacter && (
+                <div className="text-xs text-text-secondary truncate mt-0.5">
+                  {mainCharacter.server}
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                {mainJob && (
+                  <Badge variant={mainJob.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster'} size="sm">
+                    {mainJob.job} Main
+                  </Badge>
+                )}
+                <Badge variant={profile?.visibility === 'private' ? 'default' : 'info'} size="sm">
+                  {profile?.visibility === 'private' ? 'Private' : profile?.shareEnabled ? 'Shared' : 'Not Shared'}
+                </Badge>
+              </div>
+            </div>
+            {/* Static shortcut */}
+            <div className="flex-shrink-0 hidden sm:block">
+              <StaticShortcut groups={groups} />
+            </div>
           </div>
         </div>
 
@@ -390,6 +406,14 @@ export default function Profile() {
 
       {/* Tab content — bottom padding for mobile bottom nav */}
       <div className="pb-20 sm:pb-0">
+        <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
+        >
         {activeTab === 'overview' && profile && (
           <OverviewTab
             profile={profile}
@@ -449,6 +473,8 @@ export default function Profile() {
         {activeTab === 'preview' && profile && (
           <PreviewShareTab profile={profile} gearSnapshots={gearSnapshots} />
         )}
+        </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Modals */}

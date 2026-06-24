@@ -70,6 +70,18 @@ export const RELEASES: Release[] = [
     items: [
       {
         category: 'improvement',
+        title: 'Static Hub & Player Hub — layout stability, tab animations, and visual quality pass',
+        description:
+          'Static Hub sidebar is now viewport-sticky with a minimum height so it never shrinks when switching between short and tall tabs. ' +
+          'Switching tabs in both Static Hub and Player Hub now animates with a smooth fade + slide transition via AnimatePresence. ' +
+          'Player Hub header upgraded to a teal-gradient card with avatar ring glow. ' +
+          'Player Hub OverviewTab DashboardCards upgraded to match StaticHomeTab card quality (rounded-xl, border-subtle, teal icon glows, accent cards). ' +
+          'SectionLabel dividers added to OverviewTab for visual rhythm matching Static Hub. ' +
+          'Recruitment Dossier modal entrance animation is now more pronounced (spring easing, larger scale + y range).',
+        internal: true,
+      },
+      {
+        category: 'improvement',
         title: 'Static Overview visual polish and usability pass',
         description:
           'GroupHeroPanel now shows a teal gradient header with stat strip (avg iLv, BiS ready, roster count) and role-color left bars on each Raid Prep row. ' +

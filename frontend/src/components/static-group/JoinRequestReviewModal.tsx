@@ -229,8 +229,8 @@ export function JoinRequestReviewModal({
   const dossierMotion = prefersReducedMotion
     ? {}
     : {
-        initial: { opacity: 0, scale: 0.98, y: 8 },
-        animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] as const } },
+        initial: { opacity: 0, scale: 0.96, y: 14 },
+        animate: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] as const } },
       };
 
   // Derived snapshot fields
