@@ -303,8 +303,8 @@ function deriveActivityItems(
 
 function SectionLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <h3 className="flex items-center gap-1.5 text-[11px] font-bold text-text-muted uppercase tracking-[0.14em] mb-2.5 select-none">
-      <span className="opacity-70">{icon}</span>
+    <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] mb-2.5 select-none" style={{ color: 'rgba(20,184,166,0.6)' }}>
+      <span className="opacity-80">{icon}</span>
       {children}
     </h3>
   );

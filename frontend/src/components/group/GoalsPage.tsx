@@ -22,15 +22,15 @@ export function GoalsPage({ groupId, currentUserId, canManage }: GoalsPageProps)
   return (
     <div>
       <div className="overflow-x-auto mb-6 flex-shrink-0">
-        <div className="flex gap-1 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit">
+        <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
           {GOALS_TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setSubTab(t.id)}
               className={`px-4 py-1.5 text-sm rounded-md font-medium transition-colors ${
                 subTab === t.id
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-text-secondary hover:text-text-primary'
+                  ? 'bg-accent/[0.18] text-accent shadow-sm'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
               }`}
             >
               {t.label}

@@ -898,7 +898,7 @@ export function GroupView() {
             <SidebarNav activeTab={pageMode} onTabChange={setPageMode} staticName={currentGroup?.name} />
             <div
               className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : ''}`}
-              style={{ backgroundImage: 'radial-gradient(ellipse at 22% 0%, rgba(20,184,166,0.025) 0%, transparent 55%)' }}
+              style={{ backgroundImage: 'radial-gradient(ellipse 70% 45% at 15% 0%, rgba(20,184,166,0.055) 0%, transparent 65%), radial-gradient(ellipse 35% 25% at 90% 95%, rgba(20,184,166,0.022) 0%, transparent 50%)' }}
             >
 
               {/* Roster toolbar controls */}
@@ -980,7 +980,7 @@ export function GroupView() {
               {/* Gear sub-tab bar */}
               {pageMode === 'gear' && (
                 <div className="overflow-x-auto mb-4 flex-shrink-0">
-                  <div className="flex gap-1 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit">
+                  <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
                     {([
                       { id: 'sync' as GearSubTab, label: 'Sync' },
                       { id: 'priority' as GearSubTab, label: 'BiS' },
@@ -993,8 +993,8 @@ export function GroupView() {
                         onClick={() => setGearSubTab(t.id)}
                         className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
                           gearSubTab === t.id
-                            ? 'bg-accent/20 text-accent'
-                            : 'text-text-secondary hover:text-text-primary'
+                            ? 'bg-accent/[0.18] text-accent shadow-sm'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
                         }`}
                       >
                         {t.label}
@@ -1052,7 +1052,7 @@ export function GroupView() {
                   {/* Roster segmented control — Members | Characters | Split Planner */}
                   {currentGroup && (
                     <div className="overflow-x-auto mb-3 flex-shrink-0">
-                      <div className="flex gap-1 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit" role="tablist" aria-label="Roster view">
+                      <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" role="tablist" aria-label="Roster view" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
                         {(['members', 'characters', 'split-planner'] as const).map(view => {
                           const labels: Record<typeof view, string> = {
                             members: 'Members',
@@ -1067,8 +1067,8 @@ export function GroupView() {
                               aria-selected={rosterSubView === view}
                               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                                 rosterSubView === view
-                                  ? 'bg-accent/20 text-accent'
-                                  : 'text-text-secondary hover:text-text-primary'
+                                  ? 'bg-accent/[0.18] text-accent shadow-sm'
+                                  : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
                               }`}
                               onClick={() => setRosterSubView(view)}
                             >

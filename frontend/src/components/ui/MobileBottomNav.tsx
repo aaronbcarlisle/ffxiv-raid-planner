@@ -70,8 +70,8 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
 
   return (
     <nav
-        className="fixed bottom-0 left-0 right-0 z-40 bg-surface-card border-t border-border-default touch-manipulation"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)' }}
+        className="fixed bottom-0 left-0 right-0 z-40 bg-surface-raised border-t border-border-default touch-manipulation"
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)', boxShadow: '0 -1px 0 rgba(20,184,166,0.06), 0 -8px 24px rgba(0,0,0,0.4)' }}
         aria-label="Main navigation"
         {...swipeHandlers}
       >
@@ -91,43 +91,49 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
 
         {/* Tab navigation - fills remaining space */}
         <div className="flex justify-around items-center flex-1 h-full">
-          {TABS.map((tab) => (
-            /* design-system-ignore: Bottom nav button requires specific styling */
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={`
-                flex flex-col items-center justify-center flex-1 h-full min-w-[44px]
-                transition-colors
-                ${
-                  activeTab === tab.id
-                    ? 'text-accent'
-                    : 'text-text-secondary active:text-text-primary'
-                }
-              `}
-              aria-label={tab.label}
-              aria-current={activeTab === tab.id ? 'page' : undefined}
-            >
-              {(() => {
-                const LucideIcon = PAGE_TO_LUCIDE[tab.id];
-                if (LucideIcon) {
-                  return <LucideIcon className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`} />;
-                }
-                const spriteKey = PAGE_TO_SPRITE[tab.id];
-                if (spriteKey) {
-                  return (
-                    <img
-                      src={TAB_ICONS[spriteKey]}
-                      alt=""
-                      className={`w-5 h-5 ${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}
-                    />
-                  );
-                }
-                return null;
-              })()}
-              <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              /* design-system-ignore: Bottom nav button requires specific styling */
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                className={`
+                  relative flex flex-col items-center justify-center flex-1 h-full min-w-[44px]
+                  transition-colors
+                  ${isActive ? 'text-accent' : 'text-text-secondary active:text-text-primary'}
+                `}
+                aria-label={tab.label}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {/* Active top indicator */}
+                {isActive && (
+                  <span
+                    className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
+                    style={{ background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.9), transparent)' }}
+                  />
+                )}
+                {(() => {
+                  const LucideIcon = PAGE_TO_LUCIDE[tab.id];
+                  if (LucideIcon) {
+                    return <LucideIcon className={`w-5 h-5 ${isActive ? 'opacity-100' : 'opacity-55'}`} />;
+                  }
+                  const spriteKey = PAGE_TO_SPRITE[tab.id];
+                  if (spriteKey) {
+                    return (
+                      <img
+                        src={TAB_ICONS[spriteKey]}
+                        alt=""
+                        className={`w-5 h-5 ${isActive ? 'opacity-100' : 'opacity-55'}`}
+                      />
+                    );
+                  }
+                  return null;
+                })()}
+                <span className={`text-[10px] mt-0.5 font-medium ${isActive ? 'font-semibold' : ''}`}>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
         </div>
       </nav>
