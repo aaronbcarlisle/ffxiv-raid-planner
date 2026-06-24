@@ -21,20 +21,22 @@ export function GoalsPage({ groupId, currentUserId, canManage }: GoalsPageProps)
 
   return (
     <div>
-      <div className="flex gap-1 mb-6 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit">
-        {GOALS_TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setSubTab(t.id)}
-            className={`px-4 py-1.5 text-sm rounded-md font-medium transition-colors ${
-              subTab === t.id
-                ? 'bg-accent/20 text-accent'
-                : 'text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="overflow-x-auto mb-6 flex-shrink-0">
+        <div className="flex gap-1 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit">
+          {GOALS_TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setSubTab(t.id)}
+              className={`px-4 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                subTab === t.id
+                  ? 'bg-accent/20 text-accent'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {subTab === 'objectives' && (

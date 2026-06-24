@@ -63,7 +63,7 @@ export function DashboardCard({
         onClick={onClick}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
         style={combinedStyle}
-        className={`border border-border-default rounded-xl p-5 cursor-pointer card-glow transition-all ${className}`}
+        className={`border border-border-default rounded-xl p-3 sm:p-5 cursor-pointer card-glow transition-all ${className}`}
       >
         <CardInner title={title} icon={icon} badge={badge}>{children}</CardInner>
       </div>
@@ -73,7 +73,7 @@ export function DashboardCard({
   return (
     <div
       style={combinedStyle}
-      className={`border border-border-default rounded-xl p-5 ${className}`}
+      className={`border border-border-default rounded-xl p-3 sm:p-5 ${className}`}
     >
       <CardInner title={title} icon={icon} badge={badge}>{children}</CardInner>
     </div>

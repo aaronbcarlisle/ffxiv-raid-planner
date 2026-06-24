@@ -979,26 +979,28 @@ export function GroupView() {
 
               {/* Gear sub-tab bar */}
               {pageMode === 'gear' && (
-                <div className="flex gap-1 mb-4 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit flex-shrink-0">
-                  {([
-                    { id: 'sync' as GearSubTab, label: 'Sync' },
-                    { id: 'priority' as GearSubTab, label: 'BiS' },
-                    { id: 'stats' as GearSubTab, label: 'Jobs' },
-                    { id: 'history' as GearSubTab, label: 'History' },
-                  ]).map(t => (
-                    /* design-system-ignore: sub-tab inline buttons */
-                    <button
-                      key={t.id}
-                      onClick={() => setGearSubTab(t.id)}
-                      className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                        gearSubTab === t.id
-                          ? 'bg-accent/20 text-accent'
-                          : 'text-text-secondary hover:text-text-primary'
-                      }`}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+                <div className="overflow-x-auto mb-4 flex-shrink-0">
+                  <div className="flex gap-1 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit">
+                    {([
+                      { id: 'sync' as GearSubTab, label: 'Sync' },
+                      { id: 'priority' as GearSubTab, label: 'BiS' },
+                      { id: 'stats' as GearSubTab, label: 'Jobs' },
+                      { id: 'history' as GearSubTab, label: 'History' },
+                    ]).map(t => (
+                      /* design-system-ignore: sub-tab inline buttons */
+                      <button
+                        key={t.id}
+                        onClick={() => setGearSubTab(t.id)}
+                        className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                          gearSubTab === t.id
+                            ? 'bg-accent/20 text-accent'
+                            : 'text-text-secondary hover:text-text-primary'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -1049,30 +1051,32 @@ export function GroupView() {
                 <>
                   {/* Roster segmented control — Members | Characters | Split Planner */}
                   {currentGroup && (
-                    <div className="flex gap-1 mb-3 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit" role="tablist" aria-label="Roster view">
-                      {(['members', 'characters', 'split-planner'] as const).map(view => {
-                        const labels: Record<typeof view, string> = {
-                          members: 'Members',
-                          characters: 'Characters',
-                          'split-planner': 'Split Planner',
-                        };
-                        return (
-                          <button
-                            key={view}
-                            type="button"
-                            role="tab"
-                            aria-selected={rosterSubView === view}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                              rosterSubView === view
-                                ? 'bg-accent/20 text-accent'
-                                : 'text-text-secondary hover:text-text-primary'
-                            }`}
-                            onClick={() => setRosterSubView(view)}
-                          >
-                            {labels[view]}
-                          </button>
-                        );
-                      })}
+                    <div className="overflow-x-auto mb-3 flex-shrink-0">
+                      <div className="flex gap-1 p-1 bg-surface-raised rounded-lg border border-border-subtle w-fit" role="tablist" aria-label="Roster view">
+                        {(['members', 'characters', 'split-planner'] as const).map(view => {
+                          const labels: Record<typeof view, string> = {
+                            members: 'Members',
+                            characters: 'Characters',
+                            'split-planner': 'Split Planner',
+                          };
+                          return (
+                            <button
+                              key={view}
+                              type="button"
+                              role="tab"
+                              aria-selected={rosterSubView === view}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                rosterSubView === view
+                                  ? 'bg-accent/20 text-accent'
+                                  : 'text-text-secondary hover:text-text-primary'
+                              }`}
+                              onClick={() => setRosterSubView(view)}
+                            >
+                              {labels[view]}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
@@ -1263,24 +1267,26 @@ export function GroupView() {
               {pageMode === 'schedule' && currentGroup && (
                 <>
                   {/* Upcoming | Calendar view switcher */}
-                  <div className="flex gap-1 mb-5 p-1 bg-surface-raised rounded-lg w-fit flex-shrink-0 border border-border-subtle">
-                    {([
-                      { id: 'upcoming' as const, label: 'Upcoming' },
-                      { id: 'calendar' as const, label: 'Calendar' },
-                    ]).map(v => (
-                      /* design-system-ignore: view switcher inline button */
-                      <button
-                        key={v.id}
-                        onClick={() => setScheduleView(v.id)}
-                        className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                          scheduleView === v.id
-                            ? 'bg-accent/20 text-accent'
-                            : 'text-text-secondary hover:text-text-primary'
-                        }`}
-                      >
-                        {v.label}
-                      </button>
-                    ))}
+                  <div className="overflow-x-auto mb-5 flex-shrink-0">
+                    <div className="flex gap-1 p-1 bg-surface-raised rounded-lg w-fit border border-border-subtle">
+                      {([
+                        { id: 'upcoming' as const, label: 'Upcoming' },
+                        { id: 'calendar' as const, label: 'Calendar' },
+                      ]).map(v => (
+                        /* design-system-ignore: view switcher inline button */
+                        <button
+                          key={v.id}
+                          onClick={() => setScheduleView(v.id)}
+                          className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                            scheduleView === v.id
+                              ? 'bg-accent/20 text-accent'
+                              : 'text-text-secondary hover:text-text-primary'
+                          }`}
+                        >
+                          {v.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {scheduleView === 'upcoming' && (
