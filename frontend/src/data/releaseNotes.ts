@@ -69,6 +69,20 @@ export const RELEASES: Release[] = [
     ],
     items: [
       {
+        category: 'improvement',
+        title: 'Static Overview visual polish and usability pass',
+        description:
+          'GroupHeroPanel now shows a teal gradient header with stat strip (avg iLv, BiS ready, roster count) and role-color left bars on each Raid Prep row. ' +
+          'Roster presence is now a 4×2 avatar grid with role-color rings. ' +
+          'BiS progress bar glows and color-codes by completion; per-player readiness dots appear below it. ' +
+          'Status chips in the command brief carry icons and warning colors when action is needed. ' +
+          'Best Next Farm shows a trophy badge with a demand indicator. ' +
+          'Collection goals with a target count display a mini progress bar. ' +
+          'Section labels now have a trailing gradient separator for better visual rhythm. ' +
+          'All three columns stagger in on page load.',
+        internal: true,
+      },
+      {
         category: 'feature',
         title: 'Collections Center — personal reward tracker in Player Hub',
         description:

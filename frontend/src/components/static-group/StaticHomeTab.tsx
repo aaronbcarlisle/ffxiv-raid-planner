@@ -301,12 +301,32 @@ function deriveActivityItems(
 
 // ─── Shared label ─────────────────────────────────────────────────────────────
 
-function SectionLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+function SectionLabel({
+  icon,
+  children,
+  count,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  count?: React.ReactNode;
+}) {
   return (
-    <h3 className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] mb-2.5 select-none" style={{ color: 'rgba(20,184,166,0.6)' }}>
-      <span className="opacity-80">{icon}</span>
-      {children}
-    </h3>
+    <div className="flex items-center gap-2 mb-2.5 select-none">
+      <h3
+        className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] flex-shrink-0 whitespace-nowrap"
+        style={{ color: 'rgba(20,184,166,0.65)' }}
+      >
+        <span style={{ opacity: 0.85 }}>{icon}</span>
+        {children}
+      </h3>
+      <div
+        className="flex-1 h-px"
+        style={{ background: 'linear-gradient(90deg, rgba(20,184,166,0.25) 0%, transparent 80%)' }}
+      />
+      {count !== undefined && (
+        <span className="text-xs font-bold text-text-primary flex-shrink-0">{count}</span>
+      )}
+    </div>
   );
 }
 
@@ -378,10 +398,20 @@ function NotificationsModule({
             ))}
           </div>
         ) : allItems.length === 0 ? (
-          <div className="px-3 py-5 text-center">
-            <Bell className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
-            <p className="text-xs font-medium text-text-secondary">No pending applications</p>
-            <p className="text-[11px] text-text-muted mt-0.5">Share your listing to start receiving requests</p>
+          <div className="px-3 py-3.5 flex items-center gap-3">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'rgba(34,197,94,0.1)',
+                boxShadow: 'inset 0 0 0 1px rgba(34,197,94,0.22)',
+              }}
+            >
+              <Check className="w-4 h-4 text-status-success" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-text-primary">All caught up</p>
+              <p className="text-[11px] text-text-muted">No pending applications right now</p>
+            </div>
           </div>
         ) : (
           <div className="divide-y divide-border-subtle">
@@ -645,14 +675,21 @@ function CommandBriefModule({
   onOpenRequests?: () => void;
   onNavigate: (tab: PageMode) => void;
 }) {
-  const chips: { key: string; label: string; accent: boolean; onClick: () => void }[] = [
+  const chips: { key: string; label: string; icon: React.ReactNode; accent: boolean; warn?: boolean; onClick: () => void }[] = [
     ...(canManage && pendingCount > 0
-      ? [{ key: 'pending', label: `${pendingCount} pending application${pendingCount > 1 ? 's' : ''}`, accent: true, onClick: onReviewRequest ?? (() => onNavigate('roster')) }]
+      ? [{ key: 'pending', label: `${pendingCount} application${pendingCount > 1 ? 's' : ''} pending`, icon: <Mail className="w-3 h-3" />, accent: true, onClick: onReviewRequest ?? (() => onNavigate('roster')) }]
       : []),
     ...(nextSession
-      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, accent: false, onClick: () => onNavigate('schedule') }]
-      : [{ key: 'noraid', label: 'No sessions scheduled', accent: false, onClick: () => onNavigate('schedule') }]),
-    { key: 'roster', label: `${configuredCount}/8 roster configured`, accent: false, onClick: () => onNavigate('roster') },
+      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, icon: <Swords className="w-3 h-3" />, accent: false, onClick: () => onNavigate('schedule') }]
+      : [{ key: 'noraid', label: 'No sessions scheduled', icon: <Calendar className="w-3 h-3" />, accent: false, warn: true, onClick: () => onNavigate('schedule') }]),
+    {
+      key: 'roster',
+      label: `${configuredCount}/8 players configured`,
+      icon: <Users className="w-3 h-3" />,
+      accent: false,
+      warn: configuredCount < 8,
+      onClick: () => onNavigate('roster'),
+    },
   ];
 
   let ctaLabel: string | null = null;
@@ -681,9 +718,12 @@ function CommandBriefModule({
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               chip.accent
                 ? 'bg-accent/15 text-accent hover:bg-accent/25 border border-accent/20'
+                : chip.warn
+                ? 'bg-status-warning/10 text-status-warning hover:bg-status-warning/20 border border-status-warning/20'
                 : 'bg-surface-elevated text-text-secondary hover:bg-surface-interactive border border-border-subtle'
             }`}
           >
+            {chip.icon}
             {chip.label}
             {chip.accent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />}
           </button>
@@ -991,11 +1031,8 @@ function RosterPresenceModule({
 
   return (
     <div>
-      <SectionLabel icon={<Users className="w-3 h-3" />}>
+      <SectionLabel icon={<Users className="w-3 h-3" />} count={`${active.length}/8`}>
         Static Roster
-        <span className="ml-auto font-bold text-text-primary normal-case tracking-normal text-xs">
-          {active.length}/8
-        </span>
       </SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {active.length === 0 ? (
@@ -1104,19 +1141,50 @@ function BestNextFarmModule({
         {loading ? (
           <div className="p-3 h-20 animate-pulse bg-surface-elevated/30 rounded-xl" />
         ) : top && trialInfo ? (
-          <div className="p-3 space-y-2">
-            <div>
-              <p className="text-[11px] font-semibold text-accent uppercase tracking-wide mb-0.5 truncate">
-                {trialInfo.dutyName}
-              </p>
-              <p className="text-xs font-bold text-text-primary leading-tight truncate">
-                {trialInfo.mountName}
-              </p>
-              <p className="text-[11px] text-text-muted mt-0.5">
-                {top.membersMissing} member{top.membersMissing !== 1 ? 's' : ''} still need{top.membersMissing === 1 ? 's' : ''} this
-                {top.membersCanBuy > 0 && ` · ${top.membersCanBuy} ready to exchange`}
-              </p>
+          <div className="p-3.5 space-y-3">
+            {/* Farm identity header */}
+            <div className="flex items-start gap-3">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: 'rgba(20,184,166,0.12)',
+                  boxShadow: '0 0 0 1px rgba(20,184,166,0.22), 0 0 12px rgba(20,184,166,0.1)',
+                }}
+              >
+                <Trophy className="w-4 h-4 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-0.5 truncate">
+                  {trialInfo.dutyName}
+                </p>
+                <p className="text-sm font-bold text-text-primary leading-tight truncate">
+                  {trialInfo.mountName}
+                </p>
+              </div>
             </div>
+
+            {/* Demand indicator */}
+            <div
+              className="flex items-center gap-2 px-2.5 py-2 rounded-lg"
+              style={{
+                background: 'rgba(20,184,166,0.06)',
+                border: '1px solid rgba(20,184,166,0.14)',
+              }}
+            >
+              <Users className="w-3 h-3 text-accent flex-shrink-0" />
+              <span className="text-xs text-text-secondary">
+                <span className="font-bold text-text-primary tabular-nums">{top.membersMissing}</span>
+                {' '}member{top.membersMissing !== 1 ? 's' : ''} still need this
+              </span>
+              {top.membersCanBuy > 0 && (
+                <span
+                  className="ml-auto text-[10px] font-bold text-accent flex-shrink-0"
+                >
+                  {top.membersCanBuy} ready
+                </span>
+              )}
+            </div>
+
             <button
               type="button"
               data-testid="schedule-farm-btn"
@@ -1127,10 +1195,10 @@ function BestNextFarmModule({
                   onNavigate('goals');
                 }
               }}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
             >
-              <Calendar className="w-3 h-3" />
-              Schedule Farm
+              <Calendar className="w-3.5 h-3.5" />
+              Schedule Farm Session
             </button>
           </div>
         ) : (
@@ -1382,32 +1450,61 @@ function GoalsFarmsModule({
                       initial={{ opacity: 0, y: -4 }}
                       animate={{ opacity: 1, y: 0, transition: { duration: 0.16 } }}
                       exit={{ opacity: 0, transition: { duration: 0.1 } }}
-                      className="flex items-center gap-2.5 px-3 py-1.5 border-b border-border-subtle last:border-b-0"
+                      className="flex items-start gap-2.5 px-3 py-2 border-b border-border-subtle last:border-b-0"
                     >
+                      {/* Status dot */}
+                      <div
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
+                        style={{
+                          background:
+                            goal.status === 'complete' ? '#22c55e' :
+                            goal.status === 'farming' ? '#14b8a6' :
+                            goal.status === 'scheduled' ? '#eab308' :
+                            '#52525b',
+                        }}
+                      />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-text-primary truncate">{goal.title}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-text-primary truncate">{goal.title}</p>
+                          <span className={`text-[10px] font-semibold flex-shrink-0 ${GOAL_STATUS_COLORS[goal.status] ?? 'text-text-muted'}`}>
+                            {goal.status === 'complete'
+                              ? <Check className="w-3 h-3 text-status-success" />
+                              : (GOAL_STATUS_LABELS[goal.status] ?? goal.status)}
+                          </span>
+                        </div>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                           {goal.contentType && CONTENT_TYPE_LABELS[goal.contentType] && (
-                            <span className={`text-[10px] font-semibold px-1 py-0.5 rounded ${
-                              goal.contentType === 'ultimate'
-                                ? 'bg-purple-500/10 text-purple-400'
-                                : 'bg-surface-elevated text-text-muted'
-                            }`}>
+                            <span
+                              className="text-[10px] font-semibold px-1 py-0.5 rounded"
+                              style={
+                                goal.contentType === 'ultimate'
+                                  ? { background: 'rgba(168,85,247,0.12)', color: '#c084fc' }
+                                  : { background: 'var(--color-surface-elevated)', color: 'var(--color-text-muted)' }
+                              }
+                            >
                               {CONTENT_TYPE_LABELS[goal.contentType]}
                             </span>
                           )}
                           <span className="text-[10px] text-text-muted">{GOAL_TYPE_LABELS[goal.goalType] ?? goal.goalType}</span>
                           {goal.targetCount != null && (
-                            <span className="text-[10px] text-text-muted">· {goal.currentCount ?? 0}/{goal.targetCount}</span>
+                            <span className="text-[10px] text-text-muted tabular-nums">
+                              · {goal.currentCount ?? 0}/{goal.targetCount}
+                            </span>
                           )}
                         </div>
+                        {/* Progress bar for countable goals */}
+                        {goal.targetCount != null && goal.targetCount > 0 && (
+                          <div className="mt-1.5 h-1 rounded-full bg-surface-elevated overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${Math.min(100, ((goal.currentCount ?? 0) / goal.targetCount) * 100)}%`,
+                                background: goal.status === 'complete' ? '#22c55e' : '#14b8a6',
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
-                      <span className={`text-[10px] font-semibold flex-shrink-0 ${GOAL_STATUS_COLORS[goal.status] ?? 'text-text-muted'}`}>
-                        {GOAL_STATUS_LABELS[goal.status] ?? goal.status}
-                      </span>
-                      {goal.status === 'complete' && (
-                        <Check className="w-3 h-3 text-status-success flex-shrink-0" />
-                      )}
                       {canManage && (
                         confirmDeleteId === goal.id ? (
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -1784,13 +1881,19 @@ export function StaticHomeTab({
     await deleteGoal(group.id, goalId);
   };
 
+  const colAnim = (delay: number) => ({
+    initial: { opacity: 0, y: 14 } as const,
+    animate: { opacity: 1, y: 0 } as const,
+    transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] as const, delay },
+  });
+
   return (
     <div className="w-full">
       {/* Asymmetric 3-column grid: narrow left rail / flexible center / narrow right rail */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(260px,320px)_minmax(620px,1fr)_minmax(280px,340px)]">
 
         {/* ── Left column: utility rail ── */}
-        <div className="space-y-4">
+        <motion.div className="space-y-4" {...colAnim(0)}>
           <NotificationsModule
             requests={pendingRequests}
             nextSession={nextSession}
@@ -1807,10 +1910,10 @@ export function StaticHomeTab({
             players={players}
             tierInfo={tier ? getTierById(tier.tierId) : null}
           />
-        </div>
+        </motion.div>
 
         {/* ── Center column: primary command area ── */}
-        <div className="space-y-4">
+        <motion.div className="space-y-4" {...colAnim(0.07)}>
           <CommandBriefModule
             pendingCount={pendingRequests.length}
             featuredRequest={featuredRequest}
@@ -1834,10 +1937,10 @@ export function StaticHomeTab({
             onNavigate={onNavigate}
             canManage={canManage}
           />
-        </div>
+        </motion.div>
 
         {/* ── Right column: context rail ── */}
-        <div className="space-y-4">
+        <motion.div className="space-y-4" {...colAnim(0.14)}>
           <RosterPresenceModule players={players} onNavigate={onNavigate} />
           <BestNextFarmModule
             recommendations={recommendations}
@@ -1864,7 +1967,7 @@ export function StaticHomeTab({
               onNavigate={onNavigate}
             />
           )}
-        </div>
+        </motion.div>
       </div>
 
       {reviewRequest && (
