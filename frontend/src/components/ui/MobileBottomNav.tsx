@@ -6,7 +6,7 @@
  * Supports swipe left/right to change tabs.
  */
 
-import { LayoutDashboard, Users, Trophy, Shield, MoreHorizontal, SlidersHorizontal, Calendar, type LucideProps } from 'lucide-react';
+import { LayoutDashboard, MoreHorizontal, SlidersHorizontal, type LucideProps } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { useDevice } from '../../hooks/useDevice';
@@ -20,14 +20,15 @@ interface MobileBottomNavProps {
 
 type LucideIcon = React.FC<LucideProps>;
 
-const PAGE_TO_SPRITE: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {};
+const PAGE_TO_SPRITE: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
+  roster:   'party',
+  schedule: 'schedule',
+  goals:    'mountFarms',
+  gear:     'loot',
+};
 
 const PAGE_TO_LUCIDE: Partial<Record<PageMode, LucideIcon>> = {
   overview: LayoutDashboard,
-  roster: Users,
-  schedule: Calendar,
-  goals: Trophy,
-  gear: Shield,
   more: MoreHorizontal,
 };
 
