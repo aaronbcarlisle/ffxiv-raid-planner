@@ -429,3 +429,226 @@ def test_edited_override_does_not_affect_other_occurrences():
     for date, title in titles.items():
         if date != second_date:
             assert title == "Normal", f"Occurrence {date} should have Normal title"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Timezone-aware generation: DST correctness and local-date keying
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_cdt_occurrence_date_uses_local_thursday_not_utc_friday():
+    """Thu Jun 25 2026 7 PM CDT is stored as Fri Jun 26 UTC.
+    occurrence_date must be '2026-06-25' (local Thu), not '2026-06-26' (UTC Fri).
+    """
+    occs = generate_occurrences(
+        "2026-06-26T00:00:00+00:00",  # Fri midnight UTC = Thu 7 PM CDT
+        "2026-06-26T03:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH",
+        after=datetime(2026, 6, 24, tzinfo=timezone.utc),
+        count=1,
+        timezone_name="America/Chicago",
+    )
+    assert len(occs) == 1
+    assert occs[0].occurrence_date == "2026-06-25"
+
+
+def test_chicago_thu_sun_generates_correct_local_weekdays():
+    """America/Chicago Thu+Sun 7 PM session must produce Thu/Sun dates, not Wed/Sat."""
+    occs = generate_occurrences(
+        "2026-06-26T00:00:00+00:00",  # Thu Jun 25 7 PM CDT
+        "2026-06-26T03:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH,SU",
+        after=datetime(2026, 6, 24, tzinfo=timezone.utc),
+        count=4,
+        timezone_name="America/Chicago",
+    )
+    assert len(occs) == 4
+    # First two: Thu Jun 25 and Sun Jun 28 in local time
+    assert occs[0].occurrence_date == "2026-06-25"
+    assert occs[1].occurrence_date == "2026-06-28"
+    assert occs[2].occurrence_date == "2026-07-02"
+    assert occs[3].occurrence_date == "2026-07-05"
+
+
+def test_chicago_spring_forward_preserves_7pm_local():
+    """Weekly Thu 7 PM CDT must remain 7 PM after spring-forward (Mar 9 2025).
+    UTC offset changes from -6 (CST) to -5 (CDT); the local time must not shift.
+    """
+    # Thu Mar 6 2025 7 PM CST = 2025-03-07T01:00:00Z
+    occs = generate_occurrences(
+        "2025-03-07T01:00:00+00:00",
+        "2025-03-07T04:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH",
+        after=datetime(2025, 3, 12, tzinfo=timezone.utc),  # after spring-forward
+        count=1,
+        timezone_name="America/Chicago",
+    )
+    assert len(occs) == 1
+    # Thu Mar 13 7 PM CDT = 2025-03-14T00:00:00Z (not T01 = 8 PM CDT)
+    assert occs[0].start_time == "2025-03-14T00:00:00+00:00"
+    assert occs[0].occurrence_date == "2025-03-13"
+
+
+def test_chicago_fall_back_preserves_7pm_local():
+    """Weekly Thu 7 PM CDT must remain 7 PM after fall-back (Nov 2 2025).
+    UTC offset changes from -5 (CDT) to -6 (CST).
+    """
+    # Thu Oct 23 2025 7 PM CDT = 2025-10-24T00:00:00Z
+    occs = generate_occurrences(
+        "2025-10-24T00:00:00+00:00",
+        "2025-10-24T03:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH",
+        after=datetime(2025, 11, 4, tzinfo=timezone.utc),  # after fall-back
+        count=1,
+        timezone_name="America/Chicago",
+    )
+    assert len(occs) == 1
+    # Thu Nov 6 7 PM CST = 2025-11-07T01:00:00Z (not T00 = 6 PM CST)
+    assert occs[0].start_time == "2025-11-07T01:00:00+00:00"
+    assert occs[0].occurrence_date == "2025-11-06"
+
+
+def test_cancellation_with_local_date_key_matches_cdt_occurrence():
+    """A cancellation stored under the local-date key '2026-06-25' must suppress
+    Thu Jun 25 2026 7 PM CDT even though its UTC date is Jun 26.
+    """
+    exceptions = {"2026-06-25": _FakeException("2026-06-25", "cancelled")}
+    occs = generate_occurrences(
+        "2026-06-26T00:00:00+00:00",
+        "2026-06-26T03:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH",
+        after=datetime(2026, 6, 24, tzinfo=timezone.utc),
+        count=1,
+        exceptions=exceptions,
+        timezone_name="America/Chicago",
+    )
+    # First occurrence (Jun 25 local) is cancelled; next is Jul 2 local
+    assert len(occs) == 1
+    assert occs[0].occurrence_date == "2026-07-02"
+
+
+def test_tokyo_weekly_no_dst_stable():
+    """Asia/Tokyo has no DST. Weekly recurrence must produce stable local dates."""
+    # Thu Jun 25 2026 9 PM JST (UTC+9) = 2026-06-25T12:00:00Z
+    occs = generate_occurrences(
+        "2026-06-25T12:00:00+00:00",
+        "2026-06-25T15:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH",
+        after=datetime(2026, 6, 24, tzinfo=timezone.utc),
+        count=3,
+        timezone_name="Asia/Tokyo",
+    )
+    assert len(occs) == 3
+    assert occs[0].occurrence_date == "2026-06-25"
+    assert occs[1].occurrence_date == "2026-07-02"
+    assert occs[2].occurrence_date == "2026-07-09"
+
+
+def test_no_timezone_falls_back_to_utc_behavior():
+    """Without timezone_name, UTC-based behavior is unchanged."""
+    occs = generate_occurrences(
+        "2025-07-06T20:00:00+00:00",
+        "2025-07-06T23:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=SU",
+        after=_make_after(2025, 7, 1),
+        count=2,
+    )
+    assert len(occs) == 2
+    assert occs[0].occurrence_date == "2025-07-06"
+    assert occs[1].occurrence_date == "2025-07-13"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Legacy UTC-key backward compatibility
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_legacy_utc_key_cancellation_still_works():
+    """An exception stored with the old UTC date key must still suppress the occurrence.
+
+    Before timezone-aware keying: Thu Jun 25 2026 7 PM CDT was stored as "2026-06-26"
+    (UTC Fri). After the fix, new keys are "2026-06-25" (local Thu). The backend must
+    fall back to the UTC key so existing cancellations are honoured.
+    """
+    legacy_exceptions = {"2026-06-26": _FakeException("2026-06-26", "cancelled")}
+    occs = generate_occurrences(
+        "2026-06-26T00:00:00+00:00",
+        "2026-06-26T03:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH",
+        after=datetime(2026, 6, 24, tzinfo=timezone.utc),
+        count=1,
+        exceptions=legacy_exceptions,
+        timezone_name="America/Chicago",
+    )
+    # Legacy UTC key "2026-06-26" matched → Jun 25 local occurrence suppressed → Jul 2
+    assert len(occs) == 1
+    assert occs[0].occurrence_date == "2026-07-02"
+
+
+def test_new_local_key_and_legacy_utc_key_do_not_double_cancel():
+    """Both keys present must not cause duplicate suppression or errors."""
+    mixed_exceptions = {
+        "2026-06-25": _FakeException("2026-06-25", "cancelled"),
+        "2026-06-26": _FakeException("2026-06-26", "cancelled"),
+    }
+    occs = generate_occurrences(
+        "2026-06-26T00:00:00+00:00",
+        "2026-06-26T03:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH",
+        after=datetime(2026, 6, 24, tzinfo=timezone.utc),
+        count=1,
+        exceptions=mixed_exceptions,
+        timezone_name="America/Chicago",
+    )
+    # Only one occurrence suppressed — next is Jul 2
+    assert len(occs) == 1
+    assert occs[0].occurrence_date == "2026-07-02"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# next_occurrence with timezone_name
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_next_occurrence_recurring_with_timezone():
+    """next_occurrence delegates to generate_occurrences and uses local occurrence_date."""
+    from app.services.recurrence import next_occurrence
+    occ = next_occurrence(
+        "2026-06-26T00:00:00+00:00",
+        "2026-06-26T03:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH",
+        after=datetime(2026, 6, 24, tzinfo=timezone.utc),
+        timezone_name="America/Chicago",
+    )
+    assert occ is not None
+    assert occ.occurrence_date == "2026-06-25"
+
+
+def test_next_occurrence_non_recurring_with_timezone():
+    """Non-recurring next_occurrence uses local date for occurrence_date."""
+    from app.services.recurrence import next_occurrence
+    # Fri Jun 26 2026 UTC midnight = Thu Jun 25 2026 7 PM CDT
+    occ = next_occurrence(
+        "2026-06-26T00:00:00+00:00",
+        "2026-06-26T03:00:00+00:00",
+        None,
+        after=datetime(2026, 6, 24, tzinfo=timezone.utc),
+        timezone_name="America/Chicago",
+    )
+    assert occ is not None
+    assert occ.occurrence_date == "2026-06-25"
+
+
+def test_next_occurrence_non_recurring_legacy_utc_cancellation():
+    """Non-recurring session: legacy UTC-key exception still suppresses the occurrence."""
+    from app.services.recurrence import next_occurrence
+    legacy_exceptions = {"2026-06-26": _FakeException("2026-06-26", "cancelled")}
+    occ = next_occurrence(
+        "2026-06-26T00:00:00+00:00",
+        "2026-06-26T03:00:00+00:00",
+        None,
+        after=datetime(2026, 6, 24, tzinfo=timezone.utc),
+        exceptions=legacy_exceptions,
+        timezone_name="America/Chicago",
+    )
+    assert occ is None

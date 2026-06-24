@@ -7,7 +7,7 @@ import { useModal } from '../../hooks/useModal';
 import { toast } from '../../stores/toastStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { OccurrenceListModal } from './OccurrenceListModal';
-import { computeNextOccurrence } from '../../utils/recurrence';
+import { computeNextOccurrence, getOccurrenceDateKey } from '../../utils/recurrence';
 import type { EventCategory, ScheduleSession, RsvpStatus } from '../../types';
 
 interface SessionCardProps {
@@ -153,7 +153,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
     return next ? next.toISOString() : session.startTime;
   }, [session.startTime, session.recurrenceRule, session.isRecurring, cancelledDates, session.timezone]);
 
-  const nextOccurrenceDate = displayStartTime.slice(0, 10);
+  const nextOccurrenceDate = getOccurrenceDateKey(displayStartTime, session.timezone);
 
   const handleDeleteClick = () => {
     if (session.isRecurring) {

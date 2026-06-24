@@ -92,6 +92,7 @@ def _candidate_occurrences(
         session_banner_source_type=getattr(session, "banner_source_type", None),
     )
     after = now - timedelta(minutes=1440 + REMINDER_GRACE_MINUTES)
+    tz_name = getattr(session, "timezone", None)
     if session.is_recurring and session.recurrence_rule:
         return generate_occurrences(
             session.start_time,
@@ -100,6 +101,7 @@ def _candidate_occurrences(
             after=after,
             count=20,
             exceptions=exceptions,
+            timezone_name=tz_name,
             **occ_kwargs,
         )
 
@@ -109,6 +111,7 @@ def _candidate_occurrences(
         None,
         after=after,
         exceptions=exceptions,
+        timezone_name=tz_name,
         **occ_kwargs,
     )
     return [occ] if occ else []

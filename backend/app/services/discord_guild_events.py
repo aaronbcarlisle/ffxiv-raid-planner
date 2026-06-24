@@ -486,6 +486,7 @@ async def sync_session_mirror(
             session.recurrence_rule,
             after=now - timedelta(hours=1),
             exceptions={},
+            timezone_name=getattr(session, "timezone", None),
             **occ_kwargs,
         )
         recurrence_rule = _rrule_to_discord_recurrence(session.recurrence_rule, occ.start_time) if occ else None
@@ -584,6 +585,7 @@ async def sync_session_mirror(
     # ── Concrete app occurrences in a rolling window ─────────────────────────
     window_end = now + timedelta(days=_ROLLING_WINDOW_DAYS)
 
+    tz_name = getattr(session, "timezone", None)
     if session.is_recurring and session.recurrence_rule:
         upcoming = generate_occurrences(
             session.start_time,
@@ -592,6 +594,7 @@ async def sync_session_mirror(
             after=now - timedelta(hours=1),
             count=20,
             exceptions=exceptions,
+            timezone_name=tz_name,
             **occ_kwargs,
         )
         upcoming = [occ for occ in upcoming if _occ_start_dt(occ) <= window_end]
@@ -600,6 +603,7 @@ async def sync_session_mirror(
             session.start_time, session.end_time, None,
             after=now - timedelta(hours=1),
             exceptions=exceptions,
+            timezone_name=tz_name,
             **occ_kwargs,
         )
         upcoming = [occ] if occ and _occ_start_dt(occ) <= window_end else []

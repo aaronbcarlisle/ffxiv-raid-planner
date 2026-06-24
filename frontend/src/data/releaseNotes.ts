@@ -84,6 +84,13 @@ export const RELEASES: Release[] = [
         pr: 142,
         prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
       },
+      {
+        category: 'fix',
+        title: 'Session cancellations now key on local calendar date',
+        description: 'Cancelling a recurring session that runs late at night (e.g. Thu 7 PM CDT, which is Fri midnight UTC) now stores the cancellation against the correct local calendar date — Thursday, not Friday. This prevents the cancelled marker from being misidentified across day-boundary timezones.',
+        pr: 142,
+        prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
+      },
     ],
   },
   {
