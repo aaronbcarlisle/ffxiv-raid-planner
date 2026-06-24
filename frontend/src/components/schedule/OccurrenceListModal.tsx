@@ -7,6 +7,7 @@ import { useModal } from '../../hooks/useModal';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { toast } from '../../stores/toastStore';
 import type { OccurrenceResponse, ScheduleException, ScheduleSession } from '../../types';
+import { getOccurrenceDateKey, getOccurrenceDateKeysForMatching } from '../../utils/recurrence';
 
 interface OccurrenceListModalProps {
   isOpen: boolean;
@@ -124,14 +125,21 @@ export function OccurrenceListModal({
     restoreModal.open();
   };
 
-  // All cancelled occurrences (including ones not in upcoming window)
+  // All cancelled occurrences (including ones not in upcoming window).
+  // Keys are local-timezone dates (YYYY-MM-DD), matching the key used when creating exceptions.
   const cancelledDates = new Set(
     exceptions.filter((e) => e.type === 'cancelled').map((e) => e.occurrenceDate)
   );
 
-  // Combine: upcoming (non-cancelled) + cancelled occurrences from exceptions list
+  // Local-timezone date key for an occurrence — independent of the backend's occurrenceDate field.
+  const occKey = (occ: OccurrenceResponse) => getOccurrenceDateKey(occ.startTime, session.timezone);
+
+  // Combine: upcoming (non-cancelled) + cancelled occurrences from exceptions list.
+  // Check both local-date key and legacy UTC-date key so old exceptions still match.
   const cancelledOnlyExceptions = exceptions.filter(
-    (e) => e.type === 'cancelled' && !occurrences.find((o) => o.occurrenceDate === e.occurrenceDate)
+    (e) => e.type === 'cancelled' && !occurrences.find((o) =>
+      getOccurrenceDateKeysForMatching(o.startTime, session.timezone).includes(e.occurrenceDate)
+    )
   );
 
   return (
@@ -170,12 +178,14 @@ export function OccurrenceListModal({
           {/* Upcoming (non-cancelled) occurrences */}
           {occurrences.map((occ) => {
             const duration = getDurationMinutes(occ.startTime, occ.endTime);
-            const isCancelled = cancelledDates.has(occ.occurrenceDate);
+            const localKey = occKey(occ);
+            // Check both new local-date key and legacy UTC-date key for backward compat.
+            const isCancelled = getOccurrenceDateKeysForMatching(occ.startTime, session.timezone).some(k => cancelledDates.has(k));
             const isEdited = occ.isException && !isCancelled;
 
             return (
               <div
-                key={occ.occurrenceDate}
+                key={localKey}
                 className={`flex items-center justify-between rounded-lg border px-3 py-2.5 gap-2 ${
                   isCancelled
                     ? 'border-border-subtle bg-surface-muted/20 opacity-60'
@@ -207,12 +217,12 @@ export function OccurrenceListModal({
                 {canManage && (
                   <div className="flex gap-1 flex-shrink-0">
                     {isCancelled ? (
-                      <Button variant="secondary" size="sm" onClick={() => openRestore(occ.occurrenceDate)}>
+                      <Button variant="secondary" size="sm" onClick={() => openRestore(localKey)}>
                         <RotateCcw className="w-3 h-3 mr-1" />
                         Restore
                       </Button>
                     ) : (
-                      <Button variant="secondary" size="sm" onClick={() => openCancel(occ.occurrenceDate)}>
+                      <Button variant="secondary" size="sm" onClick={() => openCancel(localKey)}>
                         <XCircle className="w-3 h-3 mr-1" />
                         Cancel
                       </Button>
