@@ -59,6 +59,28 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '1.26.1',
+    date: '2026-06-24T00:00:00Z',
+    title: 'Recurring session scheduler fixes',
+    items: [
+      {
+        category: 'fix',
+        title: 'Cancelled occurrence no longer shown as next session',
+        description: 'Cancelling a single occurrence of a recurring session now correctly advances the displayed next-session date to the following occurrence instead of continuing to show the cancelled date.',
+      },
+      {
+        category: 'fix',
+        title: 'View Occurrences available in card/tile view',
+        description: 'The View Occurrences button (calendar icon) was missing when the schedule was displayed in compact card/tile layout. It is now shown consistently regardless of view mode.',
+      },
+      {
+        category: 'fix',
+        title: 'Recurring weekdays now match local timezone',
+        description: 'Sessions scheduled for Thursday/Sunday in America/Chicago (and other UTC− zones) were displaying as Wednesday/Saturday on the website. The scheduler now uses the session\'s IANA timezone for weekday matching so the displayed day always reflects the wall-clock day where the static is based.',
+      },
+    ],
+  },
+  {
     version: '1.26.0',
     date: '2026-06-19T10:00:00Z',
     title: 'Split Clear Planner, Loot Intelligence & Character Registry',
