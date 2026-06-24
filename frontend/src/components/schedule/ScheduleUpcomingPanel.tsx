@@ -103,6 +103,7 @@ export function ScheduleUpcomingPanel({
           heading="No sessions scheduled"
           description="Create your first raid night and choose whether availability should be tracked."
           action={canManage && onCreateSession ? { label: 'Add session', onClick: onCreateSession } : undefined}
+          className="py-8"
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <DashboardCard title="Recurring Series" icon={<Repeat size={13} />}>

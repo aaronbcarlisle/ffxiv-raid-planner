@@ -64,11 +64,12 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
                   analytics.track('navigation', 'sidebar_switch', { tab: item.id });
                   onTabChange(item.id);
                 }}
-                style={isActive ? {
-                  boxShadow: 'inset 0 0 24px rgba(20,184,166,0.07)',
-                } : undefined}
+                style={{
+                  boxShadow: isActive ? 'inset 0 0 24px rgba(20,184,166,0.07)' : undefined,
+                }}
                 className={`
-                  relative flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium transition-all text-left
+                  relative flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-left
+                  transition-colors duration-200
                   ${isActive
                     ? 'bg-accent/[0.11] text-accent'
                     : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
@@ -76,16 +77,19 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
                 `}
                 aria-current={isActive ? 'page' : undefined}
               >
-                {/* Active indicator bar */}
-                {isActive && (
-                  <span
-                    className="absolute inset-y-0 left-0 w-[2px] rounded-r"
-                    style={{
-                      background: 'linear-gradient(180deg, rgba(20,184,166,0.4) 0%, rgba(20,184,166,1) 50%, rgba(20,184,166,0.4) 100%)',
-                      boxShadow: '0 0 8px 1px rgba(20,184,166,0.4)',
-                    }}
-                  />
-                )}
+                {/*
+                  Always rendered — opacity-controlled so it fades in/out
+                  instead of popping in abruptly on each tab switch.
+                */}
+                <span
+                  className="absolute inset-y-0 left-0 w-[2px] rounded-r"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(20,184,166,0.35) 0%, rgba(20,184,166,1) 50%, rgba(20,184,166,0.35) 100%)',
+                    boxShadow: isActive ? '0 0 8px 1px rgba(20,184,166,0.45)' : 'none',
+                    opacity: isActive ? 1 : 0,
+                    transition: 'opacity 200ms ease, box-shadow 200ms ease',
+                  }}
+                />
                 <Icon size={15} className="flex-shrink-0" />
                 <span className="leading-none">{item.label}</span>
               </button>

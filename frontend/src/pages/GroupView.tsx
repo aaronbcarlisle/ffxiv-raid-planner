@@ -1064,8 +1064,8 @@ export function GroupView() {
                             aria-selected={rosterSubView === view}
                             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                               rosterSubView === view
-                                ? 'bg-surface-base text-text-primary shadow-sm'
-                                : 'text-text-muted hover:text-text-primary'
+                                ? 'bg-accent/20 text-accent'
+                                : 'text-text-secondary hover:text-text-primary'
                             }`}
                             onClick={() => setRosterSubView(view)}
                           >
