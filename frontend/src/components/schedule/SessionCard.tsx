@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, Swords, RotateCcw, Users, Gamepad2, MoreHorizontal, CalendarDays } from 'lucide-react';
 import { Button, IconButton, Tooltip } from '../primitives';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -125,13 +125,33 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
   const deleteModal = useModal();
   const occurrenceModal = useModal();
   const recurringDeleteModal = useModal();
-  const { createException } = useScheduleStore();
+  const { createException, fetchExceptions } = useScheduleStore();
+
+  const [cancelledDates, setCancelledDates] = useState<ReadonlySet<string>>(new Set());
+
+  useEffect(() => {
+    if (!session.isRecurring || !groupId) return;
+    let alive = true;
+    fetchExceptions(groupId, session.id).then((exceptions) => {
+      if (!alive) return;
+      setCancelledDates(new Set(
+        exceptions.filter((e) => e.type === 'cancelled').map((e) => e.occurrenceDate),
+      ));
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [session.id, session.isRecurring, groupId, fetchExceptions]);
 
   const displayStartTime = useMemo(() => {
     if (!session.isRecurring || !session.recurrenceRule) return session.startTime;
-    const next = computeNextOccurrence(session.startTime, session.recurrenceRule);
+    const next = computeNextOccurrence(
+      session.startTime,
+      session.recurrenceRule,
+      new Date(),
+      cancelledDates,
+      session.timezone,
+    );
     return next ? next.toISOString() : session.startTime;
-  }, [session.startTime, session.recurrenceRule, session.isRecurring]);
+  }, [session.startTime, session.recurrenceRule, session.isRecurring, cancelledDates, session.timezone]);
 
   const nextOccurrenceDate = displayStartTime.slice(0, 10);
 
@@ -256,6 +276,11 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
           </div>
           <div className="flex gap-0.5 flex-shrink-0">
             <IconButton icon={copied ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Share2 className="w-3.5 h-3.5" />} aria-label="Share" size="sm" onClick={handleShare} />
+            {session.isRecurring && groupId && (
+              <Tooltip content="View occurrences">
+                <IconButton icon={<CalendarDays className="w-3.5 h-3.5" />} aria-label="View occurrences" size="sm" onClick={occurrenceModal.open} />
+              </Tooltip>
+            )}
             {canManage && (
               <>
                 <IconButton icon={<Edit2 className="w-3.5 h-3.5" />} aria-label="Edit" size="sm" onClick={() => onEdit(session)} />
@@ -346,6 +371,16 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
               </div>
             </div>
           </Modal>
+        )}
+
+        {session.isRecurring && groupId && (
+          <OccurrenceListModal
+            isOpen={occurrenceModal.isOpen}
+            onClose={occurrenceModal.close}
+            session={session}
+            groupId={groupId}
+            canManage={canManage}
+          />
         )}
       </div>
     );
