@@ -70,15 +70,35 @@ export const RELEASES: Release[] = [
     items: [
       {
         category: 'improvement',
-        title: 'Static Hub & Player Hub — layout stability, tab animations, and visual quality pass',
+        title: 'Player Hub & Static Hub — UI/UX premium aesthetic pass',
         description:
           'Static Hub sidebar is now viewport-sticky with a minimum height so it never shrinks when switching between short and tall tabs. ' +
           'Switching tabs in both Static Hub and Player Hub now animates with a smooth fade + slide transition via AnimatePresence. ' +
-          'Player Hub header upgraded to a teal-gradient card with avatar ring glow. ' +
-          'Player Hub OverviewTab DashboardCards upgraded to match StaticHomeTab card quality (rounded-xl, border-subtle, teal icon glows, accent cards). ' +
-          'SectionLabel dividers added to OverviewTab for visual rhythm matching Static Hub. ' +
+          'Player Hub header upgraded to a teal-gradient card with avatar double-ring glow. ' +
+          'Player Hub OverviewTab: all four Raider Snapshot cards now share the same neutral glass surface — icon boxes are white/neutral instead of teal-filled, removing the inconsistent accent overuse. ' +
+          'SectionLabel dividers replaced with a 3px vertical teal bar for a cleaner visual rhythm. ' +
+          'GoalCard redesigned as a compact horizontal row with left intent-colored accent bar, circle checkbox, hover-only edit/delete actions, and inline progress bar. ' +
+          'Find a Static: status-colored left inset shadow (`open` green / `limited` amber / `closed` neutral) as primary status signal; section labels quieter at opacity-60. ' +
           'Recruitment Dossier modal entrance animation is now more pronounced (spring easing, larger scale + y range).',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         internal: true,
+      },
+      {
+        category: 'fix',
+        title: 'Profile page crash — "Rendered fewer hooks than expected" fixed',
+        description:
+          'A misplaced useKeyboardShortcuts call after three conditional early returns caused React to see a different number of hooks on different render paths, crashing the Profile page on unauthenticated or loading states. Hook moved above all early returns.',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
+      },
+      {
+        category: 'fix',
+        title: 'Static group sidebar layout after navigating from Player Hub',
+        description:
+          'After visiting Player Hub (Profile page) and returning to a static group, the left sidebar would appear as a large empty area. Profile moves scroll to its own content div, staling the sticky anchor in the main scroll context. Sidebar now participates in a flex column layout rather than using sticky positioning.',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
       },
       {
         category: 'improvement',
@@ -102,8 +122,8 @@ export const RELEASES: Release[] = [
           'Each reward has a visibility control: Private (only you), Shared with statics (feeds Suggested Farms), or Public on dossier. ' +
           'A share prompt appears when a Hunting or Interested reward is left Private. ' +
           'Browse the full active catalog or filter to your personal list by category, expansion, or content type.',
-        pr: 141,
-        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         commits: [{ hash: '7d9e416', message: 'feat(collections): Collections & Farms hub with participant states and drop log' }],
       },
       {
@@ -111,8 +131,8 @@ export const RELEASES: Release[] = [
         title: 'Suggested Farms — smart duty cards surfaced from Player Hub intents',
         description:
           'Static Collections & Farms opens on a Suggested Farms tab driven by Player Hub reward intents and plugin-synced collection facts. Suggestions appear even with no manually created static goals — roster members who share their Player Hub preferences automatically surface their wants to static leads.',
-        pr: 141,
-        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
       },
       {
@@ -122,8 +142,8 @@ export const RELEASES: Release[] = [
           'Static Collections → Browse Catalog now renders grouped duty cards: one card per duty showing all rewards (mount, music, weapons) together. ' +
           'Full source-type label (Extreme / Ultimate / Savage) and expansion name on desktop; compact labels on mobile. ' +
           'Token cost shown as an amber pill. Cards animate on expand/collapse. Badge colors shared from a single config across Player Hub and Static Browse.',
-        pr: 141,
-        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
       },
       {
@@ -132,8 +152,8 @@ export const RELEASES: Release[] = [
         description:
           'Futures Rewritten, Dancing Mad, Dragonsong\'s Reprise, and The Omega Protocol ultimate weapon rows now show 1× totem per weapon — matching the actual in-game exchange. ' +
           'EX mount pity costs (99×) are unaffected. Can-buy scoring now correctly triggers at tokenCount ≥ 1 for ultimates.',
-        pr: 141,
-        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
       },
       {
@@ -141,8 +161,8 @@ export const RELEASES: Release[] = [
         title: 'Public dossier — Hunting and Interested shown in separate sections',
         description:
           'The public profile dossier now renders "Actively Hunting" and "Interested In" as two distinct labelled sections instead of combining everything under a single "Hunting (N)" header.',
-        pr: 141,
-        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
       },
       {
@@ -150,24 +170,24 @@ export const RELEASES: Release[] = [
         title: 'All 8 Dawntrail extreme trial mounts now plugin-ready',
         description:
           'game_mount_id and token_item_id populated for all 8 DT extreme trial farms (Wings of Ruin through Wings of Nihility). IDs verified against Garland Tools API and FFXIV Collect, matching Mount.exd and Item.exd RowIds used by the Dalamud plugin for automatic ownership detection.',
-        pr: 141,
-        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         commits: [{ hash: '1e329e3', message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync' }],
       },
       {
         category: 'improvement',
         title: 'Suggested Farms duty cards show expansion tag',
         description: 'Each duty card in Suggested Farms now displays the expansion abbreviation (e.g. DT, EW, SHB) alongside the content-type badge so leads can quickly identify which content tier a suggestion belongs to.',
-        pr: 141,
-        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         commits: [{ hash: '8cf366c', message: 'fix(collections): honest chip labels for curated-only categories' }],
       },
       {
         category: 'improvement',
         title: 'Player Hub write-through works without an existing Player Hub profile',
         description: 'Toggling "Wanted" on a mount farm now auto-creates a private Player Hub profile when the user has not yet visited Player Hub, ensuring the intent always reaches Suggested Farms.',
-        pr: 141,
-        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
       },
       {
@@ -273,8 +293,8 @@ export const RELEASES: Release[] = [
         title: 'Source/duty farm cards replace flat reward rows',
         description:
           'Collections & Farms groups all rewards from the same extreme/savage/ultimate into one card — mount, music, minion, and weapons appear together instead of as separate disconnected rows. Cards have colored left borders (amber=Extreme, red=Savage, blue=Ultimate) and expand to show participants, token exchange info, and a Copy Farm Plan button for Discord.',
-        pr: 141,
-        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
         commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
       },
       {
