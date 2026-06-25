@@ -136,10 +136,11 @@ function ProfileSidebarNav({
             {primaryStaticPath ? (
               <Link
                 to={primaryStaticPath}
-                className="flex items-center gap-1.5 px-3 h-7 text-text-muted hover:text-accent transition-colors border-b border-border-subtle/50 w-full"
+                className="flex items-center gap-1.5 px-3 h-7 hover:bg-white/[0.04] transition-colors border-b border-border-subtle/50 w-full group"
+                style={{ color: 'rgba(20,184,166,0.75)' }}
               >
-                <ChevronLeft size={11} className="flex-shrink-0 opacity-60" />
-                <span className="text-[10px] font-medium tracking-[0.1em] leading-none truncate min-w-0">
+                <ChevronLeft size={12} className="flex-shrink-0 group-hover:text-accent transition-colors" />
+                <span className="text-xs font-semibold leading-none truncate min-w-0 group-hover:text-accent transition-colors">
                   {primaryStaticName ?? 'My Static'}
                 </span>
               </Link>
