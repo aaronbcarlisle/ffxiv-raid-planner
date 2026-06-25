@@ -498,7 +498,7 @@ export default function Profile() {
   const focusAvailability = new URLSearchParams(location.search).get('focus') === 'availability';
 
   return (
-    <div ref={pageRef} className="flex flex-1 min-h-0 w-full mx-auto max-w-[1440px]">
+    <div ref={pageRef} className="flex flex-1 min-h-0 w-full">
       {/* Sidebar — fills flex parent height naturally, no sticky needed */}
       <ProfileSidebarNav
         activeTab={activeTab}
