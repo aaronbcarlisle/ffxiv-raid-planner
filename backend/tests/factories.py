@@ -82,7 +82,7 @@ async def create_membership(
         id=str(uuid.uuid4()),
         user_id=user.id,
         static_group_id=static_group.id,
-        role=role.value,
+        role=role.value if isinstance(role, MemberRole) else role,
         joined_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
     )

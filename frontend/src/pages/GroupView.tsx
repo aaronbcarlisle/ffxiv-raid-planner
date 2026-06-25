@@ -25,7 +25,7 @@ import { LootPriorityPanel, LogWeekWizard } from '../components/loot';
 import { TeamSummaryEnhanced } from '../components/team/TeamSummaryEnhanced';
 import { HistoryView } from '../components/history/HistoryView';
 import { ScheduleTab } from '../components/schedule';
-import { MountFarmTab } from '../components/mount-farms';
+import { CollectionsHub } from '../components/collections/CollectionsHub';
 import { SplitClearPlanner } from '../components/split-clear/SplitClearPlanner';
 import { RosterCharacterPanel } from '../components/roster/RosterCharacterPanel';
 import { useMountFarmStore } from '../stores/mountFarmStore';
@@ -1213,34 +1213,15 @@ export function GroupView() {
             />
           )}
 
-          {/* Mount Farms Tab */}
+          {/* Collections & Farms Hub */}
           {pageMode === 'mount-farms' && currentGroup && (
-            <MountFarmTab
+            <CollectionsHub
               groupId={currentGroup.id}
-              userRole={userRole ?? null}
-              onScheduleFarm={(trial) => {
-                // Look up member counts from current data for the description
-                const mountFarmData = useMountFarmStore.getState().data;
-                const trialData = mountFarmData?.trials.find(t => t.trialId === trial.id);
-                const missing = trialData?.membersMissing ?? 0;
-                const canBuy = trialData?.membersCanBuy ?? 0;
-                const wanting = trialData?.membersWanting ?? 0;
-
-                setPageMode('schedule');
-                setTimeout(() => {
-                  eventBus.emit(Events.MOUNT_FARM_SCHEDULE, {
-                    trialId: trial.id,
-                    trialName: trial.dutyName,
-                    contentType: trial.contentType,
-                    category: trial.contentType === 'ultimate' ? 'ultimate' : 'farm',
-                    missing,
-                    canBuy,
-                    wanting,
-                  });
-                }, 100);
-              }}
+              currentUserId={effectiveUserId ?? ''}
+              canManage={canManageRoster(userRole).allowed}
             />
           )}
+
 
           {/* Priority Tab removed - now a slide-out panel accessible from Loot tab */}
         </>

@@ -21,8 +21,10 @@ from .middleware import (
     SecurityHeadersMiddleware,
 )
 from .rate_limit import limiter
+from .services.catalog_import_service import seed_from_internal
 from .tasks.analytics_retention import retention_loop
 from .tasks.auto_sync import auto_sync_loop
+from .tasks.catalog_sync import catalog_sync_loop
 from .tasks.schedule_reminders import schedule_reminder_loop
 from .routers import (
     discord_interactions_router,
@@ -32,6 +34,7 @@ from .routers import (
     auth_router,
     bis_router,
     bis_targets_router,
+    collection_catalog_router,
     collection_goals_router,
     discovery_router,
     invitations_router,
@@ -42,8 +45,10 @@ from .routers import (
     notifications_router,
     objective_goals_router,
     player_bis_targets_router,
+    player_collection_router,
     player_router,
     plugin_player_router,
+    plugin_collections_router,
     schedule_router,
     split_clear_router,
     static_characters_router,
@@ -54,6 +59,7 @@ from .routers import (
 settings = get_settings()
 configure_logging(settings)
 logger = get_logger(__name__)
+
 
 
 @asynccontextmanager
@@ -73,18 +79,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     else:
         logger.info("database_setup", mode="migrations")
 
+    # Always upsert curated catalog on startup so new items added to catalog_data.py
+    # appear immediately after restart without requiring a DB wipe.
+    try:
+        from .database import get_session as _get_session
+        async for _session in _get_session():
+            _count = await seed_from_internal(_session)
+            logger.info("catalog_seeded_on_startup", count=_count)
+            break
+    except Exception as _exc:
+        logger.warning("catalog_startup_seed_failed", error=str(_exc))
+
     # Start background tasks
     retention_task = asyncio.create_task(retention_loop())
     sync_task = asyncio.create_task(auto_sync_loop())
     schedule_reminder_task = asyncio.create_task(schedule_reminder_loop())
+    catalog_task = asyncio.create_task(catalog_sync_loop())
 
     yield
 
     # Shutdown
+    catalog_task.cancel()
     schedule_reminder_task.cancel()
     sync_task.cancel()
     retention_task.cancel()
-    for task in (schedule_reminder_task, sync_task, retention_task):
+    for task in (catalog_task, schedule_reminder_task, sync_task, retention_task):
         try:
             await task
         except asyncio.CancelledError:
@@ -169,6 +188,7 @@ app.include_router(api_keys_router)
 app.include_router(auth_router)
 app.include_router(bis_router)
 app.include_router(bis_targets_router)
+app.include_router(collection_catalog_router)
 app.include_router(collection_goals_router)
 app.include_router(content_suggestions_router)
 app.include_router(discovery_router)
@@ -180,8 +200,10 @@ app.include_router(mount_farms_router)
 app.include_router(notifications_router)
 app.include_router(objective_goals_router)
 app.include_router(player_bis_targets_router)
+app.include_router(player_collection_router)
 app.include_router(player_router)
 app.include_router(plugin_player_router)
+app.include_router(plugin_collections_router)
 app.include_router(schedule_router)
 app.include_router(split_clear_router)
 app.include_router(static_characters_router)

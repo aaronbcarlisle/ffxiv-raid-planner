@@ -56,6 +56,16 @@ class CollectionGoal(Base):
     target_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    priority_mode: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+    catalog_item_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("collection_catalog_items.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    token_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    token_cost: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[str] = mapped_column(

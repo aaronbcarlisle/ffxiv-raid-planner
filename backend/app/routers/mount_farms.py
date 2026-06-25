@@ -18,6 +18,11 @@ from ..permissions import (
     require_membership,
     get_static_group,
 )
+from ..services.player_reward_bridge_service import (
+    write_through_from_mount_farm,
+    write_through_bulk_from_mount_farm,
+    _BulkUpdate,
+)
 from ..schemas.mount_farms import (
     FarmScoreResponse,
     MemberProgressResponse,
@@ -411,6 +416,17 @@ async def update_mount_farm_progress(
         )
         await db.commit()
 
+    # Write-through: mirror signals into shared PlayerCollectionIntent/Snapshot
+    await write_through_from_mount_farm(
+        db,
+        user_id=target_user_id,
+        trial_id=data.trial_id,
+        wants_mount=data.wants_mount,
+        has_mount=data.has_mount,
+        totem_count=data.totem_count,
+    )
+    await db.commit()
+
     return _build_member_progress(target_user, progress, data.trial_id)
 
 
@@ -476,6 +492,22 @@ async def bulk_update_mount_farm_progress(
             progress.updated_at = now
             progress.updated_by_id = user.id
 
+    await db.commit()
+
+    # Write-through: batch mirror all updates into shared PlayerCollectionIntent/Snapshot
+    await write_through_bulk_from_mount_farm(
+        db,
+        [
+            _BulkUpdate(
+                user_id=update.user_id or user.id,
+                trial_id=update.trial_id,
+                wants_mount=update.wants_mount,
+                has_mount=update.has_mount,
+                totem_count=update.totem_count,
+            )
+            for update in data.updates
+        ],
+    )
     await db.commit()
 
     for update in data.updates:

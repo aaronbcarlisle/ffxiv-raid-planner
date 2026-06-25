@@ -18,7 +18,7 @@ import { JobProfileModal } from '../components/profile/JobProfileModal';
 import { ManageBiSModal } from '../components/profile/ManageBiSModal';
 import { OverviewTab } from '../components/profile/OverviewTab';
 import { SyncCenterTab } from '../components/profile/SyncCenterTab';
-import { CollectionsTab } from '../components/profile/CollectionsTab';
+import { CollectionsCenterTab } from '../components/profile/CollectionsCenterTab';
 import { GoalsTab } from '../components/profile/GoalsTab';
 import { PreviewShareTab } from '../components/profile/PreviewShareTab';
 import { ProfileBottomNav } from '../components/profile/ProfileBottomNav';
@@ -240,7 +240,7 @@ export default function Profile() {
     return () => {
       if (gearPollRef.current) clearInterval(gearPollRef.current);
     };
-  }, [characterIds, fetchGearSnapshots, profile?.characters]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [characterIds, fetchGearSnapshots, profile?.characters]);
 
   // Seed sharedBisStore for every job profile so cards show live data immediately
   const jobProfileIds = profile?.jobProfiles.map((j) => j.id).join(',') ?? '';
@@ -435,7 +435,7 @@ export default function Profile() {
         )}
 
         {activeTab === 'collections' && (
-          <CollectionsTab goals={goals} suggestions={collectionSuggestions} />
+          <CollectionsCenterTab />
         )}
 
         {activeTab === 'availability' && (

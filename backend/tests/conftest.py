@@ -186,6 +186,23 @@ async def client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture
+async def async_client(session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Alias for client fixture — some test files use this name."""
+    async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
+        yield session
+
+    app.dependency_overrides[get_session] = override_get_session
+
+    async with CSRFAwareClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as c:
+        yield c
+
+    app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
 async def test_user(session: AsyncSession) -> User:
     """Create a test user in the database."""
     from tests.factories import create_user

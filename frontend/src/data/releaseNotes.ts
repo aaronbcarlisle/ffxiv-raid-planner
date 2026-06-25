@@ -37,6 +37,7 @@ export interface ReleaseItem {
   commits?: CommitInfo[]; // Related commits (real short SHAs only; complements `pr`)
   image?: string; // Path to image/gif shown when expanded
   link?: { href: string; label: string }; // Link to related page
+  internal?: boolean; // Hidden from users/banner; use for backend plumbing, CI fixes, refactors
 }
 
 export interface Release {
@@ -92,6 +93,269 @@ export const RELEASES: Release[] = [
         prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
       },
     ],
+  },
+  {
+    version: '1.26.0',
+    date: '2026-06-23T12:00:00Z',
+    title: 'Collections Center, Suggested Farms & Dawntrail plugin sync',
+    highlights: [
+      'Player Hub now includes a Collections Center to track mounts, music, weapons, and more',
+      'All 8 Dawntrail extreme trial mounts verified for automatic plugin sync',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Collections Center — personal reward tracker in Player Hub',
+        description:
+          'Player Hub → Collections is now a full Collections Center. Track intent (Hunting / Interested / Pass / Hidden) and ownership for mounts, music, minions, weapons, and rare drops from one page. ' +
+          'Each reward has a visibility control: Private (only you), Shared with statics (feeds Suggested Farms), or Public on dossier. ' +
+          'A share prompt appears when a Hunting or Interested reward is left Private. ' +
+          'Browse the full active catalog or filter to your personal list by category, expansion, or content type.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        commits: [{ hash: '7d9e416', message: 'feat(collections): Collections & Farms hub with participant states and drop log' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Suggested Farms — smart duty cards surfaced from Player Hub intents',
+        description:
+          'Static Collections & Farms opens on a Suggested Farms tab driven by Player Hub reward intents and plugin-synced collection facts. Suggestions appear even with no manually created static goals — roster members who share their Player Hub preferences automatically surface their wants to static leads.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Static Browse Catalog — grouped duty cards with full labels',
+        description:
+          'Static Collections → Browse Catalog now renders grouped duty cards: one card per duty showing all rewards (mount, music, weapons) together. ' +
+          'Full source-type label (Extreme / Ultimate / Savage) and expansion name on desktop; compact labels on mobile. ' +
+          'Token cost shown as an amber pill. Cards animate on expand/collapse. Badge colors shared from a single config across Player Hub and Static Browse.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
+      },
+      {
+        category: 'fix',
+        title: 'Ultimate weapon token cost corrected to 1× per weapon (was 7×)',
+        description:
+          'Futures Rewritten, Dancing Mad, Dragonsong\'s Reprise, and The Omega Protocol ultimate weapon rows now show 1× totem per weapon — matching the actual in-game exchange. ' +
+          'EX mount pity costs (99×) are unaffected. Can-buy scoring now correctly triggers at tokenCount ≥ 1 for ultimates.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
+      },
+      {
+        category: 'fix',
+        title: 'Public dossier — Hunting and Interested shown in separate sections',
+        description:
+          'The public profile dossier now renders "Actively Hunting" and "Interested In" as two distinct labelled sections instead of combining everything under a single "Hunting (N)" header.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
+      },
+      {
+        category: 'improvement',
+        title: 'All 8 Dawntrail extreme trial mounts now plugin-ready',
+        description:
+          'game_mount_id and token_item_id populated for all 8 DT extreme trial farms (Wings of Ruin through Wings of Nihility). IDs verified against Garland Tools API and FFXIV Collect, matching Mount.exd and Item.exd RowIds used by the Dalamud plugin for automatic ownership detection.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        commits: [{ hash: '1e329e3', message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Suggested Farms duty cards show expansion tag',
+        description: 'Each duty card in Suggested Farms now displays the expansion abbreviation (e.g. DT, EW, SHB) alongside the content-type badge so leads can quickly identify which content tier a suggestion belongs to.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        commits: [{ hash: '8cf366c', message: 'fix(collections): honest chip labels for curated-only categories' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Player Hub write-through works without an existing Player Hub profile',
+        description: 'Toggling "Wanted" on a mount farm now auto-creates a private Player Hub profile when the user has not yet visited Player Hub, ensuring the intent always reaches Suggested Farms.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
+      },
+      {
+        category: 'improvement',
+        title: '/xrp resolve-ids — plugin Lumina ID resolver command',
+        description:
+          'New plugin diagnostic command resolves every catalog mount and token name against local Lumina sheets (Mount.exd / Item.exd). Includes an alias map for catalog display names that differ from Lumina Singular names. Writes collection_resolved_ids.json and auto-POSTs exact matches to the backend.',
+        commits: [{ hash: '1e329e3', message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync' }],
+        internal: true,
+      },
+      {
+        category: 'fix',
+        title: 'C# CollectionSyncResult now includes skippedNoId field',
+        description:
+          'Plugin-side Models.cs updated to deserialize skippedNoId from the backend sync response, matching the Phase 3 schema change.',
+        commits: [{ hash: '1e329e3', message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync' }],
+        internal: true,
+      },
+      {
+        category: 'improvement',
+        title: 'Bulk mount farm update uses batched write-through',
+        description: 'Bulk progress updates now resolve profiles, catalog items, intents, and snapshots in 4 batch queries instead of N per-row queries, reducing database overhead for large statics.',
+        commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
+        internal: true,
+      },
+    ],
+  },
+  {
+    version: '1.26.0',
+    date: '2026-06-21T23:59:00Z',
+    title: 'Catalog game ID population — stable plugin sync IDs (Phase 2 & 3)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'game_mount_id and token_item_id added to catalog items (EW → ARR)',
+        description:
+          'CollectionCatalogItem now carries stable Mount.exd and Item.exd IDs for all pre-Dawntrail extreme trial mounts (ARR → EW). Dawntrail IDs are left null pending external Lumina verification — no IDs are guessed.',
+      },
+      {
+        category: 'fix',
+        title: 'source_duty_key fallback removed from ownership (Have) path',
+        description:
+          'Plugin sync no longer sets Have state from source_duty_key alone. Only game_mount_id exact matches can confirm ownership. Mounts in the payload without a stable mount_id are now counted in skipped_no_id. Token count fallback (token_name) is preserved — token updates do not set ownership.',
+      },
+      {
+        category: 'improvement',
+        title: 'Catalog audit endpoint — expanded per-expansion and DT breakdown',
+        description:
+          'GET /api/admin/collection-catalog/audit now reports plugin sync readiness per category and per expansion, with a dedicated dt_detail block listing which DT mount and token IDs are missing.',
+      },
+      {
+        category: 'improvement',
+        title: 'Plugin ready / Manual only indicator on mount farm chips',
+        description:
+          'Subtle Zap icon on mount reward chips indicates whether the plugin can detect ownership automatically (bright = plugin ready when game_mount_id present, dim = manual only). No indicator for orchestrion, minion, or weapon.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.26.0',
+    date: '2026-06-21T23:00:00Z',
+    title: 'Plugin bridge for collection participant states',
+    items: [
+      {
+        category: 'feature',
+        title: 'POST /api/plugin/collections/sync — plugin updates your collection states',
+        description:
+          'New endpoint lets the Dalamud plugin report which mounts you own and how many tokens you hold. Backend matches these to your active collection goals by source_duty_key / trial_id and updates your participant state (Have/token count). Manual Pass is never overwritten.',
+      },
+      {
+        category: 'improvement',
+        title: 'Source badges in member rows (Plugin / Hub)',
+        description:
+          'Member rows in SourceFarmCard now show a small "Plugin" or "Hub" badge when the state was set by the plugin or Player Hub rather than manually.',
+      },
+      {
+        category: 'improvement',
+        title: 'Catalog sync import report',
+        description:
+          'sync_from_ffxiv_collect now returns a detailed report: imported counts per category, skipped total, skipped breakdown by source type, and category counts after the full import.',
+      },
+      {
+        category: 'feature',
+        title: 'Plugin: Sync Collections button in Character window tray',
+        description:
+          'CollectionSyncService reads mount ownership (PlayerState.IsMountUnlocked) and token counts (InventoryManager) from game memory and posts to the new collection sync endpoint. "Sync Collections" appears in the ... overflow menu in the Character sync tray.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.26.0',
+    date: '2026-06-21T20:00:00Z',
+    title: 'Collections redesigned as source/duty farm cards',
+    highlights: [
+      'Collections now shows one card per duty (mount + music + minions in one place)',
+      'Category chips hide when empty, Minions tab now has curated trial content',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Source/duty farm cards replace flat reward rows',
+        description:
+          'Collections & Farms groups all rewards from the same extreme/savage/ultimate into one card — mount, music, minion, and weapons appear together instead of as separate disconnected rows. Cards have colored left borders (amber=Extreme, red=Savage, blue=Ultimate) and expand to show participants, token exchange info, and a Copy Farm Plan button for Discord.',
+        pr: 141,
+        prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
+        commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
+      },
+      {
+        category: 'improvement',
+        title: 'Category chips now show counts and hide when 0',
+        description:
+          'The Mounts/Music/Minions/Weapons/Rare filter chips only appear when there is at least one farm in that category. Selecting a chip narrows the visible cards without destroying the grouping. Search and source-type (Extreme/Savage/Ultimate) + expansion filters also apply.',
+      },
+      {
+        category: 'fix',
+        title: 'Minions tab no longer empty — curated trial minions added',
+        description:
+          'Four trial minions (Wind-up Ultros, Poogie, Seikret Fledgling, Vigorwasp) are now seeded as curated catalog entries so the Minions chip always has content even before the FFXIV Collect sync runs.',
+      },
+    ],
+  },
+  {
+    version: '1.26.0',
+    date: '2026-06-21T18:00:00Z',
+    title: 'FFXIV Collect background sync for mounts, minions, orchestrion',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Catalog auto-syncs from FFXIV Collect on first server start',
+        description: 'Background task runs 5 seconds after startup and imports mounts, minions, and orchestrion from FFXIV Collect if not already synced. Fixes pagination bug (count vs total), source duty name extraction, and owned-percent parsing. Curated internal rows always take precedence via Python-level deduplication.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.26.0',
+    date: '2026-06-21T12:00:00Z',
+    title: 'Full orchestrion roll catalog — all expansions, no live fetch',
+    items: [
+      {
+        category: 'fix',
+        title: 'Music tab populated with 38 curated orchestrion rolls (HW–DT)',
+        description: 'All orchestrion rolls farmable from extreme trials are now hardcoded in the curated catalog — no FFXIV Collect API call required. Data sourced from the FFXIV wiki covers every extreme from Heavensward through Dawntrail (38 rolls). Also corrects two previously wrong ShB entries: Castrum Marinum drops "The Black Wolf Stalks Again" (not "Rise") and Cloud Deck drops "In the Arms of War" (not "Black & White"). The background auto-sync that caused 5-minute startup hangs is removed.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.26.0',
+    date: '2026-06-21T00:00:00Z',
+    title: 'Collections catalog expanded — all expansions + Player Hub sync',
+    items: [
+      {
+        category: 'fix',
+        title: 'Collections catalog expanded to all expansions',
+        description: 'Browse Catalog now shows mounts and ultimate weapons for Shadowbringers, Stormblood, Heavensward, and A Realm Reborn. Endwalker data corrected (mount names, totem names, and missing Endsinger entry). All catalog entries now carry a source_duty_key matching the internal trial ID so the Player Hub collections tab and group catalog stay in sync.',
+      },
+      {
+        category: 'fix',
+        title: 'Player Hub collection suggestions include group goal participation',
+        description: 'When a static group tracks a Collection Goal and a member has logged participation, that farm now surfaces as a Player Hub collection suggestion — bridging group goal activity into the personal collections view.',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '1.26.0',
+    date: '2026-06-20T00:00:00Z',
+    title: 'Collections & Farms Hub',
+    items: [
+      {
+        category: 'feature',
+        title: 'Collections & Farms Hub',
+        description: 'Backend models, router, and store for collection goals with participant states (need/want/have/pass), drop log, priority modes, and participant summary counts on the goal list.',
+      },
+    ],
+    internal: true,
   },
   {
     version: '1.26.0',

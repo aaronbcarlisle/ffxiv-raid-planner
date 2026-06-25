@@ -12,6 +12,21 @@ import { usePlayerProfileStore } from '../stores/playerProfileStore';
 import { getJobDisplayName } from '../gamedata/jobs';
 import { fadeInProps, staggerContainerProps, staggerItemProps } from '../lib/motion';
 import { GameIcon } from '../components/ui/GameIcon';
+import {
+  SOURCE_TYPE_BADGE,
+  CATEGORY_BADGE,
+} from '../utils/collectionBadgeConfig';
+import { API_BASE_URL } from '../services/api';
+
+interface DossierEntry {
+  catalog_item_id: string;
+  catalog_item_name: string;
+  catalog_item_category: string;
+  source_duty_name: string | null;
+  source_type: string | null;
+  intent: 'hunting' | 'interested';
+  priority: string;
+}
 
 export default function PublicProfile() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -19,13 +34,20 @@ export default function PublicProfile() {
   const [profile, setProfile] = useState<PublicPlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dossier, setDossier] = useState<DossierEntry[]>([]);
 
   const loadProfile = useCallback(async (code: string) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchPublicProfile(code);
-      setProfile(data);
+      const [profileData, dossierRes] = await Promise.all([
+        fetchPublicProfile(code),
+        fetch(`${API_BASE_URL}/api/profiles/${encodeURIComponent(code)}/collection-intent`),
+      ]);
+      setProfile(profileData);
+      if (dossierRes.ok) {
+        setDossier(await dossierRes.json());
+      }
     } catch {
       setError('Profile not found or not available.');
     } finally {
@@ -142,6 +164,54 @@ export default function PublicProfile() {
         {jobProfiles.length === 0 && (
           <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-5 text-center">
             <p className="text-text-tertiary text-sm">This player has not configured any job profiles yet.</p>
+          </motion.div>
+        )}
+
+        {/* Collection dossier */}
+        {dossier.length > 0 && (
+          <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-5">
+            {(['hunting', 'interested'] as const).map((intent) => {
+              const entries = dossier.filter((e) => e.intent === intent);
+              if (entries.length === 0) return null;
+              return (
+                <div key={intent} className="mb-4 last:mb-0">
+                  <h2 className="text-xs text-text-tertiary uppercase tracking-wider mb-2">
+                    {intent === 'hunting' ? `Actively Hunting (${entries.length})` : `Interested In (${entries.length})`}
+                  </h2>
+                  <div className="flex flex-col gap-1.5">
+                    {entries.map((entry) => {
+                      const srcCfg = entry.source_type ? SOURCE_TYPE_BADGE[entry.source_type] : null;
+                      const catCfg = CATEGORY_BADGE[entry.catalog_item_category] ?? null;
+                      return (
+                        <div
+                          key={entry.catalog_item_id}
+                          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border-l-2 bg-surface-card border border-border-subtle ${srcCfg?.leftBorderClass ?? 'border-l-border-default'}`}
+                        >
+                          {catCfg && (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-widest flex-shrink-0 ${catCfg.colorClass} ${catCfg.bgClass} ${catCfg.borderClass}`}>
+                              {catCfg.label}
+                            </span>
+                          )}
+                          <span className="text-sm text-text-primary font-medium flex-1 min-w-0 truncate">
+                            {entry.catalog_item_name}
+                          </span>
+                          {entry.source_duty_name && (
+                            <span className="text-[10px] text-text-muted truncate max-w-[140px] flex-shrink-0 hidden sm:block">
+                              {entry.source_duty_name}
+                            </span>
+                          )}
+                          {srcCfg && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${srcCfg.colorClass}`}>
+                              {srcCfg.label}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </motion.div>
         )}
 

@@ -256,6 +256,25 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         </div>
       )}
 
+      {/* Suggested Farms integration notice */}
+      {!isLoading && (
+        <div className="rounded-lg border border-border-subtle bg-surface-raised/40 px-3 py-2 flex flex-col gap-1 text-xs text-text-muted">
+          <div className="flex items-center gap-2">
+            <Info className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
+            <span>
+              Toggling <strong className="text-text-secondary font-medium">Wanted</strong> here
+              also shares your intent with your statics via{' '}
+              <strong className="text-text-secondary font-medium">Suggested Farms</strong>.
+            </span>
+          </div>
+          <ul className="pl-5 space-y-0.5 text-[11px] opacity-70">
+            <li>Shared rewards feed Suggested Farms for your statics.</li>
+            <li>Public rewards can appear on your dossier.</li>
+            <li>Private rewards stay personal — change visibility in Player Hub.</li>
+          </ul>
+        </div>
+      )}
+
       {/* Farm Planner hero — top recommendation */}
       {topRec && topRecTrial && !isLoadingRecs && !isLoading && (
         <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">

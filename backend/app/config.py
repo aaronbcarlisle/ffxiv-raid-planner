@@ -4,7 +4,8 @@ import re
 import secrets
 import warnings
 from functools import lru_cache
-from typing import Literal, Self
+from typing import Literal
+from typing_extensions import Self
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict

@@ -2,8 +2,7 @@
 
 from enum import Enum
 from typing import Literal
-
-from typing import Self
+from typing_extensions import Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 

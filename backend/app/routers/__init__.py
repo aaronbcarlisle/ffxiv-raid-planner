@@ -7,6 +7,7 @@ from .api_keys import router as api_keys_router
 from .auth import router as auth_router
 from .bis import router as bis_router
 from .bis_targets import router as bis_targets_router
+from .collection_catalog import router as collection_catalog_router
 from .collection_goals import router as collection_goals_router
 from .discovery import router as discovery_router
 from .invitations import router as invitations_router
@@ -19,6 +20,8 @@ from .objective_goals import router as objective_goals_router
 from .player_bis_targets import router as player_bis_targets_router
 from .player import plugin_router as plugin_player_router
 from .player import router as player_router
+from .player_collection import router as player_collection_router
+from .plugin_collections import router as plugin_collections_router
 from .schedule import router as schedule_router
 from .split_clear import router as split_clear_router
 from .static_characters import router as static_characters_router
@@ -33,6 +36,7 @@ __all__ = [
     "auth_router",
     "bis_router",
     "bis_targets_router",
+    "collection_catalog_router",
     "collection_goals_router",
     "discovery_router",
     "invitations_router",
@@ -45,6 +49,8 @@ __all__ = [
     "player_bis_targets_router",
     "player_router",
     "plugin_player_router",
+    "player_collection_router",
+    "plugin_collections_router",
     "schedule_router",
     "split_clear_router",
     "static_characters_router",

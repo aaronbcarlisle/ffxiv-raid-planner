@@ -5,12 +5,17 @@ from .analytics import AnalyticsDailyAggregate, AnalyticsEvent, ErrorReport
 from .notification import Notification
 from .api_key import ApiKey
 from .bis_target_set import BiSTargetSet, VALID_BIS_IMPORT_STATUSES, VALID_BIS_PURPOSES, VALID_BIS_SOURCE_TYPES, VALID_OWNER_TYPES
+from .collection_catalog_item import CollectionCatalogItem
 from .collection_goal import CollectionGoal
+from .reward_participant_state import RewardParticipantState
+from .reward_drop_log import RewardDropLog
 from .invitation import Invitation
 from .join_request import JoinRequest  # noqa: F811
 from .loot_log_entry import LootLogEntry
 from .material_log_entry import MaterialLogEntry
 from .mount_farm_progress import MountFarmProgress
+from .player_collection_snapshot import PlayerCollectionSnapshot
+from .player_collection_intent import PlayerCollectionIntent
 from .player_goal import PlayerGoal
 from .static_content_suggestion import StaticContentSuggestion, StaticContentSuggestionVote
 from .static_objective_goal import StaticObjectiveGoal
@@ -43,7 +48,10 @@ __all__ = [
     "VALID_BIS_PURPOSES",
     "VALID_BIS_SOURCE_TYPES",
     "VALID_OWNER_TYPES",
+    "CollectionCatalogItem",
     "CollectionGoal",
+    "RewardParticipantState",
+    "RewardDropLog",
     "Invitation",
     "JoinRequest",
     "LootLogEntry",
@@ -53,6 +61,8 @@ __all__ = [
     "Membership",
     "MemberRole",
     "PageLedgerEntry",
+    "PlayerCollectionSnapshot",
+    "PlayerCollectionIntent",
     "PlayerGoal",
     "StaticContentSuggestion",
     "StaticContentSuggestionVote",
