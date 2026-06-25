@@ -38,6 +38,7 @@ import { MorePage } from '../components/group/MorePage';
 import { GoalsPage } from '../components/group/GoalsPage';
 import { GearSyncDashboard, PLUGIN_GUIDE_EVENT } from '../components/group/GearSyncDashboard';
 import { useDevice } from '../hooks/useDevice';
+import { useSwipe } from '../hooks/useSwipe';
 import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
@@ -57,7 +58,7 @@ import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
 import { logger } from '../lib/logger';
 import { DISCORD_BUG_REPORT_URL } from '../config';
-import type { SnapshotPlayer, GearSlot, SortPreset, GearSubTab } from '../types';
+import type { SnapshotPlayer, GearSlot, SortPreset, GearSubTab, PageMode } from '../types';
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -153,6 +154,23 @@ export function GroupView() {
 
   // Device capabilities for responsive behavior
   const { isSmallScreen } = useDevice();
+
+  // Content-area swipe to navigate tabs on mobile
+  const SWIPE_TABS: PageMode[] = ['overview', 'roster', 'schedule', 'goals', 'gear', 'more'];
+  const swipeTabIndex = SWIPE_TABS.indexOf(pageMode);
+  const contentSwipeHandlers = useSwipe({
+    onSwipeLeft: () => {
+      if (isSmallScreen && swipeTabIndex < SWIPE_TABS.length - 1) {
+        setPageMode(SWIPE_TABS[swipeTabIndex + 1]);
+      }
+    },
+    onSwipeRight: () => {
+      if (isSmallScreen && swipeTabIndex > 0) {
+        setPageMode(SWIPE_TABS[swipeTabIndex - 1]);
+      }
+    },
+    minSwipeDistance: 60,
+  });
 
   // Settings panel options (for opening to specific tab with highlight)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('general');
@@ -901,6 +919,7 @@ export function GroupView() {
             <div
               className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : 'overflow-y-auto pt-3 pb-6'}`}
               style={{ backgroundImage: 'radial-gradient(ellipse 70% 45% at 15% 0%, rgba(20,184,166,0.055) 0%, transparent 65%), radial-gradient(ellipse 35% 25% at 90% 95%, rgba(20,184,166,0.022) 0%, transparent 50%)' }}
+              {...(isSmallScreen ? contentSwipeHandlers : {})}
             >
 
               {/* Roster toolbar controls */}

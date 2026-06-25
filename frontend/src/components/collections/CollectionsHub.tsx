@@ -119,14 +119,14 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
     <div className="flex flex-col gap-6">
       {/* Tab bar + actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-1 bg-surface-raised rounded-lg p-1">
+        <div className="flex gap-1 bg-surface-raised rounded-lg p-1 overflow-x-auto flex-shrink min-w-0">
           {tabDef.map((t) => (
             <Button
               key={t.id}
               variant="ghost"
               size="sm"
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                 tab === t.id
                   ? 'bg-accent/20 text-accent'
                   : 'text-text-secondary hover:text-text-primary'

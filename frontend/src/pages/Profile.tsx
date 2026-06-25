@@ -752,7 +752,12 @@ export default function Profile() {
       {/* No sticky bottom CTA — next action is inline in Overview tab */}
 
       {/* Mobile bottom navigation — matches static page pattern */}
-      <ProfileBottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      <ProfileBottomNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        primaryStaticPath={primaryStatic ? `/group/${primaryStatic.shareCode}` : undefined}
+        primaryStaticName={primaryStatic?.name}
+      />
     </div>
   );
 }

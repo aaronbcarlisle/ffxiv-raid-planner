@@ -6,8 +6,9 @@
  * Only renders on small screens (< 640px via useDevice).
  */
 
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Users } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useDevice } from '../../hooks/useDevice';
 import { TAB_ICONS } from '../../types';
 
@@ -16,6 +17,8 @@ type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availabil
 interface ProfileBottomNavProps {
   activeTab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
+  primaryStaticPath?: string;
+  primaryStaticName?: string;
 }
 
 const PRIMARY_TABS: { id: ProfileTab; label: string; icon: keyof typeof TAB_ICONS }[] = [
@@ -32,7 +35,7 @@ const MORE_TABS: { id: ProfileTab; label: string; icon: keyof typeof TAB_ICONS }
 
 const ALL_MORE_IDS = new Set(MORE_TABS.map(t => t.id));
 
-export function ProfileBottomNav({ activeTab, onTabChange }: ProfileBottomNavProps) {
+export function ProfileBottomNav({ activeTab, onTabChange, primaryStaticPath, primaryStaticName }: ProfileBottomNavProps) {
   const { isSmallScreen } = useDevice();
   const [showMore, setShowMore] = useState(false);
 
@@ -59,6 +62,18 @@ export function ProfileBottomNav({ activeTab, onTabChange }: ProfileBottomNavPro
             style={{ paddingBottom: 'max(0px, env(safe-area-inset-bottom))' }}
           >
             <div className="px-2 py-2 space-y-0.5">
+              {primaryStaticPath && (
+                /* design-system-ignore: Bottom sheet menu item */
+                <Link
+                  to={primaryStaticPath}
+                  onClick={() => setShowMore(false)}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-text-secondary hover:text-text-primary hover:bg-surface-interactive"
+                >
+                  <Users className="w-5 h-5 text-accent flex-shrink-0" />
+                  <span className="flex-1 truncate">{primaryStaticName ?? 'My Static'}</span>
+                  <span className="text-xs text-text-tertiary flex-shrink-0">← Back</span>
+                </Link>
+              )}
               {MORE_TABS.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
