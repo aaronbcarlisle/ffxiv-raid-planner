@@ -373,6 +373,7 @@ export default function Profile() {
   const { fetchTargets } = useSharedBisStore();
   const { isSmallScreen } = useDevice();
   const [activeTab, setActiveTab] = useState<ProfileTab>(() => parseProfileTab(location.search));
+  const [collSubTab, setCollSubTab] = useState<'goals' | 'priorities' | 'browse'>('goals');
   const linkModal = useModal();
   const addJobModal = useModal();
   const [editingJob, setEditingJob] = useState<PlayerJobProfile | null>(null);
@@ -670,9 +671,47 @@ export default function Profile() {
         )}
 
         {activeTab === 'collections' && (
-          <div className="space-y-8">
-            <CollectionsCenterTab />
-            <GoalsTab goals={goals} />
+          <div className="flex flex-col gap-5">
+            {/* ── Sub-tab bar ── */}
+            {/* eslint-disable-next-line design-system/no-raw-button */}
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-1 bg-surface-raised rounded-lg p-1 border border-border-subtle">
+                {([
+                  { id: 'goals'      as const, label: 'Tasks & Goals' },
+                  { id: 'priorities' as const, label: 'My Priorities' },
+                  { id: 'browse'     as const, label: 'Browse Catalog' },
+                ] satisfies { id: typeof collSubTab; label: string }[]).map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setCollSubTab(tab.id)}
+                    className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                      collSubTab === tab.id
+                        ? 'bg-accent/20 text-accent'
+                        : 'text-text-secondary hover:text-text-primary'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Per-tab description */}
+              <p className="text-xs text-text-muted px-1">
+                {collSubTab === 'goals' && 'Personal tasks — gearing, clears, raid prep, or custom reminders. Not tied to collection rewards.'}
+                {collSubTab === 'priorities' && 'Mounts, music, weapons, and other rewards you\'re hunting or farming. Mark visibility to share with your statics.'}
+                {collSubTab === 'browse' && 'Browse the full rewards catalog to discover what\'s available and set your intent on new items.'}
+              </p>
+            </div>
+
+            {/* ── Sub-tab content ── */}
+            {collSubTab === 'goals' && <GoalsTab goals={goals} />}
+            {(collSubTab === 'priorities' || collSubTab === 'browse') && (
+              <CollectionsCenterTab
+                view={collSubTab === 'browse' ? 'browse' : 'priorities'}
+                onViewChange={(v) => setCollSubTab(v)}
+              />
+            )}
           </div>
         )}
 
