@@ -23,10 +23,10 @@ const NAV_ITEMS: Array<{
   icon: React.FC<{ size?: number; className?: string }>;
 }> = [
   { id: 'overview',  label: 'Overview',      description: 'Static overview, next raid, and pending applications', shortcut: '`',  icon: LayoutDashboard },
-  { id: 'schedule',  label: 'Schedule',      description: 'Upcoming sessions, availability, and Discord sync',    shortcut: '4',  icon: Calendar },
-  { id: 'roster',    label: 'Roster',        description: 'Member list, roles, and join requests',                shortcut: '1',  icon: Users },
+  { id: 'schedule',  label: 'Schedule',      description: 'Upcoming sessions, availability, and Discord sync',    shortcut: '1',  icon: Calendar },
+  { id: 'roster',    label: 'Roster',        description: 'Member list, roles, and join requests',                shortcut: '2',  icon: Users },
   { id: 'goals',     label: 'Goals & Farms', description: 'Farm goals, mount drops, and clear tracking',          shortcut: '3',  icon: Trophy },
-  { id: 'gear',      label: 'Gear & Sync',   description: 'BiS sets, gear sync, and loot history',               shortcut: '2',  icon: Shield },
+  { id: 'gear',      label: 'Gear & Sync',   description: 'BiS sets, gear sync, and loot history',               shortcut: '4',  icon: Shield },
   { id: 'more',      label: 'More',          description: 'Integrations, settings, and tools',                                   icon: MoreHorizontal },
 ];
 

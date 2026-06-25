@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight,
-  Crosshair, Eye, LayoutDashboard, PlugZap, Shield, Sparkles, Target, User, Users,
+  Crosshair, Eye, LayoutDashboard, PlugZap, Shield, Sparkles, User, Users,
 } from 'lucide-react';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
@@ -33,19 +33,21 @@ import { useSharedBisStore } from '../stores/sharedBisStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useAuthStore } from '../stores/authStore';
 import { useDevice } from '../hooks/useDevice';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useModal } from '../hooks/useModal';
 import { fadeInProps } from '../lib/motion';
 import { GameIcon } from '../components/ui/GameIcon';
 import { hasUsableGearSnapshot } from '../components/profile/jobGearUtils';
 import type { MemberRole, StaticGroupListItem } from '../types';
 
-type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'goals' | 'preview';
-const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'goals', 'preview'];
+type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview';
+const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'preview'];
 const LEGACY_TAB_REDIRECTS: Record<string, ProfileTab> = {
   share: 'preview',
   characters: 'sync',
   gear: 'jobs-gear',
   jobs: 'jobs-gear',
+  goals: 'collections',
 };
 
 const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
@@ -61,15 +63,15 @@ const PROFILE_NAV_ITEMS: Array<{
   id: ProfileTab;
   label: string;
   description: string;
+  shortcut: string;
   icon: React.FC<{ size?: number; className?: string }>;
 }> = [
-  { id: 'overview',     label: 'Overview',     description: 'Character overview, goals, and quick actions',        icon: LayoutDashboard },
-  { id: 'sync',         label: 'Sync & Gear',  description: 'Plugin sync status and character gear snapshots',     icon: Shield },
-  { id: 'jobs-gear',    label: 'Jobs & Gear',  description: 'Job profiles, BiS targets, and readiness status',    icon: Crosshair },
-  { id: 'collections',  label: 'Collections',  description: 'Mounts, music, weapons, and collection goals',        icon: Sparkles },
-  { id: 'availability', label: 'Availability', description: 'Your weekly availability for raid nights',            icon: Calendar },
-  { id: 'goals',        label: 'Goals',        description: 'Personal goals and task tracking',                    icon: Target },
-  { id: 'preview',      label: 'Share',        description: 'Preview and manage your shareable profile',           icon: Eye },
+  { id: 'overview',     label: 'Overview',          description: 'Character overview, goals, and quick actions',              shortcut: '`', icon: LayoutDashboard },
+  { id: 'sync',         label: 'Sync & Gear',       description: 'Plugin sync status and character gear snapshots',           shortcut: '1', icon: Shield },
+  { id: 'jobs-gear',    label: 'Jobs & Gear',       description: 'Job profiles, BiS targets, and readiness status',          shortcut: '2', icon: Crosshair },
+  { id: 'collections',  label: 'Collections & Goals', description: 'Mounts, music, weapons, collection goals, and tasks',    shortcut: '3', icon: Sparkles },
+  { id: 'availability', label: 'Availability',      description: 'Your weekly availability for raid nights',                 shortcut: '4', icon: Calendar },
+  { id: 'preview',      label: 'Share',             description: 'Preview and manage your shareable profile',                shortcut: '5', icon: Eye },
 ];
 
 const PROFILE_SIDEBAR_KEY = 'profile-sidebar-collapsed';
@@ -79,10 +81,14 @@ function ProfileSidebarNav({
   activeTab,
   onTabChange,
   characterName,
+  primaryStaticPath,
+  primaryStaticName,
 }: {
   activeTab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
   characterName?: string;
+  primaryStaticPath?: string;
+  primaryStaticName?: string;
 }) {
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(PROFILE_SIDEBAR_KEY) === 'true'; } catch { return false; }
@@ -166,7 +172,12 @@ function ProfileSidebarNav({
                 <Tooltip
                   content={
                     <div className="max-w-[200px]">
-                      <p className="font-semibold text-text-primary text-sm mb-0.5">{item.label}</p>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-semibold text-text-primary text-sm">{item.label}</span>
+                        <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle bg-surface-base text-text-muted font-mono leading-none flex-shrink-0">
+                          {item.shortcut}
+                        </kbd>
+                      </div>
                       <p className="text-xs text-text-secondary leading-relaxed">{item.description}</p>
                     </div>
                   }
@@ -221,8 +232,42 @@ function ProfileSidebarNav({
         </div>
       </LayoutGroup>
 
-      {/* Plugin footer */}
+      {/* Footer: back-to-static + plugin */}
       <div className="border-t border-border-subtle flex-shrink-0">
+
+        {/* Back to Static */}
+        {primaryStaticPath && (
+          <Tooltip
+            content={
+              <div className="max-w-[200px]">
+                <p className="font-semibold text-text-primary text-sm mb-0.5">
+                  {primaryStaticName ?? 'My Static'}
+                </p>
+                <p className="text-xs text-text-secondary leading-relaxed">Switch back to your static hub</p>
+              </div>
+            }
+            side="right"
+            sideOffset={collapsed ? 12 : 16}
+            delayDuration={collapsed ? 200 : 700}
+          >
+            <Link
+              to={primaryStaticPath}
+              className={`
+                w-full flex items-center py-2 text-text-muted hover:text-accent transition-colors border-b border-border-subtle
+                ${collapsed ? 'justify-center' : 'gap-2.5 px-4'}
+              `}
+            >
+              <ChevronLeft size={13} className="flex-shrink-0" />
+              {!collapsed && (
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] leading-none truncate min-w-0">
+                  {primaryStaticName ?? 'My Static'}
+                </span>
+              )}
+            </Link>
+          </Tooltip>
+        )}
+
+        {/* Plugin Sync */}
         <Tooltip
           content={
             <div className="max-w-[200px]">
@@ -497,6 +542,18 @@ export default function Profile() {
   const primaryStatic = groups.length > 0 ? groups[0] : null;
   const focusAvailability = new URLSearchParams(location.search).get('focus') === 'availability';
 
+  // Profile tab keyboard shortcuts — ` 1 2 3 4 5 in sidebar order
+  useKeyboardShortcuts({
+    shortcuts: [
+      { key: '`', description: 'Overview',          action: () => setActiveTab('overview') },
+      { key: '1', description: 'Sync & Gear',       action: () => setActiveTab('sync') },
+      { key: '2', description: 'Jobs & Gear',       action: () => setActiveTab('jobs-gear') },
+      { key: '3', description: 'Collections & Goals', action: () => setActiveTab('collections') },
+      { key: '4', description: 'Availability',      action: () => setActiveTab('availability') },
+      { key: '5', description: 'Share',             action: () => setActiveTab('preview') },
+    ],
+  });
+
   return (
     <div ref={pageRef} className="flex flex-1 min-h-0 w-full">
       {/* Sidebar — fills flex parent height naturally, no sticky needed */}
@@ -504,6 +561,8 @@ export default function Profile() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         characterName={mainCharacter?.name}
+        primaryStaticPath={primaryStatic ? `/group/${primaryStatic.shareCode}` : undefined}
+        primaryStaticName={primaryStatic?.name}
       />
 
       {/* Right panel: header + tab content (scrolls independently) */}
@@ -628,15 +687,14 @@ export default function Profile() {
         )}
 
         {activeTab === 'collections' && (
-          <CollectionsCenterTab />
+          <div className="space-y-8">
+            <CollectionsCenterTab />
+            <GoalsTab goals={goals} />
+          </div>
         )}
 
         {activeTab === 'availability' && (
           <PlayerAvailabilityTab primaryStatic={primaryStatic} staticGroups={groups} />
-        )}
-
-        {activeTab === 'goals' && (
-          <GoalsTab goals={goals} />
         )}
 
         {activeTab === 'preview' && profile && (

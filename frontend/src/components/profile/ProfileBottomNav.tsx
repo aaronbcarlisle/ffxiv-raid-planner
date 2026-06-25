@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useDevice } from '../../hooks/useDevice';
 import { TAB_ICONS } from '../../types';
 
-type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'goals' | 'preview';
+type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview';
 
 interface ProfileBottomNavProps {
   activeTab: ProfileTab;
@@ -27,7 +27,6 @@ const PRIMARY_TABS: { id: ProfileTab; label: string; icon: keyof typeof TAB_ICON
 
 const MORE_TABS: { id: ProfileTab; label: string; icon: keyof typeof TAB_ICONS }[] = [
   { id: 'collections', label: 'Collections', icon: 'playerHunts' },
-  { id: 'goals', label: 'Goals', icon: 'playerGoals' },
   { id: 'preview', label: 'Share', icon: 'playerShare' },
 ];
 
