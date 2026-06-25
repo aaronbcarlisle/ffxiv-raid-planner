@@ -33,39 +33,32 @@ export function GoalsTab({ goals }: GoalsTabProps) {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-lg border border-border-default bg-surface-raised p-4">
-        <h3 className="font-display text-base font-semibold text-text-primary">Tasks & Goals</h3>
-        <p className="mt-1 text-sm text-text-secondary">
-          Track gearing, clears, raid prep, reminders, or custom tasks. Collections handle mount, token, and reward farms.
-        </p>
-        <div className="mt-3 rounded-lg border border-border-subtle bg-surface-elevated/60 px-3 py-2 text-xs text-text-tertiary">
-          Suggested tasks can come from stale gear, missing availability, active farms, or upcoming static sessions later.
+      {/* Section header */}
+      <div className="flex items-center justify-between gap-4 pt-2 pb-3 border-t border-border-subtle">
+        <div>
+          <h3 className="font-display text-base font-semibold text-text-primary">Tasks & Goals</h3>
+          <p className="mt-0.5 text-xs text-text-muted">
+            Track gearing, clears, raid prep, reminders, or custom tasks.
+          </p>
         </div>
-      </section>
+        <Button variant="secondary" size="sm" onClick={addModal.open}>Add Task</Button>
+      </div>
 
       {personalGoals.length === 0 ? (
-        <div className="text-center py-12 bg-surface-raised rounded-lg border border-border-default">
-          <div className="mb-3 text-accent"><GameIcon name="checklist" size="xl" /></div>
-          <h3 className="text-lg font-display font-semibold text-text-primary mb-1">
-            No tasks yet
-          </h3>
-          <p className="text-text-secondary mb-4">
-            Track gearing, clears, raid prep, reminders, or custom tasks. Use Collections for mounts and token farms.
-          </p>
-          <Button onClick={addModal.open}>Add Task</Button>
+        <div className="text-center py-10 rounded-lg border border-border-subtle bg-surface-raised/40">
+          <div className="mb-2 text-accent"><GameIcon name="checklist" size="xl" /></div>
+          <h3 className="text-base font-display font-semibold text-text-primary mb-1">No tasks yet</h3>
+          <p className="text-sm text-text-secondary">Add a task to track gearing, clears, or raid prep goals.</p>
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
             <Select
               value={statusFilter}
               onChange={setStatusFilter}
               options={FILTER_OPTIONS}
               className="w-36"
             />
-            <Button variant="secondary" onClick={addModal.open}>
-              Add Task
-            </Button>
           </div>
 
           <motion.div {...staggerContainerProps} className="space-y-3">
@@ -75,8 +68,8 @@ export function GoalsTab({ goals }: GoalsTabProps) {
               </motion.div>
             ))}
             {filteredGoals.length === 0 && (
-              <div className="text-center py-8 text-text-secondary">
-                No {statusFilter} personal goals.
+              <div className="text-center py-8 text-text-secondary text-sm">
+                No {statusFilter} tasks.
               </div>
             )}
           </motion.div>
