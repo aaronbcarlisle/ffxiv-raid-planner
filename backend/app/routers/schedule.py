@@ -1746,6 +1746,7 @@ async def list_session_occurrences(
             session_banner_url=getattr(sched, 'banner_url', None),
             session_banner_key=getattr(sched, 'banner_key', None),
             session_banner_source_type=getattr(sched, 'banner_source_type', None),
+            timezone_name=sched.timezone,
         )
 
     return [

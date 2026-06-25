@@ -378,7 +378,7 @@ Any PR that touches `frontend/src/` or `backend/app/` **must** add or update an 
 ```
 This hides the entry from users but satisfies CI. Do **NOT** bump `CURRENT_VERSION` for internal-only entries.
 
-**User-facing changes** get a normal visible release note entry.
+**User-facing changes** (bug fixes, features, improvements visible to users) get a normal public release note entry. **Always bump `CURRENT_VERSION`** to match the new version string — including patch releases (e.g. `1.26.0` → `1.26.1`). The `scripts/discord-changelog.test.js` suite enforces that `CURRENT_VERSION` equals the version of the latest non-internal release entry; CI will fail if they differ.
 
 Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`).
 
