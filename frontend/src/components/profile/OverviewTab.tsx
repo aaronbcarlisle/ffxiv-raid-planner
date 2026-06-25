@@ -58,7 +58,7 @@ function SectionLabel({ icon, children }: { icon?: React.ReactNode; children: Re
     <div className="flex items-center gap-2.5 mb-3 select-none">
       <div
         className="w-[3px] h-3.5 rounded-full flex-shrink-0"
-        style={{ background: 'linear-gradient(180deg, #14b8a6 0%, rgba(20,184,166,0.2) 100%)' }}
+        style={{ background: 'linear-gradient(180deg, var(--color-accent) 0%, rgba(20,184,166,0.2) 100%)' }}
       />
       <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-text-muted">
         {icon && <span className="opacity-50">{icon}</span>}
@@ -284,7 +284,7 @@ export function OverviewTab({
         className="rounded-xl border border-border-subtle overflow-hidden"
         style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 20px rgba(0,0,0,0.25)' }}
       >
-        <div style={{ height: 2, background: 'linear-gradient(90deg, #14b8a6 0%, rgba(20,184,166,0.3) 45%, transparent 100%)' }} />
+        <div style={{ height: 2, background: 'linear-gradient(90deg, var(--color-accent) 0%, rgba(20,184,166,0.3) 45%, transparent 100%)' }} />
         <div
           className="p-3 sm:p-4"
           style={{ background: 'linear-gradient(145deg, rgba(20,184,166,0.08) 0%, rgba(20,184,166,0.025) 45%, transparent 100%)' }}
@@ -363,7 +363,7 @@ export function OverviewTab({
                   width: `${readinessPercent}%`,
                   background: readinessPercent === 100
                     ? 'linear-gradient(90deg, rgba(74,222,128,0.7) 0%, #4ade80 100%)'
-                    : 'linear-gradient(90deg, rgba(20,184,166,0.7) 0%, #14b8a6 100%)',
+                    : 'linear-gradient(90deg, rgba(20,184,166,0.7) 0%, var(--color-accent) 100%)',
                   boxShadow: readinessPercent === 100
                     ? '0 0 8px rgba(74,222,128,0.5)'
                     : '0 0 8px rgba(20,184,166,0.45)',

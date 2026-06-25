@@ -165,7 +165,7 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
                         layoutId="sidebar-static-active-bar"
                         className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
                         style={{
-                          background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, #14b8a6 50%, rgba(20,184,166,0.3) 100%)',
+                          background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, var(--color-accent) 50%, rgba(20,184,166,0.3) 100%)',
                           boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
                         }}
                         transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}

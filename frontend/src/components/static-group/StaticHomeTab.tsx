@@ -518,9 +518,9 @@ function NextRaidModule({
                     const bg = !rsvp
                       ? 'var(--color-surface-elevated)'
                       : rsvp.status === 'available'
-                      ? '#22c55e'
+                      ? 'var(--color-status-success)'
                       : rsvp.status === 'unavailable'
-                      ? '#ef4444'
+                      ? 'var(--color-status-error)'
                       : 'var(--color-text-muted)';
                     return (
                       <div
@@ -573,7 +573,7 @@ function WeeklyProgressModule({
   if (!active.length) return null;
 
   const pct = active.length > 0 ? bisCount / active.length : 0;
-  const barColor = pct >= 1 ? '#22c55e' : pct >= 0.5 ? '#eab308' : '#14b8a6';
+  const barColor = pct >= 1 ? 'var(--color-status-success)' : pct >= 0.5 ? 'var(--color-status-warning)' : 'var(--color-accent)';
   const barGlow = pct >= 1
     ? '0 0 10px rgba(34,197,94,0.55), 0 0 3px rgba(34,197,94,0.9)'
     : pct >= 0.5
@@ -581,9 +581,9 @@ function WeeklyProgressModule({
     : '0 0 10px rgba(20,184,166,0.45), 0 0 3px rgba(20,184,166,0.8)';
 
   const READINESS_COLOR: Record<GearReadiness, string> = {
-    ready: '#22c55e',
-    in_progress: '#eab308',
-    needs_gear: '#ef4444',
+    ready: 'var(--color-status-success)',
+    in_progress: 'var(--color-status-warning)',
+    needs_gear: 'var(--color-status-error)',
     unknown: '#3f3f46',
   };
 
@@ -599,7 +599,7 @@ function WeeklyProgressModule({
         <div className="flex items-baseline gap-1.5">
           <span
             className="text-3xl font-display font-bold tabular-nums leading-none"
-            style={{ color: bisCount === active.length ? '#22c55e' : 'var(--color-text-primary)' }}
+            style={{ color: bisCount === active.length ? 'var(--color-status-success)' : 'var(--color-text-primary)' }}
           >
             {bisCount}
           </span>
@@ -882,7 +882,7 @@ function GroupHeroPanel({
     <div
       className="rounded-xl border border-border-subtle overflow-hidden"
       style={{
-        background: '#0e0e14',
+        background: 'var(--color-surface-card)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(20,184,166,0.06)',
       }}
     >
@@ -922,7 +922,7 @@ function GroupHeroPanel({
           <div className="flex-1 py-2.5 text-center">
             <p
               className="text-sm font-display font-bold tabular-nums"
-              style={{ color: bisReadyCount === active.length ? '#22c55e' : 'var(--color-text-primary)' }}
+              style={{ color: bisReadyCount === active.length ? 'var(--color-status-success)' : 'var(--color-text-primary)' }}
             >
               {bisReadyCount}/{active.length}
             </p>
@@ -946,9 +946,9 @@ function GroupHeroPanel({
               const ilv = playerIlv(p);
               const readiness = playerGearReadiness(p);
               const readinessColor =
-                readiness === 'ready' ? '#22c55e' :
-                readiness === 'in_progress' ? '#eab308' :
-                readiness === 'needs_gear' ? '#ef4444' :
+                readiness === 'ready' ? 'var(--color-status-success)' :
+                readiness === 'in_progress' ? 'var(--color-status-warning)' :
+                readiness === 'needs_gear' ? 'var(--color-status-error)' :
                 'var(--color-text-muted)';
               const roleColor = ROLE_BORDER_COLOR[p.role?.toLowerCase() ?? ''] ?? 'var(--color-border-default)';
               return (
@@ -1457,10 +1457,10 @@ function GoalsFarmsModule({
                         className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
                         style={{
                           background:
-                            goal.status === 'complete' ? '#22c55e' :
-                            goal.status === 'farming' ? '#14b8a6' :
-                            goal.status === 'scheduled' ? '#eab308' :
-                            '#52525b',
+                            goal.status === 'complete' ? 'var(--color-status-success)' :
+                            goal.status === 'farming' ? 'var(--color-accent)' :
+                            goal.status === 'scheduled' ? 'var(--color-status-warning)' :
+                            'var(--color-text-muted)',
                         }}
                       />
                       <div className="flex-1 min-w-0">
@@ -1499,7 +1499,7 @@ function GoalsFarmsModule({
                               className="h-full rounded-full transition-all duration-500"
                               style={{
                                 width: `${Math.min(100, ((goal.currentCount ?? 0) / goal.targetCount) * 100)}%`,
-                                background: goal.status === 'complete' ? '#22c55e' : '#14b8a6',
+                                background: goal.status === 'complete' ? 'var(--color-status-success)' : 'var(--color-accent)',
                               }}
                             />
                           </div>
@@ -1691,10 +1691,10 @@ function RecentActivityModule({
   }, [apiItems, derivedItems, currentUser?.id, currentUser?.activityDisplayMode]);
 
   const ACTIVITY_ICON_STYLE: Record<StaticActivityItem['icon'], { bg: string; color: string }> = {
-    mount:    { bg: 'rgba(234,179,8,0.15)',   color: '#eab308' },
-    currency: { bg: 'rgba(59,130,246,0.15)',  color: '#3b82f6' },
-    plugin:   { bg: 'rgba(20,184,166,0.15)',  color: '#14b8a6' },
-    tracking: { bg: 'rgba(168,85,247,0.15)',  color: '#a855f7' },
+    mount:    { bg: 'rgba(234,179,8,0.15)',   color: 'var(--color-status-warning)' },
+    currency: { bg: 'rgba(59,130,246,0.15)',  color: 'var(--color-status-info)' },
+    plugin:   { bg: 'rgba(20,184,166,0.15)',  color: 'var(--color-accent)' },
+    tracking: { bg: 'rgba(168,85,247,0.15)',  color: 'var(--color-membership-lead)' },
   };
 
   function activityIcon(icon: StaticActivityItem['icon']) {

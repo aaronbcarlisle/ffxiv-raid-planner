@@ -229,7 +229,7 @@ function ProfileSidebarNav({
                         layoutId="sidebar-profile-active-bar"
                         className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
                         style={{
-                          background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, #14b8a6 50%, rgba(20,184,166,0.3) 100%)',
+                          background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, var(--color-accent) 50%, rgba(20,184,166,0.3) 100%)',
                           boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
                         }}
                         transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
@@ -561,7 +561,7 @@ export default function Profile() {
           }}
         >
           {/* Top accent rule */}
-          <div style={{ height: 2, background: 'linear-gradient(90deg, #14b8a6 0%, rgba(20,184,166,0.3) 45%, transparent 100%)' }} />
+          <div style={{ height: 2, background: 'linear-gradient(90deg, var(--color-accent) 0%, rgba(20,184,166,0.3) 45%, transparent 100%)' }} />
           <div className="flex items-center gap-3 px-3 py-3 sm:px-4 sm:py-4">
             {/* User avatar */}
             <div
@@ -692,7 +692,7 @@ export default function Profile() {
                   >
                     {tab.label}
                     {collSubTab === tab.id && (
-                      <span className="absolute bottom-0 inset-x-0 h-[2px] rounded-t" style={{ background: 'linear-gradient(90deg, rgba(20,184,166,0.5) 0%, #14b8a6 50%, rgba(20,184,166,0.5) 100%)' }} />
+                      <span className="absolute bottom-0 inset-x-0 h-[2px] rounded-t" style={{ background: 'linear-gradient(90deg, rgba(20,184,166,0.5) 0%, var(--color-accent) 50%, rgba(20,184,166,0.5) 100%)' }} />
                     )}
                   </button>
                 ))}
