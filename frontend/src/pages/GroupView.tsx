@@ -1342,6 +1342,13 @@ export function GroupView() {
                     setPageMode('roster');
                     setRosterSubView('split-planner');
                   }}
+                  onOpenIntegrations={() => {
+                    if (currentGroup?.id) {
+                      sessionStorage.setItem(`schedule-subtab-${currentGroup.id}`, 'integrations');
+                    }
+                    setScheduleView('calendar');
+                    setPageMode('schedule');
+                  }}
                   canManage={canManageRoster(userRole).allowed}
                   userRole={userRole ?? null}
                 />

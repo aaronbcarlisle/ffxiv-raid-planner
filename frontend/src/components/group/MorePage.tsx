@@ -14,6 +14,7 @@ interface MorePageProps {
   onNavigate: (tab: PageMode) => void;
   onSetGearSubTab: (sub: GearSubTab) => void;
   onOpenSplitPlanner: () => void;
+  onOpenIntegrations: () => void;
   canManage: boolean;
   userRole: MemberRole | null;
 }
@@ -27,6 +28,7 @@ export function MorePage({
   onNavigate,
   onSetGearSubTab,
   onOpenSplitPlanner,
+  onOpenIntegrations,
   canManage,
   userRole,
 }: MorePageProps) {
@@ -163,7 +165,7 @@ export function MorePage({
             title="Integrations"
             icon={<Link2 size={13} />}
             accentColor={discordLinked || webhookOk ? 'teal' : undefined}
-            onClick={() => onOpenSettings('integrations')}
+            onClick={onOpenIntegrations}
           >
             <p className="text-xs text-text-secondary mb-4">
               Connect Discord and other services to enhance scheduling and reminders.
