@@ -75,7 +75,6 @@ function DashboardCard({
   children,
   footer,
   className,
-  accent = false,
 }: {
   title: string;
   subtitle?: string;
@@ -83,29 +82,24 @@ function DashboardCard({
   children: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
-  accent?: boolean;
 }) {
   return (
     <div
       className={`group flex flex-col rounded-xl border border-border-subtle overflow-hidden transition-all duration-150 hover:border-border-hover ${className ?? ''}`}
       style={{
-        background: accent
-          ? 'linear-gradient(145deg, rgba(20,184,166,0.1) 0%, rgba(20,184,166,0.03) 50%, transparent 100%)'
-          : 'linear-gradient(160deg, rgba(255,255,255,0.025) 0%, transparent 55%)',
+        background: 'linear-gradient(160deg, rgba(255,255,255,0.02) 0%, transparent 55%)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 12px rgba(0,0,0,0.18)',
       }}
     >
-      {accent && (
-        <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.7) 0%, rgba(20,184,166,0.18) 55%, transparent 100%)', flexShrink: 0 }} />
-      )}
       <div className="flex flex-col flex-1 p-3.5">
         <div className="mb-3 flex items-start gap-2.5">
           {icon && (
             <div
-              className="mt-0.5 rounded-lg p-1.5 text-accent flex-shrink-0 transition-all duration-150 group-hover:scale-110"
+              className="mt-0.5 rounded-lg p-1.5 flex-shrink-0 transition-all duration-150 group-hover:brightness-125"
               style={{
-                background: 'rgba(20,184,166,0.1)',
-                boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.25), 0 0 8px rgba(20,184,166,0.06)',
+                background: 'rgba(255,255,255,0.06)',
+                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.07)',
+                color: 'rgba(255,255,255,0.45)',
               }}
             >
               {icon}
@@ -516,7 +510,6 @@ export function OverviewTab({
                 subtitle="Applications and roster links"
                 icon={<Briefcase className="h-4 w-4" />}
                 footer={<InlineLink to="/profile?tab=sync">Open Sync</InlineLink>}
-                accent
               >
                 {latestSnapshot ? (
                   <div className="space-y-2">
@@ -580,10 +573,7 @@ export function OverviewTab({
                 {collectionGoals.length > 0 ? (
                   <div className="flex items-center gap-5">
                     <div className="flex items-baseline gap-1.5">
-                      <span
-                        className="font-display text-2xl font-bold leading-none"
-                        style={{ color: '#14b8a6', textShadow: '0 0 20px rgba(20,184,166,0.45)' }}
-                      >
+                      <span className="font-display text-2xl font-bold leading-none text-accent">
                         {collectionGoals.filter((g) => g.status === 'active').length}
                       </span>
                       <span className="text-[11px] text-text-muted">active</span>
@@ -610,10 +600,7 @@ export function OverviewTab({
                 {personalGoals.length > 0 ? (
                   <div className="flex items-center gap-5">
                     <div className="flex items-baseline gap-1.5">
-                      <span
-                        className="font-display text-2xl font-bold leading-none"
-                        style={{ color: '#14b8a6', textShadow: '0 0 20px rgba(20,184,166,0.45)' }}
-                      >
+                      <span className="font-display text-2xl font-bold leading-none text-accent">
                         {personalGoals.filter((g) => g.status === 'active').length}
                       </span>
                       <span className="text-[11px] text-text-muted">active</span>
