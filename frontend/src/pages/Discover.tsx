@@ -348,7 +348,7 @@ export function Discover() {
   }, [fetchResults]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+    <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14 py-6 sm:py-8">
       {/* ─── Header ─── */}
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-primary mb-1">
@@ -531,7 +531,7 @@ export function Discover() {
           action={hasFilters || debouncedSearch ? { label: 'Clear filters', onClick: clearFilters } : undefined}
         />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {items.map((item) => (
             <ListingCard
               key={item.shareCode}
