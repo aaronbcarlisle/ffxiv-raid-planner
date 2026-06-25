@@ -94,13 +94,12 @@ function ProfileSidebarNav({
   return (
     <motion.nav
       aria-label="Player Hub navigation"
-      className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle overflow-hidden self-start sticky"
+      className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle"
       style={{
         background: 'linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%)',
         width: collapsed ? 56 : 208,
         minWidth: collapsed ? 56 : 208,
-        top: 'var(--header-height)',
-        height: 'calc(100dvh - var(--header-height))',
+        overflowY: 'auto',
       }}
       variants={{
         expanded: { width: 208, minWidth: 208 },
@@ -486,9 +485,18 @@ export default function Profile() {
   const focusAvailability = new URLSearchParams(location.search).get('focus') === 'availability';
 
   return (
-    <div ref={pageRef} className="mx-auto w-full max-w-[1440px] flex flex-col">
+    <div ref={pageRef} className="flex flex-1 min-h-0 w-full mx-auto max-w-[1440px]">
+      {/* Sidebar — fills flex parent height naturally, no sticky needed */}
+      <ProfileSidebarNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        characterName={mainCharacter?.name}
+      />
+
+      {/* Right panel: header + tab content (scrolls independently) */}
+      <div className="flex-1 min-w-0 overflow-y-auto flex flex-col" style={{ scrollbarGutter: 'stable' }}>
       {/* Header — command center card */}
-      <div className="px-3 py-2 sm:px-5 sm:py-4 lg:px-6">
+      <div className="px-3 py-2 sm:px-5 sm:py-4 lg:px-6 flex-shrink-0">
       <motion.div {...fadeInProps} className="mb-3 sm:mb-4">
         <div
           className="rounded-xl border border-border-subtle overflow-hidden"
@@ -550,18 +558,10 @@ export default function Profile() {
           </div>
         )}
       </motion.div>
-      </div>{/* end header padding */}
-
-      {/* Shell: sidebar (desktop) + content */}
-      <div className="flex flex-1 min-h-0">
-        <ProfileSidebarNav
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          characterName={mainCharacter?.name}
-        />
+      </div>{/* end header */}
 
         {/* Tab content */}
-        <div className="flex-1 min-w-0 px-3 sm:px-5 lg:px-6 pb-20 sm:pb-4">
+        <div className="flex-1 px-3 sm:px-5 lg:px-6 pb-20 sm:pb-4">
         <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -632,7 +632,7 @@ export default function Profile() {
         </motion.div>
         </AnimatePresence>
         </div>{/* end content */}
-      </div>{/* end shell */}
+      </div>{/* end right panel / scroll column */}
 
       {/* Modals */}
       {linkModal.isOpen && <CharacterLinkModal onClose={linkModal.close} />}
