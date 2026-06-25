@@ -674,8 +674,8 @@ export default function Profile() {
           <div className="flex flex-col gap-5">
             {/* ── Sub-tab bar ── */}
             {/* eslint-disable-next-line design-system/no-raw-button */}
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-1 bg-surface-raised rounded-lg p-1 border border-border-subtle">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex border-b border-border-subtle">
                 {([
                   { id: 'goals'      as const, label: 'Tasks & Goals' },
                   { id: 'priorities' as const, label: 'My Priorities' },
@@ -685,22 +685,25 @@ export default function Profile() {
                     key={tab.id}
                     type="button"
                     onClick={() => setCollSubTab(tab.id)}
-                    className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                    className={`relative px-4 py-2 text-xs font-semibold transition-colors whitespace-nowrap ${
                       collSubTab === tab.id
-                        ? 'bg-accent/20 text-accent'
-                        : 'text-text-secondary hover:text-text-primary'
+                        ? 'text-accent'
+                        : 'text-text-muted hover:text-text-secondary'
                     }`}
                   >
                     {tab.label}
+                    {collSubTab === tab.id && (
+                      <span className="absolute bottom-0 inset-x-0 h-[2px] rounded-t" style={{ background: 'linear-gradient(90deg, rgba(20,184,166,0.5) 0%, #14b8a6 50%, rgba(20,184,166,0.5) 100%)' }} />
+                    )}
                   </button>
                 ))}
               </div>
 
               {/* Per-tab description */}
-              <p className="text-xs text-text-muted px-1">
+              <p className="text-[11px] text-text-muted px-0.5 leading-relaxed">
                 {collSubTab === 'goals' && 'Personal tasks — gearing, clears, raid prep, or custom reminders. Not tied to collection rewards.'}
-                {collSubTab === 'priorities' && 'Mounts, music, weapons, and other rewards you\'re hunting or farming. Mark visibility to share with your statics.'}
-                {collSubTab === 'browse' && 'Browse the full rewards catalog to discover what\'s available and set your intent on new items.'}
+                {collSubTab === 'priorities' && "Mounts, music, weapons, and other rewards you're hunting or farming. Mark visibility to share with your statics."}
+                {collSubTab === 'browse' && "Browse the full rewards catalog to discover what's available and set your intent on new items."}
               </p>
             </div>
 
