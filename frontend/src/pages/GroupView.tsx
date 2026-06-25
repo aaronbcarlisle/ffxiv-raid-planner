@@ -36,7 +36,7 @@ import { SidebarNav } from '../components/layout/SidebarNav';
 import { PageHeader } from '../components/layout/PageHeader';
 import { MorePage } from '../components/group/MorePage';
 import { GoalsPage } from '../components/group/GoalsPage';
-import { GearSyncDashboard } from '../components/group/GearSyncDashboard';
+import { GearSyncDashboard, PLUGIN_GUIDE_EVENT } from '../components/group/GearSyncDashboard';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
@@ -1305,7 +1305,11 @@ export function GroupView() {
                       groupId={currentGroup.id}
                       canManage={canManageRoster(userRole).allowed}
                       onSwitchToCalendar={() => setScheduleView('calendar')}
-                      onOpenPlugin={() => { setGearSubTab('sync'); setPageMode('gear'); }}
+                      onOpenPlugin={() => {
+                        setGearSubTab('sync');
+                        setPageMode('gear');
+                        setTimeout(() => window.dispatchEvent(new CustomEvent(PLUGIN_GUIDE_EVENT)), 350);
+                      }}
                     />
                   )}
 
@@ -1353,6 +1357,7 @@ export function GroupView() {
                   onOpenPlugin={() => {
                     setGearSubTab('sync');
                     setPageMode('gear');
+                    setTimeout(() => window.dispatchEvent(new CustomEvent(PLUGIN_GUIDE_EVENT)), 350);
                   }}
                   canManage={canManageRoster(userRole).allowed}
                   userRole={userRole ?? null}

@@ -1,5 +1,5 @@
 /* eslint-disable design-system/no-raw-button */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import {
   CheckCircle, AlertCircle, AlertTriangle, Clock, BarChart3,
   Wifi, Target, Shield, UserX, Activity, PlugZap,
@@ -49,11 +49,26 @@ const INSTALL_STEPS = [
   },
 ] as const;
 
+export const PLUGIN_GUIDE_EVENT = 'plugin:open-guide';
+
 function PluginInstallGuide() {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = () => {
+      setOpen(true);
+      setTimeout(() => {
+        containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+    };
+    window.addEventListener(PLUGIN_GUIDE_EVENT, handler);
+    return () => window.removeEventListener(PLUGIN_GUIDE_EVENT, handler);
+  }, []);
 
   return (
     <div
+      ref={containerRef}
       className="rounded-xl border border-border-subtle overflow-hidden"
       style={{
         background: 'linear-gradient(160deg, rgba(14,14,22,0.95) 0%, rgba(10,10,16,0.98) 100%)',
