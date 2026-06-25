@@ -58,7 +58,6 @@ const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
 };
 
 // ── Profile sidebar nav ────────────────────────────────────────────────────
-/* eslint-disable-next-line design-system/no-raw-button */
 const PROFILE_NAV_ITEMS: Array<{
   id: ProfileTab;
   label: string;
@@ -673,7 +672,6 @@ export default function Profile() {
         {activeTab === 'collections' && (
           <div className="flex flex-col gap-5">
             {/* ── Sub-tab bar ── */}
-            {/* eslint-disable-next-line design-system/no-raw-button */}
             <div className="flex flex-col gap-1.5">
               <div className="flex border-b border-border-subtle">
                 {([
@@ -681,6 +679,7 @@ export default function Profile() {
                   { id: 'priorities' as const, label: 'My Priorities' },
                   { id: 'browse'     as const, label: 'Browse Catalog' },
                 ] satisfies { id: typeof collSubTab; label: string }[]).map(tab => (
+                  // eslint-disable-next-line design-system/no-raw-button
                   <button
                     key={tab.id}
                     type="button"

@@ -183,6 +183,7 @@ export function GearSyncDashboard({ players, onViewStats }: GearSyncDashboardPro
   const configured = useMemo(() => players.filter(p => p.configured), [players]);
 
   const syncStats = useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity -- Date.now() intentional: staleness computed at data-change time, not on a clock tick
     const now = Date.now();
     const withSync = configured.filter(p => p.lastSync);
     const sorted = [...withSync].sort(
