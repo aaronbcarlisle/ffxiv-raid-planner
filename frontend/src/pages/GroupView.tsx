@@ -843,10 +843,11 @@ export function GroupView() {
     (isSmallScreen && pageMode === 'gear' && gearSubTab === 'priority');
 
   // Build container classes (extracted for readability)
+  // Always flex-col so the sidebar+content shell can fill remaining height without sticky hacks.
   const containerClasses = [
-    'max-w-[160rem] mx-auto px-4 w-full',
+    'max-w-[160rem] mx-auto px-4 w-full flex-1 min-h-0 flex flex-col',
     isSmallScreen && 'has-bottom-nav',
-    preventPageScroll && 'prevent-page-scroll flex-1 min-h-0 flex flex-col overflow-hidden',
+    preventPageScroll && 'prevent-page-scroll overflow-hidden',
     preventPageScroll && isSmallScreen && 'h-[calc(100dvh-var(--layout-chrome))] overscroll-contain pb-4',
   ].filter(Boolean).join(' ');
 
@@ -895,10 +896,10 @@ export function GroupView() {
       {currentTier && (
         <>
           {/* App shell: sidebar (desktop) + content */}
-          <div className={`flex flex-1 min-h-0 -mx-3 sm:-mx-6 ${preventPageScroll ? 'overflow-hidden' : ''}`}>
+          <div className="flex flex-1 min-h-0 -mx-3 sm:-mx-6 overflow-hidden">
             <SidebarNav activeTab={pageMode} onTabChange={setPageMode} staticName={currentGroup?.name} />
             <div
-              className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : ''}`}
+              className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'}`}
               style={{ backgroundImage: 'radial-gradient(ellipse 70% 45% at 15% 0%, rgba(20,184,166,0.055) 0%, transparent 65%), radial-gradient(ellipse 35% 25% at 90% 95%, rgba(20,184,166,0.022) 0%, transparent 50%)' }}
             >
 

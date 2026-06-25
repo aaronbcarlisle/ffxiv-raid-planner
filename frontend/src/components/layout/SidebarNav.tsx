@@ -48,13 +48,11 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
   return (
     <motion.nav
       aria-label="Static navigation"
-      className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle overflow-hidden self-start sticky"
+      className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle overflow-x-hidden overflow-y-auto"
       style={{
         background: 'linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%)',
         width: collapsed ? 56 : 208,
         minWidth: collapsed ? 56 : 208,
-        top: 'var(--header-height)',
-        height: 'calc(100dvh - var(--header-height))',
       }}
       variants={{
         expanded: { width: 208, minWidth: 208 },
