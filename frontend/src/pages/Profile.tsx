@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, ChevronDown, Users } from 'lucide-react';
+import {
+  Calendar, ChevronDown, ChevronLeft, ChevronRight,
+  Crosshair, Eye, LayoutDashboard, Shield, Sparkles, Target, User, Users,
+} from 'lucide-react';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
 import {
@@ -50,6 +53,158 @@ const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
   member: 'Member',
   viewer: 'Viewer',
 };
+
+// ── Profile sidebar nav ────────────────────────────────────────────────────
+/* eslint-disable-next-line design-system/no-raw-button */
+const PROFILE_NAV_ITEMS: Array<{ id: ProfileTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
+  { id: 'overview',     label: 'Overview',     icon: LayoutDashboard },
+  { id: 'sync',         label: 'Sync & Gear',  icon: Shield },
+  { id: 'jobs-gear',    label: 'Jobs & Gear',  icon: Crosshair },
+  { id: 'collections',  label: 'Collections',  icon: Sparkles },
+  { id: 'availability', label: 'Availability', icon: Calendar },
+  { id: 'goals',        label: 'Goals',        icon: Target },
+  { id: 'preview',      label: 'Share',        icon: Eye },
+];
+
+const PROFILE_SIDEBAR_KEY = 'profile-sidebar-collapsed';
+
+/* eslint-disable design-system/no-raw-button */
+function ProfileSidebarNav({
+  activeTab,
+  onTabChange,
+  characterName,
+}: {
+  activeTab: ProfileTab;
+  onTabChange: (tab: ProfileTab) => void;
+  characterName?: string;
+}) {
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(PROFILE_SIDEBAR_KEY) === 'true'; } catch { return false; }
+  });
+
+  const toggle = () => {
+    setCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem(PROFILE_SIDEBAR_KEY, String(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  return (
+    <motion.nav
+      aria-label="Player Hub navigation"
+      className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle overflow-hidden self-start sticky"
+      style={{
+        background: 'linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%)',
+        width: collapsed ? 56 : 208,
+        minWidth: collapsed ? 56 : 208,
+        top: 'var(--header-height)',
+        height: 'calc(100dvh - var(--header-height))',
+      }}
+      variants={{
+        expanded: { width: 208, minWidth: 208 },
+        collapsed: { width: 56, minWidth: 56 },
+      }}
+      animate={collapsed ? 'collapsed' : 'expanded'}
+      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+    >
+      {/* Identity header */}
+      <div
+        className="flex items-center h-12 border-b border-border-subtle flex-shrink-0"
+        style={{ background: 'rgba(20,184,166,0.045)' }}
+      >
+        <div className={`flex items-center min-w-0 w-full ${collapsed ? 'justify-center' : 'px-4 gap-2.5'}`}>
+          <div
+            className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
+          >
+            <User size={12} className="text-accent" />
+          </div>
+          {!collapsed && (
+            <span
+              className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
+              title={characterName}
+            >
+              {characterName ?? 'Player Hub'}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Nav items */}
+      <div className="flex flex-col py-2 flex-1">
+        {PROFILE_NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <div key={item.id}>
+              <button
+                onClick={() => onTabChange(item.id)}
+                title={collapsed ? item.label : undefined}
+                aria-current={isActive ? 'page' : undefined}
+                className={`
+                  relative flex items-center w-full py-2.5 text-sm font-medium text-left
+                  transition-colors duration-150 select-none
+                  ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'}
+                  ${isActive
+                    ? 'text-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.035]'
+                  }
+                `}
+              >
+                <span
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: 'rgba(20,184,166,0.09)',
+                    boxShadow: 'inset 0 0 32px rgba(20,184,166,0.1)',
+                    opacity: isActive ? 1 : 0,
+                    transition: 'opacity 150ms ease',
+                  }}
+                />
+                <span
+                  className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, #14b8a6 50%, rgba(20,184,166,0.3) 100%)',
+                    boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
+                    opacity: isActive ? 1 : 0,
+                    transition: 'opacity 150ms ease',
+                  }}
+                />
+                <Icon size={15} className="flex-shrink-0 relative z-10" />
+                {!collapsed && (
+                  <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
+                )}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer: collapse toggle */}
+      <div className="border-t border-border-subtle flex-shrink-0">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={`w-full flex items-center py-3 text-text-muted hover:text-accent transition-colors ${collapsed ? 'justify-center' : 'px-4 gap-2'}`}
+        >
+          {collapsed
+            ? <ChevronRight size={13} />
+            : (
+              <>
+                <ChevronLeft size={13} />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">Player Hub</span>
+              </>
+            )
+          }
+        </button>
+      </div>
+    </motion.nav>
+  );
+}
+/* eslint-enable design-system/no-raw-button */
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 function StaticShortcut({ groups, mobile = false }: { groups: StaticGroupListItem[]; mobile?: boolean }) {
   if (groups.length === 0) {
@@ -141,7 +296,6 @@ export default function Profile() {
   const addJobModal = useModal();
   const [editingJob, setEditingJob] = useState<PlayerJobProfile | null>(null);
   const [managingBisJobId, setManagingBisJobId] = useState<{ id: string; job: string } | null>(null);
-  const tabScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const nextTab = parseProfileTab(location.search);
@@ -186,15 +340,6 @@ export default function Profile() {
     };
   }, []); // stable — reads from ref
 
-  // Scroll the active tab button into view when tab changes (desktop tabs)
-  useEffect(() => {
-    const container = tabScrollRef.current;
-    if (!container) return;
-    const activeBtn = container.querySelector('[data-active="true"]') as HTMLElement | null;
-    if (activeBtn) {
-      activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  }, [activeTab]);
 
   useEffect(() => {
     if (!authInitialized || authLoading) return;
@@ -294,25 +439,15 @@ export default function Profile() {
             ? { label: 'Share Profile', action: () => setActiveTab('preview') }
             : null;
 
-  // Desktop tab labels
-  const allTabs: { id: ProfileTab; label: string; count?: number }[] = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'sync', label: 'Sync' },
-    { id: 'jobs-gear', label: 'Jobs & Gear', count: jobProfiles.length },
-    { id: 'collections', label: 'Collections' },
-    { id: 'availability', label: 'Availability' },
-    { id: 'goals', label: 'Goals' },
-    { id: 'preview', label: 'Share' },
-  ];
-  const tabs = allTabs;
 
   // Static shortcut — first group remains the default for existing schedule/availability integrations.
   const primaryStatic = groups.length > 0 ? groups[0] : null;
   const focusAvailability = new URLSearchParams(location.search).get('focus') === 'availability';
 
   return (
-    <div ref={pageRef} className="mx-auto flex w-full max-w-[1440px] flex-col px-3 py-2 sm:px-5 sm:py-4 lg:px-6">
+    <div ref={pageRef} className="mx-auto w-full max-w-[1440px] flex flex-col">
       {/* Header — command center card */}
+      <div className="px-3 py-2 sm:px-5 sm:py-4 lg:px-6">
       <motion.div {...fadeInProps} className="mb-3 sm:mb-4">
         <div
           className="rounded-xl border border-border-subtle overflow-hidden"
@@ -374,38 +509,18 @@ export default function Profile() {
           </div>
         )}
       </motion.div>
+      </div>{/* end header padding */}
 
-      {/* Desktop tab navigation — hidden on mobile (bottom nav replaces it) */}
-      <div className="hidden sm:block relative mb-4">
-        <div ref={tabScrollRef} className="flex gap-1 bg-surface-raised rounded-lg p-1 overflow-x-auto scrollbar-hide scroll-smooth">
-          {tabs.map((tab) => (
-            /* design-system-ignore: Tab button requires specific toggle styling */
-            <button
-              key={tab.id}
-              data-active={activeTab === tab.id ? 'true' : undefined}
-              onClick={() => setActiveTab(tab.id)}
-              className={`
-                flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border whitespace-nowrap flex-shrink-0
-                ${
-                  activeTab === tab.id
-                    ? 'bg-accent/20 text-accent border-accent/30'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border-transparent'
-                }
-              `}
-            >
-              {tab.label}
-              {tab.count !== undefined && tab.count > 0 && (
-                <span className="text-xs bg-surface-base px-1.5 py-0.5 rounded-full">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Shell: sidebar (desktop) + content */}
+      <div className="flex flex-1 min-h-0">
+        <ProfileSidebarNav
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          characterName={mainCharacter?.name}
+        />
 
-      {/* Tab content — bottom padding for mobile bottom nav */}
-      <div className="pb-20 sm:pb-0">
+        {/* Tab content */}
+        <div className="flex-1 min-w-0 px-3 sm:px-5 lg:px-6 pb-20 sm:pb-4">
         <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}
@@ -475,7 +590,8 @@ export default function Profile() {
         )}
         </motion.div>
         </AnimatePresence>
-      </div>
+        </div>{/* end content */}
+      </div>{/* end shell */}
 
       {/* Modals */}
       {linkModal.isOpen && <CharacterLinkModal onClose={linkModal.close} />}
