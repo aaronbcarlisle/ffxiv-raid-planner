@@ -1,12 +1,13 @@
 /* eslint-disable design-system/no-raw-button */
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, LayoutGroup } from 'framer-motion';
 import {
   LayoutDashboard, Calendar, Users, Trophy, Shield,
-  MoreHorizontal, ChevronLeft, ChevronRight,
+  MoreHorizontal, ChevronLeft, ChevronRight, PlugZap,
 } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { analytics } from '../../services/analytics';
+import { Tooltip } from '../primitives';
 
 interface SidebarNavProps {
   activeTab: PageMode;
@@ -62,7 +63,6 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
         style={{ background: 'rgba(20,184,166,0.045)' }}
       >
         {collapsed ? (
-          /* Collapsed: whole header is the expand button */
           <button
             type="button"
             onClick={toggle}
@@ -72,7 +72,6 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
             <ChevronRight size={14} />
           </button>
         ) : (
-          /* Expanded: icon + name, collapse chevron pinned right */
           <>
             <div className="flex items-center flex-1 min-w-0 px-3 gap-2.5">
               <div
@@ -101,65 +100,103 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
       </div>
 
       {/* ── Nav items ── */}
-      <div className="flex flex-col py-2 flex-1">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          const showDivider = item.id === 'more';
-          return (
-            <div key={item.id}>
-              {showDivider && <div className="mx-3 my-1.5 border-t border-border-subtle" />}
+      <LayoutGroup id="sidebar-static-nav">
+        <div className="flex flex-col py-2 flex-1">
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            const showDivider = item.id === 'more';
+            return (
+              <div key={item.id}>
+                {showDivider && <div className="mx-3 my-1.5 border-t border-border-subtle" />}
 
-              {/* design-system-ignore: Sidebar nav requires custom active state styling */}
-              <button
-                onClick={() => {
-                  analytics.track('navigation', 'sidebar_switch', { tab: item.id });
-                  onTabChange(item.id);
-                }}
-                title={collapsed ? item.label : undefined}
-                aria-current={isActive ? 'page' : undefined}
-                className={`
-                  relative flex items-center w-full py-2.5 text-sm font-medium text-left
-                  transition-colors duration-150 select-none
-                  ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'}
-                  ${isActive
-                    ? 'text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.035]'
-                  }
-                `}
-              >
-                {/* Active background — CSS opacity transition, no layoutId */}
-                <span
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: 'rgba(20,184,166,0.09)',
-                    boxShadow: 'inset 0 0 32px rgba(20,184,166,0.1)',
-                    opacity: isActive ? 1 : 0,
-                    transition: 'opacity 150ms ease',
-                  }}
-                />
+                <Tooltip
+                  content={item.label}
+                  side="right"
+                  sideOffset={12}
+                  disabled={!collapsed}
+                  delayDuration={200}
+                >
+                  {/* design-system-ignore: Sidebar nav requires custom active state styling */}
+                  <button
+                    onClick={() => {
+                      analytics.track('navigation', 'sidebar_switch', { tab: item.id });
+                      onTabChange(item.id);
+                    }}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`
+                      relative flex items-center w-full py-2.5 text-sm font-medium text-left
+                      transition-colors duration-150 select-none
+                      ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'}
+                      ${isActive
+                        ? 'text-accent'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.035]'
+                      }
+                    `}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-static-active-bg"
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: 'rgba(20,184,166,0.09)',
+                          boxShadow: 'inset 0 0 32px rgba(20,184,166,0.1)',
+                        }}
+                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                      />
+                    )}
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-static-active-bar"
+                        className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
+                        style={{
+                          background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, #14b8a6 50%, rgba(20,184,166,0.3) 100%)',
+                          boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
+                        }}
+                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                      />
+                    )}
+                    <Icon size={15} className="flex-shrink-0 relative z-10" />
+                    {!collapsed && (
+                      <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
+                    )}
+                  </button>
+                </Tooltip>
+              </div>
+            );
+          })}
+        </div>
+      </LayoutGroup>
 
-                {/* Left accent bar — CSS opacity transition, no layoutId */}
-                <span
-                  className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
-                  style={{
-                    background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, #14b8a6 50%, rgba(20,184,166,0.3) 100%)',
-                    boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
-                    opacity: isActive ? 1 : 0,
-                    transition: 'opacity 150ms ease',
-                  }}
-                />
-
-                <Icon size={15} className="flex-shrink-0 relative z-10" />
-                {!collapsed && (
-                  <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
-                )}
-              </button>
-            </div>
-          );
-        })}
+      {/* ── Plugin footer ── */}
+      <div className="border-t border-border-subtle flex-shrink-0">
+        <Tooltip
+          content="Dalamud Plugin"
+          side="right"
+          sideOffset={12}
+          disabled={!collapsed}
+          delayDuration={200}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              analytics.track('navigation', 'sidebar_plugin');
+              onTabChange('more');
+            }}
+            className={`
+              w-full flex items-center py-2.5 text-text-muted hover:text-accent transition-colors
+              ${collapsed ? 'justify-center' : 'gap-2.5 px-4'}
+            `}
+          >
+            <PlugZap size={13} className="flex-shrink-0" />
+            {!collapsed && (
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] leading-none">
+                Plugin
+              </span>
+            )}
+          </button>
+        </Tooltip>
       </div>
-
     </motion.nav>
   );
 }

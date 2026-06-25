@@ -1,6 +1,6 @@
 /* eslint-disable design-system/no-raw-button */
 import { useEffect, useMemo } from 'react';
-import { Calendar, Clock, Repeat, Link2, ChevronRight, CheckCircle, XCircle, Plus } from 'lucide-react';
+import { Calendar, Clock, Repeat, Link2, ChevronRight, CheckCircle, XCircle, Plus, PlugZap } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { DashboardCard, IconMedallion } from '../ui/DashboardCard';
 import { EmptyState } from '../ui/EmptyState';
@@ -10,6 +10,7 @@ interface ScheduleUpcomingPanelProps {
   canManage: boolean;
   onSwitchToCalendar: () => void;
   onCreateSession?: () => void;
+  onOpenPlugin?: () => void;
 }
 
 function fmtDate(iso: string, tz: string): string {
@@ -65,6 +66,7 @@ export function ScheduleUpcomingPanel({
   canManage,
   onSwitchToCalendar,
   onCreateSession,
+  onOpenPlugin,
 }: ScheduleUpcomingPanelProps) {
   const { sessions, settings, isLoading, fetchSessions, fetchSettings } = useScheduleStore();
 
@@ -105,39 +107,46 @@ export function ScheduleUpcomingPanel({
           action={canManage && onCreateSession ? { label: 'Add session', onClick: onCreateSession } : undefined}
           className="py-8"
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <DashboardCard title="Recurring Series" icon={<Repeat size={13} />}>
-            <p className="text-sm text-text-secondary">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <DashboardCard title="Recurring Series" icon={<Repeat size={13} />} onClick={onSwitchToCalendar}>
+            <p className="text-sm text-text-secondary mb-3">
               No recurring sessions. Create one in the calendar to set up weekly raid nights.
             </p>
-            <button
-              onClick={onSwitchToCalendar}
-              className="mt-3 flex items-center gap-1 text-xs text-accent font-medium hover:underline"
-            >
+            <div className="flex items-center gap-1 text-accent text-xs font-medium">
               Go to Calendar <ChevronRight size={12} />
-            </button>
+            </div>
           </DashboardCard>
-          <DashboardCard title="Discord Sync" icon={<Link2 size={13} />}>
+          <DashboardCard
+            title="Discord Sync"
+            icon={<Link2 size={13} />}
+            accentColor={discordConnected ? 'teal' : undefined}
+            onClick={canManage ? onSwitchToCalendar : undefined}
+          >
             {discordConnected ? (
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm mb-3">
                 <CheckCircle size={14} className="text-status-success" />
                 <span className="text-text-primary font-medium">
                   {discordLinked && settings?.discordGuildName ? settings.discordGuildName : 'Connected'}
                 </span>
               </div>
             ) : (
-              <p className="text-sm text-text-secondary">
+              <p className="text-sm text-text-secondary mb-3">
                 Link Discord to send reminders and sync event announcements automatically.
               </p>
             )}
             {canManage && (
-              <button
-                onClick={onSwitchToCalendar}
-                className="mt-3 flex items-center gap-1 text-xs text-accent font-medium hover:underline"
-              >
+              <div className="flex items-center gap-1 text-accent text-xs font-medium">
                 {discordConnected ? 'Manage' : 'Configure integration'} <ChevronRight size={12} />
-              </button>
+              </div>
             )}
+          </DashboardCard>
+          <DashboardCard title="Dalamud Plugin" icon={<PlugZap size={13} />} onClick={onOpenPlugin}>
+            <p className="text-sm text-text-secondary mb-3">
+              Sync gear and character data from FFXIV automatically with the plugin.
+            </p>
+            <div className="flex items-center gap-1 text-accent text-xs font-medium">
+              Setup plugin <ChevronRight size={12} />
+            </div>
           </DashboardCard>
         </div>
         <button
@@ -232,27 +241,24 @@ export function ScheduleUpcomingPanel({
         </DashboardCard>
       </div>
 
-      {/* Row 2: Recurring + Discord Sync */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Row 2: Recurring + Discord Sync + Plugin */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
         {/* Recurring Series */}
-        <DashboardCard title="Recurring Series" icon={<Repeat size={13} />}>
+        <DashboardCard title="Recurring Series" icon={<Repeat size={13} />} onClick={onSwitchToCalendar}>
           {recurringCount > 0 ? (
             <>
               <p className="text-3xl font-display font-bold text-text-primary">{recurringCount}</p>
-              <p className="text-xs text-text-secondary mt-1">active recurring series</p>
+              <p className="text-xs text-text-secondary mt-1 mb-3">active recurring series</p>
             </>
           ) : (
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-text-secondary mb-3">
               No recurring sessions. Create one in the calendar view.
             </p>
           )}
-          <button
-            onClick={onSwitchToCalendar}
-            className="mt-3 flex items-center gap-1 text-xs text-accent font-medium hover:underline"
-          >
+          <div className="flex items-center gap-1 text-accent text-xs font-medium">
             Manage series <ChevronRight size={12} />
-          </button>
+          </div>
         </DashboardCard>
 
         {/* Discord Sync */}
@@ -260,9 +266,10 @@ export function ScheduleUpcomingPanel({
           title="Discord Sync"
           icon={<Link2 size={13} />}
           accentColor={discordConnected ? 'teal' : undefined}
+          onClick={canManage ? onSwitchToCalendar : undefined}
         >
           {discordConnected ? (
-            <div className="flex items-start gap-2.5">
+            <div className="flex items-start gap-2.5 mb-3">
               <IconMedallion icon={<CheckCircle size={14} />} color="teal" size="sm" />
               <div>
                 <p className="text-sm font-medium text-text-primary">
@@ -272,7 +279,7 @@ export function ScheduleUpcomingPanel({
               </div>
             </div>
           ) : (
-            <div className="flex items-start gap-2.5">
+            <div className="flex items-start gap-2.5 mb-3">
               <IconMedallion icon={<XCircle size={14} />} color="neutral" size="sm" />
               <div>
                 <p className="text-sm text-text-secondary">Not connected</p>
@@ -281,13 +288,23 @@ export function ScheduleUpcomingPanel({
             </div>
           )}
           {canManage && (
-            <button
-              onClick={onSwitchToCalendar}
-              className="mt-3 flex items-center gap-1 text-xs text-accent font-medium hover:underline"
-            >
+            <div className="flex items-center gap-1 text-accent text-xs font-medium">
               {discordConnected ? 'Manage' : 'Configure'} integration <ChevronRight size={12} />
-            </button>
+            </div>
           )}
+        </DashboardCard>
+
+        {/* Dalamud Plugin */}
+        <DashboardCard title="Dalamud Plugin" icon={<PlugZap size={13} />} onClick={onOpenPlugin}>
+          <div className="flex items-start gap-2.5 mb-3">
+            <IconMedallion icon={<PlugZap size={14} />} color="neutral" size="sm" />
+            <div>
+              <p className="text-sm text-text-secondary">Sync gear & character data from FFXIV in real time.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-accent text-xs font-medium">
+            Setup plugin <ChevronRight size={12} />
+          </div>
         </DashboardCard>
       </div>
 

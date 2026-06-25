@@ -38,7 +38,7 @@ import { MorePage } from '../components/group/MorePage';
 import { GoalsPage } from '../components/group/GoalsPage';
 import { GearSyncDashboard } from '../components/group/GearSyncDashboard';
 import { useDevice } from '../hooks/useDevice';
-import { AlertTriangle, Copy, Check } from 'lucide-react';
+import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
 import { StaticHomeTab } from '../components/static-group/StaticHomeTab';
@@ -1016,12 +1016,12 @@ export function GroupView() {
               >
 
               {/* Page headers */}
-              {pageMode === 'overview' && <PageHeader title="Overview" subtitle="Command center for your static." />}
-              {pageMode === 'roster' && <PageHeader title="Roster" subtitle="Manage members, roles, and characters." />}
-              {pageMode === 'schedule' && <PageHeader title="Schedule" subtitle="Plan sessions and manage recurring events." />}
-              {pageMode === 'goals' && <PageHeader title="Goals & Farms" subtitle="Track objectives, farms, and weekly goals." />}
-              {pageMode === 'gear' && <PageHeader title="Gear & Sync" subtitle="Jobs, BiS, and sync health." />}
-              {pageMode === 'more' && <PageHeader title="More" subtitle="Lead tools, requests, and settings." />}
+              {pageMode === 'overview' && <PageHeader icon={<LayoutDashboard size={14} className="text-accent" />} title="Overview" subtitle="Command center for your static." />}
+              {pageMode === 'roster' && <PageHeader icon={<Users size={14} className="text-accent" />} title="Roster" subtitle="Manage members, roles, and characters." />}
+              {pageMode === 'schedule' && <PageHeader icon={<Calendar size={14} className="text-accent" />} title="Schedule" subtitle="Plan sessions and manage recurring events." />}
+              {pageMode === 'goals' && <PageHeader icon={<Trophy size={14} className="text-accent" />} title="Goals & Farms" subtitle="Track objectives, farms, and weekly goals." />}
+              {pageMode === 'gear' && <PageHeader icon={<Shield size={14} className="text-accent" />} title="Gear & Sync" subtitle="Jobs, BiS, and sync health." />}
+              {pageMode === 'more' && <PageHeader icon={<MoreHorizontal size={14} className="text-accent" />} title="More" subtitle="Lead tools, requests, and settings." />}
 
               {/* Overview Tab */}
               {pageMode === 'overview' && currentGroup && (
@@ -1305,6 +1305,7 @@ export function GroupView() {
                       groupId={currentGroup.id}
                       canManage={canManageRoster(userRole).allowed}
                       onSwitchToCalendar={() => setScheduleView('calendar')}
+                      onOpenPlugin={() => { setGearSubTab('sync'); setPageMode('gear'); }}
                     />
                   )}
 
@@ -1348,6 +1349,10 @@ export function GroupView() {
                     }
                     setScheduleView('calendar');
                     setPageMode('schedule');
+                  }}
+                  onOpenPlugin={() => {
+                    setGearSubTab('sync');
+                    setPageMode('gear');
                   }}
                   canManage={canManageRoster(userRole).allowed}
                   userRole={userRole ?? null}

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight,
-  Crosshair, Eye, LayoutDashboard, Shield, Sparkles, Target, User, Users,
+  Crosshair, Eye, LayoutDashboard, PlugZap, Shield, Sparkles, Target, User, Users,
 } from 'lucide-react';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
@@ -13,6 +13,7 @@ import {
   DropdownItem,
   DropdownSeparator,
   DropdownTrigger,
+  Tooltip,
 } from '../components/primitives';
 import { Skeleton } from '../components/ui/Skeleton';
 import { CharacterLinkModal } from '../components/profile/CharacterLinkModal';
@@ -151,52 +152,92 @@ function ProfileSidebarNav({
       </div>
 
       {/* Nav items */}
-      <div className="flex flex-col py-2 flex-1">
-        {PROFILE_NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <div key={item.id}>
-              <button
-                onClick={() => onTabChange(item.id)}
-                title={collapsed ? item.label : undefined}
-                aria-current={isActive ? 'page' : undefined}
-                className={`
-                  relative flex items-center w-full py-2.5 text-sm font-medium text-left
-                  transition-colors duration-150 select-none
-                  ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'}
-                  ${isActive
-                    ? 'text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.035]'
-                  }
-                `}
-              >
-                <span
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: 'rgba(20,184,166,0.09)',
-                    boxShadow: 'inset 0 0 32px rgba(20,184,166,0.1)',
-                    opacity: isActive ? 1 : 0,
-                    transition: 'opacity 150ms ease',
-                  }}
-                />
-                <span
-                  className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
-                  style={{
-                    background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, #14b8a6 50%, rgba(20,184,166,0.3) 100%)',
-                    boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
-                    opacity: isActive ? 1 : 0,
-                    transition: 'opacity 150ms ease',
-                  }}
-                />
-                <Icon size={15} className="flex-shrink-0 relative z-10" />
-                {!collapsed && (
-                  <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
-                )}
-              </button>
-            </div>
-          );
-        })}
+      <LayoutGroup id="sidebar-profile-nav">
+        <div className="flex flex-col py-2 flex-1">
+          {PROFILE_NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <div key={item.id}>
+                <Tooltip
+                  content={item.label}
+                  side="right"
+                  sideOffset={12}
+                  disabled={!collapsed}
+                  delayDuration={200}
+                >
+                  <button
+                    onClick={() => onTabChange(item.id)}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`
+                      relative flex items-center w-full py-2.5 text-sm font-medium text-left
+                      transition-colors duration-150 select-none
+                      ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'}
+                      ${isActive
+                        ? 'text-accent'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.035]'
+                      }
+                    `}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-profile-active-bg"
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: 'rgba(20,184,166,0.09)',
+                          boxShadow: 'inset 0 0 32px rgba(20,184,166,0.1)',
+                        }}
+                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                      />
+                    )}
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-profile-active-bar"
+                        className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
+                        style={{
+                          background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, #14b8a6 50%, rgba(20,184,166,0.3) 100%)',
+                          boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
+                        }}
+                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+                      />
+                    )}
+                    <Icon size={15} className="flex-shrink-0 relative z-10" />
+                    {!collapsed && (
+                      <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
+                    )}
+                  </button>
+                </Tooltip>
+              </div>
+            );
+          })}
+        </div>
+      </LayoutGroup>
+
+      {/* Plugin footer */}
+      <div className="border-t border-border-subtle flex-shrink-0">
+        <Tooltip
+          content="Plugin Sync"
+          side="right"
+          sideOffset={12}
+          disabled={!collapsed}
+          delayDuration={200}
+        >
+          <button
+            type="button"
+            onClick={() => onTabChange('sync')}
+            className={`
+              w-full flex items-center py-2.5 text-text-muted hover:text-accent transition-colors
+              ${collapsed ? 'justify-center' : 'gap-2.5 px-4'}
+            `}
+          >
+            <PlugZap size={13} className="flex-shrink-0" />
+            {!collapsed && (
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] leading-none">
+                Plugin Sync
+              </span>
+            )}
+          </button>
+        </Tooltip>
       </div>
 
     </motion.nav>

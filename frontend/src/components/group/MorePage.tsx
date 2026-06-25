@@ -1,7 +1,7 @@
 /* eslint-disable design-system/no-raw-button */
 import {
   Users, Settings, Link2, Book, Sword, Download, Activity,
-  AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle,
+  AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle, PlugZap,
 } from 'lucide-react';
 import type { MemberRole, PageMode, GearSubTab } from '../../types';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
@@ -15,6 +15,7 @@ interface MorePageProps {
   onSetGearSubTab: (sub: GearSubTab) => void;
   onOpenSplitPlanner: () => void;
   onOpenIntegrations: () => void;
+  onOpenPlugin: () => void;
   canManage: boolean;
   userRole: MemberRole | null;
 }
@@ -29,6 +30,7 @@ export function MorePage({
   onSetGearSubTab,
   onOpenSplitPlanner,
   onOpenIntegrations,
+  onOpenPlugin,
   canManage,
   userRole,
 }: MorePageProps) {
@@ -194,6 +196,31 @@ export function MorePage({
             </div>
             <div className="flex items-center gap-1 text-accent text-xs font-medium">
               Manage integrations <ChevronRight size={12} />
+            </div>
+          </DashboardCard>
+
+          {/* Plugin */}
+          <DashboardCard
+            title="Dalamud Plugin"
+            icon={<PlugZap size={13} />}
+            accentColor="teal"
+            onClick={onOpenPlugin}
+          >
+            <p className="text-xs text-text-secondary mb-4">
+              Sync gear scores, jobs, and character data directly from FFXIV with the XIVRaidPlanner plugin.
+            </p>
+            <div className="space-y-2 text-sm mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-text-secondary">Sync method</span>
+                <span className="text-xs text-text-muted">API key</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-text-secondary">Auto-syncs</span>
+                <span className="text-xs text-text-muted">Gear & jobs</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-accent text-xs font-medium">
+              Setup & manage <ChevronRight size={12} />
             </div>
           </DashboardCard>
 
