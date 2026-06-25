@@ -120,43 +120,58 @@ function ProfileSidebarNav({
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
     >
       {/* Identity header + collapse toggle */}
-      <div
-        className="flex items-center h-12 border-b border-border-subtle flex-shrink-0"
-        style={{ background: 'rgba(20,184,166,0.045)' }}
-      >
+      <div className="flex-shrink-0 border-b border-border-subtle" style={{ background: 'rgba(20,184,166,0.045)' }}>
         {collapsed ? (
           <button
             type="button"
             onClick={toggle}
             aria-label="Expand sidebar"
-            className="w-full h-full flex items-center justify-center text-text-muted hover:text-accent transition-colors"
+            className="w-full h-12 flex items-center justify-center text-text-muted hover:text-accent transition-colors"
           >
             <ChevronRight size={14} />
           </button>
         ) : (
           <>
-            <div className="flex items-center flex-1 min-w-0 px-3 gap-2.5">
-              <div
-                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
+            {/* Back-to-static breadcrumb — top row */}
+            {primaryStaticPath ? (
+              <Link
+                to={primaryStaticPath}
+                className="flex items-center gap-1.5 px-3 h-7 text-text-muted hover:text-accent transition-colors border-b border-border-subtle/50 w-full"
               >
-                <User size={12} className="text-accent" />
+                <ChevronLeft size={11} className="flex-shrink-0 opacity-60" />
+                <span className="text-[10px] font-medium tracking-[0.1em] leading-none truncate min-w-0">
+                  {primaryStaticName ?? 'My Static'}
+                </span>
+              </Link>
+            ) : (
+              <div className="h-7 border-b border-border-subtle/50" />
+            )}
+
+            {/* Character identity + collapse — bottom row */}
+            <div className="flex items-center h-9">
+              <div className="flex items-center flex-1 min-w-0 px-3 gap-2">
+                <div
+                  className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
+                >
+                  <User size={11} className="text-accent" />
+                </div>
+                <span
+                  className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
+                  title={characterName}
+                >
+                  {characterName ?? 'Player Hub'}
+                </span>
               </div>
-              <span
-                className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
-                title={characterName}
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label="Collapse sidebar"
+                className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
               >
-                {characterName ?? 'Player Hub'}
-              </span>
+                <ChevronLeft size={13} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={toggle}
-              aria-label="Collapse sidebar"
-              className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
-            >
-              <ChevronLeft size={13} />
-            </button>
           </>
         )}
       </div>
@@ -232,41 +247,8 @@ function ProfileSidebarNav({
         </div>
       </LayoutGroup>
 
-      {/* Footer: back-to-static + plugin */}
+      {/* Footer: plugin */}
       <div className="border-t border-border-subtle flex-shrink-0">
-
-        {/* Back to Static */}
-        {primaryStaticPath && (
-          <Tooltip
-            content={
-              <div className="max-w-[200px]">
-                <p className="font-semibold text-text-primary text-sm mb-0.5">
-                  {primaryStaticName ?? 'My Static'}
-                </p>
-                <p className="text-xs text-text-secondary leading-relaxed">Switch back to your static hub</p>
-              </div>
-            }
-            side="right"
-            sideOffset={collapsed ? 12 : 16}
-            delayDuration={collapsed ? 200 : 700}
-          >
-            <Link
-              to={primaryStaticPath}
-              className={`
-                w-full flex items-center py-2 text-text-muted hover:text-accent transition-colors border-b border-border-subtle
-                ${collapsed ? 'justify-center' : 'gap-2.5 px-4'}
-              `}
-            >
-              <ChevronLeft size={13} className="flex-shrink-0" />
-              {!collapsed && (
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] leading-none truncate min-w-0">
-                  {primaryStaticName ?? 'My Static'}
-                </span>
-              )}
-            </Link>
-          </Tooltip>
-        )}
-
         {/* Plugin Sync */}
         <Tooltip
           content={
