@@ -57,14 +57,19 @@ const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
 
 // ── Profile sidebar nav ────────────────────────────────────────────────────
 /* eslint-disable-next-line design-system/no-raw-button */
-const PROFILE_NAV_ITEMS: Array<{ id: ProfileTab; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
-  { id: 'overview',     label: 'Overview',     icon: LayoutDashboard },
-  { id: 'sync',         label: 'Sync & Gear',  icon: Shield },
-  { id: 'jobs-gear',    label: 'Jobs & Gear',  icon: Crosshair },
-  { id: 'collections',  label: 'Collections',  icon: Sparkles },
-  { id: 'availability', label: 'Availability', icon: Calendar },
-  { id: 'goals',        label: 'Goals',        icon: Target },
-  { id: 'preview',      label: 'Share',        icon: Eye },
+const PROFILE_NAV_ITEMS: Array<{
+  id: ProfileTab;
+  label: string;
+  description: string;
+  icon: React.FC<{ size?: number; className?: string }>;
+}> = [
+  { id: 'overview',     label: 'Overview',     description: 'Character overview, goals, and quick actions',        icon: LayoutDashboard },
+  { id: 'sync',         label: 'Sync & Gear',  description: 'Plugin sync status and character gear snapshots',     icon: Shield },
+  { id: 'jobs-gear',    label: 'Jobs & Gear',  description: 'Job profiles, BiS targets, and readiness status',    icon: Crosshair },
+  { id: 'collections',  label: 'Collections',  description: 'Mounts, music, weapons, and collection goals',        icon: Sparkles },
+  { id: 'availability', label: 'Availability', description: 'Your weekly availability for raid nights',            icon: Calendar },
+  { id: 'goals',        label: 'Goals',        description: 'Personal goals and task tracking',                    icon: Target },
+  { id: 'preview',      label: 'Share',        description: 'Preview and manage your shareable profile',           icon: Eye },
 ];
 
 const PROFILE_SIDEBAR_KEY = 'profile-sidebar-collapsed';
@@ -159,11 +164,15 @@ function ProfileSidebarNav({
             return (
               <div key={item.id}>
                 <Tooltip
-                  content={item.label}
+                  content={
+                    <div className="max-w-[200px]">
+                      <p className="font-semibold text-text-primary text-sm mb-0.5">{item.label}</p>
+                      <p className="text-xs text-text-secondary leading-relaxed">{item.description}</p>
+                    </div>
+                  }
                   side="right"
-                  sideOffset={12}
-                  disabled={!collapsed}
-                  delayDuration={200}
+                  sideOffset={collapsed ? 12 : 16}
+                  delayDuration={collapsed ? 200 : 700}
                 >
                   <button
                     onClick={() => onTabChange(item.id)}
@@ -215,11 +224,15 @@ function ProfileSidebarNav({
       {/* Plugin footer */}
       <div className="border-t border-border-subtle flex-shrink-0">
         <Tooltip
-          content="Plugin Sync"
+          content={
+            <div className="max-w-[200px]">
+              <p className="font-semibold text-text-primary text-sm mb-0.5">Plugin Sync</p>
+              <p className="text-xs text-text-secondary leading-relaxed">Open Sync & Gear to manage the Dalamud plugin</p>
+            </div>
+          }
           side="right"
-          sideOffset={12}
-          disabled={!collapsed}
-          delayDuration={200}
+          sideOffset={collapsed ? 12 : 16}
+          delayDuration={collapsed ? 200 : 700}
         >
           <button
             type="button"

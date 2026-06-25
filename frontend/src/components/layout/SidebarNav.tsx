@@ -15,13 +15,19 @@ interface SidebarNavProps {
   staticName?: string;
 }
 
-const NAV_ITEMS: Array<{ id: PageMode; label: string; icon: React.FC<{ size?: number; className?: string }> }> = [
-  { id: 'overview',  label: 'Overview',      icon: LayoutDashboard },
-  { id: 'schedule',  label: 'Schedule',      icon: Calendar },
-  { id: 'roster',    label: 'Roster',        icon: Users },
-  { id: 'goals',     label: 'Goals & Farms', icon: Trophy },
-  { id: 'gear',      label: 'Gear & Sync',   icon: Shield },
-  { id: 'more',      label: 'More',          icon: MoreHorizontal },
+const NAV_ITEMS: Array<{
+  id: PageMode;
+  label: string;
+  description: string;
+  shortcut?: string;
+  icon: React.FC<{ size?: number; className?: string }>;
+}> = [
+  { id: 'overview',  label: 'Overview',      description: 'Static overview, next raid, and pending applications', shortcut: '`',  icon: LayoutDashboard },
+  { id: 'schedule',  label: 'Schedule',      description: 'Upcoming sessions, availability, and Discord sync',    shortcut: '4',  icon: Calendar },
+  { id: 'roster',    label: 'Roster',        description: 'Member list, roles, and join requests',                shortcut: '1',  icon: Users },
+  { id: 'goals',     label: 'Goals & Farms', description: 'Farm goals, mount drops, and clear tracking',          shortcut: '3',  icon: Trophy },
+  { id: 'gear',      label: 'Gear & Sync',   description: 'BiS sets, gear sync, and loot history',               shortcut: '2',  icon: Shield },
+  { id: 'more',      label: 'More',          description: 'Integrations, settings, and tools',                                   icon: MoreHorizontal },
 ];
 
 const COLLAPSED_KEY = 'sidebar-collapsed';
@@ -111,11 +117,22 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
                 {showDivider && <div className="mx-3 my-1.5 border-t border-border-subtle" />}
 
                 <Tooltip
-                  content={item.label}
+                  content={
+                    <div className="max-w-[200px]">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="font-semibold text-text-primary text-sm">{item.label}</span>
+                        {item.shortcut && (
+                          <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle bg-surface-base text-text-muted font-mono leading-none flex-shrink-0">
+                            {item.shortcut}
+                          </kbd>
+                        )}
+                      </div>
+                      <p className="text-xs text-text-secondary leading-relaxed">{item.description}</p>
+                    </div>
+                  }
                   side="right"
-                  sideOffset={12}
-                  disabled={!collapsed}
-                  delayDuration={200}
+                  sideOffset={collapsed ? 12 : 16}
+                  delayDuration={collapsed ? 200 : 700}
                 >
                   {/* design-system-ignore: Sidebar nav requires custom active state styling */}
                   <button
@@ -171,11 +188,15 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
       {/* ── Plugin footer ── */}
       <div className="border-t border-border-subtle flex-shrink-0">
         <Tooltip
-          content="Dalamud Plugin"
+          content={
+            <div className="max-w-[200px]">
+              <p className="font-semibold text-text-primary text-sm mb-0.5">Dalamud Plugin</p>
+              <p className="text-xs text-text-secondary leading-relaxed">Sync gear and character data from FFXIV</p>
+            </div>
+          }
           side="right"
-          sideOffset={12}
-          disabled={!collapsed}
-          delayDuration={200}
+          sideOffset={collapsed ? 12 : 16}
+          delayDuration={collapsed ? 200 : 700}
         >
           <button
             type="button"
