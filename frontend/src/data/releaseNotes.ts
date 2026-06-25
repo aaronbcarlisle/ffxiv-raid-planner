@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.26.0';
+export const CURRENT_VERSION = '1.26.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,41 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.26.1',
+    date: '2026-06-24T00:00:00Z',
+    title: 'Recurring session scheduler fixes',
+    items: [
+      {
+        category: 'fix',
+        title: 'Cancelled occurrence no longer shown as next session',
+        description: 'Cancelling a single occurrence of a recurring session now correctly advances the displayed next-session date to the following occurrence instead of continuing to show the cancelled date.',
+        pr: 142,
+        prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
+      },
+      {
+        category: 'fix',
+        title: 'View Occurrences available in card/tile view',
+        description: 'The View Occurrences button (calendar icon) was missing when the schedule was displayed in compact card/tile layout. It is now shown consistently regardless of view mode.',
+        pr: 142,
+        prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
+      },
+      {
+        category: 'fix',
+        title: 'Recurring weekdays now match local timezone',
+        description: 'Sessions scheduled for Thursday/Sunday in America/Chicago (and other UTC− zones) were displaying as Wednesday/Saturday on the website. The scheduler now uses the session\'s IANA timezone for weekday matching so the displayed day always reflects the wall-clock day where the static is based.',
+        pr: 142,
+        prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
+      },
+      {
+        category: 'fix',
+        title: 'Session cancellations now key on local calendar date',
+        description: 'Cancelling a recurring session that runs late at night (e.g. Thu 7 PM CDT, which is Fri midnight UTC) now stores the cancellation against the correct local calendar date — Thursday, not Friday. This prevents the cancelled marker from being misidentified across day-boundary timezones.',
+        pr: 142,
+        prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
+      },
+    ],
+  },
   {
     version: '1.26.0',
     date: '2026-06-23T12:00:00Z',

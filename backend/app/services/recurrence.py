@@ -17,6 +17,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from ..logging_config import get_logger
 
@@ -116,6 +117,31 @@ def _parse_rrule(rrule_str: str) -> Optional[_RRule]:
     return _RRule(freq=freq, interval=interval, byday=byday, count=count, until=until)
 
 
+def _advance_local(
+    current: datetime, rule: _RRule, tz_obj: ZoneInfo, wall_time,
+) -> list[datetime]:
+    """Advance by one rule interval in local calendar time, preserving wall-clock time across DST.
+
+    Used for WEEKLY+BYDAY sessions when a timezone is known. Advancing in UTC
+    would shift the local display time by ±1 h across spring-forward/fall-back.
+    """
+    local_dt = current.astimezone(tz_obj)
+    local_date = local_dt.date()
+    local_weekday = local_dt.weekday()  # Python convention: Mon=0 … Sun=6
+
+    next_week_start = local_date - timedelta(days=local_weekday) + timedelta(weeks=rule.interval)
+
+    if not rule.byday:
+        target = next_week_start + timedelta(days=local_weekday)
+        return [datetime.combine(target, wall_time, tzinfo=tz_obj).astimezone(timezone.utc)]
+
+    candidates = sorted(
+        datetime.combine(next_week_start + timedelta(days=wd), wall_time, tzinfo=tz_obj).astimezone(timezone.utc)
+        for wd in rule.byday
+    )
+    return [c for c in candidates if c > current]
+
+
 def _advance(current: datetime, rule: _RRule) -> list[datetime]:
     """Return the candidate datetimes after `current` for one step of the rule."""
     if rule.freq == "DAILY":
@@ -156,17 +182,21 @@ def generate_occurrences(
     session_banner_url: Optional[str] = None,
     session_banner_key: Optional[str] = None,
     session_banner_source_type: Optional[str] = None,
+    timezone_name: Optional[str] = None,
 ) -> list[OccurrenceSpec]:
     """Generate up to `count` upcoming occurrences for a recurring session.
 
     Args:
-        session_start:  ISO datetime of the series start (serves as DTSTART).
-        session_end:    ISO datetime of the first occurrence's end.
-        rrule_str:      iCal RRULE string, e.g. "RRULE:FREQ=WEEKLY;BYDAY=SU,WE"
-        after:          Only return occurrences strictly after this datetime.
-                        Defaults to now (UTC).
-        count:          Maximum occurrences to return (capped at _MAX_BATCH).
-        exceptions:     Dict of occurrence_date → ScheduleException ORM row.
+        session_start:   ISO datetime of the series start (serves as DTSTART).
+        session_end:     ISO datetime of the first occurrence's end.
+        rrule_str:       iCal RRULE string, e.g. "RRULE:FREQ=WEEKLY;BYDAY=SU,WE"
+        after:           Only return occurrences strictly after this datetime.
+                         Defaults to now (UTC).
+        count:           Maximum occurrences to return (capped at _MAX_BATCH).
+        exceptions:      Dict of occurrence_date → ScheduleException ORM row.
+        timezone_name:   IANA timezone for the session (e.g. "America/Chicago").
+                         When provided, occurrences are generated in local calendar
+                         time so the wall-clock time is preserved across DST.
         session_title, session_description, session_banner_*: Series defaults.
 
     Returns:
@@ -197,17 +227,46 @@ def generate_occurrences(
 
     duration = dtend - dtstart
 
+    # Set up timezone-aware helpers for WEEKLY+BYDAY when timezone is known.
+    # Using ZoneInfo: advancing local calendar weeks preserves the wall-clock
+    # time (e.g. "7 PM") across DST transitions; naive UTC week advance does not.
+    tz_obj: Optional[ZoneInfo] = None
+    wall_time_local = None
+    if timezone_name and rule.freq == "WEEKLY" and rule.byday:
+        try:
+            tz_obj = ZoneInfo(timezone_name)
+            wall_time_local = dtstart.astimezone(tz_obj).time()
+        except Exception as exc:
+            logger.warning("recurrence_timezone_error", error=str(exc), timezone_name=timezone_name)
+            tz_obj = None
+
     # Build BYDAY seeds for WEEKLY: find all BYDAY hits in the start week first
     if rule.freq == "WEEKLY" and rule.byday:
-        week_start = dtstart - timedelta(days=dtstart.weekday())
-        seed_hits = sorted(
-            week_start + timedelta(days=wd) for wd in rule.byday
-        )
-        # Prime with the first hit at or after dtstart
-        candidates_queue = [h for h in seed_hits if h >= dtstart]
-        if not candidates_queue:
-            # All hits this week are before dtstart — advance one interval
-            candidates_queue = _advance(dtstart, rule)
+        if tz_obj is not None and wall_time_local is not None:
+            # Timezone-aware: seeds from the local calendar week so BYDAY=TH
+            # matches Thursday in the event timezone, not Thursday UTC.
+            local_dtstart = dtstart.astimezone(tz_obj)
+            local_week_start = local_dtstart.date() - timedelta(days=local_dtstart.weekday())
+            seed_hits = sorted(
+                datetime.combine(local_week_start + timedelta(days=wd), wall_time_local, tzinfo=tz_obj).astimezone(timezone.utc)
+                for wd in rule.byday
+            )
+            candidates_queue = [h for h in seed_hits if h >= dtstart]
+            if not candidates_queue:
+                next_local_week = local_week_start + timedelta(weeks=rule.interval)
+                candidates_queue = sorted(
+                    datetime.combine(next_local_week + timedelta(days=wd), wall_time_local, tzinfo=tz_obj).astimezone(timezone.utc)
+                    for wd in rule.byday
+                )
+        else:
+            # UTC-based (legacy / no timezone provided)
+            week_start = dtstart - timedelta(days=dtstart.weekday())
+            seed_hits = sorted(
+                week_start + timedelta(days=wd) for wd in rule.byday
+            )
+            candidates_queue = [h for h in seed_hits if h >= dtstart]
+            if not candidates_queue:
+                candidates_queue = _advance(dtstart, rule)
     else:
         candidates_queue = [dtstart]
 
@@ -232,8 +291,20 @@ def generate_occurrences(
 
         generated_count += 1
 
-        occurrence_date = current.date().isoformat()
+        # occurrence_date: use event-timezone local date when known, UTC otherwise.
+        # This ensures the key matches what the frontend uses for cancellation.
+        if tz_obj is not None:
+            occurrence_date = current.astimezone(tz_obj).date().isoformat()
+        else:
+            occurrence_date = current.date().isoformat()
+
         exc = exceptions.get(occurrence_date)
+        # Legacy fallback: exceptions stored before timezone-aware keying used the raw
+        # UTC date. Check it when the local date differs from the UTC date.
+        if exc is None and tz_obj is not None:
+            utc_fallback = current.date().isoformat()
+            if utc_fallback != occurrence_date:
+                exc = exceptions.get(utc_fallback)
 
         is_cancelled = exc is not None and getattr(exc, "type", None) == "cancelled"
         is_exception = exc is not None
@@ -283,7 +354,10 @@ def generate_occurrences(
             # Still have hits in this week's batch
             pass
         else:
-            next_batch = _advance(current, rule)
+            if tz_obj is not None and wall_time_local is not None:
+                next_batch = _advance_local(current, rule, tz_obj, wall_time_local)
+            else:
+                next_batch = _advance(current, rule)
             candidates_queue.extend(next_batch)
             candidates_queue.sort()
 
@@ -302,6 +376,7 @@ def next_occurrence(
     session_banner_url: Optional[str] = None,
     session_banner_key: Optional[str] = None,
     session_banner_source_type: Optional[str] = None,
+    timezone_name: Optional[str] = None,
 ) -> Optional[OccurrenceSpec]:
     """Return the single next upcoming occurrence, or None.
 
@@ -323,8 +398,22 @@ def next_occurrence(
         if dtstart <= after:
             return None
 
+        # Use event-timezone local date when available so cancellation keys match.
         occ_date = dtstart.date().isoformat()
-        exc = (exceptions or {}).get(occ_date)
+        if timezone_name:
+            try:
+                occ_date = dtstart.astimezone(ZoneInfo(timezone_name)).date().isoformat()
+            except Exception:
+                pass
+
+        excs = exceptions or {}
+        exc = excs.get(occ_date)
+        # Legacy UTC-key fallback for non-recurring sessions
+        if exc is None and timezone_name:
+            utc_fallback = dtstart.date().isoformat()
+            if utc_fallback != occ_date:
+                exc = excs.get(utc_fallback)
+
         if exc and getattr(exc, "type", None) == "cancelled":
             return None
 
@@ -349,5 +438,6 @@ def next_occurrence(
         session_banner_url=session_banner_url,
         session_banner_key=session_banner_key,
         session_banner_source_type=session_banner_source_type,
+        timezone_name=timezone_name,
     )
     return results[0] if results else None

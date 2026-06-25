@@ -5,7 +5,10 @@ import type { ScheduleSession } from '../../types';
 
 // Mock the schedule store so createException doesn't hit the network
 vi.mock('../../stores/scheduleStore', () => ({
-  useScheduleStore: () => ({ createException: vi.fn().mockResolvedValue(undefined) }),
+  useScheduleStore: () => ({
+    createException: vi.fn().mockResolvedValue(undefined),
+    fetchExceptions: vi.fn().mockResolvedValue([]),
+  }),
 }));
 
 const baseSession: ScheduleSession = {
