@@ -406,7 +406,7 @@ describe('StaticHomeTab — Command Brief', () => {
 
   it('shows "pending application" chip when there is a pending request and canManage', () => {
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
-    expect(screen.getByRole('button', { name: /1 pending application/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /1 application.*pending/i })).toBeInTheDocument();
   });
 
   it('does not show "pending application" chip when canManage is false', () => {
@@ -426,7 +426,7 @@ describe('StaticHomeTab — Command Brief', () => {
 
   it('shows "roster configured" chip always', () => {
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
-    expect(screen.getByRole('button', { name: /0\/8 roster configured/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /0\/8 players configured/i })).toBeInTheDocument();
   });
 });
 
@@ -483,18 +483,18 @@ describe('StaticHomeTab — Raid Prep section', () => {
 
   beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); setObjectiveGoalStore(); });
 
-  it('renders "Raid Prep" heading (not "Static Readiness" or "Roster Readiness")', () => {
+  it('renders "Tier Progress" heading (not "Static Readiness" or "Roster Readiness")', () => {
     render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     expect(screen.queryByText(/roster readiness/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/static readiness/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/raid prep/i)).toBeInTheDocument();
+    expect(screen.getByText(/tier progress/i)).toBeInTheDocument();
   });
 
-  it('Raid Prep rows are buttons (keyboard-accessible, navigate to roster)', () => {
+  it('player roster rows are buttons (keyboard-accessible, navigate to roster)', () => {
     render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
-    const raidPrepBtn = screen.getByRole('button', { name: /view warrior of light on roster/i });
-    expect(raidPrepBtn).toBeInTheDocument();
-    fireEvent.click(raidPrepBtn);
+    const rosterBtns = screen.getAllByRole('button', { name: /view warrior of light on roster/i });
+    expect(rosterBtns.length).toBeGreaterThan(0);
+    fireEvent.click(rosterBtns[0]);
     expect(onNavigate).toHaveBeenCalledWith('roster');
   });
 
@@ -633,7 +633,9 @@ describe('StaticHomeTab — Best Next Farm', () => {
   it('shows member count in Best Next Farm', () => {
     setFarmStore({ recommendations: [TOP_RECOMMENDATION] });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
-    expect(screen.getByText(/3 members still need this/i)).toBeInTheDocument();
+    // Count is in a nested <span>; getByText finds the outer span via its direct text node
+    const memberChip = screen.getByText(/members still need this/i);
+    expect(memberChip.textContent).toMatch(/3 members still need this/i);
   });
 
   it('"Schedule Farm" falls back to goals navigation when onScheduleFarm is not provided', () => {
