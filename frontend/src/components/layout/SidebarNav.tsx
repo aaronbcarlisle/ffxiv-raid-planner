@@ -56,27 +56,48 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
       animate={collapsed ? 'collapsed' : 'expanded'}
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
     >
-      {/* ── Identity header ── */}
+      {/* ── Identity header + collapse toggle ── */}
       <div
         className="flex items-center h-12 border-b border-border-subtle flex-shrink-0"
         style={{ background: 'rgba(20,184,166,0.045)' }}
       >
-        <div className={`flex items-center min-w-0 w-full ${collapsed ? 'justify-center' : 'px-4 gap-2.5'}`}>
-          <div
-            className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
+        {collapsed ? (
+          /* Collapsed: whole header is the expand button */
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="Expand sidebar"
+            className="w-full h-full flex items-center justify-center text-text-muted hover:text-accent transition-colors"
           >
-            <Shield size={12} className="text-accent" />
-          </div>
-          {!collapsed && (
-            <span
-              className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
-              title={staticName}
+            <ChevronRight size={14} />
+          </button>
+        ) : (
+          /* Expanded: icon + name, collapse chevron pinned right */
+          <>
+            <div className="flex items-center flex-1 min-w-0 px-3 gap-2.5">
+              <div
+                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
+              >
+                <Shield size={12} className="text-accent" />
+              </div>
+              <span
+                className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
+                title={staticName}
+              >
+                {staticName ?? 'Static'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label="Collapse sidebar"
+              className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
             >
-              {staticName ?? 'Static'}
-            </span>
-          )}
-        </div>
+              <ChevronLeft size={13} />
+            </button>
+          </>
+        )}
       </div>
 
       {/* ── Nav items ── */}
@@ -139,30 +160,6 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
         })}
       </div>
 
-      {/* ── Footer: collapse toggle ── */}
-      <div className="border-t border-border-subtle flex-shrink-0">
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={`
-            w-full flex items-center py-3 text-text-muted hover:text-accent transition-colors
-            ${collapsed ? 'justify-center' : 'px-4 gap-2'}
-          `}
-        >
-          {collapsed
-            ? <ChevronRight size={13} />
-            : (
-              <>
-                <ChevronLeft size={13} />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em]">
-                  XIVRaidPlanner
-                </span>
-              </>
-            )
-          }
-        </button>
-      </div>
     </motion.nav>
   );
 }
