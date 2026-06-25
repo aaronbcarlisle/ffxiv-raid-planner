@@ -153,9 +153,15 @@ const JOB_OPTIONS = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  open: 'bg-status-success/20 text-status-success border-status-success/30',
-  limited: 'bg-status-warning/20 text-status-warning border-status-warning/30',
-  closed: 'bg-status-error/20 text-status-error border-status-error/30',
+  open:    'bg-status-success/15 text-status-success border-status-success/25',
+  limited: 'bg-status-warning/15 text-status-warning border-status-warning/25',
+  closed:  'bg-surface-elevated text-text-muted border-border-default',
+};
+
+const STATUS_BORDER: Record<string, string> = {
+  open:    'rgba(74,222,128,0.35)',
+  limited: 'rgba(234,179,8,0.3)',
+  closed:  'rgba(255,255,255,0.06)',
 };
 
 const GOAL_CATEGORY_LABELS: Record<string, string> = {
@@ -348,7 +354,7 @@ export function Discover() {
   }, [fetchResults]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+    <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14 py-6 sm:py-8">
       {/* ─── Header ─── */}
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-primary mb-1">
@@ -413,7 +419,7 @@ export function Discover() {
         <div className="mb-5 p-4 bg-surface-card border border-border-default rounded-lg space-y-4">
           {/* Looking for */}
           <div>
-            <p className="text-text-muted text-[10px] font-semibold uppercase tracking-wider mb-2">Looking for</p>
+            <p className="text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2">Looking for</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <Label htmlFor="f-role">Role</Label>
@@ -435,7 +441,7 @@ export function Discover() {
           </div>
           {/* Goal objectives */}
           <div>
-            <p className="text-text-muted text-[10px] font-semibold uppercase tracking-wider mb-2">Objectives &amp; Alignment</p>
+            <p className="text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2">Objectives &amp; Alignment</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
               <div>
                 <Label htmlFor="f-goalcat">Objective Category</Label>
@@ -474,7 +480,7 @@ export function Discover() {
 
           {/* Location & schedule */}
           <div>
-            <p className="text-text-muted text-[10px] font-semibold uppercase tracking-wider mb-2">Location &amp; Schedule</p>
+            <p className="text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2">Location &amp; Schedule</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <Label htmlFor="f-dc">Data Center</Label>
@@ -531,7 +537,7 @@ export function Discover() {
           action={hasFilters || debouncedSearch ? { label: 'Clear filters', onClick: clearFilters } : undefined}
         />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {items.map((item) => (
             <ListingCard
               key={item.shareCode}
@@ -582,16 +588,21 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
   const hasSchedule = !!(item.scheduleDays?.length);
   const hasNeeds = !!(item.neededRoles?.length || item.neededJobs?.length);
 
+  const statusBorderColor = STATUS_BORDER[item.recruitmentStatus] ?? STATUS_BORDER.closed;
+
   return (
-    <div className="bg-surface-card border border-border-default rounded-lg hover:border-accent/30 transition-colors flex flex-col overflow-hidden">
+    <div
+      className="relative bg-surface-card border border-border-default rounded-lg hover:border-border-hover transition-all duration-150 flex flex-col overflow-hidden hover:shadow-md"
+      style={{ boxShadow: `inset 3px 0 0 ${statusBorderColor}` }}
+    >
       {/* ─── Card header ─── */}
       <div className="p-4 pb-0">
         {/* Row 1: Name + status */}
         <div className="flex items-start justify-between gap-2 mb-1.5">
-          <h3 className="text-base sm:text-lg font-display font-semibold text-text-primary break-words min-w-0">
+          <h3 className="text-base font-display font-semibold text-text-primary break-words min-w-0">
             {item.name}
           </h3>
-          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium border flex-shrink-0 capitalize whitespace-nowrap ${statusClass}`}>
+          <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold border flex-shrink-0 capitalize whitespace-nowrap tracking-wide ${statusClass}`}>
             {item.recruitmentStatus}
           </span>
         </div>
@@ -629,7 +640,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* Raid nights */}
         {hasSchedule && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Raid Nights</p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Raid Nights</p>
             <div className="flex items-center gap-1.5 text-text-secondary text-xs flex-wrap">
               <Swords className="w-3.5 h-3.5 flex-shrink-0 text-text-muted" />
               <span>
@@ -647,7 +658,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* Looking for */}
         {hasNeeds && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Looking For</p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Looking For</p>
             <div className="flex flex-wrap gap-1">
               {item.neededRoles?.map(r => (
                 <span key={r} className="px-2 py-0.5 bg-accent/10 text-accent border border-accent/20 rounded text-xs capitalize">
@@ -666,7 +677,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* Static objectives */}
         {item.objectiveCategories && item.objectiveCategories.length > 0 && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Official Goals <span className="normal-case font-normal opacity-70">· used for matching</span></p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Official Goals</p>
             <div className="flex flex-wrap gap-1">
               {item.objectiveCategories.map((cat) => (
                 <span key={cat} className="px-2 py-0.5 bg-surface-elevated text-text-secondary border border-border-default rounded text-xs">
@@ -680,7 +691,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* Goal alignment (logged-in users only) */}
         {item.goalAlignment && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Your Goal Match</p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Your Goal Match</p>
             <div className="flex items-center gap-2 text-xs flex-wrap">
               {item.goalAlignment.aligned > 0 && (
                 <span className="text-status-success font-medium">{item.goalAlignment.aligned} aligned</span>
@@ -706,7 +717,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* About */}
         {item.description && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">About</p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">About</p>
             <p className={`text-text-secondary text-sm break-words whitespace-pre-line ${!expanded && longDescription ? 'line-clamp-3' : ''}`}>
               {item.description}
             </p>
@@ -859,7 +870,7 @@ function FitSummarySection({ fit }: { fit: FitSummary }) {
 
   return (
     <div className="mb-2.5" data-testid="fit-summary">
-      <p className="text-text-muted text-[10px] mb-1 font-semibold uppercase tracking-wider">Fit Score</p>
+      <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Fit Score</p>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
         <span className={`font-semibold ${overallInfo.className}`} data-testid="fit-overall">
           {overallInfo.label}

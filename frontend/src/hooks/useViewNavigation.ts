@@ -7,7 +7,7 @@
 
 import { useCallback, useRef, useEffect } from 'react';
 import { toast } from '../stores/toastStore';
-import type { PageMode, LootLogEntry, MaterialLogEntry } from '../types';
+import type { PageMode, GearSubTab, LootLogEntry, MaterialLogEntry } from '../types';
 
 interface HighlightedEntry {
   id: string;
@@ -17,6 +17,7 @@ interface HighlightedEntry {
 
 interface UseViewNavigationParams {
   setPageMode: (mode: PageMode) => void;
+  setGearSubTab: (tab: GearSubTab) => void;
   setHighlightedPlayerId: (id: string | null) => void;
   setHighlightedSlot: (slot: string | null) => void;
   setHighlightedEntry: (entry: HighlightedEntry | null) => void;
@@ -41,6 +42,7 @@ export interface UseViewNavigationReturn {
 
 export function useViewNavigation({
   setPageMode,
+  setGearSubTab,
   setHighlightedPlayerId,
   setHighlightedSlot,
   setHighlightedEntry,
@@ -73,8 +75,8 @@ export function useViewNavigation({
     const normalizedSlot = slot === 'tome_weapon' ? 'weapon'
       : slot === 'ring' ? 'ring1'
       : slot;
-    // Switch to players tab
-    setPageMode('players');
+    // Switch to roster tab
+    setPageMode('roster');
     // Set highlighted player and optional slot
     setHighlightedPlayerId(playerId);
     setHighlightedSlot(normalizedSlot ?? null);
@@ -94,7 +96,7 @@ export function useViewNavigation({
       setHighlightedPlayerId(null);
       setHighlightedSlot(null);
     }, 2500);
-  }, [setPageMode, setHighlightedPlayerId, setHighlightedSlot]);
+  }, [setPageMode, setGearSubTab, setHighlightedPlayerId, setHighlightedSlot]);
 
   // Navigate to loot entry from player card (gear slot → loot entry)
   const handleNavigateToLootEntry = useCallback((playerId: string, slot: string) => {
@@ -120,8 +122,9 @@ export function useViewNavigation({
       toast.info('No loot entry found for this slot');
       return;
     }
-    // Switch to history (Log) tab
-    setPageMode('history');
+    // Switch to gear tab, loot log sub-tab
+    setPageMode('gear');
+    setGearSubTab('history');
     // Set highlighted entry with week for cross-week navigation
     setHighlightedEntry({ id: String(entry.id), type: 'loot', week: entry.weekNumber });
     // Scroll to entry after short delay to allow tab change and week switch
@@ -135,7 +138,7 @@ export function useViewNavigation({
     entryHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedEntry(null);
     }, 2500);
-  }, [lootLog, setPageMode, setHighlightedEntry]);
+  }, [lootLog, setPageMode, setGearSubTab, setHighlightedEntry]);
 
   // Navigate to material entry from player card (gear slot → material entry)
   const handleNavigateToMaterialEntry = useCallback((playerId: string, slot: string) => {
@@ -149,8 +152,9 @@ export function useViewNavigation({
       toast.info('No material entry found for this slot');
       return;
     }
-    // Switch to history (Log) tab
-    setPageMode('history');
+    // Switch to gear tab, loot log sub-tab
+    setPageMode('gear');
+    setGearSubTab('history');
     // Set highlighted entry with week for cross-week navigation
     setHighlightedEntry({ id: String(entry.id), type: 'material', week: entry.weekNumber });
     // Scroll to entry after short delay to allow tab change and week switch
@@ -164,14 +168,15 @@ export function useViewNavigation({
     entryHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedEntry(null);
     }, 2500);
-  }, [materialLog, setPageMode, setHighlightedEntry]);
+  }, [materialLog, setPageMode, setGearSubTab, setHighlightedEntry]);
 
   // Navigate to Books panel from player card context menu
   const handleNavigateToBooksPanel = useCallback((playerId: string) => {
     // Clear any existing timeout
     if (bookHighlightTimeoutRef.current) clearTimeout(bookHighlightTimeoutRef.current);
-    // Switch to history (Log) tab
-    setPageMode('history');
+    // Switch to gear tab, loot log sub-tab
+    setPageMode('gear');
+    setGearSubTab('history');
     // Set highlighted book player ID
     setHighlightedBookPlayerId(playerId);
     // Scroll to the row after short delay to allow tab change render
@@ -185,7 +190,7 @@ export function useViewNavigation({
     bookHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedBookPlayerId(null);
     }, 2500);
-  }, [setPageMode, setHighlightedBookPlayerId]);
+  }, [setPageMode, setGearSubTab, setHighlightedBookPlayerId]);
 
   return {
     handleNavigateToPlayer,

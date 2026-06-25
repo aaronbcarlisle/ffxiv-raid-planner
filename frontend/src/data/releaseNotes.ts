@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.26.1';
+export const CURRENT_VERSION = '1.27.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,74 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.27.0',
+    date: '2026-06-26T00:00:00Z',
+    title: 'Player Hub redesign & Static Home rework',
+    highlights: [
+      'Player Hub rebuilt with dedicated tabs for Collections Center, Tasks & Goals, and Activity',
+      'Static Home upgraded to a three-column command dashboard with live roster presence and BiS readiness',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Player Hub — full tab redesign',
+        description:
+          'Player Hub (Profile page) is now a multi-tab hub: Overview surfaces a Raider Snapshot (job, ilvl, readiness, activity); ' +
+          'Collections tracks intent and ownership for mounts, music, minions, and weapons with per-item visibility controls; ' +
+          'Tasks & Goals holds personal raid-prep tasks separate from static-level goals; ' +
+          'Activity shows a personal feed of recent plugin syncs and intent changes. ' +
+          'Tabs animate on switch. Header upgraded with avatar ring and teal gradient accent.',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
+      },
+      {
+        category: 'feature',
+        title: 'Static Home — three-column command dashboard',
+        description:
+          'The static group overview is now a three-column layout. ' +
+          'Left column: Notifications rail, Next Raid countdown, and Tier Progress BiS bar. ' +
+          'Center column: Group identity card with per-player readiness rows and a Recent Activity feed. ' +
+          'Right column: 4×2 Roster Presence grid, Best Next Farm duty card, and Goals & Farms tracker. ' +
+          'Command Brief chips surface pending applications and unconfigured roster slots at a glance. ' +
+          'All three columns stagger in on page load.',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
+      },
+      {
+        category: 'fix',
+        title: 'Profile page crash — "Rendered fewer hooks than expected" fixed',
+        description:
+          'A misplaced useKeyboardShortcuts call after three conditional early returns caused React to see a different number of hooks on different render paths, crashing the Profile page on unauthenticated or loading states. Hook moved above all early returns.',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
+      },
+      {
+        category: 'fix',
+        title: 'Static group sidebar layout after navigating from Player Hub',
+        description:
+          'After visiting Player Hub and returning to a static group, the left sidebar would appear as a large empty area. Profile moves scroll to its own content div, staling the sticky anchor in the main scroll context. Sidebar now participates in a flex column layout rather than using sticky positioning.',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
+      },
+      {
+        category: 'improvement',
+        title: 'Player Hub & Static Home — full aesthetic and motion pass',
+        description:
+          'Static Hub sidebar is now viewport-sticky with a minimum height. ' +
+          'Tab switches in both hubs animate with fade + slide via AnimatePresence. ' +
+          'Player Hub OverviewTab: Raider Snapshot cards use neutral glass surfaces with white/neutral icon boxes, removing inconsistent accent overuse. ' +
+          'SectionLabel dividers replaced with a 3px vertical teal bar. ' +
+          'GoalCard redesigned as a compact horizontal row with intent-colored accent bar, circle checkbox, hover-only actions, and inline progress bar. ' +
+          'GroupHeroPanel: teal gradient header, stat strip (avg iLv, BiS ready, roster count), role-color left bars on readiness rows. ' +
+          'BiS progress bar glows and color-codes by completion percentage. ' +
+          'Find a Static: status-colored inset shadow (`open` green / `limited` amber / `closed` neutral) as primary status signal.',
+        pr: 144,
+        prTitle: 'feat: Player Hub redesign, Collections Center, and UI/UX polish pass',
+        internal: true,
+      },
+    ],
+  },
   {
     version: '1.26.1',
     date: '2026-06-24T00:00:00Z',

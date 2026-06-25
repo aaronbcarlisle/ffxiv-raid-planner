@@ -9,6 +9,7 @@ export function getSyntheticNotifications(): AppNotification[] {
   );
   return RELEASES
     .filter((r) => r.version !== 'Unreleased' && !r.internal)
+    .filter((r, i, arr) => arr.findIndex((x) => x.version === r.version) === i)
     .slice(0, 5)
     .map((r) => ({
       id: `__release__${r.version}`,

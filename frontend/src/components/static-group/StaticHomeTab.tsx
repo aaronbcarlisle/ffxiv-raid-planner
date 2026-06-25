@@ -301,12 +301,32 @@ function deriveActivityItems(
 
 // ─── Shared label ─────────────────────────────────────────────────────────────
 
-function SectionLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+function SectionLabel({
+  icon,
+  children,
+  count,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  count?: React.ReactNode;
+}) {
   return (
-    <h3 className="flex items-center gap-1.5 text-[11px] font-bold text-text-muted uppercase tracking-[0.14em] mb-2.5 select-none">
-      <span className="opacity-70">{icon}</span>
-      {children}
-    </h3>
+    <div className="flex items-center gap-2 mb-2.5 select-none">
+      <h3
+        className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] flex-shrink-0 whitespace-nowrap"
+        style={{ color: 'rgba(20,184,166,0.65)' }}
+      >
+        <span style={{ opacity: 0.85 }}>{icon}</span>
+        {children}
+      </h3>
+      <div
+        className="flex-1 h-px"
+        style={{ background: 'linear-gradient(90deg, rgba(20,184,166,0.25) 0%, transparent 80%)' }}
+      />
+      {count !== undefined && (
+        <span className="text-xs font-bold text-text-primary flex-shrink-0">{count}</span>
+      )}
+    </div>
   );
 }
 
@@ -378,10 +398,20 @@ function NotificationsModule({
             ))}
           </div>
         ) : allItems.length === 0 ? (
-          <div className="px-3 py-5 text-center">
-            <Bell className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
-            <p className="text-xs font-medium text-text-secondary">No pending applications</p>
-            <p className="text-[11px] text-text-muted mt-0.5">Share your listing to start receiving requests</p>
+          <div className="px-3 py-3.5 flex items-center gap-3">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'rgba(34,197,94,0.1)',
+                boxShadow: 'inset 0 0 0 1px rgba(34,197,94,0.22)',
+              }}
+            >
+              <Check className="w-4 h-4 text-status-success" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-text-primary">All caught up</p>
+              <p className="text-[11px] text-text-muted">No pending applications right now</p>
+            </div>
           </div>
         ) : (
           <div className="divide-y divide-border-subtle">
@@ -392,7 +422,7 @@ function NotificationsModule({
                 onClick={() => {
                   if (item.id === 'session') onNavigate('schedule');
                   else if (onOpenRequests) onOpenRequests();
-                  else onNavigate('players');
+                  else onNavigate('roster');
                 }}
                 className="w-full flex items-start gap-3 px-3 py-2.5 hover:bg-surface-elevated transition-colors text-left group"
               >
@@ -447,24 +477,30 @@ function NextRaidModule({
             </button>
           </div>
         ) : (
-          <div className="p-3 space-y-2.5">
+          <div className="p-3.5 space-y-3">
             <div className="flex items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0">
                 {session.contentName && (
-                  <p className="text-[11px] font-semibold text-accent uppercase tracking-wide mb-0.5">
+                  <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">
                     {session.contentName}
                   </p>
                 )}
-                <p className="text-sm font-bold text-text-primary leading-tight">{session.title}</p>
+                <p className="text-sm font-bold text-text-primary leading-tight truncate">{session.title}</p>
               </div>
-              <span className="text-xs font-semibold text-accent bg-accent/10 rounded-md px-2 py-0.5 flex-shrink-0">
+              <span
+                className="flex-shrink-0 text-xs font-bold text-accent rounded-lg px-2.5 py-1"
+                style={{
+                  background: 'rgba(20,184,166,0.12)',
+                  boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.22)',
+                }}
+              >
                 {sessionCountdown(session.startTime)}
               </span>
             </div>
 
             <div className="flex items-center gap-1.5 text-xs text-text-secondary">
               <Calendar className="w-3 h-3 text-text-muted flex-shrink-0" />
-              <span>
+              <span className="truncate">
                 {new Date(session.startTime).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                 {' · '}
                 {new Date(session.startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
@@ -473,21 +509,41 @@ function NextRaidModule({
               </span>
             </div>
 
+            {/* RSVP dot grid */}
             {session.rsvps.length > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-                <Users className="w-3 h-3 text-text-muted flex-shrink-0" />
-                <span>
-                  {session.rsvps.filter((r) => r.status === 'available').length} available
-                </span>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: 8 }, (_, i) => {
+                    const rsvp = session.rsvps[i];
+                    const bg = !rsvp
+                      ? 'var(--color-surface-elevated)'
+                      : rsvp.status === 'available'
+                      ? 'var(--color-status-success)'
+                      : rsvp.status === 'unavailable'
+                      ? 'var(--color-status-error)'
+                      : 'var(--color-text-muted)';
+                    return (
+                      <div
+                        key={i}
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ background: bg }}
+                      />
+                    );
+                  })}
+                  <span className="ml-1 text-[10px] text-text-muted">
+                    {session.rsvps.filter((r) => r.status === 'available').length}/8 ready
+                  </span>
+                </div>
               </div>
             )}
 
             <button
               type="button"
               onClick={() => onNavigate('schedule')}
-              className="w-full mt-1 text-xs font-medium text-accent border border-accent/30 rounded-lg py-1.5 hover:bg-accent/10 transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-accent border border-accent/25 rounded-lg py-1.5 hover:bg-accent/10 transition-colors"
             >
               View Schedule
+              <ChevronRight className="w-3 h-3" />
             </button>
           </div>
         )}
@@ -516,33 +572,77 @@ function WeeklyProgressModule({
 
   if (!active.length) return null;
 
+  const pct = active.length > 0 ? bisCount / active.length : 0;
+  const barColor = pct >= 1 ? 'var(--color-status-success)' : pct >= 0.5 ? 'var(--color-status-warning)' : 'var(--color-accent)';
+  const barGlow = pct >= 1
+    ? '0 0 10px rgba(34,197,94,0.55), 0 0 3px rgba(34,197,94,0.9)'
+    : pct >= 0.5
+    ? '0 0 10px rgba(234,179,8,0.45), 0 0 3px rgba(234,179,8,0.8)'
+    : '0 0 10px rgba(20,184,166,0.45), 0 0 3px rgba(20,184,166,0.8)';
+
+  const READINESS_COLOR: Record<GearReadiness, string> = {
+    ready: 'var(--color-status-success)',
+    in_progress: 'var(--color-status-warning)',
+    needs_gear: 'var(--color-status-error)',
+    unknown: '#3f3f46',
+  };
+
   return (
     <div>
       <SectionLabel icon={<Target className="w-3 h-3" />}>Tier Progress</SectionLabel>
-      <div className="rounded-xl border border-border-subtle bg-surface-card p-3 space-y-2.5">
+      <div className="rounded-xl border border-border-subtle bg-surface-card p-3.5 space-y-3">
         {tierInfo && (
-          <p className="text-[11px] font-semibold text-accent uppercase tracking-wide">{tierInfo.name}</p>
+          <p className="text-[10px] font-bold text-accent uppercase tracking-widest">{tierInfo.name}</p>
         )}
 
-        <div>
-          <div className="flex justify-between mb-1">
-            <span className="text-[11px] text-text-secondary">BiS Complete</span>
-            <span className="text-[11px] font-semibold text-text-primary">
-              {bisCount} / {active.length}
-            </span>
-          </div>
-          <div className="h-1.5 rounded-full bg-surface-elevated overflow-hidden">
-            <div
-              className="h-full rounded-full bg-accent transition-all"
-              style={{ width: active.length > 0 ? `${(bisCount / active.length) * 100}%` : '0%' }}
-            />
-          </div>
+        {/* Large BiS fraction */}
+        <div className="flex items-baseline gap-1.5">
+          <span
+            className="text-3xl font-display font-bold tabular-nums leading-none"
+            style={{ color: bisCount === active.length ? 'var(--color-status-success)' : 'var(--color-text-primary)' }}
+          >
+            {bisCount}
+          </span>
+          <span className="text-base font-semibold text-text-muted">/ {active.length}</span>
+          <span className="ml-auto text-[10px] font-semibold text-text-muted uppercase tracking-wide">BiS Ready</span>
         </div>
 
+        {/* Glowing progress bar */}
+        <div className="h-2 rounded-full bg-surface-elevated overflow-visible">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${pct * 100}%`,
+              background: barColor,
+              boxShadow: pct > 0 ? barGlow : 'none',
+            }}
+          />
+        </div>
+
+        {/* Per-player readiness dots */}
+        {active.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {active.map((p) => {
+              const r = playerGearReadiness(p);
+              return (
+                <div
+                  key={p.id}
+                  title={`${p.name}: ${r === 'ready' ? 'BiS Ready' : r === 'in_progress' ? 'In Progress' : r === 'needs_gear' ? 'Needs Gear' : 'No data'}`}
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-colors"
+                  style={{ background: READINESS_COLOR[r] }}
+                />
+              );
+            })}
+            <span className="ml-0.5 text-[10px] text-text-muted">
+              {bisCount === active.length ? 'All BiS!' : `${active.length - bisCount} remaining`}
+            </span>
+          </div>
+        )}
+
         {avgIlv != null && (
-          <div className="flex justify-between text-xs">
+          <div className="flex items-center justify-between text-xs border-t border-border-subtle pt-2.5">
             <span className="text-text-muted">Avg iLv</span>
-            <span className="font-semibold text-text-primary">{avgIlv}</span>
+            <span className="font-bold text-text-primary tabular-nums">{avgIlv}</span>
           </div>
         )}
       </div>
@@ -575,14 +675,21 @@ function CommandBriefModule({
   onOpenRequests?: () => void;
   onNavigate: (tab: PageMode) => void;
 }) {
-  const chips: { key: string; label: string; accent: boolean; onClick: () => void }[] = [
+  const chips: { key: string; label: string; icon: React.ReactNode; accent: boolean; warn?: boolean; onClick: () => void }[] = [
     ...(canManage && pendingCount > 0
-      ? [{ key: 'pending', label: `${pendingCount} pending application${pendingCount > 1 ? 's' : ''}`, accent: true, onClick: onReviewRequest ?? (() => onNavigate('players')) }]
+      ? [{ key: 'pending', label: `${pendingCount} application${pendingCount > 1 ? 's' : ''} pending`, icon: <Mail className="w-3 h-3" />, accent: true, onClick: onReviewRequest ?? (() => onNavigate('roster')) }]
       : []),
     ...(nextSession
-      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, accent: false, onClick: () => onNavigate('schedule') }]
-      : [{ key: 'noraid', label: 'No sessions scheduled', accent: false, onClick: () => onNavigate('schedule') }]),
-    { key: 'roster', label: `${configuredCount}/8 roster configured`, accent: false, onClick: () => onNavigate('players') },
+      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, icon: <Swords className="w-3 h-3" />, accent: false, onClick: () => onNavigate('schedule') }]
+      : [{ key: 'noraid', label: 'No sessions scheduled', icon: <Calendar className="w-3 h-3" />, accent: false, warn: true, onClick: () => onNavigate('schedule') }]),
+    {
+      key: 'roster',
+      label: `${configuredCount}/8 players configured`,
+      icon: <Users className="w-3 h-3" />,
+      accent: false,
+      warn: configuredCount < 8,
+      onClick: () => onNavigate('roster'),
+    },
   ];
 
   let ctaLabel: string | null = null;
@@ -593,7 +700,7 @@ function CommandBriefModule({
       ctaAction = () => onNavigate('schedule');
     } else if (configuredCount < 8) {
       ctaLabel = 'Set up roster';
-      ctaAction = () => onNavigate('players');
+      ctaAction = () => onNavigate('roster');
     }
   }
 
@@ -611,9 +718,12 @@ function CommandBriefModule({
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               chip.accent
                 ? 'bg-accent/15 text-accent hover:bg-accent/25 border border-accent/20'
+                : chip.warn
+                ? 'bg-status-warning/10 text-status-warning hover:bg-status-warning/20 border border-status-warning/20'
                 : 'bg-surface-elevated text-text-secondary hover:bg-surface-interactive border border-border-subtle'
             }`}
           >
+            {chip.icon}
             {chip.label}
             {chip.accent && <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />}
           </button>
@@ -736,6 +846,14 @@ function CommandBriefModule({
   );
 }
 
+const ROLE_BORDER_COLOR: Record<string, string> = {
+  tank: 'var(--color-role-tank)',
+  healer: 'var(--color-role-healer)',
+  melee: 'var(--color-role-melee)',
+  ranged: 'var(--color-role-ranged)',
+  caster: 'var(--color-role-caster)',
+};
+
 /**
  * Combined group identity + Raid Prep card.
  * Raid Prep rows are keyboard-accessible buttons navigating to the Roster tab.
@@ -754,27 +872,72 @@ function GroupHeroPanel({
   const tierInfo = tier ? getTierById(tier.tierId) : null;
   const active = players.filter((p) => p.configured && !p.isSubstitute);
 
+  const bisReadyCount = useMemo(
+    () => active.filter((p) => playerGearReadiness(p) === 'ready').length,
+    [active],
+  );
+  const avgIlv = rosterAvgIlv(players);
+
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle">
-        <div className="w-9 h-9 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center flex-shrink-0">
+    <div
+      className="rounded-xl border border-border-subtle overflow-hidden"
+      style={{
+        background: 'var(--color-surface-card)',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(20,184,166,0.06)',
+      }}
+    >
+      {/* Teal gradient identity header */}
+      <div
+        className="flex items-center gap-3 px-4 py-3.5 border-b border-border-subtle"
+        style={{
+          background: 'linear-gradient(135deg, rgba(20,184,166,0.12) 0%, rgba(20,184,166,0.04) 45%, transparent 100%)',
+        }}
+      >
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{
+            background: 'rgba(20,184,166,0.14)',
+            boxShadow: '0 0 0 1px rgba(20,184,166,0.28), 0 0 14px rgba(20,184,166,0.18)',
+          }}
+        >
           <Shield className="w-5 h-5 text-accent" />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="font-display font-bold text-base text-text-primary leading-tight truncate">{group.name}</h2>
+          <h2 className="font-display font-bold text-lg text-text-primary leading-tight truncate">{group.name}</h2>
           {tierInfo && (
-            <p className="text-xs text-text-secondary truncate">{tierInfo.name}</p>
+            <p className="text-[10px] font-bold text-accent uppercase tracking-widest mt-0.5">{tierInfo.name}</p>
           )}
         </div>
       </div>
 
+      {/* Stat strip */}
+      {active.length > 0 && (
+        <div className="flex border-b border-border-subtle divide-x divide-border-subtle">
+          {avgIlv != null && (
+            <div className="flex-1 py-2.5 text-center">
+              <p className="text-sm font-display font-bold text-text-primary tabular-nums">{avgIlv}</p>
+              <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wide">Avg iLv</p>
+            </div>
+          )}
+          <div className="flex-1 py-2.5 text-center">
+            <p
+              className="text-sm font-display font-bold tabular-nums"
+              style={{ color: bisReadyCount === active.length ? 'var(--color-status-success)' : 'var(--color-text-primary)' }}
+            >
+              {bisReadyCount}/{active.length}
+            </p>
+            <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wide">BiS Ready</p>
+          </div>
+          <div className="flex-1 py-2.5 text-center">
+            <p className="text-sm font-display font-bold text-text-primary tabular-nums">{active.length}/8</p>
+            <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wide">Roster</p>
+          </div>
+        </div>
+      )}
+
       {active.length > 0 ? (
-        <div className="px-3.5 pt-3 pb-1">
-          <h3 className="flex items-center gap-1.5 text-[10px] font-bold text-text-muted uppercase tracking-[0.16em] mb-2.5 select-none">
-            <Users className="w-3 h-3 opacity-70" />
-            Raid Prep
-          </h3>
-          <div>
+        <>
+          <div className="py-1">
             {active.slice(0, 8).map((p) => {
               const configured = p.gear.filter((s) => s.bisSource !== null && s.bisSource !== undefined);
               const have = p.gear.filter((s) => s.hasItem);
@@ -782,25 +945,25 @@ function GroupHeroPanel({
               const count = have.length;
               const ilv = playerIlv(p);
               const readiness = playerGearReadiness(p);
-              const readinessLabel =
-                readiness === 'ready' ? 'Ready' :
-                readiness === 'in_progress' ? 'In progress' :
-                readiness === 'needs_gear' ? 'Needs gear' :
-                'No gear data';
               const readinessColor =
-                readiness === 'ready' ? 'text-status-success' :
-                readiness === 'in_progress' ? 'text-status-warning' :
-                readiness === 'needs_gear' ? 'text-status-error' :
-                'text-text-muted';
+                readiness === 'ready' ? 'var(--color-status-success)' :
+                readiness === 'in_progress' ? 'var(--color-status-warning)' :
+                readiness === 'needs_gear' ? 'var(--color-status-error)' :
+                'var(--color-text-muted)';
+              const roleColor = ROLE_BORDER_COLOR[p.role?.toLowerCase() ?? ''] ?? 'var(--color-border-default)';
               return (
-                /* Part 6: Raid Prep rows are keyboard-accessible buttons → navigate to Roster */
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => onNavigate('players')}
-                  className="w-full flex items-center gap-2 py-1.5 border-b border-border-subtle last:border-0 min-w-0 hover:bg-surface-elevated/50 transition-colors rounded-md px-1 -mx-1 text-left"
+                  onClick={() => onNavigate('roster')}
+                  className="relative w-full flex items-center gap-2.5 py-1.5 pl-4 pr-3 hover:bg-surface-elevated/50 transition-colors text-left"
                   aria-label={`View ${p.name} on roster`}
                 >
+                  {/* Role-color left accent bar */}
+                  <span
+                    className="absolute left-0 top-1 bottom-1 w-[2px] rounded-r flex-shrink-0"
+                    style={{ background: roleColor, opacity: 0.75 }}
+                  />
                   <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
                     <JobIcon job={p.job?.toUpperCase() || 'ADV'} size="sm" />
                   </div>
@@ -809,24 +972,32 @@ function GroupHeroPanel({
                     {ilv != null ? `iLv ${ilv}` : '—'}
                   </span>
                   <span className="text-[10px] text-text-muted flex-shrink-0 tabular-nums">
-                    {total > 0 ? `${count}/${total}` : 'No BiS'}
+                    {total > 0 ? `${count}/${total}` : '—'}
                   </span>
-                  <span className={`text-[10px] font-semibold flex-shrink-0 ${readinessColor}`}>
-                    {readinessLabel}
+                  <span
+                    className="text-[10px] font-bold flex-shrink-0 w-14 text-right"
+                    style={{ color: readinessColor }}
+                  >
+                    {readiness === 'ready' ? 'Ready' :
+                     readiness === 'in_progress' ? 'In prog.' :
+                     readiness === 'needs_gear' ? 'Needs gear' :
+                     '—'}
                   </span>
                 </button>
               );
             })}
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigate('players')}
-            className="w-full mt-2 mb-1 flex items-center justify-center gap-1.5 py-1.5 text-xs text-text-muted hover:text-accent transition-colors"
-          >
-            View full roster
-            <ChevronRight className="w-3 h-3" />
-          </button>
-        </div>
+          <div className="border-t border-border-subtle">
+            <button
+              type="button"
+              onClick={() => onNavigate('roster')}
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
+            >
+              View full roster
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+        </>
       ) : (
         <div className="px-4 py-6 text-center">
           <Users className="w-7 h-7 text-text-muted opacity-25 mx-auto mb-2.5" />
@@ -836,7 +1007,7 @@ function GroupHeroPanel({
           </p>
           <button
             type="button"
-            onClick={() => onNavigate('players')}
+            onClick={() => onNavigate('roster')}
             className="text-xs font-medium text-accent border border-accent/30 rounded-lg px-3 py-1.5 hover:bg-accent/10 transition-colors"
           >
             Open Roster
@@ -860,11 +1031,8 @@ function RosterPresenceModule({
 
   return (
     <div>
-      <SectionLabel icon={<Users className="w-3 h-3" />}>
+      <SectionLabel icon={<Users className="w-3 h-3" />} count={`${active.length}/8`}>
         Static Roster
-        <span className="ml-auto font-bold text-text-primary normal-case tracking-normal text-xs">
-          {active.length}/8
-        </span>
       </SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {active.length === 0 ? (
@@ -874,48 +1042,67 @@ function RosterPresenceModule({
             <p className="text-[11px] text-text-muted mb-2.5">Add 8 players to start tracking progress</p>
             <button
               type="button"
-              onClick={() => onNavigate('players')}
+              onClick={() => onNavigate('roster')}
               className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
             >
               Set up roster
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-border-subtle">
-            {active.slice(0, 8).map((player) => (
-              <button
-                key={player.id}
-                type="button"
-                onClick={() => onNavigate('players')}
-                className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-surface-elevated transition-colors text-left group"
-              >
-                <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-surface-elevated border border-border-subtle">
-                  {player.lodestoneAvatarUrl ? (
-                    <img src={player.lodestoneAvatarUrl} alt="" className="w-full h-full object-cover" />
+          <div className="p-3 grid grid-cols-4 gap-2">
+            {Array.from({ length: 8 }, (_, i) => {
+              const player = active[i];
+              const roleColor = player
+                ? ROLE_BORDER_COLOR[player.role?.toLowerCase() ?? ''] ?? 'var(--color-border-default)'
+                : null;
+              return (
+                <button
+                  key={player?.id ?? `empty-${i}`}
+                  type="button"
+                  onClick={() => onNavigate('roster')}
+                  className="flex flex-col items-center gap-1 p-1.5 rounded-lg hover:bg-surface-elevated transition-colors group"
+                  aria-label={player ? `View ${player.name} on roster` : 'Empty roster slot'}
+                >
+                  {player ? (
+                    <>
+                      <div
+                        className="w-11 h-11 rounded-xl overflow-hidden flex-shrink-0 bg-surface-elevated"
+                        style={{
+                          boxShadow: roleColor
+                            ? `0 0 0 1.5px ${roleColor}, 0 2px 8px rgba(0,0,0,0.4)`
+                            : '0 0 0 1px var(--color-border-default)',
+                        }}
+                      >
+                        {player.lodestoneAvatarUrl ? (
+                          <img src={player.lodestoneAvatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <JobIcon job={player.job?.toUpperCase() || 'ADV'} size="sm" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[9px] font-semibold text-text-secondary truncate max-w-full w-full text-center leading-tight group-hover:text-text-primary transition-colors">
+                        {player.name.split(' ')[0]}
+                      </p>
+                    </>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <JobIcon job={player.job?.toUpperCase() || 'ADV'} size="sm" />
-                    </div>
+                    <>
+                      <div className="w-11 h-11 rounded-xl border border-dashed border-border-default flex items-center justify-center opacity-20">
+                        <Users className="w-3.5 h-3.5 text-text-muted" />
+                      </div>
+                      <p className="text-[9px] text-text-muted opacity-30">—</p>
+                    </>
                   )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-text-primary truncate">{player.name}</p>
-                  <p className="text-[10px] text-text-muted capitalize">{player.role || '—'}</p>
-                </div>
-                {player.job && (
-                  <div className="flex-shrink-0">
-                    <JobIcon job={player.job.toUpperCase()} size="sm" />
-                  </div>
-                )}
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         )}
         {active.length > 0 && (
           <div style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
             <button
               type="button"
-              onClick={() => onNavigate('players')}
+              onClick={() => onNavigate('roster')}
               className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
             >
               Open Roster
@@ -954,19 +1141,50 @@ function BestNextFarmModule({
         {loading ? (
           <div className="p-3 h-20 animate-pulse bg-surface-elevated/30 rounded-xl" />
         ) : top && trialInfo ? (
-          <div className="p-3 space-y-2">
-            <div>
-              <p className="text-[11px] font-semibold text-accent uppercase tracking-wide mb-0.5 truncate">
-                {trialInfo.dutyName}
-              </p>
-              <p className="text-xs font-bold text-text-primary leading-tight truncate">
-                {trialInfo.mountName}
-              </p>
-              <p className="text-[11px] text-text-muted mt-0.5">
-                {top.membersMissing} member{top.membersMissing !== 1 ? 's' : ''} still need{top.membersMissing === 1 ? 's' : ''} this
-                {top.membersCanBuy > 0 && ` · ${top.membersCanBuy} ready to exchange`}
-              </p>
+          <div className="p-3.5 space-y-3">
+            {/* Farm identity header */}
+            <div className="flex items-start gap-3">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: 'rgba(20,184,166,0.12)',
+                  boxShadow: '0 0 0 1px rgba(20,184,166,0.22), 0 0 12px rgba(20,184,166,0.1)',
+                }}
+              >
+                <Trophy className="w-4 h-4 text-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-0.5 truncate">
+                  {trialInfo.dutyName}
+                </p>
+                <p className="text-sm font-bold text-text-primary leading-tight truncate">
+                  {trialInfo.mountName}
+                </p>
+              </div>
             </div>
+
+            {/* Demand indicator */}
+            <div
+              className="flex items-center gap-2 px-2.5 py-2 rounded-lg"
+              style={{
+                background: 'rgba(20,184,166,0.06)',
+                border: '1px solid rgba(20,184,166,0.14)',
+              }}
+            >
+              <Users className="w-3 h-3 text-accent flex-shrink-0" />
+              <span className="text-xs text-text-secondary">
+                <span className="font-bold text-text-primary tabular-nums">{top.membersMissing}</span>
+                {' '}member{top.membersMissing !== 1 ? 's' : ''} still need this
+              </span>
+              {top.membersCanBuy > 0 && (
+                <span
+                  className="ml-auto text-[10px] font-bold text-accent flex-shrink-0"
+                >
+                  {top.membersCanBuy} ready
+                </span>
+              )}
+            </div>
+
             <button
               type="button"
               data-testid="schedule-farm-btn"
@@ -974,13 +1192,13 @@ function BestNextFarmModule({
                 if (onScheduleFarm) {
                   onScheduleFarm(trialInfo);
                 } else {
-                  onNavigate('mount-farms');
+                  onNavigate('goals');
                 }
               }}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
             >
-              <Calendar className="w-3 h-3" />
-              Schedule Farm
+              <Calendar className="w-3.5 h-3.5" />
+              Schedule Farm Session
             </button>
           </div>
         ) : (
@@ -992,7 +1210,7 @@ function BestNextFarmModule({
             </p>
             <button
               type="button"
-              onClick={() => onNavigate('mount-farms')}
+              onClick={() => onNavigate('goals')}
               className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
             >
               Open Mount Farms
@@ -1232,32 +1450,61 @@ function GoalsFarmsModule({
                       initial={{ opacity: 0, y: -4 }}
                       animate={{ opacity: 1, y: 0, transition: { duration: 0.16 } }}
                       exit={{ opacity: 0, transition: { duration: 0.1 } }}
-                      className="flex items-center gap-2.5 px-3 py-1.5 border-b border-border-subtle last:border-b-0"
+                      className="flex items-start gap-2.5 px-3 py-2 border-b border-border-subtle last:border-b-0"
                     >
+                      {/* Status dot */}
+                      <div
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
+                        style={{
+                          background:
+                            goal.status === 'complete' ? 'var(--color-status-success)' :
+                            goal.status === 'farming' ? 'var(--color-accent)' :
+                            goal.status === 'scheduled' ? 'var(--color-status-warning)' :
+                            'var(--color-text-muted)',
+                        }}
+                      />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-text-primary truncate">{goal.title}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-text-primary truncate">{goal.title}</p>
+                          <span className={`text-[10px] font-semibold flex-shrink-0 ${GOAL_STATUS_COLORS[goal.status] ?? 'text-text-muted'}`}>
+                            {goal.status === 'complete'
+                              ? <Check className="w-3 h-3 text-status-success" />
+                              : (GOAL_STATUS_LABELS[goal.status] ?? goal.status)}
+                          </span>
+                        </div>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
                           {goal.contentType && CONTENT_TYPE_LABELS[goal.contentType] && (
-                            <span className={`text-[10px] font-semibold px-1 py-0.5 rounded ${
-                              goal.contentType === 'ultimate'
-                                ? 'bg-purple-500/10 text-purple-400'
-                                : 'bg-surface-elevated text-text-muted'
-                            }`}>
+                            <span
+                              className="text-[10px] font-semibold px-1 py-0.5 rounded"
+                              style={
+                                goal.contentType === 'ultimate'
+                                  ? { background: 'rgba(168,85,247,0.12)', color: '#c084fc' }
+                                  : { background: 'var(--color-surface-elevated)', color: 'var(--color-text-muted)' }
+                              }
+                            >
                               {CONTENT_TYPE_LABELS[goal.contentType]}
                             </span>
                           )}
                           <span className="text-[10px] text-text-muted">{GOAL_TYPE_LABELS[goal.goalType] ?? goal.goalType}</span>
                           {goal.targetCount != null && (
-                            <span className="text-[10px] text-text-muted">· {goal.currentCount ?? 0}/{goal.targetCount}</span>
+                            <span className="text-[10px] text-text-muted tabular-nums">
+                              · {goal.currentCount ?? 0}/{goal.targetCount}
+                            </span>
                           )}
                         </div>
+                        {/* Progress bar for countable goals */}
+                        {goal.targetCount != null && goal.targetCount > 0 && (
+                          <div className="mt-1.5 h-1 rounded-full bg-surface-elevated overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{
+                                width: `${Math.min(100, ((goal.currentCount ?? 0) / goal.targetCount) * 100)}%`,
+                                background: goal.status === 'complete' ? 'var(--color-status-success)' : 'var(--color-accent)',
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
-                      <span className={`text-[10px] font-semibold flex-shrink-0 ${GOAL_STATUS_COLORS[goal.status] ?? 'text-text-muted'}`}>
-                        {GOAL_STATUS_LABELS[goal.status] ?? goal.status}
-                      </span>
-                      {goal.status === 'complete' && (
-                        <Check className="w-3 h-3 text-status-success flex-shrink-0" />
-                      )}
                       {canManage && (
                         confirmDeleteId === goal.id ? (
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -1443,13 +1690,24 @@ function RecentActivityModule({
     return derivedItems.map((item) => ({ ...item, actorUserId: item.actorUserId ?? null }));
   }, [apiItems, derivedItems, currentUser?.id, currentUser?.activityDisplayMode]);
 
+  const ACTIVITY_ICON_STYLE: Record<StaticActivityItem['icon'], { bg: string; color: string }> = {
+    mount:    { bg: 'rgba(234,179,8,0.15)',   color: 'var(--color-status-warning)' },
+    currency: { bg: 'rgba(59,130,246,0.15)',  color: 'var(--color-status-info)' },
+    plugin:   { bg: 'rgba(20,184,166,0.15)',  color: 'var(--color-accent)' },
+    tracking: { bg: 'rgba(168,85,247,0.15)',  color: 'var(--color-membership-lead)' },
+  };
+
   function activityIcon(icon: StaticActivityItem['icon']) {
-    switch (icon) {
-      case 'mount': return <Trophy className="w-3 h-3" />;
-      case 'currency': return <Target className="w-3 h-3" />;
-      case 'plugin': return <Plug className="w-3 h-3" />;
-      case 'tracking': return <Sparkles className="w-3 h-3" />;
-    }
+    const style = ACTIVITY_ICON_STYLE[icon];
+    const IconEl = icon === 'mount' ? Trophy : icon === 'currency' ? Target : icon === 'plugin' ? Plug : Sparkles;
+    return (
+      <div
+        className="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center"
+        style={{ background: style.bg, color: style.color }}
+      >
+        <IconEl className="w-3 h-3" />
+      </div>
+    );
   }
 
   const rowVariants = {
@@ -1473,7 +1731,7 @@ function RecentActivityModule({
             {canManage && (
               <button
                 type="button"
-                onClick={() => onNavigate('mount-farms')}
+                onClick={() => onNavigate('goals')}
                 className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
               >
                 Open Mount Farms
@@ -1493,10 +1751,7 @@ function RecentActivityModule({
                     animate="visible"
                     className="flex items-center gap-2 px-3 py-2 hover:bg-surface-elevated/30 transition-colors"
                   >
-                    {/* Compact icon — w-5 badge, w-3 icon, matches MountFarmTab density */}
-                    <div className="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center bg-surface-elevated text-text-tertiary">
-                      {activityIcon(item.icon)}
-                    </div>
+                    {activityIcon(item.icon)}
                     <p className="flex-1 text-xs text-text-primary truncate min-w-0">{item.label}</p>
                     <span className="text-[10px] text-text-tertiary flex-shrink-0 w-12 text-right">{item.time}</span>
                   </motion.div>
@@ -1506,7 +1761,7 @@ function RecentActivityModule({
             <div style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
               <button
                 type="button"
-                onClick={() => onNavigate('mount-farms')}
+                onClick={() => onNavigate('goals')}
                 className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
               >
                 View all activity
@@ -1555,7 +1810,7 @@ function SplitClearReadinessCard({ data, players, onNavigate }: SplitClearReadin
 
       {/* design-system-ignore: inline navigation link */}
       <button
-        onClick={() => onNavigate('players')}
+        onClick={() => onNavigate('roster')}
         className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition-colors"
       >
         Open Split Planner
@@ -1626,13 +1881,19 @@ export function StaticHomeTab({
     await deleteGoal(group.id, goalId);
   };
 
+  const colAnim = (delay: number) => ({
+    initial: { opacity: 0, y: 14 } as const,
+    animate: { opacity: 1, y: 0 } as const,
+    transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] as const, delay },
+  });
+
   return (
     <div className="w-full">
       {/* Asymmetric 3-column grid: narrow left rail / flexible center / narrow right rail */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-[minmax(260px,320px)_minmax(620px,1fr)_minmax(280px,340px)]">
 
         {/* ── Left column: utility rail ── */}
-        <div className="space-y-4">
+        <motion.div className="space-y-4" {...colAnim(0)}>
           <NotificationsModule
             requests={pendingRequests}
             nextSession={nextSession}
@@ -1649,10 +1910,10 @@ export function StaticHomeTab({
             players={players}
             tierInfo={tier ? getTierById(tier.tierId) : null}
           />
-        </div>
+        </motion.div>
 
         {/* ── Center column: primary command area ── */}
-        <div className="space-y-4">
+        <motion.div className="space-y-4" {...colAnim(0.07)}>
           <CommandBriefModule
             pendingCount={pendingRequests.length}
             featuredRequest={featuredRequest}
@@ -1676,10 +1937,10 @@ export function StaticHomeTab({
             onNavigate={onNavigate}
             canManage={canManage}
           />
-        </div>
+        </motion.div>
 
         {/* ── Right column: context rail ── */}
-        <div className="space-y-4">
+        <motion.div className="space-y-4" {...colAnim(0.14)}>
           <RosterPresenceModule players={players} onNavigate={onNavigate} />
           <BestNextFarmModule
             recommendations={recommendations}
@@ -1706,7 +1967,7 @@ export function StaticHomeTab({
               onNavigate={onNavigate}
             />
           )}
-        </div>
+        </motion.div>
       </div>
 
       {reviewRequest && (

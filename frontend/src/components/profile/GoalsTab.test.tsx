@@ -12,7 +12,7 @@ describe('GoalsTab', () => {
 
     expect(screen.getByText('Tasks & Goals')).toBeInTheDocument();
     expect(screen.getByText('No tasks yet')).toBeInTheDocument();
-    expect(screen.getByText(/Use Collections for mounts and token farms/i)).toBeInTheDocument();
+    expect(screen.getByText(/Add a task to track gearing/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add Task' })).toBeInTheDocument();
     expect(screen.queryByText('Add Collection Goal')).toBeNull();
   });

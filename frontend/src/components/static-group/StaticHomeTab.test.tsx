@@ -406,7 +406,7 @@ describe('StaticHomeTab — Command Brief', () => {
 
   it('shows "pending application" chip when there is a pending request and canManage', () => {
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
-    expect(screen.getByRole('button', { name: /1 pending application/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /1 application.*pending/i })).toBeInTheDocument();
   });
 
   it('does not show "pending application" chip when canManage is false', () => {
@@ -426,7 +426,7 @@ describe('StaticHomeTab — Command Brief', () => {
 
   it('shows "roster configured" chip always', () => {
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
-    expect(screen.getByRole('button', { name: /0\/8 roster configured/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /0\/8 players configured/i })).toBeInTheDocument();
   });
 });
 
@@ -483,19 +483,19 @@ describe('StaticHomeTab — Raid Prep section', () => {
 
   beforeEach(() => { vi.clearAllMocks(); setFarmStore(); setGoalStore(); setObjectiveGoalStore(); });
 
-  it('renders "Raid Prep" heading (not "Static Readiness" or "Roster Readiness")', () => {
+  it('renders "Tier Progress" heading (not "Static Readiness" or "Roster Readiness")', () => {
     render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     expect(screen.queryByText(/roster readiness/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/static readiness/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/raid prep/i)).toBeInTheDocument();
+    expect(screen.getByText(/tier progress/i)).toBeInTheDocument();
   });
 
-  it('Raid Prep rows are buttons (keyboard-accessible, navigate to players)', () => {
+  it('player roster rows are buttons (keyboard-accessible, navigate to roster)', () => {
     render(<StaticHomeTab group={makeGroup()} tier={TIER_WITH_PLAYERS} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
-    const raidPrepBtn = screen.getByRole('button', { name: /view warrior of light on roster/i });
-    expect(raidPrepBtn).toBeInTheDocument();
-    fireEvent.click(raidPrepBtn);
-    expect(onNavigate).toHaveBeenCalledWith('players');
+    const rosterBtns = screen.getAllByRole('button', { name: /view warrior of light on roster/i });
+    expect(rosterBtns.length).toBeGreaterThan(0);
+    fireEvent.click(rosterBtns[0]);
+    expect(onNavigate).toHaveBeenCalledWith('roster');
   });
 
   it('hides split readiness when split mode is disabled', () => {
@@ -534,7 +534,7 @@ describe('StaticHomeTab — Raid Prep section', () => {
     expect(screen.getByText('Split Clears')).toBeInTheDocument();
     expect(screen.getByText('1/1')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /open split planner/i }));
-    expect(onNavigate).toHaveBeenCalledWith('players');
+    expect(onNavigate).toHaveBeenCalledWith('roster');
   });
 });
 
@@ -563,11 +563,11 @@ describe('StaticHomeTab — Recent Activity', () => {
     expect(screen.getByText(/Dev Owner obtained Lynx of Fallen Shadow/i)).toBeInTheDocument();
   });
 
-  it('shows "View all activity" link that navigates to mount-farms', () => {
+  it('shows "View all activity" link that navigates to goals', () => {
     setFarmStore({ data: FARM_DATA_WITH_ACTIVITY });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByRole('button', { name: /view all activity/i }));
-    expect(onNavigate).toHaveBeenCalledWith('mount-farms');
+    expect(onNavigate).toHaveBeenCalledWith('goals');
   });
 
   it('never shows more than 5 activity rows', () => {
@@ -633,14 +633,16 @@ describe('StaticHomeTab — Best Next Farm', () => {
   it('shows member count in Best Next Farm', () => {
     setFarmStore({ recommendations: [TOP_RECOMMENDATION] });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
-    expect(screen.getByText(/3 members still need this/i)).toBeInTheDocument();
+    // Count is in a nested <span>; getByText finds the outer span via its direct text node
+    const memberChip = screen.getByText(/members still need this/i);
+    expect(memberChip.textContent).toMatch(/3 members still need this/i);
   });
 
-  it('"Schedule Farm" falls back to mount-farms navigation when onScheduleFarm is not provided', () => {
+  it('"Schedule Farm" falls back to goals navigation when onScheduleFarm is not provided', () => {
     setFarmStore({ recommendations: [TOP_RECOMMENDATION] });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByTestId('schedule-farm-btn'));
-    expect(onNavigate).toHaveBeenCalledWith('mount-farms');
+    expect(onNavigate).toHaveBeenCalledWith('goals');
   });
 
   it('"Schedule Farm" calls onScheduleFarm with trial when provided — carries duty context', () => {
@@ -651,7 +653,7 @@ describe('StaticHomeTab — Best Next Farm', () => {
     expect(onScheduleFarm).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'ew-zodiark', dutyName: 'The Dark Inside (Extreme)' })
     );
-    expect(onNavigate).not.toHaveBeenCalledWith('mount-farms');
+    expect(onNavigate).not.toHaveBeenCalledWith('goals');
   });
 });
 
@@ -676,7 +678,7 @@ describe('StaticHomeTab — Collection Goals', () => {
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByTestId('create-collection-goal-btn'));
     expect(screen.getByTestId('create-collection-goal-modal')).toBeInTheDocument();
-    expect(onNavigate).not.toHaveBeenCalledWith('mount-farms');
+    expect(onNavigate).not.toHaveBeenCalledWith('goals');
   });
 
   it('Create Collection Goal modal can be closed', () => {

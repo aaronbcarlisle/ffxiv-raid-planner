@@ -1,5 +1,4 @@
 import { Pencil, Trash2, Check } from 'lucide-react';
-import { Badge } from '../primitives/Badge';
 import { IconButton } from '../primitives/IconButton';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useModal } from '../../hooks/useModal';
@@ -52,98 +51,90 @@ export function GoalCard({ goal, onEdit }: GoalCardProps) {
     }
   };
 
+  const intentColor = goal.intentLevel === 'must_have'
+    ? 'rgba(239,68,68,0.5)'
+    : goal.intentLevel === 'nice_to_have'
+      ? 'rgba(234,179,8,0.4)'
+      : 'rgba(20,184,166,0.3)';
+
   return (
-    <div className={`bg-surface-raised rounded-lg border border-border-default p-4 transition-colors ${isCompleted ? 'opacity-70' : 'hover:border-border-hover'}`}>
-      <div className="flex items-start gap-3">
-        {/* Toggle complete */}
-        <div className="flex-shrink-0 mt-1">
-          {/* design-system-ignore: Custom checkbox toggle for goal completion */}
-          <button
-            type="button"
-            onClick={handleToggleComplete}
-            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-              isCompleted
-                ? 'bg-status-success border-status-success text-white'
-                : 'border-border-default hover:border-accent bg-transparent'
-            }`}
-            aria-label={isCompleted ? 'Mark as active' : 'Mark as completed'}
-          >
-            {isCompleted && <Check className="w-3 h-3" />}
-          </button>
-        </div>
+    <div className={`group relative bg-surface-raised rounded-lg border border-border-default overflow-hidden transition-all duration-150 ${isCompleted ? 'opacity-60' : 'hover:border-border-hover hover:shadow-sm'}`}>
+      {/* Left accent bar */}
+      <div className="absolute inset-y-0 left-0 w-[3px]" style={{ background: isCompleted ? 'rgba(255,255,255,0.06)' : intentColor }} />
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`font-display font-semibold ${isCompleted ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>
-              {goal.title}
+      <div className="flex items-center gap-3 px-4 py-3 pl-5">
+        {/* Circle checkbox */}
+        {/* design-system-ignore: Custom circle checkbox for goal completion */}
+        <button
+          type="button"
+          onClick={handleToggleComplete}
+          className={`flex-shrink-0 w-4 h-4 rounded-full border flex items-center justify-center transition-all ${
+            isCompleted
+              ? 'bg-status-success border-status-success'
+              : 'border-border-hover hover:border-accent bg-transparent'
+          }`}
+          aria-label={isCompleted ? 'Mark as active' : 'Mark as completed'}
+        >
+          {isCompleted && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+        </button>
+
+        {/* Title + meta */}
+        <div className="flex-1 min-w-0 flex items-center gap-3 flex-wrap">
+          <span className={`font-display font-semibold text-sm leading-snug ${isCompleted ? 'line-through text-text-tertiary' : 'text-text-primary'}`}>
+            {goal.title}
+          </span>
+
+          {/* Type pill — subtle, not a full badge */}
+          <span className="text-[10px] font-medium text-text-muted bg-surface-elevated border border-border-subtle rounded px-1.5 py-0.5 leading-none flex-shrink-0">
+            {GOAL_TYPE_LABELS[goal.goalType] ?? goal.goalType}
+          </span>
+
+          <GoalStatusBadge status={goal.status} />
+          <GoalIntentBadge intentLevel={goal.intentLevel} />
+
+          {goal.isPublic && (
+            <span className="text-[10px] font-medium text-accent bg-accent/10 border border-accent/20 rounded px-1.5 py-0.5 leading-none flex-shrink-0">
+              Shared
             </span>
-            <Badge variant="default" size="sm">
-              {GOAL_TYPE_LABELS[goal.goalType] ?? goal.goalType}
-            </Badge>
-            <GoalStatusBadge status={goal.status} />
-            <GoalIntentBadge intentLevel={goal.intentLevel} />
-            <Badge variant={goal.isPublic ? 'success' : 'default'} size="sm">
-              {goal.isPublic ? 'Shared' : 'Private'}
-            </Badge>
-          </div>
+          )}
 
-          {/* Source info */}
           {(goal.sourceContent || goal.sourceItem) && (
-            <div className="text-sm text-text-secondary mt-1">
-              {goal.sourceContent}
-              {goal.sourceContent && goal.sourceItem && ' — '}
-              {goal.sourceItem}
-            </div>
+            <span className="text-xs text-text-muted truncate hidden sm:inline">
+              {[goal.sourceContent, goal.sourceItem].filter(Boolean).join(' — ')}
+            </span>
           )}
 
-          {/* Description */}
-          {goal.description && (
-            <div className="text-sm text-text-secondary mt-1 italic">
-              {goal.description}
-            </div>
+          {goal.dueDate && (
+            <span className="text-[10px] text-text-tertiary flex-shrink-0">
+              Due {new Date(goal.dueDate).toLocaleDateString()}
+            </span>
           )}
-
-          {/* Count progress bar */}
-          {isCountBased && (
-            <div className="mt-2">
-              <div className="flex items-center justify-between text-xs text-text-secondary mb-1">
-                <span>{goal.currentCount} / {goal.targetCount}</span>
-                <span>{progress}%</span>
-              </div>
-              <div className="w-full h-2 bg-surface-base rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    progress >= 100 ? 'bg-status-success' : progress >= 75 ? 'bg-accent' : 'bg-status-info'
-                  }`}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Meta info */}
-          <div className="flex items-center gap-3 mt-2 text-xs text-text-tertiary flex-wrap">
-            {goal.linkedJob && (
-              <span>Job: {goal.linkedJob}</span>
-            )}
-            {goal.dueDate && (
-              <span>Due: {new Date(goal.dueDate).toLocaleDateString()}</span>
-            )}
-          </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Progress inline */}
+        {isCountBased && (
+          <div className="flex-shrink-0 flex items-center gap-2 hidden sm:flex">
+            <div className="w-20 h-1.5 bg-surface-base rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${progress >= 100 ? 'bg-status-success' : 'bg-accent'}`}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-text-muted tabular-nums w-8 text-right">{progress}%</span>
+          </div>
+        )}
+
+        {/* Actions — only visible on hover */}
+        <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <IconButton
-            icon={<Pencil className="w-3.5 h-3.5" />}
+            icon={<Pencil className="w-3 h-3" />}
             aria-label="Edit goal"
             variant="ghost"
             size="sm"
             onClick={() => onEdit(goal)}
           />
           <IconButton
-            icon={<Trash2 className="w-3.5 h-3.5" />}
+            icon={<Trash2 className="w-3 h-3" />}
             aria-label="Delete goal"
             variant="ghost"
             size="sm"

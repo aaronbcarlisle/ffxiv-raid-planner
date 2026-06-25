@@ -667,13 +667,24 @@ function BrowseCatalogView({ items, ...cbs }: { items: CatalogPlayerEntry[] } & 
 
 // ── CollectionsCenterTab (main) ───────────────────────────────────────────────
 
-export function CollectionsCenterTab() {
+export function CollectionsCenterTab({
+  view: viewProp,
+  onViewChange,
+}: {
+  view?: 'priorities' | 'browse';
+  onViewChange?: (v: 'priorities' | 'browse') => void;
+} = {}) {
   const {
     myCatalog, myCatalogLoaded, fetchMyCatalog,
     upsertIntent, deleteIntent, upsertSnapshot,
   } = useCollectionIntentStore();
 
-  const [view, setView] = useState<'priorities' | 'browse'>('priorities');
+  const [viewInternal, setViewInternal] = useState<'priorities' | 'browse'>('priorities');
+  const view = viewProp ?? viewInternal;
+  const setView = (v: 'priorities' | 'browse') => {
+    setViewInternal(v);
+    onViewChange?.(v);
+  };
   const [categoryFilter,  setCategoryFilter]  = useState<string | null>(null);
   const [expansionFilter, setExpansionFilter] = useState<string | null>(null);
   const [sourceTypeFilter,setSourceTypeFilter] = useState<string | null>(null);
@@ -779,15 +790,6 @@ export function CollectionsCenterTab() {
     <div className="flex flex-col gap-3">
       {/* ── Compact header ── */}
       <div className="rounded-lg border border-border-default bg-surface-raised px-4 py-3">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <h3 className="font-display font-semibold text-text-primary">Collections Center</h3>
-            <p className="text-xs text-text-secondary mt-0.5">
-              Track what you own, want, and want to share with your statics.
-            </p>
-          </div>
-        </div>
-
         {/* Stat pills */}
         <div className="flex flex-wrap gap-2 mb-3">
           <StatPill
@@ -816,27 +818,29 @@ export function CollectionsCenterTab() {
           />
         </div>
 
-        {/* Tab toggle */}
-        <div className="flex gap-1 bg-surface-base rounded-lg p-1">
-          {([
-            { id: 'priorities' as const, label: `My Priorities${priorityItems.length > 0 ? ` (${priorityItems.length})` : ''}` },
-            { id: 'browse'     as const, label: 'Browse Catalog' },
-          ]).map(tab => (
-            /* design-system-ignore: view toggle tab */
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setView(tab.id)}
-              className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                view === tab.id
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {/* Inner tab toggle — only shown when not controlled by parent */}
+        {viewProp === undefined && (
+          <div className="flex gap-1 bg-surface-base rounded-lg p-1">
+            {([
+              { id: 'priorities' as const, label: `My Priorities${priorityItems.length > 0 ? ` (${priorityItems.length})` : ''}` },
+              { id: 'browse'     as const, label: 'Browse Catalog' },
+            ]).map(tab => (
+              /* design-system-ignore: view toggle tab */
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setView(tab.id)}
+                className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                  view === tab.id
+                    ? 'bg-accent/20 text-accent'
+                    : 'text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Filter bar ── */}

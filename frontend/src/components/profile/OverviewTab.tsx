@@ -53,6 +53,21 @@ interface OverviewTabProps {
   focusAvailability?: boolean;
 }
 
+function SectionLabel({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-3 select-none">
+      <div
+        className="w-[3px] h-3.5 rounded-full flex-shrink-0"
+        style={{ background: 'linear-gradient(180deg, var(--color-accent) 0%, rgba(20,184,166,0.2) 100%)' }}
+      />
+      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-text-muted">
+        {icon && <span className="opacity-50">{icon}</span>}
+        {children}
+      </span>
+    </div>
+  );
+}
+
 function DashboardCard({
   title,
   subtitle,
@@ -69,20 +84,39 @@ function DashboardCard({
   className?: string;
 }) {
   return (
-    <div className={`flex min-h-[116px] flex-col rounded-lg border border-border-default bg-surface-raised p-3 ${className ?? ''}`}>
-      <div className="mb-3 flex items-start gap-2">
-        {icon && (
-          <div className="mt-0.5 rounded-lg border border-border-subtle bg-surface-elevated p-1.5 text-accent">
-            {icon}
+    <div
+      className={`group flex flex-col rounded-xl border border-border-subtle overflow-hidden transition-all duration-150 hover:border-border-hover ${className ?? ''}`}
+      style={{
+        background: 'linear-gradient(160deg, rgba(255,255,255,0.02) 0%, transparent 55%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 12px rgba(0,0,0,0.18)',
+      }}
+    >
+      <div className="flex flex-col flex-1 p-3.5">
+        <div className="mb-3 flex items-start gap-2.5">
+          {icon && (
+            <div
+              className="mt-0.5 rounded-lg p-1.5 flex-shrink-0 transition-all duration-150 group-hover:brightness-125"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.07)',
+                color: 'rgba(255,255,255,0.45)',
+              }}
+            >
+              {icon}
+            </div>
+          )}
+          <div className="min-w-0">
+            <h3 className="font-display text-sm font-semibold text-text-primary leading-snug">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-[11px] text-text-tertiary leading-relaxed">{subtitle}</p>}
+          </div>
+        </div>
+        <div className="flex-1">{children}</div>
+        {footer && (
+          <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            {footer}
           </div>
         )}
-        <div className="min-w-0">
-          <h3 className="font-display text-sm font-semibold text-text-primary">{title}</h3>
-          {subtitle && <p className="mt-0.5 text-xs text-text-tertiary">{subtitle}</p>}
-        </div>
       </div>
-      <div className="flex-1">{children}</div>
-      {footer && <div className="mt-3 border-t border-border-subtle pt-3">{footer}</div>}
     </div>
   );
 }
@@ -117,12 +151,19 @@ function CommandChip({
   return (
     <Link
       to={to}
-      className={`min-w-0 rounded-lg border px-3 py-2 transition-colors hover:border-accent/40 hover:bg-accent/5 ${
-        highlight ? 'border-accent/40 bg-accent/10' : 'border-border-subtle bg-surface-elevated/70'
+      className={`group min-w-0 rounded-lg border px-3 py-2.5 transition-all duration-150 ${
+        highlight
+          ? 'border-accent/40 bg-accent/10 hover:border-accent/60 hover:bg-accent/15'
+          : 'border-border-subtle bg-surface-elevated/60 hover:border-border-hover hover:bg-surface-elevated'
       }`}
+      style={{
+        boxShadow: highlight
+          ? 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 14px rgba(20,184,166,0.1)'
+          : 'inset 0 1px 0 rgba(255,255,255,0.03)',
+      }}
     >
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
-        <span className="text-accent">{icon}</span>
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted">
+        <span className="text-accent/70 group-hover:text-accent transition-colors">{icon}</span>
         {label}
       </div>
       <div className="mt-1 truncate text-sm font-semibold text-text-primary">{value}</div>
@@ -238,11 +279,20 @@ export function OverviewTab({
 
   return (
     <motion.div {...staggerContainerProps} className="space-y-4">
-      <motion.div {...staggerItemProps} className="rounded-lg border border-accent/20 bg-surface-raised p-3 shadow-sm sm:p-4">
+      <motion.div
+        {...staggerItemProps}
+        className="rounded-xl border border-border-subtle overflow-hidden"
+        style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 20px rgba(0,0,0,0.25)' }}
+      >
+        <div style={{ height: 2, background: 'linear-gradient(90deg, var(--color-accent) 0%, rgba(20,184,166,0.3) 45%, transparent 100%)' }} />
+        <div
+          className="p-3 sm:p-4"
+          style={{ background: 'linear-gradient(145deg, rgba(20,184,166,0.08) 0%, rgba(20,184,166,0.025) 45%, transparent 100%)' }}
+        >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-[0.16em] text-text-tertiary">Profile status</p>
-            <h2 className="truncate font-display text-base font-semibold text-text-primary">Ready at a glance</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] select-none" style={{ color: 'rgba(20,184,166,0.6)' }}>Profile status</p>
+            <h2 className="truncate font-display text-base font-semibold text-text-primary mt-0.5">Ready at a glance</h2>
           </div>
           <Badge
             variant={profile.visibility === 'private' ? 'default' : profile.visibility === 'shareable' ? 'info' : 'success'}
@@ -289,11 +339,14 @@ export function OverviewTab({
             icon={<Users className="h-3.5 w-3.5" />}
           />
         </div>
+        </div>
       </motion.div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <aside className="space-y-4 xl:order-2">
-          <motion.div {...staggerItemProps} className="rounded-lg border border-accent/20 bg-surface-raised p-3 sm:p-4">
+          <motion.div {...staggerItemProps} className="rounded-xl border border-border-subtle overflow-hidden">
+          <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.55) 0%, rgba(20,184,166,0.1) 55%, transparent 100%)' }} />
+          <div className="p-3 sm:p-4" style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.05) 0%, transparent 100%)' }}>
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-display text-sm font-semibold text-text-primary">{readyToApply ? 'Ready to apply' : 'Next step'}</h3>
@@ -303,8 +356,19 @@ export function OverviewTab({
                 {readinessPercent}%
               </Badge>
             </div>
-            <div className="mb-3 h-2 overflow-hidden rounded-full bg-surface-elevated">
-              <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${readinessPercent}%` }} />
+            <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-surface-elevated">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${readinessPercent}%`,
+                  background: readinessPercent === 100
+                    ? 'linear-gradient(90deg, rgba(74,222,128,0.7) 0%, #4ade80 100%)'
+                    : 'linear-gradient(90deg, rgba(20,184,166,0.7) 0%, var(--color-accent) 100%)',
+                  boxShadow: readinessPercent === 100
+                    ? '0 0 8px rgba(74,222,128,0.5)'
+                    : '0 0 8px rgba(20,184,166,0.45)',
+                }}
+              />
             </div>
             {incompleteSteps.length > 0 ? (
               <div className="mb-3 rounded-lg border border-status-warning/20 bg-status-warning/10 px-3 py-2">
@@ -401,6 +465,7 @@ export function OverviewTab({
                 ))}
               </div>
             )}
+          </div>
           </motion.div>
 
           {staticSuggestions.length > 0 && (
@@ -438,10 +503,7 @@ export function OverviewTab({
 
         <main className="space-y-4 xl:order-1">
           <motion.div {...staggerItemProps} className="space-y-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.16em] text-text-tertiary">Raider Snapshot</p>
-              <h3 className="font-display text-lg text-text-primary">Profile systems at a glance</h3>
-            </div>
+            <SectionLabel icon={<Target className="h-3 w-3" />}>Raider Snapshot</SectionLabel>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <DashboardCard
                 title="Gear"
@@ -480,14 +542,22 @@ export function OverviewTab({
                 footer={<InlineLink to="/profile?tab=jobs-gear">Manage Jobs & Gear</InlineLink>}
               >
                 {jobProfiles.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {jobProfiles.slice(0, 4).map((jp) => (
-                      <span key={jp.id} className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-elevated/70 px-2 py-1 text-xs text-text-secondary">
+                      <span
+                        key={jp.id}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border-default bg-surface-elevated px-2 py-1 text-xs font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-text-primary"
+                        style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}
+                      >
                         <JobIcon job={jp.job} size="sm" />
                         {jp.job}
                       </span>
                     ))}
-                    {jobProfiles.length > 4 && <span className="text-xs text-text-tertiary">+{jobProfiles.length - 4} more</span>}
+                    {jobProfiles.length > 4 && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs text-text-muted">
+                        +{jobProfiles.length - 4} more
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-text-tertiary">Add your main and flex jobs so statics can see where you fit.</p>
@@ -501,14 +571,19 @@ export function OverviewTab({
                 footer={<InlineLink to="/profile?tab=collections">Open Collections</InlineLink>}
               >
                 {collectionGoals.length > 0 ? (
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <span className="font-display text-2xl text-accent">{collectionGoals.filter((g) => g.status === 'active').length}</span>
-                      <span className="ml-1 text-xs text-text-tertiary">active</span>
+                  <div className="flex items-center gap-5">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-display text-2xl font-bold leading-none text-accent">
+                        {collectionGoals.filter((g) => g.status === 'active').length}
+                      </span>
+                      <span className="text-[11px] text-text-muted">active</span>
                     </div>
-                    <div>
-                      <span className="font-display text-2xl text-status-success">{collectionGoals.filter((g) => g.status === 'completed').length}</span>
-                      <span className="ml-1 text-xs text-text-tertiary">done</span>
+                    <div className="w-px h-5 bg-border-subtle flex-shrink-0" />
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-display text-2xl font-semibold text-text-tertiary leading-none">
+                        {collectionGoals.filter((g) => g.status === 'completed').length}
+                      </span>
+                      <span className="text-[11px] text-text-muted">done</span>
                     </div>
                   </div>
                 ) : (
@@ -523,14 +598,19 @@ export function OverviewTab({
                 footer={<InlineLink to="/profile?tab=goals">Add Task</InlineLink>}
               >
                 {personalGoals.length > 0 ? (
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <span className="font-display text-2xl text-accent">{personalGoals.filter((g) => g.status === 'active').length}</span>
-                      <span className="ml-1 text-xs text-text-tertiary">active</span>
+                  <div className="flex items-center gap-5">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-display text-2xl font-bold leading-none text-accent">
+                        {personalGoals.filter((g) => g.status === 'active').length}
+                      </span>
+                      <span className="text-[11px] text-text-muted">active</span>
                     </div>
-                    <div>
-                      <span className="font-display text-2xl text-status-success">{personalGoals.filter((g) => g.status === 'completed').length}</span>
-                      <span className="ml-1 text-xs text-text-tertiary">done</span>
+                    <div className="w-px h-5 bg-border-subtle flex-shrink-0" />
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-display text-2xl font-semibold text-text-tertiary leading-none">
+                        {personalGoals.filter((g) => g.status === 'completed').length}
+                      </span>
+                      <span className="text-[11px] text-text-muted">done</span>
                     </div>
                   </div>
                 ) : (

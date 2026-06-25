@@ -497,9 +497,11 @@ function parseReleaseNotes() {
     }
     const objText = searchContent.substring(objStartIndex, objEndIndex + 1);
 
-    // Detect an optional `internal: true` flag before doing full parsing —
-    // if internal, advance past this object and continue to the next one.
-    if (/\binternal:\s*true\b/.test(objText)) {
+    // Detect an optional release-level `internal: true` flag before doing
+    // full parsing. Item-level internal notes may appear inside `items`, so
+    // only treat the whole release as internal when the flag is the final
+    // top-level field, matching the releaseNotes.ts contract.
+    if (/,\s*internal:\s*true\s*,?\s*\}$/.test(objText)) {
       searchOffset += objEndIndex + 1;
       continue;
     }

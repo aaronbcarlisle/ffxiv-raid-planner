@@ -8,7 +8,7 @@
 import { useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { analytics } from '../services/analytics';
-import type { PageMode, ViewMode, SortPreset, SnapshotPlayer } from '../types';
+import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 
 interface HighlightedEntry {
@@ -25,6 +25,8 @@ export interface UseGroupViewStateReturn {
   // Tab state
   pageMode: PageMode;
   setPageMode: (mode: PageMode) => void;
+  gearSubTab: GearSubTab;
+  setGearSubTab: (tab: GearSubTab) => void;
   lootSubTab: 'matrix' | 'gear' | 'weapon';
   setLootSubTab: (tab: 'matrix' | 'gear' | 'weapon') => void;
 
@@ -112,23 +114,63 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // Adding reverse sync (URL -> state) would risk cascading renders and deviate from established patterns.
 
   // ===== Tab state: URL param > localStorage > default =====
-  // URL uses user-friendly names: log, summary; internal PageMode uses: history, stats
   const [pageMode, setPageModeState] = useState<PageMode>(() => {
     const urlTab = searchParams.get('tab');
-    if (urlTab === 'players') return 'players';
-    if (urlTab === 'loot' || urlTab === 'priority') return 'loot';
-    if (urlTab === 'weapon') return 'priority';
-    if (urlTab === 'log') return 'history';
-    if (urlTab === 'summary') return 'stats';
+    // New values pass through directly
+    if (urlTab === 'overview') return 'overview';
+    if (urlTab === 'roster') return 'roster';
     if (urlTab === 'schedule') return 'schedule';
+    if (urlTab === 'goals') return 'goals';
+    if (urlTab === 'gear') return 'gear';
+    if (urlTab === 'more') return 'more';
+    // Backward-compat: old URL param values
+    if (urlTab === 'home') return 'overview';
+    if (urlTab === 'players') return 'roster';
+    if (urlTab === 'loot' || urlTab === 'priority') return 'gear';
+    if (urlTab === 'weapon') return 'gear';
+    if (urlTab === 'log' || urlTab === 'history') return 'gear';
+    if (urlTab === 'summary') return 'gear';
+    if (urlTab === 'mount-farms' || urlTab === 'collections') return 'goals';
     // Deep links to a specific player (e.g., from the Dalamud plugin) should land
     // on the Roster tab so the highlighted card is actually visible.
-    if (searchParams.get('player')) return 'players';
+    if (searchParams.get('player')) return 'roster';
     const saved = localStorage.getItem('group-view-tab');
-    // Handle legacy tab values - redirect to current equivalents
-    if (saved === 'stats') return 'players';
-    if (saved === 'priority') return 'loot';
-    return (saved as PageMode) || 'players';
+    // Handle legacy saved values - map to new equivalents
+    if (saved === 'home') return 'overview';
+    if (saved === 'players') return 'roster';
+    if (saved === 'loot' || saved === 'priority' || saved === 'history' || saved === 'stats') return 'gear';
+    if (saved === 'mount-farms') return 'goals';
+    // If saved value is already a new PageMode value, use it
+    if (saved === 'overview' || saved === 'roster' || saved === 'schedule' || saved === 'goals' || saved === 'gear' || saved === 'more') {
+      return saved as PageMode;
+    }
+    return 'roster';
+  });
+
+  // ===== Gear sub-tab state: URL ?sub= > localStorage > default =====
+  const [gearSubTab, setGearSubTabState] = useState<GearSubTab>(() => {
+    const urlSub = searchParams.get('sub');
+    if (urlSub === 'sync' || urlSub === 'priority' || urlSub === 'history' || urlSub === 'stats') {
+      return urlSub;
+    }
+    // Backward-compat: old sub param values
+    if (urlSub === 'weapon') return 'priority';
+    if (urlSub === 'summary') return 'stats';
+    // Also handle old URL tab= values that map to specific gear sub-tabs
+    const urlTab = searchParams.get('tab');
+    if (urlTab === 'loot' || urlTab === 'priority') return 'priority';
+    if (urlTab === 'weapon') return 'priority';
+    if (urlTab === 'log' || urlTab === 'history') return 'history';
+    if (urlTab === 'summary') return 'stats';
+    try {
+      const saved = localStorage.getItem('gear-subtab');
+      if (saved === 'sync' || saved === 'priority' || saved === 'history' || saved === 'stats') return saved;
+      // Migrate old saved value 'weapon' → 'priority'
+      if (saved === 'weapon') return 'priority';
+    } catch {
+      // Ignore
+    }
+    return 'sync';
   });
 
   // Subtab state for loot panel: URL param > localStorage > default
@@ -215,20 +257,29 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     } catch {
       // Ignore localStorage errors
     }
-    // Map internal PageMode to URL-friendly names
-    const urlTab = mode === 'history' ? 'log' : mode === 'stats' ? 'summary' : mode === 'loot' ? 'priority' : mode === 'priority' ? 'weapon' : mode;
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
-      params.set('tab', urlTab);
-      // Set or clear subtab depending on whether we're on the loot tab
-      if (mode === 'loot') {
-        params.set('subtab', lootSubTab);
-      } else {
-        params.delete('subtab');
-      }
+      params.set('tab', mode);
+      // Clear old subtab param; gear sub-tab is stored as ?sub=
+      params.delete('subtab');
       return params;
     }, { replace: true });
-  }, [setSearchParams, lootSubTab]);
+  }, [setSearchParams]);
+
+  // Wrapper to persist gearSubTab and update URL
+  const setGearSubTab = useCallback((tab: GearSubTab) => {
+    setGearSubTabState(tab);
+    try {
+      localStorage.setItem('gear-subtab', tab);
+    } catch {
+      // Ignore localStorage errors
+    }
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      params.set('sub', tab);
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Wrapper to persist lootSubTab and update URL
   const setLootSubTab = useCallback((tab: 'matrix' | 'gear' | 'weapon') => {
@@ -356,6 +407,8 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     // Tab state
     pageMode,
     setPageMode,
+    gearSubTab,
+    setGearSubTab,
     lootSubTab,
     setLootSubTab,
 

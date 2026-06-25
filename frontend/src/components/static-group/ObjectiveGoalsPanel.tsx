@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Pencil, Plus, Trash2, Check } from 'lucide-react';
+import { Pencil, Plus, Target, Trash2, Check } from 'lucide-react';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
@@ -18,6 +18,7 @@ import { Spinner } from '../ui/Spinner';
 import { useModal } from '../../hooks/useModal';
 import { useObjectiveGoalStore } from '../../stores/objectiveGoalStore';
 import { toast } from '../../stores/toastStore';
+import { EmptyState } from '../ui/EmptyState';
 
 // ---- Option lists ----
 
@@ -261,11 +262,16 @@ export function ObjectiveGoalsPanel({ groupId, canManage }: ObjectiveGoalsPanelP
       )}
 
       {!loading && objectives.length === 0 && !showAddForm && (
-        <p className="text-sm text-text-tertiary italic py-4 text-center">
-          {canManage
-            ? 'No official goals set yet. Add one to enable goal matching for applicants and discovery.'
-            : 'No official goals have been set for this static yet.'}
-        </p>
+        <EmptyState
+          icon={<Target size={24} />}
+          heading="No objectives set"
+          description={
+            canManage
+              ? 'Add a static goal to enable matching for applicants and discovery.'
+              : 'No official goals have been set for this static yet.'
+          }
+          action={canManage ? { label: 'Add static goal', onClick: () => setShowAddForm(true) } : undefined}
+        />
       )}
 
       <div className="space-y-2">
