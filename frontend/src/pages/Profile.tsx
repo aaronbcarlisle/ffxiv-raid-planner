@@ -478,6 +478,18 @@ export default function Profile() {
     }
   }, [jobProfileIds, fetchTargets]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Profile tab keyboard shortcuts — must be before any early returns (hooks rules)
+  useKeyboardShortcuts({
+    shortcuts: [
+      { key: '`', description: 'Overview',            action: () => setActiveTab('overview') },
+      { key: '1', description: 'Sync & Gear',         action: () => setActiveTab('sync') },
+      { key: '2', description: 'Jobs & Gear',         action: () => setActiveTab('jobs-gear') },
+      { key: '3', description: 'Collections & Goals', action: () => setActiveTab('collections') },
+      { key: '4', description: 'Availability',        action: () => setActiveTab('availability') },
+      { key: '5', description: 'Share',               action: () => setActiveTab('preview') },
+    ],
+  });
+
   if (!authInitialized || authLoading) {
     return (
       <div className="mx-auto w-full max-w-[1440px] px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
@@ -526,18 +538,6 @@ export default function Profile() {
   const primaryStatic = groups.length > 0 ? groups[0] : null;
   const focusAvailability = new URLSearchParams(location.search).get('focus') === 'availability';
 
-  // Profile tab keyboard shortcuts — ` 1 2 3 4 5 in sidebar order
-  useKeyboardShortcuts({
-    shortcuts: [
-      { key: '`', description: 'Overview',          action: () => setActiveTab('overview') },
-      { key: '1', description: 'Sync & Gear',       action: () => setActiveTab('sync') },
-      { key: '2', description: 'Jobs & Gear',       action: () => setActiveTab('jobs-gear') },
-      { key: '3', description: 'Collections & Goals', action: () => setActiveTab('collections') },
-      { key: '4', description: 'Availability',      action: () => setActiveTab('availability') },
-      { key: '5', description: 'Share',             action: () => setActiveTab('preview') },
-    ],
-  });
-
   return (
     <div ref={pageRef} className="flex flex-1 min-h-0 w-full">
       {/* Sidebar — fills flex parent height naturally, no sticky needed */}
@@ -557,17 +557,17 @@ export default function Profile() {
         <div
           className="rounded-xl border border-border-subtle overflow-hidden"
           style={{
-            background: 'linear-gradient(135deg, rgba(20,184,166,0.065) 0%, rgba(20,184,166,0.02) 60%, transparent 100%)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+            background: 'linear-gradient(145deg, rgba(20,184,166,0.1) 0%, rgba(20,184,166,0.03) 45%, transparent 100%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 24px rgba(0,0,0,0.3)',
           }}
         >
           {/* Top accent rule */}
-          <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.7) 0%, rgba(20,184,166,0.2) 55%, transparent 100%)' }} />
+          <div style={{ height: 2, background: 'linear-gradient(90deg, #14b8a6 0%, rgba(20,184,166,0.3) 45%, transparent 100%)' }} />
           <div className="flex items-center gap-3 px-3 py-3 sm:px-4 sm:py-4">
             {/* User avatar */}
             <div
               className="w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden bg-surface-elevated flex-shrink-0"
-              style={{ boxShadow: '0 0 0 2px rgba(20,184,166,0.35), 0 0 14px rgba(20,184,166,0.15)' }}
+              style={{ boxShadow: '0 0 0 2px rgba(20,184,166,0.5), 0 0 0 4px rgba(20,184,166,0.12), 0 0 20px rgba(20,184,166,0.3)' }}
             >
               {mainCharacter?.avatarUrl ? (
                 <img src={mainCharacter.avatarUrl} alt="" className="w-full h-full object-cover" />

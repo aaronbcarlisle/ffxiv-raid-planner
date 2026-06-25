@@ -55,15 +55,15 @@ interface OverviewTabProps {
 
 function SectionLabel({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 mb-2.5 select-none">
-      <h3
-        className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] flex-shrink-0 whitespace-nowrap"
-        style={{ color: 'rgba(20,184,166,0.65)' }}
-      >
-        {icon && <span style={{ opacity: 0.85 }}>{icon}</span>}
+    <div className="flex items-center gap-2.5 mb-3 select-none">
+      <div
+        className="w-[3px] h-3.5 rounded-full flex-shrink-0"
+        style={{ background: 'linear-gradient(180deg, #14b8a6 0%, rgba(20,184,166,0.2) 100%)' }}
+      />
+      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-text-muted">
+        {icon && <span className="opacity-50">{icon}</span>}
         {children}
-      </h3>
-      <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, rgba(20,184,166,0.25) 0%, transparent 80%)' }} />
+      </span>
     </div>
   );
 }
@@ -87,29 +87,41 @@ function DashboardCard({
 }) {
   return (
     <div
-      className={`flex min-h-[116px] flex-col rounded-xl border border-border-subtle overflow-hidden ${className ?? ''}`}
-      style={{ background: accent ? 'linear-gradient(135deg, rgba(20,184,166,0.07) 0%, rgba(20,184,166,0.02) 100%)' : undefined }}
+      className={`group flex flex-col rounded-xl border border-border-subtle overflow-hidden transition-all duration-150 hover:border-border-hover ${className ?? ''}`}
+      style={{
+        background: accent
+          ? 'linear-gradient(145deg, rgba(20,184,166,0.1) 0%, rgba(20,184,166,0.03) 50%, transparent 100%)'
+          : 'linear-gradient(160deg, rgba(255,255,255,0.025) 0%, transparent 55%)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 12px rgba(0,0,0,0.18)',
+      }}
     >
       {accent && (
-        <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.55) 0%, rgba(20,184,166,0.12) 60%, transparent 100%)', flexShrink: 0 }} />
+        <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.7) 0%, rgba(20,184,166,0.18) 55%, transparent 100%)', flexShrink: 0 }} />
       )}
-      <div className="flex flex-col flex-1 p-3">
-        <div className="mb-2.5 flex items-start gap-2">
+      <div className="flex flex-col flex-1 p-3.5">
+        <div className="mb-3 flex items-start gap-2.5">
           {icon && (
             <div
-              className="mt-0.5 rounded-lg p-1.5 text-accent flex-shrink-0"
-              style={{ background: 'rgba(20,184,166,0.1)', boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.2)' }}
+              className="mt-0.5 rounded-lg p-1.5 text-accent flex-shrink-0 transition-all duration-150 group-hover:scale-110"
+              style={{
+                background: 'rgba(20,184,166,0.1)',
+                boxShadow: 'inset 0 0 0 1px rgba(20,184,166,0.25), 0 0 8px rgba(20,184,166,0.06)',
+              }}
             >
               {icon}
             </div>
           )}
           <div className="min-w-0">
-            <h3 className="font-display text-sm font-semibold text-text-primary">{title}</h3>
-            {subtitle && <p className="mt-0.5 text-xs text-text-tertiary">{subtitle}</p>}
+            <h3 className="font-display text-sm font-semibold text-text-primary leading-snug">{title}</h3>
+            {subtitle && <p className="mt-0.5 text-[11px] text-text-tertiary leading-relaxed">{subtitle}</p>}
           </div>
         </div>
         <div className="flex-1">{children}</div>
-        {footer && <div className="mt-3 border-t border-border-subtle pt-3">{footer}</div>}
+        {footer && (
+          <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -145,12 +157,19 @@ function CommandChip({
   return (
     <Link
       to={to}
-      className={`min-w-0 rounded-lg border px-3 py-2 transition-colors hover:border-accent/40 hover:bg-accent/5 ${
-        highlight ? 'border-accent/40 bg-accent/10' : 'border-border-subtle bg-surface-elevated/70'
+      className={`group min-w-0 rounded-lg border px-3 py-2.5 transition-all duration-150 ${
+        highlight
+          ? 'border-accent/40 bg-accent/10 hover:border-accent/60 hover:bg-accent/15'
+          : 'border-border-subtle bg-surface-elevated/60 hover:border-border-hover hover:bg-surface-elevated'
       }`}
+      style={{
+        boxShadow: highlight
+          ? 'inset 0 1px 0 rgba(255,255,255,0.04), 0 0 14px rgba(20,184,166,0.1)'
+          : 'inset 0 1px 0 rgba(255,255,255,0.03)',
+      }}
     >
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-text-tertiary">
-        <span className="text-accent">{icon}</span>
+      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-text-muted">
+        <span className="text-accent/70 group-hover:text-accent transition-colors">{icon}</span>
         {label}
       </div>
       <div className="mt-1 truncate text-sm font-semibold text-text-primary">{value}</div>
@@ -266,11 +285,15 @@ export function OverviewTab({
 
   return (
     <motion.div {...staggerContainerProps} className="space-y-4">
-      <motion.div {...staggerItemProps} className="rounded-xl border border-border-subtle overflow-hidden shadow-sm">
-        <div style={{ height: 2, background: 'linear-gradient(90deg, rgba(20,184,166,0.65) 0%, rgba(20,184,166,0.18) 55%, transparent 100%)' }} />
+      <motion.div
+        {...staggerItemProps}
+        className="rounded-xl border border-border-subtle overflow-hidden"
+        style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 20px rgba(0,0,0,0.25)' }}
+      >
+        <div style={{ height: 2, background: 'linear-gradient(90deg, #14b8a6 0%, rgba(20,184,166,0.3) 45%, transparent 100%)' }} />
         <div
           className="p-3 sm:p-4"
-          style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.06) 0%, rgba(20,184,166,0.015) 100%)' }}
+          style={{ background: 'linear-gradient(145deg, rgba(20,184,166,0.08) 0%, rgba(20,184,166,0.025) 45%, transparent 100%)' }}
         >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -339,8 +362,19 @@ export function OverviewTab({
                 {readinessPercent}%
               </Badge>
             </div>
-            <div className="mb-3 h-2 overflow-hidden rounded-full bg-surface-elevated">
-              <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${readinessPercent}%` }} />
+            <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-surface-elevated">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${readinessPercent}%`,
+                  background: readinessPercent === 100
+                    ? 'linear-gradient(90deg, rgba(74,222,128,0.7) 0%, #4ade80 100%)'
+                    : 'linear-gradient(90deg, rgba(20,184,166,0.7) 0%, #14b8a6 100%)',
+                  boxShadow: readinessPercent === 100
+                    ? '0 0 8px rgba(74,222,128,0.5)'
+                    : '0 0 8px rgba(20,184,166,0.45)',
+                }}
+              />
             </div>
             {incompleteSteps.length > 0 ? (
               <div className="mb-3 rounded-lg border border-status-warning/20 bg-status-warning/10 px-3 py-2">
@@ -515,14 +549,22 @@ export function OverviewTab({
                 footer={<InlineLink to="/profile?tab=jobs-gear">Manage Jobs & Gear</InlineLink>}
               >
                 {jobProfiles.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5">
                     {jobProfiles.slice(0, 4).map((jp) => (
-                      <span key={jp.id} className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-elevated/70 px-2 py-1 text-xs text-text-secondary">
+                      <span
+                        key={jp.id}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border-default bg-surface-elevated px-2 py-1 text-xs font-medium text-text-secondary transition-colors hover:border-accent/30 hover:text-text-primary"
+                        style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)' }}
+                      >
                         <JobIcon job={jp.job} size="sm" />
                         {jp.job}
                       </span>
                     ))}
-                    {jobProfiles.length > 4 && <span className="text-xs text-text-tertiary">+{jobProfiles.length - 4} more</span>}
+                    {jobProfiles.length > 4 && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs text-text-muted">
+                        +{jobProfiles.length - 4} more
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-text-tertiary">Add your main and flex jobs so statics can see where you fit.</p>
@@ -536,14 +578,22 @@ export function OverviewTab({
                 footer={<InlineLink to="/profile?tab=collections">Open Collections</InlineLink>}
               >
                 {collectionGoals.length > 0 ? (
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <span className="font-display text-2xl text-accent">{collectionGoals.filter((g) => g.status === 'active').length}</span>
-                      <span className="ml-1 text-xs text-text-tertiary">active</span>
+                  <div className="flex items-center gap-5">
+                    <div className="flex items-baseline gap-1.5">
+                      <span
+                        className="font-display text-2xl font-bold leading-none"
+                        style={{ color: '#14b8a6', textShadow: '0 0 20px rgba(20,184,166,0.45)' }}
+                      >
+                        {collectionGoals.filter((g) => g.status === 'active').length}
+                      </span>
+                      <span className="text-[11px] text-text-muted">active</span>
                     </div>
-                    <div>
-                      <span className="font-display text-2xl text-status-success">{collectionGoals.filter((g) => g.status === 'completed').length}</span>
-                      <span className="ml-1 text-xs text-text-tertiary">done</span>
+                    <div className="w-px h-5 bg-border-subtle flex-shrink-0" />
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-display text-2xl font-semibold text-text-tertiary leading-none">
+                        {collectionGoals.filter((g) => g.status === 'completed').length}
+                      </span>
+                      <span className="text-[11px] text-text-muted">done</span>
                     </div>
                   </div>
                 ) : (
@@ -558,14 +608,22 @@ export function OverviewTab({
                 footer={<InlineLink to="/profile?tab=goals">Add Task</InlineLink>}
               >
                 {personalGoals.length > 0 ? (
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <span className="font-display text-2xl text-accent">{personalGoals.filter((g) => g.status === 'active').length}</span>
-                      <span className="ml-1 text-xs text-text-tertiary">active</span>
+                  <div className="flex items-center gap-5">
+                    <div className="flex items-baseline gap-1.5">
+                      <span
+                        className="font-display text-2xl font-bold leading-none"
+                        style={{ color: '#14b8a6', textShadow: '0 0 20px rgba(20,184,166,0.45)' }}
+                      >
+                        {personalGoals.filter((g) => g.status === 'active').length}
+                      </span>
+                      <span className="text-[11px] text-text-muted">active</span>
                     </div>
-                    <div>
-                      <span className="font-display text-2xl text-status-success">{personalGoals.filter((g) => g.status === 'completed').length}</span>
-                      <span className="ml-1 text-xs text-text-tertiary">done</span>
+                    <div className="w-px h-5 bg-border-subtle flex-shrink-0" />
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-display text-2xl font-semibold text-text-tertiary leading-none">
+                        {personalGoals.filter((g) => g.status === 'completed').length}
+                      </span>
+                      <span className="text-[11px] text-text-muted">done</span>
                     </div>
                   </div>
                 ) : (
