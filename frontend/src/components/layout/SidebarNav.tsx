@@ -1,10 +1,7 @@
 /* eslint-disable design-system/no-raw-button */
 import { useState } from 'react';
 import { motion, LayoutGroup } from 'framer-motion';
-import {
-  LayoutDashboard, Calendar, Users, Trophy, Shield,
-  MoreHorizontal, ChevronLeft, ChevronRight, PlugZap,
-} from 'lucide-react';
+import { Shield, ChevronLeft, ChevronRight, PlugZap } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { analytics } from '../../services/analytics';
 import { Tooltip } from '../primitives';
@@ -20,14 +17,14 @@ const NAV_ITEMS: Array<{
   label: string;
   description: string;
   shortcut?: string;
-  icon: React.FC<{ size?: number; className?: string }>;
+  icon: string;
 }> = [
-  { id: 'overview',  label: 'Overview',      description: 'Static overview, next raid, and pending applications', shortcut: '`',  icon: LayoutDashboard },
-  { id: 'schedule',  label: 'Schedule',      description: 'Upcoming sessions, availability, and Discord sync',    shortcut: '1',  icon: Calendar },
-  { id: 'roster',    label: 'Roster',        description: 'Member list, roles, and join requests',                shortcut: '2',  icon: Users },
-  { id: 'goals',     label: 'Goals & Farms', description: 'Farm goals, mount drops, and clear tracking',          shortcut: '3',  icon: Trophy },
-  { id: 'gear',      label: 'Gear & Sync',   description: 'BiS sets, gear sync, and loot history',               shortcut: '4',  icon: Shield },
-  { id: 'more',      label: 'More',          description: 'Integrations, settings, and tools',                                   icon: MoreHorizontal },
+  { id: 'overview',  label: 'Overview',      description: 'Static overview, next raid, and pending applications', shortcut: '`',  icon: '/icons/stats-transparent-bg.png' },
+  { id: 'schedule',  label: 'Schedule',      description: 'Upcoming sessions, availability, and Discord sync',    shortcut: '1',  icon: '/icons/schedule-transparent-bg.png' },
+  { id: 'roster',    label: 'Roster',        description: 'Member list, roles, and join requests',                shortcut: '2',  icon: '/icons/party-transparent-bg.png' },
+  { id: 'goals',     label: 'Goals & Farms', description: 'Farm goals, mount drops, and clear tracking',          shortcut: '3',  icon: '/icons/mount-farms-transparent-bg.png' },
+  { id: 'gear',      label: 'Gear & Sync',   description: 'BiS sets, gear sync, and loot history',               shortcut: '4',  icon: '/icons/loot-transparent-bg.png' },
+  { id: 'more',      label: 'More',          description: 'Integrations, settings, and tools',                                   icon: '/icons/player-options-transparent-bg.png' },
 ];
 
 const COLLAPSED_KEY = 'sidebar-collapsed';
@@ -107,7 +104,6 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
       <LayoutGroup id="sidebar-static-nav">
         <div className="flex flex-col py-2 flex-1">
           {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
             const isActive = activeTab === item.id;
             const showDivider = item.id === 'more';
             return (
@@ -171,7 +167,11 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
                         transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                       />
                     )}
-                    <Icon size={15} className="flex-shrink-0 relative z-10" />
+                    <img
+                      src={item.icon}
+                      alt=""
+                      className={`w-[15px] h-[15px] flex-shrink-0 relative z-10 transition-opacity ${isActive ? 'opacity-100' : 'opacity-45'}`}
+                    />
                     {!collapsed && (
                       <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
                     )}

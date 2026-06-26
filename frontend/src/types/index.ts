@@ -552,6 +552,7 @@ export const TAB_ICONS = {
   history: '/icons/history-transparent-bg.png',
   schedule: '/icons/schedule-transparent-bg.png',
   mountFarms: '/icons/mount-farms-transparent-bg.png',
+  playerOptions: '/icons/player-options-transparent-bg.png',
   playerOverview: '/icons/player-hub-overview.svg',
   playerSync: '/icons/player-hub-overview.svg',
   playerCharacter: '/icons/player-hub-character.svg',
