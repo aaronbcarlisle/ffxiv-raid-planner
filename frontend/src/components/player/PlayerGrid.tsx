@@ -476,11 +476,15 @@ export function PlayerGrid({
     setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
   }, []);
 
-  // The following three blocks use React's "adjust state while rendering"
-  // pattern (a conditional setState during render that React applies before
-  // committing) to react to prop changes. Persistence is deliberately NOT done
-  // here — render stays free of side effects; a single effect below mirrors the
-  // resulting state into localStorage.
+  // The following two blocks use React's "adjust state while rendering" pattern
+  // (a conditional setState during render that React applies before committing)
+  // to react to prop changes. Persistence is deliberately NOT done here — render
+  // stays free of side effects; a single effect below mirrors the resulting
+  // state into localStorage.
+  //
+  // Note: switching card density (Compact ⇄ Expanded) intentionally does NOT
+  // touch fold state — the collapse prefs persist independently of density. The
+  // explicit expand/collapse-all affordance is the expandAllSignal below.
 
   // Re-read persisted fold state when the static/tier (and thus the storage key)
   // changes. The component stays mounted across tier switches, so without this
@@ -491,19 +495,9 @@ export function PlayerGrid({
     setCollapsed(readCollapsedState(collapseKey));
   }
 
-  // Switching card density (Compact ⇄ Expanded) auto-expands any collapsed
-  // sections so the toggle reveals everything rather than fighting the folds.
-  const [lastViewMode, setLastViewMode] = useState(viewMode);
-  if (viewMode !== lastViewMode) {
-    setLastViewMode(viewMode);
-    setCollapsed({});
-  }
-
-  // Clicking "Expanded" again while already in Expanded view bumps this signal
-  // (viewMode doesn't change, so the reset above wouldn't fire). Treat it as a
-  // toggle across the currently-rendered sections: if every section is already
-  // expanded, collapse them all; otherwise expand everything. Saves users from
-  // bouncing through Compact to un-collapse folds.
+  // Clicking "Expanded" again while already in Expanded view bumps this signal.
+  // Treat it as a toggle across the currently-rendered sections: if every
+  // section is already expanded, collapse them all; otherwise expand everything.
   const [lastExpandSignal, setLastExpandSignal] = useState(expandAllSignal);
   if (expandAllSignal !== lastExpandSignal) {
     setLastExpandSignal(expandAllSignal);
