@@ -160,8 +160,10 @@ function ActivityIcon({ type }: { type: ActivityItemType }) {
   }
 }
 
-function relativeTime(iso: string): string {
-  const delta = Date.now() - new Date(iso).getTime();
+function relativeTime(iso: string | null | undefined): string {
+  const ts = new Date(iso ?? '').getTime();
+  if (!iso || isNaN(ts)) return '—';
+  const delta = Date.now() - ts;
   if (delta < 60_000) return 'just now';
   if (delta < 3_600_000) return `${Math.floor(delta / 60_000)}m ago`;
   if (delta < 86_400_000) return `${Math.floor(delta / 3_600_000)}h ago`;

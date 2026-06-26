@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.27.0';
+export const CURRENT_VERSION = '1.27.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,36 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.27.1',
+    date: '2026-06-26T00:00:00Z',
+    title: 'PLD gear sync & activity feed time display fixes',
+    highlights: [
+      'PLD gear sync now correctly maps accessories instead of shifting them by one slot',
+    ],
+    items: [
+      {
+        category: 'fix',
+        title: 'PLD gear sync — Shield at position 1 shifted all accessory slots',
+        description:
+          'Tomestone returns a positional gear list that inserts an OffHand (Shield) at position 1 for PLD, ' +
+          'shifting earring to neck, neck to wrist, wrist to ring, etc. ' +
+          'The slot mapper now detects the Shield by categoryName and skips it, ' +
+          'keeping all subsequent accessories correctly aligned.',
+        pr: 145,
+        prTitle: 'fix: PLD gear sync off-by-one shield slot and NaN activity timestamps',
+      },
+      {
+        category: 'fix',
+        title: 'Activity feed timestamps showing "NaN ago" for null dates',
+        description:
+          'When a mount-farm or join-request record had a null updatedAt date, ' +
+          'the relativeTime helper produced "NaN ago". Added a guard that returns "—" for missing or unparseable timestamps.',
+        pr: 145,
+        prTitle: 'fix: PLD gear sync off-by-one shield slot and NaN activity timestamps',
+      },
+    ],
+  },
   {
     version: '1.27.0',
     date: '2026-06-26T00:00:00Z',
