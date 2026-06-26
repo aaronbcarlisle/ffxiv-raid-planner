@@ -33,6 +33,35 @@ Complete guide covering:
 - Best practices
 - Success metrics
 
+## 📐 Typography Scale & Size Floor
+
+Use **semantic Tailwind sizes**, not arbitrary `text-[Npx]`. The scale:
+
+| Token | Size | Use for |
+|-------|------|---------|
+| `text-xs` | 12px | Captions, badges, dense metadata — **the floor for any text users read** |
+| `text-sm` | 14px | Body copy, form labels, table cells |
+| `text-base` | 16px | Primary content |
+| `text-lg`+ | 18px+ | Headings |
+
+### Floor rule (readable text)
+
+- **No `text-[Npx]` below `text-xs` (12px) for any text a user reads.**
+- The **only** allowed sub-12px text is a numeric **badge count**, and **never below `text-[9px]`**.
+- **`text-[7px]` and `text-[8px]` are not allowed anywhere.**
+
+### Arbitrary → semantic mapping
+
+When you find an arbitrary size, convert it:
+
+| Arbitrary | Use instead |
+|-----------|-------------|
+| `text-[10px]`, `text-[11px]`, `text-[12px]` | `text-xs` |
+| `text-[13px]` | `text-sm` |
+| `text-[9px]` | `text-xs` — **unless** it's a badge count, where `text-[9px]` is the floor |
+
+Inline `style={{ fontSize: '10px' }}` is also a violation — use a class. New code must target this scale; the ESLint design-system plugin warns on sub-`xs` arbitrary sizes.
+
 ## 🎯 Key Insight: You Don't Need Storybook
 
 **Why?** Your DesignSystem.tsx page **already works like Storybook** because:
