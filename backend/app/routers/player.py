@@ -778,8 +778,7 @@ async def link_character(
             character.lodestone_id = body.lodestone_id
             character.data_center = body.data_center
             character.avatar_url = body.avatar_url
-            if body.is_main:
-                character.is_main = True
+            character.is_main = body.is_main  # mirror create-path semantics
             character.updated_at = now
             break
 

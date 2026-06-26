@@ -31,6 +31,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Plugin-provisioned characters have a NULL lodestone_id and cannot satisfy
+    # the restored NOT NULL constraint; drop them before re-adding it so the
+    # downgrade doesn't fail on real data.
+    op.execute("DELETE FROM player_characters WHERE lodestone_id IS NULL")
     with op.batch_alter_table("player_characters", schema=None) as batch_op:
         batch_op.alter_column(
             "lodestone_id",
