@@ -549,6 +549,9 @@ export function AvailabilityGrid({
                   type="button"
                   size="sm"
                   variant={mode === 'this-week' ? 'accent-subtle' : 'ghost'}
+                  // Reserve the active variant's 1px border on the inactive tab
+                  // so toggling only changes color, never the box size.
+                  className={mode === 'this-week' ? '' : 'border border-transparent'}
                   onClick={() => setMode('this-week')}
                 >
                   This week
@@ -557,6 +560,7 @@ export function AvailabilityGrid({
                   type="button"
                   size="sm"
                   variant={mode === 'typical-week' ? 'accent-subtle' : 'ghost'}
+                  className={mode === 'typical-week' ? '' : 'border border-transparent'}
                   leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
                   onClick={() => setMode('typical-week')}
                 >
@@ -686,6 +690,7 @@ export function AvailabilityGrid({
                         type="button"
                         size="sm"
                         variant={timePreset === preset ? 'accent-subtle' : 'ghost'}
+                        className={timePreset === preset ? '' : 'border border-transparent'}
                         leftIcon={<Icon className="h-3.5 w-3.5" />}
                         onClick={() => handlePresetChange(preset)}
                       >

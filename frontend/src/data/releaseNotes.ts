@@ -191,9 +191,9 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'fix',
-        title: 'Schedule sub-tabs no longer jump when switching',
+        title: 'Segmented tabs no longer jump when switching',
         description:
-          'The Sessions / Availability / Integrations tabs under Schedule used to shift a couple of pixels (and the label briefly popped) when you switched between them, because the active tab added a border the inactive tabs lacked. The inactive tabs now reserve the same border space, so only the color changes — the tabs stay put.',
+          'The Sessions / Availability / Integrations tabs under Schedule — and the This-week / Typical-week and time-preset toggles on the availability grid — used to shift a couple of pixels (and the label briefly popped) when you switched, because the active tab added a border the inactive tabs lacked. The inactive tabs now reserve the same border space, so only the color changes — the tabs stay put.',
         pr: 146,
         prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },
