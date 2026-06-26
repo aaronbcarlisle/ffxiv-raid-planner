@@ -42,6 +42,14 @@ export default defineConfig([
       'design-system/no-raw-select': 'warn',
       'design-system/no-raw-label': 'warn',
       'design-system/no-raw-textarea': 'warn',
+
+      // Color / typography / interaction-semantics enforcement.
+      // Start as 'warn' so legacy code stays green; the Plan L per-area sweeps
+      // ratchet each directory to 'error' as it is cleaned (Wave 4).
+      'design-system/no-arbitrary-color': 'warn',
+      'design-system/no-tiny-text': 'warn',
+      'design-system/no-noninteractive-onclick': 'warn',
+      'design-system/no-cursor-pointer-without-role': 'warn',
     },
   },
   // Exclude component files that define these primitives
@@ -63,6 +71,15 @@ export default defineConfig([
       'design-system/no-raw-select': 'off',
       'design-system/no-raw-label': 'off',
       'design-system/no-raw-textarea': 'off',
+    },
+  },
+  // index.css is the canonical token-definition file; the design-system page
+  // legitimately demonstrates arbitrary values. Don't flag color/size there.
+  {
+    files: ['src/pages/DesignSystem.tsx'],
+    rules: {
+      'design-system/no-arbitrary-color': 'off',
+      'design-system/no-tiny-text': 'off',
     },
   },
 ])
