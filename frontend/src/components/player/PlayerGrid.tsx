@@ -24,7 +24,14 @@ import type { DragState } from '../dnd/useDragAndDrop';
 type CollapsedState = { g1?: boolean; g2?: boolean; subs?: boolean };
 
 function readCollapsedState(key: string): CollapsedState {
-  try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || '{}');
+    // Guard against a non-object value (e.g. a stale "null" / "[]" / "true")
+    // that would otherwise break `collapsed.g1` reads downstream.
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
 }
 function writeCollapsedState(key: string, value: CollapsedState): void {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }

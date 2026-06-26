@@ -68,8 +68,13 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
   // User-scoped nav prefs — any member can change/save their own, no role gate.
   const navPrefsChanged = rememberSubTabs !== prefRememberSubTabs(user) ||
     rememberStaticTab !== prefRememberStaticTab(user);
-  const hasChanges = ownerFieldsChanged || leadFieldsChanged || navPrefsChanged;
-  const canSave = hasChanges && (!ownerFieldsChanged || isOwner) && (!leadFieldsChanged || canEdit);
+  // Only count static-field changes the user is actually allowed to make. The
+  // inputs are disabled without permission, but the live `group` prop can still
+  // diverge from local state via a background refetch — which must not block a
+  // user-scoped nav-pref save or trigger a forbidden group update.
+  const savableStaticChange = (isOwner && ownerFieldsChanged) || (canEdit && leadFieldsChanged);
+  const hasChanges = savableStaticChange || navPrefsChanged;
+  const canSave = hasChanges;
 
   const handleSave = async () => {
     if (!hasChanges) {
@@ -80,10 +85,11 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
     setError(null);
 
     try {
-      // Static fields (owner/lead only) — skip the group update entirely when
-      // only the user-scoped nav prefs changed, so members without edit rights
-      // can still save their preferences.
-      if (ownerFieldsChanged || leadFieldsChanged) {
+      // Static fields — only push a group update for changes the user is
+      // permitted to make. Skips the update entirely when only the user-scoped
+      // nav prefs changed (or when a static field merely diverged via refetch),
+      // so members without edit rights never hit a forbidden update.
+      if (savableStaticChange) {
         const updateData: {
           name?: string;
           isPublic?: boolean;
