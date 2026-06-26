@@ -59,12 +59,10 @@ describe('useUrlTabState', () => {
     expect(result.current.search).toContain('keep=1');
   });
 
-  it('clearRegisteredTabParams deletes registered params but leaves others', () => {
-    // Mounting the hook above registered the 'tab' param.
-    setup('/');
-    const params = new URLSearchParams('tab=b&keep=1');
+  it('clearRegisteredTabParams deletes registered sub-tab params but leaves others', () => {
+    const params = new URLSearchParams('rsub=characters&keep=1');
     clearRegisteredTabParams(params);
-    expect(params.has('tab')).toBe(false);
+    expect(params.has('rsub')).toBe(false);
     expect(params.get('keep')).toBe('1');
   });
 
@@ -77,5 +75,21 @@ describe('useUrlTabState', () => {
     expect(params.has('goal')).toBe(false);
     expect(params.has('stab')).toBe(false);
     expect(params.get('keep')).toBe('1');
+  });
+
+  it('never clears the protected primary tab / settings params, even when registered', () => {
+    // setup() mounts useUrlTabState('tab') and the app mounts
+    // useUrlTabState('settings'); both register on render but must survive a
+    // sub-tab reset (otherwise the navigated tab / open settings panel resets).
+    setup('/');
+    const reg = renderHook(() => useUrlTabState('settings', ['general', 'recruitment'] as const, 'general'), {
+      wrapper: ({ children }) => <MemoryRouter>{children}</MemoryRouter>,
+    });
+    reg.unmount();
+    const params = new URLSearchParams('tab=gear&settings=recruitment&rsub=characters');
+    clearRegisteredTabParams(params);
+    expect(params.get('tab')).toBe('gear');
+    expect(params.get('settings')).toBe('recruitment');
+    expect(params.has('rsub')).toBe(false); // sub-tab still cleared
   });
 });

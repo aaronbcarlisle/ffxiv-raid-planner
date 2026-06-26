@@ -39,9 +39,21 @@ const SEEDED_TAB_PARAMS = [
 ] as const;
 const registeredTabParams = new Set<string>(SEEDED_TAB_PARAMS);
 
-/** Delete every hook-managed sub-tab param from a URLSearchParams (mutates it). */
+// Params that use this hook but must NEVER be wiped by a sub-tab reset: the
+// primary `tab` and the settings-panel `settings` tab. They still register on
+// render (so other code sees them), but clearing them on a primary-tab switch
+// would drop the tab being navigated to or reset the open settings panel to its
+// default tab. Excluding them from the seed isn't enough — render-time
+// registration would re-add them — so clearRegisteredTabParams skips them.
+const PROTECTED_FROM_CLEAR = new Set<string>(['tab', 'settings']);
+
+/** Delete every hook-managed sub-tab param from a URLSearchParams (mutates it),
+ *  except the protected primary-navigation params. */
 export function clearRegisteredTabParams(params: URLSearchParams): void {
-  for (const key of registeredTabParams) params.delete(key);
+  for (const key of registeredTabParams) {
+    if (PROTECTED_FROM_CLEAR.has(key)) continue;
+    params.delete(key);
+  }
 }
 
 interface UrlTabStateOptions {
