@@ -133,6 +133,14 @@ export const RELEASES: Release[] = [
         prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },
       {
+        category: 'fix',
+        title: 'Log Loot Drop — lower-ranked recommended players now stick',
+        description:
+          'In the Log Loot Drop dialog, picking a recommended recipient beyond the top few could silently snap back to the suggested player. The recipient selection is now initialized only when the dialog opens, so a background roster refresh no longer resets your choice mid-pick, and every recommended candidate is always selectable.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
         category: 'improvement',
         title: 'Layout, width, and header alignment consistency',
         description:
