@@ -11,7 +11,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown, Globe, Lock, Search, Sparkles, Users, X } from 'lucide-react';
+import { Check, ChevronDown, Globe, Lock, Search, Users, X } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -517,7 +518,7 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
           {/* Share prompt (compact, inline) */}
           {showShare && (
             <div className="flex items-center gap-2 rounded border border-status-info/25 bg-status-info/5 px-2.5 py-2">
-              <Sparkles size={11} className="text-status-info flex-shrink-0" />
+              <XivIcon name="crystal" size={11} className="flex-shrink-0" />
               <p className="text-[11px] text-text-secondary flex-1 min-w-0">
                 Share with statics so your team sees this in Suggested Farms?
               </p>
