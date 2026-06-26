@@ -182,6 +182,14 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'fix',
+        title: 'No more stray scrollbar when opening dropdowns',
+        description:
+          'Opening a dropdown or combobox no longer flashes a vertical scrollbar on the right edge of the app. The scroll-lock workaround was forcing the page body to overflow: visible, which briefly exposed the document overflow; it now keeps the body in its normal state while still protecting the sticky header.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
         title: 'Notification badge clears when the last unread is a release note',
         description:
           'After "Mark all read", the avatar notification badge could keep showing a count when the only unread item was a release-note announcement. The badge now updates immediately.',

@@ -57,9 +57,18 @@ function usePreventScrollLock(isOpen: boolean) {
     const body = document.body;
 
     const override = () => {
+      // Keep the body in its NORMAL resting state during the scroll-lock:
+      // `position: static` defeats Radix's `position: fixed` (which is what
+      // actually breaks sticky nav), and `overflow: hidden` matches the body's
+      // default. Forcing `overflow: visible` here is what un-suppressed the
+      // document's natural overflow (the page is ~taller than the viewport,
+      // scrolling lives in an inner container) and produced a stray scrollbar
+      // every time a dropdown opened. Also reset the scrollbar-width padding
+      // react-remove-scroll injects so the content doesn't shift sideways.
       body.style.setProperty('position', 'static', 'important');
-      body.style.setProperty('overflow', 'visible', 'important');
+      body.style.setProperty('overflow', 'hidden', 'important');
       body.style.setProperty('pointer-events', 'auto', 'important');
+      body.style.setProperty('padding-right', '0', 'important');
 
       // Also remove aria-hidden from siblings
       document.querySelectorAll('[data-aria-hidden="true"]').forEach(el => {
@@ -80,6 +89,7 @@ function usePreventScrollLock(isOpen: boolean) {
       body.style.removeProperty('position');
       body.style.removeProperty('overflow');
       body.style.removeProperty('pointer-events');
+      body.style.removeProperty('padding-right');
     };
   }, [isOpen]);
 }
