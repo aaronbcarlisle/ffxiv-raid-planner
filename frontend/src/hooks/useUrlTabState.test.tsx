@@ -67,4 +67,15 @@ describe('useUrlTabState', () => {
     expect(params.has('tab')).toBe(false);
     expect(params.get('keep')).toBe('1');
   });
+
+  it('clears a known sub-tab param even if its view never mounted this session', () => {
+    // Regression: a deep-linked ?goal=farms must be cleared on a primary-tab
+    // switch (Remember sub-tabs off) even though no useUrlTabState('goal')
+    // rendered here. The seeded registry covers it; unrelated params survive.
+    const params = new URLSearchParams('goal=farms&stab=availability&keep=1');
+    clearRegisteredTabParams(params);
+    expect(params.has('goal')).toBe(false);
+    expect(params.has('stab')).toBe(false);
+    expect(params.get('keep')).toBe('1');
+  });
 });

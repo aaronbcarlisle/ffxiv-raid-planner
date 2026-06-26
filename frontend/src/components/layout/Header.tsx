@@ -260,6 +260,7 @@ export function Header() {
                 }
               >
                 <button
+                  type="button"
                   onClick={handleInviteMembers}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 transition-colors group flex-shrink-0"
                 >

@@ -23,14 +23,21 @@ import { useSearchParams } from 'react-router-dom';
 
 // Every param ever used by this hook is registered here. The "reset sub-tabs to
 // default on navigation" preference clears all of these in one shot, so a newly
-// added sub-tab is covered automatically (it can't be forgotten) as long as it
-// uses this hook — which is the standard. See clearRegisteredTabParams().
+// added sub-tab is covered automatically as long as it uses this hook — which is
+// the standard. See clearRegisteredTabParams().
 //
-// Registration happens on render, so a param is only present here once a
-// component using it has mounted this session. That's fine for the reset use
-// case: a param that isn't registered yet also isn't in the URL yet (it would
-// derive to its default), so there's nothing to clear.
-const registeredTabParams = new Set<string>();
+// Registration also happens on render (so anything new is picked up once mounted),
+// but the set is SEEDED with the known sub-tab params below. Seeding matters for
+// deep-linked / bookmarked URLs: a param like `?goal=farms` can be present before
+// the view that owns it has ever mounted this session, so render-time registration
+// alone would miss it and the stale value would survive a primary-tab switch even
+// with "Remember sub-tabs" off. The seed must NOT include the primary `tab` param
+// or the settings-panel `settings` param — clearing those would wipe the tab/panel
+// being navigated to.
+const SEEDED_TAB_PARAMS = [
+  'rsub', 'sched', 'stab', 'goal', 'farm', 'coll', 'gsub', 'psub', 'rcsub', 'avail', 'mf',
+] as const;
+const registeredTabParams = new Set<string>(SEEDED_TAB_PARAMS);
 
 /** Delete every hook-managed sub-tab param from a URLSearchParams (mutates it). */
 export function clearRegisteredTabParams(params: URLSearchParams): void {
