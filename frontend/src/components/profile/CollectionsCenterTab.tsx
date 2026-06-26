@@ -11,8 +11,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown, Globe, Lock, Search, Sparkles, Users } from 'lucide-react';
+import { Check, ChevronDown, Globe, Lock, Search, Sparkles, Users, X } from 'lucide-react';
 import { Button } from '../primitives/Button';
+import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Skeleton } from '../ui/Skeleton';
 import type {
@@ -688,20 +689,25 @@ export function CollectionsCenterTab({
   const [categoryFilter,  setCategoryFilter]  = useState<string | null>(null);
   const [expansionFilter, setExpansionFilter] = useState<string | null>(null);
   const [sourceTypeFilter,setSourceTypeFilter] = useState<string | null>(null);
+  const [searchQuery,     setSearchQuery]     = useState('');
 
   useEffect(() => {
     if (!myCatalogLoaded) fetchMyCatalog();
   }, [myCatalogLoaded, fetchMyCatalog]);
 
-  // Client-side filtering (filters stored by raw expansion key, e.g. "dt")
-  const filteredCatalog = useMemo(() =>
-    myCatalog.filter(e =>
+  // Client-side filtering (filters stored by raw expansion key, e.g. "dt").
+  // Text search matches the reward name and its source duty (e.g. a raid name).
+  const filteredCatalog = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return myCatalog.filter(e =>
       (!categoryFilter   || e.catalogItemCategory === categoryFilter) &&
       (!expansionFilter  || expKey(e.expansion) === expansionFilter) &&
-      (!sourceTypeFilter || e.sourceType === sourceTypeFilter)
-    ),
-    [myCatalog, categoryFilter, expansionFilter, sourceTypeFilter]
-  );
+      (!sourceTypeFilter || e.sourceType === sourceTypeFilter) &&
+      (!q ||
+        e.catalogItemName.toLowerCase().includes(q) ||
+        (e.sourceDutyName ?? '').toLowerCase().includes(q))
+    );
+  }, [myCatalog, categoryFilter, expansionFilter, sourceTypeFilter, searchQuery]);
 
   // My Priorities: items with any intent, sorted
   const priorityItems = useMemo(() => {
@@ -854,6 +860,28 @@ export function CollectionsCenterTab({
         onSourceTypeChange={setSourceTypeFilter}
       />
 
+      {/* ── Search (matches reward and duty/raid names) ── */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+        <Input
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search rewards or duties…"
+          className="pl-8 pr-8"
+        />
+        {searchQuery && (
+          // eslint-disable-next-line design-system/no-raw-button
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            aria-label="Clear search"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+
       {/* ── Compact privacy legend ── */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[10px] text-text-muted">
         <span className="flex items-center gap-1"><Lock size={9} className="opacity-40" /> Private — only you</span>
@@ -861,7 +889,9 @@ export function CollectionsCenterTab({
         <span className="flex items-center gap-1"><Globe size={9} className="text-accent" /> Public — on your dossier</span>
       </div>
 
-      {/* ── Content ── */}
+      {/* ── Content ──
+          Browse Catalog: the reward list gets its own bounded scroll so the
+          stats/filters/search above stay in view while only the list scrolls. */}
       {view === 'priorities' ? (
         <MyPrioritiesView
           items={priorityItems}
@@ -869,7 +899,9 @@ export function CollectionsCenterTab({
           {...callbacks}
         />
       ) : (
-        <BrowseCatalogView items={filteredCatalog} {...callbacks} />
+        <div className="max-h-[58vh] overflow-y-auto -mx-1 px-1" style={{ scrollbarGutter: 'stable' }}>
+          <BrowseCatalogView items={filteredCatalog} {...callbacks} />
+        </div>
       )}
     </div>
   );

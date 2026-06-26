@@ -218,7 +218,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
           onClick={() => setActiveCategory('all')}
           className={`rounded-full text-xs font-medium px-3 py-1 transition-colors ${
             activeCategory === 'all'
-              ? 'bg-accent text-white hover:bg-accent/90'
+              ? 'bg-accent text-accent-contrast hover:bg-accent/90'
               : 'bg-surface-card text-text-secondary hover:bg-surface-hover'
           }`}
         >
@@ -236,7 +236,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
               onClick={() => setActiveCategory(key === activeCategory ? 'all' : key)}
               className={`rounded-full text-xs font-medium px-3 py-1 transition-colors ${
                 activeCategory === key
-                  ? 'bg-accent text-white hover:bg-accent/90'
+                  ? 'bg-accent text-accent-contrast hover:bg-accent/90'
                   : 'bg-surface-card text-text-secondary hover:bg-surface-hover'
               }`}
             >

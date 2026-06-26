@@ -239,6 +239,44 @@ export function Header() {
               )}
             </div>
           )}
+
+          {/* Invite Members button — sits just right of the tier kebab on the
+              left side. Hidden on mobile (the static switcher takes the row). */}
+          {isGroupRoute && currentGroup && canManageInvitations && (
+            <div className="hidden sm:block">
+              <Tooltip
+                content={
+                  <div className="flex items-start gap-2 max-w-xs">
+                    <UserPlus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-medium">Invite Members</div>
+                      <div className="text-text-secondary text-xs mt-0.5">
+                        {activeInvitation
+                          ? 'Click to copy invitation link'
+                          : 'Click to create an invitation link'}
+                      </div>
+                    </div>
+                  </div>
+                }
+              >
+                <button
+                  onClick={handleInviteMembers}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 transition-colors group flex-shrink-0"
+                >
+                  {inviteCopied ? (
+                    <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <UserPlus className="w-4 h-4 text-accent" />
+                  )}
+                  <span className="text-sm font-medium text-accent">
+                    {inviteCopied ? 'Copied!' : 'Invite'}
+                  </span>
+                </button>
+              </Tooltip>
+            </div>
+          )}
         </div>
 
         {/* Center: Tips carousel (hidden on mobile, shown on group pages) */}
@@ -251,43 +289,6 @@ export function Header() {
           {/* Group controls (only on group pages) */}
           {isGroupRoute && currentGroup && (
             <>
-              {/* Invite Members button (for owners/leads) - hidden on mobile */}
-              {canManageInvitations && (
-                <div className="hidden sm:block">
-                  <Tooltip
-                    content={
-                      <div className="flex items-start gap-2 max-w-xs">
-                        <UserPlus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-medium">Invite Members</div>
-                          <div className="text-text-secondary text-xs mt-0.5">
-                            {activeInvitation
-                              ? 'Click to copy invitation link'
-                              : 'Click to create an invitation link'}
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  >
-                    <button
-                      onClick={handleInviteMembers}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 transition-colors group flex-shrink-0"
-                    >
-                      {inviteCopied ? (
-                        <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <UserPlus className="w-4 h-4 text-accent" />
-                      )}
-                      <span className="text-sm font-medium text-accent">
-                        {inviteCopied ? 'Copied!' : 'Invite'}
-                      </span>
-                    </button>
-                  </Tooltip>
-                </div>
-              )}
-
               {/* Settings gear icon (opens slide-out settings panel) */}
               {groupPermission.allowed && (
                 <Tooltip

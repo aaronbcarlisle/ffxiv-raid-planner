@@ -165,6 +165,14 @@ export const RELEASES: Release[] = [
         prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },
       {
+        category: 'improvement',
+        title: 'Header, catalog, and accent-contrast polish',
+        description:
+          'The Invite button moved to the left side of the header next to the tier controls. The Player Hub catalog gained a search box (search by reward or duty name) and the reward list now scrolls on its own so the filters stay in view. The New Task dialog\'s mode toggle was shortened to "Personal Task" / "Static Goal". And a site-wide pass fixed buttons/chips that showed white text on a solid teal background — they now use dark text per the design system.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
         category: 'fix',
         title: 'Notification badge clears when the last unread is a release note',
         description:

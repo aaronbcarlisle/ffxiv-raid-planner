@@ -67,7 +67,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
               attemptChunkReload();
               window.location.reload();
             }}
-            className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+            className="px-4 py-2 bg-accent text-accent-contrast rounded hover:bg-accent/80 transition-colors"
           >
             Reload app
           </button>
@@ -84,7 +84,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
 {/* design-system-ignore: error boundary uses inline button to minimize dependencies */}
         <button
           onClick={resetErrorBoundary}
-          className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+          className="px-4 py-2 bg-accent text-accent-contrast rounded hover:bg-accent/80 transition-colors"
         >
           Try again
         </button>

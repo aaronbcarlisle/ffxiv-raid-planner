@@ -249,11 +249,11 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
               onClick={() => setGoalMode('task')}
               className={`flex-1 px-3 py-2 transition-colors ${
                 goalMode === 'task'
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-contrast'
                   : 'bg-surface-elevated text-text-secondary hover:bg-surface-elevated/80'
               }`}
             >
-              Track a personal task
+              Personal Task
             </button>
             {/* design-system-ignore: segmented control — no Button primitive covers this style */}
             <button
@@ -261,11 +261,11 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
               onClick={() => setGoalMode('objective')}
               className={`flex-1 px-3 py-2 transition-colors border-l border-border-default ${
                 goalMode === 'objective'
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-contrast'
                   : 'bg-surface-elevated text-text-secondary hover:bg-surface-elevated/80'
               }`}
             >
-              Declare a static-matching goal
+              Static Goal
             </button>
           </div>
         )}
