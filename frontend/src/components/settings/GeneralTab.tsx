@@ -12,7 +12,6 @@ import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useAuthStore } from '../../stores/authStore';
 import { prefRememberSubTabs, prefRememberStaticTab } from '../../lib/navPreferences';
-import { logger } from '../../lib/logger';
 import { toast } from '../../stores/toastStore';
 import type { StaticGroup } from '../../types';
 
@@ -33,27 +32,13 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
   const [autoSyncIntervalHours, setAutoSyncIntervalHours] = useState(group.settings?.autoSyncIntervalHours ?? 8);
 
   // User-level navigation preferences (apply to YOUR account across all statics,
-  // not to the static). Saved immediately via updatePreferences, separate from
-  // the static's Save button. Local state mirrors the store for instant feedback.
+  // not to the static). Staged in local state and persisted on the Save button,
+  // same as the static fields below. They're user-scoped, so any member may save
+  // them regardless of their role in this static.
   const user = useAuthStore((s) => s.user);
   const updatePreferences = useAuthStore((s) => s.updatePreferences);
   const [rememberSubTabs, setRememberSubTabs] = useState(prefRememberSubTabs(user));
   const [rememberStaticTab, setRememberStaticTab] = useState(prefRememberStaticTab(user));
-  const savePref = async (
-    key: 'rememberSubTabs' | 'rememberStaticTab',
-    value: boolean,
-    setLocal: (v: boolean) => void,
-  ) => {
-    setLocal(value); // optimistic
-    try {
-      await updatePreferences({ [key]: value });
-    } catch (err) {
-      setLocal(!value); // revert on failure
-      const message = err instanceof Error ? err.message : 'Failed to save preference';
-      toast.error(message);
-      logger.warn('Failed to save user preference', { key, value, error: message });
-    }
-  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -71,7 +56,10 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
     hideBisBanners !== (group.settings?.hideBisBanners ?? false) ||
     autoSyncEnabled !== (group.settings?.autoSyncEnabled ?? false) ||
     autoSyncIntervalHours !== (group.settings?.autoSyncIntervalHours ?? 8);
-  const hasChanges = ownerFieldsChanged || leadFieldsChanged;
+  // User-scoped nav prefs — any member can change/save their own, no role gate.
+  const navPrefsChanged = rememberSubTabs !== prefRememberSubTabs(user) ||
+    rememberStaticTab !== prefRememberStaticTab(user);
+  const hasChanges = ownerFieldsChanged || leadFieldsChanged || navPrefsChanged;
   const canSave = hasChanges && (!ownerFieldsChanged || isOwner) && (!leadFieldsChanged || canEdit);
 
   const handleSave = async () => {
@@ -83,34 +71,45 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
     setError(null);
 
     try {
-      const updateData: {
-        name?: string;
-        isPublic?: boolean;
-        settings?: {
-          hideSetupBanners: boolean;
-          hideBisBanners: boolean;
-          autoSyncEnabled: boolean;
-          autoSyncIntervalHours: number;
-        };
-      } = {};
+      // Static fields (owner/lead only) — skip the group update entirely when
+      // only the user-scoped nav prefs changed, so members without edit rights
+      // can still save their preferences.
+      if (ownerFieldsChanged || leadFieldsChanged) {
+        const updateData: {
+          name?: string;
+          isPublic?: boolean;
+          settings?: {
+            hideSetupBanners: boolean;
+            hideBisBanners: boolean;
+            autoSyncEnabled: boolean;
+            autoSyncIntervalHours: number;
+          };
+        } = {};
 
-      if (name !== group.name) {
-        updateData.name = name;
-      }
-      if (isPublic !== group.isPublic) {
-        updateData.isPublic = isPublic;
-      }
-      if (leadFieldsChanged) {
-        updateData.settings = {
-          ...group.settings,
-          hideSetupBanners,
-          hideBisBanners,
-          autoSyncEnabled,
-          autoSyncIntervalHours,
-        };
+        if (name !== group.name) {
+          updateData.name = name;
+        }
+        if (isPublic !== group.isPublic) {
+          updateData.isPublic = isPublic;
+        }
+        if (leadFieldsChanged) {
+          updateData.settings = {
+            ...group.settings,
+            hideSetupBanners,
+            hideBisBanners,
+            autoSyncEnabled,
+            autoSyncIntervalHours,
+          };
+        }
+
+        await updateGroup(group.id, updateData);
       }
 
-      await updateGroup(group.id, updateData);
+      // User-scoped navigation preferences.
+      if (navPrefsChanged) {
+        await updatePreferences({ rememberSubTabs, rememberStaticTab });
+      }
+
       toast.success('Settings saved!');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save changes';
@@ -272,7 +271,7 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
         )}
       </div>
 
-      {/* Your navigation preferences — user-scoped, saved instantly */}
+      {/* Your navigation preferences — user-scoped, saved with the Save button */}
       <div className="border-t border-border-default pt-4">
         <p className="text-sm font-medium text-text-primary mb-1">Your Navigation</p>
         <p className="text-xs text-text-muted mb-3">
@@ -281,13 +280,13 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
         <div className="space-y-4">
           <Toggle
             checked={rememberSubTabs}
-            onChange={(v) => savePref('rememberSubTabs', v, setRememberSubTabs)}
+            onChange={setRememberSubTabs}
             label="Remember sub-tabs"
             hint="Keep the last sub-tab when you return to a view. Turn off to always reset to the default sub-tab (e.g. Roster → Members)."
           />
           <Toggle
             checked={rememberStaticTab}
-            onChange={(v) => savePref('rememberStaticTab', v, setRememberStaticTab)}
+            onChange={setRememberStaticTab}
             label="Remember tab per static"
             hint="When switching statics, return to that static's last tab. Turn off to stay on the tab you're currently viewing."
           />
