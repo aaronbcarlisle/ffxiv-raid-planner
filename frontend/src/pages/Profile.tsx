@@ -3,8 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight,
-  Crosshair, Eye, LayoutDashboard, PlugZap, Shield, Sparkles, User, Users,
+  PlugZap, User, Users,
 } from 'lucide-react';
+import { XivIcon } from '../components/ui/XivIcon';
+import type { XivIconKey } from '../utils/xivIcons';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
 import {
@@ -63,14 +65,14 @@ const PROFILE_NAV_ITEMS: Array<{
   label: string;
   description: string;
   shortcut: string;
-  icon: React.FC<{ size?: number; className?: string }>;
+  icon: XivIconKey;
 }> = [
-  { id: 'overview',     label: 'Overview',          description: 'Character overview, goals, and quick actions',              shortcut: '`', icon: LayoutDashboard },
-  { id: 'sync',         label: 'Sync & Gear',       description: 'Plugin sync status and character gear snapshots',           shortcut: '1', icon: Shield },
-  { id: 'jobs-gear',    label: 'Jobs & Gear',       description: 'Job profiles, BiS targets, and readiness status',          shortcut: '2', icon: Crosshair },
-  { id: 'collections',  label: 'Collections & Goals', description: 'Mounts, music, weapons, collection goals, and tasks',    shortcut: '3', icon: Sparkles },
-  { id: 'availability', label: 'Availability',      description: 'Your weekly availability for raid nights',                 shortcut: '4', icon: Calendar },
-  { id: 'preview',      label: 'Share',             description: 'Preview and manage your shareable profile',                shortcut: '5', icon: Eye },
+  { id: 'overview',     label: 'Overview',            description: 'Character overview, goals, and quick actions',           shortcut: '`', icon: 'stats' },
+  { id: 'sync',         label: 'Sync & Gear',         description: 'Plugin sync status and character gear snapshots',        shortcut: '1', icon: 'history' },
+  { id: 'jobs-gear',    label: 'Jobs & Gear',         description: 'Job profiles, BiS targets, and readiness status',       shortcut: '2', icon: 'loot' },
+  { id: 'collections',  label: 'Collections & Goals', description: 'Mounts, music, weapons, collection goals, and tasks',   shortcut: '3', icon: 'goals' },
+  { id: 'availability', label: 'Availability',        description: 'Your weekly availability for raid nights',              shortcut: '4', icon: 'schedule' },
+  { id: 'preview',      label: 'Share',               description: 'Preview and manage your shareable profile',             shortcut: '5', icon: 'handshake' },
 ];
 
 const PROFILE_SIDEBAR_KEY = 'profile-sidebar-collapsed';
@@ -180,7 +182,6 @@ function ProfileSidebarNav({
       <LayoutGroup id="sidebar-profile-nav">
         <div className="flex flex-col py-2 flex-1">
           {PROFILE_NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <div key={item.id}>
@@ -235,7 +236,7 @@ function ProfileSidebarNav({
                         transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                       />
                     )}
-                    <Icon size={15} className="flex-shrink-0 relative z-10" />
+                    <XivIcon name={item.icon} size={15} className={`flex-shrink-0 relative z-10 transition-opacity ${isActive ? 'opacity-100' : 'opacity-45'}`} />
                     {!collapsed && (
                       <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
                     )}
