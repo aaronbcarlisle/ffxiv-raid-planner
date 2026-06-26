@@ -6,7 +6,7 @@
  * Supports swipe left/right to change tabs.
  */
 
-import { LayoutDashboard, MoreHorizontal, SlidersHorizontal, type LucideProps } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import type { PageMode } from '../../types';
 import { TAB_ICONS } from '../../types';
 import { useDevice } from '../../hooks/useDevice';
@@ -18,18 +18,13 @@ interface MobileBottomNavProps {
   onControlsClick?: () => void;
 }
 
-type LucideIcon = React.FC<LucideProps>;
-
 const PAGE_TO_SPRITE: Partial<Record<PageMode, keyof typeof TAB_ICONS>> = {
+  overview: 'stats',
   roster:   'party',
   schedule: 'schedule',
   goals:    'mountFarms',
   gear:     'loot',
-};
-
-const PAGE_TO_LUCIDE: Partial<Record<PageMode, LucideIcon>> = {
-  overview: LayoutDashboard,
-  more: MoreHorizontal,
+  more:     'playerOptions',
 };
 
 const BASE_TABS: { id: PageMode; label: string }[] = [
@@ -114,21 +109,15 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
                   />
                 )}
                 {(() => {
-                  const LucideIcon = PAGE_TO_LUCIDE[tab.id];
-                  if (LucideIcon) {
-                    return <LucideIcon className={`w-5 h-5 ${isActive ? 'opacity-100' : 'opacity-55'}`} />;
-                  }
                   const spriteKey = PAGE_TO_SPRITE[tab.id];
-                  if (spriteKey) {
-                    return (
-                      <img
-                        src={TAB_ICONS[spriteKey]}
-                        alt=""
-                        className={`w-5 h-5 ${isActive ? 'opacity-100' : 'opacity-55'}`}
-                      />
-                    );
-                  }
-                  return null;
+                  if (!spriteKey) return null;
+                  return (
+                    <img
+                      src={TAB_ICONS[spriteKey]}
+                      alt=""
+                      className={`w-5 h-5 ${isActive ? 'opacity-100' : 'opacity-55'}`}
+                    />
+                  );
                 })()}
                 <span className={`text-[10px] mt-0.5 font-medium ${isActive ? 'font-semibold' : ''}`}>{tab.label}</span>
               </button>
