@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.27.1';
+export const CURRENT_VERSION = '1.28.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -60,13 +60,13 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-<<<<<<< HEAD
     version: '1.28.0',
     date: '2026-06-26T18:00:00Z',
     title: 'UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
     highlights: [
       'New header switcher jumps between your Player Hub and your statics',
       'Roster sub-tabs and controls now stay pinned while you scroll',
+      'Navigation icons now use FFXIV in-game sprites instead of generic icons',
     ],
     items: [
       {
@@ -230,21 +230,17 @@ export const RELEASES: Release[] = [
         pr: 146,
         prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },
+      {
+        category: 'improvement',
+        title: 'FFXIV sprites replace generic Lucide icons app-wide',
+        description:
+          'Player Hub sidebar and mobile bottom nav, static group page sidebar tabs, header shortcuts, ' +
+          'Player Cards, Mount Farm, Schedule, Discover, and Static Home now all use authentic FFXIV in-game ' +
+          'sprites (schedule book, party icon, loot chest, mount trophy, etc.) instead of generic Lucide icons.',
+      },
     ],
   },
   {
-    version: '1.27.1',
-    date: '2026-06-26T05:00:00Z',
-    title: 'Plugin gear sync works without manual character linking',
-    items: [
-      {
-        category: 'fix',
-        title: 'Dalamud plugin gear sync no longer fails for new users',
-        description:
-          'Syncing gear from the in-game plugin used to fail with "No linked character found" unless you had first linked your character on the website. The plugin now auto-creates your character from your in-game name and world on first sync, so gear and gearsets sync with zero website setup. Linking on the website afterwards upgrades that same character with Lodestone verification instead of creating a duplicate.',
-        pr: 145,
-        prTitle: 'fix(plugin-sync): auto-provision Player Hub character on plugin gear sync',
-=======
     version: '1.27.1',
     date: '2026-06-26T00:00:00Z',
     title: 'PLD gear sync & activity feed time display fixes',
@@ -271,7 +267,6 @@ export const RELEASES: Release[] = [
           'the relativeTime helper produced "NaN ago". Added a guard that returns "—" for missing or unparseable timestamps.',
         pr: 145,
         prTitle: 'fix: PLD gear sync off-by-one shield slot and NaN activity timestamps',
->>>>>>> 943f071 (fix: PLD gear sync off-by-one shield slot and NaN activity timestamps)
       },
     ],
   },

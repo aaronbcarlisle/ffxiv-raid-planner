@@ -3,11 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
-  Calendar,
   ChevronDown,
   ShieldCheck,
-  Target,
-  Users,
 } from 'lucide-react';
 import { XivIcon } from '../ui/XivIcon';
 import { Badge } from '../primitives/Badge';
@@ -310,7 +307,7 @@ export function OverviewTab({
             value={availabilitySummary}
             detail={availabilityDayLabels || availabilityTimezone}
             to="/profile?tab=availability"
-            icon={<Calendar className="h-3.5 w-3.5" />}
+            icon={<XivIcon name="schedule" size={14} />}
             highlight={focusAvailability || availabilityDayCount === 0}
           />
           <CommandChip
@@ -332,7 +329,7 @@ export function OverviewTab({
             value={staticSummary}
             detail={staticDetail}
             to={staticLink}
-            icon={<Users className="h-3.5 w-3.5" />}
+            icon={<XivIcon name="party" size={14} />}
           />
         </div>
         </div>
@@ -469,7 +466,7 @@ export function OverviewTab({
               <DashboardCard
                 title="Static Finder Matches"
                 subtitle="Compact preview from your Player Hub setup"
-                icon={<Users className="h-4 w-4" />}
+                icon={<XivIcon name="party" size={16} />}
                 footer={<InlineLink to="/discover">Open Static Finder</InlineLink>}
                 className="min-h-0"
               >
@@ -499,7 +496,7 @@ export function OverviewTab({
 
         <main className="space-y-4 xl:order-1">
           <motion.div {...staggerItemProps} className="space-y-3">
-            <SectionLabel icon={<Target className="h-3 w-3" />}>Raider Snapshot</SectionLabel>
+            <SectionLabel icon={<XivIcon name="stats" size={12} />}>Raider Snapshot</SectionLabel>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <DashboardCard
                 title="Gear"
@@ -590,7 +587,7 @@ export function OverviewTab({
               <DashboardCard
                 title="Goals"
                 subtitle="Private tasks and reminders"
-                icon={<Target className="h-4 w-4" />}
+                icon={<XivIcon name="goals" size={16} />}
                 footer={<InlineLink to="/profile?tab=goals">Add Task</InlineLink>}
               >
                 {personalGoals.length > 0 ? (
