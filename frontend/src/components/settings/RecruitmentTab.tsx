@@ -252,9 +252,11 @@ export function RecruitmentTab({
 }: RecruitmentTabProps) {
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);
 
-  // Section in the URL (?ssub=overview|listing|requests|invitations) — shared
-  // settings sub-tab param (pushes; closing the panel collapses its sub-history).
-  const [section, setSection] = useUrlTabState('ssub', RECRUITMENT_SECTION_VALUES, 'overview');
+  // Section in the URL (?rcsub=overview|listing|requests|invitations). Its own
+  // settings sub-tab param (distinct from gsub/psub, and from the roster's rsub)
+  // so switching main tabs can't carry a stale section across. Pushes; closing
+  // the panel collapses its sub-history.
+  const [section, setSection] = useUrlTabState('rcsub', RECRUITMENT_SECTION_VALUES, 'overview');
 
   // On mount, honor explicit routing (initialSection from a badge/link), else
   // default to Requests when there are pending applications. 'overview' is the

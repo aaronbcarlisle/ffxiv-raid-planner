@@ -487,7 +487,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
           const params = new URLSearchParams(prev);
           params.delete('showSettings');
           params.delete('settings');
-          params.delete('ssub');
+          params.delete('gsub');
+          params.delete('psub');
+          params.delete('rcsub');
           return params;
         }, { replace: true });
       }

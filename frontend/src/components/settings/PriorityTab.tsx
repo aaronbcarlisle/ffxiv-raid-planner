@@ -44,10 +44,11 @@ interface PriorityTabProps {
 export function PriorityTab({ group, players, tierId, onClose: _onClose }: PriorityTabProps) {
   const { updateGroup } = useStaticGroupStore();
 
-  // Subtab in the URL (?ssub=mode|advanced) — shared settings sub-tab param.
-  // Pushes history so back steps through visited sections while the panel is
-  // open; closing the panel pops the whole settings sub-history at once.
-  const [activeSubTab, setActiveSubTab] = useUrlTabState('ssub', PRIORITY_SUB_TABS, 'mode');
+  // Subtab in the URL (?psub=mode|advanced) — its own settings sub-tab param
+  // (distinct from gsub/rcsub) so switching main tabs can't carry a stale
+  // section across. Pushes history so back steps through visited sections while
+  // the panel is open; closing the panel pops the whole settings sub-history at once.
+  const [activeSubTab, setActiveSubTab] = useUrlTabState('psub', PRIORITY_SUB_TABS, 'mode');
 
   // Initialize state from group settings or defaults
   const [settings, setSettings] = useState<StaticPrioritySettings>(() => {

@@ -150,10 +150,15 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   }, [settings]);
 
   useEffect(() => {
-    const sessionId = new URLSearchParams(window.location.search).get('sessionId');
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('sessionId');
     if (!sessionId || !sessions.some((session) => session.id === sessionId)) return;
 
-    setActiveSubTab('sessions');
+    // Jump to the Sessions sub-tab, but only if we're not already there. This
+    // effect re-runs whenever `sessions` changes (e.g. an RSVP refetch); reading
+    // the live `stab` param and guarding the switch keeps those refetches from
+    // pushing duplicate history entries.
+    if (params.get('stab') !== 'sessions') setActiveSubTab('sessions');
     setHighlightedSessionId(sessionId);
     window.setTimeout(() => {
       document.getElementById(`schedule-session-${sessionId}`)?.scrollIntoView({

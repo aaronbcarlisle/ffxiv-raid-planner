@@ -5,7 +5,7 @@
  * Handles both main roster and substitutes sections.
  */
 
-import { memo, useMemo, useCallback, useState } from 'react';
+import { memo, useMemo, useCallback, useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { DroppablePlayerCard } from './DroppablePlayerCard';
 import { EmptySlotCard } from './EmptySlotCard';
@@ -17,6 +17,18 @@ import { canResetGear } from '../../utils/permissions';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import type { SnapshotPlayer, ViewMode, ResetMode, GearSlot, MemberRole, ContentType, AssignPlayerRequest } from '../../types';
 import type { DragState } from '../dnd/useDragAndDrop';
+
+// Collapsible-section state (G1 / G2 / Subs), persisted per static+tier.
+// localStorage can throw (private mode / disabled / quota); the helpers swallow
+// failures so a storage error never breaks rendering or a fold toggle.
+type CollapsedState = { g1?: boolean; g2?: boolean; subs?: boolean };
+
+function readCollapsedState(key: string): CollapsedState {
+  try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
+}
+function writeCollapsedState(key: string, value: CollapsedState): void {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+}
 
 // Memoized player card renderer to prevent unnecessary re-renders
 interface PlayerCardRendererProps {
@@ -451,27 +463,33 @@ export function PlayerGrid({
   //  roster toolbar via the `subsHidden` prop.)
   const collapseKey = `roster-collapse-${groupId}-${tierId}`;
 
-  const [collapsed, setCollapsed] = useState<{ g1?: boolean; g2?: boolean; subs?: boolean }>(() => {
-    try { return JSON.parse(localStorage.getItem(collapseKey) || '{}'); } catch { return {}; }
-  });
+  const [collapsed, setCollapsed] = useState<CollapsedState>(() => readCollapsedState(collapseKey));
 
   const toggleCollapse = useCallback((section: 'g1' | 'g2' | 'subs') => {
-    setCollapsed((prev) => {
-      const next = { ...prev, [section]: !prev[section] };
-      try { localStorage.setItem(collapseKey, JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
-  }, [collapseKey]);
+    setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
+  }, []);
+
+  // The following three blocks use React's "adjust state while rendering"
+  // pattern (a conditional setState during render that React applies before
+  // committing) to react to prop changes. Persistence is deliberately NOT done
+  // here — render stays free of side effects; a single effect below mirrors the
+  // resulting state into localStorage.
+
+  // Re-read persisted fold state when the static/tier (and thus the storage key)
+  // changes. The component stays mounted across tier switches, so without this
+  // the previous tier's folds would linger until the user toggled a section.
+  const [lastCollapseKey, setLastCollapseKey] = useState(collapseKey);
+  if (collapseKey !== lastCollapseKey) {
+    setLastCollapseKey(collapseKey);
+    setCollapsed(readCollapsedState(collapseKey));
+  }
 
   // Switching card density (Compact ⇄ Expanded) auto-expands any collapsed
   // sections so the toggle reveals everything rather than fighting the folds.
-  // Reset during render (React's recommended pattern for "reset state when a
-  // prop changes") instead of in an effect, to avoid cascading renders.
   const [lastViewMode, setLastViewMode] = useState(viewMode);
   if (viewMode !== lastViewMode) {
     setLastViewMode(viewMode);
     setCollapsed({});
-    try { localStorage.removeItem(collapseKey); } catch { /* ignore */ }
   }
 
   // Clicking "Expanded" again while already in Expanded view bumps this signal
@@ -494,16 +512,17 @@ export function PlayerGrid({
     );
     if (hasSubsSection) sections.push('subs');
     const everyExpanded = sections.length > 0 && sections.every((s) => !collapsed[s]);
-    if (everyExpanded) {
-      const next: { g1?: boolean; g2?: boolean; subs?: boolean } = {};
-      sections.forEach((s) => { next[s] = true; });
-      setCollapsed(next);
-      try { localStorage.setItem(collapseKey, JSON.stringify(next)); } catch { /* ignore */ }
-    } else {
-      setCollapsed({});
-      try { localStorage.removeItem(collapseKey); } catch { /* ignore */ }
-    }
+    const next: CollapsedState = {};
+    if (everyExpanded) sections.forEach((s) => { next[s] = true; });
+    setCollapsed(next);
   }
+
+  // Persist fold state for the current key. This is the single localStorage
+  // write path, kept in an effect so render stays pure. Storing `{}` is
+  // equivalent to clearing the key (readCollapsedState treats both as no folds).
+  useEffect(() => {
+    writeCollapsedState(collapseKey, collapsed);
+  }, [collapseKey, collapsed]);
 
   // Grouped View (G1/G2) - G1 on top, G2 below
   if (groupView && groupedPlayers) {

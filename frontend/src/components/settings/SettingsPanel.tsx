@@ -262,9 +262,11 @@ function GoalsFarmsTabContent({
   groupId: string;
   canManage: boolean;
 }) {
-  // Section in the URL (?ssub=overview|objectives|farms|suggestions) — shared
-  // settings sub-tab param (pushes; closing the panel collapses its sub-history).
-  const [section, setSection] = useUrlTabState('ssub', GOALS_SECTION_VALUES, 'overview');
+  // Section in the URL (?gsub=overview|objectives|farms|suggestions). Each
+  // settings tab uses its own sub-tab param (gsub/psub/rcsub) so switching main
+  // tabs can't carry a stale section across. Pushes; closing the panel collapses
+  // its sub-history.
+  const [section, setSection] = useUrlTabState('gsub', GOALS_SECTION_VALUES, 'overview');
 
   return (
     <div className="flex flex-col flex-1 min-h-0">

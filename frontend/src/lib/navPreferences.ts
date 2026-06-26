@@ -14,7 +14,9 @@ import type { User } from '../types';
 /** URL params that are transient/modal and should not be persisted, restored,
  *  or carried across a static switch. */
 export const TRANSIENT_NAV_PARAMS = [
-  'player', 'viewAs', 'adminMode', 'showSettings', 'settings', 'ssub',
+  'player', 'viewAs', 'adminMode', 'showSettings', 'settings',
+  // Per-tab settings sub-section params (Goals / Priority / Recruitment).
+  'gsub', 'psub', 'rcsub',
 ] as const;
 
 /** Default values for the user navigation preferences (the fields differ). */

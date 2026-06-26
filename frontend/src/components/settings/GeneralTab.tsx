@@ -4,7 +4,7 @@
  * Contains: name, visibility, banner settings, share link, delete static
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { Label, Input, ErrorBox, Select, Toggle } from '../ui';
@@ -39,6 +39,15 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
   const updatePreferences = useAuthStore((s) => s.updatePreferences);
   const [rememberSubTabs, setRememberSubTabs] = useState(prefRememberSubTabs(user));
   const [rememberStaticTab, setRememberStaticTab] = useState(prefRememberStaticTab(user));
+  // The toggles seed from `user` at mount; if the account loads (or switches)
+  // after mount, resync so they reflect the real saved prefs instead of the
+  // defaults. Keyed on the user id (not the pref values), so saving — which
+  // updates the same user object — never re-fires and clobbers a staged edit.
+  useEffect(() => {
+    setRememberSubTabs(prefRememberSubTabs(user));
+    setRememberStaticTab(prefRememberStaticTab(user));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);

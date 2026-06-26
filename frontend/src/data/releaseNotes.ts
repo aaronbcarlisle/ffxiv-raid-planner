@@ -168,8 +168,10 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'PR review hardening for the navigation/preferences work',
         description:
-          'Code-review follow-ups: constrained useUrlTabState defaults (NoInfer), centralized nav-preference defaults + transient param list, guarded the settings-panel open-while-open edge, clearer savePref error reporting, and added unit tests for useUrlTabState, the URL parse helpers, and the preferences endpoint.',
+          'Code-review follow-ups: constrained useUrlTabState defaults (NoInfer), centralized nav-preference defaults + transient param list, guarded the settings-panel open-while-open edge, clearer savePref error reporting, and added unit tests for useUrlTabState, the URL parse helpers, and the preferences endpoint. Second pass: moved the roster collapse/expand resets out of render into effects and made fold state re-read on tier switch, guarded synthetic-notification localStorage against private-mode crashes, gave each Settings sub-tab its own URL param (gsub/psub/rcsub) to avoid cross-tab leakage, stopped the schedule session deep-link from piling up browser history, resynced the nav-preference toggles when the account loads, and switched those toggles to save with the Save button instead of instantly.',
         internal: true,
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },
       {
         category: 'feature',

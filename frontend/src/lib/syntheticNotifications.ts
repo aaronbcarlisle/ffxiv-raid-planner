@@ -22,10 +22,29 @@ function notifySyntheticChange(): void {
   listeners.forEach((l) => l());
 }
 
+// localStorage can throw (private mode, storage disabled, quota). These run
+// during render via useSyncExternalStore, so a throw would crash the header
+// badge / notifications. Treat any failure as "nothing seen" / a no-op write.
+function readSeenVersions(): Set<string> {
+  try {
+    return new Set(
+      (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function writeSeenVersions(seen: Set<string>): void {
+  try {
+    localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
+  } catch {
+    /* storage unavailable — skip persistence */
+  }
+}
+
 export function getSyntheticNotifications(): AppNotification[] {
-  const seen = new Set(
-    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
-  );
+  const seen = readSeenVersions();
   return RELEASES
     .filter((r) => r.version !== 'Unreleased' && !r.internal)
     .filter((r, i, arr) => arr.findIndex((x) => x.version === r.version) === i)
@@ -48,11 +67,9 @@ export function getSyntheticUnreadCount(): number {
 
 export function markSyntheticRead(id: string): void {
   const version = id.replace('__release__', '');
-  const seen = new Set(
-    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
-  );
+  const seen = readSeenVersions();
   seen.add(version);
-  localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
+  writeSeenVersions(seen);
   notifySyntheticChange();
 }
 
@@ -61,11 +78,9 @@ export function markAllSyntheticRead(): void {
   // versions marked read exactly matches what's shown (dedup + slice applied).
   // Merge with any already-seen versions so we never clobber prior reads.
   const shown = getSyntheticNotifications().map((n) => n.id.replace('__release__', ''));
-  const seen = new Set(
-    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
-  );
+  const seen = readSeenVersions();
   shown.forEach((v) => seen.add(v));
-  localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
+  writeSeenVersions(seen);
   notifySyntheticChange();
 }
 

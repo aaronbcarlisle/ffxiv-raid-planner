@@ -974,7 +974,7 @@ export function GroupView() {
                     {/* Sub-tabs — always visible (mobile + desktop) */}
                     <div className="overflow-x-auto flex-shrink-0">
                       <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" role="tablist" aria-label="Roster view" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
-                        {(['members', 'characters', 'split-planner'] as const).map(view => {
+                        {ROSTER_SUB_VIEWS.map(view => {
                           const labels: Record<typeof view, string> = {
                             members: 'Members',
                             characters: 'Characters',
