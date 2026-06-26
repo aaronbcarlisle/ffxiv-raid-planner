@@ -48,4 +48,5 @@ export { TipsCarousel } from './TipsCarousel';
 export { Toast } from './Toast';
 export { ToastContainer } from './ToastContainer';
 export { Toggle, type ToggleProps } from './Toggle';
+export { TriStateToggle, type TriState } from './TriStateToggle';
 export { ViewModeToggle } from './ViewModeToggle';
