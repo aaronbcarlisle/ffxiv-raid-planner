@@ -154,6 +154,10 @@ EXCLUDE_FILES=(
   "RadioGroup.tsx"      # The component itself
   "Button.tsx"          # The component itself
   "IconButton.tsx"      # The component itself
+  "Tag.tsx"             # Design-language primitive (raw button by design)
+  "Tabs.tsx"            # Design-language primitive (raw button by design)
+  "LinkText.tsx"        # Design-language primitive (raw button/anchor by design)
+  "TriStateToggle.tsx"  # Design-language primitive (raw button by design)
   "index.css"           # CSS definitions
   "tailwind.config.ts"  # Tailwind configuration
   "CodeBlock.tsx"       # Prism syntax highlighting needs hardcoded colors
