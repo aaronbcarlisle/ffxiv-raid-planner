@@ -71,6 +71,7 @@ export function ContextSwitcher({
   }, [open, isMember, onFetchGroups]);
 
   const onHub = location.pathname.startsWith('/profile');
+  const onFinder = location.pathname.startsWith('/discover');
   const onStatic = location.pathname.startsWith('/group/');
 
   // Build the URL to a static, honoring the "remember tab per static" preference:
@@ -119,6 +120,16 @@ export function ContextSwitcher({
         <Link to="/profile" className={`${segBase} ${onHub ? segActive : segIdle} flex-shrink-0`} aria-current={onHub ? 'page' : undefined}>
           <User className="w-4 h-4 flex-shrink-0" />
           <span className="hidden sm:inline">Player Hub</span>
+        </Link>
+      </Tooltip>
+
+      <span className="w-px h-4 bg-border-subtle flex-shrink-0" aria-hidden />
+
+      {/* Static Finder segment */}
+      <Tooltip content="Static Finder — browse and join open statics">
+        <Link to="/discover" className={`${segBase} ${onFinder ? segActive : segIdle} flex-shrink-0`} aria-current={onFinder ? 'page' : undefined}>
+          <Users className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">Static Finder</span>
         </Link>
       </Tooltip>
 
@@ -178,9 +189,6 @@ export function ContextSwitcher({
                   )}
                 </div>
                 <DropdownSeparator />
-                <DropdownItem icon={<Users className="w-4 h-4" />} onSelect={() => navigate('/discover')}>
-                  Find a static
-                </DropdownItem>
                 <DropdownItem icon={<Shield className="w-4 h-4" />} onSelect={() => navigate('/dashboard')}>
                   Go to Dashboard
                 </DropdownItem>
@@ -189,11 +197,11 @@ export function ContextSwitcher({
           )}
         </div>
       ) : (
-        // No statics yet → invite the user to find one
-        <Link to="/discover" className={`${segBase} ${onStatic ? segActive : segIdle}`}>
-          <Users className="w-4 h-4 flex-shrink-0" />
-          <span>Find a static</span>
-        </Link>
+        // No statics yet → muted placeholder (Static Finder segment handles discovery)
+        <span className={`${segBase} ${segIdle} opacity-60 cursor-default`} title="No statics yet">
+          <Shield className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">No static</span>
+        </span>
       )}
     </div>
   );
