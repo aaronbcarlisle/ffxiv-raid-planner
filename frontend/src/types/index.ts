@@ -553,15 +553,15 @@ export const TAB_ICONS = {
   schedule: '/icons/schedule-transparent-bg.png',
   mountFarms: '/icons/mount-farms-transparent-bg.png',
   playerOptions: '/icons/player-options-transparent-bg.png',
-  playerOverview: '/icons/player-hub-overview.svg',
-  playerSync: '/icons/player-hub-overview.svg',
-  playerCharacter: '/icons/player-hub-character.svg',
-  playerGear: '/icons/player-hub-gear.svg',
+  playerOverview: '/icons/stats-transparent-bg.png',
+  playerSync: '/icons/history-transparent-bg.png',
+  playerCharacter: '/icons/player-options-transparent-bg.png',
+  playerGear: '/icons/loot-transparent-bg.png',
   playerAvailability: '/icons/schedule-transparent-bg.png',
-  playerJobs: '/icons/player-hub-jobs.svg',
-  playerHunts: '/icons/player-hub-hunts.svg',
-  playerGoals: '/icons/player-hub-goals.svg',
-  playerShare: '/icons/player-hub-share.svg',
+  playerJobs: '/icons/loot-transparent-bg.png',
+  playerHunts: '/icons/mount-farms-transparent-bg.png',
+  playerGoals: '/icons/mount-farms-transparent-bg.png',
+  playerShare: '/icons/xiv-handshake.png',
 };
 
 // ==================== User/Auth Types ====================

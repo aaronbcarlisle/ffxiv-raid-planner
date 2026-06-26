@@ -26,6 +26,8 @@ ICONS: dict[str, str] = {
     'xiv-crystal':      '/i/020000/020010.png',  # Wind Crystal (aether/sparkle)
     # --- Actions ---
     'xiv-earthly-star': '/i/003000/003143.png',  # Earthly Star (AST — priority star)
+    # --- Social ---
+    'xiv-handshake':    '/i/065000/065042.png',  # Fellowship/social bond (share/profile)
 }
 
 
