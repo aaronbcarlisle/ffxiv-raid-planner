@@ -415,17 +415,45 @@ def _extract_tomestone_current_gear(profile: dict[str, Any]) -> list[Any] | None
     return None
 
 
+def _is_offhand_slot(raw_slot: Any) -> bool:
+    """Return True if a Tomestone gear slot holds an OffHand/Shield item (PLD only)."""
+    if not isinstance(raw_slot, dict):
+        return False
+    item = raw_slot.get("item")
+    if not isinstance(item, dict):
+        return False
+    category_name = (item.get("categoryName") or "").lower()
+    return bool(category_name) and any(
+        kw in category_name for kw in ("shield", "off hand", "off-hand", "offhand")
+    )
+
+
 def _normalize_tomestone_gear_list(gear_list: list[Any]) -> dict[str, dict[str, Any]]:
     """Convert Tomestone's positional gear list into XIVAPI Gear dict shape.
 
     Each slot entry in the list is at a fixed position (0-11). Position 11 is
     Soul Crystal and is skipped. Items may be None/empty when the slot is empty.
+
+    PLD inserts an OffHand (Shield) at list position 1, shifting all subsequent
+    slots by 1 relative to the standard map. Detect it by categoryName and skip
+    it so the remaining positions stay correctly aligned.
     """
     normalized: dict[str, dict[str, Any]] = {}
-    for position, raw_slot in enumerate(gear_list):
-        slot_name = TOMESTONE_GEAR_POSITION_SLOTS.get(position)
+
+    # Detect PLD's OffHand (Shield) at list position 1.
+    has_offhand = len(gear_list) > 1 and _is_offhand_slot(gear_list[1])
+
+    slot_index = 0  # Tracks our position within TOMESTONE_GEAR_POSITION_SLOTS
+    for list_position, raw_slot in enumerate(gear_list):
+        # Skip PLD's OffHand — our gear model has no shield/off-hand slot.
+        if has_offhand and list_position == 1:
+            continue
+
+        slot_name = TOMESTONE_GEAR_POSITION_SLOTS.get(slot_index)
+        slot_index += 1
+
         if slot_name is None:
-            # Position 11 (Soul Crystal) and any unexpected extras — skip
+            # Soul Crystal and any unexpected extras — skip
             continue
 
         if not isinstance(raw_slot, dict):

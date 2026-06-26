@@ -95,8 +95,10 @@ function playerGearReadiness(p: SnapshotPlayer): GearReadiness {
   return 'needs_gear';
 }
 
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
+function relativeTime(iso: string | null | undefined): string {
+  const ts = new Date(iso ?? '').getTime();
+  if (!iso || isNaN(ts)) return '—';
+  const diff = Date.now() - ts;
   const m = Math.floor(diff / 60000);
   if (m < 1) return 'just now';
   if (m < 60) return `${m}m ago`;
