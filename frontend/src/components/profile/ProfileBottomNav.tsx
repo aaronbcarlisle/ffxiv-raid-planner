@@ -6,10 +6,11 @@
  * Only renders on small screens (< 640px via useDevice).
  */
 
-import { MoreHorizontal, Users } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDevice } from '../../hooks/useDevice';
+import { XivIcon } from '../ui/XivIcon';
 import { TAB_ICONS } from '../../types';
 
 type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview';
@@ -69,7 +70,7 @@ export function ProfileBottomNav({ activeTab, onTabChange, primaryStaticPath, pr
                   onClick={() => setShowMore(false)}
                   className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-text-secondary hover:text-text-primary hover:bg-surface-interactive"
                 >
-                  <Users className="w-5 h-5 text-accent flex-shrink-0" />
+                  <XivIcon name="party" size={20} className="flex-shrink-0 opacity-100" />
                   <span className="flex-1 truncate">{primaryStaticName ?? 'My Static'}</span>
                   <span className="text-xs text-text-tertiary flex-shrink-0">← Back</span>
                 </Link>

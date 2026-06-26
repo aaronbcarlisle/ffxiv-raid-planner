@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.27.1';
+export const CURRENT_VERSION = '1.28.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,24 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.28.0',
+    date: '2026-06-26T00:00:00Z',
+    title: 'FFXIV icon pass — sprites across the whole app',
+    highlights: [
+      'Navigation icons now use FFXIV in-game sprites instead of generic icons',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'FFXIV sprites replace generic Lucide icons app-wide',
+        description:
+          'Player Hub sidebar and mobile bottom nav, static group page sidebar tabs, header shortcuts, ' +
+          'Player Cards, Mount Farm, Schedule, Discover, and Static Home now all use authentic FFXIV in-game ' +
+          'sprites (schedule book, party icon, loot chest, mount trophy, etc.) instead of generic Lucide icons.',
+      },
+    ],
+  },
   {
     version: '1.27.1',
     date: '2026-06-26T00:00:00Z',
