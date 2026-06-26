@@ -10,7 +10,8 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { Package, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Modal, Select, Checkbox, RadioGroup, TextArea, Label } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
@@ -477,7 +478,7 @@ export function AddLootEntryModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          {isEditMode ? <Pencil className="w-5 h-5" /> : <Package className="w-5 h-5" />}
+          {isEditMode ? <Pencil className="w-5 h-5" /> : <XivIcon name="loot" size={20} />}
           {isEditMode ? "Edit Loot Entry" : "Log Loot Drop"}
         </span>
       }

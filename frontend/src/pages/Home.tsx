@@ -7,7 +7,8 @@ import { useDevice } from '../hooks/useDevice';
 import { LoginButton } from '../components/auth';
 import { Input, Spinner } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
-import { BookOpen, Users, Calculator, Sparkles, Swords, BarChart3, Layers, Globe } from 'lucide-react';
+import { Users, Calculator, BarChart3, Layers, Globe } from 'lucide-react';
+import { XivIcon } from '../components/ui/XivIcon';
 import { staggerContainer, staggerItem, instantVariants } from '../lib/motion';
 import type { MemberRole } from '../types';
 
@@ -164,7 +165,7 @@ export function Home() {
                 to="/profile"
                 className="inline-flex items-center gap-2 px-6 py-4 text-lg rounded-lg font-medium border border-accent/30 text-accent hover:bg-accent/10 transition-colors"
               >
-                <Swords className="w-5 h-5" />
+                <XivIcon name="sword" size={20} />
                 Player Hub
               </Link>
             </div>
@@ -304,7 +305,7 @@ export function Home() {
           <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto stagger-children">
             <div className="card-interactive p-6">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-3">
-                <Swords className="w-5 h-5 text-accent" />
+                <XivIcon name="sword" size={20} />
               </div>
               <h3 className="font-display text-lg text-accent mb-2">Gear Tracking</h3>
               <p className="text-text-secondary text-sm">
@@ -361,7 +362,7 @@ export function Home() {
       {user && (
         <div className="mt-16 max-w-4xl mx-auto">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <BookOpen className="w-5 h-5 text-accent" />
+            <XivIcon name="tomestone" size={20} />
             <h2 className="font-display text-xl text-text-primary">Documentation</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-4">
@@ -403,7 +404,7 @@ export function Home() {
             >
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                  <Sparkles className="w-4 h-4 text-accent" />
+                  <XivIcon name="crystal" size={16} />
                 </div>
                 <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
                   How-To Guides

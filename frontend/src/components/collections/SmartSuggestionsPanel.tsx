@@ -11,7 +11,8 @@
  *  - Never shows token counts (static-level view respects privacy)
  */
 
-import { AlertCircle, Coins, Search, Star, X } from 'lucide-react';
+import { AlertCircle, Search, X } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import type { MemberSuggestionEntry, StaticCollectionSuggestion } from '../../stores/collectionIntentStore';
 
 const MAX_NAMES = 3;
@@ -76,7 +77,7 @@ export function SmartSuggestionsPanel({ suggestion }: SmartSuggestionsPanelProps
 
       {missing.length > 0 && (
         <SuggestionRow
-          icon={<Star size={11} />}
+          icon={<XivIcon name="earthlyStar" size={11} />}
           label="Suggested"
           names={nameList(missing)}
           colorClass="text-status-warning"
@@ -85,7 +86,7 @@ export function SmartSuggestionsPanel({ suggestion }: SmartSuggestionsPanelProps
 
       {canBuy.length > 0 && (
         <SuggestionRow
-          icon={<Coins size={11} />}
+          icon={<XivIcon name="gil" size={11} />}
           label="Can buy"
           names={nameList(canBuy)}
           colorClass="text-amber-400"

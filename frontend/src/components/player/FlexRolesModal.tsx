@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives';
 import { Checkbox, Input, Modal, TextArea } from '../ui';
 import type { FlexRole, SnapshotPlayer } from '../../types';
@@ -61,7 +61,7 @@ export function FlexRolesModal({ isOpen, onClose, player, onSave }: FlexRolesMod
       size="sm"
       title={
         <span className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-accent" />
+          <XivIcon name="crystal" size={20} />
           Roster personalization
         </span>
       }

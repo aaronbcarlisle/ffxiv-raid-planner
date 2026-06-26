@@ -1,4 +1,5 @@
-import { Trophy, Music, Package, Star, ChevronRight, ClipboardCopy, Plus, Coins } from 'lucide-react';
+import { ChevronRight, ClipboardCopy, Plus } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
 import { Tooltip } from '../primitives/Tooltip';
@@ -18,16 +19,16 @@ const GOAL_TYPE_LABELS: Record<CollectionGoalType, string> = {
 };
 
 const GOAL_TYPE_ICONS: Record<CollectionGoalType, React.ReactNode> = {
-  mount: <Trophy size={16} />,
-  token: <Star size={16} />,
-  minion: <Star size={16} />,
-  orchestrion: <Music size={16} />,
-  glam: <Star size={16} />,
-  custom_reward: <Package size={16} />,
-  weapon: <Star size={16} />,
-  weapon_coffer: <Package size={16} />,
-  title: <Star size={16} />,
-  clear_count: <Star size={16} />,
+  mount: <XivIcon name="goals" size={16} />,
+  token: <XivIcon name="earthlyStar" size={16} />,
+  minion: <XivIcon name="earthlyStar" size={16} />,
+  orchestrion: <XivIcon name="orchestrion" size={16} />,
+  glam: <XivIcon name="earthlyStar" size={16} />,
+  custom_reward: <XivIcon name="loot" size={16} />,
+  weapon: <XivIcon name="earthlyStar" size={16} />,
+  weapon_coffer: <XivIcon name="loot" size={16} />,
+  title: <XivIcon name="earthlyStar" size={16} />,
+  clear_count: <XivIcon name="earthlyStar" size={16} />,
 };
 
 const PRIORITY_MODE_LABELS: Record<CollectionPriorityMode, string> = {
@@ -144,7 +145,7 @@ export function RewardGoalCard({ goal, participants, onView, onLogDrop, onCopyPl
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-1 text-text-secondary">
-                  <Coins size={11} className="text-amber-400" />
+                  <XivIcon name="gil" size={11} />
                   {goal.tokenName}: {tokenCount ?? '?'} / {goal.tokenCost}
                 </span>
                 {canBuy && (

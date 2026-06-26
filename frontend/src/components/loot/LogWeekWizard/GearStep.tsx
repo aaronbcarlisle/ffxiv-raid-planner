@@ -1,4 +1,5 @@
-import { Package, Check, Gem } from 'lucide-react';
+import { Check } from 'lucide-react';
+import { XivIcon } from '../../ui/XivIcon';
 import { Select, Toggle } from '../../ui';
 import { Button } from '../../primitives';
 import { FLOOR_LOOT_TABLES, FLOOR_COLORS, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial, type UpgradeMaterialType } from '../../../gamedata/loot-tables';
@@ -130,7 +131,7 @@ export function GearStep({
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-medium text-text-primary flex items-center gap-2">
-                <Package className="w-4 h-4" />
+                <XivIcon name="loot" size={16} />
                 {singleFloorMode ? '' : `${currentFloorName} - `}Gear
               </h4>
               <Button
@@ -194,7 +195,7 @@ export function GearStep({
           >
             <div className="p-4">
               <h4 className="text-sm font-medium text-text-primary mb-3 flex items-center gap-2">
-                <Gem className="w-4 h-4" />
+                <XivIcon name="materia" size={16} />
                 {singleFloorMode ? '' : `${currentFloorName} - `}Materials
               </h4>
 

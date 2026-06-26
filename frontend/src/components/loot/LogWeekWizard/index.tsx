@@ -18,13 +18,13 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
-  Package,
   Check,
   ChevronRight,
   ChevronLeft,
   AlertCircle,
   Loader2,
 } from 'lucide-react';
+import { XivIcon } from '../../ui/XivIcon';
 import { Modal, NumberInput } from '../../ui';
 import { Button } from '../../primitives';
 import { JobIcon } from '../../ui/JobIcon';
@@ -746,7 +746,7 @@ export function LogWeekWizard({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <Package className="w-5 h-5" />
+          <XivIcon name="loot" size={20} />
           {singleFloorMode ? `Log ${floors[initialFloor - 1]}` : 'Log Week'}
           <NumberInput
             value={selectedWeek}

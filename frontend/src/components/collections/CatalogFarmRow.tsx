@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, PlusCircle, Coins, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, PlusCircle, Loader2 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
 import type { BadgeVariant } from '../primitives/Badge';
@@ -109,7 +110,7 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
           {/* Token cost OR rare-drop pill */}
           {item.tokenCost != null && item.tokenName ? (
             <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
-              <Coins size={12} className="text-amber-400" />
+              <XivIcon name="gil" size={12} />
               <span className="text-xs text-text-secondary whitespace-nowrap">
                 {item.tokenCost}× {item.tokenName}
               </span>
@@ -170,7 +171,7 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
               <div className="px-4 pt-3 pb-1">
                 <div className="flex justify-between text-xs text-text-secondary mb-1.5">
                   <span className="flex items-center gap-1.5">
-                    <Coins size={11} className="text-amber-400" />
+                    <XivIcon name="gil" size={11} />
                     {myTokenCount} / {item.tokenCost} {item.tokenName}
                   </span>
                   <span className={canBuy ? 'text-status-success font-semibold' : 'text-text-muted'}>

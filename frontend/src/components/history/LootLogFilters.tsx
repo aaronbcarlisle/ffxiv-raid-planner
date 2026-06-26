@@ -7,7 +7,7 @@
  * - Right: Action buttons (Log Loot, Log Material)
  */
 
-import { Package, Gem, ClipboardList } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import {
   Dropdown,
   DropdownTrigger,
@@ -292,7 +292,7 @@ export function LootLogFilters({
             <>
               <Tooltip content="Log all drops for this week using a step-by-step wizard">
                 <Button size="sm" variant="primary" onClick={onLogWeek}>
-                  <ClipboardList className="w-4 h-4 mr-1.5" />
+                  <XivIcon name="history" size={16} className="mr-1.5" />
                   Log Week
                 </Button>
               </Tooltip>
@@ -305,7 +305,7 @@ export function LootLogFilters({
           <Tooltip
             content={
               <div className="flex items-start gap-2">
-                <Package className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                <XivIcon name="loot" size={16} className="flex-shrink-0 mt-0.5" />
                 <div>
                   <div className="font-medium">Log Loot</div>
                   <div className="text-text-secondary text-xs mt-0.5">
@@ -323,7 +323,7 @@ export function LootLogFilters({
           <Tooltip
             content={
               <div className="flex items-start gap-2">
-                <Gem className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                <XivIcon name="materia" size={16} className="flex-shrink-0 mt-0.5" />
                 <div>
                   <div className="font-medium">Log Material</div>
                   <div className="text-text-secondary text-xs mt-0.5">

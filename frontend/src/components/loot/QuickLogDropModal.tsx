@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Package } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Modal, Select, Checkbox, Label, NumberInput } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
@@ -236,7 +236,7 @@ export function QuickLogDropModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <Package className="w-5 h-5" />
+          <XivIcon name="loot" size={20} />
           Log {slotName} Drop
         </span>
       }

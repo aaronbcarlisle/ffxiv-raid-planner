@@ -1,7 +1,8 @@
 import type { TeamSummary as TeamSummaryType } from '../../types';
 import type { RaidTier } from '../../gamedata/raid-tiers';
 import { getCurrentTier } from '../../gamedata';
-import { Users, Target, Wrench, Calendar, BookOpen } from 'lucide-react';
+import { Users, Target, Wrench, Calendar } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 
 // Material colors for visual distinction (using semantic tokens)
 const MATERIAL_COLORS = {
@@ -147,7 +148,7 @@ export function TeamSummary({ summary, tierInfo }: TeamSummaryProps) {
         {/* Books Needed */}
         <div className="bg-surface-elevated rounded-lg p-5 border border-border-subtle">
           <div className="flex items-center gap-2 mb-4">
-            <BookOpen className="w-4 h-4 text-text-muted" />
+            <XivIcon name="tomestone" size={16} />
             <h3 className="text-text-primary font-medium">Books Needed (Worst Case)</h3>
           </div>
           <div className="space-y-3">
