@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useNavigationType } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 import { useAuthStore } from '../stores/authStore';
 import { clearRegisteredTabParams } from './useUrlTabState';
@@ -15,6 +15,13 @@ import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from 
 import type { FloorNumber } from '../gamedata/loot-tables';
 
 type LootSubTab = 'matrix' | 'gear' | 'weapon';
+
+// Defaults for the gear/loot sub-tabs — the value shown when their URL param is
+// omitted (non-default values are written to the URL). Kept here so the
+// back/forward reconciliation can restore the default that a param-less history
+// entry represents. Must match the fallbacks in the initial-state setup.
+const DEFAULT_GEAR_SUB: GearSubTab = 'sync';
+const DEFAULT_LOOT_SUB: LootSubTab = 'gear';
 
 // ── URL → state parsers (shared by initial state and back/forward reconciliation) ──
 // Each returns null when the param is absent/unrecognized so callers can fall
@@ -42,6 +49,27 @@ export function gearSubFromParam(urlSub: string | null): GearSubTab | null {
 export function lootSubFromParam(urlSubtab: string | null): LootSubTab | null {
   if (urlSubtab === 'matrix' || urlSubtab === 'gear' || urlSubtab === 'weapon') return urlSubtab;
   return null;
+}
+
+/**
+ * Decide the next value for a URL-backed sub-tab during reconciliation.
+ *  - A recognized param wins (handles back/forward to an explicit value and
+ *    legacy-param normalization).
+ *  - On a browser POP, an *absent* param means the popped entry showed the
+ *    default, so restore the default rather than leaving a stale sub-tab.
+ *  - Otherwise leave the current value (so a remembered sub-tab persists when
+ *    the URL carries no param on ordinary forward navigation).
+ */
+export function reconcileSubTab<T extends string>(
+  current: T,
+  rawParam: string | null,
+  parsed: T | null,
+  isPop: boolean,
+  defaultValue: T,
+): T {
+  if (parsed && parsed !== current) return parsed;
+  if (isPop && !rawParam && current !== defaultValue) return defaultValue;
+  return current;
 }
 
 interface HighlightedEntry {
@@ -127,6 +155,11 @@ export interface UseGroupViewStateReturn {
 export function useGroupViewState(): UseGroupViewStateReturn {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  // Distinguishes a browser back/forward (POP) from forward/programmatic
+  // navigation, so the reconciliation effect can restore a param-less history
+  // entry's default sub-tab on POP without clobbering remembered sub-tabs on
+  // ordinary forward navigation.
+  const navigationType = useNavigationType();
   // History index from just before the settings panel was opened, so closing
   // can pop the entire settings sub-history (all the tab/section entries pushed
   // while it was open) in one go and land back on the page underneath.
@@ -514,14 +547,31 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // Reconcile tab/sub-tab state FROM the URL whenever it changes. For our own
   // setters this is a no-op (state already matches what we just wrote); for
   // browser back/forward it's what actually moves the UI to the popped entry.
+  //
+  // The gear/loot sub-tab params parse to null when absent OR unrecognized, so
+  // we normally "leave current" (which lets a remembered sub-tab persist when
+  // the URL carries no param). But on a browser POP an *absent* param means the
+  // popped entry showed the default sub-tab, so we must restore that default —
+  // otherwise back/forward leaves a stale sub-tab. We only do this on real pops
+  // (not the first run / initial mount, where leaving the remembered value is
+  // correct).
+  const didReconcileRef = useRef(false);
   useEffect(() => {
+    const firstRun = !didReconcileRef.current;
+    didReconcileRef.current = true;
+    const isPop = navigationType === 'POP' && !firstRun;
+
     const t = pageModeFromTabParam(searchParams.get('tab'));
     if (t && t !== pageMode) setPageModeState(t);
-    const s = gearSubFromParam(searchParams.get('sub'));
-    if (s && s !== gearSubTab) setGearSubTabState(s);
-    const l = lootSubFromParam(searchParams.get('subtab'));
-    if (l && l !== lootSubTab) setLootSubTabState(l);
-  }, [searchParams, pageMode, gearSubTab, lootSubTab]);
+
+    const subRaw = searchParams.get('sub');
+    const nextGear = reconcileSubTab(gearSubTab, subRaw, gearSubFromParam(subRaw), isPop, DEFAULT_GEAR_SUB);
+    if (nextGear !== gearSubTab) setGearSubTabState(nextGear);
+
+    const subtabRaw = searchParams.get('subtab');
+    const nextLoot = reconcileSubTab(lootSubTab, subtabRaw, lootSubFromParam(subtabRaw), isPop, DEFAULT_LOOT_SUB);
+    if (nextLoot !== lootSubTab) setLootSubTabState(nextLoot);
+  }, [searchParams, pageMode, gearSubTab, lootSubTab, navigationType]);
 
   return {
     // URL params
