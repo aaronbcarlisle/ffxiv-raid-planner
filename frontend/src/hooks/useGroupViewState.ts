@@ -5,8 +5,8 @@
  * Centralizes the complex state management that was previously in GroupView.tsx.
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
@@ -123,13 +123,20 @@ export interface UseGroupViewStateReturn {
 
 export function useGroupViewState(): UseGroupViewStateReturn {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  // History index from just before the settings panel was opened, so closing
+  // can pop the entire settings sub-history (all the tab/section entries pushed
+  // while it was open) in one go and land back on the page underneath.
+  const preSettingsIdxRef = useRef<number | null>(null);
 
   // ===== Modal state =====
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
-  const [showSettingsModalState, setShowSettingsModalState] = useState(() => {
-    // Open from the explicit flag, or when a specific settings tab is deep-linked.
-    return searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
-  });
+  // The settings panel's open state is DERIVED from the URL (open when the
+  // `showSettings` flag or a specific `settings` tab is present). All settings
+  // navigation uses { replace }, so it never adds history entries — closing the
+  // panel and hitting back goes to the previous page instead of replaying the
+  // panel's internal tab changes (which would only change the URL invisibly).
+  const showSettingsModal = searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
@@ -425,19 +432,40 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     }, { replace: true });
   }, [setSearchParams]);
 
-  // Wrapper to update showSettingsModal and clear URL param when closing
+  // Open/close the settings panel via the URL. The panel's open state is derived
+  // from the `showSettings`/`settings` params, so its internal tab/section
+  // changes PUSH history — back steps through them while the panel is open.
+  // Opening pushes one entry (recording the index beneath it); closing jumps
+  // straight back to that pre-open entry, collapsing the whole settings
+  // sub-history so back-after-close goes to the previous page, not a replay.
   const setShowSettingsModal = useCallback((show: boolean) => {
-    setShowSettingsModalState(show);
-    if (!show) {
-      // Clear URL params when closing settings panel (open flag + active tab)
+    if (show) {
+      preSettingsIdxRef.current = (window.history.state?.idx as number | undefined) ?? null;
       setSearchParams(prev => {
         const params = new URLSearchParams(prev);
-        params.delete('showSettings');
-        params.delete('settings');
+        params.set('showSettings', 'true');
         return params;
-      }, { replace: true });
+      }); // push — this is the single "panel open" history entry
+    } else {
+      const base = preSettingsIdxRef.current;
+      const current = (window.history.state?.idx as number | undefined) ?? null;
+      preSettingsIdxRef.current = null;
+      if (base != null && current != null && current > base) {
+        // Pop back to the entry from before the panel opened (closes the panel,
+        // since that entry has no settings params).
+        navigate(base - current);
+      } else {
+        // Opened via deep-link (no recorded baseline) — strip the params in place.
+        setSearchParams(prev => {
+          const params = new URLSearchParams(prev);
+          params.delete('showSettings');
+          params.delete('settings');
+          params.delete('ssub');
+          return params;
+        }, { replace: true });
+      }
     }
-  }, [setSearchParams]);
+  }, [setSearchParams, navigate]);
 
   // ===== Browser back/forward support =====
   // Reflect the initial tab in the URL once (replace, no new history entry) so
@@ -504,7 +532,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     // Modal state
     showCreateTierModal,
     setShowCreateTierModal,
-    showSettingsModal: showSettingsModalState,
+    showSettingsModal,
     setShowSettingsModal,
     showRolloverDialog,
     setShowRolloverDialog,

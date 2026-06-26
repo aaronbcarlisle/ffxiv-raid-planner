@@ -45,6 +45,8 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
   const { updateGroup } = useStaticGroupStore();
 
   // Subtab in the URL (?ssub=mode|advanced) — shared settings sub-tab param.
+  // Pushes history so back steps through visited sections while the panel is
+  // open; closing the panel pops the whole settings sub-history at once.
   const [activeSubTab, setActiveSubTab] = useUrlTabState('ssub', PRIORITY_SUB_TABS, 'mode');
 
   // Initialize state from group settings or defaults

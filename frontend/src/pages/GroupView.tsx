@@ -1471,11 +1471,8 @@ export function GroupView() {
                     setPageMode('roster', { rsub: 'split-planner' });
                   }}
                   onOpenIntegrations={() => {
-                    if (currentGroup?.id) {
-                      sessionStorage.setItem(`schedule-subtab-${currentGroup.id}`, 'integrations');
-                    }
-                    setScheduleView('calendar');
-                    setPageMode('schedule');
+                    // One history entry: Schedule tab → Calendar view → Integrations sub-tab.
+                    setPageMode('schedule', { sched: 'calendar', stab: 'integrations' });
                   }}
                   onOpenPlugin={() => {
                     setGearSubTab('sync');

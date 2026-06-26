@@ -253,7 +253,7 @@ export function RecruitmentTab({
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);
 
   // Section in the URL (?ssub=overview|listing|requests|invitations) — shared
-  // settings sub-tab param, deep-linkable and back/forward-aware.
+  // settings sub-tab param (pushes; closing the panel collapses its sub-history).
   const [section, setSection] = useUrlTabState('ssub', RECRUITMENT_SECTION_VALUES, 'overview');
 
   // On mount, honor explicit routing (initialSection from a badge/link), else

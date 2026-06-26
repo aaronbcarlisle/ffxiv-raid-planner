@@ -10,6 +10,7 @@
 /* eslint-disable design-system/no-raw-button */
 
 import { useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Settings, ListOrdered, Users, Globe, Target, Plus, Trash2 } from 'lucide-react';
 import { SettingsSubNav } from './SettingsSubNav';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
@@ -262,7 +263,7 @@ function GoalsFarmsTabContent({
   canManage: boolean;
 }) {
   // Section in the URL (?ssub=overview|objectives|farms|suggestions) — shared
-  // settings sub-tab param; deep-linkable and back/forward-aware.
+  // settings sub-tab param (pushes; closing the panel collapses its sub-history).
   const [section, setSection] = useUrlTabState('ssub', GOALS_SECTION_VALUES, 'overview');
 
   return (
@@ -331,14 +332,21 @@ export function SettingsPanel({
   const [activeTab, setActiveTab] = useUrlTabState('settings', TAB_ORDER, 'general');
 
   // Event-driven open-to-tab (header buttons / badge routing) arrives via the
-  // initialTab prop. While open, reflect a *changed* initialTab into the URL.
+  // initialTab prop. While open, reflect a *changed* initialTab into the URL —
+  // via REPLACE so opening directly to a tab doesn't leave a phantom history
+  // entry (user-driven tab clicks still push, so back steps through them).
+  const [, setSearchParams] = useSearchParams();
   const prevInitialTab = useRef(initialTab);
   useEffect(() => {
     if (isOpen && initialTab !== prevInitialTab.current) {
-      setActiveTab(initialTab);
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('settings', initialTab);
+        return params;
+      }, { replace: true });
     }
     prevInitialTab.current = initialTab;
-  }, [isOpen, initialTab, setActiveTab]);
+  }, [isOpen, initialTab, setSearchParams]);
 
   const canManage = group.userRole === 'owner' || group.userRole === 'lead';
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);

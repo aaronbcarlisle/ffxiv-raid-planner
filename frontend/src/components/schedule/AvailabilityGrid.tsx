@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { Clock3, Eye, Moon, MousePointer2, RefreshCw, Sun, Sunrise, Sunset, Users } from 'lucide-react';
 import type { Membership, ScheduleSession, ScheduleSessionCreate } from '../../types';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
@@ -37,7 +38,7 @@ import {
   type TimePreset,
 } from './availabilityUtils';
 
-type AvailabilityMode = 'this-week' | 'typical-week';
+const AVAILABILITY_MODES = ['this-week', 'typical-week'] as const;
 
 interface AvailabilityGridProps {
   groupId: string;
@@ -84,7 +85,8 @@ export function AvailabilityGrid({
     submitTemplate,
   } = useAvailabilityStore();
   const fetchPersonalAvailability = usePersonalAvailabilityStore((s) => s.fetchPersonalAvailability);
-  const [mode, setMode] = useState<AvailabilityMode>('this-week');
+  // This-week vs typical-week in the URL (?avail=this-week|typical-week).
+  const [mode, setMode] = useUrlTabState('avail', AVAILABILITY_MODES, 'this-week');
   const [importingPersonalTemplate, setImportingPersonalTemplate] = useState(false);
   const [dates] = useState(() => getNextNDates(7));
   const [durationMinutes, setDurationMinutes] = useState(120);

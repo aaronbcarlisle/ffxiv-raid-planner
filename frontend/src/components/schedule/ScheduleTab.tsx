@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, CheckCircle, Copy, ExternalLink, LayoutGrid, List, Link2, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Sparkles, Trash2, Unlink } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -13,7 +14,8 @@ import { AvailabilityGrid } from './AvailabilityGrid';
 import type { DiscordMirrorStatus, ScheduleSession, ScheduleSessionCreate, RsvpStatus, MemberRole, Membership } from '../../types';
 import { buildScheduleDraftFromContent, type ScheduleContentDraftRequest } from './sessionDrafts';
 
-type SchedulerSubTab = 'sessions' | 'availability' | 'integrations';
+const SCHED_SUB_TABS = ['sessions', 'availability', 'integrations'] as const;
+type SchedulerSubTab = (typeof SCHED_SUB_TABS)[number];
 type WebhookMentionTarget = 'none' | 'here' | 'role';
 
 const DISCORD_ROLE_ID_PATTERN = /^(?:<@&)?(\d{17,20})>?$/;
@@ -99,12 +101,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     const saved = localStorage.getItem('schedule-session-view');
     return saved === 'tiles' ? 'tiles' : 'list';
   });
-  const [activeSubTab, setActiveSubTab] = useState<SchedulerSubTab>(() => {
-    const saved = sessionStorage.getItem(`schedule-subtab-${groupId}`);
-    return saved === 'availability' || saved === 'integrations' || saved === 'sessions'
-      ? saved
-      : 'sessions';
-  });
+  // Sub-tab in the URL (?stab=sessions|availability|integrations) — deep-linkable,
+  // reload-safe, back/forward-aware. Replaces the old per-group sessionStorage key.
+  const [activeSubTab, setActiveSubTab] = useUrlTabState('stab', SCHED_SUB_TABS, 'sessions');
 
   // Listen for content schedule requests from farm/reward views.
   useEventBus<ScheduleContentDraftRequest>(
@@ -151,15 +150,6 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   }, [settings]);
 
   useEffect(() => {
-    const saved = sessionStorage.getItem(`schedule-subtab-${groupId}`);
-    if (saved === 'availability' || saved === 'integrations' || saved === 'sessions') {
-      setActiveSubTab(saved);
-    } else {
-      setActiveSubTab('sessions');
-    }
-  }, [groupId]);
-
-  useEffect(() => {
     const sessionId = new URLSearchParams(window.location.search).get('sessionId');
     if (!sessionId || !sessions.some((session) => session.id === sessionId)) return;
 
@@ -174,7 +164,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
     const clearHighlight = window.setTimeout(() => setHighlightedSessionId(null), 5000);
     return () => window.clearTimeout(clearHighlight);
-  }, [sessions]);
+  }, [sessions, setActiveSubTab]);
 
   useEffect(() => {
     if (!userRole || sessions.length === 0) {
@@ -296,7 +286,6 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
   const handleSubTabChange = (nextTab: SchedulerSubTab) => {
     setActiveSubTab(nextTab);
-    sessionStorage.setItem(`schedule-subtab-${groupId}`, nextTab);
   };
 
   const handleSaveIntegrations = async () => {
