@@ -69,6 +69,8 @@ export const RELEASES: Release[] = [
         title: 'Dalamud plugin gear sync no longer fails for new users',
         description:
           'Syncing gear from the in-game plugin used to fail with "No linked character found" unless you had first linked your character on the website. The plugin now auto-creates your character from your in-game name and world on first sync, so gear and gearsets sync with zero website setup. Linking on the website afterwards upgrades that same character with Lodestone verification instead of creating a duplicate.',
+        pr: 145,
+        prTitle: 'fix(plugin-sync): auto-provision Player Hub character on plugin gear sync',
       },
     ],
   },
