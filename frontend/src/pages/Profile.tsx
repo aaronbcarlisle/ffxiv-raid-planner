@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useUrlTabState, clearRegisteredTabParams } from '../hooks/useUrlTabState';
 import { prefRememberSubTabs } from '../lib/navPreferences';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Calendar, ChevronDown, ChevronLeft, ChevronRight,
-  Crosshair, Eye, LayoutDashboard, PlugZap, Shield, Sparkles, User, Users,
+  Calendar, ChevronDown,
+  Crosshair, Eye, LayoutDashboard, Shield, Sparkles, User, Users,
 } from 'lucide-react';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
@@ -15,9 +15,11 @@ import {
   DropdownItem,
   DropdownSeparator,
   DropdownTrigger,
-  Tooltip,
 } from '../components/primitives';
 import { Skeleton } from '../components/ui/Skeleton';
+import { AppRail } from '../components/layout/AppRail';
+import type { RailNavItem } from '../components/layout/railTypes';
+import { UserMenu } from '../components/auth';
 import { CharacterLinkModal } from '../components/profile/CharacterLinkModal';
 import { JobsGearTab } from '../components/profile/JobsGearTab';
 import { JobProfileModal } from '../components/profile/JobProfileModal';
@@ -76,10 +78,7 @@ const PROFILE_NAV_ITEMS: Array<{
   { id: 'preview',      label: 'Share',             description: 'Preview and manage your shareable profile',                shortcut: '5', icon: Eye },
 ];
 
-const PROFILE_SIDEBAR_KEY = 'profile-sidebar-collapsed';
-
-/* eslint-disable design-system/no-raw-button */
-function ProfileSidebarNav({
+export function ProfileSidebarNav({
   activeTab,
   onTabChange,
   characterName,
@@ -88,181 +87,22 @@ function ProfileSidebarNav({
   onTabChange: (tab: ProfileTab) => void;
   characterName?: string;
 }) {
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(PROFILE_SIDEBAR_KEY) === 'true'; } catch { return false; }
-  });
-
-  const toggle = () => {
-    setCollapsed(prev => {
-      const next = !prev;
-      try { localStorage.setItem(PROFILE_SIDEBAR_KEY, String(next)); } catch { /* ignore */ }
-      return next;
-    });
-  };
+  const items: RailNavItem[] = PROFILE_NAV_ITEMS.map(d => ({
+    ...d,
+    isActive: activeTab === d.id,
+    onSelect: () => onTabChange(d.id),
+  }));
 
   return (
-    <motion.nav
-      aria-label="Player Hub navigation"
-      className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle"
-      style={{
-        background: 'linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%)',
-        width: collapsed ? 56 : 208,
-        minWidth: collapsed ? 56 : 208,
-        overflowY: 'auto',
-      }}
-      variants={{
-        expanded: { width: 208, minWidth: 208 },
-        collapsed: { width: 56, minWidth: 56 },
-      }}
-      animate={collapsed ? 'collapsed' : 'expanded'}
-      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-    >
-      {/* Identity header + collapse toggle */}
-      <div className="flex items-center h-12 border-b border-border-subtle flex-shrink-0" style={{ background: 'rgba(20,184,166,0.045)' }}>
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="Expand sidebar"
-            className="w-full h-full flex items-center justify-center text-text-muted hover:text-accent transition-colors"
-          >
-            <ChevronRight size={14} />
-          </button>
-        ) : (
-          <>
-            <div className="flex items-center flex-1 min-w-0 px-3 gap-2.5">
-              <div
-                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
-              >
-                <User size={12} className="text-accent" />
-              </div>
-              <span
-                className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
-                title={characterName}
-              >
-                {characterName ?? 'Player Hub'}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={toggle}
-              aria-label="Collapse sidebar"
-              className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
-            >
-              <ChevronLeft size={13} />
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Nav items */}
-      <LayoutGroup id="sidebar-profile-nav">
-        <div className="flex flex-col py-2 flex-1">
-          {PROFILE_NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <div key={item.id}>
-                <Tooltip
-                  content={
-                    <div className="max-w-[200px]">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-semibold text-text-primary text-sm">{item.label}</span>
-                        <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle bg-surface-base text-text-muted font-mono leading-none flex-shrink-0">
-                          {item.shortcut}
-                        </kbd>
-                      </div>
-                      <p className="text-xs text-text-secondary leading-relaxed">{item.description}</p>
-                    </div>
-                  }
-                  side="right"
-                  sideOffset={collapsed ? 12 : 16}
-                  delayDuration={collapsed ? 200 : 700}
-                >
-                  <button
-                    onClick={() => onTabChange(item.id)}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`
-                      relative flex items-center w-full py-2.5 text-sm font-medium text-left
-                      transition-colors duration-150 select-none
-                      ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'}
-                      ${isActive
-                        ? 'text-accent'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.035]'
-                      }
-                    `}
-                  >
-                    {isActive && (
-                      <motion.span
-                        layoutId="sidebar-profile-active-bg"
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background: 'rgba(20,184,166,0.09)',
-                          boxShadow: 'inset 0 0 32px rgba(20,184,166,0.1)',
-                        }}
-                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                      />
-                    )}
-                    {isActive && (
-                      <motion.span
-                        layoutId="sidebar-profile-active-bar"
-                        className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
-                        style={{
-                          background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, var(--color-accent) 50%, rgba(20,184,166,0.3) 100%)',
-                          boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
-                        }}
-                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                      />
-                    )}
-                    <Icon size={15} className="flex-shrink-0 relative z-10" />
-                    {!collapsed && (
-                      <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
-                    )}
-                  </button>
-                </Tooltip>
-              </div>
-            );
-          })}
-        </div>
-      </LayoutGroup>
-
-      {/* Footer: plugin */}
-      <div className="border-t border-border-subtle flex-shrink-0">
-        {/* Plugin Sync */}
-        <Tooltip
-          content={
-            <div className="max-w-[200px]">
-              <p className="font-semibold text-text-primary text-sm mb-0.5">Plugin Sync</p>
-              <p className="text-xs text-text-secondary leading-relaxed">Open Sync & Gear to manage the Dalamud plugin</p>
-            </div>
-          }
-          side="right"
-          sideOffset={collapsed ? 12 : 16}
-          delayDuration={collapsed ? 200 : 700}
-        >
-          <button
-            type="button"
-            onClick={() => onTabChange('sync')}
-            className={`
-              w-full flex items-center py-2.5 text-text-muted hover:text-accent transition-colors
-              ${collapsed ? 'justify-center' : 'gap-2.5 px-4'}
-            `}
-          >
-            <PlugZap size={13} className="flex-shrink-0" />
-            {!collapsed && (
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] leading-none">
-                Plugin Sync
-              </span>
-            )}
-          </button>
-        </Tooltip>
-      </div>
-
-    </motion.nav>
+    <AppRail
+      context="profile"
+      identity={{ icon: User, label: characterName ?? 'Player Hub' }}
+      collapseKey="profile-sidebar-collapsed"
+      items={items}
+      footer={(collapsed) => <UserMenu variant="rail" collapsed={collapsed} />}
+    />
   );
 }
-/* eslint-enable design-system/no-raw-button */
 
 // ──────────────────────────────────────────────────────────────────────────────
 
