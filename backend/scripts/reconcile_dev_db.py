@@ -47,12 +47,22 @@ def default_clause(col) -> str:
         return ""
     sd = col.server_default
     if sd is not None:
-        # Render common server defaults.
+        # Render common server defaults. sa.true()/sa.false() may stringify as
+        # "true"/"false" or "1"/"0" depending on SQLAlchemy/dialect.
         txt = str(getattr(sd, "arg", "")).strip().lower()
         if txt in {"true", "1"}:
             return " NOT NULL DEFAULT 1"
         if txt in {"false", "0"}:
             return " NOT NULL DEFAULT 0"
+    # Fall back to the Python-side default (e.g. default=True) before guessing,
+    # so a boolean column that defaults to True isn't backfilled as 0/false.
+    pd = getattr(col, "default", None)
+    if pd is not None and getattr(pd, "is_scalar", False):
+        val = pd.arg
+        if isinstance(val, bool):
+            return f" NOT NULL DEFAULT {1 if val else 0}"
+        if isinstance(val, (int, float)):
+            return f" NOT NULL DEFAULT {val}"
     if isinstance(col.type, Boolean):
         return " NOT NULL DEFAULT 0"
     if isinstance(col.type, (Integer, Float, Numeric)):

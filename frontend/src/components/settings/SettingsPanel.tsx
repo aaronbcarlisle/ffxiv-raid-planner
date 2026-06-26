@@ -334,20 +334,29 @@ export function SettingsPanel({
   const [activeTab, setActiveTab] = useUrlTabState('settings', TAB_ORDER, 'general');
 
   // Event-driven open-to-tab (header buttons / badge routing) arrives via the
-  // initialTab prop. While open, reflect a *changed* initialTab into the URL —
-  // via REPLACE so opening directly to a tab doesn't leave a phantom history
-  // entry (user-driven tab clicks still push, so back steps through them).
+  // initialTab prop. Reflect it into the URL when the panel opens, or when a
+  // changed initialTab is routed in while already open — via REPLACE so opening
+  // directly to a tab doesn't leave a phantom history entry (user-driven tab
+  // clicks still push, so back steps through them). On open we don't clobber a
+  // ?settings already pinned by a deep-link / back entry.
   const [, setSearchParams] = useSearchParams();
   const prevInitialTab = useRef(initialTab);
+  const wasOpenRef = useRef(isOpen);
   useEffect(() => {
-    if (isOpen && initialTab !== prevInitialTab.current) {
+    const justOpened = isOpen && !wasOpenRef.current;
+    const tabChanged = isOpen && initialTab !== prevInitialTab.current;
+    if (justOpened || tabChanged) {
       setSearchParams((prev) => {
         const params = new URLSearchParams(prev);
+        // A deep-link / back entry that already pins ?settings wins over the
+        // prop default when the panel is merely (re)opening.
+        if (justOpened && !tabChanged && params.get('settings')) return prev;
         params.set('settings', initialTab);
         return params;
       }, { replace: true });
     }
     prevInitialTab.current = initialTab;
+    wasOpenRef.current = isOpen;
   }, [isOpen, initialTab, setSearchParams]);
 
   const canManage = group.userRole === 'owner' || group.userRole === 'lead';
