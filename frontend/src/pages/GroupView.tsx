@@ -252,21 +252,21 @@ export function GroupView() {
     }
   }, [shareCode]);
 
-  // Smart tab defaulting: reset to Roster when switching statics
+  // Persist this static's navigation state (tab + sub-tabs, minus transient
+  // params) so the context switcher can restore it when the user enables
+  // "remember tab per static". Keyed by share code — the unit it navigates by.
+  // When that preference is OFF, the switcher instead carries the current tab
+  // across, and when it's ON it reads this. Either way no forced reset here.
   useEffect(() => {
-    if (!currentGroup?.id) return;
+    if (!currentGroup?.shareCode) return;
     try {
-      const lastStaticId = localStorage.getItem('last-static-id');
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlTab = urlParams.get('tab');
-      if (lastStaticId && lastStaticId !== currentGroup.id && !urlTab) {
-        setPageMode('roster');
-      }
-      localStorage.setItem('last-static-id', currentGroup.id);
+      const params = new URLSearchParams(searchParams);
+      ['player', 'viewAs', 'adminMode', 'showSettings', 'settings', 'ssub'].forEach(k => params.delete(k));
+      localStorage.setItem(`static-nav-${currentGroup.shareCode}`, params.toString());
     } catch {
       // Ignore localStorage errors
     }
-  }, [currentGroup?.id, setPageMode]);
+  }, [searchParams, currentGroup?.shareCode]);
 
   // Load sortPreset from localStorage when tier changes
   useEffect(() => {

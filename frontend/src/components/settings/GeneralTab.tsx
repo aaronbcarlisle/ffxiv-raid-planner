@@ -10,6 +10,7 @@ import { Trash2 } from 'lucide-react';
 import { Label, Input, ErrorBox, Select, Toggle } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { useAuthStore } from '../../stores/authStore';
 import { toast } from '../../stores/toastStore';
 import type { StaticGroup } from '../../types';
 
@@ -28,6 +29,27 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
   const [hideBisBanners, setHideBisBanners] = useState(group.settings?.hideBisBanners ?? false);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(group.settings?.autoSyncEnabled ?? false);
   const [autoSyncIntervalHours, setAutoSyncIntervalHours] = useState(group.settings?.autoSyncIntervalHours ?? 8);
+
+  // User-level navigation preferences (apply to YOUR account across all statics,
+  // not to the static). Saved immediately via updatePreferences, separate from
+  // the static's Save button. Local state mirrors the store for instant feedback.
+  const user = useAuthStore((s) => s.user);
+  const updatePreferences = useAuthStore((s) => s.updatePreferences);
+  const [rememberSubTabs, setRememberSubTabs] = useState(user?.rememberSubTabs ?? true);
+  const [rememberStaticTab, setRememberStaticTab] = useState(user?.rememberStaticTab ?? false);
+  const savePref = async (
+    key: 'rememberSubTabs' | 'rememberStaticTab',
+    value: boolean,
+    setLocal: (v: boolean) => void,
+  ) => {
+    setLocal(value); // optimistic
+    try {
+      await updatePreferences({ [key]: value });
+    } catch {
+      setLocal(!value); // revert on failure
+      toast.error('Failed to save preference');
+    }
+  };
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -244,6 +266,28 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
             </p>
           </div>
         )}
+      </div>
+
+      {/* Your navigation preferences — user-scoped, saved instantly */}
+      <div className="border-t border-border-default pt-4">
+        <p className="text-sm font-medium text-text-primary mb-1">Your Navigation</p>
+        <p className="text-xs text-text-muted mb-3">
+          These apply to your account across all your statics — they don't affect other members.
+        </p>
+        <div className="space-y-4">
+          <Toggle
+            checked={rememberSubTabs}
+            onChange={(v) => savePref('rememberSubTabs', v, setRememberSubTabs)}
+            label="Remember sub-tabs"
+            hint="Keep the last sub-tab when you return to a view. Turn off to always reset to the default sub-tab (e.g. Roster → Members)."
+          />
+          <Toggle
+            checked={rememberStaticTab}
+            onChange={(v) => savePref('rememberStaticTab', v, setRememberStaticTab)}
+            label="Remember tab per static"
+            hint="When switching statics, return to that static's last tab. Turn off to stay on the tab you're currently viewing."
+          />
+        </div>
       </div>
 
         {/* Share Code */}

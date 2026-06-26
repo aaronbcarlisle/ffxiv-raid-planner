@@ -590,6 +590,10 @@ export interface User {
    */
   isAdmin?: boolean;
   activityDisplayMode?: 'named' | 'anonymous';
+  /** Keep the last sub-tab when revisiting a view (vs reset to default). Default true. */
+  rememberSubTabs?: boolean;
+  /** When switching statics, restore that static's last tab (vs stay on current). Default false. */
+  rememberStaticTab?: boolean;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;

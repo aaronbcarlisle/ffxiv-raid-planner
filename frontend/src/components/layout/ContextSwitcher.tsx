@@ -8,10 +8,14 @@
  * of the user's statics (and a link to the dashboard).
  */
 
-import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Shield, ChevronDown, Users } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
 import type { StaticGroup, StaticGroupListItem, MemberRole } from '../../types';
+
+// Params that should never carry across (or be restored) when switching statics.
+const TRANSIENT_NAV_PARAMS = ['player', 'viewAs', 'adminMode', 'showSettings', 'settings', 'ssub'];
 import {
   Dropdown,
   DropdownContent,
@@ -60,6 +64,8 @@ export function ContextSwitcher({
 }: ContextSwitcherProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rememberStaticTab = useAuthStore((s) => s.user?.rememberStaticTab ?? false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -68,6 +74,34 @@ export function ContextSwitcher({
 
   const onHub = location.pathname.startsWith('/profile');
   const onStatic = location.pathname.startsWith('/group/');
+
+  // Build the URL to a static, honoring the "remember tab per static" preference:
+  //  • ON  → restore that static's last saved tab + sub-tabs (per-static memory).
+  //  • OFF → carry the current tab + sub-tabs across (stay on the same view),
+  //          dropping `tier` so the target picks its own active tier.
+  const buildStaticHref = useCallback((shareCode: string) => {
+    const base = `/group/${shareCode}`;
+    if (rememberStaticTab) {
+      try {
+        const saved = localStorage.getItem(`static-nav-${shareCode}`);
+        if (saved) {
+          const p = new URLSearchParams(saved);
+          TRANSIENT_NAV_PARAMS.forEach((k) => p.delete(k));
+          const s = p.toString();
+          return s ? `${base}?${s}` : base;
+        }
+      } catch { /* ignore */ }
+      return base;
+    }
+    // Stay-on-current: only meaningful when already viewing a static.
+    if (onStatic) {
+      const p = new URLSearchParams(searchParams);
+      [...TRANSIENT_NAV_PARAMS, 'tier'].forEach((k) => p.delete(k));
+      const s = p.toString();
+      return s ? `${base}?${s}` : base;
+    }
+    return base;
+  }, [rememberStaticTab, onStatic, searchParams]);
 
   // The static the "Static" segment points to: the active group, else the first
   // of the user's statics (so the segment still works from the Player Hub).
@@ -98,7 +132,7 @@ export function ContextSwitcher({
           {/* Label: navigates to the target static */}
           <Tooltip content={targetStatic.name}>
             <Link
-              to={`/group/${targetStatic.shareCode}`}
+              to={buildStaticHref(targetStatic.shareCode)}
               className={`${segBase} ${onStatic ? segActive : segIdle} ${fullWidthMobile ? 'flex-1' : 'max-w-[200px] md:max-w-[280px] lg:max-w-[360px]'}`}
               aria-current={onStatic ? 'page' : undefined}
             >
@@ -131,7 +165,7 @@ export function ContextSwitcher({
                     groups
                       .filter((g) => g.shareCode !== targetStatic.shareCode)
                       .map((group) => (
-                        <DropdownItem key={group.id} onSelect={() => navigate(`/group/${group.shareCode}`)}>
+                        <DropdownItem key={group.id} onSelect={() => navigate(buildStaticHref(group.shareCode))}>
                           <div className="flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
                             <span className="font-medium truncate min-w-0 max-w-[180px] block">{group.name}</span>
                             {group.userRole && (

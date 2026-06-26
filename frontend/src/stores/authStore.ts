@@ -202,7 +202,11 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
   fetchUser: () => Promise<void>;
-  updatePreferences: (prefs: { activityDisplayMode?: 'named' | 'anonymous' }) => Promise<void>;
+  updatePreferences: (prefs: {
+    activityDisplayMode?: 'named' | 'anonymous';
+    rememberSubTabs?: boolean;
+    rememberStaticTab?: boolean;
+  }) => Promise<void>;
   clearError: () => void;
 }
 

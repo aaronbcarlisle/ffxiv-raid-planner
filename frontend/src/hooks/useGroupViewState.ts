@@ -8,6 +8,8 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { analytics } from '../services/analytics';
+import { useAuthStore } from '../stores/authStore';
+import { clearRegisteredTabParams } from './useUrlTabState';
 import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 
@@ -202,11 +204,14 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlTab === 'weapon') return 'priority';
     if (urlTab === 'log' || urlTab === 'history') return 'history';
     if (urlTab === 'summary') return 'stats';
+    // Only restore the remembered sub-tab when the user wants sub-tabs remembered.
     try {
-      const saved = localStorage.getItem('gear-subtab');
-      if (saved === 'sync' || saved === 'priority' || saved === 'history' || saved === 'stats') return saved;
-      // Migrate old saved value 'weapon' → 'priority'
-      if (saved === 'weapon') return 'priority';
+      if (useAuthStore.getState().user?.rememberSubTabs ?? true) {
+        const saved = localStorage.getItem('gear-subtab');
+        if (saved === 'sync' || saved === 'priority' || saved === 'history' || saved === 'stats') return saved;
+        // Migrate old saved value 'weapon' → 'priority'
+        if (saved === 'weapon') return 'priority';
+      }
     } catch {
       // Ignore
     }
@@ -220,8 +225,10 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       return urlSubtab;
     }
     try {
-      const saved = localStorage.getItem('loot-priority-subtab');
-      if (saved === 'matrix' || saved === 'gear' || saved === 'weapon') return saved;
+      if (useAuthStore.getState().user?.rememberSubTabs ?? true) {
+        const saved = localStorage.getItem('loot-priority-subtab');
+        if (saved === 'matrix' || saved === 'gear' || saved === 'weapon') return saved;
+      }
     } catch {
       // Ignore
     }
@@ -297,17 +304,31 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     } catch {
       // Ignore localStorage errors
     }
+    // When the user has turned OFF "remember sub-tabs", navigating to a primary
+    // tab resets every view's sub-tab to its default. Clearing the registered
+    // sub-tab params resets the URL-derived ones; the gear/loot sub-tabs (held
+    // in state here) are reset explicitly just below.
+    const resetSubTabs = !(useAuthStore.getState().user?.rememberSubTabs ?? true);
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
       params.set('tab', mode);
       // Clear old subtab param; gear sub-tab is stored as ?sub=
       params.delete('subtab');
-      // Apply any caller-supplied params (e.g. a target sub-tab) in the same update.
+      if (resetSubTabs) {
+        clearRegisteredTabParams(params); // rsub, sched, goal, farm, coll, stab, avail, mf, …
+        params.delete('sub'); // gear sub-tab param (not managed by the hook)
+      }
+      // Apply any caller-supplied params (e.g. a target sub-tab) AFTER the reset
+      // so an explicit deep-link target (e.g. Open Mount Farms → goal=farms) wins.
       if (extraParams) {
         for (const [key, value] of Object.entries(extraParams)) params.set(key, value);
       }
       return params;
     });
+    if (resetSubTabs) {
+      setGearSubTabState('sync');
+      setLootSubTabState('gear');
+    }
     // Note: pushes a history entry (no { replace }) so browser back/forward
     // returns to the previously-viewed tab.
   }, [setSearchParams]);

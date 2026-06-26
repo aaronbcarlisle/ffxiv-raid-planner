@@ -165,6 +165,14 @@ export const RELEASES: Release[] = [
         prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },
       {
+        category: 'feature',
+        title: 'Two new navigation preferences (Static Settings → General)',
+        description:
+          'Added two personal navigation settings that apply to your account across all your statics (they don\'t affect other members). "Remember sub-tabs" (on by default): keep the last sub-tab when you return to a view, or turn it off to always reset to the default (e.g. Roster always opens on Members). "Remember tab per static" (off by default): when switching statics, return to that static\'s last tab — or leave it off to stay on the tab you\'re currently viewing when you switch.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
         category: 'improvement',
         title: 'Header, catalog, and accent-contrast polish',
         description:

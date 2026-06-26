@@ -21,6 +21,17 @@
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+// Every param ever used by this hook is registered here. The "reset sub-tabs to
+// default on navigation" preference clears all of these in one shot, so a newly
+// added sub-tab is covered automatically (it can't be forgotten) as long as it
+// uses this hook — which is the standard. See clearRegisteredTabParams().
+const registeredTabParams = new Set<string>();
+
+/** Delete every hook-managed sub-tab param from a URLSearchParams (mutates it). */
+export function clearRegisteredTabParams(params: URLSearchParams): void {
+  for (const key of registeredTabParams) params.delete(key);
+}
+
 interface UrlTabStateOptions {
   /** 'push' (default) adds a history entry so back/forward steps through the
    *  selection; 'replace' updates the URL in place without new history. */
@@ -38,6 +49,7 @@ export function useUrlTabState<T extends string>(
 ): [T, (next: T) => void] {
   const [searchParams, setSearchParams] = useSearchParams();
   const history = options?.history ?? 'push';
+  registeredTabParams.add(param);
 
   const raw = searchParams.get(param);
   const value = (raw && (values as readonly string[]).includes(raw) ? raw : defaultValue) as T;

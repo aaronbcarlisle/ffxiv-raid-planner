@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, String, Text
+from sqlalchemy import Boolean, String, Text, false, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -36,6 +36,16 @@ class User(Base):
     last_login_at: Mapped[str | None] = mapped_column(Text, nullable=True)
     activity_display_mode: Mapped[str] = mapped_column(
         String(20), nullable=False, default="named"
+    )
+    # User-level navigation preferences (apply to this user across all statics).
+    # remember_sub_tabs: keep the last sub-tab when revisiting a view (vs reset to default).
+    remember_sub_tabs: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
+    )
+    # remember_static_tab: when switching statics, restore that static's last tab
+    # (vs stay on the current tab).
+    remember_static_tab: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
     )
 
     # Relationships

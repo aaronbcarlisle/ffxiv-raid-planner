@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { useUrlTabState } from '../hooks/useUrlTabState';
+import { useUrlTabState, clearRegisteredTabParams } from '../hooks/useUrlTabState';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight,
@@ -356,10 +356,14 @@ export default function Profile() {
   const [, setSearchParams] = useSearchParams();
   const activeTab = parseProfileTab(location.search);
   const setActiveTab = useCallback((tab: ProfileTab) => {
+    // When "remember sub-tabs" is off, switching sidebar views resets sub-tabs
+    // (e.g. Collections & Goals back to Tasks & Goals).
+    const resetSubTabs = !(useAuthStore.getState().user?.rememberSubTabs ?? true);
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       if (tab === 'overview') params.delete('tab');
       else params.set('tab', tab);
+      if (resetSubTabs) clearRegisteredTabParams(params);
       return params;
     });
   }, [setSearchParams]);
