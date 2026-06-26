@@ -466,6 +466,11 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                 key={tab.id}
                 type="button"
                 variant={isActive ? 'accent-subtle' : 'ghost'}
+                // The active variant carries a 1px border; reserve the same
+                // border (transparent) on the inactive tabs so switching tabs
+                // only changes the border *color*, never the box size. Without
+                // this the tabs grow/shrink ~2px and the label visibly pops.
+                className={isActive ? '' : 'border border-transparent'}
                 size="sm"
                 leftIcon={<Icon className="h-4 w-4" />}
                 onClick={() => handleSubTabChange(tab.id)}

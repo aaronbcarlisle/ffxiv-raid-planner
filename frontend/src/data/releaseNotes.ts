@@ -191,6 +191,14 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'fix',
+        title: 'Schedule sub-tabs no longer jump when switching',
+        description:
+          'The Sessions / Availability / Integrations tabs under Schedule used to shift a couple of pixels (and the label briefly popped) when you switched between them, because the active tab added a border the inactive tabs lacked. The inactive tabs now reserve the same border space, so only the color changes — the tabs stay put.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
         title: 'No more stray scrollbar when opening dropdowns',
         description:
           'Opening a dropdown or combobox no longer flashes a vertical scrollbar on the right edge of the app. The scroll-lock workaround was forcing the page body to overflow: visible, which briefly exposed the document overflow; it now keeps the body in its normal state while still protecting the sticky header.',
