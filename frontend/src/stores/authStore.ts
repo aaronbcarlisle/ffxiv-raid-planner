@@ -223,6 +223,15 @@ async function authRequest<T>(
     'Content-Type': 'application/json',
   };
 
+  // Attach the CSRF token on state-changing requests (double-submit cookie
+  // pattern). Without this, mutating calls made through authRequest — e.g.
+  // updatePreferences — are rejected with 403 csrf_validation_failed.
+  const method = (options.method ?? 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+    const csrfToken = getCSRFToken();
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+  }
+
   const response = await fetch(url, {
     ...options,
     credentials: 'include', // Send httpOnly cookies
