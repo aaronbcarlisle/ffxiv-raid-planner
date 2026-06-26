@@ -1,4 +1,5 @@
-import { Star, Trash2, Edit3 } from 'lucide-react';
+import { Trash2, Edit3 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import type { StaticCharacterRegistration } from '../../types';
 import { Button } from '../primitives';
 import { CharacterRoleBadge } from './CharacterRoleBadge';
@@ -58,7 +59,7 @@ export function CharacterRegistrationRow({
               title="Set as primary"
               aria-label={`Set ${name} as primary character`}
             >
-              <Star className="h-3 w-3" />
+              <XivIcon name="earthlyStar" size={12} />
             </Button>
           )}
           <Button

@@ -1,4 +1,5 @@
-import { Package, Book, AlertCircle, Gem } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import { XivIcon } from '../../ui/XivIcon';
 import { JobIcon } from '../../ui/JobIcon';
 import { FLOOR_COLORS, UPGRADE_MATERIAL_DISPLAY_NAMES, type UpgradeMaterialType } from '../../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES, type GearSlot } from '../../../types';
@@ -28,17 +29,17 @@ export function ConfirmStep({
       <div className="flex items-center justify-between bg-surface-elevated rounded-lg border border-border-default p-3">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-accent" />
+            <XivIcon name="loot" size={16} />
             <span className="text-sm text-text-muted">Gear</span>
             <span className="text-sm font-bold text-text-primary">{summary.gearDrops}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Gem className="w-4 h-4 text-material-glaze" />
+            <XivIcon name="materia" size={16} />
             <span className="text-sm text-text-muted">Materials</span>
             <span className="text-sm font-bold text-text-primary">{summary.materialDrops}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Book className="w-4 h-4 text-status-info" />
+            <XivIcon name="tomestone" size={16} />
             <span className="text-sm text-text-muted">Books</span>
             <span className="text-sm font-bold text-text-primary">{summary.bookClears}</span>
           </div>

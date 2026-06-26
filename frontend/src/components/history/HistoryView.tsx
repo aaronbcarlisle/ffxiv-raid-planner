@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ClipboardList } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
 import { logger } from '../../lib/logger';
@@ -269,7 +269,7 @@ export function HistoryView({
                 size="sm"
                 onClick={() => onLogWeek(selectedWeek)}
               >
-                <ClipboardList className="w-4 h-4 mr-1.5" />
+                <XivIcon name="history" size={16} className="mr-1.5" />
                 Log Week
               </Button>
             </Tooltip>

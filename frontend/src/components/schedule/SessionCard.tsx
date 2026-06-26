@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, Swords, RotateCcw, Users, Gamepad2, MoreHorizontal, CalendarDays } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, RotateCcw, Users, Gamepad2, MoreHorizontal, CalendarDays } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button, IconButton, Tooltip } from '../primitives';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { Modal } from '../ui/Modal';
@@ -63,14 +64,14 @@ function formatDuration(minutes: number): string {
   return `${h}h ${m}m`;
 }
 
-const CATEGORY_CONFIG: Record<EventCategory, { icon: typeof Swords; label: string; color: string }> = {
-  raid: { icon: Swords, label: 'Raid', color: 'bg-red-400/20 text-red-300' },
-  ultimate: { icon: Swords, label: 'Ultimate', color: 'bg-blue-400/20 text-blue-300' },
-  farm: { icon: Mountain, label: 'Farm', color: 'bg-amber-400/20 text-amber-300' },
-  reclear: { icon: RotateCcw, label: 'Reclear', color: 'bg-blue-400/20 text-blue-300' },
-  prog: { icon: Gamepad2, label: 'Prog', color: 'bg-purple-400/20 text-purple-300' },
-  social: { icon: Users, label: 'Social', color: 'bg-green-400/20 text-green-300' },
-  other: { icon: MoreHorizontal, label: 'Other', color: 'bg-surface-elevated text-text-secondary' },
+const CATEGORY_CONFIG: Record<EventCategory, { icon: React.ReactNode; label: string; color: string }> = {
+  raid: { icon: <XivIcon name="sword" size={12} />, label: 'Raid', color: 'bg-red-400/20 text-red-300' },
+  ultimate: { icon: <XivIcon name="sword" size={12} />, label: 'Ultimate', color: 'bg-blue-400/20 text-blue-300' },
+  farm: { icon: <Mountain className="w-3 h-3" />, label: 'Farm', color: 'bg-amber-400/20 text-amber-300' },
+  reclear: { icon: <RotateCcw className="w-3 h-3" />, label: 'Reclear', color: 'bg-blue-400/20 text-blue-300' },
+  prog: { icon: <Gamepad2 className="w-3 h-3" />, label: 'Prog', color: 'bg-purple-400/20 text-purple-300' },
+  social: { icon: <Users className="w-3 h-3" />, label: 'Social', color: 'bg-green-400/20 text-green-300' },
+  other: { icon: <MoreHorizontal className="w-3 h-3" />, label: 'Other', color: 'bg-surface-elevated text-text-secondary' },
 };
 
 const RSVP_CONFIG: Record<RsvpStatus, { icon: typeof CheckCircle; label: string; shortLabel: string; activeClass: string }> = {
@@ -81,10 +82,9 @@ const RSVP_CONFIG: Record<RsvpStatus, { icon: typeof CheckCircle; label: string;
 
 function CategoryBadge({ category }: { category: EventCategory }) {
   const config = CATEGORY_CONFIG[category];
-  const Icon = config.icon;
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${config.color}`}>
-      <Icon className="w-3 h-3" />
+      {config.icon}
       {config.label}
     </span>
   );

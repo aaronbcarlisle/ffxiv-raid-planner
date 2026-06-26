@@ -6,7 +6,8 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { Gem, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Modal, Select, Checkbox, Label, TextArea, RadioGroup } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
@@ -598,7 +599,7 @@ export function LogMaterialModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          {isEditMode ? <Pencil className="w-5 h-5" /> : <Gem className="w-5 h-5" />}
+          {isEditMode ? <Pencil className="w-5 h-5" /> : <XivIcon name="materia" size={20} />}
           {isEditMode ? 'Edit Material Entry' : 'Log Material'}
         </span>
       }

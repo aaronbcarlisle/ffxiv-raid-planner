@@ -12,7 +12,8 @@ import { JobIcon } from '../ui/JobIcon';
 import { Toggle } from '../ui/Toggle';
 import { calculatePlayerCompletion, calculatePlayerMaterials, calculatePlayerBooks } from '../../utils/calculations';
 import { playerHasMainRole } from '../../utils/staticCharacterContextService';
-import { Users, Target, Wrench, BookOpen, ChevronDown } from 'lucide-react';
+import { Users, Target, Wrench, ChevronDown } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import type { RaidTier } from '../../gamedata/raid-tiers';
 import type { SnapshotPlayer, PageBalance, MaterialBalance } from '../../types';
 
@@ -469,7 +470,7 @@ export function TeamSummaryEnhanced({
           <div className="bg-surface-base rounded-lg p-4 border border-border-subtle">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 rounded-lg bg-surface-elevated">
-                <BookOpen className="w-5 h-5 text-text-secondary" />
+                <XivIcon name="tomestone" size={20} />
               </div>
               <span className="text-text-secondary text-sm">Books Collected</span>
             </div>

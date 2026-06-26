@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { CalendarPlus, Copy, Sparkles } from 'lucide-react';
+import { CalendarPlus, Copy } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { toast } from '../../stores/toastStore';
 import { Button, Badge } from '../primitives';
 import { Label } from '../ui/Label';
@@ -107,7 +108,7 @@ export function AvailabilityRecommendations({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-            <Sparkles className="h-3.5 w-3.5" />
+            <XivIcon name="crystal" size={14} />
             Best Raid Windows
           </div>
           <div className="space-y-1">

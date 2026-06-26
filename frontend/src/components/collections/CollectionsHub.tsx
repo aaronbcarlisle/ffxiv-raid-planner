@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trophy, BookOpen, Lightbulb } from 'lucide-react';
+import { Plus, Lightbulb } from 'lucide-react';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { RewardGoalCard } from './RewardGoalCard';
 import { RewardGoalModal } from './RewardGoalModal';
@@ -115,8 +116,8 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
 
   const tabDef: { id: HubTab; label: string; icon: React.ReactNode }[] = [
     { id: 'suggested', label: 'Suggested',           icon: <Lightbulb size={14} /> },
-    { id: 'active',    label: `Active Farms (${activeGoals.length})`, icon: <Trophy size={14} /> },
-    { id: 'catalog',   label: 'Browse Catalog',      icon: <BookOpen size={14} /> },
+    { id: 'active',    label: `Active Farms (${activeGoals.length})`, icon: <XivIcon name="goals" size={14} /> },
+    { id: 'catalog',   label: 'Browse Catalog',      icon: <XivIcon name="tomestone" size={14} /> },
   ];
 
   return (
@@ -198,7 +199,7 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
           </div>
         ) : activeGoals.length === 0 ? (
           <div className="text-center py-16 text-text-muted">
-            <Trophy size={40} className="mx-auto mb-3 opacity-30" />
+            <XivIcon name="goals" size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">No active farms yet.</p>
             <p className="text-sm mt-1">Promote a suggestion to an active farm, or browse the catalog to track something manually.</p>
             <div className="flex justify-center gap-2 mt-4 flex-wrap">

@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Swords } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Modal, Select, Checkbox, Label } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
@@ -168,7 +168,7 @@ export function QuickLogWeaponModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <Swords className="w-5 h-5" />
+          <XivIcon name="sword" size={20} />
           Log {jobName} Weapon
         </span>
       }

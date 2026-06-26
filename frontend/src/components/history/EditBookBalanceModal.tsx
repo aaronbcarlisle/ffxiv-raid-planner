@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react';
-import { BookOpen } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Modal, Label, TextArea } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
@@ -59,7 +59,7 @@ export function EditBookBalanceModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <BookOpen className="w-5 h-5" />
+          <XivIcon name="tomestone" size={20} />
           Edit {bookLabel}
         </span>
       }

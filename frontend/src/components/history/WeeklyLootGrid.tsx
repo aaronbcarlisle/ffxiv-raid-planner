@@ -19,7 +19,8 @@ import { getRoleColor, getValidRole } from '../../gamedata';
 import { FLOOR_COLORS, type FloorNumber } from '../../gamedata/loot-tables';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
-import { Pencil, Link, Trash2, UserRound, ClipboardList } from 'lucide-react';
+import { Pencil, Link, Trash2, UserRound } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 
 /** Long-press duration in ms for touch devices to trigger context menu */
 const LONG_PRESS_DURATION = 500;
@@ -119,7 +120,7 @@ export function WeeklyLootGrid({
     if (canEdit && onLogFloor) {
       items.push({
         label: 'Log Floor Loot',
-        icon: <ClipboardList className="w-4 h-4" />,
+        icon: <XivIcon name="history" size={16} />,
         onClick: () => onLogFloor(floor),
       });
     }
@@ -540,7 +541,7 @@ export function WeeklyLootGrid({
                     }}
                     onClick={() => onLogFloor(floor.number)}
                   >
-                    <ClipboardList className="w-3 h-3" />
+                    <XivIcon name="history" size={12} />
                     Log Floor
                   </button>
                 </Tooltip>

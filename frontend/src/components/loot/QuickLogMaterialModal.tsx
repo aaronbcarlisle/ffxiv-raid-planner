@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { Gem } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Modal, Select, Label, Checkbox, NumberInput, RadioGroup } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
@@ -281,7 +281,7 @@ export function QuickLogMaterialModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <Gem className="w-5 h-5" />
+          <XivIcon name="materia" size={20} />
           Log {UPGRADE_MATERIAL_DISPLAY_NAMES[material]}
         </span>
       }

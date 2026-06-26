@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import type { PageMode } from '../../types';
 import { Tooltip } from '../primitives/Tooltip';
 import { analytics } from '../../services/analytics';
-import { LayoutDashboard, Users, Shield, Calendar, Trophy, MoreHorizontal } from 'lucide-react';
+import { XivIcon } from './XivIcon';
 
 interface TabNavigationProps {
   activeTab: PageMode;
@@ -10,13 +10,13 @@ interface TabNavigationProps {
 }
 
 
-const PAGE_TO_LUCIDE_ICON: Partial<Record<PageMode, ReactNode>> = {
-  overview: <LayoutDashboard size={20} />,
-  roster: <Users size={20} />,
-  gear: <Shield size={20} />,
-  schedule: <Calendar size={20} />,
-  goals: <Trophy size={20} />,
-  more: <MoreHorizontal size={20} />,
+const PAGE_TO_XIV_ICON: Partial<Record<PageMode, ReactNode>> = {
+  overview: <XivIcon name="stats" size={20} />,
+  roster: <XivIcon name="party" size={20} />,
+  gear: <XivIcon name="loot" size={20} />,
+  schedule: <XivIcon name="schedule" size={20} />,
+  goals: <XivIcon name="goals" size={20} />,
+  more: <XivIcon name="options" size={20} />,
 };
 
 const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
@@ -62,9 +62,9 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
               }
             `}
           >
-            {PAGE_TO_LUCIDE_ICON[tab.id] && (
+            {PAGE_TO_XIV_ICON[tab.id] && (
               <span className={`flex-shrink-0 transition-opacity ${activeTab === tab.id ? 'opacity-100' : 'opacity-45'}`}>
-                {PAGE_TO_LUCIDE_ICON[tab.id]}
+                {PAGE_TO_XIV_ICON[tab.id]}
               </span>
             )}
             <span>{tab.label}</span>

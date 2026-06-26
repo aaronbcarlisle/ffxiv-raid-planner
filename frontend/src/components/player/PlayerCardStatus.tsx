@@ -6,7 +6,7 @@
  * Extracted from PlayerCard for maintainability.
  */
 
-import { Swords } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Tooltip } from '../primitives/Tooltip';
 import type { LinkedUserInfo, SnapshotPlayer } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
@@ -217,7 +217,7 @@ export function PlayerCardStatus({
       {showWeaponPriority && (
         <Tooltip content={`+${additionalWeaponPriorities} additional weapon ${additionalWeaponPriorities === 1 ? 'priority' : 'priorities'}`}>
           <span className="text-xs bg-surface-interactive text-text-secondary px-1.5 py-0.5 rounded font-medium flex items-center gap-1">
-            <Swords className="w-3 h-3" />
+            <XivIcon name="sword" size={12} />
             +{additionalWeaponPriorities}
           </span>
         </Tooltip>
