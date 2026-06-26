@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.27.0';
+export const CURRENT_VERSION = '1.27.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,19 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.27.1',
+    date: '2026-06-26T05:00:00Z',
+    title: 'Plugin gear sync works without manual character linking',
+    items: [
+      {
+        category: 'fix',
+        title: 'Dalamud plugin gear sync no longer fails for new users',
+        description:
+          'Syncing gear from the in-game plugin used to fail with "No linked character found" unless you had first linked your character on the website. The plugin now auto-creates your character from your in-game name and world on first sync, so gear and gearsets sync with zero website setup. Linking on the website afterwards upgrades that same character with Lodestone verification instead of creating a duplicate.',
+      },
+    ],
+  },
   {
     version: '1.27.0',
     date: '2026-06-26T00:00:00Z',

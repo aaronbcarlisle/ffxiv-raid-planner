@@ -45,7 +45,9 @@ class PlayerCharacterResponse(CamelModel):
     """Linked FFXIV character."""
 
     id: str
-    lodestone_id: str
+    # Null for characters auto-provisioned from a plugin sync (no Lodestone
+    # verification yet); a later website link backfills it.
+    lodestone_id: str | None = None
     name: str
     server: str
     data_center: str | None = None

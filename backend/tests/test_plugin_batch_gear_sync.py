@@ -248,21 +248,63 @@ class TestPluginBatchGearsetSync:
         assert drg_snap.synced_at == drg_synced_before
         assert drg_snap.last_plugin_seen_at == drg_seen_before
 
-    async def test_unknown_character_returns_404(self, client, session, auth_headers):
-        """Character not linked to the user returns 404."""
+    async def test_unlinked_character_auto_provisioned(self, client, session, auth_headers):
+        """An in-game character with no prior Player Hub link is auto-provisioned.
+
+        Plugin-first onboarding: the user signed in via the plugin but never
+        linked a character on the website. The first sync creates the character
+        from the in-game name + world rather than 404ing.
+        """
         await client.get("/api/player/profile", headers=auth_headers)
 
         r = await client.post(
             "/api/plugin/player/batch-gear-sync",
             headers=auth_headers,
             json={
-                "characterName": "Nobody Here",
-                "characterWorld": "Ultros",
-                "gearsets": [_gearset("BRD")],
+                "characterName": "Binckle Binx",
+                "characterWorld": "Sargatanas",
+                "gearsets": [_gearset("SCH")],
                 "source": "plugin",
             },
         )
-        assert r.status_code == 404
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["totalSynced"] == 1
+
+        # The character now exists on the user's profile.
+        result = await session.execute(
+            select(PlayerCharacter).where(
+                PlayerCharacter.name == "Binckle Binx",
+                PlayerCharacter.server == "Sargatanas",
+            )
+        )
+        char = result.scalar_one()
+        assert char.is_main is True  # first character becomes main
+        assert char.lodestone_id is None  # provisioned without Lodestone verification
+
+    async def test_unlinked_character_auto_provisioned_single_endpoint(
+        self, client, session, auth_headers
+    ):
+        """The single-job /gear-sync endpoint also auto-provisions."""
+        await client.get("/api/player/profile", headers=auth_headers)
+
+        r = await client.post(
+            "/api/plugin/player/gear-sync",
+            headers=auth_headers,
+            json={
+                "characterName": "Solo Synca",
+                "characterWorld": "Faerie",
+                "job": "WHM",
+                "gear": [_slot(item_level=730)],
+                "source": "plugin",
+            },
+        )
+        assert r.status_code == 200, r.text
+
+        result = await session.execute(
+            select(PlayerCharacter).where(PlayerCharacter.name == "Solo Synca")
+        )
+        assert result.scalar_one_or_none() is not None
 
     async def test_empty_gearsets_list_rejected(self, client, session, auth_headers):
         """Empty gearsets array returns 422."""

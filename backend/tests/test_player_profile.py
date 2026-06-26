@@ -118,6 +118,46 @@ class TestPlayerCharacter:
         )
         assert response.status_code == 409
 
+    async def test_link_adopts_plugin_provisioned_character(self, client, auth_headers):
+        """Website link adopts a plugin-provisioned character (same name + world,
+        no Lodestone id yet) instead of creating a duplicate."""
+        # Plugin auto-provisions a character via a gear sync (no prior link).
+        sync = await client.post(
+            "/api/plugin/player/gear-sync",
+            headers=auth_headers,
+            json={
+                "characterName": "Dupe Guard",
+                "characterWorld": "Gilgamesh",
+                "job": "WHM",
+                "gear": [{
+                    "slot": "weapon", "hasItem": True, "currentSource": "savage",
+                    "isAugmented": False, "itemId": 100001, "itemName": "W",
+                    "itemLevel": 730, "itemIcon": None, "materia": [],
+                }],
+                "source": "plugin",
+            },
+        )
+        assert sync.status_code == 200, sync.text
+
+        # Website link with the real Lodestone id for the same character.
+        link = await client.post(
+            "/api/player/characters",
+            headers=auth_headers,
+            json={
+                "lodestoneId": "99999",
+                "name": "Dupe Guard",
+                "server": "Gilgamesh",
+                "dataCenter": "Aether",
+                "isMain": True,
+            },
+        )
+        assert link.status_code == 201, link.text
+
+        # Exactly one character, now carrying the verified Lodestone id.
+        chars = (await client.get("/api/player/characters", headers=auth_headers)).json()
+        assert len(chars) == 1
+        assert chars[0]["lodestoneId"] == "99999"
+
     async def test_set_main_character(self, client, auth_headers):
         """Setting a new character as main unsets the previous main."""
         r1 = await client.post(
@@ -415,8 +455,8 @@ class TestGearSnapshots:
 class TestPluginPlayerGearSync:
     """Tests for POST /api/plugin/player/gear-sync."""
 
-    async def test_plugin_sync_no_character_returns_404(self, client, auth_headers):
-        """Returns 404 when no matching character is linked."""
+    async def test_plugin_sync_unlinked_character_auto_provisions(self, client, auth_headers):
+        """An unlinked in-game character is auto-provisioned on first sync."""
         response = await client.post(
             "/api/plugin/player/gear-sync",
             headers=auth_headers,
@@ -424,10 +464,31 @@ class TestPluginPlayerGearSync:
                 "characterName": "Unknown Character",
                 "characterWorld": "Gilgamesh",
                 "job": "DRG",
+                "gear": [{
+                    "slot": "weapon", "hasItem": True, "currentSource": "savage",
+                    "isAugmented": False, "itemId": 100001, "itemName": "Lance",
+                    "itemLevel": 730, "itemIcon": None, "materia": [],
+                }],
+            },
+        )
+        assert response.status_code == 200, response.text
+
+        chars = (await client.get("/api/player/characters", headers=auth_headers)).json()
+        assert any(c["name"] == "Unknown Character" for c in chars)
+
+    async def test_plugin_sync_empty_gear_returns_422(self, client, auth_headers):
+        """Empty gear payload is rejected even though the character is provisioned."""
+        response = await client.post(
+            "/api/plugin/player/gear-sync",
+            headers=auth_headers,
+            json={
+                "characterName": "Empty Gear Guy",
+                "characterWorld": "Gilgamesh",
+                "job": "DRG",
                 "gear": [],
             },
         )
-        assert response.status_code == 404
+        assert response.status_code == 422
 
     async def test_plugin_sync_creates_snapshot(self, client, auth_headers):
         """Plugin sync creates a gear snapshot for a linked character."""
