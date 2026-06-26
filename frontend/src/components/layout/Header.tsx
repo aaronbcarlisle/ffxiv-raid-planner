@@ -8,7 +8,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Copy, UserPlus, Settings, Plus, Trash2, Globe } from 'lucide-react';
+import { Copy, UserPlus, Settings, Plus, Trash2 } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useTierStore } from '../../stores/tierStore';
@@ -55,6 +55,11 @@ export function Header() {
   // Determine current route context
   const isGroupRoute = location.pathname.startsWith('/group/');
   const isHomePage = location.pathname === '/';
+
+  // The AppRail (with its user-menu footer) is present whenever the user is
+  // signed in or on a group route. When it is, the header avatar is redundant
+  // on desktop — keep it only for mobile (< sm), where there is no rail.
+  const railPresent = !!user || isGroupRoute;
 
   // Admin mode is determined by URL param (navigated from Admin Dashboard)
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -334,15 +339,6 @@ export function Header() {
           {!isHomePage && (
             <>
               <div className="flex items-center gap-0 sm:gap-1">
-                <Tooltip content="Find a static">
-                  <Link
-                    to="/discover"
-                    aria-label="Find a static"
-                    className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
-                  >
-                    <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </Link>
-                </Tooltip>
                 <Tooltip content="Join our Discord community">
                   <a
                     href={DISCORD_INVITE_URL}
@@ -380,7 +376,12 @@ export function Header() {
             {authLoading ? (
               <div className="w-8 h-8 rounded-full bg-surface-interactive animate-pulse" />
             ) : user ? (
-              <UserMenu />
+              <span
+                data-rail-present={railPresent ? 'true' : 'false'}
+                className={railPresent ? 'sm:hidden' : ''}
+              >
+                <UserMenu />
+              </span>
             ) : (
               <LoginButton className="text-sm px-3 py-1.5" />
             )}
