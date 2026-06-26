@@ -46,10 +46,14 @@ import { api } from '../../services/api';
 
 // ─── Prop types ───────────────────────────────────────────────────────────────
 
+/** Navigate to a primary tab, optionally targeting a sub-tab (e.g. 'farms'
+ *  under Goals & Farms). Threaded through every module that links elsewhere. */
+type NavigateFn = (tab: PageMode, subTab?: string) => void;
+
 interface StaticHomeTabProps {
   group: StaticGroup;
   tier: TierSnapshot | null;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
   canManage: boolean;
   /** Opens Settings → Requests tab. */
   onOpenRequests?: () => void;
@@ -342,7 +346,7 @@ function NotificationsModule({
   requests: JoinRequest[];
   nextSession: { startTime: string; contentName: string | null } | null;
   loading: boolean;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
   onOpenRequests?: () => void;
 }) {
   const items = useMemo(() => {
@@ -455,7 +459,7 @@ function NextRaidModule({
 }: {
   session: { title: string; startTime: string; endTime: string; contentName: string | null; rsvps: { status: string }[] } | null;
   loading: boolean;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }) {
   return (
     <div>
@@ -673,7 +677,7 @@ function CommandBriefModule({
   canManage: boolean;
   onReviewRequest?: () => void;
   onOpenRequests?: () => void;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }) {
   const chips: { key: string; label: string; icon: React.ReactNode; accent: boolean; warn?: boolean; onClick: () => void }[] = [
     ...(canManage && pendingCount > 0
@@ -867,7 +871,7 @@ function GroupHeroPanel({
   group: StaticGroup;
   tier: TierSnapshot | null;
   players: SnapshotPlayer[];
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }) {
   const tierInfo = tier ? getTierById(tier.tierId) : null;
   const active = players.filter((p) => p.configured && !p.isSubstitute);
@@ -1025,7 +1029,7 @@ function RosterPresenceModule({
   onNavigate,
 }: {
   players: SnapshotPlayer[];
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }) {
   const active = players.filter((p) => p.configured && !p.isSubstitute);
 
@@ -1128,7 +1132,7 @@ function BestNextFarmModule({
 }: {
   recommendations: FarmScore[];
   loading: boolean;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
   onScheduleFarm?: (trial: MountFarmTrial) => void;
 }) {
   const top = recommendations[0] ?? null;
@@ -1192,7 +1196,7 @@ function BestNextFarmModule({
                 if (onScheduleFarm) {
                   onScheduleFarm(trialInfo);
                 } else {
-                  onNavigate('goals');
+                  onNavigate('goals', 'farms');
                 }
               }}
               className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
@@ -1210,7 +1214,7 @@ function BestNextFarmModule({
             </p>
             <button
               type="button"
-              onClick={() => onNavigate('goals')}
+              onClick={() => onNavigate('goals', 'farms')}
               className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
             >
               Open Mount Farms
@@ -1644,7 +1648,7 @@ function RecentActivityModule({
 }: {
   farmData: MountFarmData | null;
   groupId: string;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
   canManage: boolean;
 }) {
   const currentUser = useAuthStore((s) => s.user);
@@ -1731,7 +1735,7 @@ function RecentActivityModule({
             {canManage && (
               <button
                 type="button"
-                onClick={() => onNavigate('goals')}
+                onClick={() => onNavigate('goals', 'farms')}
                 className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
               >
                 Open Mount Farms
@@ -1761,7 +1765,7 @@ function RecentActivityModule({
             <div style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
               <button
                 type="button"
-                onClick={() => onNavigate('goals')}
+                onClick={() => onNavigate('goals', 'farms')}
                 className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
               >
                 View all activity
@@ -1780,7 +1784,7 @@ function RecentActivityModule({
 interface SplitClearReadinessCardProps {
   data: SplitClearData;
   players: SnapshotPlayer[];
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }
 
 function SplitClearReadinessCard({ data, players, onNavigate }: SplitClearReadinessCardProps) {

@@ -1,7 +1,26 @@
+import { useSyncExternalStore } from 'react';
 import { RELEASES } from '../data/releaseNotes';
 import type { AppNotification } from '../stores/notificationStore';
 
 export const SEEN_RELEASES_KEY = 'seen-release-notes';
+
+// ── Reactivity ──────────────────────────────────────────────────────────────
+// Synthetic (release-note) read state lives in localStorage, which React can't
+// observe. Components that show the unread count subscribe here so the badge
+// updates the moment something is marked read — without this, marking the only
+// unread item (a release note) read wouldn't re-render the header badge, since
+// the server-backed unreadCount never changes.
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+export function subscribeSyntheticNotifications(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function notifySyntheticChange(): void {
+  listeners.forEach((l) => l());
+}
 
 export function getSyntheticNotifications(): AppNotification[] {
   const seen = new Set(
@@ -34,6 +53,7 @@ export function markSyntheticRead(id: string): void {
   );
   seen.add(version);
   localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
+  notifySyntheticChange();
 }
 
 export function markAllSyntheticRead(): void {
@@ -46,4 +66,14 @@ export function markAllSyntheticRead(): void {
   );
   shown.forEach((v) => seen.add(v));
   localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
+  notifySyntheticChange();
+}
+
+/**
+ * React hook returning the live synthetic unread count. Re-renders whenever a
+ * release note is marked read (via the subscription above), so badges stay in
+ * sync even when the server-backed unread count doesn't change.
+ */
+export function useSyntheticUnreadCount(): number {
+  return useSyncExternalStore(subscribeSyntheticNotifications, getSyntheticUnreadCount);
 }

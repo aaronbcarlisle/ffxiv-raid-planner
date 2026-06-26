@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
-import { getSyntheticUnreadCount } from '../../lib/syntheticNotifications';
+import { useSyntheticUnreadCount } from '../../lib/syntheticNotifications';
 import { NotificationCenter } from './NotificationCenter';
 import {
   Dropdown,
@@ -57,7 +57,11 @@ export function UserMenu({ className = '' }: UserMenuProps) {
   const apiKeysModal = useModal();
   const notificationsModal = useModal();
   const { unreadCount, fetchNotifications } = useNotificationStore();
-  const totalBadge = unreadCount + getSyntheticUnreadCount();
+  // useSyntheticUnreadCount re-renders this badge when a release note is marked
+  // read — getSyntheticUnreadCount() alone wouldn't, since marking the only
+  // unread item read doesn't change the server-backed unreadCount.
+  const syntheticUnread = useSyntheticUnreadCount();
+  const totalBadge = unreadCount + syntheticUnread;
 
   useEffect(() => {
     if (user) fetchNotifications();

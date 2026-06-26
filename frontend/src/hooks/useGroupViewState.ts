@@ -24,7 +24,9 @@ export interface UseGroupViewStateReturn {
 
   // Tab state
   pageMode: PageMode;
-  setPageMode: (mode: PageMode) => void;
+  /** Switch tabs; pass extraParams to set additional URL query params atomically
+   *  (e.g. a target sub-tab) in the same history entry. */
+  setPageMode: (mode: PageMode, extraParams?: Record<string, string>) => void;
   gearSubTab: GearSubTab;
   setGearSubTab: (tab: GearSubTab) => void;
   lootSubTab: 'matrix' | 'gear' | 'weapon';
@@ -95,7 +97,8 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // ===== Modal state =====
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
   const [showSettingsModalState, setShowSettingsModalState] = useState(() => {
-    return searchParams.get('showSettings') === 'true';
+    // Open from the explicit flag, or when a specific settings tab is deep-linked.
+    return searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
   });
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
@@ -242,7 +245,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // ===== Wrapper functions that sync state, localStorage, and URL =====
 
   // Wrapper to persist pageMode and update URL
-  const setPageMode = useCallback((mode: PageMode) => {
+  const setPageMode = useCallback((mode: PageMode, extraParams?: Record<string, string>) => {
     setPageModeState(mode);
     // Reset scroll position when switching tabs (prevents scroll bleed between tabs)
     // Use main element (which has overflow-y-auto) if it exists, fallback to window
@@ -262,6 +265,10 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       params.set('tab', mode);
       // Clear old subtab param; gear sub-tab is stored as ?sub=
       params.delete('subtab');
+      // Apply any caller-supplied params (e.g. a target sub-tab) in the same update.
+      if (extraParams) {
+        for (const [key, value] of Object.entries(extraParams)) params.set(key, value);
+      }
       return params;
     }, { replace: true });
   }, [setSearchParams]);
@@ -390,10 +397,11 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   const setShowSettingsModal = useCallback((show: boolean) => {
     setShowSettingsModalState(show);
     if (!show) {
-      // Clear URL param when closing settings panel
+      // Clear URL params when closing settings panel (open flag + active tab)
       setSearchParams(prev => {
         const params = new URLSearchParams(prev);
         params.delete('showSettings');
+        params.delete('settings');
         return params;
       }, { replace: true });
     }

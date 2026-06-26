@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus, Trophy, BookOpen, Lightbulb } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { RewardGoalCard } from './RewardGoalCard';
@@ -62,7 +63,22 @@ interface CollectionsHubProps {
 export function CollectionsHub({ groupId, currentUserId, canManage }: CollectionsHubProps) {
   const { goals, isLoading, participants, fetchGoals, fetchParticipants } = useCollectionGoalStore();
 
-  const [tab, setTab] = useState<HubTab>('suggested');
+  // Farms sub-tab synced to the URL (?farm=suggested|active|catalog) so it's
+  // deep-linkable and survives reloads.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTabState] = useState<HubTab>(() => {
+    const v = searchParams.get('farm');
+    return v === 'active' || v === 'catalog' ? v : 'suggested';
+  });
+  const setTab = useCallback((next: HubTab) => {
+    setTabState(next);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (next === 'suggested') params.delete('farm');
+      else params.set('farm', next);
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [showCreate, setShowCreate] = useState(false);
   const [editGoal, setEditGoal] = useState<CollectionGoal | null>(null);
   const [viewGoal, setViewGoal] = useState<CollectionGoal | null>(null);

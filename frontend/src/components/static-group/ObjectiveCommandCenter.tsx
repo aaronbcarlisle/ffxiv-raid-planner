@@ -66,7 +66,7 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 interface ObjectiveCardProps {
   card: ObjectiveCommandCard;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: (tab: PageMode, subTab?: string) => void;
 }
 
 function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
@@ -84,7 +84,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
         onNavigate('schedule');
         break;
       case 'collection':
-        onNavigate('goals');
+        onNavigate('goals', 'farms');
         break;
       case 'bis':
         onNavigate('roster');
@@ -221,7 +221,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
 interface ObjectiveCommandCenterProps {
   groupId: string;
   isMember: boolean;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: (tab: PageMode, subTab?: string) => void;
 }
 
 export function ObjectiveCommandCenter({

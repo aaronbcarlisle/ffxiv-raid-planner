@@ -399,8 +399,31 @@ export function GroupView() {
 
   // Split clear store
   const { fetchData: fetchSplitClear, clearData: clearSplitClear } = useSplitClearStore();
-  const [rosterSubView, setRosterSubView] = useState<'members' | 'characters' | 'split-planner'>('members');
-  const [scheduleView, setScheduleView] = useState<'upcoming' | 'calendar'>('upcoming');
+  // Roster & Schedule sub-tabs synced to the URL so they're deep-linkable and
+  // survive reloads (?rsub=members|characters|split-planner, ?sched=upcoming|calendar).
+  const [rosterSubView, setRosterSubViewState] = useState<'members' | 'characters' | 'split-planner'>(() => {
+    const v = searchParams.get('rsub');
+    return v === 'characters' || v === 'split-planner' ? v : 'members';
+  });
+  const setRosterSubView = useCallback((v: 'members' | 'characters' | 'split-planner') => {
+    setRosterSubViewState(v);
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (v === 'members') params.delete('rsub'); else params.set('rsub', v);
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const [scheduleView, setScheduleViewState] = useState<'upcoming' | 'calendar'>(() =>
+    searchParams.get('sched') === 'calendar' ? 'calendar' : 'upcoming'
+  );
+  const setScheduleView = useCallback((v: 'upcoming' | 'calendar') => {
+    setScheduleViewState(v);
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (v === 'upcoming') params.delete('sched'); else params.set('sched', v);
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
   useEffect(() => {
     if (pageMode === 'roster' && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
@@ -762,14 +785,18 @@ export function GroupView() {
     });
   }, []);
 
-  // Re-clicking the "Expanded" view control (even while already in Expanded
-  // view) should re-expand any collapsed roster sections. viewMode alone can't
-  // signal a repeat click, so we pair it with a counter the PlayerGrid watches.
+  // Re-clicking the "Expanded" view control while already in Expanded view
+  // toggles all roster sections (collapse all if every section is expanded,
+  // otherwise expand all). viewMode alone can't signal a repeat click, so we
+  // pair it with a counter the PlayerGrid watches. The first click (from
+  // Compact) just switches to Expanded — the PlayerGrid's view-mode reset
+  // already expands everything — so we only bump on a genuine re-click.
   const [expandAllSignal, setExpandAllSignal] = useState(0);
   const handleViewModeChange = useCallback((mode: ViewMode) => {
+    const reclickedExpanded = mode === 'expanded' && viewMode === 'expanded';
     setViewMode(mode);
-    if (mode === 'expanded') setExpandAllSignal((n) => n + 1);
-  }, [setViewMode]);
+    if (reclickedExpanded) setExpandAllSignal((n) => n + 1);
+  }, [setViewMode, viewMode]);
 
   // DnD hook - disabled on mobile (touch DnD is awkward), and when locked
   const dnd = useDragAndDrop({
@@ -1141,7 +1168,9 @@ export function GroupView() {
                 <StaticHomeTab
                   group={currentGroup}
                   tier={currentTier}
-                  onNavigate={setPageMode}
+                  onNavigate={(tab, subTab) =>
+                    setPageMode(tab, tab === 'goals' && subTab ? { goal: subTab } : undefined)
+                  }
                   canManage={canManageRoster(userRole).allowed}
                   onOpenRequests={() => {
                     setSettingsTab('recruitment');

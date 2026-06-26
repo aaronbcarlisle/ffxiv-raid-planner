@@ -10,6 +10,7 @@
 /* eslint-disable design-system/no-raw-button */
 
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Settings, ListOrdered, Users, Globe, Target, Plus, Trash2 } from 'lucide-react';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
@@ -346,12 +347,29 @@ export function SettingsPanel({
   highlightCreateInvite = false,
   onAddToRoster,
 }: SettingsPanelProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  // Active tab seeds from the URL (?settings=<tab>) when present so the panel is
+  // deep-linkable, else from initialTab. While open, the active tab is reflected
+  // back to the URL (the `settings` param is cleared on close in GroupView).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const v = searchParams.get('settings');
+    return TAB_ORDER.includes(v as SettingsTab) ? (v as SettingsTab) : initialTab;
+  });
 
   // Sync activeTab with initialTab when it changes (e.g., from keyboard shortcuts)
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  // Reflect the active tab in the URL while the panel is open.
+  useEffect(() => {
+    if (!isOpen) return;
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('settings', activeTab);
+      return params;
+    }, { replace: true });
+  }, [isOpen, activeTab, setSearchParams]);
 
   const canManage = group.userRole === 'owner' || group.userRole === 'lead';
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);

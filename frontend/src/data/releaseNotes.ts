@@ -86,9 +86,9 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
-        title: 'Collapsible roster sections, drag lock, and expand-all',
+        title: 'Collapsible roster sections, drag lock, and expand/collapse-all',
         description:
-          'G1, G2, and Substitutes sections can each be collapsed independently, and a "Show Subs" toggle hides the substitutes section entirely. Card drag-and-drop is now locked by default — flip the lock in the toolbar to rearrange — so cards no longer move by accident. Clicking Expanded view (even when already expanded) re-expands every collapsed section.',
+          'G1, G2, and Substitutes sections can each be collapsed independently, and a "Show Subs" toggle hides the substitutes section entirely. Card drag-and-drop is now locked by default — flip the lock in the toolbar to rearrange — so cards no longer move by accident. Clicking Expanded view while already in Expanded view toggles every section at once: collapses them all if they\'re all open, otherwise expands everything.',
         pr: 146,
         prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },
@@ -129,6 +129,30 @@ export const RELEASES: Release[] = [
         title: '"Mark all read" now clears every notification',
         description:
           'Fixed a bug where Mark all read left the oldest notification still marked unread.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Sub-tabs are now deep-linkable and remembered across reloads',
+        description:
+          'The Roster (Members / Characters / Split Planner), Schedule (Upcoming / Calendar), Goals & Farms (Objectives / Farms), the Farms sub-tabs (Suggested / Active / Catalog), and the Settings panel tabs now live in the URL. Copy a link or reload and you land back on the exact sub-tab you were on. "Open Mount Farms" links now correctly open the Farms tab instead of Objectives.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Loot fairness legend sits under the grid; longer static names shown',
+        description:
+          'The loot fairness legend on the Gear & Sync log now appears directly beneath the grid instead of floating at the bottom of the page. The active static name in the top-left switcher also gets more room before truncating.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'Notification badge clears when the last unread is a release note',
+        description:
+          'After "Mark all read", the avatar notification badge could keep showing a count when the only unread item was a release-note announcement. The badge now updates immediately.',
         pr: 146,
         prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },

@@ -99,7 +99,7 @@ export function ContextSwitcher({
           <Tooltip content={targetStatic.name}>
             <Link
               to={`/group/${targetStatic.shareCode}`}
-              className={`${segBase} ${onStatic ? segActive : segIdle} ${fullWidthMobile ? 'flex-1' : 'max-w-[180px]'}`}
+              className={`${segBase} ${onStatic ? segActive : segIdle} ${fullWidthMobile ? 'flex-1' : 'max-w-[200px] md:max-w-[280px] lg:max-w-[360px]'}`}
               aria-current={onStatic ? 'page' : undefined}
             >
               <Shield className="w-4 h-4 flex-shrink-0" />

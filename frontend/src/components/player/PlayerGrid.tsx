@@ -475,14 +475,34 @@ export function PlayerGrid({
   }
 
   // Clicking "Expanded" again while already in Expanded view bumps this signal
-  // (viewMode doesn't change, so the reset above wouldn't fire). Treat it as an
-  // explicit "expand everything" request so users don't have to bounce through
-  // Compact to un-collapse folded sections.
+  // (viewMode doesn't change, so the reset above wouldn't fire). Treat it as a
+  // toggle across the currently-rendered sections: if every section is already
+  // expanded, collapse them all; otherwise expand everything. Saves users from
+  // bouncing through Compact to un-collapse folds.
   const [lastExpandSignal, setLastExpandSignal] = useState(expandAllSignal);
   if (expandAllSignal !== lastExpandSignal) {
     setLastExpandSignal(expandAllSignal);
-    setCollapsed({});
-    try { localStorage.removeItem(collapseKey); } catch { /* ignore */ }
+    const sections: Array<'g1' | 'g2' | 'subs'> = [];
+    if (groupView && groupedPlayers) {
+      if (groupedPlayers.group1.length > 0) sections.push('g1');
+      if (groupedPlayers.group2.length > 0) sections.push('g2');
+    }
+    const hasSubsSection = subsView && !subsHidden && (
+      groupView && groupedPlayers
+        ? groupedPlayers.substitutes.length > 0
+        : players.some((p) => p.isSubstitute)
+    );
+    if (hasSubsSection) sections.push('subs');
+    const everyExpanded = sections.length > 0 && sections.every((s) => !collapsed[s]);
+    if (everyExpanded) {
+      const next: { g1?: boolean; g2?: boolean; subs?: boolean } = {};
+      sections.forEach((s) => { next[s] = true; });
+      setCollapsed(next);
+      try { localStorage.setItem(collapseKey, JSON.stringify(next)); } catch { /* ignore */ }
+    } else {
+      setCollapsed({});
+      try { localStorage.removeItem(collapseKey); } catch { /* ignore */ }
+    }
   }
 
   // Grouped View (G1/G2) - G1 on top, G2 below
