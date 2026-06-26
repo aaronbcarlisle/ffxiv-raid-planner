@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.28.0';
+export const CURRENT_VERSION = '2.0.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,25 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.0.0',
+    date: '2026-06-26T19:00:00Z',
+    title: 'Unified navigation rail',
+    highlights: [
+      'One consistent left navigation rail across the whole app',
+      'Your account menu now lives at the bottom of the rail',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Unified navigation rail with account menu in the footer',
+        description:
+          'The account menu now lives at the bottom of the left navigation rail, the rail is consistent across the app, and Static Finder is a first-class navigation tab.',
+        pr: 147,
+        prTitle: 'Plan A — Global App Rail + user-menu relocation',
+      },
+    ],
+  },
   {
     version: '1.28.0',
     date: '2026-06-26T18:00:00Z',
