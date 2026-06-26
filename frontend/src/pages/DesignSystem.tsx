@@ -22,6 +22,7 @@ import { Label } from '../components/ui/Label';
 import { InputGroup } from '../components/ui/InputGroup';
 import { Checkbox } from '../components/ui/Checkbox';
 import { ThreeStateCheckbox, type ThreeState } from '../components/ui/ThreeStateCheckbox';
+import { Tag, Tabs, LinkText, NavRow, TriStateToggle, type TriState } from '../components/ui';
 import { GearStatusCircle } from '../components/ui/GearStatusCircle';
 import { Toggle } from '../components/ui/Toggle';
 import { NumberInput } from '../components/ui/NumberInput';
@@ -349,6 +350,7 @@ const NAV_GROUPS = [
       { id: 'buttons', label: 'Buttons' },
       { id: 'badges', label: 'Badges' },
       { id: 'icon-buttons', label: 'Icon Buttons' },
+      { id: 'design-language', label: 'Constrained Primitives' },
       { id: 'icon-library', label: 'Icon Library' },
       { id: 'job-icons', label: 'Job Icons' },
       { id: 'tooltips', label: 'Tooltips' },
@@ -391,6 +393,58 @@ function Subsection({ title, children }: { title: string; children: React.ReactN
       <h3 className="text-lg font-medium text-text-primary mb-4">{title}</h3>
       {children}
     </div>
+  );
+}
+
+// Design-language primitives — the constrained components that make drift
+// structurally hard (Plan L Phase 1). Variant semantics are enforced by type.
+function DesignLanguageSection() {
+  const [filterOn, setFilterOn] = useState(false);
+  const [tab, setTab] = useState('overview');
+  const [owned, setOwned] = useState<TriState>('have');
+  return (
+    <Section id="design-language" title="Constrained Primitives">
+      <p className="text-sm text-text-secondary mb-6 max-w-2xl">
+        These primitives make illegal UI unrepresentable: a <code>Tag</code> must declare whether it is a
+        label, a filter, or navigation; <code>Tabs</code> can only switch in-surface views (never routes);
+        navigational text is a real <code>LinkText</code>/<code>NavRow</code>, never plain text with an
+        <code>onClick</code>. Raw colors and sub-<code>text-xs</code> sizes are lint warnings.
+      </p>
+
+      <Subsection title="Tag — variant carries the semantics">
+        <div className="flex flex-wrap items-center gap-3">
+          <Tag variant="label" tone="success">Have</Tag>
+          <Tag variant="label" tone="warning">In progress</Tag>
+          <Tag variant="filter" pressed={filterOn} onClick={() => setFilterOn(v => !v)} tone="accent">
+            Tanks
+          </Tag>
+          <Tag variant="nav" onNavigate={() => {}} tone="info">Open static</Tag>
+        </div>
+        <p className="text-xs text-text-muted mt-2">label = inert · filter = aria-pressed toggle · nav = chevron + href/onNavigate (required by type)</p>
+      </Subsection>
+
+      <Subsection title="Tabs — in-surface view switch (no route API)">
+        <Tabs
+          tabs={[{ id: 'overview', label: 'Overview' }, { id: 'roster', label: 'Roster' }, { id: 'gear', label: 'Gear' }]}
+          value={tab}
+          onChange={setTab}
+          aria-label="Demo tabs"
+        />
+      </Subsection>
+
+      <Subsection title="LinkText / NavRow — navigational by construction">
+        <div className="flex flex-col gap-2 max-w-xs">
+          <span className="text-sm text-text-secondary">
+            Synced 2 minutes ago — <LinkText onClick={() => {}}>sync now</LinkText>
+          </span>
+          <NavRow label="Static Settings" description="Members, invitations, recruitment" onClick={() => {}} />
+        </div>
+      </Subsection>
+
+      <Subsection title="TriStateToggle — labeled have / missing / unknown">
+        <TriStateToggle value={owned} onChange={setOwned} />
+      </Subsection>
+    </Section>
   );
 }
 
@@ -2738,6 +2792,9 @@ export function DesignSystem() {
             </div>
           </Subsection>
         </Section>
+
+        {/* Design Language primitives */}
+        <DesignLanguageSection />
 
         {/* Icon Library */}
         <IconLibrarySection />

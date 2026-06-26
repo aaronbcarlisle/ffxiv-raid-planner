@@ -80,6 +80,23 @@ A web tool for FFXIV static raid groups to track gear progress toward BiS and ma
 | New job selector | Use existing `JobPicker` |
 | New modal | Use `Modal` with `useModal` |
 
+### Design Language (enforced)
+
+**The design system is the source of truth.** Raw HTML, hardcoded colors, and tiny text are lint-flagged (`warn` now, ratcheting to `error` per area). Appearance must match behavior — a clickable thing must *look and announce* clickable.
+
+| Need | Use | Never |
+|------|-----|-------|
+| Clickable action | `Button` / `IconButton` | raw `<button>`, `<div onClick>` |
+| Navigational text / row | `LinkText` / `NavRow` | plain text with `onClick` |
+| In-surface view switch | `Tabs` (no route API) | tabs that change the route |
+| Status / filter / nav pill | `Tag` with `variant="label"\|"filter"\|"nav"` | an ambiguous pill |
+| Have/missing/unknown | `TriStateToggle` | loose ✓/✗/? buttons |
+| Page/section header | `PageHeader` (icon + Title Case + actions) | a bespoke header |
+| Color | semantic token (`text-accent`, `var(--color-*)`, `color-mix(... var(--color-accent) ...)`) | inline hex/`rgb()`, `bg-[#…]` |
+| Text size | `text-xs`+ (12px floor) | `text-[7–11px]` for readable text |
+
+Type scale + tokens: [docs/DESIGN_SYSTEM_SUMMARY.md](./docs/DESIGN_SYSTEM_SUMMARY.md). Enforcement surface: [docs/audits/enforcement.md](./docs/audits/enforcement.md). Live reference: `/docs/design-system` → "Constrained Primitives". The `design-system-ignore: <reason>` comment is the escape hatch — always with a justification.
+
 ---
 
 ## Commands
