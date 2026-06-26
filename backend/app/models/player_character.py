@@ -33,7 +33,10 @@ class PlayerCharacter(Base):
     )
 
     # Lodestone identity
-    lodestone_id: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    # Nullable: characters auto-provisioned from a plugin gear sync have no
+    # Lodestone verification yet (the plugin only sends the in-game name +
+    # world). A later website "link character" backfills the real id.
+    lodestone_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     server: Mapped[str] = mapped_column(String(100), nullable=False)
     data_center: Mapped[str | None] = mapped_column(String(50), nullable=True)

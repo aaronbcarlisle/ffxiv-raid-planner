@@ -750,33 +750,53 @@ async def link_character(
 
     # Check if character already linked by this user
     for existing in profile.characters:
-        if existing.lodestone_id == body.lodestone_id:
+        if existing.lodestone_id and existing.lodestone_id == body.lodestone_id:
             raise HTTPException(
                 status_code=409,
                 detail="Character already linked to your profile",
             )
+
+    now = datetime.now(timezone.utc).isoformat()
 
     # If this is marked as main, unset other mains
     if body.is_main:
         for c in profile.characters:
             if c.is_main:
                 c.is_main = False
-                c.updated_at = datetime.now(timezone.utc).isoformat()
+                c.updated_at = now
 
-    now = datetime.now(timezone.utc).isoformat()
-    character = PlayerCharacter(
-        id=str(uuid.uuid4()),
-        profile_id=profile.id,
-        lodestone_id=body.lodestone_id,
-        name=body.name,
-        server=body.server,
-        data_center=body.data_center,
-        avatar_url=body.avatar_url,
-        is_main=body.is_main,
-        created_at=now,
-        updated_at=now,
-    )
-    session.add(character)
+    # Adopt a plugin-provisioned character (no Lodestone id yet) matching this
+    # name + world rather than creating a duplicate; otherwise create new.
+    character = None
+    for existing in profile.characters:
+        if (
+            existing.lodestone_id is None
+            and existing.name.lower().strip() == body.name.lower().strip()
+            and existing.server.lower().strip() == body.server.lower().strip()
+        ):
+            character = existing
+            character.lodestone_id = body.lodestone_id
+            character.data_center = body.data_center
+            character.avatar_url = body.avatar_url
+            character.is_main = body.is_main  # mirror create-path semantics
+            character.updated_at = now
+            break
+
+    if character is None:
+        character = PlayerCharacter(
+            id=str(uuid.uuid4()),
+            profile_id=profile.id,
+            lodestone_id=body.lodestone_id,
+            name=body.name,
+            server=body.server,
+            data_center=body.data_center,
+            avatar_url=body.avatar_url,
+            is_main=body.is_main,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(character)
+
     await session.flush()
     await session.commit()
 
@@ -1805,6 +1825,51 @@ async def upsert_personal_availability_template(
 # ---------------------------------------------------------------------------
 
 
+async def _get_or_provision_plugin_character(
+    session: AsyncSession,
+    profile: "PlayerProfile",
+    character_name: str,
+    character_world: str,
+    now: str,
+) -> "PlayerCharacter":
+    """Return the profile character matching name+world, provisioning one if absent.
+
+    Plugin-first onboarding: a user who signed in through the Dalamud plugin has
+    no website-linked character. Rather than 404, we create a character from the
+    in-game identity the plugin reports. It has no Lodestone id yet — a later
+    website "link character" backfills the verified id (see ``link_character``).
+    """
+    name_norm = character_name.lower().strip()
+    world_norm = character_world.lower().strip()
+    for c in profile.characters:
+        if c.name.lower().strip() == name_norm and c.server.lower().strip() == world_norm:
+            return c
+
+    character = PlayerCharacter(
+        id=str(uuid.uuid4()),
+        profile_id=profile.id,
+        lodestone_id=None,
+        name=character_name.strip(),
+        server=character_world.strip(),
+        data_center=None,
+        avatar_url=None,
+        is_main=not profile.characters,  # first character becomes main
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(character)
+    profile.characters.append(character)
+    await session.flush()
+    logger.info(
+        "plugin_character_auto_provisioned",
+        user_id=profile.user_id,
+        character_id=character.id,
+        name=character.name,
+        server=character.server,
+    )
+    return character
+
+
 @plugin_router.post("/gear-sync", response_model=PluginPlayerGearSyncResult)
 @limiter.limit(RATE_LIMITS["general"])
 async def plugin_player_gear_sync(
@@ -1817,33 +1882,19 @@ async def plugin_player_gear_sync(
 
     The plugin sends the currently equipped gear data and this endpoint
     routes it to the user's matching PlayerCharacter + PlayerGearSnapshot.
-    If no character is linked, returns 404 with a helpful message.
+    If no character matches the reported in-game identity, one is provisioned
+    automatically (plugin-first onboarding).
     """
     job_upper = body.job.upper()
     if job_upper.lower() not in VALID_JOBS:
         raise HTTPException(status_code=400, detail=f"Invalid job: {body.job}")
 
-    # Find or create profile
+    # Find or create profile, then match (or auto-provision) the character.
+    now = datetime.now(timezone.utc).isoformat()
     profile = await _get_or_create_profile(session, current_user)
-
-    # Find matching character by name + world
-    character = None
-    for c in profile.characters:
-        if (
-            c.name.lower().strip() == body.character_name.lower().strip()
-            and c.server.lower().strip() == body.character_world.lower().strip()
-        ):
-            character = c
-            break
-
-    if not character:
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                f"No linked character found matching '{body.character_name}' on "
-                f"'{body.character_world}'. Link your character on the profile page first."
-            ),
-        )
+    character = await _get_or_provision_plugin_character(
+        session, profile, body.character_name, body.character_world, now
+    )
 
     # Build gear array from plugin data
     gear: list[dict] = []
@@ -1867,7 +1918,6 @@ async def plugin_player_gear_sync(
             detail="No usable plugin gear data found. No saved gear was updated.",
         )
 
-    now = datetime.now(timezone.utc).isoformat()
     source = body.source if body.source in VALID_SYNC_SOURCES else "plugin"
 
     await _propagate_identity_to_rosters(session, current_user.id, character, now)
@@ -1967,28 +2017,13 @@ async def plugin_batch_gearset_sync(
     if not body.gearsets:
         raise HTTPException(status_code=422, detail="No gearsets in payload.")
 
+    now = datetime.now(timezone.utc).isoformat()
     profile = await _get_or_create_profile(session, current_user)
-
-    character = None
-    for c in profile.characters:
-        if (
-            c.name.lower().strip() == body.character_name.lower().strip()
-            and c.server.lower().strip() == body.character_world.lower().strip()
-        ):
-            character = c
-            break
-
-    if not character:
-        raise HTTPException(
-            status_code=404,
-            detail=(
-                f"No linked character found matching '{body.character_name}' on "
-                f"'{body.character_world}'. Link your character on the profile page first."
-            ),
-        )
+    character = await _get_or_provision_plugin_character(
+        session, profile, body.character_name, body.character_world, now
+    )
 
     source = body.source if body.source in VALID_SYNC_SOURCES else "plugin"
-    now = datetime.now(timezone.utc).isoformat()
     job_results: list[PluginBatchGearsetSyncJobResult] = []
 
     await _propagate_identity_to_rosters(session, current_user.id, character, now)
