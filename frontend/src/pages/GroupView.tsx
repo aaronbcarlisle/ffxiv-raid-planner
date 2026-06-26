@@ -1050,6 +1050,7 @@ export function GroupView() {
                       >
                         {/* design-system-ignore: toggle button requires specific styling */}
                         <button
+                          type="button"
                           onClick={toggleDndLocked}
                           aria-pressed={dndLocked}
                           aria-label={dndLocked ? 'Unlock card reordering' : 'Lock card reordering'}
@@ -1307,6 +1308,7 @@ export function GroupView() {
                         /* design-system-ignore: sub-tab inline buttons */
                         <button
                           key={t.id}
+                          type="button"
                           onClick={() => setGearSubTab(t.id)}
                           className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
                             gearSubTab === t.id

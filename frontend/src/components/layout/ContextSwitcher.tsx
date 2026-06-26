@@ -149,6 +149,7 @@ export function ContextSwitcher({
             <Dropdown open={open} onOpenChange={setOpen}>
               <DropdownTrigger>
                 <button
+                  type="button"
                   className={`flex items-center justify-center h-8 w-7 rounded-md flex-shrink-0 ${segIdle}`}
                   aria-label="Switch static"
                 >

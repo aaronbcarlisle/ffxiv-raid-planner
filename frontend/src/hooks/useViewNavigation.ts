@@ -18,13 +18,18 @@ import type { PageMode, GearSubTab, LootLogEntry, MaterialLogEntry } from '../ty
  * fixed timeout races that animation. Instead we poll for the element and
  * scroll the moment it appears (then once more after the enter animation
  * settles so `block: 'center'` lands accurately).
+ *
+ * Returns a cancel function that clears any pending timer, so a fast
+ * navigate-away (or a new navigation) can't leave a stale scroll queued.
  */
 function scrollIntoViewWhenReady(
   getId: () => string,
   getFallbackId?: () => string,
   { attempts = 24, interval = 40 }: { attempts?: number; interval?: number } = {},
-): void {
+): () => void {
   let tries = 0;
+  // Only ever one timer is pending at a time (the next poll, or the re-center).
+  let timer: ReturnType<typeof setTimeout> | null = null;
   const tick = () => {
     const el =
       document.getElementById(getId()) ??
@@ -32,12 +37,18 @@ function scrollIntoViewWhenReady(
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       // Re-center after the enter animation finishes so it isn't left off-screen.
-      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 220);
+      timer = setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 220);
       return;
     }
-    if (++tries < attempts) setTimeout(tick, interval);
+    if (++tries < attempts) timer = setTimeout(tick, interval);
   };
   tick();
+  return () => {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  };
 }
 
 interface HighlightedEntry {
@@ -85,6 +96,13 @@ export function useViewNavigation({
   const playerHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const entryHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bookHighlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Cancels the in-flight scroll poll/re-center, so a new navigation or unmount
+  // doesn't leave a queued scroll that fires against the wrong content.
+  const scrollCancelRef = useRef<(() => void) | null>(null);
+  const startScroll = useCallback((getId: () => string, getFallbackId?: () => string) => {
+    scrollCancelRef.current?.();
+    scrollCancelRef.current = scrollIntoViewWhenReady(getId, getFallbackId);
+  }, []);
 
   // Cleanup all timeouts on unmount
   useEffect(() => {
@@ -92,6 +110,7 @@ export function useViewNavigation({
       if (playerHighlightTimeoutRef.current) clearTimeout(playerHighlightTimeoutRef.current);
       if (entryHighlightTimeoutRef.current) clearTimeout(entryHighlightTimeoutRef.current);
       if (bookHighlightTimeoutRef.current) clearTimeout(bookHighlightTimeoutRef.current);
+      scrollCancelRef.current?.();
     };
   }, []);
 
@@ -113,7 +132,7 @@ export function useViewNavigation({
     setHighlightedSlot(normalizedSlot ?? null);
     // Scroll to the specific gear row (falling back to the whole card) once it
     // mounts — polls past the tab-switch animation so it doesn't no-op early.
-    scrollIntoViewWhenReady(
+    startScroll(
       () => (normalizedSlot ? `gear-row-${playerId}-${normalizedSlot}` : `player-card-${playerId}`),
       () => `player-card-${playerId}`,
     );
@@ -122,7 +141,7 @@ export function useViewNavigation({
       setHighlightedPlayerId(null);
       setHighlightedSlot(null);
     }, 2500);
-  }, [setPageMode, setGearSubTab, setHighlightedPlayerId, setHighlightedSlot]);
+  }, [setPageMode, setGearSubTab, setHighlightedPlayerId, setHighlightedSlot, startScroll]);
 
   // Navigate to loot entry from player card (gear slot → loot entry)
   const handleNavigateToLootEntry = useCallback((playerId: string, slot: string) => {
@@ -154,12 +173,12 @@ export function useViewNavigation({
     // Set highlighted entry with week for cross-week navigation
     setHighlightedEntry({ id: String(entry.id), type: 'loot', week: entry.weekNumber });
     // Scroll once the entry row mounts (after tab change + week switch render).
-    scrollIntoViewWhenReady(() => `loot-entry-${entry.id}`);
+    startScroll(() => `loot-entry-${entry.id}`);
     // Clear highlight after animation completes
     entryHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedEntry(null);
     }, 2500);
-  }, [lootLog, setPageMode, setGearSubTab, setHighlightedEntry]);
+  }, [lootLog, setPageMode, setGearSubTab, setHighlightedEntry, startScroll]);
 
   // Navigate to material entry from player card (gear slot → material entry)
   const handleNavigateToMaterialEntry = useCallback((playerId: string, slot: string) => {
@@ -179,12 +198,12 @@ export function useViewNavigation({
     // Set highlighted entry with week for cross-week navigation
     setHighlightedEntry({ id: String(entry.id), type: 'material', week: entry.weekNumber });
     // Scroll once the entry row mounts (after tab change + week switch render).
-    scrollIntoViewWhenReady(() => `material-entry-${entry.id}`);
+    startScroll(() => `material-entry-${entry.id}`);
     // Clear highlight after animation completes
     entryHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedEntry(null);
     }, 2500);
-  }, [materialLog, setPageMode, setGearSubTab, setHighlightedEntry]);
+  }, [materialLog, setPageMode, setGearSubTab, setHighlightedEntry, startScroll]);
 
   // Navigate to Books panel from player card context menu
   const handleNavigateToBooksPanel = useCallback((playerId: string) => {
@@ -196,12 +215,12 @@ export function useViewNavigation({
     // Set highlighted book player ID
     setHighlightedBookPlayerId(playerId);
     // Scroll once the row mounts (after tab change render).
-    scrollIntoViewWhenReady(() => `book-row-${playerId}`);
+    startScroll(() => `book-row-${playerId}`);
     // Clear highlight after animation completes
     bookHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedBookPlayerId(null);
     }, 2500);
-  }, [setPageMode, setGearSubTab, setHighlightedBookPlayerId]);
+  }, [setPageMode, setGearSubTab, setHighlightedBookPlayerId, startScroll]);
 
   return {
     handleNavigateToPlayer,
