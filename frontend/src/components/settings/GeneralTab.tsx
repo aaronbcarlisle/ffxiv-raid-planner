@@ -84,6 +84,13 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
     setIsSaving(true);
     setError(null);
 
+    // The static-group update and the user-preference update hit independent
+    // endpoints, so run them separately and report per-operation. That way a
+    // failure in one doesn't hide that the other persisted (and the user knows
+    // exactly what still needs saving), rather than a single "failed" message
+    // implying nothing was saved.
+    const failed: string[] = [];
+    const saved: string[] = [];
     try {
       // Static fields — only push a group update for changes the user is
       // permitted to make. Skips the update entirely when only the user-scoped
@@ -117,19 +124,32 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
           };
         }
 
-        await updateGroup(group.id, updateData);
+        try {
+          await updateGroup(group.id, updateData);
+          saved.push('static settings');
+        } catch {
+          failed.push('static settings');
+        }
       }
 
       // User-scoped navigation preferences.
       if (navPrefsChanged) {
-        await updatePreferences({ rememberSubTabs, rememberStaticTab });
+        try {
+          await updatePreferences({ rememberSubTabs, rememberStaticTab });
+          saved.push('navigation preferences');
+        } catch {
+          failed.push('navigation preferences');
+        }
       }
 
-      toast.success('Settings saved!');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save changes';
-      setError(message);
-      toast.error(message);
+      if (failed.length === 0) {
+        toast.success('Settings saved!');
+      } else {
+        const tail = saved.length ? ` ${saved.join(' and ')} saved.` : '';
+        const message = `Failed to save ${failed.join(' and ')}.${tail}`;
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       setIsSaving(false);
     }

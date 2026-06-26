@@ -39,7 +39,11 @@ export function SettingsSubNav<T extends string>({ items, active, onChange }: Se
             type="button"
             role="tab"
             aria-selected={active === item.id}
-            disabled={item.disabled}
+            // Use aria-disabled (not the native `disabled` attribute) so the
+            // element still emits pointer events and its Tooltip stays
+            // discoverable; the onClick below guards the actual action.
+            aria-disabled={item.disabled || undefined}
+            tabIndex={item.disabled ? -1 : undefined}
             onClick={() => !item.disabled && onChange(item.id)}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors font-medium whitespace-nowrap ${
               item.disabled
