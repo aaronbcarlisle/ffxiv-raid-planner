@@ -8,7 +8,7 @@
  * of the user's statics (and a link to the dashboard).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Shield, ChevronDown, Users } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
@@ -47,6 +47,8 @@ interface ContextSwitcherProps {
   fullWidthMobile?: boolean;
 }
 
+const SELECTED_STATIC_KEY = 'context-selected-static';
+
 const segBase =
   'flex items-center gap-1.5 h-8 px-2.5 rounded-md text-sm font-medium transition-colors min-w-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50';
 const segActive = 'bg-accent/15 text-accent';
@@ -65,6 +67,35 @@ export function ContextSwitcher({
   const [searchParams] = useSearchParams();
   const rememberStaticTab = useAuthStore((s) => prefRememberStaticTab(s.user));
   const [open, setOpen] = useState(false);
+
+  // The "selected static" the Static segment points at. The ▾ dropdown updates
+  // this WITHOUT navigating; only clicking the static name navigates. It is
+  // retained across Player Hub / Static Finder visits (and reloads), so the
+  // segment never resets to the first static when you switch context.
+  const [selectedCode, setSelectedCode] = useState<string | null>(() => {
+    try { return localStorage.getItem(SELECTED_STATIC_KEY); } catch { return null; }
+  });
+
+  // Entering a static route makes it the selection (route is authoritative).
+  // Render-time sync — React's recommended pattern for deriving state from a
+  // changing prop; avoids the extra commit (and lint) of a setState effect.
+  const [syncedGroupCode, setSyncedGroupCode] = useState<string | null>(currentGroup?.shareCode ?? null);
+  if (currentGroup?.shareCode && currentGroup.shareCode !== syncedGroupCode) {
+    setSyncedGroupCode(currentGroup.shareCode);
+    setSelectedCode(currentGroup.shareCode);
+  }
+
+  // Persist the selection (no setState here — lint-safe).
+  useEffect(() => {
+    if (selectedCode) {
+      try { localStorage.setItem(SELECTED_STATIC_KEY, selectedCode); } catch { /* ignore */ }
+    }
+  }, [selectedCode]);
+
+  const selectStatic = useCallback((shareCode: string) => {
+    setSelectedCode(shareCode);
+    setOpen(false);
+  }, []);
 
   useEffect(() => {
     if (open && isMember) onFetchGroups();
@@ -102,14 +133,27 @@ export function ContextSwitcher({
     return base;
   }, [rememberStaticTab, onStatic, searchParams]);
 
-  // The static the "Static" segment points to: the active group, else the first
-  // of the user's statics (so the segment still works from the Player Hub).
-  const targetStatic =
-    currentGroup ??
-    (groups.length > 0
-      ? ({ shareCode: groups[0].shareCode, name: groups[0].name } as Pick<StaticGroup, 'shareCode' | 'name'>)
-      : null);
-  const segRole = currentGroup ? userRole : groups[0]?.userRole ?? undefined;
+  // The static the "Static" segment points to: the selected static (from the
+  // dropdown / retained), else the active group, else the first of the user's
+  // statics — so the segment keeps working from Player Hub / Static Finder.
+  const targetStatic = useMemo<Pick<StaticGroup, 'shareCode' | 'name'> | null>(() => {
+    const code = selectedCode ?? currentGroup?.shareCode ?? groups[0]?.shareCode ?? null;
+    if (!code) return null;
+    if (currentGroup && currentGroup.shareCode === code) {
+      return { shareCode: currentGroup.shareCode, name: currentGroup.name };
+    }
+    const g = groups.find((x) => x.shareCode === code);
+    if (g) return { shareCode: g.shareCode, name: g.name };
+    // Selection points to a static not in the loaded list yet — fall back.
+    if (currentGroup) return { shareCode: currentGroup.shareCode, name: currentGroup.name };
+    return groups.length > 0 ? { shareCode: groups[0].shareCode, name: groups[0].name } : null;
+  }, [selectedCode, currentGroup, groups]);
+
+  const segRole = useMemo<MemberRole | undefined>(() => {
+    if (!targetStatic) return undefined;
+    if (currentGroup && currentGroup.shareCode === targetStatic.shareCode) return userRole;
+    return groups.find((g) => g.shareCode === targetStatic.shareCode)?.userRole ?? undefined;
+  }, [targetStatic, currentGroup, userRole, groups]);
 
   return (
     <div
@@ -175,7 +219,7 @@ export function ContextSwitcher({
                     groups
                       .filter((g) => g.shareCode !== targetStatic.shareCode)
                       .map((group) => (
-                        <DropdownItem key={group.id} onSelect={() => navigate(buildStaticHref(group.shareCode))}>
+                        <DropdownItem key={group.id} onSelect={() => selectStatic(group.shareCode)}>
                           <div className="flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
                             <span className="font-medium truncate min-w-0 max-w-[180px] block">{group.name}</span>
                             {group.userRole && (

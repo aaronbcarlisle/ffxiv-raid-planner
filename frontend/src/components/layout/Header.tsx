@@ -220,7 +220,7 @@ export function Header() {
           {user && !isHomePage && (
             <div className="hidden sm:block border-l border-border-subtle pl-3">
               <ContextSwitcher
-                currentGroup={isGroupRoute ? currentGroup ?? null : null}
+                currentGroup={currentGroup ?? null}
                 groups={groups}
                 onFetchGroups={fetchGroups}
                 isMember={isMember || groups.length > 0}
