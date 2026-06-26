@@ -8,7 +8,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Save, AlertCircle } from 'lucide-react';
-import { Button, Tooltip } from '../primitives';
+import { Button } from '../primitives';
+import { SettingsSubNav } from './SettingsSubNav';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { Label, ErrorBox } from '../ui';
 import { ModeSelector } from '../priority/ModeSelector';
 import { RoleBasedEditor } from '../priority/RoleBasedEditor';
@@ -30,7 +32,7 @@ import type {
 import { DEFAULT_PRIORITY_SETTINGS, DEFAULT_ADVANCED_OPTIONS } from '../../types';
 import { getJobsByRole } from '../../gamedata';
 
-type PrioritySubTab = 'mode' | 'advanced';
+const PRIORITY_SUB_TABS = ['mode', 'advanced'] as const;
 
 interface PriorityTabProps {
   group: StaticGroup;
@@ -42,8 +44,8 @@ interface PriorityTabProps {
 export function PriorityTab({ group, players, tierId, onClose: _onClose }: PriorityTabProps) {
   const { updateGroup } = useStaticGroupStore();
 
-  // Subtab state
-  const [activeSubTab, setActiveSubTab] = useState<PrioritySubTab>('mode');
+  // Subtab in the URL (?ssub=mode|advanced) — shared settings sub-tab param.
+  const [activeSubTab, setActiveSubTab] = useUrlTabState('ssub', PRIORITY_SUB_TABS, 'mode');
 
   // Initialize state from group settings or defaults
   const [settings, setSettings] = useState<StaticPrioritySettings>(() => {
@@ -133,7 +135,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
 
       return newSettings;
     });
-  }, []);
+  }, [setActiveSubTab]);
 
   // Role order change handler
   const handleRoleOrderChange = useCallback((roleOrder: RoleType[]) => {
@@ -212,37 +214,21 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Subtab navigation */}
-      <div className="flex-shrink-0 flex items-center gap-1 mb-4 w-fit bg-surface-raised rounded-lg p-0.5 border border-surface-overlay">
-        <Tooltip content="Configure priority mode and order">
-          {/* design-system-ignore: Subtab button requires specific toggle styling */}
-          <button
-            onClick={() => setActiveSubTab('mode')}
-            className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
-              activeSubTab === 'mode'
-                ? 'bg-accent/20 text-accent'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
-            }`}
-          >
-            Mode
-          </button>
-        </Tooltip>
-        <Tooltip content={settings.mode === 'disabled' ? 'Advanced options are not available when priority is disabled' : 'Fine-tune priority calculations'}>
-          {/* design-system-ignore: Subtab button requires specific toggle styling */}
-          <button
-            onClick={() => settings.mode !== 'disabled' && setActiveSubTab('advanced')}
-            disabled={settings.mode === 'disabled'}
-            className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
-              settings.mode === 'disabled'
-                ? 'text-text-disabled cursor-not-allowed'
-                : activeSubTab === 'advanced'
-                  ? 'bg-accent/20 text-accent'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
-            }`}
-          >
-            Advanced
-          </button>
-        </Tooltip>
-      </div>
+      <SettingsSubNav
+        active={activeSubTab}
+        onChange={setActiveSubTab}
+        items={[
+          { id: 'mode', label: 'Mode', tooltip: 'Configure priority mode and order' },
+          {
+            id: 'advanced',
+            label: 'Advanced',
+            disabled: settings.mode === 'disabled',
+            tooltip: settings.mode === 'disabled'
+              ? 'Advanced options are not available when priority is disabled'
+              : 'Fine-tune priority calculations',
+          },
+        ]}
+      />
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto space-y-6 min-h-0 pb-20 pr-1.5" style={{ scrollbarGutter: 'stable' }}>

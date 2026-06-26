@@ -5,11 +5,41 @@
  * Centralizes the complex state management that was previously in GroupView.tsx.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
+
+type LootSubTab = 'matrix' | 'gear' | 'weapon';
+
+// ── URL → state parsers (shared by initial state and back/forward reconciliation) ──
+// Each returns null when the param is absent/unrecognized so callers can fall
+// back to the current value (rather than clobbering it).
+function pageModeFromTabParam(urlTab: string | null): PageMode | null {
+  switch (urlTab) {
+    case 'overview': case 'roster': case 'schedule': case 'goals': case 'gear': case 'more':
+      return urlTab;
+    // Backward-compat: legacy tab values
+    case 'home': return 'overview';
+    case 'players': return 'roster';
+    case 'loot': case 'priority': case 'weapon': case 'log': case 'history': case 'summary': return 'gear';
+    case 'mount-farms': case 'collections': return 'goals';
+    default: return null;
+  }
+}
+
+function gearSubFromParam(urlSub: string | null): GearSubTab | null {
+  if (urlSub === 'sync' || urlSub === 'priority' || urlSub === 'history' || urlSub === 'stats') return urlSub;
+  if (urlSub === 'weapon') return 'priority';
+  if (urlSub === 'summary') return 'stats';
+  return null;
+}
+
+function lootSubFromParam(urlSubtab: string | null): LootSubTab | null {
+  if (urlSubtab === 'matrix' || urlSubtab === 'gear' || urlSubtab === 'weapon') return urlSubtab;
+  return null;
+}
 
 interface HighlightedEntry {
   id: string;
@@ -270,7 +300,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
         for (const [key, value] of Object.entries(extraParams)) params.set(key, value);
       }
       return params;
-    }, { replace: true });
+    });
+    // Note: pushes a history entry (no { replace }) so browser back/forward
+    // returns to the previously-viewed tab.
   }, [setSearchParams]);
 
   // Wrapper to persist gearSubTab and update URL
@@ -285,7 +317,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       const params = new URLSearchParams(prev);
       params.set('sub', tab);
       return params;
-    }, { replace: true });
+    }); // push so back/forward returns to the prior gear sub-tab
   }, [setSearchParams]);
 
   // Wrapper to persist lootSubTab and update URL
@@ -300,7 +332,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       const params = new URLSearchParams(prev);
       params.set('subtab', tab);
       return params;
-    }, { replace: true });
+    }); // push so back/forward returns to the prior priority sub-tab
   }, [setSearchParams]);
 
   // Wrapper to persist viewMode and update URL
@@ -406,6 +438,33 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       }, { replace: true });
     }
   }, [setSearchParams]);
+
+  // ===== Browser back/forward support =====
+  // Reflect the initial tab in the URL once (replace, no new history entry) so
+  // every history entry carries a ?tab — otherwise going back to the very first
+  // entry (which had no tab param) couldn't restore the starting tab.
+  useEffect(() => {
+    if (!searchParams.get('tab')) {
+      setSearchParams(prev => {
+        const params = new URLSearchParams(prev);
+        params.set('tab', pageMode);
+        return params;
+      }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reconcile tab/sub-tab state FROM the URL whenever it changes. For our own
+  // setters this is a no-op (state already matches what we just wrote); for
+  // browser back/forward it's what actually moves the UI to the popped entry.
+  useEffect(() => {
+    const t = pageModeFromTabParam(searchParams.get('tab'));
+    if (t && t !== pageMode) setPageModeState(t);
+    const s = gearSubFromParam(searchParams.get('sub'));
+    if (s && s !== gearSubTab) setGearSubTabState(s);
+    const l = lootSubFromParam(searchParams.get('subtab'));
+    if (l && l !== lootSubTab) setLootSubTabState(l);
+  }, [searchParams, pageMode, gearSubTab, lootSubTab]);
 
   return {
     // URL params

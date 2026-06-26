@@ -134,9 +134,25 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
+        title: 'Browser back and forward now work everywhere',
+        description:
+          'Tabs and sub-tabs across the app now create proper browser history, so the back and forward buttons step through where you have been — accidentally clicked the wrong tab? Just hit back. This works in the static view, the Settings panel, and the Player Hub.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
         title: 'Sub-tabs are now deep-linkable and remembered across reloads',
         description:
-          'The Roster (Members / Characters / Split Planner), Schedule (Upcoming / Calendar), Goals & Farms (Objectives / Farms), the Farms sub-tabs (Suggested / Active / Catalog), and the Settings panel tabs now live in the URL. Copy a link or reload and you land back on the exact sub-tab you were on. "Open Mount Farms" links now correctly open the Farms tab instead of Objectives.',
+          'Sub-tabs throughout the app live in the URL — Roster (Members / Characters / Split Planner), Schedule (Upcoming / Calendar), Goals & Farms (Objectives / Farms) and its inner Farms tabs, the Settings panel tabs and their sub-sections (Priority, Goals & Farms, Recruitment), and the Player Hub sidebar plus its Collections & Goals sub-tabs (Tasks & Goals / My Priorities / Browse Catalog). Copy a link or reload and you land back on the exact view you were on. "Open Mount Farms" links open the Farms tab directly.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Consistent Settings panel sub-tab styling',
+        description:
+          'The Goals & Farms and Recruitment sub-tabs now use the same pill styling as the Priority tab and sit in a fixed position, so switching between Settings tabs no longer nudges the sub-tabs around.',
         pr: 146,
         prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },

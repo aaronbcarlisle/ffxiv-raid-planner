@@ -47,6 +47,7 @@ import { SettingsPanel, type SettingsTab, type RecruitmentSection } from '../com
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useGroupViewState } from '../hooks/useGroupViewState';
+import { useUrlTabState } from '../hooks/useUrlTabState';
 import { usePlayerActions } from '../hooks/usePlayerActions';
 import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShortcuts';
 import { useViewNavigation } from '../hooks/useViewNavigation';
@@ -59,6 +60,9 @@ import { canManageRoster } from '../utils/permissions';
 import { logger } from '../lib/logger';
 import { DISCORD_BUG_REPORT_URL } from '../config';
 import type { SnapshotPlayer, GearSlot, SortPreset, GearSubTab, PageMode, ViewMode } from '../types';
+
+const ROSTER_SUB_VIEWS = ['members', 'characters', 'split-planner'] as const;
+const SCHEDULE_VIEWS = ['upcoming', 'calendar'] as const;
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -399,31 +403,10 @@ export function GroupView() {
 
   // Split clear store
   const { fetchData: fetchSplitClear, clearData: clearSplitClear } = useSplitClearStore();
-  // Roster & Schedule sub-tabs synced to the URL so they're deep-linkable and
-  // survive reloads (?rsub=members|characters|split-planner, ?sched=upcoming|calendar).
-  const [rosterSubView, setRosterSubViewState] = useState<'members' | 'characters' | 'split-planner'>(() => {
-    const v = searchParams.get('rsub');
-    return v === 'characters' || v === 'split-planner' ? v : 'members';
-  });
-  const setRosterSubView = useCallback((v: 'members' | 'characters' | 'split-planner') => {
-    setRosterSubViewState(v);
-    setSearchParams(prev => {
-      const params = new URLSearchParams(prev);
-      if (v === 'members') params.delete('rsub'); else params.set('rsub', v);
-      return params;
-    }, { replace: true });
-  }, [setSearchParams]);
-  const [scheduleView, setScheduleViewState] = useState<'upcoming' | 'calendar'>(() =>
-    searchParams.get('sched') === 'calendar' ? 'calendar' : 'upcoming'
-  );
-  const setScheduleView = useCallback((v: 'upcoming' | 'calendar') => {
-    setScheduleViewState(v);
-    setSearchParams(prev => {
-      const params = new URLSearchParams(prev);
-      if (v === 'upcoming') params.delete('sched'); else params.set('sched', v);
-      return params;
-    }, { replace: true });
-  }, [setSearchParams]);
+  // Roster & Schedule sub-tabs live in the URL via the shared hook — one line
+  // each gives deep-linking, reload persistence, and browser back/forward.
+  const [rosterSubView, setRosterSubView] = useUrlTabState('rsub', ROSTER_SUB_VIEWS, 'members');
+  const [scheduleView, setScheduleView] = useUrlTabState('sched', SCHEDULE_VIEWS, 'upcoming');
   useEffect(() => {
     if (pageMode === 'roster' && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
@@ -1484,8 +1467,8 @@ export function GroupView() {
                   onNavigate={setPageMode}
                   onSetGearSubTab={setGearSubTab}
                   onOpenSplitPlanner={() => {
-                    setPageMode('roster');
-                    setRosterSubView('split-planner');
+                    // One history entry: switch to Roster and the Split Planner sub-tab together.
+                    setPageMode('roster', { rsub: 'split-planner' });
                   }}
                   onOpenIntegrations={() => {
                     if (currentGroup?.id) {

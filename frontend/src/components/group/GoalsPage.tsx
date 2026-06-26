@@ -1,10 +1,10 @@
 /* eslint-disable design-system/no-raw-button */
-import { useState, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { ObjectiveGoalsPanel } from '../static-group/ObjectiveGoalsPanel';
 import { CollectionsHub } from '../collections/CollectionsHub';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 
-type GoalsSubTab = 'objectives' | 'farms';
+const GOALS_SUB_TABS = ['objectives', 'farms'] as const;
+type GoalsSubTab = (typeof GOALS_SUB_TABS)[number];
 
 const GOALS_TABS: { id: GoalsSubTab; label: string }[] = [
   { id: 'objectives', label: 'Objectives' },
@@ -18,21 +18,9 @@ interface GoalsPageProps {
 }
 
 export function GoalsPage({ groupId, currentUserId, canManage }: GoalsPageProps) {
-  // Sub-tab synced to the URL (?goal=objectives|farms) so it's deep-linkable and
-  // survives reloads — and so links like "Open Mount Farms" can target Farms.
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [subTab, setSubTabState] = useState<GoalsSubTab>(() =>
-    searchParams.get('goal') === 'farms' ? 'farms' : 'objectives'
-  );
-  const setSubTab = useCallback((tab: GoalsSubTab) => {
-    setSubTabState(tab);
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      if (tab === 'objectives') params.delete('goal');
-      else params.set('goal', tab);
-      return params;
-    }, { replace: true });
-  }, [setSearchParams]);
+  // Sub-tab in the URL (?goal=objectives|farms) — deep-linkable, reload-safe, and
+  // follows back/forward. Links like "Open Mount Farms" target Farms via this param.
+  const [subTab, setSubTab] = useUrlTabState('goal', GOALS_SUB_TABS, 'objectives');
 
   return (
     <div>

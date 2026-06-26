@@ -9,9 +9,10 @@
 
 /* eslint-disable design-system/no-raw-button */
 
-import { useState, useCallback, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useRef } from 'react';
 import { Settings, ListOrdered, Users, Globe, Target, Plus, Trash2 } from 'lucide-react';
+import { SettingsSubNav } from './SettingsSubNav';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
 import { GeneralTab } from './GeneralTab';
@@ -30,7 +31,8 @@ import { useModal } from '../../hooks/useModal';
 import type { JoinRequest, StaticGroup, SnapshotPlayer } from '../../types';
 
 export type SettingsTab = 'general' | 'priority' | 'goals' | 'recruitment' | 'members';
-type GoalsSection = 'overview' | 'objectives' | 'farms' | 'suggestions';
+const GOALS_SECTION_VALUES = ['overview', 'objectives', 'farms', 'suggestions'] as const;
+type GoalsSection = (typeof GOALS_SECTION_VALUES)[number];
 
 export type { RecruitmentSection };
 
@@ -58,32 +60,6 @@ const GOALS_SECTIONS: { id: GoalsSection; label: string }[] = [
   { id: 'farms',       label: 'Farms' },
   { id: 'suggestions', label: 'Suggestions' },
 ];
-
-function GoalsSubNav({ active, onChange }: { active: GoalsSection; onChange: (s: GoalsSection) => void }) {
-  return (
-    <div
-      className="flex gap-1 pb-3 mb-0 border-b border-border-subtle flex-shrink-0 overflow-x-auto scrollbar-none"
-      role="tablist"
-    >
-      {GOALS_SECTIONS.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          role="tab"
-          aria-selected={active === s.id}
-          onClick={() => onChange(s.id)}
-          className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            active === s.id
-              ? 'bg-accent/15 text-accent'
-              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-          }`}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // ─── Goals Overview section ──────────────────────────────────────────────────
 
@@ -285,13 +261,15 @@ function GoalsFarmsTabContent({
   groupId: string;
   canManage: boolean;
 }) {
-  const [section, setSection] = useState<GoalsSection>('overview');
+  // Section in the URL (?ssub=overview|objectives|farms|suggestions) — shared
+  // settings sub-tab param; deep-linkable and back/forward-aware.
+  const [section, setSection] = useUrlTabState('ssub', GOALS_SECTION_VALUES, 'overview');
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 pt-1">
-      <GoalsSubNav active={section} onChange={setSection} />
+    <div className="flex flex-col flex-1 min-h-0">
+      <SettingsSubNav active={section} onChange={setSection} items={GOALS_SECTIONS} />
 
-      <div className="flex flex-col flex-1 min-h-0 pt-4">
+      <div className="flex flex-col flex-1 min-h-0">
         {section === 'overview' && (
           <GoalsOverview onNavigate={setSection} />
         )}
@@ -347,29 +325,20 @@ export function SettingsPanel({
   highlightCreateInvite = false,
   onAddToRoster,
 }: SettingsPanelProps) {
-  // Active tab seeds from the URL (?settings=<tab>) when present so the panel is
-  // deep-linkable, else from initialTab. While open, the active tab is reflected
-  // back to the URL (the `settings` param is cleared on close in GroupView).
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
-    const v = searchParams.get('settings');
-    return TAB_ORDER.includes(v as SettingsTab) ? (v as SettingsTab) : initialTab;
-  });
+  // Active tab lives in the URL (?settings=<tab>) via the shared hook, so the
+  // panel is deep-linkable and follows browser back/forward. The `settings`
+  // param is cleared on close in GroupView (useGroupViewState).
+  const [activeTab, setActiveTab] = useUrlTabState('settings', TAB_ORDER, 'general');
 
-  // Sync activeTab with initialTab when it changes (e.g., from keyboard shortcuts)
+  // Event-driven open-to-tab (header buttons / badge routing) arrives via the
+  // initialTab prop. While open, reflect a *changed* initialTab into the URL.
+  const prevInitialTab = useRef(initialTab);
   useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
-
-  // Reflect the active tab in the URL while the panel is open.
-  useEffect(() => {
-    if (!isOpen) return;
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      params.set('settings', activeTab);
-      return params;
-    }, { replace: true });
-  }, [isOpen, activeTab, setSearchParams]);
+    if (isOpen && initialTab !== prevInitialTab.current) {
+      setActiveTab(initialTab);
+    }
+    prevInitialTab.current = initialTab;
+  }, [isOpen, initialTab, setActiveTab]);
 
   const canManage = group.userRole === 'owner' || group.userRole === 'lead';
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);
@@ -388,7 +357,7 @@ export function SettingsPanel({
     } else if (direction === 'prev' && currentIndex > 0) {
       setActiveTab(TAB_ORDER[currentIndex - 1]);
     }
-  }, [activeTab]);
+  }, [activeTab, setActiveTab]);
 
   // Swipe handlers for tab navigation
   const swipeHandlers = useSwipe({

@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useUrlTabState } from '../hooks/useUrlTabState';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight,
@@ -42,6 +43,7 @@ import type { MemberRole, StaticGroupListItem } from '../types';
 
 type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview';
 const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'preview'];
+const COLL_SUB_TABS = ['goals', 'priorities', 'browse'] as const;
 const LEGACY_TAB_REDIRECTS: Record<string, ProfileTab> = {
   share: 'preview',
   characters: 'sync',
@@ -348,18 +350,25 @@ export default function Profile() {
   const { groups, fetchGroups } = useStaticGroupStore();
   const { fetchTargets } = useSharedBisStore();
   const { isSmallScreen } = useDevice();
-  const [activeTab, setActiveTab] = useState<ProfileTab>(() => parseProfileTab(location.search));
-  const [collSubTab, setCollSubTab] = useState<'goals' | 'priorities' | 'browse'>('goals');
+  // Active tab is derived from the URL (?tab=) so the sidebar is deep-linkable,
+  // reload-safe, and follows browser back/forward. parseProfileTab keeps the
+  // legacy-redirect handling for old bookmarks. The setter pushes a history entry.
+  const [, setSearchParams] = useSearchParams();
+  const activeTab = parseProfileTab(location.search);
+  const setActiveTab = useCallback((tab: ProfileTab) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (tab === 'overview') params.delete('tab');
+      else params.set('tab', tab);
+      return params;
+    });
+  }, [setSearchParams]);
+  // Collections & Goals sub-tab (Tasks & Goals / My Priorities / Browse Catalog).
+  const [collSubTab, setCollSubTab] = useUrlTabState('coll', COLL_SUB_TABS, 'goals');
   const linkModal = useModal();
   const addJobModal = useModal();
   const [editingJob, setEditingJob] = useState<PlayerJobProfile | null>(null);
   const [managingBisJobId, setManagingBisJobId] = useState<{ id: string; job: string } | null>(null);
-
-  useEffect(() => {
-    const nextTab = parseProfileTab(location.search);
-    const frameId = requestAnimationFrame(() => setActiveTab(nextTab));
-    return () => cancelAnimationFrame(frameId);
-  }, [location.search]);
 
   // Swipe to change tabs — native listeners on the page container
   const activeTabRef = useRef(activeTab);
