@@ -1098,6 +1098,7 @@ export function GroupView() {
                       >
                         {/* design-system-ignore: Toggle button requires specific toggle styling */}
                         <button
+                          type="button"
                           onClick={() => setSubsView(!subsView)}
                           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
                             subsView
@@ -1414,6 +1415,7 @@ export function GroupView() {
                       ]).map(v => (
                         /* design-system-ignore: view switcher inline button */
                         <button
+                          type="button"
                           key={v.id}
                           onClick={() => setScheduleView(v.id)}
                           className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
@@ -1594,6 +1596,7 @@ export function GroupView() {
               <span className="text-xs text-text-muted uppercase tracking-wide">Technical Details</span>
               <Tooltip content={errorCopied ? "Copied to clipboard" : "Copy error details"}>
                 <button
+                  type="button"
                   onClick={handleCopyError}
                   aria-label={errorCopied ? "Copied to clipboard" : "Copy error details"}
                   className="flex items-center gap-1.5 px-2 py-1 text-xs rounded bg-surface-elevated hover:bg-black/20 border border-border-default transition-colors"
@@ -1699,6 +1702,7 @@ export function GroupView() {
                   <div className="text-sm text-text-muted mb-2">Substitutes</div>
                   {/* design-system-ignore: Toggle button requires specific toggle styling */}
                   <button
+                    type="button"
                     onClick={() => {
                       setSubsView(!subsView);
                     }}
@@ -1733,6 +1737,7 @@ export function GroupView() {
                 <div className="flex flex-col gap-2">
                   {/* design-system-ignore: Sub-tab toggle buttons with specific styling */}
                   <button
+                    type="button"
                     onClick={() => {
                       setLootSubTab('matrix');
                       setShowControlsSheet(false);
@@ -1746,6 +1751,7 @@ export function GroupView() {
                     Who Needs It
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setLootSubTab('gear');
                       setShowControlsSheet(false);
@@ -1759,6 +1765,7 @@ export function GroupView() {
                     Gear Priority
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setLootSubTab('weapon');
                       setShowControlsSheet(false);
@@ -1785,6 +1792,7 @@ export function GroupView() {
                 <div className="flex flex-col gap-2">
                   {/* design-system-ignore: Danger action buttons require specific styling */}
                   <button
+                    type="button"
                     onClick={() => {
                       window.dispatchEvent(new CustomEvent('log:reset-loot'));
                       setShowControlsSheet(false);
@@ -1797,6 +1805,7 @@ export function GroupView() {
                     Reset Loot Log
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       window.dispatchEvent(new CustomEvent('log:reset-books'));
                       setShowControlsSheet(false);
@@ -1809,6 +1818,7 @@ export function GroupView() {
                     Reset Book Balances
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       window.dispatchEvent(new CustomEvent('log:reset-all'));
                       setShowControlsSheet(false);

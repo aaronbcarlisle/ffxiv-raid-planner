@@ -37,6 +37,7 @@ export function GroupViewToggle({ enabled, onToggle, disabled = false, fullWidth
     >
       {/* design-system-ignore: Toggle button requires specific styling */}
       <button
+        type="button"
         onClick={() => onToggle(!enabled)}
         disabled={disabled}
         className={`${fullWidth ? 'flex-1 w-full' : ''} flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
