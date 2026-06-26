@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, CheckCircle, Copy, ExternalLink, LayoutGrid, List, Link2, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Sparkles, Trash2, Unlink } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
@@ -149,16 +149,23 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     }
   }, [settings]);
 
+  // Tracks the sessionId we've already jumped to, so the effect below acts once
+  // per deep-linked session rather than on every `sessions` refetch.
+  const handledSessionRef = useRef<string | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get('sessionId');
     if (!sessionId || !sessions.some((session) => session.id === sessionId)) return;
+    // Only act the first time this sessionId becomes resolvable. Without this,
+    // a `sessions` refetch (e.g. after an RSVP) would re-run the jump and yank
+    // the user back to Sessions if they'd navigated away.
+    if (handledSessionRef.current === sessionId) return;
+    handledSessionRef.current = sessionId;
 
-    // Jump to the Sessions sub-tab, but only if we're not already there. This
-    // effect re-runs whenever `sessions` changes (e.g. an RSVP refetch); reading
-    // the live `stab` param and guarding the switch keeps those refetches from
-    // pushing duplicate history entries.
-    if (params.get('stab') !== 'sessions') setActiveSubTab('sessions');
+    // Jump to the Sessions sub-tab, but only if not already there. `stab` omits
+    // its default ('sessions') from the URL, so a missing param means we're
+    // already on Sessions — treat it as such to avoid a redundant navigation.
+    if ((params.get('stab') ?? 'sessions') !== 'sessions') setActiveSubTab('sessions');
     setHighlightedSessionId(sessionId);
     window.setTimeout(() => {
       document.getElementById(`schedule-session-${sessionId}`)?.scrollIntoView({
