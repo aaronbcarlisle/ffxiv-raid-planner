@@ -341,7 +341,7 @@ export function Header() {
                       aria-label="Player Hub"
                       className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
                     >
-                      <XivIcon name="sword" size={16} />
+                      <XivIcon name="stats" size={16} />
                     </Link>
                   </Tooltip>
                 )}
