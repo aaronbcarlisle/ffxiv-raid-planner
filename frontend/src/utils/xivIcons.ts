@@ -28,6 +28,9 @@ export const XIV_ICONS = {
   // ── Magic & aether ───────────────────────────────────────────────────────
   crystal:      '/icons/xiv-crystal.png',       // Wind Crystal (aether / sparkle)
   earthlyStar:  '/icons/xiv-earthly-star.png',  // Earthly Star — AST action (star/priority)
+
+  // ── Social ───────────────────────────────────────────────────────────────
+  handshake:    '/icons/xiv-handshake.png',     // Fellowship/social bond — share/preview profile
 } as const;
 
 export type XivIconKey = keyof typeof XIV_ICONS;
