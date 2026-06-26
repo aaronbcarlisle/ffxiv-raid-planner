@@ -363,13 +363,16 @@
 /* Light mode highlight pulse */
 @keyframes highlight-pulse-light {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 10px 2px color-mix(in srgb, var(--color-accent) 35%, transparent);
+    background-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--color-accent) 70%, transparent),
+      0 0 10px 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 0 transparent;
+    background-color: transparent;
+    box-shadow:
+      inset 0 0 0 2px transparent,
+      0 0 0 0 transparent;
   }
 }
 
@@ -410,12 +413,20 @@ html {
   overscroll-behavior-x: none;
 }
 
-/* Scrollbar-gutter disabled - was causing layout issues on some devices */
+/* Scrollbar-gutter disabled globally - was causing layout issues on some devices */
 /* @media (min-width: 640px) {
   html {
     scrollbar-gutter: stable;
   }
 } */
+
+/* Opt-in scrollbar gutter for scroll containers whose content grows/shrinks
+   (e.g. expanding panels on the Gear & Sync tab). Reserving the gutter keeps
+   the content from shifting sideways when the scrollbar appears or disappears.
+   Scoped to a class rather than html to avoid the device-wide issues above. */
+.scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
+}
 
 /* Webkit (Chrome, Safari) scrollbar styling */
 ::-webkit-scrollbar {
@@ -800,14 +811,20 @@ dialog input[type="radio"] {
    Values: 10px spread, 2px blur at 50% intensity provides good visibility. */
 @keyframes highlight-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7);
-  }
-  50% {
-    /* Subtle glow - enough to draw attention, not overwhelming */
-    box-shadow: 0 0 10px 2px rgba(20, 184, 166, 0.5);
+    /* Inset ring + fill render on all four edges regardless of element type
+       (table rows, overflow-clipped grid cells) where an outset glow only
+       shows partial edges. The outset glow is layered on for extra pop where
+       it isn't clipped. */
+    background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--color-accent) 85%, transparent),
+      0 0 10px 2px color-mix(in srgb, var(--color-accent) 40%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+    background-color: transparent;
+    box-shadow:
+      inset 0 0 0 2px transparent,
+      0 0 0 0 transparent;
   }
 }
 

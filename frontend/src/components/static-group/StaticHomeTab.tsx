@@ -836,7 +836,7 @@ function CommandBriefModule({
         <button
           type="button"
           onClick={ctaAction}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-accent-contrast text-xs font-semibold hover:bg-accent-hover transition-colors"
         >
           {ctaLabel}
           <ChevronRight className="w-3.5 h-3.5" />

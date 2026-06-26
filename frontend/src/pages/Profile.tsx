@@ -80,14 +80,10 @@ function ProfileSidebarNav({
   activeTab,
   onTabChange,
   characterName,
-  primaryStaticPath,
-  primaryStaticName,
 }: {
   activeTab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
   characterName?: string;
-  primaryStaticPath?: string;
-  primaryStaticName?: string;
 }) {
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(PROFILE_SIDEBAR_KEY) === 'true'; } catch { return false; }
@@ -119,59 +115,40 @@ function ProfileSidebarNav({
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
     >
       {/* Identity header + collapse toggle */}
-      <div className="flex-shrink-0 border-b border-border-subtle" style={{ background: 'rgba(20,184,166,0.045)' }}>
+      <div className="flex items-center h-12 border-b border-border-subtle flex-shrink-0" style={{ background: 'rgba(20,184,166,0.045)' }}>
         {collapsed ? (
           <button
             type="button"
             onClick={toggle}
             aria-label="Expand sidebar"
-            className="w-full h-12 flex items-center justify-center text-text-muted hover:text-accent transition-colors"
+            className="w-full h-full flex items-center justify-center text-text-muted hover:text-accent transition-colors"
           >
             <ChevronRight size={14} />
           </button>
         ) : (
           <>
-            {/* Back-to-static breadcrumb — top row */}
-            {primaryStaticPath ? (
-              <Link
-                to={primaryStaticPath}
-                className="flex items-center gap-1.5 px-3 h-7 hover:bg-white/[0.04] transition-colors border-b border-border-subtle/50 w-full group"
-                style={{ color: 'rgba(20,184,166,0.75)' }}
+            <div className="flex items-center flex-1 min-w-0 px-3 gap-2.5">
+              <div
+                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
               >
-                <ChevronLeft size={12} className="flex-shrink-0 group-hover:text-accent transition-colors" />
-                <span className="text-xs font-semibold leading-none truncate min-w-0 group-hover:text-accent transition-colors">
-                  {primaryStaticName ?? 'My Static'}
-                </span>
-              </Link>
-            ) : (
-              <div className="h-7 border-b border-border-subtle/50" />
-            )}
-
-            {/* Character identity + collapse — bottom row */}
-            <div className="flex items-center h-9">
-              <div className="flex items-center flex-1 min-w-0 px-3 gap-2">
-                <div
-                  className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
-                >
-                  <User size={11} className="text-accent" />
-                </div>
-                <span
-                  className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
-                  title={characterName}
-                >
-                  {characterName ?? 'Player Hub'}
-                </span>
+                <User size={12} className="text-accent" />
               </div>
-              <button
-                type="button"
-                onClick={toggle}
-                aria-label="Collapse sidebar"
-                className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
+              <span
+                className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
+                title={characterName}
               >
-                <ChevronLeft size={13} />
-              </button>
+                {characterName ?? 'Player Hub'}
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label="Collapse sidebar"
+              className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
+            >
+              <ChevronLeft size={13} />
+            </button>
           </>
         )}
       </div>
@@ -538,14 +515,12 @@ export default function Profile() {
   const focusAvailability = new URLSearchParams(location.search).get('focus') === 'availability';
 
   return (
-    <div ref={pageRef} className="flex flex-1 min-h-0 w-full">
+    <div ref={pageRef} className="flex flex-1 min-h-0 w-full max-w-[160rem] mx-auto px-4">
       {/* Sidebar — fills flex parent height naturally, no sticky needed */}
       <ProfileSidebarNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
         characterName={mainCharacter?.name}
-        primaryStaticPath={primaryStatic ? `/group/${primaryStatic.shareCode}` : undefined}
-        primaryStaticName={primaryStatic?.name}
       />
 
       {/* Right panel: header + tab content (scrolls independently) */}

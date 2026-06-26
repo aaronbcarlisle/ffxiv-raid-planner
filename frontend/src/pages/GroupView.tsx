@@ -31,7 +31,7 @@ import { SplitClearPlanner } from '../components/split-clear/SplitClearPlanner';
 import { RosterCharacterPanel } from '../components/roster/RosterCharacterPanel';
 import { useMountFarmStore } from '../stores/mountFarmStore';
 import { useSplitClearStore } from '../stores/splitClearStore';
-import { ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav } from '../components/ui';
+import { ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav, Checkbox } from '../components/ui';
 import { SidebarNav } from '../components/layout/SidebarNav';
 import { PageHeader } from '../components/layout/PageHeader';
 import { MorePage } from '../components/group/MorePage';
@@ -39,7 +39,7 @@ import { GoalsPage } from '../components/group/GoalsPage';
 import { GearSyncDashboard, PLUGIN_GUIDE_EVENT } from '../components/group/GearSyncDashboard';
 import { useDevice } from '../hooks/useDevice';
 import { useSwipe } from '../hooks/useSwipe';
-import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal } from 'lucide-react';
+import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, Lock, Unlock } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
 import { StaticHomeTab } from '../components/static-group/StaticHomeTab';
@@ -58,7 +58,7 @@ import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
 import { logger } from '../lib/logger';
 import { DISCORD_BUG_REPORT_URL } from '../config';
-import type { SnapshotPlayer, GearSlot, SortPreset, GearSubTab, PageMode } from '../types';
+import type { SnapshotPlayer, GearSlot, SortPreset, GearSubTab, PageMode, ViewMode } from '../types';
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -741,12 +741,42 @@ export function GroupView() {
     setPlayerModalCount(prev => Math.max(0, prev - 1));
   }, [setPlayerModalCount]);
 
-  // DnD hook - disabled on mobile (touch DnD is awkward)
+  // Roster toolbar toggles (persisted)
+  // Hide/show the substitutes section entirely
+  const [subsHidden, setSubsHidden] = useState<boolean>(() => {
+    try { return localStorage.getItem('roster-hide-subs') === 'true'; } catch { return false; }
+  });
+  const setSubsHiddenPersist = useCallback((hidden: boolean) => {
+    setSubsHidden(hidden);
+    try { localStorage.setItem('roster-hide-subs', String(hidden)); } catch { /* ignore */ }
+  }, []);
+  // Lock drag-and-drop by default to prevent accidental card moves
+  const [dndLocked, setDndLocked] = useState<boolean>(() => {
+    try { return localStorage.getItem('roster-dnd-locked') !== 'false'; } catch { return true; }
+  });
+  const toggleDndLocked = useCallback(() => {
+    setDndLocked((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('roster-dnd-locked', String(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  // Re-clicking the "Expanded" view control (even while already in Expanded
+  // view) should re-expand any collapsed roster sections. viewMode alone can't
+  // signal a repeat click, so we pair it with a counter the PlayerGrid watches.
+  const [expandAllSignal, setExpandAllSignal] = useState(0);
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    if (mode === 'expanded') setExpandAllSignal((n) => n + 1);
+  }, [setViewMode]);
+
+  // DnD hook - disabled on mobile (touch DnD is awkward), and when locked
   const dnd = useDragAndDrop({
     players: sortedPlayers,
     groupView,
     canEdit,
-    disabled: isAnyModalOpen || !rosterPermission.allowed || isSmallScreen,
+    disabled: isAnyModalOpen || !rosterPermission.allowed || isSmallScreen || dndLocked,
     onReorder: playerActions.handleReorder,
   });
 
@@ -897,35 +927,71 @@ export function GroupView() {
         }}
       />
 
-      {/* Join request banner for non-members viewing a discoverable static */}
+      {/* Join request banner for non-members viewing a discoverable static.
+          The banner supplies its own bottom margin only when it renders, so
+          members (where it returns null) don't get phantom spacing pushing
+          the content down. */}
       {currentGroup && (
-        <div className="mb-3">
-          <JoinRequestBanner
-            shareCode={currentGroup.shareCode}
-            staticName={currentGroup.name}
-            groupId={currentGroup.id}
-            settings={currentGroup.settings}
-            userRole={userRole}
-          />
-        </div>
+        <JoinRequestBanner
+          shareCode={currentGroup.shareCode}
+          staticName={currentGroup.name}
+          groupId={currentGroup.id}
+          settings={currentGroup.settings}
+          userRole={userRole}
+        />
       )}
 
       {/* Content when tier exists — sidebar + content shell */}
       {currentTier && (
         <>
           {/* App shell: sidebar (desktop) + content */}
-          <div className="flex flex-1 min-h-0 -mx-3 sm:-mx-6 overflow-hidden">
+          <div className="flex flex-1 min-h-0 overflow-hidden">
             <SidebarNav activeTab={pageMode} onTabChange={setPageMode} staticName={currentGroup?.name} />
             <div
-              className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : 'overflow-y-auto pt-3 pb-6'}`}
+              className={`flex-1 min-w-0 px-3 sm:px-6 ${preventPageScroll ? 'overflow-hidden flex flex-col' : 'overflow-y-auto pb-6 scrollbar-gutter-stable'}`}
               style={{ backgroundImage: 'radial-gradient(ellipse 70% 45% at 15% 0%, rgba(20,184,166,0.055) 0%, transparent 65%), radial-gradient(ellipse 35% 25% at 90% 95%, rgba(20,184,166,0.022) 0%, transparent 50%)' }}
               {...(isSmallScreen ? contentSwipeHandlers : {})}
             >
 
-              {/* Roster toolbar controls */}
+              {/* Roster toolbar — sticky so the sub-tabs and member controls stay
+                  reachable while scrolling. The sub-tabs are the primary roster nav
+                  and are always shown; the member-only controls render only on the
+                  Members sub-tab (they don't apply to Characters / Split Planner). */}
               {pageMode === 'roster' && (
-                <div className={`flex-shrink-0 ${preventPageScroll ? '' : ''}`}>
-                  <div className="hidden sm:flex items-center gap-3 mb-2">
+                <div className="sticky top-0 z-20 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2.5 mb-3 bg-surface-base border-b border-border-default shadow-[0_6px_16px_-8px_rgba(0,0,0,0.65)] flex-shrink-0">
+                  <div className="flex items-center gap-3">
+                    {/* Sub-tabs — always visible (mobile + desktop) */}
+                    <div className="overflow-x-auto flex-shrink-0">
+                      <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" role="tablist" aria-label="Roster view" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
+                        {(['members', 'characters', 'split-planner'] as const).map(view => {
+                          const labels: Record<typeof view, string> = {
+                            members: 'Members',
+                            characters: 'Characters',
+                            'split-planner': 'Split Planner',
+                          };
+                          return (
+                            <button
+                              key={view}
+                              type="button"
+                              role="tab"
+                              aria-selected={rosterSubView === view}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                                rosterSubView === view
+                                  ? 'bg-accent/[0.18] text-accent shadow-sm'
+                                  : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
+                              }`}
+                              onClick={() => setRosterSubView(view)}
+                            >
+                              {labels[view]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Member controls — desktop only, Members sub-tab only */}
+                    {rosterSubView === 'members' && (
+                    <div className="hidden sm:flex items-center gap-3 flex-1 min-w-0">
                     {canEdit && (
                       <Tooltip
                         content={
@@ -951,11 +1017,52 @@ export function GroupView() {
                       sortPreset={sortPreset}
                       onPresetChange={setSortPresetWithTier}
                     />
-                    <GroupViewToggle
-                      enabled={groupView}
-                      onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
-                      disabled={!hasPositionData}
-                    />
+                    {canEdit && (
+                      <Tooltip
+                        content={
+                          <div className="flex items-start gap-2">
+                            {dndLocked
+                              ? <Lock className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                              : <Unlock className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />}
+                            <div>
+                              <div className="font-medium">
+                                {dndLocked ? 'Card order locked' : 'Card order unlocked'}
+                              </div>
+                              <div className="text-text-secondary text-xs mt-0.5">
+                                {dndLocked
+                                  ? 'Click to allow dragging players to reorder/swap.'
+                                  : 'Cards can be dragged. Click to lock and prevent accidental moves.'}
+                              </div>
+                            </div>
+                          </div>
+                        }
+                      >
+                        {/* design-system-ignore: toggle button requires specific styling */}
+                        <button
+                          onClick={toggleDndLocked}
+                          aria-pressed={dndLocked}
+                          aria-label={dndLocked ? 'Unlock card reordering' : 'Lock card reordering'}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
+                            dndLocked
+                              ? 'bg-accent/20 text-accent border-accent/50'
+                              : 'bg-surface-raised border-border-default text-text-secondary hover:text-text-primary hover:border-accent'
+                          }`}
+                        >
+                          {dndLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                          <span>{dndLocked ? 'Locked' : 'Unlocked'}</span>
+                        </button>
+                      </Tooltip>
+                    )}
+                    <div className="flex-1" />
+                    {hasSubstitutes && (
+                      <Checkbox
+                        checked={!subsHidden}
+                        onChange={(checked) => setSubsHiddenPersist(!checked)}
+                        label="Show Subs"
+                        aria-label="Show or hide the substitutes section"
+                        className="min-h-0 whitespace-nowrap"
+                      />
+                    )}
                     {hasSubstitutes && (
                       <Tooltip
                         content={
@@ -993,34 +1100,14 @@ export function GroupView() {
                         </button>
                       </Tooltip>
                     )}
-                    <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-                  </div>
-                </div>
-              )}
-
-              {/* Gear sub-tab bar */}
-              {pageMode === 'gear' && (
-                <div className="overflow-x-auto mb-4 flex-shrink-0">
-                  <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
-                    {([
-                      { id: 'sync' as GearSubTab, label: 'Sync' },
-                      { id: 'priority' as GearSubTab, label: 'BiS' },
-                      { id: 'stats' as GearSubTab, label: 'Jobs' },
-                      { id: 'history' as GearSubTab, label: 'History' },
-                    ]).map(t => (
-                      /* design-system-ignore: sub-tab inline buttons */
-                      <button
-                        key={t.id}
-                        onClick={() => setGearSubTab(t.id)}
-                        className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                          gearSubTab === t.id
-                            ? 'bg-accent/[0.18] text-accent shadow-sm'
-                            : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
+                    <GroupViewToggle
+                      enabled={groupView}
+                      onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
+                      disabled={!hasPositionData}
+                    />
+                    <ViewModeToggle viewMode={viewMode} onViewModeChange={handleViewModeChange} />
+                    </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1032,7 +1119,13 @@ export function GroupView() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
-                className={preventPageScroll ? 'flex flex-col flex-1 min-h-0' : undefined}
+                className={[
+                  preventPageScroll ? 'flex flex-col flex-1 min-h-0' : '',
+                  // Roster has its own sticky toolbar that carries the top
+                  // spacing; every other page (Gear included) needs it here
+                  // since the scroll container no longer provides pt-3.
+                  pageMode !== 'roster' ? 'pt-3' : '',
+                ].filter(Boolean).join(' ') || undefined}
               >
 
               {/* Page headers */}
@@ -1077,40 +1170,10 @@ export function GroupView() {
                 />
               )}
 
-              {/* Roster Tab */}
+              {/* Roster Tab — the Members | Characters | Split Planner sub-tabs
+                  live in the sticky toolbar above, not here. */}
               {pageMode === 'roster' && currentTier.players && (
                 <>
-                  {/* Roster segmented control — Members | Characters | Split Planner */}
-                  {currentGroup && (
-                    <div className="overflow-x-auto mb-3 flex-shrink-0">
-                      <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" role="tablist" aria-label="Roster view" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
-                        {(['members', 'characters', 'split-planner'] as const).map(view => {
-                          const labels: Record<typeof view, string> = {
-                            members: 'Members',
-                            characters: 'Characters',
-                            'split-planner': 'Split Planner',
-                          };
-                          return (
-                            <button
-                              key={view}
-                              type="button"
-                              role="tab"
-                              aria-selected={rosterSubView === view}
-                              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                                rosterSubView === view
-                                  ? 'bg-accent/[0.18] text-accent shadow-sm'
-                                  : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
-                              }`}
-                              onClick={() => setRosterSubView(view)}
-                            >
-                              {labels[view]}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Characters tab */}
                   {currentGroup && (
                     <div className={rosterSubView !== 'characters' ? 'hidden' : ''}>
@@ -1148,6 +1211,8 @@ export function GroupView() {
                         groupedPlayers={groupedPlayers}
                         groupView={groupView}
                         subsView={subsView}
+                        subsHidden={subsHidden}
+                        expandAllSignal={expandAllSignal}
                         viewMode={viewMode}
                         contentType={currentTier?.contentType ?? 'savage'}
                         editingPlayerId={editingPlayerId}
@@ -1214,6 +1279,32 @@ export function GroupView() {
               {/* Gear Tab */}
               {pageMode === 'gear' && (
                 <>
+                  {/* Sub-tab bar — sits below the page title, matching the
+                      title-then-subtabs order used on every other tab. */}
+                  <div className="overflow-x-auto mb-4 flex-shrink-0">
+                    <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
+                      {([
+                        { id: 'history' as GearSubTab, label: 'Log' },
+                        { id: 'priority' as GearSubTab, label: 'Priority' },
+                        { id: 'sync' as GearSubTab, label: 'Sync' },
+                        { id: 'stats' as GearSubTab, label: 'Summary' },
+                      ]).map(t => (
+                        /* design-system-ignore: sub-tab inline buttons */
+                        <button
+                          key={t.id}
+                          onClick={() => setGearSubTab(t.id)}
+                          className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
+                            gearSubTab === t.id
+                              ? 'bg-accent/[0.18] text-accent shadow-sm'
+                              : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Sync dashboard sub-tab */}
                   {gearSubTab === 'sync' && (
                     <GearSyncDashboard
@@ -1584,6 +1675,7 @@ export function GroupView() {
                   enabled={groupView}
                   onToggle={(enabled) => setGroupView(enabled, currentGroup?.id)}
                   disabled={!hasPositionData}
+                  fullWidth
                 />
               </div>
 
@@ -1613,7 +1705,7 @@ export function GroupView() {
               {/* View Mode - hidden on mobile (floating toggle used instead) */}
               <div className="hidden md:block">
                 <div className="text-sm text-text-muted mb-2">View Mode</div>
-                <ViewModeToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+                <ViewModeToggle viewMode={viewMode} onViewModeChange={handleViewModeChange} />
               </div>
             </>
           )}
@@ -1724,7 +1816,7 @@ export function GroupView() {
       {/* Mobile Floating View Toggle (Roster tab) */}
       <RosterViewToggle
         viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        onViewModeChange={handleViewModeChange}
         visible={isSmallScreen && pageMode === 'roster' && !!currentTier}
       />
 

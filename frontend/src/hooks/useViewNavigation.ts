@@ -9,6 +9,37 @@ import { useCallback, useRef, useEffect } from 'react';
 import { toast } from '../stores/toastStore';
 import type { PageMode, GearSubTab, LootLogEntry, MaterialLogEntry } from '../types';
 
+/**
+ * Scroll an element into view once it actually exists in the DOM.
+ *
+ * Cross-tab navigation switches pageMode and the target tab mounts behind an
+ * AnimatePresence `mode="wait"` transition (the outgoing tab animates out
+ * first), so the target element isn't present on the next frame. A single
+ * fixed timeout races that animation. Instead we poll for the element and
+ * scroll the moment it appears (then once more after the enter animation
+ * settles so `block: 'center'` lands accurately).
+ */
+function scrollIntoViewWhenReady(
+  getId: () => string,
+  getFallbackId?: () => string,
+  { attempts = 24, interval = 40 }: { attempts?: number; interval?: number } = {},
+): void {
+  let tries = 0;
+  const tick = () => {
+    const el =
+      document.getElementById(getId()) ??
+      (getFallbackId ? document.getElementById(getFallbackId()) : null);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Re-center after the enter animation finishes so it isn't left off-screen.
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 220);
+      return;
+    }
+    if (++tries < attempts) setTimeout(tick, interval);
+  };
+  tick();
+}
+
 interface HighlightedEntry {
   id: string;
   type: 'loot' | 'material';
@@ -80,17 +111,12 @@ export function useViewNavigation({
     // Set highlighted player and optional slot
     setHighlightedPlayerId(playerId);
     setHighlightedSlot(normalizedSlot ?? null);
-    // Scroll to player card (or specific gear row) after short delay to allow tab change render
-    setTimeout(() => {
-      // If a slot is specified, try to scroll to the gear row
-      const scrollTarget = normalizedSlot
-        ? document.getElementById(`gear-row-${playerId}-${normalizedSlot}`)
-        : document.getElementById(`player-card-${playerId}`);
-      const element = scrollTarget ?? document.getElementById(`player-card-${playerId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 100);
+    // Scroll to the specific gear row (falling back to the whole card) once it
+    // mounts — polls past the tab-switch animation so it doesn't no-op early.
+    scrollIntoViewWhenReady(
+      () => (normalizedSlot ? `gear-row-${playerId}-${normalizedSlot}` : `player-card-${playerId}`),
+      () => `player-card-${playerId}`,
+    );
     // Clear highlight after animation completes
     playerHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedPlayerId(null);
@@ -127,13 +153,8 @@ export function useViewNavigation({
     setGearSubTab('history');
     // Set highlighted entry with week for cross-week navigation
     setHighlightedEntry({ id: String(entry.id), type: 'loot', week: entry.weekNumber });
-    // Scroll to entry after short delay to allow tab change and week switch
-    setTimeout(() => {
-      const element = document.getElementById(`loot-entry-${entry.id}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 200); // Slightly longer delay to allow week switch
+    // Scroll once the entry row mounts (after tab change + week switch render).
+    scrollIntoViewWhenReady(() => `loot-entry-${entry.id}`);
     // Clear highlight after animation completes
     entryHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedEntry(null);
@@ -157,13 +178,8 @@ export function useViewNavigation({
     setGearSubTab('history');
     // Set highlighted entry with week for cross-week navigation
     setHighlightedEntry({ id: String(entry.id), type: 'material', week: entry.weekNumber });
-    // Scroll to entry after short delay to allow tab change and week switch
-    setTimeout(() => {
-      const element = document.getElementById(`material-entry-${entry.id}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 200); // Slightly longer delay to allow week switch
+    // Scroll once the entry row mounts (after tab change + week switch render).
+    scrollIntoViewWhenReady(() => `material-entry-${entry.id}`);
     // Clear highlight after animation completes
     entryHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedEntry(null);
@@ -179,13 +195,8 @@ export function useViewNavigation({
     setGearSubTab('history');
     // Set highlighted book player ID
     setHighlightedBookPlayerId(playerId);
-    // Scroll to the row after short delay to allow tab change render
-    setTimeout(() => {
-      const element = document.getElementById(`book-row-${playerId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 200);
+    // Scroll once the row mounts (after tab change render).
+    scrollIntoViewWhenReady(() => `book-row-${playerId}`);
     // Clear highlight after animation completes
     bookHighlightTimeoutRef.current = setTimeout(() => {
       setHighlightedBookPlayerId(null);

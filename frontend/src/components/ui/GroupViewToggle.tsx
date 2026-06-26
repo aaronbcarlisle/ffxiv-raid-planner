@@ -4,9 +4,11 @@ interface GroupViewToggleProps {
   enabled: boolean;
   onToggle: (enabled: boolean) => void;
   disabled?: boolean;
+  /** Stretch to fill the available width (used in the mobile drawer). Defaults to inline sizing. */
+  fullWidth?: boolean;
 }
 
-export function GroupViewToggle({ enabled, onToggle, disabled = false }: GroupViewToggleProps) {
+export function GroupViewToggle({ enabled, onToggle, disabled = false, fullWidth = false }: GroupViewToggleProps) {
   return (
     <Tooltip
       content={
@@ -37,7 +39,7 @@ export function GroupViewToggle({ enabled, onToggle, disabled = false }: GroupVi
       <button
         onClick={() => onToggle(!enabled)}
         disabled={disabled}
-        className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+        className={`${fullWidth ? 'flex-1 w-full' : ''} flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
           enabled
             ? 'bg-accent/20 text-accent border border-accent/50'
             : 'bg-surface-raised border border-border-default text-text-secondary hover:text-text-primary hover:border-accent'

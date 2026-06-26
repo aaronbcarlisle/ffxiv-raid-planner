@@ -37,9 +37,13 @@ export function markSyntheticRead(id: string): void {
 }
 
 export function markAllSyntheticRead(): void {
-  const versions = RELEASES
-    .filter((r) => r.version !== 'Unreleased' && !r.internal)
-    .slice(0, 5)
-    .map((r) => r.version);
-  localStorage.setItem(SEEN_RELEASES_KEY, versions.join(','));
+  // Derive versions from the same source the panel renders, so the set of
+  // versions marked read exactly matches what's shown (dedup + slice applied).
+  // Merge with any already-seen versions so we never clobber prior reads.
+  const shown = getSyntheticNotifications().map((n) => n.id.replace('__release__', ''));
+  const seen = new Set(
+    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
+  );
+  shown.forEach((v) => seen.add(v));
+  localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
 }

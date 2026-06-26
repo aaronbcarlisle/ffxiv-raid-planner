@@ -8,15 +8,19 @@
  */
 
 import { useMemo } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 import { Tooltip } from '../primitives/Tooltip';
 
 interface LightPartyHeaderProps {
   groupNumber: 1 | 2;
   players: SnapshotPlayer[];
+  /** When provided, renders a collapse chevron that toggles section visibility */
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function LightPartyHeader({ groupNumber, players }: LightPartyHeaderProps) {
+export function LightPartyHeader({ groupNumber, players, collapsed, onToggleCollapse }: LightPartyHeaderProps) {
   // Calculate aggregate BiS progress
   const { completed, total, percentage } = useMemo(() => {
     let completedCount = 0;
@@ -63,6 +67,21 @@ export function LightPartyHeader({ groupNumber, players }: LightPartyHeaderProps
     <div className="flex items-center gap-4 mb-3">
       {/* Group badge and label */}
       <div className="flex items-center gap-2">
+        {onToggleCollapse && (
+          /* eslint-disable-next-line design-system/no-raw-button */
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? `Expand Light Party ${groupNumber}` : `Collapse Light Party ${groupNumber}`}
+            className="flex items-center justify-center w-5 h-5 rounded text-text-muted hover:text-accent hover:bg-white/[0.04] transition-colors"
+          >
+            <ChevronDown
+              size={14}
+              className={`transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`}
+            />
+          </button>
+        )}
         <Tooltip
           content={
             <div>

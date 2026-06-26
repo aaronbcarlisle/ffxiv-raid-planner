@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.27.1';
+export const CURRENT_VERSION = '1.28.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,89 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.28.0',
+    date: '2026-06-26T18:00:00Z',
+    title: 'UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+    highlights: [
+      'New header switcher jumps between your Player Hub and your statics',
+      'Roster sub-tabs and controls now stay pinned while you scroll',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Header context switcher for Player Hub ↔ Static',
+        description:
+          'A new segmented control in the header lets you jump straight between your Player Hub and your current static, with a dropdown to pick any other static, find a new one, or open the dashboard. Replaces the separate Player Hub icon for a clearer, more modern navigation.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Roster toolbar is now sticky with pinned sub-tabs',
+        description:
+          'The Members / Characters / Split Planner sub-tabs and the roster controls now stay pinned to the top while you scroll the roster. The member-only controls (add player, sort, drag lock, substitutes, group view, density) appear only on the Members tab, so the Characters and Split Planner tabs stay clean and uncluttered.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Collapsible roster sections, drag lock, and expand-all',
+        description:
+          'G1, G2, and Substitutes sections can each be collapsed independently, and a "Show Subs" toggle hides the substitutes section entirely. Card drag-and-drop is now locked by default — flip the lock in the toolbar to rearrange — so cards no longer move by accident. Clicking Expanded view (even when already expanded) re-expands every collapsed section.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Gear & Sync tab cleanup',
+        description:
+          'The gear tab sub-tabs were renamed for clarity (History → Log, BiS → Priority) and now sit below the page title, matching every other tab. The Priority view reorders its panels to Gear Priority, Weapon Priority, then Who Needs It.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Gear status toggles now explain themselves',
+        description:
+          'Hovering a gear status circle now shows what each state means — a single obtained on/off toggle for raid, crafted, and base-tome gear, and the obtained → augmented cycle for tomestone gear. The hint appears only where you can actually edit: your own card as a member, every card as a lead or owner.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'Content no longer shifts when scrollbars appear',
+        description:
+          'Reserved the scrollbar gutter so pages (notably Gear & Sync) no longer jump sideways when expanding a panel adds or removes a scrollbar.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'Cross-tab navigation scrolls to the right place',
+        description:
+          'Alt-clicking a gear slot or jumping to a player or loot entry now reliably scrolls the target into view and highlights all four edges, even across the animated tab switch that previously made the scroll miss.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: '"Mark all read" now clears every notification',
+        description:
+          'Fixed a bug where Mark all read left the oldest notification still marked unread.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Layout, width, and header alignment consistency',
+        description:
+          'Standardized page widths so Find a Static and the Player Hub match the rest of the app, tightened the header so the logo and user menu sit flush, and closed the gap between the header and page content. The old "new release" banner was removed now that the notification system covers it.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+    ],
+  },
   {
     version: '1.27.1',
     date: '2026-06-26T05:00:00Z',

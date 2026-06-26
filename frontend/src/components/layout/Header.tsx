@@ -8,7 +8,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Copy, UserPlus, Settings, Plus, Trash2, Globe, Swords } from 'lucide-react';
+import { Copy, UserPlus, Settings, Plus, Trash2, Globe } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useTierStore } from '../../stores/tierStore';
@@ -18,6 +18,7 @@ import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
 import { StaticSwitcher, TierSelector } from '../static-group';
+import { ContextSwitcher } from './ContextSwitcher';
 import { TierActionsMenu, TipsCarousel, DiscordIcon, GitHubIcon, ThemeToggle } from '../ui';
 import { Tooltip, IconButton } from '../primitives';
 import { RAID_TIERS } from '../../gamedata';
@@ -210,35 +211,33 @@ export function Header() {
             </Link>
           </Tooltip>
 
-          {/* Group context - desktop only (inline with logo) */}
-          {isGroupRoute && currentGroup && (
-            <>
-              <div className="hidden sm:block border-l border-border-subtle pl-3">
-                <StaticSwitcher
-                  currentGroup={currentGroup}
-                  groups={groups}
-                  onFetchGroups={fetchGroups}
-                  isMember={isMember}
-                  userRole={userRole ?? undefined}
-                />
-              </div>
+          {/* Context switcher - desktop only (Player Hub ⇄ Static) */}
+          {user && !isHomePage && (
+            <div className="hidden sm:block border-l border-border-subtle pl-3">
+              <ContextSwitcher
+                currentGroup={isGroupRoute ? currentGroup ?? null : null}
+                groups={groups}
+                onFetchGroups={fetchGroups}
+                isMember={isMember || groups.length > 0}
+                userRole={userRole ?? undefined}
+              />
+            </div>
+          )}
 
-              {/* Breadcrumb separator and Tier selector - hidden on mobile */}
-              {tiers.length > 0 && (
-                <div className="hidden sm:flex items-center gap-1">
-                  <span className="text-text-muted text-lg">›</span>
-                  <TierSelector
-                    tiers={tiers}
-                    currentTierId={currentTier?.tierId}
-                    onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
-                  />
-                  {/* Tier actions kebab menu */}
-                  {canEdit && tierActions.length > 0 && (
-                    <TierActionsMenu actions={tierActions} />
-                  )}
-                </div>
+          {/* Breadcrumb separator and Tier selector - group routes only, hidden on mobile */}
+          {isGroupRoute && currentGroup && tiers.length > 0 && (
+            <div className="hidden sm:flex items-center gap-1">
+              <span className="text-text-muted text-lg">›</span>
+              <TierSelector
+                tiers={tiers}
+                currentTierId={currentTier?.tierId}
+                onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
+              />
+              {/* Tier actions kebab menu */}
+              {canEdit && tierActions.length > 0 && (
+                <TierActionsMenu actions={tierActions} />
               )}
-            </>
+            </div>
           )}
         </div>
 
@@ -333,17 +332,6 @@ export function Header() {
           {!isHomePage && (
             <>
               <div className="flex items-center gap-0 sm:gap-1">
-                {user && (
-                  <Tooltip content="Player Hub — character, jobs, gear & applications">
-                    <Link
-                      to="/profile"
-                      aria-label="Player Hub"
-                      className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
-                    >
-                      <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </Link>
-                  </Tooltip>
-                )}
                 <Tooltip content="Find a static">
                   <Link
                     to="/discover"

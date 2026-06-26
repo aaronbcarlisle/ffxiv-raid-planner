@@ -185,7 +185,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     } catch {
       // Ignore
     }
-    return 'matrix';
+    return 'gear';
   });
 
   // ===== View state: URL param > localStorage > default =====

@@ -5,7 +5,8 @@
  * Handles both main roster and substitutes sections.
  */
 
-import { memo, useMemo, useCallback } from 'react';
+import { memo, useMemo, useCallback, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { DroppablePlayerCard } from './DroppablePlayerCard';
 import { EmptySlotCard } from './EmptySlotCard';
 import { InlinePlayerEdit } from './InlinePlayerEdit';
@@ -261,6 +262,14 @@ export interface PlayerGridProps {
   groupedPlayers: GroupedPlayers | null;
   groupView: boolean;
   subsView: boolean;
+  /** Hide the substitutes section entirely (controlled by the roster toolbar) */
+  subsHidden: boolean;
+  /**
+   * Monotonic counter bumped each time the user clicks the "Expanded" view
+   * control. Lets re-clicking Expanded (even while already in Expanded view)
+   * re-expand all collapsed G1/G2/Subs sections.
+   */
+  expandAllSignal?: number;
   viewMode: ViewMode;
   contentType: ContentType;
   editingPlayerId: string | null;
@@ -313,6 +322,8 @@ export function PlayerGrid({
   groupedPlayers,
   groupView,
   subsView,
+  subsHidden,
+  expandAllSignal,
   viewMode,
   contentType,
   editingPlayerId,
@@ -434,6 +445,46 @@ export function PlayerGrid({
     onCancelEdit,
   ]);
 
+  // ── Collapsible section state (G1 / G2 / Subs) ──
+  // Persisted per static+tier so the layout sticks between visits.
+  // (Show/hide of the whole substitutes section is controlled by the sticky
+  //  roster toolbar via the `subsHidden` prop.)
+  const collapseKey = `roster-collapse-${groupId}-${tierId}`;
+
+  const [collapsed, setCollapsed] = useState<{ g1?: boolean; g2?: boolean; subs?: boolean }>(() => {
+    try { return JSON.parse(localStorage.getItem(collapseKey) || '{}'); } catch { return {}; }
+  });
+
+  const toggleCollapse = useCallback((section: 'g1' | 'g2' | 'subs') => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [section]: !prev[section] };
+      try { localStorage.setItem(collapseKey, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, [collapseKey]);
+
+  // Switching card density (Compact ⇄ Expanded) auto-expands any collapsed
+  // sections so the toggle reveals everything rather than fighting the folds.
+  // Reset during render (React's recommended pattern for "reset state when a
+  // prop changes") instead of in an effect, to avoid cascading renders.
+  const [lastViewMode, setLastViewMode] = useState(viewMode);
+  if (viewMode !== lastViewMode) {
+    setLastViewMode(viewMode);
+    setCollapsed({});
+    try { localStorage.removeItem(collapseKey); } catch { /* ignore */ }
+  }
+
+  // Clicking "Expanded" again while already in Expanded view bumps this signal
+  // (viewMode doesn't change, so the reset above wouldn't fire). Treat it as an
+  // explicit "expand everything" request so users don't have to bounce through
+  // Compact to un-collapse folded sections.
+  const [lastExpandSignal, setLastExpandSignal] = useState(expandAllSignal);
+  if (expandAllSignal !== lastExpandSignal) {
+    setLastExpandSignal(expandAllSignal);
+    setCollapsed({});
+    try { localStorage.removeItem(collapseKey); } catch { /* ignore */ }
+  }
+
   // Grouped View (G1/G2) - G1 on top, G2 below
   if (groupView && groupedPlayers) {
     return (
@@ -441,36 +492,50 @@ export function PlayerGrid({
         {/* Group 1 */}
         {groupedPlayers.group1.length > 0 && (
           <div>
-            <LightPartyHeader groupNumber={1} players={groupedPlayers.group1} />
-            <div className={gridClasses}>
-              {groupedPlayers.group1.map((player) => (
-                <PlayerCardRenderer
-                  key={player.id}
-                  player={player}
-                  playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                  {...renderCardProps}
-                />
-              ))}
-            </div>
+            <LightPartyHeader
+              groupNumber={1}
+              players={groupedPlayers.group1}
+              collapsed={collapsed.g1}
+              onToggleCollapse={() => toggleCollapse('g1')}
+            />
+            {!collapsed.g1 && (
+              <div className={gridClasses}>
+                {groupedPlayers.group1.map((player) => (
+                  <PlayerCardRenderer
+                    key={player.id}
+                    player={player}
+                    playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                    playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+                    {...renderCardProps}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* Group 2 */}
         {groupedPlayers.group2.length > 0 && (
           <div>
-            <LightPartyHeader groupNumber={2} players={groupedPlayers.group2} />
-            <div className={gridClasses}>
-              {groupedPlayers.group2.map((player) => (
-                <PlayerCardRenderer
-                  key={player.id}
-                  player={player}
-                  playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                  {...renderCardProps}
-                />
-              ))}
-            </div>
+            <LightPartyHeader
+              groupNumber={2}
+              players={groupedPlayers.group2}
+              collapsed={collapsed.g2}
+              onToggleCollapse={() => toggleCollapse('g2')}
+            />
+            {!collapsed.g2 && (
+              <div className={gridClasses}>
+                {groupedPlayers.group2.map((player) => (
+                  <PlayerCardRenderer
+                    key={player.id}
+                    player={player}
+                    playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                    playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+                    {...renderCardProps}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -494,10 +559,15 @@ export function PlayerGrid({
           </div>
         )}
 
-        {/* Substitutes - shown when subsView is enabled */}
-        {subsView && groupedPlayers.substitutes.length > 0 && (
+        {/* Substitutes - shown when subsView is enabled and not hidden */}
+        {subsView && !subsHidden && groupedPlayers.substitutes.length > 0 && (
           <div className="opacity-75">
             <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+              <SectionCollapseButton
+                collapsed={collapsed.subs}
+                onToggle={() => toggleCollapse('subs')}
+                label="Substitutes"
+              />
               <Tooltip
                 content={
                   <div>
@@ -510,17 +580,19 @@ export function PlayerGrid({
               </Tooltip>
               Substitutes
             </h3>
-            <div className={gridClasses}>
-              {groupedPlayers.substitutes.map((player) => (
-                <PlayerCardRenderer
-                  key={player.id}
-                  player={player}
-                  playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                  {...renderCardProps}
-                />
-              ))}
-            </div>
+            {!collapsed.subs && (
+              <div className={gridClasses}>
+                {groupedPlayers.substitutes.map((player) => (
+                  <PlayerCardRenderer
+                    key={player.id}
+                    player={player}
+                    playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                    playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+                    {...renderCardProps}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -528,34 +600,33 @@ export function PlayerGrid({
   }
 
   // Standard View - with optional subs section
+  // When subs have their own section (subsView) OR are hidden, exclude them from the main grid.
+  const mainGridPlayers = (subsView || subsHidden)
+    ? players.filter(p => !p.isSubstitute)
+    : players;
+
   return (
     <div className="space-y-3 mb-3">
       <div className={gridClasses}>
-        {subsView
-          ? players.filter(p => !p.isSubstitute).map((player) => (
-              <PlayerCardRenderer
-                key={player.id}
-                player={player}
-                playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                {...renderCardProps}
-              />
-            ))
-          : players.map((player) => (
-              <PlayerCardRenderer
-                key={player.id}
-                player={player}
-                playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                {...renderCardProps}
-              />
-            ))
-        }
+        {mainGridPlayers.map((player) => (
+          <PlayerCardRenderer
+            key={player.id}
+            player={player}
+            playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+            playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+            {...renderCardProps}
+          />
+        ))}
       </div>
-      {/* Substitutes section - shown in standard view when subsView is enabled */}
-      {subsView && players.some(p => p.isSubstitute) && (
+      {/* Substitutes section - shown in standard view when subsView is enabled and not hidden */}
+      {subsView && !subsHidden && players.some(p => p.isSubstitute) && (
         <div className="opacity-75">
           <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+            <SectionCollapseButton
+              collapsed={collapsed.subs}
+              onToggle={() => toggleCollapse('subs')}
+              label="Substitutes"
+            />
             <Tooltip
               content={
                 <div>
@@ -568,19 +639,48 @@ export function PlayerGrid({
             </Tooltip>
             Substitutes
           </h3>
-          <div className={gridClasses}>
-            {players.filter(p => p.isSubstitute).map((player) => (
-              <PlayerCardRenderer
-                key={player.id}
-                player={player}
-                playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                {...renderCardProps}
-              />
-            ))}
-          </div>
+          {!collapsed.subs && (
+            <div className={gridClasses}>
+              {players.filter(p => p.isSubstitute).map((player) => (
+                <PlayerCardRenderer
+                  key={player.id}
+                  player={player}
+                  playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+                  {...renderCardProps}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+/** Small chevron button used to collapse/expand a roster section. */
+function SectionCollapseButton({
+  collapsed,
+  onToggle,
+  label,
+}: {
+  collapsed?: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    /* eslint-disable-next-line design-system/no-raw-button */
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
+      className="flex items-center justify-center w-5 h-5 rounded text-text-muted hover:text-accent hover:bg-white/[0.04] transition-colors"
+    >
+      <ChevronDown
+        size={14}
+        className={`transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`}
+      />
+    </button>
   );
 }

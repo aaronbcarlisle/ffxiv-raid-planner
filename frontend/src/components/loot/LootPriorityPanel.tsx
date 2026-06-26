@@ -307,9 +307,9 @@ export function LootPriorityPanel({
   const [localSubTab, setLocalSubTab] = useState<LootSubTabType>(() => {
     try {
       const saved = localStorage.getItem('loot-priority-subtab');
-      return (saved as LootSubTabType) || 'matrix';
+      return (saved as LootSubTabType) || 'gear';
     } catch {
-      return 'matrix';
+      return 'gear';
     }
   });
 
@@ -332,7 +332,7 @@ export function LootPriorityPanel({
   }, [onSubTabChange]);
 
   // Swipe gesture handling for mobile tab switching
-  const subTabs: LootSubTabType[] = ['matrix', 'gear', 'weapon'];
+  const subTabs: LootSubTabType[] = ['gear', 'weapon', 'matrix'];
   const currentTabIndex = subTabs.indexOf(activeSubTab);
 
   const swipeHandlers = useSwipe({
@@ -571,31 +571,8 @@ export function LootPriorityPanel({
               content={
                 <div>
                   <div className="flex items-center gap-2 font-medium">
-                    Who Needs It
-                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+1</kbd>
-                  </div>
-                  <div className="text-text-secondary text-xs mt-0.5">Matrix showing which slots each player still needs</div>
-                </div>
-              }
-            >
-              {/* design-system-ignore: Subtab button requires specific toggle styling */}
-              <button
-                onClick={() => setActiveSubTab('matrix')}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
-                  activeSubTab === 'matrix'
-                    ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
-                }`}
-              >
-                Who Needs It
-              </button>
-            </Tooltip>
-            <Tooltip
-              content={
-                <div>
-                  <div className="flex items-center gap-2 font-medium">
                     Gear Priority
-                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+2</kbd>
+                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+1</kbd>
                   </div>
                   <div className="text-text-secondary text-xs mt-0.5">Ordered priority list for each loot item by floor</div>
                 </div>
@@ -618,7 +595,7 @@ export function LootPriorityPanel({
                 <div>
                   <div className="flex items-center gap-2 font-medium">
                     Weapon Priority
-                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+3</kbd>
+                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+2</kbd>
                   </div>
                   <div className="text-text-secondary text-xs mt-0.5">Custom weapon priority order with tie-break rolls</div>
                 </div>
@@ -634,6 +611,29 @@ export function LootPriorityPanel({
                 }`}
               >
                 Weapon Priority
+              </button>
+            </Tooltip>
+            <Tooltip
+              content={
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    Who Needs It
+                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+3</kbd>
+                  </div>
+                  <div className="text-text-secondary text-xs mt-0.5">Matrix showing which slots each player still needs</div>
+                </div>
+              }
+            >
+              {/* design-system-ignore: Subtab button requires specific toggle styling */}
+              <button
+                onClick={() => setActiveSubTab('matrix')}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
+                  activeSubTab === 'matrix'
+                    ? 'bg-accent/20 text-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
+                }`}
+              >
+                Who Needs It
               </button>
             </Tooltip>
           </div>
