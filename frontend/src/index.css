@@ -158,6 +158,31 @@
   --color-toggle-orb-on-end: #0a0a0f;
   --color-toggle-orb-off-start: #1e1e26;
   --color-toggle-orb-off-end: #121218;
+
+  /* ================================
+     GRADIENTS
+     Themed so light mode tracks automatically. For accent tints,
+     prefer color-mix(in srgb, var(--color-accent) X%, transparent)
+     over hardcoded rgba(20,184,166,X) — see DESIGN_SYSTEM_SUMMARY.md.
+     ================================ */
+  --gradient-rail: linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%);
+
+  /* ================================
+     OVERLAY
+     Subtle "raise" haze — visible in both themes.
+     ================================ */
+  --color-overlay-raise: rgba(255, 255, 255, 0.03);
+
+  /* ================================
+     PARCHMENT / SEAL
+     Scroll aesthetic for JoinRequest modals. Dark + light values so the
+     parchment reads on both themes (applied in Plan J Task 4).
+     ================================ */
+  --color-parchment-bg: #2d1e13;       /* scroll background */
+  --color-parchment-raised: #3d2a1a;   /* nested panel */
+  --color-parchment-text: #e8d9b8;     /* legible ink */
+  --color-parchment-border: #b8933a;   /* gold edge */
+  --color-seal: #8b6914;               /* wax seal / accent */
 }
 
 /* ================================
@@ -252,6 +277,19 @@
   --color-toggle-orb-on-end: #9ca3af;
   --color-toggle-orb-off-start: #e5e7eb;
   --color-toggle-orb-off-end: #d1d5db;
+
+  /* Gradients - light surface scale */
+  --gradient-rail: linear-gradient(180deg, #f3f4f8 0%, #eceef4 60%, #e7e9f1 100%);
+
+  /* Overlay - dark haze so the subtle raise is visible on light */
+  --color-overlay-raise: rgba(0, 0, 0, 0.03);
+
+  /* Parchment / seal - cream scroll for light mode */
+  --color-parchment-bg: #f5ede0;
+  --color-parchment-raised: #e8d9b8;
+  --color-parchment-text: #5a4422;
+  --color-parchment-border: #b8933a;
+  --color-seal: #8b6914;
 
   /* Badge text contrast colors — darker shades for light backgrounds */
   --color-gear-raid-text: #b91c1c;

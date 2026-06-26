@@ -62,6 +62,19 @@ When you find an arbitrary size, convert it:
 
 Inline `style={{ fontSize: '10px' }}` is also a violation — use a class. New code must target this scale; the ESLint design-system plugin warns on sub-`xs` arbitrary sizes.
 
+## 🎨 Theme Tokens & Accent Tints
+
+Colors and gradients must be **theme tokens**, so light mode tracks automatically. Never hardcode inline `rgba()`/hex/gradients.
+
+- **Accent tints:** replace `rgba(20,184,166,X)` with `color-mix(in srgb, var(--color-accent) {X*100}%, transparent)`. This follows the themed `--color-accent` instead of pinning the dark-mode teal.
+  ```css
+  /* ❌ dark-only */ background: rgba(20,184,166,0.09);
+  /* ✅ themed   */ background: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  ```
+- **Rail gradient:** use `var(--gradient-rail)` (defined per theme) instead of a hardcoded `linear-gradient`.
+- **Subtle "raise" haze:** use `var(--color-overlay-raise)` instead of `rgba(255,255,255,0.0X)` (invisible on light backgrounds).
+- **Parchment/seal** (JoinRequest scroll aesthetic): use `--color-parchment-*` / `--color-seal` — they carry dark **and** light values.
+
 ## 🎯 Key Insight: You Don't Need Storybook
 
 **Why?** Your DesignSystem.tsx page **already works like Storybook** because:
