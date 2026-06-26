@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Plus, ShieldCheck } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { CharacterCard } from './CharacterCard';
 import { JobProfileCard } from './JobProfileCard';
@@ -161,7 +162,7 @@ export function JobsGearTab({
       <motion.section {...staggerItemProps} className="min-w-0 rounded-lg border border-border-default bg-surface-raised p-3 sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-2">
-            <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+            <XivIcon name="loot" size={16} className="mt-0.5 flex-shrink-0" />
             <div className="min-w-0">
               <h3 className="font-display text-sm font-semibold text-text-primary">Application gear</h3>
               <p className="mt-1 text-xs text-text-tertiary">

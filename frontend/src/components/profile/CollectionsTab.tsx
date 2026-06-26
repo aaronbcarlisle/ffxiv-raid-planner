@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Check, Play, ShoppingCart, Sparkles, X } from 'lucide-react';
+import { Check, Play, ShoppingCart, X } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import { Select } from '../ui/Select';
@@ -448,7 +449,7 @@ function FarmCollectionRow({
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_250px] lg:items-center">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-1 rounded-lg border border-border-subtle bg-surface-raised p-1.5 text-accent">
-            {item.canBuy ? <ShoppingCart className="h-4 w-4" /> : item.owned ? <Check className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+            {item.canBuy ? <ShoppingCart className="h-4 w-4" /> : item.owned ? <Check className="h-4 w-4" /> : <XivIcon name="crystal" size={16} />}
           </div>
           <FarmCatalogSummary trial={item.trial} />
         </div>

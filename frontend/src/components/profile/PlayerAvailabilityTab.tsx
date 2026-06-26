@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarDays, ChevronDown, Lock, Sparkles } from 'lucide-react';
+import { ArrowRight, CalendarDays, ChevronDown, Lock } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import {
@@ -81,7 +82,7 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
             <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
-              <Sparkles className="h-3.5 w-3.5" />
+              <XivIcon name="crystal" size={14} />
               Used by schedule quick fill
             </div>
             <p className="mt-1 text-xs text-text-tertiary">Fills empty This Week days only.</p>
