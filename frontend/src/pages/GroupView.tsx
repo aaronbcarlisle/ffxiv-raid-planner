@@ -48,6 +48,7 @@ import { AdminBanners } from '../components/admin/AdminBanners';
 import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useUrlTabState } from '../hooks/useUrlTabState';
+import { TRANSIENT_NAV_PARAMS } from '../lib/navPreferences';
 import { usePlayerActions } from '../hooks/usePlayerActions';
 import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShortcuts';
 import { useViewNavigation } from '../hooks/useViewNavigation';
@@ -261,7 +262,7 @@ export function GroupView() {
     if (!currentGroup?.shareCode) return;
     try {
       const params = new URLSearchParams(searchParams);
-      ['player', 'viewAs', 'adminMode', 'showSettings', 'settings', 'ssub'].forEach(k => params.delete(k));
+      TRANSIENT_NAV_PARAMS.forEach(k => params.delete(k));
       localStorage.setItem(`static-nav-${currentGroup.shareCode}`, params.toString());
     } catch {
       // Ignore localStorage errors
@@ -1082,11 +1083,13 @@ export function GroupView() {
                             </svg>
                             <div>
                               <div className="flex items-center gap-2 font-medium">
-                                {subsView ? 'Hide Substitutes Section' : 'Show Substitutes Section'}
+                                Separate Substitutes
                                 <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">S</kbd>
                               </div>
                               <div className="text-text-secondary text-xs mt-0.5">
-                                {subsView ? 'Merge subs back into main roster' : 'Separate substitute players into their own section'}
+                                {subsView
+                                  ? 'On — subs shown in their own section. Click to merge them into the main roster.'
+                                  : 'Off — subs merged into the main roster. Click to separate them.'}
                               </div>
                             </div>
                           </div>
@@ -1106,7 +1109,7 @@ export function GroupView() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                           </svg>
-                          <span>Subs</span>
+                          <span>Separate Subs</span>
                         </button>
                       </Tooltip>
                     )}

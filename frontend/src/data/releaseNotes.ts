@@ -165,6 +165,13 @@ export const RELEASES: Release[] = [
         prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
       },
       {
+        category: 'improvement',
+        title: 'PR review hardening for the navigation/preferences work',
+        description:
+          'Code-review follow-ups: constrained useUrlTabState defaults (NoInfer), centralized nav-preference defaults + transient param list, guarded the settings-panel open-while-open edge, clearer savePref error reporting, and added unit tests for useUrlTabState, the URL parse helpers, and the preferences endpoint.',
+        internal: true,
+      },
+      {
         category: 'feature',
         title: 'Two new navigation preferences (Static Settings → General)',
         description:

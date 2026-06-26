@@ -12,10 +12,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Shield, ChevronDown, Users } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { TRANSIENT_NAV_PARAMS, prefRememberStaticTab } from '../../lib/navPreferences';
 import type { StaticGroup, StaticGroupListItem, MemberRole } from '../../types';
-
-// Params that should never carry across (or be restored) when switching statics.
-const TRANSIENT_NAV_PARAMS = ['player', 'viewAs', 'adminMode', 'showSettings', 'settings', 'ssub'];
 import {
   Dropdown,
   DropdownContent,
@@ -65,7 +63,7 @@ export function ContextSwitcher({
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const rememberStaticTab = useAuthStore((s) => s.user?.rememberStaticTab ?? false);
+  const rememberStaticTab = useAuthStore((s) => prefRememberStaticTab(s.user));
   const [open, setOpen] = useState(false);
 
   useEffect(() => {

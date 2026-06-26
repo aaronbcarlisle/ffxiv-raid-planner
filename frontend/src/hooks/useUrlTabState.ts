@@ -25,6 +25,11 @@ import { useSearchParams } from 'react-router-dom';
 // default on navigation" preference clears all of these in one shot, so a newly
 // added sub-tab is covered automatically (it can't be forgotten) as long as it
 // uses this hook — which is the standard. See clearRegisteredTabParams().
+//
+// Registration happens on render, so a param is only present here once a
+// component using it has mounted this session. That's fine for the reset use
+// case: a param that isn't registered yet also isn't in the URL yet (it would
+// derive to its default), so there's nothing to clear.
 const registeredTabParams = new Set<string>();
 
 /** Delete every hook-managed sub-tab param from a URLSearchParams (mutates it). */
@@ -43,8 +48,10 @@ export function useUrlTabState<T extends string>(
   param: string,
   /** Allowed values; anything else in the URL falls back to defaultValue. */
   values: readonly T[],
-  /** Value when the param is absent/invalid; also omitted from the URL. */
-  defaultValue: T,
+  /** Value when the param is absent/invalid; also omitted from the URL.
+   *  `NoInfer` so a typo here is a compile error instead of silently widening
+   *  the union to an unreachable default tab. */
+  defaultValue: NoInfer<T>,
   options?: UrlTabStateOptions,
 ): [T, (next: T) => void] {
   const [searchParams, setSearchParams] = useSearchParams();

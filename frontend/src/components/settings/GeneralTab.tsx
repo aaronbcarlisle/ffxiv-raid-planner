@@ -11,6 +11,8 @@ import { Label, Input, ErrorBox, Select, Toggle } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useAuthStore } from '../../stores/authStore';
+import { prefRememberSubTabs, prefRememberStaticTab } from '../../lib/navPreferences';
+import { logger } from '../../lib/logger';
 import { toast } from '../../stores/toastStore';
 import type { StaticGroup } from '../../types';
 
@@ -35,8 +37,8 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
   // the static's Save button. Local state mirrors the store for instant feedback.
   const user = useAuthStore((s) => s.user);
   const updatePreferences = useAuthStore((s) => s.updatePreferences);
-  const [rememberSubTabs, setRememberSubTabs] = useState(user?.rememberSubTabs ?? true);
-  const [rememberStaticTab, setRememberStaticTab] = useState(user?.rememberStaticTab ?? false);
+  const [rememberSubTabs, setRememberSubTabs] = useState(prefRememberSubTabs(user));
+  const [rememberStaticTab, setRememberStaticTab] = useState(prefRememberStaticTab(user));
   const savePref = async (
     key: 'rememberSubTabs' | 'rememberStaticTab',
     value: boolean,
@@ -45,9 +47,11 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
     setLocal(value); // optimistic
     try {
       await updatePreferences({ [key]: value });
-    } catch {
+    } catch (err) {
       setLocal(!value); // revert on failure
-      toast.error('Failed to save preference');
+      const message = err instanceof Error ? err.message : 'Failed to save preference';
+      toast.error(message);
+      logger.warn('Failed to save user preference', { key, value, error: message });
     }
   };
 

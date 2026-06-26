@@ -10,6 +10,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 import { useAuthStore } from '../stores/authStore';
 import { clearRegisteredTabParams } from './useUrlTabState';
+import { prefRememberSubTabs } from '../lib/navPreferences';
 import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 
@@ -18,7 +19,7 @@ type LootSubTab = 'matrix' | 'gear' | 'weapon';
 // ── URL → state parsers (shared by initial state and back/forward reconciliation) ──
 // Each returns null when the param is absent/unrecognized so callers can fall
 // back to the current value (rather than clobbering it).
-function pageModeFromTabParam(urlTab: string | null): PageMode | null {
+export function pageModeFromTabParam(urlTab: string | null): PageMode | null {
   switch (urlTab) {
     case 'overview': case 'roster': case 'schedule': case 'goals': case 'gear': case 'more':
       return urlTab;
@@ -31,14 +32,14 @@ function pageModeFromTabParam(urlTab: string | null): PageMode | null {
   }
 }
 
-function gearSubFromParam(urlSub: string | null): GearSubTab | null {
+export function gearSubFromParam(urlSub: string | null): GearSubTab | null {
   if (urlSub === 'sync' || urlSub === 'priority' || urlSub === 'history' || urlSub === 'stats') return urlSub;
   if (urlSub === 'weapon') return 'priority';
   if (urlSub === 'summary') return 'stats';
   return null;
 }
 
-function lootSubFromParam(urlSubtab: string | null): LootSubTab | null {
+export function lootSubFromParam(urlSubtab: string | null): LootSubTab | null {
   if (urlSubtab === 'matrix' || urlSubtab === 'gear' || urlSubtab === 'weapon') return urlSubtab;
   return null;
 }
@@ -134,10 +135,11 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // ===== Modal state =====
   const [showCreateTierModal, setShowCreateTierModal] = useState(false);
   // The settings panel's open state is DERIVED from the URL (open when the
-  // `showSettings` flag or a specific `settings` tab is present). All settings
-  // navigation uses { replace }, so it never adds history entries — closing the
-  // panel and hitting back goes to the previous page instead of replaying the
-  // panel's internal tab changes (which would only change the URL invisibly).
+  // `showSettings` flag or a specific `settings` tab is present). Its internal
+  // tab/section changes PUSH history (so back steps through them while the panel
+  // is open); opening records the index beneath it and closing pops the whole
+  // settings sub-history at once (see setShowSettingsModal) — so back-after-close
+  // goes to the previous page, not a replay of the panel's URL changes.
   const showSettingsModal = searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
@@ -206,7 +208,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlTab === 'summary') return 'stats';
     // Only restore the remembered sub-tab when the user wants sub-tabs remembered.
     try {
-      if (useAuthStore.getState().user?.rememberSubTabs ?? true) {
+      if (prefRememberSubTabs(useAuthStore.getState().user)) {
         const saved = localStorage.getItem('gear-subtab');
         if (saved === 'sync' || saved === 'priority' || saved === 'history' || saved === 'stats') return saved;
         // Migrate old saved value 'weapon' → 'priority'
@@ -225,7 +227,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       return urlSubtab;
     }
     try {
-      if (useAuthStore.getState().user?.rememberSubTabs ?? true) {
+      if (prefRememberSubTabs(useAuthStore.getState().user)) {
         const saved = localStorage.getItem('loot-priority-subtab');
         if (saved === 'matrix' || saved === 'gear' || saved === 'weapon') return saved;
       }
@@ -308,7 +310,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     // tab resets every view's sub-tab to its default. Clearing the registered
     // sub-tab params resets the URL-derived ones; the gear/loot sub-tabs (held
     // in state here) are reset explicitly just below.
-    const resetSubTabs = !(useAuthStore.getState().user?.rememberSubTabs ?? true);
+    const resetSubTabs = !prefRememberSubTabs(useAuthStore.getState().user);
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
       params.set('tab', mode);
@@ -461,6 +463,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // sub-history so back-after-close goes to the previous page, not a replay.
   const setShowSettingsModal = useCallback((show: boolean) => {
     if (show) {
+      // Already open: don't re-record the baseline (that would capture a
+      // settings-open entry as the "pre-open" index and break the close-pop).
+      if (showSettingsModal) return;
       preSettingsIdxRef.current = (window.history.state?.idx as number | undefined) ?? null;
       setSearchParams(prev => {
         const params = new URLSearchParams(prev);
@@ -476,7 +481,8 @@ export function useGroupViewState(): UseGroupViewStateReturn {
         // since that entry has no settings params).
         navigate(base - current);
       } else {
-        // Opened via deep-link (no recorded baseline) — strip the params in place.
+        // No usable baseline (opened via deep-link, or history.state.idx is
+        // unavailable) — strip the params in place instead of popping.
         setSearchParams(prev => {
           const params = new URLSearchParams(prev);
           params.delete('showSettings');
@@ -486,7 +492,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
         }, { replace: true });
       }
     }
-  }, [setSearchParams, navigate]);
+  }, [setSearchParams, navigate, showSettingsModal]);
 
   // ===== Browser back/forward support =====
   // Reflect the initial tab in the URL once (replace, no new history entry) so
