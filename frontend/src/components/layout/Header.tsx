@@ -8,7 +8,8 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Copy, UserPlus, Settings, Plus, Trash2, Globe, Swords } from 'lucide-react';
+import { Copy, UserPlus, Settings, Plus, Trash2, Globe } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useTierStore } from '../../stores/tierStore';
@@ -340,7 +341,7 @@ export function Header() {
                       aria-label="Player Hub"
                       className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
                     >
-                      <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <XivIcon name="sword" size={16} />
                     </Link>
                   </Tooltip>
                 )}

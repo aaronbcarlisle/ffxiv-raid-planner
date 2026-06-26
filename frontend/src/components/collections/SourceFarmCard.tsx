@@ -8,9 +8,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import {
-  ChevronDown, PlusCircle, Coins,
+  ChevronDown, PlusCircle,
   Loader2, Copy, Check, Zap,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
 import type { CatalogItem, CollectionGoal, ParticipantSource, ParticipantState } from '../../stores/collectionGoalStore';
@@ -294,7 +295,7 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
           {/* Token cost pill */}
           {group.tokenName && group.tokenCost && (
             <div className="hidden sm:flex items-center gap-1 text-[10px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-md whitespace-nowrap">
-              <Coins size={10} />
+              <XivIcon name="gil" size={10} />
               {group.tokenCost}×
               {group.sourceType === 'ultimate' && <span className="opacity-70 ml-0.5">/ weapon</span>}
             </div>
@@ -359,7 +360,7 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
           {group.tokenName && group.tokenCost && (
             <div className="px-4 pb-3">
               <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-                <Coins size={12} className="text-amber-400" />
+                <XivIcon name="gil" size={12} />
                 <span className="font-semibold">{group.tokenCost}×</span>
                 <span>{group.tokenName}</span>
                 {group.sourceType === 'ultimate' && (

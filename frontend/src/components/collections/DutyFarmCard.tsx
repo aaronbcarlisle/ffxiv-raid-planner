@@ -10,8 +10,9 @@
 
 import { useState } from 'react';
 import {
-  AlertCircle, ChevronDown, Coins, Eye, Search, Star, Trophy, Users,
+  AlertCircle, ChevronDown, Search,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import type { StaticCollectionSuggestion, MemberSuggestionEntry } from '../../stores/collectionIntentStore';
 import {
@@ -99,10 +100,10 @@ function aggregateMembers(suggestions: StaticCollectionSuggestion[]): AggregateC
 
 function MiniTeamBar({ counts }: { counts: AggregateCounts }) {
   const stats = [
-    { icon: <Trophy size={10} />,        label: 'Owned',      value: counts.have,      color: 'text-status-success' },
+    { icon: <XivIcon name="goals" size={10} />,        label: 'Owned',      value: counts.have,      color: 'text-status-success' },
     { icon: <Search size={10} />,        label: 'Hunting',    value: counts.hunting,   color: 'text-status-info' },
-    { icon: <Star size={10} />,          label: 'Interested', value: counts.interested, color: 'text-status-warning' },
-    { icon: <Coins size={10} />,         label: 'Can buy',    value: counts.canBuy,    color: 'text-amber-400' },
+    { icon: <XivIcon name="earthlyStar" size={10} />,          label: 'Interested', value: counts.interested, color: 'text-status-warning' },
+    { icon: <XivIcon name="gil" size={10} />,         label: 'Can buy',    value: counts.canBuy,    color: 'text-amber-400' },
     { icon: <AlertCircle size={10} />,   label: 'Unknown',    value: counts.unknown,   color: 'text-text-muted opacity-50' },
   ].filter(s => s.value > 0);
 
@@ -206,7 +207,7 @@ function RewardRow({
                   </span>
                 )}
                 {m.ownershipState === 'unknown' && !m.intent && (
-                  <Eye size={10} className="text-text-muted opacity-40 flex-shrink-0" />
+                  <XivIcon name="handshake" size={10} className="opacity-40 flex-shrink-0" />
                 )}
               </div>
             ))}
@@ -226,7 +227,7 @@ function RewardRow({
                   onClick={() => onViewGoal(s.staticGoalId!)}
                   className="flex items-center gap-1"
                 >
-                  <Trophy size={12} /> View Farm
+                  <XivIcon name="goals" size={12} /> View Farm
                 </Button>
               )
             ) : (
@@ -236,7 +237,7 @@ function RewardRow({
                   onClick={() => onMakeActiveFarm(s.catalogItemId)}
                   className="flex items-center gap-1"
                 >
-                  <Trophy size={12} /> Make Active Farm
+                  <XivIcon name="goals" size={12} /> Make Active Farm
                 </Button>
               )
             )}
@@ -350,7 +351,7 @@ export function DutyFarmCard({
             className="flex items-center gap-1 text-text-secondary h-6 px-2 text-[11px]"
             onClick={() => onCopyPlan(buildDutyCopyText(dutyName, suggestions))}
           >
-            <Users size={11} /> Copy Plan
+            <XivIcon name="party" size={11} /> Copy Plan
           </Button>
         </div>
       </div>

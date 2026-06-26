@@ -7,8 +7,9 @@
 
 import { useState } from 'react';
 import {
-  AlertCircle, Coins, Eye, Search, Star, Trophy, Users, ChevronDown,
+  AlertCircle, Search, ChevronDown,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import type { StaticCollectionSuggestion, MemberSuggestionEntry } from '../../stores/collectionIntentStore';
 import type { CollectionGoalCreate, CollectionGoalType, CollectionContentType } from '../../stores/collectionGoalStore';
@@ -91,10 +92,10 @@ function TeamSummaryBar({ members }: { members: MemberSuggestionEntry[] }) {
   const unknown   = members.filter(m => m.ownershipState === 'unknown' && !m.intent).length;
 
   const stats = [
-    { icon: <Trophy size={10} />, label: 'Owned',     value: have,      color: 'text-status-success' },
+    { icon: <XivIcon name="goals" size={10} />, label: 'Owned',     value: have,      color: 'text-status-success' },
     { icon: <Search size={10} />, label: 'Hunting',   value: hunting,   color: 'text-status-info' },
-    { icon: <Star size={10} />,   label: 'Interested',value: interested, color: 'text-status-warning' },
-    { icon: <Coins size={10} />,  label: 'Can buy',   value: canBuy,    color: 'text-amber-400' },
+    { icon: <XivIcon name="earthlyStar" size={10} />,   label: 'Interested',value: interested, color: 'text-status-warning' },
+    { icon: <XivIcon name="gil" size={10} />,  label: 'Can buy',   value: canBuy,    color: 'text-amber-400' },
     { icon: <AlertCircle size={10} />, label: 'Unknown', value: unknown, color: 'text-text-muted opacity-50' },
   ].filter(s => s.value > 0);
 
@@ -215,7 +216,7 @@ export function SuggestionFarmCard({
                   </span>
                 )}
                 {m.ownershipState === 'unknown' && !m.intent && (
-                  <Eye size={10} className="text-text-muted opacity-40 flex-shrink-0" />
+                  <XivIcon name="handshake" size={10} className="opacity-40 flex-shrink-0" />
                 )}
               </div>
             ))}
@@ -241,7 +242,7 @@ export function SuggestionFarmCard({
                   onClick={() => onViewGoal(s.staticGoalId!)}
                   className="flex items-center gap-1"
                 >
-                  <Trophy size={12} /> View Farm
+                  <XivIcon name="goals" size={12} /> View Farm
                 </Button>
               )
             ) : (
@@ -251,7 +252,7 @@ export function SuggestionFarmCard({
                   onClick={handleMakeActiveFarm}
                   className="flex items-center gap-1"
                 >
-                  <Trophy size={12} /> Make Active Farm
+                  <XivIcon name="goals" size={12} /> Make Active Farm
                 </Button>
               )
             )}
@@ -261,7 +262,7 @@ export function SuggestionFarmCard({
               onClick={() => onCopyPlan(buildCopyText(s))}
               className="flex items-center gap-1 text-text-secondary"
             >
-              <Users size={12} /> Copy Plan
+              <XivIcon name="party" size={12} /> Copy Plan
             </Button>
           </div>
         </div>

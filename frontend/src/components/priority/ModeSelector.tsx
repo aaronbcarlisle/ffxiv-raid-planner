@@ -4,7 +4,8 @@
  * Dropdown for selecting the priority system mode with descriptions.
  */
 
-import { ListOrdered, Briefcase, Users, Calendar, XCircle } from 'lucide-react';
+import { ListOrdered, Calendar, XCircle } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Select } from '../ui';
 import type { PrioritySystemMode } from '../../types';
 
@@ -12,37 +13,37 @@ const MODE_OPTIONS: {
   value: PrioritySystemMode;
   label: string;
   description: string;
-  icon: typeof ListOrdered;
+  icon: React.ReactNode;
 }[] = [
   {
     value: 'role-based',
     label: 'Role Based (Default)',
     description: 'Prioritize by role order (Tank > Healer > DPS, etc.)',
-    icon: ListOrdered,
+    icon: <ListOrdered className="w-3.5 h-3.5" />,
   },
   {
     value: 'job-based',
     label: 'Job Based',
     description: 'Prioritize specific jobs regardless of player',
-    icon: Briefcase,
+    icon: <XivIcon name="loot" size={14} />,
   },
   {
     value: 'player-based',
     label: 'Player Based',
     description: 'Prioritize specific players regardless of job',
-    icon: Users,
+    icon: <XivIcon name="party" size={14} />,
   },
   {
     value: 'manual-planning',
     label: 'Manual Planning',
     description: 'Pre-assign loot to players per week',
-    icon: Calendar,
+    icon: <Calendar className="w-3.5 h-3.5" />,
   },
   {
     value: 'disabled',
     label: 'Disabled',
     description: 'Hide all priority UI (equal distribution)',
-    icon: XCircle,
+    icon: <XCircle className="w-3.5 h-3.5" />,
   },
 ];
 
@@ -68,7 +69,7 @@ export function ModeSelector({ value, onChange, disabled }: ModeSelectorProps) {
       />
       {currentMode && (
         <p className="text-xs text-text-muted flex items-center gap-1.5">
-          <currentMode.icon className="w-3.5 h-3.5" />
+          {currentMode.icon}
           {currentMode.description}
         </p>
       )}

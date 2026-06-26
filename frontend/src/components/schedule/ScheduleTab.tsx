@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, CheckCircle, Copy, ExternalLink, LayoutGrid, List, Link2, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Sparkles, Trash2, Unlink } from 'lucide-react';
+import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, CheckCircle, Copy, ExternalLink, LayoutGrid, List, Link2, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Trash2, Unlink } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
 import { canManageRoster } from '../../utils/permissions';
@@ -416,26 +417,26 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     id: SchedulerSubTab;
     label: string;
     badge: string;
-    icon: typeof Calendar;
+    icon: React.ReactNode;
     disabled?: boolean;
   }> = [
     {
       id: 'sessions',
       label: 'Sessions',
       badge: String(upcomingSessionCount),
-      icon: CalendarClock,
+      icon: <CalendarClock className="h-4 w-4" />,
     },
     {
       id: 'availability',
       label: 'Availability',
       badge: `${trackedMemberCount} tracked`,
-      icon: Sparkles,
+      icon: <XivIcon name="crystal" size={16} />,
     },
     {
       id: 'integrations',
       label: 'Integrations',
       badge: canManage ? 'Setup' : 'View',
-      icon: Link2,
+      icon: <Link2 className="h-4 w-4" />,
     },
   ];
 
@@ -452,7 +453,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
           <h2 className="flex items-center gap-2 text-lg font-medium text-text-primary">
-            <Calendar className="h-5 w-5 text-accent" />
+            <XivIcon name="schedule" size={20} />
             Raid Schedule
           </h2>
           <p className="text-sm text-text-secondary">
@@ -465,7 +466,6 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       <div className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-card/80 p-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-2 sm:flex sm:flex-wrap" role="tablist" aria-label="Scheduler sections">
           {subTabs.map((tab) => {
-            const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;
             return (
               <Button
@@ -473,7 +473,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                 type="button"
                 variant={isActive ? 'accent-subtle' : 'ghost'}
                 size="sm"
-                leftIcon={<Icon className="h-4 w-4" />}
+                leftIcon={tab.icon}
                 onClick={() => handleSubTabChange(tab.id)}
                 disabled={tab.disabled}
                 data-testid={`schedule-subtab-${tab.id}`}
@@ -510,7 +510,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                 type="button"
                 variant="secondary"
                 size="sm"
-                leftIcon={<Sparkles className="h-4 w-4" />}
+                leftIcon={<XivIcon name="crystal" size={16} />}
                 onClick={() => handleSubTabChange('availability')}
               >
                 View best overlap
