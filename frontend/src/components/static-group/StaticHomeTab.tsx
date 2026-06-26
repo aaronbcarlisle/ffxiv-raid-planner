@@ -11,14 +11,11 @@ import {
   Plug,
   Scissors,
   Shield,
-  Sparkles,
-  Swords,
   Target,
-  Trophy,
-  Users,
   Check,
   Trash2,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { useAuthStore } from '../../stores/authStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
@@ -381,7 +378,7 @@ function NotificationsModule({
     if (diffH >= 0 && diffH <= 48) {
       return {
         id: 'session',
-        icon: <Calendar className="w-3.5 h-3.5" />,
+        icon: <XivIcon name="schedule" size={14} />,
         title: nextSession.contentName ? `Raid: ${nextSession.contentName}` : 'Raid session upcoming',
         sub: sessionCountdown(nextSession.startTime),
         time: new Date(nextSession.startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
@@ -465,13 +462,13 @@ function NextRaidModule({
 }) {
   return (
     <div>
-      <SectionLabel icon={<Swords className="w-3 h-3" />}>Next Raid</SectionLabel>
+      <SectionLabel icon={<XivIcon name="sword" size={12} />}>Next Raid</SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {loading ? (
           <div className="p-3 h-24 animate-pulse bg-surface-elevated/30" />
         ) : !session ? (
           <div className="px-3 py-5 text-center">
-            <Calendar className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
+            <XivIcon name="schedule" size={20} className="mx-auto mb-1.5 opacity-40" />
             <p className="text-xs font-medium text-text-secondary mb-0.5">No sessions scheduled</p>
             <p className="text-[11px] text-text-muted mb-2.5">Add a session so your team can RSVP</p>
             <button
@@ -686,12 +683,12 @@ function CommandBriefModule({
       ? [{ key: 'pending', label: `${pendingCount} application${pendingCount > 1 ? 's' : ''} pending`, icon: <Mail className="w-3 h-3" />, accent: true, onClick: onReviewRequest ?? (() => onNavigate('roster')) }]
       : []),
     ...(nextSession
-      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, icon: <Swords className="w-3 h-3" />, accent: false, onClick: () => onNavigate('schedule') }]
-      : [{ key: 'noraid', label: 'No sessions scheduled', icon: <Calendar className="w-3 h-3" />, accent: false, warn: true, onClick: () => onNavigate('schedule') }]),
+      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, icon: <XivIcon name="sword" size={12} />, accent: false, onClick: () => onNavigate('schedule') }]
+      : [{ key: 'noraid', label: 'No sessions scheduled', icon: <XivIcon name="schedule" size={12} />, accent: false, warn: true, onClick: () => onNavigate('schedule') }]),
     {
       key: 'roster',
       label: `${configuredCount}/8 players configured`,
-      icon: <Users className="w-3 h-3" />,
+      icon: <XivIcon name="party" size={12} />,
       accent: false,
       warn: configuredCount < 8,
       onClick: () => onNavigate('roster'),
@@ -1006,7 +1003,7 @@ function GroupHeroPanel({
         </>
       ) : (
         <div className="px-4 py-6 text-center">
-          <Users className="w-7 h-7 text-text-muted opacity-25 mx-auto mb-2.5" />
+          <XivIcon name="party" size={28} className="opacity-25 mx-auto mb-2.5" />
           <p className="text-sm font-semibold text-text-secondary mb-1">Roster not configured</p>
           <p className="text-xs text-text-muted mb-3">
             Sync gear or assign roster jobs to start tracking readiness.
@@ -1037,13 +1034,13 @@ function RosterPresenceModule({
 
   return (
     <div>
-      <SectionLabel icon={<Users className="w-3 h-3" />} count={`${active.length}/8`}>
+      <SectionLabel icon={<XivIcon name="party" size={12} />} count={`${active.length}/8`}>
         Static Roster
       </SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {active.length === 0 ? (
           <div className="px-3 py-5 text-center">
-            <Users className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
+            <XivIcon name="party" size={20} className="mx-auto mb-1.5 opacity-40" />
             <p className="text-xs font-medium text-text-secondary mb-0.5">Roster not configured</p>
             <p className="text-[11px] text-text-muted mb-2.5">Add 8 players to start tracking progress</p>
             <button
@@ -1094,7 +1091,7 @@ function RosterPresenceModule({
                   ) : (
                     <>
                       <div className="w-11 h-11 rounded-xl border border-dashed border-border-default flex items-center justify-center opacity-20">
-                        <Users className="w-3.5 h-3.5 text-text-muted" />
+                        <XivIcon name="party" size={14} />
                       </div>
                       <p className="text-[9px] text-text-muted opacity-30">—</p>
                     </>
@@ -1142,7 +1139,7 @@ function BestNextFarmModule({
 
   return (
     <div>
-      <SectionLabel icon={<Trophy className="w-3 h-3" />}>Best Next Farm</SectionLabel>
+      <SectionLabel icon={<XivIcon name="goals" size={12} />}>Best Next Farm</SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {loading ? (
           <div className="p-3 h-20 animate-pulse bg-surface-elevated/30 rounded-xl" />
@@ -1157,7 +1154,7 @@ function BestNextFarmModule({
                   boxShadow: '0 0 0 1px rgba(20,184,166,0.22), 0 0 12px rgba(20,184,166,0.1)',
                 }}
               >
-                <Trophy className="w-4 h-4 text-accent" />
+                <XivIcon name="goals" size={16} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-0.5 truncate">
@@ -1177,7 +1174,7 @@ function BestNextFarmModule({
                 border: '1px solid rgba(20,184,166,0.14)',
               }}
             >
-              <Users className="w-3 h-3 text-accent flex-shrink-0" />
+              <XivIcon name="party" size={12} className="flex-shrink-0" />
               <span className="text-xs text-text-secondary">
                 <span className="font-bold text-text-primary tabular-nums">{top.membersMissing}</span>
                 {' '}member{top.membersMissing !== 1 ? 's' : ''} still need this
@@ -1203,13 +1200,13 @@ function BestNextFarmModule({
               }}
               className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
             >
-              <Calendar className="w-3.5 h-3.5" />
+              <XivIcon name="schedule" size={14} />
               Schedule Farm Session
             </button>
           </div>
         ) : (
           <div className="px-3 py-5 text-center">
-            <Sparkles className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
+            <XivIcon name="crystal" size={20} className="mx-auto mb-1.5 opacity-40" />
             <p className="text-xs font-medium text-text-secondary mb-0.5">No active farm recommendations</p>
             <p className="text-[11px] text-text-muted mb-2.5">
               Track member progress in Mount Farms to get ranked suggestions.
@@ -1705,13 +1702,20 @@ function RecentActivityModule({
 
   function activityIcon(icon: StaticActivityItem['icon']) {
     const style = ACTIVITY_ICON_STYLE[icon];
-    const IconEl = icon === 'mount' ? Trophy : icon === 'currency' ? Target : icon === 'plugin' ? Plug : Sparkles;
     return (
       <div
         className="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center"
         style={{ background: style.bg, color: style.color }}
       >
-        <IconEl className="w-3 h-3" />
+        {icon === 'mount' ? (
+          <XivIcon name="goals" size={12} />
+        ) : icon === 'currency' ? (
+          <Target className="w-3 h-3" />
+        ) : icon === 'plugin' ? (
+          <Plug className="w-3 h-3" />
+        ) : (
+          <XivIcon name="crystal" size={12} />
+        )}
       </div>
     );
   }

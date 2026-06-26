@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
-import { Trophy, Sparkles, Calendar, Plug, Info, User, Users, Filter, Activity, X, ExternalLink } from 'lucide-react';
+import { Plug, Info, User, Filter, Activity, X, ExternalLink } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import type { MountFarmData, TrialSummary } from '../../stores/mountFarmStore';
 import { EXPANSIONS, getTrialsByExpansion, getAllTrialIds, getTrialById, getCurrencyLabelPlural, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
@@ -283,7 +284,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
-              <Sparkles className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+              <XivIcon name="crystal" size={20} className="flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="text-sm font-display font-semibold text-text-primary truncate">
                   Best next farm: {topRecTrial.dutyName}
@@ -306,7 +307,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
                 variant="secondary"
                 onClick={() => onScheduleFarm(topRecTrial)}
               >
-                <Calendar className="w-4 h-4" />
+                <XivIcon name="schedule" size={16} />
                 {topRecTrial.contentType === 'ultimate' ? 'Schedule' : 'Schedule Farm'}
               </Button>
             )}
@@ -325,7 +326,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
               viewMode === 'group' ? 'bg-accent/20 text-accent' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            <Users className="w-3.5 h-3.5" />
+            <XivIcon name="party" size={14} />
             Static
           </button>
           {/* design-system-ignore: View toggle requires specific styling */}
@@ -404,7 +405,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
 
       {/* Progress bar */}
       <div className="flex items-center gap-3">
-        <Trophy className="w-4 h-4 text-text-tertiary" />
+        <XivIcon name="goals" size={16} />
         <div className="flex-1">
           <div className="flex justify-between text-xs text-text-secondary mb-1">
             <span>{EXPANSIONS.find(e => e.id === selectedExpansion)?.name} Completion</span>

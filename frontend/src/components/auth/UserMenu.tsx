@@ -28,18 +28,16 @@ import {
   Calculator,
   Code,
   Palette,
-  Sparkles,
   Wrench,
   Shield,
   Keyboard,
-  BookOpen,
   Sun,
   Moon,
   Key,
-  Swords,
   EyeOff,
   Bell,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { useTheme } from '../../hooks/useTheme';
 import { Modal } from '../ui/Modal';
 import { useModal } from '../../hooks/useModal';
@@ -129,7 +127,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         </DropdownItem>
 
         <DropdownItem
-          icon={<Swords className="w-4 h-4" />}
+          icon={<XivIcon name="sword" size={16} />}
           onSelect={() => navigate('/profile')}
         >
           Player Hub
@@ -156,7 +154,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             Documentation
           </DropdownSubTrigger>
           <DropdownSubContent>
-            <DropdownItem icon={<BookOpen className="w-4 h-4" />} href="/docs">
+            <DropdownItem icon={<XivIcon name="tomestone" size={16} />} href="/docs">
               All Documentation
             </DropdownItem>
             <DropdownSeparator />
@@ -179,7 +177,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             <DropdownItem icon={<Palette className="w-4 h-4" />} href="/docs/design-system">
               Design System
             </DropdownItem>
-            <DropdownItem icon={<Sparkles className="w-4 h-4" />} href="/docs/release-notes">
+            <DropdownItem icon={<XivIcon name="crystal" size={16} />} href="/docs/release-notes">
               Release Notes
             </DropdownItem>
             <DropdownItem icon={<Wrench className="w-4 h-4" />} href="/docs/roadmap">

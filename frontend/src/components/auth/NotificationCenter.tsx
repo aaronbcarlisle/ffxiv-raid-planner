@@ -6,12 +6,11 @@ import {
   Mail,
   ThumbsUp,
   Target,
-  Calendar,
   AlertTriangle,
   CheckCheck,
   Check,
-  Sparkles,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives';
 import { useNotificationStore } from '../../stores/notificationStore';
@@ -37,11 +36,11 @@ function typeIcon(notificationType: string): React.ReactNode {
     case 'objective_promoted':
       return <Target className="w-3.5 h-3.5" />;
     case 'schedule_update':
-      return <Calendar className="w-3.5 h-3.5" />;
+      return <XivIcon name="schedule" size={14} />;
     case 'webhook_failure':
       return <AlertTriangle className="w-3.5 h-3.5" />;
     case 'web_update':
-      return <Sparkles className="w-3.5 h-3.5" />;
+      return <XivIcon name="crystal" size={14} />;
     default:
       return <Bell className="w-3.5 h-3.5" />;
   }

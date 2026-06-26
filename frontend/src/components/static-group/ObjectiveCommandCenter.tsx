@@ -11,14 +11,11 @@
 
 import { useEffect } from 'react';
 import {
-  Calendar,
   Target,
-  Users,
   ChevronRight,
   AlertCircle,
-  Swords,
-  Sparkles,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { useObjectiveCommandStore } from '../../stores/objectiveCommandStore';
@@ -117,7 +114,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
       <div className="flex items-center gap-3 px-3 pb-2 text-[11px] text-text-secondary flex-wrap">
         {/* Roster readiness */}
         <span className="flex items-center gap-1">
-          <Users className="w-3 h-3 text-text-muted flex-shrink-0" />
+          <XivIcon name="party" size={12} className="flex-shrink-0" />
           <span>
             Roster{' '}
             <span className={rosterReadiness.ready < rosterReadiness.total ? 'text-status-warning font-semibold' : 'text-status-success font-semibold'}>
@@ -144,7 +141,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
         {/* BiS readiness — only when public targets exist */}
         {bisReadiness !== null && (
           <span className="flex items-center gap-1">
-            <Swords className="w-3 h-3 text-text-muted flex-shrink-0" />
+            <XivIcon name="sword" size={12} className="flex-shrink-0" />
             <span>
               BiS{' '}
               <span className={bisReadiness.missing > 2 ? 'text-status-error font-semibold' : 'text-status-success font-semibold'}>
@@ -169,7 +166,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
 
       {/* Next session / schedule row */}
       <div className="flex items-center gap-1.5 px-3 pb-2.5 text-[11px]">
-        <Calendar className="w-3 h-3 text-text-muted flex-shrink-0" />
+        <XivIcon name="schedule" size={12} className="flex-shrink-0" />
         {nextSession ? (
           <span className="text-text-secondary">
             <span className="font-medium">Next:</span>{' '}
@@ -190,7 +187,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
         <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
           {card.nextActionTarget === null ? (
             <span className="text-status-success font-semibold flex items-center gap-1">
-              <Sparkles className="w-3 h-3" />
+              <XivIcon name="crystal" size={12} />
               {card.nextAction}
             </span>
           ) : (

@@ -33,7 +33,6 @@ import {
   Trash2,
   UserMinus,
   UserPlus,
-  Swords,
   RotateCcw,
   UserCheck,
   UserX,
@@ -42,11 +41,11 @@ import {
   Link2,
   RefreshCw,
   Globe,
-  BookOpen,
   Gauge,
   GitBranch,
   Target,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { canEditPlayer, canManageRoster, canResetGear, type MemberRole } from '../../utils/permissions';
 import { useSharedBisStore } from '../../stores/sharedBisStore';
 
@@ -416,7 +415,7 @@ export const PlayerCard = memo(function PlayerCard({
     },
     {
       label: 'Weapon Priorities',
-      icon: <Swords className="w-4 h-4" />,
+      icon: <XivIcon name="sword" size={16} />,
       onClick: () => setShowWeaponPriorityModal(true),
       disabled: !editPermission.allowed,
       tooltip: editPermission.allowed ? undefined : editPermission.reason,
@@ -446,7 +445,7 @@ export const PlayerCard = memo(function PlayerCard({
       (userRole === 'member' && player.userId === currentUserId)
     ) ? [{
       label: 'Edit Books',
-      icon: <BookOpen className="w-4 h-4" />,
+      icon: <XivIcon name="tomestone" size={16} />,
       onClick: () => onNavigateToBooksPanel(player.id),
     }] : []),
 
