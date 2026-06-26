@@ -76,6 +76,15 @@ export const RELEASES: Release[] = [
         pr: 147,
         prTitle: 'Plan A — Global App Rail + user-menu relocation',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Design-language foundation: tokens, constrained primitives, lint enforcement',
+        description:
+          'Added theme tokens (rail gradient, overlay, parchment) with light values, constrained primitives (Tag/Tabs/LinkText/NavRow) plus reusable JobSelector and TriStateToggle, and ESLint warnings for hardcoded colors, sub-12px text, and ambiguous interaction semantics. Foundation for the UI overhaul; no user-facing change yet.',
+        pr: 148,
+        prTitle: 'Wave 1 — Foundation: enforcement, tokens, constrained primitives',
+      },
     ],
   },
   {
