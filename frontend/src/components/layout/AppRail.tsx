@@ -32,7 +32,7 @@ export function AppRail({ context, identity, items, collapseKey, footer }: AppRa
       aria-label="Application navigation"
       className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle overflow-x-hidden overflow-y-auto"
       style={{
-        background: 'linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%)',
+        background: 'var(--gradient-rail)',
         width: collapsed ? 56 : 208,
         minWidth: collapsed ? 56 : 208,
       }}
