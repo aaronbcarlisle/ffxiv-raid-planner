@@ -2,6 +2,7 @@ import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import { ErrorBoundary } from 'react-error-boundary';
+import { TooltipProvider } from './components/primitives/Tooltip';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/ui/ToastContainer';
 import { PageSkeleton } from './components/ui/Skeleton';
@@ -141,6 +142,10 @@ function App() {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
+      {/* Single app-root tooltip provider. Radix expects one provider near the
+          root; per-instance providers (one per <Tooltip>) multiplied roster
+          reconciliation cost ~50-70x per player card. */}
+      <TooltipProvider delayDuration={500} skipDelayDuration={100}>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -188,6 +193,7 @@ function App() {
         </Routes>
         <ToastContainer />
       </Suspense>
+      </TooltipProvider>
     </ErrorBoundary>
   );
 }

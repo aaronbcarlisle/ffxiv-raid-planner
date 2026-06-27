@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
@@ -60,7 +61,7 @@ interface DroppablePlayerCardProps {
   onNavigateToBooksPanel?: (playerId: string) => void;
 }
 
-export function DroppablePlayerCard({
+function DroppablePlayerCardImpl({
   player,
   dragState,
   canEdit,
@@ -132,3 +133,9 @@ export function DroppablePlayerCard({
     </div>
   );
 }
+
+// Memoized so it bails when the grid re-renders for reasons unrelated to this
+// card. It still updates during a drag (it reads the dragState prop and the
+// @dnd-kit context), but unrelated grid re-renders no longer drag the whole
+// PlayerCard subtree along.
+export const DroppablePlayerCard = memo(DroppablePlayerCardImpl);

@@ -18,9 +18,14 @@ interface TooltipProps {
   align?: 'start' | 'center' | 'end';
   /** Offset from the trigger element (px) */
   sideOffset?: number;
-  /** Delay before showing (ms) */
+  /** Delay before showing (ms) — set on Root so it overrides the root provider */
   delayDuration?: number;
-  /** Skip delay when moving between tooltips */
+  /**
+   * Deprecated: skip-delay is now a global behavior owned by the single
+   * app-root `TooltipProvider`. Accepted for back-compat but no longer used
+   * per instance (each `<Tooltip>` used to spin up its own provider, which was
+   * a major roster-render cost). Kept optional so existing call sites compile.
+   */
   skipDelayDuration?: number;
   /** Explicitly disable the tooltip */
   disabled?: boolean;
@@ -33,7 +38,6 @@ export function Tooltip({
   align = 'center',
   sideOffset = 4,
   delayDuration = 500,
-  skipDelayDuration = 100,
   disabled,
 }: TooltipProps) {
   const { canHover } = useDevice();
@@ -43,25 +47,25 @@ export function Tooltip({
     return <>{children}</>;
   }
 
+  // No per-instance Provider — a single one lives at the app root. The
+  // per-tooltip delay is set on Root (Radix lets Root override the provider).
   // When disabled, still render the same structure to avoid unmounting children,
-  // but use open={false} to prevent the tooltip from showing
+  // but use open={false} to prevent the tooltip from showing.
   return (
-    <TooltipPrimitive.Provider delayDuration={delayDuration} skipDelayDuration={skipDelayDuration}>
-      <TooltipPrimitive.Root open={disabled ? false : undefined}>
-        <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
-        <TooltipPrimitive.Portal>
-          <TooltipPrimitive.Content
-            side={side}
-            align={align}
-            sideOffset={sideOffset}
-            className="z-50 rounded bg-surface-raised px-3 py-2 text-sm text-text-primary shadow-xl border border-border-default animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
-          >
-            {content}
-            <TooltipPrimitive.Arrow className="fill-surface-raised" />
-          </TooltipPrimitive.Content>
-        </TooltipPrimitive.Portal>
-      </TooltipPrimitive.Root>
-    </TooltipPrimitive.Provider>
+    <TooltipPrimitive.Root open={disabled ? false : undefined} delayDuration={delayDuration}>
+      <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
+      <TooltipPrimitive.Portal>
+        <TooltipPrimitive.Content
+          side={side}
+          align={align}
+          sideOffset={sideOffset}
+          className="z-50 rounded bg-surface-raised px-3 py-2 text-sm text-text-primary shadow-xl border border-border-default animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+        >
+          {content}
+          <TooltipPrimitive.Arrow className="fill-surface-raised" />
+        </TooltipPrimitive.Content>
+      </TooltipPrimitive.Portal>
+    </TooltipPrimitive.Root>
   );
 }
 
