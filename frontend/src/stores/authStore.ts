@@ -204,8 +204,7 @@ interface AuthState {
   fetchUser: () => Promise<void>;
   updatePreferences: (prefs: {
     activityDisplayMode?: 'named' | 'anonymous';
-    rememberSubTabs?: boolean;
-    rememberStaticTab?: boolean;
+    tabPersistence?: 'remember' | 'reset';
   }) => Promise<void>;
   clearError: () => void;
 }

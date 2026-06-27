@@ -19,18 +19,17 @@ export const TRANSIENT_NAV_PARAMS = [
   'gsub', 'psub', 'rcsub',
 ] as const;
 
-/** Default values for the user navigation preferences (the fields differ). */
-export const NAV_PREF_DEFAULTS = {
-  rememberSubTabs: true,
-  rememberStaticTab: false,
-} as const;
-
-/** Keep the last sub-tab when revisiting a view (vs reset to default). */
-export function prefRememberSubTabs(user: User | null | undefined): boolean {
-  return user?.rememberSubTabs ?? NAV_PREF_DEFAULTS.rememberSubTabs;
+/**
+ * The site-wide navigational tab-memory mode. `'remember'` (default) reopens
+ * views on the last tab; `'reset'` always opens on the default tab. This single
+ * preference replaced the earlier rememberSubTabs/rememberStaticTab pair —
+ * localStorage gating lives in `lib/tabMemory.ts`.
+ */
+export function prefTabPersistence(user: User | null | undefined): 'remember' | 'reset' {
+  return user?.tabPersistence ?? 'remember';
 }
 
-/** Restore a static's last tab when switching to it (vs stay on current). */
-export function prefRememberStaticTab(user: User | null | undefined): boolean {
-  return user?.rememberStaticTab ?? NAV_PREF_DEFAULTS.rememberStaticTab;
+/** Whether navigational tabs are remembered (vs reset to default). */
+export function prefRememberTabs(user: User | null | undefined): boolean {
+  return prefTabPersistence(user) !== 'reset';
 }
