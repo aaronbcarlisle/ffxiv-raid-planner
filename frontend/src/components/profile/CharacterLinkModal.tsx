@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
+import { WorldSelect } from '../player/WorldSelect';
 import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
 import { Spinner } from '../ui/Spinner';
@@ -93,13 +94,9 @@ export function CharacterLinkModal({ onClose }: CharacterLinkModalProps) {
             className="flex-1"
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           />
-          <Input
-            value={server}
-            onChange={setServer}
-            placeholder="Server (optional)"
-            className="w-40"
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          />
+          <div className="w-40">
+            <WorldSelect showDataCenter={false} world={server} onWorldChange={setServer} allowAny />
+          </div>
           <Button onClick={handleSearch} disabled={isSearching || name.trim().length < 2}>
             {isSearching ? 'Searching…' : 'Search'}
           </Button>

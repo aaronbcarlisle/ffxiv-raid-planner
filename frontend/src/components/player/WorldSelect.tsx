@@ -52,18 +52,23 @@ export function WorldSelect({
     if (dc !== dataCenter) onWorldChange('');
   };
 
+  const worldSelect = (
+    <Select
+      aria-label="World"
+      value={world}
+      onChange={onWorldChange}
+      options={worldOptions}
+      disabled={disabled || (showDataCenter && !dataCenter)}
+    />
+  );
+
+  // Single-world mode: render just the world select (no grid wrapper).
+  if (!showDataCenter) return worldSelect;
+
   return (
     <div className={layout === 'row' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'space-y-2'}>
-      {showDataCenter && (
-        <Select aria-label="Data center" value={dataCenter} onChange={handleDc} options={dcOptions} disabled={disabled} />
-      )}
-      <Select
-        aria-label="World"
-        value={world}
-        onChange={onWorldChange}
-        options={worldOptions}
-        disabled={disabled || (showDataCenter && !dataCenter)}
-      />
+      <Select aria-label="Data center" value={dataCenter} onChange={handleDc} options={dcOptions} disabled={disabled} />
+      {worldSelect}
     </div>
   );
 }
