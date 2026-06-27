@@ -751,6 +751,9 @@ export function GroupView() {
     setPlayerModalCount(prev => Math.max(0, prev - 1));
   }, [setPlayerModalCount]);
 
+  // Stable identity so PlayerGrid's memo bails on unrelated parent re-renders.
+  const handleCancelEdit = useCallback(() => setEditingPlayerId(null), [setEditingPlayerId]);
+
   // Roster toolbar toggles (persisted)
   // Hide/show the substitutes section entirely
   const [subsHidden, setSubsHidden] = useState<boolean>(() => {
@@ -1272,7 +1275,7 @@ export function GroupView() {
                         onModalOpen={handlePlayerModalOpen}
                         onModalClose={handlePlayerModalClose}
                         onEditPlayer={setEditingPlayerId}
-                        onCancelEdit={() => setEditingPlayerId(null)}
+                        onCancelEdit={handleCancelEdit}
                       />
 
                       {/* Drag overlay - ghost card that follows cursor */}

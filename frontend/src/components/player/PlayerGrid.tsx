@@ -336,7 +336,11 @@ export interface PlayerGridProps {
 // Grid classes - responsive from 1 column (mobile) to max 4 columns (wide screens)
 const gridClasses = 'grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl stagger-children';
 
-export function PlayerGrid({
+// Memoized at the top of the roster subtree: a parent re-render (e.g. toggling
+// the settings panel, whose open-state lives in GroupView) passes referentially
+// stable props here, so React bails out and skips reconciling the entire ~3,000
+// component card/tooltip/popover tree below — no DOM changes, no wasted diff.
+function PlayerGridImpl({
   players,
   groupedPlayers,
   groupView,
@@ -697,6 +701,8 @@ export function PlayerGrid({
     </div>
   );
 }
+
+export const PlayerGrid = memo(PlayerGridImpl);
 
 /** Small chevron button used to collapse/expand a roster section. */
 function SectionCollapseButton({
