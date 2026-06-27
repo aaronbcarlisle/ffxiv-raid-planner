@@ -108,6 +108,14 @@ export const RELEASES: Release[] = [
         pr: 149,
         prTitle: 'Nav-shell fixes — static selector, Plugin tab/URL, rail light mode',
       },
+      {
+        category: 'improvement',
+        title: 'Settings panel docks alongside the app',
+        description:
+          'Static settings now slide in from the right without covering the header — the gear icon stays put as an open/close toggle and animates to show the panel is open. On mobile it stays a full-screen panel.',
+        pr: 150,
+        prTitle: 'Plan B — Docked settings panel + animated gear toggle',
+      },
     ],
   },
   {
