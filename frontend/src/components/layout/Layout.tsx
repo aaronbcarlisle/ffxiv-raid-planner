@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Header } from './Header';
 import { PageTransition } from './PageTransition';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
+import { SettingsDockToggle } from './SettingsDockToggle';
 import { ViewAsBanner } from '../admin';
 import { KeyboardShortcutsHelp } from '../ui';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
@@ -51,6 +52,10 @@ export function Layout() {
       {/* Account-level settings panel for non-static routes (the in-static panel
           is rendered by GroupView). Shows only the General tab. */}
       <GlobalSettingsPanel />
+
+      {/* Desktop settings open/close toggle, docked to the right edge to mirror
+          the left rail's collapse chevron. (Mobile uses the header gear.) */}
+      <SettingsDockToggle />
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp

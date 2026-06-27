@@ -310,9 +310,10 @@ export function Header() {
 
         {/* Right side: Invite + Settings + Auth */}
         <div className="flex items-center gap-1 sm:gap-3">
-          {/* Settings gear — available app-wide for signed-in users. Inside a
-              static it opens the role-aware panel; elsewhere, account settings. */}
+          {/* Settings gear — mobile only; desktop uses the docked toggle on the
+              right edge (SettingsDockToggle) that mirrors the rail's chevron. */}
           {user && !isHomePage && (
+            <span className="sm:hidden">
             <Tooltip
               content={
                 <div>
@@ -346,6 +347,7 @@ export function Header() {
                 )}
               </span>
             </Tooltip>
+            </span>
           )}
 
           {/* External links + theme toggle — hidden on the Home page (login only there) */}

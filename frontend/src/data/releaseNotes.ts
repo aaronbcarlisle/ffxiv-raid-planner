@@ -166,9 +166,9 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
-        title: 'Settings is available everywhere with a single toggle',
+        title: 'Settings is available everywhere with a single docked toggle',
         description:
-          'The Settings gear now lives in the header on every page while signed in — outside a static it opens your account preferences, and inside a static it adds the role-aware static tabs. The gear is a single open/close toggle, and opening the panel no longer nudges the header icons.',
+          'Settings is now reachable on every page while signed in — outside a static it opens your account preferences, and inside a static it adds the role-aware static tabs. On desktop the open/close control is a single toggle docked to the right edge that mirrors the left navigation rail\'s collapse chevron and slides with the panel; on mobile it stays in the header. Opening the panel no longer nudges the header icons.',
         pr: 152,
         prTitle: 'Plan I — Navigation, context & misc polish',
       },
