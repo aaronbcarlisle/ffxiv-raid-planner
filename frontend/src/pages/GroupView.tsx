@@ -9,7 +9,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
+import { DndContext, pointerWithin } from '@dnd-kit/core';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
@@ -17,7 +17,7 @@ import { useLootTrackingStore } from '../stores/lootTrackingStore';
 import { useViewAsStore } from '../stores/viewAsStore';
 import { toast } from '../stores/toastStore';
 import { getTierById } from '../gamedata';
-import { DragOverlayCard } from '../components/player/DragOverlayCard';
+import { RosterDragOverlay } from '../components/player/RosterDragOverlay';
 import { PlayerGrid } from '../components/player/PlayerGrid';
 import { RosterViewToggle } from '../components/player/RosterViewToggle';
 import { AddPlayerModal, type AddPlayerData } from '../components/player/AddPlayerModal';
@@ -861,7 +861,6 @@ export function GroupView() {
           clipboardPlayer={clipboardPlayer}
           highlightedPlayerId={highlightedPlayerId}
           highlightedSlot={highlightedSlot}
-          dragState={dnd.dragState}
           canEdit={canEdit}
           effectiveUserId={effectiveUserId}
           userRole={userRole}
@@ -896,23 +895,15 @@ export function GroupView() {
           onCancelEdit={handleCancelEdit}
         />
 
-        {/* Drag overlay - ghost card that follows cursor */}
-        <DragOverlay dropAnimation={null}>
-          {dnd.dragState.activeId && (() => {
-            const draggedPlayer = sortedPlayers.find(p => p.id === dnd.dragState.activeId);
-            if (!draggedPlayer || !draggedPlayer.configured) return null;
-            return (
-              <DragOverlayCard
-                player={draggedPlayer}
-                settings={DEFAULT_SETTINGS}
-                viewMode={viewMode}
-                contentType={currentTier.contentType ?? 'savage'}
-                groupId={currentGroup.id}
-                tierId={currentTier.tierId}
-              />
-            );
-          })()}
-        </DragOverlay>
+        {/* Drag overlay ghost — its own component, subscribes to the drag store's
+            activeId so it updates without re-rendering this memoized element. */}
+        <RosterDragOverlay
+          players={sortedPlayers}
+          viewMode={viewMode}
+          contentType={currentTier.contentType ?? 'savage'}
+          groupId={currentGroup.id}
+          tierId={currentTier.tierId}
+        />
       </DndContext>
     );
   }, [

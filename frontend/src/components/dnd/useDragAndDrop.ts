@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   useSensor,
   useSensors,
@@ -11,13 +11,8 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import type { DropMode } from './collisionDetection';
 import type { SnapshotPlayer } from '../../types';
+import { useDragStore } from '../../stores/dragStore';
 import { getGroupFromPosition, swapPositionGroup } from '../../utils/calculations';
-
-export interface DragState {
-  activeId: string | null;
-  overId: string | null;
-  dropMode: DropMode | null;
-}
 
 export interface PlayerUpdate {
   playerId: string;
@@ -41,48 +36,22 @@ export function useDragAndDrop({
   disabled = false,
   onReorder,
 }: UseDragAndDropOptions) {
-  // Drag state
-  const [dragState, setDragState] = useState<DragState>({
-    activeId: null,
-    overId: null,
-    dropMode: null,
-  });
-
-  // Track actual pointer position via document listener
+  // Pointer position, tracked via a document listener attached only WHILE a drag
+  // is in progress (handleDragStart attaches it; drag end/cancel/unmount detach).
+  // The listener writes only to the drag store, so the grid never re-renders
+  // during a drag — cards subscribe to the store with per-card selectors.
   const pointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const pointerMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
 
-  useEffect(() => {
-    const handlePointerMove = (e: PointerEvent) => {
-      pointerRef.current = { x: e.clientX, y: e.clientY };
+  const stopPointerTracking = useCallback(() => {
+    if (pointerMoveRef.current) {
+      document.removeEventListener('pointermove', pointerMoveRef.current);
+      pointerMoveRef.current = null;
+    }
+  }, []);
 
-      // Recalculate dropMode continuously while dragging over a player card
-      if (dragState.activeId && dragState.overId && !dragState.overId.startsWith('edge-')) {
-        const element = document.querySelector(`[data-droppable-id="${dragState.overId}"]`);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          const relativeX = e.clientX - rect.left;
-          const percentage = relativeX / rect.width;
-
-          let newDropMode: DropMode;
-          if (percentage < EDGE_THRESHOLD) {
-            newDropMode = 'insert-before';
-          } else if (percentage > 1 - EDGE_THRESHOLD) {
-            newDropMode = 'insert-after';
-          } else {
-            newDropMode = 'swap';
-          }
-
-          // Only update if changed to avoid unnecessary re-renders
-          if (newDropMode !== dragState.dropMode) {
-            setDragState(prev => ({ ...prev, dropMode: newDropMode }));
-          }
-        }
-      }
-    };
-
-    document.addEventListener('pointermove', handlePointerMove);
-    return () => document.removeEventListener('pointermove', handlePointerMove);
-  }, [dragState.activeId, dragState.overId, dragState.dropMode]);
+  // Detach the listener if the component unmounts mid-drag.
+  useEffect(() => stopPointerTracking, [stopPointerTracking]);
 
   // Sensors - use impossibly high activation distance when disabled
   // This keeps array size constant to avoid React useEffect warnings from @dnd-kit
@@ -114,53 +83,51 @@ export function useDragAndDrop({
 
   // Event handlers
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    setDragState({
-      activeId: event.active.id as string,
-      overId: null,
-      dropMode: null,
-    });
-  }, []);
+    useDragStore.getState().startDrag(event.active.id as string);
+
+    // Continuously refine the drop mode as the cursor moves within a card.
+    const onMove = (e: PointerEvent) => {
+      pointerRef.current = { x: e.clientX, y: e.clientY };
+      const { activeId, overId, dropMode } = useDragStore.getState();
+      if (activeId && overId && !overId.startsWith('edge-')) {
+        const element = document.querySelector(`[data-droppable-id="${overId}"]`);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const percentage = (e.clientX - rect.left) / rect.width;
+          const newDropMode: DropMode =
+            percentage < EDGE_THRESHOLD ? 'insert-before'
+              : percentage > 1 - EDGE_THRESHOLD ? 'insert-after'
+                : 'swap';
+          if (newDropMode !== dropMode) useDragStore.getState().setDropMode(newDropMode);
+        }
+      }
+    };
+    stopPointerTracking();
+    document.addEventListener('pointermove', onMove);
+    pointerMoveRef.current = onMove;
+  }, [stopPointerTracking]);
 
   const handleDragOver = useCallback((event: DragOverEvent) => {
     const overId = event.over?.id as string | null;
+    const store = useDragStore.getState();
 
-    if (!overId || overId === dragState.activeId) {
-      setDragState(prev => ({
-        ...prev,
-        overId: null,
-        dropMode: null,
-      }));
+    if (!overId || overId === store.activeId) {
+      store.setOver(null, null);
       return;
     }
-
-    // Check if this is an edge drop zone
+    // Edge drop zone
     if (overId.startsWith('edge-')) {
-      setDragState(prev => ({
-        ...prev,
-        overId,
-        dropMode: overId.includes('start') ? 'insert-before' : 'insert-after',
-      }));
+      store.setOver(overId, overId.includes('start') ? 'insert-before' : 'insert-after');
       return;
     }
-
-    // Calculate drop mode for player cards
-    const dropMode = calculateDropMode(overId);
-    setDragState(prev => ({
-      ...prev,
-      overId,
-      dropMode,
-    }));
-  }, [dragState.activeId, calculateDropMode]);
+    // Player card drop
+    store.setOver(overId, calculateDropMode(overId));
+  }, [calculateDropMode]);
 
   const handleDragEnd = useCallback(async (_event: DragEndEvent) => {
-    const { activeId, overId, dropMode } = dragState;
-
-    // Clear state first
-    setDragState({
-      activeId: null,
-      overId: null,
-      dropMode: null,
-    });
+    const { activeId, overId, dropMode } = useDragStore.getState();
+    stopPointerTracking();
+    useDragStore.getState().endDrag();
 
     // Validate
     if (!activeId || !overId || activeId === overId || !dropMode) return;
@@ -181,42 +148,35 @@ export function useDragAndDrop({
     const overPlayer = players.find(p => p.id === overId);
     if (!overPlayer) return;
 
-    let updates: PlayerUpdate[];
-
-    if (dropMode === 'swap') {
-      updates = calculateSwapUpdates(activePlayer, overPlayer, groupView);
-    } else {
-      updates = calculateInsertUpdates(players, activePlayer, overPlayer, dropMode, groupView);
-    }
+    const updates: PlayerUpdate[] = dropMode === 'swap'
+      ? calculateSwapUpdates(activePlayer, overPlayer, groupView)
+      : calculateInsertUpdates(players, activePlayer, overPlayer, dropMode, groupView);
 
     if (updates.length > 0) {
       await onReorder(updates);
     }
-  }, [dragState, players, groupView, onReorder]);
+  }, [players, groupView, onReorder, stopPointerTracking]);
 
   const handleDragCancel = useCallback(() => {
-    setDragState({
-      activeId: null,
-      overId: null,
-      dropMode: null,
-    });
-  }, []);
+    stopPointerTracking();
+    useDragStore.getState().endDrag();
+  }, [stopPointerTracking]);
 
   // Memoized player IDs for droppable registration
   const playerIds = useMemo(() => players.map(p => p.id), [players]);
 
-  // Return a stable object so consumers that spread/pass it don't see a fresh
-  // reference on every parent render (all fields are already individually stable).
+  // No `dragState` in the return: cards read the drag store directly via
+  // selectors, so an over-transition no longer ripples this object into the
+  // memoized grid element. Stable so it can be a memo dependency upstream.
   return useMemo(() => ({
     sensors,
-    dragState,
     playerIds,
     handleDragStart,
     handleDragOver,
     handleDragEnd,
     handleDragCancel,
     canEdit,
-  }), [sensors, dragState, playerIds, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel, canEdit]);
+  }), [sensors, playerIds, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel, canEdit]);
 }
 
 /**

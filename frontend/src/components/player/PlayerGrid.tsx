@@ -16,7 +16,6 @@ import { toast } from '../../stores/toastStore';
 import { canResetGear } from '../../utils/permissions';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import type { SnapshotPlayer, ViewMode, ResetMode, GearSlot, MemberRole, ContentType, AssignPlayerRequest } from '../../types';
-import type { DragState } from '../dnd/useDragAndDrop';
 
 // Collapsible-section state (G1 / G2 / Subs), persisted per static+tier.
 // localStorage can throw (private mode / disabled / quota); the helpers swallow
@@ -45,7 +44,6 @@ interface PlayerCardRendererProps {
   viewMode: ViewMode;
   contentType: ContentType;
   clipboardPlayer: SnapshotPlayer | null;
-  dragState: DragState;
   canEdit: boolean;
   effectiveUserId: string | undefined;
   userRole: MemberRole | null | undefined;
@@ -91,7 +89,6 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
   viewMode,
   contentType,
   clipboardPlayer,
-  dragState,
   canEdit,
   effectiveUserId,
   userRole,
@@ -221,7 +218,6 @@ const PlayerCardRenderer = memo(function PlayerCardRenderer({
         viewMode={viewMode}
         contentType={contentType}
         clipboardPlayer={clipboardPlayer}
-        dragState={dragState}
         canEdit={canEdit}
         currentUserId={effectiveUserId}
         isGroupOwner={userRole === 'owner'}
@@ -295,7 +291,6 @@ export interface PlayerGridProps {
   clipboardPlayer: SnapshotPlayer | null;
   highlightedPlayerId: string | null;
   highlightedSlot: string | null;
-  dragState: DragState;
   canEdit: boolean;
   effectiveUserId: string | undefined;
   userRole: MemberRole | null | undefined;
@@ -353,7 +348,6 @@ function PlayerGridImpl({
   clipboardPlayer,
   highlightedPlayerId,
   highlightedSlot,
-  dragState,
   canEdit,
   effectiveUserId,
   userRole,
@@ -394,7 +388,6 @@ function PlayerGridImpl({
     viewMode,
     contentType,
     clipboardPlayer,
-    dragState,
     canEdit,
     effectiveUserId,
     userRole,
@@ -433,7 +426,6 @@ function PlayerGridImpl({
     viewMode,
     contentType,
     clipboardPlayer,
-    dragState,
     canEdit,
     effectiveUserId,
     userRole,

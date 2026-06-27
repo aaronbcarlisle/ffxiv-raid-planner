@@ -167,6 +167,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'improvement',
+        title: 'Roster drag-and-drop no longer re-renders the whole grid',
+        description:
+          'Drag state (active/over card + drop mode) moved into a dedicated store read per-card with selectors, so crossing a card during a drag re-renders only the 1-2 affected cards instead of all 8 — removing the ~120ms-per-crossing stutter. The grid/DndContext no longer re-render during a drag.',
+        pr: 153,
+        prTitle: 'perf(roster): isolate drag state so over-transitions do not re-render the grid',
+      },
+      {
+        internal: true,
+        category: 'improvement',
         title: 'Settings open-state decoupled from the roster render path',
         description:
           'Moved the settings panel open/close + active-tab state into a dedicated store (settingsPanelStore) so toggling the drawer no longer re-renders GroupView and the player grid. Combined with a single root TooltipProvider and memoized cards, this removes the ~450-575ms main-thread stall when opening/closing settings on the Roster page.',
