@@ -40,12 +40,12 @@ import { GearSyncDashboard } from '../components/group/GearSyncDashboard';
 import { PluginPage } from '../components/group/PluginPage';
 import { useDevice } from '../hooks/useDevice';
 import { useSwipe } from '../hooks/useSwipe';
-import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, PlugZap, Settings, Lock, Unlock } from 'lucide-react';
+import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, PlugZap, Lock, Unlock } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
 import { StaticHomeTab } from '../components/static-group/StaticHomeTab';
-import { SettingsPanel, SETTINGS_PANEL_WIDTH, type SettingsTab, type RecruitmentSection } from '../components/settings';
-import { RightDockPanel } from '../components/ui/RightDockPanel';
+import { StaticSettingsHost, type SettingsTab } from '../components/settings';
+import { useSettingsPanelStore } from '../stores/settingsPanelStore';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useGroupViewState } from '../hooks/useGroupViewState';
@@ -117,8 +117,6 @@ export function GroupView() {
     setClipboardPlayer,
     showCreateTierModal,
     setShowCreateTierModal,
-    showSettingsModal,
-    setShowSettingsModal,
     showRolloverDialog,
     setShowRolloverDialog,
     showDeleteTierConfirm,
@@ -179,10 +177,8 @@ export function GroupView() {
     minSwipeDistance: 60,
   });
 
-  // Settings panel options (for opening to specific tab with highlight)
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>('general');
-  const [recruitmentSection, setRecruitmentSection] = useState<RecruitmentSection | undefined>();
-  const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
+  // Settings panel open/close + tab live in settingsPanelStore (decoupled from
+  // GroupView's render so toggling never re-renders the roster).
   const [errorCopied, setErrorCopied] = useState(false);
   const [showControlsSheet, setShowControlsSheet] = useState(false);
 
@@ -191,12 +187,6 @@ export function GroupView() {
   const [isAddingPlayer, setIsAddingPlayer] = useState(false);
   // Roster onboarding from join request
   const [rosteringRequest, setRosteringRequest] = useState<import('../types').JoinRequest | null>(null);
-
-  // Refs to access current state in event handlers (avoids stale closures)
-  const settingsModalRef = useRef(showSettingsModal);
-  const settingsTabRef = useRef(settingsTab);
-  useEffect(() => { settingsModalRef.current = showSettingsModal; }, [showSettingsModal]);
-  useEffect(() => { settingsTabRef.current = settingsTab; }, [settingsTab]);
 
 
   // Handle viewAs URL parameter
@@ -573,39 +563,14 @@ export function GroupView() {
     const handleAddPlayerEvent = () => { setShowAddPlayerModal(true); };
     const handleNewTierEvent = () => { setShowCreateTierModal(true); };
     const handleRolloverEvent = () => { setShowRolloverDialog(true); };
-    const handleSettingsEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ tab?: SettingsTab; section?: RecruitmentSection; toggle?: boolean }>;
-      const requestedTab = customEvent.detail?.tab || 'general';
-      const requestedSection = customEvent.detail?.section;
-      const wantToggle = customEvent.detail?.toggle === true;
-      const isOpen = settingsModalRef.current;
-      const currentTab = settingsTabRef.current;
-
-      if (isOpen && (wantToggle || (requestedTab === currentTab && !requestedSection))) {
-        // Close: an explicit toggle while open, or the same tab requested again.
-        setShowSettingsModal(false);
-      } else {
-        // Different tab, or explicit section routing, or panel was closed
-        setSettingsTab(requestedTab);
-        if (requestedSection) setRecruitmentSection(requestedSection);
-        setHighlightCreateInvite(requestedTab === 'recruitment' && !requestedSection);
-        setShowSettingsModal(true);
-      }
-    };
-    const handleOpenSettingsInvitationsEvent = () => {
-      setSettingsTab('recruitment');
-      setRecruitmentSection('invitations');
-      setHighlightCreateInvite(true);
-      setShowSettingsModal(true);
-    };
     const handleDeleteTierEvent = () => { setShowDeleteTierConfirm(true); };
+    // Settings open/close is handled by settingsPanelStore (gear/dock toggle and
+    // the SettingsPanelController bridge), so GroupView no longer listens for it.
 
     window.addEventListener(HEADER_EVENTS.TIER_CHANGE, handleTierChangeEvent);
     window.addEventListener(HEADER_EVENTS.ADD_PLAYER, handleAddPlayerEvent);
     window.addEventListener(HEADER_EVENTS.NEW_TIER, handleNewTierEvent);
     window.addEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
-    window.addEventListener(HEADER_EVENTS.SETTINGS, handleSettingsEvent);
-    window.addEventListener(HEADER_EVENTS.OPEN_SETTINGS_INVITATIONS, handleOpenSettingsInvitationsEvent);
     window.addEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
     // Note: 'show-keyboard-shortcuts' listener is in Layout.tsx for global access
 
@@ -614,11 +579,9 @@ export function GroupView() {
       window.removeEventListener(HEADER_EVENTS.ADD_PLAYER, handleAddPlayerEvent);
       window.removeEventListener(HEADER_EVENTS.NEW_TIER, handleNewTierEvent);
       window.removeEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
-      window.removeEventListener(HEADER_EVENTS.SETTINGS, handleSettingsEvent);
-      window.removeEventListener(HEADER_EVENTS.OPEN_SETTINGS_INVITATIONS, handleOpenSettingsInvitationsEvent);
       window.removeEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
     };
-  }, [handleTierChange, handleAddPlayer, setShowCreateTierModal, setShowRolloverDialog, setShowSettingsModal, setShowDeleteTierConfirm]);
+  }, [handleTierChange, handleAddPlayer, setShowCreateTierModal, setShowRolloverDialog, setShowDeleteTierConfirm]);
 
   // Calculate sorted players
   const sortedPlayers = useMemo(() => {
@@ -705,7 +668,9 @@ export function GroupView() {
 
   // Check if any modal is open (including error modal)
   const isErrorModalOpen = !!error && !!currentGroup;
-  const isAnyModalOpen = showSettingsModal || showRolloverDialog ||
+  // Settings is a side dock (not a blocking modal) and is decoupled from this
+  // component's render, so it's intentionally excluded here.
+  const isAnyModalOpen = showRolloverDialog ||
                           showDeleteTierConfirm || showCreateTierModal ||
                           showKeyboardHelp || showLogLootModal ||
                           showLogMaterialModal || showMarkFloorClearedModal ||
@@ -753,6 +718,21 @@ export function GroupView() {
 
   // Stable identity so PlayerGrid's memo bails on unrelated parent re-renders.
   const handleCancelEdit = useCallback(() => setEditingPlayerId(null), [setEditingPlayerId]);
+
+  // Stable callback for StaticSettingsHost (accepted join request → roster add).
+  const handleAddToRoster = useCallback((request: import('../types').JoinRequest) => {
+    if (request.rosterPlayerId) {
+      toast.info('Already added to roster');
+      return;
+    }
+    if (!currentTier?.tierId) {
+      toast.error('Create a tier first before adding to roster.');
+      return;
+    }
+    useSettingsPanelStore.getState().close();
+    setRosteringRequest(request);
+    setShowAddPlayerModal(true);
+  }, [currentTier?.tierId]);
 
   // Roster toolbar toggles (persisted)
   // Hide/show the substitutes section entirely
@@ -1266,9 +1246,7 @@ export function GroupView() {
                   }
                   canManage={canManageRoster(userRole).allowed}
                   onOpenRequests={() => {
-                    setSettingsTab('recruitment');
-                    setRecruitmentSection('requests');
-                    setShowSettingsModal(true);
+                    useSettingsPanelStore.getState().open({ tab: 'recruitment', section: 'requests' });
                   }}
                   onScheduleFarm={(trial) => {
                     const mountFarmData = useMountFarmStore.getState().data;
@@ -1496,8 +1474,7 @@ export function GroupView() {
               {pageMode === 'more' && currentGroup && (
                 <MorePage
                   onOpenSettings={(tab) => {
-                    setSettingsTab(tab as import('../components/settings').SettingsTab ?? 'general');
-                    setShowSettingsModal(true);
+                    useSettingsPanelStore.getState().open({ tab: (tab as SettingsTab) ?? 'general' });
                   }}
                   onNavigate={setPageMode}
                   onSetGearSubTab={setGearSubTab}
@@ -1547,56 +1524,17 @@ export function GroupView() {
         tierName={currentTier?.tierId ? getTierById(currentTier.tierId)?.name : undefined}
       />
 
-      {/* Settings Panel — full slide-out on mobile, right-docked on desktop
-          (the dock sits below the header so the gear stays visible/clickable). */}
-      {currentGroup && (() => {
-        const onCloseSettings = () => {
-          setShowSettingsModal(false);
-          setSettingsTab('general');
-          setRecruitmentSection(undefined);
-          setHighlightCreateInvite(false);
-        };
-        const panel = (
-          <SettingsPanel
-            container={isSmallScreen ? 'slideout' : 'dock'}
-            isOpen={showSettingsModal}
-            onClose={onCloseSettings}
-            group={currentGroup}
-            players={mainRosterPlayers}
-            tierId={currentTier?.tierId}
-            isAdmin={isAdmin}
-            initialTab={settingsTab}
-            initialRecruitmentSection={recruitmentSection}
-            highlightCreateInvite={highlightCreateInvite}
-            onAddToRoster={(request) => {
-              if (request.rosterPlayerId) {
-                toast.info('Already added to roster');
-                return;
-              }
-              if (!currentTier?.tierId) {
-                toast.error('Create a tier first before adding to roster.');
-                return;
-              }
-              setShowSettingsModal(false);
-              setRosteringRequest(request);
-              setShowAddPlayerModal(true);
-            }}
-          />
-        );
-        // Mobile keeps the original full overlay (SettingsPanel owns its chrome).
-        if (isSmallScreen) return panel;
-        // Desktop docks it to the right edge, below the header band.
-        return (
-          <RightDockPanel
-            isOpen={showSettingsModal}
-            onClose={onCloseSettings}
-            width={SETTINGS_PANEL_WIDTH}
-            title={<span className="flex items-center gap-2"><Settings className="w-5 h-5" />Settings</span>}
-          >
-            {panel}
-          </RightDockPanel>
-        );
-      })()}
+      {/* Settings Panel — subscribes to settingsPanelStore for open-state, so
+          toggling it never re-renders GroupView / the roster. */}
+      {currentGroup && (
+        <StaticSettingsHost
+          group={currentGroup}
+          players={mainRosterPlayers}
+          tierId={currentTier?.tierId}
+          isAdmin={isAdmin}
+          onAddToRoster={handleAddToRoster}
+        />
+      )}
 
       {/* Rollover Dialog */}
       {showRolloverDialog && currentGroup && currentTier && (

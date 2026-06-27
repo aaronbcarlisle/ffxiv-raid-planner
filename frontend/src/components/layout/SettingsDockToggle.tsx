@@ -5,34 +5,32 @@
  *
  * It sits at the top-right of the content area (below the header band, same
  * vertical position as the rail's identity header) and slides inward to the
- * panel's left edge when the panel is open — exactly mirroring how the rail's
- * chevron stays pinned to the rail's inner edge. Clicking it dispatches the
- * shared `HEADER_EVENTS.SETTINGS` toggle, so whichever panel listener is mounted
- * (GroupView inside a static, GlobalSettingsPanel elsewhere) opens/closes.
+ * panel's left edge when open — mirroring how the rail's chevron stays pinned
+ * to the rail's inner edge. Open-state lives in `settingsPanelStore`, so the
+ * slide animates via `transform` (GPU) and the click never touches the URL.
  *
  * Desktop only — on mobile the settings gear stays in the header and the panel
  * is a full-screen slide-out.
  */
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Settings, PanelRightClose } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { SETTINGS_PANEL_WIDTH } from '../settings';
-import { HEADER_EVENTS } from './Header';
 
 export function SettingsDockToggle() {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const user = useAuthStore((s) => s.user);
+  const isOpen = useSettingsPanelStore((s) => s.isOpen);
+  const toggle = useSettingsPanelStore((s) => s.toggle);
 
   const isHome = location.pathname === '/';
-  const isOpen = searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
-
   if (!user || isHome) return null;
 
   return (
     <button
       type="button"
-      onClick={() => window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { toggle: true } }))}
+      onClick={() => toggle()}
       aria-label={isOpen ? 'Close settings' : 'Open settings'}
       aria-expanded={isOpen}
       className="hidden sm:flex fixed right-0 z-40 h-12 w-7 items-center justify-center rounded-l-lg border border-r-0 border-border-default bg-surface-raised text-text-muted hover:text-accent shadow-sm will-change-transform"

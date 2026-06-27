@@ -19,6 +19,7 @@ import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
 import { useDevice } from '../../hooks/useDevice';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { StaticSwitcher, TierSelector } from '../static-group';
 import { ContextSwitcher } from './ContextSwitcher';
 import { TierActionsMenu, TipsCarousel, DiscordIcon, GitHubIcon, ThemeToggle } from '../ui';
@@ -65,7 +66,7 @@ export function Header() {
 
   // Settings panel open-state is URL-derived (same source GroupView uses), so the
   // gear icon and the header padding stay in sync with the docked panel.
-  const settingsOpen = searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
+  const settingsOpen = useSettingsPanelStore((s) => s.isOpen);
   const { prefersReducedMotion } = useDevice();
 
   // Admin mode is determined by URL param (navigated from Admin Dashboard)

@@ -9,11 +9,11 @@
 
 /* eslint-disable design-system/no-raw-button */
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Settings, ListOrdered, Users, Globe, Target, Shield, Plus, Trash2 } from 'lucide-react';
 import { SettingsSubNav } from './SettingsSubNav';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
 import { StaticTab } from './StaticTab';
@@ -62,7 +62,6 @@ const ALL_TABS: TabItem[] = [
   { id: 'members',     label: 'Members',       icon: Users,       visible: () => true },
 ];
 
-const ALL_TAB_IDS: SettingsTab[] = ALL_TABS.map((t) => t.id);
 
 // ─── Goals & Farms sub-nav ───────────────────────────────────────────────────
 
@@ -321,12 +320,6 @@ interface SettingsPanelProps {
   players?: SnapshotPlayer[];
   tierId?: string;
   isAdmin?: boolean;
-  /** Initial tab to show when panel opens */
-  initialTab?: SettingsTab;
-  /** Override the initial Recruitment sub-section (e.g. from badge routing). */
-  initialRecruitmentSection?: RecruitmentSection;
-  /** Whether to highlight the create invitation button */
-  highlightCreateInvite?: boolean;
   /** Start the roster add flow from an accepted join request */
   onAddToRoster?: (request: JoinRequest) => void;
   /**
@@ -344,42 +337,17 @@ export function SettingsPanel({
   players = [],
   tierId,
   isAdmin,
-  initialTab = 'general',
-  initialRecruitmentSection,
-  highlightCreateInvite = false,
   onAddToRoster,
   container = 'slideout',
 }: SettingsPanelProps) {
-  // Active tab lives in the URL (?settings=<tab>) via the shared hook, so the
-  // panel is deep-linkable and follows browser back/forward. The `settings`
-  // param is cleared on close in GroupView (useGroupViewState).
-  const [activeTab, setActiveTab] = useUrlTabState('settings', ALL_TAB_IDS, 'general');
-
-  // Event-driven open-to-tab (header buttons / badge routing) arrives via the
-  // initialTab prop. Reflect it into the URL when the panel opens, or when a
-  // changed initialTab is routed in while already open — via REPLACE so opening
-  // directly to a tab doesn't leave a phantom history entry (user-driven tab
-  // clicks still push, so back steps through them). On open we don't clobber a
-  // ?settings already pinned by a deep-link / back entry.
-  const [, setSearchParams] = useSearchParams();
-  const prevInitialTab = useRef(initialTab);
-  const wasOpenRef = useRef(isOpen);
-  useEffect(() => {
-    const justOpened = isOpen && !wasOpenRef.current;
-    const tabChanged = isOpen && initialTab !== prevInitialTab.current;
-    if (justOpened || tabChanged) {
-      setSearchParams((prev) => {
-        const params = new URLSearchParams(prev);
-        // A deep-link / back entry that already pins ?settings wins over the
-        // prop default when the panel is merely (re)opening.
-        if (justOpened && !tabChanged && params.get('settings')) return prev;
-        params.set('settings', initialTab);
-        return params;
-      }, { replace: true });
-    }
-    prevInitialTab.current = initialTab;
-    wasOpenRef.current = isOpen;
-  }, [isOpen, initialTab, setSearchParams]);
+  // Open-state, active tab, and routed sub-section all live in the settings
+  // store (NOT the URL) so toggling the panel never re-renders the roster that
+  // sits under the same Layout subtree. Selectors keep this component the only
+  // settings consumer that re-renders on a tab change.
+  const activeTab = useSettingsPanelStore((s) => s.tab);
+  const setActiveTab = useSettingsPanelStore((s) => s.setTab);
+  const initialRecruitmentSection = useSettingsPanelStore((s) => s.recruitmentSection);
+  const highlightCreateInvite = useSettingsPanelStore((s) => s.highlightCreateInvite);
 
   const role = group?.userRole;
   const canManage = !!group && isManager(role, isAdmin);

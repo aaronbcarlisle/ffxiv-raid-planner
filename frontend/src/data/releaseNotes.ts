@@ -165,6 +165,15 @@ export const RELEASES: Release[] = [
         prTitle: 'Plan I — Navigation, context & misc polish',
       },
       {
+        internal: true,
+        category: 'improvement',
+        title: 'Settings open-state decoupled from the roster render path',
+        description:
+          'Moved the settings panel open/close + active-tab state into a dedicated store (settingsPanelStore) so toggling the drawer no longer re-renders GroupView and the player grid. Combined with a single root TooltipProvider and memoized cards, this removes the ~450-575ms main-thread stall when opening/closing settings on the Roster page.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
         category: 'improvement',
         title: 'Settings is available everywhere with a single docked toggle',
         description:

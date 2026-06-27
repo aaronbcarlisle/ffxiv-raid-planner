@@ -20,8 +20,11 @@ vi.mock('../../stores/invitationStore', () => ({ useInvitationStore: () => ({ in
 vi.mock('../../stores/joinRequestStore', () => ({ useJoinRequestStore: Object.assign(() => 0, { getState: () => ({ fetchGroupRequests: vi.fn() }) }) }));
 
 import { Header } from './Header';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 
 beforeEach(() => {
+  // Reset the settings store between tests (open-state lives here now, not the URL).
+  useSettingsPanelStore.setState({ isOpen: false });
   vi.stubGlobal(
     'matchMedia',
     vi.fn().mockImplementation((query: string) => ({
@@ -52,12 +55,13 @@ describe('Header settings toggle', () => {
     window.removeEventListener('header:settings', handler);
   });
 
-  it('reflects the open-state from the URL via aria-expanded', () => {
-    renderHeaderAt('/group/abc?showSettings=true');
+  it('reflects the open-state from the settings store via aria-expanded', () => {
+    useSettingsPanelStore.setState({ isOpen: true });
+    renderHeaderAt('/group/abc');
     expect(screen.getByLabelText("Settings")).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('is collapsed when the settings param is absent', () => {
+  it('is collapsed when the settings store is closed', () => {
     renderHeaderAt('/group/abc');
     expect(screen.getByLabelText("Settings")).toHaveAttribute('aria-expanded', 'false');
   });
