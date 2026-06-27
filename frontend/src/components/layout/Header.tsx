@@ -8,7 +8,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Copy, UserPlus, Settings, Plus, Trash2 } from 'lucide-react';
+import { Copy, UserPlus, Settings, PanelRightClose, Plus, Trash2 } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useTierStore } from '../../stores/tierStore';
@@ -17,6 +17,8 @@ import { useViewAsStore } from '../../stores/viewAsStore';
 import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
+import { SETTINGS_PANEL_WIDTH } from '../settings';
+import { useDevice } from '../../hooks/useDevice';
 import { StaticSwitcher, TierSelector } from '../static-group';
 import { ContextSwitcher } from './ContextSwitcher';
 import { TierActionsMenu, TipsCarousel, DiscordIcon, GitHubIcon, ThemeToggle } from '../ui';
@@ -60,6 +62,11 @@ export function Header() {
   // signed in or on a group route. When it is, the header avatar is redundant
   // on desktop — keep it only for mobile (< sm), where there is no rail.
   const railPresent = !!user || isGroupRoute;
+
+  // Settings panel open-state is URL-derived (same source GroupView uses), so the
+  // gear icon and the header padding stay in sync with the docked panel.
+  const settingsOpen = searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
+  const { isSmallScreen } = useDevice();
 
   // Admin mode is determined by URL param (navigated from Admin Dashboard)
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -187,7 +194,10 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
-      <div className="max-w-[160rem] mx-auto px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1 sm:gap-x-4 sm:flex-nowrap">
+      <div
+        className="max-w-[160rem] mx-auto px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1 sm:gap-x-4 sm:flex-nowrap transition-[padding] duration-200"
+        style={settingsOpen && !isSmallScreen ? { paddingRight: `calc(${SETTINGS_PANEL_WIDTH} + 1rem)` } : undefined}
+      >
         {/* Left side: Logo + Group context with breadcrumb hierarchy */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Logo */}
@@ -316,13 +326,15 @@ export function Header() {
                 >
                   <span className="relative">
                     <IconButton
-                      icon={<Settings className="w-5 h-5" />}
-                      onClick={() => dispatchHeaderEvent(
-                        HEADER_EVENTS.SETTINGS,
-                        pendingJoinRequests > 0 ? { tab: 'recruitment' } : undefined,
-                      )}
+                      icon={settingsOpen ? <PanelRightClose className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
+                      onClick={() => dispatchHeaderEvent(HEADER_EVENTS.SETTINGS, {
+                        toggle: true,
+                        ...(pendingJoinRequests > 0 ? { tab: 'recruitment' } : {}),
+                      })}
                       variant="ghost"
                       aria-label="Static settings"
+                      aria-expanded={settingsOpen}
+                      aria-pressed={settingsOpen}
                     />
                     {pendingJoinRequests > 0 && (
                       <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-accent text-accent-contrast pointer-events-none">
