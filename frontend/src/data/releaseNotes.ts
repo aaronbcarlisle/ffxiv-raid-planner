@@ -126,6 +126,39 @@ export const RELEASES: Release[] = [
       },
       {
         category: 'improvement',
+        title: 'World and data-center fields are now dropdowns',
+        description:
+          'Server/world entry across the app — the recruitment Discovery filter, Add Character, Character Link search, and the Split Planner — now uses a consistent data-center → world dropdown cascade instead of free-text fields, so there are no more typos or guessing valid world names.',
+        pr: 154,
+        prTitle: 'Plan F — Design-system standardization',
+      },
+      {
+        category: 'improvement',
+        title: 'Add Character modal redesigned',
+        description:
+          'The Add Character dialog now has a clear icon + "Add Character" title (no more wrapping on long player names), data-center/world dropdowns, and a proper job picker instead of a free-text job box.',
+        pr: 154,
+        prTitle: 'Plan F — Design-system standardization',
+      },
+      {
+        category: 'improvement',
+        title: 'Consistent modal headers across the app',
+        description:
+          'Dialog headers now consistently pair a contextual icon with a Title-Case title (BiS Targets, Collection Goal, Job Profile, Suggest Content, Link Character, and more), for a more polished, predictable look.',
+        pr: 154,
+        prTitle: 'Plan F — Design-system standardization',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Reusable WorldSelect + sub-readable badge text fixes',
+        description:
+          'Extracted the data-center/world cascade into a shared WorldSelect component (dogfooded from DiscoveryTab), added an aria-label passthrough to Select, and raised sub-9px badge text to the readable floor. The typography scale + lint guard were already in place from Wave 1; the broader hotspot text normalization (§5.3) and the shared-Select portal change (§4.1) are deferred as follow-ups to avoid blind layout regressions.',
+        pr: 154,
+        prTitle: 'Plan F — Design-system standardization',
+      },
+      {
+        category: 'improvement',
         title: 'Clearer navigation labels: Loot Log and Tracking',
         description:
           'The static "Gear & Sync" tab is now "Loot Log", and both the static "Goals & Farms" rail tab and the Player Hub "Collections & Goals" tab are now "Tracking", for a more consistent vocabulary across contexts. Links and shortcuts are unchanged.',
