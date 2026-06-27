@@ -53,7 +53,7 @@ export function WorldSelect({
   };
 
   return (
-    <div className={layout === 'row' ? 'grid grid-cols-2 gap-3' : 'space-y-2'}>
+    <div className={layout === 'row' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : 'space-y-2'}>
       {showDataCenter && (
         <Select aria-label="Data center" value={dataCenter} onChange={handleDc} options={dcOptions} disabled={disabled} />
       )}
