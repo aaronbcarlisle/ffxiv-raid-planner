@@ -7,6 +7,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Copy, UserPlus, Settings, PanelRightClose, Plus, Trash2 } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
@@ -66,7 +67,7 @@ export function Header() {
   // Settings panel open-state is URL-derived (same source GroupView uses), so the
   // gear icon and the header padding stay in sync with the docked panel.
   const settingsOpen = searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
-  const { isSmallScreen } = useDevice();
+  const { isSmallScreen, prefersReducedMotion } = useDevice();
 
   // Admin mode is determined by URL param (navigated from Admin Dashboard)
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -241,21 +242,31 @@ export function Header() {
             </div>
           )}
 
-          {/* Breadcrumb separator and Tier selector - group routes only, hidden on mobile */}
-          {isGroupRoute && currentGroup && tiers.length > 0 && (
-            <div className="hidden sm:flex items-center gap-1">
-              <span className="text-text-muted text-lg">›</span>
-              <TierSelector
-                tiers={tiers}
-                currentTierId={currentTier?.tierId}
-                onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
-              />
-              {/* Tier actions kebab menu */}
-              {canEdit && tierActions.length > 0 && (
-                <TierActionsMenu actions={tierActions} />
-              )}
-            </div>
-          )}
+          {/* Breadcrumb separator and Tier selector - group routes only, hidden on
+              mobile. Eases in when a static becomes active so selecting a static
+              reveals the tier selector calmly instead of snapping into place. */}
+          <AnimatePresence>
+            {isGroupRoute && currentGroup && tiers.length > 0 && (
+              <motion.div
+                className="hidden sm:flex items-center gap-1"
+                initial={prefersReducedMotion ? false : { opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, x: -6 }}
+                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+              >
+                <span className="text-text-muted text-lg">›</span>
+                <TierSelector
+                  tiers={tiers}
+                  currentTierId={currentTier?.tierId}
+                  onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
+                />
+                {/* Tier actions kebab menu */}
+                {canEdit && tierActions.length > 0 && (
+                  <TierActionsMenu actions={tierActions} />
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Invite Members button — sits just right of the tier kebab on the
               left side. Hidden on mobile (the static switcher takes the row). */}
