@@ -83,8 +83,8 @@ export function useGroupViewKeyboardShortcuts(
       { key: '`', description: 'Overview tab',      action: () => setPageMode('overview') },
       { key: '1', description: 'Schedule tab',      action: () => setPageMode('schedule') },
       { key: '2', description: 'Roster tab',        action: () => setPageMode('roster') },
-      { key: '3', description: 'Goals & Farms tab', action: () => setPageMode('goals') },
-      { key: '4', description: 'Gear & Sync tab',   action: () => setPageMode('gear') },
+      { key: '3', description: 'Tracking tab',      action: () => setPageMode('goals') },
+      { key: '4', description: 'Loot Log tab',      action: () => setPageMode('gear') },
 
       // ===== Sub tabs (Alt+1-3) =====
       // Gear sub-tabs: Priority, Loot Log, Summary, Weapon

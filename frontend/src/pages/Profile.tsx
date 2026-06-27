@@ -73,7 +73,7 @@ const PROFILE_NAV_ITEMS: Array<{
   { id: 'overview',     label: 'Overview',          description: 'Character overview, goals, and quick actions',              shortcut: '`', icon: LayoutDashboard },
   { id: 'sync',         label: 'Sync & Gear',       description: 'Plugin sync status and character gear snapshots',           shortcut: '1', icon: Shield },
   { id: 'jobs-gear',    label: 'Jobs & Gear',       description: 'Job profiles, BiS targets, and readiness status',          shortcut: '2', icon: Crosshair },
-  { id: 'collections',  label: 'Collections & Goals', description: 'Mounts, music, weapons, collection goals, and tasks',    shortcut: '3', icon: Sparkles },
+  { id: 'collections',  label: 'Tracking',          description: 'Mounts, music, weapons, collection goals, and tasks',    shortcut: '3', icon: Sparkles },
   { id: 'availability', label: 'Availability',      description: 'Your weekly availability for raid nights',                 shortcut: '4', icon: Calendar },
   { id: 'preview',      label: 'Share',             description: 'Preview and manage your shareable profile',                shortcut: '5', icon: Eye },
 ];
@@ -314,7 +314,7 @@ export default function Profile() {
       { key: '`', description: 'Overview',            action: () => setActiveTab('overview') },
       { key: '1', description: 'Sync & Gear',         action: () => setActiveTab('sync') },
       { key: '2', description: 'Jobs & Gear',         action: () => setActiveTab('jobs-gear') },
-      { key: '3', description: 'Collections & Goals', action: () => setActiveTab('collections') },
+      { key: '3', description: 'Tracking',            action: () => setActiveTab('collections') },
       { key: '4', description: 'Availability',        action: () => setActiveTab('availability') },
       { key: '5', description: 'Share',               action: () => setActiveTab('preview') },
     ],

@@ -28,7 +28,7 @@ beforeEach(() => {
 describe('SidebarNav', () => {
   it('renders a Plugin nav item immediately before More', () => {
     render(<MemoryRouter><SidebarNav activeTab="overview" onTabChange={vi.fn()} staticName="X" /></MemoryRouter>);
-    const labels = screen.getAllByText(/Overview|Schedule|Roster|Goals & Farms|Gear & Sync|Plugin|More/).map(n => n.textContent);
+    const labels = screen.getAllByText(/Overview|Schedule|Roster|Tracking|Loot Log|Plugin|More/).map(n => n.textContent);
     expect(labels).toContain('Plugin');
     expect(labels.indexOf('Plugin')).toBeLessThan(labels.indexOf('More'));
   });

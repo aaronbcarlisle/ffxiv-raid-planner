@@ -1150,8 +1150,8 @@ export function GroupView() {
               {pageMode === 'overview' && <PageHeader icon={<LayoutDashboard size={14} className="text-accent" />} title="Overview" subtitle="Command center for your static." />}
               {pageMode === 'roster' && <PageHeader icon={<Users size={14} className="text-accent" />} title="Roster" subtitle="Manage members, roles, and characters." />}
               {pageMode === 'schedule' && <PageHeader icon={<Calendar size={14} className="text-accent" />} title="Schedule" subtitle="Plan sessions and manage recurring events." />}
-              {pageMode === 'goals' && <PageHeader icon={<Trophy size={14} className="text-accent" />} title="Goals & Farms" subtitle="Track objectives, farms, and weekly goals." />}
-              {pageMode === 'gear' && <PageHeader icon={<Shield size={14} className="text-accent" />} title="Gear & Sync" subtitle="Jobs, BiS, and sync health." />}
+              {pageMode === 'goals' && <PageHeader icon={<Trophy size={14} className="text-accent" />} title="Tracking" subtitle="Track objectives, farms, and weekly goals." />}
+              {pageMode === 'gear' && <PageHeader icon={<Shield size={14} className="text-accent" />} title="Loot Log" subtitle="Jobs, BiS, and sync health." />}
               {pageMode === 'plugin' && <PageHeader icon={<PlugZap size={14} className="text-accent" />} title="Plugin" subtitle="Sync gear and character data from FFXIV." />}
               {pageMode === 'more' && <PageHeader icon={<MoreHorizontal size={14} className="text-accent" />} title="More" subtitle="Lead tools, requests, and settings." />}
 

@@ -15,8 +15,8 @@ const NAV_DEFS: Array<{ id: PageMode; label: string; description: string; shortc
   { id: 'overview', label: 'Overview',      description: 'Static overview, next raid, and pending applications', shortcut: '`', icon: LayoutDashboard },
   { id: 'schedule', label: 'Schedule',      description: 'Upcoming sessions, availability, and Discord sync',    shortcut: '1', icon: Calendar },
   { id: 'roster',   label: 'Roster',        description: 'Member list, roles, and join requests',                shortcut: '2', icon: Users },
-  { id: 'goals',    label: 'Goals & Farms', description: 'Farm goals, mount drops, and clear tracking',          shortcut: '3', icon: Trophy },
-  { id: 'gear',     label: 'Gear & Sync',   description: 'BiS sets, gear sync, and loot history',                shortcut: '4', icon: Shield },
+  { id: 'goals',    label: 'Tracking',      description: 'Farm goals, mount drops, and clear tracking',          shortcut: '3', icon: Trophy },
+  { id: 'gear',     label: 'Loot Log',      description: 'BiS sets, gear sync, and loot history',                shortcut: '4', icon: Shield },
 ];
 
 // Plugin sits directly before More so the two stay grouped at the end of the rail.
