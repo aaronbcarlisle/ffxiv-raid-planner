@@ -24,7 +24,7 @@ import { ContextSwitcher } from './ContextSwitcher';
 import { TierActionsMenu, TipsCarousel, DiscordIcon, GitHubIcon, ThemeToggle } from '../ui';
 import { Tooltip, IconButton } from '../primitives';
 import { RAID_TIERS } from '../../gamedata';
-import { canManageTiers, canManageGroup } from '../../utils/permissions';
+import { canManageTiers } from '../../utils/permissions';
 import { DISCORD_INVITE_URL, GITHUB_REPO_URL } from '../../config';
 
 // Custom event types for communication with GroupView
@@ -93,6 +93,9 @@ export function Header() {
   const isMember = userRole === 'owner' || userRole === 'lead' || userRole === 'member' || isAdmin;
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
   const canManageInvitations = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
+  // The Settings panel is now role-aware (General/Goals/Members for everyone),
+  // so any signed-in user with a role in this static can open it — not just managers.
+  const canOpenSettings = !!user && (isMember || userRole === 'viewer');
 
   // Fetch invitations for Invite Members button
   useEffect(() => {
@@ -155,7 +158,6 @@ export function Header() {
 
   // Check permissions - pass isAdminAccess for elevated admin privileges
   const tierPermission = canManageTiers(userRole, isAdminAccess);
-  const groupPermission = canManageGroup(userRole, isAdminAccess);
 
   // Build tier actions for kebab menu
   const tierActions = useMemo(() => {
@@ -305,8 +307,8 @@ export function Header() {
           {/* Group controls (only on group pages) */}
           {isGroupRoute && currentGroup && (
             <>
-              {/* Settings gear icon (opens slide-out settings panel) */}
-              {groupPermission.allowed && (
+              {/* Settings gear icon (opens the role-aware settings panel) */}
+              {canOpenSettings && (
                 <Tooltip
                   content={
                     <div>
