@@ -6,6 +6,7 @@
  */
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { PanelRightClose } from 'lucide-react';
 
 interface RightDockPanelProps {
   isOpen: boolean;
@@ -44,9 +45,17 @@ export function RightDockPanel({ isOpen, onClose, width, title, children }: Righ
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
           >
             {title && (
-              <div className="flex items-center justify-between px-4 h-12 border-b border-border-default flex-shrink-0">
+              /* Clicking the title bar closes the panel (in addition to the
+                 header gear); the chevron-into-panel icon signals the affordance. */
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close panel"
+                className="group flex items-center justify-between px-4 h-12 border-b border-border-default flex-shrink-0 w-full text-left hover:bg-white/[0.03] transition-colors"
+              >
                 <div className="font-semibold text-text-primary">{title}</div>
-              </div>
+                <PanelRightClose className="w-4 h-4 text-text-muted group-hover:text-accent transition-colors flex-shrink-0" />
+              </button>
             )}
             <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
           </motion.aside>

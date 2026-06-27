@@ -58,7 +58,14 @@ export function AppRail({ context, identity, items, collapseKey, footer }: AppRa
             <ChevronRight size={14} />
           </button>
         ) : (
-          <>
+          /* The whole identity row toggles collapse; the chevron stays as the
+             visible affordance (no nested button, so clicks never conflict). */
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="Collapse sidebar"
+            className="group/header w-full h-full flex items-center text-left"
+          >
             <div className="flex items-center flex-1 min-w-0 px-3 gap-2.5">
               <div
                 className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
@@ -73,15 +80,10 @@ export function AppRail({ context, identity, items, collapseKey, footer }: AppRa
                 {identity.label}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={toggle}
-              aria-label="Collapse sidebar"
-              className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
-            >
+            <span className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted group-hover/header:text-accent transition-colors border-l border-border-subtle">
               <ChevronLeft size={13} />
-            </button>
-          </>
+            </span>
+          </button>
         )}
       </div>
 
