@@ -1563,7 +1563,7 @@ export function GroupView() {
             isOpen={showSettingsModal}
             onClose={onCloseSettings}
             width={SETTINGS_PANEL_WIDTH}
-            title={<span className="flex items-center gap-2"><Settings className="w-5 h-5" />Static Settings</span>}
+            title={<span className="flex items-center gap-2"><Settings className="w-5 h-5" />Settings</span>}
           >
             {panel}
           </RightDockPanel>

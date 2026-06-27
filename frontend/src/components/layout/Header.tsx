@@ -310,7 +310,7 @@ export function Header() {
                 <Tooltip
                   content={
                     <div>
-                      <div className="font-medium">Static Settings</div>
+                      <div className="font-medium">Settings</div>
                       <div className="text-text-secondary text-xs mt-0.5">
                         Manage settings, members, and invitations
                         {pendingJoinRequests > 0 && ` — ${pendingJoinRequests} pending join request${pendingJoinRequests > 1 ? 's' : ''}`}

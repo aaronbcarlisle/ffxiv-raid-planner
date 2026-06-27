@@ -39,9 +39,11 @@ interface PriorityTabProps {
   players: SnapshotPlayer[];
   tierId?: string;
   onClose?: () => void;
+  /** View-only: disable all mutating controls (e.g. a member viewing Priority). */
+  readOnly?: boolean;
 }
 
-export function PriorityTab({ group, players, tierId, onClose: _onClose }: PriorityTabProps) {
+export function PriorityTab({ group, players, tierId, onClose: _onClose, readOnly = false }: PriorityTabProps) {
   const { updateGroup } = useStaticGroupStore();
 
   // Subtab in the URL (?psub=mode|advanced) — its own settings sub-tab param
@@ -83,7 +85,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
   }, [settings, group.settings?.prioritySettings]);
 
   // Permission checks
-  const canEdit = group.userRole === 'owner' || group.userRole === 'lead';
+  const canEdit = (group.userRole === 'owner' || group.userRole === 'lead') && !readOnly;
 
   // Mode change handler
   const handleModeChange = useCallback((mode: PrioritySystemMode) => {
