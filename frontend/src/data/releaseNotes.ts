@@ -85,6 +85,29 @@ export const RELEASES: Release[] = [
         pr: 148,
         prTitle: 'Wave 1 — Foundation: enforcement, tokens, constrained primitives',
       },
+      {
+        category: 'fix',
+        title: 'Static switcher keeps your selected static when changing context',
+        description:
+          'Switching to Player Hub or Static Finder no longer resets the selected static. The dropdown now just picks which static is selected — only clicking the static name navigates to it — so you can line up a different static from anywhere.',
+        pr: 149,
+        prTitle: 'Nav-shell fixes — static selector, Plugin tab/URL, rail light mode',
+      },
+      {
+        category: 'improvement',
+        title: 'Plugin is now its own page with its own link',
+        description:
+          'The Dalamud plugin setup moved out of Gear & Sync into a dedicated Plugin tab with its own URL, so it is directly linkable and no longer buried under the sync dashboard.',
+        pr: 149,
+        prTitle: 'Nav-shell fixes — static selector, Plugin tab/URL, rail light mode',
+      },
+      {
+        category: 'fix',
+        title: 'Navigation rail follows light mode',
+        description: 'The left navigation rail now uses the themed gradient, so it is no longer dark when light mode is on.',
+        pr: 149,
+        prTitle: 'Nav-shell fixes — static selector, Plugin tab/URL, rail light mode',
+      },
     ],
   },
   {
