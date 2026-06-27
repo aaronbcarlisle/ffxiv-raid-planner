@@ -68,10 +68,12 @@ export function ContextSwitcher({
   const rememberStaticTab = useAuthStore((s) => prefRememberStaticTab(s.user));
   const [open, setOpen] = useState(false);
 
-  // The "selected static" the Static segment points at. The ▾ dropdown updates
-  // this WITHOUT navigating; only clicking the static name navigates. It is
-  // retained across Player Hub / Static Finder visits (and reloads), so the
-  // segment never resets to the first static when you switch context.
+  // The "selected static" the Static segment points at. Off-route (Player Hub /
+  // Static Finder) the ▾ dropdown only updates this selection — you click the
+  // static name to navigate. But when you're already IN the Static view,
+  // selecting a different static navigates immediately (you're switching the
+  // view you're looking at). The selection is retained across context switches
+  // and reloads, so the segment never resets to the first static.
   const [selectedCode, setSelectedCode] = useState<string | null>(() => {
     try { return localStorage.getItem(SELECTED_STATIC_KEY); } catch { return null; }
   });
@@ -91,11 +93,6 @@ export function ContextSwitcher({
       try { localStorage.setItem(SELECTED_STATIC_KEY, selectedCode); } catch { /* ignore */ }
     }
   }, [selectedCode]);
-
-  const selectStatic = useCallback((shareCode: string) => {
-    setSelectedCode(shareCode);
-    setOpen(false);
-  }, []);
 
   useEffect(() => {
     if (open && isMember) onFetchGroups();
@@ -132,6 +129,15 @@ export function ContextSwitcher({
     }
     return base;
   }, [rememberStaticTab, onStatic, searchParams]);
+
+  // Picking a static from the dropdown: always update the selection; navigate
+  // immediately only when already in the Static view (switch the view you're on).
+  // Off-route (Hub/Finder) it defers — you click the static name to navigate.
+  const selectStatic = useCallback((shareCode: string) => {
+    setSelectedCode(shareCode);
+    setOpen(false);
+    if (onStatic) navigate(buildStaticHref(shareCode));
+  }, [onStatic, navigate, buildStaticHref]);
 
   // The static the "Static" segment points to: the selected static (from the
   // dropdown / retained), else the active group, else the first of the user's

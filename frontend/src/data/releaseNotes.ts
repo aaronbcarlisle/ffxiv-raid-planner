@@ -89,7 +89,7 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Static switcher keeps your selected static when changing context',
         description:
-          'Switching to Player Hub or Static Finder no longer resets the selected static. The dropdown now just picks which static is selected — only clicking the static name navigates to it — so you can line up a different static from anywhere.',
+          'Switching to Player Hub or Static Finder no longer resets the selected static. From those views the dropdown just picks which static is selected (click the static name to open it); while you are already viewing a static, picking another switches to it immediately.',
         pr: 149,
         prTitle: 'Nav-shell fixes — static selector, Plugin tab/URL, rail light mode',
       },
