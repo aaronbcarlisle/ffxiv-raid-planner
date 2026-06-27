@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Lightbulb } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Input } from '../ui/Input';
@@ -50,7 +51,7 @@ export function SuggestContentModal({ onSave, onClose }: SuggestContentModalProp
   };
 
   return (
-    <Modal isOpen title="Suggest Content" onClose={onClose}>
+    <Modal isOpen title={<span className="flex items-center gap-2"><Lightbulb className="w-5 h-5" />Suggest Content</span>} onClose={onClose}>
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-text-secondary mb-1">Category</label> {/* design-system-ignore */}

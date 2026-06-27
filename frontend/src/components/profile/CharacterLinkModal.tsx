@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Link2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { WorldSelect } from '../player/WorldSelect';
@@ -83,7 +84,7 @@ export function CharacterLinkModal({ onClose }: CharacterLinkModalProps) {
   const showGearPreview = selectedChar && characterGear;
 
   return (
-    <Modal isOpen={true} title="Link Character" onClose={onClose} className="max-w-2xl">
+    <Modal isOpen={true} title={<span className="flex items-center gap-2"><Link2 className="w-5 h-5" />Link Character</span>} onClose={onClose} className="max-w-2xl">
       <div className="space-y-4">
         {/* Search bar */}
         <div className="flex gap-3">

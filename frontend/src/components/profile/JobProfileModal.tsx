@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react';
+import { Crosshair } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Select } from '../ui/Select';
@@ -132,7 +133,7 @@ export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
   return (
     <Modal
       isOpen={true}
-      title={isEditing ? `Edit ${getJobDisplayName(existing.job)}` : 'Add Job'}
+      title={<span className="flex items-center gap-2"><Crosshair className="w-5 h-5" />{isEditing ? `Edit ${getJobDisplayName(existing.job)}` : 'Add Job'}</span>}
       onClose={onClose}
     >
       <div className="space-y-4">
