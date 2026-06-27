@@ -1332,6 +1332,11 @@ function GoalsFarmsModule({
     window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'goals' } }));
   };
 
+  // Deep-link straight to Goals & Farms → Suggestions and pulse the Suggest button.
+  const openSuggestionsTab = () => {
+    window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'goals', gsub: 'suggestions', highlightSuggest: true } }));
+  };
+
   const activeObjectives = objectives.filter((o) => o.priority !== 'not_doing');
   const visibleObjectives = activeObjectives.slice(0, 3);
 
@@ -1578,7 +1583,7 @@ function GoalsFarmsModule({
               </p>
               <button
                 type="button"
-                onClick={openGoalsTab}
+                onClick={openSuggestionsTab}
                 className="text-[11px] text-accent hover:underline"
               >
                 Suggest content →
@@ -1599,7 +1604,7 @@ function GoalsFarmsModule({
               <div className="px-3 py-1.5 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={openGoalsTab}
+                  onClick={openSuggestionsTab}
                   className="text-[11px] text-accent hover:underline"
                 >
                   {canManage ? 'Manage suggestions →' : 'Vote & suggest →'}
