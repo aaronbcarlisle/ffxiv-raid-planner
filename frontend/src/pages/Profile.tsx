@@ -1,21 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useUrlTabState, clearRegisteredTabParams } from '../hooks/useUrlTabState';
 import { prefRememberTabs } from '../lib/navPreferences';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Calendar, ChevronDown,
-  Crosshair, Eye, LayoutDashboard, Shield, Sparkles, User, Users,
+  Calendar,
+  Crosshair, Eye, LayoutDashboard, Shield, Sparkles, User,
 } from 'lucide-react';
-import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
-import {
-  Dropdown,
-  DropdownContent,
-  DropdownItem,
-  DropdownSeparator,
-  DropdownTrigger,
-} from '../components/primitives';
 import { Skeleton } from '../components/ui/Skeleton';
 import { AppRail } from '../components/layout/AppRail';
 import type { RailNavItem } from '../components/layout/railTypes';
@@ -36,13 +28,11 @@ import type { PlayerJobProfile } from '../stores/playerProfileStore';
 import { useSharedBisStore } from '../stores/sharedBisStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useAuthStore } from '../stores/authStore';
-import { useDevice } from '../hooks/useDevice';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useModal } from '../hooks/useModal';
 import { fadeInProps } from '../lib/motion';
 import { GameIcon } from '../components/ui/GameIcon';
 import { hasUsableGearSnapshot } from '../components/profile/jobGearUtils';
-import type { MemberRole, StaticGroupListItem } from '../types';
 
 type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview';
 const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'preview'];
@@ -53,13 +43,6 @@ const LEGACY_TAB_REDIRECTS: Record<string, ProfileTab> = {
   gear: 'jobs-gear',
   jobs: 'jobs-gear',
   goals: 'collections',
-};
-
-const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
-  owner: 'Owner',
-  lead: 'Lead',
-  member: 'Member',
-  viewer: 'Viewer',
 };
 
 // ── Profile sidebar nav ────────────────────────────────────────────────────
@@ -106,70 +89,6 @@ export function ProfileSidebarNav({
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-function StaticShortcut({ groups, mobile = false }: { groups: StaticGroupListItem[]; mobile?: boolean }) {
-  if (groups.length === 0) {
-    return (
-      <Link
-        to="/discover"
-        className={`${mobile ? 'flex w-full px-3 py-2' : 'inline-flex px-3 py-1.5'} items-center gap-2 rounded-lg border border-border-default bg-surface-raised text-sm text-text-secondary transition-colors hover:border-accent/30 hover:text-accent`}
-      >
-        <Users className="h-4 w-4 flex-shrink-0 text-accent" />
-        <span>Find a static</span>
-      </Link>
-    );
-  }
-
-  if (groups.length === 1) {
-    const group = groups[0];
-    return (
-      <Link
-        to={`/group/${group.shareCode}`}
-        className={`${mobile ? 'flex w-full px-3 py-2' : 'inline-flex px-3 py-1.5'} items-center gap-2 rounded-lg border border-border-default bg-surface-raised text-sm text-text-secondary transition-colors hover:border-accent/30 hover:text-accent`}
-      >
-        <Users className="h-4 w-4 flex-shrink-0 text-accent" />
-        <span className="truncate">{group.name}</span>
-        {group.userRole && <Badge variant="info" size="sm">{ROLE_LABELS[group.userRole] ?? group.userRole}</Badge>}
-        {mobile && <span className="ml-auto flex-shrink-0 text-xs text-text-tertiary">Go to static</span>}
-      </Link>
-    );
-  }
-
-  return (
-    <Dropdown>
-      <DropdownTrigger>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className={`${mobile ? 'flex w-full justify-start px-3 py-2' : 'inline-flex px-3 py-1.5'} gap-2 bg-surface-raised font-normal hover:text-accent`}
-        >
-          <Users className="h-4 w-4 flex-shrink-0 text-accent" />
-          <span className="truncate">My Statics ({groups.length})</span>
-          <ChevronDown className="ml-auto h-3.5 w-3.5 flex-shrink-0 text-text-tertiary" />
-        </Button>
-      </DropdownTrigger>
-      <DropdownContent align={mobile ? 'start' : 'end'} className="w-80 max-w-[calc(100vw-2rem)]">
-        {groups.map((group, index) => (
-          <div key={group.id}>
-            {index > 0 && <DropdownSeparator />}
-            <DropdownItem href={`/group/${group.shareCode}`} icon={<Users className="h-4 w-4" />}>
-              <span className="min-w-0">
-                <span className="block truncate font-medium">{group.name}</span>
-                <span className="block truncate text-xs text-text-tertiary">
-                  {ROLE_LABELS[group.userRole ?? 'member'] ?? group.userRole ?? 'Member'}
-                </span>
-              </span>
-            </DropdownItem>
-            <DropdownItem href={`/group/${group.shareCode}?tab=schedule`} icon={<Calendar className="h-4 w-4" />} className="pl-8 text-xs">
-              Schedule
-            </DropdownItem>
-          </div>
-        ))}
-      </DropdownContent>
-    </Dropdown>
-  );
-}
-
 function parseProfileTab(search: string): ProfileTab {
   const params = new URLSearchParams(search);
   const rawTab = params.get('tab');
@@ -190,7 +109,6 @@ export default function Profile() {
   } = usePlayerProfileStore();
   const { groups, fetchGroups } = useStaticGroupStore();
   const { fetchTargets } = useSharedBisStore();
-  const { isSmallScreen } = useDevice();
   // Active tab is derived from the URL (?tab=) so the sidebar is deep-linkable,
   // reload-safe, and follows browser back/forward. parseProfileTab keeps the
   // legacy-redirect handling for old bookmarks. The setter pushes a history entry.
@@ -428,19 +346,8 @@ export default function Profile() {
                 </Badge>
               </div>
             </div>
-            {/* Static shortcut */}
-            <div className="flex-shrink-0 hidden sm:block">
-              <StaticShortcut groups={groups} />
-            </div>
           </div>
         </div>
-
-        {/* Mobile static shortcut — below header */}
-        {isSmallScreen && (
-          <div className="mt-2">
-            <StaticShortcut groups={groups} mobile />
-          </div>
-        )}
       </motion.div>
       </div>{/* end header */}
 

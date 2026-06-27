@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { User, Shield, ChevronDown, Users } from 'lucide-react';
+import { User, Shield, ChevronDown, Users, Calendar } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { TRANSIENT_NAV_PARAMS, prefRememberTabs } from '../../lib/navPreferences';
 import type { StaticGroup, StaticGroupListItem, MemberRole } from '../../types';
@@ -225,16 +225,22 @@ export function ContextSwitcher({
                     groups
                       .filter((g) => g.shareCode !== targetStatic.shareCode)
                       .map((group) => (
-                        <DropdownItem key={group.id} onSelect={() => selectStatic(group.shareCode)}>
-                          <div className="flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
-                            <span className="font-medium truncate min-w-0 max-w-[180px] block">{group.name}</span>
-                            {group.userRole && (
-                              <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_COLORS[group.userRole]}`}>
-                                {ROLE_LABELS[group.userRole]}
-                              </span>
-                            )}
-                          </div>
-                        </DropdownItem>
+                        <div key={group.id}>
+                          <DropdownItem onSelect={() => selectStatic(group.shareCode)}>
+                            <div className="flex items-center gap-2 min-w-0 max-w-full overflow-hidden">
+                              <span className="font-medium truncate min-w-0 max-w-[180px] block">{group.name}</span>
+                              {group.userRole && (
+                                <span className={`text-xs px-1.5 py-0.5 rounded border ${ROLE_COLORS[group.userRole]}`}>
+                                  {ROLE_LABELS[group.userRole]}
+                                </span>
+                              )}
+                            </div>
+                          </DropdownItem>
+                          {/* Per-static Schedule shortcut (lifted from the Player Hub StaticShortcut) */}
+                          <DropdownItem href={`/group/${group.shareCode}?tab=schedule`} icon={<Calendar className="w-4 h-4" />} className="pl-8 text-xs">
+                            Schedule
+                          </DropdownItem>
+                        </div>
                       ))
                   )}
                 </div>
