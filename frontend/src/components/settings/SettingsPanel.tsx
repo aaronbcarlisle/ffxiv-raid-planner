@@ -313,8 +313,12 @@ function GoalsFarmsTabContent({
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  group: StaticGroup;
-  players: SnapshotPlayer[];
+  /**
+   * The static this panel configures. Optional: when absent (e.g. opened from a
+   * non-static route), only the account-level General tab is shown.
+   */
+  group?: StaticGroup;
+  players?: SnapshotPlayer[];
   tierId?: string;
   isAdmin?: boolean;
   /** Initial tab to show when panel opens */
@@ -337,7 +341,7 @@ export function SettingsPanel({
   isOpen,
   onClose,
   group,
-  players,
+  players = [],
   tierId,
   isAdmin,
   initialTab = 'general',
@@ -377,21 +381,25 @@ export function SettingsPanel({
     wasOpenRef.current = isOpen;
   }, [isOpen, initialTab, setSearchParams]);
 
-  const role = group.userRole;
-  const canManage = isManager(role, isAdmin);
+  const role = group?.userRole;
+  const canManage = !!group && isManager(role, isAdmin);
   // Tabs filtered by role; clamp the active tab into the visible set (a deep
   // link to a tab the role can't see falls back to General). Memoized so the
   // arrays are stable across renders (keeps navigateTab's memoization intact).
-  const visibleTabs = useMemo(() => ALL_TABS.filter((t) => t.visible(role, isAdmin)), [role, isAdmin]);
+  // With no static (account-level open), only the General tab is shown.
+  const visibleTabs = useMemo(
+    () => (group ? ALL_TABS.filter((t) => t.visible(role, isAdmin)) : ALL_TABS.filter((t) => t.id === 'general')),
+    [group, role, isAdmin]
+  );
   const tabOrder = useMemo(() => visibleTabs.map((t) => t.id), [visibleTabs]);
   const effectiveTab: SettingsTab = tabOrder.includes(activeTab) ? activeTab : 'general';
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);
 
   useEffect(() => {
-    if (isOpen && canManage) {
+    if (isOpen && canManage && group) {
       useJoinRequestStore.getState().fetchGroupRequests(group.id);
     }
-  }, [isOpen, canManage, group.id]);
+  }, [isOpen, canManage, group]);
 
   // Navigate to next/previous visible tab
   const navigateTab = useCallback((direction: 'next' | 'prev') => {
@@ -443,14 +451,14 @@ export function SettingsPanel({
         <div className="flex-1 min-h-0 px-4 pt-4 flex flex-col overflow-x-hidden" {...swipeHandlers}>
           {effectiveTab === 'general' && <GeneralTab />}
 
-          {effectiveTab === 'static' && (
+          {effectiveTab === 'static' && group && (
             <StaticTab
               group={group}
               onClose={onClose}
             />
           )}
 
-          {effectiveTab === 'priority' && (
+          {effectiveTab === 'priority' && group && (
             <PriorityTab
               group={group}
               players={players}
@@ -460,11 +468,11 @@ export function SettingsPanel({
             />
           )}
 
-          {effectiveTab === 'goals' && (
+          {effectiveTab === 'goals' && group && (
             <GoalsFarmsTabContent groupId={group.id} canManage={canManage} />
           )}
 
-          {effectiveTab === 'recruitment' && (
+          {effectiveTab === 'recruitment' && group && (
             <RecruitmentTab
               key={initialRecruitmentSection ?? 'default'}
               group={group}
@@ -476,7 +484,7 @@ export function SettingsPanel({
             />
           )}
 
-          {effectiveTab === 'members' && (
+          {effectiveTab === 'members' && group && (
             <MembersPanel
               groupId={group.id}
               currentUserRole={group.userRole}

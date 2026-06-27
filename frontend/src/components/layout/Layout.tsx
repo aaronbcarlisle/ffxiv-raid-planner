@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Header } from './Header';
 import { PageTransition } from './PageTransition';
+import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { ViewAsBanner } from '../admin';
 import { KeyboardShortcutsHelp } from '../ui';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
@@ -46,6 +47,10 @@ export function Layout() {
       <main className="w-full pt-1 pb-3 md:py-2 flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto overflow-x-hidden" style={{ scrollbarGutter: 'stable' }}>
         <PageTransition />
       </main>
+
+      {/* Account-level settings panel for non-static routes (the in-static panel
+          is rendered by GroupView). Shows only the General tab. */}
+      <GlobalSettingsPanel />
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp

@@ -93,9 +93,6 @@ export function Header() {
   const isMember = userRole === 'owner' || userRole === 'lead' || userRole === 'member' || isAdmin;
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
   const canManageInvitations = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
-  // The Settings panel is now role-aware (General/Goals/Members for everyone),
-  // so any signed-in user with a role in this static can open it — not just managers.
-  const canOpenSettings = !!user && (isMember || userRole === 'viewer');
 
   // Fetch invitations for Invite Members button
   useEffect(() => {
@@ -313,49 +310,42 @@ export function Header() {
 
         {/* Right side: Invite + Settings + Auth */}
         <div className="flex items-center gap-1 sm:gap-3">
-          {/* Group controls (only on group pages) */}
-          {isGroupRoute && currentGroup && (
-            <>
-              {/* Settings gear icon (opens the role-aware settings panel) */}
-              {canOpenSettings && (
-                <Tooltip
-                  content={
-                    <div>
-                      <div className="font-medium">Settings</div>
-                      <div className="text-text-secondary text-xs mt-0.5">
-                        Manage settings, members, and invitations
-                        {pendingJoinRequests > 0 && ` — ${pendingJoinRequests} pending join request${pendingJoinRequests > 1 ? 's' : ''}`}
-                      </div>
-                      <div className="text-text-muted text-xs mt-1 flex gap-1">
-                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+G</kbd>
-                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">P</kbd>
-                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">M</kbd>
-                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">I</kbd>
-                      </div>
-                    </div>
-                  }
-                >
-                  <span className="relative">
-                    <IconButton
-                      icon={settingsOpen ? <PanelRightClose className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
-                      onClick={() => dispatchHeaderEvent(HEADER_EVENTS.SETTINGS, {
-                        toggle: true,
-                        ...(pendingJoinRequests > 0 ? { tab: 'recruitment' } : {}),
-                      })}
-                      variant="ghost"
-                      aria-label="Static settings"
-                      aria-expanded={settingsOpen}
-                      aria-pressed={settingsOpen}
-                    />
-                    {pendingJoinRequests > 0 && (
-                      <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-accent text-accent-contrast pointer-events-none">
-                        {pendingJoinRequests}
-                      </span>
-                    )}
+          {/* Settings gear — available app-wide for signed-in users. Inside a
+              static it opens the role-aware panel; elsewhere, account settings. */}
+          {user && !isHomePage && (
+            <Tooltip
+              content={
+                <div>
+                  <div className="font-medium">Settings</div>
+                  <div className="text-text-secondary text-xs mt-0.5">
+                    Account preferences{currentGroup ? ', static settings, members, and invitations' : ''}
+                    {pendingJoinRequests > 0 && ` — ${pendingJoinRequests} pending join request${pendingJoinRequests > 1 ? 's' : ''}`}
+                  </div>
+                  <div className="text-text-muted text-xs mt-1 flex gap-1">
+                    <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+G</kbd>
+                  </div>
+                </div>
+              }
+            >
+              <span className="relative">
+                <IconButton
+                  icon={settingsOpen ? <PanelRightClose className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
+                  onClick={() => dispatchHeaderEvent(HEADER_EVENTS.SETTINGS, {
+                    toggle: true,
+                    ...(pendingJoinRequests > 0 ? { tab: 'recruitment' } : {}),
+                  })}
+                  variant="ghost"
+                  aria-label="Settings"
+                  aria-expanded={settingsOpen}
+                  aria-pressed={settingsOpen}
+                />
+                {pendingJoinRequests > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-accent text-accent-contrast pointer-events-none">
+                    {pendingJoinRequests}
                   </span>
-                </Tooltip>
-              )}
-            </>
+                )}
+              </span>
+            </Tooltip>
           )}
 
           {/* External links + theme toggle — hidden on the Home page (login only there) */}

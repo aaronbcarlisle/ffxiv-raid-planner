@@ -45,7 +45,7 @@ describe('Header settings toggle', () => {
     const handler = vi.fn();
     window.addEventListener('header:settings', handler);
     renderHeaderAt('/group/abc');
-    fireEvent.click(screen.getByLabelText(/static settings/i));
+    fireEvent.click(screen.getByLabelText("Settings"));
     expect(handler).toHaveBeenCalledTimes(1);
     const ev = handler.mock.calls[0][0] as CustomEvent;
     expect(ev.detail?.toggle).toBe(true);
@@ -54,11 +54,11 @@ describe('Header settings toggle', () => {
 
   it('reflects the open-state from the URL via aria-expanded', () => {
     renderHeaderAt('/group/abc?showSettings=true');
-    expect(screen.getByLabelText(/static settings/i)).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByLabelText("Settings")).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('is collapsed when the settings param is absent', () => {
     renderHeaderAt('/group/abc');
-    expect(screen.getByLabelText(/static settings/i)).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByLabelText("Settings")).toHaveAttribute('aria-expanded', 'false');
   });
 });

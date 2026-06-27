@@ -165,6 +165,14 @@ export const RELEASES: Release[] = [
         prTitle: 'Plan I — Navigation, context & misc polish',
       },
       {
+        category: 'improvement',
+        title: 'Settings is available everywhere with a single toggle',
+        description:
+          'The Settings gear now lives in the header on every page while signed in — outside a static it opens your account preferences, and inside a static it adds the role-aware static tabs. The gear is a single open/close toggle, and opening the panel no longer nudges the header icons.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
         category: 'feature',
         title: 'Join our Discord from the home page',
         description:
