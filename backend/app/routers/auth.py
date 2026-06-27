@@ -412,8 +412,7 @@ async def get_current_user_info(
         display_name=user.display_name,
         is_admin=user.is_admin,
         activity_display_mode=user.activity_display_mode,
-        remember_sub_tabs=user.remember_sub_tabs,
-        remember_static_tab=user.remember_static_tab,
+        tab_persistence=user.tab_persistence,
         created_at=user.created_at,
         updated_at=user.updated_at,
         last_login_at=user.last_login_at,
@@ -432,11 +431,8 @@ async def update_user_preferences(
     if body.activity_display_mode is not None:
         current_user.activity_display_mode = body.activity_display_mode
         changed = True
-    if body.remember_sub_tabs is not None:
-        current_user.remember_sub_tabs = body.remember_sub_tabs
-        changed = True
-    if body.remember_static_tab is not None:
-        current_user.remember_static_tab = body.remember_static_tab
+    if body.tab_persistence is not None:
+        current_user.tab_persistence = body.tab_persistence
         changed = True
     if changed:
         current_user.updated_at = now
@@ -452,8 +448,7 @@ async def update_user_preferences(
         display_name=current_user.display_name,
         is_admin=current_user.is_admin,
         activity_display_mode=current_user.activity_display_mode,
-        remember_sub_tabs=current_user.remember_sub_tabs,
-        remember_static_tab=current_user.remember_static_tab,
+        tab_persistence=current_user.tab_persistence,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
         last_login_at=current_user.last_login_at,
