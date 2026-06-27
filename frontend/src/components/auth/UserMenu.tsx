@@ -217,7 +217,7 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
             <span className="relative">
               <Bell className="w-4 h-4" />
               {totalBadge > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[10px] h-[10px] px-0.5 rounded-full bg-status-error text-[7px] font-bold text-white flex items-center justify-center leading-none">
+                <span className="absolute -top-1 -right-1 min-w-[12px] h-[12px] px-0.5 rounded-full bg-status-error text-[9px] font-bold text-white flex items-center justify-center leading-none">
                   {totalBadge > 9 ? '9+' : totalBadge}
                 </span>
               )}
