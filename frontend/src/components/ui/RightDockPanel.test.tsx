@@ -11,9 +11,15 @@ describe('RightDockPanel', () => {
     expect(screen.getByText('DOCK_BODY')).toBeInTheDocument();
   });
 
-  it('does not render content when closed', () => {
+  it('keeps children mounted but hides the panel when closed', () => {
     render(<RightDockPanel isOpen={false} onClose={vi.fn()} width="48rem"><div>DOCK_BODY</div></RightDockPanel>);
-    expect(screen.queryByText('DOCK_BODY')).not.toBeInTheDocument();
+    // Content stays mounted (so re-opening is instant)…
+    const body = screen.getByText('DOCK_BODY');
+    expect(body).toBeInTheDocument();
+    // …but the panel is inert and not shown as the backdrop is gone.
+    const panel = body.closest('[role="dialog"]');
+    expect(panel).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByTestId('rightdock-backdrop')).not.toBeInTheDocument();
   });
 
   it('calls onClose when the backdrop is clicked', () => {
