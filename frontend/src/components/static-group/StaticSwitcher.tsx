@@ -164,9 +164,9 @@ export function StaticSwitcher({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           }
-          onSelect={() => navigate('/dashboard')}
+          onSelect={() => navigate('/profile?tab=statics')}
         >
-          Go to Dashboard
+          Go to My Statics
         </DropdownItem>
       </DropdownContent>
     </Dropdown>

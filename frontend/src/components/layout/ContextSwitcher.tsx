@@ -245,8 +245,8 @@ export function ContextSwitcher({
                   )}
                 </div>
                 <DropdownSeparator />
-                <DropdownItem icon={<Shield className="w-4 h-4" />} onSelect={() => navigate('/dashboard')}>
-                  Go to Dashboard
+                <DropdownItem icon={<Users className="w-4 h-4" />} onSelect={() => navigate('/profile?tab=statics')}>
+                  Go to My Statics
                 </DropdownItem>
               </DropdownContent>
             </Dropdown>

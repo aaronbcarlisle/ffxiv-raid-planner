@@ -144,31 +144,23 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'My Statics is now a Player Hub tab',
         description:
-          'Your statics browser (create, duplicate, delete, grid/list) is now a tab inside the Player Hub in addition to the standalone My Statics page, so everything about you lives in one place.',
+          'Your statics browser (create, duplicate, delete, grid/list) is now a tab inside the Player Hub, and every "My Statics" link across the app points there, so everything about you lives in one place.',
         pr: 152,
         prTitle: 'Plan I — Navigation, context & misc polish',
       },
       {
         category: 'improvement',
-        title: 'Suggest content jumps straight to Suggestions',
+        title: 'Suggest content opens the form directly',
         description:
-          'The "Suggest content" links on a static\'s Overview now open Settings directly to Goals & Farms → Suggestions and highlight the Suggest button, instead of dropping you on the Goals overview.',
+          'The "Suggest content" links on a static\'s Overview now open the suggestion form straight away instead of routing through the settings panel.',
         pr: 152,
         prTitle: 'Plan I — Navigation, context & misc polish',
       },
       {
         category: 'improvement',
-        title: 'Calmer panels and transitions',
+        title: 'Calmer tier selector and rail header toggle',
         description:
-          'The tier selector now eases in when a static becomes active instead of snapping into place, and you can click the navigation rail header or the settings panel title bar to collapse/close them (not just the chevron or gear).',
-        pr: 152,
-        prTitle: 'Plan I — Navigation, context & misc polish',
-      },
-      {
-        category: 'fix',
-        title: 'All Weeks view hides the single-week selector',
-        description:
-          'The loot history "All Weeks" view no longer shows the week stepper, which had no effect there since every week is already displayed.',
+          'The tier selector now eases in when a static becomes active instead of snapping into place, and you can click the whole navigation rail header (not just the chevron) to collapse it.',
         pr: 152,
         prTitle: 'Plan I — Navigation, context & misc polish',
       },

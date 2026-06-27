@@ -39,6 +39,7 @@ import { SafeAvatar } from '../ui/SafeAvatar';
 import { ReadinessBadge } from '../profile/ReadinessBadge';
 import { JoinRequestReviewModal } from './JoinRequestReviewModal';
 import { CreateCollectionGoalModal } from './CreateCollectionGoalModal';
+import { SuggestContentModal } from './SuggestContentModal';
 import type { JoinRequest, PageMode, SnapshotPlayer, SplitClearData, StaticGroup, TierSnapshot } from '../../types';
 import { normalizeApplicationSnapshot } from '../../utils/applicationSnapshot';
 import { getSplitClearReadiness } from '../../utils/splitClear';
@@ -1315,6 +1316,7 @@ function GoalsFarmsModule({
   canManage,
   onCreateGoal,
   onDeleteGoal,
+  onSuggestContent,
 }: {
   objectives: StaticObjectiveGoal[];
   objectivesLoading: boolean;
@@ -1325,16 +1327,12 @@ function GoalsFarmsModule({
   canManage: boolean;
   onCreateGoal: () => void;
   onDeleteGoal: (id: string) => void;
+  onSuggestContent: () => void;
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const openGoalsTab = () => {
     window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'goals' } }));
-  };
-
-  // Deep-link straight to Goals & Farms → Suggestions and pulse the Suggest button.
-  const openSuggestionsTab = () => {
-    window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { tab: 'goals', gsub: 'suggestions', highlightSuggest: true } }));
   };
 
   const activeObjectives = objectives.filter((o) => o.priority !== 'not_doing');
@@ -1583,7 +1581,7 @@ function GoalsFarmsModule({
               </p>
               <button
                 type="button"
-                onClick={openSuggestionsTab}
+                onClick={onSuggestContent}
                 className="text-[11px] text-accent hover:underline"
               >
                 Suggest content →
@@ -1604,7 +1602,7 @@ function GoalsFarmsModule({
               <div className="px-3 py-1.5 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={openSuggestionsTab}
+                  onClick={canManage ? openGoalsTab : onSuggestContent}
                   className="text-[11px] text-accent hover:underline"
                 >
                   {canManage ? 'Manage suggestions →' : 'Vote & suggest →'}
@@ -1845,7 +1843,7 @@ export function StaticHomeTab({
   const { data: splitClearData, fetchData: fetchSplitClear } = useSplitClearStore();
   const { goals, isLoading: goalsLoading, fetchGoals, deleteGoal } = useCollectionGoalStore();
   const { objectives, loading: objectivesLoading, objectivesError, fetchObjectives } = useObjectiveGoalStore();
-  const { suggestions, fetchSuggestions } = useContentSuggestionStore();
+  const { suggestions, fetchSuggestions, createSuggestion } = useContentSuggestionStore();
 
   useEffect(() => {
     if (!group.id) return;
@@ -1885,6 +1883,7 @@ export function StaticHomeTab({
   const featuredRequest = pendingRequests[0] ?? null;
   const [reviewRequest, setReviewRequest] = useState<JoinRequest | null>(null);
   const [showCreateGoalModal, setShowCreateGoalModal] = useState(false);
+  const [showSuggestModal, setShowSuggestModal] = useState(false);
 
   const handleDeleteGoal = async (goalId: string) => {
     await deleteGoal(group.id, goalId);
@@ -1967,6 +1966,7 @@ export function StaticHomeTab({
             canManage={canManage}
             onCreateGoal={() => setShowCreateGoalModal(true)}
             onDeleteGoal={handleDeleteGoal}
+            onSuggestContent={() => setShowSuggestModal(true)}
           />
 
           {splitClearData?.enabled && (
@@ -1996,6 +1996,16 @@ export function StaticHomeTab({
           isOpen
           onClose={() => setShowCreateGoalModal(false)}
           groupId={group.id}
+        />
+      )}
+
+      {showSuggestModal && (
+        <SuggestContentModal
+          onSave={async (data) => {
+            await createSuggestion(group.id, data);
+            fetchSuggestions(group.id);
+          }}
+          onClose={() => setShowSuggestModal(false)}
         />
       )}
     </div>

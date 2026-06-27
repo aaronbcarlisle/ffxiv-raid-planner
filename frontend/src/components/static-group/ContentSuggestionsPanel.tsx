@@ -5,7 +5,7 @@
  * and promote suggestions to static objective goals.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ChevronDown, ChevronUp, Plus, Trash2, TrendingUp, X,
 } from 'lucide-react';
@@ -240,11 +240,9 @@ function SuggestionRow({
 interface ContentSuggestionsPanelProps {
   groupId: string;
   canManage: boolean;
-  /** Pulse + scroll the "Suggest" button into view (Overview deep-link). */
-  highlightSuggest?: boolean;
 }
 
-export function ContentSuggestionsPanel({ groupId, canManage, highlightSuggest = false }: ContentSuggestionsPanelProps) {
+export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestionsPanelProps) {
   const {
     suggestions,
     loading,
@@ -266,15 +264,6 @@ export function ContentSuggestionsPanel({ groupId, canManage, highlightSuggest =
   useEffect(() => {
     fetchSuggestions(groupId);
   }, [groupId, fetchSuggestions]);
-
-  // Deep-link from Overview: scroll the Suggest button into view; the
-  // `highlight-pulse` class plays its one-shot accent animation on mount.
-  const suggestBtnRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (highlightSuggest) {
-      suggestBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [highlightSuggest]);
 
   const filtered = statusFilter
     ? suggestions.filter((s) => s.status === statusFilter)
@@ -326,17 +315,14 @@ export function ContentSuggestionsPanel({ groupId, canManage, highlightSuggest =
               : 'Suggest content and vote to show interest. Leads can promote popular suggestions into official static goals.'}
           </p>
         </div>
-        <div ref={suggestBtnRef} className="flex-shrink-0">
-          <Button
-            variant="secondary"
-            size="sm"
-            leftIcon={<Plus className="w-3.5 h-3.5" />}
-            onClick={suggestModal.open}
-            className={highlightSuggest ? 'highlight-pulse' : ''}
-          >
-            Suggest
-          </Button>
-        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon={<Plus className="w-3.5 h-3.5" />}
+          onClick={suggestModal.open}
+        >
+          Suggest
+        </Button>
       </div>
 
       {/* Status filter */}

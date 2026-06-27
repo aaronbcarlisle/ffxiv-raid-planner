@@ -183,7 +183,6 @@ export function GroupView() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('general');
   const [recruitmentSection, setRecruitmentSection] = useState<RecruitmentSection | undefined>();
   const [highlightCreateInvite, setHighlightCreateInvite] = useState(false);
-  const [highlightSuggest, setHighlightSuggest] = useState(false);
   const [errorCopied, setErrorCopied] = useState(false);
   const [showControlsSheet, setShowControlsSheet] = useState(false);
 
@@ -575,24 +574,21 @@ export function GroupView() {
     const handleNewTierEvent = () => { setShowCreateTierModal(true); };
     const handleRolloverEvent = () => { setShowRolloverDialog(true); };
     const handleSettingsEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ tab?: SettingsTab; section?: RecruitmentSection; toggle?: boolean; highlightSuggest?: boolean }>;
+      const customEvent = e as CustomEvent<{ tab?: SettingsTab; section?: RecruitmentSection; toggle?: boolean }>;
       const requestedTab = customEvent.detail?.tab || 'general';
       const requestedSection = customEvent.detail?.section;
       const wantToggle = customEvent.detail?.toggle === true;
-      const wantHighlightSuggest = customEvent.detail?.highlightSuggest === true;
       const isOpen = settingsModalRef.current;
       const currentTab = settingsTabRef.current;
 
-      if (isOpen && !wantHighlightSuggest && (wantToggle || (requestedTab === currentTab && !requestedSection))) {
+      if (isOpen && (wantToggle || (requestedTab === currentTab && !requestedSection))) {
         // Close: an explicit toggle while open, or the same tab requested again.
-        // A highlight-suggest deep-link always (re)opens to the Suggestions section.
         setShowSettingsModal(false);
       } else {
         // Different tab, or explicit section routing, or panel was closed
         setSettingsTab(requestedTab);
         if (requestedSection) setRecruitmentSection(requestedSection);
         setHighlightCreateInvite(requestedTab === 'recruitment' && !requestedSection);
-        setHighlightSuggest(wantHighlightSuggest);
         setShowSettingsModal(true);
       }
     };
@@ -881,9 +877,9 @@ export function GroupView() {
             )}
             <Button
               variant={isPrivateGroupError && !user ? 'secondary' : 'primary'}
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/profile?tab=statics')}
             >
-              Go to Dashboard
+              Go to My Statics
             </Button>
           </div>
         </div>
@@ -1531,7 +1527,6 @@ export function GroupView() {
           setSettingsTab('general');
           setRecruitmentSection(undefined);
           setHighlightCreateInvite(false);
-          setHighlightSuggest(false);
         };
         const panel = (
           <SettingsPanel
@@ -1545,7 +1540,6 @@ export function GroupView() {
             initialTab={settingsTab}
             initialRecruitmentSection={recruitmentSection}
             highlightCreateInvite={highlightCreateInvite}
-            highlightSuggest={highlightSuggest}
             onAddToRoster={(request) => {
               if (request.rosterPlayerId) {
                 toast.info('Already added to roster');

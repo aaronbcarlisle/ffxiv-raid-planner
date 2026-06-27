@@ -1035,7 +1035,7 @@ export function SectionedLogView({
           onOpenLootModal={() => { setGridModalState(null); setEntryToEdit(undefined); setShowLootModal(true); }}
           onOpenMaterialModal={() => { setGridModalState(null); setShowMaterialModal(true); }}
           onLogWeek={canEdit && onLogWeek ? () => onLogWeek(currentWeek) : undefined}
-          weekSelector={layoutMode !== 'allWeeks' && weekSelectorProps && (
+          weekSelector={weekSelectorProps && (
             <WeekStepper
               {...weekSelectorProps}
               onWeekChange={onWeekChange || (() => {})}

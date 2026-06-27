@@ -269,30 +269,15 @@ function CollectionGoalsSection({
 function GoalsFarmsTabContent({
   groupId,
   canManage,
-  highlightSuggest = false,
 }: {
   groupId: string;
   canManage: boolean;
-  highlightSuggest?: boolean;
 }) {
   // Section in the URL (?gsub=overview|objectives|farms|suggestions). Each
   // settings tab uses its own sub-tab param (gsub/psub/rcsub) so switching main
   // tabs can't carry a stale section across. Pushes; closing the panel collapses
   // its sub-history.
   const [section, setSection] = useUrlTabState('gsub', GOALS_SECTION_VALUES, 'overview');
-
-  // A "Suggest content" deep-link (highlightSuggest) jumps straight to the
-  // Suggestions section. Fire only on the false→true transition so a later
-  // manual sub-tab click isn't yanked back.
-  const appliedSuggestJump = useRef(false);
-  useEffect(() => {
-    if (highlightSuggest && !appliedSuggestJump.current) {
-      appliedSuggestJump.current = true;
-      setSection('suggestions');
-    } else if (!highlightSuggest) {
-      appliedSuggestJump.current = false;
-    }
-  }, [highlightSuggest, setSection]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -315,7 +300,7 @@ function GoalsFarmsTabContent({
 
         {section === 'suggestions' && (
           <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
-            <ContentSuggestionsPanel groupId={groupId} canManage={canManage} highlightSuggest={highlightSuggest} />
+            <ContentSuggestionsPanel groupId={groupId} canManage={canManage} />
           </div>
         )}
       </div>
@@ -338,8 +323,6 @@ interface SettingsPanelProps {
   initialRecruitmentSection?: RecruitmentSection;
   /** Whether to highlight the create invitation button */
   highlightCreateInvite?: boolean;
-  /** Open to Goals & Farms → Suggestions and pulse the "+ Suggest" button */
-  highlightSuggest?: boolean;
   /** Start the roster add flow from an accepted join request */
   onAddToRoster?: (request: JoinRequest) => void;
   /**
@@ -360,7 +343,6 @@ export function SettingsPanel({
   initialTab = 'general',
   initialRecruitmentSection,
   highlightCreateInvite = false,
-  highlightSuggest = false,
   onAddToRoster,
   container = 'slideout',
 }: SettingsPanelProps) {
@@ -479,7 +461,7 @@ export function SettingsPanel({
           )}
 
           {effectiveTab === 'goals' && (
-            <GoalsFarmsTabContent groupId={group.id} canManage={canManage} highlightSuggest={highlightSuggest} />
+            <GoalsFarmsTabContent groupId={group.id} canManage={canManage} />
           )}
 
           {effectiveTab === 'recruitment' && (

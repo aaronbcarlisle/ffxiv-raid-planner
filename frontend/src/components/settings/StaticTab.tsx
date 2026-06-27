@@ -132,7 +132,7 @@ export function StaticTab({ group, onClose }: StaticTabProps) {
     try {
       await deleteGroup(group.id);
       toast.success('Static deleted');
-      navigate('/dashboard');
+      navigate('/profile?tab=statics');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete group';
       setError(message);

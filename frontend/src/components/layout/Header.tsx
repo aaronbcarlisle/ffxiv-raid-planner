@@ -18,7 +18,6 @@ import { useViewAsStore } from '../../stores/viewAsStore';
 import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
-import { SETTINGS_PANEL_WIDTH } from '../settings';
 import { useDevice } from '../../hooks/useDevice';
 import { StaticSwitcher, TierSelector } from '../static-group';
 import { ContextSwitcher } from './ContextSwitcher';
@@ -67,7 +66,7 @@ export function Header() {
   // Settings panel open-state is URL-derived (same source GroupView uses), so the
   // gear icon and the header padding stay in sync with the docked panel.
   const settingsOpen = searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
-  const { isSmallScreen, prefersReducedMotion } = useDevice();
+  const { prefersReducedMotion } = useDevice();
 
   // Admin mode is determined by URL param (navigated from Admin Dashboard)
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -198,8 +197,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
       <div
-        className="max-w-[160rem] mx-auto px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1 sm:gap-x-4 sm:flex-nowrap transition-[padding] duration-200"
-        style={settingsOpen && !isSmallScreen ? { paddingRight: `calc(${SETTINGS_PANEL_WIDTH} + 1rem)` } : undefined}
+        className="max-w-[160rem] mx-auto px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1 sm:gap-x-4 sm:flex-nowrap"
       >
         {/* Left side: Logo + Group context with breadcrumb hierarchy */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">

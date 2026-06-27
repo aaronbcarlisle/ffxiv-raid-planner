@@ -156,7 +156,7 @@ export function Home() {
           ) : user ? (
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <Link
-                to="/dashboard"
+                to="/profile?tab=statics"
                 className="inline-block bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors"
               >
                 Go to My Statics
@@ -304,7 +304,7 @@ export function Home() {
           {groups.length > 3 && (
             <div className="mt-4 text-center">
               <Link
-                to="/dashboard"
+                to="/profile?tab=statics"
                 className="text-sm text-accent hover:text-accent-bright transition-colors"
               >
                 View all {groups.length} statics →
