@@ -6,11 +6,12 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useNavigationType } from 'react-router-dom';
+import { useSearchParams, useNavigate, useNavigationType, useParams } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 import { useAuthStore } from '../stores/authStore';
 import { clearRegisteredTabParams } from './useUrlTabState';
-import { prefRememberSubTabs } from '../lib/navPreferences';
+import { prefRememberTabs } from '../lib/navPreferences';
+import { recallTab, rememberTab, tabKey } from '../lib/tabMemory';
 import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 
@@ -154,6 +155,10 @@ export interface UseGroupViewStateReturn {
 
 export function useGroupViewState(): UseGroupViewStateReturn {
   const [searchParams, setSearchParams] = useSearchParams();
+  // Per-static scope for tab memory — `:shareCode` is present at init (before
+  // currentGroup loads), so each static remembers its own last tab.
+  const { shareCode } = useParams<{ shareCode: string }>();
+  const scope = shareCode ?? undefined;
   const navigate = useNavigate();
   // Distinguishes a browser back/forward (POP) from forward/programmatic
   // navigation, so the reconciliation effect can restore a param-less history
@@ -212,17 +217,12 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     // Deep links to a specific player (e.g., from the Dalamud plugin) should land
     // on the Roster tab so the highlighted card is actually visible.
     if (searchParams.get('player')) return 'roster';
-    const saved = localStorage.getItem('group-view-tab');
-    // Handle legacy saved values - map to new equivalents
-    if (saved === 'home') return 'overview';
-    if (saved === 'players') return 'roster';
-    if (saved === 'loot' || saved === 'priority' || saved === 'history' || saved === 'stats') return 'gear';
-    if (saved === 'mount-farms') return 'goals';
-    // If saved value is already a new PageMode value, use it
-    if (saved === 'overview' || saved === 'roster' || saved === 'schedule' || saved === 'goals' || saved === 'gear' || saved === 'more') {
-      return saved as PageMode;
-    }
-    return 'roster';
+    // Per-static remembered tab, gated on the user's tab-persistence preference.
+    return recallTab(
+      tabKey('group-view-tab', scope),
+      ['overview', 'roster', 'schedule', 'goals', 'gear', 'plugin', 'more'] as const,
+      'roster',
+    );
   });
 
   // ===== Gear sub-tab state: URL ?sub= > localStorage > default =====
@@ -240,18 +240,8 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlTab === 'weapon') return 'priority';
     if (urlTab === 'log' || urlTab === 'history') return 'history';
     if (urlTab === 'summary') return 'stats';
-    // Only restore the remembered sub-tab when the user wants sub-tabs remembered.
-    try {
-      if (prefRememberSubTabs(useAuthStore.getState().user)) {
-        const saved = localStorage.getItem('gear-subtab');
-        if (saved === 'sync' || saved === 'priority' || saved === 'history' || saved === 'stats') return saved;
-        // Migrate old saved value 'weapon' → 'priority'
-        if (saved === 'weapon') return 'priority';
-      }
-    } catch {
-      // Ignore
-    }
-    return 'sync';
+    // Remembered gear sub-tab (per static), gated on the tab-persistence pref.
+    return recallTab(tabKey('gear-subtab', scope), ['sync', 'priority', 'history', 'stats'] as const, 'sync');
   });
 
   // Subtab state for loot panel: URL param > localStorage > default
@@ -260,15 +250,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlSubtab === 'matrix' || urlSubtab === 'gear' || urlSubtab === 'weapon') {
       return urlSubtab;
     }
-    try {
-      if (prefRememberSubTabs(useAuthStore.getState().user)) {
-        const saved = localStorage.getItem('loot-priority-subtab');
-        if (saved === 'matrix' || saved === 'gear' || saved === 'weapon') return saved;
-      }
-    } catch {
-      // Ignore
-    }
-    return 'gear';
+    return recallTab(tabKey('loot-priority-subtab', scope), ['matrix', 'gear', 'weapon'] as const, 'gear');
   });
 
   // ===== View state: URL param > localStorage > default =====
@@ -335,16 +317,12 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     } else {
       window.scrollTo(0, 0);
     }
-    try {
-      localStorage.setItem('group-view-tab', mode);
-    } catch {
-      // Ignore localStorage errors
-    }
-    // When the user has turned OFF "remember sub-tabs", navigating to a primary
+    rememberTab(tabKey('group-view-tab', scope), mode);
+    // When the user has turned tab memory OFF ('reset'), navigating to a primary
     // tab resets every view's sub-tab to its default. Clearing the registered
     // sub-tab params resets the URL-derived ones; the gear/loot sub-tabs (held
     // in state here) are reset explicitly just below.
-    const resetSubTabs = !prefRememberSubTabs(useAuthStore.getState().user);
+    const resetSubTabs = !prefRememberTabs(useAuthStore.getState().user);
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
       params.set('tab', mode);
@@ -367,37 +345,29 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     }
     // Note: pushes a history entry (no { replace }) so browser back/forward
     // returns to the previously-viewed tab.
-  }, [setSearchParams]);
+  }, [setSearchParams, scope]);
 
   // Wrapper to persist gearSubTab and update URL
   const setGearSubTab = useCallback((tab: GearSubTab) => {
     setGearSubTabState(tab);
-    try {
-      localStorage.setItem('gear-subtab', tab);
-    } catch {
-      // Ignore localStorage errors
-    }
+    rememberTab(tabKey('gear-subtab', scope), tab);
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
       params.set('sub', tab);
       return params;
     }); // push so back/forward returns to the prior gear sub-tab
-  }, [setSearchParams]);
+  }, [setSearchParams, scope]);
 
   // Wrapper to persist lootSubTab and update URL
   const setLootSubTab = useCallback((tab: 'matrix' | 'gear' | 'weapon') => {
     setLootSubTabState(tab);
-    try {
-      localStorage.setItem('loot-priority-subtab', tab);
-    } catch {
-      // Ignore localStorage errors
-    }
+    rememberTab(tabKey('loot-priority-subtab', scope), tab);
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
       params.set('subtab', tab);
       return params;
     }); // push so back/forward returns to the prior priority sub-tab
-  }, [setSearchParams]);
+  }, [setSearchParams, scope]);
 
   // Wrapper to persist viewMode and update URL
   const setViewMode = useCallback((mode: ViewMode) => {

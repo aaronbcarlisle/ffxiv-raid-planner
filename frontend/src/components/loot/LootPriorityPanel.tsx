@@ -1,6 +1,7 @@
 /* eslint-disable design-system/no-raw-button */
 import { useState, useMemo, useCallback, memo } from 'react';
 import { useSwipe } from '../../hooks/useSwipe';
+import { recallTab, rememberTab } from '../../lib/tabMemory';
 import { Tooltip } from '../primitives/Tooltip';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
@@ -303,15 +304,11 @@ export function LootPriorityPanel({
   const effectiveMaxWeek = Math.max(maxWeek ?? currentWeek, 1);
   const lootTable = FLOOR_LOOT_TABLES[selectedFloor];
 
-  // Sub-tab state - controlled by parent if props provided, otherwise local with localStorage
-  const [localSubTab, setLocalSubTab] = useState<LootSubTabType>(() => {
-    try {
-      const saved = localStorage.getItem('loot-priority-subtab');
-      return (saved as LootSubTabType) || 'gear';
-    } catch {
-      return 'gear';
-    }
-  });
+  // Sub-tab state - controlled by parent if props provided, otherwise local.
+  // Persistence is gated on the user's tab-persistence preference via tabMemory.
+  const [localSubTab, setLocalSubTab] = useState<LootSubTabType>(() =>
+    recallTab('loot-priority-subtab', ['gear', 'weapon', 'matrix'] as const, 'gear')
+  );
 
   // Use controlled value if provided, otherwise local
   const activeSubTab = controlledSubTab ?? localSubTab;
@@ -321,13 +318,9 @@ export function LootPriorityPanel({
     if (onSubTabChange) {
       onSubTabChange(tab);
     } else {
-      // Otherwise manage locally with localStorage
+      // Otherwise manage locally (pref-gated persistence).
       setLocalSubTab(tab);
-      try {
-        localStorage.setItem('loot-priority-subtab', tab);
-      } catch {
-        // Ignore localStorage errors
-      }
+      rememberTab('loot-priority-subtab', tab);
     }
   }, [onSubTabChange]);
 

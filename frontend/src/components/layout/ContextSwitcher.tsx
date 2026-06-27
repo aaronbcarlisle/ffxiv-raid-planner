@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Shield, ChevronDown, Users } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
-import { TRANSIENT_NAV_PARAMS, prefRememberStaticTab } from '../../lib/navPreferences';
+import { TRANSIENT_NAV_PARAMS, prefRememberTabs } from '../../lib/navPreferences';
 import type { StaticGroup, StaticGroupListItem, MemberRole } from '../../types';
 import {
   Dropdown,
@@ -65,7 +65,7 @@ export function ContextSwitcher({
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const rememberStaticTab = useAuthStore((s) => prefRememberStaticTab(s.user));
+  const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
   const [open, setOpen] = useState(false);
 
   // The "selected static" the Static segment points at. Off-route (Player Hub /
