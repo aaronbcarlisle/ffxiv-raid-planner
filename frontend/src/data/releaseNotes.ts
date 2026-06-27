@@ -124,6 +124,62 @@ export const RELEASES: Release[] = [
         pr: 151,
         prTitle: 'Plan C — Role-aware Settings + tab-persistence preference',
       },
+      {
+        category: 'improvement',
+        title: 'Clearer navigation labels: Loot Log and Tracking',
+        description:
+          'The static "Gear & Sync" tab is now "Loot Log", and both the static "Goals & Farms" rail tab and the Player Hub "Collections & Goals" tab are now "Tracking", for a more consistent vocabulary across contexts. Links and shortcuts are unchanged.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'feature',
+        title: 'Per-static Schedule shortcuts in the header switcher',
+        description:
+          'The header static dropdown now has a Schedule shortcut under each static, so you can jump straight to any static\'s schedule. The duplicate "My Statics" selector on the Player Hub overview was removed since the header switcher now covers it everywhere.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'feature',
+        title: 'My Statics is now a Player Hub tab',
+        description:
+          'Your statics browser (create, duplicate, delete, grid/list) is now a tab inside the Player Hub in addition to the standalone My Statics page, so everything about you lives in one place.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'improvement',
+        title: 'Suggest content jumps straight to Suggestions',
+        description:
+          'The "Suggest content" links on a static\'s Overview now open Settings directly to Goals & Farms → Suggestions and highlight the Suggest button, instead of dropping you on the Goals overview.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'improvement',
+        title: 'Calmer panels and transitions',
+        description:
+          'The tier selector now eases in when a static becomes active instead of snapping into place, and you can click the navigation rail header or the settings panel title bar to collapse/close them (not just the chevron or gear).',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'fix',
+        title: 'All Weeks view hides the single-week selector',
+        description:
+          'The loot history "All Weeks" view no longer shows the week stepper, which had no effect there since every week is already displayed.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'feature',
+        title: 'Join our Discord from the home page',
+        description:
+          'The landing page hero now has a "Join our Discord" button so new visitors can find the community without signing in first.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
     ],
   },
   {
