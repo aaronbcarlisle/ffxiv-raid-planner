@@ -314,6 +314,12 @@ interface SettingsPanelProps {
   highlightCreateInvite?: boolean;
   /** Start the roster add flow from an accepted join request */
   onAddToRoster?: (request: JoinRequest) => void;
+  /**
+   * Where the panel is rendered. `'slideout'` (default) wraps the body in the
+   * full-overlay `SlideOutPanel` (mobile); `'dock'` renders the body bare so a
+   * `RightDockPanel` can supply the chrome (desktop).
+   */
+  container?: 'slideout' | 'dock';
 }
 
 export function SettingsPanel({
@@ -327,6 +333,7 @@ export function SettingsPanel({
   initialRecruitmentSection,
   highlightCreateInvite = false,
   onAddToRoster,
+  container = 'slideout',
 }: SettingsPanelProps) {
   // Active tab lives in the URL (?settings=<tab>) via the shared hook, so the
   // panel is deep-linkable and follows browser back/forward. The `settings`
@@ -385,19 +392,8 @@ export function SettingsPanel({
     minSwipeDistance: 50,
   });
 
-  return (
-    <SlideOutPanel
-      isOpen={isOpen}
-      onClose={onClose}
-      title={
-        <span className="flex items-center gap-2">
-          <Settings className="w-5 h-5" />
-          Static Settings
-        </span>
-      }
-      width="3xl"
-    >
-      <div className="flex flex-col h-[calc(100%+2rem)] -m-4">
+  const body = (
+      <div className={`flex flex-col ${container === 'dock' ? 'h-full' : 'h-[calc(100%+2rem)] -m-4'}`}>
         {/* Tabs */}
         <div className="flex border-b border-border-default px-4 overflow-x-auto overflow-y-hidden scrollbar-none flex-shrink-0">
           {TAB_ITEMS.map((tab) => {
@@ -468,6 +464,23 @@ export function SettingsPanel({
           )}
         </div>
       </div>
+  );
+
+  if (container === 'dock') return body;
+
+  return (
+    <SlideOutPanel
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Settings className="w-5 h-5" />
+          Static Settings
+        </span>
+      }
+      width="3xl"
+    >
+      {body}
     </SlideOutPanel>
   );
 }

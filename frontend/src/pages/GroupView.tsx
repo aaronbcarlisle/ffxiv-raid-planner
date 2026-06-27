@@ -40,11 +40,12 @@ import { GearSyncDashboard } from '../components/group/GearSyncDashboard';
 import { PluginPage } from '../components/group/PluginPage';
 import { useDevice } from '../hooks/useDevice';
 import { useSwipe } from '../hooks/useSwipe';
-import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, PlugZap, Lock, Unlock } from 'lucide-react';
+import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, PlugZap, Settings, Lock, Unlock } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
 import { StaticHomeTab } from '../components/static-group/StaticHomeTab';
-import { SettingsPanel, type SettingsTab, type RecruitmentSection } from '../components/settings';
+import { SettingsPanel, SETTINGS_PANEL_WIDTH, type SettingsTab, type RecruitmentSection } from '../components/settings';
+import { RightDockPanel } from '../components/ui/RightDockPanel';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useGroupViewState } from '../hooks/useGroupViewState';
@@ -573,14 +574,15 @@ export function GroupView() {
     const handleNewTierEvent = () => { setShowCreateTierModal(true); };
     const handleRolloverEvent = () => { setShowRolloverDialog(true); };
     const handleSettingsEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ tab?: SettingsTab; section?: RecruitmentSection }>;
+      const customEvent = e as CustomEvent<{ tab?: SettingsTab; section?: RecruitmentSection; toggle?: boolean }>;
       const requestedTab = customEvent.detail?.tab || 'general';
       const requestedSection = customEvent.detail?.section;
+      const wantToggle = customEvent.detail?.toggle === true;
       const isOpen = settingsModalRef.current;
       const currentTab = settingsTabRef.current;
 
-      if (isOpen && requestedTab === currentTab && !requestedSection) {
-        // Same tab requested while open (no specific section) - close the panel
+      if (isOpen && (wantToggle || (requestedTab === currentTab && !requestedSection))) {
+        // Close: an explicit toggle while open, or the same tab requested again.
         setShowSettingsModal(false);
       } else {
         // Different tab, or explicit section routing, or panel was closed
@@ -1517,38 +1519,56 @@ export function GroupView() {
         tierName={currentTier?.tierId ? getTierById(currentTier.tierId)?.name : undefined}
       />
 
-      {/* Settings Panel (slide-out) */}
-      {currentGroup && (
-        <SettingsPanel
-          isOpen={showSettingsModal}
-          onClose={() => {
-            setShowSettingsModal(false);
-            setSettingsTab('general');
-            setRecruitmentSection(undefined);
-            setHighlightCreateInvite(false);
-          }}
-          group={currentGroup}
-          players={mainRosterPlayers}
-          tierId={currentTier?.tierId}
-          isAdmin={isAdmin}
-          initialTab={settingsTab}
-          initialRecruitmentSection={recruitmentSection}
-          highlightCreateInvite={highlightCreateInvite}
-          onAddToRoster={(request) => {
-            if (request.rosterPlayerId) {
-              toast.info('Already added to roster');
-              return;
-            }
-            if (!currentTier?.tierId) {
-              toast.error('Create a tier first before adding to roster.');
-              return;
-            }
-            setShowSettingsModal(false);
-            setRosteringRequest(request);
-            setShowAddPlayerModal(true);
-          }}
-        />
-      )}
+      {/* Settings Panel — full slide-out on mobile, right-docked on desktop
+          (the dock sits below the header so the gear stays visible/clickable). */}
+      {currentGroup && (() => {
+        const onCloseSettings = () => {
+          setShowSettingsModal(false);
+          setSettingsTab('general');
+          setRecruitmentSection(undefined);
+          setHighlightCreateInvite(false);
+        };
+        const panel = (
+          <SettingsPanel
+            container={isSmallScreen ? 'slideout' : 'dock'}
+            isOpen={showSettingsModal}
+            onClose={onCloseSettings}
+            group={currentGroup}
+            players={mainRosterPlayers}
+            tierId={currentTier?.tierId}
+            isAdmin={isAdmin}
+            initialTab={settingsTab}
+            initialRecruitmentSection={recruitmentSection}
+            highlightCreateInvite={highlightCreateInvite}
+            onAddToRoster={(request) => {
+              if (request.rosterPlayerId) {
+                toast.info('Already added to roster');
+                return;
+              }
+              if (!currentTier?.tierId) {
+                toast.error('Create a tier first before adding to roster.');
+                return;
+              }
+              setShowSettingsModal(false);
+              setRosteringRequest(request);
+              setShowAddPlayerModal(true);
+            }}
+          />
+        );
+        // Mobile keeps the original full overlay (SettingsPanel owns its chrome).
+        if (isSmallScreen) return panel;
+        // Desktop docks it to the right edge, below the header band.
+        return (
+          <RightDockPanel
+            isOpen={showSettingsModal}
+            onClose={onCloseSettings}
+            width={SETTINGS_PANEL_WIDTH}
+            title={<span className="flex items-center gap-2"><Settings className="w-5 h-5" />Static Settings</span>}
+          >
+            {panel}
+          </RightDockPanel>
+        );
+      })()}
 
       {/* Rollover Dialog */}
       {showRolloverDialog && currentGroup && currentTier && (
