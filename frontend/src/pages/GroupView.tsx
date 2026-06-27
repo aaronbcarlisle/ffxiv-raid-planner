@@ -36,10 +36,11 @@ import { SidebarNav } from '../components/layout/SidebarNav';
 import { PageHeader } from '../components/layout/PageHeader';
 import { MorePage } from '../components/group/MorePage';
 import { GoalsPage } from '../components/group/GoalsPage';
-import { GearSyncDashboard, PLUGIN_GUIDE_EVENT } from '../components/group/GearSyncDashboard';
+import { GearSyncDashboard } from '../components/group/GearSyncDashboard';
+import { PluginPage } from '../components/group/PluginPage';
 import { useDevice } from '../hooks/useDevice';
 import { useSwipe } from '../hooks/useSwipe';
-import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, Lock, Unlock } from 'lucide-react';
+import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, PlugZap, Lock, Unlock } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
 import { StaticHomeTab } from '../components/static-group/StaticHomeTab';
@@ -1149,6 +1150,7 @@ export function GroupView() {
               {pageMode === 'schedule' && <PageHeader icon={<Calendar size={14} className="text-accent" />} title="Schedule" subtitle="Plan sessions and manage recurring events." />}
               {pageMode === 'goals' && <PageHeader icon={<Trophy size={14} className="text-accent" />} title="Goals & Farms" subtitle="Track objectives, farms, and weekly goals." />}
               {pageMode === 'gear' && <PageHeader icon={<Shield size={14} className="text-accent" />} title="Gear & Sync" subtitle="Jobs, BiS, and sync health." />}
+              {pageMode === 'plugin' && <PageHeader icon={<PlugZap size={14} className="text-accent" />} title="Plugin" subtitle="Sync gear and character data from FFXIV." />}
               {pageMode === 'more' && <PageHeader icon={<MoreHorizontal size={14} className="text-accent" />} title="More" subtitle="Lead tools, requests, and settings." />}
 
               {/* Overview Tab */}
@@ -1435,11 +1437,7 @@ export function GroupView() {
                       groupId={currentGroup.id}
                       canManage={canManageRoster(userRole).allowed}
                       onSwitchToCalendar={() => setScheduleView('calendar')}
-                      onOpenPlugin={() => {
-                        setGearSubTab('sync');
-                        setPageMode('gear');
-                        setTimeout(() => window.dispatchEvent(new CustomEvent(PLUGIN_GUIDE_EVENT)), 350);
-                      }}
+                      onOpenPlugin={() => setPageMode('plugin')}
                     />
                   )}
 
@@ -1481,15 +1479,14 @@ export function GroupView() {
                     // One history entry: Schedule tab → Calendar view → Integrations sub-tab.
                     setPageMode('schedule', { sched: 'calendar', stab: 'integrations' });
                   }}
-                  onOpenPlugin={() => {
-                    setGearSubTab('sync');
-                    setPageMode('gear');
-                    setTimeout(() => window.dispatchEvent(new CustomEvent(PLUGIN_GUIDE_EVENT)), 350);
-                  }}
+                  onOpenPlugin={() => setPageMode('plugin')}
                   canManage={canManageRoster(userRole).allowed}
                   userRole={userRole ?? null}
                 />
               )}
+
+              {/* Plugin Tab */}
+              {pageMode === 'plugin' && currentGroup && <PluginPage />}
 
               </motion.div>
               </AnimatePresence>

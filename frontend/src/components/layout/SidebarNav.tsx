@@ -30,8 +30,8 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
     ...NAV_DEFS.map(d => ({ ...d, isActive: activeTab === d.id, onSelect: () => select(d.id) })),
     {
       id: 'plugin', label: 'Plugin', description: 'Dalamud plugin: sync gear and character data',
-      icon: PlugZap, isActive: false,
-      onSelect: () => { analytics.track('navigation', 'sidebar_plugin'); onTabChange('more'); },
+      icon: PlugZap, isActive: activeTab === 'plugin',
+      onSelect: () => { analytics.track('navigation', 'sidebar_plugin'); onTabChange('plugin'); },
     },
     {
       id: 'more', label: 'More', description: 'Integrations, settings, and tools',

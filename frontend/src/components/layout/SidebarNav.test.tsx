@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SidebarNav } from './SidebarNav';
 
@@ -36,5 +36,12 @@ describe('SidebarNav', () => {
   it('renders the user menu in the footer', () => {
     render(<MemoryRouter><SidebarNav activeTab="overview" onTabChange={vi.fn()} staticName="X" /></MemoryRouter>);
     expect(screen.getByText('USER_MENU')).toBeInTheDocument();
+  });
+
+  it('navigates to the plugin tab when Plugin is clicked', () => {
+    const onTabChange = vi.fn();
+    render(<MemoryRouter><SidebarNav activeTab="overview" onTabChange={onTabChange} staticName="X" /></MemoryRouter>);
+    fireEvent.click(screen.getByText('Plugin'));
+    expect(onTabChange).toHaveBeenCalledWith('plugin');
   });
 });

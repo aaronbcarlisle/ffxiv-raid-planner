@@ -28,7 +28,7 @@ const DEFAULT_LOOT_SUB: LootSubTab = 'gear';
 // back to the current value (rather than clobbering it).
 export function pageModeFromTabParam(urlTab: string | null): PageMode | null {
   switch (urlTab) {
-    case 'overview': case 'roster': case 'schedule': case 'goals': case 'gear': case 'more':
+    case 'overview': case 'roster': case 'schedule': case 'goals': case 'gear': case 'plugin': case 'more':
       return urlTab;
     // Backward-compat: legacy tab values
     case 'home': return 'overview';
@@ -199,6 +199,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlTab === 'schedule') return 'schedule';
     if (urlTab === 'goals') return 'goals';
     if (urlTab === 'gear') return 'gear';
+    if (urlTab === 'plugin') return 'plugin';
     if (urlTab === 'more') return 'more';
     // Backward-compat: old URL param values
     if (urlTab === 'home') return 'overview';
