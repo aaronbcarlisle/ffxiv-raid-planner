@@ -113,6 +113,8 @@ export interface SelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** Accessible label for the trigger (no visible <label> association). */
+  'aria-label'?: string;
   /** Callback when the dropdown opens or closes */
   onOpenChange?: (open: boolean) => void;
 }
@@ -125,6 +127,7 @@ export function Select({
   placeholder = 'Select...',
   disabled,
   className = '',
+  'aria-label': ariaLabel,
   onOpenChange,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
@@ -163,6 +166,7 @@ export function Select({
     >
       <SelectPrimitive.Trigger
         id={id}
+        aria-label={ariaLabel}
         className={`
           inline-flex items-center justify-between w-full
           min-h-[44px] sm:min-h-0
