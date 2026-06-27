@@ -16,7 +16,7 @@ import { SettingsSubNav } from './SettingsSubNav';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
-import { GeneralTab } from './GeneralTab';
+import { StaticTab } from './StaticTab';
 import { PriorityTab } from './PriorityTab';
 import { RecruitmentTab, type RecruitmentSection } from './RecruitmentTab';
 import { MembersPanel } from '../static-group/MembersPanel';
@@ -424,7 +424,7 @@ export function SettingsPanel({
         {/* Content */}
         <div className="flex-1 min-h-0 px-4 pt-4 flex flex-col overflow-x-hidden" {...swipeHandlers}>
           {activeTab === 'general' && (
-            <GeneralTab
+            <StaticTab
               group={group}
               onClose={onClose}
             />

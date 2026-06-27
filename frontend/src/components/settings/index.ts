@@ -1,5 +1,5 @@
 export { ApiKeyManager } from './ApiKeyManager';
 export { SettingsPanel, type SettingsTab, type RecruitmentSection } from './SettingsPanel';
 export { SETTINGS_PANEL_WIDTH } from './settingsLayout';
-export { GeneralTab } from './GeneralTab';
+export { StaticTab } from './StaticTab';
 export { PriorityTab } from './PriorityTab';
