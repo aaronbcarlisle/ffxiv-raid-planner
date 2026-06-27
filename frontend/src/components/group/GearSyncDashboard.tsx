@@ -1,13 +1,11 @@
 /* eslint-disable design-system/no-raw-button */
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import {
   CheckCircle, AlertCircle, AlertTriangle, Clock, BarChart3,
-  Wifi, Target, Shield, UserX, Activity, PlugZap,
-  Download, Search, KeyRound, Gamepad2, ChevronDown, ChevronUp,
+  Wifi, Target, Shield, UserX, Activity,
 } from 'lucide-react';
 import type { SnapshotPlayer, RaidPosition } from '../../types';
 import { DashboardCard, IconMedallion, SectionLabel } from '../ui/DashboardCard';
-import { ApiKeyManager } from '../settings/ApiKeyManager';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -24,159 +22,6 @@ const STALE_MS = 3 * 24 * 60 * 60 * 1000;
 interface GearSyncDashboardProps {
   players: SnapshotPlayer[];
   onViewStats?: () => void;
-}
-
-const INSTALL_STEPS = [
-  {
-    icon: Download,
-    title: 'Install the Dalamud launcher',
-    desc: 'XIVLauncher with Dalamud is required. If you already use Dalamud plugins in FFXIV, you can skip this step.',
-  },
-  {
-    icon: Search,
-    title: 'Find XIVRaidPlanner in the plugin list',
-    desc: 'Open the Dalamud Plugin Installer in-game (/xlplugins), search for "XIVRaidPlanner", and install it.',
-  },
-  {
-    icon: KeyRound,
-    title: 'Generate an API key',
-    desc: 'Create a key below. It authenticates the plugin to your account — keep it private.',
-  },
-  {
-    icon: Gamepad2,
-    title: 'Connect in FFXIV',
-    desc: 'Open the plugin window in-game, paste your API key, and select your static to start syncing.',
-  },
-] as const;
-
-export const PLUGIN_GUIDE_EVENT = 'plugin:open-guide';
-
-function PluginInstallGuide() {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handler = () => {
-      setOpen(true);
-      setTimeout(() => {
-        containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 60);
-    };
-    window.addEventListener(PLUGIN_GUIDE_EVENT, handler);
-    return () => window.removeEventListener(PLUGIN_GUIDE_EVENT, handler);
-  }, []);
-
-  return (
-    <div
-      ref={containerRef}
-      className="rounded-xl border border-border-subtle overflow-hidden"
-      style={{
-        background: 'linear-gradient(160deg, rgba(14,14,22,0.95) 0%, rgba(10,10,16,0.98) 100%)',
-        boxShadow: 'inset 0 0 60px rgba(20,184,166,0.025)',
-      }}
-    >
-      {/* Header row — always visible */}
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-4 p-5 text-left hover:bg-white/[0.02] transition-colors"
-      >
-        <div
-          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{
-            background: 'rgba(20,184,166,0.12)',
-            boxShadow: '0 0 0 1px rgba(20,184,166,0.22), inset 0 0 20px rgba(20,184,166,0.07)',
-          }}
-        >
-          <PlugZap size={16} className="text-accent" />
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-text-primary font-display">
-            Dalamud Plugin Setup
-          </p>
-          <p className="text-xs text-text-secondary mt-0.5">
-            Sync gear, jobs &amp; character data automatically from inside FFXIV
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs text-accent font-medium hidden sm:inline">
-            {open ? 'Hide guide' : 'Setup guide'}
-          </span>
-          {open
-            ? <ChevronUp size={14} className="text-text-muted" />
-            : <ChevronDown size={14} className="text-text-muted" />
-          }
-        </div>
-      </button>
-
-      {/* Divider visible only when open */}
-      {open && (
-        <div className="h-px mx-5" style={{ background: 'linear-gradient(90deg, rgba(20,184,166,0.3) 0%, rgba(20,184,166,0.06) 60%, transparent 100%)' }} />
-      )}
-
-      {/* Expandable body */}
-      {open && (
-        <div className="p-5 pt-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-          {/* Steps */}
-          <div className="space-y-5">
-            <p className="text-xs font-semibold text-text-secondary uppercase tracking-[0.14em]">Installation steps</p>
-            {INSTALL_STEPS.map((step, i) => {
-              const Icon = step.icon;
-              return (
-                <div key={i} className="flex gap-3.5">
-                  <div className="flex-shrink-0 flex flex-col items-center">
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center"
-                      style={{
-                        background: 'rgba(20,184,166,0.1)',
-                        boxShadow: '0 0 0 1px rgba(20,184,166,0.18)',
-                      }}
-                    >
-                      <Icon size={13} className="text-accent" />
-                    </div>
-                    {i < INSTALL_STEPS.length - 1 && (
-                      <div
-                        className="w-px flex-1 mt-1.5"
-                        style={{ background: 'linear-gradient(180deg, rgba(20,184,166,0.25) 0%, rgba(20,184,166,0.04) 100%)', minHeight: 16 }}
-                      />
-                    )}
-                  </div>
-                  <div className="pb-1">
-                    <div className="flex items-baseline gap-2">
-                      <span
-                        className="text-[10px] font-bold text-accent/60 uppercase tracking-widest flex-shrink-0"
-                        style={{ letterSpacing: '0.14em' }}
-                      >
-                        {i + 1}
-                      </span>
-                      <p className="text-sm font-semibold text-text-primary leading-snug">{step.title}</p>
-                    </div>
-                    <p className="text-xs text-text-secondary mt-1 leading-relaxed">{step.desc}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* API Key Manager */}
-          <div>
-            <p className="text-xs font-semibold text-text-secondary uppercase tracking-[0.14em] mb-4">
-              Your API keys
-            </p>
-            <div
-              className="rounded-lg border border-border-subtle p-4"
-              style={{ background: 'rgba(255,255,255,0.02)' }}
-            >
-              <ApiKeyManager />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function GearSyncDashboard({ players, onViewStats }: GearSyncDashboardProps) {
@@ -439,12 +284,6 @@ export function GearSyncDashboard({ players, onViewStats }: GearSyncDashboardPro
           </DashboardCard>
 
         </div>
-      </div>
-
-      {/* ── Plugin setup guide ── */}
-      <div>
-        <SectionLabel className="mb-3">Plugin Integration</SectionLabel>
-        <PluginInstallGuide />
       </div>
 
     </div>
