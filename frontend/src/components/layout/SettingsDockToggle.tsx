@@ -35,8 +35,12 @@ export function SettingsDockToggle() {
       onClick={() => window.dispatchEvent(new CustomEvent(HEADER_EVENTS.SETTINGS, { detail: { toggle: true } }))}
       aria-label={isOpen ? 'Close settings' : 'Open settings'}
       aria-expanded={isOpen}
-      className="hidden sm:flex fixed z-40 h-12 w-7 items-center justify-center rounded-l-lg border border-r-0 border-border-default bg-surface-raised text-text-muted hover:text-accent shadow-sm transition-[right,color] duration-200"
-      style={{ top: 'var(--header-height, 56px)', right: isOpen ? SETTINGS_PANEL_WIDTH : '0px' }}
+      className="hidden sm:flex fixed right-0 z-40 h-12 w-7 items-center justify-center rounded-l-lg border border-r-0 border-border-default bg-surface-raised text-text-muted hover:text-accent shadow-sm will-change-transform"
+      style={{
+        top: 'var(--header-height, 56px)',
+        transform: isOpen ? `translateX(calc(-1 * ${SETTINGS_PANEL_WIDTH}))` : 'translateX(0)',
+        transition: 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms ease',
+      }}
     >
       {isOpen ? <PanelRightClose size={16} /> : <Settings size={16} />}
     </button>
