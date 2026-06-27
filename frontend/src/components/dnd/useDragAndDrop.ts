@@ -205,7 +205,9 @@ export function useDragAndDrop({
   // Memoized player IDs for droppable registration
   const playerIds = useMemo(() => players.map(p => p.id), [players]);
 
-  return {
+  // Return a stable object so consumers that spread/pass it don't see a fresh
+  // reference on every parent render (all fields are already individually stable).
+  return useMemo(() => ({
     sensors,
     dragState,
     playerIds,
@@ -214,7 +216,7 @@ export function useDragAndDrop({
     handleDragEnd,
     handleDragCancel,
     canEdit,
-  };
+  }), [sensors, dragState, playerIds, handleDragStart, handleDragOver, handleDragEnd, handleDragCancel, canEdit]);
 }
 
 /**

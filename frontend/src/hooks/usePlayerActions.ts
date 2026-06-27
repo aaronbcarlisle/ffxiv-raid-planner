@@ -5,7 +5,7 @@
  * Extracts callbacks that were previously defined inline in GroupView.tsx.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTierStore } from '../stores/tierStore';
 import type { SnapshotPlayer, ResetMode, SortPreset, AssignPlayerRequest } from '../types';
 import { resetGearProgress, unlinkBisData, resetGearCompletely } from '../utils/gearDefaults';
@@ -181,7 +181,9 @@ export function usePlayerActions({
     setSortPreset('custom', tierId);
   }, [groupId, tierId, reorderPlayers, setSortPreset]);
 
-  return {
+  // Stable object so callers can use `playerActions` itself as a memo dependency
+  // (every handler is already individually useCallback-stable).
+  return useMemo(() => ({
     handleUpdatePlayer,
     handleRemovePlayer,
     handleClaimPlayer,
@@ -193,5 +195,17 @@ export function usePlayerActions({
     handleDuplicatePlayer,
     handleResetGear,
     handleReorder,
-  };
+  }), [
+    handleUpdatePlayer,
+    handleRemovePlayer,
+    handleClaimPlayer,
+    handleReleasePlayer,
+    handleAdminAssignPlayer,
+    handleOwnerAssignPlayer,
+    handleConfigurePlayer,
+    handleAddPlayer,
+    handleDuplicatePlayer,
+    handleResetGear,
+    handleReorder,
+  ]);
 }

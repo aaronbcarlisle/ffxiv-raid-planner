@@ -848,6 +848,104 @@ export function GroupView() {
     }
   }, [error, errorStack, formatErrorDetails]);
 
+  // Memoize the entire DnD roster subtree. GroupView re-renders for many reasons
+  // (notably toggling the settings panel, whose open-state is read here via the
+  // URL). Because the player cards consume @dnd-kit context, a re-render of the
+  // <DndContext> pushes new context to every card and bypasses PlayerGrid's memo
+  // — a ~573ms reconciliation of ~3,000 nodes with zero DOM change. Holding the
+  // element stable (every dep below is referentially stable across a toggle, and
+  // it still recomputes during an actual drag because `dnd` changes) lets React
+  // skip the whole subtree when nothing relevant changed. Declared before the
+  // early returns below to keep hook order stable.
+  const rosterDndArea = useMemo(() => {
+    if (!currentGroup || !currentTier) return null;
+    return (
+      <DndContext
+        sensors={dnd.sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={dnd.handleDragStart}
+        onDragOver={dnd.handleDragOver}
+        onDragEnd={dnd.handleDragEnd}
+        onDragCancel={dnd.handleDragCancel}
+      >
+        <PlayerGrid
+          players={sortedPlayers}
+          groupedPlayers={groupedPlayers}
+          groupView={groupView}
+          subsView={subsView}
+          subsHidden={subsHidden}
+          expandAllSignal={expandAllSignal}
+          viewMode={viewMode}
+          contentType={currentTier.contentType ?? 'savage'}
+          editingPlayerId={editingPlayerId}
+          clipboardPlayer={clipboardPlayer}
+          highlightedPlayerId={highlightedPlayerId}
+          highlightedSlot={highlightedSlot}
+          dragState={dnd.dragState}
+          canEdit={canEdit}
+          effectiveUserId={effectiveUserId}
+          userRole={userRole}
+          userHasClaimedPlayer={userHasClaimedPlayer}
+          isAdminAccess={isAdminAccess}
+          isAdmin={isAdmin}
+          viewAsUserId={viewAsUser?.userId}
+          hideSetupBanners={currentGroup.settings?.hideSetupBanners}
+          hideBisBanners={currentGroup.settings?.hideBisBanners}
+          groupId={currentGroup.id}
+          tierId={currentTier.tierId}
+          playerSlotsWithLootEntries={playerSlotsWithLootEntries}
+          playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries}
+          onUpdatePlayer={playerActions.handleUpdatePlayer}
+          onRemovePlayer={playerActions.handleRemovePlayer}
+          onConfigurePlayer={playerActions.handleConfigurePlayer}
+          onDuplicatePlayer={playerActions.handleDuplicatePlayer}
+          onResetGear={playerActions.handleResetGear}
+          onClaimPlayer={playerActions.handleClaimPlayer}
+          onReleasePlayer={playerActions.handleReleasePlayer}
+          onAdminAssignPlayer={playerActions.handleAdminAssignPlayer}
+          onOwnerAssignPlayer={playerActions.handleOwnerAssignPlayer}
+          onCopyPlayer={handleCopyPlayer}
+          onPastePlayer={handlePastePlayer}
+          onCopyUrl={handleCopyUrl}
+          onNavigateToLootEntry={handleNavigateToLootEntry}
+          onNavigateToMaterialEntry={handleNavigateToMaterialEntry}
+          onNavigateToBooksPanel={handleNavigateToBooksPanel}
+          onModalOpen={handlePlayerModalOpen}
+          onModalClose={handlePlayerModalClose}
+          onEditPlayer={setEditingPlayerId}
+          onCancelEdit={handleCancelEdit}
+        />
+
+        {/* Drag overlay - ghost card that follows cursor */}
+        <DragOverlay dropAnimation={null}>
+          {dnd.dragState.activeId && (() => {
+            const draggedPlayer = sortedPlayers.find(p => p.id === dnd.dragState.activeId);
+            if (!draggedPlayer || !draggedPlayer.configured) return null;
+            return (
+              <DragOverlayCard
+                player={draggedPlayer}
+                settings={DEFAULT_SETTINGS}
+                viewMode={viewMode}
+                contentType={currentTier.contentType ?? 'savage'}
+                groupId={currentGroup.id}
+                tierId={currentTier.tierId}
+              />
+            );
+          })()}
+        </DragOverlay>
+      </DndContext>
+    );
+  }, [
+    dnd, sortedPlayers, groupedPlayers, groupView, subsView, subsHidden,
+    expandAllSignal, viewMode, currentTier, editingPlayerId, clipboardPlayer,
+    highlightedPlayerId, highlightedSlot, canEdit, effectiveUserId, userRole,
+    userHasClaimedPlayer, isAdminAccess, isAdmin, viewAsUser?.userId, currentGroup,
+    playerSlotsWithLootEntries, playerSlotsWithMaterialEntries, playerActions,
+    handleCopyPlayer, handlePastePlayer, handleCopyUrl, handleNavigateToLootEntry,
+    handleNavigateToMaterialEntry, handleNavigateToBooksPanel, handlePlayerModalOpen,
+    handlePlayerModalClose, setEditingPlayerId, handleCancelEdit,
+  ]);
+
   // Loading state
   if (isLoading && !currentGroup) {
     return (
@@ -1222,80 +1320,7 @@ export function GroupView() {
 
                   {/* Normal roster — hidden when Characters or Split Planner tab is active */}
                   <div className={rosterSubView !== 'members' ? 'hidden' : ''}>
-                    <DndContext
-                      sensors={dnd.sensors}
-                      collisionDetection={pointerWithin}
-                      onDragStart={dnd.handleDragStart}
-                      onDragOver={dnd.handleDragOver}
-                      onDragEnd={dnd.handleDragEnd}
-                      onDragCancel={dnd.handleDragCancel}
-                    >
-                      <PlayerGrid
-                        players={sortedPlayers}
-                        groupedPlayers={groupedPlayers}
-                        groupView={groupView}
-                        subsView={subsView}
-                        subsHidden={subsHidden}
-                        expandAllSignal={expandAllSignal}
-                        viewMode={viewMode}
-                        contentType={currentTier?.contentType ?? 'savage'}
-                        editingPlayerId={editingPlayerId}
-                        clipboardPlayer={clipboardPlayer}
-                        highlightedPlayerId={highlightedPlayerId}
-                        highlightedSlot={highlightedSlot}
-                        dragState={dnd.dragState}
-                        canEdit={canEdit}
-                        effectiveUserId={effectiveUserId}
-                        userRole={userRole}
-                        userHasClaimedPlayer={userHasClaimedPlayer}
-                        isAdminAccess={isAdminAccess}
-                        isAdmin={isAdmin}
-                        viewAsUserId={viewAsUser?.userId}
-                        hideSetupBanners={currentGroup?.settings?.hideSetupBanners}
-                        hideBisBanners={currentGroup?.settings?.hideBisBanners}
-                        groupId={currentGroup!.id}
-                        tierId={currentTier!.tierId}
-                        playerSlotsWithLootEntries={playerSlotsWithLootEntries}
-                        playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries}
-                        onUpdatePlayer={playerActions.handleUpdatePlayer}
-                        onRemovePlayer={playerActions.handleRemovePlayer}
-                        onConfigurePlayer={playerActions.handleConfigurePlayer}
-                        onDuplicatePlayer={playerActions.handleDuplicatePlayer}
-                        onResetGear={playerActions.handleResetGear}
-                        onClaimPlayer={playerActions.handleClaimPlayer}
-                        onReleasePlayer={playerActions.handleReleasePlayer}
-                        onAdminAssignPlayer={playerActions.handleAdminAssignPlayer}
-                        onOwnerAssignPlayer={playerActions.handleOwnerAssignPlayer}
-                        onCopyPlayer={handleCopyPlayer}
-                        onPastePlayer={handlePastePlayer}
-                        onCopyUrl={handleCopyUrl}
-                        onNavigateToLootEntry={handleNavigateToLootEntry}
-                        onNavigateToMaterialEntry={handleNavigateToMaterialEntry}
-                        onNavigateToBooksPanel={handleNavigateToBooksPanel}
-                        onModalOpen={handlePlayerModalOpen}
-                        onModalClose={handlePlayerModalClose}
-                        onEditPlayer={setEditingPlayerId}
-                        onCancelEdit={handleCancelEdit}
-                      />
-
-                      {/* Drag overlay - ghost card that follows cursor */}
-                      <DragOverlay dropAnimation={null}>
-                        {dnd.dragState.activeId && (() => {
-                          const draggedPlayer = sortedPlayers.find(p => p.id === dnd.dragState.activeId);
-                          if (!draggedPlayer || !draggedPlayer.configured) return null;
-                          return (
-                            <DragOverlayCard
-                              player={draggedPlayer}
-                              settings={DEFAULT_SETTINGS}
-                              viewMode={viewMode}
-                              contentType={currentTier?.contentType ?? 'savage'}
-                              groupId={currentGroup?.id ?? ''}
-                              tierId={currentTier?.tierId ?? ''}
-                            />
-                          );
-                        })()}
-                      </DragOverlay>
-                    </DndContext>
+                    {rosterDndArea}
                   </div>{/* end roster hide wrapper */}
                 </>
               )}
