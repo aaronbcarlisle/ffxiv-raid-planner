@@ -116,6 +116,14 @@ export const RELEASES: Release[] = [
         pr: 150,
         prTitle: 'Plan B — Docked settings panel + animated gear toggle',
       },
+      {
+        category: 'improvement',
+        title: 'Role-aware Settings + a tab-memory control',
+        description:
+          'The Settings panel is now available to every member with role-appropriate tabs — a new General tab (everyone), Static config (managers), and read-only Priority/Members for members. The General tab lets you choose whether views remember your last tab or always open on the default, synced across your devices.',
+        pr: 151,
+        prTitle: 'Plan C — Role-aware Settings + tab-persistence preference',
+      },
     ],
   },
   {
