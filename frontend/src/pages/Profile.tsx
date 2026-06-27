@@ -5,7 +5,7 @@ import { prefRememberTabs } from '../lib/navPreferences';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
-  Crosshair, Eye, LayoutDashboard, Shield, Sparkles, User,
+  Crosshair, Eye, LayoutDashboard, Shield, Sparkles, User, Users,
 } from 'lucide-react';
 import { Badge } from '../components/primitives/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -33,9 +33,10 @@ import { useModal } from '../hooks/useModal';
 import { fadeInProps } from '../lib/motion';
 import { GameIcon } from '../components/ui/GameIcon';
 import { hasUsableGearSnapshot } from '../components/profile/jobGearUtils';
+import { MyStaticsPanel } from '../components/dashboard/MyStaticsPanel';
 
-type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview';
-const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'preview'];
+type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview' | 'statics';
+const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'preview', 'statics'];
 const COLL_SUB_TABS = ['goals', 'priorities', 'browse'] as const;
 const LEGACY_TAB_REDIRECTS: Record<string, ProfileTab> = {
   share: 'preview',
@@ -59,6 +60,7 @@ const PROFILE_NAV_ITEMS: Array<{
   { id: 'collections',  label: 'Tracking',          description: 'Mounts, music, weapons, collection goals, and tasks',    shortcut: '3', icon: Sparkles },
   { id: 'availability', label: 'Availability',      description: 'Your weekly availability for raid nights',                 shortcut: '4', icon: Calendar },
   { id: 'preview',      label: 'Share',             description: 'Preview and manage your shareable profile',                shortcut: '5', icon: Eye },
+  { id: 'statics',      label: 'My Statics',        description: 'Browse, create, and manage your raid statics',             shortcut: '6', icon: Users },
 ];
 
 export function ProfileSidebarNav({
@@ -235,6 +237,7 @@ export default function Profile() {
       { key: '3', description: 'Tracking',            action: () => setActiveTab('collections') },
       { key: '4', description: 'Availability',        action: () => setActiveTab('availability') },
       { key: '5', description: 'Share',               action: () => setActiveTab('preview') },
+      { key: '6', description: 'My Statics',          action: () => setActiveTab('statics') },
     ],
   });
 
@@ -460,6 +463,8 @@ export default function Profile() {
         {activeTab === 'preview' && profile && (
           <PreviewShareTab profile={profile} gearSnapshots={gearSnapshots} />
         )}
+
+        {activeTab === 'statics' && <MyStaticsPanel />}
         </motion.div>
         </AnimatePresence>
         </div>{/* end content */}
