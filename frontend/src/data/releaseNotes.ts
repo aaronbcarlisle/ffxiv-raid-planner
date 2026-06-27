@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.28.0';
+export const CURRENT_VERSION = '1.29.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,28 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.29.0',
+    date: '2026-06-27T00:00:00Z',
+    title: 'English / Japanese localization',
+    highlights: [
+      'Full EN ↔ JP language toggle — switch in the header or user menu',
+      'All UI text, labels, tooltips, and error messages available in Japanese',
+      'Language preference saved in your browser and respected on every visit',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Full English / Japanese UI localization',
+        description:
+          'Every user-visible string in the app — navigation labels, page headings, tooltips, form fields, ' +
+          'error messages, modal dialogs, Discord integration controls, schedule and roster UI, collections, ' +
+          'mount farms, and the Player Hub — is now available in Japanese. Switch languages with the EN/JP ' +
+          'toggle in the header (desktop) or the language menu (mobile). Your preference is stored in the browser ' +
+          'and automatically restored on your next visit.',
+      },
+    ],
+  },
   {
     version: '1.28.0',
     date: '2026-06-26T18:00:00Z',

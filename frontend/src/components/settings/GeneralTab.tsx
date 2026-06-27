@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { Label, Input, ErrorBox, Select, Toggle } from '../ui';
@@ -21,6 +22,7 @@ interface GeneralTabProps {
 }
 
 export function GeneralTab({ group, onClose }: GeneralTabProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { updateGroup, deleteGroup } = useStaticGroupStore();
 
@@ -48,6 +50,7 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
     setRememberStaticTab(prefRememberStaticTab(user));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -213,7 +216,7 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
               setDeleteConfirmText('');
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
@@ -316,17 +319,18 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
           <Toggle
             checked={rememberSubTabs}
             onChange={setRememberSubTabs}
-            label="Remember sub-tabs"
+            label={t('settings.rememberSubTabs')}
             hint="Keep the last sub-tab when you return to a view. Turn off to always reset to the default sub-tab (e.g. Roster → Members)."
           />
           <Toggle
             checked={rememberStaticTab}
             onChange={setRememberStaticTab}
-            label="Remember tab per static"
+            label={t('settings.rememberTabPerStatic')}
             hint="When switching statics, return to that static's last tab. Turn off to stay on the tab you're currently viewing."
           />
         </div>
       </div>
+
 
         {/* Share Code */}
         <div>
@@ -369,14 +373,14 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
         </div>
         <div className="flex gap-3">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={!canSave}
             loading={isSaving}
           >
-            Save
+            {isSaving ? t('common.saving') : t('common.save')}
           </Button>
         </div>
       </div>

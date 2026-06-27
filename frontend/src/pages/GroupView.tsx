@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
@@ -32,6 +33,7 @@ import { RosterCharacterPanel } from '../components/roster/RosterCharacterPanel'
 import { useMountFarmStore } from '../stores/mountFarmStore';
 import { useSplitClearStore } from '../stores/splitClearStore';
 import { ViewModeToggle, SortModeSelector, GroupViewToggle, Spinner, Modal, MobileBottomNav, Checkbox } from '../components/ui';
+import { XivIcon } from '../components/ui/XivIcon';
 import { SidebarNav } from '../components/layout/SidebarNav';
 import { PageHeader } from '../components/layout/PageHeader';
 import { MorePage } from '../components/group/MorePage';
@@ -39,8 +41,7 @@ import { GoalsPage } from '../components/group/GoalsPage';
 import { GearSyncDashboard, PLUGIN_GUIDE_EVENT } from '../components/group/GearSyncDashboard';
 import { useDevice } from '../hooks/useDevice';
 import { useSwipe } from '../hooks/useSwipe';
-import { AlertTriangle, Copy, Check, LayoutDashboard, Shield, MoreHorizontal, Lock, Unlock } from 'lucide-react';
-import { XivIcon } from '../components/ui/XivIcon';
+import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, Lock, Unlock } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
 import { StaticHomeTab } from '../components/static-group/StaticHomeTab';
@@ -85,6 +86,7 @@ export function GroupView() {
     updatePlayer,
   } = useTierStore();
   const { user, login } = useAuthStore();
+  const { t } = useTranslation();
   const { viewAsUser, startViewAs, stopViewAs } = useViewAsStore();
 
   // Use extracted state hook
@@ -859,25 +861,25 @@ export function GroupView() {
       <div className="max-w-4xl mx-auto py-8">
         <div className={`${isPrivateGroupError ? 'bg-accent/10 border-accent/30' : 'bg-status-error/10 border-status-error/30'} border rounded-lg p-6 text-center`}>
           <h2 className={`text-xl font-display mb-2 ${isPrivateGroupError ? 'text-accent' : 'text-status-error'}`}>
-            {isPrivateGroupError ? 'Private Static' : 'Error'}
+            {isPrivateGroupError ? t('group.privateStatic') : 'Error'}
           </h2>
           <p className="text-text-secondary mb-4">
             {isPrivateGroupError
-              ? 'This static is private. Please log in to view it.'
+              ? t('group.privateStaticDesc')
               : error
             }
           </p>
           <div className="flex gap-3 justify-center">
             {isPrivateGroupError && !user && (
               <Button onClick={() => login()}>
-                Log In with Discord
+                {t('group.logInWithDiscord')}
               </Button>
             )}
             <Button
               variant={isPrivateGroupError && !user ? 'secondary' : 'primary'}
               onClick={() => navigate('/dashboard')}
             >
-              Go to Dashboard
+              {t('group.goToDashboard')}
             </Button>
           </div>
         </div>
@@ -890,8 +892,8 @@ export function GroupView() {
     return (
       <div className="max-w-4xl mx-auto py-8">
         <div className="text-center py-12">
-          <h2 className="text-xl font-display text-accent mb-2">Group Not Found</h2>
-          <p className="text-text-muted">The static group you're looking for doesn't exist.</p>
+          <h2 className="text-xl font-display text-accent mb-2">{t('group.notFound')}</h2>
+          <p className="text-text-muted">{t('group.doesNotExist')}</p>
         </div>
       </div>
     );
@@ -916,13 +918,13 @@ export function GroupView() {
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
         <div className="text-center py-12 bg-surface-card rounded-lg border border-border-default">
-          <h2 className="text-xl font-display text-accent mb-2">No Raid Tiers</h2>
+          <h2 className="text-xl font-display text-accent mb-2">{t('roster.noRaidTiers')}</h2>
           <p className="text-text-muted mb-6">
-            Create your first tier snapshot to start tracking gear progress.
+            {t('roster.createFirstTier')}
           </p>
           {canEdit && (
             <Button onClick={() => setShowCreateTierModal(true)}>
-              Create First Tier
+              {t('roster.createFirstTierButton')}
             </Button>
           )}
         </div>
@@ -1008,7 +1010,7 @@ export function GroupView() {
                       <Tooltip
                         content={
                           <div>
-                            <div className="font-medium">Add Player</div>
+                            <div className="font-medium">{t('roster.addPlayer')}</div>
                             <div className="text-text-muted text-xs mt-1">
                               <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+Shift+P</kbd>
                             </div>
@@ -1020,7 +1022,7 @@ export function GroupView() {
                           onClick={() => setShowAddPlayerModal(true)}
                           disabled={isSaving}
                         >
-                          + Add Player
+                          {t('roster.addPlayer')}
                         </Button>
                       </Tooltip>
                     )}
@@ -1145,12 +1147,12 @@ export function GroupView() {
               >
 
               {/* Page headers */}
-              {pageMode === 'overview' && <PageHeader icon={<LayoutDashboard size={14} className="text-accent" />} title="Overview" subtitle="Command center for your static." />}
-              {pageMode === 'roster' && <PageHeader icon={<XivIcon name="party" size={14} />} title="Roster" subtitle="Manage members, roles, and characters." />}
-              {pageMode === 'schedule' && <PageHeader icon={<XivIcon name="schedule" size={14} />} title="Schedule" subtitle="Plan sessions and manage recurring events." />}
-              {pageMode === 'goals' && <PageHeader icon={<XivIcon name="goals" size={14} />} title="Goals & Farms" subtitle="Track objectives, farms, and weekly goals." />}
-              {pageMode === 'gear' && <PageHeader icon={<Shield size={14} className="text-accent" />} title="Gear & Sync" subtitle="Jobs, BiS, and sync health." />}
-              {pageMode === 'more' && <PageHeader icon={<MoreHorizontal size={14} className="text-accent" />} title="More" subtitle="Lead tools, requests, and settings." />}
+              {pageMode === 'overview' && <PageHeader icon={<LayoutDashboard size={14} className="text-accent" />} title={t('nav.overview')} subtitle="Command center for your static." />}
+              {pageMode === 'roster' && <PageHeader icon={<XivIcon name="party" size={14} />} title={t('nav.roster')} subtitle="Manage members, roles, and characters." />}
+              {pageMode === 'schedule' && <PageHeader icon={<XivIcon name="schedule" size={14} />} title={t('nav.schedule')} subtitle="Plan sessions and manage recurring events." />}
+              {pageMode === 'goals' && <PageHeader icon={<XivIcon name="goals" size={14} />} title={t('nav.goalsAndFarms')} subtitle="Track objectives, farms, and weekly goals." />}
+              {pageMode === 'gear' && <PageHeader icon={<Shield size={14} className="text-accent" />} title={t('nav.gearAndSync')} subtitle="Jobs, BiS, and sync health." />}
+              {pageMode === 'more' && <PageHeader icon={<MoreHorizontal size={14} className="text-accent" />} title={t('nav.more')} subtitle="Lead tools, requests, and settings." />}
 
               {/* Overview Tab */}
               {pageMode === 'overview' && currentGroup && (
@@ -1306,19 +1308,19 @@ export function GroupView() {
                         { id: 'priority' as GearSubTab, label: 'Priority' },
                         { id: 'sync' as GearSubTab, label: 'Sync' },
                         { id: 'stats' as GearSubTab, label: 'Summary' },
-                      ]).map(t => (
+                      ]).map(tab => (
                         /* design-system-ignore: sub-tab inline buttons */
                         <button
-                          key={t.id}
+                          key={tab.id}
                           type="button"
-                          onClick={() => setGearSubTab(t.id)}
+                          onClick={() => setGearSubTab(tab.id)}
                           className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors ${
-                            gearSubTab === t.id
+                            gearSubTab === tab.id
                               ? 'bg-accent/[0.18] text-accent shadow-sm'
                               : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.03]'
                           }`}
                         >
-                          {t.label}
+                          {tab.label}
                         </button>
                       ))}
                     </div>

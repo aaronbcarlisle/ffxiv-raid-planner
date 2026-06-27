@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
+  Briefcase,
+  Calendar,
   ChevronDown,
+  ClipboardCheck,
+  Crosshair,
+  Eye,
   ShieldCheck,
+  Sparkles,
+  Target,
+  Users,
 } from 'lucide-react';
-import { XivIcon } from '../ui/XivIcon';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import { JobIcon } from '../ui/JobIcon';
@@ -179,6 +187,7 @@ export function OverviewTab({
   staticGroups = primaryStatic ? [primaryStatic] : [],
   focusAvailability = false,
 }: OverviewTabProps) {
+  const { t } = useTranslation();
   const characters = profile.characters;
   const jobProfiles = profile.jobProfiles;
   const mainJob = jobProfiles.find((j) => j.priority === 'main');
@@ -224,12 +233,12 @@ export function OverviewTab({
     .join(' / ');
   const staticCount = staticGroups.length;
   const staticSummary = staticCount === 0
-    ? 'Find a static'
+    ? t('profile.overview.findAStatic')
     : staticCount === 1
       ? staticGroups[0].name
-      : `My Statics (${staticCount})`;
+      : t('profile.overview.myStatics');
   const staticDetail = staticCount === 0
-    ? 'Open Static Finder'
+    ? t('profile.overview.openStaticFinder')
     : staticCount === 1
       ? (staticGroups[0].userRole ?? 'Member')
       : 'Use My Statics menu';
@@ -240,33 +249,33 @@ export function OverviewTab({
       : '/profile';
 
   const readinessChecks = [
-    { done: hasCharacter, label: 'Character linked' },
-    { done: hasMainJob, label: 'Main job selected' },
-    { done: hasAnyGear, label: 'Gear saved' },
-    { done: availabilityDayCount > 0, label: 'Availability set' },
-    { done: hasReadyJob, label: 'Job readiness set' },
-    { done: visibilityConfigured, label: 'Profile visibility configured' },
-    { done: shareConfigured, label: 'Share preview available' },
+    { done: hasCharacter, label: t('profile.overview.characterLinked') },
+    { done: hasMainJob, label: t('profile.overview.mainJobSelected') },
+    { done: hasAnyGear, label: t('profile.overview.gearSaved') },
+    { done: availabilityDayCount > 0, label: t('profile.overview.availabilitySet') },
+    { done: hasReadyJob, label: t('profile.overview.jobReadinessSet') },
+    { done: visibilityConfigured, label: t('profile.overview.profileVisibilityConfigured') },
+    { done: shareConfigured, label: t('profile.overview.sharePreviewAvailable') },
   ];
-  const optionalChecks = [{ done: hasAltJob, label: 'Alt/flex job added' }];
+  const optionalChecks = [{ done: hasAltJob, label: t('profile.overview.altFlexJobAdded') }];
   const completedCount = readinessChecks.filter((step) => step.done).length;
   const incompleteSteps = readinessChecks.filter((step) => !step.done);
   const completedSteps = [...readinessChecks, ...optionalChecks].filter((step) => step.done);
   const readinessPercent = Math.round((completedCount / readinessChecks.length) * 100);
   const readinessAction = !hasCharacter
-    ? { label: nextStep?.label ?? 'Link Character', action: nextStep?.action ?? (() => undefined), to: null }
+    ? { label: nextStep?.label ?? t('profile.overview.linkCharacter'), action: nextStep?.action ?? (() => undefined), to: null }
     : !hasMainJob
-      ? { label: nextStep?.label ?? 'Set Main Job', action: nextStep?.action ?? (() => onNavigate('jobs-gear')), to: null }
+      ? { label: nextStep?.label ?? t('profile.overview.setMainJob'), action: nextStep?.action ?? (() => onNavigate('jobs-gear')), to: null }
       : !hasAnyGear
-        ? { label: 'Check Gear', action: () => onNavigate('sync'), to: null }
+        ? { label: t('profile.overview.checkGear'), action: () => onNavigate('sync'), to: null }
         : availabilityDayCount === 0
-          ? { label: 'Set Availability', action: () => onNavigate('availability'), to: null }
+          ? { label: t('profile.overview.setAvailability'), action: () => onNavigate('availability'), to: null }
           : !hasReadyJob
-          ? { label: 'Set Readiness', action: () => onNavigate('jobs-gear'), to: null }
+          ? { label: t('profile.overview.setReadiness'), action: () => onNavigate('jobs-gear'), to: null }
           : !visibilityConfigured || !shareConfigured
-            ? { label: 'Configure Sharing', action: () => onNavigate('preview'), to: null }
-            : { label: 'View Static Finder', action: null, to: '/discover' };
-  const syncHealthLabel = latestSnapshot ? formatGearActivity(latestSnapshot) : 'No gear saved yet';
+            ? { label: t('profile.overview.configureSharing'), action: () => onNavigate('preview'), to: null }
+            : { label: t('profile.overview.viewStaticFinder'), action: null, to: '/discover' };
+  const syncHealthLabel = latestSnapshot ? formatGearActivity(latestSnapshot) : t('profile.overview.noGearSavedYet');
   const readyToApply = completedCount === readinessChecks.length;
   const activityItems = useActivityFeed(gearSnapshots, 4);
 
@@ -284,52 +293,52 @@ export function OverviewTab({
         >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] select-none" style={{ color: 'rgba(20,184,166,0.6)' }}>Profile status</p>
-            <h2 className="truncate font-display text-base font-semibold text-text-primary mt-0.5">Ready at a glance</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] select-none" style={{ color: 'rgba(20,184,166,0.6)' }}>{t('profile.overview.profileStatus')}</p>
+            <h2 className="truncate font-display text-base font-semibold text-text-primary mt-0.5">{t('profile.overview.readyAtAGlance')}</h2>
           </div>
           <Badge
             variant={profile.visibility === 'private' ? 'default' : profile.visibility === 'shareable' ? 'info' : 'success'}
             size="sm"
           >
-            {profile.visibility === 'private' ? 'Private' : profile.visibility === 'shareable' ? 'Shareable' : 'Discoverable'}
+            {profile.visibility === 'private' ? t('profile.overview.private') : profile.visibility === 'shareable' ? t('profile.overview.shareable') : t('profile.overview.discoverable')}
           </Badge>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
           <CommandChip
-            label="Gear"
+            label={t('profile.overview.gear')}
             value={latestSnapshot ? `iLv ${latestSnapshot.avgItemLevel}` : 'Missing'}
-            detail={latestSnapshot ? syncHealthLabel : 'Sync needed'}
+            detail={latestSnapshot ? syncHealthLabel : t('profile.overview.syncNeeded')}
             to="/profile?tab=sync"
-            icon={<XivIcon name="loot" size={14} />}
+            icon={<Briefcase className="h-3.5 w-3.5" />}
           />
           <CommandChip
-            label="Availability"
+            label={t('profile.overview.availability')}
             value={availabilitySummary}
             detail={availabilityDayLabels || availabilityTimezone}
             to="/profile?tab=availability"
-            icon={<XivIcon name="schedule" size={14} />}
+            icon={<Calendar className="h-3.5 w-3.5" />}
             highlight={focusAvailability || availabilityDayCount === 0}
           />
           <CommandChip
-            label="Sharing"
-            value={shareConfigured ? 'Shareable' : 'Private'}
+            label={t('profile.overview.sharing')}
+            value={shareConfigured ? t('profile.overview.shareable') : t('profile.overview.private')}
             detail={profile.visibility}
             to="/profile?tab=share"
-            icon={<XivIcon name="handshake" size={14} />}
+            icon={<Eye className="h-3.5 w-3.5" />}
           />
           <CommandChip
-            label="Collections"
+            label={t('profile.overview.collections')}
             value={farmingCollectionCount > 0 ? `${farmingCollectionCount} farming` : 'None tracked'}
             detail={`${readyToBuySuggestionCount} ready to buy`}
             to="/profile?tab=collections"
-            icon={<XivIcon name="goals" size={14} />}
+            icon={<Sparkles className="h-3.5 w-3.5" />}
           />
           <CommandChip
             label="Static"
             value={staticSummary}
             detail={staticDetail}
             to={staticLink}
-            icon={<XivIcon name="party" size={14} />}
+            icon={<Users className="h-3.5 w-3.5" />}
           />
         </div>
         </div>
@@ -342,7 +351,7 @@ export function OverviewTab({
           <div className="p-3 sm:p-4" style={{ background: 'linear-gradient(135deg, rgba(20,184,166,0.05) 0%, transparent 100%)' }}>
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-display text-sm font-semibold text-text-primary">{readyToApply ? 'Ready to apply' : 'Next step'}</h3>
+                <h3 className="font-display text-sm font-semibold text-text-primary">{readyToApply ? t('profile.overview.readyToApply') : t('profile.overview.nextStep')}</h3>
                 <p className="mt-0.5 text-xs text-text-tertiary">Gear, sharing, and Static Finder</p>
               </div>
               <Badge variant={readyToApply ? 'success' : 'default'} size="sm">
@@ -365,12 +374,12 @@ export function OverviewTab({
             </div>
             {incompleteSteps.length > 0 ? (
               <div className="mb-3 rounded-lg border border-status-warning/20 bg-status-warning/10 px-3 py-2">
-                <p className="text-xs font-medium text-status-warning">Next step</p>
+                <p className="text-xs font-medium text-status-warning">{t('profile.overview.nextStep')}</p>
                 <p className="text-sm text-text-primary">{incompleteSteps[0].label}</p>
               </div>
             ) : (
               <div className="mb-3 rounded-lg border border-status-success/20 bg-status-success/10 px-3 py-2 text-sm text-status-success">
-                Your profile is ready for Static Finder.
+                {t('profile.overview.readyForStaticFinder')}
               </div>
             )}
             {readinessAction.to ? (
@@ -389,8 +398,8 @@ export function OverviewTab({
             <div className="mt-3 space-y-2 border-t border-border-subtle pt-3">
               <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <XivIcon name="loot" size={14} className="flex-shrink-0" />
-                      <span className="truncate text-sm text-text-secondary">Gear</span>
+                  <Briefcase className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
+                      <span className="truncate text-sm text-text-secondary">{t('profile.overview.gear')}</span>
                 </div>
                 {/* design-system-ignore: Compact row action inside unified Next Actions panel */}
                 <button
@@ -403,22 +412,22 @@ export function OverviewTab({
               </div>
               <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <XivIcon name="handshake" size={14} className="flex-shrink-0" />
-                  <span className="truncate text-sm text-text-secondary">Sharing</span>
+                  <Eye className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
+                  <span className="truncate text-sm text-text-secondary">{t('profile.overview.sharing')}</span>
                 </div>
                 <Link to="/profile?tab=share" className="text-xs font-medium text-accent hover:text-accent-hover">
-                  {shareConfigured ? 'Ready' : 'Configure'}
+                  {shareConfigured ? t('profile.overview.ready') : t('profile.overview.configure')}
                 </Link>
               </div>
               <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <XivIcon name="party" size={14} className="flex-shrink-0" />
+                  <ClipboardCheck className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
                   <span className="truncate text-sm text-text-secondary">
-                    {staticSuggestions.length > 0 ? 'Statics looking for you' : 'Static Finder'}
+                    {staticSuggestions.length > 0 ? t('profile.overview.staticsLookingForYou') : 'Static Finder'}
                   </span>
                 </div>
                 <Link to="/discover" className="text-xs font-medium text-accent hover:text-accent-hover">
-                  {staticSuggestions.length > 0 ? `${staticSuggestions.length} match${staticSuggestions.length === 1 ? '' : 'es'}` : 'Open'}
+                  {staticSuggestions.length > 0 ? `${staticSuggestions.length} ${t('profile.overview.matches')}` : 'Open'}
                 </Link>
               </div>
             </div>
@@ -433,7 +442,7 @@ export function OverviewTab({
                 ))}
                 {completedSteps.length > 4 && (
                   <span className="rounded-full bg-surface-elevated px-2 py-1 text-[11px] text-text-tertiary">
-                    +{completedSteps.length - 4}
+                    {t('profile.overview.more', { count: completedSteps.length - 4 })}
                   </span>
                 )}
               </div>
@@ -446,14 +455,14 @@ export function OverviewTab({
               className="mt-3 flex w-full items-center gap-1 text-xs text-text-tertiary transition-colors hover:text-text-secondary"
             >
               <ChevronDown className={`h-3 w-3 transition-transform ${showAllSteps ? 'rotate-180' : ''}`} />
-              {showAllSteps ? 'Hide checklist' : 'Show checklist'}
+              {showAllSteps ? t('profile.overview.hideChecklist') : t('profile.overview.showChecklist')}
             </button>
             {showAllSteps && (
               <div className="mt-2 space-y-1 rounded-lg border border-border-subtle bg-surface-elevated/50 px-3 py-2">
                 {[...readinessChecks, ...optionalChecks].map((check) => (
                   <div key={check.label} className="flex items-center justify-between gap-2 text-xs">
                     <span className={check.done ? 'text-text-primary' : 'text-text-tertiary'}>{check.label}</span>
-                    <span className={check.done ? 'text-status-success' : 'text-status-warning'}>{check.done ? 'Done' : 'Needed'}</span>
+                    <span className={check.done ? 'text-status-success' : 'text-status-warning'}>{check.done ? 'Done' : t('profile.overview.needed')}</span>
                   </div>
                 ))}
               </div>
@@ -464,10 +473,10 @@ export function OverviewTab({
           {staticSuggestions.length > 0 && (
             <motion.div {...staggerItemProps}>
               <DashboardCard
-                title="Static Finder Matches"
-                subtitle="Compact preview from your Player Hub setup"
-                icon={<XivIcon name="party" size={16} />}
-                footer={<InlineLink to="/discover">Open Static Finder</InlineLink>}
+                title={t('profile.overview.staticFinderMatches')}
+                subtitle={t('profile.overview.compactPreview')}
+                icon={<Users className="h-4 w-4" />}
+                footer={<InlineLink to="/discover">{t('profile.overview.openStaticFinder')}</InlineLink>}
                 className="min-h-0"
               >
                 <div className="space-y-2">
@@ -496,13 +505,13 @@ export function OverviewTab({
 
         <main className="space-y-4 xl:order-1">
           <motion.div {...staggerItemProps} className="space-y-3">
-            <SectionLabel icon={<XivIcon name="stats" size={12} />}>Raider Snapshot</SectionLabel>
+            <SectionLabel icon={<Target className="h-3 w-3" />}>{t('profile.overview.raiderSnapshot')}</SectionLabel>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <DashboardCard
-                title="Gear"
+                title={t('profile.overview.gear')}
                 subtitle="Applications and roster links"
-                icon={<XivIcon name="loot" size={16} />}
-                footer={<InlineLink to="/profile?tab=sync">Open Sync</InlineLink>}
+                icon={<Briefcase className="h-4 w-4" />}
+                footer={<InlineLink to="/profile?tab=sync">{t('profile.overview.openSync')}</InlineLink>}
               >
                 {latestSnapshot ? (
                   <div className="space-y-2">
@@ -520,19 +529,19 @@ export function OverviewTab({
                   </div>
                 ) : (
                   <div>
-                    <p className="font-medium text-text-primary">No gear saved yet</p>
+                    <p className="font-medium text-text-primary">{t('profile.overview.noGearSavedYet')}</p>
                     <p className="mt-1 text-sm text-text-tertiary">
-                      Sync gear so applications and recommendations can use your current item level.
+                      {t('profile.overview.syncGearForApplications')}
                     </p>
                   </div>
                 )}
               </DashboardCard>
 
               <DashboardCard
-                title="Jobs"
+                title={t('profile.overview.jobs')}
                 subtitle="Static Finder and Request to Join"
-                icon={<XivIcon name="loot" size={16} />}
-                footer={<InlineLink to="/profile?tab=jobs-gear">Manage Jobs & Gear</InlineLink>}
+                icon={<Crosshair className="h-4 w-4" />}
+                footer={<InlineLink to="/profile?tab=jobs-gear">{t('profile.overview.manageJobsAndGear')}</InlineLink>}
               >
                 {jobProfiles.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
@@ -548,20 +557,20 @@ export function OverviewTab({
                     ))}
                     {jobProfiles.length > 4 && (
                       <span className="inline-flex items-center px-2 py-1 text-xs text-text-muted">
-                        +{jobProfiles.length - 4} more
+                        {t('profile.overview.more', { count: jobProfiles.length - 4 })}
                       </span>
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-text-tertiary">Add your main and flex jobs so statics can see where you fit.</p>
+                  <p className="text-sm text-text-tertiary">{t('profile.overview.noJobsAdded')}</p>
                 )}
               </DashboardCard>
 
               <DashboardCard
-                title="Collections"
-                subtitle="Farm recommendations"
-                icon={<XivIcon name="goals" size={16} />}
-                footer={<InlineLink to="/profile?tab=collections">Open Collections</InlineLink>}
+                title={t('profile.overview.collections')}
+                subtitle={t('profile.overview.farmRecommendations')}
+                icon={<Sparkles className="h-4 w-4" />}
+                footer={<InlineLink to="/profile?tab=collections">{t('profile.overview.openCollections')}</InlineLink>}
               >
                 {collectionGoals.length > 0 ? (
                   <div className="flex items-center gap-5">
@@ -580,15 +589,15 @@ export function OverviewTab({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-text-tertiary">Track reward progress so static farms can line up later.</p>
+                  <p className="text-sm text-text-tertiary">{t('profile.overview.trackRewardProgress')}</p>
                 )}
               </DashboardCard>
 
               <DashboardCard
-                title="Goals"
-                subtitle="Private tasks and reminders"
-                icon={<XivIcon name="goals" size={16} />}
-                footer={<InlineLink to="/profile?tab=goals">Add Task</InlineLink>}
+                title={t('profile.overview.goals')}
+                subtitle={t('profile.overview.privateTasksAndReminders')}
+                icon={<Target className="h-4 w-4" />}
+                footer={<InlineLink to="/profile?tab=goals">{t('profile.overview.addTask')}</InlineLink>}
               >
                 {personalGoals.length > 0 ? (
                   <div className="flex items-center gap-5">
@@ -608,8 +617,8 @@ export function OverviewTab({
                   </div>
                 ) : (
                   <div>
-                    <p className="font-medium text-text-primary">No tasks yet</p>
-                    <p className="mt-1 text-sm text-text-tertiary">Track gearing, clears, raid prep, or reminders.</p>
+                    <p className="font-medium text-text-primary">{t('profile.overview.noTasksYet')}</p>
+                    <p className="mt-1 text-sm text-text-tertiary">{t('profile.overview.trackGearingClears')}</p>
                   </div>
                 )}
               </DashboardCard>
@@ -618,7 +627,7 @@ export function OverviewTab({
 
           {collectionSuggestions.length > 0 && (
             <motion.div {...staggerItemProps}>
-              <DashboardCard title="Suggested farms" subtitle="Collection progress detected from your latest sync">
+              <DashboardCard title={t('profile.overview.suggestedFarms')} subtitle={t('profile.overview.collectionProgressDetected')}>
                 <div className="space-y-2">
                   {collectionSuggestions.slice(0, 3).map((s) => (
                     <div key={s.trialId} className="flex items-center gap-2 text-sm">
@@ -627,7 +636,7 @@ export function OverviewTab({
                         <span className="block truncate text-xs text-text-tertiary">{s.dutyName}</span>
                       </div>
                       {s.hasMount ? (
-                        <Badge variant="success" size="sm">Owned</Badge>
+                        <Badge variant="success" size="sm">{t('profile.overview.owned')}</Badge>
                       ) : (
                         <Badge variant="info" size="sm">{s.currentCount}/{s.totemTarget}</Badge>
                       )}
@@ -635,7 +644,7 @@ export function OverviewTab({
                   ))}
                   {collectionSuggestions.length > 3 && (
                     <Button variant="ghost" size="sm" onClick={() => onNavigate('collections')}>
-                      +{collectionSuggestions.length - 3} more
+                      {t('profile.overview.more', { count: collectionSuggestions.length - 3 })}
                     </Button>
                   )}
                 </div>

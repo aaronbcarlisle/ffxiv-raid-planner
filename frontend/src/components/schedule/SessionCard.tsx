@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, RotateCcw, Users, Gamepad2, MoreHorizontal, CalendarDays } from 'lucide-react';
-import { XivIcon } from '../ui/XivIcon';
+import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, Swords, RotateCcw, Users, Gamepad2, MoreHorizontal, CalendarDays } from 'lucide-react';
 import { Button, IconButton, Tooltip } from '../primitives';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { Modal } from '../ui/Modal';
@@ -64,28 +64,30 @@ function formatDuration(minutes: number): string {
   return `${h}h ${m}m`;
 }
 
-const CATEGORY_CONFIG: Record<EventCategory, { icon: React.ReactNode; label: string; color: string }> = {
-  raid: { icon: <XivIcon name="sword" size={12} />, label: 'Raid', color: 'bg-red-400/20 text-red-300' },
-  ultimate: { icon: <XivIcon name="sword" size={12} />, label: 'Ultimate', color: 'bg-blue-400/20 text-blue-300' },
-  farm: { icon: <Mountain className="w-3 h-3" />, label: 'Farm', color: 'bg-amber-400/20 text-amber-300' },
-  reclear: { icon: <RotateCcw className="w-3 h-3" />, label: 'Reclear', color: 'bg-blue-400/20 text-blue-300' },
-  prog: { icon: <Gamepad2 className="w-3 h-3" />, label: 'Prog', color: 'bg-purple-400/20 text-purple-300' },
-  social: { icon: <Users className="w-3 h-3" />, label: 'Social', color: 'bg-green-400/20 text-green-300' },
-  other: { icon: <MoreHorizontal className="w-3 h-3" />, label: 'Other', color: 'bg-surface-elevated text-text-secondary' },
+const CATEGORY_CONFIG: Record<EventCategory, { icon: typeof Swords; labelKey: string; color: string }> = {
+  raid: { icon: Swords, labelKey: 'session.categoryRaid', color: 'bg-red-400/20 text-red-300' },
+  ultimate: { icon: Swords, labelKey: 'session.categoryUltimate', color: 'bg-blue-400/20 text-blue-300' },
+  farm: { icon: Mountain, labelKey: 'session.categoryFarm', color: 'bg-amber-400/20 text-amber-300' },
+  reclear: { icon: RotateCcw, labelKey: 'session.categoryReclear', color: 'bg-blue-400/20 text-blue-300' },
+  prog: { icon: Gamepad2, labelKey: 'session.categoryProg', color: 'bg-purple-400/20 text-purple-300' },
+  social: { icon: Users, labelKey: 'session.categorySocial', color: 'bg-green-400/20 text-green-300' },
+  other: { icon: MoreHorizontal, labelKey: 'session.categoryOther', color: 'bg-surface-elevated text-text-secondary' },
 };
 
-const RSVP_CONFIG: Record<RsvpStatus, { icon: typeof CheckCircle; label: string; shortLabel: string; activeClass: string }> = {
-  available: { icon: CheckCircle, label: 'Available', shortLabel: 'Yes', activeClass: 'bg-green-400/20 text-green-300 border-green-400/40' },
-  tentative: { icon: HelpCircle, label: 'Tentative', shortLabel: 'Maybe', activeClass: 'bg-yellow-400/20 text-yellow-300 border-yellow-400/40' },
-  unavailable: { icon: XCircle, label: 'Unavailable', shortLabel: 'No', activeClass: 'bg-red-400/20 text-red-300 border-red-400/40' },
+const RSVP_CONFIG: Record<RsvpStatus, { icon: typeof CheckCircle; labelKey: string; shortLabelKey: string; activeClass: string }> = {
+  available: { icon: CheckCircle, labelKey: 'session.statusYes', shortLabelKey: 'session.statusYes', activeClass: 'bg-green-400/20 text-green-300 border-green-400/40' },
+  tentative: { icon: HelpCircle, labelKey: 'session.statusMaybe', shortLabelKey: 'session.statusMaybe', activeClass: 'bg-yellow-400/20 text-yellow-300 border-yellow-400/40' },
+  unavailable: { icon: XCircle, labelKey: 'session.statusNo', shortLabelKey: 'session.statusNo', activeClass: 'bg-red-400/20 text-red-300 border-red-400/40' },
 };
 
 function CategoryBadge({ category }: { category: EventCategory }) {
+  const { t } = useTranslation();
   const config = CATEGORY_CONFIG[category];
+  const Icon = config.icon;
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${config.color}`}>
-      {config.icon}
-      {config.label}
+      <Icon className="w-3 h-3" />
+      {t(config.labelKey)}
     </span>
   );
 }
@@ -120,6 +122,7 @@ function buildDiscordMessage(session: ScheduleSession, rsvpSummary: Record<strin
 }
 
 export function SessionCard({ session, currentUserId, shareCode, staticName, canManage, canRsvp, compact, groupId, deliveryStatus, onRsvp, onEdit, onDelete }: SessionCardProps) {
+  const { t } = useTranslation();
   const [rsvpLoading, setRsvpLoading] = useState<RsvpStatus | null>(null);
   const [copied, setCopied] = useState(false);
   const deleteModal = useModal();
@@ -207,11 +210,11 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
     const timeStr = formatInTimezone(displayStartTime, session.timezone);
     const durationStr = formatDuration(duration);
     const lines = [session.title, `${timeStr} (${durationStr})`];
-    if (session.category) lines.push(`Type: ${CATEGORY_CONFIG[session.category]?.label ?? session.category}`);
+    if (session.category) lines.push(`Type: ${CATEGORY_CONFIG[session.category] ? t(CATEGORY_CONFIG[session.category].labelKey) : session.category}`);
     if (availabilityTracked && (rsvpSummary.available > 0 || rsvpSummary.tentative > 0)) {
       lines.push(`RSVP: ${rsvpSummary.available} available, ${rsvpSummary.tentative} tentative`);
     } else if (!availabilityTracked) {
-      lines.push('Availability not required');
+      lines.push(t('session.availabilityNotRequired'));
     }
     if (shareCode) lines.push(`${window.location.origin}/group/${shareCode}?tab=schedule&sessionId=${session.id}`);
     const text = lines.join('\n');
@@ -227,7 +230,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
   const handleCopyDiscord = async () => {
     const msg = buildDiscordMessage(session, rsvpSummary, shareCode, staticName);
     await navigator.clipboard.writeText(msg);
-    toast.success('Copied Discord message');
+    toast.success(t('session.copiedDiscordMessage'));
   };
 
   // ── Information-dense tile layout ──
@@ -247,7 +250,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-medium text-text-primary text-sm truncate">{session.title}</span>
               {session.isRecurring && (
-                <Tooltip content="Recurring">
+                <Tooltip content={t('session.recurring')}>
                   <span className="inline-flex"><Repeat className="w-3 h-3 text-accent" /></span>
                 </Tooltip>
               )}
@@ -256,17 +259,17 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
               {session.category && <CategoryBadge category={session.category} />}
               {deliveryStatus?.mirrorState === 'synced' && (
                 <span className="inline-flex items-center gap-1 rounded bg-blue-400/15 px-1.5 py-0.5 text-[10px] font-medium text-blue-300">
-                  <CalendarDays className="h-3 w-3" /> Discord
+                  <CalendarDays className="h-3 w-3" /> {t('session.discordEventSynced')}
                 </span>
               )}
               {deliveryStatus?.mirrorState === 'failed' && (
                 <span className="inline-flex items-center gap-1 rounded bg-red-400/15 px-1.5 py-0.5 text-[10px] font-medium text-red-300">
-                  <XCircle className="h-3 w-3" /> Discord issue
+                  <XCircle className="h-3 w-3" /> {t('session.discordIssue')}
                 </span>
               )}
               {deliveryStatus?.reminderLabel && (
                 <span className="inline-flex items-center gap-1 rounded bg-purple-400/15 px-1.5 py-0.5 text-[10px] font-medium text-purple-300">
-                  <MessageSquare className="h-3 w-3" /> {deliveryStatus.reminderLabel}
+                  <MessageSquare className="h-3 w-3" /> {t('session.reminders')} {deliveryStatus.reminderLabel}
                 </span>
               )}
               {session.contentName && (
@@ -275,16 +278,16 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
             </div>
           </div>
           <div className="flex gap-0.5 flex-shrink-0">
-            <IconButton icon={copied ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Share2 className="w-3.5 h-3.5" />} aria-label="Share" size="sm" onClick={handleShare} />
+            <IconButton icon={copied ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Share2 className="w-3.5 h-3.5" />} aria-label={t('session.share')} size="sm" onClick={handleShare} />
             {session.isRecurring && groupId && (
-              <Tooltip content="View occurrences">
-                <IconButton icon={<CalendarDays className="w-3.5 h-3.5" />} aria-label="View occurrences" size="sm" onClick={occurrenceModal.open} />
+              <Tooltip content={t('session.viewOccurrences')}>
+                <IconButton icon={<CalendarDays className="w-3.5 h-3.5" />} aria-label={t('session.viewOccurrences')} size="sm" onClick={occurrenceModal.open} />
               </Tooltip>
             )}
             {canManage && (
               <>
-                <IconButton icon={<Edit2 className="w-3.5 h-3.5" />} aria-label="Edit" size="sm" onClick={() => onEdit(session)} />
-                <IconButton icon={<Trash2 className="w-3.5 h-3.5" />} aria-label="Delete" size="sm" variant="danger" onClick={handleDeleteClick} />
+                <IconButton icon={<Edit2 className="w-3.5 h-3.5" />} aria-label={t('common.edit')} size="sm" onClick={() => onEdit(session)} />
+                <IconButton icon={<Trash2 className="w-3.5 h-3.5" />} aria-label={t('common.delete')} size="sm" variant="danger" onClick={handleDeleteClick} />
               </>
             )}
           </div>
@@ -299,7 +302,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
           </div>
           {!isLocalTzSame && (
             <div className="flex items-center gap-1.5 text-[11px] text-text-secondary ml-[18px]">
-              <span>Your time: {formatLocalTime(displayStartTime)}</span>
+              <span>{t('session.yourTime', { time: formatLocalTime(displayStartTime) })}</span>
             </div>
           )}
           {session.description && (
@@ -313,19 +316,19 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
           <div className="flex items-center justify-between text-[11px]">
             {availabilityTracked ? (
               <div className="flex items-center gap-2">
-                <span className="text-green-400">{rsvpSummary.available} yes</span>
-                <span className="text-yellow-400">{rsvpSummary.tentative} maybe</span>
-                <span className="text-red-400">{rsvpSummary.unavailable} no</span>
+                <span className="text-green-400">{rsvpSummary.available} {t('session.statusYes')}</span>
+                <span className="text-yellow-400">{rsvpSummary.tentative} {t('session.statusMaybe')}</span>
+                <span className="text-red-400">{rsvpSummary.unavailable} {t('session.statusNo')}</span>
               </div>
             ) : (
-              <span className="text-text-tertiary">Availability not required</span>
+              <span className="text-text-tertiary">{t('session.availabilityNotRequired')}</span>
             )}
             {myRsvp && (
               <span className={`text-[10px] font-medium ${
                 myRsvp.status === 'available' ? 'text-green-400' :
                 myRsvp.status === 'tentative' ? 'text-yellow-400' : 'text-red-400'
               }`}>
-                You: {myRsvp.status === 'available' ? 'Yes' : myRsvp.status === 'tentative' ? 'Maybe' : 'No'}
+                {t('session.yourStatus', { status: myRsvp.status === 'available' ? t('session.statusYes') : myRsvp.status === 'tentative' ? t('session.statusMaybe') : t('session.statusNo') })}
               </span>
             )}
           </div>
@@ -347,7 +350,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
                   <Button key={status} variant="secondary" size="sm" onClick={() => handleRsvp(status)} disabled={rsvpLoading !== null}
                     className={`flex-1 text-xs py-1 ${isActive ? config.activeClass : ''}`} data-testid={`rsvp-${status}`}>
                     <Icon className="w-3 h-3 mr-0.5" />
-                    {rsvpLoading === status ? '...' : config.shortLabel}
+                    {rsvpLoading === status ? '...' : t(config.shortLabelKey)}
                   </Button>
                 );
               })}
@@ -355,18 +358,18 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
           )}
         </div>
 
-        <ConfirmModal isOpen={deleteModal.isOpen} title="Delete Session" message={`Delete "${session.title}"? This will also remove all RSVPs.`} confirmLabel="Delete" variant="danger" onConfirm={handleDelete} onCancel={deleteModal.close} />
+        <ConfirmModal isOpen={deleteModal.isOpen} title={t('session.deleteSession')} message={t('session.deleteConfirm', { title: session.title })} confirmLabel={t('session.deleteButton')} variant="danger" onConfirm={handleDelete} onCancel={deleteModal.close} />
 
         {session.isRecurring && (
-          <Modal isOpen={recurringDeleteModal.isOpen} onClose={recurringDeleteModal.close} title="Recurring Session">
+          <Modal isOpen={recurringDeleteModal.isOpen} onClose={recurringDeleteModal.close} title={t('session.recurringSession')}>
             <div className="space-y-3">
-              <p className="text-sm text-text-secondary">This is a recurring session. What would you like to do?</p>
+              <p className="text-sm text-text-secondary">{t('session.recurringWhatToDo')}</p>
               <div className="flex flex-col gap-2">
                 <Button variant="secondary" onClick={handleCancelOccurrence}>
-                  Cancel {new Date(displayStartTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} only
+                  {t('session.cancelOccurrenceOnly', { date: new Date(displayStartTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) })}
                 </Button>
                 <Button variant="danger" onClick={async () => { recurringDeleteModal.close(); await onDelete(session.id); }}>
-                  Delete entire series
+                  {t('session.deleteEntireSeries')}
                 </Button>
               </div>
             </div>
@@ -394,24 +397,24 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
           <h3 className="font-medium text-text-primary text-lg flex items-center gap-2 flex-wrap">
             <span className="truncate">{session.title}</span>
             {session.isRecurring && (
-              <Tooltip content="Recurring session">
+              <Tooltip content={t('session.recurring')}>
                 <span className="inline-flex"><Repeat className="w-4 h-4 text-accent" /></span>
               </Tooltip>
             )}
             {session.category && <CategoryBadge category={session.category} />}
             {deliveryStatus?.mirrorState === 'synced' && (
               <span className="inline-flex items-center gap-1 rounded bg-blue-400/15 px-1.5 py-0.5 text-[10px] font-medium text-blue-300">
-                <CalendarDays className="h-3 w-3" /> Discord Event synced
+                <CalendarDays className="h-3 w-3" /> {t('session.discordEventSynced')}
               </span>
             )}
             {deliveryStatus?.mirrorState === 'failed' && (
               <span className="inline-flex items-center gap-1 rounded bg-red-400/15 px-1.5 py-0.5 text-[10px] font-medium text-red-300">
-                <XCircle className="h-3 w-3" /> Discord delivery issue
+                <XCircle className="h-3 w-3" /> {t('session.discordDeliveryIssue')}
               </span>
             )}
             {deliveryStatus?.reminderLabel && (
               <span className="inline-flex items-center gap-1 rounded bg-purple-400/15 px-1.5 py-0.5 text-[10px] font-medium text-purple-300">
-                <MessageSquare className="h-3 w-3" /> Reminders {deliveryStatus.reminderLabel}
+                <MessageSquare className="h-3 w-3" /> {t('session.reminders')} {deliveryStatus.reminderLabel}
               </span>
             )}
           </h3>
@@ -424,18 +427,18 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
         </div>
         <div className="flex gap-1 flex-shrink-0">
           {session.isRecurring && groupId && (
-            <Tooltip content="View occurrences">
-              <IconButton icon={<CalendarDays className="w-4 h-4" />} aria-label="View occurrences" size="sm" onClick={occurrenceModal.open} />
+            <Tooltip content={t('session.viewOccurrences')}>
+              <IconButton icon={<CalendarDays className="w-4 h-4" />} aria-label={t('session.viewOccurrences')} size="sm" onClick={occurrenceModal.open} />
             </Tooltip>
           )}
-          <Tooltip content="Copy for Discord">
-            <IconButton icon={<MessageSquare className="w-4 h-4" />} aria-label="Copy Discord message" size="sm" onClick={handleCopyDiscord} />
+          <Tooltip content={t('session.copyDiscordMessage')}>
+            <IconButton icon={<MessageSquare className="w-4 h-4" />} aria-label={t('session.copyDiscordMessage')} size="sm" onClick={handleCopyDiscord} />
           </Tooltip>
-          <IconButton icon={copied ? <Check className="w-4 h-4 text-status-success" /> : <Share2 className="w-4 h-4" />} aria-label="Share session" size="sm" onClick={handleShare} />
+          <IconButton icon={copied ? <Check className="w-4 h-4 text-status-success" /> : <Share2 className="w-4 h-4" />} aria-label={t('session.share')} size="sm" onClick={handleShare} />
           {canManage && (
             <>
-              <IconButton icon={<Edit2 className="w-4 h-4" />} aria-label="Edit session" size="sm" onClick={() => onEdit(session)} />
-              <IconButton icon={<Trash2 className="w-4 h-4" />} aria-label="Delete session" size="sm" variant="danger" onClick={handleDeleteClick} />
+              <IconButton icon={<Edit2 className="w-4 h-4" />} aria-label={t('common.edit')} size="sm" onClick={() => onEdit(session)} />
+              <IconButton icon={<Trash2 className="w-4 h-4" />} aria-label={t('common.delete')} size="sm" variant="danger" onClick={handleDeleteClick} />
             </>
           )}
         </div>
@@ -450,7 +453,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
         {!isLocalTzSame && (
           <div className="flex items-center gap-2 text-sm">
             <Clock className="w-4 h-4 text-text-muted shrink-0" />
-            <span className="text-text-secondary">Your time: {formatLocalTime(displayStartTime)}</span>
+            <span className="text-text-secondary">{t('session.yourTime', { time: formatLocalTime(displayStartTime) })}</span>
           </div>
         )}
         <div className="text-xs text-text-muted ml-6">Duration: {formatDuration(duration)}</div>
@@ -466,7 +469,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
               <Button key={status} variant="secondary" size="sm" onClick={() => handleRsvp(status)} disabled={rsvpLoading !== null}
                 className={isActive ? config.activeClass : ''} data-testid={`rsvp-${status}`}>
                 <Icon className="w-4 h-4 mr-1" />
-                {rsvpLoading === status ? '...' : config.label}
+                {rsvpLoading === status ? '...' : t(config.labelKey)}
               </Button>
             );
           })}
@@ -475,7 +478,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
 
       {!availabilityTracked && (
         <div className="rounded-lg border border-border-subtle bg-surface-muted/30 px-3 py-2 text-sm text-text-secondary">
-          Availability not required
+          {t('session.availabilityNotRequired')}
         </div>
       )}
 
@@ -503,18 +506,18 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
         </div>
       )}
 
-      <ConfirmModal isOpen={deleteModal.isOpen} title="Delete Session" message={`Are you sure you want to delete "${session.title}"? This will also remove all RSVPs.`} confirmLabel="Delete" variant="danger" onConfirm={handleDelete} onCancel={deleteModal.close} />
+      <ConfirmModal isOpen={deleteModal.isOpen} title={t('session.deleteSession')} message={t('session.deleteConfirm', { title: session.title })} confirmLabel={t('session.deleteButton')} variant="danger" onConfirm={handleDelete} onCancel={deleteModal.close} />
 
       {session.isRecurring && (
-        <Modal isOpen={recurringDeleteModal.isOpen} onClose={recurringDeleteModal.close} title="Recurring Session">
+        <Modal isOpen={recurringDeleteModal.isOpen} onClose={recurringDeleteModal.close} title={t('session.recurringSession')}>
           <div className="space-y-3">
-            <p className="text-sm text-text-secondary">This is a recurring session. What would you like to do?</p>
+            <p className="text-sm text-text-secondary">{t('session.recurringWhatToDo')}</p>
             <div className="flex flex-col gap-2">
               <Button variant="secondary" onClick={handleCancelOccurrence}>
-                Cancel {new Date(displayStartTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} only
+                {t('session.cancelOccurrenceOnly', { date: new Date(displayStartTime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) })}
               </Button>
               <Button variant="danger" onClick={async () => { recurringDeleteModal.close(); await onDelete(session.id); }}>
-                Delete entire series
+                {t('session.deleteEntireSeries')}
               </Button>
             </div>
           </div>

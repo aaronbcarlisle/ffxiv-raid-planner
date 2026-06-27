@@ -5,8 +5,8 @@
  * Pre-filled with slot, floor, and suggested player for one-click confirmation.
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { XivIcon } from '../ui/XivIcon';
+import { useState, useEffect, useMemo } from 'react';
+import { Package } from 'lucide-react';
 import { Modal, Select, Checkbox, Label, NumberInput } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
@@ -20,16 +20,6 @@ import { getPriorityForItem, getPriorityForRing } from '../../utils/priority';
 import type { SnapshotPlayer, GearSlot, StaticSettings, LootLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { RAID_JOBS } from '../../gamedata/jobs';
-
-// Priority label suffix for a recipient option (module scope so it's a stable
-// reference for the recipientOptions memo).
-function getPriorityLabel(priority: number, needsItem: boolean): string {
-  if (!needsItem) return '';
-  if (priority === 1) return ' - Top Priority';
-  if (priority === 2) return ' - 2nd Priority';
-  if (priority === 3) return ' - 3rd Priority';
-  return '';
-}
 
 interface QuickLogDropModalProps {
   isOpen: boolean;
@@ -69,10 +59,7 @@ export function QuickLogDropModal({
   const [isSaving, setIsSaving] = useState(false);
   const [recipientCharacterRegId, setRecipientCharacterRegId] = useState<string | null>(null);
 
-  // Subscribe to just this slice — destructuring the whole store churns the
-  // reference on unrelated updates, which (via the effect below) could reset
-  // an in-progress recipient selection.
-  const registrationsByGroup = useStaticCharacterStore((s) => s.registrationsByGroup);
+  const { registrationsByGroup } = useStaticCharacterStore();
   const registrationsByPlayer = useMemo(
     () => registrationsByGroup[groupId] ?? {},
     [registrationsByGroup, groupId],
@@ -92,25 +79,18 @@ export function QuickLogDropModal({
       lootLog,
       currentWeek,
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slot, isWeapon, selectedWeek, floor, allPlayers, settings, registrationsByPlayer, lootLog, currentWeek, isOpen]);
 
-  // Initialise state ONLY on the open transition (closed → open). Keying this
-  // off a ref instead of the raw `isOpen` dep means a mid-interaction churn of
-  // `registrationsByPlayer` (e.g. the 30s roster poll refetching registrations)
-  // can't re-run this and silently revert the user's recipient pick back to the
-  // suggested player — the bug behind "lower-ranked candidates won't stick".
-  const wasOpenRef = useRef(false);
+  // Reset state when modal opens
   useEffect(() => {
-    if (isOpen && !wasOpenRef.current) {
-      wasOpenRef.current = true;
+    if (isOpen) {
       setRecipientPlayerId(suggestedPlayer.id);
       setSelectedWeek(maxWeek);
       setUpdateGear(true);
       setIsExtra(false); // For gear priority weapons, it's the player's main job so not extra
       const primaryReg = getPrimaryRegistration(registrationsByPlayer[suggestedPlayer.id] ?? []);
       setRecipientCharacterRegId(primaryReg?.id ?? null);
-    } else if (!isOpen) {
-      wasOpenRef.current = false;
     }
   }, [isOpen, suggestedPlayer.id, maxWeek, registrationsByPlayer]);
 
@@ -234,25 +214,21 @@ export function QuickLogDropModal({
       });
   }, [eligiblePlayers, slot, settings, lootLog, currentWeek, averageDrops]);
 
-  // Build recipient options with job icons. Every candidate shown in the
-  // recommendation list must have a matching option here, otherwise selecting
-  // one would set a `value` the controlled <Select> can't represent. The
-  // options derive from the same eligible-player set as the candidates, but we
-  // append the current selection defensively in case it ever isn't present.
-  const recipientOptions = useMemo(() => {
-    const opts = sortedRecipients.map(({ player, priority, needsItem }) => ({
-      value: player.id,
-      label: `${player.name}${getPriorityLabel(priority, needsItem)}`,
-      icon: <JobIcon job={player.job} size="sm" />,
-    }));
-    if (recipientPlayerId && !opts.some((o) => o.value === recipientPlayerId)) {
-      const p = allPlayers.find((pl) => pl.id === recipientPlayerId);
-      if (p) {
-        opts.push({ value: p.id, label: p.name, icon: <JobIcon job={p.job} size="sm" /> });
-      }
-    }
-    return opts;
-  }, [sortedRecipients, recipientPlayerId, allPlayers]);
+  // Get priority label for a player
+  const getPriorityLabel = (priority: number, needsItem: boolean): string => {
+    if (!needsItem) return '';
+    if (priority === 1) return ' - ' + t('loot.topPriority');
+    if (priority === 2) return ' - ' + t('loot.secondPriority');
+    if (priority === 3) return ' - ' + t('loot.thirdPriority');
+    return '';
+  };
+
+  // Build recipient options with job icons
+  const recipientOptions = sortedRecipients.map(({ player, priority, needsItem }) => ({
+    value: player.id,
+    label: `${player.name}${getPriorityLabel(priority, needsItem)}`,
+    icon: <JobIcon job={player.job} size="sm" />,
+  }));
 
   return (
     <Modal
@@ -260,7 +236,7 @@ export function QuickLogDropModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <XivIcon name="loot" size={20} />
+          <Package className="w-5 h-5" />
           Log {slotName} Drop
         </span>
       }

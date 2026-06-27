@@ -6,9 +6,10 @@
 
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
-import { useSyntheticUnreadCount } from '../../lib/syntheticNotifications';
+import { getSyntheticUnreadCount } from '../../lib/syntheticNotifications';
 import { NotificationCenter } from './NotificationCenter';
 import {
   Dropdown,
@@ -28,16 +29,18 @@ import {
   Calculator,
   Code,
   Palette,
+  Sparkles,
   Wrench,
   Shield,
   Keyboard,
+  BookOpen,
   Sun,
   Moon,
   Key,
+  Swords,
   EyeOff,
   Bell,
 } from 'lucide-react';
-import { XivIcon } from '../ui/XivIcon';
 import { useTheme } from '../../hooks/useTheme';
 import { Modal } from '../ui/Modal';
 import { useModal } from '../../hooks/useModal';
@@ -49,17 +52,14 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ className = '' }: UserMenuProps) {
+  const { t } = useTranslation();
   const { user, logout, updatePreferences } = useAuthStore();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const apiKeysModal = useModal();
   const notificationsModal = useModal();
   const { unreadCount, fetchNotifications } = useNotificationStore();
-  // useSyntheticUnreadCount re-renders this badge when a release note is marked
-  // read — getSyntheticUnreadCount() alone wouldn't, since marking the only
-  // unread item read doesn't change the server-backed unreadCount.
-  const syntheticUnread = useSyntheticUnreadCount();
-  const totalBadge = unreadCount + syntheticUnread;
+  const totalBadge = unreadCount + getSyntheticUnreadCount();
 
   useEffect(() => {
     if (user) fetchNotifications();
@@ -79,7 +79,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         {/* a11y-exception: Focus ring intentionally removed per user request - avatar border provides sufficient visual indicator */}
         <button
           className={`flex items-center gap-2 p-1 rounded-full hover:bg-surface-interactive transition-colors focus:outline-none ${className}`}
-          aria-label={`User menu for ${displayName}`}
+          aria-label={t('auth.userMenu', { name: displayName })}
         >
           <span className="relative">
             <img
@@ -123,14 +123,14 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           onSelect={() => navigate('/dashboard')}
           shortcut="Shift+S"
         >
-          My Statics
+          {t('auth.myStatics')}
         </DropdownItem>
 
         <DropdownItem
-          icon={<XivIcon name="sword" size={16} />}
+          icon={<Swords className="w-4 h-4" />}
           onSelect={() => navigate('/profile')}
         >
-          Player Hub
+          {t('auth.playerHub')}
         </DropdownItem>
 
         {/* Admin Dashboard - only for admins */}
@@ -139,7 +139,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             icon={<Shield className="w-4 h-4 text-status-warning" />}
             onSelect={() => navigate('/admin')}
           >
-            <span className="text-status-warning">Admin Dashboard</span>
+            <span className="text-status-warning">{t('auth.adminDashboard')}</span>
           </DropdownItem>
         )}
 
@@ -151,40 +151,40 @@ export function UserMenu({ className = '' }: UserMenuProps) {
               </svg>
             }
           >
-            Documentation
+            {t('auth.documentation')}
           </DropdownSubTrigger>
           <DropdownSubContent>
-            <DropdownItem icon={<XivIcon name="tomestone" size={16} />} href="/docs">
-              All Documentation
+            <DropdownItem icon={<BookOpen className="w-4 h-4" />} href="/docs">
+              {t('auth.allDocumentation')}
             </DropdownItem>
             <DropdownSeparator />
             <DropdownItem icon={<Rocket className="w-4 h-4" />} href="/docs/quick-start">
-              Quick Start
+              {t('auth.quickStart')}
             </DropdownItem>
             <DropdownItem icon={<CircleHelp className="w-4 h-4" />} href="/docs/faq">
-              FAQ
+              {t('auth.faq')}
             </DropdownItem>
             <DropdownItem icon={<ListChecks className="w-4 h-4" />} href="/docs/how-to">
-              How-To Guides
+              {t('auth.howToGuides')}
             </DropdownItem>
             <DropdownItem icon={<Calculator className="w-4 h-4" />} href="/docs/understanding-priority">
-              Understanding Priority
+              {t('auth.understandingPriority')}
             </DropdownItem>
             <DropdownSeparator />
             <DropdownItem icon={<Code className="w-4 h-4" />} href="/docs/api">
-              API Reference
+              {t('auth.apiReference')}
             </DropdownItem>
             <DropdownItem icon={<Palette className="w-4 h-4" />} href="/docs/design-system">
-              Design System
+              {t('auth.designSystem')}
             </DropdownItem>
-            <DropdownItem icon={<XivIcon name="crystal" size={16} />} href="/docs/release-notes">
-              Release Notes
+            <DropdownItem icon={<Sparkles className="w-4 h-4" />} href="/docs/release-notes">
+              {t('auth.releaseNotes')}
             </DropdownItem>
             <DropdownItem icon={<Wrench className="w-4 h-4" />} href="/docs/roadmap">
-              Roadmap
+              {t('auth.roadmap')}
             </DropdownItem>
             <DropdownItem icon={<Shield className="w-4 h-4" />} href="/docs/privacy">
-              Privacy & Security
+              {t('auth.privacyAndSecurity')}
             </DropdownItem>
           </DropdownSubContent>
         </DropdownSub>
@@ -193,7 +193,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           icon={<Key className="w-4 h-4" />}
           onSelect={() => apiKeysModal.open()}
         >
-          API Keys
+          {t('auth.apiKeys')}
         </DropdownItem>
 
         <DropdownItem
@@ -209,7 +209,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           }
           onSelect={() => notificationsModal.open()}
         >
-          {totalBadge > 0 ? `${totalBadge} unread notifications` : 'Notifications'}
+          {totalBadge > 0 ? t('auth.unreadNotifications', { count: totalBadge }) : t('auth.notifications')}
         </DropdownItem>
 
         <DropdownItem
@@ -217,7 +217,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           onSelect={() => window.dispatchEvent(new CustomEvent('show-keyboard-shortcuts'))}
           shortcut="Shift+?"
         >
-          Shortcuts
+          {t('auth.shortcuts')}
         </DropdownItem>
 
         {/* Theme toggle — standalone row, not a Radix DropdownMenu.Item.
@@ -240,7 +240,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             {theme === 'light' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </span>
           <span className="flex-1">
-            {theme === 'light' ? 'Light Mode' : 'Dark Mode'}
+            {theme === 'light' ? t('auth.lightMode') : t('auth.darkMode')}
           </span>
           {/* Stop propagation so the row click and Toggle click don't double-fire */}
           <span onClick={(e) => e.stopPropagation()}>
@@ -268,7 +268,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
           <span className="w-4 h-4 flex items-center justify-center">
             <EyeOff className="w-4 h-4" />
           </span>
-          <span className="flex-1">Anonymous activity</span>
+          <span className="flex-1">{t('auth.anonymousActivity')}</span>
           <span onClick={(e) => e.stopPropagation()}>
             <Toggle
               checked={user.activityDisplayMode === 'anonymous'}
@@ -294,13 +294,13 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             navigate('/');
           }}
         >
-          Logout
+          {t('auth.logout')}
         </DropdownItem>
       </DropdownContent>
     </Dropdown>
 
     {/* API Keys Modal */}
-    <Modal isOpen={apiKeysModal.isOpen} onClose={apiKeysModal.close} title={<span className="flex items-center gap-2"><Key className="w-5 h-5" />API Keys</span>} size="lg">
+    <Modal isOpen={apiKeysModal.isOpen} onClose={apiKeysModal.close} title={<span className="flex items-center gap-2"><Key className="w-5 h-5" />{t('auth.apiKeys')}</span>} size="lg">
       <ApiKeyManager />
     </Modal>
 

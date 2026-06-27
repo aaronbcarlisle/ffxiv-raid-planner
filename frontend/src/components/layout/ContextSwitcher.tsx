@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Shield, ChevronDown, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/authStore';
 import { TRANSIENT_NAV_PARAMS, prefRememberStaticTab } from '../../lib/navPreferences';
 import type { StaticGroup, StaticGroupListItem, MemberRole } from '../../types';
@@ -28,9 +29,6 @@ const ROLE_COLORS: Record<MemberRole, string> = {
   lead: 'bg-membership-lead/20 text-membership-lead border-membership-lead/30',
   member: 'bg-membership-member/20 text-membership-member border-membership-member/30',
   viewer: 'bg-membership-viewer/20 text-membership-viewer border-membership-viewer/30',
-};
-const ROLE_LABELS: Record<MemberRole, string> = {
-  owner: 'Owner', lead: 'Lead', member: 'Member', viewer: 'Viewer',
 };
 const ROLE_LABELS_SHORT: Record<MemberRole, string> = {
   owner: 'O', lead: 'L', member: 'M', viewer: 'V',
@@ -60,11 +58,19 @@ export function ContextSwitcher({
   userRole,
   fullWidthMobile,
 }: ContextSwitcherProps) {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rememberStaticTab = useAuthStore((s) => prefRememberStaticTab(s.user));
   const [open, setOpen] = useState(false);
+
+  const ROLE_LABELS: Record<MemberRole, string> = {
+    owner: t('context.roleOwner'),
+    lead: t('context.roleLead'),
+    member: t('context.roleMember'),
+    viewer: t('context.roleViewer'),
+  };
 
   useEffect(() => {
     if (open && isMember) onFetchGroups();
@@ -115,7 +121,7 @@ export function ContextSwitcher({
       className={`flex items-center gap-0.5 p-0.5 rounded-lg bg-surface-card border border-border-subtle ${fullWidthMobile ? 'w-full' : ''}`}
     >
       {/* Player Hub segment */}
-      <Tooltip content="Player Hub — character, jobs, gear & applications">
+      <Tooltip content={t('context.playerHubTooltip')}>
         <Link to="/profile" className={`${segBase} ${onHub ? segActive : segIdle} flex-shrink-0`} aria-current={onHub ? 'page' : undefined}>
           <User className="w-4 h-4 flex-shrink-0" />
           <span className="hidden sm:inline">Player Hub</span>
@@ -151,7 +157,7 @@ export function ContextSwitcher({
                 <button
                   type="button"
                   className={`flex items-center justify-center h-8 w-7 rounded-md flex-shrink-0 ${segIdle}`}
-                  aria-label="Switch static"
+                  aria-label={t('context.switchStatic')}
                 >
                   <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
                 </button>
@@ -159,7 +165,7 @@ export function ContextSwitcher({
               <DropdownContent align="start" className="w-72 max-w-[calc(100vw-2rem)] overflow-hidden">
                 <div className="max-h-64 overflow-y-auto overflow-x-hidden">
                   {groups.filter((g) => g.shareCode !== targetStatic.shareCode).length === 0 ? (
-                    <div className="px-4 py-3 text-text-muted text-sm">No other statics</div>
+                    <div className="px-4 py-3 text-text-muted text-sm">{t('context.noOtherStatics')}</div>
                   ) : (
                     groups
                       .filter((g) => g.shareCode !== targetStatic.shareCode)
@@ -179,10 +185,10 @@ export function ContextSwitcher({
                 </div>
                 <DropdownSeparator />
                 <DropdownItem icon={<Users className="w-4 h-4" />} onSelect={() => navigate('/discover')}>
-                  Find a static
+                  {t('context.findAStatic')}
                 </DropdownItem>
                 <DropdownItem icon={<Shield className="w-4 h-4" />} onSelect={() => navigate('/dashboard')}>
-                  Go to Dashboard
+                  {t('context.goToDashboard')}
                 </DropdownItem>
               </DropdownContent>
             </Dropdown>
@@ -192,7 +198,7 @@ export function ContextSwitcher({
         // No statics yet → invite the user to find one
         <Link to="/discover" className={`${segBase} ${onStatic ? segActive : segIdle}`}>
           <Users className="w-4 h-4 flex-shrink-0" />
-          <span>Find a static</span>
+          <span>{t('context.findAStatic')}</span>
         </Link>
       )}
     </div>

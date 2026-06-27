@@ -1,14 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { useUrlTabState, clearRegisteredTabParams } from '../hooks/useUrlTabState';
-import { prefRememberSubTabs } from '../lib/navPreferences';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight,
-  PlugZap, User, Users,
+  Crosshair, Eye, LayoutDashboard, PlugZap, Shield, Sparkles, User, Users,
 } from 'lucide-react';
-import { XivIcon } from '../components/ui/XivIcon';
-import type { XivIconKey } from '../utils/xivIcons';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
 import {
@@ -46,7 +43,6 @@ import type { MemberRole, StaticGroupListItem } from '../types';
 
 type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview';
 const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'preview'];
-const COLL_SUB_TABS = ['goals', 'priorities', 'browse'] as const;
 const LEGACY_TAB_REDIRECTS: Record<string, ProfileTab> = {
   share: 'preview',
   characters: 'sync',
@@ -65,17 +61,17 @@ const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
 // ── Profile sidebar nav ────────────────────────────────────────────────────
 const PROFILE_NAV_ITEMS: Array<{
   id: ProfileTab;
-  label: string;
+  labelKey: string;
   description: string;
   shortcut: string;
-  icon: XivIconKey;
+  icon: React.FC<{ size?: number; className?: string }>;
 }> = [
-  { id: 'overview',     label: 'Overview',            description: 'Character overview, goals, and quick actions',           shortcut: '`', icon: 'stats' },
-  { id: 'sync',         label: 'Sync & Gear',         description: 'Plugin sync status and character gear snapshots',        shortcut: '1', icon: 'history' },
-  { id: 'jobs-gear',    label: 'Jobs & Gear',         description: 'Job profiles, BiS targets, and readiness status',       shortcut: '2', icon: 'loot' },
-  { id: 'collections',  label: 'Collections & Goals', description: 'Mounts, music, weapons, collection goals, and tasks',   shortcut: '3', icon: 'goals' },
-  { id: 'availability', label: 'Availability',        description: 'Your weekly availability for raid nights',              shortcut: '4', icon: 'schedule' },
-  { id: 'preview',      label: 'Share',               description: 'Preview and manage your shareable profile',             shortcut: '5', icon: 'handshake' },
+  { id: 'overview',     labelKey: 'profile.tabOverview',    description: 'Character overview, goals, and quick actions',              shortcut: '`', icon: LayoutDashboard },
+  { id: 'sync',         labelKey: 'profile.tabSync',        description: 'Plugin sync status and character gear snapshots',           shortcut: '1', icon: Shield },
+  { id: 'jobs-gear',    labelKey: 'profile.tabJobsGear',    description: 'Job profiles, BiS targets, and readiness status',          shortcut: '2', icon: Crosshair },
+  { id: 'collections',  labelKey: 'profile.tabCollections', description: 'Mounts, music, weapons, collection goals, and tasks',      shortcut: '3', icon: Sparkles },
+  { id: 'availability', labelKey: 'profile.tabAvail',       description: 'Your weekly availability for raid nights',                 shortcut: '4', icon: Calendar },
+  { id: 'preview',      labelKey: 'profile.tabShare',       description: 'Preview and manage your shareable profile',                shortcut: '5', icon: Eye },
 ];
 
 const PROFILE_SIDEBAR_KEY = 'profile-sidebar-collapsed';
@@ -85,11 +81,16 @@ function ProfileSidebarNav({
   activeTab,
   onTabChange,
   characterName,
+  primaryStaticPath,
+  primaryStaticName,
 }: {
   activeTab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
   characterName?: string;
+  primaryStaticPath?: string;
+  primaryStaticName?: string;
 }) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(PROFILE_SIDEBAR_KEY) === 'true'; } catch { return false; }
   });
@@ -104,7 +105,7 @@ function ProfileSidebarNav({
 
   return (
     <motion.nav
-      aria-label="Player Hub navigation"
+      aria-label={t('profile.playerHub')}
       className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle"
       style={{
         background: 'linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%)',
@@ -120,40 +121,59 @@ function ProfileSidebarNav({
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
     >
       {/* Identity header + collapse toggle */}
-      <div className="flex items-center h-12 border-b border-border-subtle flex-shrink-0" style={{ background: 'rgba(20,184,166,0.045)' }}>
+      <div className="flex-shrink-0 border-b border-border-subtle" style={{ background: 'rgba(20,184,166,0.045)' }}>
         {collapsed ? (
           <button
             type="button"
             onClick={toggle}
-            aria-label="Expand sidebar"
-            className="w-full h-full flex items-center justify-center text-text-muted hover:text-accent transition-colors"
+            aria-label={t('nav.expandSidebar')}
+            className="w-full h-12 flex items-center justify-center text-text-muted hover:text-accent transition-colors"
           >
             <ChevronRight size={14} />
           </button>
         ) : (
           <>
-            <div className="flex items-center flex-1 min-w-0 px-3 gap-2.5">
-              <div
-                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
+            {/* Back-to-static breadcrumb — top row */}
+            {primaryStaticPath ? (
+              <Link
+                to={primaryStaticPath}
+                className="flex items-center gap-1.5 px-3 h-7 hover:bg-white/[0.04] transition-colors border-b border-border-subtle/50 w-full group"
+                style={{ color: 'rgba(20,184,166,0.75)' }}
               >
-                <User size={12} className="text-accent" />
+                <ChevronLeft size={12} className="flex-shrink-0 group-hover:text-accent transition-colors" />
+                <span className="text-xs font-semibold leading-none truncate min-w-0 group-hover:text-accent transition-colors">
+                  {primaryStaticName ?? t('profile.backToStatic')}
+                </span>
+              </Link>
+            ) : (
+              <div className="h-7 border-b border-border-subtle/50" />
+            )}
+
+            {/* Character identity + collapse — bottom row */}
+            <div className="flex items-center h-9">
+              <div className="flex items-center flex-1 min-w-0 px-3 gap-2">
+                <div
+                  className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
+                >
+                  <User size={11} className="text-accent" />
+                </div>
+                <span
+                  className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
+                  title={characterName}
+                >
+                  {characterName ?? t('profile.playerHub')}
+                </span>
               </div>
-              <span
-                className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
-                title={characterName}
+              <button
+                type="button"
+                onClick={toggle}
+                aria-label={t('nav.collapseSidebar')}
+                className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
               >
-                {characterName ?? 'Player Hub'}
-              </span>
+                <ChevronLeft size={13} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={toggle}
-              aria-label="Collapse sidebar"
-              className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
-            >
-              <ChevronLeft size={13} />
-            </button>
           </>
         )}
       </div>
@@ -162,6 +182,7 @@ function ProfileSidebarNav({
       <LayoutGroup id="sidebar-profile-nav">
         <div className="flex flex-col py-2 flex-1">
           {PROFILE_NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <div key={item.id}>
@@ -169,7 +190,7 @@ function ProfileSidebarNav({
                   content={
                     <div className="max-w-[200px]">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-semibold text-text-primary text-sm">{item.label}</span>
+                        <span className="font-semibold text-text-primary text-sm">{t(item.labelKey)}</span>
                         <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle bg-surface-base text-text-muted font-mono leading-none flex-shrink-0">
                           {item.shortcut}
                         </kbd>
@@ -216,9 +237,9 @@ function ProfileSidebarNav({
                         transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                       />
                     )}
-                    <XivIcon name={item.icon} size={15} className={`flex-shrink-0 relative z-10 transition-opacity ${isActive ? 'opacity-100' : 'opacity-45'}`} />
+                    <Icon size={15} className="flex-shrink-0 relative z-10" />
                     {!collapsed && (
-                      <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
+                      <span className="leading-none relative z-10 whitespace-nowrap">{t(item.labelKey)}</span>
                     )}
                   </button>
                 </Tooltip>
@@ -339,6 +360,7 @@ function parseProfileTab(search: string): ProfileTab {
 }
 
 export default function Profile() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
@@ -352,29 +374,18 @@ export default function Profile() {
   const { groups, fetchGroups } = useStaticGroupStore();
   const { fetchTargets } = useSharedBisStore();
   const { isSmallScreen } = useDevice();
-  // Active tab is derived from the URL (?tab=) so the sidebar is deep-linkable,
-  // reload-safe, and follows browser back/forward. parseProfileTab keeps the
-  // legacy-redirect handling for old bookmarks. The setter pushes a history entry.
-  const [, setSearchParams] = useSearchParams();
-  const activeTab = parseProfileTab(location.search);
-  const setActiveTab = useCallback((tab: ProfileTab) => {
-    // When "remember sub-tabs" is off, switching sidebar views resets sub-tabs
-    // (e.g. Collections & Goals back to Tasks & Goals).
-    const resetSubTabs = !prefRememberSubTabs(useAuthStore.getState().user);
-    setSearchParams((prev) => {
-      const params = new URLSearchParams(prev);
-      if (tab === 'overview') params.delete('tab');
-      else params.set('tab', tab);
-      if (resetSubTabs) clearRegisteredTabParams(params);
-      return params;
-    });
-  }, [setSearchParams]);
-  // Collections & Goals sub-tab (Tasks & Goals / My Priorities / Browse Catalog).
-  const [collSubTab, setCollSubTab] = useUrlTabState('coll', COLL_SUB_TABS, 'goals');
+  const [activeTab, setActiveTab] = useState<ProfileTab>(() => parseProfileTab(location.search));
+  const [collSubTab, setCollSubTab] = useState<'goals' | 'priorities' | 'browse'>('goals');
   const linkModal = useModal();
   const addJobModal = useModal();
   const [editingJob, setEditingJob] = useState<PlayerJobProfile | null>(null);
   const [managingBisJobId, setManagingBisJobId] = useState<{ id: string; job: string } | null>(null);
+
+  useEffect(() => {
+    const nextTab = parseProfileTab(location.search);
+    const frameId = requestAnimationFrame(() => setActiveTab(nextTab));
+    return () => cancelAnimationFrame(frameId);
+  }, [location.search]);
 
   // Swipe to change tabs — native listeners on the page container
   const activeTabRef = useRef(activeTab);
@@ -530,12 +541,14 @@ export default function Profile() {
   const focusAvailability = new URLSearchParams(location.search).get('focus') === 'availability';
 
   return (
-    <div ref={pageRef} className="flex flex-1 min-h-0 w-full max-w-[160rem] mx-auto px-4">
+    <div ref={pageRef} className="flex flex-1 min-h-0 w-full">
       {/* Sidebar — fills flex parent height naturally, no sticky needed */}
       <ProfileSidebarNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
         characterName={mainCharacter?.name}
+        primaryStaticPath={primaryStatic ? `/group/${primaryStatic.shareCode}` : undefined}
+        primaryStaticName={primaryStatic?.name}
       />
 
       {/* Right panel: header + tab content (scrolls independently) */}
@@ -568,7 +581,7 @@ export default function Profile() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-[0.18em] mb-0.5 select-none" style={{ color: 'rgba(20,184,166,0.6)' }}>
-                Player Hub
+                {t('profile.playerHub')}
               </div>
               <h1 className="text-base sm:text-xl font-display font-bold text-text-primary truncate leading-tight">
                 {mainCharacter?.name ?? 'Your Character'}

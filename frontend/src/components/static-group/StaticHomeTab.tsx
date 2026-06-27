@@ -1,5 +1,6 @@
 /* eslint-disable design-system/no-raw-button */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
@@ -11,11 +12,14 @@ import {
   Plug,
   Scissors,
   Shield,
+  Sparkles,
+  Swords,
   Target,
+  Trophy,
+  Users,
   Check,
   Trash2,
 } from 'lucide-react';
-import { XivIcon } from '../ui/XivIcon';
 import { useAuthStore } from '../../stores/authStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
@@ -43,14 +47,10 @@ import { api } from '../../services/api';
 
 // ─── Prop types ───────────────────────────────────────────────────────────────
 
-/** Navigate to a primary tab, optionally targeting a sub-tab (e.g. 'farms'
- *  under Goals & Farms). Threaded through every module that links elsewhere. */
-type NavigateFn = (tab: PageMode, subTab?: string) => void;
-
 interface StaticHomeTabProps {
   group: StaticGroup;
   tier: TierSnapshot | null;
-  onNavigate: NavigateFn;
+  onNavigate: (tab: PageMode) => void;
   canManage: boolean;
   /** Opens Settings → Requests tab. */
   onOpenRequests?: () => void;
@@ -92,10 +92,8 @@ function playerGearReadiness(p: SnapshotPlayer): GearReadiness {
   return 'needs_gear';
 }
 
-function relativeTime(iso: string | null | undefined): string {
-  const ts = new Date(iso ?? '').getTime();
-  if (!iso || isNaN(ts)) return '—';
-  const diff = Date.now() - ts;
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
   if (m < 1) return 'just now';
   if (m < 60) return `${m}m ago`;
@@ -345,9 +343,10 @@ function NotificationsModule({
   requests: JoinRequest[];
   nextSession: { startTime: string; contentName: string | null } | null;
   loading: boolean;
-  onNavigate: NavigateFn;
+  onNavigate: (tab: PageMode) => void;
   onOpenRequests?: () => void;
 }) {
+  const { t } = useTranslation();
   const items = useMemo(() => {
     const list: { id: string; icon: React.ReactNode; title: string; sub: string; time: string; accent: boolean }[] = [];
 
@@ -378,7 +377,7 @@ function NotificationsModule({
     if (diffH >= 0 && diffH <= 48) {
       return {
         id: 'session',
-        icon: <XivIcon name="schedule" size={14} />,
+        icon: <Calendar className="w-3.5 h-3.5" />,
         title: nextSession.contentName ? `Raid: ${nextSession.contentName}` : 'Raid session upcoming',
         sub: sessionCountdown(nextSession.startTime),
         time: new Date(nextSession.startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
@@ -392,7 +391,7 @@ function NotificationsModule({
 
   return (
     <div>
-      <SectionLabel icon={<Bell className="w-3 h-3" />}>Notifications</SectionLabel>
+      <SectionLabel icon={<Bell className="w-3 h-3" />}>{t('overview.notifications')}</SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {loading ? (
           <div className="p-3 space-y-2.5">
@@ -412,8 +411,8 @@ function NotificationsModule({
               <Check className="w-4 h-4 text-status-success" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-text-primary">All caught up</p>
-              <p className="text-[11px] text-text-muted">No pending applications right now</p>
+              <p className="text-xs font-semibold text-text-primary">{t('overview.allCaughtUp')}</p>
+              <p className="text-[11px] text-text-muted">{t('overview.noPendingApps')}</p>
             </div>
           </div>
         ) : (
@@ -458,25 +457,26 @@ function NextRaidModule({
 }: {
   session: { title: string; startTime: string; endTime: string; contentName: string | null; rsvps: { status: string }[] } | null;
   loading: boolean;
-  onNavigate: NavigateFn;
+  onNavigate: (tab: PageMode) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div>
-      <SectionLabel icon={<XivIcon name="sword" size={12} />}>Next Raid</SectionLabel>
+      <SectionLabel icon={<Swords className="w-3 h-3" />}>{t('overview.nextRaid')}</SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {loading ? (
           <div className="p-3 h-24 animate-pulse bg-surface-elevated/30" />
         ) : !session ? (
           <div className="px-3 py-5 text-center">
-            <XivIcon name="schedule" size={20} className="mx-auto mb-1.5 opacity-40" />
-            <p className="text-xs font-medium text-text-secondary mb-0.5">No sessions scheduled</p>
-            <p className="text-[11px] text-text-muted mb-2.5">Add a session so your team can RSVP</p>
+            <Calendar className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
+            <p className="text-xs font-medium text-text-secondary mb-0.5">{t('overview.noSessionsScheduled')}</p>
+            <p className="text-[11px] text-text-muted mb-2.5">{t('overview.noSessionsDesc')}</p>
             <button
               type="button"
               onClick={() => onNavigate('schedule')}
               className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
             >
-              Add a session
+              {t('overview.addSession')}
             </button>
           </div>
         ) : (
@@ -562,6 +562,7 @@ function WeeklyProgressModule({
   players: SnapshotPlayer[];
   tierInfo: { name: string } | null | undefined;
 }) {
+  const { t } = useTranslation();
   const active = players.filter((p) => p.configured && !p.isSubstitute);
 
   const bisCount = useMemo(() => {
@@ -592,7 +593,7 @@ function WeeklyProgressModule({
 
   return (
     <div>
-      <SectionLabel icon={<Target className="w-3 h-3" />}>Tier Progress</SectionLabel>
+      <SectionLabel icon={<Target className="w-3 h-3" />}>{t('overview.tierProgress')}</SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card p-3.5 space-y-3">
         {tierInfo && (
           <p className="text-[10px] font-bold text-accent uppercase tracking-widest">{tierInfo.name}</p>
@@ -607,7 +608,7 @@ function WeeklyProgressModule({
             {bisCount}
           </span>
           <span className="text-base font-semibold text-text-muted">/ {active.length}</span>
-          <span className="ml-auto text-[10px] font-semibold text-text-muted uppercase tracking-wide">BiS Ready</span>
+          <span className="ml-auto text-[10px] font-semibold text-text-muted uppercase tracking-wide">{t('overview.bisReady')}</span>
         </div>
 
         {/* Glowing progress bar */}
@@ -637,14 +638,14 @@ function WeeklyProgressModule({
               );
             })}
             <span className="ml-0.5 text-[10px] text-text-muted">
-              {bisCount === active.length ? 'All BiS!' : `${active.length - bisCount} remaining`}
+              {bisCount === active.length ? t('overview.allBis') : t('overview.remaining', { count: active.length - bisCount })}
             </span>
           </div>
         )}
 
         {avgIlv != null && (
           <div className="flex items-center justify-between text-xs border-t border-border-subtle pt-2.5">
-            <span className="text-text-muted">Avg iLv</span>
+            <span className="text-text-muted">{t('overview.avgIlv')}</span>
             <span className="font-bold text-text-primary tabular-nums">{avgIlv}</span>
           </div>
         )}
@@ -676,19 +677,20 @@ function CommandBriefModule({
   canManage: boolean;
   onReviewRequest?: () => void;
   onOpenRequests?: () => void;
-  onNavigate: NavigateFn;
+  onNavigate: (tab: PageMode) => void;
 }) {
+  const { t } = useTranslation();
   const chips: { key: string; label: string; icon: React.ReactNode; accent: boolean; warn?: boolean; onClick: () => void }[] = [
     ...(canManage && pendingCount > 0
-      ? [{ key: 'pending', label: `${pendingCount} application${pendingCount > 1 ? 's' : ''} pending`, icon: <Mail className="w-3 h-3" />, accent: true, onClick: onReviewRequest ?? (() => onNavigate('roster')) }]
+      ? [{ key: 'pending', label: t('overview.applicationsPending', { count: pendingCount }), icon: <Mail className="w-3 h-3" />, accent: true, onClick: onReviewRequest ?? (() => onNavigate('roster')) }]
       : []),
     ...(nextSession
-      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, icon: <XivIcon name="sword" size={12} />, accent: false, onClick: () => onNavigate('schedule') }]
-      : [{ key: 'noraid', label: 'No sessions scheduled', icon: <XivIcon name="schedule" size={12} />, accent: false, warn: true, onClick: () => onNavigate('schedule') }]),
+      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, icon: <Swords className="w-3 h-3" />, accent: false, onClick: () => onNavigate('schedule') }]
+      : [{ key: 'noraid', label: t('overview.noRaidScheduled'), icon: <Calendar className="w-3 h-3" />, accent: false, warn: true, onClick: () => onNavigate('schedule') }]),
     {
       key: 'roster',
-      label: `${configuredCount}/8 players configured`,
-      icon: <XivIcon name="party" size={12} />,
+      label: t('overview.playersConfigured', { count: configuredCount }),
+      icon: <Users className="w-3 h-3" />,
       accent: false,
       warn: configuredCount < 8,
       onClick: () => onNavigate('roster'),
@@ -699,10 +701,10 @@ function CommandBriefModule({
   let ctaAction: (() => void) | null = null;
   if (!canManage || pendingCount === 0) {
     if (!nextSession) {
-      ctaLabel = 'Schedule a raid';
+      ctaLabel = t('overview.scheduleARaid');
       ctaAction = () => onNavigate('schedule');
     } else if (configuredCount < 8) {
-      ctaLabel = 'Set up roster';
+      ctaLabel = t('overview.setUpRoster');
       ctaAction = () => onNavigate('roster');
     }
   }
@@ -815,7 +817,7 @@ function CommandBriefModule({
                 flexShrink: 0,
               }}
             >
-              Review Dossier
+              {t('overview.reviewDossier')}
             </button>
           </div>
 
@@ -830,7 +832,7 @@ function CommandBriefModule({
             onClick={() => onOpenRequests?.()}
             className="text-accent hover:underline"
           >
-            +{pendingCount - 1} more application{pendingCount - 1 > 1 ? 's' : ''} · View all
+            {t('overview.moreApplications', { count: pendingCount - 1 })}
           </button>
         </p>
       )}
@@ -839,7 +841,7 @@ function CommandBriefModule({
         <button
           type="button"
           onClick={ctaAction}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-accent-contrast text-xs font-semibold hover:bg-accent-hover transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:opacity-90 transition-opacity"
         >
           {ctaLabel}
           <ChevronRight className="w-3.5 h-3.5" />
@@ -870,8 +872,9 @@ function GroupHeroPanel({
   group: StaticGroup;
   tier: TierSnapshot | null;
   players: SnapshotPlayer[];
-  onNavigate: NavigateFn;
+  onNavigate: (tab: PageMode) => void;
 }) {
+  const { t } = useTranslation();
   const tierInfo = tier ? getTierById(tier.tierId) : null;
   const active = players.filter((p) => p.configured && !p.isSubstitute);
 
@@ -919,7 +922,7 @@ function GroupHeroPanel({
           {avgIlv != null && (
             <div className="flex-1 py-2.5 text-center">
               <p className="text-sm font-display font-bold text-text-primary tabular-nums">{avgIlv}</p>
-              <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wide">Avg iLv</p>
+              <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wide">{t('overview.avgIlv')}</p>
             </div>
           )}
           <div className="flex-1 py-2.5 text-center">
@@ -929,7 +932,7 @@ function GroupHeroPanel({
             >
               {bisReadyCount}/{active.length}
             </p>
-            <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wide">BiS Ready</p>
+            <p className="text-[9px] font-semibold text-text-muted uppercase tracking-wide">{t('overview.bisReady')}</p>
           </div>
           <div className="flex-1 py-2.5 text-center">
             <p className="text-sm font-display font-bold text-text-primary tabular-nums">{active.length}/8</p>
@@ -996,24 +999,24 @@ function GroupHeroPanel({
               onClick={() => onNavigate('roster')}
               className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
             >
-              View full roster
+              {t('overview.viewFullRoster')}
               <ChevronRight className="w-3 h-3" />
             </button>
           </div>
         </>
       ) : (
         <div className="px-4 py-6 text-center">
-          <XivIcon name="party" size={28} className="opacity-25 mx-auto mb-2.5" />
-          <p className="text-sm font-semibold text-text-secondary mb-1">Roster not configured</p>
+          <Users className="w-7 h-7 text-text-muted opacity-25 mx-auto mb-2.5" />
+          <p className="text-sm font-semibold text-text-secondary mb-1">{t('overview.rosterNotConfigured')}</p>
           <p className="text-xs text-text-muted mb-3">
-            Sync gear or assign roster jobs to start tracking readiness.
+            {t('overview.rosterNotConfiguredDesc')}
           </p>
           <button
             type="button"
             onClick={() => onNavigate('roster')}
             className="text-xs font-medium text-accent border border-accent/30 rounded-lg px-3 py-1.5 hover:bg-accent/10 transition-colors"
           >
-            Open Roster
+            {t('overview.openRoster')}
           </button>
         </div>
       )}
@@ -1028,27 +1031,28 @@ function RosterPresenceModule({
   onNavigate,
 }: {
   players: SnapshotPlayer[];
-  onNavigate: NavigateFn;
+  onNavigate: (tab: PageMode) => void;
 }) {
+  const { t } = useTranslation();
   const active = players.filter((p) => p.configured && !p.isSubstitute);
 
   return (
     <div>
-      <SectionLabel icon={<XivIcon name="party" size={12} />} count={`${active.length}/8`}>
+      <SectionLabel icon={<Users className="w-3 h-3" />} count={`${active.length}/8`}>
         Static Roster
       </SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {active.length === 0 ? (
           <div className="px-3 py-5 text-center">
-            <XivIcon name="party" size={20} className="mx-auto mb-1.5 opacity-40" />
-            <p className="text-xs font-medium text-text-secondary mb-0.5">Roster not configured</p>
+            <Users className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
+            <p className="text-xs font-medium text-text-secondary mb-0.5">{t('overview.rosterNotConfigured')}</p>
             <p className="text-[11px] text-text-muted mb-2.5">Add 8 players to start tracking progress</p>
             <button
               type="button"
               onClick={() => onNavigate('roster')}
               className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
             >
-              Set up roster
+              {t('overview.rosterSetup')}
             </button>
           </div>
         ) : (
@@ -1064,7 +1068,7 @@ function RosterPresenceModule({
                   type="button"
                   onClick={() => onNavigate('roster')}
                   className="flex flex-col items-center gap-1 p-1.5 rounded-lg hover:bg-surface-elevated transition-colors group"
-                  aria-label={player ? `View ${player.name} on roster` : 'Empty roster slot'}
+                  aria-label={player ? `View ${player.name} on roster` : t('overview.emptyRosterSlot')}
                 >
                   {player ? (
                     <>
@@ -1091,7 +1095,7 @@ function RosterPresenceModule({
                   ) : (
                     <>
                       <div className="w-11 h-11 rounded-xl border border-dashed border-border-default flex items-center justify-center opacity-20">
-                        <XivIcon name="party" size={14} />
+                        <Users className="w-3.5 h-3.5 text-text-muted" />
                       </div>
                       <p className="text-[9px] text-text-muted opacity-30">—</p>
                     </>
@@ -1108,7 +1112,7 @@ function RosterPresenceModule({
               onClick={() => onNavigate('roster')}
               className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
             >
-              Open Roster
+              {t('overview.openRoster')}
               <ChevronRight className="w-3 h-3" />
             </button>
           </div>
@@ -1131,15 +1135,16 @@ function BestNextFarmModule({
 }: {
   recommendations: FarmScore[];
   loading: boolean;
-  onNavigate: NavigateFn;
+  onNavigate: (tab: PageMode) => void;
   onScheduleFarm?: (trial: MountFarmTrial) => void;
 }) {
+  const { t } = useTranslation();
   const top = recommendations[0] ?? null;
   const trialInfo = top ? getTrialById(top.trialId) : null;
 
   return (
     <div>
-      <SectionLabel icon={<XivIcon name="goals" size={12} />}>Best Next Farm</SectionLabel>
+      <SectionLabel icon={<Trophy className="w-3 h-3" />}>{t('overview.bestNextFarm')}</SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {loading ? (
           <div className="p-3 h-20 animate-pulse bg-surface-elevated/30 rounded-xl" />
@@ -1154,7 +1159,7 @@ function BestNextFarmModule({
                   boxShadow: '0 0 0 1px rgba(20,184,166,0.22), 0 0 12px rgba(20,184,166,0.1)',
                 }}
               >
-                <XivIcon name="goals" size={16} />
+                <Trophy className="w-4 h-4 text-accent" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-0.5 truncate">
@@ -1174,16 +1179,16 @@ function BestNextFarmModule({
                 border: '1px solid rgba(20,184,166,0.14)',
               }}
             >
-              <XivIcon name="party" size={12} className="flex-shrink-0" />
+              <Users className="w-3 h-3 text-accent flex-shrink-0" />
               <span className="text-xs text-text-secondary">
                 <span className="font-bold text-text-primary tabular-nums">{top.membersMissing}</span>
-                {' '}member{top.membersMissing !== 1 ? 's' : ''} still need this
+                {' '}{top.membersMissing === 1 ? t('overview.membersStillNeed') : t('overview.membersStillNeed_plural')}
               </span>
               {top.membersCanBuy > 0 && (
                 <span
                   className="ml-auto text-[10px] font-bold text-accent flex-shrink-0"
                 >
-                  {top.membersCanBuy} ready
+                  {t('overview.readyMembers', { count: top.membersCanBuy })}
                 </span>
               )}
             </div>
@@ -1195,28 +1200,28 @@ function BestNextFarmModule({
                 if (onScheduleFarm) {
                   onScheduleFarm(trialInfo);
                 } else {
-                  onNavigate('goals', 'farms');
+                  onNavigate('goals');
                 }
               }}
               className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
             >
-              <XivIcon name="schedule" size={14} />
-              Schedule Farm Session
+              <Calendar className="w-3.5 h-3.5" />
+              {t('overview.scheduleFarm')}
             </button>
           </div>
         ) : (
           <div className="px-3 py-5 text-center">
-            <XivIcon name="crystal" size={20} className="mx-auto mb-1.5 opacity-40" />
-            <p className="text-xs font-medium text-text-secondary mb-0.5">No active farm recommendations</p>
+            <Sparkles className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
+            <p className="text-xs font-medium text-text-secondary mb-0.5">{t('overview.noFarmRecommendations')}</p>
             <p className="text-[11px] text-text-muted mb-2.5">
-              Track member progress in Mount Farms to get ranked suggestions.
+              {t('overview.noFarmDesc')}
             </p>
             <button
               type="button"
-              onClick={() => onNavigate('goals', 'farms')}
+              onClick={() => onNavigate('goals')}
               className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
             >
-              Open Mount Farms
+              {t('overview.openMountFarms')}
             </button>
           </div>
         )}
@@ -1325,6 +1330,7 @@ function GoalsFarmsModule({
   onCreateGoal: () => void;
   onDeleteGoal: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const openGoalsTab = () => {
@@ -1342,12 +1348,12 @@ function GoalsFarmsModule({
 
   return (
     <div>
-      <SectionLabel icon={<Target className="w-3 h-3" />}>Goals &amp; Farms</SectionLabel>
+      <SectionLabel icon={<Target className="w-3 h-3" />}>{t('overview.goalsAndFarms')}</SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden divide-y divide-border-subtle">
 
         {/* ── Official Objectives ── */}
         <div>
-          <SubLabel aside="Used for matching">Official Objectives</SubLabel>
+          <SubLabel aside={t('overview.objectivesAside')}>{t('overview.officialObjectives')}</SubLabel>
           {objectivesLoading && activeObjectives.length === 0 ? (
             <div className="p-3 space-y-1.5">
               {[1, 2].map((n) => (
@@ -1362,8 +1368,8 @@ function GoalsFarmsModule({
             <div className="px-3 py-3 text-center">
               <p className="text-[11px] text-text-muted">
                 {canManage
-                  ? 'No objectives set. Add one to enable matching.'
-                  : 'No official objectives set yet.'}
+                  ? t('overview.noObjectives')
+                  : t('overview.noObjectivesMember')}
               </p>
               {canManage && (
                 <button
@@ -1371,7 +1377,7 @@ function GoalsFarmsModule({
                   onClick={openGoalsTab}
                   className="text-[11px] text-accent hover:underline mt-1"
                 >
-                  Add objective →
+                  {t('overview.addObjective')}
                 </button>
               )}
             </div>
@@ -1402,7 +1408,7 @@ function GoalsFarmsModule({
                 <div className="px-3 py-1 flex items-center justify-between">
                   <span className="text-[10px] text-text-muted">+{activeObjectives.length - 3} more</span>
                   {/* design-system-ignore: inline text link within overflow panel */}<button type="button" onClick={openGoalsTab} className="text-[10px] text-accent hover:underline">
-                    {canManage ? 'Manage →' : 'View →'}
+                    {canManage ? t('overview.manageGoals') : t('overview.viewGoals')}
                   </button>
                 </div>
               )}
@@ -1412,7 +1418,7 @@ function GoalsFarmsModule({
 
         {/* ── Active Farms (Collection Goals) ── */}
         <div>
-          <SubLabel aside="Progress tracking">Active Farms</SubLabel>
+          <SubLabel aside={t('overview.farmsAside')}>{t('overview.activeFarms')}</SubLabel>
           {goalsLoading ? (
             <div className="p-3 space-y-1.5">
               {[1, 2].map((n) => (
@@ -1425,10 +1431,10 @@ function GoalsFarmsModule({
                 className="text-xs font-medium text-text-secondary mb-0.5"
                 data-testid="collection-goals-empty-heading"
               >
-                No collection goals yet
+                {t('overview.noCollectionGoals')}
               </p>
               <p className="text-[11px] text-text-muted mb-2">
-                Track mounts, tokens, and rewards your group wants to farm.
+                {t('overview.noGoalsDesc')}
               </p>
               {canManage && (
                 <button
@@ -1437,7 +1443,7 @@ function GoalsFarmsModule({
                   onClick={onCreateGoal}
                   className="text-[11px] font-medium text-accent border border-accent/30 rounded-lg px-2.5 py-1 hover:bg-accent/10 transition-colors"
                 >
-                  Create Collection Goal
+                  {t('overview.createCollectionGoal')}
                 </button>
               )}
             </div>
@@ -1550,7 +1556,7 @@ function GoalsFarmsModule({
                     onClick={onCreateGoal}
                     className="text-[11px] font-medium text-accent hover:text-accent-hover transition-colors"
                   >
-                    + Add farm
+                    {t('overview.addFarm')}
                   </button>
                 ) : (
                   <span className="text-[10px] text-text-muted">
@@ -1567,20 +1573,20 @@ function GoalsFarmsModule({
 
         {/* ── Member Interest (Content Suggestions) ── */}
         <div>
-          <SubLabel aside="Not official yet">
-            Member Interest
+          <SubLabel aside={t('overview.interestAside')}>
+            {t('overview.memberInterest')}
           </SubLabel>
           {topSuggestions.length === 0 ? (
             <div className="px-3 py-3 text-center">
               <p className="text-[11px] text-text-muted mb-1">
-                No suggestions yet. Propose content for your static.
+                {t('overview.noSuggestions')}
               </p>
               <button
                 type="button"
                 onClick={openGoalsTab}
                 className="text-[11px] text-accent hover:underline"
               >
-                Suggest content →
+                {t('overview.suggestContent')}
               </button>
             </div>
           ) : (
@@ -1601,7 +1607,7 @@ function GoalsFarmsModule({
                   onClick={openGoalsTab}
                   className="text-[11px] text-accent hover:underline"
                 >
-                  {canManage ? 'Manage suggestions →' : 'Vote & suggest →'}
+                  {canManage ? t('overview.manageSuggestions') : t('overview.voteSuggest')}
                 </button>
                 {openSuggestions.length > 3 && (
                   <span className="text-[10px] text-text-muted">+{openSuggestions.length - 3} more</span>
@@ -1618,7 +1624,7 @@ function GoalsFarmsModule({
             onClick={openGoalsTab}
             className="text-[11px] text-accent hover:underline"
           >
-            {canManage ? 'Manage goals →' : 'View goals →'}
+            {canManage ? t('overview.manageGoals') : t('overview.viewGoals')}
           </button>
           <span className="text-[10px] text-text-muted">Not official yet ≠ matching</span>
         </div>
@@ -1647,9 +1653,10 @@ function RecentActivityModule({
 }: {
   farmData: MountFarmData | null;
   groupId: string;
-  onNavigate: NavigateFn;
+  onNavigate: (tab: PageMode) => void;
   canManage: boolean;
 }) {
+  const { t } = useTranslation();
   const currentUser = useAuthStore((s) => s.user);
   const [apiItems, setApiItems] = useState<ActivityLogItem[] | null>(null);
 
@@ -1702,20 +1709,13 @@ function RecentActivityModule({
 
   function activityIcon(icon: StaticActivityItem['icon']) {
     const style = ACTIVITY_ICON_STYLE[icon];
+    const IconEl = icon === 'mount' ? Trophy : icon === 'currency' ? Target : icon === 'plugin' ? Plug : Sparkles;
     return (
       <div
         className="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center"
         style={{ background: style.bg, color: style.color }}
       >
-        {icon === 'mount' ? (
-          <XivIcon name="goals" size={12} />
-        ) : icon === 'currency' ? (
-          <Target className="w-3 h-3" />
-        ) : icon === 'plugin' ? (
-          <Plug className="w-3 h-3" />
-        ) : (
-          <XivIcon name="crystal" size={12} />
-        )}
+        <IconEl className="w-3 h-3" />
       </div>
     );
   }
@@ -1727,24 +1727,24 @@ function RecentActivityModule({
 
   return (
     <div>
-      <SectionLabel icon={<Activity className="w-3 h-3" />}>Recent Activity</SectionLabel>
+      <SectionLabel icon={<Activity className="w-3 h-3" />}>{t('overview.recentActivity')}</SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {items.length === 0 ? (
           <div className="px-3 py-5 text-center">
             <Activity className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
             <p className="text-xs font-medium text-text-secondary" data-testid="no-recent-activity">
-              No recent activity
+              {t('overview.noRecentActivity')}
             </p>
             <p className="text-[11px] text-text-muted mt-0.5 mb-2.5">
-              Track a shared reward to start building activity.
+              {t('overview.noActivityDesc')}
             </p>
             {canManage && (
               <button
                 type="button"
-                onClick={() => onNavigate('goals', 'farms')}
+                onClick={() => onNavigate('goals')}
                 className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
               >
-                Open Mount Farms
+                {t('overview.openMountFarms')}
               </button>
             )}
           </div>
@@ -1771,10 +1771,10 @@ function RecentActivityModule({
             <div style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
               <button
                 type="button"
-                onClick={() => onNavigate('goals', 'farms')}
+                onClick={() => onNavigate('goals')}
                 className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
               >
-                View all activity
+                {t('overview.viewAllActivity')}
                 <ChevronRight className="w-3 h-3" />
               </button>
             </div>
@@ -1790,22 +1790,23 @@ function RecentActivityModule({
 interface SplitClearReadinessCardProps {
   data: SplitClearData;
   players: SnapshotPlayer[];
-  onNavigate: NavigateFn;
+  onNavigate: (tab: PageMode) => void;
 }
 
 function SplitClearReadinessCard({ data, players, onNavigate }: SplitClearReadinessCardProps) {
+  const { t } = useTranslation();
   const readiness = getSplitClearReadiness(players, data.assignments);
 
   return (
     <div className="rounded-xl border border-border-subtle bg-surface-raised p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Scissors className="h-4 w-4 text-accent" />
-        <span className="text-sm font-semibold text-text-primary">Split Clears</span>
+        <span className="text-sm font-semibold text-text-primary">{t('overview.splitClears')}</span>
       </div>
 
       <div className="space-y-1.5 text-xs text-text-secondary">
         <div className="flex items-center justify-between">
-          <span>Alts assigned</span>
+          <span>{t('overview.altsAssigned')}</span>
           <span className={`font-medium ${readiness.altCount === readiness.memberCount ? 'text-status-success' : 'text-text-primary'}`}>
             {readiness.altCount}/{readiness.memberCount}
           </span>
@@ -1813,7 +1814,7 @@ function SplitClearReadinessCard({ data, players, onNavigate }: SplitClearReadin
         {readiness.issueMemberCount > 0 && (
           <div className="flex items-center gap-1.5 text-status-warning">
             <AlertTriangle className="h-3 w-3 flex-shrink-0" />
-            <span>{readiness.issueMemberCount} member{readiness.issueMemberCount !== 1 ? 's' : ''} need attention</span>
+            <span>{t('overview.membersNeedAttention', { count: readiness.issueMemberCount })}</span>
           </div>
         )}
       </div>
@@ -1823,7 +1824,7 @@ function SplitClearReadinessCard({ data, players, onNavigate }: SplitClearReadin
         onClick={() => onNavigate('roster')}
         className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition-colors"
       >
-        Open Split Planner
+        {t('overview.openSplitPlanner')}
         <ChevronRight className="h-3 w-3" />
       </button>
     </div>

@@ -8,12 +8,12 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
-  Search, Users, Clock, MapPin, Globe,
+  Search, Users, Clock, MapPin, Swords, Globe,
   Filter, X, ChevronDown, ChevronUp, Copy, Check, Info, MessageCircle, ExternalLink,
   Send, LogIn,
 } from 'lucide-react';
-import { XivIcon } from '../components/ui/XivIcon';
 import { Input, Select, Checkbox, Spinner, EmptyState, Label } from '../components/ui';
 import { Button } from '../components/primitives';
 import { authRequest } from '../services/api';
@@ -225,17 +225,10 @@ const GOAL_CATEGORY_OPTIONS = [
 const FILTER_KEYS = ['role', 'job', 'intensity', 'recruitmentStatus', 'dataCenter', 'server', 'timezone', 'language', 'goalCategory'] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
 
-const FIT_OVERALL_LABELS: Record<string, { label: string; className: string }> = {
-  strong:  { label: 'Strong fit',  className: 'text-status-success' },
-  good:    { label: 'Good fit',    className: 'text-status-success' },
-  partial: { label: 'Partial fit', className: 'text-status-warning' },
-  weak:    { label: 'Weak fit',    className: 'text-status-error' },
-  unknown: { label: 'Fit unknown', className: 'text-text-muted' },
-};
-
 // ─── Page Component ──────────────────────────────────────────
 
 export function Discover() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Read initial state from URL
@@ -355,18 +348,18 @@ export function Discover() {
   }, [fetchResults]);
 
   return (
-    <div className="max-w-[160rem] mx-auto w-full px-4 py-6 sm:py-8">
+    <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14 py-6 sm:py-8">
       {/* ─── Header ─── */}
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-primary mb-1">
-          Find a Static
+          {t('discover.pageHeading')}
         </h1>
         <p className="text-text-secondary text-sm sm:text-base">
-          Browse public recruitment listings and find a group that fits your schedule, role, and vibe.
+          {t('discover.pageSubheading')}
         </p>
         <p className="text-text-muted text-xs mt-1.5 flex items-center gap-1">
           <Info className="w-3 h-3 flex-shrink-0" />
-          All listings are opt-in. Only public details chosen by the static lead are shown.
+          {t('discover.allListingsOptIn')}
         </p>
       </div>
 
@@ -378,7 +371,7 @@ export function Discover() {
           <Input
             value={searchText}
             onChange={setSearchText}
-            placeholder="Search by name or description..."
+            placeholder={t('discover.searchPlaceholder')}
             className="pl-9"
           />
         </div>
@@ -398,7 +391,7 @@ export function Discover() {
             className="h-[44px] sm:h-auto"
           >
             <Filter className="w-4 h-4 mr-1.5" />
-            <span className="hidden sm:inline">Filters</span>
+            <span className="hidden sm:inline">{t('discover.filterButton')}</span>
             {filterCount > 0 && (
               <span className="ml-1 px-1.5 py-0.5 bg-accent/20 text-accent rounded-full text-xs font-medium min-w-[1.25rem] text-center">
                 {filterCount}
@@ -409,7 +402,7 @@ export function Discover() {
           {(hasFilters || debouncedSearch) && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="h-[44px] sm:h-auto">
               <X className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Clear all</span>
+              <span className="hidden sm:inline">{t('discover.clearAll')}</span>
             </Button>
           )}
         </div>
@@ -420,32 +413,32 @@ export function Discover() {
         <div className="mb-5 p-4 bg-surface-card border border-border-default rounded-lg space-y-4">
           {/* Looking for */}
           <div>
-            <p className="text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2">Looking for</p>
+            <p className="text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2">{t('discover.lookingFor')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <Label htmlFor="f-role">Role</Label>
+                <Label htmlFor="f-role">{t('discover.filterRole')}</Label>
                 <Select id="f-role" value={filters.role} onChange={v => setFilter('role', v)} options={ROLE_OPTIONS} />
               </div>
               <div>
-                <Label htmlFor="f-job">Job</Label>
+                <Label htmlFor="f-job">{t('discover.filterJob')}</Label>
                 <Select id="f-job" value={filters.job} onChange={v => setFilter('job', v)} options={JOB_OPTIONS} />
               </div>
               <div>
-                <Label htmlFor="f-intensity">Vibe</Label>
+                <Label htmlFor="f-intensity">{t('discover.filterVibe')}</Label>
                 <Select id="f-intensity" value={filters.intensity} onChange={v => setFilter('intensity', v)} options={INTENSITY_OPTIONS} />
               </div>
               <div>
-                <Label htmlFor="f-status">Status</Label>
+                <Label htmlFor="f-status">{t('discover.filterStatus')}</Label>
                 <Select id="f-status" value={filters.recruitmentStatus} onChange={v => setFilter('recruitmentStatus', v)} options={RECRUITMENT_OPTIONS} />
               </div>
             </div>
           </div>
           {/* Goal objectives */}
           <div>
-            <p className="text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2">Objectives &amp; Alignment</p>
+            <p className="text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2">{t('discover.objectivesAndAlignment')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
               <div>
-                <Label htmlFor="f-goalcat">Objective Category</Label>
+                <Label htmlFor="f-goalcat">{t('discover.filterGoalCat')}</Label>
                 <Select id="f-goalcat" value={filters.goalCategory} onChange={v => setFilter('goalCategory', v)} options={GOAL_CATEGORY_OPTIONS} />
               </div>
               {user && (
@@ -456,7 +449,7 @@ export function Discover() {
                       onChange={() => setHideConflicts(v => !v)}
                       aria-label="Hide goal conflicts (legacy)"
                     />
-                    Hide goal conflicts
+                    {t('discover.filterHideConflicts')}
                   </Label>
                   <Label className="flex items-center gap-2 cursor-pointer select-none text-sm">
                     <Checkbox
@@ -464,7 +457,7 @@ export function Discover() {
                       onChange={() => setHideGoalConflicts(v => !v)}
                       aria-label="Hide fit score goal conflicts"
                     />
-                    Hide fit conflicts
+                    {t('discover.filterHideFitConflicts')}
                   </Label>
                   <Label className="flex items-center gap-2 cursor-pointer select-none text-sm">
                     <Checkbox
@@ -472,7 +465,7 @@ export function Discover() {
                       onChange={() => setScheduleOverlap(v => !v)}
                       aria-label="Require schedule overlap"
                     />
-                    Schedule overlap only
+                    {t('discover.filterScheduleOverlap')}
                   </Label>
                 </div>
               )}
@@ -481,22 +474,22 @@ export function Discover() {
 
           {/* Location & schedule */}
           <div>
-            <p className="text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2">Location &amp; Schedule</p>
+            <p className="text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2">{t('discover.locationAndSchedule')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <Label htmlFor="f-dc">Data Center</Label>
+                <Label htmlFor="f-dc">{t('discover.filterDc')}</Label>
                 <Select id="f-dc" value={filters.dataCenter} onChange={v => setFilter('dataCenter', v)} options={DC_OPTIONS} />
               </div>
               <div>
-                <Label htmlFor="f-server">Server</Label>
+                <Label htmlFor="f-server">{t('discover.filterServer')}</Label>
                 <Select id="f-server" value={filters.server} onChange={v => setFilter('server', v)} options={serverOptions} disabled={!filters.dataCenter} />
               </div>
               <div>
-                <Label htmlFor="f-tz">Timezone</Label>
+                <Label htmlFor="f-tz">{t('discover.filterTimezone')}</Label>
                 <Select id="f-tz" value={filters.timezone} onChange={v => setFilter('timezone', v)} options={TZ_OPTIONS} />
               </div>
               <div>
-                <Label htmlFor="f-lang">Language</Label>
+                <Label htmlFor="f-lang">{t('discover.filterLanguage')}</Label>
                 <Select id="f-lang" value={filters.language} onChange={v => setFilter('language', v)} options={LANG_OPTIONS} />
               </div>
             </div>
@@ -507,7 +500,7 @@ export function Discover() {
       {/* ─── Results count ─── */}
       {!loading && !error && (
         <p className="text-text-muted text-sm mb-4">
-          {total} {total === 1 ? 'listing' : 'listings'}
+          {t('discover.resultsCount', { count: total })}
           {(hasFilters || debouncedSearch) ? ' matching your filters' : ''}
         </p>
       )}
@@ -516,24 +509,24 @@ export function Discover() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Spinner size="lg" />
-          <p className="text-text-muted text-sm">Loading listings...</p>
+          <p className="text-text-muted text-sm">{t('discover.loading')}</p>
         </div>
       ) : error ? (
         <div className="p-6 bg-status-error/10 border border-status-error/30 rounded-lg text-center">
-          <p className="text-status-error font-medium">Couldn&apos;t load listings</p>
+          <p className="text-status-error font-medium">{t('discover.errorHeading')}</p>
           <p className="text-text-secondary text-sm mt-1">{error}</p>
           <Button variant="secondary" size="sm" onClick={fetchResults} className="mt-3">
-            Try again
+            {t('discover.errorRetry')}
           </Button>
         </div>
       ) : items.length === 0 ? (
         <EmptyState
           icon={<Search className="w-8 h-8" />}
-          heading="No statics found"
+          heading={t('discover.emptyHeading')}
           description={
             hasFilters || debouncedSearch
-              ? 'No matches for those filters. Try relaxing role, day, or data center filters.'
-              : 'No statics are recruiting here yet. Static leads can list their group from Settings → Listing.'
+              ? t('discover.emptyDescFiltered')
+              : t('discover.emptyDescDefault')
           }
           action={hasFilters || debouncedSearch ? { label: 'Clear filters', onClick: clearFilters } : undefined}
         />
@@ -560,6 +553,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
   existingRequest?: import('../types').JoinRequest;
   isLoggedIn: boolean;
 }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const joinModal = useModal();
@@ -604,7 +598,10 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
             {item.name}
           </h3>
           <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold border flex-shrink-0 capitalize whitespace-nowrap tracking-wide ${statusClass}`}>
-            {item.recruitmentStatus}
+            {item.recruitmentStatus === 'open' ? t('discover.recruitmentOpen')
+              : item.recruitmentStatus === 'limited' ? t('discover.recruitmentLimited')
+              : item.recruitmentStatus === 'closed' ? t('discover.recruitmentClosed')
+              : item.recruitmentStatus}
           </span>
         </div>
 
@@ -641,9 +638,9 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* Raid nights */}
         {hasSchedule && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Raid Nights</p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">{t('discover.raidNights')}</p>
             <div className="flex items-center gap-1.5 text-text-secondary text-xs flex-wrap">
-              <XivIcon name="sword" size={14} className="flex-shrink-0" />
+              <Swords className="w-3.5 h-3.5 flex-shrink-0 text-text-muted" />
               <span>
                 {item.scheduleDays!.map(shortDay).join(', ')}
                 {item.scheduleStartTime && ` ${item.scheduleStartTime}`}
@@ -659,7 +656,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* Looking for */}
         {hasNeeds && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Looking For</p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">{t('discover.lookingForLabel')}</p>
             <div className="flex flex-wrap gap-1">
               {item.neededRoles?.map(r => (
                 <span key={r} className="px-2 py-0.5 bg-accent/10 text-accent border border-accent/20 rounded text-xs capitalize">
@@ -678,7 +675,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* Static objectives */}
         {item.objectiveCategories && item.objectiveCategories.length > 0 && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Official Goals</p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">{t('discover.officialGoals')}</p>
             <div className="flex flex-wrap gap-1">
               {item.objectiveCategories.map((cat) => (
                 <span key={cat} className="px-2 py-0.5 bg-surface-elevated text-text-secondary border border-border-default rounded text-xs">
@@ -692,7 +689,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* Goal alignment (logged-in users only) */}
         {item.goalAlignment && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Your Goal Match</p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">{t('discover.yourGoalMatch')}</p>
             <div className="flex items-center gap-2 text-xs flex-wrap">
               {item.goalAlignment.aligned > 0 && (
                 <span className="text-status-success font-medium">{item.goalAlignment.aligned} aligned</span>
@@ -718,7 +715,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {/* About */}
         {item.description && (
           <div className="mb-2.5">
-            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">About</p>
+            <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">{t('discover.about')}</p>
             <p className={`text-text-secondary text-sm break-words whitespace-pre-line ${!expanded && longDescription ? 'line-clamp-3' : ''}`}>
               {item.description}
             </p>
@@ -756,7 +753,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
           </div>
         ) : !item.description ? (
           <p className="text-text-muted text-xs mb-3 italic">
-            No details yet. Open the listing to learn more.
+            {t('discover.noDetails')}
           </p>
         ) : null}
       </div>
@@ -767,12 +764,12 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
           {item.memberCount > 0 && (
             <span className="flex items-center gap-1">
               <Users className="w-3.5 h-3.5" />
-              {item.memberCount} {item.memberCount === 1 ? 'member' : 'members'}
+              {t('common.count_member', { count: item.memberCount })}
             </span>
           )}
           {item.lastUpdated && (
             <span className="hidden sm:inline truncate">
-              Updated {new Date(item.lastUpdated).toLocaleDateString()}
+              {t('discover.updatedDate', { date: new Date(item.lastUpdated).toLocaleDateString() })}
             </span>
           )}
         </div>
@@ -782,8 +779,8 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
             type="button"
             onClick={handleCopyLink}
             className="p-1.5 rounded-md text-text-muted hover:text-accent hover:bg-accent/10 transition-colors"
-            aria-label={copied ? 'Link copied' : 'Copy listing link'}
-            title={copied ? 'Link copied!' : 'Copy link'}
+            aria-label={copied ? t('discover.linkCopied') : t('discover.copyListingLink')}
+            title={copied ? t('discover.linkCopied') : t('discover.copyListingLink')}
           >
             {copied
               ? <Check className="w-4 h-4 text-status-success" />
@@ -793,28 +790,28 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
           {existingRequest?.status === 'pending' ? (
             <Button variant="ghost" size="sm" onClick={handleCancelRequest} loading={isCancelling}>
               <Clock className="w-3.5 h-3.5 text-status-warning" />
-              <span className="text-status-warning">Pending</span>
+              <span className="text-status-warning">{t('discover.requestPending')}</span>
             </Button>
           ) : existingRequest?.status === 'accepted' ? (
             <span className="flex items-center gap-1 text-xs text-status-success px-2">
-              <Check className="w-3.5 h-3.5" /> Accepted
+              <Check className="w-3.5 h-3.5" /> {t('discover.requestAccepted')}
             </span>
           ) : existingRequest?.status === 'declined' ? (
-            <span className="flex items-center gap-1 text-xs text-status-error px-2">Declined</span>
+            <span className="flex items-center gap-1 text-xs text-status-error px-2">{t('discover.requestDeclined')}</span>
           ) : isLoggedIn ? (
             <Button variant="primary" size="sm" leftIcon={<Send className="w-3.5 h-3.5" />} onClick={joinModal.open}>
-              Request to Join
+              {t('discover.requestToJoin')}
             </Button>
           ) : (
             <Button variant="ghost" size="sm" leftIcon={<LogIn className="w-3.5 h-3.5" />} onClick={() => login()}>
-              Log in to join
+              {t('discover.loginToJoin')}
             </Button>
           )}
           <Link
             to={`/group/${item.shareCode}`}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 rounded-lg text-accent text-sm font-medium transition-colors"
           >
-            View Static
+            {t('discover.viewStatic')}
           </Link>
         </div>
       </div>
@@ -835,7 +832,15 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
 // ─── Fit Summary Section ─────────────────────────────────────
 
 function FitSummarySection({ fit }: { fit: FitSummary }) {
-  const overallInfo = FIT_OVERALL_LABELS[fit.overall] ?? FIT_OVERALL_LABELS.unknown;
+  const { t } = useTranslation();
+  const FIT_LABELS: Record<string, { label: string; className: string }> = {
+    strong:  { label: t('discover.fitScoreStrong'),  className: 'text-status-success' },
+    good:    { label: t('discover.fitScoreGood'),    className: 'text-status-success' },
+    partial: { label: t('discover.fitScorePartial'), className: 'text-status-warning' },
+    weak:    { label: t('discover.fitScoreWeak'),    className: 'text-status-error' },
+    unknown: { label: t('discover.fitScoreUnknown'), className: 'text-text-muted' },
+  };
+  const overallInfo = FIT_LABELS[fit.overall] ?? FIT_LABELS.unknown;
 
   // Build compact detail tokens
   const tokens: { label: string; className?: string }[] = [];
@@ -871,7 +876,7 @@ function FitSummarySection({ fit }: { fit: FitSummary }) {
 
   return (
     <div className="mb-2.5" data-testid="fit-summary">
-      <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">Fit Score</p>
+      <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">{t('discover.fitScore')}</p>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
         <span className={`font-semibold ${overallInfo.className}`} data-testid="fit-overall">
           {overallInfo.label}

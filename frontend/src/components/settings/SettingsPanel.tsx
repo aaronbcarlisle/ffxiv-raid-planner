@@ -9,11 +9,9 @@
 
 /* eslint-disable design-system/no-raw-button */
 
-import { useCallback, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Settings, ListOrdered, Users, Globe, Target, Plus, Trash2 } from 'lucide-react';
-import { SettingsSubNav } from './SettingsSubNav';
-import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
 import { GeneralTab } from './GeneralTab';
@@ -32,8 +30,7 @@ import { useModal } from '../../hooks/useModal';
 import type { JoinRequest, StaticGroup, SnapshotPlayer } from '../../types';
 
 export type SettingsTab = 'general' | 'priority' | 'goals' | 'recruitment' | 'members';
-const GOALS_SECTION_VALUES = ['overview', 'objectives', 'farms', 'suggestions'] as const;
-type GoalsSection = (typeof GOALS_SECTION_VALUES)[number];
+type GoalsSection = 'overview' | 'objectives' | 'farms' | 'suggestions';
 
 export type { RecruitmentSection };
 
@@ -41,16 +38,16 @@ const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'goals', 'recruitment',
 
 interface TabItem {
   id: SettingsTab;
-  label: string;
+  labelKey: string;
   icon: typeof Settings;
 }
 
 const TAB_ITEMS: TabItem[] = [
-  { id: 'general',     label: 'General',        icon: Settings },
-  { id: 'priority',    label: 'Priority',        icon: ListOrdered },
-  { id: 'goals',       label: 'Goals & Farms',   icon: Target },
-  { id: 'recruitment', label: 'Recruitment',     icon: Globe },
-  { id: 'members',     label: 'Members',         icon: Users },
+  { id: 'general',     labelKey: 'settings.general',      icon: Settings },
+  { id: 'priority',    labelKey: 'settings.priority',     icon: ListOrdered },
+  { id: 'goals',       labelKey: 'settings.goalsAndFarms', icon: Target },
+  { id: 'recruitment', labelKey: 'settings.recruitment',  icon: Globe },
+  { id: 'members',     labelKey: 'common.members',        icon: Users },
 ];
 
 // ─── Goals & Farms sub-nav ───────────────────────────────────────────────────
@@ -61,6 +58,32 @@ const GOALS_SECTIONS: { id: GoalsSection; label: string }[] = [
   { id: 'farms',       label: 'Farms' },
   { id: 'suggestions', label: 'Suggestions' },
 ];
+
+function GoalsSubNav({ active, onChange }: { active: GoalsSection; onChange: (s: GoalsSection) => void }) {
+  return (
+    <div
+      className="flex gap-1 pb-3 mb-0 border-b border-border-subtle flex-shrink-0 overflow-x-auto scrollbar-none"
+      role="tablist"
+    >
+      {GOALS_SECTIONS.map((s) => (
+        <button
+          key={s.id}
+          type="button"
+          role="tab"
+          aria-selected={active === s.id}
+          onClick={() => onChange(s.id)}
+          className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            active === s.id
+              ? 'bg-accent/15 text-accent'
+              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
+          }`}
+        >
+          {s.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // ─── Goals Overview section ──────────────────────────────────────────────────
 
@@ -269,10 +292,10 @@ function GoalsFarmsTabContent({
   const [section, setSection] = useUrlTabState('gsub', GOALS_SECTION_VALUES, 'overview');
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <SettingsSubNav active={section} onChange={setSection} items={GOALS_SECTIONS} />
+    <div className="flex flex-col flex-1 min-h-0 pt-1">
+      <GoalsSubNav active={section} onChange={setSection} />
 
-      <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex flex-col flex-1 min-h-0 pt-4">
         {section === 'overview' && (
           <GoalsOverview onNavigate={setSection} />
         )}
@@ -328,10 +351,8 @@ export function SettingsPanel({
   highlightCreateInvite = false,
   onAddToRoster,
 }: SettingsPanelProps) {
-  // Active tab lives in the URL (?settings=<tab>) via the shared hook, so the
-  // panel is deep-linkable and follows browser back/forward. The `settings`
-  // param is cleared on close in GroupView (useGroupViewState).
-  const [activeTab, setActiveTab] = useUrlTabState('settings', TAB_ORDER, 'general');
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
 
   // Event-driven open-to-tab (header buttons / badge routing) arrives via the
   // initialTab prop. Reflect it into the URL when the panel opens, or when a
@@ -376,7 +397,7 @@ export function SettingsPanel({
     } else if (direction === 'prev' && currentIndex > 0) {
       setActiveTab(TAB_ORDER[currentIndex - 1]);
     }
-  }, [activeTab, setActiveTab]);
+  }, [activeTab]);
 
   // Swipe handlers for tab navigation
   const swipeHandlers = useSwipe({
@@ -392,7 +413,7 @@ export function SettingsPanel({
       title={
         <span className="flex items-center gap-2">
           <Settings className="w-5 h-5" />
-          Static Settings
+          {t('settings.title')}
         </span>
       }
       width="3xl"
@@ -414,7 +435,7 @@ export function SettingsPanel({
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="hidden sm:inline">{t(tab.labelKey)}</span>
                 {tab.id === 'recruitment' && pendingCount > 0 && (
                   <span className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-full bg-accent text-accent-contrast">
                     {pendingCount}

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { useUrlTabState } from '../../hooks/useUrlTabState';
-import { Plug, Info, User, Filter, Activity, X, ExternalLink } from 'lucide-react';
-import { XivIcon } from '../ui/XivIcon';
+import { useTranslation } from 'react-i18next';
+import { Trophy, Sparkles, Calendar, Plug, Info, User, Users, Filter, Activity, X, ExternalLink } from 'lucide-react';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import type { MountFarmData, TrialSummary } from '../../stores/mountFarmStore';
 import { EXPANSIONS, getTrialsByExpansion, getAllTrialIds, getTrialById, getCurrencyLabelPlural, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
@@ -12,8 +11,7 @@ import { ErrorMessage } from '../ui/ErrorMessage';
 import { Button } from '../primitives/Button';
 import { Tooltip } from '../primitives/Tooltip';
 
-const MOUNT_FARM_VIEWS = ['group', 'my-progress'] as const;
-type ViewMode = (typeof MOUNT_FARM_VIEWS)[number];
+type ViewMode = 'group' | 'my-progress';
 type FilterMode = 'all' | 'needs-mount' | 'can-buy' | 'wanted' | 'complete';
 
 interface MountFarmTabProps {
@@ -58,9 +56,9 @@ function filterTrials(
 }
 
 export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTabProps) {
+  const { t } = useTranslation();
   const [selectedExpansion, setSelectedExpansion] = useState<Expansion>('DT');
-  // Group vs personal progress view in the URL (?mf=group|my-progress).
-  const [viewMode, setViewMode] = useUrlTabState('mf', MOUNT_FARM_VIEWS, 'group');
+  const [viewMode, setViewMode] = useState<ViewMode>('group');
   const [activeFilter, setActiveFilter] = useState<FilterMode>('all');
   const { data, recommendations, isLoading, isLoadingRecs, error, fetchProgress, fetchRecommendations } = useMountFarmStore();
 
@@ -169,11 +167,11 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
   }, 0);
 
   const FILTERS: { id: FilterMode; label: string; count?: number }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'needs-mount', label: 'Needs reward' },
-    { id: 'wanted', label: 'Wanted' },
-    { id: 'can-buy', label: 'Can buy' },
-    { id: 'complete', label: 'Complete' },
+    { id: 'all', label: t('mountFarm.filterAll') },
+    { id: 'needs-mount', label: t('mountFarm.filterNeedsReward') },
+    { id: 'wanted', label: t('mountFarm.filterWanted') },
+    { id: 'can-buy', label: t('mountFarm.filterCanBuy') },
+    { id: 'complete', label: t('mountFarm.filterComplete') },
   ];
 
   return (
@@ -187,13 +185,13 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
-                <p className="font-display text-sm font-semibold text-text-primary">Automate farm tracking</p>
+                <p className="font-display text-sm font-semibold text-text-primary">{t('mountFarm.automateTracking')}</p>
                 <Button onClick={dismissCta} className="text-text-tertiary hover:text-text-secondary transition-colors p-0.5 -m-0.5" aria-label="Dismiss"> {/* design-system-ignore: Dismiss X requires specific styling */}
                   <X className="w-4 h-4" />
                 </Button>
               </div>
               <p className="text-xs text-text-secondary mt-1">
-                Use the XIV Raid Planner plugin and run <code className="px-1 py-0.5 bg-surface-card rounded text-text-primary">/xrp sync</code> to import supported owned rewards and currency counts automatically.
+                {t('mountFarm.pluginSetup')}
               </p>
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 <a
@@ -203,15 +201,15 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  How to set up plugin
+                  {t('mountFarm.setupPlugin')}
                 </a>
                 <span className="text-text-tertiary text-xs">·</span>
                 <span className="text-xs text-text-tertiary">
-                  Run <code className="px-1 py-0.5 bg-surface-card rounded text-text-secondary">/xrp sync</code> in-game
+                  {t('mountFarm.syncInGame')}
                 </span>
                 <span className="text-text-tertiary text-xs">·</span>
                 <Button onClick={dismissCta} className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"> {/* design-system-ignore: Inline text action */}
-                  Track manually instead
+                  {t('mountFarm.trackManually')}
                 </Button>
               </div>
             </div>
@@ -224,27 +222,27 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 flex items-center gap-2 text-xs flex-wrap">
           <Plug className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
           <span className="text-text-secondary">
-            Plugin synced {syncStatus.lastPluginSync ? timeAgo(syncStatus.lastPluginSync) : ''}
+            {t('mountFarm.pluginSynced', { timeAgo: syncStatus.lastPluginSync ? timeAgo(syncStatus.lastPluginSync) : '' })}
           </span>
           {syncStatus.mountsDetected > 0 && (
             <>
               <span className="text-text-tertiary">&middot;</span>
-              <span className="text-text-secondary">{syncStatus.mountsDetected} mount{syncStatus.mountsDetected !== 1 ? 's' : ''} detected</span>
+              <span className="text-text-secondary">{t('mountFarm.mountsDetected', { count: syncStatus.mountsDetected })}</span>
             </>
           )}
           {syncStatus.totemTypesFound > 0 && (
             <>
               <span className="text-text-tertiary">&middot;</span>
-              <span className="text-text-secondary">{syncStatus.totemTypesFound} totem type{syncStatus.totemTypesFound !== 1 ? 's' : ''} found</span>
+              <span className="text-text-secondary">{t('mountFarm.totemTypesFound', { count: syncStatus.totemTypesFound })}</span>
             </>
           )}
           {syncStatus.manualOverrides > 0 && (
             <>
               <span className="text-text-tertiary">&middot;</span>
-              <Tooltip content="Some values were manually corrected and won't be overwritten by plugin sync">
+              <Tooltip content={t('mountFarm.manualOverridesDesc')}>
                 <span className="inline-flex items-center gap-1 text-text-tertiary">
                   <Info className="w-3 h-3" />
-                  {syncStatus.manualOverrides} manual override{syncStatus.manualOverrides !== 1 ? 's' : ''}
+                  {t('mountFarm.manualOverrides', { count: syncStatus.manualOverrides })}
                 </span>
               </Tooltip>
             </>
@@ -256,7 +254,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
       {syncStatus && !syncStatus.hasPluginData && ctaDismissed && !isLoading && (
         <div className="rounded-lg bg-surface-elevated border border-border-default px-3 py-2 flex items-center gap-2 text-xs">
           <Info className="w-3.5 h-3.5 text-text-tertiary flex-shrink-0" />
-          <span className="text-text-tertiary">Plugin sync unavailable. You can still track manually.</span>
+          <span className="text-text-tertiary">{t('mountFarm.pluginUnavailable')}</span>
         </div>
       )}
 
@@ -284,10 +282,10 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
-              <XivIcon name="crystal" size={20} className="flex-shrink-0 mt-0.5" />
+              <Sparkles className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="text-sm font-display font-semibold text-text-primary truncate">
-                  Best next farm: {topRecTrial.dutyName}
+                  {t('mountFarm.bestNextFarm', { dutyName: topRecTrial.dutyName })}
                 </p>
                 <p className="text-xs text-text-secondary mt-1">
                   {topRec.membersWanting > 0 && <>{topRec.membersWanting} member{topRec.membersWanting > 1 ? 's' : ''} want{topRec.membersWanting === 1 ? 's' : ''} this {getRewardNoun(topRecTrial)}</>}
@@ -307,8 +305,8 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
                 variant="secondary"
                 onClick={() => onScheduleFarm(topRecTrial)}
               >
-                <XivIcon name="schedule" size={16} />
-                {topRecTrial.contentType === 'ultimate' ? 'Schedule' : 'Schedule Farm'}
+                <Calendar className="w-4 h-4" />
+                {topRecTrial.contentType === 'ultimate' ? t('mountFarm.schedule') : t('mountFarm.scheduleFarm')}
               </Button>
             )}
           </div>
@@ -326,8 +324,8 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
               viewMode === 'group' ? 'bg-accent/20 text-accent' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            <XivIcon name="party" size={14} />
-            Static
+            <Users className="w-3.5 h-3.5" />
+            {t('mountFarm.tabStatic')}
           </button>
           {/* design-system-ignore: View toggle requires specific styling */}
           <button
@@ -337,7 +335,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
             }`}
           >
             <User className="w-3.5 h-3.5" />
-            My Progress
+            {t('mountFarm.tabMyProgress')}
           </button>
         </div>
 
@@ -377,10 +375,10 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
       {/* My Progress summary cards */}
       {viewMode === 'my-progress' && myStats && !isLoading && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="Rewards Obtained" value={myStats.owned} total={myStats.total} color="text-status-success" />
-          <StatCard label="Wanted" value={myStats.wanted} color="text-accent" />
-          <StatCard label="Ready" value={myStats.canBuy} color="text-amber-400" />
-          <StatCard label="Last Sync" value={syncStatus?.lastPluginSync ? timeAgo(syncStatus.lastPluginSync) : 'Never'} isText color="text-text-secondary" />
+          <StatCard label={t('mountFarm.rewardsObtained')} value={myStats.owned} total={myStats.total} color="text-status-success" />
+          <StatCard label={t('mountFarm.wanted')} value={myStats.wanted} color="text-accent" />
+          <StatCard label={t('mountFarm.ready')} value={myStats.canBuy} color="text-amber-400" />
+          <StatCard label={t('mountFarm.lastSync')} value={syncStatus?.lastPluginSync ? timeAgo(syncStatus.lastPluginSync) : 'Never'} isText color="text-text-secondary" />
         </div>
       )}
 
@@ -405,11 +403,11 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
 
       {/* Progress bar */}
       <div className="flex items-center gap-3">
-        <XivIcon name="goals" size={16} />
+        <Trophy className="w-4 h-4 text-text-tertiary" />
         <div className="flex-1">
           <div className="flex justify-between text-xs text-text-secondary mb-1">
-            <span>{EXPANSIONS.find(e => e.id === selectedExpansion)?.name} Completion</span>
-            <span>{expansionComplete}/{allTrials.length} farms complete</span>
+            <span>{t('mountFarm.completion', { expansionName: EXPANSIONS.find(e => e.id === selectedExpansion)?.name })}</span>
+            <span>{t('mountFarm.farmsComplete', { complete: expansionComplete, total: allTrials.length })}</span>
           </div>
           <div className="h-2 bg-surface-elevated rounded-full overflow-hidden">
             <div
@@ -431,8 +429,8 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         <div className="text-center py-12 text-text-secondary">
           <p className="text-sm">
             {activeFilter !== 'all'
-              ? `No trials match the "${FILTERS.find(f => f.id === activeFilter)?.label}" filter for this expansion.`
-              : 'No trials available for this expansion.'}
+              ? t('mountFarm.noTrials', { filterLabel: FILTERS.find(f => f.id === activeFilter)?.label })
+              : t('mountFarm.noTrialsAvailable')}
           </p>
           {activeFilter !== 'all' && (
             /* design-system-ignore: Clear filter link requires specific styling */
@@ -440,7 +438,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
               onClick={() => setActiveFilter('all')}
               className="text-xs text-accent hover:underline mt-2"
             >
-              Clear filter
+              {t('mountFarm.clearFilter')}
             </button>
           )}
         </div>
@@ -546,6 +544,7 @@ function NeedsAttention({ data, trialSummaryMap }: { data: MountFarmData; trialS
 }
 
 function RecentActivity({ data }: { data: MountFarmData }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
   const activities = useMemo(() => {
@@ -592,7 +591,7 @@ function RecentActivity({ data }: { data: MountFarmData }) {
         className="flex items-center gap-2 text-xs font-medium text-text-tertiary uppercase tracking-wider w-full text-left hover:text-text-secondary transition-colors"
       >
         <Activity className="w-3.5 h-3.5" />
-        Recent Activity
+        {t('mountFarm.recentActivity')}
         <span className="text-[10px] normal-case tracking-normal">({activities.length})</span>
         <span className="ml-auto text-[10px]">{expanded ? '▲' : '▼'}</span>
       </button>

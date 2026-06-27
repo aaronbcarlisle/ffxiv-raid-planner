@@ -42,6 +42,7 @@ export { Spinner, SpinnerOverlay, type SpinnerSize, type SpinnerColor } from './
 export { SortModeSelector } from './SortModeSelector';
 export { TabNavigation } from './TabNavigation';
 export { ThemeToggle } from './ThemeToggle';
+export { LanguageToggle } from './LanguageToggle';
 export { TextArea, type TextAreaProps } from './TextArea';
 export { ThreeStateCheckbox } from './ThreeStateCheckbox';
 export { TipsCarousel } from './TipsCarousel';

@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { XivIcon } from '../ui/XivIcon';
+import { useTranslation } from 'react-i18next';
+import { Swords } from 'lucide-react';
 import { Modal, Select, Checkbox, Label } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
@@ -43,6 +44,7 @@ export function QuickLogWeaponModal({
   settings,
   onSuccess,
 }: QuickLogWeaponModalProps) {
+  const { t } = useTranslation();
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
   const [selectedWeek, setSelectedWeek] = useState(String(maxWeek));
   const [updateGear, setUpdateGear] = useState(true);
@@ -99,12 +101,12 @@ export function QuickLogWeaponModal({
       const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
       const jobInfo = RAID_JOBS.find((j) => j.abbreviation === weaponJob);
       const jobName = jobInfo?.name || weaponJob;
-      toast.success(`Logged ${jobName} weapon for ${recipient?.name || 'player'}`);
+      toast.success(t('loot.loggedWeapon', { jobName, playerName: recipient?.name || 'player' }));
 
       onSuccess?.();
       onClose();
     } catch {
-      toast.error('Failed to log weapon drop');
+      toast.error(t('loot.failedToLogWeapon'));
     } finally {
       setIsSaving(false);
     }
@@ -142,9 +144,9 @@ export function QuickLogWeaponModal({
   const getPriorityLabel = (priority: number, needsWeapon: boolean, isMainJob: boolean): string => {
     if (!needsWeapon) return '';
     let label = '';
-    if (priority === 1) label = ' - Top Priority';
-    else if (priority === 2) label = ' - 2nd Priority';
-    else if (priority === 3) label = ' - 3rd Priority';
+    if (priority === 1) label = ' - ' + t('loot.topPriority');
+    else if (priority === 2) label = ' - ' + t('loot.secondPriority');
+    else if (priority === 3) label = ' - ' + t('loot.thirdPriority');
     if (isMainJob && label) label += ' (Main)';
     return label;
   };
@@ -168,8 +170,8 @@ export function QuickLogWeaponModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <XivIcon name="sword" size={20} />
-          Log {jobName} Weapon
+          <Swords className="w-5 h-5" />
+          {t('loot.logWeapon', { jobName })}
         </span>
       }
     >
@@ -221,7 +223,7 @@ export function QuickLogWeaponModal({
         <Checkbox
           checked={isCoffer}
           onChange={setIsCoffer}
-          label="Via weapon coffer (not a direct drop)"
+          label={t('loot.isCoffer')}
         />
 
         {/* Extra loot checkbox */}
@@ -253,7 +255,7 @@ export function QuickLogWeaponModal({
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border-default">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="submit"
