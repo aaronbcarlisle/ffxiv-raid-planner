@@ -62,7 +62,8 @@ function report(scope, d) {
   return `[${scope}]\n${lines.length ? lines.join('\n') : '  clean'}`;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Guard against undefined process.argv[1] (e.g. piped stdin / REPL contexts).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [, , basePath, candPath] = process.argv;
   const base = parseThemeVars(readFileSync(basePath, 'utf8'));
   const cand = parseThemeVars(readFileSync(candPath, 'utf8'));
