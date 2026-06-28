@@ -93,6 +93,18 @@ export const RELEASES: Release[] = [
           { hash: '3c51a5f', message: 'docs(design-system): bless real Button/IconButton variant sets + exhaustiveness type-test' },
         ],
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'F4 — frontend structure: Ring-aware import boundaries',
+        description:
+          'Documented the feature-slice + shared-layer model and added ESLint Ring-aware import-boundary + store-boundary rules (fail-on-new via bulk suppressions). Internal structure/tooling; no user-visible change.',
+        prTitle: 'F4 — Frontend structure (feature-slice + shared-layer model)',
+        commits: [
+          { hash: '309bf75', message: 'feat(lint): F4 Ring-aware boundary elements + store-boundary rules (error)' },
+          { hash: '7e42939', message: 'feat(lint): F4 ring-inward-only rules + bulk-suppressions baseline (fail-on-new at error)' },
+        ],
+      },
     ],
   },
   {
