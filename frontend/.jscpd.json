@@ -1,0 +1,16 @@
+{
+  "threshold": 5,
+  "minLines": 5,
+  "minTokens": 50,
+  "reporters": ["console"],
+  "gitignore": true,
+  "absolute": true,
+  "ignore": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/__tests__/**",
+    "src/gamedata/**",
+    "src/styles/tokens.generated.css",
+    "e2e/**"
+  ]
+}

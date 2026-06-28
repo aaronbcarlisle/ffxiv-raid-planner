@@ -55,6 +55,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Duplication check (jscpd)
+        run: pnpm dupes
+
   migrations:
     name: Migration Graph Check
     runs-on: ubuntu-latest
