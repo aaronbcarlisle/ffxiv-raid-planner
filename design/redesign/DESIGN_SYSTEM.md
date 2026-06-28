@@ -133,6 +133,8 @@ The v2 three-pattern model was sound; only its examples referenced the old IA. R
 
 Hard rule retained: **Tabs switch in-surface views; they never route.** Routing is the rail/spine, which are `NavRow`/`LinkText`, not tabs.
 
+`Tabs` is an **in-surface view switch only** — it has no `href`/route API by construction, so a tab can never masquerade as navigation (route changes use `LinkText`/`NavRow`). It is a discriminated-union exemplar alongside `Tag`.
+
 ---
 
 ## 3. Component contracts
@@ -142,7 +144,11 @@ Each component is specified as a **contract**: anatomy · variants (the finite l
 ### 3.1 Button
 
 - **Anatomy:** `[ optional leading icon · label · optional trailing element ]`, height `control.sm|base|lg`, radius `button.radius`.
-- **Variants (the only legal set):** `primary` (one per region, accent fill), `secondary` (interactive surface), `ghost` (text + hover overlay), `danger` (error, for destructive).
+- **Variants (the blessed set — all in real use, reconciled from the shipped component):**
+  - **Intent:** `primary` (one accent-filled per region) · `secondary` (interactive surface) · `ghost` (text + hover overlay)
+  - **Status:** `danger` (destructive) · `warning` · `success`
+  - `accent-subtle` (low-emphasis accent) · `link` (inline text link affordance)
+  *(All eight have live consumers; the contract is reconciled to the component, not the reverse. Exhaustiveness is compiler-enforced by the `Record<ButtonVariant, string>` style map — adding a variant without a style is a build error.)*
 - **States:** default · hover · focus (focus-ring) · disabled (text-disabled, no hover) · loading (spinner replaces leading icon, label stays).
 - **Trailing element — DEFINED MEANINGS (this was previously undefined and misused):**
   - **none** — default. Most buttons have no trailing element.
@@ -151,6 +157,13 @@ Each component is specified as a **contract**: anatomy · variants (the finite l
   - **No trailing arrow `→` as decoration.** A plain action ("Apply", "Save", "Assign") gets **no** trailing glyph. *(This corrects the mockups: the "Apply →" / "Enter →" / "Assign →" arrows are removed unless the action literally navigates the user to a different screen, in which case the chevron/disclosure rules above apply. "Submit and stay" = no arrow.)*
   - **Source of truth for glyph meanings:** see §4 icon lexicon. The trailing-element rules here are a subset of that table; §4 is the authority if there is ever a conflict.
 - **Usage rules:** never two `primary` in one region; destructive actions use `danger` + confirm; icon-only buttons require an `aria-label` and a tooltip.
+
+### 3.1a IconButton
+
+- **Anatomy:** square tap target (44×44 min on touch), single icon, no visible label.
+- **Variants (blessed set):** `default` · `primary` · `ghost` · `danger`. Sizes `sm|md|lg`.
+- **Required by type:** `aria-label: string` and `icon: ReactNode` are mandatory props — an unlabeled icon button cannot be constructed. This is the canonical home for icon-only actions; a `Button` must carry a visible text label (see §3.1).
+- **Exhaustiveness:** compiler-enforced via `Record<IconButtonVariant, string>`.
 
 ### 3.2 Card
 
