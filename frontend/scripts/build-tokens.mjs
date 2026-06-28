@@ -96,21 +96,11 @@ export const ID_TO_CSS_VAR = {
   'primitive.font.family.sans':    '--font-sans',
   'primitive.font.family.mono':    '--font-mono',
 
-  // Radius  (primitive.radius.* → --radius-*)
-  'primitive.radius.sm':   '--radius-sm',
-  'primitive.radius.base': '--radius-base',
-  'primitive.radius.lg':   '--radius-lg',
-  'primitive.radius.xl':   '--radius-xl',
-  'primitive.radius.pill': '--radius-pill',
-
-  // Spacing  (primitive.space.* → --spacing-*)
-  'primitive.space.1':  '--spacing-1',
-  'primitive.space.2':  '--spacing-2',
-  'primitive.space.3':  '--spacing-3',
-  'primitive.space.4':  '--spacing-4',
-  'primitive.space.6':  '--spacing-6',
-  'primitive.space.8':  '--spacing-8',
-  'primitive.space.12': '--spacing-12',
+  // NOTE: primitive.radius.* and primitive.space.* are intentionally NOT emitted
+  // as --radius-*/--spacing-*. They are Tailwind-standard namespaces; emitting our
+  // values would override Tailwind defaults and change rendered radii/spacing (a
+  // visual change, out of scope for zero-change token wiring). Re-introducing them
+  // is a deliberate future design change requiring visual review.
 
   // Container widths  (primitive.size.container.* → --container-*)
   'primitive.size.container.data':     '--container-data',
@@ -245,6 +235,13 @@ export function buildCss(darkTokens, lightTokens, map = ID_TO_CSS_VAR) {
   // Dark: resolve each token from the dark tree.
   // Light: look up the same token ID in the light tree; skip if not present.
   for (const [tokenId, cssVar] of Object.entries(map)) {
+    // ── Orphan guard ────────────────────────────────────────────────────────
+    // If the tokenId is absent from BOTH trees, the map entry has no backing
+    // token — warn so contributors notice stale map entries immediately.
+    if (!darkFlat.has(tokenId) && !lightFlat.has(tokenId)) {
+      console.warn(`[build-tokens] orphaned map entry: "${tokenId}" → "${cssVar}" has no backing token in either tree.`);
+    }
+
     // ── Dark value ──────────────────────────────────────────────────────────
     if (darkFlat.has(tokenId)) {
       const raw = darkFlat.get(tokenId);
@@ -351,7 +348,8 @@ export function buildCss(darkTokens, lightTokens, map = ID_TO_CSS_VAR) {
 
 // ─── CLI entry point (guarded so imports in tests don't trigger file I/O) ────
 // Mirror the pathToFileURL guard pattern used by token-parity.mjs.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Guard against undefined process.argv[1] (e.g. piped stdin / REPL contexts).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const darkTokens  = JSON.parse(readFileSync(resolve(ROOT, 'tokens/tokens.json'), 'utf8'));
   const lightTokens = JSON.parse(readFileSync(resolve(ROOT, 'tokens/tokens.light.json'), 'utf8'));
   const css = buildCss(darkTokens, lightTokens);
