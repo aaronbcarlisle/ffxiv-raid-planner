@@ -162,7 +162,7 @@ Each component is specified as a **contract**: anatomy · variants (the finite l
 
 - **Anatomy:** square tap target (44×44 min on touch), single icon, no visible label.
 - **Variants (blessed set):** `default` · `primary` · `ghost` · `danger`. Sizes `sm|md|lg`.
-- **Required by type:** `aria-label: string` and `icon: ReactNode` are mandatory props — an unlabeled icon button cannot be constructed. This is the canonical home for icon-only actions; a `Button` must carry a visible text label (see §3.1).
+- **Required by type:** `aria-label: string` and `icon: ReactNode` are mandatory props — an unlabeled icon button cannot be constructed. This is the canonical home for icon-only actions; a `Button` must carry a visible text label (see §3.1). Type-enforced: `children` is required (an empty `<Button/>` won't compile), but `children: ReactNode` admits an icon child, so icon-only actions must use `IconButton` — that rule is enforced by `IconButton`'s required `aria-label` and review, not by the `Button` type alone.
 - **Exhaustiveness:** compiler-enforced via `Record<IconButtonVariant, string>`.
 
 ### 3.2 Card
@@ -181,7 +181,9 @@ The v2 rule, kept verbatim because it's excellent: a `Tag` **must declare its ki
 | `filter` | toggles a filter | `aria-pressed`; solid bg when on (`tag.selected-bg-opacity:1`), 20% tint when off |
 | `nav` | navigates | chevron + real `href`/`onNavigate` (required by type) |
 
-Illegal-by-construction: a label tag can't have an onClick; a nav tag can't exist without a destination.
+Illegal-by-construction: a label tag can't have an onClick; a nav tag can't exist without a destination. These guarantees are locked by compile-time assertions in `Tag.type-test.tsx`; `Tag` and `Tabs` are the canonical discriminated-union exemplars for this system (see §6 rule 4).
+
+`Tag` and `Tabs` are the canonical discriminated-union exemplars in this design system; their compile-time guarantees are locked by `frontend/src/components/ui/Tag.type-test.tsx` (`@ts-expect-error` assertions that fail the build if any guarantee regresses).
 
 ### 3.4 GearStatusCircle (kept — the gear atom)
 
