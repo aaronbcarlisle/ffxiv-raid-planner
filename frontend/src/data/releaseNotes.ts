@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.0.1';
+export const CURRENT_VERSION = '2.0.2';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,38 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.0.2',
+    date: '2026-06-28T00:00:00Z',
+    title: 'Role-color contrast + component contracts (F3)',
+    highlights: [
+      'Owner and tome role colors now meet WCAG AA contrast in light mode',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Owner and tome role colors meet WCAG AA contrast in light mode',
+        description:
+          'The membership-owner and gear-tome role colors, along with the accent hover state, have been updated so they are both AA-compliant and visually distinct from the default accent in light mode.',
+        commits: [
+          { hash: '0a10abb', message: 'fix(tokens): light membership-owner/gear-tome + accent hover to WCAG AA / distinct hover' },
+          { hash: '197dafa', message: 'fix(tokens): update accent.default hover ref from #0d7a6e to #0a6b60' },
+        ],
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Button component contracts hardened (F3)',
+        description:
+          'Button trailing element is now lexicon-bound (\'chevron\' | \'external\', replacing free rightIcon) so decorative arrows cannot compile; Button now requires a visible label (icon-only callers migrate to IconButton); design-system variant contracts reconciled and locked with @ts-expect-error type-tests.',
+        commits: [
+          { hash: '9188385', message: 'feat(button): lexicon-bound trailing prop (chevron|external) replaces free rightIcon' },
+          { hash: '8264f42', message: 'feat(button): require a visible label; icon-only actions migrate to IconButton' },
+          { hash: '3c51a5f', message: 'docs(design-system): bless real Button/IconButton variant sets + exhaustiveness type-test' },
+        ],
+      },
+    ],
+  },
   {
     version: '2.0.1',
     date: '2026-06-28T00:00:00Z',
