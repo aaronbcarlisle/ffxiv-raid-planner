@@ -101,6 +101,8 @@ These domains import only same-tier or inward elements. They are candidates to r
 | `dragStore` `settingsPanelStore` `toastStore` `viewAsStore` | **Shell** stores |
 | `primitives/` `ui/` | **shared** |
 
+*`dashboard/` is also edge-count-clean (0 outward edges) but is listed in §4.3 — old-IA, not a ratchet candidate.*
+
 #### §4.1.1 `lodestoneStore` — cross-cutting integration seam
 
 `lodestoneStore` handles Lodestone/Tomestone equipped-gear verification that feeds the gear board (`PRODUCT_MODEL.md §3.5`). It lives with Ring-0's data layer but is **explicitly tagged a cross-cutting integration seam** — not a ring breach. When Person-layer or Ring-3 surfaces also read gear data through it, the lint allowlist (and a contributor reading this doc) sees a labeled seam, not a stray violation. Label in the lint config: `// cross-cutting integration seam (PRODUCT_MODEL §3.5) — not a ring breach`.
@@ -167,6 +169,8 @@ The Person layer sits **inward** of the rings in the import hierarchy (see §1 d
 | `apiKeyStore` | Store | Dalamud plugin / REST API keys |
 | `collectionIntentStore` | Store | Personal collection/mount intent (aggregated into Static tracks) |
 
+*Legacy Person-layer domain: `dashboard/` (slated for deletion at F6) — see §4.3.*
+
 ### §5.2 Static-layer (erased when leaving the static)
 
 All Ring-0, Ring-1, and Ring-3 component domains and their stores describe the state of a specific static and are scoped to it.
@@ -179,6 +183,8 @@ All Ring-0, Ring-1, and Ring-3 component domains and their stores describe the s
 | `scheduleStore` `availabilityStore` `invitationStore` `joinRequestStore` `contentSuggestionStore` `splitClearStore` | Ring 1 stores | Sessions, RSVPs, availability aggregated to the static's heatmap, recruitment state |
 | `mount-farms/` `collections/` | Ring 3 | Farm and collection goal progress for this static |
 | `mountFarmStore` `collectionGoalStore` `objectiveGoalStore` `objectiveCommandStore` | Ring 3 stores | Track progress scoped to the static |
+
+*Legacy Static-layer domain: `group/` (old-IA, rebuilt/deleted at F6) — see §4.3.*
 
 ### §5.3 Shell / platform (neither layer — cross-cutting)
 
@@ -217,14 +223,18 @@ The ratchet is per-domain and incremental — the whole tree does not need to be
 
 ### §6.4 Permanent exceptions
 
-Permanent-by-design exceptions use inline comments — never silent suppressions:
+Three distinct mechanisms handle the cases that should never appear in `eslint-suppressions.json`:
+
+**1. Permanent-by-design store exception — inline disable at the import site.**
+`viewAsStore` → `authStore` is handled with an `eslint-disable-next-line boundaries/dependencies` comment directly in `frontend/src/stores/viewAsStore.ts`, not a config allowlist entry:
 
 ```typescript
-// eslint-disable-next-line boundaries/no-unknown -- <reason>
+// eslint-disable-next-line boundaries/dependencies -- impersonation is inherently auth-coupled: view-as reads the real admin identity (isAuthenticated / user.isAdmin) to impersonate from. The second store wanting auth must add its own justified entry.
+import { useAuthStore } from './authStore';
 ```
 
-The two permanent exceptions as of F4:
-1. `viewAsStore` → `authStore` — impersonation requires the real identity (§3.1).
-2. `admin/` element — distinct platform surface, outside the ring graph (§1.1).
+**2. `admin/` exemption — structural (no `from` rule applied).**
+`admin` is a distinct `boundaries/elements` type with no inward-only disallow rule applied to it. It sits outside the ring graph by construction (§1.1), so there is nothing to exempt — the rule simply does not exist for `admin` as an origin. This is not an allowlist entry; it is the absence of a rule.
 
-Both are encoded in `frontend/eslint.config.js` as named allowlist entries, not as blanket disables.
+**3. Grandfathered cross-ring debt — `frontend/eslint-suppressions.json`.**
+Existing outward edges in the mixed and legacy tiers are captured in `frontend/eslint-suppressions.json` (ESLint 9.39 native bulk suppressions). This is the mechanism described in §6.2. As F6 rebuilds each domain, its entries are pruned with `--prune-suppressions` and the rule ratchets to `error`.
