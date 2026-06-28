@@ -151,8 +151,10 @@ describe('buildCss', () => {
     expect(lightBlock).toContain('--color-accent-bright: #0d7a6e;');
   });
 
-  it('--color-accent-bright does NOT appear in the dark @theme block', () => {
+  it('--color-accent-bright appears in the dark @theme block as a legacy shim (#2dd4bf)', () => {
+    // Task 10: the legacy-alias shim block emits --color-accent-bright: #2dd4bf in
+    // the dark @theme to match the baseline. This is a @deprecated alias, not a token.
     const darkBlock = css.split('@theme {')[1].split('}')[0];
-    expect(darkBlock).not.toContain('--color-accent-bright');
+    expect(darkBlock).toContain('--color-accent-bright: #2dd4bf;');
   });
 });
