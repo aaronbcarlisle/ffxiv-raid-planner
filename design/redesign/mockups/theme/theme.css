@@ -1,0 +1,292 @@
+/* ============================================================
+   theme.css — generated from tokens.json + tokens.light.json
+   Tailwind CSS 4. Import after `@import "tailwindcss";`.
+   DO NOT hand-edit — regenerate via Style Dictionary / this script.
+   ============================================================ */
+@import "tailwindcss";
+
+:root {
+  /* ---------- TIER 1: primitives (raw values) ---------- */
+  --primitive-color-teal-400: #2dd4bf;
+  --primitive-color-teal-500: #14b8a6;
+  --primitive-color-teal-600: #0d9488;
+  --primitive-color-teal-muted: #0d7377;
+  --primitive-color-teal-deep: #0891b2;
+  --primitive-color-teal-contrast: #052e2b;
+  --primitive-color-ink-0: #050508;
+  --primitive-color-ink-1: #0a0a0f;
+  --primitive-color-ink-2: #0e0e14;
+  --primitive-color-ink-3: #121218;
+  --primitive-color-ink-4: #18181f;
+  --primitive-color-ink-5: #1e1e26;
+  --primitive-color-border-subtle: #14141c;
+  --primitive-color-border-default: #1f1f28;
+  --primitive-color-grey-100: #f0f0f5;
+  --primitive-color-grey-300: #a1a1aa;
+  --primitive-color-grey-500: #71717a;
+  --primitive-color-grey-600: #52525b;
+  --primitive-color-grey-700: #3f3f46;
+  --primitive-color-role-tank: #5a9fd4;
+  --primitive-color-role-healer: #5ad490;
+  --primitive-color-role-melee: #d45a5a;
+  --primitive-color-role-ranged: #d4a05a;
+  --primitive-color-role-caster: #b45ad4;
+  --primitive-color-membership-owner: #14b8a6;
+  --primitive-color-membership-lead: #a855f7;
+  --primitive-color-membership-member: #3b82f6;
+  --primitive-color-membership-viewer: #71717a;
+  --primitive-color-membership-linked: #f59e0b;
+  --primitive-color-gear-raid: #f87171;
+  --primitive-color-gear-tome: #2dd4bf;
+  --primitive-color-gear-base-tome: #60a5fa;
+  --primitive-color-gear-augmented: #fcd34d;
+  --primitive-color-gear-crafted: #fb923c;
+  --primitive-color-material-twine: #3b82f6;
+  --primitive-color-material-glaze: #a855f7;
+  --primitive-color-material-solvent: #eab308;
+  --primitive-color-material-tomestone: #f97316;
+  --primitive-color-signal-success: #22c55e;
+  --primitive-color-signal-warning: #eab308;
+  --primitive-color-signal-error: #ef4444;
+  --primitive-color-signal-info: #3b82f6;
+  --primitive-color-floor-1: #22c55e;
+  --primitive-color-floor-2: #3b82f6;
+  --primitive-color-floor-3: #a855f7;
+  --primitive-color-floor-4: #f59e0b;
+  --primitive-font-family-display: "Exo 2", Inter, system-ui, sans-serif;
+  --primitive-font-family-sans: Inter, system-ui, sans-serif;
+  --primitive-font-family-mono: "JetBrains Mono", ui-monospace, monospace;
+  --primitive-font-weight-normal: 400;
+  --primitive-font-weight-medium: 500;
+  --primitive-font-weight-semibold: 600;
+  --primitive-font-weight-bold: 700;
+  --primitive-font-weight-extrabold: 800;
+  --primitive-font-size-hero: 30px;
+  --primitive-font-size-title: 24px;
+  --primitive-font-size-section: 20px;
+  --primitive-font-size-lg: 18px;
+  --primitive-font-size-body: 16px;
+  --primitive-font-size-sm: 14px;
+  --primitive-font-size-caption: 12px;
+  --primitive-font-size-micro: 11px;
+  --primitive-space-1: 4px;
+  --primitive-space-2: 8px;
+  --primitive-space-3: 12px;
+  --primitive-space-4: 16px;
+  --primitive-space-6: 24px;
+  --primitive-space-8: 32px;
+  --primitive-space-12: 48px;
+  --primitive-radius-sm: 6px;
+  --primitive-radius-base: 8px;
+  --primitive-radius-lg: 12px;
+  --primitive-radius-xl: 16px;
+  --primitive-radius-pill: 999px;
+  --primitive-size-container-data: 2160px;
+  --primitive-size-container-standard: 1760px;
+  --primitive-size-container-focus: 1100px;
+  --primitive-size-container-doc: 960px;
+  --primitive-size-rail: 72px;
+  --primitive-size-control-sm: 28px;
+  --primitive-size-control-base: 34px;
+  --primitive-size-control-lg: 40px;
+
+  /* ---------- TIER 2: semantic (intent) — dark base; light overrides below ---------- */
+  --semantic-color-surface-base: var(--primitive-color-ink-0);
+  --semantic-color-surface-raised: var(--primitive-color-ink-1);
+  --semantic-color-surface-card: var(--primitive-color-ink-2);
+  --semantic-color-surface-elevated: var(--primitive-color-ink-3);
+  --semantic-color-surface-overlay: var(--primitive-color-ink-4);
+  --semantic-color-surface-interactive: var(--primitive-color-ink-5);
+  --semantic-color-accent-default: var(--primitive-color-teal-500);
+  --semantic-color-accent-hover: var(--primitive-color-teal-400);
+  --semantic-color-accent-dim: rgba(20, 184, 166, 0.15);
+  --semantic-color-accent-muted: var(--primitive-color-teal-muted);
+  --semantic-color-accent-deep: var(--primitive-color-teal-deep);
+  --semantic-color-accent-on-accent: var(--primitive-color-teal-contrast);
+  --semantic-color-text-primary: var(--primitive-color-grey-100);
+  --semantic-color-text-secondary: var(--primitive-color-grey-300);
+  --semantic-color-text-tertiary: var(--primitive-color-grey-500);
+  --semantic-color-text-muted: var(--primitive-color-grey-600);
+  --semantic-color-text-disabled: var(--primitive-color-grey-700);
+  --semantic-color-text-on-accent: var(--primitive-color-teal-contrast);
+  --semantic-color-border-subtle: var(--primitive-color-border-subtle);
+  --semantic-color-border-default: var(--primitive-color-border-default);
+  --semantic-color-border-highlight: var(--primitive-color-teal-500);
+  --semantic-color-border-focus: rgba(20, 184, 166, 0.5);
+  --semantic-color-interaction-focus-ring: rgba(20, 184, 166, 0.4);
+  --semantic-color-interaction-hover-overlay: rgba(255, 255, 255, 0.05);
+  --semantic-color-interaction-active-bg: rgba(20, 184, 166, 0.15);
+  --semantic-color-role-tank: var(--primitive-color-role-tank);
+  --semantic-color-role-healer: var(--primitive-color-role-healer);
+  --semantic-color-role-melee: var(--primitive-color-role-melee);
+  --semantic-color-role-ranged: var(--primitive-color-role-ranged);
+  --semantic-color-role-caster: var(--primitive-color-role-caster);
+  --semantic-color-gear-source-raid: var(--primitive-color-gear-raid);
+  --semantic-color-gear-source-tome: var(--primitive-color-gear-tome);
+  --semantic-color-gear-source-base-tome: var(--primitive-color-gear-base-tome);
+  --semantic-color-gear-source-augmented: var(--primitive-color-gear-augmented);
+  --semantic-color-gear-source-crafted: var(--primitive-color-gear-crafted);
+  --semantic-color-membership-owner: var(--primitive-color-membership-owner);
+  --semantic-color-membership-lead: var(--primitive-color-membership-lead);
+  --semantic-color-membership-member: var(--primitive-color-membership-member);
+  --semantic-color-membership-viewer: var(--primitive-color-membership-viewer);
+  --semantic-color-membership-linked: var(--primitive-color-membership-linked);
+  --semantic-color-status-success: var(--primitive-color-signal-success);
+  --semantic-color-status-warning: var(--primitive-color-signal-warning);
+  --semantic-color-status-error: var(--primitive-color-signal-error);
+  --semantic-color-status-info: var(--primitive-color-signal-info);
+
+  /* ---------- TIER 3: component (per-component) ---------- */
+  --component-button-primary-bg: var(--semantic-color-accent-default);
+  --component-button-primary-bg-hover: var(--semantic-color-accent-hover);
+  --component-button-primary-text: var(--semantic-color-text-on-accent);
+  --component-button-secondary-bg: var(--semantic-color-surface-interactive);
+  --component-button-secondary-text: var(--semantic-color-text-primary);
+  --component-button-secondary-border: var(--semantic-color-border-default);
+  --component-button-ghost-text: var(--semantic-color-text-secondary);
+  --component-button-ghost-bg-hover: var(--semantic-color-interaction-hover-overlay);
+  --component-button-danger-text: var(--semantic-color-status-error);
+  --component-button-danger-border: var(--semantic-color-status-error);
+  --component-button-radius: var(--primitive-radius-base);
+  --component-button-height-sm: var(--primitive-size-control-sm);
+  --component-button-height-base: var(--primitive-size-control-base);
+  --component-card-bg: var(--semantic-color-surface-card);
+  --component-card-border: var(--semantic-color-border-default);
+  --component-card-radius: var(--primitive-radius-lg);
+  --component-card-padding: var(--primitive-space-4);
+  --component-card-gap: 14px;
+  --component-tag-radius: var(--primitive-radius-sm);
+  --component-tag-selected-bg-opacity: 1;
+  --component-tag-suggested-bg-opacity: 0.2;
+  --component-gear-status-circle-complete: var(--semantic-color-gear-source-raid);
+  --component-gear-status-circle-have: var(--semantic-color-gear-source-tome);
+  --component-gear-status-circle-augmented: var(--semantic-color-gear-source-augmented);
+  --component-gear-status-circle-missing: var(--semantic-color-text-muted);
+  --component-toggle-track-on: var(--semantic-color-accent-default);
+  --component-toggle-track-off: var(--semantic-color-surface-interactive);
+  --component-input-bg: var(--semantic-color-surface-interactive);
+  --component-input-border: var(--semantic-color-border-default);
+  --component-input-border-error: var(--semantic-color-status-error);
+  --component-input-radius: var(--primitive-radius-base);
+  --component-nav-rail-width: var(--primitive-size-rail);
+  --component-nav-spine-active-border: var(--semantic-color-border-highlight);
+  --component-nav-spine-active-text: var(--semantic-color-accent-default);
+}
+
+[data-theme="light"] {
+  /* Only the SEMANTIC tier is overridden — the whole point of the tiered model. */
+  --semantic-color-surface-base: #f5f5f8;
+  --semantic-color-surface-raised: #ededf2;
+  --semantic-color-surface-card: #ffffff;
+  --semantic-color-surface-elevated: #e8e8ef;
+  --semantic-color-surface-overlay: #ffffff;
+  --semantic-color-surface-interactive: #dcdce6;
+  --semantic-color-accent-default: #0f9688;
+  --semantic-color-accent-hover: #0d7a6e;
+  --semantic-color-accent-dim: rgba(15, 150, 136, 0.12);
+  --semantic-color-accent-on-accent: #ffffff;
+  --semantic-color-text-primary: #1a1a24;
+  --semantic-color-text-secondary: #4a4a58;
+  --semantic-color-text-tertiary: #5a5a6e;
+  --semantic-color-text-muted: #6b6b7e;
+  --semantic-color-text-on-accent: #ffffff;
+  --semantic-color-border-default: #d4d4e0;
+  --semantic-color-border-subtle: #e2e2ea;
+  --semantic-color-role-tank: #2e7ab4;
+  --semantic-color-role-healer: #1a8a4a;
+  --semantic-color-role-melee: #c0392b;
+  --semantic-color-role-ranged: #a06020;
+  --semantic-color-role-caster: #8b34b8;
+  --semantic-color-gear-source-raid: #dc2626;
+  --semantic-color-gear-source-tome: #0f9688;
+  --semantic-color-gear-source-base-tome: #2563eb;
+  --semantic-color-gear-source-augmented: #b45309;
+  --semantic-color-status-success: #16a34a;
+  --semantic-color-status-warning: #ca8a04;
+  --semantic-color-status-error: #dc2626;
+}
+
+@theme {
+  /* Namespaced tokens here AUTO-GENERATE utilities (bg-*, text-*, rounded-*, …).
+     They reference the semantic vars above, so every utility theme-switches for free. */
+
+  /* surfaces */
+  --color-surface-base: var(--semantic-color-surface-base);
+  --color-surface-raised: var(--semantic-color-surface-raised);
+  --color-surface-card: var(--semantic-color-surface-card);
+  --color-surface-elevated: var(--semantic-color-surface-elevated);
+  --color-surface-overlay: var(--semantic-color-surface-overlay);
+  --color-surface-interactive: var(--semantic-color-surface-interactive);
+  /* accent */
+  --color-accent-default: var(--semantic-color-accent-default);
+  --color-accent-hover: var(--semantic-color-accent-hover);
+  --color-accent-dim: var(--semantic-color-accent-dim);
+  --color-accent-muted: var(--semantic-color-accent-muted);
+  --color-accent-deep: var(--semantic-color-accent-deep);
+  --color-accent-on-accent: var(--semantic-color-accent-on-accent);
+  /* text */
+  --color-text-primary: var(--semantic-color-text-primary);
+  --color-text-secondary: var(--semantic-color-text-secondary);
+  --color-text-tertiary: var(--semantic-color-text-tertiary);
+  --color-text-muted: var(--semantic-color-text-muted);
+  --color-text-disabled: var(--semantic-color-text-disabled);
+  --color-text-on-accent: var(--semantic-color-text-on-accent);
+  /* borders (note: Tailwind border-* utilities) */
+  --color-border-subtle: var(--semantic-color-border-subtle);
+  --color-border-default: var(--semantic-color-border-default);
+  --color-border-highlight: var(--semantic-color-border-highlight);
+  --color-border-focus: var(--semantic-color-border-focus);
+  /* roles */
+  --color-role-tank: var(--semantic-color-role-tank);
+  --color-role-healer: var(--semantic-color-role-healer);
+  --color-role-melee: var(--semantic-color-role-melee);
+  --color-role-ranged: var(--semantic-color-role-ranged);
+  --color-role-caster: var(--semantic-color-role-caster);
+  /* gear sources */
+  --color-gear-raid: var(--semantic-color-gear-source-raid);
+  --color-gear-tome: var(--semantic-color-gear-source-tome);
+  --color-gear-base-tome: var(--semantic-color-gear-source-base-tome);
+  --color-gear-augmented: var(--semantic-color-gear-source-augmented);
+  --color-gear-crafted: var(--semantic-color-gear-source-crafted);
+  /* membership */
+  --color-membership-owner: var(--semantic-color-membership-owner);
+  --color-membership-lead: var(--semantic-color-membership-lead);
+  --color-membership-member: var(--semantic-color-membership-member);
+  --color-membership-viewer: var(--semantic-color-membership-viewer);
+  --color-membership-linked: var(--semantic-color-membership-linked);
+  /* status */
+  --color-status-success: var(--semantic-color-status-success);
+  --color-status-warning: var(--semantic-color-status-warning);
+  --color-status-error: var(--semantic-color-status-error);
+  --color-status-info: var(--semantic-color-status-info);
+
+  /* fonts -> font-display / font-sans / font-mono */
+  --font-display: var(--primitive-font-family-display);
+  --font-sans: var(--primitive-font-family-sans);
+  --font-mono: var(--primitive-font-family-mono);
+
+  /* type scale -> text-hero / text-title / … */
+  --text-hero: var(--primitive-font-size-hero);
+  --text-title: var(--primitive-font-size-title);
+  --text-section: var(--primitive-font-size-section);
+  --text-lg: var(--primitive-font-size-lg);
+  --text-body: var(--primitive-font-size-body);
+  --text-sm: var(--primitive-font-size-sm);
+  --text-caption: var(--primitive-font-size-caption);
+  --text-micro: var(--primitive-font-size-micro);
+
+  /* radii -> rounded-sm/base/lg/xl/pill + component rounded-card/button */
+  --radius-sm: var(--primitive-radius-sm);
+  --radius-base: var(--primitive-radius-base);
+  --radius-lg: var(--primitive-radius-lg);
+  --radius-xl: var(--primitive-radius-xl);
+  --radius-pill: var(--primitive-radius-pill);
+  --radius-card: var(--component-card-radius);
+  --radius-button: var(--component-button-radius);
+
+  /* spacing steps -> p-1/2/3/4/6/8/12 already exist; expose container widths */
+  --container-data: var(--primitive-size-container-data);
+  --container-standard: var(--primitive-size-container-standard);
+  --container-focus: var(--primitive-size-container-focus);
+  --container-doc: var(--primitive-size-container-doc);
+}

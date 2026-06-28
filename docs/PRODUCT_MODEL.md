@@ -216,7 +216,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 
 ## 6. Where we are now
 
-- **Ring 0 is strong** and is the genuine moat: gear tracking, BiS import, the priority engine, loot logging, books. This is what replaced the sheet and what nothing else does as well.
+- **Ring 0 is strong** and is the genuine moat: gear tracking, BiS import, the priority engine, loot logging, books. This is the part of the product nothing else does as well — its own thing, judged on its own terms.
 - **Rings 1 & 3 are largely built but parked beside the core, not woven into it** — scheduling re-implements when2meet as an island; mounts/goals re-implement progress-tracking as a vaguer parallel to the gear board. *(This is exactly why they "feel like added complexity.")*
 - **The design system (visual identity) is good; conformance is poor** — ~460 arbitrary text sizes, ~181 inline colors bypassing tokens, raw elements. The look is an asset; enforcement is the gap.
 - **The IA has fragmented**: four parallel navigation systems, a "More" junk drawer, 3-deep tabs, and duplicated components. This is the root cause of "10 ways to the roster / 16 ways to log loot."
