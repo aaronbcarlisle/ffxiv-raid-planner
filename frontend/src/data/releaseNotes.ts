@@ -72,6 +72,8 @@ export const RELEASES: Release[] = [
         title: 'Light-mode and dark-mode contrast now meets WCAG AA',
         description:
           'The accent color in light mode is now darker (#0c7d71) and muted text in dark mode is lighter (#8a8a94), both meeting WCAG AA contrast ratios. Text that was previously too faint against its background is now reliably readable.',
+        pr: 158,
+        prTitle: 'F2 — Anti-regression scaffolding: CI gating, jscpd/knip, boundaries, jsx-a11y + WCAG AA contrast fix',
         commits: [
           { hash: '6e23f2f', message: 'fix(tokens): lift text-muted and light accent to WCAG AA contrast' },
           { hash: '6b5a206', message: 'fix(tokens/a11y): correct accent-dim light tint hue + update GroupView skip accuracy' },
@@ -83,6 +85,8 @@ export const RELEASES: Release[] = [
         title: 'Anti-regression scaffolding',
         description:
           'jscpd duplication gate, knip dead-code baseline, import-boundary lint, jsx-a11y + axe contrast net, and a ratcheted design-system lint on the shared layer; phase PRs now run CI.',
+        pr: 158,
+        prTitle: 'F2 — Anti-regression scaffolding: CI gating, jscpd/knip, boundaries, jsx-a11y + WCAG AA contrast fix',
         commits: [
           { hash: '37f70b1', message: 'ci: run the suite on PRs targeting redesign/** so phase PRs are gated' },
         ],
