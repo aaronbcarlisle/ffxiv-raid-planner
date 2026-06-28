@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup · Static Home (weekly loop)</title>
+<link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="app.css" />
+<style>
+  .ic svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  .hero { grid-template-columns: 1.15fr 1.15fr 1fr; }
+  .floors { display: flex; flex-direction: column; gap: 7px; margin: 4px 0 14px; }
+  .floor { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .floor .fname { width: 42px; font-weight: 700; font-family: var(--font-display); }
+  .floor .fbar { flex: 1; }
+  .floor .fst { font-size: 11px; color: var(--color-text-tertiary); width: 96px; text-align: right; }
+  .floor.cleared .fname { color: var(--color-status-success); }
+  .avstack { display: flex; }
+  .avstack .av { margin-left: -7px; border: 2px solid var(--color-surface-card); }
+  .avstack .av:first-child { margin-left: 0; }
+  .legend { display: flex; gap: 14px; font-size: 11px; color: var(--color-text-tertiary); margin-top: 12px; }
+  .legend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+  /* widescreen dashboard: actions left, ambient right */
+  .dash { display: grid; grid-template-columns: minmax(0,1.85fr) minmax(0,1fr); gap: 18px; align-items: start; margin-top: 8px; }
+  @media (max-width: 1180px) { .dash { grid-template-columns: 1fr; } }
+  .track-card { display: flex; align-items: center; gap: 14px; }
+  .track-icon { width: 44px; height: 44px; border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-membership-linked) 18%, #0a0a0f);
+    display: grid; place-items: center; color: var(--color-membership-linked); flex: 0 0 auto; }
+  .attention .row .ic { color: var(--color-status-warning); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ CONTEXT RAIL (Person layer) ============ -->
+  <nav class="rail">
+    <div class="rail-logo">RP</div>
+    <div class="rail-item" title="Player Hub — you, your characters, availability">
+      <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
+    </div>
+    <div class="rail-item" title="Static Finder — find a group / recruit">
+      <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13 13 8.5 15.5 11 11"/></svg></span>
+    </div>
+    <div class="rail-divider"></div>
+    <div class="rail-static" title="Crescent Static (active)">CS</div>
+    <div class="rail-static alt" title="Late Pulls (member)">LP</div>
+    <div class="rail-spacer"></div>
+    <div class="rail-item" title="Settings">
+      <span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+    </div>
+    <div class="rail-user" title="Dev Owner">DO</div>
+  </nav>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+
+    <!-- Top bar: context -->
+    <header class="topbar">
+      <div class="ctx">
+        <span class="dropdown ctx-static">Crescent Static <span class="caret">▼</span></span>
+        <span class="ctx-sep">/</span>
+        <span class="dropdown muted">AAC Heavyweight (Savage) <span class="caret">▼</span></span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <span class="kbd">⌘K&nbsp; <span class="tertiary">Search or run a command</span></span>
+      <div class="icon-btn" title="Notifications"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.5 21a1.8 1.8 0 0 0 3 0"/></svg></span><span class="badge-dot">2</span></div>
+      <div class="icon-btn" title="Settings"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span></div>
+      <div class="icon-btn" title="Theme"><span class="ic"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></span></div>
+    </header>
+
+    <!-- Nav: the spine (4 tabs) -->
+    <nav class="nav">
+      <div class="nav-item active">Home</div>
+      <div class="nav-item">Roster</div>
+      <div class="nav-item">Loot</div>
+      <div class="nav-item">Schedule</div>
+      <div class="nav-spacer"></div>
+      <span class="tier-pill">M9S–M12S</span>
+      <span class="week-pill">WEEK 3</span>
+    </nav>
+
+    <!-- Content -->
+    <main class="content">
+      <div class="content-wrap">
+
+        <div class="page-head">
+          <h1>This week</h1>
+          <span class="sub">Friday 8:00 PM raid · 2 floors left to clear · loot logged through Thursday</span>
+        </div>
+
+        <!-- HERO: the weekly loop at a glance -->
+        <div class="grid hero">
+          <div class="card">
+            <div class="card-head"><span class="ic accent"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span><span class="t">Next session</span><span class="right chip">in 2 days</span></div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:20px">Friday · 8:00 PM</div>
+            <div class="muted" style="font-size:12px;margin-bottom:12px">8:00 PM EST → your time 5:00 PM</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div class="avstack">
+                <span class="av" style="background:var(--color-role-tank)">T1</span>
+                <span class="av" style="background:var(--color-role-tank)">T2</span>
+                <span class="av" style="background:var(--color-role-healer)">H1</span>
+                <span class="av" style="background:var(--color-role-melee)">M1</span>
+                <span class="av" style="background:var(--color-role-melee)">M2</span>
+                <span class="av" style="background:var(--color-role-ranged)">R1</span>
+                <span class="av" style="background:var(--color-role-caster)">C1</span>
+              </div>
+              <span style="font-size:12px"><b>7</b> in · <span class="role-healer">H2 tentative</span></span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary btn-sm">I'm in</button>
+              <button class="btn btn-ghost btn-sm">Tentative</button>
+              <button class="btn btn-ghost btn-sm">Can't make it</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><span class="ic"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg></span><span class="t">This week's loot</span><span class="right tertiary" style="font-size:12px">6 drops logged</span></div>
+            <div class="floors">
+              <div class="floor cleared"><span class="fname">M9S</span><div class="fbar bar"><div class="bar-fill" style="width:100%"></div></div><span class="fst">cleared · 2 drops</span></div>
+              <div class="floor cleared"><span class="fname">M10S</span><div class="fbar bar"><div class="bar-fill" style="width:100%"></div></div><span class="fst">cleared · 3 drops</span></div>
+              <div class="floor cleared"><span class="fname">M11S</span><div class="fbar bar"><div class="bar-fill" style="width:100%"></div></div><span class="fst">cleared · 1 drop</span></div>
+              <div class="floor"><span class="fname">M12S</span><div class="fbar bar"><div class="bar-fill warn" style="width:35%"></div></div><span class="fst">in progress</span></div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center">Log this week's loot</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><span class="ic"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/></svg></span><span class="t">Roster readiness</span></div>
+            <div style="display:flex;gap:16px;margin-bottom:14px">
+              <div class="stat"><span class="v">735</span><span class="k">avg iLvl</span></div>
+              <div class="divider-v"></div>
+              <div class="stat"><span class="v">56%</span><span class="k">BiS complete</span></div>
+              <div class="divider-v"></div>
+              <div class="stat"><span class="v accent">8</span><span class="k">raiders</span></div>
+            </div>
+            <div class="bar" style="margin-bottom:8px"><div class="bar-fill" style="width:56%"></div></div>
+            <div class="tertiary" style="font-size:12px">49 / 88 BiS slots obtained · 2 members still need setup</div>
+          </div>
+        </div>
+
+        <!-- DASHBOARD: actions (left) + ambient (right) -->
+        <div class="dash">
+
+          <!-- LEFT: actionable -->
+          <div class="dash-main">
+            <div class="card attention">
+              <div class="card-head"><span class="ic"><svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--color-status-warning)"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span><span class="t">Needs your attention</span></div>
+              <div class="row">
+                <span class="ic"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>
+                <div class="grow"><div class="name">Caster One <span class="tertiary" style="font-weight:400">· BLM · R2</span></div><div class="meta">No BiS imported — priority can't be calculated</div></div>
+                <button class="btn btn-subtle btn-sm">Import BiS</button>
+              </div>
+              <div class="row">
+                <span class="ic"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
+                <div class="grow"><div class="name">Melee Two <span class="tag tag-sub">SUB</span></div><div class="meta">Unclaimed — not linked to a Discord member</div></div>
+                <button class="btn btn-ghost btn-sm">Assign</button>
+              </div>
+              <div class="row">
+                <span class="ic"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M4 4h16v12H5.2L4 17.2z"/></svg></span>
+                <div class="grow"><div class="name">Join request — Grimm <span class="tertiary" style="font-weight:400">· DRG · 736 iLvl</span></div><div class="meta">Applied 3h ago · looking for a prog-friendly group</div></div>
+                <button class="btn btn-ghost btn-sm">Review</button>
+              </div>
+            </div>
+
+            <div class="card" style="margin-top:16px">
+              <div class="card-head"><span class="t">BiS progress by role</span><span class="right tertiary" style="font-size:12px">to current tier</span></div>
+              <div style="display:flex;flex-direction:column;gap:11px;margin-top:4px">
+                <div class="role-tank"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span><span class="dot-role" style="background:currentColor"></span> Tanks</span><span class="tertiary">14/22</span></div><div class="bar"><div class="bar-fill role" style="width:64%"></div></div></div>
+                <div class="role-healer"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span><span class="dot-role" style="background:currentColor"></span> Healers</span><span class="tertiary">12/22</span></div><div class="bar"><div class="bar-fill role" style="width:55%"></div></div></div>
+                <div class="role-melee"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span><span class="dot-role" style="background:currentColor"></span> Melee</span><span class="tertiary">17/22</span></div><div class="bar"><div class="bar-fill role" style="width:77%"></div></div></div>
+                <div class="role-ranged"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span><span class="dot-role" style="background:currentColor"></span> Ranged</span><span class="tertiary">5/11</span></div><div class="bar"><div class="bar-fill role" style="width:45%"></div></div></div>
+                <div class="role-caster"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span><span class="dot-role" style="background:currentColor"></span> Caster</span><span class="tertiary">1/11</span></div><div class="bar"><div class="bar-fill role" style="width:10%"></div></div></div>
+              </div>
+              <div class="legend"><span><i style="background:var(--color-gear-raid)"></i>raid</span><span><i style="background:var(--color-gear-tome)"></i>tome (aug)</span><span><i style="background:var(--color-gear-augmented)"></i>augmented</span><span><i style="border:1.5px solid var(--color-border-default)"></i>needed</span></div>
+            </div>
+          </div>
+
+          <!-- RIGHT: ambient -->
+          <div class="dash-side">
+            <div class="card">
+              <div class="card-head"><span class="t">Recent activity</span><span class="right tertiary" style="font-size:12px">this week</span></div>
+              <div class="row"><span class="job j-tank">PLD</span><div class="grow"><div style="font-size:13px"><b>Body</b> → Tank One <span class="tertiary">· M12S</span></div></div><span class="meta">just now</span></div>
+              <div class="row"><span class="dot-role" style="background:var(--color-material-solvent);width:14px;height:14px;margin:0 8px"></span><div class="grow"><div style="font-size:13px">Solvent → <b>Melee One</b> augmented weapon</div></div><span class="meta">2h</span></div>
+              <div class="row"><span class="dot-role" style="background:var(--color-membership-linked);width:14px;height:14px;margin:0 8px"></span><div class="grow"><div style="font-size:13px">A member obtained <b>Lunar Whale</b> <span class="tertiary">· via plugin</span></div></div><span class="meta">5h</span></div>
+              <div class="row"><span class="job j-healer">SCH</span><div class="grow"><div style="font-size:13px"><b>Hands</b> → Healer Two <span class="tertiary">· M9S</span></div></div><span class="meta">Wed</span></div>
+              <div class="row"><span class="job j-ranged">BRD</span><div class="grow"><div style="font-size:13px"><b>Hands</b> → Ranged One <span class="tertiary">· book · M10S</span></div></div><span class="meta">Wed</span></div>
+            </div>
+
+            <div class="card track-card" style="margin-top:16px">
+              <div class="track-icon"><svg viewBox="0 0 24 24" style="width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.6"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><circle cx="12" cy="14" r="2"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div style="font-family:var(--font-display);font-weight:700;font-size:13.5px">Mount Farm · Lunar Whale <span class="chip" style="margin-left:4px">Ring 3</span></div>
+                <div class="tertiary" style="font-size:12px;margin-top:2px">3 of 8 have it · same Progress Engine, no loot priority</div>
+                <div class="bar" style="margin-top:8px"><div class="bar-fill" style="width:37%;background:var(--color-membership-linked)"></div></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>

@@ -79,3 +79,6 @@ dev.ps1
 sw.js
 workbox-*.js
 *:Zone.Identifier
+
+# Playwright MCP scratch (UI-catalog screenshots, regenerable)
+.playwright-mcp/

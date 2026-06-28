@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup · Static Finder</title>
+<style>
+/* tokens.css */
+/* Design tokens extracted verbatim from frontend/src/index.css so mockups are
+   true-to-product. Dark is primary; light overrides under [data-theme="light"]. */
+@import url("https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  /* Surfaces */
+  --color-surface-base: #050508;
+  --color-surface-raised: #0a0a0f;
+  --color-surface-card: #0e0e14;
+  --color-surface-elevated: #121218;
+  --color-surface-overlay: #18181f;
+  --color-surface-interactive: #1e1e26;
+
+  /* Accent (teal) */
+  --color-accent: #14b8a6;
+  --color-accent-hover: #2dd4bf;
+  --color-accent-dim: rgba(20, 184, 166, 0.15);
+  --color-accent-muted: #0d7377;
+  --color-accent-deep: #0891b2;
+  --color-accent-contrast: #052e2b;
+
+  /* Roles */
+  --color-role-tank: #5a9fd4;
+  --color-role-healer: #5ad490;
+  --color-role-melee: #d45a5a;
+  --color-role-ranged: #d4a05a;
+  --color-role-caster: #b45ad4;
+
+  /* Membership */
+  --color-membership-owner: #14b8a6;
+  --color-membership-lead: #a855f7;
+  --color-membership-member: #3b82f6;
+  --color-membership-viewer: #71717a;
+  --color-membership-linked: #f59e0b;
+
+  /* Gear sources */
+  --color-gear-raid: #f87171;
+  --color-gear-tome: #2dd4bf;
+  --color-gear-base-tome: #60a5fa;
+  --color-gear-augmented: #fcd34d;
+  --color-gear-crafted: #fb923c;
+
+  /* Status */
+  --color-status-success: #22c55e;
+  --color-status-warning: #eab308;
+  --color-status-error: #ef4444;
+  --color-status-info: #3b82f6;
+
+  /* Materials */
+  --color-material-twine: #3b82f6;
+  --color-material-glaze: #a855f7;
+  --color-material-solvent: #eab308;
+  --color-material-tomestone: #f97316;
+
+  /* Text */
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary: #71717a;
+  --color-text-muted: #52525b;
+  --color-text-disabled: #3f3f46;
+
+  /* Borders */
+  --color-border-default: #1f1f28;
+  --color-border-subtle: #14141c;
+  --color-border-highlight: #14b8a6;
+  --color-border-focus: rgba(20, 184, 166, 0.5);
+
+  /* Interaction */
+  --color-focus-ring: rgba(20, 184, 166, 0.4);
+  --color-active-bg: rgba(20, 184, 166, 0.15);
+  --color-hover-overlay: rgba(255, 255, 255, 0.05);
+
+  /* Fonts */
+  --font-display: "Exo 2", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radii (mockup scale, matching rounded / rounded-lg / rounded-xl usage) */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+}
+
+[data-theme="light"] {
+  --color-surface-base: #f5f5f8;
+  --color-surface-raised: #ededf2;
+  --color-surface-card: #ffffff;
+  --color-surface-elevated: #e8e8ef;
+  --color-surface-overlay: #ffffff;
+  --color-surface-interactive: #dcdce6;
+  --color-accent: #0f9688;
+  --color-accent-hover: #0d7a6e;
+  --color-accent-dim: rgba(15, 150, 136, 0.12);
+  --color-accent-contrast: #ffffff;
+  --color-role-tank: #2e7ab4;
+  --color-role-healer: #1a8a4a;
+  --color-role-melee: #c0392b;
+  --color-role-ranged: #a06020;
+  --color-role-caster: #8b34b8;
+  --color-gear-raid: #dc2626;
+  --color-gear-tome: #0f9688;
+  --color-gear-base-tome: #2563eb;
+  --color-gear-augmented: #b45309;
+  --color-status-success: #16a34a;
+  --color-status-warning: #ca8a04;
+  --color-status-error: #dc2626;
+  --color-text-primary: #1a1a24;
+  --color-text-secondary: #4a4a58;
+  --color-text-tertiary: #5a5a6e;
+  --color-text-muted: #6b6b7e;
+  --color-border-default: #d4d4e0;
+  --color-border-subtle: #e2e2ea;
+}
+
+/* app.css */
+/* Shared mockup chrome + components, built only on tokens.css.
+   Not production code — a faithful visual prototype of the redesign. */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-sans);
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; }
+a { color: inherit; text-decoration: none; }
+.muted { color: var(--color-text-secondary); }
+.tertiary { color: var(--color-text-tertiary); }
+.mono { font-family: var(--font-mono); }
+.accent { color: var(--color-accent); }
+
+/* ---------- App layout ---------- */
+.app { display: grid; grid-template-columns: 72px 1fr; height: 100vh; overflow: hidden; }
+
+/* ---------- Context rail (Person layer) ---------- */
+.rail {
+  background: var(--color-surface-raised);
+  border-right: 1px solid var(--color-border-subtle);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 14px 0; gap: 6px;
+}
+.rail-logo {
+  width: 40px; height: 40px; border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-deep));
+  display: grid; place-items: center; color: var(--color-accent-contrast);
+  font-family: var(--font-display); font-weight: 800; font-size: 18px; margin-bottom: 8px;
+}
+.rail-item {
+  width: 44px; height: 44px; border-radius: var(--radius-lg);
+  display: grid; place-items: center; color: var(--color-text-tertiary);
+  position: relative; cursor: pointer; font-size: 18px;
+}
+.rail-item:hover { background: var(--color-hover-overlay); color: var(--color-text-secondary); }
+.rail-item .lbl { font-size: 9px; position: absolute; bottom: 3px; }
+.rail-item.active { color: var(--color-accent); background: var(--color-active-bg); }
+.rail-item.active::before {
+  content: ""; position: absolute; left: -14px; top: 10px; bottom: 10px; width: 3px;
+  background: var(--color-accent); border-radius: 0 3px 3px 0;
+}
+.rail-divider { width: 28px; height: 1px; background: var(--color-border-default); margin: 8px 0; }
+.rail-static {
+  width: 44px; height: 44px; border-radius: var(--radius-lg);
+  display: grid; place-items: center; font-family: var(--font-display); font-weight: 700;
+  font-size: 15px; cursor: pointer; position: relative;
+  background: var(--color-surface-interactive); color: var(--color-text-primary);
+  border: 2px solid var(--color-accent);
+}
+.rail-static.alt { border-color: transparent; color: var(--color-text-tertiary); font-weight: 600; }
+.rail-static.alt:hover { color: var(--color-text-primary); }
+.rail-spacer { flex: 1; }
+.rail-user {
+  width: 40px; height: 40px; border-radius: var(--radius-pill);
+  background: var(--color-membership-owner); color: var(--color-accent-contrast);
+  display: grid; place-items: center; font-weight: 700; cursor: pointer;
+  background-image: linear-gradient(135deg, #f59e0b, #d45a5a);
+}
+
+/* ---------- Main column ---------- */
+.main { display: flex; flex-direction: column; min-width: 0; }
+
+/* Top bar */
+.topbar {
+  height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+}
+.ctx { display: flex; align-items: center; gap: 8px; }
+.ctx-static { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+.ctx-sep { color: var(--color-text-muted); }
+.dropdown { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.dropdown .caret { color: var(--color-text-tertiary); font-size: 10px; }
+.topbar-spacer { flex: 1; }
+.kbd {
+  font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-default); border-radius: var(--radius-sm);
+  padding: 3px 8px; display: inline-flex; gap: 6px; align-items: center; cursor: pointer;
+  background: var(--color-surface-elevated);
+}
+.kbd:hover { border-color: var(--color-border-highlight); color: var(--color-text-primary); }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: var(--radius); display: grid; place-items: center;
+  color: var(--color-text-secondary); cursor: pointer; position: relative; font-size: 16px;
+}
+.icon-btn:hover { background: var(--color-hover-overlay); color: var(--color-text-primary); }
+.badge-dot {
+  position: absolute; top: 5px; right: 5px; min-width: 15px; height: 15px; padding: 0 3px;
+  border-radius: var(--radius-pill); background: var(--color-status-error); color: #fff;
+  font-size: 9px; font-weight: 700; display: grid; place-items: center;
+  border: 2px solid var(--color-surface-raised);
+}
+
+/* Nav (the spine) */
+.nav {
+  height: 48px; flex: 0 0 48px; display: flex; align-items: center; gap: 4px;
+  padding: 0 16px; border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-base);
+}
+.nav-item {
+  padding: 7px 14px; border-radius: var(--radius); cursor: pointer; font-weight: 600;
+  color: var(--color-text-secondary); font-size: 13.5px; position: relative;
+}
+.nav-item:hover { color: var(--color-text-primary); background: var(--color-hover-overlay); }
+.nav-item.active { color: var(--color-accent); }
+.nav-item.active::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: -8px; height: 2px;
+  background: var(--color-accent); border-radius: 2px;
+}
+.nav-spacer { flex: 1; }
+.week-pill {
+  font-size: 11px; font-weight: 700; color: var(--color-accent);
+  background: var(--color-accent-dim); border-radius: var(--radius-pill);
+  padding: 3px 10px; letter-spacing: .02em;
+}
+.tier-pill {
+  font-size: 11px; font-weight: 600; color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-default); border-radius: var(--radius-pill); padding: 3px 10px;
+}
+
+/* Content */
+.content { flex: 1; overflow: auto; padding: 22px 28px 40px; }
+.content-wrap { max-width: min(94vw, 2160px); margin: 0 auto; }
+.page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
+.page-head h1 { font-size: 22px; }
+.page-head .sub { color: var(--color-text-secondary); font-size: 13px; }
+.section-title {
+  font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--color-text-tertiary); margin: 26px 0 12px;
+}
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--color-surface-card); border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg); padding: 16px;
+}
+.card.raised { background: var(--color-surface-elevated); }
+.card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.card-head .t { font-family: var(--font-display); font-weight: 700; font-size: 13px;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--color-text-secondary); }
+.card-head .ic { color: var(--color-accent); font-size: 14px; }
+.card-head .right { margin-left: auto; }
+.grid { display: grid; gap: 16px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 13px;
+  border-radius: var(--radius); padding: 8px 14px; cursor: pointer; border: 1px solid transparent;
+  font-family: var(--font-sans); white-space: nowrap;
+}
+.btn-primary { background: var(--color-accent); color: var(--color-accent-contrast); }
+.btn-primary:hover { background: var(--color-accent-hover); }
+.btn-ghost { background: var(--color-surface-elevated); color: var(--color-text-primary);
+  border-color: var(--color-border-default); }
+.btn-ghost:hover { border-color: var(--color-border-highlight); }
+.btn-subtle { background: var(--color-accent-dim); color: var(--color-accent); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* ---------- Chips / tags ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+  border-radius: var(--radius-pill); padding: 3px 9px; background: var(--color-surface-interactive);
+  color: var(--color-text-secondary);
+}
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700;
+  border-radius: var(--radius-sm); padding: 2px 6px; letter-spacing: .02em; }
+.tag-rec { background: var(--color-accent); color: var(--color-accent-contrast); }
+.tag-sub { background: var(--color-membership-linked); color: #000; }
+.tag-warn { background: color-mix(in srgb, var(--color-status-warning) 22%, transparent); color: var(--color-status-warning); }
+
+/* Role accents */
+.role-tank { color: var(--color-role-tank); }
+.role-healer { color: var(--color-role-healer); }
+.role-melee { color: var(--color-role-melee); }
+.role-ranged { color: var(--color-role-ranged); }
+.role-caster { color: var(--color-role-caster); }
+.dot-role { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* Job/role square badge */
+.job {
+  width: 30px; height: 30px; border-radius: var(--radius); display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 10px; color: #fff;
+  border: 1px solid rgba(255,255,255,.12);
+}
+.j-tank { background: color-mix(in srgb, var(--color-role-tank) 30%, #0a0a0f); color: var(--color-role-tank); }
+.j-healer { background: color-mix(in srgb, var(--color-role-healer) 30%, #0a0a0f); color: var(--color-role-healer); }
+.j-melee { background: color-mix(in srgb, var(--color-role-melee) 30%, #0a0a0f); color: var(--color-role-melee); }
+.j-ranged { background: color-mix(in srgb, var(--color-role-ranged) 30%, #0a0a0f); color: var(--color-role-ranged); }
+.j-caster { background: color-mix(in srgb, var(--color-role-caster) 30%, #0a0a0f); color: var(--color-role-caster); }
+
+/* ---------- Progress bar ---------- */
+.bar { height: 7px; border-radius: var(--radius-pill); background: var(--color-surface-interactive); overflow: hidden; }
+.bar-fill { height: 100%; border-radius: var(--radius-pill); background: var(--color-accent); }
+.bar-fill.warn { background: var(--color-status-warning); }
+.bar-fill.role { background: currentColor; }
+
+/* Gear status dots (a player's 11 slots) */
+.gear-dots { display: flex; gap: 3px; }
+.gd { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--color-border-default); }
+.gd.have { background: var(--color-gear-raid); border-color: transparent; }
+.gd.tome { background: var(--color-gear-tome); border-color: transparent; }
+.gd.aug { background: var(--color-gear-augmented); border-color: transparent; }
+.gd.empty { background: transparent; }
+
+/* avatar circle */
+.av { width: 28px; height: 28px; border-radius: var(--radius-pill); display: grid; place-items: center;
+  font-weight: 700; font-size: 11px; color: #fff; }
+
+/* attention / list rows */
+.row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border-subtle); }
+.row:last-child { border-bottom: none; }
+.row .grow { flex: 1; min-width: 0; }
+.row .name { font-weight: 600; }
+.row .meta { font-size: 12px; color: var(--color-text-tertiary); }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .v { font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: 1; }
+.stat .k { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .05em; }
+.divider-v { width: 1px; align-self: stretch; background: var(--color-border-default); }
+
+</style>
+<style>
+  .ic svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; }
+  .pb-name { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+
+  .find { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+  @media (max-width: 1080px) { .find { grid-template-columns: 1fr; } }
+
+  /* filter sidebar */
+  .filters { background: var(--color-surface-card); border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-lg); padding: 16px; position: sticky; top: 0; }
+  .fgroup { margin-bottom: 18px; }
+  .fgroup:last-child { margin-bottom: 0; }
+  .fgroup .fl { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--color-text-tertiary); margin-bottom: 9px; }
+  .fopt { display: flex; align-items: center; gap: 9px; padding: 6px 0; font-size: 13px; color: var(--color-text-secondary); cursor: pointer; }
+  .fbox { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--color-border-default); flex: 0 0 auto; }
+  .fopt.on { color: var(--color-text-primary); }
+  .fopt.on .fbox { background: var(--color-accent); border-color: var(--color-accent); }
+  .roleneed { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill);
+    font-size: 12px; font-weight: 600; border: 1px solid var(--color-border-default); cursor: pointer; margin: 0 6px 6px 0; }
+  .roleneed.on { border-color: var(--color-accent); background: var(--color-accent-dim); color: var(--color-accent); }
+
+  /* match banner */
+  .matchbar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 16px;
+    background: var(--color-accent-dim); border: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+    border-radius: var(--radius-lg); }
+  .matchbar .ic { color: var(--color-accent); }
+  .matchbar .grow { flex: 1; }
+  .matchbar .mt { font-weight: 700; font-size: 13.5px; }
+  .matchbar .ms { font-size: 12px; color: var(--color-text-secondary); }
+
+  /* listing cards */
+  .listings { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; }
+  .listing { background: var(--color-surface-card); border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-lg); padding: 16px; position: relative; }
+  .listing.matched { border-color: color-mix(in srgb, var(--color-accent) 45%, transparent); }
+  .listing .ltop { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .listing .lbadge { width: 44px; height: 44px; border-radius: var(--radius-lg); display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 800; font-size: 15px; flex: 0 0 auto;
+    background: var(--color-surface-interactive); color: var(--color-text-primary); }
+  .listing .lname { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+  .listing .lmeta { font-size: 12px; color: var(--color-text-tertiary); margin-top: 1px; }
+  .matchscore { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; align-items: flex-end; }
+  .matchscore .pct { font-family: var(--font-display); font-weight: 800; font-size: 18px; color: var(--color-accent); }
+  .matchscore .lbl { font-size: 9.5px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
+
+  .ltags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .needrole { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700;
+    padding: 3px 9px; border-radius: var(--radius-pill); }
+  .nr-open { background: color-mix(in srgb, var(--color-accent) 18%, transparent); color: var(--color-accent); }
+  .nr-fit { box-shadow: inset 0 0 0 1.5px var(--color-accent); }
+
+  .lmatch { display: flex; flex-direction: column; gap: 7px; margin: 12px 0; padding: 11px 0; border-top: 1px solid var(--color-border-subtle); border-bottom: 1px solid var(--color-border-subtle); }
+  .lmatch .mrow { display: flex; align-items: center; gap: 9px; font-size: 12.5px; }
+  .lmatch .mrow .mi { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 auto; font-size: 9px; font-weight: 800; }
+  .mi.yes { background: var(--color-status-success); color: #04210f; }
+  .mi.partial { background: var(--color-status-warning); color: #2a2102; }
+  .lmatch .mrow .mtxt { color: var(--color-text-secondary); }
+  .listing .lfoot { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .listing .lfoot .schedule { font-size: 11.5px; color: var(--color-text-tertiary); flex: 1; }
+
+  .myway { margin-top: 22px; padding: 16px; border: 1px dashed var(--color-border-default); border-radius: var(--radius-lg);
+    display: flex; align-items: center; gap: 14px; }
+  .myway .grow { flex: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <div class="rail-logo">RP</div>
+    <div class="rail-item" title="Player Hub"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span></div>
+    <div class="rail-item active" title="Static Finder"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13 13 8.5 15.5 11 11"/></svg></span></div>
+    <div class="rail-divider"></div>
+    <div class="rail-static" title="Crescent Static">CS</div>
+    <div class="rail-static alt" title="Late Pulls">LP</div>
+    <div class="rail-spacer"></div>
+    <div class="rail-item" title="Settings"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span></div>
+    <div class="rail-user" title="Dev Owner">DO</div>
+  </nav>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx"><span class="pb-name">Static Finder</span></div>
+      <div class="topbar-spacer"></div>
+      <span class="kbd">⌘K&nbsp; <span class="tertiary">Search or run a command</span></span>
+      <div class="icon-btn" title="Notifications"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.5 21a1.8 1.8 0 0 0 3 0"/></svg></span><span class="badge-dot">3</span></div>
+      <div class="icon-btn" title="Settings"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span></div>
+      <div class="icon-btn" title="Theme"><span class="ic"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></span></div>
+    </header>
+
+    <main class="content" style="padding-top:22px">
+      <div class="content-wrap">
+        <div class="page-head">
+          <h1>Static Finder</h1>
+          <span class="sub">Find a group that fits your content, schedule, and role — ranked by match</span>
+        </div>
+
+        <div class="find">
+          <!-- filters -->
+          <aside class="filters">
+            <div class="fgroup">
+              <div class="fl">Content</div>
+              <div class="fopt on"><span class="fbox"></span>AAC Heavyweight (Savage)</div>
+              <div class="fopt"><span class="fbox"></span>Ultimate (FRU)</div>
+              <div class="fopt"><span class="fbox"></span>Mount / farm</div>
+            </div>
+            <div class="fgroup">
+              <div class="fl">My role need</div>
+              <span class="roleneed on"><span class="dot-role" style="background:var(--color-role-melee)"></span>Melee</span>
+              <span class="roleneed"><span class="dot-role" style="background:var(--color-role-ranged)"></span>Ranged</span>
+              <span class="roleneed"><span class="dot-role" style="background:var(--color-role-caster)"></span>Caster</span>
+            </div>
+            <div class="fgroup">
+              <div class="fl">Schedule fit</div>
+              <div class="fopt on"><span class="fbox"></span>Match my availability</div>
+              <div class="fopt"><span class="fbox"></span>Weeknights</div>
+              <div class="fopt"><span class="fbox"></span>Weekends</div>
+            </div>
+            <div class="fgroup">
+              <div class="fl">Vibe</div>
+              <div class="fopt on"><span class="fbox"></span>Prog-friendly</div>
+              <div class="fopt"><span class="fbox"></span>Parse / speed</div>
+              <div class="fopt"><span class="fbox"></span>Casual</div>
+            </div>
+          </aside>
+
+          <!-- results -->
+          <div>
+            <div class="matchbar">
+              <span class="ic"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+              <div class="grow">
+                <div class="mt">3 statics match your melee opening, availability & prog vibe</div>
+                <div class="ms">Ranked by fit · uses your Player Hub availability (Mon/Tue/Fri/Sat/Sun evenings)</div>
+              </div>
+              <span class="btn btn-ghost btn-sm">Sort: Best match ▼</span>
+            </div>
+
+            <div class="listings">
+
+              <!-- high match -->
+              <div class="listing matched">
+                <div class="matchscore"><span class="pct">94%</span><span class="lbl">match</span></div>
+                <div class="ltop">
+                  <div class="lbadge" style="border:2px solid var(--color-role-melee)">TW</div>
+                  <div><div class="lname">Twilight Wardens</div><div class="lmeta">AAC Heavyweight (Savage) · 2/4 · prog</div></div>
+                </div>
+                <div class="ltags">
+                  <span class="needrole nr-open nr-fit"><span class="dot-role" style="background:var(--color-role-melee)"></span>Melee — your fit</span>
+                  <span class="needrole" style="background:var(--color-surface-interactive);color:var(--color-text-tertiary)">Prog-friendly</span>
+                </div>
+                <div class="lmatch">
+                  <div class="mrow"><span class="mi yes">✓</span><span class="mtxt">Needs a <b>melee</b> — your opening</span></div>
+                  <div class="mrow"><span class="mi yes">✓</span><span class="mtxt">Raids <b>Fri/Sat 8PM</b> — you're free both</span></div>
+                  <div class="mrow"><span class="mi yes">✓</span><span class="mtxt">Prog-friendly — matches your vibe</span></div>
+                </div>
+                <div class="lfoot">
+                  <span class="schedule">Fri/Sat 8:00 PM EST · 7/8 filled</span>
+                  <span class="btn btn-ghost btn-sm">View</span>
+                  <span class="btn btn-primary btn-sm">Apply →</span>
+                </div>
+              </div>
+
+              <!-- mid match -->
+              <div class="listing matched">
+                <div class="matchscore"><span class="pct">78%</span><span class="lbl">match</span></div>
+                <div class="ltop">
+                  <div class="lbadge" style="border:2px solid var(--color-role-melee)">SC</div>
+                  <div><div class="lname">Savage Clears Co</div><div class="lmeta">AAC Heavyweight (Savage) · 3/4 · prog</div></div>
+                </div>
+                <div class="ltags">
+                  <span class="needrole nr-open nr-fit"><span class="dot-role" style="background:var(--color-role-melee)"></span>Melee — your fit</span>
+                  <span class="needrole" style="background:var(--color-surface-interactive);color:var(--color-text-tertiary)">Parse / speed</span>
+                </div>
+                <div class="lmatch">
+                  <div class="mrow"><span class="mi yes">✓</span><span class="mtxt">Needs a <b>melee</b> — your opening</span></div>
+                  <div class="mrow"><span class="mi partial">!</span><span class="mtxt">Raids <b>Tue/Thu 9PM</b> — you're free Tue only</span></div>
+                  <div class="mrow"><span class="mi partial">!</span><span class="mtxt">Parse-focused — you picked prog-friendly</span></div>
+                </div>
+                <div class="lfoot">
+                  <span class="schedule">Tue/Thu 9:00 PM EST · 7/8 filled</span>
+                  <span class="btn btn-ghost btn-sm">View</span>
+                  <span class="btn btn-ghost btn-sm">Apply →</span>
+                </div>
+              </div>
+
+              <!-- another match -->
+              <div class="listing">
+                <div class="matchscore"><span class="pct">71%</span><span class="lbl">match</span></div>
+                <div class="ltop">
+                  <div class="lbadge">MN</div>
+                  <div><div class="lname">Midnight Run</div><div class="lmeta">AAC Heavyweight (Savage) · 1/4 · fresh prog</div></div>
+                </div>
+                <div class="ltags">
+                  <span class="needrole nr-open nr-fit"><span class="dot-role" style="background:var(--color-role-melee)"></span>Melee — your fit</span>
+                  <span class="needrole nr-open"><span class="dot-role" style="background:var(--color-role-healer)"></span>Healer open</span>
+                  <span class="needrole" style="background:var(--color-surface-interactive);color:var(--color-text-tertiary)">Prog-friendly</span>
+                </div>
+                <div class="lmatch">
+                  <div class="mrow"><span class="mi yes">✓</span><span class="mtxt">Needs a <b>melee</b> — your opening</span></div>
+                  <div class="mrow"><span class="mi yes">✓</span><span class="mtxt">Raids <b>Mon/Fri 8PM</b> — you're free both</span></div>
+                  <div class="mrow"><span class="mi partial">!</span><span class="mtxt">Fresh prog — slower pace than your last static</span></div>
+                </div>
+                <div class="lfoot">
+                  <span class="schedule">Mon/Fri 8:00 PM EST · 6/8 filled</span>
+                  <span class="btn btn-ghost btn-sm">View</span>
+                  <span class="btn btn-ghost btn-sm">Apply →</span>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="myway">
+              <div class="track-icon" style="width:40px;height:40px;border-radius:var(--radius-lg);background:color-mix(in srgb, var(--color-accent) 16%, #0a0a0f);display:grid;place-items:center;color:var(--color-accent);flex:0 0 auto"><span class="ic"><svg viewBox="0 0 24 24" style="width:18px;height:18px"><path d="M3 5h18M6 12h12M10 19h4"/></svg></span></div>
+              <div class="grow">
+                <div style="font-weight:700;font-size:13.5px">Leading a static instead?</div>
+                <div class="tertiary" style="font-size:12px;margin-top:1px">Post a recruitment listing — players matching your open roles & schedule get surfaced.</div>
+              </div>
+              <span class="btn btn-primary btn-sm">Post a listing</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>
