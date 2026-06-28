@@ -231,6 +231,12 @@ export const RELEASES: Release[] = [
         pr: 152,
         prTitle: 'Plan I — Navigation, context & misc polish',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Tokenize the theme',
+        description: 'Generate the app @theme from tokens.json with a CI drift guard; no visual change.',
+      },
     ],
   },
   {

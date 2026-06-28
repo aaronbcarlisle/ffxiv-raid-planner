@@ -17,7 +17,8 @@
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "tokens:build": "node scripts/build-tokens.mjs",
-    "tokens:parity": "node scripts/token-parity.mjs scripts/__parity__/index.baseline.css src/styles/tokens.generated.css"
+    "tokens:parity": "node scripts/token-parity.mjs scripts/__parity__/index.baseline.css src/styles/tokens.generated.css",
+    "tokens:check": "node scripts/build-tokens.mjs && git diff --exit-code -- src/styles/tokens.generated.css"
   },
   "size-limit": [
     {
