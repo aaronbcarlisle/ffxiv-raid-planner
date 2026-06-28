@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { PageMode } from '../../types';
 import { Tooltip } from '../primitives/Tooltip';
+import { analytics } from '../../services/analytics';
 import { LayoutDashboard, Users, Shield, Calendar, Trophy, MoreHorizontal } from 'lucide-react';
 
 interface TabNavigationProps {
@@ -49,6 +50,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
           {/* design-system-ignore: Tab button requires specific toggle styling */}
           <button
             onClick={() => {
+              analytics.track('navigation', 'tab_switch', { tab: tab.id });
               onTabChange(tab.id);
             }}
             className={`

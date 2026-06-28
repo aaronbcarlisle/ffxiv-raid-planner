@@ -40,7 +40,7 @@ export {
 } from './Skeleton';
 export { Spinner, SpinnerOverlay, type SpinnerSize, type SpinnerColor } from './Spinner';
 export { SortModeSelector } from './SortModeSelector';
-export { TabNavigation } from './TabNavigation';
+// TabNavigation relocated to layout/ — it imports from services/ (analytics)
 export { ThemeToggle } from './ThemeToggle';
 export { TextArea, type TextAreaProps } from './TextArea';
 export { ThreeStateCheckbox } from './ThreeStateCheckbox';

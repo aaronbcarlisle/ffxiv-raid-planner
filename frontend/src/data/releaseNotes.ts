@@ -244,7 +244,8 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'ESLint boundary guard: shared UI layer cannot import feature/app modules',
         description:
-          'Installed eslint-plugin-boundaries (v6) with one enforced rule: files in components/primitives/** and components/ui/** may not import from domain folders, pages/, stores/, or services/. Two pre-existing violations fixed: analytics call removed from TabNavigation (a shared component should not reach into services), and ToastContainer relocated to layout/ since it reads directly from toastStore.',
+          'Installed eslint-plugin-boundaries (v6) with one enforced rule: files in components/primitives/** and components/ui/** may not import from domain folders, pages/, stores/, or services/. Two pre-existing violations fixed: TabNavigation relocated to layout/ (restoring its analytics.track call), and ToastContainer relocated to layout/ since it reads directly from toastStore.',
+        commits: [{ hash: '03dd54f', message: 'lint(boundaries): shared layer (primitives/ui) cannot import features (error)' }],
       },
     ],
   },
