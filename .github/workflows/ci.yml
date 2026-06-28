@@ -58,6 +58,10 @@ jobs:
       - name: Duplication check (jscpd)
         run: pnpm dupes
 
+      - name: Dead-code report (knip, non-blocking)
+        continue-on-error: true
+        run: pnpm deadcode
+
   migrations:
     name: Migration Graph Check
     runs-on: ubuntu-latest
