@@ -108,6 +108,37 @@ export default defineConfig([
             disallow: { to: { type: ['shared', 'shell', 'person', 'ring0', 'ring1', 'ring3', 'admin', 'settings'] }, dependency: { kind: 'value' } },
             message: 'A store (data layer) must not import a component (view layer). Type-only imports are allowed.',
           },
+
+          // F4 Task 4: Ring-inward-only rules (fail-on-new).
+          // Grandfathered debt is in eslint-suppressions.json; new outward edges
+          // will fail immediately. admin/page/service have NO from-rule (exempt).
+          // NOTE: no same-type disallows here — checkInternals is active globally,
+          // so a same-type disallow would wrongly catch intra-ring same-subdir imports.
+          {
+            from: { type: 'shell' },
+            disallow: { to: { type: ['person', 'ring0', 'ring1', 'ring3', 'admin', 'settings'] } },
+            message: 'Shell/platform imports inward only (shared). It must not import Person or product-ring features.',
+          },
+          {
+            from: { type: ['person', 'settings'] }, // settings is person-primary (mixed)
+            disallow: { to: { type: ['ring0', 'ring1', 'ring3', 'admin'] } },
+            message: 'Person layer must not import product-ring features (rings depend on Person, not the reverse).',
+          },
+          {
+            from: { type: 'ring0' },
+            disallow: { to: { type: ['ring1', 'ring3', 'admin'] } },
+            message: 'Ring 0 (core loop) must not import outer rings or admin-ops.',
+          },
+          {
+            from: { type: 'ring1' },
+            disallow: { to: { type: ['ring3', 'admin'] } },
+            message: 'Ring 1 must not import Ring 3 or admin-ops.',
+          },
+          {
+            from: { type: 'ring3' },
+            disallow: { to: { type: ['admin'] } },
+            message: 'Product rings must not import the admin-ops surface.',
+          },
         ],
       }],
 
