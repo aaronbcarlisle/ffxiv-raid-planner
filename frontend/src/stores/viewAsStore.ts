@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import { api } from '../services/api';
+// eslint-disable-next-line boundaries/dependencies -- impersonation is inherently auth-coupled: view-as reads the real admin identity (isAuthenticated / user.isAdmin) to impersonate from. The second store wanting auth must add its own justified entry.
 import { useAuthStore } from './authStore';
 import type { MemberRole } from '../types';
 

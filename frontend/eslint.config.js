@@ -43,9 +43,17 @@ export default defineConfig([
       },
       'boundaries/include': ['src/**/*'],
       'boundaries/elements': [
-        { type: 'shared', pattern: 'src/components/(primitives|ui)/**' },
-        { type: 'feature', pattern: 'src/components/!(primitives|ui)/**' },
-        { type: 'app', pattern: '(src/pages|src/stores|src/services)/**' },
+        { type: 'shared',   pattern: 'src/components/(primitives|ui)/**' },
+        { type: 'shell',    pattern: 'src/components/(layout|dnd|docs)/**' },
+        { type: 'person',   pattern: 'src/components/(profile|auth|dashboard)/**' },
+        { type: 'ring0',    pattern: 'src/components/(roster|player|bis|loot|priority|weapon-priority|history|wizard|team|static-group|group)/**' },
+        { type: 'ring1',    pattern: 'src/components/(schedule|split-clear)/**' },
+        { type: 'ring3',    pattern: 'src/components/(mount-farms|collections)/**' },
+        { type: 'admin',    pattern: 'src/components/admin/**' },
+        { type: 'settings', pattern: 'src/components/settings/**' }, // mixed, person-primary; separate so its debt is visible
+        { type: 'store',    pattern: 'src/stores/**', mode: 'file' },
+        { type: 'page',     pattern: 'src/pages/**', mode: 'file' },
+        { type: 'service',  pattern: 'src/services/**', mode: 'file' },
       ],
     },
     rules: {
@@ -62,17 +70,43 @@ export default defineConfig([
         },
       ],
 
-      // Layer boundary enforcement (F2): shared layer must not import features.
-      // Rule renamed from boundaries/element-types in v5 to boundaries/dependencies in v6.
-      // from/allow/disallow now use object selectors { type } with required `to` wrapper.
+      // Layer boundary enforcement (F2 carry-over + F4 store rules).
+      // Ring-inward rules are added in F4 Task 4; default stays 'allow' so the
+      // tree remains green until suppressions are baselined.
+      //
+      // NOTE: importKind is a DEPRECATED rule-level field in v6.0.2 (it fires a
+      // console warning and will be removed in v7). The correct v6 selector-level
+      // syntax is `dependency: { kind: 'value' }` inside `disallow` / `allow`.
+      // The disallow policy schema has `additionalProperties: false`, so placing
+      // `importKind` inside `disallow` would fail schema validation.
       'boundaries/dependencies': ['error', {
         default: 'allow',
+        // Files in the same element (e.g., two stores) share the same elementPath
+        // under mode:'file', so eslint-plugin-boundaries treats them as "internal"
+        // and skips them unless checkInternals is enabled. The store→store rule
+        // requires this to fire on intra-stores/ imports (e.g., viewAsStore→authStore).
+        checkInternals: true,
         rules: [
+          // F2 carry-over: shared leaf imports nothing outward.
           {
             from: { type: 'shared' },
-            disallow: { to: { type: ['feature', 'app'] } },
-            message:
-              'Shared layer (primitives/ui) must not import from feature or app modules. Keep the shared layer leaf-level; the Ring-aware graph lands in F4.',
+            disallow: { to: { type: ['shell', 'person', 'ring0', 'ring1', 'ring3', 'admin', 'settings'] } },
+            message: 'Shared layer (primitives/ui) must not import feature/app modules. Keep it leaf-level.',
+          },
+          // One store per domain: a store must not import another store.
+          {
+            from: { type: 'store' },
+            disallow: { to: { type: 'store' } },
+            message: 'One store per domain: a store must not import another store. Coordinate via utils/ (see utils/lootCoordination.ts). Single documented exception: viewAsStore→authStore.',
+          },
+          // Data layer must not depend on the view layer — value imports only.
+          // Type-only imports erase at runtime (no coupling) and are permitted.
+          // `dependency: { kind: 'value' }` is the v6 selector-level mechanism
+          // for filtering by import kind (replaces deprecated rule-level importKind).
+          {
+            from: { type: 'store' },
+            disallow: { to: { type: ['shared', 'shell', 'person', 'ring0', 'ring1', 'ring3', 'admin', 'settings'] }, dependency: { kind: 'value' } },
+            message: 'A store (data layer) must not import a component (view layer). Type-only imports are allowed.',
           },
         ],
       }],
@@ -145,6 +179,10 @@ export default defineConfig([
   // Test files exercise raw elements and arbitrary values as fixtures; the
   // design-system rules target shipped UI, not test scaffolding. (Matches the
   // exclusion already in scripts/check-design-system.sh.)
+  // Boundary rules are also off for tests: test files legitimately import across
+  // element boundaries (e.g., store tests import multiple stores for integration
+  // testing), and test code is not shipped, so architectural coupling rules don't
+  // apply there.
   {
     files: ['**/*.test.{ts,tsx}', '**/__tests__/**'],
     rules: {
@@ -157,6 +195,7 @@ export default defineConfig([
       'design-system/no-tiny-text': 'off',
       'design-system/no-noninteractive-onclick': 'off',
       'design-system/no-cursor-pointer-without-role': 'off',
+      'boundaries/dependencies': 'off',
     },
   },
 ])
