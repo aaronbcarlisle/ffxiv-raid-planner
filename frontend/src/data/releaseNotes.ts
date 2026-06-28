@@ -69,7 +69,7 @@ export const RELEASES: Release[] = [
     items: [
       {
         category: 'improvement',
-        title: 'Light-mode and dark-mode contrast now meets WCAG AA',
+        title: 'Light-mode and dark-mode contrast now meet WCAG AA',
         description:
           'The accent color in light mode is now darker (#0c7d71) and muted text in dark mode is lighter (#8a8a94), both meeting WCAG AA contrast ratios. Text that was previously too faint against its background is now reliably readable.',
         pr: 158,
