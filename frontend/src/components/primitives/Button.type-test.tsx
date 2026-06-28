@@ -19,11 +19,11 @@ export const _incompleteVariantMap: Record<ButtonVariant, string> = {
 };
 
 // A non-lexicon trailing value is a type error (decorative arrows unrepresentable).
-// @ts-expect-error - 'arrow' is not in the 'chevron' | 'external' lexicon
-export const _badTrailing = createElement(Button, { trailing: 'arrow' }, 'x');
-// `rightIcon` no longer exists on Button.
-// @ts-expect-error - rightIcon was removed in favor of the constrained `trailing`
-export const _noRightIcon = createElement(Button, { rightIcon: null }, 'x');
+// @ts-expect-error - 'arrow' is not assignable to type 'chevron' | 'external'
+export const _badTrailing = createElement(Button, { trailing: 'arrow', children: 'x' });
+// `rightIcon` no longer exists on Button — it was removed in favor of `trailing`.
+// @ts-expect-error - 'rightIcon' is not a known ButtonProps key
+export const _noRightIcon = createElement(Button, { rightIcon: null, children: 'x' });
 // A Button with no visible label is a type error (use IconButton for icon-only).
 // @ts-expect-error - children is required
 export const _noLabel = createElement(Button, { leftIcon: null });

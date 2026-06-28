@@ -12,11 +12,11 @@ import { Tag } from './Tag';
 import { LinkText } from './LinkText';
 
 // A label tag cannot be clickable.
-// @ts-expect-error - onClick is `never` on variant="label"
-export const _labelClick = createElement(Tag, { variant: 'label', onClick: () => {} }, 'x');
+// @ts-expect-error - onClick is `never` on variant="label", so () => void is not assignable
+export const _labelClick = createElement(Tag, { variant: 'label', onClick: () => {}, children: 'x' });
 // A nav tag must have a destination.
-// @ts-expect-error - variant="nav" requires href or onNavigate
-export const _navNoDest = createElement(Tag, { variant: 'nav' }, 'x');
+// @ts-expect-error - variant="nav" requires href or onNavigate; omitting both fails the union
+export const _navNoDest = createElement(Tag, { variant: 'nav', children: 'x' });
 // LinkText cannot receive both href and onClick simultaneously.
-// @ts-expect-error - href xor onClick: the Destination union forbids both at once
-export const _bothLink = createElement(LinkText, { href: '/x', onClick: () => {} }, 'x');
+// @ts-expect-error - Destination union forbids href+onClick together (each branch marks the other as `never`)
+export const _bothLink = createElement(LinkText, { href: '/x', onClick: () => {}, children: 'x' });
