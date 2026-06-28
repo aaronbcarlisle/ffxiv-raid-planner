@@ -19,4 +19,4 @@ export const _labelClick = createElement(Tag, { variant: 'label', onClick: () =>
 export const _navNoDest = createElement(Tag, { variant: 'nav', children: 'x' });
 // LinkText cannot receive both href and onClick simultaneously.
 // @ts-expect-error - Destination union forbids href+onClick together (each branch marks the other as `never`)
-export const _bothLink = createElement(LinkText, { href: '/x', onClick: () => {}, children: 'x' });
+export const _bothLink: Parameters<typeof LinkText>[0] = { href: '/x', onClick: () => {}, children: 'x' };
