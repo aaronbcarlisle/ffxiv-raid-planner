@@ -14,7 +14,6 @@ import {
   Calendar,
   Target,
   Users,
-  ChevronRight,
   AlertCircle,
   Swords,
   Sparkles,
@@ -205,7 +204,6 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
             variant="accent-subtle"
             size="sm"
             onClick={handleCta}
-            rightIcon={<ChevronRight className="w-3 h-3" />}
             className="text-[11px] px-2 py-1 min-h-0"
           >
             Go

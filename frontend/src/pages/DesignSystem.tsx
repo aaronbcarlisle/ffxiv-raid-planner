@@ -851,15 +851,6 @@ function FormsSection() {
               leftIcon={<Search className="w-4 h-4" />}
             />
           </div>
-          <div>
-            <Label>With Right Icon</Label>
-            <Input
-              value=""
-              onChange={() => {}}
-              placeholder="Amount"
-              rightIcon={<span className="text-text-muted text-sm">USD</span>}
-            />
-          </div>
         </div>
       </Subsection>
 
@@ -1737,7 +1728,7 @@ function MenusSection() {
           {/* Basic Dropdown */}
           <Dropdown>
             <DropdownTrigger>
-              <Button variant="secondary" rightIcon={<ChevronDown className="w-4 h-4" />}>
+              <Button variant="secondary" trailing="chevron">
                 Basic Menu
               </Button>
             </DropdownTrigger>
@@ -1761,7 +1752,7 @@ function MenusSection() {
           {/* With Checkboxes */}
           <Dropdown>
             <DropdownTrigger>
-              <Button variant="secondary" rightIcon={<ChevronDown className="w-4 h-4" />}>
+              <Button variant="secondary" trailing="chevron">
                 With Checkboxes
               </Button>
             </DropdownTrigger>
@@ -1785,7 +1776,7 @@ function MenusSection() {
           {/* With Submenu */}
           <Dropdown>
             <DropdownTrigger>
-              <Button variant="secondary" rightIcon={<ChevronDown className="w-4 h-4" />}>
+              <Button variant="secondary" trailing="chevron">
                 With Submenu
               </Button>
             </DropdownTrigger>

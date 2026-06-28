@@ -3,20 +3,23 @@
  */
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { ChevronDown, ExternalLink } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'accent-subtle' | 'ghost' | 'danger' | 'warning' | 'success' | 'link';
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  /** Visible text label — required. Icon-only actions use <IconButton>. */
+  children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
   /** Show loading spinner */
   loading?: boolean;
   /** Icon to show before text */
   leftIcon?: ReactNode;
-  /** Icon to show after text */
-  rightIcon?: ReactNode;
+  /** Trailing affordance, lexicon-bound: 'chevron' = disclosure/opens-in-place, 'external' = leaves the app. */
+  trailing?: 'chevron' | 'external';
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
@@ -53,7 +56,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size = 'md',
       loading = false,
       leftIcon,
-      rightIcon,
+      trailing,
       disabled,
       className = '',
       children,
@@ -84,7 +87,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           leftIcon
         )}
         {children}
-        {!loading && rightIcon}
+        {!loading && trailing === 'chevron' && <ChevronDown className="w-4 h-4" aria-hidden />}
+        {!loading && trailing === 'external' && <ExternalLink className="w-4 h-4" aria-hidden />}
       </button>
     );
   }

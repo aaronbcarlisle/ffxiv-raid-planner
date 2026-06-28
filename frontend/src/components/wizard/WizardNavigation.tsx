@@ -7,7 +7,7 @@
 
 import { forwardRef } from 'react';
 import { Button } from '../primitives/Button';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import type { WizardStep } from './types';
 
 interface WizardNavigationProps {
@@ -48,7 +48,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
             ref={ref}
             variant="primary"
             onClick={onFinish}
-            rightIcon={<ExternalLink className="w-4 h-4" />}
+            trailing="external"
           >
             Go to Static
           </Button>
@@ -77,7 +77,6 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
           variant="primary"
           onClick={onNext}
           disabled={!canProceed}
-          rightIcon={<ChevronRight className="w-4 h-4" />}
         >
           Next
         </Button>
