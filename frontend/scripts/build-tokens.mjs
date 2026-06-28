@@ -134,6 +134,12 @@ export const ID_TO_CSS_VAR = {
   'primitive.easing.standard':   '--ease-standard',
   'primitive.easing.decelerate': '--ease-decelerate',
   'primitive.easing.accelerate': '--ease-accelerate',
+
+  // Gradient rail (component.nav.rail-bg → --gradient-rail)
+  'component.nav.rail-bg': '--gradient-rail',
+
+  // Overlay raise (semantic.color.interaction.raise-haze → --color-overlay-raise)
+  'semantic.color.interaction.raise-haze': '--color-overlay-raise',
 };
 
 // ─── DTCG alias resolver ──────────────────────────────────────────────────────

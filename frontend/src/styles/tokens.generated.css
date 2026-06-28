@@ -76,6 +76,8 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-decelerate: cubic-bezier(0, 0, 0, 1);
   --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --gradient-rail: linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%);
+  --color-overlay-raise: rgba(255, 255, 255, 0.03);
 }
 
 [data-theme="light"] {
@@ -127,5 +129,7 @@
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
   --shadow-glow: 0 0 20px rgba(15, 150, 136, 0.1);
+  --gradient-rail: linear-gradient(180deg, #f3f4f8 0%, #eceef4 60%, #e7e9f1 100%);
+  --color-overlay-raise: rgba(0, 0, 0, 0.03);
   --color-accent-bright: #0d7a6e;
 }
