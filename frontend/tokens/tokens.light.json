@@ -1,0 +1,71 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Light theme. Overrides the SEMANTIC tier ONLY — primitives and component tokens are untouched, which is the entire point of the tiered model. Apply under [data-theme='light']. Values verbatim from the v2 index.css light block.",
+
+  "semantic": {
+    "color": {
+      "surface": {
+        "base": { "$type": "color", "$value": "#f5f5f8" },
+        "raised": { "$type": "color", "$value": "#ededf2" },
+        "card": { "$type": "color", "$value": "#ffffff" },
+        "elevated": { "$type": "color", "$value": "#e8e8ef" },
+        "overlay": { "$type": "color", "$value": "#ffffff" },
+        "interactive": { "$type": "color", "$value": "#dcdce6" }
+      },
+      "accent": {
+        "default": { "$type": "color", "$value": "#0f9688" },
+        "hover": { "$type": "color", "$value": "#0d7a6e" },
+        "dim": { "$type": "color", "$value": "rgba(15, 150, 136, 0.12)" },
+        "muted": { "$type": "color", "$value": "#0a5c58" },
+        "deep": { "$type": "color", "$value": "#0773a0" },
+        "on-accent": { "$type": "color", "$value": "#ffffff" }
+      },
+      "text": {
+        "primary": { "$type": "color", "$value": "#1a1a24" },
+        "secondary": { "$type": "color", "$value": "#4a4a58" },
+        "tertiary": { "$type": "color", "$value": "#5a5a6e" },
+        "muted": { "$type": "color", "$value": "#6b6b7e" },
+        "disabled": { "$type": "color", "$value": "#9898a8" },
+        "on-accent": { "$type": "color", "$value": "#ffffff" }
+      },
+      "border": {
+        "default": { "$type": "color", "$value": "#c8c8d8" },
+        "subtle": { "$type": "color", "$value": "#dcdce6" },
+        "highlight": { "$type": "color", "$value": "#0f9688" },
+        "focus": { "$type": "color", "$value": "rgba(15, 150, 136, 0.5)" }
+      },
+      "interaction": {
+        "focus-ring": { "$type": "color", "$value": "rgba(15, 150, 136, 0.4)" },
+        "active-bg": { "$type": "color", "$value": "rgba(15, 150, 136, 0.12)" },
+        "hover-overlay": { "$type": "color", "$value": "rgba(0, 0, 0, 0.04)" }
+      },
+      "role": {
+        "tank": { "$type": "color", "$value": "#2e7ab4" },
+        "healer": { "$type": "color", "$value": "#1a8a4a" },
+        "melee": { "$type": "color", "$value": "#c0392b" },
+        "ranged": { "$type": "color", "$value": "#a06020" },
+        "caster": { "$type": "color", "$value": "#8b34b8" }
+      },
+      "membership": {
+        "owner": { "$type": "color", "$value": "#0f9688" },
+        "lead": { "$type": "color", "$value": "#7c3aed" },
+        "member": { "$type": "color", "$value": "#2563eb" },
+        "viewer": { "$type": "color", "$value": "#52525b" },
+        "linked": { "$type": "color", "$value": "#b45309" }
+      },
+      "gear-source": {
+        "raid": { "$type": "color", "$value": "#dc2626" },
+        "tome": { "$type": "color", "$value": "#0f9688" },
+        "base-tome": { "$type": "color", "$value": "#2563eb" },
+        "augmented": { "$type": "color", "$value": "#b45309" },
+        "crafted": { "$type": "color", "$value": "#ea580c" }
+      },
+      "status": {
+        "success": { "$type": "color", "$value": "#16a34a" },
+        "warning": { "$type": "color", "$value": "#ca8a04" },
+        "error": { "$type": "color", "$value": "#dc2626" },
+        "info": { "$type": "color", "$value": "#2563eb" }
+      }
+    }
+  }
+}
