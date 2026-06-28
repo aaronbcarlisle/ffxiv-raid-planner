@@ -8,45 +8,32 @@
  *   2. Frontend on :5174
  * Run: pnpm test:contrast
  *
- * VERIFY-THEN-ASSERT audit (F2, 2026-06-28)
+ * Token-contrast fix (F2 Task 9b, 2026-06-28)
  * ─────────────────────────────────────────────────────────────────────────────
- * ALL 6 views/themes were run and are RED. Violations are pre-existing token
- * debt, not F2 regressions. Details below; re-enable per view once fixed.
+ * Two systemic tokens were fixed to meet WCAG AA:
+ *   • --color-text-muted (dark):  #52525b → #8a8a94 (~5.79:1 on #0a0a0f)
+ *   • --color-accent (light):     #0f9688 → #0c7d71 (~4.65:1 on #f5f5f8, ~5.02:1 on #fff)
  *
- * design-system dark
- *   – <a href="/docs">Documentation</a>: text-text-muted (#52525b) on
- *     bg-surface-base (#0a0a0f) = 2.55:1 (needs 4.5)
- *   – Sidebar accordion labels (Foundations/Spacing/Typography/Components):
- *     #3c3c44 on #0a0a0f = 1.80:1
+ * landing dark/light: ASSERTED GREEN — zero violations after token fixes.
  *
- * design-system light
- *   – text-accent (#0f9688) headings on bg-surface-base (#f5f5f8) = 3.36:1
- *   – text-accent on card white backgrounds = 3.65:1
+ * design-system dark: RESIDUAL — page-level opacity-modified text-muted
+ *   Sidebar accordion button spans (Foundations/Colors/Spacing/Typography/
+ *   Components/Constrained Primitives): text-text-muted (#8a8a94) at ~70%
+ *   opacity composited on bg-surface-raised (#0a0a0f) → effective #64646c =
+ *   3.36:1 on font 6.8pt (9px) normal — needs 4.5:1. The opacity modifier is
+ *   baked into the design-system sidebar component; deferred to F3 page rebuild.
  *
- * landing dark
- *   – <span class="text-text-muted text-sm">or view a public static</span>:
- *     #52525b on #050508 = 2.63:1
+ * design-system light: RESIDUAL — two page-level violations remain:
+ *   (1) Same sidebar accordion labels: text-muted-light (#6b6b7e) at ~70%
+ *       opacity on #ededf2 → #9292a1 = 2.62:1 on 9px normal text. F3 rebuild.
+ *   (2) Active nav item ("Design Principles"): text-accent (#0c7d71) on
+ *       bg-accent/10 tinted bg (#d7e2e5) = 3.79:1 on 9.8pt normal. The tinted
+ *       background is applied by the sidebar's active-state styling; F3 rebuild.
  *
- * landing light
- *   – text-accent (#0f9688) on bg-surface-base (#f5f5f8) = 3.36:1
- *   – text-accent on white card backgrounds = 3.65:1
- *
- * GroupView dark
- *   – text-text-muted (#52525b) on player card surfaces = 2.48–2.52:1
- *     (FOUNDATION_ROADMAP §3.1 pre-existing hardcoded-dark-card debt)
- *   – keyboard-shortcuts hint (text-text-muted/60) = 1.62:1
- *   – membership-owner badge (#14b8a6 on #104443) = 4.37:1 (just below 4.5)
- *
- * GroupView light
- *   – text-accent (#0f9688) on tinted surfaces = 2.48–3.06:1
- *     (FOUNDATION_ROADMAP §3.1 hardcoded-dark-card debt, also affects light)
- *   – keyboard-shortcuts hint = 2.24:1
- *   – "Current" tier badge (text-accent on bg-accent/20) = 2.88:1
- *   – active "Members" tab (text-accent on bg-accent/0.18) = 2.57:1
- *
- * Root causes: text-text-muted token too low for dark mode; text-accent token
- * too low contrast for normal-weight text on light surfaces. Both are token
- * decisions from F0/F1, resolved at the token layer before F6 re-enables.
+ * GroupView dark/light: Scoped (§3.1 pre-existing tint/card debt):
+ *   dark  — text-text-muted on player cards + keyboard-hint/60 (§3.1 debt)
+ *   light — text-accent on tinted/bg-accent surfaces + §3.1 hardcoded-dark-card
+ *   Both deferred to F6 GroupView rebuild.
  *
  * NOTE: goToTestStatic is intentionally NOT used here. It has a pre-existing
  * strict-mode violation on this branch: "Show substitutes with main roster"
@@ -72,11 +59,15 @@ async function contrastViolations(page: import('@playwright/test').Page) {
 }
 
 // ── Anchor: design-system reference page ─────────────────────────────────────
-// Scoped out: pre-existing token debt (text-text-muted dark / text-accent light).
-// Re-enable in F6 after token contrast fixes land.
+// Scoped (both themes): page-level residual violations NOT from the core tokens.
+//   dark  — sidebar accordion labels use text-text-muted at ~70% opacity →
+//           #64646c on #0a0a0f = 3.36:1 (9px normal, needs 4.5:1); F3 rebuild.
+//   light — sidebar accordion labels text-muted/70 → #9292a1 on #ededf2 = 2.62:1;
+//           active nav item "Design Principles" text-accent on bg-accent/10 →
+//           #0c7d71 on #d7e2e5 = 3.79:1 (9px–10px normal); F3 rebuild.
 for (const theme of THEMES) {
   test(`design-system page has zero contrast violations (${theme})`, async ({ page }) => {
-    test.skip(true, 'design-system page: pre-existing token debt (text-text-muted dark; text-accent light) — deferred to F6')
+    test.skip(true, `design-system ${theme}: residual page-level opacity-modified text violations — deferred to F3 page rebuild`)
     await forceTheme(page, theme)
     await page.goto(`${FRONTEND_BASE}/docs/design-system`)
     await page.waitForLoadState('networkidle')
@@ -86,11 +77,11 @@ for (const theme of THEMES) {
 }
 
 // ── Anchor: pre-auth landing / login surface ──────────────────────────────────
-// Scoped out: pre-existing token debt (text-text-muted dark; text-accent light).
-// Re-enable in F6 after token contrast fixes land.
+// ASSERTED GREEN (both themes). Core token fixes resolved all violations:
+//   dark  — text-text-muted #8a8a94 on #050508 = ~5.96:1 ✓
+//   light — text-accent #0c7d71 on #f5f5f8 = ~4.65:1, on #ffffff = ~5.02:1 ✓
 for (const theme of THEMES) {
   test(`landing page has zero contrast violations (${theme})`, async ({ page }) => {
-    test.skip(true, 'landing page: pre-existing token debt (text-text-muted dark; text-accent light) — deferred to F6')
     await forceTheme(page, theme)
     await page.goto(`${FRONTEND_BASE}/`)
     await page.waitForLoadState('networkidle')
