@@ -1,23 +1,63 @@
 # F2 dead-code baseline (knip)
 
 - Captured: 2026-06-28 on `redesign/f2-anti-regression`.
-- Unused files: 28 · unused exports: 186 · unused exported types: 115 · duplicate exports: 24 · unused deps: 2 · unlisted deps: 0.
+- **Post-Task-4 (2026-06-28):** Unused files: 11 · unused exports: 186 · unused exported types: 115 · duplicate exports: 24 · unused deps: 2 · unlisted deps: 0.
+- Pre-Task-4 snapshot: Unused files: 28 · unused exports: 186 · unused exported types: 115 · duplicate exports: 24 · unused deps: 2.
 - Policy: report-only in CI (`continue-on-error`). Truly app-orphaned code is
-  deleted in the next task; dead code that exists only because it lives on an
+  deleted in Task 4; dead code that exists only because it lives on an
   F6-doomed screen (MorePage, Loot Log, old Schedule) is NOT deleted — it goes
   away when the screen is rebuilt (F6).
+
+## Task 4 deletion summary
+
+17 files deleted in commit `b21b0e0` (refactor(deadcode): delete truly-orphaned exports/files):
+
+| Deleted file | Reason |
+|---|---|
+| `src/components/dnd/EdgeDropZone.tsx` | zero references; replaced by newer dnd approach |
+| `src/components/dnd/index.ts` | barrel with no importer; removed alongside EdgeDropZone |
+| `src/components/player/AddSlotCard.tsx` | zero references anywhere |
+| `src/components/player/BiSTargetPanel.tsx` | zero references outside bisTargetStore |
+| `src/components/player/index.ts` | barrel with no importer (all player imports are direct) |
+| `src/components/priority/ManualPlanningEditor.tsx` | zero references outside priority folder |
+| `src/components/priority/index.ts` | barrel with no importer |
+| `src/components/profile/ReadinessChecklist.tsx` | zero references anywhere |
+| `src/components/team/index.ts` | barrel with no importer |
+| `src/components/ui/GearStatusCheckbox.tsx` | zero references anywhere |
+| `src/components/weapon-priority/WeaponJobSelector.tsx` | only used by WeaponPriorityEditor (also deleted) |
+| `src/components/weapon-priority/WeaponPriorityEditor.tsx` | zero external references; replaced by WeaponPriorityGrid |
+| `src/components/weapon-priority/WeaponPriorityListItem.tsx` | only used by WeaponPriorityEditor (also deleted) |
+| `src/hooks/useLootActions.ts` | zero references anywhere |
+| `src/hooks/useWeeklyAssignments.ts` | only used by ManualPlanningEditor (also deleted) |
+| `src/pages/AdminDashboard.tsx` | not in router; replaced by pages/admin/* sub-pages |
+| `src/stores/bisTargetStore.ts` | only imported by BiSTargetPanel (also deleted) |
+
+## Remaining 11 unused files (deliberate keeps)
+
+| File | Keep reason |
+|---|---|
+| `src/components/collections/CatalogFarmRow.tsx` | Collections feature in active development; stores exist; no doomed classification |
+| `src/components/collections/SuggestionFarmCard.tsx` | Same — comment reference in collectionBadgeConfig.ts confirms planned use |
+| `src/components/history/DeleteLootConfirmModal.tsx` | F6-doomed (Loot Log screen rebuild) |
+| `src/components/history/LootLogPanel.tsx` | F6-doomed (Loot Log screen rebuild) |
+| `src/components/history/PageBalancesPanel.tsx` | F6-doomed (Loot Log screen rebuild) |
+| `src/components/history/UnifiedWeekOverview.tsx` | F6-doomed (Loot Log screen rebuild) |
+| `src/components/history/WeekSelector.tsx` | F6-doomed (Loot Log screen rebuild) |
+| `src/components/layout/index.ts` | False-positive: DesignSystem.tsx imports PageContainer via barrel path |
+| `src/components/mount-farms/index.ts` | F6-doomed (Mount Farms screen rebuild) |
+| `src/components/mount-farms/MountFarmTab.tsx` | F6-doomed (Mount Farms screen rebuild) |
+| `src/components/profile/GearSnapshotView.tsx` | vi.mock reference in JobsGearTab.test.tsx; conservative keep |
 
 ## Notes on findings
 
 - **Unused deps**: `@radix-ui/react-dialog` and `tailwindcss` are flagged — both
   are actively used (tailwindcss via Vite plugin, react-dialog via Radix
   imports). These are knip false-positives for Vite/CSS-in-JS packages.
-- **Unused files (28)**: Mix of F6-doomed screens (history/loot panels, mount
-  farms), redesign-in-progress components (weapon-priority, collections, profile
-  stubs), and barrel `index.ts` files with no live consumer.
 - **Unused exports (186 + 115 types)**: Predominantly barrel re-exports that
-  have no importer in the current entry-point graph, and utility types kept for
-  documentation / future use.
+  have no importer in the current entry-point graph, utility types for
+  documentation/future use, and store selectors/hooks not yet wired to the new
+  nav-rail surfaces. Not targeted for deletion in this task — most are
+  false-positives or doomed-surface code.
 - **Configuration hints**: knip suggests removing `src/styles/tokens.generated.css`
   from ignore and some redundant entry patterns (`src/main.tsx`, `vite.config.ts`,
   `eslint.config.js`); kept as-is to be explicit.
