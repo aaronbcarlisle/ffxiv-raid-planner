@@ -85,6 +85,8 @@ The old "data pages have no sidebar" rule is **retired**. The app now has a pers
 
 **Visual containment principle (kept, re-stated):** regions must read as defined zones, not elements floating on one identical background. Rail and top bar sit on `surface-raised`; content on `surface-base`; cards on `surface-card`. Depth = hierarchy.
 
+**Corner ownership (locked):** the rail owns the top-left corner — it runs full height; the top bar sits to the rail's right, not spanning above it. This is the Discord/Slack model. The layout diagram above reflects this.
+
 ### 2.2 Width ceilings (re-derived for the rail)
 
 The rail lives *outside* these; they cap the **content column**. (The old 2560px "data, no-sidebar" tier is replaced.)
@@ -100,7 +102,24 @@ Content centers within `min(94vw, <ceiling>)` so ultrawide reads as designed.
 
 ### 2.3 Vocabulary (canonical — enforced in all UI copy)
 
-Drawn from `REDESIGN_SPEC.md §10`. **Static** (never "group") · **Track** (savage Tier = flagship) · **Roster** · **BiS** · **Loot** (the distribution domain) · **Drop** · **Priority** · **Log (verb only, never a tab)** · **Book/Page** · **Week** · **Lead/Member/Viewer** (roles, not apps). **Retired terms:** "Gear" (as a tab/section), "Loot Log," "Who Needs It," "Overview," "More."
+Drawn from and kept in sync with `REDESIGN_SPEC.md §10`. The full glossary (with "never call it" column) lives there; this is the quick-reference enforcement list.
+
+**Canonical terms:**
+- **Static** (never "group") — a raid group
+- **Track** — the abstraction a static progresses through (one Progress Engine, many tracks); adding non-savage content = "add a track"
+- **Tier** — the flagship savage track (e.g. "AAC Heavyweight"), containing its **fights** (e.g. M9S–M12S)
+- **Fight** — one named encounter inside a Tier (replaces "floor" in user-facing copy)
+- **Prog / Progress** — a *status*, never a page or noun-tab (say "Floor 3 prog," not "Progress page")
+- **Roster** · **BiS** · **Loot** (the distribution domain) · **Drop** · **Priority**
+- **Log (v.)** — an action, never a tab; the record is "History"
+- **Book / Page** · **Week** · **Lead / Member / Viewer** (roles, not apps)
+
+**Retired terms (never use in UI copy):**
+- "Gear" as a tab or section name
+- "Loot Log" (say "Loot → History")
+- "Who Needs It," "Overview," "More"
+- "Goals" as a page/concept — reframe as "the tracks this static is progressing"
+- "Content" (vague) — say "track" or name the specific tier/fight
 
 ### 2.4 Tab taxonomy (3 patterns kept; examples re-anchored)
 
@@ -130,6 +149,7 @@ Each component is specified as a **contract**: anatomy · variants (the finite l
   - **chevron `›`** — opens a menu/popover *in place* (disclosure).
   - **external `↗`** — leaves the app (new tab/site).
   - **No trailing arrow `→` as decoration.** A plain action ("Apply", "Save", "Assign") gets **no** trailing glyph. *(This corrects the mockups: the "Apply →" / "Enter →" / "Assign →" arrows are removed unless the action literally navigates the user to a different screen, in which case the chevron/disclosure rules above apply. "Submit and stay" = no arrow.)*
+  - **Source of truth for glyph meanings:** see §4 icon lexicon. The trailing-element rules here are a subset of that table; §4 is the authority if there is ever a conflict.
 - **Usage rules:** never two `primary` in one region; destructive actions use `danger` + confirm; icon-only buttons require an `aria-label` and a tooltip.
 
 ### 3.2 Card
@@ -168,13 +188,50 @@ Kept from v2: text input (default/error/disabled, sizes, with-icon, input-group)
 
 ### 3.8 New components the redesign introduces (to be formalized here)
 
-These appear in the mockups and must become real, tokenized components: **context rail**, **top bar**, **spine tab-bar**, **⌘K command palette** (overlay), **availability heatmap**, **RSVP row**, **match-score listing** (Finder), **attention-list row** (Home). Each gets a contract entry as it's built; until then they're *proposals*, not yet canon.
+These appear in the mockups and must become real, tokenized components: **top bar**, **spine tab-bar**, **⌘K command palette** (overlay), **availability heatmap**, **RSVP row**, **match-score listing** (Finder), **attention-list row** (Home). Each gets a contract entry as it's built; until then they're *proposals*, not yet canon. The context rail is specified in §3.9 below (no longer a proposal — locked).
+
+### 3.9 Context rail (Person-layer nav) — LOCKED
+
+The nav rail is now fully specified. This is the build target; F3 formalizes the tokenized component against this contract.
+
+- **Width:** `72px`, icon-only. No label text visible in the rail itself (labels appear only in tooltips — see a11y below).
+- **Surface:** `surface.nav` semantic token (`--color-surface-raised`, one tonal step darker than the app background `surface.base`). `1px border` on the right edge (`border.default`). **No drop shadow** — shadows are reserved for overlays and menus only.
+- **Corner ownership:** the rail runs full height and owns the top-left corner. The top bar sits to the rail's right, not above it. (Mirrored in §2.1.)
+- **Item states:**
+  - **Inactive:** outlined (stroke-only) icon + `text.muted` color token.
+  - **Active:** filled icon + `accent.default` color token + a left-edge **pill indicator** (a 3–4px tall accent pill flush to the left edge of the rail, centered on the item).
+  - **Hover / pressed:** surface-overlay token over the item background; icon color shifts toward `text.primary`.
+  - **Focus:** visible focus ring using `focus-ring` token, visually distinct from the hover state (a ring, not a fill).
+- **Accessibility (required — not optional):**
+  - Wrap in `<nav aria-label="Primary navigation">` (or a locale-appropriate label).
+  - Every item carries a **visually-hidden text label** (`sr-only`) for screen readers.
+  - Every item also shows a **WAI-ARIA tooltip** on hover AND on keyboard focus; tooltip dismisses on `Esc`.
+  - Minimum touch target: **44×44px** (the icon is 24px centered in a 44px tap zone).
+  - Provide a **skip link** (`#main-content`) that allows keyboard users to skip past the rail to the content area.
+- **Token gaps (F3):** `surface.nav` and the pill-indicator size/color need component-tier tokens (`nav.item-active-indicator`, `nav.item-bg-hover`, etc.). These are scoped to F3's component-tokenization work.
+- **Motion gap (v3.1):** enter/exit animation for the pill indicator and hover state are not yet specified — flagged under §7 (motion tokens).
 
 ---
 
 ## 4. Iconography & motion
 
 Icons: Lucide, stroke `1.5–2.5px` on dark (default 2px), sizes xs12/sm16/md20/lg24/xl32 — kept. Job icons: the FFXIV set, sizes xs–lg — kept. **⌘K affordance fix (validation finding):** show platform-correct modifier (`⌘K` on mac, `Ctrl K` on Windows — most of the audience) or fall back to a search icon + "Search"; never render a bare glyph that breaks without the font. Motion: not yet specified — flagged as a v3.1 gap (transitions, the toggle's orb slide, popover enter/exit need durations/easing tokens).
+
+### 4.1 Glyph lexicon (one glyph = one meaning) — LOCKED
+
+**Governing rule:** every decorative glyph in the UI must carry exactly one meaning from this table, used only and always for that meaning. A glyph not in this table must be removed or added here first (with rationale). This is the source of truth; §3.1's trailing-element rules are a derived subset.
+
+| Glyph | The one meaning | Notes |
+|---|---|---|
+| magnifier `🔍` | **search** | the only search affordance; never decorative |
+| diagonal up-right arrow `↗` | **leaves the app / external link** | carries its meaning icon-only — no accompanying "External" label required; never used for in-app navigation |
+| chevron `›` / `⌄` | **disclosure** — expand/collapse, or opens a menu/popover in place | used on Button trailing-element when a popover opens; used on collapsed sections |
+| caret (small filled triangle `▾`) | **dropdown / sort direction** | indicates a select input or a sortable column; distinct from chevron by being filled and smaller |
+| kebab `⋮` (vertical 3 dots) | **overflow menu** (vertical/column-oriented layouts) | never used in a horizontal row context |
+| meatball `⋯` (horizontal 3 dots) | **overflow menu** (horizontal/row-oriented layouts) | the horizontal sibling of kebab |
+| drag handle `⠿` | **reorder / draggable** | the only affordance indicating a draggable item |
+
+**The decorative trailing `→` is removed.** The mockups' "Apply →", "Enter →", "Assign →" patterns are corrected per this lexicon: a plain action gets no trailing glyph. Only genuine external-link (`↗`) or disclosure (`›`) actions get their defined glyph. See §3.1 for Button trailing-element rules.
 
 ---
 
@@ -199,16 +256,17 @@ Kept and elevated to the contract — this is the system's best feature and most
 
 ## 7. Open gaps this surfaced (for the validation pass)
 
-Writing the contract exposed real holes — these become validation agenda items:
+Writing the contract exposed real holes — these become validation agenda items. Items marked ✅ are now locked in this doc.
 
-1. **Trailing-arrow buttons** — the mockups overuse `→`; §3.1 now forbids decorative arrows. Audit every button.
+1. ✅ **Trailing-arrow buttons** — §3.1 forbids decorative arrows; §4.1 lexicon is the source of truth. Audit every button in mockups remains a task for the F5 validation pass.
 2. **Gear cell duplication** — mockups use ad-hoc pips; must unify on GearStatusCircle (§3.4).
 3. **Recipient picker** — must be formalized as one PopoverSelect specialization (§3.6) to kill the forked modals.
 4. **⌘K affordance** — platform-correct, font-safe (§4).
-5. **Motion tokens** — undefined; durations/easing needed for toggle, popover, tab transitions.
-6. **New components** (§3.8) — rail, top bar, spine, palette, heatmap, RSVP row, match listing, attention row — none are tokenized yet.
-7. **Density** — no compact/comfortable density tokens; data-dense Board may want a compact mode. Flagged.
-8. **Focus-visible spec** — focus-ring token exists; the exact ring (width/offset) isn't specified per component.
+5. **Motion tokens** — undefined; durations/easing needed for toggle, popover, tab transitions, and the rail pill indicator.
+6. ✅ **Context rail** — fully specified in §3.9 (width, surface, corner ownership, item states, a11y). Remaining gap: component-tier tokens (`nav.*`) and motion, scoped to F3.
+7. **New components** (§3.8) — top bar, spine, palette, heatmap, RSVP row, match listing, attention row — none are tokenized yet. *(Rail moved to §3.9.)*
+8. **Density** — no compact/comfortable density tokens; data-dense Board may want a compact mode. Flagged.
+9. **Focus-visible spec** — focus-ring token exists; the exact ring (width/offset) isn't specified per component.
 
 ---
 
