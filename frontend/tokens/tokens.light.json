@@ -26,7 +26,10 @@
         "tertiary": { "$type": "color", "$value": "#5a5a6e" },
         "muted": { "$type": "color", "$value": "#6b6b7e" },
         "disabled": { "$type": "color", "$value": "#9898a8" },
-        "on-accent": { "$type": "color", "$value": "#ffffff" }
+        "on-accent": { "$type": "color", "$value": "#ffffff" },
+        "on-gear-raid":      { "$type": "color", "$value": "#b91c1c" },
+        "on-gear-crafted":   { "$type": "color", "$value": "#9a3412" },
+        "on-gear-augmented": { "$type": "color", "$value": "#92400e" }
       },
       "border": {
         "default": { "$type": "color", "$value": "#c8c8d8" },
@@ -40,7 +43,6 @@
         "hover-overlay": { "$type": "color", "$value": "rgba(0, 0, 0, 0.04)" },
         "raise-haze": { "$type": "color", "$value": "rgba(0, 0, 0, 0.03)" }
       },
-
       "role": {
         "tank": { "$type": "color", "$value": "#2e7ab4" },
         "healer": { "$type": "color", "$value": "#1a8a4a" },
@@ -67,6 +69,16 @@
         "warning": { "$type": "color", "$value": "#ca8a04" },
         "error": { "$type": "color", "$value": "#dc2626" },
         "info": { "$type": "color", "$value": "#2563eb" }
+      },
+      "brand": {
+        "discord":       { "$type": "color", "$value": "#5865F2" },
+        "discord-hover": { "$type": "color", "$value": "#4752C4" }
+      },
+      "material": {
+        "twine":     { "$type": "color", "$value": "#2563eb" },
+        "glaze":     { "$type": "color", "$value": "#7c3aed" },
+        "solvent":   { "$type": "color", "$value": "#ca8a04" },
+        "tomestone": { "$type": "color", "$value": "#ea580c" }
       }
     },
 

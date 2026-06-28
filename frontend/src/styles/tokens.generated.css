@@ -87,6 +87,12 @@
   --color-parchment-text: #e8d9b8;
   --color-parchment-border: #b8933a;
   --color-seal: #8b6914;
+  --color-discord: #5865F2;
+  --color-discord-hover: #4752C4;
+  --color-material-twine: #3b82f6;
+  --color-material-glaze: #a855f7;
+  --color-material-solvent: #eab308;
+  --color-material-tomestone: #f97316;
 }
 
 [data-theme="light"] {
@@ -149,5 +155,14 @@
   --color-parchment-text: #5a4422;
   --color-parchment-border: #b8933a;
   --color-seal: #8b6914;
+  --color-discord: #5865F2;
+  --color-discord-hover: #4752C4;
+  --color-material-twine: #2563eb;
+  --color-material-glaze: #7c3aed;
+  --color-material-solvent: #ca8a04;
+  --color-material-tomestone: #ea580c;
+  --color-gear-raid-text: #b91c1c;
+  --color-gear-crafted-text: #9a3412;
+  --color-gear-augmented-text: #92400e;
   --color-accent-bright: #0d7a6e;
 }

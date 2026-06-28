@@ -153,6 +153,21 @@ export const ID_TO_CSS_VAR = {
   'semantic.surface.parchment.text':   '--color-parchment-text',
   'semantic.surface.parchment.border': '--color-parchment-border',
   'semantic.accent.seal':              '--color-seal',
+
+  // Discord brand (semantic.color.brand.* → --color-discord*)
+  'semantic.color.brand.discord':       '--color-discord',
+  'semantic.color.brand.discord-hover': '--color-discord-hover',
+
+  // Material (semantic.color.material.* → --color-material-*)
+  'semantic.color.material.twine':     '--color-material-twine',
+  'semantic.color.material.glaze':     '--color-material-glaze',
+  'semantic.color.material.solvent':   '--color-material-solvent',
+  'semantic.color.material.tomestone': '--color-material-tomestone',
+
+  // Badge text (semantic.color.text.on-gear-* → --color-gear-*-text; light-only)
+  'semantic.color.text.on-gear-raid':      '--color-gear-raid-text',
+  'semantic.color.text.on-gear-crafted':   '--color-gear-crafted-text',
+  'semantic.color.text.on-gear-augmented': '--color-gear-augmented-text',
 };
 
 // ─── DTCG alias resolver ──────────────────────────────────────────────────────
