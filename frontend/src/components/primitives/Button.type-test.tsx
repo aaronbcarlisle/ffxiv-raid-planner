@@ -4,7 +4,8 @@
  * `@ts-expect-error` MUST error — if the guarantee regresses, the unused
  * directive makes the build fail.
  *
- * eslint-disable is fine here: these are deliberately ill-typed snippets.
+ * Variables are exported so `noUnusedLocals` doesn't suppress errors; the
+ * `@ts-expect-error` directive itself is intentional and allowed.
  */
 import type { ButtonVariant } from './Button';
 
@@ -15,3 +16,12 @@ import type { ButtonVariant } from './Button';
 export const _incompleteVariantMap: Record<ButtonVariant, string> = {
   primary: '', secondary: '', ghost: '', danger: '', warning: '', success: '', 'accent-subtle': '',
 };
+
+import { Button } from './Button';
+import { createElement } from 'react';
+// A non-lexicon trailing value is a type error (decorative arrows unrepresentable).
+// @ts-expect-error - 'arrow' is not in the 'chevron' | 'external' lexicon
+export const _badTrailing = createElement(Button, { trailing: 'arrow' }, 'x');
+// `rightIcon` no longer exists on Button.
+// @ts-expect-error - rightIcon was removed in favor of the constrained `trailing`
+export const _noRightIcon = createElement(Button, { rightIcon: null }, 'x');

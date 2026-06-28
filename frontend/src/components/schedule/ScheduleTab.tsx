@@ -1034,7 +1034,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                rightIcon={<ExternalLink className="h-3 w-3" />}
+                                trailing="external"
                                 onClick={() => window.open(buildDiscordInstallUrl(settings?.discordClientId), '_blank', 'noopener,noreferrer')}
                                 disabled={!settings?.discordClientId}
                                 className="inline-flex"

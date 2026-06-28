@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react';
-import { CheckCircle2, Copy, Check, Link2, ExternalLink, Settings } from 'lucide-react';
+import { CheckCircle2, Copy, Check, Link2, Settings } from 'lucide-react';
 import { Button } from '../../primitives';
 import { ConfirmModal } from '../../ui/ConfirmModal';
 
@@ -92,7 +92,7 @@ export function ShareStep({ inviteLink, onGoToStatic }: ShareStepProps) {
           <Button
             variant="primary"
             onClick={handleGoToStatic}
-            rightIcon={<ExternalLink className="w-4 h-4" />}
+            trailing="external"
           >
             Go to Static
           </Button>
