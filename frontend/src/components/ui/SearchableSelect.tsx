@@ -338,6 +338,7 @@ export function SearchableSelect({
                 onKeyDown={handleKeyDown}
                 placeholder={searchPlaceholder}
                 aria-label="Search options"
+                aria-activedescendant={flatFilteredOptions[highlightedIndex] ? `searchselect-option-${flatFilteredOptions[highlightedIndex].value}` : undefined}
                 className="
                   w-full pl-8 pr-3 py-1.5
                   bg-surface-base border border-border-default rounded
@@ -378,9 +379,10 @@ export function SearchableSelect({
                       const flatIndex = startIndex + optionIndex;
                       const isHighlighted = flatIndex === highlightedIndex;
                       return (
-                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- ARIA combobox pattern: focus stays on the search input; keyboard nav (↑↓ Enter) is handled by handleKeyDown on the input; individual option divs do not need independent focus per WCAG combobox spec
+                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- ARIA combobox pattern: focus stays on the search input; keyboard nav (↑↓ Enter) is handled by handleKeyDown on the input; aria-activedescendant on the input references the highlighted option's id, so screen readers announce the active option; individual option divs do not need independent focus per WCAG combobox spec
                         <div
                           key={option.value}
+                          id={`searchselect-option-${option.value}`}
                           role="option"
                           aria-selected={option.value === value}
                           data-option
@@ -416,9 +418,10 @@ export function SearchableSelect({
             ) : (
               // Flat rendering (no groups)
               flatFilteredOptions.map((option, index) => (
-                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- ARIA combobox pattern: focus stays on the search input; keyboard nav (↑↓ Enter) handled by handleKeyDown on input; individual options do not need independent focus per WCAG combobox spec
+                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- ARIA combobox pattern: focus stays on the search input; keyboard nav (↑↓ Enter) handled by handleKeyDown on input; aria-activedescendant on the input references the highlighted option's id, so screen readers announce the active option; individual options do not need independent focus per WCAG combobox spec
                 <div
                   key={option.value}
+                  id={`searchselect-option-${option.value}`}
                   role="option"
                   aria-selected={option.value === value}
                   data-option
