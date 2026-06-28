@@ -36,6 +36,8 @@ An element importing from its own tier is **same-tier** (legal). An element impo
 
 `admin/` is a **distinct lint element**, permanently outside the ring graph. It is a platform-ops surface (see `PRODUCT_MODEL.md §5` — "separate admin area, not part of the static product"). It legitimately reaches across rings (e.g., admin dashboards reading Ring-0/1/3 data, `admin/` → `viewAsStore`). Ring-inward rules are **never applied** to `admin/` — it is not legacy and it is not exempt by oversight; it is architecturally distinct.
 
+The exemption applies **as an importer only**. `admin/` is a **disallowed import target** for product-ring code — a `ring → admin` import is a violation (admin-ops must not leak into product rings). `history/AllWeeksView` → `admin/SortableHeader` + `admin/sortUtils` is the current example of grandfathered ring0→admin debt (2 edges, baselined in `frontend/eslint-suppressions.json`).
+
 ---
 
 ## §2 The Promotion Rule
@@ -88,7 +90,7 @@ These domains import only same-tier or inward elements. They are candidates to r
 
 | Domain / stores | Ring / layer |
 |---|---|
-| `roster/` `player/` `bis/` `loot/` `priority/` `weapon-priority/` `history/` `wizard/` `team/` | **Ring 0** |
+| `roster/` `player/` `bis/` `loot/` `priority/` `weapon-priority/` `wizard/` `team/` | **Ring 0** |
 | `tierStore` `lootTrackingStore` `staticGroupStore` `sharedBisStore` | **Ring 0** stores |
 | `lodestoneStore` | **Ring 0** — *cross-cutting integration seam* (see §4.1.1) |
 | `schedule/` `split-clear/` | **Ring 1** |
@@ -97,11 +99,11 @@ These domains import only same-tier or inward elements. They are candidates to r
 | `mountFarmStore` `collectionGoalStore` `objectiveGoalStore` `objectiveCommandStore` | **Ring 3** stores |
 | `auth/` | **Person** |
 | `authStore` `playerProfileStore` `personalAvailabilityStore` `staticCharacterStore` `notificationStore` `apiKeyStore` `collectionIntentStore` | **Person** stores |
-| `layout/` `dnd/` `docs/` | **Shell** |
+| `dnd/` `docs/` | **Shell** |
 | `dragStore` `settingsPanelStore` `toastStore` `viewAsStore` | **Shell** stores |
 | `primitives/` `ui/` | **shared** |
 
-*`dashboard/` is also edge-count-clean (0 outward edges) but is listed in §4.3 — old-IA, not a ratchet candidate.*
+*`dashboard/` (§4.3) is old-IA, not a ratchet candidate; has 1 grandfathered outward edge (MyStaticsPanel → wizard). `history/` (§4.2) has 2 ring0→admin edges and `layout/` (§4.2) has 7 shell→outer edges — neither is a ratchet candidate.*
 
 #### §4.1.1 `lodestoneStore` — cross-cutting integration seam
 
@@ -133,6 +135,23 @@ Aggregates Ring-0 priority panels (`priority/ModeSelector`, `priority/RoleBasedE
 
 Structurally equivalent to `settings/` (a Person-layer surface pulling in ring content). All 5 are suppressible and will be re-homed at F6.
 
+#### `layout/` — Shell primary, **7 outward edges** (shell → outer)
+
+`layout/` wires the application shell — header, navigation rail, global settings panel, settings dock toggle, settings panel controller, and sidebar nav. Six files import from tiers outer than shell (auth, settings, static-group, admin):
+
+- `GlobalSettingsPanel.tsx` — 1 edge
+- `Header.tsx` — 2 edges
+- `Layout.tsx` — 1 edge
+- `SettingsDockToggle.tsx` — 1 edge
+- `SettingsPanelController.tsx` — 1 edge
+- `SidebarNav.tsx` — 1 edge
+
+These are genuine shell→outer violations: the shell wires auth/settings/static-switching directly rather than through page-level orchestration. All 7 are grandfathered in `frontend/eslint-suppressions.json`. The coupling lifts to page-level at F6 when the navigation rail is rebuilt.
+
+#### `history/AllWeeksView.tsx` — Ring 0, **2 outward edges** (ring0 → admin)
+
+`history/AllWeeksView.tsx` imports `admin/SortableHeader` and `admin/sortUtils`. These are `ring0 → admin` violations — `admin/` is a **disallowed import target** for product-ring code (see §1.1). Both edges are grandfathered in `frontend/eslint-suppressions.json`.
+
 ### §4.3 Legacy / Transitional — old-IA; frozen, never ratcheted, deleted at F6
 
 Baselined as-is. **Still fail-on-new** — frozen does not mean open. Never ratcheted to `error` because there is no point tightening a dir slated for deletion.
@@ -140,7 +159,7 @@ Baselined as-is. **Still fail-on-new** — frozen does not mean open. Never ratc
 | Domain | Primary tag | Outward edges | Notes |
 |---|---|---|---|
 | `group/` | Ring 0 | 1 | `GoalsPage` → `collections/CollectionsHub`; contains `MorePage` (slated for deletion per `PRODUCT_MODEL.md §5`), `GoalsPage`, `PluginPage`, `GearSyncDashboard` |
-| `dashboard/` | Person | 0 | `MyStaticsPanel` — edge-count-clean but old-IA "my statics" surface; removed at F6 |
+| `dashboard/` | Person | 1 | `MyStaticsPanel` → `wizard/` (Ring 0); old-IA "my statics" surface; removed at F6 |
 
 `admin/` is **not** legacy. It is a permanent platform-ops surface handled as its own lint element (§1.1), outside the ring graph.
 
@@ -208,7 +227,7 @@ Store-boundary rules land at `error` because the tree is already clean (after th
 
 ### §6.2 How debt is managed
 
-Existing grandfathered cross-ring violations are captured in `frontend/eslint-suppressions.json` (ESLint 9 native bulk suppressions). The baseline freezes the mess at its current size.
+Existing grandfathered cross-ring violations are captured in `frontend/eslint-suppressions.json` (ESLint 9 native bulk suppressions). The F4 baseline contains **28 grandfathered edges across 17 files** — contributors: `settings/` (12), `profile/` (5), `layout/` (7, shell→outer), `history/AllWeeksView` (2, ring0→admin), `dashboard/MyStaticsPanel` (1, person→ring0), `group/GoalsPage` (1, ring0→ring3). `frontend/eslint-suppressions.json` is the authoritative live source; it supersedes any counts cited in design docs. The baseline freezes the mess at its current size.
 
 **Fail-on-new is mandatory**, including for the mixed dirs (`settings/`, `profile/`, `static-group/`). Adding a new outward import into any dir — even one already in the baseline — **fails immediately**. The baseline licenses existing debt, not new debt. Without this constraint, "it's already mixed" would turn the spanner dirs into dumping grounds for the entire F4→F6 window.
 
