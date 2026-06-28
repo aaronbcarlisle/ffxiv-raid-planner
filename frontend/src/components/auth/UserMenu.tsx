@@ -9,7 +9,8 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
-import { getSyntheticUnreadCount } from '../../lib/syntheticNotifications';
+import { useSyntheticUnreadCount } from '../../lib/syntheticNotifications';
+import { XivIcon } from '../ui/XivIcon';
 import { NotificationCenter } from './NotificationCenter';
 import {
   Dropdown,
@@ -29,15 +30,12 @@ import {
   Calculator,
   Code,
   Palette,
-  Sparkles,
   Wrench,
   Shield,
   Keyboard,
-  BookOpen,
   Sun,
   Moon,
   Key,
-  Swords,
   EyeOff,
   Bell,
 } from 'lucide-react';
@@ -59,7 +57,8 @@ export function UserMenu({ className = '' }: UserMenuProps) {
   const apiKeysModal = useModal();
   const notificationsModal = useModal();
   const { unreadCount, fetchNotifications } = useNotificationStore();
-  const totalBadge = unreadCount + getSyntheticUnreadCount();
+  const syntheticUnread = useSyntheticUnreadCount();
+  const totalBadge = unreadCount + syntheticUnread;
 
   useEffect(() => {
     if (user) fetchNotifications();
@@ -127,7 +126,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         </DropdownItem>
 
         <DropdownItem
-          icon={<Swords className="w-4 h-4" />}
+          icon={<XivIcon name="sword" size={16} />}
           onSelect={() => navigate('/profile')}
         >
           {t('auth.playerHub')}
@@ -154,7 +153,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             {t('auth.documentation')}
           </DropdownSubTrigger>
           <DropdownSubContent>
-            <DropdownItem icon={<BookOpen className="w-4 h-4" />} href="/docs">
+            <DropdownItem icon={<XivIcon name="tomestone" size={16} />} href="/docs">
               {t('auth.allDocumentation')}
             </DropdownItem>
             <DropdownSeparator />
@@ -177,7 +176,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             <DropdownItem icon={<Palette className="w-4 h-4" />} href="/docs/design-system">
               {t('auth.designSystem')}
             </DropdownItem>
-            <DropdownItem icon={<Sparkles className="w-4 h-4" />} href="/docs/release-notes">
+            <DropdownItem icon={<XivIcon name="crystal" size={16} />} href="/docs/release-notes">
               {t('auth.releaseNotes')}
             </DropdownItem>
             <DropdownItem icon={<Wrench className="w-4 h-4" />} href="/docs/roadmap">

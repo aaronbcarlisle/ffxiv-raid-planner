@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useUrlTabState, clearRegisteredTabParams } from '../hooks/useUrlTabState';
+import { prefRememberSubTabs } from '../lib/navPreferences';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight,
-  Crosshair, Eye, LayoutDashboard, PlugZap, Shield, Sparkles, User, Users,
+  PlugZap, User, Users,
 } from 'lucide-react';
+import { XivIcon } from '../components/ui/XivIcon';
+import type { XivIconKey } from '../utils/xivIcons';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
 import {
@@ -59,19 +63,21 @@ const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
 };
 
 // ── Profile sidebar nav ────────────────────────────────────────────────────
+const COLL_SUB_TABS = ['goals', 'priorities', 'browse'] as const;
+
 const PROFILE_NAV_ITEMS: Array<{
   id: ProfileTab;
   labelKey: string;
   description: string;
   shortcut: string;
-  icon: React.FC<{ size?: number; className?: string }>;
+  icon: XivIconKey;
 }> = [
-  { id: 'overview',     labelKey: 'profile.tabOverview',    description: 'Character overview, goals, and quick actions',              shortcut: '`', icon: LayoutDashboard },
-  { id: 'sync',         labelKey: 'profile.tabSync',        description: 'Plugin sync status and character gear snapshots',           shortcut: '1', icon: Shield },
-  { id: 'jobs-gear',    labelKey: 'profile.tabJobsGear',    description: 'Job profiles, BiS targets, and readiness status',          shortcut: '2', icon: Crosshair },
-  { id: 'collections',  labelKey: 'profile.tabCollections', description: 'Mounts, music, weapons, collection goals, and tasks',      shortcut: '3', icon: Sparkles },
-  { id: 'availability', labelKey: 'profile.tabAvail',       description: 'Your weekly availability for raid nights',                 shortcut: '4', icon: Calendar },
-  { id: 'preview',      labelKey: 'profile.tabShare',       description: 'Preview and manage your shareable profile',                shortcut: '5', icon: Eye },
+  { id: 'overview',     labelKey: 'profile.tabOverview',    description: 'Character overview, goals, and quick actions',           shortcut: '`', icon: 'stats' },
+  { id: 'sync',         labelKey: 'profile.tabSync',        description: 'Plugin sync status and character gear snapshots',        shortcut: '1', icon: 'history' },
+  { id: 'jobs-gear',    labelKey: 'profile.tabJobsGear',    description: 'Job profiles, BiS targets, and readiness status',       shortcut: '2', icon: 'loot' },
+  { id: 'collections',  labelKey: 'profile.tabCollections', description: 'Mounts, music, weapons, collection goals, and tasks',   shortcut: '3', icon: 'goals' },
+  { id: 'availability', labelKey: 'profile.tabAvail',       description: 'Your weekly availability for raid nights',              shortcut: '4', icon: 'schedule' },
+  { id: 'preview',      labelKey: 'profile.tabShare',       description: 'Preview and manage your shareable profile',             shortcut: '5', icon: 'handshake' },
 ];
 
 const PROFILE_SIDEBAR_KEY = 'profile-sidebar-collapsed';
@@ -182,7 +188,6 @@ function ProfileSidebarNav({
       <LayoutGroup id="sidebar-profile-nav">
         <div className="flex flex-col py-2 flex-1">
           {PROFILE_NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <div key={item.id}>
@@ -237,7 +242,7 @@ function ProfileSidebarNav({
                         transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                       />
                     )}
-                    <Icon size={15} className="flex-shrink-0 relative z-10" />
+                    <XivIcon name={item.icon} size={15} className={`flex-shrink-0 relative z-10 transition-opacity ${isActive ? 'opacity-100' : 'opacity-45'}`} />
                     {!collapsed && (
                       <span className="leading-none relative z-10 whitespace-nowrap">{t(item.labelKey)}</span>
                     )}
@@ -374,18 +379,23 @@ export default function Profile() {
   const { groups, fetchGroups } = useStaticGroupStore();
   const { fetchTargets } = useSharedBisStore();
   const { isSmallScreen } = useDevice();
-  const [activeTab, setActiveTab] = useState<ProfileTab>(() => parseProfileTab(location.search));
-  const [collSubTab, setCollSubTab] = useState<'goals' | 'priorities' | 'browse'>('goals');
+  const [, setSearchParams] = useSearchParams();
+  const activeTab = parseProfileTab(location.search);
+  const setActiveTab = useCallback((tab: ProfileTab) => {
+    const resetSubTabs = !prefRememberSubTabs(useAuthStore.getState().user);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (tab === 'overview') params.delete('tab');
+      else params.set('tab', tab);
+      if (resetSubTabs) clearRegisteredTabParams(params);
+      return params;
+    });
+  }, [setSearchParams]);
+  const [collSubTab, setCollSubTab] = useUrlTabState('coll', COLL_SUB_TABS, 'goals');
   const linkModal = useModal();
   const addJobModal = useModal();
   const [editingJob, setEditingJob] = useState<PlayerJobProfile | null>(null);
   const [managingBisJobId, setManagingBisJobId] = useState<{ id: string; job: string } | null>(null);
-
-  useEffect(() => {
-    const nextTab = parseProfileTab(location.search);
-    const frameId = requestAnimationFrame(() => setActiveTab(nextTab));
-    return () => cancelAnimationFrame(frameId);
-  }, [location.search]);
 
   // Swipe to change tabs — native listeners on the page container
   const activeTabRef = useRef(activeTab);

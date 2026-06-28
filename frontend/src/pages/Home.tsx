@@ -8,7 +8,8 @@ import { useDevice } from '../hooks/useDevice';
 import { LoginButton } from '../components/auth';
 import { Input, Spinner } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
-import { BookOpen, Users, Calculator, Sparkles, Swords, BarChart3, Layers, Globe } from 'lucide-react';
+import { BookOpen, Users, Calculator, Sparkles, BarChart3, Layers, Globe } from 'lucide-react';
+import { XivIcon } from '../components/ui/XivIcon';
 import { staggerContainer, staggerItem, instantVariants } from '../lib/motion';
 import type { MemberRole } from '../types';
 
@@ -166,7 +167,7 @@ export function Home() {
                 to="/profile"
                 className="inline-flex items-center gap-2 px-6 py-4 text-lg rounded-lg font-medium border border-accent/30 text-accent hover:bg-accent/10 transition-colors"
               >
-                <Swords className="w-5 h-5" />
+                <XivIcon name="sword" size={20} />
                 {t('home.ctaPlayerHub')}
               </Link>
             </div>
@@ -306,7 +307,7 @@ export function Home() {
           <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto stagger-children">
             <div className="card-interactive p-6">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-3">
-                <Swords className="w-5 h-5 text-accent" />
+                <XivIcon name="sword" size={20} />
               </div>
               <h3 className="font-display text-lg text-accent mb-2">{t('home.featureGearTrackingTitle')}</h3>
               <p className="text-text-secondary text-sm">
