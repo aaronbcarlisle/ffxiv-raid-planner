@@ -13,13 +13,13 @@ import {
   Scissors,
   Shield,
   Sparkles,
-  Swords,
   Target,
   Trophy,
   Users,
   Check,
   Trash2,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { useAuthStore } from '../../stores/authStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
@@ -377,7 +377,7 @@ function NotificationsModule({
     if (diffH >= 0 && diffH <= 48) {
       return {
         id: 'session',
-        icon: <Calendar className="w-3.5 h-3.5" />,
+        icon: <XivIcon name="schedule" size={14} />,
         title: nextSession.contentName ? `Raid: ${nextSession.contentName}` : 'Raid session upcoming',
         sub: sessionCountdown(nextSession.startTime),
         time: new Date(nextSession.startTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }),
@@ -462,13 +462,13 @@ function NextRaidModule({
   const { t } = useTranslation();
   return (
     <div>
-      <SectionLabel icon={<Swords className="w-3 h-3" />}>{t('overview.nextRaid')}</SectionLabel>
+      <SectionLabel icon={<XivIcon name="sword" size={12} />}>{t('overview.nextRaid')}</SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {loading ? (
           <div className="p-3 h-24 animate-pulse bg-surface-elevated/30" />
         ) : !session ? (
           <div className="px-3 py-5 text-center">
-            <Calendar className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
+            <XivIcon name="schedule" size={20} className="mx-auto mb-1.5 opacity-40" />
             <p className="text-xs font-medium text-text-secondary mb-0.5">{t('overview.noSessionsScheduled')}</p>
             <p className="text-[11px] text-text-muted mb-2.5">{t('overview.noSessionsDesc')}</p>
             <button
@@ -685,12 +685,12 @@ function CommandBriefModule({
       ? [{ key: 'pending', label: t('overview.applicationsPending', { count: pendingCount }), icon: <Mail className="w-3 h-3" />, accent: true, onClick: onReviewRequest ?? (() => onNavigate('roster')) }]
       : []),
     ...(nextSession
-      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, icon: <Swords className="w-3 h-3" />, accent: false, onClick: () => onNavigate('schedule') }]
-      : [{ key: 'noraid', label: t('overview.noRaidScheduled'), icon: <Calendar className="w-3 h-3" />, accent: false, warn: true, onClick: () => onNavigate('schedule') }]),
+      ? [{ key: 'raid', label: `Next raid ${sessionCountdown(nextSession.startTime)}`, icon: <XivIcon name="sword" size={12} />, accent: false, onClick: () => onNavigate('schedule') }]
+      : [{ key: 'noraid', label: t('overview.noRaidScheduled'), icon: <XivIcon name="schedule" size={12} />, accent: false, warn: true, onClick: () => onNavigate('schedule') }]),
     {
       key: 'roster',
       label: t('overview.playersConfigured', { count: configuredCount }),
-      icon: <Users className="w-3 h-3" />,
+      icon: <XivIcon name="party" size={12} />,
       accent: false,
       warn: configuredCount < 8,
       onClick: () => onNavigate('roster'),
@@ -1006,7 +1006,7 @@ function GroupHeroPanel({
         </>
       ) : (
         <div className="px-4 py-6 text-center">
-          <Users className="w-7 h-7 text-text-muted opacity-25 mx-auto mb-2.5" />
+          <XivIcon name="party" size={28} className="opacity-25 mx-auto mb-2.5" />
           <p className="text-sm font-semibold text-text-secondary mb-1">{t('overview.rosterNotConfigured')}</p>
           <p className="text-xs text-text-muted mb-3">
             {t('overview.rosterNotConfiguredDesc')}
@@ -1038,13 +1038,13 @@ function RosterPresenceModule({
 
   return (
     <div>
-      <SectionLabel icon={<Users className="w-3 h-3" />} count={`${active.length}/8`}>
+      <SectionLabel icon={<XivIcon name="party" size={12} />} count={`${active.length}/8`}>
         Static Roster
       </SectionLabel>
       <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
         {active.length === 0 ? (
           <div className="px-3 py-5 text-center">
-            <Users className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
+            <XivIcon name="party" size={20} className="mx-auto mb-1.5 opacity-40" />
             <p className="text-xs font-medium text-text-secondary mb-0.5">{t('overview.rosterNotConfigured')}</p>
             <p className="text-[11px] text-text-muted mb-2.5">Add 8 players to start tracking progress</p>
             <button

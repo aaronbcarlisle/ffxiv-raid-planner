@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ArrowRight, CalendarDays, ChevronDown, Lock, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronDown, Lock } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import {
@@ -51,7 +52,7 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-              <CalendarDays className="h-3.5 w-3.5" />
+              <XivIcon name="schedule" size={14} />
               {t('profile.availability.personalDefault')}
             </div>
             <h2 className="font-display text-xl font-semibold text-text-primary">{t('profile.availability.typicalAvailability')}</h2>
@@ -83,7 +84,7 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
             <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
-              <Sparkles className="h-3.5 w-3.5" />
+              <XivIcon name="crystal" size={14} />
               {t('profile.availability.usedByScheduleQuickFill')}
             </div>
             <p className="mt-1 text-xs text-text-tertiary">{t('profile.availability.fillsEmptyThisWeek')}</p>
@@ -114,7 +115,7 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
                 {staticGroups.map((group, index) => (
                   <div key={group.id}>
                     {index > 0 && <DropdownSeparator />}
-                    <DropdownItem href={`/group/${group.shareCode}?tab=schedule`} icon={<CalendarDays className="h-4 w-4" />}>
+                    <DropdownItem href={`/group/${group.shareCode}?tab=schedule`} icon={<XivIcon name="schedule" size={16} />}>
                       <span className="min-w-0 truncate">{group.name}</span>
                     </DropdownItem>
                   </div>

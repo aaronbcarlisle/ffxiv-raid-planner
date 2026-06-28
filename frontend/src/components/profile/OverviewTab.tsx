@@ -5,16 +5,14 @@ import { motion } from 'framer-motion';
 import {
   ArrowRight,
   Briefcase,
-  Calendar,
   ChevronDown,
-  ClipboardCheck,
   Crosshair,
-  Eye,
   ShieldCheck,
   Sparkles,
   Target,
   Users,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import { JobIcon } from '../ui/JobIcon';
@@ -309,14 +307,14 @@ export function OverviewTab({
             value={latestSnapshot ? `iLv ${latestSnapshot.avgItemLevel}` : 'Missing'}
             detail={latestSnapshot ? syncHealthLabel : t('profile.overview.syncNeeded')}
             to="/profile?tab=sync"
-            icon={<Briefcase className="h-3.5 w-3.5" />}
+            icon={<XivIcon name="loot" size={14} />}
           />
           <CommandChip
             label={t('profile.overview.availability')}
             value={availabilitySummary}
             detail={availabilityDayLabels || availabilityTimezone}
             to="/profile?tab=availability"
-            icon={<Calendar className="h-3.5 w-3.5" />}
+            icon={<XivIcon name="schedule" size={14} />}
             highlight={focusAvailability || availabilityDayCount === 0}
           />
           <CommandChip
@@ -324,21 +322,21 @@ export function OverviewTab({
             value={shareConfigured ? t('profile.overview.shareable') : t('profile.overview.private')}
             detail={profile.visibility}
             to="/profile?tab=share"
-            icon={<Eye className="h-3.5 w-3.5" />}
+            icon={<XivIcon name="handshake" size={14} />}
           />
           <CommandChip
             label={t('profile.overview.collections')}
             value={farmingCollectionCount > 0 ? `${farmingCollectionCount} farming` : 'None tracked'}
             detail={`${readyToBuySuggestionCount} ready to buy`}
             to="/profile?tab=collections"
-            icon={<Sparkles className="h-3.5 w-3.5" />}
+            icon={<XivIcon name="goals" size={14} />}
           />
           <CommandChip
             label="Static"
             value={staticSummary}
             detail={staticDetail}
             to={staticLink}
-            icon={<Users className="h-3.5 w-3.5" />}
+            icon={<XivIcon name="party" size={14} />}
           />
         </div>
         </div>
@@ -398,7 +396,7 @@ export function OverviewTab({
             <div className="mt-3 space-y-2 border-t border-border-subtle pt-3">
               <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <Briefcase className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
+                  <XivIcon name="loot" size={14} className="flex-shrink-0" />
                       <span className="truncate text-sm text-text-secondary">{t('profile.overview.gear')}</span>
                 </div>
                 {/* design-system-ignore: Compact row action inside unified Next Actions panel */}
@@ -412,7 +410,7 @@ export function OverviewTab({
               </div>
               <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <Eye className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
+                  <XivIcon name="handshake" size={14} className="flex-shrink-0" />
                   <span className="truncate text-sm text-text-secondary">{t('profile.overview.sharing')}</span>
                 </div>
                 <Link to="/profile?tab=share" className="text-xs font-medium text-accent hover:text-accent-hover">
@@ -421,7 +419,7 @@ export function OverviewTab({
               </div>
               <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-elevated/60 px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <ClipboardCheck className="h-3.5 w-3.5 flex-shrink-0 text-accent" />
+                  <XivIcon name="party" size={14} className="flex-shrink-0" />
                   <span className="truncate text-sm text-text-secondary">
                     {staticSuggestions.length > 0 ? t('profile.overview.staticsLookingForYou') : 'Static Finder'}
                   </span>
