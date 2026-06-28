@@ -9,7 +9,9 @@
 
 /* eslint-disable design-system/no-raw-button */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useTranslation } from 'react-i18next';
 import { Settings, ListOrdered, Users, Globe, Target, Plus, Trash2 } from 'lucide-react';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
@@ -58,6 +60,8 @@ const GOALS_SECTIONS: { id: GoalsSection; label: string }[] = [
   { id: 'farms',       label: 'Farms' },
   { id: 'suggestions', label: 'Suggestions' },
 ];
+
+const GOALS_SECTION_VALUES = GOALS_SECTIONS.map(s => s.id) as readonly GoalsSection[];
 
 function GoalsSubNav({ active, onChange }: { active: GoalsSection; onChange: (s: GoalsSection) => void }) {
   return (

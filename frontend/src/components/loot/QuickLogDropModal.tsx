@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Package } from 'lucide-react';
 import { Modal, Select, Checkbox, Label, NumberInput } from '../ui';
 import { Button } from '../primitives';
@@ -52,6 +53,7 @@ export function QuickLogDropModal({
   currentWeek = 1,
   onSuccess,
 }: QuickLogDropModalProps) {
+  const { t } = useTranslation();
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
   const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [updateGear, setUpdateGear] = useState(true);

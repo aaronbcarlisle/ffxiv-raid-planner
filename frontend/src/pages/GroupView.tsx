@@ -41,7 +41,7 @@ import { GoalsPage } from '../components/group/GoalsPage';
 import { GearSyncDashboard, PLUGIN_GUIDE_EVENT } from '../components/group/GearSyncDashboard';
 import { useDevice } from '../hooks/useDevice';
 import { useSwipe } from '../hooks/useSwipe';
-import { AlertTriangle, Copy, Check, LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, Lock, Unlock } from 'lucide-react';
+import { AlertTriangle, Copy, Check, LayoutDashboard, Shield, MoreHorizontal, Lock, Unlock } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
 import { RolloverDialog, CreateTierModal, DeleteTierModal, TierSelector, JoinRequestBanner } from '../components/static-group';
 import { StaticHomeTab } from '../components/static-group/StaticHomeTab';
@@ -1159,9 +1159,7 @@ export function GroupView() {
                 <StaticHomeTab
                   group={currentGroup}
                   tier={currentTier}
-                  onNavigate={(tab, subTab) =>
-                    setPageMode(tab, tab === 'goals' && subTab ? { goal: subTab } : undefined)
-                  }
+                  onNavigate={(tab) => setPageMode(tab)}
                   canManage={canManageRoster(userRole).allowed}
                   onOpenRequests={() => {
                     setSettingsTab('recruitment');

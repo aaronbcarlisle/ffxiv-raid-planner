@@ -225,6 +225,9 @@ export function Header() {
                 />
               </div>
 
+            </>
+          )}
+
           {/* Breadcrumb separator and Tier selector - group routes only, hidden on mobile */}
           {isGroupRoute && currentGroup && tiers.length > 0 && (
             <div className="hidden sm:flex items-center gap-1">
@@ -240,7 +243,6 @@ export function Header() {
               )}
             </div>
           )}
-
         </div>
 
         {/* Center: Tips carousel (hidden on mobile, shown on group pages) */}

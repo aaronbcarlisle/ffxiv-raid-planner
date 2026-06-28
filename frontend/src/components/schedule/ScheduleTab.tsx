@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useUrlTabState } from '../../hooks/useUrlTabState';
-import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, CheckCircle, Copy, ExternalLink, LayoutGrid, List, Link2, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Trash2, Unlink } from 'lucide-react';
-import { XivIcon } from '../ui/XivIcon';
+import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, CheckCircle, Copy, ExternalLink, LayoutGrid, List, Link2, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Sparkles, Trash2, Unlink } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
 import { canManageRoster } from '../../utils/permissions';
