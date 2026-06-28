@@ -24,8 +24,8 @@ const ROOT = resolve(__dirname, '..');
 
 // ─── Token ID → CSS variable name ────────────────────────────────────────────
 // Maps DTCG token paths (dot-separated) to the exact CSS variable names the
-// baseline requires. Any token path NOT in this map is skipped; orphan
-// categories (shadows, durations, gradients, etc.) are added in later tasks.
+// baseline requires. Any token path NOT in this map is skipped (it produces
+// no CSS var). To add a category, extend this map per the header guide above.
 export const ID_TO_CSS_VAR = {
   // Surface
   'semantic.color.surface.base':        '--color-surface-base',

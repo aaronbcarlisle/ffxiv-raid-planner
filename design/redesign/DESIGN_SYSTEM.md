@@ -46,9 +46,9 @@ Tokens live in `tokens.json` in three tiers. **The rule: each tier may only refe
 
 **Why this matters concretely:**
 - *Rebrand* (teal → another hue) = change `primitive.color.teal.*` once; everything downstream follows.
-- *Re-theme* (dark → light, or a future high-contrast mode) = override the **semantic** tier only. `tokens.light.json` does exactly this.
+- *Re-theme* (dark → light, or a future high-contrast mode) = override the **semantic** tier (plus a few select **component** tokens that have no semantic home, e.g. `nav.rail-bg`, `toggle.orb`). `tokens.light.json` does exactly this.
 - *Retune one component* = change its `component.*` tokens without touching anything global.
-- *Tailwind/CSS/Figma never drift* because they're all generated from the one file (`generate_css.py` is the reference generator; a Style-Dictionary config can replace it in CI).
+- *Tailwind/CSS never drift* because they're generated from the token files by `frontend/scripts/build-tokens.mjs`, and a CI guard (`pnpm tokens:check`) fails the build if the committed `tokens.generated.css` diverges from the source.
 
 **Governance:** raw hex/px in component code is a lint error (see §6). Components consume `--component-*` or `--semantic-*` vars, never primitives directly, never literals.
 
