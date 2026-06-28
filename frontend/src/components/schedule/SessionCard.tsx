@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, Swords, RotateCcw, Users, Gamepad2, MoreHorizontal, CalendarDays } from 'lucide-react';
+import { Clock, Check, MapPin, Repeat, Edit2, Trash2, Share2, MessageSquare, CheckCircle, XCircle, HelpCircle, Mountain, RotateCcw, Users, Gamepad2, MoreHorizontal, CalendarDays } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button, IconButton, Tooltip } from '../primitives';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { Modal } from '../ui/Modal';
@@ -64,14 +65,14 @@ function formatDuration(minutes: number): string {
   return `${h}h ${m}m`;
 }
 
-const CATEGORY_CONFIG: Record<EventCategory, { icon: typeof Swords; labelKey: string; color: string }> = {
-  raid: { icon: Swords, labelKey: 'session.categoryRaid', color: 'bg-red-400/20 text-red-300' },
-  ultimate: { icon: Swords, labelKey: 'session.categoryUltimate', color: 'bg-blue-400/20 text-blue-300' },
-  farm: { icon: Mountain, labelKey: 'session.categoryFarm', color: 'bg-amber-400/20 text-amber-300' },
-  reclear: { icon: RotateCcw, labelKey: 'session.categoryReclear', color: 'bg-blue-400/20 text-blue-300' },
-  prog: { icon: Gamepad2, labelKey: 'session.categoryProg', color: 'bg-purple-400/20 text-purple-300' },
-  social: { icon: Users, labelKey: 'session.categorySocial', color: 'bg-green-400/20 text-green-300' },
-  other: { icon: MoreHorizontal, labelKey: 'session.categoryOther', color: 'bg-surface-elevated text-text-secondary' },
+const CATEGORY_CONFIG: Record<EventCategory, { icon: React.ReactNode; labelKey: string; color: string }> = {
+  raid: { icon: <XivIcon name="sword" size={12} />, labelKey: 'session.categoryRaid', color: 'bg-red-400/20 text-red-300' },
+  ultimate: { icon: <XivIcon name="sword" size={12} />, labelKey: 'session.categoryUltimate', color: 'bg-blue-400/20 text-blue-300' },
+  farm: { icon: <Mountain className="w-3 h-3" />, labelKey: 'session.categoryFarm', color: 'bg-amber-400/20 text-amber-300' },
+  reclear: { icon: <RotateCcw className="w-3 h-3" />, labelKey: 'session.categoryReclear', color: 'bg-blue-400/20 text-blue-300' },
+  prog: { icon: <Gamepad2 className="w-3 h-3" />, labelKey: 'session.categoryProg', color: 'bg-purple-400/20 text-purple-300' },
+  social: { icon: <Users className="w-3 h-3" />, labelKey: 'session.categorySocial', color: 'bg-green-400/20 text-green-300' },
+  other: { icon: <MoreHorizontal className="w-3 h-3" />, labelKey: 'session.categoryOther', color: 'bg-surface-elevated text-text-secondary' },
 };
 
 const RSVP_CONFIG: Record<RsvpStatus, { icon: typeof CheckCircle; labelKey: string; shortLabelKey: string; activeClass: string }> = {
@@ -83,10 +84,9 @@ const RSVP_CONFIG: Record<RsvpStatus, { icon: typeof CheckCircle; labelKey: stri
 function CategoryBadge({ category }: { category: EventCategory }) {
   const { t } = useTranslation();
   const config = CATEGORY_CONFIG[category];
-  const Icon = config.icon;
   return (
     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${config.color}`}>
-      <Icon className="w-3 h-3" />
+      {config.icon}
       {t(config.labelKey)}
     </span>
   );
