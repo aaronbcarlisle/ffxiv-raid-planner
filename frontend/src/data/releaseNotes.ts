@@ -236,6 +236,8 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Tokenize the theme',
         description: 'Generate the app @theme from tokens.json with a CI drift guard; no visual change.',
+        pr: 155,
+        prTitle: 'feat(tokens): F1 token pipeline — generated @theme, CI drift guard, PageContainer rail tiers',
       },
     ],
   },
