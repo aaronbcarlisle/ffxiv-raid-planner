@@ -221,9 +221,10 @@ The layer/ring taxonomy above is **machine-checked** by `frontend/eslint.config.
 |---|---|---|
 | Store must not import another store | `error` | All stores; one documented allowlist entry: `viewAsStore` → `authStore` (§3.1) |
 | Store must not import a component | `error` | All stores; two `import type`-only violations resolved at F4 by moving the 3 types to `src/types/` |
-| Ring-inward-only (cardinal rule) | `warn` + fail-on-new | All ring/layer elements except `admin` |
+| Ring-inward-only (cardinal rule) | `error` + per-file net-new | All ring/layer elements except `admin` |
+| `@` alias forbidden in `components/`/`stores/` for cross-ring imports | `error` | `src/components/**` and `src/stores/**` only; `src/pages/**` exempt. Relative paths required so `eslint-plugin-boundaries` can resolve and check every cross-ring edge (`no-restricted-imports`). |
 
-Store-boundary rules land at `error` because the tree is already clean (after the §6.2 type tidy). The ring-inward rule lands at `warn` because the tree has baselined outward edges in the mixed and legacy tiers.
+Store-boundary rules land at `error` because the tree is already clean (after the §6.2 type tidy). The ring-inward rule is at `error`; existing violations are baselined in `frontend/eslint-suppressions.json` (suppressed at lint time so the tree stays green). New violations — not in the baseline — fail CI immediately. "Per-file net-new" means: any import into a clean (count-0) file fails; any increase to a suppressed file's violation count fails; an in-place swap that leaves a dirty file's count unchanged is not caught (the 17 dirty files are all slated for F6 rebuild).
 
 ### §6.2 How debt is managed
 
@@ -234,9 +235,8 @@ Existing grandfathered cross-ring violations are captured in `frontend/eslint-su
 ### §6.3 Ratchet path
 
 As F6 rebuilds each Ring-0 screen:
-1. Its ring rule flips from `warn` to `error`.
-2. Its baseline entries are pruned with `--prune-suppressions`.
-3. The domain graduates to "ratcheted clean" and is noted in the F6 PR.
+1. Its entries are pruned from `frontend/eslint-suppressions.json` with `--prune-suppressions` (the rule is already at `error` — the severity does not change; what shrinks is the suppression set).
+2. The domain graduates to "ratcheted clean" and is noted in the F6 PR.
 
 The ratchet is per-domain and incremental — the whole tree does not need to be clean before the first domain graduates.
 

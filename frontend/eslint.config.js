@@ -229,4 +229,21 @@ export default defineConfig([
       'boundaries/dependencies': 'off',
     },
   },
+  // Ring-governed modules must import cross-domain via RELATIVE paths so
+  // eslint-plugin-boundaries can resolve and check them. The `@` alias
+  // (vite.config.ts) is not resolved by the boundaries node resolver, so an
+  // `@/components/...` import would silently bypass the ring graph. Forbid it here.
+  // src/pages/** is exempt: pages legitimately use the @ alias and are outside
+  // the ring graph (no from-rule applies to them as importers).
+  {
+    files: ['src/components/**/*.{ts,tsx}', 'src/stores/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: ['@/components/*', '@/stores/*'],
+          message: 'Within components/ and stores/, import cross-domain via a RELATIVE path (../x), not the @ alias — the boundaries lint cannot resolve @ and would skip the ring check.',
+        }],
+      }],
+    },
+  },
 ])

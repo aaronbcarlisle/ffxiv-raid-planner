@@ -76,7 +76,7 @@ All routers verified against `backend/app/routers/` (27 modules, excluding `__in
 
 ### Model Classification
 
-All models verified against `backend/app/models/` (35 model files, excluding `__init__.py`). Applying the same deciding test: "if leaving a static erases it → Static-layer; if it survives → Person-layer."
+All models verified against `backend/app/models/` (36 model files, excluding `__init__.py`). Applying the same deciding test: "if leaving a static erases it → Static-layer; if it survives → Person-layer."
 
 #### Person-layer models
 
@@ -127,6 +127,12 @@ All models verified against `backend/app/models/` (35 model files, excluding `__
 | `AnalyticsEvent` / `AnalyticsError` / `DailyActiveUsers` | `analytics.py` | Platform-level usage and error tracking; serves the operator, not users or statics. |
 | `ActivityLog` | `activity_log.py` | Audit / activity log across the platform. |
 | `CollectionCatalogItem` | `collection_catalog_item.py` | Global, admin-seeded catalog of collectible items (mounts, minions, etc.); read-only reference data shared across all users. |
+
+#### Dual-owned models
+
+| Model | File | Why Dual-owned |
+|---|---|---|
+| `BiSTargetSet` | `bis_target_set.py` | `owner_type`/`owner_id` indirection — Person-layer when `owner_type='player_job_profile'`, Static-layer when `owner_type='roster_member_job'` or `'static_tier_job'`. See [Dual-owned Cases → BiSTargetSet](#bisTargetSet--player-hub-vs-roster-slot) below. |
 
 ---
 
