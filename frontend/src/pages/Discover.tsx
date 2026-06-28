@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Search, Users, Clock, MapPin, Swords, Globe,
+  Search, Users, Clock, MapPin, Globe,
   Filter, X, ChevronDown, ChevronUp, Copy, Check, Info, MessageCircle, ExternalLink,
   Send, LogIn,
 } from 'lucide-react';
@@ -20,6 +20,7 @@ import { authRequest } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuthStore } from '../stores/authStore';
 import { useJoinRequestStore } from '../stores/joinRequestStore';
+import { XivIcon } from '../components/ui/XivIcon';
 import { JoinRequestModal } from '../components/static-group/JoinRequestModal';
 import { useModal } from '../hooks/useModal';
 import {
@@ -640,7 +641,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
           <div className="mb-2.5">
             <p className="text-text-muted text-[10px] mb-1 font-medium uppercase tracking-widest opacity-60">{t('discover.raidNights')}</p>
             <div className="flex items-center gap-1.5 text-text-secondary text-xs flex-wrap">
-              <Swords className="w-3.5 h-3.5 flex-shrink-0 text-text-muted" />
+              <XivIcon name="sword" size={14} className="flex-shrink-0" />
               <span>
                 {item.scheduleDays!.map(shortDay).join(', ')}
                 {item.scheduleStartTime && ` ${item.scheduleStartTime}`}
