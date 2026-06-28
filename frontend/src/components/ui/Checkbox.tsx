@@ -35,6 +35,7 @@ export function Checkbox({ id, checked, onChange, label, description, disabled, 
   };
 
   return (
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- custom checkbox: keyboard handled by inner role="checkbox" div; label onClick prevents native checkbox double-fire
     <label
       className={`flex items-start gap-2 min-h-[44px] sm:min-h-0 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer group'} ${className}`}
       onClick={handleClick}

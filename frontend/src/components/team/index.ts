@@ -1,1 +1,0 @@
-export { TeamSummary } from './TeamSummary';

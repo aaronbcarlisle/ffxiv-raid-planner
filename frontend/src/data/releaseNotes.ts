@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.0.0';
+export const CURRENT_VERSION = '2.0.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,40 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.0.1',
+    date: '2026-06-28T00:00:00Z',
+    title: 'WCAG AA contrast fix + accessibility foundation',
+    highlights: [
+      'Light-mode accent and dark-mode muted text now meet WCAG AA contrast',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Light-mode and dark-mode contrast now meet WCAG AA',
+        description:
+          'The accent color in light mode is now darker (#0c7d71) and muted text in dark mode is lighter (#8a8a94), both meeting WCAG AA contrast ratios. Text that was previously too faint against its background is now reliably readable.',
+        pr: 158,
+        prTitle: 'F2 — Anti-regression scaffolding: CI gating, jscpd/knip, boundaries, jsx-a11y + WCAG AA contrast fix',
+        commits: [
+          { hash: '6e23f2f', message: 'fix(tokens): lift text-muted and light accent to WCAG AA contrast' },
+          { hash: '6b5a206', message: 'fix(tokens/a11y): correct accent-dim light tint hue + update GroupView skip accuracy' },
+        ],
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Anti-regression scaffolding',
+        description:
+          'jscpd duplication gate, knip dead-code baseline, import-boundary lint, jsx-a11y + axe contrast net, and a ratcheted design-system lint on the shared layer; phase PRs now run CI.',
+        pr: 158,
+        prTitle: 'F2 — Anti-regression scaffolding: CI gating, jscpd/knip, boundaries, jsx-a11y + WCAG AA contrast fix',
+        commits: [
+          { hash: '37f70b1', message: 'ci: run the suite on PRs targeting redesign/** so phase PRs are gated' },
+        ],
+      },
+    ],
+  },
   {
     version: '2.0.0',
     date: '2026-06-26T19:00:00Z',
@@ -238,6 +272,14 @@ export const RELEASES: Release[] = [
         description: 'Generate the app @theme from tokens.json with a CI drift guard; no visual change.',
         pr: 155,
         prTitle: 'feat(tokens): F1 token pipeline — generated @theme, CI drift guard, PageContainer rail tiers',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'ESLint boundary guard: shared UI layer cannot import feature/app modules',
+        description:
+          'Installed eslint-plugin-boundaries (v6) with one enforced rule: files in components/primitives/** and components/ui/** may not import from domain folders, pages/, stores/, or services/. Two pre-existing violations fixed: TabNavigation relocated to layout/ (restoring its analytics.track call), and ToastContainer relocated to layout/ since it reads directly from toastStore.',
+        commits: [{ hash: '03dd54f', message: 'lint(boundaries): shared layer (primitives/ui) cannot import features (error)' }],
       },
     ],
   },

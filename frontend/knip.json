@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "vite.config.ts",
+    "eslint.config.js",
+    "eslint-design-system-plugin.js",
+    "scripts/*.{mjs,ts}",
+    "e2e/**/*.spec.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": ["src/gamedata/**", "src/styles/tokens.generated.css"]
+}

@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'redesign/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'redesign/**']
 
 jobs:
   frontend:
@@ -54,6 +54,13 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Duplication check (jscpd)
+        run: pnpm dupes
+
+      - name: Dead-code report (knip, non-blocking)
+        continue-on-error: true
+        run: pnpm deadcode
 
   migrations:
     name: Migration Graph Check

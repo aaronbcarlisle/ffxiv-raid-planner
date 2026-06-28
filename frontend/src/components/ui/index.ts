@@ -40,13 +40,13 @@ export {
 } from './Skeleton';
 export { Spinner, SpinnerOverlay, type SpinnerSize, type SpinnerColor } from './Spinner';
 export { SortModeSelector } from './SortModeSelector';
-export { TabNavigation } from './TabNavigation';
+// TabNavigation relocated to layout/ — it imports from services/ (analytics)
 export { ThemeToggle } from './ThemeToggle';
 export { TextArea, type TextAreaProps } from './TextArea';
 export { ThreeStateCheckbox } from './ThreeStateCheckbox';
 export { TipsCarousel } from './TipsCarousel';
 export { Toast } from './Toast';
-export { ToastContainer } from './ToastContainer';
+// ToastContainer relocated to layout/ — it reads from toastStore (app layer)
 export { Tabs, type TabItem } from './Tabs';
 export { Tag, type Tone } from './Tag';
 export { LinkText, NavRow } from './LinkText';
