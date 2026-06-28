@@ -82,6 +82,11 @@
   --color-toggle-orb-on-end: #0a0a0f;
   --color-toggle-orb-off-start: #1e1e26;
   --color-toggle-orb-off-end: #121218;
+  --color-parchment-bg: #2d1e13;
+  --color-parchment-raised: #3d2a1a;
+  --color-parchment-text: #e8d9b8;
+  --color-parchment-border: #b8933a;
+  --color-seal: #8b6914;
 }
 
 [data-theme="light"] {
@@ -139,5 +144,10 @@
   --color-toggle-orb-on-end: #9ca3af;
   --color-toggle-orb-off-start: #e5e7eb;
   --color-toggle-orb-off-end: #d1d5db;
+  --color-parchment-bg: #f5ede0;
+  --color-parchment-raised: #e8d9b8;
+  --color-parchment-text: #5a4422;
+  --color-parchment-border: #b8933a;
+  --color-seal: #8b6914;
   --color-accent-bright: #0d7a6e;
 }

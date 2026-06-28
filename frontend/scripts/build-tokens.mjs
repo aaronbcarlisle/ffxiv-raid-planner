@@ -146,6 +146,13 @@ export const ID_TO_CSS_VAR = {
   'component.toggle.orb.on-end':    '--color-toggle-orb-on-end',
   'component.toggle.orb.off-start': '--color-toggle-orb-off-start',
   'component.toggle.orb.off-end':   '--color-toggle-orb-off-end',
+
+  // Parchment / seal (semantic.surface.parchment.* → --color-parchment-*, semantic.accent.seal → --color-seal)
+  'semantic.surface.parchment.bg':     '--color-parchment-bg',
+  'semantic.surface.parchment.raised': '--color-parchment-raised',
+  'semantic.surface.parchment.text':   '--color-parchment-text',
+  'semantic.surface.parchment.border': '--color-parchment-border',
+  'semantic.accent.seal':              '--color-seal',
 };
 
 // ─── DTCG alias resolver ──────────────────────────────────────────────────────

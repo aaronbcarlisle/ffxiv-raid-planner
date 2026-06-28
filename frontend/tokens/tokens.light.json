@@ -70,6 +70,19 @@
       }
     },
 
+    "surface": {
+      "parchment": {
+        "bg":     { "$type": "color", "$value": "#f5ede0" },
+        "raised": { "$type": "color", "$value": "#e8d9b8" },
+        "text":   { "$type": "color", "$value": "#5a4422" },
+        "border": { "$type": "color", "$value": "#b8933a" }
+      }
+    },
+
+    "accent": {
+      "seal": { "$type": "color", "$value": "#8b6914" }
+    },
+
     "shadow": {
       "sm":   { "$type": "shadow", "$value": "0 1px 2px rgba(0, 0, 0, 0.06)" },
       "md":   { "$type": "shadow", "$value": "0 4px 6px rgba(0, 0, 0, 0.08)" },
