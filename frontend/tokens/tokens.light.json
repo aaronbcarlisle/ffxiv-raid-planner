@@ -15,7 +15,7 @@
       "accent": {
         "default": { "$type": "color", "$value": "#0c7d71", "$description": "F2 AA-lift: darkened from #0f9688 (3.65:1 on white) to meet WCAG AA (≥4.5:1 on both #f5f5f8 and #ffffff). Hue ~174° preserved. Lighter than hover (#0d7a6e)." },
         "hover": { "$type": "color", "$value": "#0d7a6e" },
-        "dim": { "$type": "color", "$value": "rgba(15, 150, 136, 0.12)" },
+        "dim": { "$type": "color", "$value": "rgba(12, 125, 113, 0.12)", "$description": "F2 tint fix: updated from rgba(15,150,136,0.12) (old #0f9688 hue) to match new accent #0c7d71 = rgb(12,125,113). Alpha 0.12 unchanged." },
         "muted": { "$type": "color", "$value": "#0a5c58" },
         "deep": { "$type": "color", "$value": "#0773a0" },
         "on-accent": { "$type": "color", "$value": "#ffffff" }

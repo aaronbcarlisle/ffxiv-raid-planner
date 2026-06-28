@@ -30,10 +30,19 @@
  *       bg-accent/10 tinted bg (#d7e2e5) = 3.79:1 on 9.8pt normal. The tinted
  *       background is applied by the sidebar's active-state styling; F3 rebuild.
  *
- * GroupView dark/light: Scoped (§3.1 pre-existing tint/card debt):
- *   dark  — text-text-muted on player cards + keyboard-hint/60 (§3.1 debt)
- *   light — text-accent on tinted/bg-accent surfaces + §3.1 hardcoded-dark-card
- *   Both deferred to F6 GroupView rebuild.
+ * GroupView dark/light: Scoped (§3.1 pre-existing tint/card/badge debt, deferred to F6):
+ *   RESOLVED by F2 token fix: text-text-muted player-card violations (dark) and base
+ *   text-accent surface violations (light) — both now ≥ 4.5:1 on standard surfaces. ✓
+ *   REMAINING dark  — keyboard-hint/60: #57575f on #0a0a0f = 2.75:1 (12px normal);
+ *                     membership-owner badge: #14b8a6 on #104443 = 4.37:1 (10px normal);
+ *                     role position btns: #d45a5a on #361d22 = 3.99:1 (12px bold);
+ *                     text-muted@opacity on hardcoded dark-card bg: #696971 on #0c0c11 = 3.58:1
+ *   REMAINING light — text-accent (#0c7d71) on bg-accent/10 tinted surfaces: 3.42–4.07:1;
+ *                     #0f9688 (membership-owner/gear-source-tome tokens, unchanged by F2 fix)
+ *                       on tinted bg: 2.42–3.80:1;
+ *                     keyboard-hint/60: #9f9fac on #ededf2 = 2.24:1 (12px normal);
+ *                     role position btns on tinted bg: 3.40–4.00:1 (12px bold)
+ *   Both themes deferred to F6 GroupView rebuild.
  *
  * NOTE: goToTestStatic is intentionally NOT used here. It has a pre-existing
  * strict-mode violation on this branch: "Show substitutes with main roster"
@@ -91,15 +100,34 @@ for (const theme of THEMES) {
 }
 
 // ── Risk view: GroupView / Home (seeded) ──────────────────────────────────────
-// Scoped out both themes:
-//   dark  — text-text-muted on player cards + keyboard-hint/60 (§3.1 pre-existing)
-//   light — text-accent on tinted/bg-accent surfaces + §3.1 hardcoded-dark-card debt
-// Re-enable in F6 after §3.1 cards are rebuilt and token contrast is fixed.
+// Scoped out both themes — §3.1 pre-existing card/badge/tint debt; deferred to F6.
 //
+// RESOLVED by F2 token fix (these violations no longer appear):
+//   dark  — text-text-muted (#52525b→#8a8a94) on player cards: was ~2.5:1, now ≥5.5:1 ✓
+//   light — text-accent base on standard surfaces: was 3.36–3.65:1, now ≥4.5:1 ✓
+//
+// REMAINING dark (observed post-fix, 2026-06-28):
+//   (1) keyboard-hint/60: text-text-muted composited at ~60% → #57575f on #0a0a0f = 2.75:1
+//       (12px normal; opacity modifier baked into GroupView keyboard hint button)
+//   (2) membership-owner badge: #14b8a6 on #104443 = 4.37:1 (10px normal; just below AA)
+//   (3) role position buttons: text-role-melee (#d45a5a) on bg-role-melee/20 (#361d22) = 3.99:1
+//       (12px bold; role-color-on-tint pattern repeated for all positions)
+//   (4) text-muted at opacity on hardcoded dark-card bg: #696971 on #0c0c11 = 3.58:1 (14px normal)
+//
+// REMAINING light (observed post-fix, 2026-06-28):
+//   (1) text-accent (#0c7d71) on bg-accent/10 tinted surfaces: 3.42–4.07:1 (14px normal)
+//       (active tab, "Current" tier badge, invite button tints)
+//   (2) #0f9688 (membership-owner + gear-source-tome tokens, separate from accent — NOT
+//       changed by F2 fix) on tinted bg: 2.42–3.80:1 (10px normal)
+//   (3) keyboard-hint/60: text-text-muted/60 → #9f9fac on #ededf2 = 2.24:1 (12px normal)
+//   (4) role position buttons: role-tank/healer/melee on bg-role/20 tinted bg: 3.40–4.00:1
+//       (12px bold)
+//
+// Re-enable in F6 after §3.1 cards/badges are rebuilt.
 // Navigation is inline (not goToTestStatic) — see file header.
 for (const theme of THEMES) {
   test(`group view has zero contrast violations (${theme})`, async ({ page }) => {
-    test.skip(true, `GroupView ${theme}: pre-existing §3.1 token debt — deferred to F6 rebuild`)
+    test.skip(true, `GroupView ${theme}: §3.1 card/badge/tint debt — player-card text-muted RESOLVED by F2 fix; remaining: keyboard-hint/60, owner badge, role btns, text-muted@opacity on dark cards — deferred to F6 rebuild`)
     await forceTheme(page, theme)
     await loginAsOwner(page)
     await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}`)
