@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trophy, Sparkles, Calendar, Plug, Info, User, Users, Filter, Activity, X, ExternalLink } from 'lucide-react';
+import { Plug, Info, User, Filter, Activity, X, ExternalLink } from 'lucide-react';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { XivIcon } from '../ui/XivIcon';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import type { MountFarmData, TrialSummary } from '../../stores/mountFarmStore';
 import { EXPANSIONS, getTrialsByExpansion, getAllTrialIds, getTrialById, getCurrencyLabelPlural, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
@@ -11,7 +13,8 @@ import { ErrorMessage } from '../ui/ErrorMessage';
 import { Button } from '../primitives/Button';
 import { Tooltip } from '../primitives/Tooltip';
 
-type ViewMode = 'group' | 'my-progress';
+const MOUNT_FARM_VIEWS = ['group', 'my-progress'] as const;
+type ViewMode = (typeof MOUNT_FARM_VIEWS)[number];
 type FilterMode = 'all' | 'needs-mount' | 'can-buy' | 'wanted' | 'complete';
 
 interface MountFarmTabProps {
@@ -58,7 +61,7 @@ function filterTrials(
 export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTabProps) {
   const { t } = useTranslation();
   const [selectedExpansion, setSelectedExpansion] = useState<Expansion>('DT');
-  const [viewMode, setViewMode] = useState<ViewMode>('group');
+  const [viewMode, setViewMode] = useUrlTabState('mf', MOUNT_FARM_VIEWS, 'group');
   const [activeFilter, setActiveFilter] = useState<FilterMode>('all');
   const { data, recommendations, isLoading, isLoadingRecs, error, fetchProgress, fetchRecommendations } = useMountFarmStore();
 
@@ -282,7 +285,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
-              <Sparkles className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+              <XivIcon name="crystal" size={20} className="flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="text-sm font-display font-semibold text-text-primary truncate">
                   {t('mountFarm.bestNextFarm', { dutyName: topRecTrial.dutyName })}
@@ -305,7 +308,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
                 variant="secondary"
                 onClick={() => onScheduleFarm(topRecTrial)}
               >
-                <Calendar className="w-4 h-4" />
+                <XivIcon name="schedule" size={16} />
                 {topRecTrial.contentType === 'ultimate' ? t('mountFarm.schedule') : t('mountFarm.scheduleFarm')}
               </Button>
             )}
@@ -324,7 +327,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
               viewMode === 'group' ? 'bg-accent/20 text-accent' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            <Users className="w-3.5 h-3.5" />
+            <XivIcon name="party" size={14} />
             {t('mountFarm.tabStatic')}
           </button>
           {/* design-system-ignore: View toggle requires specific styling */}
@@ -403,7 +406,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
 
       {/* Progress bar */}
       <div className="flex items-center gap-3">
-        <Trophy className="w-4 h-4 text-text-tertiary" />
+        <XivIcon name="goals" size={16} />
         <div className="flex-1">
           <div className="flex justify-between text-xs text-text-secondary mb-1">
             <span>{t('mountFarm.completion', { expansionName: EXPANSIONS.find(e => e.id === selectedExpansion)?.name })}</span>

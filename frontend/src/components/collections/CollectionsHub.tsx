@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trophy, BookOpen, Lightbulb } from 'lucide-react';
+import { Plus, Lightbulb } from 'lucide-react';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { RewardGoalCard } from './RewardGoalCard';
 import { RewardGoalModal } from './RewardGoalModal';
@@ -13,7 +15,8 @@ import type { CollectionGoal, ParticipantStateEntry } from '../../stores/collect
 import { toast } from '../../stores/toastStore';
 import { Skeleton } from '../ui/Skeleton';
 
-type HubTab = 'suggested' | 'active' | 'catalog';
+const HUB_TABS = ['suggested', 'active', 'catalog'] as const;
+type HubTab = (typeof HUB_TABS)[number];
 
 function buildDiscordPlan(goal: CollectionGoal, participants: ParticipantStateEntry[]): string {
   const needing = participants
@@ -64,7 +67,7 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
   const { t } = useTranslation();
   const { goals, isLoading, participants, fetchGoals, fetchParticipants } = useCollectionGoalStore();
 
-  const [tab, setTab] = useState<HubTab>('suggested');
+  const [tab, setTab] = useUrlTabState('farm', HUB_TABS, 'suggested');
   const [showCreate, setShowCreate] = useState(false);
   const [editGoal, setEditGoal] = useState<CollectionGoal | null>(null);
   const [viewGoal, setViewGoal] = useState<CollectionGoal | null>(null);
@@ -113,8 +116,8 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
 
   const tabDef: { id: HubTab; label: string; icon: React.ReactNode }[] = [
     { id: 'suggested', label: t('collections.suggested'),                                   icon: <Lightbulb size={14} /> },
-    { id: 'active',    label: t('collections.activeFarms', { count: activeGoals.length }),  icon: <Trophy size={14} /> },
-    { id: 'catalog',   label: t('collections.browseCatalog'),                               icon: <BookOpen size={14} /> },
+    { id: 'active',    label: t('collections.activeFarms', { count: activeGoals.length }),  icon: <XivIcon name="goals" size={14} /> },
+    { id: 'catalog',   label: t('collections.browseCatalog'),                               icon: <XivIcon name="tomestone" size={14} /> },
   ];
 
   return (
@@ -196,7 +199,7 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
           </div>
         ) : activeGoals.length === 0 ? (
           <div className="text-center py-16 text-text-muted">
-            <Trophy size={40} className="mx-auto mb-3 opacity-30" />
+            <XivIcon name="goals" size={40} className="mx-auto mb-3 opacity-30" />
             <p className="font-medium">{t('collections.noActiveFarms')}</p>
             <p className="text-sm mt-1">{t('collections.noActiveFarmsDesc')}</p>
             <div className="flex justify-center gap-2 mt-4 flex-wrap">
