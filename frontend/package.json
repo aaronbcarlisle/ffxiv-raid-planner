@@ -16,7 +16,7 @@
     "check:bundle": "pnpm build && size-limit",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "tokens:build": "node scripts/build-tokens.mjs",
+    "tokens:build": "tz build --no-lint",
     "tokens:parity": "node scripts/token-parity.mjs scripts/__parity__/index.baseline.css src/styles/tokens.generated.css"
   },
   "size-limit": [
@@ -59,6 +59,8 @@
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.60.0",
     "@size-limit/file": "^12.0.1",
+    "@terrazzo/cli": "^2.4.0",
+    "@terrazzo/plugin-css": "^2.4.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@types/node": "^24.10.1",
