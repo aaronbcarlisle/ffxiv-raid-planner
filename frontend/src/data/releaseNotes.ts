@@ -72,6 +72,8 @@ export const RELEASES: Release[] = [
         title: 'Owner and tome role colors meet WCAG AA contrast in light mode',
         description:
           'The membership-owner and gear-tome role colors, along with the accent hover state, have been updated so they are both AA-compliant and visually distinct from the default accent in light mode.',
+        pr: 159,
+        prTitle: 'F3 — Component contracts + illegal-states: Button trailing/label type-safety, contract reconciliation, token-AA',
         commits: [
           { hash: '0a10abb', message: 'fix(tokens): light membership-owner/gear-tome + accent hover to WCAG AA / distinct hover' },
           { hash: '197dafa', message: 'fix(tokens): update accent.default hover ref from #0d7a6e to #0a6b60' },
@@ -83,6 +85,8 @@ export const RELEASES: Release[] = [
         title: 'Button component contracts hardened (F3)',
         description:
           'Button trailing element is now lexicon-bound (\'chevron\' | \'external\', replacing free rightIcon) so decorative arrows cannot compile; Button now requires a visible label (icon-only callers migrate to IconButton); design-system variant contracts reconciled and locked with @ts-expect-error type-tests.',
+        pr: 159,
+        prTitle: 'F3 — Component contracts + illegal-states: Button trailing/label type-safety, contract reconciliation, token-AA',
         commits: [
           { hash: '9188385', message: 'feat(button): lexicon-bound trailing prop (chevron|external) replaces free rightIcon' },
           { hash: '8264f42', message: 'feat(button): require a visible label; icon-only actions migrate to IconButton' },
