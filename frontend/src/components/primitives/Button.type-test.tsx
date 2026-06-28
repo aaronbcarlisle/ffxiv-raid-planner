@@ -25,5 +25,5 @@ export const _badTrailing = createElement(Button, { trailing: 'arrow', children:
 // @ts-expect-error - 'rightIcon' is not a known ButtonProps key
 export const _noRightIcon = createElement(Button, { rightIcon: null, children: 'x' });
 // A Button with no visible label is a type error (use IconButton for icon-only).
-// @ts-expect-error - children is required
-export const _noLabel = createElement(Button, { leftIcon: null });
+// @ts-expect-error - children is required (a Button must carry a visible label; icon-only -> IconButton)
+export const _noLabel: Parameters<typeof Button>[0] = { leftIcon: null };
