@@ -14,7 +14,7 @@
       },
       "accent": {
         "default": { "$type": "color", "$value": "#0c7d71", "$description": "F2 AA-lift: darkened from #0f9688 (3.65:1 on white) to meet WCAG AA (≥4.5:1 on both #f5f5f8 and #ffffff). Hue ~174° preserved. Lighter than hover (#0d7a6e)." },
-        "hover": { "$type": "color", "$value": "#0d7a6e" },
+        "hover": { "$type": "color", "$value": "#0a6b60", "$description": "F3 distinct-hover fix: darkened from #0d7a6e (rgb 13,122,110) which was visually near-identical to accent.default #0c7d71 (rgb 12,125,113). New value #0a6b60 (rgb 10,107,96) is perceptibly darker than default, lighter than accent-muted #0a5c58. Contrast on #f5f5f8 ≥5.88:1 (AA)." },
         "dim": { "$type": "color", "$value": "rgba(12, 125, 113, 0.12)", "$description": "F2 tint fix: updated from rgba(15,150,136,0.12) (old #0f9688 hue) to match new accent #0c7d71 = rgb(12,125,113). Alpha 0.12 unchanged." },
         "muted": { "$type": "color", "$value": "#0a5c58" },
         "deep": { "$type": "color", "$value": "#0773a0" },
@@ -51,7 +51,7 @@
         "caster": { "$type": "color", "$value": "#8b34b8" }
       },
       "membership": {
-        "owner": { "$type": "color", "$value": "#0f9688" },
+        "owner": { "$type": "color", "$value": "#0c7d71", "$description": "F3 AA fix: darkened from #0f9688 (~3.4:1 on light surfaces, fails WCAG AA) to #0c7d71 (~4.61:1 on #f5f5f8, ~5.02:1 on #ffffff — passes AA at normal weight). Matches accent.default established by F2." },
         "lead": { "$type": "color", "$value": "#7c3aed" },
         "member": { "$type": "color", "$value": "#2563eb" },
         "viewer": { "$type": "color", "$value": "#52525b" },
@@ -59,7 +59,7 @@
       },
       "gear-source": {
         "raid": { "$type": "color", "$value": "#dc2626" },
-        "tome": { "$type": "color", "$value": "#0f9688" },
+        "tome": { "$type": "color", "$value": "#0c7d71", "$description": "F3 AA fix: darkened from #0f9688 (~3.4:1 on light surfaces, fails WCAG AA) to #0c7d71 (~4.61:1 on #f5f5f8, ~5.02:1 on #ffffff — passes AA at normal weight). Gear-source tome label shown as text on light card/base surfaces." },
         "base-tome": { "$type": "color", "$value": "#2563eb" },
         "augmented": { "$type": "color", "$value": "#b45309" },
         "crafted": { "$type": "color", "$value": "#ea580c" }

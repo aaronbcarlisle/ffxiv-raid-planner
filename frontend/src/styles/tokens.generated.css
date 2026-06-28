@@ -106,7 +106,7 @@
   --color-surface-overlay: #ffffff;
   --color-surface-interactive: #dcdce6;
   --color-accent: #0c7d71;
-  --color-accent-hover: #0d7a6e;
+  --color-accent-hover: #0a6b60;
   --color-accent-dim: rgba(12, 125, 113, 0.12);
   --color-accent-muted: #0a5c58;
   --color-accent-deep: #0773a0;
@@ -116,13 +116,13 @@
   --color-role-melee: #c0392b;
   --color-role-ranged: #a06020;
   --color-role-caster: #8b34b8;
-  --color-membership-owner: #0f9688;
+  --color-membership-owner: #0c7d71;
   --color-membership-lead: #7c3aed;
   --color-membership-member: #2563eb;
   --color-membership-viewer: #52525b;
   --color-membership-linked: #b45309;
   --color-gear-raid: #dc2626;
-  --color-gear-tome: #0f9688;
+  --color-gear-tome: #0c7d71;
   --color-gear-base-tome: #2563eb;
   --color-gear-augmented: #b45309;
   --color-gear-crafted: #ea580c;
@@ -167,7 +167,7 @@
   --color-gear-raid-text: #b91c1c;
   --color-gear-crafted-text: #9a3412;
   --color-gear-augmented-text: #92400e;
-  --color-accent-bright: #0d7a6e;
+  --color-accent-bright: #0a6b60;
   /* @deprecated legacy aliases — remove as components migrate */
   --color-bg-primary: var(--color-surface-base);
   --color-bg-secondary: var(--color-surface-raised);
