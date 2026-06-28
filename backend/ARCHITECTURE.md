@@ -132,7 +132,7 @@ All models verified against `backend/app/models/` (36 model files, excluding `__
 
 | Model | File | Why Dual-owned |
 |---|---|---|
-| `BiSTargetSet` | `bis_target_set.py` | `owner_type`/`owner_id` indirection — Person-layer when `owner_type='player_job_profile'`, Static-layer when `owner_type='roster_member_job'` or `'static_tier_job'`. See [Dual-owned Cases → BiSTargetSet](#bisTargetSet--player-hub-vs-roster-slot) below. |
+| `BiSTargetSet` | `bis_target_set.py` | `owner_type`/`owner_id` indirection — Person-layer when `owner_type='player_job_profile'`, Static-layer when `owner_type='roster_member_job'` or `'static_tier_job'`. See [Dual-owned Cases → BiSTargetSet](#bistargetset--player-hub-vs-roster-slot) below. |
 
 ---
 

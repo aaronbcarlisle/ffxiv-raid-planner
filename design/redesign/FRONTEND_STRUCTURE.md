@@ -220,11 +220,11 @@ The layer/ring taxonomy above is **machine-checked** by `frontend/eslint.config.
 | Rule | Severity | Scope |
 |---|---|---|
 | Store must not import another store | `error` | All stores; one documented allowlist entry: `viewAsStore` → `authStore` (§3.1) |
-| Store must not import a component | `error` | All stores; two `import type`-only violations resolved at F4 by moving the 3 types to `src/types/` |
+| Store must not import a component | `error` (**value** imports only) | All stores. The rule restricts *value* imports via `dependency: { kind: 'value' }`; `import type` is permitted (it erases at runtime, no coupling). The two existing type-only imports (`dragStore`←`dnd/collisionDetection#DropMode`, `settingsPanelStore`←`settings#{SettingsTab,RecruitmentSection}`) stay in place — no `src/types/` move needed. |
 | Ring-inward-only (cardinal rule) | `error` + per-file net-new | All ring/layer elements except `admin` |
 | `@` alias forbidden in `components/`/`stores/` for cross-ring imports | `error` | `src/components/**` and `src/stores/**` only; `src/pages/**` exempt. Relative paths required so `eslint-plugin-boundaries` can resolve and check every cross-ring edge (`no-restricted-imports`). |
 
-Store-boundary rules land at `error` because the tree is already clean (after the §6.2 type tidy). The ring-inward rule is at `error`; existing violations are baselined in `frontend/eslint-suppressions.json` (suppressed at lint time so the tree stays green). New violations — not in the baseline — fail CI immediately. "Per-file net-new" means: any import into a clean (count-0) file fails; any increase to a suppressed file's violation count fails; an in-place swap that leaves a dirty file's count unchanged is not caught (the 17 dirty files are all slated for F6 rebuild).
+Store-boundary rules land at `error` because the tree is already clean: no store imports a component by *value*, and the only store→store import (`viewAsStore`→`authStore`) is the one documented allowlist entry. The ring-inward rule is at `error`; existing violations are baselined in `frontend/eslint-suppressions.json` (suppressed at lint time so the tree stays green). New violations — not in the baseline — fail CI immediately. "Per-file net-new" means: any import into a clean (count-0) file fails; any increase to a suppressed file's violation count fails; an in-place swap that leaves a dirty file's count unchanged is not caught (the 17 dirty files are all slated for F6 rebuild).
 
 ### §6.2 How debt is managed
 
@@ -256,4 +256,4 @@ import { useAuthStore } from './authStore';
 `admin` is a distinct `boundaries/elements` type with no inward-only disallow rule applied to it. It sits outside the ring graph by construction (§1.1), so there is nothing to exempt — the rule simply does not exist for `admin` as an origin. This is not an allowlist entry; it is the absence of a rule.
 
 **3. Grandfathered cross-ring debt — `frontend/eslint-suppressions.json`.**
-Existing outward edges in the mixed and legacy tiers are captured in `frontend/eslint-suppressions.json` (ESLint 9.39 native bulk suppressions). This is the mechanism described in §6.2. As F6 rebuilds each domain, its entries are pruned with `--prune-suppressions` and the rule ratchets to `error`.
+Existing outward edges in the mixed and legacy tiers are captured in `frontend/eslint-suppressions.json` (ESLint 9.39 native bulk suppressions). This is the mechanism described in §6.2. As F6 rebuilds each domain, its entries are pruned with `--prune-suppressions` (the rule is already at `error` — the severity does not change; what shrinks is the suppression set).
