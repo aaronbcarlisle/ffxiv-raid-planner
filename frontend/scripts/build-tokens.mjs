@@ -124,6 +124,16 @@ export const ID_TO_CSS_VAR = {
   'semantic.shadow.lg':   '--shadow-lg',
   'semantic.shadow.xl':   '--shadow-xl',
   'semantic.shadow.glow': '--shadow-glow',
+
+  // Motion — durations (primitive.duration.* → --duration-*)
+  'primitive.duration.fast':   '--duration-fast',
+  'primitive.duration.normal': '--duration-normal',
+  'primitive.duration.slow':   '--duration-slow',
+
+  // Motion — easings (primitive.easing.* → --ease-*), additive / EXTRA
+  'primitive.easing.standard':   '--ease-standard',
+  'primitive.easing.decelerate': '--ease-decelerate',
+  'primitive.easing.accelerate': '--ease-accelerate',
 };
 
 // ─── DTCG alias resolver ──────────────────────────────────────────────────────
@@ -200,8 +210,13 @@ export function buildCss(darkTokens, lightTokens, map = ID_TO_CSS_VAR) {
       const raw = darkFlat.get(tokenId);
       let value;
       if (Array.isArray(raw)) {
-        // fontFamily arrays — join with pre-encoded quoting
-        value = buildFontStack(raw);
+        // cubicBezier arrays (all-numeric) → cubic-bezier(…); font-family
+        // arrays (contain strings) → font stack joined with ", ".
+        if (raw.every(v => typeof v === 'number')) {
+          value = `cubic-bezier(${raw.join(', ')})`;
+        } else {
+          value = buildFontStack(raw);
+        }
       } else {
         value = String(resolveValue(raw, darkTokens));
       }
@@ -213,7 +228,11 @@ export function buildCss(darkTokens, lightTokens, map = ID_TO_CSS_VAR) {
       const raw = lightFlat.get(tokenId);
       let value;
       if (Array.isArray(raw)) {
-        value = buildFontStack(raw);
+        if (raw.every(v => typeof v === 'number')) {
+          value = `cubic-bezier(${raw.join(', ')})`;
+        } else {
+          value = buildFontStack(raw);
+        }
       } else {
         // Light tokens are semantic overrides — values are direct (no aliases)
         value = String(raw);
