@@ -83,6 +83,8 @@ These are included for completeness — not component→component edges but note
 
 ## 3. Per-Domain Verdict
 
+**Verdict legend:** The clean/mixed/legacy verdict is an **outward-edge-count** verdict; a domain can be *structurally* multi-ring (spanning multiple rings as an import target) yet still be edge-count-clean—`static-group` exemplifies this.
+
 | Domain | Ring | Verdict | Outward edges |
 |--------|------|---------|---------------|
 | `primitives` | shared | **clean** | 0 |
@@ -103,7 +105,7 @@ These are included for completeness — not component→component edges but note
 | `history` | ring0 | **clean** | 0 (imports from `admin/` are admin-exempt) |
 | `wizard` | ring0 | **clean** | 0 |
 | `team` | ring0 | **clean** | 0 |
-| `static-group` | ring0 | **mixed** | 0 (outward edges from static-group's ring0 perspective — none; the inbound edges from person/settings are counted against settings) |
+| `static-group` | ring0 | **clean (0 outward edges)** — structurally multi-ring (spans R0/R1/R3 as an import target), no suppressions needed | (inbound edges from person/settings are counted against settings) |
 | `group` | ring0 | **legacy** | 1 (GoalsPage → collections; expected for a legacy "catch-all" page) |
 | `schedule` | ring1 | **clean** | 0 |
 | `split-clear` | ring1 | **clean** | 0 |
