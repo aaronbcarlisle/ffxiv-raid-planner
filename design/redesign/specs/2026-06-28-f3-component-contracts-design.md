@@ -38,8 +38,8 @@ F3 targets only the primitives where types actually prevent misuse, and only bou
 
 No variant is removed. The `ButtonVariant` union in code is unchanged in membership.
 
-### 4.2 Exhaustiveness (`assertNever`)
-Add an exhaustive resolution of `variant` (and `size`) with an `assertNever(x: never)` default, so adding a future variant fails to compile until it's given a style. (The current `Record<ButtonVariant, string>` lookup is exhaustive at the type level but silently tolerates a missing runtime case via index access — the `assertNever` pattern makes the gap a compile error.)
+### 4.2 Exhaustiveness — already enforced by the Record pattern (no `assertNever` ceremony)
+**Correction to the brainstorm (verified against the code):** every target primitive resolves its variant via an exhaustive `Record<Variant, string>` (e.g. `variantStyles: Record<ButtonVariant, string>`), and there are **no `switch`/`if`-chains** on these unions anywhere. The Record pattern *already* makes a missing variant a **compile error** (add a variant to the union without a Record entry → `tsc` fails). Converting these safe Records into `switch` statements just to call `assertNever` would be a clarity regression for zero safety gain — so F3 does **not** add `assertNever`. Instead it **proves the existing guarantee** with a type-test: a static assertion (e.g. a `// @ts-expect-error` on an incomplete Record, or a `satisfies` check) demonstrating that an unhandled variant fails to compile. Exhaustiveness is a kept guarantee, documented — not new ceremony.
 
 ### 4.3 Constrain the trailing element to the glyph lexicon
 Replace the free-form `rightIcon?: ReactNode` with a discriminated, lexicon-bound prop:
@@ -70,16 +70,15 @@ The threshold call is made at implementation from the real `tsc` count. (Regex c
 
 ## 5. IconButton
 
-Already type-safe on the key rule (`aria-label: string` required, `icon: ReactNode` required). F3:
-- Adds `assertNever` exhaustiveness on its variant switch.
+Already type-safe on the key rule (`aria-label: string` required, `icon: ReactNode` required) and variant-exhaustive via its `Record<IconButtonVariant, string>`. F3:
 - Writes its **contract entry** in `DESIGN_SYSTEM.md` (it currently has none) documenting anatomy, the 4 blessed variants (`default` · `primary` · `ghost` · `danger`), sizes, and the required-label rule.
-- No behavior or variant change.
+- No behavior or variant change. (No `assertNever` — the Record is already exhaustive, per §4.2.)
 
 ## 6. Verify the constrained primitives (no rebuild)
 
 `Tag`, `Tabs`, `LinkText`, `TriStateToggle` already live in `components/ui/`. `Tag` is an **exemplary discriminated union** (`variant: 'label' | 'filter' | 'nav'` with `onClick?: never`/`href?: never` guards making illegal combinations uncompilable; `tone` is a semantic-token union, never an arbitrary color). F3:
-- **Verifies** each enforces its semantics by type; adds `assertNever` where a variant `switch`/lookup exists; applies a **minimal** fix only where something is genuinely unsafe (else verify-and-document only — no rebuild).
-- Documents `Tag` in `DESIGN_SYSTEM.md` as the **canonical discriminated-union exemplar** the rest of the system follows.
+- **Verifies** each enforces its semantics by type (Tag's `variant` union with `never` guards; `Tabs` deliberately has no `href` API so it can't masquerade as navigation; `LinkText`/`NavRow` use an `href` xor `onClick` union). Applies a **minimal** fix only where something is genuinely unsafe (else verify-and-document only — no rebuild, no `assertNever`, since these are Record/union-based and already exhaustive per §4.2).
+- Documents `Tag` (and `Tabs`) in `DESIGN_SYSTEM.md` as the **canonical discriminated-union exemplars** the rest of the system follows.
 
 ## 7. Cheap token-AA pickups (folded from F2 follow-ups)
 
@@ -101,8 +100,8 @@ Small source-token edits on the design-system surface, related and cheap (logged
 1. `DESIGN_SYSTEM.md §3.1` documents the 8 blessed Button variants (grouped); IconButton has a contract entry; `Tag` is documented as the DU exemplar. No variant removed from code.
 2. `Button` trailing element is a lexicon-bound discriminated prop (`'chevron' | 'external'`); all 9 `rightIcon` sites migrated; the demo outlier reworked; a decorative trailing arrow is uncompilable (`@ts-expect-error` proves it).
 3. `Button` requires a visible label per §4.4 (or, if the `tsc` count exceeded the threshold, a documented lint-warn fallback with a deferral note) — childless icon-only Buttons migrated to `IconButton`.
-4. `Button` and `IconButton` variant resolution is exhaustive via `assertNever`.
-5. `Tag`/`Tabs`/`LinkText`/`TriStateToggle` verified type-safe (minimal fixes only where unsafe); `assertNever` added where applicable.
+4. `Button` and `IconButton` variant resolution is exhaustive via the `Record<Variant, T>` pattern, with a type-test proving an unhandled variant fails to compile (no `assertNever` ceremony added).
+5. `Tag`/`Tabs`/`LinkText`/`TriStateToggle` verified type-safe (minimal fixes only where unsafe); `Tag` + `Tabs` documented as the DU exemplars.
 6. Light `membership-owner`/`gear-tome` and default/hover accent meet AA; `tokens:check` clean; parity baseline untouched.
 7. Build/lint/design-system/test/tokens:check all green; type-test `@ts-expect-error` assertions present; internal release note (+ public token-AA item with version bump); no AI attribution.
 8. No consumer-cascade variant purge; no unbuilt-component contracts authored; no `/docs/design-system` page rebuild.
