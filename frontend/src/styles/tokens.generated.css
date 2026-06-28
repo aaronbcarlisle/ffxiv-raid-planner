@@ -78,6 +78,10 @@
   --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
   --gradient-rail: linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%);
   --color-overlay-raise: rgba(255, 255, 255, 0.03);
+  --color-toggle-orb-on-start: #1a1f28;
+  --color-toggle-orb-on-end: #0a0a0f;
+  --color-toggle-orb-off-start: #1e1e26;
+  --color-toggle-orb-off-end: #121218;
 }
 
 [data-theme="light"] {
@@ -131,5 +135,9 @@
   --shadow-glow: 0 0 20px rgba(15, 150, 136, 0.1);
   --gradient-rail: linear-gradient(180deg, #f3f4f8 0%, #eceef4 60%, #e7e9f1 100%);
   --color-overlay-raise: rgba(0, 0, 0, 0.03);
+  --color-toggle-orb-on-start: #d1d5db;
+  --color-toggle-orb-on-end: #9ca3af;
+  --color-toggle-orb-off-start: #e5e7eb;
+  --color-toggle-orb-off-end: #d1d5db;
   --color-accent-bright: #0d7a6e;
 }

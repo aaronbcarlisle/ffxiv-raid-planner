@@ -82,6 +82,14 @@
   "component": {
     "nav": {
       "rail-bg": { "$type": "gradient", "$value": "linear-gradient(180deg, #f3f4f8 0%, #eceef4 60%, #e7e9f1 100%)" }
+    },
+    "toggle": {
+      "orb": {
+        "on-start":  { "$type": "color", "$value": "#d1d5db" },
+        "on-end":    { "$type": "color", "$value": "#9ca3af" },
+        "off-start": { "$type": "color", "$value": "#e5e7eb" },
+        "off-end":   { "$type": "color", "$value": "#d1d5db" }
+      }
     }
   }
 }

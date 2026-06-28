@@ -140,6 +140,12 @@ export const ID_TO_CSS_VAR = {
 
   // Overlay raise (semantic.color.interaction.raise-haze → --color-overlay-raise)
   'semantic.color.interaction.raise-haze': '--color-overlay-raise',
+
+  // Toggle orb (component.toggle.orb.* → --color-toggle-orb-*)
+  'component.toggle.orb.on-start':  '--color-toggle-orb-on-start',
+  'component.toggle.orb.on-end':    '--color-toggle-orb-on-end',
+  'component.toggle.orb.off-start': '--color-toggle-orb-off-start',
+  'component.toggle.orb.off-end':   '--color-toggle-orb-off-end',
 };
 
 // ─── DTCG alias resolver ──────────────────────────────────────────────────────
