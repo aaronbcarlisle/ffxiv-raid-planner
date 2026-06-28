@@ -5,6 +5,8 @@
  * Mobile: Displays toasts at top (below sticky header) to avoid bottom nav/FABs.
  * Desktop: Displays toasts in bottom-left corner.
  * Auto-dismiss after duration.
+ *
+ * Lives in layout/ (not ui/) because it reads directly from toastStore.
  */
 
 import { useEffect, useCallback } from 'react';

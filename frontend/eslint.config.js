@@ -5,6 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import designSystemPlugin from './eslint-design-system-plugin.js'
+import boundaries from 'eslint-plugin-boundaries'
 
 export default defineConfig([
   globalIgnores(['dist', 'e2e', 'playwright-report', 'test-results']),
@@ -22,6 +23,22 @@ export default defineConfig([
     },
     plugins: {
       'design-system': designSystemPlugin,
+      boundaries,
+    },
+    settings: {
+      // Tell eslint-module-utils to resolve .ts/.tsx in addition to .js/.jsx
+      // so that eslint-plugin-boundaries can identify imported element types.
+      'import/resolver': {
+        node: {
+          extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        },
+      },
+      'boundaries/include': ['src/**/*'],
+      'boundaries/elements': [
+        { type: 'shared', pattern: 'src/components/(primitives|ui)/**' },
+        { type: 'feature', pattern: 'src/components/!(primitives|ui)/**' },
+        { type: 'app', pattern: '(src/pages|src/stores|src/services)/**' },
+      ],
     },
     rules: {
       // Allow underscore-prefixed variables to be unused (common convention)
@@ -33,6 +50,21 @@ export default defineConfig([
           caughtErrorsIgnorePattern: '^_',
         },
       ],
+
+      // Layer boundary enforcement (F2): shared layer must not import features.
+      // Rule renamed from boundaries/element-types in v5 to boundaries/dependencies in v6.
+      // from/allow/disallow now use object selectors { type } with required `to` wrapper.
+      'boundaries/dependencies': ['error', {
+        default: 'allow',
+        rules: [
+          {
+            from: { type: 'shared' },
+            disallow: { to: { type: ['feature', 'app'] } },
+            message:
+              'Shared layer (primitives/ui) must not import from feature or app modules. Keep the shared layer leaf-level; the Ring-aware graph lands in F4.',
+          },
+        ],
+      }],
 
       // Design system enforcement
       // Note: Disabled by default to allow gradual migration

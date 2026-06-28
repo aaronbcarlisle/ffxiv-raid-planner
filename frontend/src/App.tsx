@@ -4,7 +4,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { TooltipProvider } from './components/primitives/Tooltip';
 import { Layout } from './components/layout/Layout';
-import { ToastContainer } from './components/ui/ToastContainer';
+import { ToastContainer } from './components/layout/ToastContainer';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
 import { analytics } from './services/analytics';
