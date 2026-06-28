@@ -40,6 +40,9 @@ jobs:
       - name: Type check
         run: pnpm tsc --noEmit
 
+      - name: Token source/output sync
+        run: pnpm tokens:check
+
       - name: Lint
         run: pnpm lint
 

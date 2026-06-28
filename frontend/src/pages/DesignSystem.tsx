@@ -2141,7 +2141,8 @@ function ContainersSection() {
   return (
     <Section id="containers" title="Container System">
       <p className="text-text-secondary mb-6">
-        A 5-tier container system for consistent width constraints across page types.
+        A 4-tier container system for consistent width constraints across page types.
+        The context rail lives outside these ceilings; they cap the content column only.
         Prevents content from stretching infinitely on ultrawide monitors (3440px+).
       </p>
 
@@ -2149,14 +2150,14 @@ function ContainersSection() {
       <Subsection title="Container Tiers">
         <p className="text-sm text-text-muted mb-4">
           Each tier serves a specific purpose. Use the PageContainer component or apply classes directly.
+          Widths come from <code>--container-&#123;tier&#125;</code> tokens in <code>tokens.generated.css</code>.
         </p>
         <div className="space-y-3">
           {[
-            { name: 'data', width: '160rem (2560px)', desc: 'Data-dense grids, player cards', example: 'GroupView' },
-            { name: 'wide', width: '120rem (1920px)', desc: 'Documentation with sidebar', example: 'API Docs, Guides' },
-            { name: 'focus', width: '80rem (1280px)', desc: 'Focused content, simple docs', example: 'Release Notes' },
-            { name: 'narrow', width: 'max-w-6xl (1152px)', desc: 'Card grids, dashboards', example: 'Dashboard' },
-            { name: 'compact', width: 'max-w-4xl (896px)', desc: 'Marketing, landing pages', example: 'Home page' },
+            { name: 'data', width: '2160px', desc: 'Data-dense spine pages (Roster, Loot) on ultrawide', example: 'GroupView' },
+            { name: 'standard', width: '1760px', desc: 'Dashboards', example: 'Home, Schedule' },
+            { name: 'focus', width: '1100px', desc: 'Player Hub, settings, forms', example: 'Player Hub' },
+            { name: 'doc', width: '960px', desc: 'Docs / reading', example: 'Release Notes, Guides' },
           ].map(tier => (
             <div key={tier.name} className="flex items-center gap-4 p-3 bg-surface-elevated rounded-lg border border-border-default">
               <code className="px-2 py-1 bg-accent/10 text-accent rounded text-sm font-mono min-w-[80px]">
@@ -2186,8 +2187,8 @@ import { PageContainer } from '../components/layout';
   <PlayerGrid />
 </PageContainer>
 
-// Or use Tailwind classes directly
-<div className="max-w-[160rem] mx-auto">
+// Or use Tailwind classes directly (token-generated utilities)
+<div className="max-w-data mx-auto">
   <PlayerGrid />
 </div>`}
         />

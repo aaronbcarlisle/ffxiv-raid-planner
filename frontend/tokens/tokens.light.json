@@ -1,0 +1,120 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Light theme. Overrides the SEMANTIC tier and select COMPONENT tokens (e.g. rail-bg, toggle-orb) — primitives are untouched. Apply under [data-theme='light']. Values verbatim from the v2 index.css light block.",
+
+  "semantic": {
+    "color": {
+      "surface": {
+        "base": { "$type": "color", "$value": "#f5f5f8" },
+        "raised": { "$type": "color", "$value": "#ededf2" },
+        "card": { "$type": "color", "$value": "#ffffff" },
+        "elevated": { "$type": "color", "$value": "#e8e8ef" },
+        "overlay": { "$type": "color", "$value": "#ffffff" },
+        "interactive": { "$type": "color", "$value": "#dcdce6" }
+      },
+      "accent": {
+        "default": { "$type": "color", "$value": "#0f9688" },
+        "hover": { "$type": "color", "$value": "#0d7a6e" },
+        "dim": { "$type": "color", "$value": "rgba(15, 150, 136, 0.12)" },
+        "muted": { "$type": "color", "$value": "#0a5c58" },
+        "deep": { "$type": "color", "$value": "#0773a0" },
+        "on-accent": { "$type": "color", "$value": "#ffffff" }
+      },
+      "text": {
+        "primary": { "$type": "color", "$value": "#1a1a24" },
+        "secondary": { "$type": "color", "$value": "#4a4a58" },
+        "tertiary": { "$type": "color", "$value": "#5a5a6e" },
+        "muted": { "$type": "color", "$value": "#6b6b7e" },
+        "disabled": { "$type": "color", "$value": "#9898a8" },
+        "on-accent": { "$type": "color", "$value": "#ffffff" },
+        "on-gear-raid":      { "$type": "color", "$value": "#b91c1c" },
+        "on-gear-crafted":   { "$type": "color", "$value": "#9a3412" },
+        "on-gear-augmented": { "$type": "color", "$value": "#92400e" }
+      },
+      "border": {
+        "default": { "$type": "color", "$value": "#c8c8d8" },
+        "subtle": { "$type": "color", "$value": "#dcdce6" },
+        "highlight": { "$type": "color", "$value": "#0f9688" },
+        "focus": { "$type": "color", "$value": "rgba(15, 150, 136, 0.5)" }
+      },
+      "interaction": {
+        "focus-ring": { "$type": "color", "$value": "rgba(15, 150, 136, 0.4)" },
+        "active-bg": { "$type": "color", "$value": "rgba(15, 150, 136, 0.12)" },
+        "hover-overlay": { "$type": "color", "$value": "rgba(0, 0, 0, 0.04)" },
+        "raise-haze": { "$type": "color", "$value": "rgba(0, 0, 0, 0.03)" }
+      },
+      "role": {
+        "tank": { "$type": "color", "$value": "#2e7ab4" },
+        "healer": { "$type": "color", "$value": "#1a8a4a" },
+        "melee": { "$type": "color", "$value": "#c0392b" },
+        "ranged": { "$type": "color", "$value": "#a06020" },
+        "caster": { "$type": "color", "$value": "#8b34b8" }
+      },
+      "membership": {
+        "owner": { "$type": "color", "$value": "#0f9688" },
+        "lead": { "$type": "color", "$value": "#7c3aed" },
+        "member": { "$type": "color", "$value": "#2563eb" },
+        "viewer": { "$type": "color", "$value": "#52525b" },
+        "linked": { "$type": "color", "$value": "#b45309" }
+      },
+      "gear-source": {
+        "raid": { "$type": "color", "$value": "#dc2626" },
+        "tome": { "$type": "color", "$value": "#0f9688" },
+        "base-tome": { "$type": "color", "$value": "#2563eb" },
+        "augmented": { "$type": "color", "$value": "#b45309" },
+        "crafted": { "$type": "color", "$value": "#ea580c" }
+      },
+      "status": {
+        "success": { "$type": "color", "$value": "#16a34a" },
+        "warning": { "$type": "color", "$value": "#ca8a04" },
+        "error": { "$type": "color", "$value": "#dc2626" },
+        "info": { "$type": "color", "$value": "#2563eb" }
+      },
+      "brand": {
+        "discord":       { "$type": "color", "$value": "#5865F2" },
+        "discord-hover": { "$type": "color", "$value": "#4752C4" }
+      },
+      "material": {
+        "twine":     { "$type": "color", "$value": "#2563eb" },
+        "glaze":     { "$type": "color", "$value": "#7c3aed" },
+        "solvent":   { "$type": "color", "$value": "#ca8a04" },
+        "tomestone": { "$type": "color", "$value": "#ea580c" }
+      }
+    },
+
+    "surface": {
+      "parchment": {
+        "bg":     { "$type": "color", "$value": "#f5ede0" },
+        "raised": { "$type": "color", "$value": "#e8d9b8" },
+        "text":   { "$type": "color", "$value": "#5a4422" },
+        "border": { "$type": "color", "$value": "#b8933a" }
+      }
+    },
+
+    "accent": {
+      "seal": { "$type": "color", "$value": "#8b6914" }
+    },
+
+    "shadow": {
+      "sm":   { "$type": "shadow", "$value": "0 1px 2px rgba(0, 0, 0, 0.06)" },
+      "md":   { "$type": "shadow", "$value": "0 4px 6px rgba(0, 0, 0, 0.08)" },
+      "lg":   { "$type": "shadow", "$value": "0 10px 15px rgba(0, 0, 0, 0.1)" },
+      "xl":   { "$type": "shadow", "$value": "0 20px 25px rgba(0, 0, 0, 0.12)" },
+      "glow": { "$type": "shadow", "$value": "0 0 20px rgba(15, 150, 136, 0.1)" }
+    }
+  },
+
+  "component": {
+    "nav": {
+      "rail-bg": { "$type": "gradient", "$value": "linear-gradient(180deg, #f3f4f8 0%, #eceef4 60%, #e7e9f1 100%)" }
+    },
+    "toggle": {
+      "orb": {
+        "on-start":  { "$type": "color", "$value": "#d1d5db" },
+        "on-end":    { "$type": "color", "$value": "#9ca3af" },
+        "off-start": { "$type": "color", "$value": "#e5e7eb" },
+        "off-end":   { "$type": "color", "$value": "#d1d5db" }
+      }
+    }
+  }
+}

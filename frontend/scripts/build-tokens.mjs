@@ -1,0 +1,360 @@
+/**
+ * build-tokens.mjs — Custom data-driven design token generator.
+ *
+ * Provenance: standalone Node ESM script; no third-party token tooling.
+ * Reads tokens/tokens.json (dark/base) + tokens/tokens.light.json (light overrides)
+ * and emits src/styles/tokens.generated.css with:
+ *   @theme { … }               — Tailwind v4 dark/base vars
+ *   [data-theme="light"] { … } — light semantic overrides
+ *
+ * ─── HOW TO ADD A TOKEN CATEGORY ─────────────────────────────────────────────
+ * 1. Add the tokens to tokens/tokens.json (and tokens/tokens.light.json if themed).
+ * 2. Add their path→CSS-var-name entries to ID_TO_CSS_VAR below.
+ * 3. Run: pnpm tokens:build
+ * No other code change is needed. The generic emission loop handles the rest.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(__dirname, '..');
+
+// ─── Token ID → CSS variable name ────────────────────────────────────────────
+// Maps DTCG token paths (dot-separated) to the exact CSS variable names the
+// baseline requires. Any token path NOT in this map is skipped (it produces
+// no CSS var). To add a category, extend this map per the header guide above.
+export const ID_TO_CSS_VAR = {
+  // Surface
+  'semantic.color.surface.base':        '--color-surface-base',
+  'semantic.color.surface.raised':      '--color-surface-raised',
+  'semantic.color.surface.card':        '--color-surface-card',
+  'semantic.color.surface.elevated':    '--color-surface-elevated',
+  'semantic.color.surface.overlay':     '--color-surface-overlay',
+  'semantic.color.surface.interactive': '--color-surface-interactive',
+
+  // Accent  (accent.default → --color-accent, NOT --color-accent-default)
+  'semantic.color.accent.default':   '--color-accent',
+  'semantic.color.accent.hover':     '--color-accent-hover',
+  'semantic.color.accent.dim':       '--color-accent-dim',
+  'semantic.color.accent.muted':     '--color-accent-muted',
+  'semantic.color.accent.deep':      '--color-accent-deep',
+  // on-accent → --color-accent-contrast (not --color-accent-on-accent)
+  'semantic.color.accent.on-accent': '--color-accent-contrast',
+  // --color-accent-bright is a light-only legacy alias (added explicitly in the
+  // light block; omitted here so it never appears in the dark @theme output)
+
+  // Role
+  'semantic.color.role.tank':   '--color-role-tank',
+  'semantic.color.role.healer': '--color-role-healer',
+  'semantic.color.role.melee':  '--color-role-melee',
+  'semantic.color.role.ranged': '--color-role-ranged',
+  'semantic.color.role.caster': '--color-role-caster',
+
+  // Membership
+  'semantic.color.membership.owner':  '--color-membership-owner',
+  'semantic.color.membership.lead':   '--color-membership-lead',
+  'semantic.color.membership.member': '--color-membership-member',
+  'semantic.color.membership.viewer': '--color-membership-viewer',
+  'semantic.color.membership.linked': '--color-membership-linked',
+
+  // Gear source  (gear-source.* → --color-gear-*)
+  'semantic.color.gear-source.raid':      '--color-gear-raid',
+  'semantic.color.gear-source.tome':      '--color-gear-tome',
+  'semantic.color.gear-source.base-tome': '--color-gear-base-tome',
+  'semantic.color.gear-source.augmented': '--color-gear-augmented',
+  'semantic.color.gear-source.crafted':   '--color-gear-crafted',
+
+  // Status
+  'semantic.color.status.success': '--color-status-success',
+  'semantic.color.status.warning': '--color-status-warning',
+  'semantic.color.status.error':   '--color-status-error',
+  'semantic.color.status.info':    '--color-status-info',
+
+  // Text  (text.on-accent is NOT a standalone baseline var — intentionally omitted)
+  'semantic.color.text.primary':   '--color-text-primary',
+  'semantic.color.text.secondary': '--color-text-secondary',
+  'semantic.color.text.tertiary':  '--color-text-tertiary',
+  'semantic.color.text.muted':     '--color-text-muted',
+  'semantic.color.text.disabled':  '--color-text-disabled',
+
+  // Border
+  'semantic.color.border.default':   '--color-border-default',
+  'semantic.color.border.subtle':    '--color-border-subtle',
+  'semantic.color.border.highlight': '--color-border-highlight',
+  'semantic.color.border.focus':     '--color-border-focus',
+
+  // Interaction  (interaction.* → stripped-prefix names)
+  'semantic.color.interaction.focus-ring':    '--color-focus-ring',
+  'semantic.color.interaction.active-bg':     '--color-active-bg',
+  'semantic.color.interaction.hover-overlay': '--color-hover-overlay',
+
+  // Font families  (primitive.font.family.* → --font-*)
+  'primitive.font.family.display': '--font-display',
+  'primitive.font.family.sans':    '--font-sans',
+  'primitive.font.family.mono':    '--font-mono',
+
+  // NOTE: primitive.radius.* and primitive.space.* are intentionally NOT emitted
+  // as --radius-*/--spacing-*. They are Tailwind-standard namespaces; emitting our
+  // values would override Tailwind defaults and change rendered radii/spacing (a
+  // visual change, out of scope for zero-change token wiring). Re-introducing them
+  // is a deliberate future design change requiring visual review.
+
+  // Container widths  (primitive.size.container.* → --container-*)
+  'primitive.size.container.data':     '--container-data',
+  'primitive.size.container.standard': '--container-standard',
+  'primitive.size.container.focus':    '--container-focus',
+  'primitive.size.container.doc':      '--container-doc',
+
+  // Shadows  (semantic.shadow.* → --shadow-*)
+  'semantic.shadow.sm':   '--shadow-sm',
+  'semantic.shadow.md':   '--shadow-md',
+  'semantic.shadow.lg':   '--shadow-lg',
+  'semantic.shadow.xl':   '--shadow-xl',
+  'semantic.shadow.glow': '--shadow-glow',
+
+  // Motion — durations (primitive.duration.* → --duration-*)
+  'primitive.duration.fast':   '--duration-fast',
+  'primitive.duration.normal': '--duration-normal',
+  'primitive.duration.slow':   '--duration-slow',
+
+  // Motion — easings (primitive.easing.* → --ease-*), additive / EXTRA
+  'primitive.easing.standard':   '--ease-standard',
+  'primitive.easing.decelerate': '--ease-decelerate',
+  'primitive.easing.accelerate': '--ease-accelerate',
+
+  // Gradient rail (component.nav.rail-bg → --gradient-rail)
+  'component.nav.rail-bg': '--gradient-rail',
+
+  // Overlay raise (semantic.color.interaction.raise-haze → --color-overlay-raise)
+  'semantic.color.interaction.raise-haze': '--color-overlay-raise',
+
+  // Toggle orb (component.toggle.orb.* → --color-toggle-orb-*)
+  'component.toggle.orb.on-start':  '--color-toggle-orb-on-start',
+  'component.toggle.orb.on-end':    '--color-toggle-orb-on-end',
+  'component.toggle.orb.off-start': '--color-toggle-orb-off-start',
+  'component.toggle.orb.off-end':   '--color-toggle-orb-off-end',
+
+  // Parchment / seal (semantic.surface.parchment.* → --color-parchment-*, semantic.accent.seal → --color-seal)
+  'semantic.surface.parchment.bg':     '--color-parchment-bg',
+  'semantic.surface.parchment.raised': '--color-parchment-raised',
+  'semantic.surface.parchment.text':   '--color-parchment-text',
+  'semantic.surface.parchment.border': '--color-parchment-border',
+  'semantic.accent.seal':              '--color-seal',
+
+  // Discord brand (semantic.color.brand.* → --color-discord*)
+  'semantic.color.brand.discord':       '--color-discord',
+  'semantic.color.brand.discord-hover': '--color-discord-hover',
+
+  // Material (semantic.color.material.* → --color-material-*)
+  'semantic.color.material.twine':     '--color-material-twine',
+  'semantic.color.material.glaze':     '--color-material-glaze',
+  'semantic.color.material.solvent':   '--color-material-solvent',
+  'semantic.color.material.tomestone': '--color-material-tomestone',
+
+  // Badge text (semantic.color.text.on-gear-* → --color-gear-*-text; light-only)
+  'semantic.color.text.on-gear-raid':      '--color-gear-raid-text',
+  'semantic.color.text.on-gear-crafted':   '--color-gear-crafted-text',
+  'semantic.color.text.on-gear-augmented': '--color-gear-augmented-text',
+
+  // Layout dimensions + breakpoint (primitive.size.{header,bottom-nav}, primitive.breakpoint.3xl)
+  // --layout-chrome is NOT in this map — it's a calc() derived literal emitted separately.
+  'primitive.size.header':      '--header-height',
+  'primitive.size.bottom-nav':  '--bottom-nav-height',
+  'primitive.breakpoint.3xl':   '--breakpoint-3xl',
+};
+
+// ─── DTCG alias resolver ──────────────────────────────────────────────────────
+function getByPath(obj, parts) {
+  return parts.reduce((cur, k) => (cur != null ? cur[k] : undefined), obj);
+}
+
+export function resolveRef(ref, tree) {
+  const inner = ref.slice(1, -1); // strip { }
+  const node = getByPath(tree, inner.split('.'));
+  if (!node) throw new Error(`Unresolved token reference: ${ref}`);
+  const val = node.$value;
+  if (typeof val === 'string' && val.startsWith('{')) return resolveRef(val, tree);
+  return val;
+}
+
+export function resolveValue(val, tree) {
+  if (typeof val === 'string' && val.startsWith('{')) return resolveRef(val, tree);
+  return val;
+}
+
+// ─── Font family stack builder ────────────────────────────────────────────────
+// Joins the token's $value array with ", " — quoting is pre-encoded in the
+// token arrays (e.g. '"Exo 2"' already contains the CSS double-quote chars).
+// Single-word names (system-ui, BlinkMacSystemFont, etc.) are stored bare.
+export function buildFontStack(arr) {
+  return arr.join(', ');
+}
+
+// ─── Flatten a token tree into { "dot.path": $value } entries ────────────────
+// Walks the DTCG token tree and yields [dotPath, rawValue] pairs for every
+// leaf node (node with a $value). Array $values (font families) are preserved
+// as arrays; everything else is a string.
+export function flattenTokens(obj, prefix = '') {
+  const entries = [];
+  for (const [key, val] of Object.entries(obj)) {
+    if (key.startsWith('$')) continue; // skip $schema, $description, etc.
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (val && typeof val === 'object' && '$value' in val) {
+      entries.push([path, val.$value]);
+    } else if (val && typeof val === 'object') {
+      entries.push(...flattenTokens(val, path));
+    }
+  }
+  return entries;
+}
+
+// ─── Core CSS builder (pure, exported for unit tests) ────────────────────────
+/**
+ * buildCss(darkTokens, lightTokens, map) → CSS string
+ *
+ * DATA-DRIVEN: iterates ID_TO_CSS_VAR once for dark vars, once for light vars.
+ * No per-category code blocks — adding a category means editing data (the map),
+ * not adding new code.
+ *
+ * @param {object} darkTokens  — parsed tokens.json
+ * @param {object} lightTokens — parsed tokens.light.json
+ * @param {object} map         — token-path → CSS-var-name (defaults to ID_TO_CSS_VAR)
+ */
+export function buildCss(darkTokens, lightTokens, map = ID_TO_CSS_VAR) {
+  // Flatten both token trees into dot-path → raw $value maps
+  const darkFlat  = new Map(flattenTokens(darkTokens));
+  const lightFlat = new Map(flattenTokens(lightTokens));
+
+  const darkVars  = new Map();
+  const lightVars = new Map();
+
+  // ── Single generic loop over the map ─────────────────────────────────────
+  // Dark: resolve each token from the dark tree.
+  // Light: look up the same token ID in the light tree; skip if not present.
+  for (const [tokenId, cssVar] of Object.entries(map)) {
+    // ── Orphan guard ────────────────────────────────────────────────────────
+    // If the tokenId is absent from BOTH trees, the map entry has no backing
+    // token — warn so contributors notice stale map entries immediately.
+    if (!darkFlat.has(tokenId) && !lightFlat.has(tokenId)) {
+      console.warn(`[build-tokens] orphaned map entry: "${tokenId}" → "${cssVar}" has no backing token in either tree.`);
+    }
+
+    // ── Dark value ──────────────────────────────────────────────────────────
+    if (darkFlat.has(tokenId)) {
+      const raw = darkFlat.get(tokenId);
+      let value;
+      if (Array.isArray(raw)) {
+        // cubicBezier arrays (all-numeric) → cubic-bezier(…); font-family
+        // arrays (contain strings) → font stack joined with ", ".
+        if (raw.every(v => typeof v === 'number')) {
+          value = `cubic-bezier(${raw.join(', ')})`;
+        } else {
+          value = buildFontStack(raw);
+        }
+      } else {
+        value = String(resolveValue(raw, darkTokens));
+      }
+      darkVars.set(cssVar, value);
+    }
+
+    // ── Light value ─────────────────────────────────────────────────────────
+    if (lightFlat.has(tokenId)) {
+      const raw = lightFlat.get(tokenId);
+      let value;
+      if (Array.isArray(raw)) {
+        if (raw.every(v => typeof v === 'number')) {
+          value = `cubic-bezier(${raw.join(', ')})`;
+        } else {
+          value = buildFontStack(raw);
+        }
+      } else {
+        // Light tokens are semantic overrides — values are direct (no aliases)
+        value = String(raw);
+      }
+      lightVars.set(cssVar, value);
+    }
+  }
+
+  // ── Light-only extras ───────────────────────────────────────────────────────
+  // --color-accent-bright is a legacy alias for accent.hover in the light block
+  // only (it MUST NOT appear in the dark @theme — the baseline has it there only
+  // because it's a legacy alias that light mode needs to override).
+  // We emit it in the light block pointing at the same value as accent.hover.
+  const lightAccentHover = lightFlat.get('semantic.color.accent.hover');
+  if (lightAccentHover != null) {
+    lightVars.set('--color-accent-bright', String(lightAccentHover));
+  }
+
+  // ── Emit ────────────────────────────────────────────────────────────────────
+  const darkLines  = [...darkVars.entries()].map(([k, v]) => `  ${k}: ${v};`).join('\n');
+  const lightLines = [...lightVars.entries()].map(([k, v]) => `  ${k}: ${v};`).join('\n');
+
+  // ── Special-case: --layout-chrome ─────────────────────────────────────────
+  // This is a calc() of two token-derived vars — not a standalone token value.
+  // The generic loop cannot produce a calc(); emit it as a literal derived line.
+  const layoutChromeLine =
+    '  --layout-chrome: calc(var(--header-height) + var(--bottom-nav-height)); /* Combined header + bottom nav */';
+
+  // ── Legacy-alias shim (dark @theme) ───────────────────────────────────────
+  // These are CSS aliases pointing to semantic vars, not token values.
+  // Kept for backward compatibility; remove as components migrate.
+  const darkShimLines = [
+    '  /* @deprecated legacy aliases — remove as components migrate */',
+    '  --color-bg-primary: var(--color-surface-base);',
+    '  --color-bg-secondary: var(--color-surface-raised);',
+    '  --color-bg-card: var(--color-surface-card);',
+    '  --color-bg-elevated: var(--color-surface-elevated);',
+    '  --color-bg-hover: var(--color-surface-interactive);',
+    '  --color-accent-bright: #2dd4bf;',
+    '  --color-source-raid: var(--color-gear-raid);',
+    '  --color-source-tome: var(--color-gear-tome);',
+    '  --color-source-crafted: var(--color-gear-crafted);',
+    '  --color-source-augmented: var(--color-gear-augmented);',
+  ].join('\n');
+
+  // ── Legacy-alias shim (light [data-theme="light"]) ────────────────────────
+  // --color-accent-bright is already emitted above via the light-only extras
+  // (it resolves to the light accent.hover value #0d7a6e) — do NOT duplicate it.
+  const lightShimLines = [
+    '  /* @deprecated legacy aliases — remove as components migrate */',
+    '  --color-bg-primary: var(--color-surface-base);',
+    '  --color-bg-secondary: var(--color-surface-raised);',
+    '  --color-bg-card: var(--color-surface-card);',
+    '  --color-bg-elevated: var(--color-surface-elevated);',
+    '  --color-bg-hover: var(--color-surface-interactive);',
+  ].join('\n');
+
+  return [
+    '/* AUTO-GENERATED — do not edit by hand. Run: pnpm tokens:build */',
+    '/* Source: tokens/tokens.json (dark base) + tokens/tokens.light.json (light overrides) */',
+    '/* Generator: scripts/build-tokens.mjs (custom data-driven, no third-party token tooling) */',
+    '',
+    '@theme {',
+    darkLines,
+    layoutChromeLine,
+    darkShimLines,
+    '}',
+    '',
+    '[data-theme="light"] {',
+    lightLines,
+    lightShimLines,
+    '}',
+    '',
+  ].join('\n');
+}
+
+// ─── CLI entry point (guarded so imports in tests don't trigger file I/O) ────
+// Mirror the pathToFileURL guard pattern used by token-parity.mjs.
+// Guard against undefined process.argv[1] (e.g. piped stdin / REPL contexts).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const darkTokens  = JSON.parse(readFileSync(resolve(ROOT, 'tokens/tokens.json'), 'utf8'));
+  const lightTokens = JSON.parse(readFileSync(resolve(ROOT, 'tokens/tokens.light.json'), 'utf8'));
+  const css = buildCss(darkTokens, lightTokens);
+  const outDir = resolve(ROOT, 'src/styles');
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(resolve(outDir, 'tokens.generated.css'), css, 'utf8');
+  console.log('tokens.generated.css written.');
+}

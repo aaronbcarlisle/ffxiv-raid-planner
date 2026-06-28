@@ -15,7 +15,10 @@
     "check:design-system:strict": "bash scripts/check-design-system.sh --strict",
     "check:bundle": "pnpm build && size-limit",
     "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "tokens:build": "node scripts/build-tokens.mjs",
+    "tokens:parity": "node scripts/token-parity.mjs scripts/__parity__/index.baseline.css src/styles/tokens.generated.css",
+    "tokens:check": "node scripts/build-tokens.mjs && git diff --exit-code -- src/styles/tokens.generated.css"
   },
   "size-limit": [
     {
