@@ -90,8 +90,8 @@ export default defineConfig([
           // F2 carry-over: shared leaf imports nothing outward.
           {
             from: { type: 'shared' },
-            disallow: { to: { type: ['shell', 'person', 'ring0', 'ring1', 'ring3', 'admin', 'settings'] } },
-            message: 'Shared layer (primitives/ui) must not import feature/app modules. Keep it leaf-level.',
+            disallow: { to: { type: ['shell', 'person', 'ring0', 'ring1', 'ring3', 'admin', 'settings', 'store', 'page', 'service'] } },
+            message: 'Shared layer (primitives/ui) must not import feature/app modules (incl. stores/pages/services). Keep it leaf-level.',
           },
           // One store per domain: a store must not import another store.
           {
@@ -240,7 +240,10 @@ export default defineConfig([
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [{
-          group: ['@/components/*', '@/stores/*'],
+          // `**` (not `*`) so deep paths like `@/components/ui/GearStatusCircle`
+          // are caught, not just one-segment `@/components/x`; bare barrel
+          // imports (`@/components`) are listed explicitly.
+          group: ['@/components', '@/components/**', '@/stores', '@/stores/**'],
           message: 'Within components/ and stores/, import cross-domain via a RELATIVE path (../x), not the @ alias — the boundaries lint cannot resolve @ and would skip the ring check.',
         }],
       }],
