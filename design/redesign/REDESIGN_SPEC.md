@@ -341,32 +341,58 @@ How every screen and action connects. Three views: the macro journey, the weekly
 
 ## 10. Glossary (canonical vocabulary)
 
-UI copy uses these words and *only* these words for these concepts (rule 4 / *Consistent Language*).
+UI copy uses these words and *only* these words for these concepts (rule 4 / *Consistent Language*). Kept in sync with `DESIGN_SYSTEM.md §2.3` (the quick-reference enforcement list); this table is the authoritative source with definitions and the "never call it" column.
 
 | Term | Definition | Never call it |
 |---|---|---|
 | **Static** | a raid group | "group," "team" |
-| **Track** | something a static is progressing through; the savage Tier is the flagship | "goal" (loosely) |
-| **Tier** | the current savage raid tier (a track) | — |
+| **Track** | the abstraction a static progresses through (one Progress Engine, many tracks); adding non-savage content = "add a track" | "goal," "content" (vague), "activity" |
+| **Tier** | the current savage raid tier — the flagship track (e.g. "AAC Heavyweight") | — |
+| **Fight** | one named encounter inside a Tier (e.g. M9S, M12S) | "floor" in user-facing copy (floor is an internal/code term) |
+| **Prog / Progress** | a *status* — how far along a static is on a fight or tier | a page name, a tab, a noun-place ("the Progress page"); say "Floor 3 prog," not "go to Progress" |
 | **Roster** | the people in the static + their gear toward BiS | — |
 | **BiS** | the best-in-slot target set for a job | — |
 | **Loot** | the domain of distributing drops (priority + log + history) | "gear" (for the domain) |
 | **Drop** | one piece of loot that dropped | — |
 | **Priority** | who's next in line for a slot, by the fairness rules | — |
-| **Log (v.)** | to record a drop or a week — an action | a tab/place |
+| **Log (v.)** | to record a drop or a week — an action | a tab/place; the record is "History" |
 | **Book / Page** | clear currency used to buy gear | — |
 | **Week** | the unit the loop runs on — one raid week = one loot week | — |
 | **Lead / Member / Viewer** | roles inside a static (permissions) | a separate app/mode |
 
+**Retired terms (never use in UI copy):**
+
+| Retired term | Replace with |
+|---|---|
+| "Goals" (as a page/concept) | "the tracks this static is progressing" |
+| "Content" (vague, for what a static does) | the specific track name, or "track" |
+| "Gear" (as a tab or section name) | Roster (for the people+gear view), Loot (for distribution), or BiS (for targets) |
+| "Loot Log" | "Loot → History" |
+| "Who Needs It" | "Priority" |
+| "Overview" | "Home" |
+| "More" | (deleted — contents re-homed per §7) |
+
 ---
 
-## 11. Open decisions (need your call before mockup pass)
+## 11. Open decisions
 
-1. **Tab wording — "Loot" vs "Loot & Priority":** the tab owns priority + logging + history. Is "Loot" enough scent, or label it to surface priority? *(Spec assumes "Loot," with Priority as the default sub-view.)*
-2. **Schedule as a tab vs. woven into Home:** scheduling is foundational *because* it's the clock. Does it warrant a full tab, or is "Next session + RSVP on Home + an availability view" enough, with the deep calendar one level down? *(Spec keeps it a tab; it's a distinct job.)*
-3. **Player Hub vs. personal Home:** is the Person-layer landing the Player Hub itself, or a lighter "your statics + what needs you" home that *contains* the Hub? *(Spec treats Player Hub as the front door.)*
-4. **Tracks surfacing:** do non-flagship tracks (mounts, ultimates) each get a nav entry inside a static, or live only as cards on Home + a track detail view? *(Spec: cards on Home + detail, no nav entry — preserves the 4-tab spine.)*
-5. **PR #154 / Plan F:** keep merging the standardization stack (it's pure conformance work the redesign *wants*), or freeze it to avoid churn on screens about to be restructured? *(Recommend: keep the token/lint/shared-component work, pause the per-screen restyling of screens being replaced.)*
+The F0 decisions below are now **locked** — they are written into `DESIGN_SYSTEM.md` and this glossary (§10). The remaining items are open.
+
+### F0 decisions — locked ✅
+
+These were the three open structural decisions gating F3. All are now canon:
+
+1. ✅ **Nav-rail visual standard** — 72px, icon-only, recessed surface (`surface-raised`, 1px border, no shadow), rail owns top-left corner, active = filled icon + accent + left-edge pill indicator, inactive = outlined + muted, hover/pressed = surface-overlay, focus = focus-ring. A11y requirements (nav landmark, sr-only labels, tooltip on hover+focus, 44px touch target, skip link) are mandatory. Locked in `DESIGN_SYSTEM.md §3.9`.
+2. ✅ **Icon lexicon** — one glyph = one meaning; canonical table in `DESIGN_SYSTEM.md §4.1`; decorative trailing `→` is removed. §3.1 trailing-element rules derive from that table.
+3. ✅ **Track-centric vocabulary** — Track / Tier / Fight / Prog as status / "add a track" for non-savage content / "Goals" retired. Locked in `DESIGN_SYSTEM.md §2.3` and this glossary (§10).
+
+### Still open
+
+4. **Tab wording — "Loot" vs "Loot & Priority":** the tab owns priority + logging + history. Is "Loot" enough scent, or label it to surface priority? *(Spec assumes "Loot," with Priority as the default sub-view.)*
+5. **Schedule as a tab vs. woven into Home:** scheduling is foundational *because* it's the clock. Does it warrant a full tab, or is "Next session + RSVP on Home + an availability view" enough, with the deep calendar one level down? *(Spec keeps it a tab; it's a distinct job.)*
+6. **Player Hub vs. personal Home:** is the Person-layer landing the Player Hub itself, or a lighter "your statics + what needs you" home that *contains* the Hub? *(Spec treats Player Hub as the front door.)*
+7. **Tracks surfacing:** do non-flagship tracks (mounts, ultimates) each get a nav entry inside a static, or live only as cards on Home + a track detail view? *(Spec: cards on Home + detail, no nav entry — preserves the 4-tab spine.)*
+8. **PR #154 / Plan F:** keep merging the standardization stack (it's pure conformance work the redesign *wants*), or freeze it to avoid churn on screens about to be restructured? *(Recommend: keep the token/lint/shared-component work, pause the per-screen restyling of screens being replaced.)*
 
 ---
 
