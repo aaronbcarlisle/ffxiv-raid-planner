@@ -114,6 +114,20 @@ export default defineConfig([
       'design-system/no-tiny-text': 'off',
     },
   },
+  // Shared layer is the design system's own surface — lock the color/type/
+  // interaction rules at error so it cannot regress (F3 rewrites these files).
+  // Raw-element rules are intentionally NOT locked here: primitives use raw
+  // elements by design (see the off-block above).
+  {
+    files: ['src/components/primitives/**/*.{ts,tsx}', 'src/components/ui/**/*.{ts,tsx}'],
+    ignores: ['**/*.test.{ts,tsx}'],
+    rules: {
+      'design-system/no-arbitrary-color': 'error',
+      'design-system/no-tiny-text': 'error',
+      'design-system/no-noninteractive-onclick': 'error',
+      'design-system/no-cursor-pointer-without-role': 'error',
+    },
+  },
   // Test files exercise raw elements and arbitrary values as fixtures; the
   // design-system rules target shipped UI, not test scaffolding. (Matches the
   // exclusion already in scripts/check-design-system.sh.)

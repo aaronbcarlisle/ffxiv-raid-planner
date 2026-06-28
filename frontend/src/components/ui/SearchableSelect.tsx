@@ -329,6 +329,7 @@ export function SearchableSelect({
           <div className="p-2 border-b border-border-default">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+              {/* design-system-ignore: combobox search filter — raw input required for tightly coupled keyboard nav (handleKeyDown drives listbox focus), portal-specific bg-surface-base contrast can't be cleanly overridden via Input wrapper */}
               <input
                 ref={inputRef}
                 type="text"

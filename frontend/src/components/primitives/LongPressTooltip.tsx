@@ -171,11 +171,13 @@ export function LongPressTooltip({
       </div>
       {/* Mobile tooltip overlay - z-[100] required to appear above context menus (z-50) */}
       {showMobileTooltip && tooltipPosition && (
+        // design-system-ignore: mobile dismiss backdrop — full-screen overlay catches taps/touches to close; adding role="button" creates an erroneous tab stop on a purely positional layer
         <div
           className="fixed inset-0 z-[100]"
           onClick={() => setShowMobileTooltip(false)}
           onTouchStart={() => setShowMobileTooltip(false)}
         >
+          {/* design-system-ignore: tooltip content container — onClick stops propagation to backdrop dismiss, not a user-initiated interaction */}
           <div
             className="fixed z-[101] rounded bg-surface-raised px-3 py-2 text-sm text-text-primary shadow-xl border border-border-default animate-in fade-in-0 zoom-in-95"
             style={{
