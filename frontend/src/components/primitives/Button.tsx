@@ -10,6 +10,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'accent-subtle' | 'ghost' 
 export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  /** Visible text label — required. Icon-only actions use <IconButton>. */
+  children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
   /** Show loading spinner */
