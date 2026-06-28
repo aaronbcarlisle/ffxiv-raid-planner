@@ -4,10 +4,11 @@
 
 ## Current status & how to resume (updated 2026-06-28)
 
-**The live phase tracker is [`FOUNDATION_ROADMAP.md`](./FOUNDATION_ROADMAP.md) — read it first for where we are.** It defines the dependency-ordered foundation phases **F0–F6** and their status.
+**The live phase tracker is [`FOUNDATION_ROADMAP.md`](./FOUNDATION_ROADMAP.md) — read it first for where we are** (it has the per-phase scope, status, and the §3.2 follow-ups list). It defines the dependency-ordered foundation phases **F0–F6**.
 
-- **Done:** **F1 — token pipeline** (`tokens.json` → generated Tailwind `@theme`, parity-proven zero visual change, CI drift guard, PageContainer rename). Merged into `redesign/foundation` via **PR #155**.
-- **Next:** **F2** (anti-regression scaffolding) and **F0** (lock the three open decisions below). F0 is doc-only/light; F2 is multi-task.
+- **Done & merged into `redesign/foundation` (head `ee03eab`):** **F0** (locked decisions, #157) · **F1** (token pipeline, #155) · **F2** (anti-regression scaffolding, #158 `2ffde63`) · **F3** (component contracts + illegal-states, #159 `ee03eab`). Release notes at **v2.0.2**.
+- **Next:** **F4 — frontend structure** (feature-slice + shared-layer model; FSD-lite). F2 already shipped the leaf-level boundary rule (shared layer ✗ imports features via `eslint-plugin-boundaries` v6); F4 extends it to the full Ring-aware graph + the one-store-per-domain / Person↔Static module boundaries. See `FOUNDATION_ROADMAP.md` F4 row.
+- **How a phase runs (proven over F1–F3):** brainstorm → write spec (`design/redesign/specs/`) → write plan (`design/redesign/plans/`) → execute subagent-driven (fresh implementer + independent reviewer per task, then a final whole-branch review) → PR into `foundation` → squash-merge. The `superpowers` skills drive this; the SDD progress ledger lives at `.superpowers/sdd/progress.md` (git-ignored scratch).
 
 **Dev workflow (standing):** `redesign/foundation` is the integration base (= `main` + the superseded #146–#154 stack). Each phase = a branch off `foundation`'s head → PR into `foundation` → review-loop until clean → **squash-merge** into `foundation` → next phase branches off the new head. Nothing targets `main` until the whole foundation is done, then `foundation → main` lands it in one reviewed PR. **No AI attribution in commits/PRs** (absolute).
 
