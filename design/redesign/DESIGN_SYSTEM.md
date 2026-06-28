@@ -181,7 +181,7 @@ The v2 rule, kept verbatim because it's excellent: a `Tag` **must declare its ki
 | `filter` | toggles a filter | `aria-pressed`; solid bg when on (`tag.selected-bg-opacity:1`), 20% tint when off |
 | `nav` | navigates | chevron + real `href`/`onNavigate` (required by type) |
 
-Illegal-by-construction: a label tag can't have an onClick; a nav tag can't exist without a destination. These guarantees are locked by compile-time assertions in `Tag.type-test.tsx`; `Tag` and `Tabs` are the canonical discriminated-union exemplars for this system (see §6 rule 4).
+Illegal-by-construction: a label tag can't have an onClick; a nav tag can't exist without a destination.
 
 `Tag` and `Tabs` are the canonical discriminated-union exemplars in this design system; their compile-time guarantees are locked by `frontend/src/components/ui/Tag.type-test.tsx` (`@ts-expect-error` assertions that fail the build if any guarantee regresses).
 
