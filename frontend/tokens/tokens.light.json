@@ -1,6 +1,6 @@
 {
   "$schema": "https://design-tokens.github.io/community-group/format/",
-  "$description": "Light theme. Overrides the SEMANTIC tier ONLY — primitives and component tokens are untouched, which is the entire point of the tiered model. Apply under [data-theme='light']. Values verbatim from the v2 index.css light block.",
+  "$description": "Light theme. Overrides the SEMANTIC tier and select COMPONENT tokens (e.g. rail-bg, toggle-orb) — primitives are untouched. Apply under [data-theme='light']. Values verbatim from the v2 index.css light block.",
 
   "semantic": {
     "color": {

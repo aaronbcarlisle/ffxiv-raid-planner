@@ -168,6 +168,12 @@ export const ID_TO_CSS_VAR = {
   'semantic.color.text.on-gear-raid':      '--color-gear-raid-text',
   'semantic.color.text.on-gear-crafted':   '--color-gear-crafted-text',
   'semantic.color.text.on-gear-augmented': '--color-gear-augmented-text',
+
+  // Layout dimensions + breakpoint (primitive.size.{header,bottom-nav}, primitive.breakpoint.3xl)
+  // --layout-chrome is NOT in this map — it's a calc() derived literal emitted separately.
+  'primitive.size.header':      '--header-height',
+  'primitive.size.bottom-nav':  '--bottom-nav-height',
+  'primitive.breakpoint.3xl':   '--breakpoint-3xl',
 };
 
 // ─── DTCG alias resolver ──────────────────────────────────────────────────────
@@ -289,6 +295,41 @@ export function buildCss(darkTokens, lightTokens, map = ID_TO_CSS_VAR) {
   const darkLines  = [...darkVars.entries()].map(([k, v]) => `  ${k}: ${v};`).join('\n');
   const lightLines = [...lightVars.entries()].map(([k, v]) => `  ${k}: ${v};`).join('\n');
 
+  // ── Special-case: --layout-chrome ─────────────────────────────────────────
+  // This is a calc() of two token-derived vars — not a standalone token value.
+  // The generic loop cannot produce a calc(); emit it as a literal derived line.
+  const layoutChromeLine =
+    '  --layout-chrome: calc(var(--header-height) + var(--bottom-nav-height)); /* Combined header + bottom nav */';
+
+  // ── Legacy-alias shim (dark @theme) ───────────────────────────────────────
+  // These are CSS aliases pointing to semantic vars, not token values.
+  // Kept for backward compatibility; remove as components migrate.
+  const darkShimLines = [
+    '  /* @deprecated legacy aliases — remove as components migrate */',
+    '  --color-bg-primary: var(--color-surface-base);',
+    '  --color-bg-secondary: var(--color-surface-raised);',
+    '  --color-bg-card: var(--color-surface-card);',
+    '  --color-bg-elevated: var(--color-surface-elevated);',
+    '  --color-bg-hover: var(--color-surface-interactive);',
+    '  --color-accent-bright: #2dd4bf;',
+    '  --color-source-raid: var(--color-gear-raid);',
+    '  --color-source-tome: var(--color-gear-tome);',
+    '  --color-source-crafted: var(--color-gear-crafted);',
+    '  --color-source-augmented: var(--color-gear-augmented);',
+  ].join('\n');
+
+  // ── Legacy-alias shim (light [data-theme="light"]) ────────────────────────
+  // --color-accent-bright is already emitted above via the light-only extras
+  // (it resolves to the light accent.hover value #0d7a6e) — do NOT duplicate it.
+  const lightShimLines = [
+    '  /* @deprecated legacy aliases — remove as components migrate */',
+    '  --color-bg-primary: var(--color-surface-base);',
+    '  --color-bg-secondary: var(--color-surface-raised);',
+    '  --color-bg-card: var(--color-surface-card);',
+    '  --color-bg-elevated: var(--color-surface-elevated);',
+    '  --color-bg-hover: var(--color-surface-interactive);',
+  ].join('\n');
+
   return [
     '/* AUTO-GENERATED — do not edit by hand. Run: pnpm tokens:build */',
     '/* Source: tokens/tokens.json (dark base) + tokens/tokens.light.json (light overrides) */',
@@ -296,10 +337,13 @@ export function buildCss(darkTokens, lightTokens, map = ID_TO_CSS_VAR) {
     '',
     '@theme {',
     darkLines,
+    layoutChromeLine,
+    darkShimLines,
     '}',
     '',
     '[data-theme="light"] {',
     lightLines,
+    lightShimLines,
     '}',
     '',
   ].join('\n');

@@ -93,6 +93,21 @@
   --color-material-glaze: #a855f7;
   --color-material-solvent: #eab308;
   --color-material-tomestone: #f97316;
+  --header-height: 56px;
+  --bottom-nav-height: 56px;
+  --breakpoint-3xl: 1400px;
+  --layout-chrome: calc(var(--header-height) + var(--bottom-nav-height)); /* Combined header + bottom nav */
+  /* @deprecated legacy aliases — remove as components migrate */
+  --color-bg-primary: var(--color-surface-base);
+  --color-bg-secondary: var(--color-surface-raised);
+  --color-bg-card: var(--color-surface-card);
+  --color-bg-elevated: var(--color-surface-elevated);
+  --color-bg-hover: var(--color-surface-interactive);
+  --color-accent-bright: #2dd4bf;
+  --color-source-raid: var(--color-gear-raid);
+  --color-source-tome: var(--color-gear-tome);
+  --color-source-crafted: var(--color-gear-crafted);
+  --color-source-augmented: var(--color-gear-augmented);
 }
 
 [data-theme="light"] {
@@ -165,4 +180,10 @@
   --color-gear-crafted-text: #9a3412;
   --color-gear-augmented-text: #92400e;
   --color-accent-bright: #0d7a6e;
+  /* @deprecated legacy aliases — remove as components migrate */
+  --color-bg-primary: var(--color-surface-base);
+  --color-bg-secondary: var(--color-surface-raised);
+  --color-bg-card: var(--color-surface-card);
+  --color-bg-elevated: var(--color-surface-elevated);
+  --color-bg-hover: var(--color-surface-interactive);
 }
