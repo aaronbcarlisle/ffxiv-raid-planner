@@ -105,9 +105,9 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       ? { height: 32, buttonWidth: 28, minCenterWidth: 40, fontSize: 13, buttonFontSize: 14 }
       : { height: 38, buttonWidth: 38, minCenterWidth: 50, fontSize: 14, buttonFontSize: 18 };
 
-    // App color palette
-    const accentColor = '#14b8a6'; // Primary accent
-    const accentHover = 'rgba(20, 184, 166, 0.08)'; // Hover background
+    // App color palette — theme-aware via the accent token (light #0c7d71 / dark #14b8a6)
+    const accentColor = 'var(--color-accent)'; // Primary accent
+    const accentHover = 'color-mix(in srgb, var(--color-accent) 8%, transparent)'; // Hover background
 
     // If not showing buttons, render simple input
     if (!showButtons) {
