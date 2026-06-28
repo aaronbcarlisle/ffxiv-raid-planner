@@ -146,6 +146,7 @@ export function ResetConfirmModal({
           <Label htmlFor="reset-confirm">
             Type <span className="font-mono font-bold text-text-primary">RESET</span> to confirm:
           </Label>
+          {/* eslint-disable jsx-a11y/no-autofocus -- intentional focus management in destructive-confirm modal; keyboard users must type "RESET" and autofocus eliminates an extra Tab navigation step */}
           <Input
             id="reset-confirm"
             value={confirmText}
@@ -154,6 +155,7 @@ export function ResetConfirmModal({
             disabled={isResetting}
             autoFocus
           />
+          {/* eslint-enable jsx-a11y/no-autofocus */}
         </div>
 
         {/* Buttons */}

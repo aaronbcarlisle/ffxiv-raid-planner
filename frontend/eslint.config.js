@@ -6,6 +6,13 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import designSystemPlugin from './eslint-design-system-plugin.js'
 import boundaries from 'eslint-plugin-boundaries'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
+
+// jsx-a11y recommended, downgraded to warn for the legacy backlog. The shared
+// layer re-locks these to error below (it is small and clean).
+const a11yRecommendedWarn = Object.fromEntries(
+  Object.keys(jsxA11y.flatConfigs.recommended.rules).map((rule) => [rule, 'warn']),
+)
 
 export default defineConfig([
   globalIgnores(['dist', 'e2e', 'playwright-report', 'test-results']),
@@ -24,6 +31,7 @@ export default defineConfig([
     plugins: {
       'design-system': designSystemPlugin,
       boundaries,
+      'jsx-a11y': jsxA11y,
     },
     settings: {
       // Tell eslint-module-utils to resolve .ts/.tsx in addition to .js/.jsx
@@ -41,6 +49,9 @@ export default defineConfig([
       ],
     },
     rules: {
+      // jsx-a11y recommended at warn globally; shared layer locks these to error below.
+      ...a11yRecommendedWarn,
+
       // Allow underscore-prefixed variables to be unused (common convention)
       '@typescript-eslint/no-unused-vars': [
         'error',
@@ -126,6 +137,9 @@ export default defineConfig([
       'design-system/no-tiny-text': 'error',
       'design-system/no-noninteractive-onclick': 'error',
       'design-system/no-cursor-pointer-without-role': 'error',
+
+      // jsx-a11y locked on the shared layer (verified clean in F2).
+      ...jsxA11y.flatConfigs.recommended.rules,
     },
   },
   // Test files exercise raw elements and arbitrary values as fixtures; the
