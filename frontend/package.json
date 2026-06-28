@@ -15,6 +15,7 @@
     "check:design-system:strict": "bash scripts/check-design-system.sh --strict",
     "check:bundle": "pnpm build && size-limit",
     "test:e2e": "playwright test",
+    "test:contrast": "playwright test e2e/contrast.spec.ts",
     "typecheck": "tsc --noEmit",
     "tokens:build": "node scripts/build-tokens.mjs",
     "tokens:parity": "node scripts/token-parity.mjs scripts/__parity__/index.baseline.css src/styles/tokens.generated.css",
@@ -59,6 +60,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.60.0",
     "@size-limit/file": "^12.0.1",
