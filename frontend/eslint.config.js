@@ -71,9 +71,9 @@ export default defineConfig([
       // Enable with 'error' once all violations are fixed
       'design-system/no-raw-button': 'warn',
       'design-system/no-raw-input': 'warn',
-      'design-system/no-raw-select': 'warn',
+      'design-system/no-raw-select': 'error',
       'design-system/no-raw-label': 'warn',
-      'design-system/no-raw-textarea': 'warn',
+      'design-system/no-raw-textarea': 'error',
 
       // Color / typography / interaction-semantics enforcement.
       // Start as 'warn' so legacy code stays green; the Plan L per-area sweeps
@@ -112,6 +112,23 @@ export default defineConfig([
     rules: {
       'design-system/no-arbitrary-color': 'off',
       'design-system/no-tiny-text': 'off',
+    },
+  },
+  // Test files exercise raw elements and arbitrary values as fixtures; the
+  // design-system rules target shipped UI, not test scaffolding. (Matches the
+  // exclusion already in scripts/check-design-system.sh.)
+  {
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**'],
+    rules: {
+      'design-system/no-raw-button': 'off',
+      'design-system/no-raw-input': 'off',
+      'design-system/no-raw-select': 'off',
+      'design-system/no-raw-label': 'off',
+      'design-system/no-raw-textarea': 'off',
+      'design-system/no-arbitrary-color': 'off',
+      'design-system/no-tiny-text': 'off',
+      'design-system/no-noninteractive-onclick': 'off',
+      'design-system/no-cursor-pointer-without-role': 'off',
     },
   },
 ])
