@@ -65,6 +65,11 @@
   --container-standard: 1760px;
   --container-focus: 1100px;
   --container-doc: 960px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px rgba(20, 184, 166, 0.15);
 }
 
 [data-theme="light"] {
@@ -111,5 +116,10 @@
   --color-focus-ring: rgba(15, 150, 136, 0.4);
   --color-active-bg: rgba(15, 150, 136, 0.12);
   --color-hover-overlay: rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(15, 150, 136, 0.1);
   --color-accent-bright: #0d7a6e;
 }

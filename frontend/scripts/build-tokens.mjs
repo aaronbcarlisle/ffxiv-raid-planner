@@ -117,6 +117,13 @@ export const ID_TO_CSS_VAR = {
   'primitive.size.container.standard': '--container-standard',
   'primitive.size.container.focus':    '--container-focus',
   'primitive.size.container.doc':      '--container-doc',
+
+  // Shadows  (semantic.shadow.* → --shadow-*)
+  'semantic.shadow.sm':   '--shadow-sm',
+  'semantic.shadow.md':   '--shadow-md',
+  'semantic.shadow.lg':   '--shadow-lg',
+  'semantic.shadow.xl':   '--shadow-xl',
+  'semantic.shadow.glow': '--shadow-glow',
 };
 
 // ─── DTCG alias resolver ──────────────────────────────────────────────────────
