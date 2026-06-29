@@ -60,7 +60,7 @@
 | Element | Tag | Target component | Consolidates | DS ref | Notes |
 |---|---|---|---|---|---|
 | Two-region layout (actionable-left / ambient-right grid) | new | `TwoRegionDashboard` | — | REDESIGN_SPEC §4.2 | 1.85fr + 1fr grid, collapses to 1-col at 1180px; no layout wrapper exists; `.dash` is mockup-only CSS. Shared with Schedule (+ Player Hub deferred). |
-| Page header ("This week" + session subtitle) | refine | `components/layout/PageHeader.tsx` | — | DS §3 (PageHeader); REDESIGN_SPEC §6 | Confirmed at `layout/PageHeader.tsx` (title/subtitle/icon/actions). Token-only refine: accent-hex violations at `:17,26-27,35` → `var(--color-accent)` / `color-mix`. Not a catalog entry (single component, token fix). |
+| Page header ("This week" + session subtitle) | refine | `components/layout/PageHeader.tsx` | — | DS §3 (PageHeader); REDESIGN_SPEC §6 | Confirmed at `layout/PageHeader.tsx` (title/subtitle/icon/actions). Token-only refine: raw-accent-`rgba()` violations at `:17,26-27,35` → `var(--color-accent)` / `color-mix`. Not a catalog entry (single component, token fix). |
 | Card surface shell (all `.card` surfaces) | new | `CardShell` | `ui/DashboardCard.tsx` + ~25-strong bespoke `*Card` family (`player/PlayerCard.tsx`, `schedule/SessionCard.tsx`, `dashboard/MyStaticsPanel.tsx`, …) | watchlist; REDESIGN_SPEC §6 | No shared shell exists; watchlist mandates consolidate/new, **not** refine-a-primitive. `DashboardCard` has inline-hex violations (GLASS_GRADIENT, GOLD_LABEL, MEDALLION_COLORS). |
 | Next-session RSVP card | refine | `SessionRsvpCard` | `schedule/SessionCard.tsx` + `schedule/ScheduleUpcomingPanel.tsx` + Home `NextRaidModule` (`static-group/StaticHomeTab.tsx:456-558`) | watchlist; REDESIGN_SPEC §5.4 | Shared Home + Schedule. Home variant drops manage controls; needs role-colored avatar stack + tz-offset line. (Corrected from `new ← SessionCard`: full precursor list, `refine`.) |
 | This week's loot — per-fight progress bars + "Log this week's loot" CTA | new | `WeeklyLootSummaryCard` | — | REDESIGN_SPEC §5.1 | Per-fight cleared/in-progress bar rows + single primary CTA; no Home-summary precursor. |
@@ -265,6 +265,7 @@ Re-validate when its ring is built.
 - **top bar / spine** — DS §3.8 lists these as "new", but they are realized as **refine-of-`Header.tsx`** and **refine-of-`TabNavigation.tsx`** (§A.8); no fresh mint.
 - **FilterPill** — realized as a `Button(ghost)+PopoverSelect` composition, not a component (§B-T4).
 - **LightPartyHeader** — single existing component getting a Substitutes variant + token fix; not a consolidation.
+- **HistoryView / AllWeeksView** — `refine`-consolidations kept in the cross-screen consolidation map but **not** the catalog, because the owned component name is **unchanged** (an in-place refactor of an existing same-named component), not a renamed or newly-created shared component. The §6 catalog rule promotes only new/renamed owned shared components; the dedup contract for these still lives in the consolidation map, which is what F6 reads.
 
 ---
 
@@ -296,12 +297,12 @@ Re-validate when its ring is built.
 | `PriorityRow` | `loot/LootPriorityPanel.tsx` `LootPriorityEntry` memo | 🔀 Loot Log: Priority → Loot |
 | `FloorCard` / `FloorDropRow` | `loot/LootPriorityPanel.tsx` inline per-floor + drop rendering | 🔀 Loot Log: Priority → Loot |
 | `WeekNavigatorStrip / WeekStepper` | `history/WeekStepper.tsx` + `history/WeekSelector.tsx` (shell shared clock) | ♻️ Header context switcher → week to top bar |
-| `CommandPalette` | `ui/KeyboardShortcutsHelp.tsx` | — (DS §3.4 / §3.8) |
+| `CommandPalette` | `ui/KeyboardShortcutsHelp.tsx` | — (DS §3.8; §4 lexicon for ⌘K affordance) |
 | Top bar (`Header.tsx` refine) / `ContextSwitcher` | `static-group/TierSelector.tsx` + `layout/SettingsDockToggle.tsx` (gear) | ♻️ Header context switcher → static/track/week to top bar |
 | Context rail (`AppRail.tsx` refine) | `layout/SidebarNav.tsx` (in-static rail role retired) | ♻️ Header context switcher → Player Hub/Finder to rail |
 | Spine (`TabNavigation.tsx` refine) | `layout/SidebarNav.tsx` (in-static sidebar tabs → horizontal spine) | ♻️ Overview → Home (4-tab spine) |
 
-**§7 rows consciously marked N/A (no Ring-0 component — Settings / admin / deferred):** Plugin tab → Player Hub/Settings; ↳ Lead Tools/Settings → top-bar gear (role-scoped Settings panel, kept); ↳ Integrations/Dalamud → Settings; ↳ Exports → Settings; ↳ Danger Zone → Settings → Static; Settings slide-out ✅ kept; Admin ✅ separate gated area.
+**§7 rows consciously marked N/A (no Ring-0 component — Settings / admin / deferred):** Plugin tab → Player Hub/Settings; ↳ Lead Tools/Settings → top-bar gear (role-scoped Settings panel, kept); ↳ Integrations/Dalamud → Settings; ↳ Exports → Settings; ↳ Danger Zone → Settings → Static; ↳ Session History → Schedule (session list, Ring-1); Settings slide-out ✅ kept; Admin ✅ separate gated area.
 
 ---
 
