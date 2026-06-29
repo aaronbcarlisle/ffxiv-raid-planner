@@ -40,6 +40,8 @@ Every element gets exactly **one** tag, and every tag must be **grounded in the 
 - Validate against **both** sources of truth: the `DESIGN_SYSTEM.md` contract **and** the actual `frontend/src/components/` tree. `UI_COMPONENTS.md` is a finding aid — cross-check it, never trust it blind (it can be stale).
 - "Looks new" ≠ "is new." Check for a precursor first. Known traps surfaced while scoping: the Cards⇄Board **segmented toggle** already exists (`ui/GroupViewToggle.tsx`, `ui/ViewModeToggle.tsx`) → likely `refine`; the **unified recipient picker** has a precursor (`primitives/PopoverSelect.tsx` + `DESIGN_SYSTEM §3.6`) → `refine`/specialize, not `new`; **dashboard cards** exist (`ui/DashboardCard.tsx`, `dashboard/`) → `refine`; **empty states** exist (`ui/EmptyState.tsx`). Defaulting these to `new` is a classification error.
 - The **migration link** is mandatory on every `refine`/`new` row that replaces something: name the current component(s) it consolidates (e.g. the recipient picker replaces both `loot/QuickLogDropModal` **and** `loot/AddLootEntryModal`). F6 needs the *predecessors*, because each F6 screen "consolidates its duplicated predecessors into one owned component." A map that says "new: recipient picker" without naming the two forks it kills is half-useless.
+- **Filler is noise, not a component.** The mockups "contain placeholder/filler visuals — treat layout as the signal, filler as noise" (`HANDOFF.md`). Tag only real *structural* elements. Decorative filler, placeholder copy/data, and one-off layout scaffolding are **skipped — not tagged, not catalogued.** Never mint a catalog entry from a mockup's fake content; that is exactly how the catalog becomes a junk drawer. When unsure whether something is structure or filler, leave a "filler? — confirm" note rather than minting a `new`.
+- **Retired-IA elements have no home — flag, don't tag.** If a mockup happens to render an element from the retired IA (a Gear tab, "Loot Log," "More," "Overview," "Who Needs It," etc.), do **not** give it an existing/refine/new tag. Record it as a one-line `retired-IA — no home, drop` note so it's visible to the reviewer but never promoted into the build manifest.
 - Tags are claims about the codebase; the reviewer **re-verifies each one against actual code**, not against the agent's prose.
 
 ---
@@ -91,7 +93,7 @@ A pre-seeded list of components that appear on multiple screens. When an agent e
 | `PriorityRow` | one player's priority standing for a slot | Loot-Priority, Home | `priority/` panels → assess |
 | `PlayerIdentity` | role-colored name/avatar/job treatment | Roster-Cards, Roster-Board, Loot, Schedule | `player/`, `ui/SafeAvatar` → assess |
 | `TwoRegionDashboard` | actionable-left / ambient-right layout | Home (others reusable) | layout — likely new |
-| `CardShell` | `surface-card` + radius + uppercase section header | every screen | `ui/Card`/`DashboardCard` → refine |
+| `CardShell` | `surface-card` + radius + uppercase section header | every screen | **no shared shell exists** — `ui/DashboardCard` + a ~25-strong bespoke `*Card` family (`PlayerCard`, `SessionCard`, `CharacterCard`, …) → consolidate/new, **not** refine-a-primitive |
 | `SegmentedToggle` | Cards⇄Board / view switch | Roster, Loot | `ui/GroupViewToggle`,`ui/ViewModeToggle` → refine/consolidate |
 | `AttentionRow` | one prioritized "needs you" action item | Home (Static Finder) | `player/PlayerSetupBanner` → consolidates |
 | `TrackCard` | a Progress-Engine track summary | Home ("also tracking") | `mount-farms/` UI → assess |
