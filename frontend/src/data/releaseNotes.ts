@@ -72,6 +72,15 @@ export const RELEASES: Release[] = [
         pr: 163,
         prTitle: 'F6a — Shell (rail + top bar + 4-tab spine + ⌘K, behind ?shell=v2)',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'F6b — redesigned Home dashboard (behind ?shell=v2)',
+        description:
+          'New weekly-loop Home: next-session RSVP, this-week loot summary, roster readiness, a needs-attention list, BiS-by-role, recent activity, and a track card — wired as the v2 overview slot. Also mounts the static-settings panel in the v2 shell. Legacy Home unchanged.',
+        pr: 0, // backfill the real PR number at PR-open
+        prTitle: 'F6b — Home (weekly-loop dashboard)',
+      },
     ],
     internal: true,
   },
