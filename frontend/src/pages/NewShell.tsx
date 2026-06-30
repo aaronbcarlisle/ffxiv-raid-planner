@@ -13,6 +13,7 @@ import { UserMenu } from '../components/auth';
 import { NotificationCenter } from '../components/auth/NotificationCenter';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
+import { useLootTrackingStore } from '../stores/lootTrackingStore';
 import { logger } from '../lib/logger';
 import type { RailEntry } from '../components/layout/railTypes';
 
@@ -42,11 +43,13 @@ export function NewShell() {
   const groups = useStaticGroupStore((s) => s.groups);
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
   const fetchGroupByShareCode = useStaticGroupStore((s) => s.fetchGroupByShareCode);
+  const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
   const clearGroupError = useStaticGroupStore((s) => s.clearError);
   const fetchTiers = useTierStore((s) => s.fetchTiers);
   const fetchTier = useTierStore((s) => s.fetchTier);
   const clearTiers = useTierStore((s) => s.clearTiers);
   const clearTierError = useTierStore((s) => s.clearError);
+  const fetchCurrentWeek = useLootTrackingStore((s) => s.fetchCurrentWeek);
 
   // ── Cold-fetch (F6a, Task 9, gap 2) ──
   // The legacy GroupView *chrome* owns the group/tier fetch from the route
@@ -56,6 +59,20 @@ export function NewShell() {
   // the URL/localStorage/active tier) so a cold v2 load self-fetches. Only the
   // group-fetch is replicated; the other GroupView chrome effects (viewAs,
   // sortPreset, recent-statics, static-nav persistence) are not needed to render.
+
+  // Fetch the groups list on cold v2 load so the AppRail avatars are populated.
+  // Guarded: skips if groups are already loaded (warm store from prior navigation).
+  // This mirrors the `fetchGroups` call the legacy GroupView chrome triggers via
+  // its own mount effect; NewShell previously skipped it because it only fetched
+  // the current group. (Fix 2, PR #163)
+  useEffect(() => {
+    if (groups.length === 0) {
+      fetchGroups();
+    }
+    // Run once on mount only — adding `groups.length` would re-fetch on every
+    // static navigation when the list clears momentarily.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchGroups]);
 
   // Clear tiers and errors when shareCode changes (switching statics in v2).
   useEffect(() => {
@@ -90,6 +107,9 @@ export function NewShell() {
       log.debug(`Selected tier: ${activeTier?.tierId} (source: ${selectionSource})`);
       if (activeTier) {
         await fetchTier(currentGroup.id, activeTier.tierId);
+        // Fetch the current week so the TopBar "Week N" label is correct on cold
+        // load, not stuck at the store default of Week 1. (Fix 6, PR #163)
+        fetchCurrentWeek(currentGroup.id, activeTier.tierId);
         setSearchParams(prev => {
           const params = new URLSearchParams(prev);
           params.set('tier', activeTier.tierId);
@@ -98,7 +118,7 @@ export function NewShell() {
       }
     })();
     return () => { cancelled = true; };
-  }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
+  }, [currentGroup?.id, fetchTiers, fetchTier, fetchCurrentWeek, searchParams, setSearchParams]);
 
   // ── v2-scoped mod-K binding ──────────────────────────────────────────────
   // NewShell only mounts for ?shell=v2, so this listener never fires on the

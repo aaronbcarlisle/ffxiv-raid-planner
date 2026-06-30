@@ -238,7 +238,7 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
 - **Variants:** navigate-only (current); action commands (log a drop, assign loot, etc.) are **deferred** — not built, not wired.
 - **States:** open (modal visible, focus trapped) | closed (no DOM presence).
 - **Platform label:** `⌘K` on Mac/iOS, `Ctrl K` on Windows/other — computed at render time from `navigator.platform` so tests can stub it; never a bare glyph that breaks without a font.
-- **Trigger:** keyboard shortcut only (`Mod+K`); no visible affordance button in the shell chrome.
+- **Trigger:** top-bar `⌘K` `IconButton` affordance (labelled "Command palette", always visible in the v2 TopBar) **and** the platform-aware global keyboard shortcut (`⌘K` on Mac, `Ctrl K` on Windows/other) — both open the palette.
 - **Magnifier glyph:** purely decorative (`aria-hidden`). Per §4.1 glyph lexicon, the magnifier means "search" — it is the visual cue only, not an interactive element.
 - **Usage rules:**
   - Built on `Modal` (not a raw `<div>` overlay) — inherits focus trap, `Esc`-close, and z-index management.

@@ -30,6 +30,7 @@ import { Modal } from '../ui/Modal';
 import { SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
 import { useGroupViewState } from '../../hooks/useGroupViewState';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 
 // ── Platform label ──────────────────────────────────────────────────────────
 
@@ -66,7 +67,8 @@ interface PaletteCommand {
 export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  const { setPageMode, setShowSettingsModal } = useGroupViewState();
+  const { setPageMode } = useGroupViewState();
+  const openSettingsPanel = useSettingsPanelStore((s) => s.open);
   const groups = useStaticGroupStore((s) => s.groups);
 
   // Compute at render time so tests can stub navigator.platform.
@@ -111,7 +113,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         id: 'open-settings',
         label: 'Open Settings',
         icon: <Settings className="w-4 h-4" aria-hidden="true" />,
-        onSelect: () => { setShowSettingsModal(true); handleClose(); },
+        // Use the same opener as SettingsGear (settingsPanelStore.open), not the
+        // legacy showSettings URL-param path. Still a no-op in v2 until the
+        // settings host is mounted — tracked deferral. (Fix 3, PR #163)
+        onSelect: () => { openSettingsPanel(); handleClose(); },
       },
       // ── Switch static — one row per group ────────────────────────────
       ...groups.map((g) => ({
@@ -122,7 +127,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         onSelect: () => { navigate(`/group/${g.shareCode}?shell=v2`); handleClose(); },
       })),
     ],
-    [setPageMode, setShowSettingsModal, groups, navigate, handleClose],
+    [setPageMode, openSettingsPanel, groups, navigate, handleClose],
   );
 
   const filtered = useMemo(() => {

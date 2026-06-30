@@ -68,7 +68,10 @@ export function TierBreadcrumb() {
       tooltip: !currentTier ? 'No tier to delete' : tiers.length <= 1 ? 'Cannot delete the last tier' : undefined,
       onClick: () => onDeleteTier(),
     },
-  ], [availableTiers.length, currentTier, tiers.length, onNewTier, onRollover, onDeleteTier]);
+  // Depend on the arrays themselves (identity), not just their lengths, so the
+  // memo recomputes when tiers change with the same count (e.g. switching statics
+  // with the same number of tiers but different tier IDs). (Fix 4, PR #163)
+  ], [availableTiers, currentTier, tiers, onNewTier, onRollover, onDeleteTier]);
 
   if (!currentGroup || tiers.length === 0) return null;
 

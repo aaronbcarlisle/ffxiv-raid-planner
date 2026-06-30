@@ -489,6 +489,7 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
     currentGroup,
     tiers,
     navigate,
+    shellParam: searchParams.get('shell') ?? undefined,
     setShowKeyboardHelp,
     setEditingPlayerId,
     setHighlightedPlayerId,
