@@ -46,7 +46,7 @@ export default defineConfig([
         { type: 'shared',   pattern: 'src/components/(primitives|ui)/**' },
         { type: 'shell',    pattern: 'src/components/(layout|dnd|docs)/**' },
         { type: 'person',   pattern: 'src/components/(profile|auth|dashboard)/**' },
-        { type: 'ring0',    pattern: 'src/components/(roster|player|bis|loot|priority|weapon-priority|history|wizard|team|static-group|group)/**' },
+        { type: 'ring0',    pattern: 'src/components/(roster|player|bis|loot|priority|weapon-priority|history|wizard|team|static-group|group|home)/**' },
         { type: 'ring1',    pattern: 'src/components/(schedule|split-clear)/**' },
         { type: 'ring3',    pattern: 'src/components/(mount-farms|collections)/**' },
         { type: 'admin',    pattern: 'src/components/admin/**' },
