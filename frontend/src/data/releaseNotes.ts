@@ -64,11 +64,13 @@ export const RELEASES: Release[] = [
     date: '2026-06-30T00:00:00Z',
     items: [
       {
-        category: 'fix',
-        title: 'Japanese translation corrections',
+        category: 'improvement',
+        title: 'Japanese now uses FFXIV community ("gamer") terminology',
         description:
-          'Fixed a stray character in the Discord permissions string, corrected FFXIV community terminology ' +
-          '(プログレ, オーケストリオン譜, BiS達成, 交流, 募集), and resolved a duplicate translation for "Show Less".',
+          'Reworked the Japanese translation to use the words JP players actually use: スタティック→固定, ' +
+          '再クリア→消化 (weekly reclear), グラマー→ミラプリ (glamour), ルート→戦利品 (loot), and RSVP→出欠. ' +
+          'Also fixed a stray character in the Discord permissions string and corrected プログレ, オーケストリオン譜, ' +
+          'BiS達成, 交流, and 募集, plus a duplicate translation for "Show Less".',
       },
     ],
   },
