@@ -1,4 +1,5 @@
-import type { FC } from 'react';
+import { useRef } from 'react';
+import type { FC, KeyboardEvent } from 'react';
 import type { PageMode } from '../../types';
 import { LayoutDashboard, Users, Shield, Calendar } from 'lucide-react';
 import { analytics } from '../../services/analytics';
@@ -16,18 +17,50 @@ const SPINE_TABS: { id: PageMode; label: string; Icon: FC<{ size?: number }> }[]
 ];
 
 export function Spine({ activeTab, onTabChange }: SpineProps) {
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    const activeIndex = SPINE_TABS.findIndex(t => t.id === activeTab);
+    let nextIndex: number;
+
+    switch (e.key) {
+      case 'ArrowRight':
+        nextIndex = (activeIndex + 1) % SPINE_TABS.length;
+        break;
+      case 'ArrowLeft':
+        nextIndex = (activeIndex - 1 + SPINE_TABS.length) % SPINE_TABS.length;
+        break;
+      case 'Home':
+        nextIndex = 0;
+        break;
+      case 'End':
+        nextIndex = SPINE_TABS.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    e.preventDefault();
+    const nextTab = SPINE_TABS[nextIndex];
+    analytics.track('navigation', 'tab_switch', { tab: nextTab.id, surface: 'spine' });
+    onTabChange(nextTab.id);
+    tabRefs.current[nextIndex]?.focus();
+  }
+
   return (
     <div
       role="tablist"
       aria-label="Main content sections"
       className="flex border-b border-border-default bg-surface-base"
+      onKeyDown={handleKeyDown}
     >
-      {SPINE_TABS.map((tab) => {
+      {SPINE_TABS.map((tab, index) => {
         const isActive = activeTab === tab.id;
         return (
           /* design-system-ignore: spine tab requires toggle styling */
           <button
             key={tab.id}
+            ref={el => { tabRefs.current[index] = el; }}
             type="button"
             role="tab"
             aria-selected={isActive}
