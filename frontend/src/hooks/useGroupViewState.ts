@@ -294,14 +294,16 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // Wrapper to persist pageMode and update URL
   const setPageMode = useCallback((mode: PageMode, extraParams?: Record<string, string>) => {
     setPageModeState(mode);
-    // Reset scroll position when switching tabs (prevents scroll bleed between tabs)
-    // Use main element (which has overflow-y-auto) if it exists, fallback to window
+    // Reset scroll position when switching tabs (prevents scroll bleed between tabs).
+    // Legacy v1 scrolls inside Layout's <main>; v2 scrolls inside NewShell's
+    // #main-content div — reset both so the correct container is always covered.
     const mainEl = document.querySelector('main');
     if (mainEl) {
       mainEl.scrollTo(0, 0);
     } else {
       window.scrollTo(0, 0);
     }
+    document.getElementById('main-content')?.scrollTo(0, 0);
     rememberTab(tabKey('group-view-tab', scope), mode);
     // When the user has turned tab memory OFF ('reset'), navigating to a primary
     // tab resets every view's sub-tab to its default. Clearing the registered

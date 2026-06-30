@@ -54,6 +54,8 @@ interface GroupActionsDispatch {
 interface GroupActionsState {
   isActionModalOpen: boolean;
   addedPlayer: AddedPlayerSignal | null;
+  /** Clear the signal once the content has consumed it (makes it one-shot). */
+  clearAddedPlayer: () => void;
 }
 
 const GroupActionsDispatchContext = createContext<GroupActionsDispatch | null>(null);
@@ -82,6 +84,11 @@ export function useGroupActionModalOpen(): boolean {
 /** The most-recently-added player to scroll-to + highlight, or `null`. */
 export function useGroupAddedPlayer(): AddedPlayerSignal | null {
   return useContext(GroupActionsStateContext)?.addedPlayer ?? null;
+}
+
+/** Clear the addedPlayer signal once it has been consumed (makes it one-shot). */
+export function useGroupClearAddedPlayer(): () => void {
+  return useContext(GroupActionsStateContext)?.clearAddedPlayer ?? (() => {});
 }
 
 export interface GroupActionModalsProps {
@@ -113,6 +120,9 @@ export function GroupActionModals({ children, onTierCreated }: GroupActionModals
   // Add-player highlight bridge (replaces Events.PLAYER_ADDED).
   const [addedPlayer, setAddedPlayer] = useState<AddedPlayerSignal | null>(null);
   const addedNonceRef = useRef(0);
+  // Stable clear — content calls this immediately after consuming the signal so
+  // a remount with no new add does NOT re-trigger the highlight (one-shot).
+  const clearAddedPlayer = useCallback(() => setAddedPlayer(null), []);
 
   // ── Action handlers ──
   // onTierChange: byte-for-byte from GroupView.handleTierChange (uses the raw
@@ -236,7 +246,8 @@ export function GroupActionModals({ children, onTierCreated }: GroupActionModals
   const stateValue = useMemo<GroupActionsState>(() => ({
     isActionModalOpen,
     addedPlayer,
-  }), [isActionModalOpen, addedPlayer]);
+    clearAddedPlayer,
+  }), [isActionModalOpen, addedPlayer, clearAddedPlayer]);
 
   return (
     <GroupActionsDispatchContext.Provider value={dispatchValue}>

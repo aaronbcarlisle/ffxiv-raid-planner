@@ -70,8 +70,10 @@ export function Layout() {
       <GlobalSettingsPanel />
 
       {/* Desktop settings open/close toggle, docked to the right edge to mirror
-          the left rail's collapse chevron. (Mobile uses the header gear.) */}
-      <SettingsDockToggle />
+          the left rail's collapse chevron. (Mobile uses the header gear.)
+          Suppressed in v2 — v2 has no settings panel mounted yet, so the toggle
+          would be dead chrome. v1 and all non-group routes still render it. */}
+      {!isGroupV2Shell && <SettingsDockToggle />}
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp

@@ -65,7 +65,7 @@ import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShor
 import { useViewNavigation } from '../hooks/useViewNavigation';
 import { useVisibilityRefresh } from '../hooks/useVisibilityRefresh';
 import { eventBus, useEventBus, Events } from '../lib/eventBus';
-import { useGroupActionModalOpen, useGroupAddedPlayer } from './groupActionsContext';
+import { useGroupActionModalOpen, useGroupAddedPlayer, useGroupClearAddedPlayer } from './groupActionsContext';
 import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
@@ -261,9 +261,14 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
   // signals via the GroupActions context (`addedPlayer.nonce` re-fires per add).
   // Mirrors the deep-link highlight above.
   const addedPlayer = useGroupAddedPlayer();
+  const clearAddedPlayer = useGroupClearAddedPlayer();
   useEffect(() => {
     if (!addedPlayer) return;
     const { playerId } = addedPlayer;
+    // Consume the signal immediately so a remount with no new add does NOT
+    // re-fire the highlight (one-shot). The local highlightedPlayerId state
+    // still drives the 3 s visual highlight — clearing the context signal is safe.
+    clearAddedPlayer();
     setHighlightedPlayerId(playerId);
     setHighlightedSlot(null);
     const scrollTimer = setTimeout(() => {
@@ -277,7 +282,7 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
     }, 3000);
     return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
     // Keyed on the signal object (nonce changes per add) so each add re-fires.
-  }, [addedPlayer, setHighlightedPlayerId, setHighlightedSlot]);
+  }, [addedPlayer, clearAddedPlayer, setHighlightedPlayerId, setHighlightedSlot]);
 
   // Keep roster gear current while the page is open — re-fetches every 30s
   const rosterPollRef = useRef<ReturnType<typeof setInterval> | null>(null);

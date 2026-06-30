@@ -13,9 +13,10 @@
  * Heavy hooks/stores/leaf-components are mocked — the point is the override
  * contract, not full integration.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { AddedPlayerSignal } from './groupActionsContext';
 
 // ── Mock the state hook: a controllable, fully-shaped useGroupViewState ──
 const setPageMode = vi.fn();
@@ -105,11 +106,14 @@ vi.mock('../lib/eventBus', () => ({
   Events: { MEMBER_ROLE_CHANGED: 'membership:role-changed', MOUNT_FARM_SCHEDULE: 'mount-farm:schedule' },
 }));
 
-// ── GroupActions context: control modal-open (replaces the chromeModalOpen prop) ──
+// ── GroupActions context: control modal-open + addedPlayer signal ──
 let mockActionModalOpen = false;
+let mockAddedPlayer: AddedPlayerSignal | null = null;
+const clearAddedPlayerSpy = vi.fn();
 vi.mock('./groupActionsContext', () => ({
   useGroupActionModalOpen: () => mockActionModalOpen,
-  useGroupAddedPlayer: () => null,
+  useGroupAddedPlayer: () => mockAddedPlayer,
+  useGroupClearAddedPlayer: () => clearAddedPlayerSpy,
 }));
 
 // ── Leaf bodies: identify the legacy overview body ──
@@ -128,7 +132,14 @@ const renderContent = (props: Partial<React.ComponentProps<typeof GroupViewConte
   render(<MemoryRouter><GroupViewContent actions={actions} {...props} /></MemoryRouter>);
 
 describe('GroupViewContent — slot contract', () => {
-  beforeEach(() => { mockPageMode = 'overview'; mockActionModalOpen = false; keyboardSpy.mockClear(); });
+  beforeEach(() => {
+    mockPageMode = 'overview';
+    mockActionModalOpen = false;
+    mockAddedPlayer = null;
+    keyboardSpy.mockClear();
+    clearAddedPlayerSpy.mockClear();
+  });
+  afterEach(() => { mockAddedPlayer = null; });
 
   it('renders the legacy overview body when no slot is provided', () => {
     renderContent();
@@ -149,5 +160,13 @@ describe('GroupViewContent — slot contract', () => {
     mockActionModalOpen = true;
     renderContent();
     expect(keyboardSpy).toHaveBeenLastCalledWith(true);
+  });
+
+  it('clears the addedPlayer signal immediately after consuming it (one-shot)', async () => {
+    // Provide a non-null signal — the highlight effect should call clearAddedPlayer
+    // right away so a remount with no new add does NOT re-fire the highlight.
+    mockAddedPlayer = { playerId: 'p-new', nonce: 1 };
+    renderContent();
+    await waitFor(() => expect(clearAddedPlayerSpy).toHaveBeenCalledTimes(1));
   });
 });
