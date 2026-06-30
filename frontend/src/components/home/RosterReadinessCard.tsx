@@ -64,7 +64,7 @@ export function RosterReadinessCard() {
       />
 
       <p className="mt-2 text-xs text-text-tertiary leading-snug">
-        {obtained} / {total} BiS slots obtained
+        {obtained}/{total} BiS slots obtained
         {setupNeeded > 0 && (
           <> · {setupNeeded} member{setupNeeded === 1 ? ' needs' : 's need'} setup</>
         )}

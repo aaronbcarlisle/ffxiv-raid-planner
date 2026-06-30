@@ -79,7 +79,7 @@ describe('RosterReadinessCard', () => {
     const bar = screen.getByRole('progressbar', { name: /bis complete/i });
     expect(bar).toHaveAttribute('aria-valuenow', '80');
     // Footer: slot tally + needs-setup count (D)
-    expect(screen.getByText(/4 \/ 5 BiS slots obtained/i)).toBeInTheDocument();
+    expect(screen.getByText(/4\/5 BiS slots obtained/i)).toBeInTheDocument();
     expect(screen.getByText(/1 member needs setup/i)).toBeInTheDocument();
   });
 });

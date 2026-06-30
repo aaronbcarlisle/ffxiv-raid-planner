@@ -42,7 +42,7 @@ describe('RoleBisCard', () => {
     expect(screen.getByText(/Healers/i)).toBeInTheDocument();
     expect(screen.getByText(/Melee/i)).toBeInTheDocument();
     expect(screen.getByText(/Ranged/i)).toBeInTheDocument();
-    expect(screen.getByText(/Casters/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Caster$/i)).toBeInTheDocument();
     // legend swatch (gear source)
     expect(screen.getByText(/^raid$/i)).toBeInTheDocument();
   });
@@ -72,12 +72,12 @@ describe('RoleBisCard', () => {
     // Tank 1/2 = 50% → progressbar valuenow 50
     const tankBar = screen.getByRole('progressbar', { name: /tank bis progress/i });
     expect(tankBar).toHaveAttribute('aria-valuenow', '50');
-    expect(screen.getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.getByText('1/2')).toBeInTheDocument();
 
     // Healer 0/2 = 0%
     const healerBar = screen.getByRole('progressbar', { name: /healer bis progress/i });
     expect(healerBar).toHaveAttribute('aria-valuenow', '0');
-    // 0 / 2 (healer) and 0 / 0 (empty roles) both render
-    expect(screen.getByText('0 / 2')).toBeInTheDocument();
+    // 0/2 (healer) and 0/0 (empty roles) both render
+    expect(screen.getByText('0/2')).toBeInTheDocument();
   });
 });

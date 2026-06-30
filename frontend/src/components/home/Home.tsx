@@ -194,28 +194,30 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
         });
       });
 
-    // (b) configured-but-unlinked slots → "Assign"
-    players
-      .filter((p) => p.configured && !p.userId)
-      .slice(0, 3)
-      .forEach((p) => {
-        items.push({
-          key: `unclaimed-${p.id}`,
-          icon: <UserPlus size={18} />,
-          title: (
-            <>
-              {p.name}
-              {p.isSubstitute && (
-                <span className="ml-2 align-middle">
-                  <Tag variant="label">SUB</Tag>
-                </span>
-              )}
-            </>
-          ),
-          meta: 'Unclaimed — not linked to a Discord member',
-          action: { label: 'Assign', onClick: () => onNavigate('roster'), variant: 'ghost' },
+    // (b) configured-but-unlinked slots → "Assign" (manage-only action)
+    if (canManage) {
+      players
+        .filter((p) => p.configured && !p.userId)
+        .slice(0, 3)
+        .forEach((p) => {
+          items.push({
+            key: `unclaimed-${p.id}`,
+            icon: <UserPlus size={18} />,
+            title: (
+              <>
+                {p.name}
+                {p.isSubstitute && (
+                  <span className="ml-2 align-middle">
+                    <Tag variant="label">SUB</Tag>
+                  </span>
+                )}
+              </>
+            ),
+            meta: 'Unclaimed — not linked to a Discord member',
+            action: { label: 'Assign', onClick: () => onNavigate('roster'), variant: 'ghost' },
+          });
         });
-      });
+    }
 
     // (c) pending join requests (manage-only) → "Review"
     if (canManage) {

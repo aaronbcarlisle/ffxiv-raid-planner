@@ -1,14 +1,24 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ data: { trials: [{ trialId: 'Lunar Whale', totalMembers: 8, membersComplete: 3 }] } as unknown }));
+// Real trial slug — getTrialById('dt-valigarmanda') resolves dutyName
+// 'Worqor Lar Dor (Extreme)'. Using a real id (not a fabricated friendly one)
+// proves the slug → human-name resolution path renders as the card title.
+const mocks = vi.hoisted(() => ({ data: { trials: [{ trialId: 'dt-valigarmanda', totalMembers: 8, membersComplete: 3 }] } as unknown }));
 vi.mock('../../stores/mountFarmStore', () => ({ useMountFarmStore: (s: (x: { data: unknown }) => unknown) => s({ data: mocks.data }) }));
 
 import { TrackCard } from './TrackCard';
 
 describe('TrackCard', () => {
   beforeEach(() => {
-    mocks.data = { trials: [{ trialId: 'Lunar Whale', totalMembers: 8, membersComplete: 3 }] };
+    mocks.data = { trials: [{ trialId: 'dt-valigarmanda', totalMembers: 8, membersComplete: 3 }] };
+  });
+
+  it('resolves the human track name from the slug as the title', () => {
+    render(<TrackCard />);
+    // 'dt-valigarmanda' → 'Worqor Lar Dor (Extreme)'; the slug must NOT appear.
+    expect(screen.getByText('Worqor Lar Dor (Extreme)')).toBeInTheDocument();
+    expect(screen.queryByText('dt-valigarmanda')).toBeNull();
   });
 
   it('renders the track summary, display-only (no link/button)', () => {

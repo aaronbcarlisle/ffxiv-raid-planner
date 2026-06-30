@@ -183,6 +183,20 @@ describe('Home', () => {
     expect(onNavigate).toHaveBeenCalledWith('roster');
   });
 
+  it('gates the unclaimed "Assign" attention rows on canManage', () => {
+    const unclaimed = player({ id: 'U', userId: undefined, name: 'Open Slot', configured: true });
+    const tierWithUnclaimed = { tierId: 't1', players: [unclaimed] } as unknown as TierSnapshot;
+
+    // canManage=false → no Assign row (manage-only action)
+    const { unmount } = renderHome({ tier: tierWithUnclaimed, canManage: false });
+    expect(screen.queryByRole('button', { name: /^assign$/i })).not.toBeInTheDocument();
+    unmount();
+
+    // canManage=true → the Assign row renders
+    renderHome({ tier: tierWithUnclaimed, canManage: true });
+    expect(screen.getByRole('button', { name: /^assign$/i })).toBeInTheDocument();
+  });
+
   it('shows join-request attention rows only when canManage and routes Review to onOpenRequests', () => {
     mocks.groupRequests = [
       { id: 'r1', status: 'pending', characterNameAtApply: 'Grimm', createdAt: new Date().toISOString() } as unknown as JoinRequest,

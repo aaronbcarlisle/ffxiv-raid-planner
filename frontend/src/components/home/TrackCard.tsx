@@ -13,6 +13,7 @@
  */
 import { Trophy } from 'lucide-react';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
+import { getTrialById } from '../../gamedata';
 import { CardShell } from '../ui/CardShell';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Tag } from '../ui/Tag';
@@ -28,10 +29,14 @@ export function TrackCard() {
   const { trialId, totalMembers, membersComplete } = trial;
   const value = totalMembers > 0 ? membersComplete / totalMembers : 0;
 
+  // trialId is an opaque slug (e.g. 'dt-valigarmanda'); resolve the human name.
+  const info = getTrialById(trialId);
+  const trackName = info?.dutyName ?? info?.mountName ?? trialId;
+
   return (
     <CardShell
       as="div"
-      title={trialId}
+      title={trackName}
       icon={<Trophy size={14} className="text-membership-linked" />}
       headerRight={<Tag variant="label">Ring 3</Tag>}
     >
@@ -44,7 +49,7 @@ export function TrackCard() {
       <ProgressBar
         value={value}
         color="membership-linked"
-        ariaLabel={`${trialId} mount farm progress`}
+        ariaLabel={`${trackName} mount farm progress`}
       />
     </CardShell>
   );

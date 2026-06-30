@@ -23,7 +23,7 @@ const ROLE_LABEL: Record<BisRole, string> = {
   healer: 'Healers',
   melee: 'Melee',
   ranged: 'Ranged',
-  caster: 'Casters',
+  caster: 'Caster',
 };
 
 /** aria-label stem per role — singular, e.g. "Tank BiS progress". */
@@ -55,7 +55,7 @@ export function RoleBisCard() {
                   {ROLE_LABEL[role]}
                 </span>
                 <span className="text-xs tabular-nums text-text-tertiary leading-none">
-                  {obtained} / {total}
+                  {obtained}/{total}
                 </span>
               </div>
               <ProgressBar value={value} color={color} ariaLabel={`${ROLE_ARIA[role]} BiS progress`} />
