@@ -201,9 +201,11 @@ PopoverSelect (badge-style, the documented `bg-{color}` selected / `bg-{color}/2
 
 Kept from v2: text input (default/error/disabled, sizes, with-icon, input-group), Select, SearchableSelect (filterable, categorized with colored sticky headers), checkbox. All consume `component.input.*` tokens. **Surface note:** inputs map to `surface-interactive` (`#1e1e26`); `surface-elevated` (`#121218`) is for popovers/elevated cards (value unchanged; documented role moved).
 
-### 3.8 New components the redesign introduces (to be formalized here)
+### 3.8 New components the redesign introduces
 
-These appear in the mockups and must become real, tokenized components: **top bar**, **spine tab-bar**, **⌘K command palette** (overlay), **availability heatmap**, **RSVP row**, **match-score listing** (Finder), **attention-list row** (Home). Each gets a contract entry as it's built; until then they're *proposals*, not yet canon. The context rail is specified in §3.9 below (no longer a proposal — locked).
+**Built in F6a (contracted §3.9–3.15):** context rail → `AppRail` (§3.9); top bar → `TopBar` composition of `StaticPicker` + tier breadcrumb + `NotificationBell` + `SettingsGear`; 4-tab spine → `Spine` (§3.13); ⌘K palette → `CommandPalette` (§3.10); skip link → `SkipLink` (§3.11); notification bell → `NotificationBell` (§3.12); settings gear → `SettingsGear` (§3.14); static picker → `StaticPicker` (§3.15).
+
+**Still proposals (not yet contracted):** **availability heatmap**, **RSVP row**, **match-score listing** (Finder), **attention-list row** (Home). Each gets a contract entry as it's built.
 
 ### 3.9 Context rail (Person-layer nav) — LOCKED
 
@@ -225,6 +227,77 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   - Provide a **skip link** (`#main-content`) that allows keyboard users to skip past the rail to the content area.
 - **Token gaps (F3):** `surface.nav` and the pill-indicator size/color need component-tier tokens (`nav.item-active-indicator`, `nav.item-bg-hover`, etc.). These are scoped to F3's component-tokenization work.
 - **Motion gap (v3.1):** enter/exit animation for the pill indicator and hover state are not yet specified — flagged under §7 (motion tokens).
+- **Built F6a (Task 7):** Delivered as `AppRail` (`frontend/src/components/layout/AppRail.tsx`) against this spec. Tokens scoped in Task 1 (`nav.*` / `surface.nav` / `motion.nav-pill`); hover/pressed state + SPA static-switch landed in the Task 7 review fixes. Motion (pill enter/exit) deferred to v3.1 per the gap above.
+
+### 3.10 CommandPalette — F6a
+
+- **Anatomy:** `Modal` (size `2xl`, `hideDefaultHeader`) containing:
+  - search row `[ magnifier glyph (aria-hidden) · borderless inline input · platform-aware <kbd> badge ]`
+  - `role="listbox"` command list of `role="option"` rows (full-row, keyboard-navigable)
+  - keyboard-shortcuts reference panel (inline footer, pulled from `SHORTCUT_GROUPS`)
+- **Variants:** navigate-only (current); action commands (log a drop, assign loot, etc.) are **deferred** — not built, not wired.
+- **States:** open (modal visible, focus trapped) | closed (no DOM presence).
+- **Platform label:** `⌘K` on Mac/iOS, `Ctrl K` on Windows/other — computed at render time from `navigator.platform` so tests can stub it; never a bare glyph that breaks without a font.
+- **Trigger:** keyboard shortcut only (`Mod+K`); no visible affordance button in the shell chrome.
+- **Magnifier glyph:** purely decorative (`aria-hidden`). Per §4.1 glyph lexicon, the magnifier means "search" — it is the visual cue only, not an interactive element.
+- **Usage rules:**
+  - Built on `Modal` (not a raw `<div>` overlay) — inherits focus trap, `Esc`-close, and z-index management.
+  - Mounted from `NewShell` (v2 shell only). Not present on the legacy route.
+  - Navigate commands only: spine tab switch, settings open, static switch. Action commands are future scope (F6b+).
+  - The inline `<input>` uses a `design-system-ignore` comment (the palette surface IS the input field; a standard `Input` wrapper would add unwanted chrome in this zero-chrome overlay).
+
+### 3.11 SkipLink — F6a
+
+- **Anatomy:** single `<a href="#targetId">Skip to content</a>`.
+- **States:** visually hidden by default (`sr-only`); on keyboard focus becomes absolutely positioned at `top-2 left-2` with `surface-raised` background, focus ring, `z-50`.
+- **Usage rules:**
+  - Always the **first focusable element** in the DOM — rendered as the first child inside `AppRail`.
+  - The target (`id="main-content"` by default) must exist on the main content wrapper before the link is useful. `targetId` prop is configurable; don't add overrides without a real landmark to target.
+  - Never decorative; always the first keyboard stop. Required for a11y compliance per §3.9 rail spec.
+
+### 3.12 NotificationBell — F6a
+
+- **Anatomy:** `Tooltip` wrapping `IconButton (ghost, md, Bell icon)`; absolute badge overlay when `total > 0`.
+- **Badge:** `-top-1 -right-1`, min `18×18px`, `bg-status-error` red, `text-white`, count capped at `'99+'`. Badge text is `aria-hidden`; the count is surfaced in the `IconButton`'s `aria-label` (`"Notifications, N unread"`).
+- **Unread total:** `notificationStore.unreadCount` + `useSyntheticUnreadCount()` (release notes) + `joinRequestStore.pendingCount` (manager-gated).
+- **Variants:** no badge (`total === 0`) | with badge (`total > 0`).
+- **Usage rules:**
+  - Prop-driven: receives `onOpen: () => void`; parent (`NewShell`) hosts `<NotificationCenter />`. Keeps shell→person boundary clean.
+  - Join-request fetch replicates `Header.tsx:107-113` because the legacy `Header` is suppressed for `?shell=v2`. When the legacy Header resumes (F6b+), this side-effect should be removed from this component.
+  - Structure-only for F6a — `NotificationCenter` itself is the legacy component, unchanged.
+
+### 3.13 Spine (4-tab in-surface tab bar) — F6a
+
+- **Anatomy:** `div[role="tablist" aria-label="Main content sections"]` containing 4 fixed `button[role="tab"]` entries (Home · Roster · Loot · Schedule). Active tab has an accent bottom-border underline (`::after`); icon fades to 45% opacity when inactive.
+- **Tabs (fixed, non-dynamic):** `overview` → Home, `roster` → Roster, `gear` → Loot, `schedule` → Schedule. These map to `PageMode` ids.
+- **States:** active (accent underline + full-opacity icon) | inactive (secondary text, 45% icon opacity, hover shifts to primary text) | focused (browser focus ring on the button).
+- **Keyboard navigation:** `ArrowLeft`/`ArrowRight` cycle; `Home`/`End` jump to first/last. Focus follows the newly activated tab (roving `tabIndex`).
+- **Analytics:** every tab switch fires `analytics.track('navigation', 'tab_switch', { tab, surface: 'spine' })`.
+- **Usage rules:**
+  - In-surface view switch only — calls `setPageMode`, never `navigate()`. Same discriminated-union rule as the generic `Tabs` primitive (§2.4): tabs switch content, the rail/spine switches context.
+  - Present inside a static only (below the top bar in the v2 shell). Not present on Person-layer screens.
+  - Do not add dynamic or role-conditional tabs — the 4-tab set is locked per the redesign spec.
+
+### 3.14 SettingsGear — F6a
+
+- **Anatomy:** `Tooltip` wrapping a single `IconButton (ghost, md)`. Icon toggles between `Settings` (closed) and `PanelRightClose` (open).
+- **States:** open (`aria-expanded={true}`, `aria-pressed={true}`, `PanelRightClose` icon) | closed (`aria-expanded={false}`, `aria-pressed={false}`, `Settings` icon).
+- **Usage rules:**
+  - Single responsibility: toggle `settingsPanelStore`. No inline action logic.
+  - Top-bar-only. Do not place in rail items or other chrome.
+  - Badge/notification counts belong to `NotificationBell`, not here.
+
+### 3.15 StaticPicker — F6a
+
+- **Anatomy:** `[ Shield icon · static name (truncated, responsive max-width) · optional role badge · optional ChevronDown IconButton → Dropdown list ]`.
+- **Role badge:** semantic membership tokens only (`bg-membership-{role}/20 text-membership-{role}`) — zero hardcoded colors.
+- **Variants:** with switcher (`isMember` true, has statics) | without switcher (no statics: renders "No static" fallback).
+- **States:** closed | open (dropdown visible, list lazy-fetched).
+- **Usage rules:**
+  - Top-bar-only (v2 shell). The legacy `ContextSwitcher` is its peer — `StaticPicker` covers the static segment only; the rail handles Player Hub and Static Finder routing.
+  - `useNavigate` with `?shell=v2` preserved on switch — no full-page reload.
+  - Lazy-fetch: `onFetchGroups()` called only when the dropdown opens (parity with `ContextSwitcher`).
+  - Static switch fires `navigate()` only when already on a `/group/` route (`onStatic` guard).
 
 ---
 
@@ -276,10 +349,10 @@ Writing the contract exposed real holes — these become validation agenda items
 1. ✅ **Trailing-arrow buttons** — §3.1 forbids decorative arrows; §4.1 lexicon is the source of truth. Audit every button in mockups remains a task for the F5 validation pass.
 2. **Gear cell duplication** — mockups use ad-hoc pips; must unify on GearStatusCircle (§3.4).
 3. **Recipient picker** — must be formalized as one PopoverSelect specialization (§3.6) to kill the forked modals.
-4. **⌘K affordance** — platform-correct, font-safe (§4).
+4. ✅ **⌘K affordance** — platform-aware label (`⌘K` mac / `Ctrl K` other) in `CommandPalette` §3.10. Font-safe `<kbd>` element.
 5. **Motion tokens** — undefined; durations/easing needed for toggle, popover, tab transitions, and the rail pill indicator.
-6. ✅ **Context rail** — fully specified in §3.9 (width, surface, corner ownership, item states, a11y). Remaining gap: component-tier tokens (`nav.*`) and motion, scoped to F3.
-7. **New components** (§3.8) — top bar, spine, palette, heatmap, RSVP row, match listing, attention row — none are tokenized yet. *(Rail moved to §3.9.)*
+6. ✅ **Context rail** — fully specified in §3.9 (width, surface, corner ownership, item states, a11y) and **built F6a** as `AppRail`. Remaining gap: motion (pill enter/exit), deferred to v3.1.
+7. **New components** (§3.8) — ✅ F6a delivered: `AppRail` (§3.9), `Spine` (§3.13), `CommandPalette` (§3.10), `SkipLink` (§3.11), `NotificationBell` (§3.12), `SettingsGear` (§3.14), `StaticPicker` (§3.15). Remaining proposals: availability heatmap, RSVP row, match-score listing (Finder), attention-list row (Home).
 8. **Density** — no compact/comfortable density tokens; data-dense Board may want a compact mode. Flagged.
 9. **Focus-visible spec** — focus-ring token exists; the exact ring (width/offset) isn't specified per component.
 
