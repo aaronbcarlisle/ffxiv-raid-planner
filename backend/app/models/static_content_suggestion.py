@@ -87,7 +87,7 @@ class StaticContentSuggestion(Base):
     )
 
     # Relationships
-    static_group: Mapped["StaticGroup"] = relationship("StaticGroup", foreign_keys=[static_group_id])
+    static_group: Mapped["StaticGroup"] = relationship("StaticGroup", foreign_keys=[static_group_id], back_populates="content_suggestions")
     suggested_by: Mapped["User"] = relationship("User", foreign_keys=[suggested_by_user_id])
     promoted_goal: Mapped["StaticObjectiveGoal | None"] = relationship(
         "StaticObjectiveGoal", foreign_keys=[promoted_goal_id]

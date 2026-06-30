@@ -93,6 +93,7 @@ class StaticGroup(Base):
     content_suggestions: Mapped[list["StaticContentSuggestion"]] = relationship(
         "StaticContentSuggestion",
         foreign_keys="[StaticContentSuggestion.static_group_id]",
+        back_populates="static_group",
         cascade="all, delete-orphan",
     )
     split_clear_assignments: Mapped[list["SplitClearAssignment"]] = relationship(
