@@ -84,9 +84,13 @@ describe('TopBar', () => {
     expect(screen.getByRole('button', { name: 'Switch static' })).toBeInTheDocument();
   });
 
-  it('shows the week indicator with the current week from the loot store', () => {
+  it('shows the week indicator as a read-only label (no navigation buttons)', () => {
     renderTopBar();
+    // Week label is display-only — currentWeek must NOT be mutated from here.
+    // Full week navigation belongs to F6d (the Loot slice / week-clock owner).
     expect(screen.getByText('Week 3')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /previous week/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /next week/i })).toBeNull();
   });
 
   it('fires onTierChange via the GroupActions context when a tier is selected', async () => {

@@ -17,7 +17,7 @@
  * Header/ContextSwitcher/TierSelector internals are untouched (byte-for-byte).
  */
 
-import { ChevronLeft, ChevronRight, Command, Bell, Settings, Sun } from 'lucide-react';
+import { Command, Bell, Settings, Sun } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
@@ -31,43 +31,19 @@ interface TopBarProps {
   onOpenPalette: () => void;
 }
 
-/** Minimal read-only-ish week indicator. Reads `currentWeek` from the loot store
- *  and renders `Week {n}`; prev/next nudge the store's displayed week (clamped to
- *  [1, maxWeek]) via the canonical Zustand setter — no new week state lives here.
- *  Full week navigation is a Task 10/11 concern. */
+/** Display-only week label. Reads `currentWeek` from the server-authoritative loot
+ *  store — never writes it. `currentWeek` is mutated only by `fetchCurrentWeek` /
+ *  `startNextWeek` / `revertWeek` (API-persisted); a plain setter does not exist by
+ *  design, and silently writing it would corrupt priority math and log-week defaults.
+ *  Full week navigation belongs to F6d (the Loot slice / week-clock owner). */
 function WeekIndicator() {
   const currentWeek = useLootTrackingStore((s) => s.currentWeek);
-  const maxWeek = useLootTrackingStore((s) => s.maxWeek);
-
-  const canPrev = currentWeek > 1;
-  const canNext = currentWeek < maxWeek;
-
-  const goto = (week: number) => {
-    if (week < 1 || week > maxWeek) return;
-    useLootTrackingStore.setState({ currentWeek: week });
-  };
 
   return (
-    <div className="hidden md:flex items-center gap-1">
-      <IconButton
-        aria-label="Previous week"
-        icon={<ChevronLeft className="w-4 h-4" />}
-        variant="ghost"
-        size="sm"
-        disabled={!canPrev}
-        onClick={() => goto(currentWeek - 1)}
-      />
-      <span className="text-xs font-medium text-text-secondary tabular-nums select-none min-w-[3.5rem] text-center">
+    <div className="hidden md:flex items-center">
+      <span className="text-xs font-medium text-text-secondary tabular-nums select-none">
         Week {currentWeek}
       </span>
-      <IconButton
-        aria-label="Next week"
-        icon={<ChevronRight className="w-4 h-4" />}
-        variant="ghost"
-        size="sm"
-        disabled={!canNext}
-        onClick={() => goto(currentWeek + 1)}
-      />
     </div>
   );
 }

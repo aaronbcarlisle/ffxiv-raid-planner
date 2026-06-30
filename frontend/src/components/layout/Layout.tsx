@@ -21,6 +21,8 @@ export function Layout() {
   // renders <Header /> exactly as before (byte-for-byte).
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  // `startsWith('/group/')` is intentionally broad (matches any share code); the
+  // `shell=v2` gate on the right-hand side already scopes suppression to v2-only.
   const isGroupV2Shell =
     location.pathname.startsWith('/group/') && searchParams.get('shell') === 'v2';
 
