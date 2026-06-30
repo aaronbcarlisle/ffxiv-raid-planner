@@ -2,7 +2,7 @@ import { LayoutDashboard, Calendar, Users, Trophy, Shield, MoreHorizontal, PlugZ
 import type { PageMode } from '../../types';
 import { analytics } from '../../services/analytics';
 import { UserMenu } from '../auth';
-import { AppRail } from './AppRail';
+import { SidebarRail } from './SidebarRail';
 import type { RailNavItem } from './railTypes';
 
 interface SidebarNavProps {
@@ -40,7 +40,7 @@ export function SidebarNav({ activeTab, onTabChange, staticName }: SidebarNavPro
   ];
 
   return (
-    <AppRail
+    <SidebarRail
       context="static"
       identity={{ icon: Shield, label: staticName ?? 'Static' }}
       collapseKey="sidebar-collapsed"

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '../components/primitives/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
-import { AppRail } from '../components/layout/AppRail';
+import { SidebarRail } from '../components/layout/SidebarRail';
 import type { RailNavItem } from '../components/layout/railTypes';
 import { UserMenu } from '../components/auth';
 import { CharacterLinkModal } from '../components/profile/CharacterLinkModal';
@@ -79,7 +79,7 @@ export function ProfileSidebarNav({
   }));
 
   return (
-    <AppRail
+    <SidebarRail
       context="profile"
       identity={{ icon: User, label: characterName ?? 'Player Hub' }}
       collapseKey="profile-sidebar-collapsed"

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Header } from './Header';
 import { PageTransition } from './PageTransition';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
@@ -13,6 +14,17 @@ export function Layout() {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.isAdmin ?? false;
+
+  // The v2 shell (F6a) renders its own TopBar, so suppress the legacy Header for
+  // the group route under `?shell=v2` to avoid a double top bar. EVERY other case
+  // — all non-group routes, and the legacy group route without `?shell=v2` —
+  // renders <Header /> exactly as before (byte-for-byte).
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  // `startsWith('/group/')` is intentionally broad (matches any share code); the
+  // `shell=v2` gate on the right-hand side already scopes suppression to v2-only.
+  const isGroupV2Shell =
+    location.pathname.startsWith('/group/') && searchParams.get('shell') === 'v2';
 
   // Global event listener for keyboard shortcuts modal
   // This allows the UserMenu to trigger shortcuts from any page
@@ -38,7 +50,7 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
-      <Header />
+      {!isGroupV2Shell && <Header />}
       <ViewAsBanner />
       {/* Content container - scrollable area below sticky header */}
       {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears.
@@ -58,8 +70,10 @@ export function Layout() {
       <GlobalSettingsPanel />
 
       {/* Desktop settings open/close toggle, docked to the right edge to mirror
-          the left rail's collapse chevron. (Mobile uses the header gear.) */}
-      <SettingsDockToggle />
+          the left rail's collapse chevron. (Mobile uses the header gear.)
+          Suppressed in v2 — v2 has no settings panel mounted yet, so the toggle
+          would be dead chrome. v1 and all non-group routes still render it. */}
+      {!isGroupV2Shell && <SettingsDockToggle />}
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp

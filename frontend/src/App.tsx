@@ -20,7 +20,7 @@ const AdminStatics = lazy(() => import('./pages/admin/AdminStatics').then(m => (
 const AdminUsage = lazy(() => import('./pages/admin/AdminUsage').then(m => ({ default: m.AdminUsage })));
 const AdminErrors = lazy(() => import('./pages/admin/AdminErrors').then(m => ({ default: m.AdminErrors })));
 const Discover = lazy(() => import('./pages/Discover').then(m => ({ default: m.Discover })));
-const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
+const GroupRoute = lazy(() => import('./pages/GroupRoute').then(m => ({ default: m.GroupRoute })));
 const Profile = lazy(() => import('./pages/Profile'));
 const PublicProfile = lazy(() => import('./pages/PublicProfile'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
@@ -161,7 +161,7 @@ function App() {
               <Route path="usage" element={<AdminUsage />} />
               <Route path="errors" element={<AdminErrors />} />
             </Route>
-            <Route path="group/:shareCode" element={<GroupView />} />
+            <Route path="group/:shareCode" element={<GroupRoute />} />
             {/* Documentation routes */}
             <Route path="docs" element={<DocsIndex />} />
             <Route path="docs/quick-start" element={<QuickStartGuide />} />

@@ -1,163 +1,181 @@
-/* eslint-disable design-system/no-raw-button */
-import { useState } from 'react';
+/**
+ * AppRail — 72px Person-layer nav rail (DS §3.9 LOCKED).
+ *
+ * Fixed-width icon-only rail: SkipLink → logo → icon/avatar entries → footer.
+ * All colors come from nav.* / surface.nav tokens (Task 1); zero hardcoded colors.
+ */
 import type React from 'react';
-import { motion, LayoutGroup } from 'framer-motion';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tooltip } from '../primitives';
-import type { RailNavItem } from './railTypes';
+import { SkipLink } from './SkipLink';
+import type { RailEntry, RailIconItem, RailAvatarItem } from './railTypes';
 
-interface AppRailProps {
-  context: string;
-  identity: { icon: React.FC<{ size?: number; className?: string }>; label: string };
-  items: RailNavItem[];
-  collapseKey: string;
-  footer?: React.ReactNode | ((collapsed: boolean) => React.ReactNode);
+export interface AppRailProps {
+  /** Optional logo / wordmark block rendered above the nav entries. */
+  logo?: React.ReactNode;
+  /** Ordered list of Person-layer rail entries (icon items, avatar items, dividers). */
+  entries: RailEntry[];
+  /** Optional footer node rendered below the entries (e.g. <UserMenu variant="rail" collapsed />). */
+  footer?: React.ReactNode;
 }
 
-export function AppRail({ context, identity, items, collapseKey, footer }: AppRailProps) {
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(collapseKey) === 'true'; } catch { return false; }
-  });
+// ─── RailItem ────────────────────────────────────────────────────────────────
 
-  const toggle = () => setCollapsed(prev => {
-    const next = !prev;
-    try { localStorage.setItem(collapseKey, String(next)); } catch { /* ignore */ }
-    return next;
-  });
+interface RailIconItemProps { entry: RailIconItem }
+interface RailAvatarItemProps { entry: RailAvatarItem }
 
-  const IdentityIcon = identity.icon;
-
+function RailIconItemButton({ entry }: RailIconItemProps) {
+  const Icon = entry.icon;
   return (
-    <motion.nav
-      aria-label="Application navigation"
-      className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle overflow-x-hidden overflow-y-auto"
-      style={{
-        background: 'var(--gradient-rail)',
-        width: collapsed ? 56 : 208,
-        minWidth: collapsed ? 56 : 208,
-      }}
-      variants={{
-        expanded: { width: 208, minWidth: 208 },
-        collapsed: { width: 56, minWidth: 56 },
-      }}
-      animate={collapsed ? 'collapsed' : 'expanded'}
-      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-    >
-      {/* ── Identity header + collapse toggle ── */}
-      <div
-        className="flex items-center h-12 border-b border-border-subtle flex-shrink-0"
-        style={{ background: 'rgba(20,184,166,0.045)' }}
+    <Tooltip content={entry.label} side="right" sideOffset={12} delayDuration={300}>
+      {/* design-system-ignore: custom active pill + avatar/icon variants per §3.9 */}
+      <button
+        type="button"
+        onClick={entry.onSelect}
+        aria-current={entry.isActive ? 'page' : undefined}
+        className={[
+          'relative flex w-full items-center justify-center',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset',
+          'transition-colors duration-fast',
+          // §3.9 LOCKED: inactive items surface hover bg + icon shift; active items keep accent state.
+          // Inactive color lives in className so hover: can override it (inline style would block hover).
+          entry.isActive
+            ? 'text-[var(--color-nav-item-icon-active,var(--color-accent))]'
+            : 'text-[var(--color-nav-item-icon-inactive)] hover:bg-[var(--color-nav-item-bg-hover)] hover:text-[var(--color-nav-item-icon-hover)]',
+        ].join(' ')}
+        style={{ height: 'var(--nav-item-target-size, 44px)' }}
       >
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="Expand sidebar"
-            className="w-full h-full flex items-center justify-center text-text-muted hover:text-accent transition-colors"
-          >
-            <ChevronRight size={14} />
-          </button>
-        ) : (
-          /* The whole identity row toggles collapse; the chevron stays as the
-             visible affordance (no nested button, so clicks never conflict). */
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="Collapse sidebar"
-            className="group/header w-full h-full flex items-center text-left"
-          >
-            <div className="flex items-center flex-1 min-w-0 px-3 gap-2.5">
-              <div
-                className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
-              >
-                <IdentityIcon size={12} className="text-accent" />
-              </div>
-              <span
-                className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
-                title={identity.label}
-              >
-                {identity.label}
-              </span>
-            </div>
-            <span className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted group-hover/header:text-accent transition-colors border-l border-border-subtle">
-              <ChevronLeft size={13} />
-            </span>
-          </button>
+        {/* Left-edge active pill */}
+        {entry.isActive && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 pointer-events-none rounded-r"
+            style={{
+              width: 'var(--nav-item-active-indicator-size, 3px)',
+              background: 'var(--color-nav-item-active-indicator, var(--color-accent))',
+            }}
+          />
         )}
-      </div>
+        <Icon
+          size={24}
+          aria-hidden="true"
+        />
+        <span className="sr-only">{entry.label}</span>
+      </button>
+    </Tooltip>
+  );
+}
 
-      {/* ── Nav items ── */}
-      <LayoutGroup id={`sidebar-${context}-nav`}>
-        <div className="flex flex-col py-2 flex-1">
-          {items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.id}>
-                <Tooltip
-                  content={
-                    <div className="max-w-[200px]">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-semibold text-text-primary text-sm">{item.label}</span>
-                        {item.shortcut && (
-                          <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle bg-surface-base text-text-muted font-mono leading-none flex-shrink-0">
-                            {item.shortcut}
-                          </kbd>
-                        )}
-                      </div>
-                      <p className="text-xs text-text-secondary leading-relaxed">{item.description}</p>
-                    </div>
-                  }
-                  side="right"
-                  sideOffset={collapsed ? 12 : 16}
-                  delayDuration={collapsed ? 200 : 700}
-                >
-                  {/* design-system-ignore: Sidebar nav requires custom active state styling */}
-                  <button
-                    onClick={item.onSelect}
-                    aria-current={item.isActive ? 'page' : undefined}
-                    className={`relative flex items-center w-full py-2.5 text-sm font-medium text-left transition-colors duration-150 select-none ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} ${item.isActive ? 'text-accent' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.035]'}`}
-                  >
-                    {item.isActive && (
-                      <motion.span
-                        layoutId={`sidebar-${context}-active-bg`}
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background: 'rgba(20,184,166,0.09)',
-                          boxShadow: 'inset 0 0 32px rgba(20,184,166,0.1)',
-                        }}
-                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                      />
-                    )}
-                    {item.isActive && (
-                      <motion.span
-                        layoutId={`sidebar-${context}-active-bar`}
-                        className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
-                        style={{
-                          background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, var(--color-accent) 50%, rgba(20,184,166,0.3) 100%)',
-                          boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
-                        }}
-                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                      />
-                    )}
-                    <Icon size={15} className="flex-shrink-0 relative z-10" />
-                    {!collapsed && (
-                      <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
-                    )}
-                  </button>
-                </Tooltip>
-              </div>
-            );
+function RailAvatarItemButton({ entry }: RailAvatarItemProps) {
+  return (
+    <Tooltip content={entry.label} side="right" sideOffset={12} delayDuration={300}>
+      {/* design-system-ignore: custom active pill + avatar/icon variants per §3.9 */}
+      <button
+        type="button"
+        onClick={entry.onSelect}
+        aria-current={entry.isActive ? 'page' : undefined}
+        className={[
+          'relative flex w-full items-center justify-center',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset',
+          'transition-colors duration-fast',
+          // §3.9 LOCKED: inactive avatar items surface hover bg; avatar chip keeps its border treatment.
+          !entry.isActive && 'hover:bg-[var(--color-nav-item-bg-hover)]',
+        ].filter(Boolean).join(' ')}
+        style={{ height: 'var(--nav-item-target-size, 44px)' }}
+      >
+        {/* Left-edge active pill */}
+        {entry.isActive && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-y-0 left-0 pointer-events-none rounded-r"
+            style={{
+              width: 'var(--nav-item-active-indicator-size, 3px)',
+              background: 'var(--color-nav-item-active-indicator, var(--color-accent))',
+            }}
+          />
+        )}
+        {entry.imageUrl ? (
+          <img
+            src={entry.imageUrl}
+            alt=""
+            aria-hidden="true"
+            className="rounded-full object-cover"
+            style={{
+              width: 'var(--nav-item-icon-size, 24px)',
+              height: 'var(--nav-item-icon-size, 24px)',
+              border: entry.isActive
+                ? '2px solid var(--color-nav-item-active-indicator, var(--color-accent))'
+                : '1px solid var(--color-border-default)',
+            }}
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="flex items-center justify-center rounded-full text-xs font-semibold"
+            style={{
+              width: 'var(--nav-item-icon-size, 24px)',
+              height: 'var(--nav-item-icon-size, 24px)',
+              background: entry.accent ?? 'var(--color-accent-dim)',
+              border: entry.isActive
+                ? '2px solid var(--color-nav-item-active-indicator, var(--color-accent))'
+                : '1px solid var(--color-border-default)',
+              color: 'var(--color-text-primary)',
+            }}
+          >
+            {entry.initials}
+          </span>
+        )}
+        <span className="sr-only">{entry.label}</span>
+      </button>
+    </Tooltip>
+  );
+}
+
+// ─── AppRail ─────────────────────────────────────────────────────────────────
+
+export function AppRail({ logo, entries, footer }: AppRailProps) {
+  return (
+    <>
+      <SkipLink />
+      <nav
+        aria-label="Primary navigation"
+        className="w-[72px] shrink-0 flex flex-col border-r border-border-default"
+        style={{ background: 'var(--color-surface-nav, var(--color-surface-raised))' }}
+      >
+        {/* ── Logo block ── */}
+        {logo && (
+          <div className="flex items-center justify-center h-[72px] shrink-0 border-b border-border-default">
+            {logo}
+          </div>
+        )}
+
+        {/* ── Nav entries ── */}
+        {/* min-h-0 lets the flex child shrink below its content so overflow-y-auto can scroll */}
+        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto py-2">
+          {entries.map((entry) => {
+            if (entry.kind === 'divider') {
+              return (
+                <hr
+                  key={entry.id}
+                  aria-hidden="true"
+                  className="mx-4 my-2 border-border-default"
+                />
+              );
+            }
+            if (entry.kind === 'icon') {
+              return <RailIconItemButton key={entry.id} entry={entry} />;
+            }
+            // entry.kind === 'avatar'
+            return <RailAvatarItemButton key={entry.id} entry={entry} />;
           })}
         </div>
-      </LayoutGroup>
 
-      {/* ── Footer (user menu) ── */}
-      {footer && (
-        <div className="border-t border-border-subtle flex-shrink-0">
-          {typeof footer === 'function' ? footer(collapsed) : footer}
-        </div>
-      )}
-    </motion.nav>
+        {/* ── Footer ── */}
+        {footer && (
+          <div className="shrink-0 border-t border-border-default">
+            {footer}
+          </div>
+        )}
+      </nav>
+    </>
   );
 }

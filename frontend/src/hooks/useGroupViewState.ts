@@ -198,30 +198,15 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // ===== Tab state: URL param > localStorage > default =====
   const [pageMode, setPageModeState] = useState<PageMode>(() => {
     const urlTab = searchParams.get('tab');
-    // New values pass through directly
-    if (urlTab === 'overview') return 'overview';
-    if (urlTab === 'roster') return 'roster';
-    if (urlTab === 'schedule') return 'schedule';
-    if (urlTab === 'goals') return 'goals';
-    if (urlTab === 'gear') return 'gear';
-    if (urlTab === 'plugin') return 'plugin';
-    if (urlTab === 'more') return 'more';
-    // Backward-compat: old URL param values
-    if (urlTab === 'home') return 'overview';
-    if (urlTab === 'players') return 'roster';
-    if (urlTab === 'loot' || urlTab === 'priority') return 'gear';
-    if (urlTab === 'weapon') return 'gear';
-    if (urlTab === 'log' || urlTab === 'history') return 'gear';
-    if (urlTab === 'summary') return 'gear';
-    if (urlTab === 'mount-farms' || urlTab === 'collections') return 'goals';
-    // Deep links to a specific player (e.g., from the Dalamud plugin) should land
-    // on the Roster tab so the highlighted card is actually visible.
-    if (searchParams.get('player')) return 'roster';
-    // Per-static remembered tab, gated on the user's tab-persistence preference.
-    return recallTab(
-      tabKey('group-view-tab', scope),
-      ['overview', 'roster', 'schedule', 'goals', 'gear', 'plugin', 'more'] as const,
-      'roster',
+    // Delegate alias resolution to the shared parser so the two copies can't
+    // drift. If no URL tab matches, fall back to: player deeplink → Roster,
+    // otherwise the per-static remembered tab (gated on tab-persistence pref).
+    return pageModeFromTabParam(urlTab) ?? (
+      searchParams.get('player') ? 'roster' : recallTab(
+        tabKey('group-view-tab', scope),
+        ['overview', 'roster', 'schedule', 'goals', 'gear', 'plugin', 'more'] as const,
+        'roster',
+      )
     );
   });
 
@@ -309,14 +294,16 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // Wrapper to persist pageMode and update URL
   const setPageMode = useCallback((mode: PageMode, extraParams?: Record<string, string>) => {
     setPageModeState(mode);
-    // Reset scroll position when switching tabs (prevents scroll bleed between tabs)
-    // Use main element (which has overflow-y-auto) if it exists, fallback to window
+    // Reset scroll position when switching tabs (prevents scroll bleed between tabs).
+    // Legacy v1 scrolls inside Layout's <main>; v2 scrolls inside NewShell's
+    // #main-content div — reset both so the correct container is always covered.
     const mainEl = document.querySelector('main');
     if (mainEl) {
       mainEl.scrollTo(0, 0);
     } else {
       window.scrollTo(0, 0);
     }
+    document.getElementById('main-content')?.scrollTo(0, 0);
     rememberTab(tabKey('group-view-tab', scope), mode);
     // When the user has turned tab memory OFF ('reset'), navigating to a primary
     // tab resets every view's sub-tab to its default. Clearing the registered
