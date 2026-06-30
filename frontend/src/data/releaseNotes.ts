@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.29.0';
+export const CURRENT_VERSION = '1.29.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,19 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '1.29.1',
+    date: '2026-06-30T00:00:00Z',
+    items: [
+      {
+        category: 'fix',
+        title: 'Japanese translation corrections',
+        description:
+          'Fixed a stray character in the Discord permissions string, corrected FFXIV community terminology ' +
+          '(プログレ, オーケストリオン譜, BiS達成, 交流, 募集), and resolved a duplicate translation for "Show Less".',
+      },
+    ],
+  },
   {
     version: '1.29.0',
     date: '2026-06-27T00:00:00Z',
