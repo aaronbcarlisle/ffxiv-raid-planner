@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { CommandPalette } from '../components/layout/CommandPalette';
 import { Home, Globe } from 'lucide-react';
 import { GroupViewContent } from './GroupViewContent';
 import { GroupActionModals, useGroupActions } from './groupActionsContext';
@@ -99,6 +100,23 @@ export function NewShell() {
     return () => { cancelled = true; };
   }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
 
+  // ── v2-scoped mod-K binding ──────────────────────────────────────────────
+  // NewShell only mounts for ?shell=v2, so this listener never fires on the
+  // legacy /group/:shareCode route — it is unmounted when the legacy shell renders.
+  // Destructure open so the effect dep-array references the stable callback
+  // directly (avoids the exhaustive-deps warning for the `palette` object).
+  const openPalette = palette.open;
+  useEffect(() => {
+    function handleModK(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        openPalette();
+      }
+    }
+    window.addEventListener('keydown', handleModK);
+    return () => window.removeEventListener('keydown', handleModK);
+  }, [openPalette]);
+
   const personLayerEntries = useMemo<RailEntry[]>(() => [
     {
       kind: 'icon',
@@ -149,6 +167,7 @@ export function NewShell() {
         </div>
       </div>
       <NotificationCenter isOpen={notifications.isOpen} onClose={notifications.close} />
+      <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />
     </GroupActionModals>
   );
 }
