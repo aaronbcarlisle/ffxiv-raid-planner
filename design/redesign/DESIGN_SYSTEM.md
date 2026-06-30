@@ -205,7 +205,9 @@ Kept from v2: text input (default/error/disabled, sizes, with-icon, input-group)
 
 **Built in F6a (contracted §3.9–3.15):** context rail → `AppRail` (§3.9); top bar → `TopBar` composition of `StaticPicker` + tier breadcrumb + `NotificationBell` + `SettingsGear`; 4-tab spine → `Spine` (§3.13); ⌘K palette → `CommandPalette` (§3.10); skip link → `SkipLink` (§3.11); notification bell → `NotificationBell` (§3.12); settings gear → `SettingsGear` (§3.14); static picker → `StaticPicker` (§3.15).
 
-**Still proposals (not yet contracted):** **availability heatmap**, **RSVP row**, **match-score listing** (Finder), **attention-list row** (Home). Each gets a contract entry as it's built.
+**Built in F6b (contracted §3.16–3.23):** `CardShell` (§3.16); `ProgressBar` (§3.17) + `ProgressBarLegend` (§3.18); `PlayerIdentity` (§3.19, `inline` variant — `board-cell`/`rsvp-row` reserved F6c/e); `EmptyStateInvite` (§3.20); `TwoRegionDashboard` (§3.21); `AttentionRow` (§3.22); `SessionRsvpCard` (§3.23, `next` variant — `later` reserved F6e). Ring-0 `home/` compositions (`Home`, `WeeklyLootSummaryCard`, `RosterReadinessCard`, `RoleBisCard`, `StaticActivityFeed`, `TrackCard`) are screen-specific, not design-system atoms — not contracted here.
+
+**Still proposals (not yet contracted):** **availability heatmap**, **match-score listing** (Finder). Each gets a contract entry as it's built.
 
 ### 3.9 Context rail (Person-layer nav) — LOCKED
 
@@ -299,6 +301,68 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   - Lazy-fetch: `onFetchGroups()` called only when the dropdown opens (parity with `ContextSwitcher`).
   - Static switch fires `navigate()` only when already on a `/group/` route (`onStatic` guard).
 
+### 3.16 CardShell — F6b
+
+- **Anatomy:** `surface-card` + `border-subtle` rounded container (`rounded-lg`, `p-4`); optional header row — leading `icon?` (aria-hidden, `text-text-tertiary`) + uppercase `text-xs` `<h3>` `title` + right-aligned `headerRight?` slot (`ml-auto`); `children` body.
+- **Props:** `{ title?: string; icon?: ReactNode; headerRight?: ReactNode; children: ReactNode; className?: string; as?: 'section'|'div' }`. Defaults `as='section'`; use `'div'` when the card is nested inside another landmark (e.g. inside a `<section>`).
+- **States:** none (empty-content use case: render `EmptyStateInvite` as `children` — not the card's own responsibility).
+- **a11y:** when `title` is set it renders as a real `<h3>` heading element; the icon slot is `aria-hidden`.
+- **Usage rules:** supersedes the legacy `DashboardCard.tsx` (inline-hex debt). A card must sit on a surface one step darker than itself (`surface-base` under `surface-card`). Token-only: `bg-surface-card`, `border-border-subtle`, `text-text-tertiary`. No raw hex.
+
+### 3.17 ProgressBar — F6b
+
+- **Anatomy:** full-width track (`bg-surface-interactive`, `h-2`, `rounded-full`) + fill div sized by inline `width: {pct}%` with `background: var(--color-*)`.
+- **Props:** `{ value: number; color?: ProgressBarColor; ariaLabel?: string; className?: string }`. `value` is `[0, 1]` (clamped). `color` union: `'accent' | 'role-tank' | 'role-healer' | 'role-melee' | 'role-ranged' | 'role-caster' | 'gear-raid' | 'gear-tome' | 'gear-augmented' | 'success' | 'warning' | 'membership-linked'`. Each key resolves to the matching CSS var token via the `COLOR_TOKEN` record — no hex literals.
+- **States:** decorative (no `ariaLabel`) | accessible (`role="progressbar"` with `aria-label`, `aria-valuenow` 0–100 rounded integer, `aria-valuemin=0`, `aria-valuemax=100` when `ariaLabel` is set).
+- **Usage rules:** never pass a raw color. Supply `ariaLabel` on user-facing bars; omit only for purely decorative fills. Fill transition: `duration-300 ease-out`.
+
+### 3.18 ProgressBarLegend — F6b
+
+- **Anatomy:** `flex flex-wrap` row of swatch + label pairs. Swatch is a 10×10px `rounded-sm` square with `border-border-default`; `transparent` swatch (border only) represents "needed."
+- **Props:** `{ items?: LegendItem[] }`. `LegendItem = { label: string; token: string }` — `token` is a CSS var string (e.g. `'var(--color-gear-raid)'`) or `'transparent'`. Defaults to the 4 standard gear-source swatches: raid / tome (aug) / augmented / needed.
+- **States:** none (static display only).
+- **a11y:** wrapper has `aria-label="Gear source legend"`; individual swatches are `aria-hidden`.
+- **Usage rules:** render once per screen, not once per bar. Pass custom `items` only when the legend context is non-gear-source. The default 4-swatch set is the canonical gear-source legend; do not inline a custom legend for the standard case.
+
+### 3.19 PlayerIdentity — F6b
+
+- **Anatomy (inline variant):** 32px role-ringed avatar (`border-2`, `border-color: var(--color-role-*)` via inline style) wrapping `SafeAvatar` (with initials fallback) + `JobIcon` badge overlaid at bottom-right (`-bottom-0.5 -right-0.5`) + text zone: `text-sm font-medium` name + optional `text-xs text-text-tertiary` subtitle (auto-generated as `"job · position"` when not supplied).
+- **Props:** `{ name: string; job?: string; role?: Role; position?: string; subtitle?: ReactNode; avatarUrl?: string; variant?: 'inline'|'board-cell'|'rsvp-row' }`. `Role = 'tank'|'healer'|'melee'|'ranged'|'caster'`.
+- **Variants:** `'inline'` — avatar + name + meta row. **BUILT F6b.** `'board-cell'` — compact cell for Roster Board. **RESERVED F6c — do not implement yet.** `'rsvp-row'` — RSVP roster row inside `SessionRsvpCard`. **RESERVED F6e — do not implement yet.** Reserved variants render `null` with a DEV console warning.
+- **States:** none (controlled by parent).
+- **a11y:** role is never conveyed by color alone. The avatar ring is decorative reinforcement; the job/position subtitle carries the textual role label. When `role` is set but no job/position/subtitle is present, a `sr-only` role label (`"Tank"`, etc.) is injected to satisfy the requirement.
+- **Usage rules:** presentational — no store imports. Avatar ring uses `var(--color-role-*)` via inline `borderColor` style (not a Tailwind class), because Tailwind cannot generate arbitrary ring colors at shared-layer error rules.
+
+### 3.20 EmptyStateInvite — F6b
+
+- **Anatomy:** centered flex column (`flex-col items-center gap-2 py-6 px-4 text-center`) — optional `aria-hidden` icon + `text-sm font-medium` title + optional `text-xs text-text-tertiary` description + optional action `Button (size sm)`.
+- **Props:** `{ icon?: ReactNode; title: string; description?: string; action?: { label: string; onClick: () => void; variant?: ButtonVariant } }`.
+- **States:** none (always renders a static invitation).
+- **Usage rules:** default action variant `'accent-subtle'`. Action button carries no trailing glyph (§4.1 lexicon — empty-state actions are neither disclosures nor external links). Consolidates: legacy `EmptyState`, `EmptySlotCard`, in-card `PlayerSetupBanner` fallback, and the `ScheduleTab` bespoke empty block.
+
+### 3.21 TwoRegionDashboard — F6b
+
+- **Anatomy:** CSS grid — `main` (left actionable column, `1.85fr`) and `side` (right ambient column, `1fr`); `18px` gap via `gap-[18px]`; `items-start` so columns don't stretch. Collapses to a single column at ≤1180px via `min-[1181px]:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]`.
+- **Props:** `{ main: ReactNode; side: ReactNode; className?: string }`. Pure layout — no store, no color, no business logic.
+- **States:** two-column (≥1181px viewport width) | single-column (≤1180px — `side` stacks below `main`).
+- **Usage rules:** placed in `ui/` (shared) because both Home (ring-0) and Schedule (ring-1) consume it — only the shared layer is importable by both. `main` = primary/actionable content; `side` = ambient/glanceable. Do not use for non-dashboard layouts; this component encodes the Home/Schedule-specific proportions.
+
+### 3.22 AttentionRow — F6b
+
+- **Anatomy:** `flex items-center gap-3 py-2` — leading status icon (`shrink-0 text-status-warning`, `aria-hidden`) + grow region (`flex-1 min-w-0`: `text-sm font-medium text-text-primary` title + optional `text-xs text-text-tertiary` `<p>` meta) + trailing `Button (size sm, shrink-0)`.
+- **Props:** `{ icon: ReactNode; title: ReactNode; meta?: string; action: { label: string; onClick: () => void; variant?: ButtonVariant } }`. All four top-level props are required except `meta`.
+- **States:** none (fully controlled by parent).
+- **Usage rules:** default action variant `'accent-subtle'`. Action Button carries no trailing glyph (§4.1 lexicon). Icon slot is `aria-hidden`; status meaning is conveyed by the `title`/`meta` text. In Home, `AttentionRow` instances are composed inside a `CardShell` (not used as a standalone card). Ordering in Home: BiS-blocking first → unclaimed slots → join requests.
+
+### 3.23 SessionRsvpCard — F6b
+
+- **Anatomy (next variant):** `CardShell` ("Next session" + countdown `Tag` variant `label` tone `accent` in `headerRight`) wrapping: day/time line (`font-display text-lg font-semibold`) + timezone line (`text-xs text-text-tertiary` — session tz + optional viewer tz when they differ); RSVP avatar stack (one `SafeAvatar` per `rsvp`, ring colored by RSVP **status** via `STATUS_TOKEN`); `"N in · M tentative"` count line; 3-button RSVP strip (I'm in / Tentative / Can't make it).
+- **Props:** `{ session: ScheduleSession; currentUserRsvp?: RsvpStatus; onRsvp?: (status: RsvpStatus) => void; variant?: 'next'|'later'; viewerTimezone?: string }`.
+- **Variants:** `'next'` — prominent next-session card (accent header). **BUILT F6b.** `'later'` — neutral border, ghost RSVP buttons (Schedule list view). **RESERVED F6e — API-reserved, not yet implemented.** Currently renders identically to `'next'`; F6e differentiates the two.
+- **Avatar-ring color decision (deliberate):** `ScheduleRsvp` carries no member `role` field. Rings are colored by RSVP **status** via status tokens (`available → var(--color-status-success)`, `tentative → var(--color-status-warning)`, `unavailable → var(--color-status-error)`). If a role field is later added to `ScheduleRsvp`, switch to `var(--color-role-*)`. Role-coloring is explicitly deferred, not forgotten.
+- **a11y:** RSVP buttons are real `Button`s; the active RSVP has `aria-pressed={true}`. Avatar ring status is conveyed by the `title` attribute (`"Name — status"`) — not by color alone.
+- **Usage rules:** presentational — no store imports. Parent (Home) wires `onRsvp` to `scheduleStore`'s RSVP mutation. No session → parent renders `EmptyStateInvite` instead of this card.
+
 ---
 
 ## 4. Iconography & motion
@@ -352,7 +416,7 @@ Writing the contract exposed real holes — these become validation agenda items
 4. ✅ **⌘K affordance** — platform-aware label (`⌘K` mac / `Ctrl K` other) in `CommandPalette` §3.10. Font-safe `<kbd>` element.
 5. **Motion tokens** — undefined; durations/easing needed for toggle, popover, tab transitions, and the rail pill indicator.
 6. ✅ **Context rail** — fully specified in §3.9 (width, surface, corner ownership, item states, a11y) and **built F6a** as `AppRail`. Remaining gap: motion (pill enter/exit), deferred to v3.1.
-7. **New components** (§3.8) — ✅ F6a delivered: `AppRail` (§3.9), `Spine` (§3.13), `CommandPalette` (§3.10), `SkipLink` (§3.11), `NotificationBell` (§3.12), `SettingsGear` (§3.14), `StaticPicker` (§3.15). Remaining proposals: availability heatmap, RSVP row, match-score listing (Finder), attention-list row (Home).
+7. **New components** (§3.8) — ✅ F6a delivered: `AppRail` (§3.9), `Spine` (§3.13), `CommandPalette` (§3.10), `SkipLink` (§3.11), `NotificationBell` (§3.12), `SettingsGear` (§3.14), `StaticPicker` (§3.15). ✅ F6b delivered: `CardShell` (§3.16), `ProgressBar`+`ProgressBarLegend` (§3.17–3.18), `PlayerIdentity` (§3.19), `EmptyStateInvite` (§3.20), `TwoRegionDashboard` (§3.21), `AttentionRow` (§3.22), `SessionRsvpCard` (§3.23). Remaining proposals: availability heatmap, match-score listing (Finder).
 8. **Density** — no compact/comfortable density tokens; data-dense Board may want a compact mode. Flagged.
 9. **Focus-visible spec** — focus-ring token exists; the exact ring (width/offset) isn't specified per component.
 

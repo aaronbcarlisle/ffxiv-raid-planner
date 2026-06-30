@@ -4,8 +4,13 @@ import { CommandPalette } from '../components/layout/CommandPalette';
 import { Home, Globe } from 'lucide-react';
 import { GroupViewContent } from './GroupViewContent';
 import { GroupActionModals, useGroupActions } from './groupActionsContext';
+import { V2SettingsHost } from './V2SettingsHost';
+import { Home as StaticHome } from '../components/home/Home';
 import { useGroupViewState } from '../hooks/useGroupViewState';
+import { useStaticPermissions } from '../hooks/useStaticPermissions';
 import { useModal } from '../hooks/useModal';
+import { useCurrentTier } from '../stores/tierStore';
+import { useSettingsPanelStore } from '../stores/settingsPanelStore';
 import { Spine } from '../components/layout/Spine';
 import { AppRail } from '../components/layout/AppRail';
 import { TopBar } from '../components/layout/TopBar';
@@ -27,9 +32,31 @@ function getInitials(name: string): string {
 }
 
 /** Renders the shared content with `actions` pulled from the GroupActions context
- *  (provided by the <GroupActionModals> wrapper below). */
-function ShellContent() {
-  return <GroupViewContent actions={useGroupActions()} />;
+ *  (provided by the <GroupActionModals> wrapper below).
+ *
+ *  F6b: in v2 the `overview` tab is the redesigned <Home/> dashboard, injected as
+ *  the `overview` slot. The legacy route passes no slots, so `GroupViewContent`
+ *  still renders `StaticHomeTab` byte-for-byte. Exported for the slot-wiring test. */
+export function ShellContent() {
+  const gv = useGroupViewState();
+  const currentGroup = useStaticGroupStore((s) => s.currentGroup);
+  const currentTier = useCurrentTier();
+  // F6a hook: `canEdit` (owner/lead/admin-access) is the v2 "can manage" gate.
+  const { canEdit: canManage } = useStaticPermissions();
+
+  const overview = currentGroup ? (
+    <StaticHome
+      group={currentGroup}
+      tier={currentTier}
+      canManage={canManage}
+      onNavigate={gv.setPageMode}
+      onOpenRequests={() =>
+        useSettingsPanelStore.getState().open({ tab: 'recruitment', section: 'requests' })
+      }
+    />
+  ) : undefined;
+
+  return <GroupViewContent actions={useGroupActions()} slots={overview ? { overview } : undefined} />;
 }
 
 export function NewShell() {
@@ -188,6 +215,7 @@ export function NewShell() {
       </div>
       <NotificationCenter isOpen={notifications.isOpen} onClose={notifications.close} />
       <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />
+      <V2SettingsHost />
     </GroupActionModals>
   );
 }
