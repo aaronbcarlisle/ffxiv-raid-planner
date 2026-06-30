@@ -198,30 +198,15 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // ===== Tab state: URL param > localStorage > default =====
   const [pageMode, setPageModeState] = useState<PageMode>(() => {
     const urlTab = searchParams.get('tab');
-    // New values pass through directly
-    if (urlTab === 'overview') return 'overview';
-    if (urlTab === 'roster') return 'roster';
-    if (urlTab === 'schedule') return 'schedule';
-    if (urlTab === 'goals') return 'goals';
-    if (urlTab === 'gear') return 'gear';
-    if (urlTab === 'plugin') return 'plugin';
-    if (urlTab === 'more') return 'more';
-    // Backward-compat: old URL param values
-    if (urlTab === 'home') return 'overview';
-    if (urlTab === 'players') return 'roster';
-    if (urlTab === 'loot' || urlTab === 'priority') return 'gear';
-    if (urlTab === 'weapon') return 'gear';
-    if (urlTab === 'log' || urlTab === 'history') return 'gear';
-    if (urlTab === 'summary') return 'gear';
-    if (urlTab === 'mount-farms' || urlTab === 'collections') return 'goals';
-    // Deep links to a specific player (e.g., from the Dalamud plugin) should land
-    // on the Roster tab so the highlighted card is actually visible.
-    if (searchParams.get('player')) return 'roster';
-    // Per-static remembered tab, gated on the user's tab-persistence preference.
-    return recallTab(
-      tabKey('group-view-tab', scope),
-      ['overview', 'roster', 'schedule', 'goals', 'gear', 'plugin', 'more'] as const,
-      'roster',
+    // Delegate alias resolution to the shared parser so the two copies can't
+    // drift. If no URL tab matches, fall back to: player deeplink → Roster,
+    // otherwise the per-static remembered tab (gated on tab-persistence pref).
+    return pageModeFromTabParam(urlTab) ?? (
+      searchParams.get('player') ? 'roster' : recallTab(
+        tabKey('group-view-tab', scope),
+        ['overview', 'roster', 'schedule', 'goals', 'gear', 'plugin', 'more'] as const,
+        'roster',
+      )
     );
   });
 
