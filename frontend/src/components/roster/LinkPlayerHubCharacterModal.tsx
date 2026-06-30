@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LinkedCharacterSummary, RoleInStatic } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
@@ -14,12 +15,6 @@ interface LinkPlayerHubCharacterModalProps {
   onLink: (characterId: string, role: RoleInStatic, job: string | null) => Promise<void>;
 }
 
-const ROLE_OPTIONS: { value: RoleInStatic; label: string }[] = [
-  { value: 'main', label: 'Main' },
-  { value: 'alt', label: 'Alt' },
-  { value: 'substitute', label: 'Substitute' },
-];
-
 export function LinkPlayerHubCharacterModal({
   isOpen,
   onClose,
@@ -27,6 +22,14 @@ export function LinkPlayerHubCharacterModal({
   available,
   onLink,
 }: LinkPlayerHubCharacterModalProps) {
+  const { t } = useTranslation();
+
+  const ROLE_OPTIONS: { value: RoleInStatic; label: string }[] = [
+    { value: 'main', label: t('roster.roleMain') },
+    { value: 'alt', label: t('roster.roleAlt') },
+    { value: 'substitute', label: t('roster.roleSubstitute') },
+  ];
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [role, setRole] = useState<RoleInStatic>('alt');
   const [job, setJob] = useState('');
@@ -46,7 +49,7 @@ export function LinkPlayerHubCharacterModal({
       setRole('alt');
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to link character');
+      setError(e instanceof Error ? e.message : t('roster.failedToLinkCharacter'));
     } finally {
       setSaving(false);
     }
@@ -65,12 +68,12 @@ export function LinkPlayerHubCharacterModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={`Link Player Hub character — ${playerName}`}
+      title={t('roster.linkPlayerHubCharacterTitle', { playerName })}
       size="md"
       footer={
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={saving}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
@@ -79,7 +82,7 @@ export function LinkPlayerHubCharacterModal({
             onClick={handleConfirm}
             disabled={!selectedId || saving}
           >
-            {saving ? 'Linking…' : 'Link character'}
+            {saving ? t('roster.linking') : t('roster.linkCharacter')}
           </Button>
         </div>
       }
@@ -91,16 +94,16 @@ export function LinkPlayerHubCharacterModal({
 
         {available.length === 0 ? (
           <div className="rounded-lg bg-surface-elevated p-4 text-center">
-            <p className="text-sm text-text-muted">No Player Hub characters available to link.</p>
+            <p className="text-sm text-text-muted">{t('roster.noPlayerHubCharactersAvailable')}</p>
             <p className="text-xs text-text-muted mt-1">
-              All characters are already registered, or this player has no linked characters.
+              {t('roster.allCharactersAlreadyRegistered')}
             </p>
           </div>
         ) : (
           <>
             <div>
               <p className="text-xs font-semibold text-text-muted mb-2 uppercase tracking-wide">
-                Select character
+                {t('roster.selectCharacter')}
               </p>
               <div className="space-y-1.5">
                 {available.map(char => (
@@ -119,7 +122,7 @@ export function LinkPlayerHubCharacterModal({
                     <div>
                       <div className="flex items-center gap-1.5">
                         {char.isMain && (
-                          <span className="text-[9px] font-bold text-role-tank uppercase">Main</span>
+                          <span className="text-[9px] font-bold text-role-tank uppercase">{t('roster.roleMain')}</span>
                         )}
                         <span className="text-sm font-medium text-text-primary">{char.name}</span>
                       </div>
@@ -136,7 +139,7 @@ export function LinkPlayerHubCharacterModal({
             {selected && (
               <div className="space-y-3 border-t border-border-subtle pt-3">
                 <div>
-                  <Label size="sm">Role in static</Label>
+                  <Label size="sm">{t('roster.roleInStatic')}</Label>
                   <div className="flex gap-2">
                     {ROLE_OPTIONS.map(opt => (
                       <Button
@@ -152,13 +155,13 @@ export function LinkPlayerHubCharacterModal({
                   </div>
                 </div>
                 <div>
-                  <Label size="sm">Job (optional)</Label>
+                  <Label size="sm">{t('roster.jobOptional')}</Label>
                   <Input
                     value={job}
                     onChange={v => setJob(v.toUpperCase().slice(0, 5))}
                     placeholder="e.g. DRK"
                     className="w-24"
-                    aria-label="Job abbreviation"
+                    aria-label={t('roster.jobAbbreviation')}
                   />
                 </div>
               </div>

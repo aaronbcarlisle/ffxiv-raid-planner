@@ -6,6 +6,7 @@
  */
 
 import { forwardRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../primitives/Button';
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import type { WizardStep } from './types';
@@ -35,6 +36,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
     },
     ref
   ) {
+    const { t } = useTranslation();
     const isFirstStep = currentStep === 1;
     const isReviewStep = currentStep === 3;
     const isShareStep = currentStep === 4;
@@ -50,7 +52,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
             onClick={onFinish}
             rightIcon={<ExternalLink className="w-4 h-4" />}
           >
-            Go to Static
+            {t('wizard.goToStatic')}
           </Button>
         );
       }
@@ -65,7 +67,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
             disabled={!canProceed || isSubmitting}
             loading={isSubmitting}
           >
-            {isSubmitting ? 'Creating Static...' : 'Create Static'}
+            {isSubmitting ? t('wizard.creatingStatic') : t('wizard.createStatic')}
           </Button>
         );
       }
@@ -79,7 +81,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
           disabled={!canProceed}
           rightIcon={<ChevronRight className="w-4 h-4" />}
         >
-          Next
+          {t('wizard.next')}
         </Button>
       );
     };
@@ -93,7 +95,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
           disabled={isFirstStep || isSubmitting || isCreated}
           leftIcon={<ChevronLeft className="w-4 h-4" />}
         >
-          Back
+          {t('common.back')}
         </Button>
 
         {/* Keyboard shortcut hint - hidden on mobile and share step */}
@@ -103,7 +105,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
             {' + '}
             <kbd className="px-1.5 py-0.5 bg-surface-elevated rounded text-[10px] font-mono">←</kbd>
             <kbd className="px-1.5 py-0.5 bg-surface-elevated rounded text-[10px] font-mono">→</kbd>
-            <span className="ml-1.5">to navigate</span>
+            <span className="ml-1.5">{t('wizard.keyboardNavigateHint')}</span>
           </span>
         )}
 

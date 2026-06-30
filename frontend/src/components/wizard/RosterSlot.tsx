@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { X, MoreHorizontal } from 'lucide-react';
 import { JobPicker } from '../player/JobPicker';
 import { JobIcon } from '../ui/JobIcon';
@@ -42,17 +43,19 @@ interface RosterSlotProps {
   onFocusNextSlot: () => void; // Callback to focus next slot
 }
 
-// Position labels with role context
-const POSITION_LABELS: Record<string, string> = {
-  T1: 'Main Tank',
-  T2: 'Off Tank',
-  H1: 'Pure Healer',
-  H2: 'Barrier Healer',
-  M1: 'Melee DPS 1',
-  M2: 'Melee DPS 2',
-  R1: 'Physical Ranged',
-  R2: 'Magical Ranged',
-};
+// Position labels with role context — built lazily inside the component using t()
+function getPositionLabels(t: (key: string) => string): Record<string, string> {
+  return {
+    T1: t('wizard.positionMainTank'),
+    T2: t('wizard.positionOffTank'),
+    H1: t('wizard.positionPureHealer'),
+    H2: t('wizard.positionBarrierHealer'),
+    M1: t('wizard.positionMeleeDps1'),
+    M2: t('wizard.positionMeleeDps2'),
+    R1: t('wizard.positionPhysicalRanged'),
+    R2: t('wizard.positionMagicalRanged'),
+  };
+}
 
 // Role ring colors for selected job buttons
 const ROLE_RING_COLORS: Record<string, string> = {
@@ -73,6 +76,8 @@ const ROLE_BG_COLORS: Record<string, string> = {
 };
 
 export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusNextSlot }: RosterSlotProps) {
+  const { t } = useTranslation();
+  const POSITION_LABELS = getPositionLabels(t);
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [pickerPosition, setPickerPosition] = useState({ top: 0, left: 0, width: 0, renderAbove: false });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -103,7 +108,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
   // Get display name for the role (Pure Healer / Barrier Healer for healers)
   const roleDisplayName = (() => {
     if (player.role === 'healer') {
-      return effectiveHealerType === 'pure' ? 'Pure Healer' : 'Barrier Healer';
+      return effectiveHealerType === 'pure' ? t('wizard.positionPureHealer') : t('wizard.positionBarrierHealer');
     }
     return getRoleDisplayName(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster');
   })();
@@ -122,7 +127,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
         return POSITION_LABELS[player.position] || player.position;
       }
       // Otherwise show specific healer type
-      return effectiveHealerType === 'pure' ? 'Pure Healer' : 'Barrier Healer';
+      return effectiveHealerType === 'pure' ? t('wizard.positionPureHealer') : t('wizard.positionBarrierHealer');
     }
     // For non-healers, show role name if different from expected
     if (player.role !== expectedRole) {
@@ -237,7 +242,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
           <button
             onClick={handleClear}
             className={`text-text-muted hover:text-status-error transition-colors ${isEmpty ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-            title="Clear slot"
+            title={t('wizard.clearSlot')}
             tabIndex={isEmpty ? -1 : undefined}
           >
             <X className="w-4 h-4" />
@@ -249,7 +254,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
           ref={nameInputRef}
           value={player.name}
           onChange={(value) => onUpdate({ name: value })}
-          placeholder="Player name"
+          placeholder={t('wizard.playerNamePlaceholder')}
           size="sm"
           fullWidth
           tabIndex={slotIndex * 10 + 1}
@@ -258,7 +263,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
         {/* Job quick-select buttons */}
         <div className="space-y-1.5">
           <Label size="sm" className="mb-0">
-            Select Job for: <span className={`text-role-${player.role} font-medium`}>{roleDisplayName}</span>
+            {t('wizard.selectJobFor', { role: roleDisplayName })}
           </Label>
           <div ref={jobButtonsRef} className="flex flex-wrap gap-2 sm:gap-2">
             {roleJobs.map((jobInfo, idx) => (
@@ -287,7 +292,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
                   ? `ring-2 ${ringColor}`
                   : 'bg-surface-interactive hover:bg-surface-elevated hover:ring-1 hover:ring-border-default'
               }`}
-              title="Other jobs..."
+              title={t('wizard.otherJobs')}
               tabIndex={slotIndex * 10 + 2 + roleJobs.length}
             >
               <MoreHorizontal className="w-6 h-6 text-text-muted" />
@@ -297,7 +302,7 @@ export function RosterSlot({ player, slotIndex, nameInputRef, onUpdate, onFocusN
           {/* Selected job display - uses invisible class to reserve height and prevent layout shift.
               PLACEHOLDER_JOB used when hidden for type safety; content is not visible to users. */}
           <div className={`flex items-center gap-2 text-xs h-6 ${!hasJob ? 'invisible' : ''}`}>
-            <span className="text-text-muted">Selected:</span>
+            <span className="text-text-muted">{t('wizard.selectedJob')}</span>
             <JobIcon job={player.job || PLACEHOLDER_JOB} size="sm" />
             <span className={`font-medium text-role-${player.role}`}>
               {player.job}

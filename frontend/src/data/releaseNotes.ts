@@ -72,6 +72,14 @@ export const RELEASES: Release[] = [
           'Also fixed a stray character in the Discord permissions string and corrected プログレ, オーケストリオン譜, ' +
           'BiS達成, 交流, and 募集, plus a duplicate translation for "Show Less".',
       },
+      {
+        category: 'fix',
+        title: 'English plural strings now render correctly',
+        description:
+          'Counts like "6 members" and "2 listings" were showing the singular form because the ' +
+          'translation files use the v3 "_plural" key convention while i18next defaulted to its newer ' +
+          'plural rules. Enabled v3 compatibility so plurals resolve correctly across the app.',
+      },
     ],
   },
   {

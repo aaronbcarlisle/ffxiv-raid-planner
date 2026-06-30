@@ -1182,7 +1182,7 @@ function BestNextFarmModule({
               <Users className="w-3 h-3 text-accent flex-shrink-0" />
               <span className="text-xs text-text-secondary">
                 <span className="font-bold text-text-primary tabular-nums">{top.membersMissing}</span>
-                {' '}{top.membersMissing === 1 ? t('overview.membersStillNeed') : t('overview.membersStillNeed_plural')}
+                {' '}{t('overview.membersStillNeed', { count: top.membersMissing })}
               </span>
               {top.membersCanBuy > 0 && (
                 <span
