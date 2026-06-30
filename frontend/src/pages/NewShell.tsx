@@ -4,6 +4,7 @@ import { CommandPalette } from '../components/layout/CommandPalette';
 import { Home, Globe } from 'lucide-react';
 import { GroupViewContent } from './GroupViewContent';
 import { GroupActionModals, useGroupActions } from './groupActionsContext';
+import { V2SettingsHost } from './V2SettingsHost';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useModal } from '../hooks/useModal';
 import { Spine } from '../components/layout/Spine';
@@ -188,6 +189,7 @@ export function NewShell() {
       </div>
       <NotificationCenter isOpen={notifications.isOpen} onClose={notifications.close} />
       <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />
+      <V2SettingsHost />
     </GroupActionModals>
   );
 }
