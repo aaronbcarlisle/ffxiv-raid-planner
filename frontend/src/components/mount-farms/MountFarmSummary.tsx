@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, Calendar, ShoppingCart, Check } from 'lucide-react';
 import type { MountFarmTrial } from '../../gamedata';
 import { getCurrencyLabelPlural, getExchangeSummary, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
@@ -27,6 +28,7 @@ export function MountFarmSummary({
   onScheduleFarm,
   onRefresh,
 }: MountFarmSummaryProps) {
+  const { t } = useTranslation();
   const [expandedTrialId, setExpandedTrialId] = useState<string | null>(null);
 
   const toggleExpand = useCallback((trialId: string) => {
@@ -36,7 +38,7 @@ export function MountFarmSummary({
   if (trials.length === 0) {
     return (
       <div className="text-center py-12 text-text-secondary">
-        <p>No trials configured for this expansion.</p>
+        <p>{t('mountFarm.noTrialsConfigured')}</p>
       </div>
     );
   }
@@ -86,7 +88,7 @@ export function MountFarmSummary({
                   <span>{getRewardLabel(trial)}</span>
                   {myProgress ? (
                     <span className={myProgress.hasMount ? 'text-status-success' : 'text-text-tertiary'}>
-                      &middot; {myProgress.hasMount ? 'Obtained' : hasCurrencyTracking(trial) ? `${myProgress.totemCount}/${trial.exchangeCost ?? trial.totemTarget} ${getCurrencyLabelPlural(trial)}` : getExchangeSummary(trial)}
+                      &middot; {myProgress.hasMount ? t('mountFarm.obtained') : hasCurrencyTracking(trial) ? `${myProgress.totemCount}/${trial.exchangeCost ?? trial.totemTarget} ${getCurrencyLabelPlural(trial)}` : getExchangeSummary(trial)}
                     </span>
                   ) : (
                     <>
@@ -103,7 +105,7 @@ export function MountFarmSummary({
                 {canBuy > 0 && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-400">
                     <ShoppingCart className="w-3 h-3" />
-                    {canBuy} ready
+                    {t('mountFarm.readyCount', { count: canBuy })}
                   </span>
                 )}
                 {totalMembers > 0 && (
@@ -133,8 +135,8 @@ export function MountFarmSummary({
                     }
                   }}
                   className="flex-shrink-0 text-text-tertiary hover:text-accent transition-colors p-1"
-                  title={trial.contentType === 'ultimate' ? 'Schedule session' : 'Schedule farm event'}
-                  aria-label={trial.contentType === 'ultimate' ? `Schedule ${trial.dutyName}` : `Schedule ${getRewardNoun(trial)} farm`}
+                  title={trial.contentType === 'ultimate' ? t('mountFarm.scheduleSession') : t('mountFarm.scheduleFarmEvent')}
+                  aria-label={trial.contentType === 'ultimate' ? t('mountFarm.scheduleNamed', { name: trial.dutyName }) : t('mountFarm.scheduleRewardFarm', { reward: getRewardNoun(trial) })}
                 >
                   <Calendar className="w-4 h-4" />
                 </span>
