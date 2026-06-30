@@ -29,9 +29,9 @@ export function NewShell() {
             </button>
           ))}
         </div>
-        <main id="main-content" className="min-h-0 flex-1 overflow-y-auto">
+        <div id="main-content" className="min-h-0 flex-1 overflow-y-auto">
           <GroupViewContent actions={actions} />
-        </main>
+        </div>
       </div>
     </div>
   );
