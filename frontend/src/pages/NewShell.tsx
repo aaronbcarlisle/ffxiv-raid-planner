@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Home, Globe } from 'lucide-react';
 import { GroupViewContent } from './GroupViewContent';
 import { useGroupViewState } from '../hooks/useGroupViewState';
@@ -21,6 +21,7 @@ function getInitials(name: string): string {
 export function NewShell() {
   const gv = useGroupViewState();
   const { shareCode } = useParams<{ shareCode: string }>();
+  const navigate = useNavigate();
   const groups = useStaticGroupStore((s) => s.groups);
 
   // F6a: chrome actions can wire to NewShell-local modal state mirroring GroupView; Task 8
@@ -54,11 +55,11 @@ export function NewShell() {
       initials: getInitials(g.name),
       isActive: g.shareCode === shareCode,
       onSelect: () => {
-        // Navigate to this static with the shell gate preserved.
-        window.location.href = `/group/${g.shareCode}?shell=v2`;
+        // SPA navigation — preserves ?shell=v2 gate without a full page reload.
+        navigate(`/group/${g.shareCode}?shell=v2`);
       },
     })),
-  ], [groups, shareCode]);
+  ], [groups, shareCode, navigate]);
 
   return (
     <div className="flex min-h-0 flex-1" data-testid="new-shell">

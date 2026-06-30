@@ -143,4 +143,25 @@ describe('AppRail', () => {
     render(<AppRail entries={makeEntries()} logo={<span>LOGO</span>} />);
     expect(screen.getByText('LOGO')).toBeInTheDocument();
   });
+
+  // §3.9 LOCKED: inactive icon items must carry hover bg + icon-color-shift class tokens.
+  // jsdom cannot compute :hover paint; asserting the class is wired is the correct pattern.
+  it('inactive icon items carry hover-bg and hover-icon-color classes (§3.9)', () => {
+    render(<AppRail entries={makeEntries()} />);
+    const inactiveIconBtn = screen.getByRole('button', { name: 'Static Finder' });
+    expect(inactiveIconBtn.className).toContain('hover:bg-[var(--color-nav-item-bg-hover)]');
+    expect(inactiveIconBtn.className).toContain('hover:text-[var(--color-nav-item-icon-hover)]');
+  });
+
+  it('active icon items do NOT carry the hover-bg class (accent state is preserved)', () => {
+    render(<AppRail entries={makeEntries()} />);
+    const activeIconBtn = screen.getByRole('button', { name: 'Player Hub' });
+    expect(activeIconBtn.className).not.toContain('hover:bg-[var(--color-nav-item-bg-hover)]');
+  });
+
+  it('inactive avatar items carry hover-bg class (§3.9)', () => {
+    render(<AppRail entries={makeEntries()} />);
+    const avatarBtn = screen.getByRole('button', { name: 'My Static' });
+    expect(avatarBtn.className).toContain('hover:bg-[var(--color-nav-item-bg-hover)]');
+  });
 });

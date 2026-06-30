@@ -32,13 +32,17 @@ function RailIconItemButton({ entry }: RailIconItemProps) {
         type="button"
         onClick={entry.onSelect}
         aria-current={entry.isActive ? 'page' : undefined}
-        className="relative flex w-full items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset transition-colors duration-fast"
-        style={{
-          height: 'var(--nav-item-target-size, 44px)',
-          color: entry.isActive
-            ? 'var(--color-nav-item-icon-active, var(--color-accent))'
-            : 'var(--color-nav-item-icon-inactive)',
-        }}
+        className={[
+          'relative flex w-full items-center justify-center',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset',
+          'transition-colors duration-fast',
+          // §3.9 LOCKED: inactive items surface hover bg + icon shift; active items keep accent state.
+          // Inactive color lives in className so hover: can override it (inline style would block hover).
+          entry.isActive
+            ? 'text-[var(--color-nav-item-icon-active,var(--color-accent))]'
+            : 'text-[var(--color-nav-item-icon-inactive)] hover:bg-[var(--color-nav-item-bg-hover)] hover:text-[var(--color-nav-item-icon-hover)]',
+        ].join(' ')}
+        style={{ height: 'var(--nav-item-target-size, 44px)' }}
       >
         {/* Left-edge active pill */}
         {entry.isActive && (
@@ -69,7 +73,13 @@ function RailAvatarItemButton({ entry }: RailAvatarItemProps) {
         type="button"
         onClick={entry.onSelect}
         aria-current={entry.isActive ? 'page' : undefined}
-        className="relative flex w-full items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset transition-colors duration-fast"
+        className={[
+          'relative flex w-full items-center justify-center',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset',
+          'transition-colors duration-fast',
+          // §3.9 LOCKED: inactive avatar items surface hover bg; avatar chip keeps its border treatment.
+          !entry.isActive && 'hover:bg-[var(--color-nav-item-bg-hover)]',
+        ].filter(Boolean).join(' ')}
         style={{ height: 'var(--nav-item-target-size, 44px)' }}
       >
         {/* Left-edge active pill */}
@@ -139,7 +149,8 @@ export function AppRail({ logo, entries, footer }: AppRailProps) {
         )}
 
         {/* ── Nav entries ── */}
-        <div className="flex flex-col flex-1 py-2">
+        {/* min-h-0 lets the flex child shrink below its content so overflow-y-auto can scroll */}
+        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto py-2">
           {entries.map((entry) => {
             if (entry.kind === 'divider') {
               return (
