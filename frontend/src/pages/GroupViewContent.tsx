@@ -13,10 +13,11 @@
  * the legacy bodies. F6b–F6e swap one screen at a time by passing a `slots` entry.
  *
  * Chrome-triggered actions (add-player, tier ops) are invoked through the `actions`
- * prop; the chrome owns those modals. `chromeModalOpen` bridges the chrome modal
- * open-state back into this component's `isAnyModalOpen` so opening a chrome modal
- * still disables the content keyboard shortcuts + DnD exactly as before the split
- * (removed in Task 8 when the GroupActions context exposes open-state).
+ * prop; the chrome owns those modals (shared `GroupActionModals`). This component
+ * reads modal-open state and the add-player highlight signal from the GroupActions
+ * context (`useGroupActionModalOpen` / `useGroupAddedPlayer`) so a chrome modal
+ * still disables the content keyboard shortcuts + DnD, and a freshly added player
+ * still scrolls into view + highlights — exactly as before the F6a split.
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -64,6 +65,7 @@ import { useGroupViewKeyboardShortcuts } from '../hooks/useGroupViewKeyboardShor
 import { useViewNavigation } from '../hooks/useViewNavigation';
 import { useVisibilityRefresh } from '../hooks/useVisibilityRefresh';
 import { eventBus, useEventBus, Events } from '../lib/eventBus';
+import { useGroupActionModalOpen, useGroupAddedPlayer } from './groupActionsContext';
 import { sortPlayersByRole, groupPlayersByLightParty } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { canManageRoster } from '../utils/permissions';
@@ -87,15 +89,11 @@ export interface GroupViewContentProps {
   /** Per-tab override; when a tab's slot is absent, its legacy body renders. */
   slots?: Partial<Record<GroupTab, React.ReactNode>>;
   /** Chrome-triggered actions the content's toolbar/bodies invoke (add-player, tier ops).
-   *  Task 4 passes these from GroupView; Task 8 makes them shared so neither chrome duplicates state. */
+   *  Fed from the shared GroupActions context (`useGroupActions()`) by each chrome. */
   actions: GroupActions;
-  /** Chrome-owned modal open-state (add-player + create/rollover/delete tier) folded into
-   *  this component's `isAnyModalOpen` so a chrome modal still disables content shortcuts + DnD.
-   *  Removed in Task 8 when GroupActions context exposes open-state. */
-  chromeModalOpen?: boolean;
 }
 
-export function GroupViewContent({ slots, actions, chromeModalOpen = false }: GroupViewContentProps) {
+export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
   const navigate = useNavigate();
   const { currentGroup, groups, error: groupError } = useStaticGroupStore();
   const { tiers, currentTier, isSaving, error: tierError, fetchTier } = useTierStore();
@@ -258,27 +256,28 @@ export function GroupViewContent({ slots, actions, chromeModalOpen = false }: Gr
     return () => clearTimeout(timer);
   }, [searchParams, currentTier?.players, setSearchParams, setHighlightedPlayerId, setHighlightedSlot, setPageMode]);
 
-  // After the chrome's add-player flow creates a player, scroll to + highlight the new
-  // card. The highlight state lives here (content), so the chrome signals via the event
-  // bus across the F6a split. Mirrors the deep-link highlight above (Task 8 unifies).
-  useEventBus<{ playerId: string }>(
-    Events.PLAYER_ADDED,
-    useCallback((data) => {
-      const playerId = data?.playerId;
-      if (!playerId) return;
-      setHighlightedPlayerId(playerId);
-      setHighlightedSlot(null);
-      setTimeout(() => {
-        const element = document.getElementById(`player-card-${playerId}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-      setTimeout(() => {
-        setHighlightedPlayerId(null);
-      }, 3000);
-    }, [setHighlightedPlayerId, setHighlightedSlot])
-  );
+  // After the shared add-player flow (GroupActionModals) creates a player, scroll to +
+  // highlight the new card. The highlight state lives here (content), so the chrome
+  // signals via the GroupActions context (`addedPlayer.nonce` re-fires per add).
+  // Mirrors the deep-link highlight above.
+  const addedPlayer = useGroupAddedPlayer();
+  useEffect(() => {
+    if (!addedPlayer) return;
+    const { playerId } = addedPlayer;
+    setHighlightedPlayerId(playerId);
+    setHighlightedSlot(null);
+    const scrollTimer = setTimeout(() => {
+      const element = document.getElementById(`player-card-${playerId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+    const clearTimer = setTimeout(() => {
+      setHighlightedPlayerId(null);
+    }, 3000);
+    return () => { clearTimeout(scrollTimer); clearTimeout(clearTimer); };
+    // Keyed on the signal object (nonce changes per add) so each add re-fires.
+  }, [addedPlayer, setHighlightedPlayerId, setHighlightedSlot]);
 
   // Keep roster gear current while the page is open — re-fetches every 30s
   const rosterPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -452,10 +451,12 @@ export function GroupViewContent({ slots, actions, chromeModalOpen = false }: Gr
   }, [materialLog]);
 
   // Check if any modal is open (including error modal).
-  // `chromeModalOpen` carries the chrome-owned add-player + create/rollover/delete tier
-  // open-state across the F6a split so they still disable shortcuts + DnD (Task 8 unifies).
+  // `isActionModalOpen` (from the GroupActions context) carries the chrome-owned
+  // add-player + create/rollover/delete tier open-state so they still disable
+  // shortcuts + DnD exactly as before the F6a split.
+  const isActionModalOpen = useGroupActionModalOpen();
   const isErrorModalOpen = !!error && !!currentGroup;
-  const isAnyModalOpen = chromeModalOpen ||
+  const isAnyModalOpen = isActionModalOpen ||
                           showKeyboardHelp || showLogLootModal ||
                           showLogMaterialModal || showMarkFloorClearedModal ||
                           showLogWeekWizard ||

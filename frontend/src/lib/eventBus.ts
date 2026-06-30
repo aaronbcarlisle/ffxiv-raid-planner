@@ -123,11 +123,8 @@ export const Events = {
   // Player events
   PLAYER_UPDATED: 'player:updated',
   PLAYER_GEAR_CHANGED: 'player:gear-changed',
-  // Emitted by the chrome's add-player flow after a player is created so the
-  // content region (which owns the highlight state) can scroll-to + highlight
-  // the new card. Bridges chrome→content across the F6a GroupView/GroupViewContent
-  // split; folded into the shared GroupActionModals context in Task 8.
-  PLAYER_ADDED: 'player:added',
+  // (PLAYER_ADDED removed in Task 8 — the add-player scroll/highlight signal now
+  // flows through the GroupActions context's `addedPlayer`, not the event bus.)
 
   // Loot events
   LOOT_LOGGED: 'loot:logged',

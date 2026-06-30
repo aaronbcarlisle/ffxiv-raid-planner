@@ -7,6 +7,7 @@
 
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { HEADER_EVENTS } from '../components/layout/Header';
+import { useGroupActions } from '../pages/groupActionsContext';
 import type { PageMode, GearSubTab, ViewMode } from '../types';
 import type { TierSnapshot, StaticGroup } from '../types';
 
@@ -75,6 +76,12 @@ export function useGroupViewKeyboardShortcuts(
     setShowLogMaterialModal,
     setShowMarkFloorClearedModal,
   } = params;
+
+  // Tier-change / add-player / new-tier / rollover now go through the shared
+  // GroupActions context instead of dispatching HEADER_EVENTS. (The legacy
+  // Header still dispatches those events; this hook no longer does.) Settings
+  // shortcuts (Alt+G/P/M/I) keep dispatching HEADER_EVENTS.SETTINGS.
+  const actions = useGroupActions();
 
   useKeyboardShortcuts({
     disabled: isAnyModalOpen,
@@ -218,30 +225,30 @@ export function useGroupViewKeyboardShortcuts(
       { key: '[', description: 'Previous tier', action: () => {
         const currentIndex = tiers.findIndex(t => t.tierId === currentTier?.tierId);
         if (currentIndex > 0) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.TIER_CHANGE, { detail: { tierId: tiers[currentIndex - 1].tierId } }));
+          actions.onTierChange(tiers[currentIndex - 1].tierId);
         }
       }, requireAlt: true },
       { key: ']', description: 'Next tier', action: () => {
         const currentIndex = tiers.findIndex(t => t.tierId === currentTier?.tierId);
         if (currentIndex >= 0 && currentIndex < tiers.length - 1) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.TIER_CHANGE, { detail: { tierId: tiers[currentIndex + 1].tierId } }));
+          actions.onTierChange(tiers[currentIndex + 1].tierId);
         }
       }, requireAlt: true },
 
       // ===== Management actions (Alt+Shift) =====
       { key: 'p', description: 'Add Player', action: () => {
         if (canEdit && pageMode === 'roster' && currentTier) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.ADD_PLAYER));
+          actions.onAddPlayer();
         }
       }, requireAlt: true, requireShift: true },
       { key: 'n', description: 'New Tier', action: () => {
         if (canEdit) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.NEW_TIER));
+          actions.onNewTier();
         }
       }, requireAlt: true, requireShift: true },
       { key: 'r', description: 'Copy to New Tier', action: () => {
         if (canEdit && currentTier) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.ROLLOVER));
+          actions.onRollover();
         }
       }, requireAlt: true, requireShift: true },
 

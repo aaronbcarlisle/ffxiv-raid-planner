@@ -5,9 +5,10 @@
  * content region:
  *   - with no slot for the active tab, the legacy body renders;
  *   - with a slot for the active tab, the slot renders INSTEAD of the legacy body;
- *   - `chromeModalOpen` (the Task-3 bridge for chrome-owned modal state into the
- *     content's `isAnyModalOpen`) disables the content keyboard shortcuts, so
- *     Task 8 can't silently regress the byte-for-byte behavior.
+ *   - the GroupActions context's `isActionModalOpen` (read via
+ *     `useGroupActionModalOpen`, replacing the Task-3 `chromeModalOpen` prop)
+ *     disables the content keyboard shortcuts, so Task 8 keeps the byte-for-byte
+ *     shortcut/DnD gating.
  *
  * Heavy hooks/stores/leaf-components are mocked — the point is the override
  * contract, not full integration.
@@ -101,7 +102,14 @@ vi.mock('../hooks/useUrlTabState', () => ({ useUrlTabState: (_k: string, _v: unk
 vi.mock('../lib/eventBus', () => ({
   useEventBus: vi.fn(),
   eventBus: { emit: vi.fn(), on: vi.fn(() => vi.fn()) },
-  Events: { MEMBER_ROLE_CHANGED: 'membership:role-changed', MOUNT_FARM_SCHEDULE: 'mount-farm:schedule', PLAYER_ADDED: 'player:added' },
+  Events: { MEMBER_ROLE_CHANGED: 'membership:role-changed', MOUNT_FARM_SCHEDULE: 'mount-farm:schedule' },
+}));
+
+// ── GroupActions context: control modal-open (replaces the chromeModalOpen prop) ──
+let mockActionModalOpen = false;
+vi.mock('./groupActionsContext', () => ({
+  useGroupActionModalOpen: () => mockActionModalOpen,
+  useGroupAddedPlayer: () => null,
 }));
 
 // ── Leaf bodies: identify the legacy overview body ──
@@ -120,7 +128,7 @@ const renderContent = (props: Partial<React.ComponentProps<typeof GroupViewConte
   render(<MemoryRouter><GroupViewContent actions={actions} {...props} /></MemoryRouter>);
 
 describe('GroupViewContent — slot contract', () => {
-  beforeEach(() => { mockPageMode = 'overview'; keyboardSpy.mockClear(); });
+  beforeEach(() => { mockPageMode = 'overview'; mockActionModalOpen = false; keyboardSpy.mockClear(); });
 
   it('renders the legacy overview body when no slot is provided', () => {
     renderContent();
@@ -133,11 +141,13 @@ describe('GroupViewContent — slot contract', () => {
     expect(screen.queryByTestId('legacy-overview')).toBeNull();
   });
 
-  it('disables the content keyboard shortcuts when chromeModalOpen is true', () => {
-    renderContent({ chromeModalOpen: false });
+  it('disables the content keyboard shortcuts when an action modal is open (from context)', () => {
+    mockActionModalOpen = false;
+    renderContent();
     expect(keyboardSpy).toHaveBeenLastCalledWith(false);
     keyboardSpy.mockClear();
-    renderContent({ chromeModalOpen: true });
+    mockActionModalOpen = true;
+    renderContent();
     expect(keyboardSpy).toHaveBeenLastCalledWith(true);
   });
 });

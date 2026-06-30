@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Home, Globe } from 'lucide-react';
 import { GroupViewContent } from './GroupViewContent';
+import { GroupActionModals, useGroupActions } from './groupActionsContext';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { Spine } from '../components/layout/Spine';
 import { AppRail } from '../components/layout/AppRail';
@@ -18,15 +19,17 @@ function getInitials(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
+/** Renders the shared content with `actions` pulled from the GroupActions context
+ *  (provided by the <GroupActionModals> wrapper below). */
+function ShellContent() {
+  return <GroupViewContent actions={useGroupActions()} />;
+}
+
 export function NewShell() {
   const gv = useGroupViewState();
   const { shareCode } = useParams<{ shareCode: string }>();
   const navigate = useNavigate();
   const groups = useStaticGroupStore((s) => s.groups);
-
-  // F6a: chrome actions can wire to NewShell-local modal state mirroring GroupView; Task 8
-  // unifies these into a shared store/context so neither chrome duplicates the modal state.
-  const actions = { onTierChange: () => {}, onAddPlayer: () => {}, onNewTier: () => {}, onRollover: () => {}, onDeleteTier: () => {} };
 
   const personLayerEntries = useMemo<RailEntry[]>(() => [
     {
@@ -62,20 +65,22 @@ export function NewShell() {
   ], [groups, shareCode, navigate]);
 
   return (
-    <div className="flex min-h-0 flex-1" data-testid="new-shell">
-      <AppRail
-        logo={<img src="/logo.svg" alt="FFXIV Raid Planner" className="w-8 h-8" />}
-        entries={personLayerEntries}
-        footer={<UserMenu variant="rail" collapsed />}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* placeholder top bar — Tasks 9/10 */}
-        <div className="h-14 border-b border-border-default" />
-        <Spine activeTab={gv.pageMode} onTabChange={gv.setPageMode} />
-        <div id="main-content" className="min-h-0 flex-1 overflow-y-auto">
-          <GroupViewContent actions={actions} />
+    <GroupActionModals onTierCreated={() => gv.setPageMode('roster')}>
+      <div className="flex min-h-0 flex-1" data-testid="new-shell">
+        <AppRail
+          logo={<img src="/logo.svg" alt="FFXIV Raid Planner" className="w-8 h-8" />}
+          entries={personLayerEntries}
+          footer={<UserMenu variant="rail" collapsed />}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* placeholder top bar — Tasks 9/10 */}
+          <div className="h-14 border-b border-border-default" />
+          <Spine activeTab={gv.pageMode} onTabChange={gv.setPageMode} />
+          <div id="main-content" className="min-h-0 flex-1 overflow-y-auto">
+            <ShellContent />
+          </div>
         </div>
       </div>
-    </div>
+    </GroupActionModals>
   );
 }

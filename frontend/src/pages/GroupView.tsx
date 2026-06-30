@@ -4,12 +4,16 @@
  *
  * Shows a static group with its tier snapshots and roster. After the F6a split
  * (Task 3), GroupView is the *chrome* around the shared content region: it keeps
- * the legacy `SidebarNav`, the chrome-triggered modals (add-player + create /
- * rollover / delete tier), the error modal, the settings panel host, and the
- * `HEADER_EVENTS` window-bus listener — and renders `<GroupViewContent>` for the
- * content (toolbar + per-tab bodies + the rosterDndArea memo). Task 4's NewShell
- * renders the same `<GroupViewContent>` behind its own chrome; Task 8 unifies the
- * `actions` + chrome modals into a shared GroupActions context.
+ * the legacy `SidebarNav`, the error modal, the settings panel host, and the
+ * `HEADER_EVENTS` window-bus bridge — and renders `<GroupViewContent>` for the
+ * content (toolbar + per-tab bodies + the rosterDndArea memo).
+ *
+ * Task 8: the chrome-triggered modals (add-player + create/rollover/delete tier)
+ * and the 5 `actions` now live in the shared `<GroupActionModals>` provider, which
+ * GroupView renders once (wrapping its content). The legacy `Header` still
+ * dispatches `HEADER_EVENTS`; `HeaderEventBridge` (below) listens and routes each
+ * to the context handler, keeping the legacy Header→modals path byte-for-byte.
+ * NewShell renders the same `<GroupActionModals>` + `<GroupViewContent>`.
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -18,28 +22,83 @@ import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { useViewAsStore } from '../stores/viewAsStore';
-import { toast } from '../stores/toastStore';
-import { getTierById } from '../gamedata';
-import { AddPlayerModal, type AddPlayerData } from '../components/player/AddPlayerModal';
 import { Modal, Spinner } from '../components/ui';
 import { SidebarNav } from '../components/layout/SidebarNav';
 import { useDevice } from '../hooks/useDevice';
 import { AlertTriangle, Copy, Check } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
-import { RolloverDialog, CreateTierModal, DeleteTierModal, JoinRequestBanner } from '../components/static-group';
+import { JoinRequestBanner } from '../components/static-group';
 import { StaticSettingsHost } from '../components/settings';
-import { useSettingsPanelStore } from '../stores/settingsPanelStore';
 import { AdminBanners } from '../components/admin/AdminBanners';
-import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { TRANSIENT_NAV_PARAMS } from '../lib/navPreferences';
 import { HEADER_EVENTS } from '../components/layout/Header';
-import { eventBus, Events } from '../lib/eventBus';
 import { sortPlayersByRole } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
 import { logger } from '../lib/logger';
 import { DISCORD_BUG_REPORT_URL } from '../config';
 import { GroupViewContent } from './GroupViewContent';
+import { GroupActionModals, useGroupActions, useGroupAddToRoster } from './groupActionsContext';
+
+/**
+ * Bridges the legacy `Header`'s `HEADER_EVENTS` to the GroupActions context.
+ *
+ * `Layout` renders `<Header/>` unconditionally on every route, so on the legacy
+ * `/group/:shareCode` route the Header's tier dropdown + kebab dispatch these
+ * window events. This listener (kept in GroupView, just relocated into a context
+ * consumer so it can call the shared handlers) routes each event to the matching
+ * context open-handler — so legacy Header → HEADER_EVENTS → here → shared modals,
+ * byte-for-byte. Renders nothing. (Settings events are handled by
+ * settingsPanelStore via SettingsPanelController, untouched.)
+ */
+function HeaderEventBridge() {
+  const actions = useGroupActions();
+  useEffect(() => {
+    const handleTierChangeEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.tierId) {
+        actions.onTierChange(detail.tierId);
+      }
+    };
+    const handleAddPlayerEvent = () => { actions.onAddPlayer(); };
+    const handleNewTierEvent = () => { actions.onNewTier(); };
+    const handleRolloverEvent = () => { actions.onRollover(); };
+    const handleDeleteTierEvent = () => { actions.onDeleteTier(); };
+
+    window.addEventListener(HEADER_EVENTS.TIER_CHANGE, handleTierChangeEvent);
+    window.addEventListener(HEADER_EVENTS.ADD_PLAYER, handleAddPlayerEvent);
+    window.addEventListener(HEADER_EVENTS.NEW_TIER, handleNewTierEvent);
+    window.addEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
+    window.addEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
+    // Note: 'show-keyboard-shortcuts' listener is in Layout.tsx for global access
+
+    return () => {
+      window.removeEventListener(HEADER_EVENTS.TIER_CHANGE, handleTierChangeEvent);
+      window.removeEventListener(HEADER_EVENTS.ADD_PLAYER, handleAddPlayerEvent);
+      window.removeEventListener(HEADER_EVENTS.NEW_TIER, handleNewTierEvent);
+      window.removeEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
+      window.removeEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
+    };
+  }, [actions]);
+  return null;
+}
+
+/** "Create First Tier" CTA (no-tiers state) — opens the create-tier modal via context. */
+function CreateFirstTierButton() {
+  const { onNewTier } = useGroupActions();
+  return <Button onClick={() => onNewTier()}>Create First Tier</Button>;
+}
+
+/** Renders the shared content with `actions` pulled from the GroupActions context. */
+function ConnectedContent() {
+  return <GroupViewContent actions={useGroupActions()} />;
+}
+
+/** Settings host wired to the context's accepted-join-request → roster handler. */
+function ConnectedSettingsHost(props: Omit<React.ComponentProps<typeof StaticSettingsHost>, 'onAddToRoster'>) {
+  const onAddToRoster = useGroupAddToRoster();
+  return <StaticSettingsHost {...props} onAddToRoster={onAddToRoster} />;
+}
 
 export function GroupView() {
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -55,16 +114,15 @@ export function GroupView() {
     fetchTier,
     clearTiers,
     clearError: clearTierError,
-    addPlayer,
-    updatePlayer,
   } = useTierStore();
   const { user, login } = useAuthStore();
   const { viewAsUser, startViewAs, stopViewAs } = useViewAsStore();
 
   // Use extracted state hook. GroupViewContent has its own instance for the
   // content; this chrome instance reads pageMode/setPageMode (SidebarNav),
-  // gearSubTab (page-scroll), and the chrome-owned tier modal flags. The two
-  // instances stay in sync through the URL-backed values.
+  // gearSubTab (page-scroll), and sortPreset (settings-panel roster). The two
+  // instances stay in sync through the URL-backed values. The chrome-triggered
+  // tier/add-player modals now live in <GroupActionModals> (Task 8).
   const state = useGroupViewState();
   const {
     searchParams,
@@ -74,24 +132,12 @@ export function GroupView() {
     gearSubTab,
     sortPreset,
     setSortPresetState,
-    showCreateTierModal,
-    setShowCreateTierModal,
-    showRolloverDialog,
-    setShowRolloverDialog,
-    showDeleteTierConfirm,
-    setShowDeleteTierConfirm,
   } = state;
 
   // Device capabilities for responsive behavior
   const { isSmallScreen } = useDevice();
 
   const [errorCopied, setErrorCopied] = useState(false);
-
-  // Add Player modal state
-  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
-  const [isAddingPlayer, setIsAddingPlayer] = useState(false);
-  // Roster onboarding from join request
-  const [rosteringRequest, setRosteringRequest] = useState<import('../types').JoinRequest | null>(null);
 
   // Handle viewAs URL parameter
   useEffect(() => {
@@ -215,33 +261,6 @@ export function GroupView() {
     return () => { cancelled = true; };
   }, [currentGroup?.id, fetchTiers, fetchTier, searchParams, setSearchParams]);
 
-  const handleTierChange = useCallback((tierId: string) => {
-    if (currentGroup?.id) {
-      try {
-        localStorage.setItem(`selected-tier-${currentGroup.id}`, tierId);
-      } catch {
-        // Ignore localStorage errors
-      }
-      setSearchParams(prev => {
-        const params = new URLSearchParams(prev);
-        params.set('tier', tierId);
-        return params;
-      }, { replace: true });
-      fetchTier(currentGroup.id, tierId);
-    }
-  }, [currentGroup?.id, fetchTier, setSearchParams]);
-
-  const handleTierDeleted = async () => {
-    if (!currentGroup?.id) return;
-    const { tiers: freshTiers } = useTierStore.getState();
-    if (freshTiers.length > 0) {
-      const nextTier = freshTiers.find(t => t.isActive) || freshTiers[0];
-      if (nextTier) {
-        await fetchTier(currentGroup.id, nextTier.tierId);
-      }
-    }
-  };
-
   // Admin access only when navigating from Admin Dashboard with adminMode=true
   const adminModeParam = searchParams.get('adminMode') === 'true';
   const isAdmin = user?.isAdmin ?? false; // Separate flag for admin features (always true for admins)
@@ -254,90 +273,10 @@ export function GroupView() {
   const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
   const canEdit = userRole === 'owner' || userRole === 'lead' || isAdminAccess;
 
-  // Handler for Add Player modal submission
-  const { linkRoster } = useJoinRequestStore();
-
-  const handleAddPlayerSubmit = useCallback(async (data: AddPlayerData) => {
-    if (!currentGroup?.id || !currentTier?.tierId) return;
-
-    setIsAddingPlayer(true);
-    try {
-      // Create the player
-      const newPlayer = await addPlayer(currentGroup.id, currentTier.tierId);
-
-      // Build update payload — enriched with character identity when rostering from application
-      const updatePayload: Record<string, unknown> = {
-        name: data.name,
-        job: data.job,
-        role: data.role,
-        position: data.position,
-        tankRole: data.tankRole,
-        configured: true,
-      };
-
-      const req = rosteringRequest;
-      if (req) {
-        if (req.characterNameAtApply) updatePayload.lodestoneName = req.characterNameAtApply;
-        if (req.characterWorldAtApply) updatePayload.lodestoneServer = req.characterWorldAtApply;
-        if (req.characterAvatarUrlAtApply) updatePayload.lodestoneAvatarUrl = req.characterAvatarUrlAtApply;
-        if (req.characterLodestoneIdAtApply) updatePayload.lodestoneId = req.characterLodestoneIdAtApply;
-      }
-
-      await updatePlayer(currentGroup.id, currentTier.tierId, newPlayer.id, updatePayload);
-
-      if (req) {
-        try {
-          await linkRoster(req.id, newPlayer.id);
-        } catch {
-          toast.warning('Roster entry created, but the request was not linked. You can retry linking from the Requests tab.');
-        }
-        setRosteringRequest(null);
-      }
-
-      // Scroll to + highlight the new player. The highlight state lives in
-      // GroupViewContent (content), so signal it via the event bus across the
-      // F6a split (mirrors the deep-link highlight; Task 8 unifies this).
-      eventBus.emit(Events.PLAYER_ADDED, { playerId: newPlayer.id });
-
-      toast.success(`Added ${data.name} to the roster`);
-    } catch {
-      // Error handled in store
-    } finally {
-      setIsAddingPlayer(false);
-    }
-  }, [currentGroup?.id, currentTier?.tierId, addPlayer, updatePlayer, rosteringRequest, linkRoster]);
-
-  // Listen for header events (unchanged window-bus listener — Task 8 replaces it
-  // with the typed GroupActions context).
-  useEffect(() => {
-    const handleTierChangeEvent = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.tierId) {
-        handleTierChange(detail.tierId);
-      }
-    };
-    const handleAddPlayerEvent = () => { setShowAddPlayerModal(true); };
-    const handleNewTierEvent = () => { setShowCreateTierModal(true); };
-    const handleRolloverEvent = () => { setShowRolloverDialog(true); };
-    const handleDeleteTierEvent = () => { setShowDeleteTierConfirm(true); };
-    // Settings open/close is handled by settingsPanelStore (gear/dock toggle and
-    // the SettingsPanelController bridge), so GroupView no longer listens for it.
-
-    window.addEventListener(HEADER_EVENTS.TIER_CHANGE, handleTierChangeEvent);
-    window.addEventListener(HEADER_EVENTS.ADD_PLAYER, handleAddPlayerEvent);
-    window.addEventListener(HEADER_EVENTS.NEW_TIER, handleNewTierEvent);
-    window.addEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
-    window.addEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
-    // Note: 'show-keyboard-shortcuts' listener is in Layout.tsx for global access
-
-    return () => {
-      window.removeEventListener(HEADER_EVENTS.TIER_CHANGE, handleTierChangeEvent);
-      window.removeEventListener(HEADER_EVENTS.ADD_PLAYER, handleAddPlayerEvent);
-      window.removeEventListener(HEADER_EVENTS.NEW_TIER, handleNewTierEvent);
-      window.removeEventListener(HEADER_EVENTS.ROLLOVER, handleRolloverEvent);
-      window.removeEventListener(HEADER_EVENTS.DELETE_TIER, handleDeleteTierEvent);
-    };
-  }, [handleTierChange, setShowCreateTierModal, setShowRolloverDialog, setShowDeleteTierConfirm]);
+  // The chrome-triggered actions (tier-change, add-player, new/rollover/delete tier),
+  // their modal state, and the add-player submit + accepted-request → roster flows now
+  // live in <GroupActionModals> (Task 8). The legacy Header→modals bridge is reattached
+  // by <HeaderEventBridge> (a context consumer rendered inside the provider below).
 
   // Sorted main-roster players — duplicated for chrome; Task 8 removes. The
   // settings panel (StaticSettingsHost.players) needs the same sorted set the
@@ -360,23 +299,6 @@ export function GroupView() {
   useEffect(() => {
     if (!error) setErrorCopied(false);
   }, [error]);
-
-  const existingTierIds = tiers.map(t => t.tierId);
-
-  // Stable callback for StaticSettingsHost (accepted join request → roster add).
-  const handleAddToRoster = useCallback((request: import('../types').JoinRequest) => {
-    if (request.rosterPlayerId) {
-      toast.info('Already added to roster');
-      return;
-    }
-    if (!currentTier?.tierId) {
-      toast.error('Create a tier first before adding to roster.');
-      return;
-    }
-    useSettingsPanelStore.getState().close();
-    setRosteringRequest(request);
-    setShowAddPlayerModal(true);
-  }, [currentTier?.tierId]);
 
   // Helper to format error details for display and copying
   const formatErrorDetails = useCallback((errorMessage: string | null, stack: string | null) => {
@@ -472,11 +394,10 @@ export function GroupView() {
     preventPageScroll && isSmallScreen && 'h-[calc(100dvh-var(--layout-chrome))] overscroll-contain pb-4',
   ].filter(Boolean).join(' ');
 
-  // Chrome-owned modal open-state, fed into GroupViewContent so opening a chrome
-  // modal still disables the content keyboard shortcuts + DnD (Task 8 unifies).
-  const chromeModalOpen = showAddPlayerModal || showCreateTierModal || showRolloverDialog || showDeleteTierConfirm;
-
   return (
+    <GroupActionModals onTierCreated={() => setPageMode('roster')}>
+    {/* Reattaches the legacy Header → HEADER_EVENTS → shared modals bridge. */}
+    <HeaderEventBridge />
     <div className={containerClasses}>
       {/* No tiers state */}
       {tiers.length === 0 && !isLoading && (
@@ -485,11 +406,7 @@ export function GroupView() {
           <p className="text-text-muted mb-6">
             Create your first tier snapshot to start tracking gear progress.
           </p>
-          {canEdit && (
-            <Button onClick={() => setShowCreateTierModal(true)}>
-              Create First Tier
-            </Button>
-          )}
+          {canEdit && <CreateFirstTierButton />}
         </div>
       )}
 
@@ -518,77 +435,29 @@ export function GroupView() {
         />
       )}
 
-      {/* Content when tier exists — sidebar + content shell */}
+      {/* Content when tier exists — sidebar + content shell. `actions` are pulled
+          from the GroupActions context (ConnectedContent) so both chromes share them. */}
       {currentTier && (
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <SidebarNav activeTab={pageMode} onTabChange={setPageMode} staticName={currentGroup?.name} />
-          <GroupViewContent
-            actions={{
-              onTierChange: handleTierChange,
-              onAddPlayer: () => setShowAddPlayerModal(true),
-              onNewTier: () => setShowCreateTierModal(true),
-              onRollover: () => setShowRolloverDialog(true),
-              onDeleteTier: () => setShowDeleteTierConfirm(true),
-            }}
-            chromeModalOpen={chromeModalOpen}
-          />
+          <ConnectedContent />
         </div>
       )}
 
-      {/* Create Tier Modal */}
-      {showCreateTierModal && currentGroup && (
-        <CreateTierModal
-          groupId={currentGroup.id}
-          existingTierIds={existingTierIds}
-          onClose={() => setShowCreateTierModal(false)}
-          onCreate={() => setPageMode('roster')}
-        />
-      )}
-
-      {/* Add Player Modal */}
-      <AddPlayerModal
-        isOpen={showAddPlayerModal}
-        onClose={() => { setShowAddPlayerModal(false); setRosteringRequest(null); }}
-        onAdd={handleAddPlayerSubmit}
-        isLoading={isAddingPlayer}
-        initialName={rosteringRequest?.characterNameAtApply || rosteringRequest?.requester?.displayName}
-        initialJob={rosteringRequest?.selectedJob?.toUpperCase()}
-        contextLabel={rosteringRequest ? 'Adding from application' : undefined}
-        tierName={currentTier?.tierId ? getTierById(currentTier.tierId)?.name : undefined}
-      />
-
       {/* Settings Panel — subscribes to settingsPanelStore for open-state, so
-          toggling it never re-renders GroupView / the roster. */}
+          toggling it never re-renders GroupView / the roster. The accepted-request →
+          roster handler comes from the GroupActions context (ConnectedSettingsHost). */}
       {currentGroup && (
-        <StaticSettingsHost
+        <ConnectedSettingsHost
           group={currentGroup}
           players={mainRosterPlayers}
           tierId={currentTier?.tierId}
           isAdmin={isAdmin}
-          onAddToRoster={handleAddToRoster}
         />
       )}
 
-      {/* Rollover Dialog */}
-      {showRolloverDialog && currentGroup && currentTier && (
-        <RolloverDialog
-          groupId={currentGroup.id}
-          currentTier={currentTier}
-          existingTierIds={existingTierIds}
-          onClose={() => setShowRolloverDialog(false)}
-        />
-      )}
-
-      {/* Delete Tier Confirmation */}
-      {showDeleteTierConfirm && currentGroup && currentTier && (
-        <DeleteTierModal
-          groupId={currentGroup.id}
-          tierSnapshotId={currentTier.id}
-          tierId={currentTier.tierId}
-          onClose={() => setShowDeleteTierConfirm(false)}
-          onDeleted={handleTierDeleted}
-        />
-      )}
+      {/* Add-player + create/rollover/delete tier modals are rendered by
+          <GroupActionModals> (the provider wrapping this tree). */}
 
       {/* Error Modal - shown as overlay when page content exists */}
       <Modal
@@ -660,5 +529,6 @@ export function GroupView() {
 
       {/* Keyboard Shortcuts Help is now rendered in Layout.tsx for global access */}
     </div>
+    </GroupActionModals>
   );
 }
