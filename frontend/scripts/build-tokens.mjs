@@ -34,6 +34,7 @@ export const ID_TO_CSS_VAR = {
   'semantic.color.surface.elevated':    '--color-surface-elevated',
   'semantic.color.surface.overlay':     '--color-surface-overlay',
   'semantic.color.surface.interactive': '--color-surface-interactive',
+  'semantic.color.surface.nav':         '--color-surface-nav',
 
   // Accent  (accent.default → --color-accent, NOT --color-accent-default)
   'semantic.color.accent.default':   '--color-accent',
@@ -127,6 +128,17 @@ export const ID_TO_CSS_VAR = {
 
   // Gradient rail (component.nav.rail-bg → --gradient-rail)
   'component.nav.rail-bg': '--gradient-rail',
+
+  // Nav item tokens (F6a shell tokens)
+  'component.nav.item-active-indicator.color': '--color-nav-item-active-indicator',
+  'component.nav.item-active-indicator.size':  '--nav-item-active-indicator-size',
+  'component.nav.item-bg-hover':               '--color-nav-item-bg-hover',
+  'component.nav.item-icon-inactive':          '--color-nav-item-icon-inactive',
+  'component.nav.item-icon-active':            '--color-nav-item-icon-active',
+  'component.nav.item-icon-hover':             '--color-nav-item-icon-hover',
+  'component.nav.item-focus-ring':             '--color-nav-item-focus-ring',
+  'component.nav.item-target-size':            '--nav-item-target-size',
+  'component.nav.item-icon-size':              '--nav-item-icon-size',
 
   // Overlay raise (semantic.color.interaction.raise-haze → --color-overlay-raise)
   'semantic.color.interaction.raise-haze': '--color-overlay-raise',
