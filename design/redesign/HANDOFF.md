@@ -2,12 +2,12 @@
 
 > **What this is.** A redesign of XIV Raid Planner's UX/IA and design system. This file orients you (a fresh Claude Code instance) to the artifacts, what's decided, what's open, and where execution stands. **Read the files referenced below before acting — they are the source of truth, this is just the map.**
 
-## Current status & how to resume (updated 2026-06-28)
+## Current status & how to resume (updated 2026-06-29)
 
 **The live phase tracker is [`FOUNDATION_ROADMAP.md`](./FOUNDATION_ROADMAP.md) — read it first for where we are** (it has the per-phase scope, status, and the §3.2 follow-ups list). It defines the dependency-ordered foundation phases **F0–F6**.
 
-- **Done & merged into `redesign/foundation` (head `2e26e02`):** **F0** (locked decisions, #157) · **F1** (token pipeline, #155) · **F2** (anti-regression scaffolding, #158 `2ffde63`) · **F3** (component contracts + illegal-states, #159 `ee03eab`) · **F4** (frontend structure, #160 `2e26e02`). Release notes at **v2.0.2** (F4 was internal-only).
-- **Next:** **F5 — mockup validation pass** (page-by-page, element-by-element against the now-real DS; tag each element existing/refine/new; produce the screen→components map). See `FOUNDATION_ROADMAP.md` F5 row. *(F4 shipped the feature-slice + shared-layer model: `FRONTEND_STRUCTURE.md`, the Ring-aware `eslint-plugin-boundaries` graph + 28-edge suppressions baseline, and the backend Person↔Static note.)*
+- **Done & merged into `redesign/foundation` (head `5195d45`):** **F0** (locked decisions, #157) · **F1** (token pipeline, #155) · **F2** (anti-regression scaffolding, #158 `2ffde63`) · **F3** (component contracts + illegal-states, #159 `ee03eab`) · **F4** (frontend structure, #160 `2e26e02`) · **F5** (mockup validation pass, #162 `5195d45`). Release notes at **v2.0.2** (F4/F5 were internal/doc-only).
+- **Next:** **F6 — build Ring 0 on the foundation** (rail → app shell → Home/Roster/Loot/Schedule; each screen consolidates its duplicated predecessors into one owned, contracted component). See `FOUNDATION_ROADMAP.md` F6 row. *(F5 shipped the build manifest: `specs/f5-screen-components-map.md` — 7 element-set tables tagging every Ring-0 element existing/refine/new against real component paths, a 27-entry new-component catalog, and the predecessors→one-owned-component consolidation map. F4 shipped the feature-slice + shared-layer model: `FRONTEND_STRUCTURE.md`, the Ring-aware `eslint-plugin-boundaries` graph + 28-edge suppressions baseline, and the backend Person↔Static note.)*
 - **How a phase runs (proven over F1–F3):** brainstorm → write spec (`design/redesign/specs/`) → write plan (`design/redesign/plans/`) → execute subagent-driven (fresh implementer + independent reviewer per task, then a final whole-branch review) → PR into `foundation` → squash-merge. The `superpowers` skills drive this; the SDD progress ledger lives at `.superpowers/sdd/progress.md` (git-ignored scratch).
 - **Reviewer effort (standing):** dispatch the SDD **task reviewer** and the **final whole-branch reviewer** via `subagent_type: redesign-reviewer` (`.claude/agents/redesign-reviewer.md`) — it pins `effort: xhigh`. Keep **implementers** on cheap/standard models per the skill's Model Selection; concentrate the deep reasoning on review, since that's where the subtle defects surface (F3's `createElement` type-test masking bug was caught only at final review). This is the surgical way to apply xhigh to review without paying for it on every implementer dispatch — the Agent tool has no per-call effort knob, so the frontmatter agent is the mechanism.
 
@@ -43,13 +43,12 @@ Items 1–3 below are **resolved and locked** as of F0 (2026-06-28). Item 4 rema
 
 ## What's next (see `FOUNDATION_ROADMAP.md` for live status)
 
-**F1 (token pipeline) is done.** Remaining phases, in dependency order:
-- **F0** — lock the three OPEN decisions above (rail standard, icon lexicon, goals/raids vocabulary). Doc-only; unblocks F3.
-- **F2** — anti-regression scaffolding: `jscpd` (find existing duplicates) + `knip` (dead code), `eslint-plugin-boundaries`, `jsx-a11y` + a small `@axe-core/playwright` contrast scan, ratchet design-system lint **warn→error**. *(This is what actually prevents future regression — the F1 reframe: tokens alone aren't enough; enforcement + types + structure are.)*
-- **F3** — component contracts + **discriminated-union props** (illegal states unrepresentable); rebuild `/docs/design-system` to render FROM tokens.
-- **F4** — frontend structure (feature-slices + enforced shared layer); **F5** — mockup validation pass; **F6** — build Ring-0 screens (Home/Roster/Loot/Schedule) on the foundation.
+**F0–F5 are done and merged** (token pipeline, anti-regression scaffolding, component contracts, frontend structure, mockup validation). The only remaining foundation phase is:
 
-The full F1 spec + plan are under `design/redesign/specs/` and `design/redesign/plans/` as the template for how each phase is specced and executed.
+- **F6 — build Ring-0 screens on the foundation.** Rail → app shell (top bar + spine) → Home → Roster (Cards⇄Board) → Loot (Priority + unified recipient picker + History) → Schedule. Each screen **consolidates its duplicated predecessors into one owned, contracted component**, and writes the component contract alongside it. Deferred items from earlier phases land here: unbuilt-component contracts, `nav.*`/motion/density tokens, the per-domain suppression ratchet (`--prune-suppressions`), and re-enabling the contrast harness on rebuilt screens. The `/docs/design-system` page rebuild is **post-F6**.
+- **F6's build manifest is `specs/f5-screen-components-map.md`** — the 27-entry catalog (each unbuilt component's purpose + precursors + consolidation mandate) and every `refine` row's specific change to a real component. Likely wants sub-phasing (shell first, then one screen at a time) rather than one mega-branch.
+
+Each phase's spec + plan under `design/redesign/specs/` and `design/redesign/plans/` are the template for how a phase is specced and executed (the F1–F5 set are worked examples).
 
 ## Guardrails
 
