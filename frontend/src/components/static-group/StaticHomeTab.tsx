@@ -43,6 +43,7 @@ import { SuggestContentModal } from './SuggestContentModal';
 import type { JoinRequest, PageMode, SnapshotPlayer, SplitClearData, StaticGroup, TierSnapshot } from '../../types';
 import { normalizeApplicationSnapshot } from '../../utils/applicationSnapshot';
 import { getSplitClearReadiness } from '../../utils/splitClear';
+import { bisCompleteCount, rosterAvgIlv } from '../../utils/rosterReadiness';
 import { api } from '../../services/api';
 
 // ─── Prop types ───────────────────────────────────────────────────────────────
@@ -63,19 +64,6 @@ interface StaticHomeTabProps {
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
-
-function rosterAvgIlv(players: SnapshotPlayer[]): number | null {
-  const active = players.filter((p) => p.configured && !p.isSubstitute);
-  if (!active.length) return null;
-  let total = 0, count = 0;
-  for (const p of active) {
-    const iLvs = p.gear
-      .map((s) => s.equippedItemLevel ?? s.itemLevel)
-      .filter((v): v is number => v != null);
-    if (iLvs.length) { total += iLvs.reduce((a, b) => a + b, 0) / iLvs.length; count++; }
-  }
-  return count > 0 ? Math.round(total / count) : null;
-}
 
 function playerIlv(p: SnapshotPlayer): number | null {
   const iLvs = p.gear
@@ -566,12 +554,7 @@ function WeeklyProgressModule({
 }) {
   const active = players.filter((p) => p.configured && !p.isSubstitute);
 
-  const bisCount = useMemo(() => {
-    return active.filter((p) => {
-      if (!p.gear.length) return false;
-      return p.gear.every((s) => s.hasItem);
-    }).length;
-  }, [active]);
+  const bisCount = useMemo(() => bisCompleteCount(players), [players]);
 
   const avgIlv = rosterAvgIlv(players);
 
