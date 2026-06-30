@@ -69,6 +69,8 @@ export const RELEASES: Release[] = [
         title: 'F6a — redesigned app shell preview (behind ?shell=v2)',
         description:
           'New 72px Person-layer rail (AppRail), top bar (StaticPicker + tier breadcrumb + NotificationBell + SettingsGear), 4-tab Spine, and CommandPalette (navigate-only), mounted at a parallel ?shell=v2 route; legacy GroupView unchanged.',
+        pr: 163,
+        prTitle: 'F6a — Shell (rail + top bar + 4-tab spine + ⌘K, behind ?shell=v2)',
       },
     ],
     internal: true,
