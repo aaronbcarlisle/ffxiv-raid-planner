@@ -43,7 +43,7 @@ export function CardShell({
 
   return (
     <Container
-      className={`bg-surface-card border border-border-subtle rounded-lg p-4 ${className}`}
+      className={`bg-surface-card border border-border-subtle rounded-lg p-4${className ? ` ${className}` : ''}`}
     >
       {hasHeader && (
         <div className="flex items-center gap-2 mb-4">

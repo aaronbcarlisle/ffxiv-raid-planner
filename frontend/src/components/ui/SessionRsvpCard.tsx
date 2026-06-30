@@ -145,7 +145,11 @@ function countdownLabel(iso: string, viewerTz?: string): string | null {
 function RsvpAvatar({ rsvp }: { rsvp: ScheduleRsvp }) {
   const name = rsvp.username ?? 'Unknown';
   const initials = getInitials(rsvp.username);
-  // Status conveyed by more than color: the title attribute names the status.
+  // NOTE: The avatar stack wrapper is aria-hidden="true" (decorative), so the
+  // `title` attribute here is NOT exposed to assistive tech. Accessible status
+  // semantics are carried by the visible "N in · M tentative" counts and the
+  // labeled RSVP buttons below. The ring color (and this title) are decorative
+  // reinforcement for sighted users only.
   const title = `${name} — ${rsvp.status}`;
   return (
     <div data-testid="rsvp-avatar" className="-ml-1.5 first:ml-0" title={title}>

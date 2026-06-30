@@ -29,7 +29,7 @@ describe('AttentionRow', () => {
 
   it('renders without meta when meta is omitted', () => {
     const onClick = vi.fn();
-    render(
+    const { container } = render(
       <AttentionRow
         icon={<span />}
         title="Join Request"
@@ -39,7 +39,7 @@ describe('AttentionRow', () => {
     // No meta element rendered — only the title and button
     expect(screen.getByText('Join Request')).toBeInTheDocument();
     // No extra text nodes beyond title and button label
-    expect(screen.queryByRole('paragraph')).toBeNull();
+    expect(container.querySelector('p')).toBeNull();
   });
 
   it('action button has no trailing glyph (no aria-hidden svg inside button)', () => {
