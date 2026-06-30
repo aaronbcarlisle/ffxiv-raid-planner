@@ -42,6 +42,33 @@ describe('PlayerIdentity', () => {
     );
     const ring = container.querySelector('[data-testid="player-identity-ring"]') as HTMLElement;
     expect(ring.style.borderColor).toBe('var(--color-role-tank)');
+    // a11y §5.4: role must not be conveyed by color alone — when no job/position/subtitle
+    // is present the component must expose a textual role label for screen readers.
+    expect(screen.getByText('Tank')).toBeInTheDocument();
+  });
+
+  it('exposes sr-only role text when role set without job, position, or subtitle', () => {
+    // Regression: color-only role signal must be closed — screen reader must find role label.
+    render(<PlayerIdentity name="Tank Two" role="tank" />);
+    const srLabel = screen.getByText('Tank');
+    expect(srLabel).toBeInTheDocument();
+    expect(srLabel).toHaveClass('sr-only');
+  });
+
+  it('does NOT render a duplicate sr-only label when job or position already present', () => {
+    // When job/position appear in the subtitle, no extra sr-only label should be added.
+    render(<PlayerIdentity name="Tank Two" role="tank" job="WAR" />);
+    // "WAR" appears in the subtitle; 'Tank' (exact) should NOT appear as a standalone label.
+    expect(screen.queryByText('Tank')).not.toBeInTheDocument();
+  });
+
+  it('renders nothing for reserved variants', () => {
+    // 'board-cell' is documented as reserved (F6c); the component must return null
+    // so callers that accidentally pass it get a no-op rather than a crash.
+    const { container } = render(
+      <PlayerIdentity name="X" variant="board-cell" />,
+    );
+    expect(container.firstChild).toBeNull();
   });
 
   it('renders no border when role is absent', () => {

@@ -36,6 +36,18 @@ export interface PlayerIdentityProps {
   variant?: PlayerIdentityVariant;
 }
 
+/**
+ * Human-readable role labels used for the sr-only accessibility text.
+ * Kept at module level (stable reference, no runtime allocation per render).
+ */
+const ROLE_LABELS: Record<Role, string> = {
+  tank: 'Tank',
+  healer: 'Healer',
+  melee: 'Melee',
+  ranged: 'Ranged',
+  caster: 'Caster',
+};
+
 /** Derive up to two uppercase initials from a name string. */
 function getInitials(name: string): string {
   const words = name.trim().split(/\s+/);
@@ -85,6 +97,14 @@ export function PlayerIdentity({
   const autoSubtitle = [job, position].filter(Boolean).join(' · ');
   const subtitleContent = subtitle ?? (autoSubtitle || null);
 
+  // a11y §5.4: role must not be conveyed by color alone.
+  // When role is set but no textual signal (job / position / subtitle) is present,
+  // render a visually-hidden label so screen readers can announce the role.
+  // When job or position are present they appear in the subtitle text, so no
+  // duplicate announcement is needed.
+  const hasTextualRoleSignal = !!(job || position || subtitle);
+  const srRoleLabel = role && !hasTextualRoleSignal ? ROLE_LABELS[role] : null;
+
   // Initials for avatar fallback.
   const initials = getInitials(name);
 
@@ -126,9 +146,13 @@ export function PlayerIdentity({
       <div className="min-w-0">
         {/* a11y: name text provides the primary identification */}
         <div className="text-sm font-medium text-text-primary truncate">{name}</div>
+        {/* a11y §5.4: visually-hidden role label — only rendered when no other textual
+            signal (job / position / subtitle) is already present. Avoids double-
+            announcement when the subtitle already names the job/position. */}
+        {srRoleLabel && <span className="sr-only">{srRoleLabel}</span>}
         {subtitleContent && (
-          /* Subtitle carries job + position text labels — this is what satisfies the
-             a11y requirement that role is not conveyed by color alone. */
+          /* Subtitle carries job + position text labels — satisfies the a11y requirement
+             that role is not conveyed by color alone when job/position are provided. */
           <div className="text-xs text-text-tertiary truncate">{subtitleContent}</div>
         )}
       </div>
