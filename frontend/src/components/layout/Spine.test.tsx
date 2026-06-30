@@ -66,9 +66,11 @@ describe('Spine', () => {
 
   it('ArrowRight moves focus to and activates the next tab', () => {
     const onTabChange = vi.fn();
+    const spy = vi.spyOn(analytics, 'track');
     render(<Spine activeTab="overview" onTabChange={onTabChange} />);
     screen.getByRole('tab', { name: 'Home' }).focus();
     fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' });
+    expect(spy).toHaveBeenCalledWith('navigation', 'tab_switch', { tab: 'roster', surface: 'spine' });
     expect(onTabChange).toHaveBeenCalledWith('roster');
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Roster' }));
   });

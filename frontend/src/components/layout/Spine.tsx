@@ -19,6 +19,11 @@ const SPINE_TABS: { id: PageMode; label: string; Icon: FC<{ size?: number }> }[]
 export function Spine({ activeTab, onTabChange }: SpineProps) {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  const activate = (id: PageMode) => {
+    analytics.track('navigation', 'tab_switch', { tab: id, surface: 'spine' });
+    onTabChange(id);
+  };
+
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     const activeIndex = SPINE_TABS.findIndex(t => t.id === activeTab);
     let nextIndex: number;
@@ -42,8 +47,7 @@ export function Spine({ activeTab, onTabChange }: SpineProps) {
 
     e.preventDefault();
     const nextTab = SPINE_TABS[nextIndex];
-    analytics.track('navigation', 'tab_switch', { tab: nextTab.id, surface: 'spine' });
-    onTabChange(nextTab.id);
+    activate(nextTab.id);
     tabRefs.current[nextIndex]?.focus();
   }
 
@@ -65,10 +69,7 @@ export function Spine({ activeTab, onTabChange }: SpineProps) {
             role="tab"
             aria-selected={isActive}
             tabIndex={isActive ? 0 : -1}
-            onClick={() => {
-              analytics.track('navigation', 'tab_switch', { tab: tab.id, surface: 'spine' });
-              onTabChange(tab.id);
-            }}
+            onClick={() => activate(tab.id)}
             className={[
               'relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors',
               'after:content-[\'\'] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:transition-colors',
