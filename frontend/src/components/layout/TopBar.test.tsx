@@ -35,6 +35,8 @@ import { TopBar } from './TopBar';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useJoinRequestStore } from '../../stores/joinRequestStore';
+import { ThemeProvider } from '../../hooks/useTheme';
 
 const currentGroup = { id: 'g1', shareCode: 'ABC', name: 'Alpha Static', userRole: 'owner' } as unknown as StaticGroup;
 const groups: StaticGroupListItem[] = [
@@ -66,13 +68,18 @@ beforeEach(() => {
   useStaticGroupStore.setState({ currentGroup, groups });
   useTierStore.setState({ tiers, currentTier });
   useLootTrackingStore.setState({ currentWeek: 3, maxWeek: 5 });
+  // Prevent NotificationBell's join-count fetch from making real API calls.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useJoinRequestStore.setState({ fetchGroupRequests: vi.fn().mockResolvedValue(undefined) as any });
 });
 
 function renderTopBar(onOpenPalette = vi.fn()) {
   return render(
-    <MemoryRouter initialEntries={['/group/ABC?shell=v2']}>
-      <TopBar onOpenPalette={onOpenPalette} />
-    </MemoryRouter>
+    <ThemeProvider>
+      <MemoryRouter initialEntries={['/group/ABC?shell=v2']}>
+        <TopBar onOpenPalette={onOpenPalette} />
+      </MemoryRouter>
+    </ThemeProvider>
   );
 }
 

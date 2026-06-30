@@ -17,14 +17,17 @@
  * Header/ContextSwitcher/TierSelector internals are untouched (byte-for-byte).
  */
 
-import { Command, Bell, Settings, Sun } from 'lucide-react';
+import { Command } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useStaticPermissions } from '../../hooks/useStaticPermissions';
 import { TierBreadcrumb } from '../../pages/TierBreadcrumb';
 import { IconButton, Tooltip } from '../primitives';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { StaticPicker } from './StaticPicker';
+import { NotificationBell } from './NotificationBell';
+import { SettingsGear } from './SettingsGear';
 
 interface TopBarProps {
   /** Open the command palette (Task 10 builds the palette itself). */
@@ -80,7 +83,7 @@ export function TopBar({ onOpenPalette }: TopBarProps) {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Affordance placeholders (Tasks 10/11) */}
+        {/* Affordance cluster (Task 10: bell/gear/theme wired; Task 11: ⌘K palette) */}
         <div className="flex items-center gap-0.5 sm:gap-1">
           <Tooltip content="Command palette">
             <IconButton
@@ -91,33 +94,9 @@ export function TopBar({ onOpenPalette }: TopBarProps) {
               onClick={onOpenPalette}
             />
           </Tooltip>
-          <Tooltip content="Notifications (coming soon)">
-            <IconButton
-              aria-label="Notifications"
-              icon={<Bell className="w-5 h-5" />}
-              variant="ghost"
-              size="md"
-              disabled
-            />
-          </Tooltip>
-          <Tooltip content="Settings (coming soon)">
-            <IconButton
-              aria-label="Settings"
-              icon={<Settings className="w-5 h-5" />}
-              variant="ghost"
-              size="md"
-              disabled
-            />
-          </Tooltip>
-          <Tooltip content="Toggle theme (coming soon)">
-            <IconButton
-              aria-label="Toggle theme"
-              icon={<Sun className="w-5 h-5" />}
-              variant="ghost"
-              size="md"
-              disabled
-            />
-          </Tooltip>
+          <NotificationBell />
+          <SettingsGear />
+          <ThemeToggle />
         </div>
       </div>
     </header>
