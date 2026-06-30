@@ -554,7 +554,7 @@ function WeeklyProgressModule({
 }) {
   const active = players.filter((p) => p.configured && !p.isSubstitute);
 
-  const bisCount = useMemo(() => bisCompleteCount(players), [players]);
+  const bisCount = useMemo(() => bisCompleteCount(active), [active]);
 
   const avgIlv = rosterAvgIlv(players);
 
