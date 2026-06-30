@@ -2,8 +2,8 @@
  * @vitest-environment jsdom
  *
  * NotificationBell — v2 TopBar bell affordance.
- * Tests: combined badge count, 99+ cap, hidden at 0, click opens NotificationCenter,
- * and join-request fetch replication.
+ * Tests: combined badge count, 99+ cap, hidden at 0, click calls onOpen,
+ * a11y label includes count, and join-request fetch replication.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   currentGroupId: null as string | null,
   canManageInvitations: false,
   fetchGroupRequests: vi.fn(() => Promise.resolve()),
+  onOpen: vi.fn(),
 }));
 
 // ── Module mocks ─────────────────────────────────────────────────────────────
@@ -59,12 +60,6 @@ vi.mock('../../hooks/useStaticPermissions', () => ({
   useStaticPermissions: () => ({ canManageInvitations: mocks.canManageInvitations }),
 }));
 
-// Lightweight NotificationCenter stub — avoids its full dependency chain.
-vi.mock('../auth/NotificationCenter', () => ({
-  NotificationCenter: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="notification-center-modal" /> : null,
-}));
-
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 import { NotificationBell } from './NotificationBell';
@@ -90,11 +85,12 @@ beforeEach(() => {
   mocks.currentGroupId = null;
   mocks.canManageInvitations = false;
   mocks.fetchGroupRequests.mockClear();
+  mocks.onOpen.mockClear();
 });
 
 describe('NotificationBell', () => {
-  it('renders a bell button with aria-label "Notifications"', () => {
-    render(<NotificationBell />);
+  it('renders a bell button with aria-label "Notifications" when count is zero', () => {
+    render(<NotificationBell onOpen={mocks.onOpen} />);
     expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
   });
 
@@ -102,7 +98,7 @@ describe('NotificationBell', () => {
     mocks.unreadCount = 2;
     mocks.syntheticUnread = 1;
     mocks.pendingCount = 3;
-    const { container } = render(<NotificationBell />);
+    const { container } = render(<NotificationBell onOpen={mocks.onOpen} />);
     expect(container.querySelector('.bg-status-error')).toHaveTextContent('6');
   });
 
@@ -110,33 +106,45 @@ describe('NotificationBell', () => {
     mocks.unreadCount = 50;
     mocks.syntheticUnread = 30;
     mocks.pendingCount = 25;
-    const { container } = render(<NotificationBell />);
+    const { container } = render(<NotificationBell onOpen={mocks.onOpen} />);
     expect(container.querySelector('.bg-status-error')).toHaveTextContent('99+');
   });
 
   it('hides the badge when total is 0', () => {
-    const { container } = render(<NotificationBell />);
+    const { container } = render(<NotificationBell onOpen={mocks.onOpen} />);
     expect(container.querySelector('.bg-status-error')).toBeNull();
   });
 
-  it('clicking the bell opens the NotificationCenter modal', () => {
-    render(<NotificationBell />);
-    expect(screen.queryByTestId('notification-center-modal')).toBeNull();
+  it('folds the unread count into aria-label when total > 0', () => {
+    mocks.unreadCount = 3;
+    render(<NotificationBell onOpen={mocks.onOpen} />);
+    expect(screen.getByRole('button', { name: 'Notifications, 3 unread' })).toBeInTheDocument();
+  });
+
+  it('uses "99+ unread" in aria-label when total exceeds 99', () => {
+    mocks.unreadCount = 100;
+    render(<NotificationBell onOpen={mocks.onOpen} />);
+    expect(screen.getByRole('button', { name: 'Notifications, 99+ unread' })).toBeInTheDocument();
+  });
+
+  it('clicking the bell calls onOpen', () => {
+    render(<NotificationBell onOpen={mocks.onOpen} />);
+    expect(mocks.onOpen).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
-    expect(screen.getByTestId('notification-center-modal')).toBeInTheDocument();
+    expect(mocks.onOpen).toHaveBeenCalledTimes(1);
   });
 
   it('fetches join requests when canManageInvitations and currentGroup are set', () => {
     mocks.canManageInvitations = true;
     mocks.currentGroupId = 'group-1';
-    render(<NotificationBell />);
+    render(<NotificationBell onOpen={mocks.onOpen} />);
     expect(mocks.fetchGroupRequests).toHaveBeenCalledWith('group-1');
   });
 
   it('does not fetch join requests when canManageInvitations is false', () => {
     mocks.canManageInvitations = false;
     mocks.currentGroupId = 'group-1';
-    render(<NotificationBell />);
+    render(<NotificationBell onOpen={mocks.onOpen} />);
     expect(mocks.fetchGroupRequests).not.toHaveBeenCalled();
   });
 });

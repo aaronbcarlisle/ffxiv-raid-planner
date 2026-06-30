@@ -19,11 +19,6 @@
       "count": 1
     }
   },
-  "src/components/layout/NotificationBell.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
   "src/components/layout/Header.tsx": {
     "boundaries/dependencies": {
       "count": 2

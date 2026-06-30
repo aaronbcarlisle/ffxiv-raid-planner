@@ -9,6 +9,7 @@ import { Spine } from '../components/layout/Spine';
 import { AppRail } from '../components/layout/AppRail';
 import { TopBar } from '../components/layout/TopBar';
 import { UserMenu } from '../components/auth';
+import { NotificationCenter } from '../components/auth/NotificationCenter';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { logger } from '../lib/logger';
@@ -35,6 +36,7 @@ export function NewShell() {
   const { shareCode } = useParams<{ shareCode: string }>();
   const navigate = useNavigate();
   const palette = useModal();
+  const notifications = useModal();
 
   const groups = useStaticGroupStore((s) => s.groups);
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
@@ -139,13 +141,14 @@ export function NewShell() {
           footer={<UserMenu variant="rail" collapsed />}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <TopBar onOpenPalette={palette.open} />
+          <TopBar onOpenPalette={palette.open} onOpenNotifications={notifications.open} />
           <Spine activeTab={gv.pageMode} onTabChange={gv.setPageMode} />
           <div id="main-content" className="min-h-0 flex-1 overflow-y-auto">
             <ShellContent />
           </div>
         </div>
       </div>
+      <NotificationCenter isOpen={notifications.isOpen} onClose={notifications.close} />
     </GroupActionModals>
   );
 }

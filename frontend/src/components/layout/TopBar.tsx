@@ -9,8 +9,8 @@
  *   • `StaticPicker`   — new (Task 9), replaces the legacy ContextSwitcher Static segment.
  *   • `TierBreadcrumb` — `› TierSelector [⋮]`, reuses TierSelector via `onTierChange`.
  *   • week indicator   — minimal, reads `currentWeek` from lootTrackingStore.
- *   • affordances      — ⌘K / bell / gear / theme placeholders wired in Tasks 10/11
- *                        (⌘K already calls the passed `onOpenPalette`).
+ *   • affordances      — bell / gear / theme wired (Task 10); ⌘K is the remaining
+ *                        Task-11 placeholder (calls the passed `onOpenPalette`).
  *
  * Conformant + boundary-clean by construction: design-system primitives only,
  * semantic tokens, 12px+ text, no raw `<button>`, and no Ring 0 imports. Legacy
@@ -30,8 +30,10 @@ import { NotificationBell } from './NotificationBell';
 import { SettingsGear } from './SettingsGear';
 
 interface TopBarProps {
-  /** Open the command palette (Task 10 builds the palette itself). */
+  /** Open the command palette (Task 11 placeholder — bell, gear, and theme are wired). */
   onOpenPalette: () => void;
+  /** Open the notification center (hosted in NewShell, boundary-exempt). */
+  onOpenNotifications: () => void;
 }
 
 /** Display-only week label. Reads `currentWeek` from the server-authoritative loot
@@ -51,7 +53,7 @@ function WeekIndicator() {
   );
 }
 
-export function TopBar({ onOpenPalette }: TopBarProps) {
+export function TopBar({ onOpenPalette, onOpenNotifications }: TopBarProps) {
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
   const groups = useStaticGroupStore((s) => s.groups);
   const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
@@ -94,7 +96,7 @@ export function TopBar({ onOpenPalette }: TopBarProps) {
               onClick={onOpenPalette}
             />
           </Tooltip>
-          <NotificationBell />
+          <NotificationBell onOpen={onOpenNotifications} />
           <SettingsGear />
           <ThemeToggle />
         </div>

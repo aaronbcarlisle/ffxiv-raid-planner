@@ -73,11 +73,11 @@ beforeEach(() => {
   useJoinRequestStore.setState({ fetchGroupRequests: vi.fn().mockResolvedValue(undefined) as any });
 });
 
-function renderTopBar(onOpenPalette = vi.fn()) {
+function renderTopBar(onOpenPalette = vi.fn(), onOpenNotifications = vi.fn()) {
   return render(
     <ThemeProvider>
       <MemoryRouter initialEntries={['/group/ABC?shell=v2']}>
-        <TopBar onOpenPalette={onOpenPalette} />
+        <TopBar onOpenPalette={onOpenPalette} onOpenNotifications={onOpenNotifications} />
       </MemoryRouter>
     </ThemeProvider>
   );
@@ -109,11 +109,11 @@ describe('TopBar', () => {
     expect(mockActions.onTierChange).toHaveBeenCalledWith('aac-heavyweight');
   });
 
-  it('renders the tier actions kebab (canEdit) and the affordance placeholders', () => {
+  it('renders the tier actions kebab (canEdit) and the wired affordances (bell, gear, theme, ⌘K)', () => {
     renderTopBar();
     expect(screen.getByRole('button', { name: 'Tier actions menu' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Command palette' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Notifications' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Notifications/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
   });
