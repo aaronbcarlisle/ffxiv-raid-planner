@@ -70,9 +70,12 @@ describe('RosterToolbar', () => {
     expect(onSubsHiddenChange).toHaveBeenCalledWith(true);
   });
 
-  it('disables "Add player" when the user cannot manage the roster', () => {
+  it('disables "Add player" and "Reorder" when the user cannot manage the roster', () => {
     render(<RosterToolbar {...baseProps} canManage={false} />);
     expect(screen.getByRole('button', { name: /add player/i })).toBeDisabled();
+    // Reorder is gated too — a non-manager must not enter a mode whose drag
+    // affordances are inert underneath (DnD is disabled when !canManage).
+    expect(screen.getByRole('button', { name: /reorder/i })).toBeDisabled();
   });
 
   it('opens the grouping pill menu and switches to Standard comp', async () => {

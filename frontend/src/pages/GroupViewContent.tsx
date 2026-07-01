@@ -1315,7 +1315,7 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
           )}
 
           {/* Gear/Log Tab Controls */}
-          {pageMode === 'gear' && gearSubTab === 'history' && canManageRoster(userRole).allowed && (
+          {pageMode === 'gear' && gearSubTab === 'history' && canManageRoster(userRole, isAdminAccess).allowed && (
             <>
               {/* Reset Data Actions */}
               <div>

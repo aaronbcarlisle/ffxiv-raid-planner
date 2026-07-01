@@ -78,6 +78,7 @@ export function RosterToolbar({
         size="sm"
         leftIcon={<List className="w-3.5 h-3.5" aria-hidden />}
         aria-pressed={reorderMode}
+        disabled={!canManage}
         onClick={() => onReorderModeChange(!reorderMode)}
       >
         Reorder

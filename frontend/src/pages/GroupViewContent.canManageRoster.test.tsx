@@ -24,9 +24,13 @@ import type { AddedPlayerSignal } from './groupActionsContext';
 
 // ── Mock the state hook: pageMode/gearSubTab pinned to the gear→history branch ──
 const noop = vi.fn();
+// Admin-access axis (fix: gate uses canManageRoster(userRole, isAdminAccess)):
+// isAdminAccess = !viewAsUser && isAdmin && adminMode=true. Both mutated per-test.
+let mockIsAdmin = false;
+let mockAdminMode = false;
 function makeState() {
   return {
-    searchParams: new URLSearchParams(),
+    searchParams: new URLSearchParams(mockAdminMode ? 'adminMode=true' : ''),
     setSearchParams: noop,
     pageMode: 'gear',
     setPageMode: noop,
@@ -74,7 +78,7 @@ vi.mock('../stores/tierStore', () => ({
 vi.mock('../stores/staticGroupStore', () => ({
   useStaticGroupStore: () => ({ currentGroup, groups: [currentGroup] }),
 }));
-vi.mock('../stores/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1', isAdmin: false } }) }));
+vi.mock('../stores/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1', isAdmin: mockIsAdmin } }) }));
 vi.mock('../stores/viewAsStore', () => ({ useViewAsStore: () => ({ viewAsUser: null }) }));
 vi.mock('../stores/lootTrackingStore', () => ({
   useLootTrackingStore: () => ({
@@ -142,6 +146,8 @@ const renderAndOpenControlsSheet = () => {
 describe('GroupViewContent — canManageRoster gate on gear-log Reset Data (mobile Controls Sheet)', () => {
   beforeEach(() => {
     mockUserRole = 'member';
+    mockIsAdmin = false;
+    mockAdminMode = false;
   });
 
   it('hides Reset Data controls for a member (canManageRoster().allowed is false)', () => {
@@ -153,6 +159,18 @@ describe('GroupViewContent — canManageRoster gate on gear-log Reset Data (mobi
 
   it('shows Reset Data controls for an owner (canManageRoster().allowed is true)', () => {
     mockUserRole = 'owner';
+    renderAndOpenControlsSheet();
+    expect(screen.getByText('Reset Data')).toBeInTheDocument();
+    expect(screen.getByText('Reset Loot Log')).toBeInTheDocument();
+  });
+
+  it('shows Reset Data controls for an admin-access non-manager (isAdminAccess passed to canManageRoster)', () => {
+    // Admin viewing via ?adminMode=true whose actual static role is 'member':
+    // the gate must pass isAdminAccess so getEffectiveRole elevates to 'owner'.
+    // Pre-fix (canManageRoster(userRole) only) this member would be blocked.
+    mockUserRole = 'member';
+    mockIsAdmin = true;
+    mockAdminMode = true;
     renderAndOpenControlsSheet();
     expect(screen.getByText('Reset Data')).toBeInTheDocument();
     expect(screen.getByText('Reset Loot Log')).toBeInTheDocument();
