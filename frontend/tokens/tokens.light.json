@@ -66,8 +66,8 @@
         "crafted": { "$type": "color", "$value": "#ea580c" }
       },
       "status": {
-        "success": { "$type": "color", "$value": "#16a34a" },
-        "warning": { "$type": "color", "$value": "#ca8a04" },
+        "success": { "$type": "color", "$value": "#0f7234", "$description": "F6c-board AA-lift (Task 10): darkened from #16a34a (3.29:1 on #ffffff, fails WCAG AA for direct text use — e.g. v2 GearBoard 'obtained/total' completed count) to #0f7234 (~6.04:1 on #ffffff, ~5.18:1 on #ededf2). Hue preserved; used as text color." },
+        "warning": { "$type": "color", "$value": "#8a6004", "$description": "F6c-board AA-lift (Task 10): darkened from #ca8a04 (2.93:1 on #ffffff, fails WCAG AA for direct text use e.g. v2 roster 'No BiS'/'Unclaimed' labels) to #8a6004 (~5.59:1 on #ffffff, ~4.79:1 on #ededf2). Hue preserved; used as text color, not affected as a background/dot fill." },
         "error": { "$type": "color", "$value": "#dc2626" },
         "info": { "$type": "color", "$value": "#2563eb" }
       },

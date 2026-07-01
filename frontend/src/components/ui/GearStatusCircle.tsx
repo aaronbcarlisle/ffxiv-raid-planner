@@ -14,7 +14,7 @@
 import type { ReactNode } from 'react';
 import { Tooltip } from '../primitives/Tooltip';
 import type { GearSource } from '../../types';
-import type { GearState } from '../../utils/calculations';
+import { getNextGearState, type GearState } from '../../utils/calculations';
 
 interface GearStatusCircleProps {
   /** Current state of the gear */
@@ -35,36 +35,6 @@ interface GearStatusCircleProps {
    * permission so the hint appears only where the user can actually toggle.
    */
   tooltip?: ReactNode;
-}
-
-/**
- * Get the next state in the cycle based on current state and BiS source
- */
-function getNextState(
-  currentState: GearState,
-  bisSource: GearSource | null,
-  requiresAug: boolean
-): GearState {
-  // Unset BiS source - no state changes allowed
-  if (!bisSource) {
-    return currentState;
-  }
-
-  // Raid, Base Tome, and Crafted: 2-state cycle (missing → have → missing)
-  if (bisSource === 'raid' || bisSource === 'base_tome' || bisSource === 'crafted') {
-    return currentState === 'missing' ? 'have' : 'missing';
-  }
-
-  // Tome where base is BiS (no aug needed): 2-state cycle
-  if (bisSource === 'tome' && !requiresAug) {
-    return currentState === 'missing' ? 'have' : 'missing';
-  }
-
-  // Tome where augmentation is needed: 3-state cycle
-  // missing → have → augmented → missing
-  if (currentState === 'missing') return 'have';
-  if (currentState === 'have') return 'augmented';
-  return 'missing';
 }
 
 /**
@@ -117,7 +87,7 @@ export function GearStatusCircle({
     e.preventDefault();
     e.stopPropagation();
     if (!disabled && bisSource) {
-      onChange(getNextState(state, bisSource, requiresAug));
+      onChange(getNextGearState(state, bisSource, requiresAug));
     }
   };
 
@@ -125,7 +95,7 @@ export function GearStatusCircle({
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       if (!disabled && bisSource) {
-        onChange(getNextState(state, bisSource, requiresAug));
+        onChange(getNextGearState(state, bisSource, requiresAug));
       }
     }
   };

@@ -17,6 +17,8 @@ const baseProps = {
   onReorderModeChange: vi.fn(),
   canManage: true,
   onAddPlayer: vi.fn(),
+  rosterView: 'cards' as const,
+  onRosterViewChange: vi.fn(),
 };
 
 describe('RosterToolbar', () => {
@@ -91,5 +93,26 @@ describe('RosterToolbar', () => {
     });
     fireEvent.click(await screen.findByRole('menuitem', { name: /standard comp/i }));
     expect(onGroupViewChange).toHaveBeenCalledWith(false);
+  });
+
+  it('renders the Cards/Board segmented toggle', () => {
+    render(<RosterToolbar {...baseProps} />);
+    expect(screen.getByRole('group', { name: /view/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cards' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Board' })).toBeInTheDocument();
+  });
+
+  it('switches view via the toggle', () => {
+    const onRosterViewChange = vi.fn();
+    render(<RosterToolbar {...baseProps} onRosterViewChange={onRosterViewChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Board' }));
+    expect(onRosterViewChange).toHaveBeenCalledWith('board');
+  });
+
+  it('hides Reorder + grouping + Show subs in board mode', () => {
+    render(<RosterToolbar {...baseProps} rosterView="board" />);
+    expect(screen.queryByRole('button', { name: /reorder/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('Show subs')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add player/i })).toBeInTheDocument();
   });
 });
