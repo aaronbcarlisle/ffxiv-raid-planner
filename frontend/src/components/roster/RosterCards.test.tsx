@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SnapshotPlayer } from '../../types';
 
 // RosterCard is a heavy composed component (kebab, modals, inline edits) —
@@ -31,12 +31,13 @@ function makePlayer(overrides: Partial<SnapshotPlayer> & { id: string }): Snapsh
   } as unknown as SnapshotPlayer;
 }
 
-const baseActions = {
+const stubActions = {
   onUpdate: vi.fn(),
   onCopy: vi.fn(),
   onDuplicate: vi.fn(),
-  onAddPlayer: vi.fn(),
 };
+
+const actionsForPlayer = vi.fn(() => stubActions);
 
 const baseProps = {
   reorderMode: false,
@@ -45,10 +46,15 @@ const baseProps = {
   currentUserId: 'u1',
   isAdminAccess: false,
   clipboardPlayer: null,
-  actions: baseActions,
+  actionsForPlayer,
+  onAddPlayer: vi.fn(),
 };
 
 describe('RosterCards', () => {
+  beforeEach(() => {
+    actionsForPlayer.mockClear();
+  });
+
   it('renders G1 + Substitutes party headers and a card per configured player', () => {
     const players = [
       makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
@@ -72,6 +78,16 @@ describe('RosterCards', () => {
     expect(screen.getByText('Tank One')).toBeInTheDocument();
     expect(screen.getByText('Healer One')).toBeInTheDocument();
     expect(screen.getByText('Sub One')).toBeInTheDocument();
+
+    // Per-player factory contract: `actionsForPlayer` must be called once per
+    // rendered card, each time with that card's own player — never a single
+    // shared `actions` object reused across cards (the bug this test guards
+    // against: a shared object means every card's mutations act on the wrong
+    // player).
+    expect(actionsForPlayer).toHaveBeenCalledTimes(3);
+    expect(actionsForPlayer).toHaveBeenNthCalledWith(1, players[0]);
+    expect(actionsForPlayer).toHaveBeenNthCalledWith(2, players[1]);
+    expect(actionsForPlayer).toHaveBeenNthCalledWith(3, players[2]);
   });
 
   it('renders an EmptyStateInvite "open seat" card for an unconfigured position', () => {

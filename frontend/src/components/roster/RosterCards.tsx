@@ -12,14 +12,18 @@
  * (`reorderMode` is forwarded as-is to each `RosterCard`; no drag handles).
  *
  * Deliberate design decisions (documented to pre-empt review false-positives):
- *   - `actions` is **shared context, forwarded unchanged** to every `RosterCard`
- *     instance — it is not bound per-player here. Real per-player action
- *     binding (mirroring legacy `PlayerGrid`'s `PlayerCardRenderer`, which
- *     wraps playerId-taking handlers in a `useCallback` per player) is Task
- *     10's (`Roster` assembly) concern once it wires `usePlayerActions`'
- *     playerId-taking handlers into this shape — out of scope for this
- *     grouping/layout component per the task brief ("the shared context it
- *     receives as its own props and passes straight through").
+ *   - `actionsForPlayer` is a **per-player factory**, not a shared object.
+ *     Every callback in `RosterCardActions` (`useRosterCardActions.tsx:84-98`
+ *     — `onUpdate`, `onCopy`, `onDuplicate`, `onRemove`, etc.) takes no
+ *     `playerId` and is invoked bare inside the card/hook, so each card's
+ *     actions must already be bound to that card's player — exactly like
+ *     legacy `PlayerGrid`'s `PlayerCardRenderer`, which wraps playerId-taking
+ *     handlers in a `useCallback` per player. `renderPlayer` calls
+ *     `actionsForPlayer(player)` per card so Task 10's assembly (which wires
+ *     `usePlayerActions`' playerId-taking handlers) only has to supply one
+ *     factory function, not pre-bind N objects itself. `onAddPlayer` is the
+ *     one genuinely global action (opens the add flow) and is a separate,
+ *     ungrouped prop.
  *   - Open-seat derivation = `!player.configured` (mirrors legacy `PlayerGrid`
  *     / `EmptySlotCard`, NOT "position with no player" — an unconfigured
  *     template slot already carries a position/templateRole from the wizard,
@@ -31,9 +35,9 @@
  *     ad-hoc blue/red raw-color badges are NOT the reuse target — spec §7
  *     ("no raw palette") is explicit that G1/G2 do not get distinct hues in v2.
  *   - "Recruit" (Static Finder) is deferred — `EmptyStateInvite` renders a
- *     single "Add player" action wired to `actions.onAddPlayer`. Recruiting
- *     from the Static Finder is a separate, not-yet-built screen (REDESIGN_SPEC
- *     §5.6 Static Finder), out of scope here.
+ *     single "Add player" action wired to `onAddPlayer`. Recruiting from the
+ *     Static Finder is a separate, not-yet-built screen (REDESIGN_SPEC §5.6
+ *     Static Finder), out of scope here.
  */
 import type { ReactNode } from 'react';
 import { Plus } from 'lucide-react';
@@ -74,8 +78,14 @@ export interface RosterCardsProps {
   userHasClaimedPlayer?: boolean;
   onModalOpen?: () => void;
   onModalClose?: () => void;
-  /** RosterCard's actions, plus the "Add player" CTA for open-seat cards. */
-  actions: RosterCardActions & { onAddPlayer: () => void };
+  /**
+   * Per-player action factory — called once per rendered `RosterCard` (and
+   * NOT shared) so each card's kebab mutations are bound to that card's
+   * player, mirroring legacy `PlayerGrid`'s per-player `useCallback` binding.
+   */
+  actionsForPlayer: (player: SnapshotPlayer) => RosterCardActions;
+  /** The one genuinely global action — opens the add-player flow. */
+  onAddPlayer: () => void;
 }
 
 /** "Tank" / "Healer" / "Melee" / ... label for an unconfigured seat's role. */
@@ -136,7 +146,8 @@ export function RosterCards({
   userHasClaimedPlayer,
   onModalOpen,
   onModalClose,
-  actions,
+  actionsForPlayer,
+  onAddPlayer,
 }: RosterCardsProps) {
   const renderPlayer = (player: SnapshotPlayer): ReactNode => {
     if (!player.configured) {
@@ -157,7 +168,7 @@ export function RosterCards({
                   ? `Add a player to fill the ${player.position} slot.`
                   : `Add a player to fill this ${roleLabel.toLowerCase()} slot.`
               }
-              action={{ label: 'Add player', onClick: actions.onAddPlayer }}
+              action={{ label: 'Add player', onClick: onAddPlayer }}
             />
           </CardShell>
         </div>
@@ -174,7 +185,7 @@ export function RosterCards({
         canManage={canManage}
         clipboardPlayer={clipboardPlayer}
         reorderMode={reorderMode}
-        actions={actions}
+        actions={actionsForPlayer(player)}
         groupId={groupId}
         tierId={tierId}
         contentType={contentType}
