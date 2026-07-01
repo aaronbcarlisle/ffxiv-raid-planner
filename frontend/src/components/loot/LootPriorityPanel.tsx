@@ -12,16 +12,13 @@ import {
   getPriorityForRing,
   getPriorityForUpgradeMaterial,
   getPriorityForUniversalTomestone,
-  calculatePriorityScoreWithBreakdown,
   isPriorityDisabled,
   type PriorityEntry,
-  type PriorityScoreBreakdown,
 } from '../../utils/priority';
 import {
-  calculatePlayerLootStats,
-  calculateEnhancedScoreWithBreakdown,
   calculateAverageDrops,
 } from '../../utils/lootCoordination';
+import { enhancePriorityEntries, type EnhancedPriorityEntry } from '../../utils/priorityEntries';
 import { getRoleColor, type Role } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
 import { FilterBar } from './FilterBar';
@@ -32,14 +29,6 @@ import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
 import { LogWeekWizard } from './LogWeekWizard';
 import { Button } from '../primitives';
-
-interface EnhancedPriorityEntry extends PriorityEntry {
-  enhancedScore?: number;
-  droughtBonus?: number;
-  balancePenalty?: number;
-  // Score breakdown for tooltips
-  breakdown?: PriorityScoreBreakdown;
-}
 
 // Memoized priority entry component to prevent unnecessary re-renders
 interface LootPriorityEntryProps {
@@ -426,44 +415,10 @@ export function LootPriorityPanel({
   }, [isEnhancedScoringActive, lootLog, players]);
 
   // Helper to enhance priority entries with loot history and breakdown
-  const enhanceEntries = (entries: PriorityEntry[]): EnhancedPriorityEntry[] => {
-    // Always calculate breakdown for tooltips
-    const entriesWithBreakdown = entries.map((entry) => {
-      const breakdown = calculatePriorityScoreWithBreakdown(entry.player, settings);
-      return {
-        ...entry,
-        breakdown,
-      };
+  const enhanceEntries = (entries: PriorityEntry[]): EnhancedPriorityEntry[] =>
+    enhancePriorityEntries(entries, {
+      settings, lootLog, currentWeek, averageDrops, active: isEnhancedScoringActive,
     });
-
-    // If not showing enhanced scores, return with just breakdown
-    if (!isEnhancedScoringActive) {
-      return entriesWithBreakdown;
-    }
-
-    // Add enhanced score modifications based on loot history using shared function
-    return entriesWithBreakdown.map((entry) => {
-      const stats = calculatePlayerLootStats(entry.player.id, lootLog, currentWeek);
-      const enhanced = calculateEnhancedScoreWithBreakdown(
-        entry.score,
-        stats,
-        averageDrops,
-        settings // Pass settings to use configurable multipliers
-      );
-
-      return {
-        ...entry,
-        enhancedScore: enhanced.score,
-        droughtBonus: enhanced.droughtBonus,
-        balancePenalty: enhanced.balancePenalty,
-      };
-    }).sort((a, b) => {
-      const scoreA = a.enhancedScore ?? a.score;
-      const scoreB = b.enhancedScore ?? b.score;
-      if (scoreB !== scoreA) return scoreB - scoreA;
-      return a.player.name.localeCompare(b.player.name);
-    });
-  };
 
   // Get gear drops for this floor, but handle ring specially
   const gearItems: Array<{ slot: GearSlot | 'ring'; label: string }> =
