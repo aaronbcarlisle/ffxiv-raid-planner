@@ -90,6 +90,15 @@ export const RELEASES: Release[] = [
         pr: 165,
         prTitle: 'F6c (part 1) — Roster Cards',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'F6c Roster Board (internal)',
+        description:
+          'Cards⇄Board view toggle and the gear-matrix Board behind the ?shell=v2 flag; Board is the gear-editing surface; contrast harness re-enabled on the v2 roster.',
+        pr: 0,
+        prTitle: 'F6c (part 2) — Roster Board',
+      },
     ],
     internal: true,
   },

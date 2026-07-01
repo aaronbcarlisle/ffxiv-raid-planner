@@ -51,14 +51,29 @@
  * (the §3.1 items listed above, still pending a later F6 slice) doesn't gate it.
  * Both the Cards grid and the Board gear matrix are asserted, both themes.
  *
- * Two genuine v2-owned contrast bugs were found and fixed at the token level
- * (tokens/tokens.json + tokens/tokens.light.json, regenerated via `pnpm tokens:build`):
- *   • --color-text-tertiary (dark): #71717a → #7d7d87 (was 3.98:1 on
- *     --color-surface-card #0e0e14, the documented "4.5:1" only held on
- *     surface-raised/base; now ≥4.72:1 on card/raised/base).
+ * Three genuine v2-owned contrast bugs were found and fixed at the token level
+ * (tokens/tokens.json + tokens/tokens.light.json, regenerated via `pnpm tokens:build`),
+ * plus one component-level fix:
+ *   • --color-text-tertiary (dark): #71717a → #7d7d87. The old value failed AA
+ *     on ALL FOUR dark surfaces, not just card — it topped out at ~4.35:1 on
+ *     pure black (surface-base) and measured 3.98:1 on --color-surface-card
+ *     (#0e0e14); the documented "4.5:1" never actually held anywhere. The new
+ *     value clears AA on all four dark surfaces: ~4.58:1 elevated, ~4.72:1
+ *     card, ~4.85:1 raised, ~5.00:1 base. This token also backs
+ *     --color-nav-item-icon-inactive, so the fix cascades into the app-rail's
+ *     inactive nav icon color in dark theme.
  *   • --color-status-warning (light): #ca8a04 → #8a6004 (was 2.93:1 on white,
  *     used as direct text — "No BiS"/"Unclaimed" labels; now ~5.59:1 on white,
  *     ~4.79:1 on surface-raised).
+ *   • --color-status-success (light): #16a34a → #0f7234 (was 3.29:1 on white,
+ *     fails AA for direct text use — e.g. the v2 GearBoard "obtained/total"
+ *     completed count; now ~6.04:1 on white, ~5.18:1 on surface-raised).
+ *   • SegmentedToggle container: bg-surface-elevated → bg-surface-card. The
+ *     ghost (inactive) segment's text-accent needs ≥4.5:1 against the
+ *     container background showing through; text-accent on surface-elevated
+ *     only reached 4.11:1 in light theme (axe-measured), so the ghost label
+ *     failed AA. surface-card (the same pairing already asserted green on the
+ *     landing page) clears AA with margin in both themes.
  * One family of violations is pre-existing LEGACY debt bleeding into the v2
  * surface via deliberately-reused components (RosterCard imports
  * `components/player/PositionSelector` and `components/player/TankRoleSelector`
