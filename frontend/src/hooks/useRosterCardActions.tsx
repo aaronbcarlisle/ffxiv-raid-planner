@@ -17,8 +17,15 @@
  *   - The job-change confirm flow is OUT of scope (owned by the card header).
  *
  * Gating matches the legacy card exactly — `canEditPlayer` / `canManageRoster` /
- * `canResetGear` / `canClaimPlayer`, each passed `isAdminAccess` as the admin
- * arg (so "View As" context is respected, as legacy does).
+ * `canResetGear`, each passed `isAdminAccess` as the admin arg (so "View As"
+ * context is respected, as legacy does). **Take Ownership / Release** are NOT
+ * gated via `canClaimPlayer`: that helper early-returns disabled for any
+ * non-admin when its `hasMembership` arg is omitted, which would permanently
+ * disable claim/release for every owner/lead/member. Instead we replicate the
+ * legacy card's inline visibility booleans (`PlayerCard.tsx:361-364`): show
+ * Take only when the card is unclaimed and the current user hasn't already
+ * claimed another card; show Release only for the linked user or the owner —
+ * enabled whenever shown.
  *
  * ── Params that extend the brief's documented interface (justified per the
  *    brief's "adjust the param types to match what the modals actually
@@ -60,7 +67,6 @@ import { WeaponPriorityModal } from '../components/weapon-priority/WeaponPriorit
 import { FlexRolesModal } from '../components/player/FlexRolesModal';
 import { AssignUserModal } from '../components/player/AssignUserModal';
 import {
-  canClaimPlayer,
   canEditPlayer,
   canManageRoster,
   canResetGear,
@@ -97,6 +103,11 @@ export interface RosterCardActionParams {
   currentUserId: string | null;
   isAdminAccess: boolean;
   clipboardPlayer: SnapshotPlayer | null;
+  /**
+   * Whether the current user has already claimed another player card — blocks a
+   * second claim, as legacy does (`PlayerCard.tsx:363` `!userHasClaimedPlayer`).
+   */
+  userHasClaimedPlayer?: boolean;
   /** Static id — required by BiSTargetManagerModal / WeaponPriorityModal / AssignUserModal. */
   groupId: string;
   /** Tier id — required by WeaponPriorityModal. */
@@ -146,7 +157,6 @@ interface BuildMenuContext {
   editPermission: PermissionCheck;
   rosterPermission: PermissionCheck;
   resetPermission: PermissionCheck;
-  claimPermission: PermissionCheck;
   actions: RosterCardActions;
   open: MenuOpeners;
 }
@@ -169,14 +179,12 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
     editPermission,
     rosterPermission,
     resetPermission,
-    claimPermission,
     actions,
     open,
   } = ctx;
 
   const editTip = editPermission.allowed ? undefined : editPermission.reason;
   const rosterTip = rosterPermission.allowed ? undefined : rosterPermission.reason;
-  const claimTip = claimPermission.allowed ? undefined : claimPermission.reason;
 
   const items: ContextMenuItem[] = [];
 
@@ -224,14 +232,14 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
 
   // ── Player Management ──────────────────────────────────────
   items.push({ sectionHeader: 'Player Management' });
+  // Take / Release use legacy inline visibility (show-and-enabled), NOT
+  // canClaimPlayer — see the file header.
   if (showTake) {
     items.push({
       label: 'Take Ownership',
       icon: <UserCheck className={ICON} />,
       onClick: actions.onClaimPlayer,
       accent: true,
-      disabled: !claimPermission.allowed,
-      tooltip: claimTip,
     });
   }
   if (showRelease) {
@@ -239,8 +247,6 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
       label: isLinkedToMe ? 'Release Ownership' : 'Unlink User',
       icon: <UserX className={ICON} />,
       onClick: actions.onReleasePlayer,
-      disabled: !claimPermission.allowed,
-      tooltip: claimTip,
     });
   }
   items.push({
@@ -322,6 +328,7 @@ export function useRosterCardActions(params: RosterCardActionParams): RosterCard
     currentUserId,
     isAdminAccess,
     clipboardPlayer,
+    userHasClaimedPlayer,
     groupId,
     tierId,
     contentType,
@@ -366,11 +373,17 @@ export function useRosterCardActions(params: RosterCardActionParams): RosterCard
   const editPermission = canEditPlayer(userRole, player, uid, isAdminAccess);
   const rosterPermission = canManageRoster(userRole, isAdminAccess);
   const resetPermission = canResetGear(userRole, player, uid, isAdminAccess);
-  const claimPermission = canClaimPlayer(userRole, player, uid, isAdminAccess);
 
+  // Claim/Release visibility replicates the legacy card's inline booleans
+  // (PlayerCard.tsx:361-364), NOT canClaimPlayer (which would early-return
+  // disabled without a hasMembership arg — see the file header). `isGroupOwner`
+  // is `userRole === 'owner'`, the equivalent of legacy's separate prop.
+  const isGroupOwner = userRole === 'owner';
   const isLinkedToMe = !!player.userId && player.userId === currentUserId;
-  const showTake = !player.userId && !!actions.onClaimPlayer;
-  const showRelease = !!player.userId && !!actions.onReleasePlayer;
+  const showTake =
+    !player.userId && !!currentUserId && !!actions.onClaimPlayer && !userHasClaimedPlayer;
+  const showRelease =
+    (isLinkedToMe || isGroupOwner) && !!player.userId && !!actions.onReleasePlayer;
   // Owner-assign shows for an actual owner (not via admin access); admin-assign
   // shows only under admin access. Mirrors legacy's two Assign User variants.
   const showOwnerAssignItem = userRole === 'owner' && !isAdminAccess && !!actions.onOwnerAssignPlayer;
@@ -387,7 +400,6 @@ export function useRosterCardActions(params: RosterCardActionParams): RosterCard
     editPermission,
     rosterPermission,
     resetPermission,
-    claimPermission,
     actions,
     open: {
       bisImport: () => setShowBiSImport(true),

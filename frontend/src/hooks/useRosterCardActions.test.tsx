@@ -131,6 +131,56 @@ describe('useRosterCardActions', () => {
     expect(importItem && 'disabled' in importItem ? importItem.disabled : undefined).toBe(true);
   });
 
+  it('shows Take Ownership present + ENABLED for a logged-in member on an unclaimed card', () => {
+    // Regression: the hook must NOT gate Take/Release via canClaimPlayer (which
+    // early-returns disabled without a hasMembership arg). Legacy inline
+    // visibility: unclaimed card + logged-in user + handler + !userHasClaimedPlayer.
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'member',
+        currentUserId: 'u1',
+        userHasClaimedPlayer: false,
+        player: makePlayer({ userId: undefined }),
+        actions: { onUpdate: vi.fn(), onCopy: vi.fn(), onDuplicate: vi.fn(), onClaimPlayer: vi.fn() },
+      }),
+    );
+    const take = result.current.menuItems.find((i) => 'label' in i && i.label === 'Take Ownership');
+    expect(take).toBeDefined();
+    expect(take && 'disabled' in take ? take.disabled : undefined).toBeFalsy();
+  });
+
+  it('shows Release Ownership present + ENABLED on a card claimed by the current user', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'member',
+        currentUserId: 'u1',
+        player: makePlayer({ userId: 'u1' }),
+        actions: { onUpdate: vi.fn(), onCopy: vi.fn(), onDuplicate: vi.fn(), onReleasePlayer: vi.fn() },
+      }),
+    );
+    const release = result.current.menuItems.find(
+      (i) => 'label' in i && i.label === 'Release Ownership',
+    );
+    expect(release).toBeDefined();
+    expect(release && 'disabled' in release ? release.disabled : undefined).toBeFalsy();
+  });
+
+  it('hides Take Ownership when the current user has already claimed another card', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        userRole: 'member',
+        currentUserId: 'u1',
+        userHasClaimedPlayer: true,
+        player: makePlayer({ userId: undefined }),
+        actions: { onUpdate: vi.fn(), onCopy: vi.fn(), onDuplicate: vi.fn(), onClaimPlayer: vi.fn() },
+      }),
+    );
+    expect(result.current.menuItems.map(labelOrHeader)).not.toContain('Take Ownership');
+  });
+
   it('opens the BiS import modal via its menu item', () => {
     const { result } = renderHook(() => useRosterCardActions({ ...base, player: makePlayer() }));
     const item = result.current.menuItems.find((i) => 'label' in i && i.label === 'Import BiS')!;
