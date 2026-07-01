@@ -8,7 +8,7 @@ type Role = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
 /**
  * Variant union.
  *  - 'inline'      — avatar badge + name + meta row (F6b, attention/activity rows). BUILT.
- *  - 'board-cell'  — compact cell for Roster Board (F6c). RESERVED — do not implement yet.
+ *  - 'board-cell'  — compact cell for Roster Board (F6c). BUILT.
  *  - 'rsvp-row'    — RSVP roster row inside SessionRsvpCard (F6e). RESERVED — do not implement yet.
  */
 type PlayerIdentityVariant = 'inline' | 'board-cell' | 'rsvp-row';
@@ -30,8 +30,8 @@ export interface PlayerIdentityProps {
   /** Avatar image URL.  Passed through SafeAvatar's allowlist.  Falls back to initials. */
   avatarUrl?: string;
   /**
-   * Layout variant.  Only 'inline' is implemented in F6b.
-   * 'board-cell' (F6c) and 'rsvp-row' (F6e) are API-reserved.
+   * Layout variant.  'inline' (F6b) and 'board-cell' (F6c) are implemented.
+   * 'rsvp-row' (F6e) is API-reserved.
    */
   variant?: PlayerIdentityVariant;
 }
@@ -76,34 +76,44 @@ export function PlayerIdentity({
   avatarUrl,
   variant = 'inline',
 }: PlayerIdentityProps) {
-  // Only the 'inline' variant is built in F6b.
-  // 'board-cell' and 'rsvp-row' are documented in the API but not implemented.
-  if (variant !== 'inline') {
-    // Guard for future callers that accidentally pass a reserved variant early.
-    // Render nothing and warn rather than crash.
+  // 'rsvp-row' remains reserved (F6e). 'inline' (F6b) and 'board-cell' (F6c) render.
+  if (variant === 'rsvp-row') {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
-      console.warn(`PlayerIdentity: variant="${variant}" is reserved and not yet implemented (F6c/d/e).`);
+      console.warn('PlayerIdentity: variant="rsvp-row" is reserved and not yet implemented (F6e).');
     }
     return null;
+  }
+
+  // Subtitle + a11y role signal (shared by both rendered variants).
+  const autoSubtitle = [job, position].filter(Boolean).join(' · ');
+  const subtitleContent = subtitle ?? (autoSubtitle || null);
+  const hasTextualRoleSignal = !!(job || position || subtitle);
+  const srRoleLabel = role && !hasTextualRoleSignal ? ROLE_LABELS[role] : null;
+
+  if (variant === 'board-cell') {
+    return (
+      <div className="flex items-center gap-2.5">
+        {job && (
+          <span className="shrink-0" aria-hidden="true">
+            <JobIcon job={job} size="sm" />
+          </span>
+        )}
+        <div className="min-w-0">
+          <div className="font-display text-sm font-bold text-text-primary truncate">{name}</div>
+          {srRoleLabel && <span className="sr-only">{srRoleLabel}</span>}
+          {subtitleContent && (
+            <div className="text-xs text-text-tertiary truncate">{subtitleContent}</div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   // Role ring: border-color via CSS var — never a literal hex.
   const ringStyle: React.CSSProperties = role
     ? { borderColor: `var(--color-role-${role})` }
     : {};
-
-  // Subtitle line: prefer explicit subtitle prop; fall back to "job · position".
-  const autoSubtitle = [job, position].filter(Boolean).join(' · ');
-  const subtitleContent = subtitle ?? (autoSubtitle || null);
-
-  // a11y §5.4: role must not be conveyed by color alone.
-  // When role is set but no textual signal (job / position / subtitle) is present,
-  // render a visually-hidden label so screen readers can announce the role.
-  // When job or position are present they appear in the subtitle text, so no
-  // duplicate announcement is needed.
-  const hasTextualRoleSignal = !!(job || position || subtitle);
-  const srRoleLabel = role && !hasTextualRoleSignal ? ROLE_LABELS[role] : null;
 
   // Initials for avatar fallback.
   const initials = getInitials(name);

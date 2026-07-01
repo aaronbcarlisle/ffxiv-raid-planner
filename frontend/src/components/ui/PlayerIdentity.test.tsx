@@ -63,10 +63,10 @@ describe('PlayerIdentity', () => {
   });
 
   it('renders nothing for reserved variants', () => {
-    // 'board-cell' is documented as reserved (F6c); the component must return null
+    // 'rsvp-row' is documented as reserved (F6e); the component must return null
     // so callers that accidentally pass it get a no-op rather than a crash.
     const { container } = render(
-      <PlayerIdentity name="X" variant="board-cell" />,
+      <PlayerIdentity name="X" variant="rsvp-row" />,
     );
     expect(container.firstChild).toBeNull();
   });
@@ -76,5 +76,23 @@ describe('PlayerIdentity', () => {
     const ring = container.querySelector('[data-testid="player-identity-ring"]') as HTMLElement;
     // No inline borderColor when role is omitted
     expect(ring.style.borderColor).toBe('');
+  });
+});
+
+describe('PlayerIdentity board-cell variant', () => {
+  it('renders the name and caller subtitle (no null return)', () => {
+    render(<PlayerIdentity variant="board-cell" name="Tank One" job="PLD" role="tank" subtitle="MT · 740" />);
+    expect(screen.getByText('Tank One')).toBeInTheDocument();
+    expect(screen.getByText('MT · 740')).toBeInTheDocument();
+  });
+
+  it('emits an sr-only role label when no textual role signal is present', () => {
+    const { container } = render(<PlayerIdentity variant="board-cell" name="Solo" role="healer" />);
+    expect(container.querySelector('.sr-only')?.textContent).toBe('Healer');
+  });
+
+  it('still renders the inline variant', () => {
+    render(<PlayerIdentity variant="inline" name="Inline Guy" job="WHM" role="healer" />);
+    expect(screen.getByText('Inline Guy')).toBeInTheDocument();
   });
 });
