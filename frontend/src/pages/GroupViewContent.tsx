@@ -687,8 +687,11 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
         {/* Roster toolbar — sticky so the sub-tabs and member controls stay
             reachable while scrolling. The sub-tabs are the primary roster nav
             and are always shown; the member-only controls render only on the
-            Members sub-tab (they don't apply to Characters / Split Planner). */}
-        {pageMode === 'roster' && (
+            Members sub-tab (they don't apply to Characters / Split Planner).
+            Gated on `!slots?.roster` so a v2 roster slot (which owns its own
+            toolbar) doesn't stack under this legacy chrome; no-op on legacy
+            (`slots` undefined). */}
+        {pageMode === 'roster' && !slots?.roster && (
           <div className="sticky top-0 z-20 -mx-3 sm:-mx-6 px-3 sm:px-6 pt-3 pb-2.5 mb-3 bg-surface-base border-b border-border-default shadow-[0_6px_16px_-8px_rgba(0,0,0,0.65)] flex-shrink-0">
             <div className="flex items-center gap-3">
               {/* Sub-tabs — always visible (mobile + desktop) */}
@@ -1160,7 +1163,7 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
       <RosterViewToggle
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
-        visible={isSmallScreen && pageMode === 'roster' && !!currentTier}
+        visible={isSmallScreen && pageMode === 'roster' && !!currentTier && !slots?.roster}
       />
 
       {/* Mobile bottom navigation */}
@@ -1200,7 +1203,7 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
           )}
 
           {/* Roster Tab Controls */}
-          {pageMode === 'roster' && (
+          {pageMode === 'roster' && !slots?.roster && (
             <>
               {/* Sort */}
               <div>
