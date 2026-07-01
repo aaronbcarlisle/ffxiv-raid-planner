@@ -80,6 +80,14 @@ export const RELEASES: Release[] = [
           'translation files use the v3 "_plural" key convention while i18next defaulted to its newer ' +
           'plural rules. Enabled v3 compatibility so plurals resolve correctly across the app.',
       },
+      {
+        category: 'improvement',
+        title: 'Japanese mount, orchestrion, and expansion names now display in-game Japanese',
+        description:
+          'Mount reward names (ARR through Dawntrail), orchestrion roll titles, and expansion labels ' +
+          'now show the official Japanese names used in-game — e.g. エンバル, 神輿カムイ, ダイヤモンドグイヴル, ' +
+          'エンドコーラー — instead of falling back to English.',
+      },
     ],
   },
   {

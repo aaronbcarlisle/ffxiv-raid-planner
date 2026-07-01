@@ -5,13 +5,19 @@ import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { XivIcon } from '../ui/XivIcon';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import type { MountFarmData, TrialSummary } from '../../stores/mountFarmStore';
-import { EXPANSIONS, getTrialsByExpansion, getAllTrialIds, getTrialById, getCurrencyLabelPlural, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
+import { EXPANSIONS, getTrialsByExpansion, getAllTrialIds, getTrialById, getCurrencyLabelPlural, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
 import type { Expansion, MountFarmTrial } from '../../gamedata';
 import { MountFarmSummary } from './MountFarmSummary';
 import { Skeleton } from '../ui/Skeleton';
 import { ErrorMessage } from '../ui/ErrorMessage';
 import { Button } from '../primitives/Button';
 import { Tooltip } from '../primitives/Tooltip';
+import {
+  getLocalizedTrialDutyName,
+  getLocalizedTrialRewardName,
+  getLocalizedExpansionName,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 const MOUNT_FARM_VIEWS = ['group', 'my-progress'] as const;
 type ViewMode = (typeof MOUNT_FARM_VIEWS)[number];
@@ -59,11 +65,12 @@ function filterTrials(
 }
 
 export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTabProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [selectedExpansion, setSelectedExpansion] = useState<Expansion>('DT');
   const [viewMode, setViewMode] = useUrlTabState('mf', MOUNT_FARM_VIEWS, 'group');
   const [activeFilter, setActiveFilter] = useState<FilterMode>('all');
   const { data, recommendations, isLoading, isLoadingRecs, error, fetchProgress, fetchRecommendations } = useMountFarmStore();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
 
   const allTrials = getTrialsByExpansion(selectedExpansion);
 
@@ -161,7 +168,10 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
 
   const topRec = recommendations[0];
   const topRecTrial = topRec ? getTrialById(topRec.trialId) : null;
+  const localizedTopRecDutyName = getLocalizedTrialDutyName(topRecTrial, uiLocale);
+  const localizedTopRecRewardName = getLocalizedTrialRewardName(topRecTrial, uiLocale);
   const canManage = userRole === 'owner' || userRole === 'lead';
+  const isJapanese = uiLocale.startsWith('ja');
 
   const expansionComplete = allTrials.reduce((count, trial) => {
     const summary = trialSummaryMap.get(trial.id);
@@ -189,7 +199,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-display text-sm font-semibold text-text-primary">{t('mountFarm.automateTracking')}</p>
-                <Button onClick={dismissCta} className="text-text-tertiary hover:text-text-secondary transition-colors p-0.5 -m-0.5" aria-label="Dismiss"> {/* design-system-ignore: Dismiss X requires specific styling */}
+                <Button onClick={dismissCta} className="text-text-tertiary hover:text-text-secondary transition-colors p-0.5 -m-0.5" aria-label={isJapanese ? '閉じる' : 'Dismiss'}> {/* design-system-ignore: Dismiss X requires specific styling */}
                   <X className="w-4 h-4" />
                 </Button>
               </div>
@@ -225,7 +235,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 flex items-center gap-2 text-xs flex-wrap">
           <Plug className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
           <span className="text-text-secondary">
-            {t('mountFarm.pluginSynced', { timeAgo: syncStatus.lastPluginSync ? timeAgo(syncStatus.lastPluginSync) : '' })}
+            {t('mountFarm.pluginSynced', { timeAgo: syncStatus.lastPluginSync ? timeAgo(syncStatus.lastPluginSync, uiLocale) : '' })}
           </span>
           {syncStatus.mountsDetected > 0 && (
             <>
@@ -267,15 +277,35 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
           <div className="flex items-center gap-2">
             <Info className="w-3.5 h-3.5 flex-shrink-0 opacity-60" />
             <span>
-              Toggling <strong className="text-text-secondary font-medium">Wanted</strong> here
-              also shares your intent with your statics via{' '}
-              <strong className="text-text-secondary font-medium">Suggested Farms</strong>.
+              {isJapanese ? (
+                <>
+                  ここで <strong className="text-text-secondary font-medium">希望</strong> を切り替えると、
+                  <strong className="text-text-secondary font-medium">おすすめ周回</strong>
+                  を通じて固定にも共有されます。
+                </>
+              ) : (
+                <>
+                  Toggling <strong className="text-text-secondary font-medium">Wanted</strong> here
+                  also shares your intent with your statics via{' '}
+                  <strong className="text-text-secondary font-medium">Suggested Farms</strong>.
+                </>
+              )}
             </span>
           </div>
           <ul className="pl-5 space-y-0.5 text-[11px] opacity-70">
-            <li>Shared rewards feed Suggested Farms for your statics.</li>
-            <li>Public rewards can appear on your dossier.</li>
-            <li>Private rewards stay personal — change visibility in Player Hub.</li>
+            {isJapanese ? (
+              <>
+                <li>共有した報酬は固定のおすすめ周回に反映されます。</li>
+                <li>公開した報酬はプロフィールにも表示されます。</li>
+                <li>非公開の報酬は自分だけに表示されます。公開範囲はプレイヤーハブで変更できます。</li>
+              </>
+            ) : (
+              <>
+                <li>Shared rewards feed Suggested Farms for your statics.</li>
+                <li>Public rewards can appear on your dossier.</li>
+                <li>Private rewards stay personal — change visibility in Player Hub.</li>
+              </>
+            )}
           </ul>
         </div>
       )}
@@ -288,17 +318,19 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
               <XivIcon name="crystal" size={20} className="flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
                 <p className="text-sm font-display font-semibold text-text-primary truncate">
-                  {t('mountFarm.bestNextFarm', { dutyName: topRecTrial.dutyName })}
+                  {t('mountFarm.bestNextFarm', { dutyName: localizedTopRecDutyName })}
                 </p>
                 <p className="text-xs text-text-secondary mt-1">
-                  {topRec.membersWanting > 0 && <>{topRec.membersWanting} member{topRec.membersWanting > 1 ? 's' : ''} want{topRec.membersWanting === 1 ? 's' : ''} this {getRewardNoun(topRecTrial)}</>}
+                  {topRec.membersWanting > 0 && <>{isJapanese ? `${topRec.membersWanting}人が${localizedTopRecRewardName}を希望` : `${topRec.membersWanting} member${topRec.membersWanting > 1 ? 's' : ''} want${topRec.membersWanting === 1 ? 's' : ''} this ${getRewardNoun(topRecTrial)}`}</>}
                   {topRec.membersWanting > 0 && topRec.membersCanBuy > 0 && ' · '}
-                  {topRec.membersCanBuy > 0 && <>{topRec.membersCanBuy} can buy with {getCurrencyLabelPlural(topRecTrial)}</>}
+                  {topRec.membersCanBuy > 0 && <>{isJapanese ? `${topRec.membersCanBuy}人が${getCurrencyLabelPlural(topRecTrial)}で交換可能` : `${topRec.membersCanBuy} can buy with ${getCurrencyLabelPlural(topRecTrial)}`}</>}
                   {(topRec.membersWanting > 0 || topRec.membersCanBuy > 0) && topRec.membersCloseToTarget > 0 && ' · '}
-                  {topRec.membersCloseToTarget > 0 && hasCurrencyTracking(topRecTrial) && <>{topRec.membersCloseToTarget} close to {topRecTrial.exchangeCost ?? topRecTrial.totemTarget} {getCurrencyLabelPlural(topRecTrial)}</>}
+                  {topRec.membersCloseToTarget > 0 && hasCurrencyTracking(topRecTrial) && <>{isJapanese ? `${topRec.membersCloseToTarget}人が${topRecTrial.exchangeCost ?? topRecTrial.totemTarget}${getCurrencyLabelPlural(topRecTrial)}に近い` : `${topRec.membersCloseToTarget} close to ${topRecTrial.exchangeCost ?? topRecTrial.totemTarget} ${getCurrencyLabelPlural(topRecTrial)}`}</>}
                 </p>
                 <p className="text-[11px] text-text-tertiary mt-0.5">
-                  {topRec.membersMissing} of {(topRec.membersMissing + (trialSummaryMap.get(topRec.trialId)?.membersComplete ?? 0))} members still need {getRewardLabel(topRecTrial)}
+                  {isJapanese
+                    ? `${topRec.membersMissing}/${topRec.membersMissing + (trialSummaryMap.get(topRec.trialId)?.membersComplete ?? 0)}人がまだ${localizedTopRecRewardName}を必要としています`
+                    : `${topRec.membersMissing} of ${(topRec.membersMissing + (trialSummaryMap.get(topRec.trialId)?.membersComplete ?? 0))} members still need ${localizedTopRecRewardName}`}
                 </p>
               </div>
             </div>
@@ -381,7 +413,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
           <StatCard label={t('mountFarm.rewardsObtained')} value={myStats.owned} total={myStats.total} color="text-status-success" />
           <StatCard label={t('mountFarm.wanted')} value={myStats.wanted} color="text-accent" />
           <StatCard label={t('mountFarm.ready')} value={myStats.canBuy} color="text-amber-400" />
-          <StatCard label={t('mountFarm.lastSync')} value={syncStatus?.lastPluginSync ? timeAgo(syncStatus.lastPluginSync) : 'Never'} isText color="text-text-secondary" />
+          <StatCard label={t('mountFarm.lastSync')} value={syncStatus?.lastPluginSync ? timeAgo(syncStatus.lastPluginSync, uiLocale) : t('common.never')} isText color="text-text-secondary" />
         </div>
       )}
 
@@ -409,7 +441,7 @@ export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTab
         <XivIcon name="goals" size={16} />
         <div className="flex-1">
           <div className="flex justify-between text-xs text-text-secondary mb-1">
-            <span>{t('mountFarm.completion', { expansionName: EXPANSIONS.find(e => e.id === selectedExpansion)?.name })}</span>
+            <span>{t('mountFarm.completion', { expansionName: getLocalizedExpansionName(selectedExpansion, i18n.resolvedLanguage) })}</span>
             <span>{t('mountFarm.farmsComplete', { complete: expansionComplete, total: allTrials.length })}</span>
           </div>
           <div className="h-2 bg-surface-elevated rounded-full overflow-hidden">
@@ -486,19 +518,24 @@ function StatCard({ label, value, total, color, isText }: {
   );
 }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes}m ago`;
+function timeAgo(iso: string, locale = 'en-US'): string {
+  const age = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(age / 60000);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  if (minutes < 1) {
+    return locale.startsWith('ja') ? 'たった今' : 'just now';
+  }
+  if (minutes < 60) {
+    return rtf.format(-minutes, 'minute');
+  }
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  if (hours < 24) {
+    return rtf.format(-hours, 'hour');
+  }
+  return rtf.format(-Math.floor(hours / 24), 'day');
 }
 
 interface ActivityItem {
-  displayName: string;
   trialId: string;
   action: string;
   source: string;
@@ -547,8 +584,9 @@ function NeedsAttention({ data, trialSummaryMap }: { data: MountFarmData; trialS
 }
 
 function RecentActivity({ data }: { data: MountFarmData }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
 
   const activities = useMemo(() => {
     const items: ActivityItem[] = [];
@@ -557,21 +595,22 @@ function RecentActivity({ data }: { data: MountFarmData }) {
       for (const mp of trial.memberProgress) {
         if (!mp.updatedAt) continue;
         const trialInfo = getTrialById(mp.trialId);
-        const trialLabel = trialInfo?.dutyName ?? mp.trialId;
+        const actorName = mp.displayName || t('mountFarm.member');
+        const trialLabel = getLocalizedTrialDutyName(trialInfo, uiLocale) || mp.trialId;
+        const rewardLabel = getLocalizedTrialRewardName(trialInfo, uiLocale) || trialLabel;
 
         let action = '';
         if (mp.hasMount) {
-          action = `obtained ${trialInfo ? getRewardLabel(trialInfo) : trialLabel}`;
+          action = t('mountFarm.activityObtained', { actor: actorName, reward: rewardLabel });
         } else if (mp.totemCount > 0) {
-          action = `updated ${trialLabel} currency to ${mp.totemCount}`;
+          action = t('mountFarm.activityCurrencyUpdated', { actor: actorName, duty: trialLabel, count: mp.totemCount });
         } else if (!mp.wantsMount) {
-          action = `skipped ${trialLabel}`;
+          action = t('mountFarm.activitySkipped', { actor: actorName, duty: trialLabel });
         } else {
-          action = `started tracking ${trialLabel}`;
+          action = t('mountFarm.activityTrackingStarted', { actor: actorName, duty: trialLabel });
         }
 
         items.push({
-          displayName: mp.displayName,
           trialId: mp.trialId,
           action,
           source: mp.ownershipSource !== 'unknown' ? mp.ownershipSource : mp.totemSource,
@@ -582,7 +621,7 @@ function RecentActivity({ data }: { data: MountFarmData }) {
 
     items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return items.slice(0, 8);
-  }, [data]);
+  }, [data, t, uiLocale]);
 
   if (activities.length === 0) return null;
 
@@ -601,9 +640,8 @@ function RecentActivity({ data }: { data: MountFarmData }) {
       {expanded && (
         <div className="space-y-1.5 mt-2">
           {activities.map((item, i) => (
-            <div key={`${item.trialId}-${item.displayName}-${i}`} className="flex items-center gap-2 text-xs">
-              <span className="text-text-tertiary w-16 flex-shrink-0 text-right">{timeAgo(item.updatedAt)}</span>
-              <span className="text-text-primary font-medium">{item.displayName}</span>
+            <div key={`${item.trialId}-${item.updatedAt}-${i}`} className="flex items-center gap-2 text-xs">
+              <span className="text-text-tertiary w-16 flex-shrink-0 text-right">{timeAgo(item.updatedAt, uiLocale)}</span>
               <span className="text-text-secondary truncate">{item.action}</span>
               {item.source !== 'manual' && item.source !== 'unknown' && (
                 <span className="text-blue-400 flex-shrink-0">
