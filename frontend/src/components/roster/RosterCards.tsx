@@ -8,8 +8,25 @@
  * target: `mockups/02-roster-cards.html` `.party-head` + `.pcards`; behaviour:
  * `design/redesign/specs/2026-07-01-f6c-roster-design.md` §5.6.
  *
- * Reorder/DnD wrapping is Task 7 — this component renders statically
- * (`reorderMode` is forwarded as-is to each `RosterCard`; no drag handles).
+ * Reorder mode (Task 7): when `reorderMode` is on, the whole card body is wrapped
+ * in a single dnd-kit `DndContext` (sensors + `pointerWithin` collision + the four
+ * handlers from the legacy `useDragAndDrop` hook) and every configured card is made
+ * a droppable + draggable via the small `DraggableRosterCard` wrapper below —
+ * mirroring the legacy `DroppablePlayerCard` (a `data-droppable-id` node the hook's
+ * pointer tracking reads, plus the drag-store swap/insert visual feedback). The
+ * card root itself receives the `dragHandle` (attributes/listeners from
+ * `useDraggable`). When `reorderMode` is off the component renders exactly as before
+ * — a plain static grid with no `DndContext` and no drag handles.
+ *
+ * Reuse note (source-of-truth API, NOT the brief's loose wording): `useDragAndDrop`
+ * does NOT use `SortableContext`/`useSortable`. It pairs a `DndContext` +
+ * `pointerWithin` with per-card `useDroppable`/`useDraggable` + a `dragStore`
+ * (see `GroupViewContent`'s wiring and `DroppablePlayerCard`). We reuse that exact
+ * shape; cross-group G1↔G2 swap is preserved by feeding the flat `players` array
+ * and `groupView` to the hook (its `calculateSwapUpdates`/`calculateInsertUpdates`
+ * do the position swap). Drag is suppressed while a card modal is open via the
+ * hook's `disabled` → 999999 sensor-distance path, fed by an internal open-modal
+ * counter bumped by the cards' `onModalOpen`/`onModalClose`.
  *
  * Deliberate design decisions (documented to pre-empt review false-positives):
  *   - `actionsForPlayer` is a **per-player factory**, not a shared object.
@@ -39,10 +56,20 @@
  *     Static Finder is a separate, not-yet-built screen (REDESIGN_SPEC §5.6
  *     Static Finder), out of scope here.
  */
-import type { ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+} from '@dnd-kit/core';
 import { Plus } from 'lucide-react';
-import { CardShell, EmptyStateInvite, ProgressBar, Tag } from '../ui';
+import { CardShell, EmptyStateInvite, PlayerIdentity, ProgressBar, Tag } from '../ui';
 import { RosterCard } from './RosterCard';
+import type { DragAttributes, DragListeners } from '../player/DroppablePlayerCard';
+import { useDragAndDrop, type PlayerUpdate } from '../dnd/useDragAndDrop';
+import { useDragStore } from '../../stores/dragStore';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import { groupPlayersByLightParty } from '../../utils/calculations';
 import { bisSlotTotals } from '../../utils/rosterReadiness';
@@ -61,7 +88,7 @@ export interface RosterCardsProps {
   subsView: boolean;
   /** Hides the substitutes section entirely (roster toolbar setting). */
   subsHidden: boolean;
-  /** Drag-to-reorder mode. Forwarded as-is; Task 7 wraps this in DnD. */
+  /** Drag-to-reorder mode. When on, cards become drag-to-reorder (see file head). */
   reorderMode: boolean;
   canManage: boolean;
   userRole: MemberRole | null | undefined;
@@ -86,6 +113,95 @@ export interface RosterCardsProps {
   actionsForPlayer: (player: SnapshotPlayer) => RosterCardActions;
   /** The one genuinely global action — opens the add-player flow. */
   onAddPlayer: () => void;
+  /**
+   * GRID-level reorder handler (NOT a per-player action). Signature matches
+   * `useDragAndDrop`'s `onReorder`: given the batch of `{ playerId, data }`
+   * sortOrder/position updates a drag produced, persist them. Task 10 sources
+   * this from `usePlayerActions`' reorder handler. Optional so the grid renders
+   * standalone (defaults to a no-op); only invoked in reorder mode.
+   */
+  onReorder?: (updates: PlayerUpdate[]) => Promise<void>;
+}
+
+/** Stable no-op so reorder mode works even before Task 10 wires a real handler. */
+const NOOP_REORDER = async (): Promise<void> => {};
+
+/**
+ * Per-card droppable + draggable wrapper (reorder mode only). Mirrors the legacy
+ * `DroppablePlayerCard`: registers the card as a dnd-kit droppable + draggable,
+ * carries the `data-droppable-id` the hook's pointer tracking reads, and paints
+ * the drag-store swap/insert feedback. The card root itself gets the drag handle
+ * via `render(dragHandle)`.
+ */
+interface DraggableRosterCardProps {
+  player: SnapshotPlayer;
+  /** Reorder is a roster-manage action — disables per-card DnD when false. */
+  canManage: boolean;
+  children: (dragHandle: { attributes: DragAttributes; listeners: DragListeners }) => ReactNode;
+}
+
+function DraggableRosterCard({ player, canManage, children }: DraggableRosterCardProps) {
+  // Per-card slices of the drag store: only the dragged card + current drop
+  // target re-render during a drag (not the whole grid).
+  const isBeingDragged = useDragStore((s) => s.activeId === player.id);
+  const dropTargetMode = useDragStore((s) =>
+    s.overId === player.id && s.activeId !== player.id ? s.dropMode : null,
+  );
+
+  const { setNodeRef: setDroppableRef } = useDroppable({ id: player.id, disabled: !canManage });
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDraggableRef,
+  } = useDraggable({ id: player.id, disabled: !canManage });
+
+  const setNodeRef = (node: HTMLElement | null) => {
+    setDroppableRef(node);
+    setDraggableRef(node);
+  };
+
+  const showSwap = dropTargetMode === 'swap';
+  const showInsertBefore = dropTargetMode === 'insert-before';
+  const showInsertAfter = dropTargetMode === 'insert-after';
+
+  return (
+    <div
+      ref={setNodeRef}
+      data-droppable-id={player.id}
+      style={{ opacity: isBeingDragged ? 0.3 : 1 }}
+      className={`relative rounded-lg transition-all duration-150 ${
+        showSwap ? 'ring-2 ring-accent shadow-lg shadow-accent/20' : ''
+      }`}
+    >
+      {showInsertBefore && (
+        <div className="pointer-events-none absolute inset-y-0 -left-2 z-10 w-1 rounded-full bg-accent shadow-lg shadow-accent/50" />
+      )}
+      {children({ attributes, listeners })}
+      {showInsertAfter && (
+        <div className="pointer-events-none absolute inset-y-0 -right-2 z-10 w-1 rounded-full bg-accent shadow-lg shadow-accent/50" />
+      )}
+    </div>
+  );
+}
+
+/**
+ * The dnd-kit drag ghost for reorder mode. Subscribes to just `activeId` so it
+ * re-renders only on drag start/end. A lightweight v2 ghost (identity in a
+ * CardShell) — not the legacy `DragOverlayCard` (that renders a `PlayerCard`).
+ */
+function RosterCardsDragOverlay({ players }: { players: SnapshotPlayer[] }) {
+  const activeId = useDragStore((s) => s.activeId);
+  const dragged = activeId ? players.find((p) => p.id === activeId) : null;
+
+  return (
+    <DragOverlay dropAnimation={null}>
+      {dragged && dragged.configured && (
+        <CardShell as="div" className="pointer-events-none w-[330px] opacity-95 shadow-xl">
+          <PlayerIdentity name={dragged.name} job={dragged.job} role={getValidRole(dragged.role)} />
+        </CardShell>
+      )}
+    </DragOverlay>
+  );
 }
 
 /** "Tank" / "Healer" / "Melee" / ... label for an unconfigured seat's role. */
@@ -148,7 +264,58 @@ export function RosterCards({
   onModalClose,
   actionsForPlayer,
   onAddPlayer,
+  onReorder,
 }: RosterCardsProps) {
+  // Open-modal counter → drives the hook's `disabled` (999999 sensor distance),
+  // suppressing drag while any card modal is open. The cards report open/close via
+  // `onModalOpen`/`onModalClose`; we bump the counter AND forward to the parent so
+  // upstream (Task 10 assembly) can still observe modal state.
+  const [openModalCount, setOpenModalCount] = useState(0);
+  const handleCardModalOpen = useCallback(() => {
+    setOpenModalCount((n) => n + 1);
+    onModalOpen?.();
+  }, [onModalOpen]);
+  const handleCardModalClose = useCallback(() => {
+    setOpenModalCount((n) => Math.max(0, n - 1));
+    onModalClose?.();
+  }, [onModalClose]);
+
+  // Legacy DnD hook — sensors + drag handlers + cross-group swap logic. Called
+  // unconditionally (hooks rule); its output is only consumed in reorder mode.
+  const dnd = useDragAndDrop({
+    players,
+    groupView,
+    canEdit: canManage,
+    disabled: !reorderMode || !canManage || openModalCount > 0,
+    onReorder: onReorder ?? NOOP_REORDER,
+  });
+
+  const renderConfiguredCard = (
+    player: SnapshotPlayer,
+    dragHandle?: { attributes: DragAttributes; listeners: DragListeners },
+  ): ReactNode => (
+    <RosterCard
+      key={player.id}
+      player={player}
+      userRole={userRole}
+      currentUserId={currentUserId}
+      isAdminAccess={isAdminAccess}
+      canManage={canManage}
+      clipboardPlayer={clipboardPlayer}
+      reorderMode={reorderMode}
+      dragHandle={dragHandle}
+      actions={actionsForPlayer(player)}
+      groupId={groupId}
+      tierId={tierId}
+      contentType={contentType}
+      allPlayers={allPlayers ?? players}
+      isAdmin={isAdmin}
+      userHasClaimedPlayer={userHasClaimedPlayer}
+      onModalOpen={handleCardModalOpen}
+      onModalClose={handleCardModalClose}
+    />
+  );
+
   const renderPlayer = (player: SnapshotPlayer): ReactNode => {
     if (!player.configured) {
       const roleLabel = emptySeatRoleLabel(player);
@@ -175,34 +342,24 @@ export function RosterCards({
       );
     }
 
-    return (
-      <RosterCard
-        key={player.id}
-        player={player}
-        userRole={userRole}
-        currentUserId={currentUserId}
-        isAdminAccess={isAdminAccess}
-        canManage={canManage}
-        clipboardPlayer={clipboardPlayer}
-        reorderMode={reorderMode}
-        actions={actionsForPlayer(player)}
-        groupId={groupId}
-        tierId={tierId}
-        contentType={contentType}
-        allPlayers={allPlayers ?? players}
-        isAdmin={isAdmin}
-        userHasClaimedPlayer={userHasClaimedPlayer}
-        onModalOpen={onModalOpen}
-        onModalClose={onModalClose}
-      />
-    );
+    // Reorder mode: only configured players are draggable (mirrors legacy —
+    // empty seats stay static). Off: a plain card.
+    if (reorderMode) {
+      return (
+        <DraggableRosterCard key={player.id} player={player} canManage={canManage}>
+          {(dragHandle) => renderConfiguredCard(player, dragHandle)}
+        </DraggableRosterCard>
+      );
+    }
+    return renderConfiguredCard(player);
   };
 
+  let body: ReactNode;
   if (groupView) {
     const grouped = groupPlayersByLightParty(players, subsView);
     const showSubs = subsView && !subsHidden && grouped.substitutes.length > 0;
 
-    return (
+    body = (
       <div className="space-y-7">
         {grouped.group1.length > 0 && (
           <div>
@@ -235,22 +392,40 @@ export function RosterCards({
         )}
       </div>
     );
+  } else {
+    // Standard (flat) view — main grid, optional Substitutes section.
+    const mainPlayers = subsView || subsHidden ? players.filter((p) => !p.isSubstitute) : players;
+    const subs = players.filter((p) => p.isSubstitute);
+    const showSubs = subsView && !subsHidden && subs.length > 0;
+
+    body = (
+      <div className="space-y-7">
+        <div className={PCARDS_GRID}>{mainPlayers.map(renderPlayer)}</div>
+        {showSubs && (
+          <div>
+            <PartyHead tag="SUB" label="Substitutes" tagClassName="text-membership-linked" />
+            <div className={`mt-3 ${PCARDS_GRID}`}>{subs.map(renderPlayer)}</div>
+          </div>
+        )}
+      </div>
+    );
   }
 
-  // Standard (flat) view — main grid, optional Substitutes section.
-  const mainPlayers = subsView || subsHidden ? players.filter((p) => !p.isSubstitute) : players;
-  const subs = players.filter((p) => p.isSubstitute);
-  const showSubs = subsView && !subsHidden && subs.length > 0;
+  // Off: a plain static grid (no DndContext, no drag handles) — exactly as before.
+  if (!reorderMode) return body;
 
+  // On: one DndContext around every section so cross-group G1↔G2 drags are valid.
   return (
-    <div className="space-y-7">
-      <div className={PCARDS_GRID}>{mainPlayers.map(renderPlayer)}</div>
-      {showSubs && (
-        <div>
-          <PartyHead tag="SUB" label="Substitutes" tagClassName="text-membership-linked" />
-          <div className={`mt-3 ${PCARDS_GRID}`}>{subs.map(renderPlayer)}</div>
-        </div>
-      )}
-    </div>
+    <DndContext
+      sensors={dnd.sensors}
+      collisionDetection={pointerWithin}
+      onDragStart={dnd.handleDragStart}
+      onDragOver={dnd.handleDragOver}
+      onDragEnd={dnd.handleDragEnd}
+      onDragCancel={dnd.handleDragCancel}
+    >
+      {body}
+      <RosterCardsDragOverlay players={players} />
+    </DndContext>
   );
 }
