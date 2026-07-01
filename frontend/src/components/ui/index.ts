@@ -22,6 +22,7 @@ export {
   type ProgressBarLegendProps,
   type LegendItem,
 } from './ProgressBar';
+export { PriorityRow, type PriorityRowProps, type PriorityRowEntry } from './PriorityRow';
 export { ConfirmModal } from './ConfirmModal';
 export { EmptyState } from './EmptyState';
 export { EmptyStateInvite } from './EmptyStateInvite';
