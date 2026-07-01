@@ -99,4 +99,40 @@ describe('RosterCard', () => {
 
     expect(screen.getByText('Import BiS')).toBeInTheDocument();
   });
+
+  it('releases the grid modal counter on unmount while an overlay is open', () => {
+    // Regression: a card unmounting mid-overlay (e.g. an external refresh drops
+    // the player while its modal is open) must still fire onModalClose, else the
+    // grid's openModalCount leaks and stuck-disables reorder DnD until reload.
+    const onModalOpen = vi.fn();
+    const onModalClose = vi.fn();
+    const { unmount } = render(
+      <TooltipProvider>
+        <RosterCard
+          player={makePlayer()}
+          userRole="owner"
+          currentUserId="u1"
+          isAdminAccess={false}
+          canManage
+          clipboardPlayer={null}
+          reorderMode={false}
+          groupId="g1"
+          tierId="tier1"
+          contentType="savage"
+          actions={actions}
+          onModalOpen={onModalOpen}
+          onModalClose={onModalClose}
+        />
+      </TooltipProvider>
+    );
+
+    // Open an overlay (the job picker) → the balanced open fires, close does not.
+    fireEvent.click(screen.getByRole('button', { name: /change job/i }));
+    expect(onModalOpen).toHaveBeenCalledTimes(1);
+    expect(onModalClose).not.toHaveBeenCalled();
+
+    // Unmount without closing the overlay → the cleanup must release the counter.
+    unmount();
+    expect(onModalClose).toHaveBeenCalledTimes(1);
+  });
 });

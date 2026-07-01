@@ -161,6 +161,23 @@ export function RosterCard({
     else onModalClose?.();
   }, [overlayOpen, onModalOpen, onModalClose]);
 
+  // If the card unmounts while an overlay is still open (e.g. an external
+  // refresh drops the player mid-modal), the balanced close above never fires,
+  // leaking the grid's `openModalCount` and stuck-disabling reorder DnD until
+  // reload. Release it on unmount. Ref-held callback (synced in an effect, not
+  // during render) + empty-dep cleanup so this fires exactly once on unmount,
+  // never on a mid-life callback-identity change.
+  const onModalCloseRef = useRef(onModalClose);
+  useEffect(() => {
+    onModalCloseRef.current = onModalClose;
+  }, [onModalClose]);
+  useEffect(
+    () => () => {
+      if (prevOverlay.current) onModalCloseRef.current?.();
+    },
+    []
+  );
+
   // Focus the rename field on entry (ref+effect, avoiding the autoFocus a11y warning).
   useEffect(() => {
     if (isEditingName) {

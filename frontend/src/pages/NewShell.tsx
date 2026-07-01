@@ -44,8 +44,9 @@ export function ShellContent() {
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
   const currentTier = useCurrentTier();
   // F6a hook: `canEdit` (owner/lead/admin-access) is the v2 "can manage" gate;
-  // `userRole` is the effective role the roster slot re-checks via canManageRoster.
-  const { canEdit: canManage, userRole } = useStaticPermissions();
+  // `userRole` is the effective role the roster slot re-checks via canManageRoster
+  // (admin-aware — pass `isAdminAccess` so an admin non-manager still manages).
+  const { canEdit: canManage, userRole, isAdminAccess } = useStaticPermissions();
 
   const overview = currentGroup ? (
     <StaticHome
@@ -67,7 +68,7 @@ export function ShellContent() {
     <Roster
       group={currentGroup}
       tier={currentTier}
-      canManage={canManageRoster(userRole).allowed}
+      canManage={canManageRoster(userRole, isAdminAccess).allowed}
       onNavigate={gv.setPageMode}
       onOpenRequests={() =>
         useSettingsPanelStore.getState().open({ tab: 'recruitment', section: 'requests' })
