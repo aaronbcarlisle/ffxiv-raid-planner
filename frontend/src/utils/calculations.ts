@@ -123,6 +123,50 @@ export function isSlotComplete(status: GearSlotStatus): boolean {
 }
 
 /**
+ * Compute the SnapshotPlayer patch for changing one gear slot (promoted verbatim
+ * from PlayerCard.handleGearChange so the legacy card and the Roster Board share
+ * one gear-mutation path). Recalcs `currentSource` on a hasItem/isAugmented
+ * change (keeps iLv accurate) and, for the raid weapon, syncs the main-job
+ * weapon priority. Returns `{ gear }` or `{ gear, weaponPriorities }`.
+ */
+export function computeGearSlotUpdate(
+  player: SnapshotPlayer,
+  slot: string,
+  updates: Partial<GearSlotStatus>,
+): Partial<SnapshotPlayer> {
+  const newGear = player.gear.map((g) => {
+    if (g.slot !== slot) return g;
+    const merged = { ...g, ...updates };
+    if ('hasItem' in updates || 'isAugmented' in updates) {
+      if (merged.hasItem) {
+        merged.currentSource = merged.bisSource === 'raid' ? 'savage' : merged.isAugmented ? 'tome_up' : 'tome';
+      } else {
+        merged.currentSource = 'crafted';
+      }
+    }
+    return merged;
+  });
+
+  const isWeaponSlot = slot === 'weapon';
+  const updatingRaidWeapon = isWeaponSlot && player.gear.find((g) => g.slot === 'weapon' && g.bisSource === 'raid');
+  const hasItemChanged = 'hasItem' in updates && !!updatingRaidWeapon;
+
+  if (hasItemChanged && player.job) {
+    const mainJobPriority = player.weaponPriorities.find((wp) => wp.job === player.job);
+    if (mainJobPriority && mainJobPriority.received !== updates.hasItem) {
+      const updatedPriorities = player.weaponPriorities.map((wp) =>
+        wp.job === player.job
+          ? { ...wp, received: Boolean(updates.hasItem), receivedDate: updates.hasItem ? new Date().toISOString() : undefined }
+          : wp,
+      );
+      return { gear: newGear, weaponPriorities: updatedPriorities };
+    }
+  }
+
+  return { gear: newGear };
+}
+
+/**
  * Calculate completion percentage for a player
  *
  * @param gear - Player's gear array
