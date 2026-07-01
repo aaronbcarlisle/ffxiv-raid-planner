@@ -39,25 +39,35 @@ import { useCallback, useMemo, useState } from 'react';
 import { Users } from 'lucide-react';
 
 import { PageHeader } from '../layout/PageHeader';
-import { ProgressBarLegend } from '../ui';
+import { ProgressBarLegend, type LegendItem } from '../ui';
 import { RosterToolbar } from './RosterToolbar';
 import { RosterCards } from './RosterCards';
+import { GearBoard } from './GearBoard';
 import { CharacterManageBridge } from './CharacterManageBridge';
 
 import { useGroupViewState } from '../../hooks/useGroupViewState';
 import { usePlayerActions } from '../../hooks/usePlayerActions';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useAuthStore } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
 import { toast } from '../../stores/toastStore';
 
 import { sortPlayersByRole, groupPlayersByLightParty } from '../../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../../utils/constants';
-import { rosterAvgIlv } from '../../utils/rosterReadiness';
+import { rosterAvgIlv, bisSlotTotals } from '../../utils/rosterReadiness';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import type { PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
 
 /** Stable empty fallback so a missing/empty tier doesn't churn memo deps. */
 const EMPTY_PLAYERS: SnapshotPlayer[] = [];
+
+/** Board gear-source legend — R/T/A/empty. The `need.up` priority swatch is F6d's. */
+const BOARD_LEGEND_ITEMS: LegendItem[] = [
+  { label: 'raid (R)', token: 'var(--color-gear-raid)' },
+  { label: 'tome (T)', token: 'var(--color-gear-tome)' },
+  { label: 'augmented (A)', token: 'var(--color-gear-augmented)' },
+  { label: 'empty', token: 'transparent' },
+];
 
 export interface RosterProps {
   group: StaticGroup;
@@ -125,6 +135,9 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   // Drag-to-reorder is a transient, screen-local mode (off by default).
   const [reorderMode, setReorderMode] = useState(false);
 
+  // Cards ⇄ Board view — URL-backed (deep-link + reload-safe via `rview`).
+  const [rosterView, setRosterView] = useUrlTabState('rview', ['cards', 'board'] as const, 'cards');
+
   // ── Shared context, sourced exactly as GroupViewContent does ──
   const user = useAuthStore((s) => s.user);
   const viewAsUser = useViewAsStore((s) => s.viewAsUser);
@@ -165,6 +178,12 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     () => buildSubtitle(sortedPlayers, groupView, subsView),
     [sortedPlayers, groupView, subsView],
   );
+
+  // Board subtitle names its own metric — total obtained BiS slots across roster.
+  const boardSubtitle = useMemo(() => {
+    const { obtained, total } = bisSlotTotals(sortedPlayers);
+    return `Board view · the gear matrix · ${obtained} / ${total} BiS slots obtained`;
+  }, [sortedPlayers]);
 
   // ── Player actions (playerId-first handlers) ──
   const setSortPresetWithTier = useCallback(
@@ -225,11 +244,11 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   }, [playerActions]);
 
   return (
-    <div>
+    <div data-testid="roster-screen">
       <PageHeader
         icon={<Users size={14} className="text-accent" />}
         title="Roster"
-        subtitle={subtitle}
+        subtitle={rosterView === 'board' ? boardSubtitle : subtitle}
         actions={
           <CharacterManageBridge
             groupId={group.id}
@@ -241,6 +260,8 @@ export function Roster({ group, tier, canManage }: RosterProps) {
 
       <div className="mb-5">
         <RosterToolbar
+          rosterView={rosterView}
+          onRosterViewChange={setRosterView}
           groupView={groupView}
           onGroupViewChange={(v) => setGroupView(v, group.id)}
           subsHidden={subsHidden}
@@ -253,29 +274,38 @@ export function Roster({ group, tier, canManage }: RosterProps) {
         />
       </div>
 
-      <RosterCards
-        players={sortedPlayers}
-        groupView={groupView}
-        subsView={subsView}
-        subsHidden={subsHidden}
-        reorderMode={reorderMode}
-        canManage={canManage}
-        userRole={userRole}
-        currentUserId={effectiveUserId ?? null}
-        isAdminAccess={isAdminAccess}
-        clipboardPlayer={clipboardPlayer}
-        groupId={group.id}
-        tierId={tierId}
-        contentType={contentType}
-        isAdmin={isAdmin}
-        userHasClaimedPlayer={userHasClaimedPlayer}
-        actionsForPlayer={actionsForPlayer}
-        onAddPlayer={handleAddPlayer}
-        onReorder={playerActions.handleReorder}
-      />
+      {rosterView === 'board' ? (
+        <GearBoard
+          players={sortedPlayers}
+          tierId={tierId}
+          canManage={canManage}
+          actionsForPlayer={actionsForPlayer}
+        />
+      ) : (
+        <RosterCards
+          players={sortedPlayers}
+          groupView={groupView}
+          subsView={subsView}
+          subsHidden={subsHidden}
+          reorderMode={reorderMode}
+          canManage={canManage}
+          userRole={userRole}
+          currentUserId={effectiveUserId ?? null}
+          isAdminAccess={isAdminAccess}
+          clipboardPlayer={clipboardPlayer}
+          groupId={group.id}
+          tierId={tierId}
+          contentType={contentType}
+          isAdmin={isAdmin}
+          userHasClaimedPlayer={userHasClaimedPlayer}
+          actionsForPlayer={actionsForPlayer}
+          onAddPlayer={handleAddPlayer}
+          onReorder={playerActions.handleReorder}
+        />
+      )}
 
       <div className="mt-6">
-        <ProgressBarLegend />
+        <ProgressBarLegend items={rosterView === 'board' ? BOARD_LEGEND_ITEMS : undefined} />
       </div>
     </div>
   );

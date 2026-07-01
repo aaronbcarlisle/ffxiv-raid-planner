@@ -7,7 +7,8 @@
 // Roster assembly's own contract: header + subtitle, a card per player, and the
 // once-per-screen gear-source legend.
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import type { SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
 
 // ── Wiring mocks ──────────────────────────────────────────────────────────────
@@ -111,6 +112,21 @@ const baseProps = {
   onOpenRequests: vi.fn(),
 };
 
+// `useUrlTabState` reads react-router's `useSearchParams`, so renders must be
+// wrapped in a router. We use BrowserRouter (reads window.location) so a test
+// can seed `?rview=board` via history.pushState before rendering.
+function renderRoster(tier: TierSnapshot | null) {
+  return render(
+    <BrowserRouter>
+      <Roster {...baseProps} tier={tier} />
+    </BrowserRouter>,
+  );
+}
+
+beforeEach(() => {
+  window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster');
+});
+
 describe('Roster', () => {
   it('renders the "Roster" header with a raider-count subtitle, a card per player, and the gear-source legend', () => {
     const players = [
@@ -118,7 +134,7 @@ describe('Roster', () => {
       makePlayer({ id: 'p2', name: 'Healer One', job: 'WHM', role: 'healer', position: 'H1' }),
     ];
 
-    render(<Roster {...baseProps} tier={makeTier(players)} />);
+    renderRoster(makeTier(players));
 
     // Page header + dynamic subtitle with the raider count.
     expect(screen.getByRole('heading', { name: 'Roster' })).toBeInTheDocument();
@@ -138,10 +154,19 @@ describe('Roster', () => {
   });
 
   it('renders a singular "1 raider" subtitle and tolerates a null tier', () => {
-    render(<Roster {...baseProps} tier={makeTier([makePlayer({ id: 'p1', name: 'Solo' })])} />);
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Solo' })]));
     expect(screen.getByText(/1 raider\b/)).toBeInTheDocument();
 
-    render(<Roster {...baseProps} tier={null} />);
+    renderRoster(null);
     expect(screen.getAllByRole('heading', { name: 'Roster' }).length).toBeGreaterThan(0);
+  });
+
+  // With rview=board in the URL, the Board matrix renders instead of the cards grid.
+  it('renders the Board (gear matrix) when rview=board', () => {
+    window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster&rview=board');
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' })]));
+    // Board has a "Player" column header + the Board subtitle names BiS slots.
+    expect(screen.getByRole('columnheader', { name: 'Player' })).toBeInTheDocument();
+    expect(screen.getByText(/BiS slots obtained/i)).toBeInTheDocument();
   });
 });

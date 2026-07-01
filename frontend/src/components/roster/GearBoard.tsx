@@ -20,7 +20,6 @@
  *     prop left at its default).
  */
 import { Fragment } from 'react';
-import { CardShell } from '../ui';
 import { PlayerIdentity } from '../ui/PlayerIdentity';
 import { GearBoardCell } from './GearBoardCell';
 import {
@@ -82,7 +81,12 @@ export function GearBoard({ players, tierId, canManage, actionsForPlayer }: Gear
   };
 
   return (
-    <CardShell as="div" className="overflow-x-auto p-0">
+    // Flush, non-padded board container (mockup `.board`). A plain card wrapper —
+    // not CardShell — because CardShell hardcodes `p-4` (its `.p-4` wins the
+    // cascade over a `p-0` override), which would inset the matrix by 16px. The
+    // bounded `max-h` makes the scroll container the sticky ancestor so the
+    // `sticky top-0` header pins while the body scrolls.
+    <div className="max-h-[70vh] overflow-auto rounded-lg border border-border-default bg-surface-card">
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr>
@@ -162,6 +166,6 @@ export function GearBoard({ players, tierId, canManage, actionsForPlayer }: Gear
           ))}
         </tbody>
       </table>
-    </CardShell>
+    </div>
   );
 }
