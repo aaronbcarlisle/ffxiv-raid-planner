@@ -6,6 +6,8 @@ import { GroupViewContent } from './GroupViewContent';
 import { GroupActionModals, useGroupActions } from './groupActionsContext';
 import { V2SettingsHost } from './V2SettingsHost';
 import { Home as StaticHome } from '../components/home/Home';
+import { Roster } from '../components/roster/Roster';
+import { canManageRoster } from '../utils/permissions';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
 import { useModal } from '../hooks/useModal';
@@ -41,8 +43,9 @@ export function ShellContent() {
   const gv = useGroupViewState();
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
   const currentTier = useCurrentTier();
-  // F6a hook: `canEdit` (owner/lead/admin-access) is the v2 "can manage" gate.
-  const { canEdit: canManage } = useStaticPermissions();
+  // F6a hook: `canEdit` (owner/lead/admin-access) is the v2 "can manage" gate;
+  // `userRole` is the effective role the roster slot re-checks via canManageRoster.
+  const { canEdit: canManage, userRole } = useStaticPermissions();
 
   const overview = currentGroup ? (
     <StaticHome
@@ -56,7 +59,28 @@ export function ShellContent() {
     />
   ) : undefined;
 
-  return <GroupViewContent actions={useGroupActions()} slots={overview ? { overview } : undefined} />;
+  // F6c: in v2 the `roster` tab is the redesigned <Roster/> (Cards) screen,
+  // injected as the `roster` slot — mirroring the `overview` slot above. The
+  // legacy route passes no slots, so GroupViewContent renders its legacy roster
+  // body byte-for-byte (and its roster chrome, gated in Task 3 on `!slots.roster`).
+  const roster = currentGroup ? (
+    <Roster
+      group={currentGroup}
+      tier={currentTier}
+      canManage={canManageRoster(userRole).allowed}
+      onNavigate={gv.setPageMode}
+      onOpenRequests={() =>
+        useSettingsPanelStore.getState().open({ tab: 'recruitment', section: 'requests' })
+      }
+    />
+  ) : undefined;
+
+  return (
+    <GroupViewContent
+      actions={useGroupActions()}
+      slots={currentGroup ? { overview, roster } : undefined}
+    />
+  );
 }
 
 export function NewShell() {
