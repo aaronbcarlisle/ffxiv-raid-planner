@@ -72,12 +72,16 @@ export function GearBoard({ players, tierId, canManage, actionsForPlayer }: Gear
     { label: 'Substitutes', rows: grouped.substitutes },
   ].filter((s) => s.rows.length > 0);
 
-  const cycle = (player: SnapshotPlayer, slot: GearSlot) => {
+  const cycle = async (player: SnapshotPlayer, slot: GearSlot) => {
     if (!canManage) return;
     const g = player.gear.find((x) => x.slot === slot);
     if (!g || !g.bisSource) return;
     const next = getNextGearState(toGearState(g.hasItem, g.isAugmented), g.bisSource, requiresAugmentation(g));
-    void actionsForPlayer(player).onUpdate(computeGearSlotUpdate(player, slot, fromGearState(next)));
+    try {
+      await actionsForPlayer(player).onUpdate(computeGearSlotUpdate(player, slot, fromGearState(next)));
+    } catch (_error) {
+      // Error already handled by api.ts (toast shown)
+    }
   };
 
   return (
@@ -144,7 +148,7 @@ export function GearBoard({ players, tierId, canManage, actionsForPlayer }: Gear
                         return (
                           <td key={slot} className="h-10 border-b border-l border-border-subtle">
                             {g ? (
-                              <GearBoardCell slot={g} disabled={!canManage} onCycle={canManage ? () => cycle(player, slot) : undefined} />
+                              <GearBoardCell slot={g} disabled={!canManage} onCycle={canManage ? () => void cycle(player, slot) : undefined} />
                             ) : null}
                           </td>
                         );

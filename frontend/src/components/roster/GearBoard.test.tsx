@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { GearBoard } from './GearBoard';
 import type { SnapshotPlayer, GearSlotStatus, GearSlot } from '../../types';
 
@@ -55,5 +55,13 @@ describe('GearBoard', () => {
     render(<GearBoard players={[player({ id: 'a', gear: gear(0) })]} canManage={false} actionsForPlayer={() => ({ onUpdate })} />);
     fireEvent.click(screen.getAllByRole('checkbox')[0]);
     expect(onUpdate).not.toHaveBeenCalled();
+  });
+
+  it('swallows a rejected onUpdate without an unhandled promise rejection', async () => {
+    const onUpdate = vi.fn().mockRejectedValue(new Error('api failed'));
+    const factory = () => ({ onUpdate });
+    render(<GearBoard players={[player({ id: 'a', gear: gear(0) })]} canManage actionsForPlayer={factory} />);
+    fireEvent.click(screen.getAllByRole('checkbox')[0]);
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
   });
 });
