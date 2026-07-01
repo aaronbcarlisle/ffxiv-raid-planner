@@ -81,6 +81,15 @@ export const RELEASES: Release[] = [
         pr: 164,
         prTitle: 'F6b — Home (weekly-loop dashboard)',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Redesigned Roster (Cards) behind the v2 shell',
+        description:
+          'The v2 in-static Roster now renders a redesigned card grid (party groups, per-player BiS + gear, reorder mode) behind ?shell=v2; the Cards⇄Board toggle and gear board follow in a later slice.',
+        pr: 165,
+        prTitle: 'F6c (part 1) — Roster Cards',
+      },
     ],
     internal: true,
   },
