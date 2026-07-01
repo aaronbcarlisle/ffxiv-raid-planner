@@ -49,7 +49,11 @@ describe('enhancePriorityEntries', () => {
   });
 
   it('breaks enhanced-score ties alphabetically', () => {
-    const out = enhancePriorityEntries(entries, {
+    const reversed: PriorityEntry[] = [
+      { player: bob, score: 100 },
+      { player: alice, score: 100 },
+    ];
+    const out = enhancePriorityEntries(reversed, {
       settings, lootLog: [], currentWeek: 1, averageDrops: 0, active: true,
     });
     expect(out.map((e) => e.player.name)).toEqual(['Alice', 'Bob']);
