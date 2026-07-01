@@ -36,7 +36,14 @@ export function SegmentedToggle<T extends string>({
     <div
       role="group"
       aria-label={ariaLabel}
-      className="inline-flex gap-0.5 rounded-lg border border-border-default bg-surface-elevated p-0.5"
+      // bg-surface-card, not -elevated: the ghost (inactive) segment's
+      // text-accent needs ≥4.5:1 against this container's background (it's
+      // transparent, so the container color shows through). text-accent on
+      // surface-elevated only reaches 4.11:1 in light theme, and surface-raised
+      // still measures under AA once rendered (~4.3:1, axe-measured). surface-card
+      // (the same pairing already asserted green on the landing page) clears AA
+      // with margin in both themes (~5:1 light, ~8:1+ dark).
+      className="inline-flex gap-0.5 rounded-lg border border-border-default bg-surface-card p-0.5"
     >
       {options.map((opt) => {
         const active = opt.value === value;
