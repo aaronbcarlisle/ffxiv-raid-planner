@@ -2,7 +2,7 @@
  * Gear and Team Calculations
  */
 
-import type { SnapshotPlayer, GearSlotStatus, TomeWeaponStatus, TeamSummary } from '../types';
+import type { SnapshotPlayer, GearSlotStatus, TomeWeaponStatus, TeamSummary, GearSource } from '../types';
 
 // ==================== Gear State Types ====================
 
@@ -31,6 +31,30 @@ export function fromGearState(state: GearState): { hasItem: boolean; isAugmented
     hasItem: state !== 'missing',
     isAugmented: state === 'augmented',
   };
+}
+
+/**
+ * Next state in the gear cycle, keyed by BiS source (promoted verbatim from
+ * GearStatusCircle so the atom and the Roster Board share one state machine).
+ * - null bisSource: no change.
+ * - raid / base_tome / crafted, or tome-without-aug: 2-state missing <-> have.
+ * - tome-requiring-aug: 3-state missing -> have -> augmented -> missing.
+ */
+export function getNextGearState(
+  state: GearState,
+  bisSource: GearSource | null,
+  requiresAug: boolean,
+): GearState {
+  if (!bisSource) return state;
+  if (bisSource === 'raid' || bisSource === 'base_tome' || bisSource === 'crafted') {
+    return state === 'missing' ? 'have' : 'missing';
+  }
+  if (bisSource === 'tome' && !requiresAug) {
+    return state === 'missing' ? 'have' : 'missing';
+  }
+  if (state === 'missing') return 'have';
+  if (state === 'have') return 'augmented';
+  return 'missing';
 }
 import {
   BOOK_COSTS,
