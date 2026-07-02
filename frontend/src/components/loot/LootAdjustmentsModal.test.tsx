@@ -125,6 +125,32 @@ describe('LootAdjustmentsModal', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('open-transition-only seeding: an in-progress edit survives a mid-open players churn, and a close/reopen re-seeds', () => {
+    // 1. Render open, edit player1's loot adjustment to 15.
+    const { rerender } = render(
+      <LootAdjustmentsModal isOpen players={players} onClose={vi.fn()} onSave={vi.fn()} />
+    );
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '15' } });
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveValue(15);
+
+    // 2. Store churn while OPEN: new players array reference with DIFFERENT stored
+    //    values. A re-seed-on-every-render implementation (no wasOpenRef guard)
+    //    would clobber the draft with 99 here.
+    const churnedPlayers = [
+      makePlayer('p1', 'Player One', { lootAdjustment: 99 }),
+      makePlayer('p2', 'Player Two', { lootAdjustment: 20, priorityModifier: -10 }),
+    ];
+    rerender(<LootAdjustmentsModal isOpen players={churnedPlayers} onClose={vi.fn()} onSave={vi.fn()} />);
+
+    // 3. The in-progress edit SURVIVES the churn (the guard's purpose).
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveValue(15);
+
+    // 4. Close, then reopen with the churned players: the field re-seeds fresh (99).
+    rerender(<LootAdjustmentsModal isOpen={false} players={churnedPlayers} onClose={vi.fn()} onSave={vi.fn()} />);
+    rerender(<LootAdjustmentsModal isOpen players={churnedPlayers} onClose={vi.fn()} onSave={vi.fn()} />);
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveValue(99);
+  });
+
   it('re-seeds the draft from player values on each open transition', () => {
     const { rerender } = render(
       <LootAdjustmentsModal isOpen={false} players={players} onClose={vi.fn()} onSave={vi.fn()} />
