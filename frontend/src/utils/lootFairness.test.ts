@@ -166,5 +166,33 @@ describe('computeTierFairness', () => {
     expect(f.most).toBeNull();
     expect(f.fewest).toBeNull();
     expect(f.even).toBe(true);
+    expect(f.thisWeekPending).toBe(0);
+  });
+
+  it('spread of exactly 3 is not even (boundary at the <=2 threshold)', () => {
+    const lootLog = [makeDrop('b', 1), makeDrop('b', 1), makeDrop('b', 1)]; // Bob 3, Alice 0
+    const f = computeTierFairness({ ...tierBase, lootLog, currentWeek: 1 });
+    expect(f.spread).toBe(3);
+    expect(f.even).toBe(false);
+  });
+
+  it('thisWeekPending counts only the mains\' pending needs, ignoring substitute needs', () => {
+    // Sub additionally needs a raid body drop (Floor 3 / M11S) — a need that
+    // belongs only to a substitute and must not inflate the mains-only rollup.
+    const subWithBodyNeed = {
+      ...sub,
+      gear: [...sub.gear, { slot: 'body', bisSource: 'raid', hasItem: false, isAugmented: false }],
+    } as unknown as SnapshotPlayer;
+    // Clears Floor 1's earring pending for week 5, leaving only the Ring need
+    // (still unclaimed by both mains) pending on Floor 1; Floor 3's body need
+    // belongs to the sub and must not show up here.
+    const lootLog = [makeDrop('a', 5)];
+    const f = computeTierFairness({
+      ...tierBase,
+      players: [alice, bob, subWithBodyNeed],
+      lootLog,
+      currentWeek: 5,
+    });
+    expect(f.thisWeekPending).toBe(1);
   });
 });

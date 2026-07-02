@@ -60,7 +60,7 @@ export interface TierFairness {
 
 /**
  * Whole-tier fairness rollup for FairnessSummary (spec §5.5). Substitutes are
- * excluded (LootCountBar parity); per-player counts use every loot entry (any
+ * excluded (LootCountBar parity plus configured-only); per-player counts use every loot entry (any
  * method) while `dropsThisTier` counts method='drop' only. Materials count in
  * the week total (floor loggedCount parity) but not per-player fairness.
  */
