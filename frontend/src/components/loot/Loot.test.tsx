@@ -10,9 +10,10 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 import type { StaticGroup, TierSnapshot, SnapshotPlayer } from '../../types';
 
 // Capture buckets shared with the hoisted mocks.
-const { floorCardCalls, pickerCalls } = vi.hoisted(() => ({
+const { floorCardCalls, pickerCalls, weekScopeCalls } = vi.hoisted(() => ({
   floorCardCalls: [] as Array<Record<string, unknown>>,
   pickerCalls: [] as Array<Record<string, unknown>>,
+  weekScopeCalls: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock('./FloorCard', () => ({
@@ -42,7 +43,10 @@ vi.mock('./WeaponPriorityBridge', () => ({
 }));
 
 vi.mock('./WeekScopeControl', () => ({
-  WeekScopeControl: () => <div data-testid="week-scope" />,
+  WeekScopeControl: (props: Record<string, unknown>) => {
+    weekScopeCalls.push(props);
+    return <div data-testid="week-scope" />;
+  },
 }));
 
 import { Loot } from './Loot';
@@ -77,6 +81,7 @@ beforeEach(() => {
   );
   floorCardCalls.length = 0;
   pickerCalls.length = 0;
+  weekScopeCalls.length = 0;
   // Seed the shared clock: scopedWeek defaults to currentWeek.
   useLootTrackingStore.setState({ currentWeek: 3, maxWeek: 5, lootLog: [], materialLog: [], pageLedger: [] });
 });
@@ -98,6 +103,29 @@ describe('Loot', () => {
     expect(cards.map((c) => c.getAttribute('data-floor'))).toEqual(['4', '3', '2', '1']);
     // scopedWeek defaults to the clock's current week (3).
     cards.forEach((c) => expect(c.getAttribute('data-scoped')).toBe('3'));
+  });
+
+  it('keeps FloorCard currentWeek pinned to the clock while scoping to another week', () => {
+    // Discriminator for the currentWeek/scopedWeek split at the assembly level:
+    // scoping the view to week 1 re-renders the cards with scopedWeek=1, but the
+    // FloorCard `currentWeek` prop must STAY the clock's real week (3). Deleting
+    // `currentWeek={clock.currentWeek}` in Loot.tsx must fail this test.
+    render(<Loot {...baseProps} tier={makeTier(players)} />);
+    const scopeProps = weekScopeCalls[weekScopeCalls.length - 1];
+    expect(scopeProps.scopedWeek).toBe(3);
+    act(() => {
+      (scopeProps.onScopedWeekChange as (w: number) => void)(1);
+    });
+
+    // Re-rendered cards: scoped to 1, currentWeek still the real clock week 3.
+    const cards = screen.getAllByTestId('floor-card');
+    cards.forEach((c) => expect(c.getAttribute('data-scoped')).toBe('1'));
+    const latestFour = floorCardCalls.slice(-4);
+    expect(latestFour).toHaveLength(4);
+    latestFour.forEach((p) => {
+      expect(p.scopedWeek).toBe(1);
+      expect(p.currentWeek).toBe(3);
+    });
   });
 
   it('shows the editor toolbar actions only when canEdit', () => {

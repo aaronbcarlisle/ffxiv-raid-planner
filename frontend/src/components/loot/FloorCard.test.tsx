@@ -1,5 +1,21 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+
+// Capture the enhance CONTEXT (obligation-2 discriminator): FloorCard must feed
+// `enhancePriorityEntries` the REAL current week, never the scoped view week.
+// The mock is a passthrough — with `active: false` the real implementation
+// returns the entries unchanged bar breakdowns, which `toRowEntries` ignores,
+// so every other test's row derivation is identical.
+const { enhanceCalls } = vi.hoisted(() => ({
+  enhanceCalls: [] as Array<{ currentWeek: number }>,
+}));
+vi.mock('../../utils/priorityEntries', () => ({
+  enhancePriorityEntries: (entries: unknown[], ctx: { currentWeek: number }) => {
+    enhanceCalls.push(ctx);
+    return entries;
+  },
+}));
+
 import { FloorCard } from './FloorCard';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry, PageLedgerEntry } from '../../types';
@@ -32,6 +48,10 @@ const baseProps = {
   onAssignGear: vi.fn(),
   onAssignMaterial: vi.fn(),
 };
+
+beforeEach(() => {
+  enhanceCalls.length = 0;
+});
 
 describe('FloorCard', () => {
   it('renders the floor header with the floor name tag, floor number, and drops meta', () => {
@@ -103,11 +123,57 @@ describe('FloorCard', () => {
     expect(onAssignMaterial).not.toHaveBeenCalled();
   });
 
-  it('accepts a distinct currentWeek prop for the enhance context and still renders', () => {
-    // scopedWeek governs the status chip; currentWeek only feeds enhanced scoring.
+  it('feeds the enhance context the REAL current week while status derives from the scoped week', () => {
+    // Discriminator for the currentWeek/scopedWeek split:
+    //  - status: everything for SCOPED week 2 is logged → the card collapses.
+    //    If status wrongly used currentWeek (5, nothing logged), it would show
+    //    pending instead of collapsing.
+    //  - enhance context: must receive currentWeek 5 (drought is vs "now").
+    //    If `enhanceWeek` wrongly reverted to scopedWeek, it would receive 2.
     const players = [makePlayer('a', 'Alice', { earringHas: false })];
-    render(<FloorCard {...baseProps} players={players} scopedWeek={2} currentWeek={5} />);
-    expect(screen.getByText('Alice')).toBeInTheDocument();
+    const lootLog: LootLogEntry[] = [
+      {
+        id: 1, tierSnapshotId: 't1', weekNumber: 2, floor: 'M9S', itemSlot: 'earring',
+        recipientPlayerId: 'a', recipientPlayerName: 'Alice', method: 'drop', isExtra: false,
+        createdAt: '', createdByUserId: 'u1', createdByUsername: 'u',
+      },
+    ];
+    render(<FloorCard {...baseProps} players={players} lootLog={lootLog} scopedWeek={2} currentWeek={5} />);
+
+    // Status reflects scoped week 2 (fully logged → collapsed).
+    expect(screen.getByText(/logged/)).toBeInTheDocument();
+    expect(screen.getByText('Show')).toBeInTheDocument();
+
+    // Enhance context received the REAL current week for every row.
+    expect(enhanceCalls.length).toBeGreaterThan(0);
+    enhanceCalls.forEach((ctx) => expect(ctx.currentWeek).toBe(5));
+  });
+
+  it('defaults the enhance-context week to scopedWeek when currentWeek is absent', () => {
+    const players = [makePlayer('a', 'Alice', { earringHas: false })];
+    render(<FloorCard {...baseProps} players={players} scopedWeek={2} />);
+    expect(enhanceCalls.length).toBeGreaterThan(0);
+    enhanceCalls.forEach((ctx) => expect(ctx.currentWeek).toBe(2));
+  });
+
+  it('keeps the footer visible while the card is collapsed (tier-level, not week-scoped)', () => {
+    // Reuse the fully-logged collapse fixture: body collapsed, footer still shown.
+    const players = [makePlayer('a', 'Alice', { earringHas: false })];
+    const lootLog: LootLogEntry[] = [
+      {
+        id: 1, tierSnapshotId: 't1', weekNumber: 3, floor: 'M9S', itemSlot: 'earring',
+        recipientPlayerId: 'a', recipientPlayerName: 'Alice', method: 'drop', isExtra: false,
+        createdAt: '', createdByUserId: 'u1', createdByUsername: 'u',
+      },
+    ];
+    render(
+      <FloorCard {...baseProps} players={players} lootLog={lootLog} footer={<div data-testid="floor-footer" />} />
+    );
+    // Collapsed: body rows gone, "Show" present…
+    expect(screen.queryByText('Alice')).not.toBeInTheDocument();
+    expect(screen.getByText('Show')).toBeInTheDocument();
+    // …but the footer still renders.
+    expect(screen.getByTestId('floor-footer')).toBeInTheDocument();
   });
 
   it("a material row's Assign calls onAssignMaterial with the top-priority player", () => {
