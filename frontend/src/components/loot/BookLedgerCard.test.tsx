@@ -205,21 +205,45 @@ describe('BookLedgerCard', () => {
     });
   });
 
+  it('adjust-flow error: onSubmit rethrows to the modal handler (modal stays open) and skips the refetch', async () => {
+    const { adjustBookBalance, fetchPageBalances } = storeActions();
+    adjustBookBalance.mockRejectedValueOnce(new Error('server said no'));
+    render(<BookLedgerCard {...baseProps} />);
+
+    const aliceRow = document.getElementById('book-row-p1')!;
+    fireEvent.click(screen.getAllByText('3').find((el) => aliceRow.contains(el))!);
+    fetchPageBalances.mockClear();
+
+    // Call onSubmit the way the real EditBookBalanceModal does: its own error
+    // handler awaits it and keeps the modal open on rejection — dropping the
+    // rethrow in BookLedgerCard would resolve this promise and close the modal.
+    const onSubmit = editModalCalls[editModalCalls.length - 1].onSubmit as (a: number, n?: string) => Promise<void>;
+    await expect(onSubmit(5, 'note')).rejects.toThrow('Failed to update');
+
+    // editState was NOT cleared and the success-path refetch never fired.
+    expect(screen.getByTestId('edit-book-modal')).toBeInTheDocument();
+    expect(fetchPageBalances).not.toHaveBeenCalled();
+  });
+
   it('hides "Mark floor cleared" when canEdit is false; when shown, submit calls markFloorCleared and refetches', async () => {
     const { rerender } = render(<BookLedgerCard {...baseProps} canEdit={false} />);
     expect(screen.queryByRole('button', { name: 'Mark floor cleared' })).not.toBeInTheDocument();
 
     rerender(<BookLedgerCard {...baseProps} canEdit />);
     fireEvent.click(screen.getByRole('button', { name: 'Mark floor cleared' }));
+    storeActions().fetchPageBalances.mockClear();
     fireEvent.click(screen.getByText('submit-mark-cleared'));
 
     await vi.waitFor(() => {
-      const { markFloorCleared, fetchPageLedger } = storeActions();
+      const { markFloorCleared, fetchPageBalances, fetchPageLedger } = storeActions();
       expect(markFloorCleared).toHaveBeenCalledWith('g1', 't1', {
         weekNumber: 3,
         floor: 'M9S',
         playerIds: ['p1'],
       });
+      // BOTH halves of the scoped refetch: page balances re-fetched with the
+      // card's current scope (default all-time → undefined), plus the ledger.
+      expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', undefined);
       expect(fetchPageLedger).toHaveBeenCalledWith('g1', 't1');
     });
   });

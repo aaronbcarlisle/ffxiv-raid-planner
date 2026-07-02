@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { FairnessSummary } from './FairnessSummary';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry, PageLedgerEntry } from '../../types';
@@ -50,7 +50,12 @@ describe('FairnessSummary', () => {
     expect(screen.getByText('Most / fewest')).toBeInTheDocument();
     expect(screen.getByText(/Alice 3 · Bob 1/)).toBeInTheDocument();
     expect(screen.getByText('Even')).toBeInTheDocument();
-    expect(screen.getByText('This week')).toBeInTheDocument();
+    // This-week card: value = week-2 entries for mains (Alice's 2; sub excluded),
+    // pending = floor-1 ring only (earring logged this week; no other raid-BiS
+    // targets in the fixture gear and no material needers).
+    const thisWeekCard = screen.getByText('This week').parentElement!;
+    expect(within(thisWeekCard).getByText('2')).toBeInTheDocument();
+    expect(within(thisWeekCard).getByText('1 pending')).toBeInTheDocument();
   });
 
   it('shows Uneven with warning tone when spread > 2', () => {

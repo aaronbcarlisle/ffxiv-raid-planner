@@ -82,12 +82,17 @@ export function BookLedgerCard({
   // `clearWeekPageLedger`/`clearAllPageLedger` (lootTrackingStore.ts) internally
   // call `fetchPageBalances(groupId, tierId)` UNSCOPED as part of their own
   // refresh — that overwrites the shared `pageBalances` slice with all-time
-  // data even while this card's scope toggle still reads "This week", and
-  // resolves at an unknown time relative to our own scoped fetch. `pageLedger`
-  // changes on every ledger mutation (reset, adjust, mark-cleared — all of
-  // them refetch it, either directly or via Loot's `refresh`), so including it
-  // here re-issues OUR scoped `fetchPageBalances(groupId, tierId, scopedWeek)`
-  // after any mutation settles, landing last and correcting the unscoped write.
+  // data even while this card's scope toggle still reads "This week". This
+  // effect does NOT guarantee it lands last relative to that unscoped write —
+  // `pageLedger` (bumped by every ledger mutation: reset, adjust, mark-cleared)
+  // is a CORRECTIVE BACKSTOP that re-issues our scoped
+  // `fetchPageBalances(groupId, tierId, scopedWeek)` whenever the ledger
+  // changes, so a stale unscoped write eventually gets overwritten. The actual
+  // ordering guarantee for the reset flow is the POST-AWAIT second trigger at
+  // `Loot.tsx:287` (`fetchPageLedger` called after `await`ing the reset) — that
+  // call is LOAD-BEARING and must not be removed on the assumption this card
+  // self-heals. The `adjustBookBalance` path is unaffected by any of this: it
+  // relies on this card's own `refetch()` at ~line 200, not on this effect.
   useEffect(() => {
     fetchPageBalances(groupId, tierId, scopedWeek);
   }, [groupId, tierId, scope, currentWeek, fetchPageBalances, scopedWeek, pageLedger]);

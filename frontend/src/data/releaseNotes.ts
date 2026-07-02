@@ -108,6 +108,15 @@ export const RELEASES: Release[] = [
         pr: 167,
         prTitle: 'F6d (part 1) — Loot Priority',
       },
+      {
+        internal: true,
+        category: 'feature',
+        title: 'Redesign (flagged): Loot History view',
+        description:
+          'v2 Loot gains the Priority⇄History toggle, fairness summary, week-grouped record, books ledger, entry editing, reset menu, and the Board next-upgrade highlight — behind ?shell=v2.',
+        pr: 0,
+        prTitle: 'feat(redesign): f6d-history — v2 Loot History + need.up',
+      },
     ],
     internal: true,
   },

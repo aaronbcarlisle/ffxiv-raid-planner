@@ -185,7 +185,8 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   const settings = useMemo(() => ({ ...DEFAULT_SETTINGS, ...group.settings }), [group.settings]);
 
   // Mount fetch — the Board must not depend on the Loot tab having been visited
-  // (Loot.tsx:126-133 rationale). Idempotent; the store dedupes.
+  // (Loot.tsx:126-133 rationale). Unconditional refetch; state converges to the
+  // server response (Loot mount-fetch parity).
   useEffect(() => {
     if (group.id && tierId) {
       void fetchLootLog(group.id, tierId);

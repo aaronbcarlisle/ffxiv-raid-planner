@@ -156,9 +156,20 @@ export function RecipientPicker({
   // Selection: `selectedId` is PINNED into state at open (below) — parity with
   // QuickLogDropModal.tsx:106 materialising the suggested player — so a mid-open
   // store churn (30s roster poll) reordering `entries` can't silently retarget
-  // an untouched pick. The derived fallback to `entries[0]` stays as a safety
-  // net for scope switches that drop the pinned player from the visible pool.
-  const selected = entries.find((e) => e.player.id === selectedId) ?? entries[0] ?? null;
+  // an untouched pick. The derived fallback to `entries[0]` is a safety net for
+  // scope switches that drop the pinned player from the visible pool — but ONLY
+  // in assign/log mode, where `entries[0]` is a freshly-suggested default, not
+  // an existing commitment. In EDIT mode the pinned selection is the entry's
+  // CURRENT recipient: silently falling back to `entries[0]` on a scope flip
+  // that drops them from the recomputed list (e.g. flipping to 'priority' when
+  // they already hold the item) would retarget the entry to the top-ranked
+  // player with no user action. So edit mode suppresses the fallback — `selected`
+  // goes `null`, and `selectionVisible` below (which requires `selected` to be
+  // one of the currently-listed entries) then disables submit until the user
+  // explicitly re-picks a visible recipient.
+  const selected = mode === 'edit'
+    ? (entries.find((e) => e.player.id === selectedId) ?? null)
+    : (entries.find((e) => e.player.id === selectedId) ?? entries[0] ?? null);
   const recipientId = selected?.player.id;
 
   // `selected` derives from the UNFILTERED `entries` — when the search text

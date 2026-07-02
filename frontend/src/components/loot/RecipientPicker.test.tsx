@@ -62,6 +62,9 @@ describe('RecipientPicker (assign mode)', () => {
         item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
     );
     expect(screen.getByText(/Assign · Weapon/)).toBeInTheDocument();
+    // Task-10 regression pin: the fallback avatar uses the PlayerIdentity ring
+    // pattern (role color as border, neutral fill) — not a filled role circle.
+    expect(screen.getByText('CO')).toHaveClass('rounded-full', 'border-2', 'bg-surface-interactive');
     fireEvent.click(screen.getByRole('button', { name: /Assign to/ }));
     await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalledTimes(1));
     const [gid, tid, payload, options] = vi.mocked(logLootAndUpdateGear).mock.calls[0];
@@ -253,6 +256,36 @@ describe('RecipientPicker (edit mode)', () => {
     render(<RecipientPicker {...baseProps} onClose={onClose} mode="edit" editEntry={entry} />);
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(updateLootAndSyncGear).not.toHaveBeenCalled();
+  });
+
+  it('scope flip that drops the original recipient does NOT silently reassign to entries[0]', () => {
+    // Caster One already holds the raid-BiS earring (hasItem: true) — under
+    // 'priority' scope (needers only) they drop out of the list entirely,
+    // while Melee One (default gear = needs earring) ranks #1.
+    const owner = makePlayer('c1', 'Caster One', 'BLM');
+    owner.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    const needer = makePlayer('m1', 'Melee One', 'SAM');
+    const entry = makeEntry({ floor: 'M9S', itemSlot: 'earring', recipientPlayerId: 'c1', method: 'drop', notes: '' });
+    render(<RecipientPicker {...baseProps} players={[owner, needer]} mode="edit" editEntry={entry} />);
+
+    // Edit mode opens with scope 'all' — Caster One (the entry's recipient) is selected.
+    const casterRow = screen.getByText('Caster One').closest('[role="radio"]');
+    expect(casterRow).toHaveAttribute('aria-checked', 'true');
+
+    // Flip to priority scope — Caster One drops out (already has the item).
+    fireEvent.click(screen.getByRole('button', { name: 'By priority' }));
+    expect(screen.queryByText('Caster One')).not.toBeInTheDocument();
+
+    // Melee One is now the sole entry but must NOT become silently selected.
+    const meleeRow = screen.getByText('Melee One').closest('[role="radio"]');
+    expect(meleeRow).toHaveAttribute('aria-checked', 'false');
+    const submit = screen.getByRole('button', { name: 'Save changes' });
+    expect(submit).toBeDisabled();
+
+    fireEvent.click(submit);
     expect(updateLootAndSyncGear).not.toHaveBeenCalled();
   });
 
