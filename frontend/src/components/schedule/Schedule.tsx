@@ -148,7 +148,9 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   useEffect(() => {
     const ids = recurringKey ? recurringKey.split(',') : [];
     if (ids.length === 0) {
-      setCancelledBySession(new Map());
+      // Preserve identity when already empty — a fresh Map here would churn
+      // every consumer's deps (incl. the deep-link effect) for no state change.
+      setCancelledBySession((prev) => (prev.size ? new Map() : prev));
       return;
     }
     let alive = true;
@@ -212,7 +214,12 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   };
 
   // ── ?sessionId= deep link (legacy parity ScheduleTab.tsx:154-179) ────────────
+  // TIMER OWNERSHIP: neither timer may live in this resolving effect's cleanup.
+  // `cancelledBySession` is a dep, and the exceptions effect publishes a fresh
+  // Map after resolution — that identity churn would run the cleanup (killing
+  // both timers) and the handledRef early-return would never re-arm them.
   const handledRef = useRef<string | null>(null);
+  const scrollTimerRef = useRef<number | null>(null);
   const [highlightedSessionId, setHighlightedSessionId] = useState<string | null>(null);
   useEffect(() => {
     const sessionId = searchParams.get('sessionId');
@@ -237,17 +244,28 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
     if (week != null) setScopedWeekOverride(Math.min(week, clock.currentWeek + 12));
     setHighlightedSessionId(sessionId);
 
-    const scrollTimer = window.setTimeout(() => {
+    scrollTimerRef.current = window.setTimeout(() => {
       document
         .getElementById(`schedule-session-${sessionId}`)
         ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 50);
-    const clearTimer = window.setTimeout(() => setHighlightedSessionId(null), 5000);
-    return () => {
-      window.clearTimeout(scrollTimer);
-      window.clearTimeout(clearTimer);
-    };
   }, [sessions, searchParams, cancelledBySession, clock.weekStartDate, clock.currentWeek]);
+
+  // Scroll timer: cleared on UNMOUNT only (never by dep churn above).
+  useEffect(
+    () => () => {
+      if (scrollTimerRef.current != null) window.clearTimeout(scrollTimerRef.current);
+    },
+    [],
+  );
+
+  // Highlight clears 5000ms after it is set — keyed on the highlight itself, so
+  // the timer's lifetime matches the highlight's, immune to exceptions churn.
+  useEffect(() => {
+    if (!highlightedSessionId) return;
+    const clearTimer = window.setTimeout(() => setHighlightedSessionId(null), 5000);
+    return () => window.clearTimeout(clearTimer);
+  }, [highlightedSessionId]);
 
   // ── Create / edit modal ─────────────────────────────────────────────────────
   const createModal = useModal();

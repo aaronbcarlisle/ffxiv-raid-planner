@@ -8,9 +8,9 @@
  * The shared week clock is seeded via `useLootTrackingStore.setState`
  * (weekStartDate '2026-06-23', currentWeek 2 → week 2 = 2026-06-30…07-06).
  */
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, it, expect, vi, type Mock } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi, type Mock } from 'vitest';
 import { Schedule } from './Schedule';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
@@ -89,6 +89,10 @@ beforeEach(() => {
   useLootTrackingStore.setState({ currentWeek: 2, maxWeek: 2, weekStartDate: '2026-06-23' } as never);
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 const availabilityMock = () => useAvailabilityStore.getState().fetchAvailability as unknown as Mock;
 
 describe('Schedule', () => {
@@ -141,6 +145,38 @@ describe('Schedule', () => {
     const { container } = renderSchedule({}, ['/?sessionId=s3']);
     expect(await screen.findByText('Week Three Session')).toBeInTheDocument();
     await waitFor(() => expect(container.querySelector('.highlight-pulse')).not.toBeNull());
+  });
+
+  // Regression pins for the exceptions-map identity churn defect: the exceptions
+  // effect publishes a FRESH Map after mount/resolution; because the map is a dep
+  // of the deep-link RESOLVING effect, that effect's cleanup must NOT own the
+  // 50ms scroll / 5000ms highlight timers — the churn would clear them and the
+  // handledRef early-return would never re-arm them.
+  it('fires the deep-link scroll after 50ms despite exceptions-map churn', () => {
+    vi.useFakeTimers();
+    renderSchedule({}, ['/?sessionId=s3']);
+    const scrollSpy = Element.prototype.scrollIntoView as unknown as Mock;
+    expect(scrollSpy).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(60);
+    });
+    expect(scrollSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the highlight after 5000ms even when exceptions publish a fresh map', async () => {
+    vi.useFakeTimers();
+    // A recurring session forces the exceptions effect down the async path: the
+    // Promise.all resolution publishes a genuinely fresh Map AFTER the deep link
+    // was handled — the exact identity churn that killed the clear timer.
+    useScheduleStore.setState({ sessions: [sRec, s3] } as never);
+    const { container } = renderSchedule({}, ['/?sessionId=s3']);
+    // Flush the fetchExceptions microtasks so the fresh Map lands.
+    await act(async () => {});
+    expect(container.querySelector('.highlight-pulse')).not.toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
   });
 
   it('fetches exceptions once per recurring id and none when no session recurs', async () => {
