@@ -105,7 +105,7 @@ export const RELEASES: Release[] = [
         title: 'F6d (part 1) — v2 Loot Priority view behind ?shell=v2',
         description:
           'Flag-gated redesign slice: floor cards + ranked queues + unified RecipientPicker + week clock. No user-facing change.',
-        pr: 0,
+        pr: 167,
         prTitle: 'F6d (part 1) — Loot Priority',
       },
     ],
