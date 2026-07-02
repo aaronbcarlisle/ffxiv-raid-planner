@@ -550,7 +550,11 @@ export function RecipientPicker({
               />
             )}
 
-            {recipientRegistrations.length > 0 && (
+            {/* Create-only: edit-mode submit never diffs recipientCharacter* fields
+                (legacy parity — AddLootEntryModal.tsx:570 gates this identically
+                with `!isEditMode`). Rendering it in edit mode would let a user
+                "change" a value that's silently dropped on save. */}
+            {mode !== 'edit' && recipientRegistrations.length > 0 && (
               <div>
                 <span className="mb-1 block text-sm text-text-secondary">Character</span>
                 <Select

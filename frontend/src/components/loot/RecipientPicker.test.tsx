@@ -355,4 +355,23 @@ describe('RecipientPicker (character payload — PR-1 obligation)', () => {
     expect(payload.recipientCharacterRegistrationId).toBe('reg-primary');
     expect(payload.recipientCharacterName).toBe('Caster Prime');
   });
+
+  it('shows the Character select in assign mode for a recipient with registrations (presence pin)', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    // Assign mode starts with details collapsed — expand to reach the Character select.
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    // Caster One (c1) is the pinned default recipient and has a registration.
+    expect(screen.getByRole('combobox', { name: 'Character' })).toBeInTheDocument();
+  });
+
+  it('hides the Character select in edit mode even when the recipient has registrations (edit never diffs character fields — legacy parity)', () => {
+    const entry = makeEntry({ weekNumber: 2, floor: 'M11S', itemSlot: 'body', method: 'book', notes: 'hi', recipientPlayerId: 'c1' });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+    // Caster One (c1) has a registration (see beforeEach), so if the block were
+    // rendered unconditionally it would appear here too.
+    expect(screen.queryByRole('combobox', { name: 'Character' })).not.toBeInTheDocument();
+  });
 });
