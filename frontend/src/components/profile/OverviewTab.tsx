@@ -235,7 +235,7 @@ export function OverviewTab({
     ? t('profile.overview.findAStatic')
     : staticCount === 1
       ? staticGroups[0].name
-      : t('profile.overview.myStatics');
+      : t('profile.overview.myStatics', { count: staticCount });
   const staticDetail = staticCount === 0
     ? t('profile.overview.openStaticFinder')
     : staticCount === 1

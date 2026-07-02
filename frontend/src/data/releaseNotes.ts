@@ -103,7 +103,6 @@ export const RELEASES: Release[] = [
     highlights: [
       'Full EN ↔ JP language toggle — switch in the header or user menu',
       'All UI text, labels, tooltips, and error messages available in Japanese',
-      'Language preference saved in your browser and respected on every visit',
     ],
     items: [
       {

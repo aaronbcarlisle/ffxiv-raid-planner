@@ -85,7 +85,7 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
               {t('profile.availability.title')}
             </h3>
             <p className="mt-0.5 text-xs text-text-tertiary">
-              {t('profile.availability.editorTitle')}
+              {t('profile.availability.cardSubtitle')}
             </p>
           </div>
           <Badge variant="default" size="sm">
