@@ -96,17 +96,20 @@ vi.mock('../stores/viewAsStore', () => ({
     return sel ? sel(state) : state;
   },
 }));
+// Hoisted so whole-state (`useStore()`) and selector (`useStore((s) => …)`)
+// consumers see the SAME store object/fn identities (PR review finding — a
+// fresh object per call broke referential identity between GroupViewContent's
+// whole-state read and Roster's selector reads).
+const lootTrackingState = vi.hoisted(() => ({
+  currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
+  lootLog: [] as unknown[], fetchMaterialLog: vi.fn(), materialLog: [] as unknown[],
+}));
 vi.mock('../stores/lootTrackingStore', () => ({
   // Dual-form: GroupViewContent reads the whole object (`useStore()`), while
   // Roster uses selectors (`useStore((s) => s.lootLog)` etc.) for its Board
   // next-upgrade highlight + mount fetch.
-  useLootTrackingStore: (sel?: (s: Record<string, unknown>) => unknown) => {
-    const state = {
-      currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
-      lootLog: [], fetchMaterialLog: vi.fn(), materialLog: [],
-    };
-    return sel ? sel(state) : state;
-  },
+  useLootTrackingStore: (sel?: (s: Record<string, unknown>) => unknown) =>
+    sel ? sel(lootTrackingState) : lootTrackingState,
 }));
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
 vi.mock('../stores/splitClearStore', () => ({

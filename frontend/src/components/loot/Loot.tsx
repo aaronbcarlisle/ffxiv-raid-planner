@@ -26,7 +26,11 @@
  *     — logging a drop while viewing an older week should default to that week.
  *     This deliberately differs from FloorCard's enhance-context week; the
  *     picker's own ranking enhance uses this same scoped week (acceptable — the
- *     picker is an explicit, week-targeted action).
+ *     picker is an explicit, week-targeted action). This only applies in the
+ *     Priority view, where `scopedWeek`/`WeekScopeControl` are actually visible —
+ *     in the History view (no WeekScopeControl rendered) the picker instead
+ *     defaults to the clock's real `currentWeek`, so a stale Priority-view scope
+ *     override can never silently drive "Log a drop" from History (PR review).
  *   - The mount fetch effect double-fetches loot/material that legacy's own
  *     effect also covers under `pageMode`; v2 must not depend on legacy chrome
  *     ordering, and the fetches are idempotent.
@@ -237,8 +241,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     url.searchParams.set('entry', String(item.entry.id));
     if (item.kind === 'material') url.searchParams.set('entryType', 'material');
     else url.searchParams.delete('entryType');
-    void navigator.clipboard.writeText(url.toString());
-    toast.success('Link copied');
+    navigator.clipboard.writeText(url.toString()).then(
+      () => toast.success('Link copied'),
+      () => toast.error("Couldn't copy the link"),
+    );
   }, []);
 
   const requestDelete = useCallback((item: HistoryItem) => {
@@ -299,6 +305,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // Empty-tier shell parity — legacy gates the loot region on a current tier.
   if (!tier) return <div data-testid="loot-screen" />;
 
+  // The picker's default week is the scoped override ONLY in the Priority view
+  // (where WeekScopeControl is visible and settable) — in the History view the
+  // scope override isn't shown, so "Log a drop" must default to the clock's
+  // real current week, not a stale Priority-view scope (PR review finding).
+  const pickerWeek = lview === 'history' ? clock.currentWeek : scopedWeek;
+
   // Shared across both RecipientPicker render branches below (mode-specific
   // `item`/`isOpen` are supplied per-branch to satisfy the discriminated
   // RecipientPickerProps union).
@@ -309,7 +321,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     settings,
     floors,
     lootLog,
-    currentWeek: scopedWeek,
+    currentWeek: pickerWeek,
     maxWeek: clock.maxWeek,
     onSuccess: refresh,
   };

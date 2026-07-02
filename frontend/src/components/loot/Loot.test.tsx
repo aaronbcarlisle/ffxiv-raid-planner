@@ -224,6 +224,30 @@ describe('Loot', () => {
     });
   });
 
+  it('defaults the picker to the scoped week in Priority view but the clock week in History view (PR review finding)', () => {
+    // Discriminator: a week-scope override set while viewing Priority must NOT
+    // leak into the History view's "Log a drop" default — the picker there
+    // must fall back to the clock's real currentWeek (3), not the stale
+    // Priority-view scope (1). Same component instance (no remount) so the
+    // override state genuinely persists across the view toggle.
+    renderLoot({ tier: makeTier(players) });
+    const scopeProps = weekScopeCalls[weekScopeCalls.length - 1];
+    act(() => {
+      (scopeProps.onScopedWeekChange as (w: number) => void)(1);
+    });
+
+    // Priority view: picker defaults to the scoped week (1) — unchanged behavior.
+    fireEvent.click(screen.getByRole('button', { name: /log a drop/i }));
+    const priorityPick = pickerCalls[pickerCalls.length - 1];
+    expect(priorityPick.currentWeek).toBe(1);
+
+    // Switch to History (same instance — the override persists as local state).
+    fireEvent.click(screen.getByRole('button', { name: 'History' }));
+    fireEvent.click(screen.getByRole('button', { name: /log a drop/i }));
+    const historyPick = pickerCalls[pickerCalls.length - 1];
+    expect(historyPick.currentWeek).toBe(3);
+  });
+
   it('shows the editor toolbar actions only when canEdit', () => {
     const { rerender } = renderLoot({ tier: makeTier(players) });
     expect(screen.getByRole('button', { name: /log a drop/i })).toBeInTheDocument();
@@ -446,6 +470,27 @@ describe('Loot', () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     expect(writeText.mock.calls[0][0]).toContain('entryType=material');
+  });
+
+  it('shows an error toast (no success toast, no throw) when copying the link rejects', async () => {
+    // Discriminator for the F6c phantom-analytics class applied to copy-link:
+    // an un-awaited clipboard write becomes an unhandled rejection AND fires
+    // the success toast unconditionally. Stub a rejecting clipboard and assert
+    // neither happens.
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 6, weekNumber: 3 })] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+
+    const row = document.getElementById('loot-entry-6')!;
+    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
+
+    await waitFor(() => {
+      const toasts = useToastStore.getState().toasts;
+      expect(toasts.some((t) => t.type === 'error' && t.message === "Couldn't copy the link")).toBe(true);
+    });
+    expect(useToastStore.getState().toasts.some((t) => t.type === 'success')).toBe(false);
   });
 
   it('shows an error toast (and does not throw) when a loot delete rejects', async () => {

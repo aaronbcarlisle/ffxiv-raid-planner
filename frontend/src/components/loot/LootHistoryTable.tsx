@@ -83,7 +83,7 @@ export function LootHistoryTable({
 
     const elementId =
       highlightType === 'material' ? `material-entry-${highlightId}` : `loot-entry-${highlightId}`;
-    setTimeout(() => {
+    const scrollTimer = setTimeout(() => {
       document.getElementById(elementId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
 
@@ -96,7 +96,10 @@ export function LootHistoryTable({
       }, { replace: true });
     }, 2500);
 
-    return () => clearTimeout(clearTimer);
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(clearTimer);
+    };
   }, [highlightId, highlightType, setSearchParams]);
 
   const playersById = new Map(players.map((p) => [p.id, p]));
