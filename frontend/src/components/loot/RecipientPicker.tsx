@@ -20,13 +20,13 @@ import { Modal, Select, Checkbox, NumberInput, RadioGroup, TextArea, Input, Segm
 import { Button } from '../primitives';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { getPrimaryRegistration } from '../../utils/staticCharacterContextService';
-import { logLootAndUpdateGear } from '../../utils/lootCoordination';
+import { logLootAndUpdateGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 import { toast } from '../../stores/toastStore';
 import { isPriorityDisabled } from '../../utils/priority';
 import { buildRecipientEntries, type PickerScope, type NeedTag } from '../../utils/recipientRanking';
 import { FLOOR_LOOT_TABLES, type FloorNumber } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
-import type { SnapshotPlayer, StaticSettings, LootLogEntry, GearSlot } from '../../types';
+import type { SnapshotPlayer, StaticSettings, LootLogEntry, LootLogEntryUpdate, LootMethod, GearSlot } from '../../types';
 
 export interface DropItemContext {
   slot: GearSlot | 'ring';
@@ -53,8 +53,9 @@ interface RecipientPickerBaseProps {
 // site (PR review finding: an optional `item` under 'assign' invited
 // call sites that fixed a drop context implicitly to nothing/`weapon`).
 export type RecipientPickerProps = RecipientPickerBaseProps & (
-  | { mode: 'assign'; item: DropItemContext }
-  | { mode: 'log'; item?: DropItemContext }
+  | { mode: 'assign'; item: DropItemContext; editEntry?: never }
+  | { mode: 'log'; item?: DropItemContext; editEntry?: never }
+  | { mode: 'edit'; editEntry: LootLogEntry; item?: never }
 );
 
 const SCOPE_OPTIONS: { value: PickerScope; label: string }[] = [
@@ -95,6 +96,7 @@ export function RecipientPicker({
   settings,
   floors,
   item,
+  editEntry,
   lootLog,
   currentWeek,
   maxWeek,
@@ -104,13 +106,17 @@ export function RecipientPicker({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [week, setWeek] = useState(currentWeek);
-  const [method, setMethod] = useState<'drop' | 'book'>('drop');
+  // Widened to LootMethod (from 'drop' | 'book') so edit mode can round-trip a
+  // 'purchase'/'tome' entry's method verbatim — an untouched non-drop/book entry
+  // must NOT diff its method (legacy AddLootEntryModal.tsx:382 parity). The
+  // RadioGroup still only offers drop/book; create-path behaviour is unchanged.
+  const [method, setMethod] = useState<LootMethod>('drop');
   const [updateGear, setUpdateGear] = useState(true);
   const [isExtra, setIsExtra] = useState(false);
   const [notes, setNotes] = useState('');
   const [characterRegId, setCharacterRegId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [showDetails, setShowDetails] = useState(mode === 'log');
+  const [showDetails, setShowDetails] = useState(mode !== 'assign');
 
   // Log-mode item selectors (parity with AddLootEntryModal).
   const [logFloorName, setLogFloorName] = useState(floors[0] ?? '');
@@ -125,13 +131,14 @@ export function RecipientPicker({
   );
 
   // Effective drop context: fixed from `item` in assign mode, driven by the
-  // fight/slot selectors in log mode.
-  const slot: GearSlot | 'ring' = mode === 'log' ? logSlot : (item?.slot ?? 'weapon');
-  const floorName = mode === 'log' ? logFloorName : (item?.floorName ?? '');
-  const floorNumber: FloorNumber = mode === 'log'
+  // fight/slot selectors in log AND edit mode (the legacy editor diffs
+  // floor/slot, so they must be editable — AddLootEntryModal.tsx:379-380).
+  const slot: GearSlot | 'ring' = mode !== 'assign' ? logSlot : (item?.slot ?? 'weapon');
+  const floorName = mode !== 'assign' ? logFloorName : (item?.floorName ?? '');
+  const floorNumber: FloorNumber = mode !== 'assign'
     ? (Math.max(0, floors.indexOf(logFloorName)) + 1) as FloorNumber
     : (item?.floorNumber ?? 1);
-  const label = mode === 'log' ? slotToLabel(slot) : (item?.label ?? slotToLabel(slot));
+  const label = mode !== 'assign' ? slotToLabel(slot) : (item?.label ?? slotToLabel(slot));
   const isWeapon = slot === 'weapon';
 
   const enhancedActive = settings.enableEnhancedScoring === true && !isPriorityDisabled(settings);
@@ -172,31 +179,54 @@ export function RecipientPicker({
   useEffect(() => {
     if (isOpen && !wasOpenRef.current) {
       wasOpenRef.current = true;
-      setScope('priority');
-      // Pin the default recipient: top of the initial priority ranking for the
-      // opening drop context (scope always resets to 'priority' on open).
-      const initialSlot: GearSlot | 'ring' = mode === 'log' ? firstSlotForFloor(1) : (item?.slot ?? 'weapon');
-      const initialEntries = buildRecipientEntries({
-        players, slot: initialSlot, scope: 'priority', settings, lootLog, currentWeek, enhancedActive,
-      });
-      setSelectedId(initialEntries[0]?.player.id ?? null);
       setSearch('');
-      setWeek(currentWeek);
-      setMethod('drop');
-      setUpdateGear(true);
-      setIsExtra(false);
-      setNotes('');
-      setCharacterRegId(null);
-      setShowDetails(mode === 'log');
-      if (mode === 'log') {
-        const f = floors[0] ?? '';
-        setLogFloorName(f);
-        setLogSlot(firstSlotForFloor(1));
+      if (mode === 'edit') {
+        // Prefill from the entry. Scope 'all' so the recipient is selectable
+        // even when they no longer "need" the slot — mirrors the legacy editor's
+        // ensureId visibility guarantee (AddLootEntryModal.tsx:279).
+        setScope('all');
+        setSelectedId(editEntry.recipientPlayerId);
+        setWeek(editEntry.weekNumber);
+        setMethod(editEntry.method);
+        setUpdateGear(true);
+        setIsExtra(false);
+        setNotes(editEntry.notes ?? '');
+        setCharacterRegId(editEntry.recipientCharacterRegistrationId ?? null);
+        setShowDetails(true);
+        // Seed the item selectors from the entry; a concrete ring1/ring2
+        // collapses to the picker's 'ring' vocabulary (round-trip handled at submit).
+        setLogFloorName(editEntry.floor);
+        setLogSlot(
+          editEntry.itemSlot === 'ring1' || editEntry.itemSlot === 'ring2'
+            ? 'ring'
+            : (editEntry.itemSlot as GearSlot),
+        );
+      } else {
+        setScope('priority');
+        // Pin the default recipient: top of the initial priority ranking for the
+        // opening drop context (scope always resets to 'priority' on open).
+        const initialSlot: GearSlot | 'ring' = mode === 'log' ? firstSlotForFloor(1) : (item?.slot ?? 'weapon');
+        const initialEntries = buildRecipientEntries({
+          players, slot: initialSlot, scope: 'priority', settings, lootLog, currentWeek, enhancedActive,
+        });
+        setSelectedId(initialEntries[0]?.player.id ?? null);
+        setWeek(currentWeek);
+        setMethod('drop');
+        setUpdateGear(true);
+        setIsExtra(false);
+        setNotes('');
+        setCharacterRegId(null);
+        setShowDetails(mode === 'log');
+        if (mode === 'log') {
+          const f = floors[0] ?? '';
+          setLogFloorName(f);
+          setLogSlot(firstSlotForFloor(1));
+        }
       }
     } else if (!isOpen) {
       wasOpenRef.current = false;
     }
-  }, [isOpen, currentWeek, mode, floors, item, players, settings, lootLog, enhancedActive]);
+  }, [isOpen, currentWeek, mode, floors, item, editEntry, players, settings, lootLog, enhancedActive]);
 
   // Auto-select the recipient's primary character registration on recipient
   // change (mirrors QuickLogDropModal.tsx:117-121).
@@ -217,6 +247,48 @@ export function RecipientPicker({
   const handleSubmit = async () => {
     if (!selected || !selectionVisible) return;
     const recipientPlayerId = selected.player.id;
+
+    // Edit mode: diff EXACTLY like the legacy editor (AddLootEntryModal.tsx:375-393)
+    // — updates contains ONLY changed fields among
+    // weekNumber/floor/itemSlot/recipientPlayerId/method/notes, plus the weaponJob
+    // backfill. isExtra and recipientCharacter* are NEVER diffed (legacy parity).
+    if (mode === 'edit') {
+      setIsSaving(true);
+      try {
+        const recipient = players.find((p) => p.id === recipientPlayerId);
+        // Ring round-trip: an untouched ring slot keeps the entry's concrete
+        // ring1/ring2 (the picker vocabulary collapses to 'ring' which would
+        // otherwise rewrite ring2 → ring1). Only an actual change yields 'ring1'.
+        const itemSlot = slot === 'ring'
+          ? (editEntry.itemSlot === 'ring2' ? 'ring2' : 'ring1')
+          : slot;
+
+        const updates: LootLogEntryUpdate = {};
+        if (week !== editEntry.weekNumber) updates.weekNumber = week;
+        if (floorName !== editEntry.floor) updates.floor = floorName;
+        if (itemSlot !== editEntry.itemSlot) updates.itemSlot = itemSlot;
+        if (recipientPlayerId !== editEntry.recipientPlayerId) updates.recipientPlayerId = recipientPlayerId;
+        if (method !== editEntry.method) updates.method = method;
+        if (notes !== (editEntry.notes ?? '')) updates.notes = notes || undefined;
+        // Backfill weaponJob for weapon entries created without it.
+        if (itemSlot === 'weapon' && !editEntry.weaponJob && recipient?.job) {
+          updates.weaponJob = recipient.job;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await updateLootAndSyncGear(groupId, tierId, editEntry.id, editEntry, updates, { syncGear: updateGear });
+          toast.success(`Updated ${label} for ${recipient?.name ?? 'player'}`);
+          onSuccess?.();
+        }
+        onClose();
+      } catch {
+        toast.error('Failed to update drop');
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
     setIsSaving(true);
     try {
       const recipient = players.find((p) => p.id === recipientPlayerId);
@@ -271,13 +343,15 @@ export function RecipientPicker({
   const title = (
     <span className="flex items-center gap-2">
       <Package className="h-5 w-5" />
-      {mode === 'assign' ? `Assign · ${label}` : 'Log a drop'}
+      {mode === 'assign' ? `Assign · ${label}` : mode === 'edit' ? `Edit · ${label}` : 'Log a drop'}
     </span>
   );
 
-  const buttonLabel = mode === 'log'
-    ? 'Log drop'
-    : (selected ? `Assign to ${selected.player.name}` : 'Assign');
+  const buttonLabel = mode === 'edit'
+    ? 'Save changes'
+    : mode === 'log'
+      ? 'Log drop'
+      : (selected ? `Assign to ${selected.player.name}` : 'Assign');
 
   const footer = (
     <div className="space-y-3">
@@ -308,8 +382,8 @@ export function RecipientPicker({
           {floorName} Floor {floorNumber} · {label} slot · raid drop
         </p>
 
-        {/* Log-mode item selectors */}
-        {mode === 'log' && (
+        {/* Item selectors — editable in log AND edit mode */}
+        {mode !== 'assign' && (
           <div className="grid grid-cols-2 gap-3">
             <Select
               aria-label="Fight"
@@ -433,7 +507,7 @@ export function RecipientPicker({
               />
             </div>
 
-            {mode === 'log' && (
+            {mode !== 'assign' && (
               <RadioGroup
                 name="loot-method"
                 label="Method"
@@ -477,7 +551,7 @@ export function RecipientPicker({
               </div>
             )}
 
-            {mode === 'log' && (
+            {mode !== 'assign' && (
               <div>
                 <span className="mb-1 block text-sm text-text-secondary">Notes</span>
                 <TextArea value={notes} onChange={setNotes} placeholder="Optional notes…" rows={2} />
