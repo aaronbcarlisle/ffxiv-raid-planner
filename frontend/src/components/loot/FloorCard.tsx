@@ -28,7 +28,14 @@ export interface FloorCardProps {
   floorNumber: FloorNumber; floorName: string;
   players: SnapshotPlayer[]; settings: StaticSettings;
   lootLog: LootLogEntry[]; materialLog: MaterialLogEntry[]; pageLedger: PageLedgerEntry[];
-  scopedWeek: number; canEdit: boolean;
+  scopedWeek: number;
+  /**
+   * The REAL current week, used ONLY for the enhanced-scoring context (drought /
+   * fair-share is computed against "now", not the scoped view week). Defaults to
+   * `scopedWeek` when absent. Status derivation always uses `scopedWeek`.
+   */
+  currentWeek?: number;
+  canEdit: boolean;
   onAssignGear: (item: { slot: GearSlot | 'ring'; label: string }) => void;
   onAssignMaterial: (material: MaterialType, suggested: SnapshotPlayer) => void;
   footer?: React.ReactNode;
@@ -42,8 +49,11 @@ function toRowEntries(entries: { player: SnapshotPlayer }[]): PriorityRowEntry[]
 
 export function FloorCard({
   floorNumber, floorName, players, settings, lootLog, materialLog, pageLedger,
-  scopedWeek, canEdit, onAssignGear, onAssignMaterial, footer,
+  scopedWeek, currentWeek, canEdit, onAssignGear, onAssignMaterial, footer,
 }: FloorCardProps) {
+  // Enhanced-scoring drought is measured against the real current week; the
+  // scoped view week only governs which week's log the status chip reflects.
+  const enhanceWeek = currentWeek ?? scopedWeek;
   const [expanded, setExpanded] = useState(false);
   const table = FLOOR_LOOT_TABLES[floorNumber];
 
@@ -63,7 +73,7 @@ export function FloorCard({
   );
 
   const enhance = (entries: PriorityEntry[]) =>
-    enhancePriorityEntries(entries, { settings, lootLog, currentWeek: scopedWeek, averageDrops, active: enhancedActive });
+    enhancePriorityEntries(entries, { settings, lootLog, currentWeek: enhanceWeek, averageDrops, active: enhancedActive });
 
   const gearItems: Array<{ slot: GearSlot | 'ring'; label: string }> = table.gearDrops.map((slot) =>
     slot === 'ring1' ? { slot: 'ring' as const, label: 'Ring' } : { slot, label: GEAR_SLOT_NAMES[slot] },
@@ -128,11 +138,15 @@ export function FloorCard({
               material={row.material}
               entries={row.entries}
               canEdit={canEdit}
+              // Zero needers → no suggested recipient → Assign would be a no-op.
+              disableAssign={!row.top}
               onAssign={() => row.top && onAssignMaterial(row.material, row.top)}
             />
           ))}
         </div>
       )}
+      {/* Footer stays visible even while collapsed — weapon priorities are
+          tier-level (not week-scoped), so a cleared week shouldn't hide them. */}
       {footer}
     </div>
   );

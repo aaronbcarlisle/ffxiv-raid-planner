@@ -63,6 +63,14 @@ export function LootAdjustmentsModal({ isOpen, onClose, players, onSave }: LootA
   const [draft, setDraft] = useState<Record<string, DraftEntry>>({});
   const [isSaving, setIsSaving] = useState(false);
 
+  // Fallback for a player with NO draft/seed entry (added to `players` mid-open,
+  // after the open-transition seed ran): use the player's LIVE values rather than
+  // literal zeros, so an untouched mid-open arrival never gets silently zeroed.
+  const fallbackFor = (playerId: string): DraftEntry => {
+    const p = players.find((x) => x.id === playerId);
+    return { lootAdjustment: p?.lootAdjustment ?? 0, priorityModifier: p?.priorityModifier ?? 0 };
+  };
+
   // Seed the draft ONLY on the open transition (closed -> open) — mirrors
   // RecipientPicker.tsx's wasOpenRef guard so an in-progress edit can't be
   // silently reverted by a mid-open roster refresh.
@@ -82,26 +90,25 @@ export function LootAdjustmentsModal({ isOpen, onClose, players, onSave }: LootA
     setDraft((prev) => ({
       ...prev,
       [playerId]: {
-        ...(prev[playerId] ?? { lootAdjustment: 0, priorityModifier: 0 }),
+        ...(prev[playerId] ?? fallbackFor(playerId)),
         [field]: value ?? 0,
       },
     }));
   };
 
   const handleResetAll = () => {
-    setDraft((prev) => {
-      const next: Record<string, DraftEntry> = {};
-      Object.keys(prev).forEach((playerId) => {
-        next[playerId] = { lootAdjustment: 0, priorityModifier: 0 };
-      });
-      return next;
+    // Iterate `players` (not the draft keys) so a mid-open arrival is zeroed too.
+    const next: Record<string, DraftEntry> = {};
+    players.forEach((p) => {
+      next[p.id] = { lootAdjustment: 0, priorityModifier: 0 };
     });
+    setDraft(next);
   };
 
   const handleSave = async () => {
     const updates: AdjustmentUpdate[] = [];
     players.forEach((p) => {
-      const entrySeed = seed[p.id] ?? { lootAdjustment: 0, priorityModifier: 0 };
+      const entrySeed = seed[p.id] ?? fallbackFor(p.id);
       const entryDraft = draft[p.id] ?? entrySeed;
       const changed =
         entryDraft.lootAdjustment !== entrySeed.lootAdjustment ||
@@ -161,7 +168,7 @@ export function LootAdjustmentsModal({ isOpen, onClose, players, onSave }: LootA
 
         <div className="space-y-2">
           {players.map((player) => {
-            const entry = draft[player.id] ?? { lootAdjustment: 0, priorityModifier: 0 };
+            const entry = draft[player.id] ?? fallbackFor(player.id);
             return (
               <div
                 key={player.id}

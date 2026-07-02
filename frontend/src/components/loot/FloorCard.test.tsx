@@ -72,6 +72,44 @@ describe('FloorCard', () => {
     expect(screen.queryByRole('button', { name: 'Assign' })).not.toBeInTheDocument();
   });
 
+  it('disables a material row Assign when the row has zero needers (no-op guard)', () => {
+    // Fully raid-geared player with no tome pieces and no tome weapon → neither
+    // Floor 2 material (glaze / universal_tomestone) has a needer.
+    const player: SnapshotPlayer = {
+      id: 'a', tierSnapshotId: 't1', name: 'Alice', job: 'PLD', role: 'tank',
+      configured: true, sortOrder: 0, isSubstitute: false,
+      gear: [
+        { slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false },
+        { slot: 'hands', bisSource: 'raid', hasItem: true, isAugmented: false },
+        { slot: 'feet', bisSource: 'raid', hasItem: true, isAugmented: false },
+        { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: false },
+      ],
+      tomeWeapon: {}, weaponPriorities: [],
+    } as unknown as SnapshotPlayer;
+    const onAssignMaterial = vi.fn();
+    render(
+      <FloorCard
+        {...baseProps}
+        floorNumber={2}
+        floorName="M10S"
+        players={[player]}
+        onAssignMaterial={onAssignMaterial}
+      />
+    );
+    const glazeRow = screen.getByText('Glaze').closest('div.border-b') as HTMLElement;
+    const assign = within(glazeRow).getByRole('button', { name: 'Assign' });
+    expect(assign).toBeDisabled();
+    fireEvent.click(assign);
+    expect(onAssignMaterial).not.toHaveBeenCalled();
+  });
+
+  it('accepts a distinct currentWeek prop for the enhance context and still renders', () => {
+    // scopedWeek governs the status chip; currentWeek only feeds enhanced scoring.
+    const players = [makePlayer('a', 'Alice', { earringHas: false })];
+    render(<FloorCard {...baseProps} players={players} scopedWeek={2} currentWeek={5} />);
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+  });
+
   it("a material row's Assign calls onAssignMaterial with the top-priority player", () => {
     // Floor 2 has upgrade materials (glaze + universal_tomestone). Glaze applies to
     // accessory slots (UPGRADE_MATERIAL_SLOTS.glaze) — an unaugmented tome earring

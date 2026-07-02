@@ -16,6 +16,8 @@ export interface FloorDropRowProps {
   entries: PriorityRowEntry[];
   canEdit: boolean;
   onAssign: () => void;
+  /** Disable the Assign button (e.g. a material row with zero needers → no-op). */
+  disableAssign?: boolean;
 }
 
 const MATERIAL_TOKEN: Record<string, string> = {
@@ -25,7 +27,7 @@ const MATERIAL_TOKEN: Record<string, string> = {
   universal_tomestone: 'var(--color-material-tomestone)',
 };
 
-export function FloorDropRow({ kind, label, subLabel, material, entries, canEdit, onAssign }: FloorDropRowProps) {
+export function FloorDropRow({ kind, label, subLabel, material, entries, canEdit, onAssign, disableAssign = false }: FloorDropRowProps) {
   const tone = kind === 'gear' ? 'var(--color-gear-raid)' : MATERIAL_TOKEN[material ?? ''] ?? 'var(--color-accent)';
   return (
     <div className="flex items-center gap-3.5 border-b border-border-subtle px-4 py-3 last:border-b-0">
@@ -50,7 +52,7 @@ export function FloorDropRow({ kind, label, subLabel, material, entries, canEdit
       </div>
       {canEdit && (
         <div className="flex-none">
-          <Button variant="secondary" size="sm" onClick={onAssign}>Assign</Button>
+          <Button variant="secondary" size="sm" onClick={onAssign} disabled={disableAssign}>Assign</Button>
         </div>
       )}
     </div>

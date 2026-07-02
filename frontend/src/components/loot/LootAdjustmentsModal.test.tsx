@@ -151,6 +151,24 @@ describe('LootAdjustmentsModal', () => {
     expect(screen.getAllByRole('spinbutton')[0]).toHaveValue(99);
   });
 
+  it('a player added mid-open (no seed entry) renders its LIVE values, not zeros', () => {
+    // Open with just player1/player2 (seeded). Then a store churn adds player3
+    // WHILE open — the open-transition guard won't re-seed, so player3 has no
+    // draft entry. The render fallback must use player3's live values, not 0/0.
+    const { rerender } = render(
+      <LootAdjustmentsModal isOpen players={players} onClose={vi.fn()} onSave={vi.fn()} />
+    );
+    const player3 = makePlayer('p3', 'Player Three', { lootAdjustment: 30, priorityModifier: 5 });
+    rerender(
+      <LootAdjustmentsModal isOpen players={[...players, player3]} onClose={vi.fn()} onSave={vi.fn()} />
+    );
+    expect(screen.getByText('Player Three')).toBeInTheDocument();
+    const spinbuttons = screen.getAllByRole('spinbutton');
+    // player3 is the 3rd row → spinbuttons[4] (loot adj), spinbuttons[5] (priority mod).
+    expect(spinbuttons[4]).toHaveValue(30);
+    expect(spinbuttons[5]).toHaveValue(5);
+  });
+
   it('re-seeds the draft from player values on each open transition', () => {
     const { rerender } = render(
       <LootAdjustmentsModal isOpen={false} players={players} onClose={vi.fn()} onSave={vi.fn()} />

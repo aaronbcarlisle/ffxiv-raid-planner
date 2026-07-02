@@ -138,6 +138,15 @@ describe('WeekScopeControl', () => {
     await waitFor(() => expect(onScopedWeekChange).toHaveBeenCalledWith(4));
   });
 
+  it('disables "Revert week" when the current week is 1 (would read "Week 0")', async () => {
+    render(
+      <WeekScopeControl clock={makeClock({ currentWeek: 1, maxWeek: 1 })} scopedWeek={1} onScopedWeekChange={vi.fn()} canEdit />
+    );
+    openMenu();
+    const revert = await screen.findByRole('menuitem', { name: /revert week/i });
+    expect(revert).toHaveAttribute('data-disabled');
+  });
+
   it('opens a confirm modal for "Revert week" and only reverts on confirm', async () => {
     const onScopedWeekChange = vi.fn();
     const clock = makeClock();

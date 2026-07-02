@@ -69,6 +69,7 @@ export function WeekScopeControl({
   const handleRevertWeek = async () => {
     try {
       const newWeek = await revertWeek();
+      toast.success('Week reverted');
       onScopedWeekChange(newWeek);
     } catch {
       toast.error('Failed to revert the week');
@@ -117,7 +118,11 @@ export function WeekScopeControl({
               <DropdownItem onSelect={() => setPendingMutation('start-next')}>
                 Start next week
               </DropdownItem>
-              <DropdownItem onSelect={() => setPendingMutation('revert')}>
+              <DropdownItem
+                // Guard: reverting from Week 1 would open a modal reading "Week 0".
+                disabled={currentWeek <= 1}
+                onSelect={() => setPendingMutation('revert')}
+              >
                 Revert week
               </DropdownItem>
             </>
