@@ -82,8 +82,21 @@ beforeEach(() => {
   floorCardCalls.length = 0;
   pickerCalls.length = 0;
   weekScopeCalls.length = 0;
-  // Seed the shared clock: scopedWeek defaults to currentWeek.
-  useLootTrackingStore.setState({ currentWeek: 3, maxWeek: 5, lootLog: [], materialLog: [], pageLedger: [] });
+  // Seed the shared clock: scopedWeek defaults to currentWeek. Loot's mount
+  // effect (Loot.tsx) fires five lootTrackingStore fetch actions unconditionally
+  // — stub them here (zustand setState can override action fields on the real
+  // store) so they never fall through to the real api client. Without this,
+  // the mount effect hits `fetch` for real; locally that resolves quietly
+  // against a dev backend on :8001, but in CI (no backend) it rejects with
+  // ECONNREFUSED as an UNHANDLED rejection and fails the whole run.
+  useLootTrackingStore.setState({
+    currentWeek: 3, maxWeek: 5, lootLog: [], materialLog: [], pageLedger: [],
+    fetchLootLog: vi.fn().mockResolvedValue(undefined),
+    fetchMaterialLog: vi.fn().mockResolvedValue(undefined),
+    fetchPageLedger: vi.fn().mockResolvedValue(undefined),
+    fetchCurrentWeek: vi.fn().mockResolvedValue(undefined),
+    fetchWeekDataTypes: vi.fn().mockResolvedValue(undefined),
+  });
 });
 
 const players = [makePlayer('p1', 'Alice'), makePlayer('p2', 'Bob'), makePlayer('s1', 'Sub', { sub: true })];
@@ -94,6 +107,20 @@ describe('Loot', () => {
     expect(screen.getByTestId('loot-screen')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Loot' })).toBeInTheDocument();
     expect(screen.getByText(/fairness rules: role priority \+ need/)).toBeInTheDocument();
+  });
+
+  it('fetches loot log, material log, page ledger, current week, and week data types on mount', () => {
+    // Guards the mount effect in Loot.tsx AND proves the beforeEach stubs above
+    // actually intercept it (rather than silently falling through to the real
+    // api client / network, which is what caused the CI ECONNREFUSED failure).
+    render(<Loot {...baseProps} tier={makeTier(players)} />);
+    const { fetchLootLog, fetchMaterialLog, fetchPageLedger, fetchCurrentWeek, fetchWeekDataTypes } =
+      useLootTrackingStore.getState();
+    expect(fetchLootLog).toHaveBeenCalledWith('g1', 'aac-heavyweight');
+    expect(fetchMaterialLog).toHaveBeenCalledWith('g1', 'aac-heavyweight');
+    expect(fetchPageLedger).toHaveBeenCalledWith('g1', 'aac-heavyweight');
+    expect(fetchCurrentWeek).toHaveBeenCalledWith('g1', 'aac-heavyweight');
+    expect(fetchWeekDataTypes).toHaveBeenCalledWith('g1', 'aac-heavyweight');
   });
 
   it('renders four FloorCards in F4→F1 order at the scoped (current) week', () => {
