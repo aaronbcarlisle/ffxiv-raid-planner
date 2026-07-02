@@ -128,6 +128,36 @@ describe('RecipientPicker (assign mode)', () => {
     expect(screen.queryByText('Caster One')).not.toBeInTheDocument();
     expect(screen.getByText('Melee One')).toBeInTheDocument();
   });
+
+  it('announces the Details disclosure state via aria-expanded', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    const toggle = screen.getByRole('button', { name: 'Details' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(screen.getByRole('button', { name: 'Hide details' })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('disables submit when the search filter hides the pinned selection, and re-enables when cleared', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    // Default pick pinned at open = top-ranked entry = Caster One.
+    const submit = screen.getByRole('button', { name: /Assign to/ });
+    expect(submit).toBeEnabled();
+
+    // Search to a term that excludes the pinned selection (Caster One).
+    fireEvent.change(screen.getByPlaceholderText('Search players…'), { target: { value: 'Melee' } });
+    expect(screen.queryByText('Caster One')).not.toBeInTheDocument();
+    expect(submit).toBeDisabled();
+
+    // Clearing the search restores visibility and re-enables submit.
+    fireEvent.change(screen.getByPlaceholderText('Search players…'), { target: { value: '' } });
+    expect(submit).toBeEnabled();
+  });
 });
 
 describe('RecipientPicker (log mode)', () => {

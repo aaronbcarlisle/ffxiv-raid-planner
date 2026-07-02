@@ -80,7 +80,9 @@ export interface LootProps {
   onNavigate: (tab: PageMode, extra?: Record<string, string>) => void;
 }
 
-type PickerState = { mode: 'assign' | 'log'; item?: DropItemContext } | null;
+// Discriminated so `mode: 'assign'` always carries its `item` — mirrors the
+// RecipientPickerProps union (PR review finding: assign-mode item required).
+type PickerState = { mode: 'assign'; item: DropItemContext } | { mode: 'log' } | null;
 type MaterialState = { material: MaterialType; floorName: string; suggested: SnapshotPlayer } | null;
 
 export function Loot({ group, tier, canEdit }: LootProps) {
@@ -130,9 +132,17 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     void fetchWeekDataTypes(groupId, tierId);
   }, [groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageLedger, fetchCurrentWeek, fetchWeekDataTypes]);
 
+  // Also refetches the week clock — the FIRST-ever loot entry for a tier can
+  // set its `week_start_date` anchor server-side, which would otherwise leave
+  // `weekStartDate`/`currentWeek` stale (wrong/missing week ranges) until a
+  // remount. Every onSuccess (picker/material modal/wizard/weapon bridge)
+  // routes through this one callback, so the fix covers all of them.
   const refresh = useCallback(() => {
-    if (groupId && tierId) void fetchTier(groupId, tierId);
-  }, [groupId, tierId, fetchTier]);
+    if (groupId && tierId) {
+      void fetchTier(groupId, tierId);
+      void fetchCurrentWeek(groupId, tierId);
+    }
+  }, [groupId, tierId, fetchTier, fetchCurrentWeek]);
 
   // Save adjustments through the SAME allSettled + per-failure toast semantics as
   // the legacy PlayerAdjustmentsModal (each update is an independent PUT).
@@ -158,6 +168,21 @@ export function Loot({ group, tier, canEdit }: LootProps) {
 
   // Empty-tier shell parity — legacy gates the loot region on a current tier.
   if (!tier) return <div data-testid="loot-screen" />;
+
+  // Shared across both RecipientPicker render branches below (mode-specific
+  // `item`/`isOpen` are supplied per-branch to satisfy the discriminated
+  // RecipientPickerProps union).
+  const pickerCommonProps = {
+    groupId: group.id,
+    tierId: tier.tierId,
+    players,
+    settings,
+    floors,
+    lootLog,
+    currentWeek: scopedWeek,
+    maxWeek: clock.maxWeek,
+    onSuccess: refresh,
+  };
 
   return (
     <div data-testid="loot-screen">
@@ -226,21 +251,22 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         ))}
       </div>
 
-      <RecipientPicker
-        isOpen={!!pickerState}
-        onClose={() => setPickerState(null)}
-        mode={pickerState?.mode ?? 'assign'}
-        groupId={group.id}
-        tierId={tier.tierId}
-        players={players}
-        settings={settings}
-        floors={floors}
-        item={pickerState?.item}
-        lootLog={lootLog}
-        currentWeek={scopedWeek}
-        maxWeek={clock.maxWeek}
-        onSuccess={refresh}
-      />
+      {pickerState?.mode === 'assign' ? (
+        <RecipientPicker
+          isOpen
+          onClose={() => setPickerState(null)}
+          mode="assign"
+          item={pickerState.item}
+          {...pickerCommonProps}
+        />
+      ) : (
+        <RecipientPicker
+          isOpen={pickerState?.mode === 'log'}
+          onClose={() => setPickerState(null)}
+          mode="log"
+          {...pickerCommonProps}
+        />
+      )}
 
       <LogWeekWizard
         isOpen={wizardOpen}

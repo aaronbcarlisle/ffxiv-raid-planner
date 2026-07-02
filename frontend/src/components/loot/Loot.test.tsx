@@ -203,6 +203,23 @@ describe('Loot', () => {
     expect(f3.footer).toBeUndefined();
   });
 
+  it('refetches the week clock (in addition to the tier) when a child onSuccess fires', () => {
+    // Regression: the FIRST-ever loot entry for a tier can set the tier's
+    // `week_start_date` anchor server-side — `refresh` must refetch the week
+    // clock too, or the week pill stays stale until remount. Drive it via the
+    // mocked RecipientPicker's captured `onSuccess` (shared by the picker /
+    // material modal / wizard — all route through the same `refresh`).
+    render(<Loot {...baseProps} tier={makeTier(players)} />);
+    const { fetchCurrentWeek } = useLootTrackingStore.getState();
+    const callsBefore = vi.mocked(fetchCurrentWeek).mock.calls.length;
+    const last = pickerCalls[pickerCalls.length - 1];
+    act(() => {
+      (last.onSuccess as () => void)();
+    });
+    expect(vi.mocked(fetchCurrentWeek).mock.calls.length).toBe(callsBefore + 1);
+    expect(fetchCurrentWeek).toHaveBeenLastCalledWith('g1', 'aac-heavyweight');
+  });
+
   it('renders an empty screen shell for a null tier', () => {
     render(<Loot {...baseProps} tier={null} />);
     expect(screen.getByTestId('loot-screen')).toBeInTheDocument();

@@ -35,21 +35,27 @@ export interface DropItemContext {
   label: string;
 }
 
-export interface RecipientPickerProps {
+interface RecipientPickerBaseProps {
   isOpen: boolean;
   onClose: () => void;
-  mode: 'assign' | 'log';
   groupId: string;
   tierId: string;
   players: SnapshotPlayer[];
   settings: StaticSettings;
   floors: string[];
-  item?: DropItemContext;
   lootLog: LootLogEntry[];
   currentWeek: number;
   maxWeek: number;
   onSuccess?: () => void;
 }
+
+// Discriminated on `mode` so `mode: 'assign'` REQUIRES `item` at every call
+// site (PR review finding: an optional `item` under 'assign' invited
+// call sites that fixed a drop context implicitly to nothing/`weapon`).
+export type RecipientPickerProps = RecipientPickerBaseProps & (
+  | { mode: 'assign'; item: DropItemContext }
+  | { mode: 'log'; item?: DropItemContext }
+);
 
 const SCOPE_OPTIONS: { value: PickerScope; label: string }[] = [
   { value: 'priority', label: 'By priority' },
@@ -148,6 +154,12 @@ export function RecipientPicker({
   const selected = entries.find((e) => e.player.id === selectedId) ?? entries[0] ?? null;
   const recipientId = selected?.player.id;
 
+  // `selected` derives from the UNFILTERED `entries` — when the search text
+  // hides the selected row, no row visibly shows selected but submit would
+  // otherwise stay enabled, targeting a recipient the user can no longer see.
+  // Gate submit on the pick actually being visible in `filtered`.
+  const selectionVisible = filtered.some((e) => e.player.id === selected?.player.id);
+
   // Forced-extra under off-spec: single source of truth used by the payload,
   // the weapon auto-note, AND the (disabled) checkbox state.
   const effectiveExtra = scope === 'offspec' ? true : isExtra;
@@ -203,7 +215,7 @@ export function RecipientPicker({
   const recipientRegistrations = recipientId ? (registrationsByPlayer[recipientId] ?? []) : [];
 
   const handleSubmit = async () => {
-    if (!selected) return;
+    if (!selected || !selectionVisible) return;
     const recipientPlayerId = selected.player.id;
     setIsSaving(true);
     try {
@@ -276,7 +288,12 @@ export function RecipientPicker({
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button type="button" onClick={handleSubmit} disabled={!selected || isSaving} loading={isSaving}>
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!selected || !selectionVisible || isSaving}
+          loading={isSaving}
+        >
           {buttonLabel}
         </Button>
       </div>
@@ -399,7 +416,7 @@ export function RecipientPicker({
         </div>
 
         {/* Details disclosure */}
-        <LinkText onClick={() => setShowDetails((v) => !v)}>
+        <LinkText onClick={() => setShowDetails((v) => !v)} aria-expanded={showDetails}>
           {showDetails ? 'Hide details' : 'Details'}
         </LinkText>
 
