@@ -1,4 +1,6 @@
+import type { ReactNode } from 'react';
 import { CardShell } from './CardShell';
+import { PlayerIdentity } from './PlayerIdentity';
 import { SafeAvatar } from './SafeAvatar';
 import { Tag } from './Tag';
 import { Button } from '../primitives/Button';
@@ -31,12 +33,19 @@ import type { ScheduleSession, ScheduleRsvp, RsvpStatus } from '../../types';
 
 /**
  * Layout variant.
- *  - 'next'  — the prominent next-session card (BUILT, F6b).
- *  - 'later' — RESERVED for Schedule (F6e): neutral border, ghost RSVP
- *    buttons. NOT implemented yet (YAGNI); currently renders identically to
- *    'next'. Kept in the union so F6e can drop it in without an API break.
+ *  - 'next'  — the prominent next-session card (BUILT, F6b). CardShell titled
+ *    "Next session" with the DS-contracted accent ring; inactive RSVP buttons
+ *    are `secondary`.
+ *  - 'later' — the Schedule (F6e) list card: CardShell titled with the session
+ *    title, no accent ring, and ghost inactive RSVP buttons.
  */
 type SessionRsvpVariant = 'next' | 'later';
+
+/** A roster member entry used to derive the member grid + "no answer" tally. */
+interface RsvpMember {
+  userId: string;
+  username: string | null;
+}
 
 export interface SessionRsvpCardProps {
   /** The session to display. Avatar stack + counts derive from `session.rsvps`. */
@@ -45,13 +54,28 @@ export interface SessionRsvpCardProps {
   currentUserRsvp?: RsvpStatus;
   /** Inline RSVP callback. Optional — the strip renders inert when omitted. */
   onRsvp?: (status: RsvpStatus) => void;
-  /** See {@link SessionRsvpVariant}. Default 'next'; 'later' is API-reserved (F6e). */
+  /** See {@link SessionRsvpVariant}. Default 'next'. */
   variant?: SessionRsvpVariant;
   /**
    * IANA timezone for the "your time" line. Defaults to the runtime's resolved
    * timezone. Falls back gracefully if the value is missing or invalid.
    */
   viewerTimezone?: string;
+  /**
+   * Full roster. When provided (with `memberDetail="grid"`) it enables the
+   * member grid, the "no answer" count segment, and the contextual warning
+   * note. Omitted (Home) → the avatar stack renders and counts stay unchanged.
+   */
+  members?: RsvpMember[];
+  /**
+   * 'stack' (default, Home) → RSVP avatar stack. 'grid' (Schedule) → one row
+   * per member with a status glyph. 'grid' requires `members`.
+   */
+  memberDetail?: 'stack' | 'grid';
+  /** Kebab / action slot rendered beside the countdown Tag in the header row. */
+  headerActions?: ReactNode;
+  /** Show the day-of-month + weekday pill before the day/time block. Default false. */
+  showDayPill?: boolean;
 }
 
 /** RSVP status → status-color CSS token (no hex literals — shared-layer rule). */
@@ -101,6 +125,33 @@ function formatDay(iso: string, tz?: string): string | null {
   } catch {
     try {
       return new Intl.DateTimeFormat('en-US', opts).format(date);
+    } catch {
+      return null;
+    }
+  }
+}
+
+/**
+ * Format an ISO date into the day-pill parts (day-of-month + short weekday) in
+ * a timezone. Same tz-robustness as {@link formatDay}: an invalid zone falls
+ * back to the runtime's local zone; an unparseable date yields null.
+ */
+function formatDayPill(iso: string, tz?: string): { day: string; weekday: string } | null {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const dayOpts: Intl.DateTimeFormatOptions = { day: 'numeric' };
+  const weekdayOpts: Intl.DateTimeFormatOptions = { weekday: 'short' };
+  try {
+    return {
+      day: new Intl.DateTimeFormat('en-US', tz ? { ...dayOpts, timeZone: tz } : dayOpts).format(date),
+      weekday: new Intl.DateTimeFormat('en-US', tz ? { ...weekdayOpts, timeZone: tz } : weekdayOpts).format(date),
+    };
+  } catch {
+    try {
+      return {
+        day: new Intl.DateTimeFormat('en-US', dayOpts).format(date),
+        weekday: new Intl.DateTimeFormat('en-US', weekdayOpts).format(date),
+      };
     } catch {
       return null;
     }
@@ -185,89 +236,206 @@ const RSVP_OPTIONS: Array<{ status: RsvpStatus; label: string }> = [
   { status: 'unavailable', label: "Can't make it" },
 ];
 
+/**
+ * Member-grid status glyph — a TEXT glyph plus an sr-only label so status is
+ * never color-only (a11y). The '·' no-answer case lives in NO_ANSWER_GLYPH.
+ */
+const GRID_GLYPH: Record<RsvpStatus, { ch: string; cls: string; label: string }> = {
+  available: { ch: '✓', cls: 'text-status-success', label: 'available' },
+  tentative: { ch: '?', cls: 'text-status-warning', label: 'tentative' },
+  unavailable: { ch: '✗', cls: 'text-status-error', label: "can't make it" },
+};
+
+const NO_ANSWER_GLYPH = { ch: '·', cls: 'text-text-muted', label: 'no answer' };
+
 export function SessionRsvpCard({
   session,
   currentUserRsvp,
   onRsvp,
+  variant = 'next',
   viewerTimezone,
+  members,
+  memberDetail = 'stack',
+  headerActions,
+  showDayPill = false,
 }: SessionRsvpCardProps) {
   const sessionTz = session.timezone;
   const viewerTz = viewerTimezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const isLater = variant === 'later';
 
   const dayLabel = formatDay(session.startTime, sessionTz);
   const sessionTime = formatTime(session.startTime, sessionTz);
   const viewerTime = formatTime(session.startTime, viewerTz);
   // Only show the "your time" half when the viewer is in a different zone.
   const showViewerTime = Boolean(viewerTime) && viewerTz !== sessionTz;
+  const dayPill = showDayPill ? formatDayPill(session.startTime, sessionTz) : null;
 
   const countdown = countdownLabel(session.startTime, viewerTz);
 
   const availableCount = session.rsvps.filter((r) => r.status === 'available').length;
   const tentativeCount = session.rsvps.filter((r) => r.status === 'tentative').length;
 
+  // Grid + "no answer" derivation (members-minus-rsvps). Only meaningful when
+  // `members` is provided; the map is cheap so we build it unconditionally.
+  const rsvpByUser = new Map(session.rsvps.map((r) => [r.userId, r]));
+  const noAnswerCount = members ? members.filter((m) => !rsvpByUser.has(m.userId)).length : 0;
+  const useGrid = memberDetail === 'grid' && Boolean(members);
+
+  // Contextual warning note — gated on `members` (Home's line is unchanged).
+  const tentativeNames = session.rsvps.filter((r) => r.status === 'tentative').map((r) => r.username ?? 'Unknown');
+  const unavailableNames = session.rsvps.filter((r) => r.status === 'unavailable').map((r) => r.username ?? 'Unknown');
+  const warningParts: string[] = [];
+  if (tentativeNames.length) warningParts.push(`${tentativeNames.join(', ')} tentative`);
+  if (unavailableNames.length) warningParts.push(`${unavailableNames.join(', ')} can't make it`);
+  const warningNote = members && warningParts.length ? `${warningParts.join(' · ')} — sub may be needed` : null;
+
+  // Sanctioned default-render deltas: 'next' gains the accent ring; a
+  // tracking-off session hides the whole RSVP pressure UI (legacy parity).
+  const trackingOff = session.trackAvailability === false;
+  const inactiveVariant = isLater ? 'ghost' : 'secondary';
+  // Viewer mode: a Schedule viewer (members provided, no callback) sees no
+  // dead RSVP buttons. Home (no members) keeps the existing inert render.
+  const omitStrip = Boolean(members) && !onRsvp;
+
+  const countdownTag = countdown ? (
+    <Tag variant="label" tone="accent">
+      <span data-testid="countdown-chip">{countdown}</span>
+    </Tag>
+  ) : undefined;
+
+  const countsNode = (
+    <div data-testid="rsvp-counts" className="text-xs text-text-secondary">
+      <span className="text-status-success">{availableCount} in</span>
+      <span aria-hidden="true" className="text-text-tertiary"> · </span>
+      <span className="text-status-warning">{tentativeCount} tentative</span>
+      {members && (
+        <>
+          <span aria-hidden="true" className="text-text-tertiary"> · </span>
+          <span className="text-text-muted">{noAnswerCount} no answer</span>
+        </>
+      )}
+    </div>
+  );
+
+  const dayTimeBlock = (
+    <div>
+      <div data-testid="session-daytime" className="font-display text-lg font-semibold text-text-primary">
+        {dayLabel ? `${dayLabel}` : session.title}
+        {sessionTime && <span className="ml-2 text-text-secondary">{sessionTime}</span>}
+      </div>
+      <div data-testid="session-tz-line" className="text-xs text-text-tertiary">
+        {sessionTime ?? ''}
+        {showViewerTime && (
+          <>
+            <span aria-hidden="true"> · </span>
+            <span>your time {viewerTime}</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <CardShell
-      title="Next session"
+      title={isLater ? session.title : 'Next session'}
+      className={isLater ? '' : 'ring-1 ring-accent/40'}
       headerRight={
-        countdown ? (
-          <Tag variant="label" tone="accent">
-            <span data-testid="countdown-chip">{countdown}</span>
-          </Tag>
-        ) : undefined
+        headerActions ? (
+          <div className="flex items-center gap-1.5">
+            {countdownTag}
+            {headerActions}
+          </div>
+        ) : (
+          countdownTag
+        )
       }
     >
       <div className="flex flex-col gap-3">
-        {/* Day / time — display font */}
-        <div>
-          <div data-testid="session-daytime" className="font-display text-lg font-semibold text-text-primary">
-            {dayLabel ? `${dayLabel}` : session.title}
-            {sessionTime && <span className="ml-2 text-text-secondary">{sessionTime}</span>}
-          </div>
-          <div data-testid="session-tz-line" className="text-xs text-text-tertiary">
-            {sessionTime ?? ''}
-            {showViewerTime && (
-              <>
-                <span aria-hidden="true"> · </span>
-                <span>your time {viewerTime}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* RSVP avatar stack + counts */}
-        <div className="flex items-center gap-3">
-          {session.rsvps.length > 0 && (
-            <div className="flex items-center" aria-hidden="true">
-              {session.rsvps.map((rsvp) => (
-                <RsvpAvatar key={rsvp.id} rsvp={rsvp} />
-              ))}
+        {/* Day / time — display font, optionally preceded by the day pill */}
+        {showDayPill && dayPill ? (
+          <div className="flex items-center gap-3">
+            <div data-testid="day-pill" className="flex flex-col items-center leading-none">
+              <span className="font-display text-sm font-extrabold text-text-primary">{dayPill.day}</span>
+              <span className="text-xs text-text-tertiary">{dayPill.weekday}</span>
             </div>
-          )}
-          <div data-testid="rsvp-counts" className="text-xs text-text-secondary">
-            <span className="text-status-success">{availableCount} in</span>
-            <span aria-hidden="true" className="text-text-tertiary"> · </span>
-            <span className="text-status-warning">{tentativeCount} tentative</span>
+            {dayTimeBlock}
           </div>
-        </div>
+        ) : (
+          dayTimeBlock
+        )}
 
-        {/* RSVP button strip */}
-        <div className="flex gap-2">
-          {RSVP_OPTIONS.map(({ status, label }) => {
-            const isActive = currentUserRsvp === status;
-            return (
-              <Button
-                key={status}
-                size="sm"
-                variant={isActive ? ACTIVE_VARIANT[status] : 'secondary'}
-                aria-pressed={isActive}
-                onClick={() => onRsvp?.(status)}
-                className="flex-1"
-              >
-                {label}
-              </Button>
-            );
-          })}
-        </div>
+        {trackingOff ? (
+          <div data-testid="availability-not-required" className="text-xs text-text-tertiary">
+            Availability not required
+          </div>
+        ) : (
+          <>
+            {/* Member grid (Schedule) OR avatar stack (Home) + counts */}
+            {useGrid ? (
+              <div className="flex flex-col gap-2">
+                <ul data-testid="rsvp-member-grid" className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
+                  {members!.map((member) => {
+                    const rsvp = rsvpByUser.get(member.userId);
+                    const glyph = rsvp ? GRID_GLYPH[rsvp.status] : NO_ANSWER_GLYPH;
+                    return (
+                      <li
+                        key={member.userId}
+                        className="flex min-w-0 items-center gap-1.5"
+                        title={rsvp?.note ?? undefined}
+                      >
+                        <PlayerIdentity variant="rsvp-row" name={member.username ?? 'Unknown'} />
+                        <span aria-hidden="true" className={`ml-auto text-xs font-bold ${glyph.cls}`}>
+                          {glyph.ch}
+                        </span>
+                        <span className="sr-only">{glyph.label}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {countsNode}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                {session.rsvps.length > 0 && (
+                  <div className="flex items-center" aria-hidden="true">
+                    {session.rsvps.map((rsvp) => (
+                      <RsvpAvatar key={rsvp.id} rsvp={rsvp} />
+                    ))}
+                  </div>
+                )}
+                {countsNode}
+              </div>
+            )}
+
+            {warningNote && (
+              <div data-testid="rsvp-warning-note" className="text-xs text-text-tertiary">
+                {warningNote}
+              </div>
+            )}
+
+            {/* RSVP button strip — omitted for Schedule viewers */}
+            {!omitStrip && (
+              <div className="flex gap-2">
+                {RSVP_OPTIONS.map(({ status, label }) => {
+                  const isActive = currentUserRsvp === status;
+                  return (
+                    <Button
+                      key={status}
+                      size="sm"
+                      variant={isActive ? ACTIVE_VARIANT[status] : inactiveVariant}
+                      aria-pressed={isActive}
+                      onClick={() => onRsvp?.(status)}
+                      className="flex-1"
+                    >
+                      {label}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </CardShell>
   );
