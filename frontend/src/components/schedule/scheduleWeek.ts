@@ -56,7 +56,7 @@ export function sessionOccurrencesInRange(
 
 /**
  * 30-min store slots → hourly display cells, conservatively: a member counts
- * only when free for BOTH half-slots (min count + name intersection). Designed
+ * only when free for BOTH half-slots (count = name-intersection size). Designed
  * for the cross-midnight prime window: hours below the window start (0,1) land
  * on the NEXT calendar date of the column.
  */
@@ -72,10 +72,9 @@ export function deriveHourlyHeatCells(
       const hh = String(hour).padStart(2, '0');
       const a = heatMap.get(`${date}|${hh}:00`);
       const b = heatMap.get(`${date}|${hh}:30`);
-      const count = Math.min(a?.count ?? 0, b?.count ?? 0);
       const bNames = new Set(b?.names ?? []);
       const names = (a?.names ?? []).filter((n) => bNames.has(n)).sort();
-      return { date, hour, count, names };
+      return { date, hour, count: names.length, names };
     }),
   );
 }

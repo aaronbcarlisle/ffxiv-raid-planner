@@ -91,6 +91,15 @@ describe('deriveHourlyHeatCells', () => {
     expect(hour20.count).toBe(0);
     expect(hour20.names).toEqual([]);
   });
+  it('reports zero when half-slot name sets are disjoint (count = intersection size, not min of counts)', () => {
+    const heat = new Map([
+      ['2026-07-07|19:00', { count: 1, names: ['Alice'] }],
+      ['2026-07-07|19:30', { count: 1, names: ['Bob'] }],
+    ]);
+    const rows = deriveHourlyHeatCells(heat, dates);
+    const hour19 = rows[1][1]; // row index 1 = hour 19, col 1 = Jul 7
+    expect(hour19).toEqual({ date: '2026-07-07', hour: 19, count: 0, names: [] });
+  });
   it('rolls after-midnight prime hours to the NEXT calendar date of the column', () => {
     const heat = new Map([
       ['2026-07-08|00:00', { count: 1, names: ['Cara'] }],
