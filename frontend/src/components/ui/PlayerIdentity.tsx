@@ -9,7 +9,7 @@ type Role = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
  * Variant union.
  *  - 'inline'      — avatar badge + name + meta row (F6b, attention/activity rows). BUILT.
  *  - 'board-cell'  — compact cell for Roster Board (F6c). BUILT.
- *  - 'rsvp-row'    — RSVP roster row inside SessionRsvpCard (F6e). RESERVED — do not implement yet.
+ *  - 'rsvp-row'    — RSVP roster row inside SessionRsvpCard (F6e). BUILT.
  */
 type PlayerIdentityVariant = 'inline' | 'board-cell' | 'rsvp-row';
 
@@ -30,8 +30,8 @@ export interface PlayerIdentityProps {
   /** Avatar image URL.  Passed through SafeAvatar's allowlist.  Falls back to initials. */
   avatarUrl?: string;
   /**
-   * Layout variant.  'inline' (F6b) and 'board-cell' (F6c) are implemented.
-   * 'rsvp-row' (F6e) is API-reserved.
+   * Layout variant.  'inline' (F6b), 'board-cell' (F6c), and 'rsvp-row' (F6e)
+   * are implemented.
    */
   variant?: PlayerIdentityVariant;
 }
@@ -76,20 +76,46 @@ export function PlayerIdentity({
   avatarUrl,
   variant = 'inline',
 }: PlayerIdentityProps) {
-  // 'rsvp-row' remains reserved (F6e). 'inline' (F6b) and 'board-cell' (F6c) render.
-  if (variant === 'rsvp-row') {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn('PlayerIdentity: variant="rsvp-row" is reserved and not yet implemented (F6e).');
-    }
-    return null;
-  }
-
-  // Subtitle + a11y role signal (shared by both rendered variants).
+  // Subtitle + a11y role signal (shared across rendered variants).
   const autoSubtitle = [job, position].filter(Boolean).join(' · ');
   const subtitleContent = subtitle ?? (autoSubtitle || null);
   const hasTextualRoleSignal = !!(job || position || subtitle);
   const srRoleLabel = role && !hasTextualRoleSignal ? ROLE_LABELS[role] : null;
+
+  if (variant === 'rsvp-row') {
+    // Compact identity row (F6e): 24px avatar + text-xs name, one line.
+    // NO RSVP status here — status is schedule-domain; SessionRsvpCard renders
+    // its own status glyph beside this. Role ring only when `role` is passed
+    // (RSVPs carry no role today — the ready seam for future role coloring).
+    const ringStyle: React.CSSProperties = role
+      ? { borderColor: `var(--color-role-${role})` }
+      : {};
+    return (
+      <div className="flex min-w-0 items-center gap-1.5">
+        <div
+          data-testid="player-identity-ring"
+          className="relative h-6 w-6 shrink-0 rounded-full border-2 border-transparent"
+          style={ringStyle}
+        >
+          <SafeAvatar
+            src={avatarUrl}
+            alt={name}
+            className="w-full h-full rounded-full object-cover"
+            fallback={
+              <span
+                className="w-full h-full rounded-full bg-surface-interactive flex items-center justify-center text-xs font-medium text-text-secondary"
+                aria-hidden="true"
+              >
+                {getInitials(name)}
+              </span>
+            }
+          />
+        </div>
+        <span className="min-w-0 truncate text-xs font-medium text-text-primary">{name}</span>
+        {srRoleLabel && <span className="sr-only">{srRoleLabel}</span>}
+      </div>
+    );
+  }
 
   if (variant === 'board-cell') {
     return (
