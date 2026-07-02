@@ -55,6 +55,7 @@ export function WeaponPriorityBridge({
       <div className="flex items-center gap-2">
         <LinkText
           onClick={() => setExpanded((prev) => !prev)}
+          aria-expanded={expanded}
           icon={
             <ChevronRight
               className={`w-4 h-4 transition-transform ${expanded ? 'rotate-90' : ''}`}

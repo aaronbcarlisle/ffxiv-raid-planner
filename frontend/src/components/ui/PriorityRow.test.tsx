@@ -31,4 +31,20 @@ describe('PriorityRow', () => {
     render(<PriorityRow entries={[]} emptyLabel="no one needs this" />);
     expect(screen.getByText('no one needs this')).toBeInTheDocument();
   });
+
+  it('renders the default emptyLabel when the prop is omitted', () => {
+    render(<PriorityRow entries={[]} />);
+    expect(screen.getByText('no one needs this')).toBeInTheDocument();
+  });
+
+  it('does not mark non-top chips with data-top', () => {
+    render(<PriorityRow entries={entries} />);
+    const items = screen.getByRole('list', { name: 'Priority queue' }).querySelectorAll('li');
+    expect(items[1].hasAttribute('data-top')).toBe(false);
+  });
+
+  it('renders no "+N eligible" text when entries.length <= maxVisible', () => {
+    render(<PriorityRow entries={entries.slice(0, 3)} />);
+    expect(screen.queryByText(/eligible/)).not.toBeInTheDocument();
+  });
 });

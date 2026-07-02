@@ -50,4 +50,12 @@ describe('WeaponPriorityBridge', () => {
     fireEvent.click(screen.getByText('Weapon priorities'));
     expect(mockWeaponPriorityListProps).toMatchObject({ showLogButtons: false });
   });
+
+  it('announces expanded state on the toggle via aria-expanded', () => {
+    render(<WeaponPriorityBridge {...baseProps} />);
+    const toggle = screen.getByText('Weapon priorities');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
 });

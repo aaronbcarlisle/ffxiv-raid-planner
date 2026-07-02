@@ -32,7 +32,7 @@ function makeClock(overrides: Partial<WeekClock> = {}): WeekClock {
     weekStartDate: '2026-06-10T00:00:00Z',
     weeksWithData: new Set([1, 3]),
     weekDataTypes: new Map(),
-    rangeOfWeek: () => ({ start: new Date('2026-06-10'), end: new Date('2026-06-16') }),
+    rangeOfWeek: () => ({ start: new Date('2026-06-10'), end: new Date('2026-06-16T23:59:59Z') }),
     isCurrent: (w: number) => w === 3,
     startNextWeek: vi.fn().mockResolvedValue(4),
     revertWeek: vi.fn().mockResolvedValue(2),
@@ -162,6 +162,24 @@ describe('WeekScopeControl', () => {
 
     await waitFor(() => expect(clock.revertWeek).toHaveBeenCalled());
     await waitFor(() => expect(onScopedWeekChange).toHaveBeenCalledWith(2));
+  });
+
+  it('cancels the revert confirm modal without calling revertWeek', async () => {
+    const onScopedWeekChange = vi.fn();
+    const clock = makeClock();
+    render(
+      <WeekScopeControl clock={clock} scopedWeek={3} onScopedWeekChange={onScopedWeekChange} canEdit />
+    );
+    openMenu();
+    fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+    expect(await screen.findByText(/Move the clock back to Week 2/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(clock.revertWeek).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.queryByText(/Move the clock back to Week 2/)).not.toBeInTheDocument()
+    );
   });
 
   it('does not change scope and closes the modal when the mutation rejects', async () => {
