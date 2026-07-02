@@ -71,6 +71,8 @@ export const RELEASES: Release[] = [
           '再クリア→消化 (weekly reclear), グラマー→ミラプリ (glamour), ルート→戦利品 (loot), and RSVP→出欠. ' +
           'Also fixed a stray character in the Discord permissions string and corrected プログレ, オーケストリオン譜, ' +
           'BiS達成, 交流, and 募集, plus a duplicate translation for "Show Less".',
+        pr: 168,
+        prTitle: 'feat: FFXIV game icons + full English/Japanese localization',
       },
       {
         category: 'fix',
@@ -79,6 +81,8 @@ export const RELEASES: Release[] = [
           'Counts like "6 members" and "2 listings" were showing the singular form because the ' +
           'translation files use the v3 "_plural" key convention while i18next defaulted to its newer ' +
           'plural rules. Enabled v3 compatibility so plurals resolve correctly across the app.',
+        pr: 168,
+        prTitle: 'feat: FFXIV game icons + full English/Japanese localization',
       },
       {
         category: 'improvement',
@@ -87,6 +91,8 @@ export const RELEASES: Release[] = [
           'Mount reward names (ARR through Dawntrail), orchestrion roll titles, and expansion labels ' +
           'now show the official Japanese names used in-game — e.g. エンバル, 神輿カムイ, ダイヤモンドグイヴル, ' +
           'エンドコーラー — instead of falling back to English.',
+        pr: 168,
+        prTitle: 'feat: FFXIV game icons + full English/Japanese localization',
       },
     ],
   },
@@ -399,30 +405,38 @@ export const RELEASES: Release[] = [
       {
         category: 'fix',
         title: 'Cancelled occurrence no longer shown as next session',
-        description: 'Cancelling a single occurrence of a recurring session now correctly advances the displayed next-session date to the following occurrence instead of continuing to show the cancelled date.',
+        description:
+          'Cancelling a single occurrence of a recurring session now correctly advances the displayed next-session date to the following occurrence instead of continuing to show the cancelled date.',
         pr: 142,
-        prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
+        prTitle:
+          'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
       },
       {
         category: 'fix',
         title: 'View Occurrences available in card/tile view',
-        description: 'The View Occurrences button (calendar icon) was missing when the schedule was displayed in compact card/tile layout. It is now shown consistently regardless of view mode.',
+        description:
+          'The View Occurrences button (calendar icon) was missing when the schedule was displayed in compact card/tile layout. It is now shown consistently regardless of view mode.',
         pr: 142,
-        prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
+        prTitle:
+          'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
       },
       {
         category: 'fix',
         title: 'Recurring weekdays now match local timezone',
-        description: 'Sessions scheduled for Thursday/Sunday in America/Chicago (and other UTC− zones) were displaying as Wednesday/Saturday on the website. The scheduler now uses the session\'s IANA timezone for weekday matching so the displayed day always reflects the wall-clock day where the static is based.',
+        description:
+          "Sessions scheduled for Thursday/Sunday in America/Chicago (and other UTC− zones) were displaying as Wednesday/Saturday on the website. The scheduler now uses the session's IANA timezone for weekday matching so the displayed day always reflects the wall-clock day where the static is based.",
         pr: 142,
-        prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
+        prTitle:
+          'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
       },
       {
         category: 'fix',
         title: 'Session cancellations now key on local calendar date',
-        description: 'Cancelling a recurring session that runs late at night (e.g. Thu 7 PM CDT, which is Fri midnight UTC) now stores the cancellation against the correct local calendar date — Thursday, not Friday. This prevents the cancelled marker from being misidentified across day-boundary timezones.',
+        description:
+          'Cancelling a recurring session that runs late at night (e.g. Thu 7 PM CDT, which is Fri midnight UTC) now stores the cancellation against the correct local calendar date — Thursday, not Friday. This prevents the cancelled marker from being misidentified across day-boundary timezones.',
         pr: 142,
-        prTitle: 'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
+        prTitle:
+          'fix: recurring occurrence display — timezone weekday, cancelled skipping, card view button',
       },
     ],
   },
@@ -445,7 +459,13 @@ export const RELEASES: Release[] = [
           'Browse the full active catalog or filter to your personal list by category, expansion, or content type.',
         pr: 141,
         prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
-        commits: [{ hash: '7d9e416', message: 'feat(collections): Collections & Farms hub with participant states and drop log' }],
+        commits: [
+          {
+            hash: '7d9e416',
+            message:
+              'feat(collections): Collections & Farms hub with participant states and drop log',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -454,7 +474,13 @@ export const RELEASES: Release[] = [
           'Static Collections & Farms opens on a Suggested Farms tab driven by Player Hub reward intents and plugin-synced collection facts. Suggestions appear even with no manually created static goals — roster members who share their Player Hub preferences automatically surface their wants to static leads.',
         pr: 141,
         prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
-        commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
+        commits: [
+          {
+            hash: 'd0a03ad',
+            message:
+              'fix(collections): correct filter chip count semantics and hide phantom Savage chip',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -465,17 +491,27 @@ export const RELEASES: Release[] = [
           'Token cost shown as an amber pill. Cards animate on expand/collapse. Badge colors shared from a single config across Player Hub and Static Browse.',
         pr: 141,
         prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
-        commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
+        commits: [
+          {
+            hash: 'bf4c8dc',
+            message: 'feat(collections): redesign catalog as source/duty farm cards',
+          },
+        ],
       },
       {
         category: 'fix',
         title: 'Ultimate weapon token cost corrected to 1× per weapon (was 7×)',
         description:
-          'Futures Rewritten, Dancing Mad, Dragonsong\'s Reprise, and The Omega Protocol ultimate weapon rows now show 1× totem per weapon — matching the actual in-game exchange. ' +
+          "Futures Rewritten, Dancing Mad, Dragonsong's Reprise, and The Omega Protocol ultimate weapon rows now show 1× totem per weapon — matching the actual in-game exchange. " +
           'EX mount pity costs (99×) are unaffected. Can-buy scoring now correctly triggers at tokenCount ≥ 1 for ultimates.',
         pr: 141,
         prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
-        commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
+        commits: [
+          {
+            hash: 'bf4c8dc',
+            message: 'feat(collections): redesign catalog as source/duty farm cards',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -484,7 +520,12 @@ export const RELEASES: Release[] = [
           'The public profile dossier now renders "Actively Hunting" and "Interested In" as two distinct labelled sections instead of combining everything under a single "Hunting (N)" header.',
         pr: 141,
         prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
-        commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
+        commits: [
+          {
+            hash: 'bf4c8dc',
+            message: 'feat(collections): redesign catalog as source/duty farm cards',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -493,30 +534,53 @@ export const RELEASES: Release[] = [
           'game_mount_id and token_item_id populated for all 8 DT extreme trial farms (Wings of Ruin through Wings of Nihility). IDs verified against Garland Tools API and FFXIV Collect, matching Mount.exd and Item.exd RowIds used by the Dalamud plugin for automatic ownership detection.',
         pr: 141,
         prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
-        commits: [{ hash: '1e329e3', message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync' }],
+        commits: [
+          {
+            hash: '1e329e3',
+            message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'Suggested Farms duty cards show expansion tag',
-        description: 'Each duty card in Suggested Farms now displays the expansion abbreviation (e.g. DT, EW, SHB) alongside the content-type badge so leads can quickly identify which content tier a suggestion belongs to.',
+        description:
+          'Each duty card in Suggested Farms now displays the expansion abbreviation (e.g. DT, EW, SHB) alongside the content-type badge so leads can quickly identify which content tier a suggestion belongs to.',
         pr: 141,
         prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
-        commits: [{ hash: '8cf366c', message: 'fix(collections): honest chip labels for curated-only categories' }],
+        commits: [
+          {
+            hash: '8cf366c',
+            message: 'fix(collections): honest chip labels for curated-only categories',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'Player Hub write-through works without an existing Player Hub profile',
-        description: 'Toggling "Wanted" on a mount farm now auto-creates a private Player Hub profile when the user has not yet visited Player Hub, ensuring the intent always reaches Suggested Farms.',
+        description:
+          'Toggling "Wanted" on a mount farm now auto-creates a private Player Hub profile when the user has not yet visited Player Hub, ensuring the intent always reaches Suggested Farms.',
         pr: 141,
         prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
-        commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
+        commits: [
+          {
+            hash: 'd0a03ad',
+            message:
+              'fix(collections): correct filter chip count semantics and hide phantom Savage chip',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: '/xrp resolve-ids — plugin Lumina ID resolver command',
         description:
           'New plugin diagnostic command resolves every catalog mount and token name against local Lumina sheets (Mount.exd / Item.exd). Includes an alias map for catalog display names that differ from Lumina Singular names. Writes collection_resolved_ids.json and auto-POSTs exact matches to the backend.',
-        commits: [{ hash: '1e329e3', message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync' }],
+        commits: [
+          {
+            hash: '1e329e3',
+            message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync',
+          },
+        ],
         internal: true,
       },
       {
@@ -524,14 +588,26 @@ export const RELEASES: Release[] = [
         title: 'C# CollectionSyncResult now includes skippedNoId field',
         description:
           'Plugin-side Models.cs updated to deserialize skippedNoId from the backend sync response, matching the Phase 3 schema change.',
-        commits: [{ hash: '1e329e3', message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync' }],
+        commits: [
+          {
+            hash: '1e329e3',
+            message: 'feat(collections): expand catalog to all expansions and fix Player Hub sync',
+          },
+        ],
         internal: true,
       },
       {
         category: 'improvement',
         title: 'Bulk mount farm update uses batched write-through',
-        description: 'Bulk progress updates now resolve profiles, catalog items, intents, and snapshots in 4 batch queries instead of N per-row queries, reducing database overhead for large statics.',
-        commits: [{ hash: 'd0a03ad', message: 'fix(collections): correct filter chip count semantics and hide phantom Savage chip' }],
+        description:
+          'Bulk progress updates now resolve profiles, catalog items, intents, and snapshots in 4 batch queries instead of N per-row queries, reducing database overhead for large statics.',
+        commits: [
+          {
+            hash: 'd0a03ad',
+            message:
+              'fix(collections): correct filter chip count semantics and hide phantom Savage chip',
+          },
+        ],
         internal: true,
       },
     ],
@@ -616,7 +692,12 @@ export const RELEASES: Release[] = [
           'Collections & Farms groups all rewards from the same extreme/savage/ultimate into one card — mount, music, minion, and weapons appear together instead of as separate disconnected rows. Cards have colored left borders (amber=Extreme, red=Savage, blue=Ultimate) and expand to show participants, token exchange info, and a Copy Farm Plan button for Discord.',
         pr: 141,
         prTitle: 'feat(collections): Collections Center, Suggested Farms & Dawntrail plugin sync',
-        commits: [{ hash: 'bf4c8dc', message: 'feat(collections): redesign catalog as source/duty farm cards' }],
+        commits: [
+          {
+            hash: 'bf4c8dc',
+            message: 'feat(collections): redesign catalog as source/duty farm cards',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -640,7 +721,8 @@ export const RELEASES: Release[] = [
       {
         category: 'improvement',
         title: 'Catalog auto-syncs from FFXIV Collect on first server start',
-        description: 'Background task runs 5 seconds after startup and imports mounts, minions, and orchestrion from FFXIV Collect if not already synced. Fixes pagination bug (count vs total), source duty name extraction, and owned-percent parsing. Curated internal rows always take precedence via Python-level deduplication.',
+        description:
+          'Background task runs 5 seconds after startup and imports mounts, minions, and orchestrion from FFXIV Collect if not already synced. Fixes pagination bug (count vs total), source duty name extraction, and owned-percent parsing. Curated internal rows always take precedence via Python-level deduplication.',
       },
     ],
     internal: true,
@@ -653,7 +735,8 @@ export const RELEASES: Release[] = [
       {
         category: 'fix',
         title: 'Music tab populated with 38 curated orchestrion rolls (HW–DT)',
-        description: 'All orchestrion rolls farmable from extreme trials are now hardcoded in the curated catalog — no FFXIV Collect API call required. Data sourced from the FFXIV wiki covers every extreme from Heavensward through Dawntrail (38 rolls). Also corrects two previously wrong ShB entries: Castrum Marinum drops "The Black Wolf Stalks Again" (not "Rise") and Cloud Deck drops "In the Arms of War" (not "Black & White"). The background auto-sync that caused 5-minute startup hangs is removed.',
+        description:
+          'All orchestrion rolls farmable from extreme trials are now hardcoded in the curated catalog — no FFXIV Collect API call required. Data sourced from the FFXIV wiki covers every extreme from Heavensward through Dawntrail (38 rolls). Also corrects two previously wrong ShB entries: Castrum Marinum drops "The Black Wolf Stalks Again" (not "Rise") and Cloud Deck drops "In the Arms of War" (not "Black & White"). The background auto-sync that caused 5-minute startup hangs is removed.',
       },
     ],
     internal: true,
@@ -666,12 +749,14 @@ export const RELEASES: Release[] = [
       {
         category: 'fix',
         title: 'Collections catalog expanded to all expansions',
-        description: 'Browse Catalog now shows mounts and ultimate weapons for Shadowbringers, Stormblood, Heavensward, and A Realm Reborn. Endwalker data corrected (mount names, totem names, and missing Endsinger entry). All catalog entries now carry a source_duty_key matching the internal trial ID so the Player Hub collections tab and group catalog stay in sync.',
+        description:
+          'Browse Catalog now shows mounts and ultimate weapons for Shadowbringers, Stormblood, Heavensward, and A Realm Reborn. Endwalker data corrected (mount names, totem names, and missing Endsinger entry). All catalog entries now carry a source_duty_key matching the internal trial ID so the Player Hub collections tab and group catalog stay in sync.',
       },
       {
         category: 'fix',
         title: 'Player Hub collection suggestions include group goal participation',
-        description: 'When a static group tracks a Collection Goal and a member has logged participation, that farm now surfaces as a Player Hub collection suggestion — bridging group goal activity into the personal collections view.',
+        description:
+          'When a static group tracks a Collection Goal and a member has logged participation, that farm now surfaces as a Player Hub collection suggestion — bridging group goal activity into the personal collections view.',
       },
     ],
     internal: true,
@@ -684,7 +769,8 @@ export const RELEASES: Release[] = [
       {
         category: 'feature',
         title: 'Collections & Farms Hub',
-        description: 'Backend models, router, and store for collection goals with participant states (need/want/have/pass), drop log, priority modes, and participant summary counts on the goal list.',
+        description:
+          'Backend models, router, and store for collection goals with participant states (need/want/have/pass), drop log, priority modes, and participant summary counts on the goal list.',
       },
     ],
     internal: true,
@@ -701,128 +787,164 @@ export const RELEASES: Release[] = [
       {
         category: 'feature',
         title: 'Split Clear Planner for raid statics',
-        description: 'Leads can enable a split-clear planning board under the Roster tab. Each member gets a row for their main and alt character, Run A / Run B assignments, loot target notes, and per-run weekly clear checkboxes. Weekly clear status is manually tracked; no lockout detection is performed.',
+        description:
+          'Leads can enable a split-clear planning board under the Roster tab. Each member gets a row for their main and alt character, Run A / Run B assignments, loot target notes, and per-run weekly clear checkboxes. Weekly clear status is manually tracked; no lockout detection is performed.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'feature',
         title: 'Generate Draft split plan',
-        description: 'The Split Clear Planner can generate a suggested draft from existing Lodestone data and weapon priorities with a confidence badge, per-player suggestions, and a change summary before applying. Dismissing the draft discards it without saving.',
+        description:
+          'The Split Clear Planner can generate a suggested draft from existing Lodestone data and weapon priorities with a confidence badge, per-player suggestions, and a change summary before applying. Dismissing the draft discards it without saving.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Split Clear Composer — redesigned planning flow',
-        description: 'The split-clear board is a three-state composer: empty state with source previews, draft-review panel with Run A / Run B side-by-side panels, and a manage board.',
+        description:
+          'The split-clear board is a three-state composer: empty state with source previews, draft-review panel with Run A / Run B side-by-side panels, and a manage board.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Character-linked split assignment composer',
-        description: 'Split Clear Planner reads linked Player Hub characters instead of requiring manual text entry. Each roster member\'s characters appear as selector chips; leads pick which goes into Run A and which into Run B.',
+        description:
+          "Split Clear Planner reads linked Player Hub characters instead of requiring manual text entry. Each roster member's characters appear as selector chips; leads pick which goes into Run A and which into Run B.",
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Weighted draft scoring with per-player reasons',
-        description: 'Draft generation uses a weighted scoring system and surfaces per-player reasons in a collapsible "Why these assignments?" panel.',
+        description:
+          'Draft generation uses a weighted scoring system and surfaces per-player reasons in a collapsible "Why these assignments?" panel.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'feature',
         title: 'Roster → Characters sub-tab',
-        description: 'A new "Characters" sub-tab in the Roster segmented control. Leads can link Player Hub characters or add manual entries with main/alt/substitute roles and an optional job tag.',
+        description:
+          'A new "Characters" sub-tab in the Roster segmented control. Leads can link Player Hub characters or add manual entries with main/alt/substitute roles and an optional job tag.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Split Planner uses registered character list',
-        description: 'The draft generator prefers static character registrations (when available) over the full Player Hub profile when building character candidate lists.',
+        description:
+          'The draft generator prefers static character registrations (when available) over the full Player Hub profile when building character candidate lists.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Loot Log records the receiving character',
-        description: 'When logging a drop or book purchase, a character picker appears for any player who has registered characters. The primary character is pre-selected; you can switch to any alt.',
+        description:
+          'When logging a drop or book purchase, a character picker appears for any player who has registered characters. The primary character is pre-selected; you can switch to any alt.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Priority view shows registered character context',
-        description: 'Weapon Priority cards display the registered character name next to each entry when one is linked to that player and job. Character context is additive and degrades gracefully when no registration exists.',
+        description:
+          'Weapon Priority cards display the registered character name next to each entry when one is linked to that player and job. Character context is additive and degrades gracefully when no registration exists.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Team Summary "Mains only" filter',
-        description: 'A new toggle in the Team Summary header filters the progress table to roster players whose registered role is "main". Hidden for statics without character registrations.',
+        description:
+          'A new toggle in the Team Summary header filters the progress table to roster players whose registered role is "main". Hidden for statics without character registrations.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'feature',
         title: 'Loot drop recommendations in Log Loot',
-        description: 'When logging a drop or weapon coffer, a ranked candidate list shows who should receive the item and why. Combines registered character identity, weapon priority rank, BiS need, and loot log history. Leads can always override.',
+        description:
+          'When logging a drop or weapon coffer, a ranked candidate list shows who should receive the item and why. Combines registered character identity, weapon priority rank, BiS need, and loot log history. Leads can always override.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Weapon coffers use existing weapon priority',
-        description: 'The recommendation panel ranks weapon coffer candidates using the static\'s current weapon priority order. Priority rank #1 receives the highest bonus; players whose weapon is already received are deprioritised.',
+        description:
+          "The recommendation panel ranks weapon coffer candidates using the static's current weapon priority order. Priority rank #1 receives the highest bonus; players whose weapon is already received are deprioritised.",
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'fix',
         title: 'Backend resolves Player Hub character name when snapshotting loot',
-        description: 'Loot log entries for Player Hub linked registrations now auto-resolve the character name from the linked PlayerCharacter record so the snapshot is always populated.',
+        description:
+          'Loot log entries for Player Hub linked registrations now auto-resolve the character name from the linked PlayerCharacter record so the snapshot is always populated.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'fix',
         title: 'Recurring sessions display the next upcoming date',
-        description: 'Session cards for recurring events now show the next scheduled occurrence rather than the original creation date.',
+        description:
+          'Session cards for recurring events now show the next scheduled occurrence rather than the original creation date.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'fix',
         title: 'Cancel a single occurrence without deleting the series',
-        description: 'The delete button on recurring session cards opens a choice: "Cancel [date] only" or "Delete entire series." Cancelling one occurrence marks it as skipped while leaving all future occurrences intact.',
+        description:
+          'The delete button on recurring session cards opens a choice: "Cancel [date] only" or "Delete entire series." Cancelling one occurrence marks it as skipped while leaving all future occurrences intact.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Track whether a weapon was a direct drop or weapon coffer',
-        description: 'The Quick Log Weapon modal now has a "Via weapon coffer" checkbox. The weapon priority card shows a Drop or Coffer badge next to each player who has already received their weapon this tier.',
+        description:
+          'The Quick Log Weapon modal now has a "Via weapon coffer" checkbox. The weapon priority card shows a Drop or Coffer badge next to each player who has already received their weapon this tier.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'improvement',
         title: 'Split Clear board auto-refreshes after linking characters',
-        description: 'Returning to the Roster tab after linking characters on the Profile page (Sync Center) now silently re-fetches split-clear data so the character chips appear without a manual page refresh.',
+        description:
+          'Returning to the Roster tab after linking characters on the Profile page (Sync Center) now silently re-fetches split-clear data so the character chips appear without a manual page refresh.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
       {
         category: 'feature',
         title: 'Dalamud plugin: Split Clear overlay',
-        description: 'The in-game plugin shows a Split Clear overlay when you enter a savage raid with split-clear mode active. It displays your run assignment (Run A or Run B), your character and world for that run, your loot target, and your teammates in the same run. A "Mark Run Cleared" button updates the split-clear status for all players in your run at once.',
+        description:
+          'The in-game plugin shows a Split Clear overlay when you enter a savage raid with split-clear mode active. It displays your run assignment (Run A or Run B), your character and world for that run, your loot target, and your teammates in the same run. A "Mark Run Cleared" button updates the split-clear status for all players in your run at once.',
         pr: 140,
-        prTitle: 'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
+        prTitle:
+          'feat: Split Clear Planner, Loot Intelligence, Character Registry, and Plugin Overlay',
       },
     ],
   },
@@ -838,149 +960,175 @@ export const RELEASES: Release[] = [
       {
         category: 'feature',
         title: 'Recurring events: view and cancel individual occurrences',
-        description: 'Recurring raid sessions now show a "View occurrences" calendar button that lists the next 4 weeks of upcoming dates. Leads can cancel individual occurrences without affecting the whole series, and restore them later.',
+        description:
+          'Recurring raid sessions now show a "View occurrences" calendar button that lists the next 4 weeks of upcoming dates. Leads can cancel individual occurrences without affecting the whole series, and restore them later.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'feature',
         title: 'Discord events and reminders share one raid schedule',
-        description: 'Native Discord scheduled events and webhook reminders now derive from the same generated raid occurrence. Event edits, one-off cancellations, and recurring times stay aligned, while a failure in one Discord delivery path no longer blocks the other.',
+        description:
+          'Native Discord scheduled events and webhook reminders now derive from the same generated raid occurrence. Event edits, one-off cancellations, and recurring times stay aligned, while a failure in one Discord delivery path no longer blocks the other.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'feature',
         title: 'Discord Guild Events: official bot via install-claim flow',
-        description: 'Discord Events now use a shared XIVRaidPlanner bot instead of per-static bot tokens. Leads connect their server in one click — generate a link code, invite the bot, run /xrp link <code> — no token management required. Upcoming occurrences can include their event banner and planner link, while the integrations panel shows connection status, permission health, and Sync/Disconnect actions.',
+        description:
+          'Discord Events now use a shared XIVRaidPlanner bot instead of per-static bot tokens. Leads connect their server in one click — generate a link code, invite the bot, run /xrp link <code> — no token management required. Upcoming occurrences can include their event banner and planner link, while the integrations panel shows connection status, permission health, and Sync/Disconnect actions.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Stale app chunk recovery',
-        description: 'Minor bug fix: browsers with an older cached app shell now reload once and show a clear update message instead of getting stuck on a generic dynamic import error after deployments.',
+        description:
+          'Minor bug fix: browsers with an older cached app shell now reload once and show a clear update message instead of getting stuck on a generic dynamic import error after deployments.',
         pr: 136,
         prTitle: 'fix: recover stale chunks and stabilize scheduler availability',
       },
       {
         category: 'fix',
         title: 'Scheduler drag selection reliability',
-        description: 'Scheduler drag-selection no longer misses slots when selecting another column while previous slot updates are still saving or animating. Cross-midnight preset views now map after-midnight slots to the next day so Prime raid time, Evening, and Full day stay consistent.',
+        description:
+          'Scheduler drag-selection no longer misses slots when selecting another column while previous slot updates are still saving or animating. Cross-midnight preset views now map after-midnight slots to the next day so Prime raid time, Evening, and Full day stay consistent.',
         pr: 136,
         prTitle: 'fix: recover stale chunks and stabilize scheduler availability',
       },
       {
         category: 'fix',
         title: 'Windows dev startup resilience',
-        description: 'The local development startup script now resolves Windows npm/pnpm command shims before launching the frontend server, preventing PowerShell from trying to execute a .ps1 shim as a Win32 application. The backend example env also documents optional Discord bot/interactions variables used by local Discord event testing.',
+        description:
+          'The local development startup script now resolves Windows npm/pnpm command shims before launching the frontend server, preventing PowerShell from trying to execute a .ps1 shim as a Win32 application. The backend example env also documents optional Discord bot/interactions variables used by local Discord event testing.',
         pr: 136,
         prTitle: 'fix: recover stale chunks and stabilize scheduler availability',
       },
       {
         category: 'fix',
         title: 'Leads can now access group settings',
-        description: 'The settings gear icon in the group header was previously only visible to the Owner. Leads can now open group settings to manage roster, tiers, invitations, and other options. The destructive "Delete Static" action remains restricted to the Owner only.',
+        description:
+          'The settings gear icon in the group header was previously only visible to the Owner. Leads can now open group settings to manage roster, tiers, invitations, and other options. The destructive "Delete Static" action remains restricted to the Owner only.',
         pr: 134,
         prTitle: 'hotfix: allow leads to access group settings',
       },
       {
         category: 'fix',
         title: 'Plugin collection sync now feeds Player Hub first',
-        description: 'Mount and token syncs from the plugin now update Player Hub collection goals first, then mirror that same collection progress into Static Mount Farms for every static the player belongs to.',
+        description:
+          'Mount and token syncs from the plugin now update Player Hub collection goals first, then mirror that same collection progress into Static Mount Farms for every static the player belongs to.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Ultimate farm catalog token metadata completed',
-        description: 'Added curated one-token exchange metadata for all Ultimate reward farms, including Dreadwyrm, Ultima, Colossus, Dragonsong, Omega, Oracle, and Mad Harlequin totems with their weapon set exchanges.',
+        description:
+          'Added curated one-token exchange metadata for all Ultimate reward farms, including Dreadwyrm, Ultima, Colossus, Dragonsong, Omega, Oracle, and Mad Harlequin totems with their weapon set exchanges.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'BiS checks now handle swapped ring slots',
-        description: 'Gear sync now treats the two ring slots as an interchangeable pair, so correct Tome/Raid rings equipped in the opposite order no longer show as BiS mismatches.',
+        description:
+          'Gear sync now treats the two ring slots as an interchangeable pair, so correct Tome/Raid rings equipped in the opposite order no longer show as BiS mismatches.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'XIVGear links now populate selected BiS sets',
-        description: 'Pasted XIVGear sheet links now use the full URL import path and preserve the chosen set index, so linked BiS targets populate the intended gear check instead of silently using the wrong set.',
+        description:
+          'Pasted XIVGear sheet links now use the full URL import path and preserve the chosen set index, so linked BiS targets populate the intended gear check instead of silently using the wrong set.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'improvement',
         title: 'XIVGear sheet imports can show multiple set options',
-        description: 'When a XIVGear sheet contains several sets, the BiS import flow now asks which set to link and shows labels with set name, job, GCD, and original set index.',
+        description:
+          'When a XIVGear sheet contains several sets, the BiS import flow now asks which set to link and shows labels with set name, job, GCD, and original set index.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'improvement',
         title: 'Static invite links can be permanent',
-        description: 'Static leads can now create invite links that never expire. Existing 7-day invites still keep their normal expiration behavior, and revoked permanent invites remain disabled.',
+        description:
+          'Static leads can now create invite links that never expire. Existing 7-day invites still keep their normal expiration behavior, and revoked permanent invites remain disabled.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Objectives panel moved to compact right-rail layout',
-        description: 'The Objective Command Center no longer renders as large horizontal cards in the center column. Official Objectives, Active Farms, and Member Interest are now shown as compact rows in the right-side Goals & Objectives panel, keeping the Overview to one screen at 1080p.',
+        description:
+          'The Objective Command Center no longer renders as large horizontal cards in the center column. Official Objectives, Active Farms, and Member Interest are now shown as compact rows in the right-side Goals & Objectives panel, keeping the Overview to one screen at 1080p.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Notification badge and panel count stay in sync',
-        description: 'The notification badge now reflects both server notifications and unread release notes, so the displayed count always matches what you see when the panel opens. The panel also fetches the latest server notifications each time it is opened, preventing stale counts mid-session.',
+        description:
+          'The notification badge now reflects both server notifications and unread release notes, so the displayed count always matches what you see when the panel opens. The panel also fetches the latest server notifications each time it is opened, preventing stale counts mid-session.',
         pr: 133,
-        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
+        prTitle:
+          'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
       {
         category: 'fix',
         title: 'Anonymous activity preference now applies to activity log entries',
-        description: 'Enabling "Anonymous Activity" in the user menu now correctly anonymizes your name in the static activity feed going forward. Previously the preference was stored but not applied when writing new entries, so your name would still appear regardless of the setting.',
+        description:
+          'Enabling "Anonymous Activity" in the user menu now correctly anonymizes your name in the static activity feed going forward. Previously the preference was stored but not applied when writing new entries, so your name would still appear regardless of the setting.',
         pr: 133,
-        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
+        prTitle:
+          'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
       {
         category: 'fix',
         title: 'Discord webhook failures now alert leads and surface delivery status inline',
-        description: 'When a scheduled session or reminder fails to post to Discord, all group leads and the owner receive a notification with the HTTP error details. The Integrations settings panel now also shows the status code and error text from the most recent failed delivery beneath the webhook status chip.',
+        description:
+          'When a scheduled session or reminder fails to post to Discord, all group leads and the owner receive a notification with the HTTP error details. The Integrations settings panel now also shows the status code and error text from the most recent failed delivery beneath the webhook status chip.',
         pr: 133,
-        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
+        prTitle:
+          'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
       {
         category: 'fix',
         title: 'BiS presets automatically fetch gear data when added',
-        description: 'Adding a preset from the "Add Preset" tab now immediately retrieves full gear slot data (item names, item level, materia) from XIVGear after the targets are created. The preset\'s purpose is also derived from its category (Savage, Ultimate, etc.) rather than always defaulting to Savage.',
+        description:
+          'Adding a preset from the "Add Preset" tab now immediately retrieves full gear slot data (item names, item level, materia) from XIVGear after the targets are created. The preset\'s purpose is also derived from its category (Savage, Ultimate, etc.) rather than always defaulting to Savage.',
         pr: 133,
-        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
+        prTitle:
+          'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
       {
         category: 'fix',
         title: 'Claiming a roster slot now auto-links your Player Hub BiS',
-        description: 'When a player claims their slot in the static roster, BiS gear items and currently-equipped gear are now both automatically pulled from Player Hub. The BiS target is fetched from XIVGear or Etro if not already cached. The player\'s latest gear snapshot from Player Hub is used to populate the "currently wearing" comparison immediately — showing BiS matched, upgrade needed, or not detected without requiring a Lodestone sync or manual import. Leads assigning a member receive the same treatment. Everything can still be overridden manually.',
+        description:
+          'When a player claims their slot in the static roster, BiS gear items and currently-equipped gear are now both automatically pulled from Player Hub. The BiS target is fetched from XIVGear or Etro if not already cached. The player\'s latest gear snapshot from Player Hub is used to populate the "currently wearing" comparison immediately — showing BiS matched, upgrade needed, or not detected without requiring a Lodestone sync or manual import. Leads assigning a member receive the same treatment. Everything can still be overridden manually.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: 'Player Hub syncs now propagate live to roster slots',
-        description: 'When a player syncs in Player Hub (via plugin or Lodestone), all roster slots they hold are updated immediately. Gear data (equipped vs BiS comparison) propagates per-job. Character identity (name, world, avatar) propagates across all slots — so name changes, server transfers, and new avatar imports no longer require a re-claim or manual roster edit.',
+        description:
+          'When a player syncs in Player Hub (via plugin or Lodestone), all roster slots they hold are updated immediately. Gear data (equipped vs BiS comparison) propagates per-job. Character identity (name, world, avatar) propagates across all slots — so name changes, server transfers, and new avatar imports no longer require a re-claim or manual roster edit.',
         pr: 135,
         prTitle: 'feat: improve gear sync, scheduling, and Discord delivery',
       },
       {
         category: 'fix',
         title: '"This static" filter now correctly shows all group notifications',
-        description: 'Vote notifications, webhook failure alerts, and other group-scoped messages were previously excluded from the "This static" notification filter because they rely on URL matching, which could fail if the URL format varied. Notifications are now tagged with their group ID at creation time and matched precisely — no more missing notifications in this view.',
+        description:
+          'Vote notifications, webhook failure alerts, and other group-scoped messages were previously excluded from the "This static" notification filter because they rely on URL matching, which could fail if the URL format varied. Notifications are now tagged with their group ID at creation time and matched precisely — no more missing notifications in this view.',
         pr: 133,
-        prTitle: 'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
+        prTitle:
+          'feat: v1.24.0 — Goals Alignment, Multi-BiS, Notification Center, Objective Command Center, Fit Scores, Application Review 2.0',
       },
     ],
   },
@@ -998,7 +1146,8 @@ export const RELEASES: Release[] = [
         description:
           'Leads can now define static objective goals (Savage BiS, Ultimate Clear, Mount Farm, etc.) with priority levels (Required, Preferred, Optional). Any member can propose content suggestions and the group votes on them; leads can promote a winning suggestion directly into a static objective goal.',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'feature',
@@ -1006,7 +1155,8 @@ export const RELEASES: Release[] = [
         description:
           "The Members panel now shows a compact color-coded badge for each member indicating how well their public goals align with the static's objectives: green dots for aligned goals, yellow for partial, red for conflicts, and grey for missing data. Hovering shows a breakdown count.",
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'feature',
@@ -1014,7 +1164,8 @@ export const RELEASES: Release[] = [
         description:
           "Applicant goal alignment is now captured at apply time and shown in the Recruitment Dossier. Leaders instantly see how well each applicant's public goals match the static's objectives — without the applicant needing to change anything.",
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'feature',
@@ -1022,15 +1173,17 @@ export const RELEASES: Release[] = [
         description:
           'The goal creation flow now lets you choose between a private personal task (no matching) and a matchable personal objective that uses the same category taxonomy as static goals (Savage BiS, Ultimate Clear, etc.). Matchable goals are used for roster alignment, Static Finder, and join-request scoring.',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'feature',
         title: 'Static Objectives widget on Overview',
         description:
-          "The Overview page right column now shows a compact list of the static's active objective goals (category + priority). Owners and leads see a \"Manage goals →\" link; members see \"View goals →\".",
+          'The Overview page right column now shows a compact list of the static\'s active objective goals (category + priority). Owners and leads see a "Manage goals →" link; members see "View goals →".',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'improvement',
@@ -1038,7 +1191,8 @@ export const RELEASES: Release[] = [
         description:
           'The three separate Overview widgets (Static Objectives, Collection Goals, Member Interest) are now one cohesive "Goals & Farms" card with sub-sections for official objectives, active reward farms, and open member suggestions.',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'improvement',
@@ -1046,7 +1200,8 @@ export const RELEASES: Release[] = [
         description:
           "Static listing cards now show the group's objective categories. Logged-in users with a public Player Hub profile can filter by objective category and optionally hide statics whose goals conflict with their own.",
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'improvement',
@@ -1054,7 +1209,8 @@ export const RELEASES: Release[] = [
         description:
           'All goal alignment checks use only goals the player has marked public. Private goal text is never included in join-request snapshots or API responses.',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'improvement',
@@ -1062,7 +1218,8 @@ export const RELEASES: Release[] = [
         description:
           'Static Settings previously had 7 tabs that caused horizontal scroll on smaller screens. Discovery, Invitations, and Join Requests are now consolidated into a single Recruitment tab, and Goals is relabelled "Goals & Farms".',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'improvement',
@@ -1070,7 +1227,8 @@ export const RELEASES: Release[] = [
         description:
           'Recruitment splits into Overview (status cards, pending application CTA), Listing (the full Static Finder form), Requests (join request review), and Invitations — each independently scrollable.',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'improvement',
@@ -1078,7 +1236,8 @@ export const RELEASES: Release[] = [
         description:
           'Goals & Farms separates Official Objectives, Collection Goals (farms), and Content Suggestions into their own sub-sections under an Overview card that shows counts and CTAs at a glance.',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'improvement',
@@ -1086,7 +1245,8 @@ export const RELEASES: Release[] = [
         description:
           "Collection goals now separate what you're tracking (reward type) from where it comes from (content type). Ultimate is no longer bundled under Savage — create an Ultimate goal, pick from six preset duties (FRU, TOP, DSR, TEA, UwU, UCoB), and the creation flow is now a guided wizard.",
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'fix',
@@ -1094,7 +1254,8 @@ export const RELEASES: Release[] = [
         description:
           "Pending applicants visiting a discoverable static's Overview, Schedule, or Mount Farms pages no longer receive repeated 'You are not a member' toast errors. Member-only API calls are now skipped until the join request is accepted.",
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'fix',
@@ -1102,7 +1263,8 @@ export const RELEASES: Release[] = [
         description:
           "The Static Objectives panel in Settings previously shared a single error field with all other objective store operations. A failure in any operation would surface a raw error string. The objectives error is now tracked separately with a friendly 'Couldn't load objectives.' message and Retry button.",
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       // ── Notification Center ──────────────────────────────────────────────
       {
@@ -1111,7 +1273,8 @@ export const RELEASES: Release[] = [
         description:
           'Clicking the unread badge in the user menu now opens a Notification Center modal. See notification titles, bodies, and timestamps; click any notification with a link to navigate directly; mark individual notifications read or use "Mark all read" at the bottom.',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'fix',
@@ -1119,7 +1282,8 @@ export const RELEASES: Release[] = [
         description:
           'The notification store was using camelCase field names that did not match the snake_case JSON the API returns, causing the unread count to always equal the total. Fields are now correctly mapped.',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'fix',
@@ -1127,7 +1291,8 @@ export const RELEASES: Release[] = [
         description:
           'Notifications created when a member votes on a content suggestion previously used the static UUID and linked to Settings → Goals. They now use the share code and link to the Overview Goals & Farms module.',
         pr: 131,
-        prTitle: 'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
+        prTitle:
+          'feat(goals-v1.1): static objectives, content suggestions, voting, roster alignment, discovery filters',
       },
       {
         category: 'fix',
@@ -1432,7 +1597,7 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'Application snapshots from Player Hub',
         description:
-          "Request to Join keeps a copy of your selected character, job, readiness, gear, availability summary, sharing state, and selected alt/flex job details when you apply. Private notes and goals stay private, while exact availability windows are included only when the applicant opts in.",
+          'Request to Join keeps a copy of your selected character, job, readiness, gear, availability summary, sharing state, and selected alt/flex job details when you apply. Private notes and goals stay private, while exact availability windows are included only when the applicant opts in.',
         commits: [{ hash: '05a4b7b', message: 'feat: add solo player hub foundation' }],
       },
       {
@@ -1615,7 +1780,10 @@ export const RELEASES: Release[] = [
     version: '1.22.0',
     date: '2026-06-04T00:00:00Z',
     title: 'Mount Farm Tracker',
-    highlights: ['Track mount farm progress for your static', 'Totem counting and farm recommendations'],
+    highlights: [
+      'Track mount farm progress for your static',
+      'Totem counting and farm recommendations',
+    ],
     items: [
       {
         category: 'feature',
@@ -1821,7 +1989,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Safer automatic gear sync',
         description:
-          'Auto-sync now applies conservative safety gates before writing gear. It skips sync when the upstream active job doesn\'t match the player\'s registered job, when the upstream item level is lower than saved gear, when the upstream payload is incomplete, when the provider identity doesn\'t match the linked character, and it never clears stored gear just because an upstream slot is missing. This prevents auto-sync from destroying Ultimate BiS sets, manually curated gear, or overwriting good data with stale provider snapshots.',
+          "Auto-sync now applies conservative safety gates before writing gear. It skips sync when the upstream active job doesn't match the player's registered job, when the upstream item level is lower than saved gear, when the upstream payload is incomplete, when the provider identity doesn't match the linked character, and it never clears stored gear just because an upstream slot is missing. This prevents auto-sync from destroying Ultimate BiS sets, manually curated gear, or overwriting good data with stale provider snapshots.",
         pr: 109,
         prTitle: 'fix(gear-sync): v1.20.1 — auto-sync safety gates & Tomestone refresh',
       },
@@ -1837,7 +2005,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Force refresh & Tomestone link',
         description:
-          'Force Refresh now bypasses the local preview cache so you always get the latest data Tomestone has. Tomestone\'s upstream refresh requires a browser visit, so if data looks stale the app links you directly to the character\'s Tomestone page to click Refresh there. Full Tomestone API integration for automatic refresh is in progress.',
+          "Force Refresh now bypasses the local preview cache so you always get the latest data Tomestone has. Tomestone's upstream refresh requires a browser visit, so if data looks stale the app links you directly to the character's Tomestone page to click Refresh there. Full Tomestone API integration for automatic refresh is in progress.",
         pr: 109,
         prTitle: 'fix(gear-sync): v1.20.1 — auto-sync safety gates & Tomestone refresh',
       },
@@ -1872,7 +2040,13 @@ export const RELEASES: Release[] = [
           'Job picker, static switcher, and tier selector dropdowns are now clamped to viewport width so they stay on-screen at 360–430px.',
         pr: 98,
         prTitle: '[Fix and CICD] Mobile Polish and CI/CD .md fixes',
-        commits: [{ hash: 'dee3a1d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+        commits: [
+          {
+            hash: 'dee3a1d',
+            message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids',
+            date: '2026-05-31T18:00:00Z',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -1881,7 +2055,13 @@ export const RELEASES: Release[] = [
           'Create/Edit Session modal now uses a sticky footer so Save and Cancel buttons stay visible even when the form content is long.',
         pr: 98,
         prTitle: '[Fix and CICD] Mobile Polish and CI/CD .md fixes',
-        commits: [{ hash: 'dee3a1d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+        commits: [
+          {
+            hash: 'dee3a1d',
+            message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids',
+            date: '2026-05-31T18:00:00Z',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -1890,7 +2070,13 @@ export const RELEASES: Release[] = [
           'Long release titles, descriptions, badges, dates, and expanded commit details now wrap inside the card instead of overflowing on phone widths.',
         pr: 98,
         prTitle: '[Fix and CICD] Mobile Polish and CI/CD .md fixes',
-        commits: [{ hash: '6b605d9', message: 'fix(release-notes): prevent mobile overflow', date: '2026-05-31T18:00:00Z' }],
+        commits: [
+          {
+            hash: '6b605d9',
+            message: 'fix(release-notes): prevent mobile overflow',
+            date: '2026-05-31T18:00:00Z',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -1899,7 +2085,13 @@ export const RELEASES: Release[] = [
           'Reduced column minimums in the availability grid so less horizontal scrolling is needed on phones.',
         pr: 98,
         prTitle: '[Fix and CICD] Mobile Polish and CI/CD .md fixes',
-        commits: [{ hash: 'dee3a1d', message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids', date: '2026-05-31T18:00:00Z' }],
+        commits: [
+          {
+            hash: 'dee3a1d',
+            message: 'fix(mobile): prevent dropdown overflow, sticky modal footer, tighter grids',
+            date: '2026-05-31T18:00:00Z',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -1908,21 +2100,39 @@ export const RELEASES: Release[] = [
           'PR automation and release-note reminder workflows now document and enforce fork-safe guards so read-only fork tokens do not fail CI.',
         pr: 98,
         prTitle: '[Fix and CICD] Mobile Polish and CI/CD .md fixes',
-        commits: [{ hash: '4192132', message: 'fix(ci): skip fork-PR workflows, add v1.19.3 internal release note', date: '2026-05-31T18:00:00Z' }],
+        commits: [
+          {
+            hash: '4192132',
+            message: 'fix(ci): skip fork-PR workflows, add v1.19.3 internal release note',
+            date: '2026-05-31T18:00:00Z',
+          },
+        ],
       },
       {
         category: 'fix',
         title: 'Player card header no longer overflows on mobile',
         description:
           'Long player names wrap naturally at a smaller font size, badges (MT/OT, position) wrap via flex-wrap, and right-side metrics stay pinned.',
-        commits: [{ hash: '7445c9d', message: 'fix(mobile): player card header responsive layout', date: '2026-06-01T08:00:00Z' }],
+        commits: [
+          {
+            hash: '7445c9d',
+            message: 'fix(mobile): player card header responsive layout',
+            date: '2026-06-01T08:00:00Z',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'Two-row mobile header',
         description:
           'The static name drops to its own full-width row below the logo on mobile instead of competing for space with icons.',
-        commits: [{ hash: '74acb18', message: 'fix(mobile): two-row header layout', date: '2026-06-01T08:00:00Z' }],
+        commits: [
+          {
+            hash: '74acb18',
+            message: 'fix(mobile): two-row header layout',
+            date: '2026-06-01T08:00:00Z',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -1931,7 +2141,13 @@ export const RELEASES: Release[] = [
           'AGENTS.md, CLAUDE.md, and the pull request template now call out release note requirements, fork PR guard checks, and pre-PR audit commands.',
         pr: 98,
         prTitle: '[Fix and CICD] Mobile Polish and CI/CD .md fixes',
-        commits: [{ hash: '43d89f2', message: 'docs: add contributor/agent PR rules and PR template', date: '2026-05-31T18:00:00Z' }],
+        commits: [
+          {
+            hash: '43d89f2',
+            message: 'docs: add contributor/agent PR rules and PR template',
+            date: '2026-05-31T18:00:00Z',
+          },
+        ],
       },
     ],
   },
@@ -1960,8 +2176,7 @@ export const RELEASES: Release[] = [
       {
         category: 'fix',
         title: 'Availability grid shows full 24-hour range',
-        description:
-          'The grid was incorrectly capped at 12:00 PM, hiding all morning slots.',
+        description: 'The grid was incorrectly capped at 12:00 PM, hiding all morning slots.',
         pr: 94,
         prTitle: 'feat(schedule): recurring availability templates and best-window finder',
       },
@@ -1980,7 +2195,13 @@ export const RELEASES: Release[] = [
           'The availability grid was incorrectly capped at 12:00 PM, hiding all morning slots. It now shows the full 24-hour range.',
         pr: 93,
         prTitle: 'fix(schedule): show full 24-hour range in availability grid',
-        commits: [{ hash: '9342852', message: 'fix(schedule): show full 24-hour range in availability grid', date: '2026-05-31T12:00:00Z' }],
+        commits: [
+          {
+            hash: '9342852',
+            message: 'fix(schedule): show full 24-hour range in availability grid',
+            date: '2026-05-31T12:00:00Z',
+          },
+        ],
       },
     ],
   },
@@ -1995,35 +2216,65 @@ export const RELEASES: Release[] = [
         title: 'Tomestone sync — equipped gear display',
         description:
           'After a Lodestone sync, each gear slot tooltip now shows both the BiS target and what the player currently has equipped, pulled from the Tomestone API.',
-        commits: [{ hash: '2b56895', message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign', date: '2026-05-29T12:00:00Z' }],
+        commits: [
+          {
+            hash: '2b56895',
+            message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign',
+            date: '2026-05-29T12:00:00Z',
+          },
+        ],
       },
       {
         category: 'feature',
         title: 'BiS comparison badges on gear tooltips',
         description:
           'Hover any gear slot to instantly see one of four states: "BiS matched ✓", "Upgrade needed", "Not currently detected", or "No BiS target configured". Item level diff vs BiS is shown inline.',
-        commits: [{ hash: '2b56895', message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign', date: '2026-05-29T12:00:00Z' }],
+        commits: [
+          {
+            hash: '2b56895',
+            message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign',
+            date: '2026-05-29T12:00:00Z',
+          },
+        ],
       },
       {
         category: 'feature',
         title: 'Lodestone avatar on player cards',
         description:
-          'Player cards now show the character\'s Lodestone avatar after a successful sync.',
-        commits: [{ hash: '2b56895', message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign', date: '2026-05-29T12:00:00Z' }],
+          "Player cards now show the character's Lodestone avatar after a successful sync.",
+        commits: [
+          {
+            hash: '2b56895',
+            message: 'feat(pr3): Tomestone sync — equipped gear, avatar, tooltip redesign',
+            date: '2026-05-29T12:00:00Z',
+          },
+        ],
       },
       {
         category: 'feature',
         title: 'Discord webhook announcements for raid sessions',
         description:
           'Creating, updating, or deleting a raid session — and every RSVP change — now fires a real Discord announcement when a webhook is configured. A "Post latest session" button lets leads push the next upcoming session manually.',
-        commits: [{ hash: 'ff0c759', message: 'feat(schedule): wire Discord webhook to session lifecycle', date: '2026-05-30T12:00:00Z' }],
+        commits: [
+          {
+            hash: 'ff0c759',
+            message: 'feat(schedule): wire Discord webhook to session lifecycle',
+            date: '2026-05-30T12:00:00Z',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'Recurring session creation from availability',
         description:
           'Clicking "Create session" from an availability recommendation now pre-fills the correct future date (not a past week) and automatically sets the session as weekly-recurring on the right weekday.',
-        commits: [{ hash: 'ff0c759', message: 'feat(schedule): wire Discord webhook to session lifecycle', date: '2026-05-30T12:00:00Z' }],
+        commits: [
+          {
+            hash: 'ff0c759',
+            message: 'feat(schedule): wire Discord webhook to session lifecycle',
+            date: '2026-05-30T12:00:00Z',
+          },
+        ],
       },
     ],
   },
@@ -2040,7 +2291,9 @@ export const RELEASES: Release[] = [
           "New Schedule tab where leads can post one-off or recurring raid sessions. Times are stored in the static's timezone and auto-convert to each member's local time, and everyone can RSVP as available, tentative, or unavailable.",
         pr: 83,
         prTitle: 'Add schedule availability and tighten dev auth gating',
-        commits: [{ hash: '81a5c8b', message: 'Add schedule availability and tighten dev auth gating' }],
+        commits: [
+          { hash: '81a5c8b', message: 'Add schedule availability and tighten dev auth gating' },
+        ],
       },
       {
         category: 'feature',
@@ -2049,7 +2302,9 @@ export const RELEASES: Release[] = [
           "A When2Meet-style grid lets members paint when they're free across the coming week. Overlapping slots are highlighted so the static can spot the strongest raid windows at a glance.",
         pr: 83,
         prTitle: 'Add schedule availability and tighten dev auth gating',
-        commits: [{ hash: '81a5c8b', message: 'Add schedule availability and tighten dev auth gating' }],
+        commits: [
+          { hash: '81a5c8b', message: 'Add schedule availability and tighten dev auth gating' },
+        ],
       },
       {
         category: 'fix',
@@ -2058,7 +2313,9 @@ export const RELEASES: Release[] = [
           'Fixed a case where a logged-in member could fail to load after a refresh, which blocked member-only edit and save actions until re-login.',
         pr: 83,
         prTitle: 'Add schedule availability and tighten dev auth gating',
-        commits: [{ hash: '81a5c8b', message: 'Add schedule availability and tighten dev auth gating' }],
+        commits: [
+          { hash: '81a5c8b', message: 'Add schedule availability and tighten dev auth gating' },
+        ],
       },
     ],
   },
@@ -2071,42 +2328,77 @@ export const RELEASES: Release[] = [
       {
         category: 'improvement',
         title: 'Tab rename: Loot → Priority, Log → Loot Log',
-        description: 'Clearer tab names that match their actual function. "Priority" shows loot rankings, "Loot Log" is where you track drops.',
+        description:
+          'Clearer tab names that match their actual function. "Priority" shows loot rankings, "Loot Log" is where you track drops.',
         pr: 81,
         prTitle: 'Loot Log restructure, All Weeks view, materials in Who Needs It',
-        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+        commits: [
+          {
+            hash: 'fb93dd3',
+            message:
+              'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges',
+          },
+        ],
       },
       {
         category: 'feature',
         title: 'All Weeks loot view',
-        description: 'New "All Weeks" sub-view in the Loot Log tab shows every loot and material entry across all weeks in a filterable, sortable table with smart search.',
+        description:
+          'New "All Weeks" sub-view in the Loot Log tab shows every loot and material entry across all weeks in a filterable, sortable table with smart search.',
         pr: 81,
         prTitle: 'Loot Log restructure, All Weeks view, materials in Who Needs It',
-        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+        commits: [
+          {
+            hash: 'fb93dd3',
+            message:
+              'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'Sub-view rename: Week → Grid, History → List',
-        description: 'Layout toggle labels now match what they display — a spreadsheet grid or a chronological list.',
+        description:
+          'Layout toggle labels now match what they display — a spreadsheet grid or a chronological list.',
         pr: 81,
         prTitle: 'Loot Log restructure, All Weeks view, materials in Who Needs It',
-        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+        commits: [
+          {
+            hash: 'fb93dd3',
+            message:
+              'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges',
+          },
+        ],
       },
       {
         category: 'feature',
         title: 'Multi-entry grid badges',
-        description: 'Grid cells with multiple loot entries (e.g., raid drop + book purchase) now show a ×N badge. Click the badge to see all entries for that slot.',
+        description:
+          'Grid cells with multiple loot entries (e.g., raid drop + book purchase) now show a ×N badge. Click the badge to see all entries for that slot.',
         pr: 81,
         prTitle: 'Loot Log restructure, All Weeks view, materials in Who Needs It',
-        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+        commits: [
+          {
+            hash: 'fb93dd3',
+            message:
+              'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'URL backward compatibility',
-        description: '?tab=loot still works (maps to Priority tab). ?tab=priority added as new canonical URL.',
+        description:
+          '?tab=loot still works (maps to Priority tab). ?tab=priority added as new canonical URL.',
         pr: 81,
         prTitle: 'Loot Log restructure, All Weeks view, materials in Who Needs It',
-        commits: [{ hash: 'fb93dd3', message: 'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges' }],
+        commits: [
+          {
+            hash: 'fb93dd3',
+            message:
+              'feat: restructure Loot/Log tabs with rename, All Weeks view, and multi-entry badges',
+          },
+        ],
       },
     ],
   },
@@ -2119,42 +2411,67 @@ export const RELEASES: Release[] = [
       {
         category: 'feature',
         title: 'Admin analytics dashboard',
-        description: 'Redesigned admin area with sidebar navigation, KPI cards, growth charts, top users/statics tables, and feature usage analytics',
+        description:
+          'Redesigned admin area with sidebar navigation, KPI cards, growth charts, top users/statics tables, and feature usage analytics',
         pr: 76,
         prTitle: 'Add analytics, usage tracking, and error reporting',
-        commits: [{ hash: 'e1cb8fd', message: 'feat: add admin dashboard shell with sidebar, overview page, and Recharts charts' }],
+        commits: [
+          {
+            hash: 'e1cb8fd',
+            message:
+              'feat: add admin dashboard shell with sidebar, overview page, and Recharts charts',
+          },
+        ],
       },
       {
         category: 'feature',
         title: 'Automatic error reporting',
-        description: 'Frontend and backend errors are now captured automatically with grouped error log, severity filtering, and mark-as-reviewed workflow',
+        description:
+          'Frontend and backend errors are now captured automatically with grouped error log, severity filtering, and mark-as-reviewed workflow',
         pr: 76,
         prTitle: 'Add analytics, usage tracking, and error reporting',
-        commits: [{ hash: '4a40d1e', message: 'feat: add usage analytics and error log admin pages' }],
+        commits: [
+          { hash: '4a40d1e', message: 'feat: add usage analytics and error log admin pages' },
+        ],
       },
       {
         category: 'feature',
         title: 'Usage analytics tracking',
-        description: 'Tracks feature usage across the app including tab switches, BiS imports, loot logging, wizard usage, and more',
+        description:
+          'Tracks feature usage across the app including tab switches, BiS imports, loot logging, wizard usage, and more',
         pr: 76,
         prTitle: 'Add analytics, usage tracking, and error reporting',
-        commits: [{ hash: '279a8ca', message: 'feat: add analytics tracking points across frontend' }],
+        commits: [
+          { hash: '279a8ca', message: 'feat: add analytics tracking points across frontend' },
+        ],
       },
       {
         category: 'feature',
         title: 'Discord error alerts',
-        description: 'Critical and recurring errors trigger Discord webhook notifications for proactive monitoring',
+        description:
+          'Critical and recurring errors trigger Discord webhook notifications for proactive monitoring',
         pr: 76,
         prTitle: 'Add analytics, usage tracking, and error reporting',
-        commits: [{ hash: 'cc4e6e7', message: 'feat: add Discord webhook alerts and analytics data retention task' }],
+        commits: [
+          {
+            hash: 'cc4e6e7',
+            message: 'feat: add Discord webhook alerts and analytics data retention task',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'Data retention',
-        description: 'Raw analytics events older than 90 days are automatically aggregated into daily rollups to keep the database lean',
+        description:
+          'Raw analytics events older than 90 days are automatically aggregated into daily rollups to keep the database lean',
         pr: 76,
         prTitle: 'Add analytics, usage tracking, and error reporting',
-        commits: [{ hash: 'cc4e6e7', message: 'feat: add Discord webhook alerts and analytics data retention task' }],
+        commits: [
+          {
+            hash: 'cc4e6e7',
+            message: 'feat: add Discord webhook alerts and analytics data retention task',
+          },
+        ],
       },
     ],
   },
@@ -2167,23 +2484,36 @@ export const RELEASES: Release[] = [
       {
         category: 'improvement',
         title: 'Gear slot row highlight',
-        description: 'Alt+clicking a log entry now highlights the specific gear slot row on the player card instead of the entire card',
+        description:
+          'Alt+clicking a log entry now highlights the specific gear slot row on the player card instead of the entire card',
         pr: 75,
         prTitle: 'feat: gear slot row highlight + weapon nav fixes',
-        commits: [{ hash: '6dd8d11', message: 'feat: highlight gear slot row instead of whole card on alt+click' }],
+        commits: [
+          {
+            hash: '6dd8d11',
+            message: 'feat: highlight gear slot row instead of whole card on alt+click',
+          },
+        ],
       },
       {
         category: 'fix',
         title: 'Weapon navigation accuracy',
-        description: 'Alt+clicking the weapon row now navigates to the main weapon drop, not extra/alt weapons from Weapon Priorities',
+        description:
+          'Alt+clicking the weapon row now navigates to the main weapon drop, not extra/alt weapons from Weapon Priorities',
         pr: 75,
         prTitle: 'feat: gear slot row highlight + weapon nav fixes',
-        commits: [{ hash: '27bd846', message: 'fix: prefer main weapon over extra/alt when navigating from gear slot' }],
+        commits: [
+          {
+            hash: '27bd846',
+            message: 'fix: prefer main weapon over extra/alt when navigating from gear slot',
+          },
+        ],
       },
       {
         category: 'fix',
         title: 'Consistent weapon display',
-        description: 'All weapon log entries now show the job icon and abbreviation, including historical entries',
+        description:
+          'All weapon log entries now show the job icon and abbreviation, including historical entries',
         pr: 75,
         prTitle: 'feat: gear slot row highlight + weapon nav fixes',
         commits: [{ hash: 'b7b48cd', message: 'fix: show job icon on all weapon log entries' }],
@@ -2202,23 +2532,33 @@ export const RELEASES: Release[] = [
         description: 'Exo 2 display font for headings and titles, Inter for body text',
         pr: 74,
         prTitle: 'feat: frontend UI upgrade — typography, motion, polish',
-        commits: [{ hash: 'f164cbb', message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system' }],
+        commits: [
+          {
+            hash: 'f164cbb',
+            message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'Motion system',
-        description: 'Smooth page transitions, staggered grid reveals, shimmer skeleton loading, and toast enter/exit animations',
+        description:
+          'Smooth page transitions, staggered grid reveals, shimmer skeleton loading, and toast enter/exit animations',
         details:
           'Built on framer-motion with reusable animation presets. All animations respect prefers-reduced-motion. Framer-motion split into its own bundle chunk for optimal loading.',
         commits: [
-          { hash: 'f164cbb', message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system' },
+          {
+            hash: 'f164cbb',
+            message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system',
+          },
           { hash: '52d8944', message: 'feat: phase 4 — loading and toast polish' },
         ],
       },
       {
         category: 'improvement',
         title: 'Landing page refresh',
-        description: 'Hero gradient atmosphere, staggered entrance animation, feature card icons, and tier timeline visualization',
+        description:
+          'Hero gradient atmosphere, staggered entrance animation, feature card icons, and tier timeline visualization',
         pr: 74,
         prTitle: 'feat: frontend UI upgrade — typography, motion, polish',
         commits: [{ hash: 'a36a82c', message: 'feat: phase 3 — landing page transformation' }],
@@ -2226,26 +2566,38 @@ export const RELEASES: Release[] = [
       {
         category: 'improvement',
         title: 'Visual depth',
-        description: 'Card hover glow effects, progress ring glow at 75%+ completion, and shadow-xl on modals',
+        description:
+          'Card hover glow effects, progress ring glow at 75%+ completion, and shadow-xl on modals',
         pr: 74,
         prTitle: 'feat: frontend UI upgrade — typography, motion, polish',
-        commits: [{ hash: 'e00dca8', message: 'feat: phase 5 — surface atmosphere and card polish' }],
+        commits: [
+          { hash: 'e00dca8', message: 'feat: phase 5 — surface atmosphere and card polish' },
+        ],
       },
       {
         category: 'fix',
         title: 'Dark Reader compatibility',
-        description: 'Added darkreader-lock meta tag to prevent the Dark Reader extension from conflicting with the built-in theme system',
+        description:
+          'Added darkreader-lock meta tag to prevent the Dark Reader extension from conflicting with the built-in theme system',
         pr: 74,
         prTitle: 'feat: frontend UI upgrade — typography, motion, polish',
-        commits: [{ hash: 'ce6db1d', message: 'fix: prevent Dark Reader from overriding app theme' }],
+        commits: [
+          { hash: 'ce6db1d', message: 'fix: prevent Dark Reader from overriding app theme' },
+        ],
       },
       {
         category: 'fix',
         title: 'Skeleton design system compliance',
-        description: 'Fixed 9 hardcoded bg-slate-* colors in skeleton components with semantic design tokens',
+        description:
+          'Fixed 9 hardcoded bg-slate-* colors in skeleton components with semantic design tokens',
         pr: 74,
         prTitle: 'feat: frontend UI upgrade — typography, motion, polish',
-        commits: [{ hash: 'f164cbb', message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system' }],
+        commits: [
+          {
+            hash: 'f164cbb',
+            message: 'feat: UI upgrade phases 1-2 — typography, depth, and motion system',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -2271,7 +2623,12 @@ export const RELEASES: Release[] = [
           'Create and manage API keys from your user menu. Keys use the xrp_ prefix, are hashed with SHA-256, and can be revoked at any time. Manage keys under Settings > API Keys.',
         pr: 70,
         prTitle: 'feat: API key auth and server-side priority for Dalamud plugin',
-        commits: [{ hash: 'f0581b0', message: 'feat: add API key auth system and server-side priority endpoint' }],
+        commits: [
+          {
+            hash: 'f0581b0',
+            message: 'feat: add API key auth system and server-side priority endpoint',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -2281,7 +2638,12 @@ export const RELEASES: Release[] = [
           'The priority algorithm has been ported server-side so the Dalamud plugin can display accurate priority rankings in-game without needing the web app open.',
         pr: 70,
         prTitle: 'feat: API key auth and server-side priority for Dalamud plugin',
-        commits: [{ hash: 'fb253ce', message: 'test: add tests for API key system and priority calculator' }],
+        commits: [
+          {
+            hash: 'fb253ce',
+            message: 'test: add tests for API key system and priority calculator',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -2289,7 +2651,12 @@ export const RELEASES: Release[] = [
         description: 'Loot log ring entries correctly map to ring1/ring2 gear slots',
         pr: 70,
         prTitle: 'feat: API key auth and server-side priority for Dalamud plugin',
-        commits: [{ hash: '9a9ce72', message: 'fix: handle ring slot name mismatch between loot log and gear' }],
+        commits: [
+          {
+            hash: '9a9ce72',
+            message: 'fix: handle ring slot name mismatch between loot log and gear',
+          },
+        ],
       },
     ],
   },
@@ -2307,7 +2674,9 @@ export const RELEASES: Release[] = [
           'Full light mode support with carefully tuned colors for readability. The app respects your OS preference by default, and your choice persists across sessions. All surfaces, text, badges, glows, and role colors adapt automatically.',
         pr: 68,
         prTitle: 'feat: add light mode theme with floating day/night toggle',
-        commits: [{ hash: '0234686', message: 'feat: add light mode theme with floating day/night toggle' }],
+        commits: [
+          { hash: '0234686', message: 'feat: add light mode theme with floating day/night toggle' },
+        ],
       },
     ],
   },
@@ -2315,7 +2684,10 @@ export const RELEASES: Release[] = [
     version: '1.12.0',
     date: '2026-01-30T22:00:00Z',
     title: 'Flexible Priority Settings',
-    highlights: ['Priority modes for different group styles', 'Per-job and per-player priority adjustments'],
+    highlights: [
+      'Priority modes for different group styles',
+      'Per-job and per-player priority adjustments',
+    ],
     items: [
       {
         category: 'feature',
@@ -2325,7 +2697,12 @@ export const RELEASES: Release[] = [
           'Three modes available: Automatic (system calculates and highlights top priority - default), Manual (show priority scores but no highlighting), and Disabled (equal priority for all players - great for groups that rotate loot equally). All existing statics default to Automatic mode, so your current priority behavior is unchanged. To switch modes, go to Group Settings → Priority.',
         pr: 66,
         prTitle: 'feat: verbose loot priority control and streamlined week/floor drop wizards',
-        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+        commits: [
+          {
+            hash: 'bd5c0d7',
+            message: 'feat: add flexible priority settings for loot distribution',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -2335,7 +2712,12 @@ export const RELEASES: Release[] = [
           'Add per-job adjustments from -100 to +100 in Group Settings → Priority → Advanced Options. For example, give +20 priority to PCT if they need extra gear focus, or -15 to tanks if healers should get priority.',
         pr: 66,
         prTitle: 'feat: verbose loot priority control and streamlined week/floor drop wizards',
-        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+        commits: [
+          {
+            hash: 'bd5c0d7',
+            message: 'feat: add flexible priority settings for loot distribution',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -2345,7 +2727,12 @@ export const RELEASES: Release[] = [
           'Right-click any player card and select "Adjust Priority" to set a modifier from -100 to +100. Useful when a new member joins mid-tier and needs catch-up priority, or to balance out a player who got lucky early.',
         pr: 66,
         prTitle: 'feat: verbose loot priority control and streamlined week/floor drop wizards',
-        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+        commits: [
+          {
+            hash: 'bd5c0d7',
+            message: 'feat: add flexible priority settings for loot distribution',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -2355,17 +2742,27 @@ export const RELEASES: Release[] = [
           'Enable in Group Settings → Priority → Advanced Options. Players who haven\'t received drops recently get a "drought bonus" while players with more than average drops get a small penalty. Helps ensure more even distribution over time.',
         pr: 66,
         prTitle: 'feat: verbose loot priority control and streamlined week/floor drop wizards',
-        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+        commits: [
+          {
+            hash: 'bd5c0d7',
+            message: 'feat: add flexible priority settings for loot distribution',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'Priority breakdown tooltips',
-        description: 'Hover over priority scores to see exactly how they\'re calculated',
+        description: "Hover over priority scores to see exactly how they're calculated",
         details:
           'The tooltip now shows role priority, gear need, job modifiers, player modifiers, and any enhanced scoring adjustments. Makes it easy to understand why one player has higher priority than another.',
         pr: 66,
         prTitle: 'feat: verbose loot priority control and streamlined week/floor drop wizards',
-        commits: [{ hash: 'bd5c0d7', message: 'feat: add flexible priority settings for loot distribution' }],
+        commits: [
+          {
+            hash: 'bd5c0d7',
+            message: 'feat: add flexible priority settings for loot distribution',
+          },
+        ],
       },
     ],
   },
@@ -2396,12 +2793,18 @@ export const RELEASES: Release[] = [
       {
         category: 'feature',
         title: 'Hide setup banners in group settings',
-        description: 'New toggles to hide "Unclaimed" and "No BiS configured" banners on player cards',
+        description:
+          'New toggles to hide "Unclaimed" and "No BiS configured" banners on player cards',
         details:
           'Group settings now include two new toggles: "Hide Unclaimed Banners" suppresses the ownership prompts on unclaimed player cards, and "Hide BiS Banners" suppresses the BiS import prompts. Useful for statics that prefer a cleaner card appearance.',
         pr: 62,
         prTitle: 'feat: Add hide setup banners settings and material logging enhancements',
-        commits: [{ hash: '879f036', message: 'feat: add hide setup banners settings and material logging enhancements' }],
+        commits: [
+          {
+            hash: '879f036',
+            message: 'feat: add hide setup banners settings and material logging enhancements',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -2411,7 +2814,12 @@ export const RELEASES: Release[] = [
           'When logging twine, glaze, solvent, or universal tomestone, a checkbox lets you simultaneously mark the corresponding gear slot as augmented. The system tracks which slot was augmented for each material entry, enabling precise undo on deletion. Note: A one-time data migration will sync existing material entries with gear status using heuristics for entries logged before this feature.',
         pr: 62,
         prTitle: 'feat: Add hide setup banners settings and material logging enhancements',
-        commits: [{ hash: '879f036', message: 'feat: add hide setup banners settings and material logging enhancements' }],
+        commits: [
+          {
+            hash: '879f036',
+            message: 'feat: add hide setup banners settings and material logging enhancements',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -2421,17 +2829,27 @@ export const RELEASES: Release[] = [
           'Alt+Click on any tome gear slot icon navigates to the Log tab and highlights the material entry that augmented that slot. Also available via context menu "Jump to Material Entry".',
         pr: 62,
         prTitle: 'feat: Add hide setup banners settings and material logging enhancements',
-        commits: [{ hash: '879f036', message: 'feat: add hide setup banners settings and material logging enhancements' }],
+        commits: [
+          {
+            hash: '879f036',
+            message: 'feat: add hide setup banners settings and material logging enhancements',
+          },
+        ],
       },
       {
         category: 'fix',
         title: 'Universal Tomestone priority calculation',
         description: 'Fixed priority showing for players who already have the tome weapon',
         details:
-          'Universal Tomestone priority now correctly shows for players pursuing the tome weapon who don\'t have it yet, rather than incorrectly showing for players who already have it.',
+          "Universal Tomestone priority now correctly shows for players pursuing the tome weapon who don't have it yet, rather than incorrectly showing for players who already have it.",
         pr: 62,
         prTitle: 'feat: Add hide setup banners settings and material logging enhancements',
-        commits: [{ hash: '879f036', message: 'feat: add hide setup banners settings and material logging enhancements' }],
+        commits: [
+          {
+            hash: '879f036',
+            message: 'feat: add hide setup banners settings and material logging enhancements',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -2441,7 +2859,12 @@ export const RELEASES: Release[] = [
           'BiS import now uses original XIVGear array indices instead of filtered indices, fixing an issue where presets with separators (like DNC, WHM, BLM, PCT, SMN) would import the wrong gear set.',
         pr: 62,
         prTitle: 'feat: Add hide setup banners settings and material logging enhancements',
-        commits: [{ hash: '34e081c', message: 'fix: correct BiS preset index mismatch for multi-set XIVGear sheets' }],
+        commits: [
+          {
+            hash: '34e081c',
+            message: 'fix: correct BiS preset index mismatch for multi-set XIVGear sheets',
+          },
+        ],
       },
     ],
   },
@@ -2454,17 +2877,24 @@ export const RELEASES: Release[] = [
       {
         category: 'improvement',
         title: 'Mobile layout improvements',
-        description: 'Better scroll containment, filter alignment, and touch-friendly buttons across Log and Loot tabs',
+        description:
+          'Better scroll containment, filter alignment, and touch-friendly buttons across Log and Loot tabs',
         details:
           'Log tab now has proper scroll containment with the week selector spanning full width. Loot tab filter bars are aligned consistently between Gear Priority and Weapon Priority tabs. Loot log entries now use icon buttons for Copy URL, Edit, and Delete actions.',
         pr: 60,
         prTitle: 'feat: Mobile UX Optimization',
-        commits: [{ hash: '5bcb066', message: 'fix: mobile UX polish - scroll containment, filter alignment, icon buttons' }],
+        commits: [
+          {
+            hash: '5bcb066',
+            message: 'fix: mobile UX polish - scroll containment, filter alignment, icon buttons',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'Dashboard side padding',
-        description: 'Increased side padding on the dashboard for better breathing room on all screen sizes',
+        description:
+          'Increased side padding on the dashboard for better breathing room on all screen sizes',
       },
     ],
   },
@@ -2483,7 +2913,12 @@ export const RELEASES: Release[] = [
           'Jobs affected: DNC, WHM, BLM, PCT, SMN. When these jobs import BiS from presets with multiple sets, the system now correctly remembers which set was selected. Re-importing will use the same set, and the BiS badge will link directly to it.',
         pr: 59,
         prTitle: 'fix: store setIndex in shortlink bisLinks for multi-set XIVGear sheets',
-        commits: [{ hash: '3f7403f', message: 'fix: store setIndex in shortlink bisLinks for multi-set XIVGear sheets' }],
+        commits: [
+          {
+            hash: '3f7403f',
+            message: 'fix: store setIndex in shortlink bisLinks for multi-set XIVGear sheets',
+          },
+        ],
       },
     ],
   },
@@ -2496,12 +2931,15 @@ export const RELEASES: Release[] = [
       {
         category: 'feature',
         title: 'Materia display in gear tooltips',
-        description: 'View materia melds directly in gear slot tooltips without visiting your BiS link',
+        description:
+          'View materia melds directly in gear slot tooltips without visiting your BiS link',
         details:
           'Gear tooltips now show melded materia with stat values (e.g., "54 DET"). Hover over materia for full details including the materia name and exact stat bonus. Materia data is imported automatically when you import a BiS from XIVGear or Etro.',
         pr: 58,
         prTitle: 'feat: add materia display to gear tooltips (L-003)',
-        commits: [{ hash: '13103b6', message: 'feat: add materia display to gear tooltips (L-003)' }],
+        commits: [
+          { hash: '13103b6', message: 'feat: add materia display to gear tooltips (L-003)' },
+        ],
       },
       {
         category: 'improvement',
@@ -2509,7 +2947,9 @@ export const RELEASES: Release[] = [
         description: 'Materia icons now use higher resolution images for better clarity',
         pr: 58,
         prTitle: 'feat: add materia display to gear tooltips (L-003)',
-        commits: [{ hash: '13103b6', message: 'feat: add materia display to gear tooltips (L-003)' }],
+        commits: [
+          { hash: '13103b6', message: 'feat: add materia display to gear tooltips (L-003)' },
+        ],
       },
     ],
   },
@@ -2522,12 +2962,15 @@ export const RELEASES: Release[] = [
       {
         category: 'fix',
         title: 'Member permissions fix',
-        description: 'Members can now only edit name, position, and tank role on their own player cards',
+        description:
+          'Members can now only edit name, position, and tank role on their own player cards',
         details:
-          'Fixed a bug where members could edit other players\' name, position, and tank role. Now properly enforces that members can only edit their own claimed player card. Owners, leads, and admins retain full editing access to all cards.',
+          "Fixed a bug where members could edit other players' name, position, and tank role. Now properly enforces that members can only edit their own claimed player card. Owners, leads, and admins retain full editing access to all cards.",
         pr: 57,
         prTitle: 'fix: member permissions and add Edit Books feature',
-        commits: [{ hash: 'fb13b60', message: 'fix: member permissions and add Edit Books feature' }],
+        commits: [
+          { hash: 'fb13b60', message: 'fix: member permissions and add Edit Books feature' },
+        ],
       },
       {
         category: 'feature',
@@ -2537,7 +2980,12 @@ export const RELEASES: Release[] = [
           'Members now see an "Edit Books" option in their player card context menu. Clicking it navigates to the Log tab and highlights their row in the Books panel. Members can edit only their own book cells and view their own book history. Owners and leads see this option on all player cards.',
         pr: 57,
         prTitle: 'fix: member permissions and add Edit Books feature',
-        commits: [{ hash: '7fc96a8', message: 'fix: show Edit Books menu for owners/leads/admins on any card' }],
+        commits: [
+          {
+            hash: '7fc96a8',
+            message: 'fix: show Edit Books menu for owners/leads/admins on any card',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -2557,12 +3005,18 @@ export const RELEASES: Release[] = [
       {
         category: 'improvement',
         title: 'Error modal overlay',
-        description: 'Errors now display as a dismissible modal overlay instead of redirecting to a full-page error',
+        description:
+          'Errors now display as a dismissible modal overlay instead of redirecting to a full-page error',
         details:
           'When an error occurs while viewing a static, you now see a modal overlay instead of losing your current view. The modal includes the error message, technical details (URL, timestamp, stack trace), a copy button for bug reports, and a direct link to the Discord #bug-reports channel. Dismiss with X button or Esc key. Full-page errors are only shown for initial load failures when no content exists.',
         pr: 54,
         prTitle: 'feat: show errors as dismissible modal overlay',
-        commits: [{ hash: 'a4a8525', message: 'feat: show errors as dismissible modal overlay instead of full page redirect' }],
+        commits: [
+          {
+            hash: 'a4a8525',
+            message: 'feat: show errors as dismissible modal overlay instead of full page redirect',
+          },
+        ],
       },
     ],
   },
@@ -2570,17 +3024,26 @@ export const RELEASES: Release[] = [
     version: '1.9.0',
     date: '2026-01-20T08:00:00Z',
     title: 'BiS Support for Crafted and Base Tome Gear',
-    highlights: ['BiS support for crafted and base tome gear', 'One-click fix for miscategorized slots'],
+    highlights: [
+      'BiS support for crafted and base tome gear',
+      'One-click fix for miscategorized slots',
+    ],
     items: [
       {
         category: 'feature',
         title: 'BiS source auto-detection and fix',
-        description: 'Automatically detects and offers to fix miscategorized BiS sources for crafted and base tome gear',
+        description:
+          'Automatically detects and offers to fix miscategorized BiS sources for crafted and base tome gear',
         details:
           'When BiS is imported with crafted gear (e.g., Rinascita, Claro) or unaugmented tome gear (e.g., Bygone Brass), the system now detects if the BiS source is incorrectly set. A warning banner appears with "Update BiS Source" to fix all slots at once, or use individual fix buttons on each row. Fixes preserve your gear progress and item metadata.',
         pr: 52,
         prTitle: 'feat: add confirmation dialogs for BiS source changes',
-        commits: [{ hash: '08f8bce', message: 'feat: add BiS source auto-detection for crafted and base tome gear' }],
+        commits: [
+          {
+            hash: '08f8bce',
+            message: 'feat: add BiS source auto-detection for crafted and base tome gear',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -2590,7 +3053,9 @@ export const RELEASES: Release[] = [
           'When you change the BiS source (Raid/Tome/Crafted) on a slot that has imported item data, a confirmation dialog now appears showing a visual comparison of your current gear icon and name versus the new source. Full item tooltip available on hover. Helps prevent accidental loss of imported BiS configurations.',
         pr: 52,
         prTitle: 'feat: add confirmation dialogs for BiS source changes',
-        commits: [{ hash: '8bcd8b4', message: 'feat: add confirmation dialogs for BiS source changes' }],
+        commits: [
+          { hash: '8bcd8b4', message: 'feat: add confirmation dialogs for BiS source changes' },
+        ],
       },
       {
         category: 'improvement',
@@ -2600,7 +3065,9 @@ export const RELEASES: Release[] = [
           'When changing BiS source, hasItem, isAugmented, and all item metadata are now reset. Switching to Tome starts unchecked. This ensures accurate tracking when you change your BiS target.',
         pr: 52,
         prTitle: 'feat: add confirmation dialogs for BiS source changes',
-        commits: [{ hash: '8bcd8b4', message: 'feat: add confirmation dialogs for BiS source changes' }],
+        commits: [
+          { hash: '8bcd8b4', message: 'feat: add confirmation dialogs for BiS source changes' },
+        ],
       },
       {
         category: 'improvement',
@@ -2608,7 +3075,9 @@ export const RELEASES: Release[] = [
         description: 'ConfirmModal now supports custom header content above the warning box',
         pr: 52,
         prTitle: 'feat: add confirmation dialogs for BiS source changes',
-        commits: [{ hash: '8bcd8b4', message: 'feat: add confirmation dialogs for BiS source changes' }],
+        commits: [
+          { hash: '8bcd8b4', message: 'feat: add confirmation dialogs for BiS source changes' },
+        ],
       },
     ],
   },
@@ -2623,7 +3092,12 @@ export const RELEASES: Release[] = [
         title: 'Version detection working directory',
         description:
           'Fixed git diff path resolution when Discord changelog script runs from scripts/ directory. Now uses absolute path via git rev-parse.',
-        commits: [{ hash: '55122f4', message: 'fix: use absolute path in didVersionChange for workflow compatibility' }],
+        commits: [
+          {
+            hash: '55122f4',
+            message: 'fix: use absolute path in didVersionChange for workflow compatibility',
+          },
+        ],
       },
     ],
   },
@@ -2641,7 +3115,12 @@ export const RELEASES: Release[] = [
           'Simplified version detection to trigger a release announcement whenever releaseNotes.ts is modified, rather than specifically checking for CURRENT_VERSION line changes. This is more reliable and less error-prone.',
         pr: 50,
         prTitle: 'fix(discord): improve version change detection reliability',
-        commits: [{ hash: 'fbe6b03', message: 'fix(discord): improve version change detection reliability' }],
+        commits: [
+          {
+            hash: 'fbe6b03',
+            message: 'fix(discord): improve version change detection reliability',
+          },
+        ],
       },
     ],
   },
@@ -2659,7 +3138,12 @@ export const RELEASES: Release[] = [
           'When a new version is released, only the release announcement embed is posted to Discord. Previously, both a release embed and a commit embed were posted, cluttering the changelog channel.',
         pr: 49,
         prTitle: 'fix(discord): post release-only embeds and use dominant category color',
-        commits: [{ hash: '8f38e0d', message: 'fix(discord): post release-only embeds and use dominant category color' }],
+        commits: [
+          {
+            hash: '8f38e0d',
+            message: 'fix(discord): post release-only embeds and use dominant category color',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -2669,7 +3153,12 @@ export const RELEASES: Release[] = [
           'The left border color on Discord release embeds now reflects the dominant category. A release with 8 fixes and 3 features shows red (fix color). Previously used priority order where any release with features always showed green.',
         pr: 49,
         prTitle: 'fix(discord): post release-only embeds and use dominant category color',
-        commits: [{ hash: '8f38e0d', message: 'fix(discord): post release-only embeds and use dominant category color' }],
+        commits: [
+          {
+            hash: '8f38e0d',
+            message: 'fix(discord): post release-only embeds and use dominant category color',
+          },
+        ],
       },
     ],
   },
@@ -2687,7 +3176,12 @@ export const RELEASES: Release[] = [
           'All loading spinners now use a unified Spinner component with consistent sizing (sm/md/lg/xl/2xl) and styling. Button loading states also use the same component.',
         pr: 48,
         prTitle: 'feat: UI consistency sprint - spinners, border radius, error patterns',
-        commits: [{ hash: '7da0bd5', message: 'feat: UI consistency sprint - spinners, border radius, error patterns' }],
+        commits: [
+          {
+            hash: '7da0bd5',
+            message: 'feat: UI consistency sprint - spinners, border radius, error patterns',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -2697,7 +3191,12 @@ export const RELEASES: Release[] = [
           'Eliminated mixed border radius values. Now uses a clear scale: rounded (4px) for tooltips, rounded-lg (8px) for cards/buttons/containers, rounded-xl (12px) for feature sections.',
         pr: 48,
         prTitle: 'feat: UI consistency sprint - spinners, border radius, error patterns',
-        commits: [{ hash: '7da0bd5', message: 'feat: UI consistency sprint - spinners, border radius, error patterns' }],
+        commits: [
+          {
+            hash: '7da0bd5',
+            message: 'feat: UI consistency sprint - spinners, border radius, error patterns',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -2707,7 +3206,12 @@ export const RELEASES: Release[] = [
           'New ErrorBox component for contextual errors. Pattern: ErrorMessage (dismissible/retryable), ErrorBox (simple inline), InlineError (form validation), toast (transient).',
         pr: 48,
         prTitle: 'feat: UI consistency sprint - spinners, border radius, error patterns',
-        commits: [{ hash: '7da0bd5', message: 'feat: UI consistency sprint - spinners, border radius, error patterns' }],
+        commits: [
+          {
+            hash: '7da0bd5',
+            message: 'feat: UI consistency sprint - spinners, border radius, error patterns',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -2715,7 +3219,9 @@ export const RELEASES: Release[] = [
         description: 'Grid/list toggle now matches adjacent button sizes',
         pr: 48,
         prTitle: 'feat: UI consistency sprint - spinners, border radius, error patterns',
-        commits: [{ hash: '541ed19', message: 'fix: dashboard toggle size and user menu focus ring' }],
+        commits: [
+          { hash: '541ed19', message: 'fix: dashboard toggle size and user menu focus ring' },
+        ],
       },
     ],
   },
@@ -2740,7 +3246,7 @@ export const RELEASES: Release[] = [
         title: 'OAuth State Hardening',
         description: 'Client fingerprint binding prevents session fixation',
         details:
-          'OAuth state tokens are now bound to client fingerprints, preventing session fixation attacks where an attacker could trick a user into authenticating to the attacker\'s account.',
+          "OAuth state tokens are now bound to client fingerprints, preventing session fixation attacks where an attacker could trick a user into authenticating to the attacker's account.",
         pr: 38,
         prTitle: 'feat: security hardening sprint',
         commits: [{ hash: 'da40d4d', message: 'feat: security hardening sprint (#38)' }],
@@ -2753,7 +3259,12 @@ export const RELEASES: Release[] = [
           'All external HTTP requests (BiS imports from XIVGear, Etro, etc.) now reject redirects to prevent server-side request forgery attacks that could access internal services.',
         pr: 33,
         prTitle: 'fix(security): Session 4 - CSP header and SSRF prevention',
-        commits: [{ hash: '2262f5c', message: 'fix(security): Session 4 - CSP header and SSRF prevention (#33)' }],
+        commits: [
+          {
+            hash: '2262f5c',
+            message: 'fix(security): Session 4 - CSP header and SSRF prevention (#33)',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -2783,7 +3294,12 @@ export const RELEASES: Release[] = [
           'JWT token verification is now restricted to HMAC algorithms only (HS256, HS384, HS512), preventing algorithm confusion attacks.',
         pr: 31,
         prTitle: 'fix: Phase 1 Critical Issues - Auth Hardening & Admin Performance',
-        commits: [{ hash: '4db4624', message: 'fix: Phase 1 Critical Issues - Auth Hardening & Admin Performance (#31)' }],
+        commits: [
+          {
+            hash: '4db4624',
+            message: 'fix: Phase 1 Critical Issues - Auth Hardening & Admin Performance (#31)',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -2818,7 +3334,7 @@ export const RELEASES: Release[] = [
         title: 'Weapon priority connector line styling',
         description: 'Redesigned tie group visualization with collapsible sections',
         details:
-          'Tied weapon priority entries now display with a connector line (dots + vertical line) design. Tie sections are collapsible - click the chevron to expand/collapse. After rolling for winner, the winner\'s job icon and name appear inline in the header for quick visibility without expanding.',
+          "Tied weapon priority entries now display with a connector line (dots + vertical line) design. Tie sections are collapsible - click the chevron to expand/collapse. After rolling for winner, the winner's job icon and name appear inline in the header for quick visibility without expanding.",
       },
       {
         category: 'feature',
@@ -2860,7 +3376,12 @@ export const RELEASES: Release[] = [
           'The Select dropdown now properly highlights the currently selected item with the accent color, making it clearer which option is active.',
         pr: 27,
         prTitle: 'feat: Setup Wizard, PlayerSetupBanner, and UX improvements',
-        commits: [{ hash: 'c746be3', message: 'fix: Select highlight styling and player reassignment state sync' }],
+        commits: [
+          {
+            hash: 'c746be3',
+            message: 'fix: Select highlight styling and player reassignment state sync',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -2870,7 +3391,12 @@ export const RELEASES: Release[] = [
           'When reassigning a player to a different user, the UI state now properly syncs to reflect the change immediately without requiring a refresh.',
         pr: 27,
         prTitle: 'feat: Setup Wizard, PlayerSetupBanner, and UX improvements',
-        commits: [{ hash: 'c746be3', message: 'fix: Select highlight styling and player reassignment state sync' }],
+        commits: [
+          {
+            hash: 'c746be3',
+            message: 'fix: Select highlight styling and player reassignment state sync',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -2879,9 +3405,18 @@ export const RELEASES: Release[] = [
         details:
           'When selecting a job in healer slots, the label now updates to show the specific healer type (Pure Healer/Shield Healer) based on the selected job rather than the template position.',
         commits: [
-          { hash: '72d6528', message: 'fix: show specific healer type in slot label for all positions' },
-          { hash: 'd3bcd19', message: 'fix: update slot label when healer type differs from position' },
-          { hash: '690c8df', message: 'fix: update healer quick-select buttons based on selected job type' },
+          {
+            hash: '72d6528',
+            message: 'fix: show specific healer type in slot label for all positions',
+          },
+          {
+            hash: 'd3bcd19',
+            message: 'fix: update slot label when healer type differs from position',
+          },
+          {
+            hash: '690c8df',
+            message: 'fix: update healer quick-select buttons based on selected job type',
+          },
         ],
       },
       {
@@ -2892,7 +3427,12 @@ export const RELEASES: Release[] = [
           'Modal backdrops no longer use backdrop-blur CSS which was causing visual artifacts on some systems. The overlay effect now uses opacity alone for consistent rendering.',
         pr: 27,
         prTitle: 'feat: Setup Wizard, PlayerSetupBanner, and UX improvements',
-        commits: [{ hash: '01e6d4d', message: 'fix: remove backdrop blur from Modal to prevent rendering artifacts' }],
+        commits: [
+          {
+            hash: '01e6d4d',
+            message: 'fix: remove backdrop blur from Modal to prevent rendering artifacts',
+          },
+        ],
       },
     ],
   },
@@ -2910,7 +3450,12 @@ export const RELEASES: Release[] = [
           'The access token expires every 15 minutes and should automatically refresh. However, when multiple API calls failed simultaneously, each tried to refresh independently, hitting rate limits and causing errors. Now uses a singleton pattern where all failing requests share a single refresh, preventing rate limit issues.',
         pr: 30,
         prTitle: 'fix: session expiry auth handling and UI improvements',
-        commits: [{ hash: 'a611b64', message: 'fix: session expiry auth handling and UI improvements (#30)' }],
+        commits: [
+          {
+            hash: 'a611b64',
+            message: 'fix: session expiry auth handling and UI improvements (#30)',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -2920,7 +3465,12 @@ export const RELEASES: Release[] = [
           'Previously, admin pages used raw fetch() calls that bypassed automatic token refresh. Now they use the standard API client with automatic 401 handling, retry logic, and proper error types.',
         pr: 24,
         prTitle: 'fix: use api wrapper for automatic token refresh in admin pages',
-        commits: [{ hash: 'e4080bb', message: 'fix: use api wrapper for automatic token refresh in admin pages (#24)' }],
+        commits: [
+          {
+            hash: 'e4080bb',
+            message: 'fix: use api wrapper for automatic token refresh in admin pages (#24)',
+          },
+        ],
       },
     ],
   },
@@ -2938,17 +3488,24 @@ export const RELEASES: Release[] = [
           'Right-click a player card and select "Assign Player" to link a Discord user. Choose from existing members or enter a user ID manually. The assigned user can then edit their own player card. If the user isn\'t already a member, they\'ll be added with Member role automatically.',
         pr: 23,
         prTitle: 'v1.0.8: Admin Player Assignment & Modal Polish',
-        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
+        commits: [
+          { hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' },
+        ],
       },
       {
         category: 'feature',
         title: 'Role-colored player badges',
         description: 'Linked users show their membership role with colored badges',
         details:
-          'Player cards now display the linked user\'s role with color-coded badges: Owner (teal), Lead (purple), Member (blue), and Linked-only (amber for users linked but not members). Makes it easy to see who has what permissions at a glance.',
+          "Player cards now display the linked user's role with color-coded badges: Owner (teal), Lead (purple), Member (blue), and Linked-only (amber for users linked but not members). Makes it easy to see who has what permissions at a glance.",
         pr: 22,
         prTitle: 'feat(admin): navigation-based admin mode + player badge colors',
-        commits: [{ hash: '94850ad', message: 'feat(admin): navigation-based admin mode + player badge colors (#22)' }],
+        commits: [
+          {
+            hash: '94850ad',
+            message: 'feat(admin): navigation-based admin mode + player badge colors (#22)',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -2958,7 +3515,9 @@ export const RELEASES: Release[] = [
           'Destructive actions like revoking invitations or clearing history now use a double-click confirmation pattern. First click arms the button (shows "Confirm?"), second click executes. Auto-resets after 3 seconds or when you click away.',
         pr: 23,
         prTitle: 'v1.0.8: Admin Player Assignment & Modal Polish',
-        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
+        commits: [
+          { hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' },
+        ],
       },
       {
         category: 'improvement',
@@ -2968,7 +3527,9 @@ export const RELEASES: Release[] = [
           'Modals display relevant icons next to their titles for better visual context. Danger modals show trash/reset icons in red/warning colors, action modals show contextual icons like package for loot or gem for materials.',
         pr: 23,
         prTitle: 'v1.0.8: Admin Player Assignment & Modal Polish',
-        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
+        commits: [
+          { hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' },
+        ],
       },
       {
         category: 'improvement',
@@ -2978,7 +3539,9 @@ export const RELEASES: Release[] = [
           'When selecting a loot recipient, you now see job icons next to player names, making it easier to identify the correct player especially when multiple players have similar names.',
         pr: 23,
         prTitle: 'v1.0.8: Admin Player Assignment & Modal Polish',
-        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
+        commits: [
+          { hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' },
+        ],
       },
       {
         category: 'improvement',
@@ -2988,7 +3551,9 @@ export const RELEASES: Release[] = [
           'The Static Settings modal now displays icons on each tab and uses proper danger button styling for destructive actions like deleting a static or leaving a group.',
         pr: 23,
         prTitle: 'v1.0.8: Admin Player Assignment & Modal Polish',
-        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
+        commits: [
+          { hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' },
+        ],
       },
       {
         category: 'fix',
@@ -2998,7 +3563,9 @@ export const RELEASES: Release[] = [
           'When two requests try to create the same membership simultaneously, the system now handles this gracefully by returning the existing membership instead of throwing an error. Prevents "already a member" errors during rapid operations.',
         pr: 23,
         prTitle: 'v1.0.8: Admin Player Assignment & Modal Polish',
-        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
+        commits: [
+          { hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' },
+        ],
       },
       {
         category: 'fix',
@@ -3008,7 +3575,9 @@ export const RELEASES: Release[] = [
           'The manual user ID input now validates the format before submission. Accepts Discord IDs (17-19 digit snowflakes) or UUIDs. Shows inline error message for invalid formats.',
         pr: 23,
         prTitle: 'v1.0.8: Admin Player Assignment & Modal Polish',
-        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
+        commits: [
+          { hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' },
+        ],
       },
       {
         category: 'improvement',
@@ -3018,7 +3587,9 @@ export const RELEASES: Release[] = [
           'Added comprehensive test coverage for the admin player assignment feature, including permission checks, edge cases, race conditions, and integration tests. Backend now has 160 tests total.',
         pr: 23,
         prTitle: 'v1.0.8: Admin Player Assignment & Modal Polish',
-        commits: [{ hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' }],
+        commits: [
+          { hash: '69384d7', message: 'v1.0.8: Admin Player Assignment & Modal Polish (#23)' },
+        ],
       },
     ],
   },
@@ -3036,7 +3607,12 @@ export const RELEASES: Release[] = [
           'Dashboard now shows skeleton placeholders while loading your statics instead of a blank screen. Both grid and list views have dedicated skeleton components that match the final layout, improving perceived performance.',
         pr: 21,
         prTitle: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011)',
-        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
+        commits: [
+          {
+            hash: 'f66f59c',
+            message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -3046,7 +3622,12 @@ export const RELEASES: Release[] = [
           'New useModal and useModalWithData hooks eliminate boilerplate for modal open/close state. useModalWithData also handles passing data to the modal when opening it.',
         pr: 21,
         prTitle: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011)',
-        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
+        commits: [
+          {
+            hash: 'f66f59c',
+            message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -3056,7 +3637,12 @@ export const RELEASES: Release[] = [
           'New useDebounce hook for debouncing values (useful for search inputs) and useDebouncedCallback for debouncing function calls. Prevents excessive API calls and re-renders during rapid input.',
         pr: 21,
         prTitle: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011)',
-        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
+        commits: [
+          {
+            hash: 'f66f59c',
+            message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -3066,7 +3652,12 @@ export const RELEASES: Release[] = [
           'New ErrorMessage component displays errors consistently with an optional retry button. InlineError variant for compact inline display. Both support custom styling and messaging.',
         pr: 21,
         prTitle: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011)',
-        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
+        commits: [
+          {
+            hash: 'f66f59c',
+            message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -3076,7 +3667,12 @@ export const RELEASES: Release[] = [
           'Button component now has 7 variants: primary, secondary, danger, warning, success, ghost, and link. All variants support loading states, disabled states, and icon placement.',
         pr: 21,
         prTitle: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011)',
-        commits: [{ hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' }],
+        commits: [
+          {
+            hash: 'f66f59c',
+            message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -3085,9 +3681,19 @@ export const RELEASES: Release[] = [
         details:
           'Completed all P0-P2 audit items from v1.0.1-v1.0.6 audits. Only R-002 (props drilling) remains intentionally deferred as hooks adequately mitigate the issue.',
         commits: [
-          { hash: 'f66f59c', message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)' },
-          { hash: 'd10870b', message: 'perf: Add React.memo to list items to prevent unnecessary re-renders (MEDIUM-002) (#20)' },
-          { hash: '39b13c1', message: 'refactor: Split SectionedLogView component (HIGH-008) (#19)' },
+          {
+            hash: 'f66f59c',
+            message: 'feat: Complete audit cleanup tasks (U-001, D-001, R-008, U-004, U-011) (#21)',
+          },
+          {
+            hash: 'd10870b',
+            message:
+              'perf: Add React.memo to list items to prevent unnecessary re-renders (MEDIUM-002) (#20)',
+          },
+          {
+            hash: '39b13c1',
+            message: 'refactor: Split SectionedLogView component (HIGH-008) (#19)',
+          },
         ],
       },
     ],
@@ -3106,7 +3712,9 @@ export const RELEASES: Release[] = [
           'Authentication tokens are now stored in httpOnly cookies that JavaScript cannot access. This protects against XSS attacks that could steal tokens from localStorage. Cookies are automatically sent with requests via credentials: include.',
         pr: 18,
         prTitle: 'security: migrate JWT tokens to httpOnly cookies',
-        commits: [{ hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' }],
+        commits: [
+          { hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' },
+        ],
       },
       {
         category: 'improvement',
@@ -3116,7 +3724,9 @@ export const RELEASES: Release[] = [
           'All authentication cookies use SameSite=Lax attribute, preventing cross-site request forgery attacks. Cookies are only sent with same-site requests or top-level navigation.',
         pr: 18,
         prTitle: 'security: migrate JWT tokens to httpOnly cookies',
-        commits: [{ hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' }],
+        commits: [
+          { hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' },
+        ],
       },
       {
         category: 'improvement',
@@ -3126,7 +3736,9 @@ export const RELEASES: Release[] = [
           'Authentication cookies in production are marked with the Secure flag, ensuring they are only transmitted over encrypted HTTPS connections.',
         pr: 18,
         prTitle: 'security: migrate JWT tokens to httpOnly cookies',
-        commits: [{ hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' }],
+        commits: [
+          { hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' },
+        ],
       },
       {
         category: 'improvement',
@@ -3136,7 +3748,12 @@ export const RELEASES: Release[] = [
           'The logout endpoint now requires a valid access token. This prevents malicious sites from forcing users to logout via cross-site requests.',
         pr: 18,
         prTitle: 'security: migrate JWT tokens to httpOnly cookies',
-        commits: [{ hash: 'da9e2d5', message: 'security: protect logout endpoint from CSRF by requiring authentication' }],
+        commits: [
+          {
+            hash: 'da9e2d5',
+            message: 'security: protect logout endpoint from CSRF by requiring authentication',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -3156,7 +3773,9 @@ export const RELEASES: Release[] = [
           'The app no longer persists isAuthenticated to localStorage, preventing cases where the UI showed you as logged in after cookies expired. Auth state is now verified with the backend on app load.',
         pr: 18,
         prTitle: 'security: migrate JWT tokens to httpOnly cookies',
-        commits: [{ hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' }],
+        commits: [
+          { hash: 'c992e6e', message: 'security: migrate JWT tokens to httpOnly cookies (#18)' },
+        ],
       },
     ],
   },
@@ -3224,7 +3843,11 @@ export const RELEASES: Release[] = [
           'Fixed the week navigation keyboard shortcuts on the Log tab. Alt+Left goes to previous week, Alt+Right to next week. Previously used Ctrl+Arrow which conflicted with browser cursor navigation.',
         commits: [
           { hash: 'c908dca', message: 'feat: Overhaul keyboard shortcuts system' },
-          { hash: 'dbe36ec', message: 'fix: Resolve duplicate View As banners, focus ring artifacts, and Shift+S navigation' },
+          {
+            hash: 'dbe36ec',
+            message:
+              'fix: Resolve duplicate View As banners, focus ring artifacts, and Shift+S navigation',
+          },
         ],
       },
     ],
@@ -3243,7 +3866,12 @@ export const RELEASES: Release[] = [
           'Clicking "Go to loot entry" from a player card now automatically switches to the correct week and highlights the entry. Previously required manually selecting the week first.',
         pr: 15,
         prTitle: 'Design System V2 Migration - Complete Semantic Token Implementation',
-        commits: [{ hash: 'c32f6b7', message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)' }],
+        commits: [
+          {
+            hash: 'c32f6b7',
+            message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -3253,7 +3881,13 @@ export const RELEASES: Release[] = [
           'Alt+L opens Log Loot modal, Alt+M opens Log Material modal, Alt+B opens Mark Floor Cleared. Shift+S navigates to My Statics. Shift+? shows keyboard shortcuts help. All shortcuts shown in menus and tooltips.',
         pr: 16,
         prTitle: 'refactor(GroupView): extract hooks and components for better maintainability',
-        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
+        commits: [
+          {
+            hash: 'fd5ea3e',
+            message:
+              'refactor(GroupView): extract hooks and components for better maintainability (#16)',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -3263,7 +3897,13 @@ export const RELEASES: Release[] = [
           'Shift+Click on player cards or loot entries in the grid view to instantly copy a shareable link. Faster than right-click > Copy URL for power users.',
         pr: 16,
         prTitle: 'refactor(GroupView): extract hooks and components for better maintainability',
-        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
+        commits: [
+          {
+            hash: 'fd5ea3e',
+            message:
+              'refactor(GroupView): extract hooks and components for better maintainability (#16)',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -3273,7 +3913,13 @@ export const RELEASES: Release[] = [
           'New "Keyboard Shortcuts" item in the user dropdown menu with "?" hotkey hint. Opens the same help modal as pressing Shift+?.',
         pr: 16,
         prTitle: 'refactor(GroupView): extract hooks and components for better maintainability',
-        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
+        commits: [
+          {
+            hash: 'fd5ea3e',
+            message:
+              'refactor(GroupView): extract hooks and components for better maintainability (#16)',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -3283,7 +3929,13 @@ export const RELEASES: Release[] = [
           'Action buttons (Log Loot, Log Material, Mark Floor Cleared) now show their hotkey in tooltips. My Statics menu item shows Shift+S hint. Improved discoverability for power users.',
         pr: 16,
         prTitle: 'refactor(GroupView): extract hooks and components for better maintainability',
-        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
+        commits: [
+          {
+            hash: 'fd5ea3e',
+            message:
+              'refactor(GroupView): extract hooks and components for better maintainability (#16)',
+          },
+        ],
       },
       {
         category: 'improvement',
@@ -3293,37 +3945,58 @@ export const RELEASES: Release[] = [
           'Removed cramped Item name column for better small-screen support. CurrentSource column hidden by default (available in code for future use). BiS source toggle converted to compact button.',
         pr: 15,
         prTitle: 'Design System V2 Migration - Complete Semantic Token Implementation',
-        commits: [{ hash: 'c32f6b7', message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)' }],
+        commits: [
+          {
+            hash: 'c32f6b7',
+            message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)',
+          },
+        ],
       },
       {
         category: 'improvement',
         title: 'BiS Import modal enhancements',
         description: 'Job and gear icons in import modal',
         details:
-          'BiS Import modal now shows job icons in preset list and gear slot icons when previewing imported sets. Easier to verify you\'re importing the right configuration.',
+          "BiS Import modal now shows job icons in preset list and gear slot icons when previewing imported sets. Easier to verify you're importing the right configuration.",
         pr: 15,
         prTitle: 'Design System V2 Migration - Complete Semantic Token Implementation',
-        commits: [{ hash: 'c32f6b7', message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)' }],
+        commits: [
+          {
+            hash: 'c32f6b7',
+            message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)',
+          },
+        ],
       },
       {
         category: 'fix',
         title: 'Week switching visual bug',
         description: 'Loot entries now appear immediately when navigating across weeks',
         details:
-          'Fixed bug where loot entries wouldn\'t appear after jumping to a different week via player card navigation. Required refresh or manual week toggle before. Now updates instantly.',
+          "Fixed bug where loot entries wouldn't appear after jumping to a different week via player card navigation. Required refresh or manual week toggle before. Now updates instantly.",
         pr: 16,
         prTitle: 'refactor(GroupView): extract hooks and components for better maintainability',
-        commits: [{ hash: 'fd5ea3e', message: 'refactor(GroupView): extract hooks and components for better maintainability (#16)' }],
+        commits: [
+          {
+            hash: 'fd5ea3e',
+            message:
+              'refactor(GroupView): extract hooks and components for better maintainability (#16)',
+          },
+        ],
       },
       {
         category: 'fix',
         title: 'Job change confirmation',
         description: 'Proper confirmation when changing player job',
         details:
-          'Changing a player\'s job now shows a confirmation dialog warning about gear reset. Player card highlights briefly after job change to confirm the update.',
+          "Changing a player's job now shows a confirmation dialog warning about gear reset. Player card highlights briefly after job change to confirm the update.",
         pr: 15,
         prTitle: 'Design System V2 Migration - Complete Semantic Token Implementation',
-        commits: [{ hash: 'c32f6b7', message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)' }],
+        commits: [
+          {
+            hash: 'c32f6b7',
+            message: 'Design System V2 Migration - Complete Semantic Token Implementation (#15)',
+          },
+        ],
       },
     ],
   },
@@ -3351,7 +4024,12 @@ export const RELEASES: Release[] = [
           'Updated CONSOLIDATED_STATUS.md to reflect completed items from previous releases. Added keyboard shortcuts documentation to Member Guide and developer docs.',
         pr: 14,
         prTitle: 'Update status documentation to reflect completed items',
-        commits: [{ hash: '6795b62', message: 'Update status docs: mark completed items from previous PRs' }],
+        commits: [
+          {
+            hash: '6795b62',
+            message: 'Update status docs: mark completed items from previous PRs',
+          },
+        ],
       },
     ],
   },
@@ -3368,7 +4046,10 @@ export const RELEASES: Release[] = [
         details:
           'New grid view in the Log tab shows loot distribution across players by floor. Click cells to log items, right-click for context menus. Includes loot count summary bar with fairness indicators and floor-colored headers.',
         commits: [
-          { hash: '99b8fb8', message: 'Add context menus, subs toggle, and floor selector alignment' },
+          {
+            hash: '99b8fb8',
+            message: 'Add context menus, subs toggle, and floor selector alignment',
+          },
           { hash: '4222d36', message: 'UX improvements phase 2 - quick wins' },
         ],
       },
@@ -3440,9 +4121,19 @@ export const RELEASES: Release[] = [
         details:
           'Grid cells now have proper keyboard navigation with role="button", tabIndex, and Enter/Space handlers. Floor selector buttons have aria-pressed. Version navigation has aria-labels. Subs toggle has aria-label.',
         commits: [
-          { hash: '24e00c1', message: 'Address PR feedback: accessibility attrs for grid cells, event listener cleanup' },
-          { hash: '6bcaf91', message: 'Address PR feedback: consistent setPageMode, aria-labels for toggles and nav' },
-          { hash: 'd565ee9', message: 'Address PR feedback: canEdit check, aria-pressed, status updates' },
+          {
+            hash: '24e00c1',
+            message:
+              'Address PR feedback: accessibility attrs for grid cells, event listener cleanup',
+          },
+          {
+            hash: '6bcaf91',
+            message: 'Address PR feedback: consistent setPageMode, aria-labels for toggles and nav',
+          },
+          {
+            hash: 'd565ee9',
+            message: 'Address PR feedback: canEdit check, aria-pressed, status updates',
+          },
         ],
       },
       {
@@ -3453,14 +4144,19 @@ export const RELEASES: Release[] = [
           'Fixed security bug where grid context menu showed Edit/Delete options to users without edit permission. Now properly checks canEdit before displaying these options.',
         pr: 10,
         prTitle: 'UX Improvements Phase 1 & 2',
-        commits: [{ hash: 'd565ee9', message: 'Address PR feedback: canEdit check, aria-pressed, status updates' }],
+        commits: [
+          {
+            hash: 'd565ee9',
+            message: 'Address PR feedback: canEdit check, aria-pressed, status updates',
+          },
+        ],
       },
       {
         category: 'fix',
         title: 'Loot edit gear sync',
         description: 'Editing loot recipient now updates both player cards',
         details:
-          'When editing a loot entry and changing the recipient, the old recipient\'s gear checkbox is now properly unchecked and the new recipient\'s is checked. Previously only worked for new entries.',
+          "When editing a loot entry and changing the recipient, the old recipient's gear checkbox is now properly unchecked and the new recipient's is checked. Previously only worked for new entries.",
         pr: 10,
         prTitle: 'UX Improvements Phase 1 & 2',
         commits: [{ hash: '15a7d36', message: 'Fix UX issues from manual testing' }],
@@ -3493,7 +4189,12 @@ export const RELEASES: Release[] = [
           'Click existing material cells in grid view or use context menu in list view to edit material log entries. Supports changing recipient, week, and notes.',
         pr: 13,
         prTitle: 'Fix admin system bugs: banner display, permissions, sorting',
-        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+        commits: [
+          {
+            hash: '7804947',
+            message: 'Fix admin system bugs: banner display, permissions, sorting',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -3503,7 +4204,12 @@ export const RELEASES: Release[] = [
           'Substitute players are now excluded from Loot Priority tab, Summary tab, and Mark Floor Cleared modal. Loot logging modals have an "Include Subs" checkbox to optionally include substitutes in recipient lists.',
         pr: 13,
         prTitle: 'Fix admin system bugs: banner display, permissions, sorting',
-        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+        commits: [
+          {
+            hash: '7804947',
+            message: 'Fix admin system bugs: banner display, permissions, sorting',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -3513,7 +4219,12 @@ export const RELEASES: Release[] = [
           'Admin users now correctly see the amber "Admin Access" banner when viewing statics they don\'t belong to. The isAdminAccess flag is now properly returned from all API endpoints.',
         pr: 13,
         prTitle: 'Fix admin system bugs: banner display, permissions, sorting',
-        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+        commits: [
+          {
+            hash: '7804947',
+            message: 'Fix admin system bugs: banner display, permissions, sorting',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -3523,7 +4234,12 @@ export const RELEASES: Release[] = [
           'Sorting in Admin Dashboard now works correctly for computed columns (member count, tier count) and owner information using optimized subqueries.',
         pr: 13,
         prTitle: 'Fix admin system bugs: banner display, permissions, sorting',
-        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+        commits: [
+          {
+            hash: '7804947',
+            message: 'Fix admin system bugs: banner display, permissions, sorting',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -3533,7 +4249,12 @@ export const RELEASES: Release[] = [
           'Players with few gear slots configured no longer show inflated iLv. Unknown/unconfigured slots now use crafted gear baseline (770) instead of being excluded from the average.',
         pr: 13,
         prTitle: 'Fix admin system bugs: banner display, permissions, sorting',
-        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+        commits: [
+          {
+            hash: '7804947',
+            message: 'Fix admin system bugs: banner display, permissions, sorting',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -3543,7 +4264,12 @@ export const RELEASES: Release[] = [
           'Fixed bug where Mark Floor Cleared modal retained previous selections. Modal state now properly resets when opened.',
         pr: 13,
         prTitle: 'Fix admin system bugs: banner display, permissions, sorting',
-        commits: [{ hash: '7804947', message: 'Fix admin system bugs: banner display, permissions, sorting' }],
+        commits: [
+          {
+            hash: '7804947',
+            message: 'Fix admin system bugs: banner display, permissions, sorting',
+          },
+        ],
       },
     ],
   },
@@ -3560,7 +4286,10 @@ export const RELEASES: Release[] = [
         details:
           'New bulk duplication endpoint replaces 40+ individual API calls with a single transaction. Includes options to copy tiers and players, with proper reset of tracking data and ownership.',
         commits: [
-          { hash: '0ba99c7', message: 'Combined audit improvements: performance, testing, and utilities' },
+          {
+            hash: '0ba99c7',
+            message: 'Combined audit improvements: performance, testing, and utilities',
+          },
         ],
       },
       {
@@ -3570,7 +4299,10 @@ export const RELEASES: Release[] = [
         details:
           'Centralized error parsing with HTTP status messages, development-aware logging with scoping and timing, and pub/sub event bus for cross-component communication.',
         commits: [
-          { hash: '0ba99c7', message: 'Combined audit improvements: performance, testing, and utilities' },
+          {
+            hash: '0ba99c7',
+            message: 'Combined audit improvements: performance, testing, and utilities',
+          },
         ],
       },
       {
@@ -3587,7 +4319,10 @@ export const RELEASES: Release[] = [
         details:
           'New indexes on snapshot_players.position, loot entries, material entries, and page ledger entries. Improves query performance especially for large groups with extensive loot history.',
         commits: [
-          { hash: '0ba99c7', message: 'Combined audit improvements: performance, testing, and utilities' },
+          {
+            hash: '0ba99c7',
+            message: 'Combined audit improvements: performance, testing, and utilities',
+          },
         ],
       },
       {
@@ -3597,7 +4332,10 @@ export const RELEASES: Release[] = [
         details:
           'Specialized selector hooks like useTierPlayers, usePlayersByGroup, and useCurrentTierMeta prevent unnecessary re-renders by only subscribing to relevant state slices.',
         commits: [
-          { hash: '0ba99c7', message: 'Combined audit improvements: performance, testing, and utilities' },
+          {
+            hash: '0ba99c7',
+            message: 'Combined audit improvements: performance, testing, and utilities',
+          },
         ],
       },
       {
@@ -3620,9 +4358,7 @@ export const RELEASES: Release[] = [
         description: '238 automated tests across backend and frontend',
         details:
           'Backend: 96 tests covering auth, config validation, group duplication, tier activation, and API response validation. Frontend: 142 tests for error handling, logging, event bus, and Zustand selectors.',
-        commits: [
-          { hash: '0df6fa9', message: 'Add comprehensive integration tests for PR #9' },
-        ],
+        commits: [{ hash: '0df6fa9', message: 'Add comprehensive integration tests for PR #9' }],
       },
       {
         category: 'fix',
@@ -3632,7 +4368,10 @@ export const RELEASES: Release[] = [
           'Changed tier deactivation from SELECT+loop to bulk UPDATE statement. Now properly handles edge cases like re-activating already active tiers and ensures only one tier is active per group.',
         commits: [
           { hash: '037caba', message: 'Fix tier activation bug and update test dates' },
-          { hash: '050dfb4', message: 'Fix useShallow import and tier duplication is_active handling' },
+          {
+            hash: '050dfb4',
+            message: 'Fix useShallow import and tier duplication is_active handling',
+          },
         ],
       },
       {
@@ -3651,9 +4390,7 @@ export const RELEASES: Release[] = [
         description: 'Fixed settings deep copy and active tier handling',
         details:
           'Group settings are now properly deep copied to prevent shared references. Only one tier remains active after duplication, even if source had multiple active tiers.',
-        commits: [
-          { hash: '360ecf2', message: 'Address final PR feedback' },
-        ],
+        commits: [{ hash: '360ecf2', message: 'Address final PR feedback' }],
       },
     ],
   },
@@ -3679,7 +4416,7 @@ export const RELEASES: Release[] = [
         title: 'Roadmap & Status page',
         description: 'Development plan and current state visibility',
         details:
-          'New page showing completed phases, planned features, and known issues. Helps users understand what features exist and what\'s coming next.',
+          "New page showing completed phases, planned features, and known issues. Helps users understand what features exist and what's coming next.",
         link: { href: '/docs/roadmap', label: 'View Roadmap' },
         pr: 8,
         prTitle: 'Fix three major issues: auth persistence, universal tomestone, weapon priority',
@@ -3739,7 +4476,9 @@ export const RELEASES: Release[] = [
         image: '/images/release-notes/weapon-priorities.gif',
         pr: 8,
         prTitle: 'Fix three major issues: auth persistence, universal tomestone, weapon priority',
-        commits: [{ hash: 'fe1cb55', message: 'Auto-expand weapon priority section when rolling ties' }],
+        commits: [
+          { hash: 'fe1cb55', message: 'Auto-expand weapon priority section when rolling ties' },
+        ],
       },
       {
         category: 'fix',
@@ -3750,7 +4489,10 @@ export const RELEASES: Release[] = [
         image: '/images/release-notes/weapon-type.png',
         commits: [
           { hash: 'a3c454b', message: 'Fix weapon job tracking in loot log and priority updates' },
-          { hash: '24acf84', message: 'Improve weapon logging with job tracking and extra loot tagging' },
+          {
+            hash: '24acf84',
+            message: 'Improve weapon logging with job tracking and extra loot tagging',
+          },
         ],
       },
       {
@@ -3760,7 +4502,9 @@ export const RELEASES: Release[] = [
         image: '/images/release-notes/universal-tomestone.gif',
         pr: 8,
         prTitle: 'Fix three major issues: auth persistence, universal tomestone, weapon priority',
-        commits: [{ hash: '7a43c87', message: 'Fix TypeScript errors for Universal Tomestone integration' }],
+        commits: [
+          { hash: '7a43c87', message: 'Fix TypeScript errors for Universal Tomestone integration' },
+        ],
       },
       {
         category: 'fix',
@@ -3789,8 +4533,14 @@ export const RELEASES: Release[] = [
         link: { href: '/docs/design-system', label: 'View Design System' },
         commits: [
           { hash: 'd5f8f8d', message: 'Design System v2 + UX Improvements' },
-          { hash: 'd08c5e1', message: 'Design System v2.2.0: Menus, navigation, and scroll-lock fixes' },
-          { hash: '293681d', message: 'Design System v2.1.0: Tokens, icons, forms, and accessibility fixes' },
+          {
+            hash: 'd08c5e1',
+            message: 'Design System v2.2.0: Menus, navigation, and scroll-lock fixes',
+          },
+          {
+            hash: '293681d',
+            message: 'Design System v2.1.0: Tokens, icons, forms, and accessibility fixes',
+          },
         ],
       },
       {
@@ -3800,7 +4550,10 @@ export const RELEASES: Release[] = [
         details:
           'Updated Radix Select components, improved tooltip layouts, fixed scroll-lock issues for better accessibility compliance.',
         commits: [
-          { hash: '587b095', message: 'Design System WCAG updates: Radix Select, tooltips layout, scroll-lock fixes' },
+          {
+            hash: '587b095',
+            message: 'Design System WCAG updates: Radix Select, tooltips layout, scroll-lock fixes',
+          },
           { hash: 'aec35db', message: 'Fix Radix Select scroll-lock breaking sticky nav' },
         ],
       },
@@ -3847,8 +4600,14 @@ export const RELEASES: Release[] = [
         details:
           'Weapon priority modal redesigned with a single panel layout and popup job selector. Shows numbered badges indicating selection order.',
         commits: [
-          { hash: '3978085', message: 'Redesign Weapon Priority modal: single panel with popup job selector' },
-          { hash: '16d79c0', message: 'Add selection order badges to weapon priority job selector' },
+          {
+            hash: '3978085',
+            message: 'Redesign Weapon Priority modal: single panel with popup job selector',
+          },
+          {
+            hash: '16d79c0',
+            message: 'Add selection order badges to weapon priority job selector',
+          },
         ],
       },
       {
@@ -3864,20 +4623,29 @@ export const RELEASES: Release[] = [
         title: 'Checkbox and loot sync',
         description: 'Checking gear boxes now prompts to log loot entry',
         details:
-          'When you check a gear slot as obtained, you\'re prompted to log the corresponding loot entry. Keeps gear tracking and loot history in sync.',
-        commits: [{ hash: '5af0dd4', message: 'Checkbox to loot entry sync with confirmation prompts' }],
+          "When you check a gear slot as obtained, you're prompted to log the corresponding loot entry. Keeps gear tracking and loot history in sync.",
+        commits: [
+          { hash: '5af0dd4', message: 'Checkbox to loot entry sync with confirmation prompts' },
+        ],
       },
       {
         category: 'improvement',
         title: 'Confirmation modals',
         description: 'Added confirmation dialogs for destructive actions',
-        commits: [{ hash: '12b0351', message: 'UX improvements: confirmation modals, expanded lists, and grid presets' }],
+        commits: [
+          {
+            hash: '12b0351',
+            message: 'UX improvements: confirmation modals, expanded lists, and grid presets',
+          },
+        ],
       },
       {
         category: 'fix',
         title: 'iLv calculation accuracy',
         description: 'Fixed item level calculations for tome gear augmentation states',
-        commits: [{ hash: '4f3f762', message: 'Fix iLv calculation accuracy and checkbox behavior' }],
+        commits: [
+          { hash: '4f3f762', message: 'Fix iLv calculation accuracy and checkbox behavior' },
+        ],
       },
     ],
   },
@@ -3895,7 +4663,12 @@ export const RELEASES: Release[] = [
           'Track where your current gear came from: Savage, Tome (upgraded), Tome (base), Catchup, Crafted, Relic, Prep, Normal, or Unknown. Helps understand gear progression.',
         pr: 5,
         prTitle: 'Parity Implementation: Gear Categories, iLv Tracking, and Adjustments',
-        commits: [{ hash: 'ec257d0', message: 'Parity Implementation: Gear Categories, iLv Tracking, and Adjustments' }],
+        commits: [
+          {
+            hash: 'ec257d0',
+            message: 'Parity Implementation: Gear Categories, iLv Tracking, and Adjustments',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -3905,7 +4678,12 @@ export const RELEASES: Release[] = [
           'Each player card now shows their average item level based on currently equipped gear. Calculated from gear source categories and tier configuration.',
         pr: 5,
         prTitle: 'Parity Implementation: Gear Categories, iLv Tracking, and Adjustments',
-        commits: [{ hash: '50d00d1', message: 'Parity Phases 2-4: Frontend types, iLv tracking, adjustments' }],
+        commits: [
+          {
+            hash: '50d00d1',
+            message: 'Parity Phases 2-4: Frontend types, iLv tracking, adjustments',
+          },
+        ],
       },
       {
         category: 'feature',
@@ -3979,7 +4757,12 @@ export const RELEASES: Release[] = [
         description: 'Log tab reorganized with Week/All Time toggle',
         pr: 4,
         prTitle: 'Loot Tracking System Redesign (Phases 2-5)',
-        commits: [{ hash: 'cd96bcc', message: 'Log tab redesign: sectioned layout with Week/All Time toggle' }],
+        commits: [
+          {
+            hash: 'cd96bcc',
+            message: 'Log tab redesign: sectioned layout with Week/All Time toggle',
+          },
+        ],
       },
       {
         category: 'fix',
@@ -4029,7 +4812,9 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'BiS icon persistence',
         description: 'Fixed item icons not persisting after refresh',
-        commits: [{ hash: '41af3b4', message: 'Fix BiS icon persistence and improve DnD/cursor UX' }],
+        commits: [
+          { hash: '41af3b4', message: 'Fix BiS icon persistence and improve DnD/cursor UX' },
+        ],
       },
     ],
   },
@@ -4065,7 +4850,9 @@ export const RELEASES: Release[] = [
         description: 'Quick sort options: Role, Priority, Custom order',
         details:
           'Sort the raid roster by role (tanks, healers, DPS), by loot priority score, or maintain a custom order with drag-and-drop.',
-        commits: [{ hash: '3afa7c6', message: 'Add drag-and-drop reordering, sort presets, group view' }],
+        commits: [
+          { hash: '3afa7c6', message: 'Add drag-and-drop reordering, sort presets, group view' },
+        ],
       },
       {
         category: 'improvement',
@@ -4100,7 +4887,7 @@ export const RELEASES: Release[] = [
         title: 'Invitation system',
         description: 'Invite links with role, expiration, and max uses',
         details:
-          'Generate invite links to add members to your static. Set the role they\'ll receive, expiration time, and maximum number of uses.',
+          "Generate invite links to add members to your static. Set the role they'll receive, expiration time, and maximum number of uses.",
         commits: [{ hash: '4848e3d', message: 'Add invitations system and player-user linking' }],
       },
       {
@@ -4132,7 +4919,9 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Member role management',
         description: 'Owners and leads can change member roles',
-        commits: [{ hash: 'ae2db72', message: 'Fix member role update endpoint to accept JSON body' }],
+        commits: [
+          { hash: 'ae2db72', message: 'Fix member role update endpoint to accept JSON body' },
+        ],
       },
     ],
   },
