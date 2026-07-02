@@ -30,8 +30,9 @@ export interface AvailabilityHeatmapProps {
 
 const HOUR_MS = 60 * 60 * 1000;
 const MAX_SESSION_HOURS = 12;
-/** The 5 F1/F6d-sanctioned density steps (token color-mix, no new tokens). */
-const DENSITY_STEPS = [70, 45, 28, 16, 8];
+/** The 5 F1/F6d-sanctioned density steps (token color-mix, no new tokens),
+ * ascending lightest → darkest for the legend gradient (darker = more free). */
+const DENSITY_STEPS = [8, 16, 28, 45, 70];
 
 function densityStep(r: number): number {
   if (r >= 1) return 70;
@@ -62,15 +63,23 @@ export function AvailabilityHeatmap({
   const scheduledKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const { session, occursAt } of sessions) {
-      const startMs = new Date(occursAt).getTime();
+      const start = new Date(occursAt);
+      const startMs = start.getTime();
       if (Number.isNaN(startMs)) continue;
-      const durationMs = new Date(session.endTime).getTime() - new Date(session.startTime).getTime();
-      const hours = Math.min(
-        MAX_SESSION_HOURS,
-        Math.max(1, Math.round((Number.isNaN(durationMs) ? HOUR_MS : durationMs) / HOUR_MS)),
+      const rawDurationMs = new Date(session.endTime).getTime() - new Date(session.startTime).getTime();
+      const durationMs = Math.min(
+        MAX_SESSION_HOURS * HOUR_MS,
+        Number.isNaN(rawDurationMs) || rawDurationMs <= 0 ? HOUR_MS : rawDurationMs,
       );
-      for (let i = 0; i < hours; i++) {
-        keys.add(localSlotKeyOf(new Date(startMs + i * HOUR_MS).toISOString()));
+      const endMs = startMs + durationMs;
+      // Floor the viewer-local start to its hour top, then emit the HH:00 key of
+      // every local hour top the [start, end) span overlaps. Flooring in local
+      // space also handles half-hour-offset timezones (e.g. IST) correctly.
+      const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate(), start.getHours());
+      // Off-hour start + 12h cap can overlap at most 13 hour tops.
+      for (let i = 0; i <= MAX_SESSION_HOURS && cursor.getTime() < endMs; i++) {
+        keys.add(localSlotKeyOf(cursor.toISOString()));
+        cursor.setHours(cursor.getHours() + 1);
       }
     }
     return keys;

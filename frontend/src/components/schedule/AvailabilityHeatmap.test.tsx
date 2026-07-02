@@ -160,29 +160,34 @@ describe('AvailabilityHeatmap', () => {
     expect(screen.getByTitle('Alice')).toBeInTheDocument();
   });
 
-  it('marks the matching cell with data-scheduled="true" for a session occurrence at a known local hour', () => {
+  it('marks the hour-top cells a session overlaps, even for an off-the-hour local start', () => {
     const alice = makeMember('u1', 'Alice');
-    // Session occurring at local 2026-07-07 21:00, 2h duration → marks hour 21 (and 22).
-    const start = new Date(2026, 6, 7, 21, 0, 0);
-    const end = new Date(2026, 6, 7, 23, 0, 0);
+    // Session occurring at local 2026-07-07 20:30, 90-min duration → span
+    // [20:30, 22:00) overlaps hour tops 20 and 21; hour 22 must NOT be marked.
+    const start = new Date(2026, 6, 7, 20, 30, 0);
+    const end = new Date(2026, 6, 7, 22, 0, 0);
     const session = makeSession({ startTime: start.toISOString(), endTime: end.toISOString() });
-    const data = buildData([]);
-    const { container } = render(
+    render(
       <AvailabilityHeatmap
-        data={data}
+        data={[]}
         members={[alice]}
         weekDates={WEEK_DATES}
         sessions={[{ session, occursAt: start.toISOString() }]}
-        canManage={false}
+        canManage
+        onProposeSession={vi.fn()}
       />,
     );
-    const marked = container.querySelector('[data-scheduled="true"]');
-    expect(marked).not.toBeNull();
+    const hour20 = screen.getByRole('button', { name: 'Tue 8:00 PM — 0 of 1 free' });
+    const hour21 = screen.getByRole('button', { name: 'Tue 9:00 PM — 0 of 1 free' });
+    const hour22 = screen.getByRole('button', { name: 'Tue 10:00 PM — 0 of 1 free' });
+    expect(hour20).toHaveAttribute('data-scheduled', 'true');
+    expect(hour21).toHaveAttribute('data-scheduled', 'true');
+    expect(hour22).not.toHaveAttribute('data-scheduled');
   });
 
-  it('renders the legend with "Fewer free", "All {total}", and "scheduled"', () => {
+  it('renders the legend with "Fewer free", "All {total}", "scheduled", and ascending density swatches', () => {
     const alice = makeMember('u1', 'Alice');
-    render(
+    const { container } = render(
       <AvailabilityHeatmap
         data={[]}
         members={[alice]}
@@ -194,5 +199,15 @@ describe('AvailabilityHeatmap', () => {
     expect(screen.getByText('Fewer free')).toBeInTheDocument();
     expect(screen.getByText('All 1')).toBeInTheDocument();
     expect(screen.getByText('scheduled')).toBeInTheDocument();
+    // Swatches ascend from lightest (8%) beside "Fewer free" to darkest (70%)
+    // beside "All {total}" — matching the note's "darker = more free".
+    const swatches = [...container.querySelectorAll('.h-2\\.5.w-2\\.5')];
+    expect(swatches).toHaveLength(6); // 5 density steps + 1 scheduled-ring swatch
+    const styles = swatches.slice(0, 5).map((swatch) => swatch.getAttribute('style') ?? '');
+    expect(styles[0]).toContain('var(--color-accent) 8%');
+    expect(styles[1]).toContain('var(--color-accent) 16%');
+    expect(styles[2]).toContain('var(--color-accent) 28%');
+    expect(styles[3]).toContain('var(--color-accent) 45%');
+    expect(styles[4]).toContain('var(--color-accent) 70%');
   });
 });
