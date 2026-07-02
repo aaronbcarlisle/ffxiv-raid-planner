@@ -215,13 +215,13 @@ describe('WeekGroupHeader', () => {
       <WeekGroupHeader
         week={2}
         isCurrent
-        range={{ start: new Date('2026-06-24T23:59:59Z'), end: new Date('2026-06-30T23:59:59Z') }}
+        range={{ start: new Date('2026-06-24T00:30:00Z'), end: new Date('2026-06-30T23:30:00Z') }}
         count={5}
       />
     );
     const pill = screen.getByText('WEEK 2');
     expect(pill).toHaveClass('bg-accent/15', 'text-accent');
-    expect(screen.getByText(/Jun 24/)).toBeInTheDocument();
+    expect(screen.getByText(/Jun 24.*Jun 30/)).toBeInTheDocument();
     expect(screen.getByText('5 drops')).toBeInTheDocument();
   });
 
