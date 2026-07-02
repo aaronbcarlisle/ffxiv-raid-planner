@@ -19,22 +19,34 @@ type LinkTextProps = {
   children: ReactNode;
   icon?: ReactNode;
   className?: string;
+  'aria-expanded'?: boolean;
 } & Destination;
 
 const LINK_CLASS =
   'inline-flex items-center gap-1 text-accent hover:text-accent-hover underline-offset-2 hover:underline cursor-pointer transition-colors';
 
-export function LinkText({ children, icon, className = '', ...dest }: LinkTextProps) {
+export function LinkText({
+  children,
+  icon,
+  className = '',
+  'aria-expanded': ariaExpanded,
+  ...dest
+}: LinkTextProps) {
   if ('href' in dest && dest.href !== undefined) {
     return (
-      <a href={dest.href} className={`${LINK_CLASS} ${className}`}>
+      <a href={dest.href} aria-expanded={ariaExpanded} className={`${LINK_CLASS} ${className}`}>
         {icon}
         {children}
       </a>
     );
   }
   return (
-    <button type="button" onClick={dest.onClick} className={`${LINK_CLASS} ${className}`}>
+    <button
+      type="button"
+      onClick={dest.onClick}
+      aria-expanded={ariaExpanded}
+      className={`${LINK_CLASS} ${className}`}
+    >
       {icon}
       {children}
     </button>
