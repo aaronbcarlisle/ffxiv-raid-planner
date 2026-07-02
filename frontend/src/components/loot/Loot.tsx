@@ -81,6 +81,7 @@ import { toast } from '../../stores/toastStore';
 
 import { deleteLootAndRevertGear } from '../../utils/lootCoordination';
 import { deleteMaterialAndRevertGear } from '../../utils/materialCoordination';
+import { logger as baseLogger } from '../../lib/logger';
 import { getTierById } from '../../gamedata/raid-tiers';
 import { getEffectivePriorityMode } from '../../utils/priority';
 import { DEFAULT_HISTORY_FILTERS, historyWeeks, buildHistoryItems } from '../../utils/historyItems';
@@ -89,6 +90,8 @@ import { type FloorNumber, UPGRADE_MATERIAL_DISPLAY_NAMES } from '../../gamedata
 import type {
   PageMode, SnapshotPlayer, StaticGroup, TierSnapshot, MaterialType, GearSlot, LootLogEntry,
 } from '../../types';
+
+const logger = baseLogger.scope('loot');
 
 /** Stable empty fallback so a missing/empty tier doesn't churn memo deps. */
 const EMPTY_PLAYERS: SnapshotPlayer[] = [];
@@ -222,11 +225,19 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   }, []);
 
   const copyLink = useCallback((item: HistoryItem) => {
-    // v2 deep-link: keep legacy's `entry`/`entryType` names (LootHistoryTable's
-    // highlight effect reads them) and add v2's own routing params.
-    const base = `${window.location.origin}${window.location.pathname}?shell=v2&tab=gear&lview=history&entry=${item.entry.id}`;
-    const url = item.kind === 'material' ? `${base}&entryType=material` : base;
-    void navigator.clipboard.writeText(url);
+    // v2 deep-link: build from the CURRENT URL (SectionedLogView.tsx:847-855
+    // pattern) so existing params — notably `?tier=` — survive, then set/delete
+    // only the params this link controls. Keeps legacy's `entry`/`entryType`
+    // names (LootHistoryTable's highlight effect reads them) alongside v2's own
+    // routing params.
+    const url = new URL(window.location.href);
+    url.searchParams.set('shell', 'v2');
+    url.searchParams.set('tab', 'gear');
+    url.searchParams.set('lview', 'history');
+    url.searchParams.set('entry', String(item.entry.id));
+    if (item.kind === 'material') url.searchParams.set('entryType', 'material');
+    else url.searchParams.delete('entryType');
+    void navigator.clipboard.writeText(url.toString());
     toast.success('Link copied');
   }, []);
 
@@ -243,10 +254,8 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // six configs LootResetMenu emits (week/all × loot/books/data). Loot/data →
   // filter the logs by week (or all) and loop the coordination deletes with
   // `{ revertGear: true }`; books/data → clearWeekPageLedger / clearAllPageLedger.
-  const groupIdSafe = group.id;
-  const tierIdSafe = tier?.tierId;
   const handleResetConfirm = useCallback(async () => {
-    if (!resetConfig || !tierIdSafe) return;
+    if (!resetConfig || !tierId) return;
     const { scope, target, week } = resetConfig;
     const { clearAllPageLedger, clearWeekPageLedger } = useLootTrackingStore.getState();
     try {
@@ -262,27 +271,28 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         const materialEntries =
           scope === 'week' && week != null ? allMaterial.filter((e) => e.weekNumber === week) : allMaterial;
         for (const entry of lootEntries) {
-          await deleteLootAndRevertGear(groupIdSafe, tierIdSafe, entry.id, entry, { revertGear: true });
+          await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
         }
         for (const entry of materialEntries) {
-          await deleteMaterialAndRevertGear(groupIdSafe, tierIdSafe, entry.id, entry, { revertGear: true });
+          await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
         }
       }
 
       if (shouldResetBooks) {
-        if (scope === 'week' && week != null) await clearWeekPageLedger(groupIdSafe, tierIdSafe, week);
-        else await clearAllPageLedger(groupIdSafe, tierIdSafe);
+        if (scope === 'week' && week != null) await clearWeekPageLedger(groupId, tierId, week);
+        else await clearAllPageLedger(groupId, tierId);
       }
 
       refresh();
-      await fetchPageLedger(groupIdSafe, tierIdSafe);
+      await fetchPageLedger(groupId, tierId);
       toast.success(`Reset ${scope === 'week' ? `Week ${week}` : 'all'} ${target} complete`);
-    } catch {
+    } catch (error) {
+      logger.error('Reset failed:', error);
       toast.error('Reset failed');
     } finally {
       setResetConfig(null);
     }
-  }, [resetConfig, groupIdSafe, tierIdSafe, refresh, fetchPageLedger]);
+  }, [resetConfig, groupId, tierId, refresh, fetchPageLedger]);
 
   const subtitle = `Who's up next, and the record of what's dropped · fairness rules: ${MODE_LABELS[getEffectivePriorityMode(settings)]}`;
 
@@ -506,9 +516,14 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           entry={deleteTarget.entry}
           playerName={playerNameFor(deleteTarget.entry.recipientPlayerId, deleteTarget.entry.recipientPlayerName)}
           onConfirm={async (revertGear) => {
-            await deleteLootAndRevertGear(group.id, tier.tierId, deleteTarget.entry.id, deleteTarget.entry, { revertGear });
-            refresh();
-            setDeleteTarget(null);
+            try {
+              await deleteLootAndRevertGear(group.id, tier.tierId, deleteTarget.entry.id, deleteTarget.entry, { revertGear });
+              toast.success('Loot entry deleted');
+              refresh();
+              setDeleteTarget(null);
+            } catch {
+              toast.error('Failed to delete entry');
+            }
           }}
         />
       )}
@@ -520,9 +535,14 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           message={`Delete ${UPGRADE_MATERIAL_DISPLAY_NAMES[deleteTarget.entry.materialType]} for ${playerNameFor(deleteTarget.entry.recipientPlayerId, deleteTarget.entry.recipientPlayerName)}? This cannot be undone.`}
           onCancel={() => setDeleteTarget(null)}
           onConfirm={async () => {
-            await deleteMaterialAndRevertGear(group.id, tier.tierId, deleteTarget.entry.id, deleteTarget.entry, { revertGear: true });
-            refresh();
-            setDeleteTarget(null);
+            try {
+              await deleteMaterialAndRevertGear(group.id, tier.tierId, deleteTarget.entry.id, deleteTarget.entry, { revertGear: true });
+              toast.success('Material entry deleted');
+              refresh();
+              setDeleteTarget(null);
+            } catch {
+              toast.error('Failed to delete entry');
+            }
           }}
         />
       )}

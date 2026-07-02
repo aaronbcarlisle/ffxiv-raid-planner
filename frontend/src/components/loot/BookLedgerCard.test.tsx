@@ -3,9 +3,9 @@
 // BookLedgerCard's own wiring contract (which props they're opened with, what
 // their onSubmit/onHistoryCleared callbacks do), not the modals' internal UI.
 // Mocked here, matching the Loot.test.tsx convention for reused leaf surfaces.
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import type { SnapshotPlayer, PageBalance } from '../../types';
+import type { SnapshotPlayer, PageBalance, PageLedgerEntry } from '../../types';
 
 const { editModalCalls, ledgerModalCalls, markClearedCalls } = vi.hoisted(() => ({
   editModalCalls: [] as Array<Record<string, unknown>>,
@@ -144,6 +144,29 @@ describe('BookLedgerCard', () => {
 
     fetchPageBalances.mockClear();
     fireEvent.click(screen.getByRole('button', { name: 'This week' }));
+
+    expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', 3);
+  });
+
+  it('re-fetches SCOPED balances after any pageLedger mutation while scoped to "This week"', () => {
+    // Discriminator for the unscoped-refetch bug: clearWeekPageLedger /
+    // clearAllPageLedger (lootTrackingStore.ts) internally call
+    // `fetchPageBalances(groupId, tierId)` UNSCOPED as part of their own
+    // refresh, which would overwrite `pageBalances` with all-time data while
+    // this card still shows "This week". Every ledger mutation (reset, adjust,
+    // mark-cleared) refetches `pageLedger` — simulating that reference change
+    // directly must re-fire OUR scoped fetch, landing last and correcting it.
+    render(<BookLedgerCard {...baseProps} />);
+    fireEvent.click(screen.getByRole('button', { name: 'This week' }));
+
+    const { fetchPageBalances } = storeActions();
+    fetchPageBalances.mockClear();
+
+    act(() => {
+      useLootTrackingStore.setState({
+        pageLedger: [{ id: 99 } as unknown as PageLedgerEntry],
+      });
+    });
 
     expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', 3);
   });

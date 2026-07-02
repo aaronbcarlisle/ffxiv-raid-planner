@@ -73,6 +73,7 @@ vi.mock('../../utils/materialCoordination', () => ({
 
 import { Loot } from './Loot';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useToastStore } from '../../stores/toastStore';
 
 function makePlayer(id: string, name: string, opts: { sub?: boolean } = {}): SnapshotPlayer {
   return {
@@ -141,6 +142,12 @@ beforeEach(() => {
   weekScopeCalls.length = 0;
   deleteLootMock.mockClear();
   deleteMaterialMock.mockClear();
+  useToastStore.getState().clearAll();
+  // Reset the real (unmocked) location to a clean baseline before each test —
+  // the copy-link handler reads `window.location.href` directly (not the
+  // MemoryRouter's virtual location), so tests that seed real URL params via
+  // `window.history.pushState` must not leak into unrelated tests.
+  window.history.pushState({}, '', '/');
   // Seed the shared clock: scopedWeek defaults to currentWeek. Loot's mount
   // effect (Loot.tsx) fires five lootTrackingStore fetch actions unconditionally
   // — stub them here (zustand setState can override action fields on the real
@@ -406,7 +413,11 @@ describe('Loot', () => {
     expect(call[4]).toEqual({ revertGear: true });
   });
 
-  it('copies a v2 deep-link containing lview=history&entry= for a loot row', async () => {
+  it('copies a v2 deep-link containing lview=history&entry= for a loot row, preserving existing URL params (e.g. tier=)', async () => {
+    // Copy-link builds from the REAL `window.location.href` (not the
+    // MemoryRouter's virtual location) so an existing `?tier=` param survives —
+    // seed it via pushState to prove the fix, undone by the beforeEach reset.
+    window.history.pushState({}, '', '/group/g1?tier=xyz');
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 4, weekNumber: 3 })] });
@@ -417,6 +428,75 @@ describe('Loot', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    expect(writeText.mock.calls[0][0]).toContain('lview=history&entry=4');
+    const copied = writeText.mock.calls[0][0];
+    expect(copied).toContain('tier=xyz');
+    expect(copied).toContain('lview=history&entry=4');
+    expect(copied).not.toContain('entryType');
+  });
+
+  it('sets entryType=material (and deletes it for loot) in the copied link', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    useLootTrackingStore.setState({ materialLog: [makeMaterialEntry({ id: 12, weekNumber: 3 })] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+
+    const row = document.getElementById('material-entry-12')!;
+    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0][0]).toContain('entryType=material');
+  });
+
+  it('shows an error toast (and does not throw) when a loot delete rejects', async () => {
+    // Discriminator for the F6c phantom-analytics class: an uncaught rejection
+    // in DeleteLootConfirmModal's onConfirm would leave the modal stuck open
+    // and surface as an unhandled rejection. The wrapping try/catch in Loot.tsx
+    // must swallow it and toast instead.
+    deleteLootMock.mockRejectedValueOnce(new Error('boom'));
+    useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 5, weekNumber: 3 })] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+
+    const row = document.getElementById('loot-entry-5')!;
+    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete Entry' }));
+
+    await waitFor(() => {
+      const toasts = useToastStore.getState().toasts;
+      expect(toasts.some((t) => t.type === 'error' && t.message === 'Failed to delete entry')).toBe(true);
+    });
+  });
+
+  it('reset "Reset ALL data" deletes every seeded loot+material entry (unfiltered by week) and clears all page ledger', async () => {
+    const clearAllPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({ id: 1, weekNumber: 3 }),
+        makeLootEntry({ id: 2, weekNumber: 1 }),
+      ],
+      materialLog: [
+        makeMaterialEntry({ id: 10, weekNumber: 3 }),
+        makeMaterialEntry({ id: 11, weekNumber: 1 }),
+      ],
+      clearAllPageLedger: clearAllPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Reset' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Reset ALL data' }));
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() => expect(deleteLootMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(deleteMaterialMock).toHaveBeenCalledTimes(2));
+    // Both weeks (3 and 1) are present — proving scope="all" is NOT week-filtered.
+    expect(deleteLootMock.mock.calls.map((c) => (c[3] as LootLogEntry).weekNumber).sort()).toEqual([1, 3]);
+    expect(deleteMaterialMock.mock.calls.map((c) => (c[3] as MaterialLogEntry).weekNumber).sort()).toEqual([1, 3]);
+    await waitFor(() => expect(clearAllPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
   });
 });

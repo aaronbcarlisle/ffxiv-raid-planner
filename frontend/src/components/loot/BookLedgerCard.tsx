@@ -67,6 +67,10 @@ export function BookLedgerCard({
 }: BookLedgerCardProps) {
   const { pageBalances, fetchPageBalances, adjustBookBalance, markFloorCleared, fetchPageLedger } =
     useLootTrackingStore();
+  // `pageLedger` is subscribed on its own (not just via the whole-store
+  // destructure above) so its identity is tracked as an explicit effect dep
+  // below — see the fetch effect comment for why.
+  const pageLedger = useLootTrackingStore((s) => s.pageLedger);
   const [scope, setScope] = useState<'week' | 'all'>('all');
   const [editState, setEditState] = useState<EditState | null>(null);
   const [ledgerState, setLedgerState] = useState<LedgerState | null>(null);
@@ -75,9 +79,18 @@ export function BookLedgerCard({
   const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const scopedWeek = scope === 'week' ? currentWeek : undefined;
 
+  // `clearWeekPageLedger`/`clearAllPageLedger` (lootTrackingStore.ts) internally
+  // call `fetchPageBalances(groupId, tierId)` UNSCOPED as part of their own
+  // refresh — that overwrites the shared `pageBalances` slice with all-time
+  // data even while this card's scope toggle still reads "This week", and
+  // resolves at an unknown time relative to our own scoped fetch. `pageLedger`
+  // changes on every ledger mutation (reset, adjust, mark-cleared — all of
+  // them refetch it, either directly or via Loot's `refresh`), so including it
+  // here re-issues OUR scoped `fetchPageBalances(groupId, tierId, scopedWeek)`
+  // after any mutation settles, landing last and correcting the unscoped write.
   useEffect(() => {
     fetchPageBalances(groupId, tierId, scopedWeek);
-  }, [groupId, tierId, scope, currentWeek, fetchPageBalances, scopedWeek]);
+  }, [groupId, tierId, scope, currentWeek, fetchPageBalances, scopedWeek, pageLedger]);
 
   const refetch = () => fetchPageBalances(groupId, tierId, scopedWeek);
 
