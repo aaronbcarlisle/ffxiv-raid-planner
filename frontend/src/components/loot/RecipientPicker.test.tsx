@@ -1,14 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { RecipientPicker } from './RecipientPicker';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
-import type { SnapshotPlayer } from '../../types';
+import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
+import type { SnapshotPlayer, LootLogEntry, StaticCharacterRegistration } from '../../types';
 
 vi.mock('../../utils/lootCoordination', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../utils/lootCoordination')>();
-  return { ...actual, logLootAndUpdateGear: vi.fn().mockResolvedValue(undefined) };
+  return {
+    ...actual,
+    logLootAndUpdateGear: vi.fn().mockResolvedValue(undefined),
+    updateLootAndSyncGear: vi.fn().mockResolvedValue(undefined),
+  };
 });
-import { logLootAndUpdateGear } from '../../utils/lootCoordination';
+import { logLootAndUpdateGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
 
 beforeEach(() => {
   // jsdom has no matchMedia; Modal -> useDevice depends on it.
@@ -57,6 +62,9 @@ describe('RecipientPicker (assign mode)', () => {
         item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
     );
     expect(screen.getByText(/Assign · Weapon/)).toBeInTheDocument();
+    // Task-10 regression pin: the fallback avatar uses the PlayerIdentity ring
+    // pattern (role color as border, neutral fill) — not a filled role circle.
+    expect(screen.getByText('CO')).toHaveClass('rounded-full', 'border-2', 'bg-surface-interactive');
     fireEvent.click(screen.getByRole('button', { name: /Assign to/ }));
     await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalledTimes(1));
     const [gid, tid, payload, options] = vi.mocked(logLootAndUpdateGear).mock.calls[0];
@@ -170,5 +178,200 @@ describe('RecipientPicker (log mode)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Assign to|Log drop/ }));
     await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalled());
     expect(vi.mocked(logLootAndUpdateGear).mock.calls[0][2].method).toBe('book');
+  });
+});
+
+function makeEntry(overrides: Partial<LootLogEntry> = {}): LootLogEntry {
+  return {
+    id: 42,
+    tierSnapshotId: 't1',
+    weekNumber: 2,
+    floor: 'M11S',
+    itemSlot: 'body',
+    recipientPlayerId: 'c1',
+    recipientPlayerName: 'Caster One',
+    recipientCharacterRegistrationId: null,
+    recipientCharacterName: null,
+    method: 'book',
+    notes: 'hi',
+    weaponJob: undefined,
+    isExtra: false,
+    createdAt: '2026-01-01T00:00:00Z',
+    createdByUserId: 'u1',
+    createdByUsername: 'user',
+    ...overrides,
+  };
+}
+
+describe('RecipientPicker (edit mode)', () => {
+  beforeEach(() => {
+    vi.mocked(logLootAndUpdateGear).mockClear();
+    vi.mocked(updateLootAndSyncGear).mockClear();
+  });
+
+  it('prefills week, method, notes, recipient, and pre-expands details from the entry', () => {
+    const entry = makeEntry({ weekNumber: 2, floor: 'M11S', itemSlot: 'body', method: 'book', notes: 'hi', recipientPlayerId: 'c1' });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+    expect(screen.getByText(/Edit · Body/)).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton')).toHaveValue(2);
+    expect(screen.getByRole('radio', { name: /Book/i })).toBeChecked();
+    expect(screen.getByPlaceholderText('Optional notes…')).toHaveValue('hi');
+    const casterRow = screen.getByText('Caster One').closest('[role="radio"]');
+    expect(casterRow).toHaveAttribute('aria-checked', 'true');
+    // details pre-expanded in edit mode
+    expect(screen.getByRole('button', { name: 'Hide details' })).toBeInTheDocument();
+  });
+
+  it('diffs only the changed recipient — one-key updates via updateLootAndSyncGear', async () => {
+    const entry = makeEntry({ weekNumber: 2, floor: 'M11S', itemSlot: 'body', method: 'book', notes: 'hi', recipientPlayerId: 'c1' });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+    fireEvent.click(screen.getByText('Melee One'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updateLootAndSyncGear).toHaveBeenCalledTimes(1));
+    const [gid, tid, id, orig, updates, options] = vi.mocked(updateLootAndSyncGear).mock.calls[0];
+    expect(gid).toBe('g1');
+    expect(tid).toBe('t1');
+    expect(id).toBe(entry.id);
+    expect(orig).toBe(entry);
+    expect(updates).toEqual({ recipientPlayerId: 'm1' });
+    expect(Object.keys(updates)).toHaveLength(1);
+    expect(options).toEqual({ syncGear: true });
+  });
+
+  it('backfills weaponJob from the new recipient job for a weapon entry lacking it', async () => {
+    const pld = makePlayer('p1', 'Paladin One', 'PLD');
+    const entry = makeEntry({ floor: 'M12S', itemSlot: 'weapon', weaponJob: undefined, recipientPlayerId: 'c1', method: 'drop', notes: '' });
+    render(<RecipientPicker {...baseProps} players={[caster, pld]} mode="edit" editEntry={entry} />);
+    fireEvent.click(screen.getByText('Paladin One'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updateLootAndSyncGear).toHaveBeenCalledTimes(1));
+    const updates = vi.mocked(updateLootAndSyncGear).mock.calls[0][4];
+    expect(updates.recipientPlayerId).toBe('p1');
+    expect(updates.weaponJob).toBe('PLD');
+  });
+
+  it('closes without calling updateLootAndSyncGear when nothing changed', async () => {
+    const onClose = vi.fn();
+    const entry = makeEntry({ weekNumber: 2, floor: 'M11S', itemSlot: 'body', method: 'book', notes: 'hi', recipientPlayerId: 'c1' });
+    render(<RecipientPicker {...baseProps} onClose={onClose} mode="edit" editEntry={entry} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(updateLootAndSyncGear).not.toHaveBeenCalled();
+  });
+
+  it('scope flip that drops the original recipient does NOT silently reassign to entries[0]', () => {
+    // Caster One already holds the raid-BiS earring (hasItem: true) — under
+    // 'priority' scope (needers only) they drop out of the list entirely,
+    // while Melee One (default gear = needs earring) ranks #1.
+    const owner = makePlayer('c1', 'Caster One', 'BLM');
+    owner.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    const needer = makePlayer('m1', 'Melee One', 'SAM');
+    const entry = makeEntry({ floor: 'M9S', itemSlot: 'earring', recipientPlayerId: 'c1', method: 'drop', notes: '' });
+    render(<RecipientPicker {...baseProps} players={[owner, needer]} mode="edit" editEntry={entry} />);
+
+    // Edit mode opens with scope 'all' — Caster One (the entry's recipient) is selected.
+    const casterRow = screen.getByText('Caster One').closest('[role="radio"]');
+    expect(casterRow).toHaveAttribute('aria-checked', 'true');
+
+    // Flip to priority scope — Caster One drops out (already has the item).
+    fireEvent.click(screen.getByRole('button', { name: 'By priority' }));
+    expect(screen.queryByText('Caster One')).not.toBeInTheDocument();
+
+    // Melee One is now the sole entry but must NOT become silently selected.
+    const meleeRow = screen.getByText('Melee One').closest('[role="radio"]');
+    expect(meleeRow).toHaveAttribute('aria-checked', 'false');
+    const submit = screen.getByRole('button', { name: 'Save changes' });
+    expect(submit).toBeDisabled();
+
+    fireEvent.click(submit);
+    expect(updateLootAndSyncGear).not.toHaveBeenCalled();
+  });
+
+  it('round-trips an untouched ring2 slot — notes-only change carries no itemSlot key', async () => {
+    const ringPlayers = [makePlayer('c1', 'Caster One', 'BLM')];
+    ringPlayers[0].gear = [
+      { slot: 'ring1', bisSource: 'raid', hasItem: false, isAugmented: false },
+      { slot: 'ring2', bisSource: 'raid', hasItem: false, isAugmented: false },
+    ] as SnapshotPlayer['gear'];
+    const entry = makeEntry({ floor: 'M9S', itemSlot: 'ring2', recipientPlayerId: 'c1', method: 'drop', notes: '' });
+    render(<RecipientPicker {...baseProps} players={ringPlayers} mode="edit" editEntry={entry} />);
+    fireEvent.change(screen.getByPlaceholderText('Optional notes…'), { target: { value: 'traded' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updateLootAndSyncGear).toHaveBeenCalledTimes(1));
+    const updates = vi.mocked(updateLootAndSyncGear).mock.calls[0][4];
+    expect(updates).toEqual({ notes: 'traded' });
+    expect(updates).not.toHaveProperty('itemSlot');
+  });
+});
+
+describe('RecipientPicker (character payload — PR-1 obligation)', () => {
+  beforeEach(() => {
+    vi.mocked(logLootAndUpdateGear).mockClear();
+    vi.mocked(updateLootAndSyncGear).mockClear();
+    useStaticCharacterStore.setState({
+      registrationsByGroup: {
+        g1: {
+          c1: [{
+            id: 'reg-primary',
+            staticGroupId: 'g1',
+            snapshotPlayerId: 'c1',
+            playerCharacterId: null,
+            manualCharacterName: null,
+            manualWorld: null,
+            manualDataCenter: null,
+            roleInStatic: 'main',
+            job: 'BLM',
+            isPrimaryForStatic: true,
+            source: 'manual',
+            lastSyncedAt: null,
+            createdAt: '',
+            updatedAt: '',
+            resolvedName: 'Caster Prime',
+            resolvedWorld: null,
+            resolvedDataCenter: null,
+            linkedCharacter: null,
+          } as unknown as StaticCharacterRegistration],
+        },
+      },
+    });
+  });
+  afterEach(() => {
+    useStaticCharacterStore.setState({ registrationsByGroup: {} });
+  });
+
+  it('sends recipientCharacterRegistrationId + name from the primary registration on create', async () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Assign to/ }));
+    await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalledTimes(1));
+    const payload = vi.mocked(logLootAndUpdateGear).mock.calls[0][2];
+    // regression: the create path routes through logLootAndUpdateGear, NOT the edit util
+    expect(updateLootAndSyncGear).not.toHaveBeenCalled();
+    expect(payload.recipientPlayerId).toBe('c1');
+    expect(payload.recipientCharacterRegistrationId).toBe('reg-primary');
+    expect(payload.recipientCharacterName).toBe('Caster Prime');
+  });
+
+  it('shows the Character select in assign mode for a recipient with registrations (presence pin)', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    // Assign mode starts with details collapsed — expand to reach the Character select.
+    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    // Caster One (c1) is the pinned default recipient and has a registration.
+    expect(screen.getByRole('combobox', { name: 'Character' })).toBeInTheDocument();
+  });
+
+  it('hides the Character select in edit mode even when the recipient has registrations (edit never diffs character fields — legacy parity)', () => {
+    const entry = makeEntry({ weekNumber: 2, floor: 'M11S', itemSlot: 'body', method: 'book', notes: 'hi', recipientPlayerId: 'c1' });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+    // Caster One (c1) has a registration (see beforeEach), so if the block were
+    // rendered unconditionally it would appear here too.
+    expect(screen.queryByRole('combobox', { name: 'Character' })).not.toBeInTheDocument();
   });
 });

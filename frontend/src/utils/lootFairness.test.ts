@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { deriveFloorWeekStatus } from './lootFairness';
+import { deriveFloorWeekStatus, computeTierFairness } from './lootFairness';
 import { DEFAULT_SETTINGS } from './constants';
 import type { SnapshotPlayer, LootLogEntry, MaterialLogEntry, PageLedgerEntry } from '../types';
+
+function makeDrop(playerId: string, weekNumber: number): LootLogEntry {
+  return {
+    id: 1, tierSnapshotId: 't1', weekNumber, floor: 'M9S', itemSlot: 'earring',
+    recipientPlayerId: playerId, recipientPlayerName: 'x', method: 'drop',
+    isExtra: false, createdAt: '2026-01-01T00:00:00Z',
+  } as unknown as LootLogEntry;
+}
 
 function makePlayer(id: string, name: string, opts: {
   sub?: boolean;
@@ -105,5 +113,86 @@ describe('deriveFloorWeekStatus', () => {
     // getPriorityForItem finds no gear entry for them → not counted as needing.
     const status = deriveFloorWeekStatus({ ...base, players });
     expect(status.pendingCount).toBe(0);
+  });
+});
+
+describe('computeTierFairness', () => {
+  const alice = makePlayer('a', 'Alice');                     // main
+  const bob = makePlayer('b', 'Bob');                          // main
+  const sub = { ...makePlayer('s', 'Subby'), isSubstitute: true } as SnapshotPlayer;
+  const players = [alice, bob, sub];
+  const tierBase = { players, settings, materialLog: [] as MaterialLogEntry[], pageLedger: [] as PageLedgerEntry[], floors: ['M9S', 'M10S', 'M11S', 'M12S'] };
+
+  it('excludes substitutes and reports most/fewest with spread', () => {
+    const lootLog = [
+      makeDrop('a', 1), makeDrop('a', 2), makeDrop('a', 2),   // Alice 3
+      makeDrop('b', 1),                                        // Bob 1
+      makeDrop('s', 1), makeDrop('s', 1), makeDrop('s', 2),   // sub ignored
+    ];
+    const f = computeTierFairness({ ...tierBase, lootLog, currentWeek: 2 });
+    expect(f.most).toEqual({ names: ['Alice'], count: 3 });
+    expect(f.fewest).toEqual({ names: ['Bob'], count: 1 });
+    expect(f.spread).toBe(2);
+    expect(f.even).toBe(true);          // threshold is <= 2
+    expect(f.weeksSpanned).toBe(2);
+  });
+
+  it('dropsThisTier counts only method=drop; ties list every name', () => {
+    const lootLog = [
+      makeDrop('a', 1),
+      { ...makeDrop('b', 1), method: 'book' },   // counts for Bob's total, NOT dropsThisTier
+    ] as LootLogEntry[];
+    const f = computeTierFairness({ ...tierBase, lootLog, currentWeek: 1 });
+    expect(f.dropsThisTier).toBe(1);
+    expect(f.most).toEqual({ names: ['Alice', 'Bob'], count: 1 });
+    expect(f.spread).toBe(0);
+  });
+
+  it('uneven when spread exceeds 2; thisWeek counts loot+materials in the current week only', () => {
+    const lootLog = [makeDrop('a', 1), makeDrop('a', 1), makeDrop('a', 1), makeDrop('a', 2)]; // Alice 4, Bob 0
+    const materialLog = [
+      { id: 1, tierSnapshotId: 't1', weekNumber: 2, floor: 'M11S', materialType: 'twine',
+        recipientPlayerId: 'b', recipientPlayerName: 'Bob', method: 'drop',
+        createdAt: '2026-01-01T00:00:00Z', createdByUserId: 'u', createdByUsername: 'u' },
+    ] as MaterialLogEntry[];
+    const f = computeTierFairness({ ...tierBase, lootLog, materialLog, currentWeek: 2 });
+    expect(f.even).toBe(false);
+    expect(f.spread).toBe(4);
+    expect(f.thisWeekCount).toBe(2);    // Alice's week-2 drop + Bob's week-2 twine
+  });
+
+  it('returns null stats and zero pending for an empty roster', () => {
+    const f = computeTierFairness({ ...tierBase, players: [sub], lootLog: [], currentWeek: 1 });
+    expect(f.most).toBeNull();
+    expect(f.fewest).toBeNull();
+    expect(f.even).toBe(true);
+    expect(f.thisWeekPending).toBe(0);
+  });
+
+  it('spread of exactly 3 is not even (boundary at the <=2 threshold)', () => {
+    const lootLog = [makeDrop('b', 1), makeDrop('b', 1), makeDrop('b', 1)]; // Bob 3, Alice 0
+    const f = computeTierFairness({ ...tierBase, lootLog, currentWeek: 1 });
+    expect(f.spread).toBe(3);
+    expect(f.even).toBe(false);
+  });
+
+  it('thisWeekPending counts only the mains\' pending needs, ignoring substitute needs', () => {
+    // Sub additionally needs a raid body drop (Floor 3 / M11S) — a need that
+    // belongs only to a substitute and must not inflate the mains-only rollup.
+    const subWithBodyNeed = {
+      ...sub,
+      gear: [...sub.gear, { slot: 'body', bisSource: 'raid', hasItem: false, isAugmented: false }],
+    } as unknown as SnapshotPlayer;
+    // Clears Floor 1's earring pending for week 5, leaving only the Ring need
+    // (still unclaimed by both mains) pending on Floor 1; Floor 3's body need
+    // belongs to the sub and must not show up here.
+    const lootLog = [makeDrop('a', 5)];
+    const f = computeTierFairness({
+      ...tierBase,
+      players: [alice, bob, subWithBodyNeed],
+      lootLog,
+      currentWeek: 5,
+    });
+    expect(f.thisWeekPending).toBe(1);
   });
 });

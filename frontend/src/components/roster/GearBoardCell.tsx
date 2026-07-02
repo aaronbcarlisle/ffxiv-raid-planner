@@ -6,9 +6,10 @@
  * square with a one-letter source code when obtained, a dashed `·` when needed,
  * and a muted `—` when no BiS target is set. The Board is the gear-editing
  * surface: clicking cycles the obtained state via `onCycle` (the parent Board
- * does the state math + persistence). `priority` is reserved for F6d's
- * next-upgrade highlight and currently renders plain need. Visual target:
- * `mockups/02-roster-board.html` `.gcell`.
+ * does the state math + persistence). When `priority` is set on a needed slot
+ * (F6d `need.up`, spec §5.8), the cell renders the next-upgrade glyph (●) in the
+ * player's `role` color instead of the plain need dot. Visual target:
+ * `mockups/02-roster-board.html` `.gcell` / `.gcell.need.up`.
  */
 import { toGearState } from '../../utils/calculations';
 import { BIS_SOURCE_NAMES, BIS_SOURCE_FULL_NAMES } from '../../types';
@@ -18,8 +19,11 @@ export interface GearBoardCellProps {
   slot: GearSlotStatus;
   onCycle?: (slot: GearSlot) => void;
   disabled?: boolean;
-  /** Reserved for F6d loot-priority highlight; default false → renders plain need. */
+  /** F6d loot-priority highlight: when true AND the slot is needed, renders the
+   * next-upgrade glyph (●) instead of the plain need dot. */
   priority?: boolean;
+  /** Player role — colors the next-upgrade glyph (mockup `.need.up`). */
+  role?: 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
 }
 
 const BASE = 'grid h-[30px] w-[30px] place-items-center rounded-md text-[9px] font-extrabold mx-auto';
@@ -32,7 +36,7 @@ const FILL: Record<'raid' | 'tome' | 'base_tome' | 'crafted', string> = {
   crafted: 'bg-gear-crafted/25 text-text-primary',
 };
 
-export function GearBoardCell({ slot, onCycle, disabled = false, priority = false }: GearBoardCellProps) {
+export function GearBoardCell({ slot, onCycle, disabled = false, priority = false, role }: GearBoardCellProps) {
   const { bisSource } = slot;
 
   // No BiS target set → non-interactive muted placeholder.
@@ -70,8 +74,23 @@ export function GearBoardCell({ slot, onCycle, disabled = false, priority = fals
   };
 
   if (!obtained) {
-    // `priority` is reserved (F6d): render plain need regardless.
-    void priority;
+    if (priority) {
+      // F6d next-upgrade highlight (mockup `.gcell.need.up`): dashed border +
+      // ● glyph in the player's role color.
+      return (
+        <span
+          {...commonProps}
+          aria-label={`${BIS_SOURCE_FULL_NAMES[bisSource]} — next upgrade priority`}
+          className={`${BASE} border-[1.5px] border-dashed ${interactive ? 'cursor-pointer' : ''}`}
+          style={role ? {
+            borderColor: `color-mix(in srgb, var(--color-role-${role}) 60%, transparent)`,
+            color: `var(--color-role-${role})`,
+          } : undefined}
+        >
+          ●
+        </span>
+      );
+    }
     return (
       <span
         {...commonProps}

@@ -83,6 +83,46 @@
  * three `.exclude('.text-role-{role}.bg-role-{role}\/20')` calls on the Cards
  * analysis only (GearBoard doesn't render either selector). Tracked for a future
  * shared-selector-component pass — see the test body for the full rationale.
+ *
+ * v2 Loot (Priority + History, f6d-history Task 10): ASSERTED GREEN — scoped to
+ * [data-testid="loot-screen"], both the Priority view and the History view, both
+ * themes. No excludes: unlike v2 Roster, Loot doesn't reuse any legacy role-badge
+ * selectors, and the harness never opens a modal (RecipientPicker's own instance
+ * of the avatar-fill bug below is therefore untested by this harness — fixed
+ * anyway on inspection since it's the identical pattern).
+ *
+ * Four genuine v2-owned (F6d) contrast bugs were found and fixed at the
+ * component level (no token/tokens.json changes — all fixes are class-usage
+ * swaps local to the loot components):
+ *   • ui/PriorityRow.tsx + loot/RecipientPicker.tsx: the role avatar circle
+ *     filled its background with the raw role color and used white initials —
+ *     fails AA for most role colors (measured as low as 1.86:1 for healer
+ *     #5ad490, 2.33:1 ranged #d4a05a, 3.92:1 caster #b45ad4). Fixed by mirroring
+ *     ui/PlayerIdentity's fallback-avatar treatment: role color as a border
+ *     ring, neutral bg-surface-interactive fill, neutral text-text-secondary
+ *     initials — a pattern already proven by the passing v2 Roster assertion.
+ *   • ui/PriorityRow.tsx: the non-top chip's rank number used text-text-muted
+ *     on bg-surface-interactive — 3.82:1 in light theme (text-muted was
+ *     calibrated against surface-base/card, not the darker interactive
+ *     surface). Swapped to text-text-secondary.
+ *   • ui/PriorityRow.tsx: the top chip's rank number used text-accent on
+ *     bg-accent/15 — 4.07:1 in light theme (text-accent only clears AA on
+ *     solid surface-base/card, not the tint composited over them). Reduced the
+ *     tint to bg-accent/5, which composites light enough for text-accent to
+ *     clear AA with margin.
+ *   • loot/FloorCard.tsx: the floor header (LinkText "Show", text-accent) sat
+ *     on bg-surface-raised — 4.29:1 in light theme (surface-raised, #ededf2, is
+ *     darker than the surfaces text-accent was calibrated against). Swapped to
+ *     bg-surface-base (#f5f5f8, ~4.65:1), which also preserves the header/body
+ *     visual distinction from the card body (bg-surface-card, white).
+ *   • loot/WeekGroupHeader.tsx: the current-week pill used text-accent on
+ *     bg-accent/15 — same 4.07:1 failure as the PriorityRow top-chip case
+ *     above, but here the tint is load-bearing for the pill's visual weight,
+ *     so instead of thinning the tint, swapped the darker text-accent-hover
+ *     token in (already AA-margin-checked against lighter surfaces per its
+ *     tokens.json description) — clears ~5.2:1 against the bg-accent/15
+ *     composite. Two existing unit test assertions (LootHistoryTable.test.tsx,
+ *     LootEntryRow.test.tsx) updated to match.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { test, expect } from '@playwright/test'
@@ -186,5 +226,37 @@ for (const theme of THEMES) {
     await page.waitForTimeout(300)
     const board = await new AxeBuilder({ page }).include('[data-testid="roster-screen"]').withRules(['color-contrast']).analyze()
     expect(board.violations, JSON.stringify(board.violations, null, 2)).toEqual([])
+  })
+}
+
+// ── Risk view: v2 Loot (Priority + History), scoped to the loot region ────────
+// The v2 Loot screen is built token-clean; scope Axe to [data-testid="loot-screen"]
+// so legacy Header / shell chrome debt (deferred to later F6 slices) doesn't gate
+// this. Asserts both the Priority view and the History view. No excludes — unlike
+// v2 Roster, Loot doesn't reuse any legacy role-badge selectors, and the harness
+// never opens a modal, so no reused-legacy-modal surface is ever in scope.
+for (const theme of THEMES) {
+  test(`v2 loot has zero contrast violations (${theme})`, async ({ page }) => {
+    await forceTheme(page, theme)
+    await loginAsOwner(page)
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=gear`)
+    const loot = page.locator('[data-testid="loot-screen"]')
+    await loot.waitFor({ timeout: 15_000 })
+    await page.waitForLoadState('networkidle')
+    // Settle CSS transitions (Button uses `transition-all duration-fast` = 150ms;
+    // a re-render shortly after mount can otherwise be caught mid-transition,
+    // producing a transient/false contrast reading).
+    await page.waitForTimeout(300)
+
+    // Priority view
+    const priority = await new AxeBuilder({ page }).include('[data-testid="loot-screen"]').withRules(['color-contrast']).analyze()
+    expect(priority.violations, JSON.stringify(priority.violations, null, 2)).toEqual([])
+
+    // History view
+    await page.getByRole('button', { name: 'History', exact: true }).click()
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(300)
+    const history = await new AxeBuilder({ page }).include('[data-testid="loot-screen"]').withRules(['color-contrast']).analyze()
+    expect(history.violations, JSON.stringify(history.violations, null, 2)).toEqual([])
   })
 }

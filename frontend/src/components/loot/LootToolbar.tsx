@@ -1,19 +1,23 @@
 /**
- * LootToolbar — the row above the Loot floor cards (F6d, spec §2.3/§5.4).
+ * LootToolbar — the row above the Loot body (F6d, spec §2.3/§5.4).
  *
- * A flat flex row (RosterToolbar pattern): the shared week-scope control slotted
- * on the left, a spacer, and — for editors — the Loot actions (Adjustments,
- * Rules, Log a drop, Log this week's loot). No view SegmentedToggle in PR1:
- * Priority is the only view; the Priority⇄History toggle arrives with History
- * in PR2.
+ * A flat flex row (RosterToolbar pattern): the Priority⇄History view toggle
+ * (leftmost, PR2), the left control cluster (WeekScopeControl in Priority or
+ * HistoryFilters in History — slotted by Loot), a spacer, and — for editors —
+ * the Loot actions (Reset [history-only], Adjustments, Rules, Log a drop, Log
+ * this week's loot).
  */
 import type { ReactNode } from 'react';
 import { CheckSquare, Gauge, Scan, SlidersHorizontal } from 'lucide-react';
 import { Button } from '../primitives/Button';
 
 export interface LootToolbarProps {
-  /** The <WeekScopeControl/> instance, slotted by Loot (owns the shared clock). */
+  /** Priority ⇄ History SegmentedToggle, slotted by Loot (leftmost). */
+  viewToggle?: ReactNode;
+  /** Left control cluster — WeekScopeControl (priority) or HistoryFilters (history). */
   weekControl: ReactNode;
+  /** History-only Reset dropdown (canEdit), rendered inside the action cluster. */
+  resetMenu?: ReactNode;
   canEdit: boolean;
   onLogDrop: () => void;
   onLogWeek: () => void;
@@ -22,7 +26,9 @@ export interface LootToolbarProps {
 }
 
 export function LootToolbar({
+  viewToggle,
   weekControl,
+  resetMenu,
   canEdit,
   onLogDrop,
   onLogWeek,
@@ -31,10 +37,12 @@ export function LootToolbar({
 }: LootToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2.5">
+      {viewToggle}
       {weekControl}
       <div className="flex-1" />
       {canEdit && (
         <>
+          {resetMenu}
           <Button
             variant="ghost"
             size="sm"

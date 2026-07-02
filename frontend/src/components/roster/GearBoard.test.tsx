@@ -57,6 +57,17 @@ describe('GearBoard', () => {
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
+  it('renders exactly one next-upgrade glyph for the player/slot in `priorities`', () => {
+    const priorities = new Map<string, Set<GearSlot>>([['a', new Set<GearSlot>(['body'])]]);
+    render(<GearBoard players={[player({ id: 'a', gear: gear(0) })]} canManage actionsForPlayer={noop} priorities={priorities} />);
+    expect(screen.getAllByText('●')).toHaveLength(1);
+  });
+
+  it('renders no next-upgrade glyphs when `priorities` is omitted', () => {
+    render(<GearBoard players={[player({ id: 'a', gear: gear(0) })]} canManage actionsForPlayer={noop} />);
+    expect(screen.queryByText('●')).not.toBeInTheDocument();
+  });
+
   it('swallows a rejected onUpdate without an unhandled promise rejection', async () => {
     const onUpdate = vi.fn().mockRejectedValue(new Error('api failed'));
     const factory = () => ({ onUpdate });

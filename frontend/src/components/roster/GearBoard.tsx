@@ -16,8 +16,9 @@
  *   - Party-divider rows are rendered fresh here (a `<tr><td colspan>`), NOT by
  *     refining the legacy `player/LightPartyHeader` (byte-for-byte: no legacy
  *     edits; LightPartyHeader is typed groupNumber:1|2 with no Subs variant).
- *   - `need.up` priority highlight is F6d's — cells render plain need (priority
- *     prop left at its default).
+ *   - `need.up` priority highlight (F6d): the optional `priorities` map (from
+ *     `computeNextUpgradePriorities`, keyed by playerId → needed slots) marks a
+ *     cell as the next-upgrade ●. Omitted → every cell renders plain need.
  */
 import { Fragment } from 'react';
 import { PlayerIdentity } from '../ui/PlayerIdentity';
@@ -49,6 +50,8 @@ export interface GearBoardProps {
   actionsForPlayer: (player: SnapshotPlayer) => {
     onUpdate: (updates: Partial<SnapshotPlayer>) => void | Promise<void>;
   };
+  /** F6d next-upgrade highlight: playerId → set of slots marked as the next upgrade. */
+  priorities?: Map<string, Set<GearSlot>>;
 }
 
 /** BiS-target slots that have the item / total BiS-target slots, for one player. */
@@ -63,7 +66,7 @@ function summaryColor(obtained: number, total: number): string {
   return 'text-text-primary';
 }
 
-export function GearBoard({ players, tierId, canManage, actionsForPlayer }: GearBoardProps) {
+export function GearBoard({ players, tierId, canManage, actionsForPlayer, priorities }: GearBoardProps) {
   const grouped = groupPlayersByLightParty(players.filter((p) => p.configured), true);
   const sections: Array<{ label: string; rows: SnapshotPlayer[] }> = [
     { label: 'Light Party 1', rows: grouped.group1 },
@@ -148,7 +151,13 @@ export function GearBoard({ players, tierId, canManage, actionsForPlayer }: Gear
                         return (
                           <td key={slot} className="h-10 border-b border-l border-border-subtle">
                             {g ? (
-                              <GearBoardCell slot={g} disabled={!canManage} onCycle={canManage ? () => void cycle(player, slot) : undefined} />
+                              <GearBoardCell
+                                slot={g}
+                                role={role}
+                                priority={priorities?.get(player.id)?.has(slot) ?? false}
+                                disabled={!canManage}
+                                onCycle={canManage ? () => void cycle(player, slot) : undefined}
+                              />
                             ) : null}
                           </td>
                         );
