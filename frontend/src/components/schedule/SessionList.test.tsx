@@ -6,6 +6,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SessionList, type SessionListProps } from './SessionList';
+import { useToastStore } from '../../stores/toastStore';
 import type { SessionOccurrence } from './scheduleWeek';
 import type { ScheduleSession } from '../../types';
 
@@ -57,6 +58,7 @@ function openKebab() {
 
 beforeEach(() => {
   Object.assign(navigator, { clipboard: { writeText: vi.fn() } });
+  useToastStore.setState({ toasts: [] });
   vi.useRealTimers();
 });
 
@@ -169,6 +171,34 @@ describe('SessionList', () => {
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
     const text = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
     expect(text).toContain('?tab=schedule&sessionId=sess-5');
+  });
+
+  it('Share: a rejected clipboard write shows an error toast and no success toast', async () => {
+    // F6d copyLink precedent (Loot.test.tsx): a rejecting clipboard must NOT
+    // fire the success toast nor escape as an unhandled rejection.
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } });
+    const session = makeSession({ id: 'sess-5' });
+    renderList({ occurrences: [occ(session)] });
+    openKebab();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Share' }));
+    await waitFor(() => {
+      const toasts = useToastStore.getState().toasts;
+      expect(toasts.some((t) => t.type === 'error' && t.message === 'Failed to copy')).toBe(true);
+    });
+    expect(useToastStore.getState().toasts.some((t) => t.type === 'success')).toBe(false);
+  });
+
+  it('Copy for Discord: a rejected clipboard write shows an error toast and no success toast', async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } });
+    const session = makeSession({ id: 'sess-9' });
+    renderList({ occurrences: [occ(session)] });
+    openKebab();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy for Discord' }));
+    await waitFor(() => {
+      const toasts = useToastStore.getState().toasts;
+      expect(toasts.some((t) => t.type === 'error' && t.message === 'Failed to copy Discord message')).toBe(true);
+    });
+    expect(useToastStore.getState().toasts.some((t) => t.type === 'success')).toBe(false);
   });
 
   it('renders the empty-state invite and fires onJumpToWeek from the next-session hint button', () => {

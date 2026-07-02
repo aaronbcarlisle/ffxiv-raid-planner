@@ -132,11 +132,18 @@ export function SessionList({
         await navigator.share({ title: session.title, text });
         return;
       } catch {
-        // fall through to clipboard
+        // Share-sheet rejection (incl. user cancel) is NOT an error — legacy
+        // parity treats it as a no-op and falls through to the clipboard.
       }
     }
-    await navigator.clipboard.writeText(text);
-    toast.success('Copied session details');
+    // F6d copyLink pattern (Loot.tsx:244-247): a rejected clipboard write must
+    // surface an error toast — never a silent "success" or an unhandled rejection.
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied session details');
+    } catch {
+      toast.error('Failed to copy');
+    }
   }
 
   async function handleCopyDiscord(occ: SessionOccurrence) {
@@ -163,8 +170,13 @@ export function SessionList({
     }
 
     lines.push(`${window.location.origin}/group/${shareCode}?tab=schedule&sessionId=${session.id}`);
-    await navigator.clipboard.writeText(lines.join('\n'));
-    toast.success('Copied Discord message');
+    // Same F6d copyLink pattern as handleShare — no silent copy failures.
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      toast.success('Copied Discord message');
+    } catch {
+      toast.error('Failed to copy Discord message');
+    }
   }
 
   if (occurrences.length === 0) {
