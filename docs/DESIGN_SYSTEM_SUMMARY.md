@@ -33,6 +33,48 @@ Complete guide covering:
 - Best practices
 - Success metrics
 
+## 📐 Typography Scale & Size Floor
+
+Use **semantic Tailwind sizes**, not arbitrary `text-[Npx]`. The scale:
+
+| Token | Size | Use for |
+|-------|------|---------|
+| `text-xs` | 12px | Captions, badges, dense metadata — **the floor for any text users read** |
+| `text-sm` | 14px | Body copy, form labels, table cells |
+| `text-base` | 16px | Primary content |
+| `text-lg`+ | 18px+ | Headings |
+
+### Floor rule (readable text)
+
+- **No `text-[Npx]` below `text-xs` (12px) for any text a user reads.**
+- The **only** allowed sub-12px text is a numeric **badge count**, and **never below `text-[9px]`**.
+- **`text-[7px]` and `text-[8px]` are not allowed anywhere.**
+
+### Arbitrary → semantic mapping
+
+When you find an arbitrary size, convert it:
+
+| Arbitrary | Use instead |
+|-----------|-------------|
+| `text-[10px]`, `text-[11px]`, `text-[12px]` | `text-xs` |
+| `text-[13px]` | `text-sm` |
+| `text-[9px]` | `text-xs` — **unless** it's a badge count, where `text-[9px]` is the floor |
+
+Inline `style={{ fontSize: '10px' }}` is also a violation — use a class. New code must target this scale; the ESLint design-system plugin warns on sub-`xs` arbitrary sizes.
+
+## 🎨 Theme Tokens & Accent Tints
+
+Colors and gradients must be **theme tokens**, so light mode tracks automatically. Never hardcode inline `rgba()`/hex/gradients.
+
+- **Accent tints:** replace `rgba(20,184,166,X)` with `color-mix(in srgb, var(--color-accent) {X*100}%, transparent)`. This follows the themed `--color-accent` instead of pinning the dark-mode teal.
+  ```css
+  /* ❌ dark-only */ background: rgba(20,184,166,0.09);
+  /* ✅ themed   */ background: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  ```
+- **Rail gradient:** use `var(--gradient-rail)` (defined per theme) instead of a hardcoded `linear-gradient`.
+- **Subtle "raise" haze:** use `var(--color-overlay-raise)` instead of `rgba(255,255,255,0.0X)` (invisible on light backgrounds).
+- **Parchment/seal** (JoinRequest scroll aesthetic): use `--color-parchment-*` / `--color-seal` — they carry dark **and** light values.
+
 ## 🎯 Key Insight: You Don't Need Storybook
 
 **Why?** Your DesignSystem.tsx page **already works like Storybook** because:

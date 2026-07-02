@@ -7,8 +7,9 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { Copy, UserPlus, Settings, Plus, Trash2, Globe, Swords } from 'lucide-react';
+import { Copy, UserPlus, Settings, PanelRightClose, Plus, Trash2 } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useTierStore } from '../../stores/tierStore';
@@ -17,11 +18,14 @@ import { useViewAsStore } from '../../stores/viewAsStore';
 import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
+import { useDevice } from '../../hooks/useDevice';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { StaticSwitcher, TierSelector } from '../static-group';
+import { ContextSwitcher } from './ContextSwitcher';
 import { TierActionsMenu, TipsCarousel, DiscordIcon, GitHubIcon, ThemeToggle } from '../ui';
 import { Tooltip, IconButton } from '../primitives';
 import { RAID_TIERS } from '../../gamedata';
-import { canManageTiers, canManageGroup } from '../../utils/permissions';
+import { canManageTiers } from '../../utils/permissions';
 import { DISCORD_INVITE_URL, GITHUB_REPO_URL } from '../../config';
 
 // Custom event types for communication with GroupView
@@ -54,6 +58,16 @@ export function Header() {
   // Determine current route context
   const isGroupRoute = location.pathname.startsWith('/group/');
   const isHomePage = location.pathname === '/';
+
+  // The AppRail (with its user-menu footer) is present whenever the user is
+  // signed in or on a group route. When it is, the header avatar is redundant
+  // on desktop — keep it only for mobile (< sm), where there is no rail.
+  const railPresent = !!user || isGroupRoute;
+
+  // Settings panel open-state is URL-derived (same source GroupView uses), so the
+  // gear icon and the header padding stay in sync with the docked panel.
+  const settingsOpen = useSettingsPanelStore((s) => s.isOpen);
+  const { prefersReducedMotion } = useDevice();
 
   // Admin mode is determined by URL param (navigated from Admin Dashboard)
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -142,7 +156,6 @@ export function Header() {
 
   // Check permissions - pass isAdminAccess for elevated admin privileges
   const tierPermission = canManageTiers(userRole, isAdminAccess);
-  const groupPermission = canManageGroup(userRole, isAdminAccess);
 
   // Build tier actions for kebab menu
   const tierActions = useMemo(() => {
@@ -181,7 +194,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 bg-surface-raised border-b border-border-default">
-      <div className="max-w-[160rem] mx-auto px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1 sm:gap-x-4 sm:flex-nowrap">
+      <div
+        className="max-w-[160rem] mx-auto px-2 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1 sm:gap-x-4 sm:flex-nowrap"
+      >
         {/* Left side: Logo + Group context with breadcrumb hierarchy */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {/* Logo */}
@@ -210,35 +225,82 @@ export function Header() {
             </Link>
           </Tooltip>
 
-          {/* Group context - desktop only (inline with logo) */}
-          {isGroupRoute && currentGroup && (
-            <>
-              <div className="hidden sm:block border-l border-border-subtle pl-3">
-                <StaticSwitcher
-                  currentGroup={currentGroup}
-                  groups={groups}
-                  onFetchGroups={fetchGroups}
-                  isMember={isMember}
-                  userRole={userRole ?? undefined}
-                />
-              </div>
+          {/* Context switcher - desktop only (Player Hub ⇄ Static) */}
+          {user && !isHomePage && (
+            <div className="hidden sm:block border-l border-border-subtle pl-3">
+              <ContextSwitcher
+                currentGroup={currentGroup ?? null}
+                groups={groups}
+                onFetchGroups={fetchGroups}
+                isMember={isMember || groups.length > 0}
+                userRole={userRole ?? undefined}
+              />
+            </div>
+          )}
 
-              {/* Breadcrumb separator and Tier selector - hidden on mobile */}
-              {tiers.length > 0 && (
-                <div className="hidden sm:flex items-center gap-1">
-                  <span className="text-text-muted text-lg">›</span>
-                  <TierSelector
-                    tiers={tiers}
-                    currentTierId={currentTier?.tierId}
-                    onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
-                  />
-                  {/* Tier actions kebab menu */}
-                  {canEdit && tierActions.length > 0 && (
-                    <TierActionsMenu actions={tierActions} />
+          {/* Breadcrumb separator and Tier selector - group routes only, hidden on
+              mobile. Eases in when a static becomes active so selecting a static
+              reveals the tier selector calmly instead of snapping into place. */}
+          <AnimatePresence>
+            {isGroupRoute && currentGroup && tiers.length > 0 && (
+              <motion.div
+                className="hidden sm:flex items-center gap-1"
+                initial={prefersReducedMotion ? false : { opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={prefersReducedMotion ? undefined : { opacity: 0, x: -6 }}
+                transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+              >
+                <span className="text-text-muted text-lg">›</span>
+                <TierSelector
+                  tiers={tiers}
+                  currentTierId={currentTier?.tierId}
+                  onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
+                />
+                {/* Tier actions kebab menu */}
+                {canEdit && tierActions.length > 0 && (
+                  <TierActionsMenu actions={tierActions} />
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Invite Members button — sits just right of the tier kebab on the
+              left side. Hidden on mobile (the static switcher takes the row). */}
+          {isGroupRoute && currentGroup && canManageInvitations && (
+            <div className="hidden sm:block">
+              <Tooltip
+                content={
+                  <div className="flex items-start gap-2 max-w-xs">
+                    <UserPlus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-medium">Invite Members</div>
+                      <div className="text-text-secondary text-xs mt-0.5">
+                        {activeInvitation
+                          ? 'Click to copy invitation link'
+                          : 'Click to create an invitation link'}
+                      </div>
+                    </div>
+                  </div>
+                }
+              >
+                <button
+                  type="button"
+                  onClick={handleInviteMembers}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 transition-colors group flex-shrink-0"
+                >
+                  {inviteCopied ? (
+                    <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <UserPlus className="w-4 h-4 text-accent" />
                   )}
-                </div>
-              )}
-            </>
+                  <span className="text-sm font-medium text-accent">
+                    {inviteCopied ? 'Copied!' : 'Invite'}
+                  </span>
+                </button>
+              </Tooltip>
+            </div>
           )}
         </div>
 
@@ -249,110 +311,50 @@ export function Header() {
 
         {/* Right side: Invite + Settings + Auth */}
         <div className="flex items-center gap-1 sm:gap-3">
-          {/* Group controls (only on group pages) */}
-          {isGroupRoute && currentGroup && (
-            <>
-              {/* Invite Members button (for owners/leads) - hidden on mobile */}
-              {canManageInvitations && (
-                <div className="hidden sm:block">
-                  <Tooltip
-                    content={
-                      <div className="flex items-start gap-2 max-w-xs">
-                        <UserPlus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-medium">Invite Members</div>
-                          <div className="text-text-secondary text-xs mt-0.5">
-                            {activeInvitation
-                              ? 'Click to copy invitation link'
-                              : 'Click to create an invitation link'}
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  >
-                    <button
-                      onClick={handleInviteMembers}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 transition-colors group flex-shrink-0"
-                    >
-                      {inviteCopied ? (
-                        <svg className="w-4 h-4 text-status-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <UserPlus className="w-4 h-4 text-accent" />
-                      )}
-                      <span className="text-sm font-medium text-accent">
-                        {inviteCopied ? 'Copied!' : 'Invite'}
-                      </span>
-                    </button>
-                  </Tooltip>
+          {/* Settings gear — mobile only; desktop uses the docked toggle on the
+              right edge (SettingsDockToggle) that mirrors the rail's chevron. */}
+          {user && !isHomePage && (
+            <span className="sm:hidden">
+            <Tooltip
+              content={
+                <div>
+                  <div className="font-medium">Settings</div>
+                  <div className="text-text-secondary text-xs mt-0.5">
+                    Account preferences{currentGroup ? ', static settings, members, and invitations' : ''}
+                    {pendingJoinRequests > 0 && ` — ${pendingJoinRequests} pending join request${pendingJoinRequests > 1 ? 's' : ''}`}
+                  </div>
+                  <div className="text-text-muted text-xs mt-1 flex gap-1">
+                    <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+G</kbd>
+                  </div>
                 </div>
-              )}
-
-              {/* Settings gear icon (opens slide-out settings panel) */}
-              {groupPermission.allowed && (
-                <Tooltip
-                  content={
-                    <div>
-                      <div className="font-medium">Static Settings</div>
-                      <div className="text-text-secondary text-xs mt-0.5">
-                        Manage settings, members, and invitations
-                        {pendingJoinRequests > 0 && ` — ${pendingJoinRequests} pending join request${pendingJoinRequests > 1 ? 's' : ''}`}
-                      </div>
-                      <div className="text-text-muted text-xs mt-1 flex gap-1">
-                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+G</kbd>
-                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">P</kbd>
-                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">M</kbd>
-                        <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">I</kbd>
-                      </div>
-                    </div>
-                  }
-                >
-                  <span className="relative">
-                    <IconButton
-                      icon={<Settings className="w-5 h-5" />}
-                      onClick={() => dispatchHeaderEvent(
-                        HEADER_EVENTS.SETTINGS,
-                        pendingJoinRequests > 0 ? { tab: 'recruitment' } : undefined,
-                      )}
-                      variant="ghost"
-                      aria-label="Static settings"
-                    />
-                    {pendingJoinRequests > 0 && (
-                      <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-accent text-accent-contrast pointer-events-none">
-                        {pendingJoinRequests}
-                      </span>
-                    )}
+              }
+            >
+              <span className="relative">
+                <IconButton
+                  icon={settingsOpen ? <PanelRightClose className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
+                  onClick={() => dispatchHeaderEvent(HEADER_EVENTS.SETTINGS, {
+                    toggle: true,
+                    ...(pendingJoinRequests > 0 ? { tab: 'recruitment' } : {}),
+                  })}
+                  variant="ghost"
+                  aria-label="Settings"
+                  aria-expanded={settingsOpen}
+                  aria-pressed={settingsOpen}
+                />
+                {pendingJoinRequests > 0 && (
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-accent text-accent-contrast pointer-events-none">
+                    {pendingJoinRequests}
                   </span>
-                </Tooltip>
-              )}
-            </>
+                )}
+              </span>
+            </Tooltip>
+            </span>
           )}
 
           {/* External links + theme toggle — hidden on the Home page (login only there) */}
           {!isHomePage && (
             <>
               <div className="flex items-center gap-0 sm:gap-1">
-                {user && (
-                  <Tooltip content="Player Hub — character, jobs, gear & applications">
-                    <Link
-                      to="/profile"
-                      aria-label="Player Hub"
-                      className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
-                    >
-                      <Swords className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </Link>
-                  </Tooltip>
-                )}
-                <Tooltip content="Find a static">
-                  <Link
-                    to="/discover"
-                    aria-label="Find a static"
-                    className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
-                  >
-                    <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </Link>
-                </Tooltip>
                 <Tooltip content="Join our Discord community">
                   <a
                     href={DISCORD_INVITE_URL}
@@ -390,7 +392,12 @@ export function Header() {
             {authLoading ? (
               <div className="w-8 h-8 rounded-full bg-surface-interactive animate-pulse" />
             ) : user ? (
-              <UserMenu />
+              <span
+                data-rail-present={railPresent ? 'true' : 'false'}
+                className={railPresent ? 'sm:hidden' : ''}
+              >
+                <UserMenu />
+              </span>
             ) : (
               <LoginButton className="text-sm px-3 py-1.5" />
             )}

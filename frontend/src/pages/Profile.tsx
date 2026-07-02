@@ -1,21 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useUrlTabState, clearRegisteredTabParams } from '../hooks/useUrlTabState';
+import { prefRememberTabs } from '../lib/navPreferences';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Calendar, ChevronDown, ChevronLeft, ChevronRight,
-  Crosshair, Eye, LayoutDashboard, PlugZap, Shield, Sparkles, User, Users,
+  Calendar,
+  Crosshair, Eye, LayoutDashboard, Shield, Sparkles, User, Users,
 } from 'lucide-react';
-import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
-import {
-  Dropdown,
-  DropdownContent,
-  DropdownItem,
-  DropdownSeparator,
-  DropdownTrigger,
-  Tooltip,
-} from '../components/primitives';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SidebarRail } from '../components/layout/SidebarRail';
+import type { RailNavItem } from '../components/layout/railTypes';
+import { UserMenu } from '../components/auth';
 import { CharacterLinkModal } from '../components/profile/CharacterLinkModal';
 import { JobsGearTab } from '../components/profile/JobsGearTab';
 import { JobProfileModal } from '../components/profile/JobProfileModal';
@@ -32,29 +28,22 @@ import type { PlayerJobProfile } from '../stores/playerProfileStore';
 import { useSharedBisStore } from '../stores/sharedBisStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useAuthStore } from '../stores/authStore';
-import { useDevice } from '../hooks/useDevice';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useModal } from '../hooks/useModal';
 import { fadeInProps } from '../lib/motion';
 import { GameIcon } from '../components/ui/GameIcon';
 import { hasUsableGearSnapshot } from '../components/profile/jobGearUtils';
-import type { MemberRole, StaticGroupListItem } from '../types';
+import { MyStaticsPanel } from '../components/dashboard/MyStaticsPanel';
 
-type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview';
-const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'preview'];
+type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview' | 'statics';
+const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'preview', 'statics'];
+const COLL_SUB_TABS = ['goals', 'priorities', 'browse'] as const;
 const LEGACY_TAB_REDIRECTS: Record<string, ProfileTab> = {
   share: 'preview',
   characters: 'sync',
   gear: 'jobs-gear',
   jobs: 'jobs-gear',
   goals: 'collections',
-};
-
-const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
-  owner: 'Owner',
-  lead: 'Lead',
-  member: 'Member',
-  viewer: 'Viewer',
 };
 
 // ── Profile sidebar nav ────────────────────────────────────────────────────
@@ -68,287 +57,39 @@ const PROFILE_NAV_ITEMS: Array<{
   { id: 'overview',     label: 'Overview',          description: 'Character overview, goals, and quick actions',              shortcut: '`', icon: LayoutDashboard },
   { id: 'sync',         label: 'Sync & Gear',       description: 'Plugin sync status and character gear snapshots',           shortcut: '1', icon: Shield },
   { id: 'jobs-gear',    label: 'Jobs & Gear',       description: 'Job profiles, BiS targets, and readiness status',          shortcut: '2', icon: Crosshair },
-  { id: 'collections',  label: 'Collections & Goals', description: 'Mounts, music, weapons, collection goals, and tasks',    shortcut: '3', icon: Sparkles },
+  { id: 'collections',  label: 'Tracking',          description: 'Mounts, music, weapons, collection goals, and tasks',    shortcut: '3', icon: Sparkles },
   { id: 'availability', label: 'Availability',      description: 'Your weekly availability for raid nights',                 shortcut: '4', icon: Calendar },
   { id: 'preview',      label: 'Share',             description: 'Preview and manage your shareable profile',                shortcut: '5', icon: Eye },
+  { id: 'statics',      label: 'My Statics',        description: 'Browse, create, and manage your raid statics',             shortcut: '6', icon: Users },
 ];
 
-const PROFILE_SIDEBAR_KEY = 'profile-sidebar-collapsed';
-
-/* eslint-disable design-system/no-raw-button */
-function ProfileSidebarNav({
+export function ProfileSidebarNav({
   activeTab,
   onTabChange,
   characterName,
-  primaryStaticPath,
-  primaryStaticName,
 }: {
   activeTab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
   characterName?: string;
-  primaryStaticPath?: string;
-  primaryStaticName?: string;
 }) {
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(PROFILE_SIDEBAR_KEY) === 'true'; } catch { return false; }
-  });
-
-  const toggle = () => {
-    setCollapsed(prev => {
-      const next = !prev;
-      try { localStorage.setItem(PROFILE_SIDEBAR_KEY, String(next)); } catch { /* ignore */ }
-      return next;
-    });
-  };
+  const items: RailNavItem[] = PROFILE_NAV_ITEMS.map(d => ({
+    ...d,
+    isActive: activeTab === d.id,
+    onSelect: () => onTabChange(d.id),
+  }));
 
   return (
-    <motion.nav
-      aria-label="Player Hub navigation"
-      className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle"
-      style={{
-        background: 'linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%)',
-        width: collapsed ? 56 : 208,
-        minWidth: collapsed ? 56 : 208,
-        overflowY: 'auto',
-      }}
-      variants={{
-        expanded: { width: 208, minWidth: 208 },
-        collapsed: { width: 56, minWidth: 56 },
-      }}
-      animate={collapsed ? 'collapsed' : 'expanded'}
-      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-    >
-      {/* Identity header + collapse toggle */}
-      <div className="flex-shrink-0 border-b border-border-subtle" style={{ background: 'rgba(20,184,166,0.045)' }}>
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label="Expand sidebar"
-            className="w-full h-12 flex items-center justify-center text-text-muted hover:text-accent transition-colors"
-          >
-            <ChevronRight size={14} />
-          </button>
-        ) : (
-          <>
-            {/* Back-to-static breadcrumb — top row */}
-            {primaryStaticPath ? (
-              <Link
-                to={primaryStaticPath}
-                className="flex items-center gap-1.5 px-3 h-7 hover:bg-white/[0.04] transition-colors border-b border-border-subtle/50 w-full group"
-                style={{ color: 'rgba(20,184,166,0.75)' }}
-              >
-                <ChevronLeft size={12} className="flex-shrink-0 group-hover:text-accent transition-colors" />
-                <span className="text-xs font-semibold leading-none truncate min-w-0 group-hover:text-accent transition-colors">
-                  {primaryStaticName ?? 'My Static'}
-                </span>
-              </Link>
-            ) : (
-              <div className="h-7 border-b border-border-subtle/50" />
-            )}
-
-            {/* Character identity + collapse — bottom row */}
-            <div className="flex items-center h-9">
-              <div className="flex items-center flex-1 min-w-0 px-3 gap-2">
-                <div
-                  className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(20,184,166,0.18)', boxShadow: '0 0 0 1px rgba(20,184,166,0.2)' }}
-                >
-                  <User size={11} className="text-accent" />
-                </div>
-                <span
-                  className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
-                  title={characterName}
-                >
-                  {characterName ?? 'Player Hub'}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={toggle}
-                aria-label="Collapse sidebar"
-                className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
-              >
-                <ChevronLeft size={13} />
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Nav items */}
-      <LayoutGroup id="sidebar-profile-nav">
-        <div className="flex flex-col py-2 flex-1">
-          {PROFILE_NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <div key={item.id}>
-                <Tooltip
-                  content={
-                    <div className="max-w-[200px]">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-semibold text-text-primary text-sm">{item.label}</span>
-                        <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle bg-surface-base text-text-muted font-mono leading-none flex-shrink-0">
-                          {item.shortcut}
-                        </kbd>
-                      </div>
-                      <p className="text-xs text-text-secondary leading-relaxed">{item.description}</p>
-                    </div>
-                  }
-                  side="right"
-                  sideOffset={collapsed ? 12 : 16}
-                  delayDuration={collapsed ? 200 : 700}
-                >
-                  <button
-                    onClick={() => onTabChange(item.id)}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`
-                      relative flex items-center w-full py-2.5 text-sm font-medium text-left
-                      transition-colors duration-150 select-none
-                      ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'}
-                      ${isActive
-                        ? 'text-accent'
-                        : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.035]'
-                      }
-                    `}
-                  >
-                    {isActive && (
-                      <motion.span
-                        layoutId="sidebar-profile-active-bg"
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background: 'rgba(20,184,166,0.09)',
-                          boxShadow: 'inset 0 0 32px rgba(20,184,166,0.1)',
-                        }}
-                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                      />
-                    )}
-                    {isActive && (
-                      <motion.span
-                        layoutId="sidebar-profile-active-bar"
-                        className="absolute inset-y-0 left-0 w-[2.5px] rounded-r pointer-events-none"
-                        style={{
-                          background: 'linear-gradient(180deg, rgba(20,184,166,0.3) 0%, var(--color-accent) 50%, rgba(20,184,166,0.3) 100%)',
-                          boxShadow: '0 0 8px 2px rgba(20,184,166,0.35)',
-                        }}
-                        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                      />
-                    )}
-                    <Icon size={15} className="flex-shrink-0 relative z-10" />
-                    {!collapsed && (
-                      <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
-                    )}
-                  </button>
-                </Tooltip>
-              </div>
-            );
-          })}
-        </div>
-      </LayoutGroup>
-
-      {/* Footer: plugin */}
-      <div className="border-t border-border-subtle flex-shrink-0">
-        {/* Plugin Sync */}
-        <Tooltip
-          content={
-            <div className="max-w-[200px]">
-              <p className="font-semibold text-text-primary text-sm mb-0.5">Plugin Sync</p>
-              <p className="text-xs text-text-secondary leading-relaxed">Open Sync & Gear to manage the Dalamud plugin</p>
-            </div>
-          }
-          side="right"
-          sideOffset={collapsed ? 12 : 16}
-          delayDuration={collapsed ? 200 : 700}
-        >
-          <button
-            type="button"
-            onClick={() => onTabChange('sync')}
-            className={`
-              w-full flex items-center py-2.5 text-text-muted hover:text-accent transition-colors
-              ${collapsed ? 'justify-center' : 'gap-2.5 px-4'}
-            `}
-          >
-            <PlugZap size={13} className="flex-shrink-0" />
-            {!collapsed && (
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] leading-none">
-                Plugin Sync
-              </span>
-            )}
-          </button>
-        </Tooltip>
-      </div>
-
-    </motion.nav>
+    <SidebarRail
+      context="profile"
+      identity={{ icon: User, label: characterName ?? 'Player Hub' }}
+      collapseKey="profile-sidebar-collapsed"
+      items={items}
+      footer={(collapsed) => <UserMenu variant="rail" collapsed={collapsed} />}
+    />
   );
 }
-/* eslint-enable design-system/no-raw-button */
 
 // ──────────────────────────────────────────────────────────────────────────────
-
-function StaticShortcut({ groups, mobile = false }: { groups: StaticGroupListItem[]; mobile?: boolean }) {
-  if (groups.length === 0) {
-    return (
-      <Link
-        to="/discover"
-        className={`${mobile ? 'flex w-full px-3 py-2' : 'inline-flex px-3 py-1.5'} items-center gap-2 rounded-lg border border-border-default bg-surface-raised text-sm text-text-secondary transition-colors hover:border-accent/30 hover:text-accent`}
-      >
-        <Users className="h-4 w-4 flex-shrink-0 text-accent" />
-        <span>Find a static</span>
-      </Link>
-    );
-  }
-
-  if (groups.length === 1) {
-    const group = groups[0];
-    return (
-      <Link
-        to={`/group/${group.shareCode}`}
-        className={`${mobile ? 'flex w-full px-3 py-2' : 'inline-flex px-3 py-1.5'} items-center gap-2 rounded-lg border border-border-default bg-surface-raised text-sm text-text-secondary transition-colors hover:border-accent/30 hover:text-accent`}
-      >
-        <Users className="h-4 w-4 flex-shrink-0 text-accent" />
-        <span className="truncate">{group.name}</span>
-        {group.userRole && <Badge variant="info" size="sm">{ROLE_LABELS[group.userRole] ?? group.userRole}</Badge>}
-        {mobile && <span className="ml-auto flex-shrink-0 text-xs text-text-tertiary">Go to static</span>}
-      </Link>
-    );
-  }
-
-  return (
-    <Dropdown>
-      <DropdownTrigger>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className={`${mobile ? 'flex w-full justify-start px-3 py-2' : 'inline-flex px-3 py-1.5'} gap-2 bg-surface-raised font-normal hover:text-accent`}
-        >
-          <Users className="h-4 w-4 flex-shrink-0 text-accent" />
-          <span className="truncate">My Statics ({groups.length})</span>
-          <ChevronDown className="ml-auto h-3.5 w-3.5 flex-shrink-0 text-text-tertiary" />
-        </Button>
-      </DropdownTrigger>
-      <DropdownContent align={mobile ? 'start' : 'end'} className="w-80 max-w-[calc(100vw-2rem)]">
-        {groups.map((group, index) => (
-          <div key={group.id}>
-            {index > 0 && <DropdownSeparator />}
-            <DropdownItem href={`/group/${group.shareCode}`} icon={<Users className="h-4 w-4" />}>
-              <span className="min-w-0">
-                <span className="block truncate font-medium">{group.name}</span>
-                <span className="block truncate text-xs text-text-tertiary">
-                  {ROLE_LABELS[group.userRole ?? 'member'] ?? group.userRole ?? 'Member'}
-                </span>
-              </span>
-            </DropdownItem>
-            <DropdownItem href={`/group/${group.shareCode}?tab=schedule`} icon={<Calendar className="h-4 w-4" />} className="pl-8 text-xs">
-              Schedule
-            </DropdownItem>
-          </div>
-        ))}
-      </DropdownContent>
-    </Dropdown>
-  );
-}
 
 function parseProfileTab(search: string): ProfileTab {
   const params = new URLSearchParams(search);
@@ -370,19 +111,29 @@ export default function Profile() {
   } = usePlayerProfileStore();
   const { groups, fetchGroups } = useStaticGroupStore();
   const { fetchTargets } = useSharedBisStore();
-  const { isSmallScreen } = useDevice();
-  const [activeTab, setActiveTab] = useState<ProfileTab>(() => parseProfileTab(location.search));
-  const [collSubTab, setCollSubTab] = useState<'goals' | 'priorities' | 'browse'>('goals');
+  // Active tab is derived from the URL (?tab=) so the sidebar is deep-linkable,
+  // reload-safe, and follows browser back/forward. parseProfileTab keeps the
+  // legacy-redirect handling for old bookmarks. The setter pushes a history entry.
+  const [, setSearchParams] = useSearchParams();
+  const activeTab = parseProfileTab(location.search);
+  const setActiveTab = useCallback((tab: ProfileTab) => {
+    // When "remember sub-tabs" is off, switching sidebar views resets sub-tabs
+    // (e.g. Collections & Goals back to Tasks & Goals).
+    const resetSubTabs = !prefRememberTabs(useAuthStore.getState().user);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (tab === 'overview') params.delete('tab');
+      else params.set('tab', tab);
+      if (resetSubTabs) clearRegisteredTabParams(params);
+      return params;
+    });
+  }, [setSearchParams]);
+  // Collections & Goals sub-tab (Tasks & Goals / My Priorities / Browse Catalog).
+  const [collSubTab, setCollSubTab] = useUrlTabState('coll', COLL_SUB_TABS, 'goals');
   const linkModal = useModal();
   const addJobModal = useModal();
   const [editingJob, setEditingJob] = useState<PlayerJobProfile | null>(null);
   const [managingBisJobId, setManagingBisJobId] = useState<{ id: string; job: string } | null>(null);
-
-  useEffect(() => {
-    const nextTab = parseProfileTab(location.search);
-    const frameId = requestAnimationFrame(() => setActiveTab(nextTab));
-    return () => cancelAnimationFrame(frameId);
-  }, [location.search]);
 
   // Swipe to change tabs — native listeners on the page container
   const activeTabRef = useRef(activeTab);
@@ -483,9 +234,10 @@ export default function Profile() {
       { key: '`', description: 'Overview',            action: () => setActiveTab('overview') },
       { key: '1', description: 'Sync & Gear',         action: () => setActiveTab('sync') },
       { key: '2', description: 'Jobs & Gear',         action: () => setActiveTab('jobs-gear') },
-      { key: '3', description: 'Collections & Goals', action: () => setActiveTab('collections') },
+      { key: '3', description: 'Tracking',            action: () => setActiveTab('collections') },
       { key: '4', description: 'Availability',        action: () => setActiveTab('availability') },
       { key: '5', description: 'Share',               action: () => setActiveTab('preview') },
+      { key: '6', description: 'My Statics',          action: () => setActiveTab('statics') },
     ],
   });
 
@@ -538,14 +290,12 @@ export default function Profile() {
   const focusAvailability = new URLSearchParams(location.search).get('focus') === 'availability';
 
   return (
-    <div ref={pageRef} className="flex flex-1 min-h-0 w-full">
+    <div ref={pageRef} className="flex flex-1 min-h-0 w-full max-w-[160rem] mx-auto px-4">
       {/* Sidebar — fills flex parent height naturally, no sticky needed */}
       <ProfileSidebarNav
         activeTab={activeTab}
         onTabChange={setActiveTab}
         characterName={mainCharacter?.name}
-        primaryStaticPath={primaryStatic ? `/group/${primaryStatic.shareCode}` : undefined}
-        primaryStaticName={primaryStatic?.name}
       />
 
       {/* Right panel: header + tab content (scrolls independently) */}
@@ -599,19 +349,8 @@ export default function Profile() {
                 </Badge>
               </div>
             </div>
-            {/* Static shortcut */}
-            <div className="flex-shrink-0 hidden sm:block">
-              <StaticShortcut groups={groups} />
-            </div>
           </div>
         </div>
-
-        {/* Mobile static shortcut — below header */}
-        {isSmallScreen && (
-          <div className="mt-2">
-            <StaticShortcut groups={groups} mobile />
-          </div>
-        )}
       </motion.div>
       </div>{/* end header */}
 
@@ -724,6 +463,8 @@ export default function Profile() {
         {activeTab === 'preview' && profile && (
           <PreviewShareTab profile={profile} gearSnapshots={gearSnapshots} />
         )}
+
+        {activeTab === 'statics' && <MyStaticsPanel />}
         </motion.div>
         </AnimatePresence>
         </div>{/* end content */}

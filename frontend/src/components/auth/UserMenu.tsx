@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
-import { getSyntheticUnreadCount } from '../../lib/syntheticNotifications';
+import { useSyntheticUnreadCount } from '../../lib/syntheticNotifications';
 import { NotificationCenter } from './NotificationCenter';
 import {
   Dropdown,
@@ -48,16 +48,24 @@ import { ApiKeyManager } from '../settings/ApiKeyManager';
 
 interface UserMenuProps {
   className?: string;
+  /** 'header' = compact avatar trigger (default); 'rail' = full-width footer trigger that opens upward */
+  variant?: 'header' | 'rail';
+  /** When rail variant is collapsed, only the avatar shows (no name/chevron) */
+  collapsed?: boolean;
 }
 
-export function UserMenu({ className = '' }: UserMenuProps) {
+export function UserMenu({ className = '', variant = 'header', collapsed = false }: UserMenuProps) {
   const { user, logout, updatePreferences } = useAuthStore();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const apiKeysModal = useModal();
   const notificationsModal = useModal();
   const { unreadCount, fetchNotifications } = useNotificationStore();
-  const totalBadge = unreadCount + getSyntheticUnreadCount();
+  // useSyntheticUnreadCount re-renders this badge when a release note is marked
+  // read — getSyntheticUnreadCount() alone wouldn't, since marking the only
+  // unread item read doesn't change the server-backed unreadCount.
+  const syntheticUnread = useSyntheticUnreadCount();
+  const totalBadge = unreadCount + syntheticUnread;
 
   useEffect(() => {
     if (user) fetchNotifications();
@@ -68,6 +76,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
 
   const displayName = user.displayName || user.discordUsername;
   const avatarUrl = user.avatarUrl || getDefaultAvatar(user.discordId);
+  const isRail = variant === 'rail';
 
   return (
     <>
@@ -76,7 +85,9 @@ export function UserMenu({ className = '' }: UserMenuProps) {
         {/* design-system-ignore - Radix DropdownTrigger requires native button with asChild */}
         {/* a11y-exception: Focus ring intentionally removed per user request - avatar border provides sufficient visual indicator */}
         <button
-          className={`flex items-center gap-2 p-1 rounded-full hover:bg-surface-interactive transition-colors focus:outline-none ${className}`}
+          className={isRail
+            ? `flex items-center gap-2.5 w-full py-2.5 ${collapsed ? 'justify-center px-0' : 'px-3'} hover:bg-white/[0.035] transition-colors ${className}`
+            : `flex items-center gap-2 p-1 rounded-full hover:bg-surface-interactive transition-colors focus:outline-none ${className}`}
           aria-label={`User menu for ${displayName}`}
         >
           <span className="relative">
@@ -91,18 +102,25 @@ export function UserMenu({ className = '' }: UserMenuProps) {
               </span>
             )}
           </span>
-          <svg
-            className="w-4 h-4 text-text-secondary"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          {isRail && !collapsed && (
+            <span className="flex-1 min-w-0 text-left">
+              <span className="block text-sm font-medium text-text-primary truncate">{displayName}</span>
+            </span>
+          )}
+          {(!isRail || !collapsed) && (
+            <svg
+              className="w-4 h-4 text-text-secondary flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isRail ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
+            </svg>
+          )}
         </button>
       </DropdownTrigger>
 
-      <DropdownContent align="end" className="w-48">
+      <DropdownContent align={isRail ? 'start' : 'end'} side={isRail ? 'top' : 'bottom'} className="w-48">
         {/* User Info */}
         <DropdownLabel className="normal-case tracking-normal">
           <p className="text-sm font-medium text-text-primary truncate">{displayName}</p>
@@ -118,7 +136,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             </svg>
           }
-          onSelect={() => navigate('/dashboard')}
+          onSelect={() => navigate('/profile?tab=statics')}
           shortcut="Shift+S"
         >
           My Statics
@@ -199,7 +217,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
             <span className="relative">
               <Bell className="w-4 h-4" />
               {totalBadge > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[10px] h-[10px] px-0.5 rounded-full bg-status-error text-[7px] font-bold text-white flex items-center justify-center leading-none">
+                <span className="absolute -top-1 -right-1 min-w-[12px] h-[12px] px-0.5 rounded-full bg-status-error text-[9px] font-bold text-white flex items-center justify-center leading-none">
                   {totalBadge > 9 ? '9+' : totalBadge}
                 </span>
               )}

@@ -1,263 +1,5 @@
 @import "tailwindcss";
-
-/* FRP Theme: Teal Glow */
-@theme {
-  /* ================================
-     SURFACE HIERARCHY
-     Clear naming for layered UI
-     ================================ */
-  --color-surface-base: #050508;       /* Page background */
-  --color-surface-raised: #0a0a0f;     /* Sections, sidebars */
-  --color-surface-card: #0e0e14;       /* Cards, panels */
-  --color-surface-elevated: #121218;   /* Nested containers, inputs */
-  --color-surface-overlay: #18181f;    /* Dropdowns, modals, popovers */
-  --color-surface-interactive: #1e1e26; /* Hover states */
-
-  /* Legacy aliases (for backward compatibility) */
-  --color-bg-primary: var(--color-surface-base);
-  --color-bg-secondary: var(--color-surface-raised);
-  --color-bg-card: var(--color-surface-card);
-  --color-bg-elevated: var(--color-surface-elevated);
-  --color-bg-hover: var(--color-surface-interactive);
-
-  /* ================================
-     ACCENT COLORS
-     Teal - Primary action color
-     ================================ */
-  --color-accent: #14b8a6;             /* Primary teal - CTAs, links */
-  --color-accent-hover: #2dd4bf;       /* Hover state */
-  --color-accent-dim: rgba(20, 184, 166, 0.15); /* Backgrounds */
-  --color-accent-bright: #2dd4bf;      /* Legacy alias for hover */
-  --color-accent-muted: #0d7377;       /* Subdued variant */
-  --color-accent-deep: #0891b2;        /* Gradient end */
-  --color-accent-contrast: #052e2b;    /* Dark text on accent backgrounds */
-
-  /* ================================
-     ROLE COLORS
-     FFXIV standard party colors
-     ================================ */
-  --color-role-tank: #5a9fd4;
-  --color-role-healer: #5ad490;
-  --color-role-melee: #d45a5a;
-  --color-role-ranged: #d4a05a;
-  --color-role-caster: #b45ad4;
-
-  /* ================================
-     MEMBERSHIP COLORS
-     User role within static groups
-     ================================ */
-  --color-membership-owner: #14b8a6;    /* Teal - same as accent */
-  --color-membership-lead: #a855f7;     /* Purple */
-  --color-membership-member: #3b82f6;   /* Blue */
-  --color-membership-viewer: #71717a;   /* Zinc */
-  --color-membership-linked: #f59e0b;   /* Amber */
-
-  /* ================================
-     BRAND COLORS
-     External service brand colors
-     ================================ */
-  --color-discord: #5865F2;
-  --color-discord-hover: #4752C4;
-
-  /* ================================
-     GEAR SOURCE COLORS
-     Distinct from status colors
-     ================================ */
-  --color-gear-raid: #f87171;          /* Lighter red, distinct from error */
-  --color-gear-tome: #2dd4bf;          /* Bright teal - augmented tome */
-  --color-gear-base-tome: #60a5fa;     /* Blue-400 - base tome (no aug needed) */
-  --color-gear-augmented: #fcd34d;     /* Gold/amber */
-  --color-gear-crafted: #fb923c;       /* Orange-400 - crafted HQ gear */
-
-  /* Legacy aliases */
-  --color-source-raid: var(--color-gear-raid);
-  --color-source-tome: var(--color-gear-tome);
-  --color-source-crafted: var(--color-gear-crafted);
-  --color-source-augmented: var(--color-gear-augmented);
-
-  /* ================================
-     STATUS COLORS
-     Semantic feedback colors
-     ================================ */
-  --color-status-success: #22c55e;
-  --color-status-warning: #eab308;
-  --color-status-error: #ef4444;
-  --color-status-info: #3b82f6;         /* Blue for informational */
-
-  /* ================================
-     MATERIAL COLORS
-     Upgrade material type colors (matching FFXIV game)
-     ================================ */
-  --color-material-twine: #3b82f6;      /* Blue - armor upgrade */
-  --color-material-glaze: #a855f7;      /* Purple - accessory upgrade */
-  --color-material-solvent: #eab308;    /* Amber - weapon upgrade */
-  --color-material-tomestone: #f97316;  /* Orange - universal tomestone */
-
-  /* ================================
-     TEXT COLORS
-     Softer contrast hierarchy
-     ================================ */
-  --color-text-primary: #f0f0f5;
-  --color-text-secondary: #a1a1aa;
-  --color-text-tertiary: #71717a;
-  --color-text-muted: #52525b;
-  --color-text-disabled: #3f3f46;
-
-  /* ================================
-     BORDER COLORS
-     Ultra subtle layering
-     ================================ */
-  --color-border-default: #1f1f28;
-  --color-border-subtle: #14141c;
-  --color-border-highlight: #14b8a6;
-  --color-border-focus: rgba(20, 184, 166, 0.5);
-
-  /* ================================
-     INTERACTIVE FEEDBACK
-     Focus rings, active states
-     ================================ */
-  --color-focus-ring: rgba(20, 184, 166, 0.4);
-  --color-active-bg: rgba(20, 184, 166, 0.15);
-  --color-hover-overlay: rgba(255, 255, 255, 0.05);
-
-  /* ================================
-     SHADOWS
-     Consistent elevation
-     ================================ */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
-  --shadow-glow: 0 0 20px rgba(20, 184, 166, 0.15);
-
-  /* ================================
-     TYPOGRAPHY
-     ================================ */
-  --font-display: "Exo 2", "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-
-  /* ================================
-     SPACING & SIZING
-     Layout dimensions & breakpoints
-     ================================ */
-  --breakpoint-3xl: 1400px;
-
-  /* Layout dimensions - used for viewport height calculations */
-  --header-height: 56px;        /* Main header bar */
-  --bottom-nav-height: 56px;    /* Mobile bottom navigation */
-  --layout-chrome: calc(var(--header-height) + var(--bottom-nav-height)); /* Combined header + bottom nav */
-
-  /* Animation durations */
-  --duration-fast: 150ms;
-  --duration-normal: 200ms;
-  --duration-slow: 300ms;
-
-  /* Toggle orb colors */
-  --color-toggle-orb-on-start: #1a1f28;
-  --color-toggle-orb-on-end: #0a0a0f;
-  --color-toggle-orb-off-start: #1e1e26;
-  --color-toggle-orb-off-end: #121218;
-}
-
-/* ================================
-   LIGHT MODE OVERRIDES
-   Applied via data-theme="light" on <html>
-   ================================ */
-[data-theme="light"] {
-  /* Surfaces - cool blue-tinted whites */
-  --color-surface-base: #f5f5f8;
-  --color-surface-raised: #ededf2;
-  --color-surface-card: #ffffff;
-  --color-surface-elevated: #e8e8ef;
-  --color-surface-overlay: #ffffff;
-  --color-surface-interactive: #dcdce6;
-
-  /* Legacy aliases */
-  --color-bg-primary: var(--color-surface-base);
-  --color-bg-secondary: var(--color-surface-raised);
-  --color-bg-card: var(--color-surface-card);
-  --color-bg-elevated: var(--color-surface-elevated);
-  --color-bg-hover: var(--color-surface-interactive);
-
-  /* Accent - darker teal for light backgrounds */
-  --color-accent: #0f9688;
-  --color-accent-hover: #0d7a6e;
-  --color-accent-dim: rgba(15, 150, 136, 0.12);
-  --color-accent-bright: #0d7a6e;
-  --color-accent-muted: #0a5c58;
-  --color-accent-deep: #0773a0;
-  --color-accent-contrast: #ffffff;
-
-  /* Role colors - darkened for WCAG AA on white */
-  --color-role-tank: #2e7ab4;
-  --color-role-healer: #1a8a4a;
-  --color-role-melee: #c0392b;
-  --color-role-ranged: #a06020;
-  --color-role-caster: #8b34b8;
-
-  /* Membership colors */
-  --color-membership-owner: #0f9688;
-  --color-membership-lead: #7c3aed;
-  --color-membership-member: #2563eb;
-  --color-membership-viewer: #52525b;
-  --color-membership-linked: #b45309;
-
-  /* Gear source colors */
-  --color-gear-raid: #dc2626;
-  --color-gear-tome: #0f9688;
-  --color-gear-base-tome: #2563eb;
-  --color-gear-augmented: #b45309;
-  --color-gear-crafted: #ea580c;
-
-  /* Status colors */
-  --color-status-success: #16a34a;
-  --color-status-warning: #ca8a04;
-  --color-status-error: #dc2626;
-  --color-status-info: #2563eb;
-
-  /* Material colors */
-  --color-material-twine: #2563eb;
-  --color-material-glaze: #7c3aed;
-  --color-material-solvent: #ca8a04;
-  --color-material-tomestone: #ea580c;
-
-  /* Text - dark on light */
-  --color-text-primary: #1a1a24;
-  --color-text-secondary: #4a4a58;
-  --color-text-tertiary: #5a5a6e;
-  --color-text-muted: #6b6b7e;
-  --color-text-disabled: #9898a8;
-
-  /* Borders */
-  --color-border-default: #c8c8d8;
-  --color-border-subtle: #dcdce6;
-  --color-border-highlight: #0f9688;
-  --color-border-focus: rgba(15, 150, 136, 0.5);
-
-  /* Interactive feedback */
-  --color-focus-ring: rgba(15, 150, 136, 0.4);
-  --color-active-bg: rgba(15, 150, 136, 0.12);
-  --color-hover-overlay: rgba(0, 0, 0, 0.04);
-
-  /* Shadows - much lighter */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 20px rgba(15, 150, 136, 0.1);
-
-  /* Toggle orb colors */
-  --color-toggle-orb-on-start: #d1d5db;
-  --color-toggle-orb-on-end: #9ca3af;
-  --color-toggle-orb-off-start: #e5e7eb;
-  --color-toggle-orb-off-end: #d1d5db;
-
-  /* Badge text contrast colors — darker shades for light backgrounds */
-  --color-gear-raid-text: #b91c1c;
-  --color-gear-crafted-text: #9a3412;
-  --color-gear-augmented-text: #92400e;
-}
+@import "./styles/tokens.generated.css";
 
 /* Light mode scrollbar */
 [data-theme="light"] ::-webkit-scrollbar-track {
@@ -363,13 +105,16 @@
 /* Light mode highlight pulse */
 @keyframes highlight-pulse-light {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 10px 2px color-mix(in srgb, var(--color-accent) 35%, transparent);
+    background-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--color-accent) 70%, transparent),
+      0 0 10px 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 0 transparent;
+    background-color: transparent;
+    box-shadow:
+      inset 0 0 0 2px transparent,
+      0 0 0 0 transparent;
   }
 }
 
@@ -410,12 +155,20 @@ html {
   overscroll-behavior-x: none;
 }
 
-/* Scrollbar-gutter disabled - was causing layout issues on some devices */
+/* Scrollbar-gutter disabled globally - was causing layout issues on some devices */
 /* @media (min-width: 640px) {
   html {
     scrollbar-gutter: stable;
   }
 } */
+
+/* Opt-in scrollbar gutter for scroll containers whose content grows/shrinks
+   (e.g. expanding panels on the Gear & Sync tab). Reserving the gutter keeps
+   the content from shifting sideways when the scrollbar appears or disappears.
+   Scoped to a class rather than html to avoid the device-wide issues above. */
+.scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
+}
 
 /* Webkit (Chrome, Safari) scrollbar styling */
 ::-webkit-scrollbar {
@@ -468,9 +221,13 @@ html[data-scroll-locked] body,
 body[data-scroll-locked],
 body[data-scroll-locked="1"],
 body[data-scroll-locked][style] {
-  position: static !important;
-  overflow: visible !important; /* Prevent Radix from setting overflow that breaks sticky */
+  position: static !important; /* defeats Radix's position: fixed (the real sticky-breaker) */
+  /* Keep the body's normal overflow: hidden — forcing `visible` un-suppressed the
+     document's natural overflow and revealed a stray scrollbar whenever a Radix
+     modal/dropdown opened. Scrolling lives in the inner <main> container. */
+  overflow: hidden !important;
   margin-right: 0 !important;
+  padding-right: 0 !important; /* neutralize react-remove-scroll's scrollbar-width compensation */
   pointer-events: auto !important;
 }
 
@@ -800,14 +557,20 @@ dialog input[type="radio"] {
    Values: 10px spread, 2px blur at 50% intensity provides good visibility. */
 @keyframes highlight-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0.7);
-  }
-  50% {
-    /* Subtle glow - enough to draw attention, not overwhelming */
-    box-shadow: 0 0 10px 2px rgba(20, 184, 166, 0.5);
+    /* Inset ring + fill render on all four edges regardless of element type
+       (table rows, overflow-clipped grid cells) where an outset glow only
+       shows partial edges. The outset glow is layered on for extra pop where
+       it isn't clipped. */
+    background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--color-accent) 85%, transparent),
+      0 0 10px 2px color-mix(in srgb, var(--color-accent) 40%, transparent);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+    background-color: transparent;
+    box-shadow:
+      inset 0 0 0 2px transparent,
+      0 0 0 0 transparent;
   }
 }
 

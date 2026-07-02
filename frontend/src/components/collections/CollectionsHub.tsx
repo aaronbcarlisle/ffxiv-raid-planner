@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trophy, BookOpen, Lightbulb } from 'lucide-react';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { Button } from '../primitives/Button';
 import { RewardGoalCard } from './RewardGoalCard';
 import { RewardGoalModal } from './RewardGoalModal';
@@ -12,7 +13,8 @@ import type { CollectionGoal, ParticipantStateEntry } from '../../stores/collect
 import { toast } from '../../stores/toastStore';
 import { Skeleton } from '../ui/Skeleton';
 
-type HubTab = 'suggested' | 'active' | 'catalog';
+const HUB_TABS = ['suggested', 'active', 'catalog'] as const;
+type HubTab = (typeof HUB_TABS)[number];
 
 function buildDiscordPlan(goal: CollectionGoal, participants: ParticipantStateEntry[]): string {
   const needing = participants
@@ -62,7 +64,9 @@ interface CollectionsHubProps {
 export function CollectionsHub({ groupId, currentUserId, canManage }: CollectionsHubProps) {
   const { goals, isLoading, participants, fetchGoals, fetchParticipants } = useCollectionGoalStore();
 
-  const [tab, setTab] = useState<HubTab>('suggested');
+  // Farms sub-tab in the URL (?farm=suggested|active|catalog) — deep-linkable,
+  // reload-safe, and follows browser back/forward.
+  const [tab, setTab] = useUrlTabState('farm', HUB_TABS, 'suggested');
   const [showCreate, setShowCreate] = useState(false);
   const [editGoal, setEditGoal] = useState<CollectionGoal | null>(null);
   const [viewGoal, setViewGoal] = useState<CollectionGoal | null>(null);

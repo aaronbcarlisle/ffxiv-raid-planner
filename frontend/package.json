@@ -15,7 +15,13 @@
     "check:design-system:strict": "bash scripts/check-design-system.sh --strict",
     "check:bundle": "pnpm build && size-limit",
     "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "test:contrast": "playwright test e2e/contrast.spec.ts",
+    "typecheck": "tsc --noEmit",
+    "tokens:build": "node scripts/build-tokens.mjs",
+    "tokens:parity": "node scripts/token-parity.mjs scripts/__parity__/index.baseline.css src/styles/tokens.generated.css",
+    "tokens:check": "node scripts/build-tokens.mjs && git diff --exit-code -- src/styles/tokens.generated.css",
+    "dupes": "jscpd src",
+    "deadcode": "knip"
   },
   "size-limit": [
     {
@@ -54,6 +60,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.60.0",
     "@size-limit/file": "^12.0.1",
@@ -65,10 +72,14 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "eslint": "^9.39.1",
+    "eslint-plugin-boundaries": "^6.0.2",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "jscpd": "^5.0.11",
     "jsdom": "^27.4.0",
+    "knip": "^6.23.0",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "sharp": "^0.34.5",

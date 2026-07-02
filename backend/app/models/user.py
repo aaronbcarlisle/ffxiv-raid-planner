@@ -37,6 +37,12 @@ class User(Base):
     activity_display_mode: Mapped[str] = mapped_column(
         String(20), nullable=False, default="named"
     )
+    # User-level navigation preference (applies across all statics + devices).
+    # 'remember' = views reopen on your last tab; 'reset' = always open on the
+    # default tab. Replaces the earlier remember_sub_tabs/remember_static_tab pair.
+    tab_persistence: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="remember", server_default="remember"
+    )
 
     # Relationships
     memberships: Mapped[list["Membership"]] = relationship(

@@ -852,6 +852,7 @@ async def get_current_week(
         "currentWeek": calculated_week,
         "maxLoggedWeek": max_logged_week,
         "maxWeek": max_week,
+        "weekStartDate": tier.week_start_date,
     }
 
 

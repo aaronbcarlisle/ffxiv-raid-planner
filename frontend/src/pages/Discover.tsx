@@ -354,7 +354,7 @@ export function Discover() {
   }, [fetchResults]);
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-14 py-6 sm:py-8">
+    <div className="max-w-[160rem] mx-auto w-full px-4 py-6 sm:py-8">
       {/* ─── Header ─── */}
       <div className="mb-6 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl font-display font-bold text-text-primary mb-1">

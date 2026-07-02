@@ -59,7 +59,7 @@ export async function loginAsMember(page: Page): Promise<void> {
 export async function goToTestStatic(page: Page, waitForAuth = true): Promise<void> {
   await page.goto(`/group/${DEV_SHARE_CODE}`);
   // The Roster tab button is always present once the group loads
-  await page.getByRole('button', { name: /Roster/i }).waitFor({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Roster', exact: true }).first().waitFor({ timeout: 15_000 });
   // Wait for auth hydration: the UserMenu button (aria-label "User menu for …")
   // appears once the auth store has fetched and stored the current user.
   // Without this, role-dependent props (canRsvp, canSubmit) can be null when

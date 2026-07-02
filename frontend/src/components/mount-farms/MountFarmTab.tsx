@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { Trophy, Sparkles, Calendar, Plug, Info, User, Users, Filter, Activity, X, ExternalLink } from 'lucide-react';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import type { MountFarmData, TrialSummary } from '../../stores/mountFarmStore';
@@ -10,7 +11,8 @@ import { ErrorMessage } from '../ui/ErrorMessage';
 import { Button } from '../primitives/Button';
 import { Tooltip } from '../primitives/Tooltip';
 
-type ViewMode = 'group' | 'my-progress';
+const MOUNT_FARM_VIEWS = ['group', 'my-progress'] as const;
+type ViewMode = (typeof MOUNT_FARM_VIEWS)[number];
 type FilterMode = 'all' | 'needs-mount' | 'can-buy' | 'wanted' | 'complete';
 
 interface MountFarmTabProps {
@@ -56,7 +58,8 @@ function filterTrials(
 
 export function MountFarmTab({ groupId, userRole, onScheduleFarm }: MountFarmTabProps) {
   const [selectedExpansion, setSelectedExpansion] = useState<Expansion>('DT');
-  const [viewMode, setViewMode] = useState<ViewMode>('group');
+  // Group vs personal progress view in the URL (?mf=group|my-progress).
+  const [viewMode, setViewMode] = useUrlTabState('mf', MOUNT_FARM_VIEWS, 'group');
   const [activeFilter, setActiveFilter] = useState<FilterMode>('all');
   const { data, recommendations, isLoading, isLoadingRecs, error, fetchProgress, fetchRecommendations } = useMountFarmStore();
 

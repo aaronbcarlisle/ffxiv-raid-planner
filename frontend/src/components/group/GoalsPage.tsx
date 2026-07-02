@@ -1,9 +1,10 @@
 /* eslint-disable design-system/no-raw-button */
-import { useState } from 'react';
 import { ObjectiveGoalsPanel } from '../static-group/ObjectiveGoalsPanel';
 import { CollectionsHub } from '../collections/CollectionsHub';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 
-type GoalsSubTab = 'objectives' | 'farms';
+const GOALS_SUB_TABS = ['objectives', 'farms'] as const;
+type GoalsSubTab = (typeof GOALS_SUB_TABS)[number];
 
 const GOALS_TABS: { id: GoalsSubTab; label: string }[] = [
   { id: 'objectives', label: 'Objectives' },
@@ -17,7 +18,9 @@ interface GoalsPageProps {
 }
 
 export function GoalsPage({ groupId, currentUserId, canManage }: GoalsPageProps) {
-  const [subTab, setSubTab] = useState<GoalsSubTab>('objectives');
+  // Sub-tab in the URL (?goal=objectives|farms) — deep-linkable, reload-safe, and
+  // follows back/forward. Links like "Open Mount Farms" target Farms via this param.
+  const [subTab, setSubTab] = useUrlTabState('goal', GOALS_SUB_TABS, 'objectives');
 
   return (
     <div>

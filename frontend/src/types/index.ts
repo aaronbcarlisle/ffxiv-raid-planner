@@ -99,7 +99,7 @@ export const GEAR_SOURCE_COLORS: Record<GearSourceCategory, string> = {
 };
 
 // Page navigation modes
-export type PageMode = 'overview' | 'roster' | 'schedule' | 'goals' | 'gear' | 'more';
+export type PageMode = 'overview' | 'roster' | 'schedule' | 'goals' | 'gear' | 'plugin' | 'more';
 export type GearSubTab = 'sync' | 'priority' | 'history' | 'stats';
 
 // Split Clear Planner
@@ -590,6 +590,11 @@ export interface User {
    */
   isAdmin?: boolean;
   activityDisplayMode?: 'named' | 'anonymous';
+  /**
+   * Navigational tab memory site-wide: 'remember' reopens views on your last
+   * tab; 'reset' always opens on the default tab. Default 'remember'.
+   */
+  tabPersistence?: 'remember' | 'reset';
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;

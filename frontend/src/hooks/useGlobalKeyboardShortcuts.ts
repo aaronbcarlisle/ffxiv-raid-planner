@@ -26,7 +26,7 @@ export function useGlobalKeyboardShortcuts({
   const navigate = useNavigate();
 
   const goToDashboard = useCallback(() => {
-    navigate('/dashboard');
+    navigate('/profile?tab=statics');
   }, [navigate]);
 
   const goToAdminDashboard = useCallback(() => {

@@ -1,6 +1,7 @@
 /* eslint-disable design-system/no-raw-button */
 import { useState, useMemo, useCallback, memo } from 'react';
 import { useSwipe } from '../../hooks/useSwipe';
+import { recallTab, rememberTab } from '../../lib/tabMemory';
 import { Tooltip } from '../primitives/Tooltip';
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry, MaterialLogEntry, MaterialType } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
@@ -11,16 +12,13 @@ import {
   getPriorityForRing,
   getPriorityForUpgradeMaterial,
   getPriorityForUniversalTomestone,
-  calculatePriorityScoreWithBreakdown,
   isPriorityDisabled,
   type PriorityEntry,
-  type PriorityScoreBreakdown,
 } from '../../utils/priority';
 import {
-  calculatePlayerLootStats,
-  calculateEnhancedScoreWithBreakdown,
   calculateAverageDrops,
 } from '../../utils/lootCoordination';
+import { enhancePriorityEntries, type EnhancedPriorityEntry } from '../../utils/priorityEntries';
 import { getRoleColor, type Role } from '../../gamedata';
 import { JobIcon } from '../ui/JobIcon';
 import { FilterBar } from './FilterBar';
@@ -31,14 +29,6 @@ import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { WhoNeedsItMatrix } from './WhoNeedsItMatrix';
 import { LogWeekWizard } from './LogWeekWizard';
 import { Button } from '../primitives';
-
-interface EnhancedPriorityEntry extends PriorityEntry {
-  enhancedScore?: number;
-  droughtBonus?: number;
-  balancePenalty?: number;
-  // Score breakdown for tooltips
-  breakdown?: PriorityScoreBreakdown;
-}
 
 // Memoized priority entry component to prevent unnecessary re-renders
 interface LootPriorityEntryProps {
@@ -303,15 +293,11 @@ export function LootPriorityPanel({
   const effectiveMaxWeek = Math.max(maxWeek ?? currentWeek, 1);
   const lootTable = FLOOR_LOOT_TABLES[selectedFloor];
 
-  // Sub-tab state - controlled by parent if props provided, otherwise local with localStorage
-  const [localSubTab, setLocalSubTab] = useState<LootSubTabType>(() => {
-    try {
-      const saved = localStorage.getItem('loot-priority-subtab');
-      return (saved as LootSubTabType) || 'matrix';
-    } catch {
-      return 'matrix';
-    }
-  });
+  // Sub-tab state - controlled by parent if props provided, otherwise local.
+  // Persistence is gated on the user's tab-persistence preference via tabMemory.
+  const [localSubTab, setLocalSubTab] = useState<LootSubTabType>(() =>
+    recallTab('loot-priority-subtab', ['gear', 'weapon', 'matrix'] as const, 'gear')
+  );
 
   // Use controlled value if provided, otherwise local
   const activeSubTab = controlledSubTab ?? localSubTab;
@@ -321,18 +307,14 @@ export function LootPriorityPanel({
     if (onSubTabChange) {
       onSubTabChange(tab);
     } else {
-      // Otherwise manage locally with localStorage
+      // Otherwise manage locally (pref-gated persistence).
       setLocalSubTab(tab);
-      try {
-        localStorage.setItem('loot-priority-subtab', tab);
-      } catch {
-        // Ignore localStorage errors
-      }
+      rememberTab('loot-priority-subtab', tab);
     }
   }, [onSubTabChange]);
 
   // Swipe gesture handling for mobile tab switching
-  const subTabs: LootSubTabType[] = ['matrix', 'gear', 'weapon'];
+  const subTabs: LootSubTabType[] = ['gear', 'weapon', 'matrix'];
   const currentTabIndex = subTabs.indexOf(activeSubTab);
 
   const swipeHandlers = useSwipe({
@@ -433,44 +415,10 @@ export function LootPriorityPanel({
   }, [isEnhancedScoringActive, lootLog, players]);
 
   // Helper to enhance priority entries with loot history and breakdown
-  const enhanceEntries = (entries: PriorityEntry[]): EnhancedPriorityEntry[] => {
-    // Always calculate breakdown for tooltips
-    const entriesWithBreakdown = entries.map((entry) => {
-      const breakdown = calculatePriorityScoreWithBreakdown(entry.player, settings);
-      return {
-        ...entry,
-        breakdown,
-      };
+  const enhanceEntries = (entries: PriorityEntry[]): EnhancedPriorityEntry[] =>
+    enhancePriorityEntries(entries, {
+      settings, lootLog, currentWeek, averageDrops, active: isEnhancedScoringActive,
     });
-
-    // If not showing enhanced scores, return with just breakdown
-    if (!isEnhancedScoringActive) {
-      return entriesWithBreakdown;
-    }
-
-    // Add enhanced score modifications based on loot history using shared function
-    return entriesWithBreakdown.map((entry) => {
-      const stats = calculatePlayerLootStats(entry.player.id, lootLog, currentWeek);
-      const enhanced = calculateEnhancedScoreWithBreakdown(
-        entry.score,
-        stats,
-        averageDrops,
-        settings // Pass settings to use configurable multipliers
-      );
-
-      return {
-        ...entry,
-        enhancedScore: enhanced.score,
-        droughtBonus: enhanced.droughtBonus,
-        balancePenalty: enhanced.balancePenalty,
-      };
-    }).sort((a, b) => {
-      const scoreA = a.enhancedScore ?? a.score;
-      const scoreB = b.enhancedScore ?? b.score;
-      if (scoreB !== scoreA) return scoreB - scoreA;
-      return a.player.name.localeCompare(b.player.name);
-    });
-  };
 
   // Get gear drops for this floor, but handle ring specially
   const gearItems: Array<{ slot: GearSlot | 'ring'; label: string }> =
@@ -571,31 +519,8 @@ export function LootPriorityPanel({
               content={
                 <div>
                   <div className="flex items-center gap-2 font-medium">
-                    Who Needs It
-                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+1</kbd>
-                  </div>
-                  <div className="text-text-secondary text-xs mt-0.5">Matrix showing which slots each player still needs</div>
-                </div>
-              }
-            >
-              {/* design-system-ignore: Subtab button requires specific toggle styling */}
-              <button
-                onClick={() => setActiveSubTab('matrix')}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
-                  activeSubTab === 'matrix'
-                    ? 'bg-accent/20 text-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
-                }`}
-              >
-                Who Needs It
-              </button>
-            </Tooltip>
-            <Tooltip
-              content={
-                <div>
-                  <div className="flex items-center gap-2 font-medium">
                     Gear Priority
-                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+2</kbd>
+                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+1</kbd>
                   </div>
                   <div className="text-text-secondary text-xs mt-0.5">Ordered priority list for each loot item by floor</div>
                 </div>
@@ -618,7 +543,7 @@ export function LootPriorityPanel({
                 <div>
                   <div className="flex items-center gap-2 font-medium">
                     Weapon Priority
-                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+3</kbd>
+                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+2</kbd>
                   </div>
                   <div className="text-text-secondary text-xs mt-0.5">Custom weapon priority order with tie-break rolls</div>
                 </div>
@@ -634,6 +559,29 @@ export function LootPriorityPanel({
                 }`}
               >
                 Weapon Priority
+              </button>
+            </Tooltip>
+            <Tooltip
+              content={
+                <div>
+                  <div className="flex items-center gap-2 font-medium">
+                    Who Needs It
+                    <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">Alt+3</kbd>
+                  </div>
+                  <div className="text-text-secondary text-xs mt-0.5">Matrix showing which slots each player still needs</div>
+                </div>
+              }
+            >
+              {/* design-system-ignore: Subtab button requires specific toggle styling */}
+              <button
+                onClick={() => setActiveSubTab('matrix')}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium ${
+                  activeSubTab === 'matrix'
+                    ? 'bg-accent/20 text-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
+                }`}
+              >
+                Who Needs It
               </button>
             </Tooltip>
           </div>

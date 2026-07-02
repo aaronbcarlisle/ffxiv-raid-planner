@@ -31,6 +31,7 @@ class UserResponse(CamelModel):
     display_name: str | None = None
     is_admin: bool = False
     activity_display_mode: str = "named"
+    tab_persistence: str = "remember"
     created_at: str
     updated_at: str
     last_login_at: str | None = None
@@ -48,6 +49,7 @@ class UserPreferencesUpdate(CamelModel):
     activity_display_mode: str | None = Field(
         default=None, pattern=r"^(named|anonymous)$"
     )
+    tab_persistence: str | None = Field(default=None, pattern=r"^(remember|reset)$")
 
 
 class TokenResponse(CamelModel):

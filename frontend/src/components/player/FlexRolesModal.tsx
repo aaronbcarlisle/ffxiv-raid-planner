@@ -62,7 +62,7 @@ export function FlexRolesModal({ isOpen, onClose, player, onSave }: FlexRolesMod
       title={
         <span className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-accent" />
-          Roster personalization
+          Roster Personalization
         </span>
       }
     >

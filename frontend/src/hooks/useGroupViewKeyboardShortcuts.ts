@@ -7,6 +7,7 @@
 
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { HEADER_EVENTS } from '../components/layout/Header';
+import { useGroupActions } from '../pages/groupActionsContext';
 import type { PageMode, GearSubTab, ViewMode } from '../types';
 import type { TierSnapshot, StaticGroup } from '../types';
 
@@ -35,6 +36,12 @@ export interface GroupViewShortcutParams {
 
   // Navigation
   navigate: (path: string) => void;
+  /**
+   * If the current URL has a `shell` query param (e.g. "v2"), it is preserved
+   * when the Mod+[/] shortcuts navigate between statics. Legacy callers omit
+   * this and navigate exactly as before (no param appended).
+   */
+  shellParam?: string;
 
   // Modal toggles
   setShowKeyboardHelp: (show: boolean) => void;
@@ -68,6 +75,7 @@ export function useGroupViewKeyboardShortcuts(
     currentGroup,
     tiers,
     navigate,
+    shellParam,
     setShowKeyboardHelp,
     setEditingPlayerId,
     setHighlightedPlayerId,
@@ -76,6 +84,18 @@ export function useGroupViewKeyboardShortcuts(
     setShowMarkFloorClearedModal,
   } = params;
 
+  /** Build a group route URL, preserving the current `shell` param when present. */
+  function groupRoute(shareCode: string): string {
+    const base = `/group/${shareCode}`;
+    return shellParam ? `${base}?shell=${shellParam}` : base;
+  }
+
+  // Tier-change / add-player / new-tier / rollover now go through the shared
+  // GroupActions context instead of dispatching HEADER_EVENTS. (The legacy
+  // Header still dispatches those events; this hook no longer does.) Settings
+  // shortcuts (Alt+G/P/M/I) keep dispatching HEADER_EVENTS.SETTINGS.
+  const actions = useGroupActions();
+
   useKeyboardShortcuts({
     disabled: isAnyModalOpen,
     shortcuts: [
@@ -83,8 +103,8 @@ export function useGroupViewKeyboardShortcuts(
       { key: '`', description: 'Overview tab',      action: () => setPageMode('overview') },
       { key: '1', description: 'Schedule tab',      action: () => setPageMode('schedule') },
       { key: '2', description: 'Roster tab',        action: () => setPageMode('roster') },
-      { key: '3', description: 'Goals & Farms tab', action: () => setPageMode('goals') },
-      { key: '4', description: 'Gear & Sync tab',   action: () => setPageMode('gear') },
+      { key: '3', description: 'Tracking tab',      action: () => setPageMode('goals') },
+      { key: '4', description: 'Loot Log tab',      action: () => setPageMode('gear') },
 
       // ===== Sub tabs (Alt+1-3) =====
       // Gear sub-tabs: Priority, Loot Log, Summary, Weapon
@@ -199,49 +219,49 @@ export function useGroupViewKeyboardShortcuts(
       }, requireAlt: true, alwaysEnabled: true },
 
       // ===== Navigation (Shift modifiers) =====
-      { key: 's', description: 'My Statics', action: () => navigate('/dashboard'), requireShift: true },
+      { key: 's', description: 'My Statics', action: () => navigate('/profile?tab=statics'), requireShift: true },
       { key: '?', description: 'Show keyboard shortcuts', action: () => setShowKeyboardHelp(true), requireShift: true },
 
       // ===== Static/Tier navigation (brackets) =====
       { key: '[', description: 'Previous static', action: () => {
         const currentIndex = groups.findIndex(g => g.id === currentGroup?.id);
         if (currentIndex > 0) {
-          navigate(`/group/${groups[currentIndex - 1].shareCode}`);
+          navigate(groupRoute(groups[currentIndex - 1].shareCode));
         }
       }, requireMod: true },
       { key: ']', description: 'Next static', action: () => {
         const currentIndex = groups.findIndex(g => g.id === currentGroup?.id);
         if (currentIndex >= 0 && currentIndex < groups.length - 1) {
-          navigate(`/group/${groups[currentIndex + 1].shareCode}`);
+          navigate(groupRoute(groups[currentIndex + 1].shareCode));
         }
       }, requireMod: true },
       { key: '[', description: 'Previous tier', action: () => {
         const currentIndex = tiers.findIndex(t => t.tierId === currentTier?.tierId);
         if (currentIndex > 0) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.TIER_CHANGE, { detail: { tierId: tiers[currentIndex - 1].tierId } }));
+          actions.onTierChange(tiers[currentIndex - 1].tierId);
         }
       }, requireAlt: true },
       { key: ']', description: 'Next tier', action: () => {
         const currentIndex = tiers.findIndex(t => t.tierId === currentTier?.tierId);
         if (currentIndex >= 0 && currentIndex < tiers.length - 1) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.TIER_CHANGE, { detail: { tierId: tiers[currentIndex + 1].tierId } }));
+          actions.onTierChange(tiers[currentIndex + 1].tierId);
         }
       }, requireAlt: true },
 
       // ===== Management actions (Alt+Shift) =====
       { key: 'p', description: 'Add Player', action: () => {
         if (canEdit && pageMode === 'roster' && currentTier) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.ADD_PLAYER));
+          actions.onAddPlayer();
         }
       }, requireAlt: true, requireShift: true },
       { key: 'n', description: 'New Tier', action: () => {
         if (canEdit) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.NEW_TIER));
+          actions.onNewTier();
         }
       }, requireAlt: true, requireShift: true },
       { key: 'r', description: 'Copy to New Tier', action: () => {
         if (canEdit && currentTier) {
-          window.dispatchEvent(new CustomEvent(HEADER_EVENTS.ROLLOVER));
+          actions.onRollover();
         }
       }, requireAlt: true, requireShift: true },
 

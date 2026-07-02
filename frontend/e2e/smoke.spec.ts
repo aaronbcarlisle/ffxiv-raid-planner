@@ -189,7 +189,7 @@ test.describe('Auth & Navigation', () => {
     await loginAsOwner(page);
     await goToTestStatic(page);
     await expect(page.getByText('Dev Test Static').first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /Roster/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Roster', exact: true }).first()).toBeVisible();
   });
 });
 
@@ -430,7 +430,7 @@ test.describe('Schedule', () => {
 
     // Reload and verify
     await page.reload();
-    await page.getByRole('button', { name: /Roster/i }).waitFor({ timeout: 15_000 });
+    await page.getByRole('button', { name: 'Roster', exact: true }).first().waitFor({ timeout: 15_000 });
     await switchTab(page, 'Schedule');
     await switchScheduleSubTab(page, 'Availability');
 

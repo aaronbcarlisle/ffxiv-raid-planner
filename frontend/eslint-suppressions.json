@@ -1,0 +1,87 @@
+{
+  "src/components/dashboard/MyStaticsPanel.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/group/GoalsPage.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/history/AllWeeksView.tsx": {
+    "boundaries/dependencies": {
+      "count": 2
+    }
+  },
+  "src/components/layout/GlobalSettingsPanel.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/layout/Header.tsx": {
+    "boundaries/dependencies": {
+      "count": 2
+    }
+  },
+  "src/components/layout/Layout.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/layout/SettingsDockToggle.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/layout/SettingsPanelController.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/layout/SidebarNav.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/profile/CharacterLinkModal.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/profile/CollectionsTab.tsx": {
+    "boundaries/dependencies": {
+      "count": 2
+    }
+  },
+  "src/components/profile/ManageBiSModal.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/profile/PersonalAvailabilityEditor.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/settings/DiscoveryTab.tsx": {
+    "boundaries/dependencies": {
+      "count": 1
+    }
+  },
+  "src/components/settings/PriorityTab.tsx": {
+    "boundaries/dependencies": {
+      "count": 5
+    }
+  },
+  "src/components/settings/RecruitmentTab.tsx": {
+    "boundaries/dependencies": {
+      "count": 2
+    }
+  },
+  "src/components/settings/SettingsPanel.tsx": {
+    "boundaries/dependencies": {
+      "count": 4
+    }
+  }
+}

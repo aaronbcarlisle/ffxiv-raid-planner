@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Header } from './Header';
 import { PageTransition } from './PageTransition';
-import { ReleaseBanner } from './ReleaseBanner';
+import { GlobalSettingsPanel } from './GlobalSettingsPanel';
+import { SettingsDockToggle } from './SettingsDockToggle';
+import { SettingsPanelController } from './SettingsPanelController';
 import { ViewAsBanner } from '../admin';
 import { KeyboardShortcutsHelp } from '../ui';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
@@ -11,6 +14,17 @@ export function Layout() {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.isAdmin ?? false;
+
+  // The v2 shell (F6a) renders its own TopBar, so suppress the legacy Header for
+  // the group route under `?shell=v2` to avoid a double top bar. EVERY other case
+  // — all non-group routes, and the legacy group route without `?shell=v2` —
+  // renders <Header /> exactly as before (byte-for-byte).
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  // `startsWith('/group/')` is intentionally broad (matches any share code); the
+  // `shell=v2` gate on the right-hand side already scopes suppression to v2-only.
+  const isGroupV2Shell =
+    location.pathname.startsWith('/group/') && searchParams.get('shell') === 'v2';
 
   // Global event listener for keyboard shortcuts modal
   // This allows the UserMenu to trigger shortcuts from any page
@@ -36,9 +50,8 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
-      <Header />
+      {!isGroupV2Shell && <Header />}
       <ViewAsBanner />
-      <ReleaseBanner />
       {/* Content container - scrollable area below sticky header */}
       {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears.
           Applied here on <main> (not globally on <html>) because:
@@ -48,6 +61,19 @@ export function Layout() {
       <main className="w-full pt-1 pb-3 md:py-2 flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto overflow-x-hidden" style={{ scrollbarGutter: 'stable' }}>
         <PageTransition />
       </main>
+
+      {/* Bridges legacy settings window-events to the settings store. */}
+      <SettingsPanelController />
+
+      {/* Account-level settings panel for non-static routes (the in-static panel
+          is rendered by GroupView). Shows only the General tab. */}
+      <GlobalSettingsPanel />
+
+      {/* Desktop settings open/close toggle, docked to the right edge to mirror
+          the left rail's collapse chevron. (Mobile uses the header gear.)
+          Suppressed in v2 — v2 has no settings panel mounted yet, so the toggle
+          would be dead chrome. v1 and all non-group routes still render it. */}
+      {!isGroupV2Shell && <SettingsDockToggle />}
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp

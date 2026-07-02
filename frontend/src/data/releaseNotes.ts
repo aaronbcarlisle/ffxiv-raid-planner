@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '1.27.1';
+export const CURRENT_VERSION = '2.0.2';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,508 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: 'UNRELEASED',
+    date: '2026-06-30T00:00:00Z',
+    items: [
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'F6a — redesigned app shell preview (behind ?shell=v2)',
+        description:
+          'New 72px Person-layer rail (AppRail), top bar (StaticPicker + tier breadcrumb + NotificationBell + SettingsGear), 4-tab Spine, and CommandPalette (navigate-only), mounted at a parallel ?shell=v2 route; legacy GroupView unchanged.',
+        pr: 163,
+        prTitle: 'F6a — Shell (rail + top bar + 4-tab spine + ⌘K, behind ?shell=v2)',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'F6b — redesigned Home dashboard (behind ?shell=v2)',
+        description:
+          'New weekly-loop Home: next-session RSVP, this-week loot summary, roster readiness, a needs-attention list, BiS-by-role, recent activity, and a track card — wired as the v2 overview slot. Also mounts the static-settings panel in the v2 shell. Legacy Home unchanged.',
+        pr: 164,
+        prTitle: 'F6b — Home (weekly-loop dashboard)',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Redesigned Roster (Cards) behind the v2 shell',
+        description:
+          'The v2 in-static Roster now renders a redesigned card grid (party groups, per-player BiS + gear, reorder mode) behind ?shell=v2; the Cards⇄Board toggle and gear board follow in a later slice.',
+        pr: 165,
+        prTitle: 'F6c (part 1) — Roster Cards',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'F6c Roster Board (internal)',
+        description:
+          'Cards⇄Board view toggle and the gear-matrix Board behind the ?shell=v2 flag; Board is the gear-editing surface; contrast harness re-enabled on the v2 roster.',
+        pr: 166,
+        prTitle: 'F6c (part 2) — Roster Board',
+      },
+      {
+        internal: true,
+        category: 'feature',
+        title: 'F6d (part 1) — v2 Loot Priority view behind ?shell=v2',
+        description:
+          'Flag-gated redesign slice: floor cards + ranked queues + unified RecipientPicker + week clock. No user-facing change.',
+        pr: 167,
+        prTitle: 'F6d (part 1) — Loot Priority',
+      },
+      {
+        internal: true,
+        category: 'feature',
+        title: 'Redesign (flagged): Loot History view',
+        description:
+          'v2 Loot gains the Priority⇄History toggle, fairness summary, week-grouped record, books ledger, entry editing, reset menu, and the Board next-upgrade highlight — behind ?shell=v2.',
+        pr: 169,
+        prTitle: 'feat(redesign): f6d-history — v2 Loot History + need.up',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '2.0.2',
+    date: '2026-06-28T00:00:00Z',
+    title: 'Role-color contrast + component contracts (F3)',
+    highlights: [
+      'Owner and tome role colors now meet WCAG AA contrast in light mode',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Owner and tome role colors meet WCAG AA contrast in light mode',
+        description:
+          'The membership-owner and gear-tome role colors, along with the accent hover state, have been updated so they are both AA-compliant and visually distinct from the default accent in light mode.',
+        pr: 159,
+        prTitle: 'F3 — Component contracts + illegal-states: Button trailing/label type-safety, contract reconciliation, token-AA',
+        commits: [
+          { hash: '0a10abb', message: 'fix(tokens): light membership-owner/gear-tome + accent hover to WCAG AA / distinct hover' },
+          { hash: '197dafa', message: 'fix(tokens): update accent.default hover ref from #0d7a6e to #0a6b60' },
+        ],
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Button component contracts hardened (F3)',
+        description:
+          'Button trailing element is now lexicon-bound (\'chevron\' | \'external\', replacing free rightIcon) so decorative arrows cannot compile; Button now requires a visible label (icon-only callers migrate to IconButton); design-system variant contracts reconciled and locked with @ts-expect-error type-tests.',
+        pr: 159,
+        prTitle: 'F3 — Component contracts + illegal-states: Button trailing/label type-safety, contract reconciliation, token-AA',
+        commits: [
+          { hash: '9188385', message: 'feat(button): lexicon-bound trailing prop (chevron|external) replaces free rightIcon' },
+          { hash: '8264f42', message: 'feat(button): require a visible label; icon-only actions migrate to IconButton' },
+          { hash: '3c51a5f', message: 'docs(design-system): bless real Button/IconButton variant sets + exhaustiveness type-test' },
+        ],
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'F4 — frontend structure: Ring-aware import boundaries',
+        description:
+          'Documented the feature-slice + shared-layer model and added ESLint Ring-aware import-boundary + store-boundary rules (fail-on-new via bulk suppressions). Internal structure/tooling; no user-visible change.',
+        pr: 160,
+        prTitle: 'F4 — Frontend structure (feature-slice + shared-layer model)',
+      },
+    ],
+  },
+  {
+    version: '2.0.1',
+    date: '2026-06-28T00:00:00Z',
+    title: 'WCAG AA contrast fix + accessibility foundation',
+    highlights: [
+      'Light-mode accent and dark-mode muted text now meet WCAG AA contrast',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Light-mode and dark-mode contrast now meet WCAG AA',
+        description:
+          'The accent color in light mode is now darker (#0c7d71) and muted text in dark mode is lighter (#8a8a94), both meeting WCAG AA contrast ratios. Text that was previously too faint against its background is now reliably readable.',
+        pr: 158,
+        prTitle: 'F2 — Anti-regression scaffolding: CI gating, jscpd/knip, boundaries, jsx-a11y + WCAG AA contrast fix',
+        commits: [
+          { hash: '6e23f2f', message: 'fix(tokens): lift text-muted and light accent to WCAG AA contrast' },
+          { hash: '6b5a206', message: 'fix(tokens/a11y): correct accent-dim light tint hue + update GroupView skip accuracy' },
+        ],
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Anti-regression scaffolding',
+        description:
+          'jscpd duplication gate, knip dead-code baseline, import-boundary lint, jsx-a11y + axe contrast net, and a ratcheted design-system lint on the shared layer; phase PRs now run CI.',
+        pr: 158,
+        prTitle: 'F2 — Anti-regression scaffolding: CI gating, jscpd/knip, boundaries, jsx-a11y + WCAG AA contrast fix',
+        commits: [
+          { hash: '37f70b1', message: 'ci: run the suite on PRs targeting redesign/** so phase PRs are gated' },
+        ],
+      },
+    ],
+  },
+  {
+    version: '2.0.0',
+    date: '2026-06-26T19:00:00Z',
+    title: 'Unified navigation rail',
+    highlights: [
+      'One consistent left navigation rail across the whole app',
+      'Your account menu now lives at the bottom of the rail',
+    ],
+    items: [
+      {
+        category: 'improvement',
+        title: 'Unified navigation rail with account menu in the footer',
+        description:
+          'The account menu now lives at the bottom of the left navigation rail, the rail is consistent across the app, and Static Finder is a first-class navigation tab.',
+        pr: 147,
+        prTitle: 'Plan A — Global App Rail + user-menu relocation',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Design-language foundation: tokens, constrained primitives, lint enforcement',
+        description:
+          'Added theme tokens (rail gradient, overlay, parchment) with light values, constrained primitives (Tag/Tabs/LinkText/NavRow) plus reusable JobSelector and TriStateToggle, and ESLint warnings for hardcoded colors, sub-12px text, and ambiguous interaction semantics. Foundation for the UI overhaul; no user-facing change yet.',
+        pr: 148,
+        prTitle: 'Wave 1 — Foundation: enforcement, tokens, constrained primitives',
+      },
+      {
+        category: 'fix',
+        title: 'Static switcher keeps your selected static when changing context',
+        description:
+          'Switching to Player Hub or Static Finder no longer resets the selected static. From those views the dropdown just picks which static is selected (click the static name to open it); while you are already viewing a static, picking another switches to it immediately.',
+        pr: 149,
+        prTitle: 'Nav-shell fixes — static selector, Plugin tab/URL, rail light mode',
+      },
+      {
+        category: 'improvement',
+        title: 'Plugin is now its own page with its own link',
+        description:
+          'The Dalamud plugin setup moved out of Gear & Sync into a dedicated Plugin tab with its own URL, so it is directly linkable and no longer buried under the sync dashboard.',
+        pr: 149,
+        prTitle: 'Nav-shell fixes — static selector, Plugin tab/URL, rail light mode',
+      },
+      {
+        category: 'fix',
+        title: 'Navigation rail follows light mode',
+        description: 'The left navigation rail now uses the themed gradient, so it is no longer dark when light mode is on.',
+        pr: 149,
+        prTitle: 'Nav-shell fixes — static selector, Plugin tab/URL, rail light mode',
+      },
+      {
+        category: 'improvement',
+        title: 'Settings panel docks alongside the app',
+        description:
+          'Static settings now slide in from the right without covering the header — the gear icon stays put as an open/close toggle and animates to show the panel is open. On mobile it stays a full-screen panel.',
+        pr: 150,
+        prTitle: 'Plan B — Docked settings panel + animated gear toggle',
+      },
+      {
+        category: 'improvement',
+        title: 'Role-aware Settings + a tab-memory control',
+        description:
+          'The Settings panel is now available to every member with role-appropriate tabs — a new General tab (everyone), Static config (managers), and read-only Priority/Members for members. The General tab lets you choose whether views remember your last tab or always open on the default, synced across your devices.',
+        pr: 151,
+        prTitle: 'Plan C — Role-aware Settings + tab-persistence preference',
+      },
+      {
+        category: 'improvement',
+        title: 'World and data-center fields are now dropdowns',
+        description:
+          'Server/world entry across the app — the recruitment Discovery filter, Add Character, Character Link search, and the Split Planner — now uses a consistent data-center → world dropdown cascade instead of free-text fields, so there are no more typos or guessing valid world names.',
+        pr: 154,
+        prTitle: 'Plan F — Design-system standardization',
+      },
+      {
+        category: 'improvement',
+        title: 'Add Character modal redesigned',
+        description:
+          'The Add Character dialog now has a clear icon + "Add Character" title (no more wrapping on long player names), data-center/world dropdowns, and a proper job picker instead of a free-text job box.',
+        pr: 154,
+        prTitle: 'Plan F — Design-system standardization',
+      },
+      {
+        category: 'improvement',
+        title: 'Consistent modal headers across the app',
+        description:
+          'Dialog headers now consistently pair a contextual icon with a Title-Case title (BiS Targets, Collection Goal, Job Profile, Suggest Content, Link Character, and more), for a more polished, predictable look.',
+        pr: 154,
+        prTitle: 'Plan F — Design-system standardization',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Reusable WorldSelect + sub-readable badge text fixes',
+        description:
+          'Extracted the data-center/world cascade into a shared WorldSelect component (dogfooded from DiscoveryTab), added an aria-label passthrough to Select, and raised sub-9px badge text to the readable floor. The typography scale + lint guard were already in place from Wave 1; the broader hotspot text normalization (§5.3) and the shared-Select portal change (§4.1) are deferred as follow-ups to avoid blind layout regressions.',
+        pr: 154,
+        prTitle: 'Plan F — Design-system standardization',
+      },
+      {
+        category: 'improvement',
+        title: 'Clearer navigation labels: Loot Log and Tracking',
+        description:
+          'The static "Gear & Sync" tab is now "Loot Log", and both the static "Goals & Farms" rail tab and the Player Hub "Collections & Goals" tab are now "Tracking", for a more consistent vocabulary across contexts. Links and shortcuts are unchanged.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'feature',
+        title: 'Per-static Schedule shortcuts in the header switcher',
+        description:
+          'The header static dropdown now has a Schedule shortcut under each static, so you can jump straight to any static\'s schedule. The duplicate "My Statics" selector on the Player Hub overview was removed since the header switcher now covers it everywhere.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'feature',
+        title: 'My Statics is now a Player Hub tab',
+        description:
+          'Your statics browser (create, duplicate, delete, grid/list) is now a tab inside the Player Hub, and every "My Statics" link across the app points there, so everything about you lives in one place.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'improvement',
+        title: 'Suggest content opens the form directly',
+        description:
+          'The "Suggest content" links on a static\'s Overview now open the suggestion form straight away instead of routing through the settings panel.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'improvement',
+        title: 'Calmer tier selector and rail header toggle',
+        description:
+          'The tier selector now eases in when a static becomes active instead of snapping into place, and you can click the whole navigation rail header (not just the chevron) to collapse it.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Roster drag-and-drop no longer re-renders the whole grid',
+        description:
+          'Drag state (active/over card + drop mode) moved into a dedicated store read per-card with selectors, so crossing a card during a drag re-renders only the 1-2 affected cards instead of all 8 — removing the ~120ms-per-crossing stutter. The grid/DndContext no longer re-render during a drag.',
+        pr: 153,
+        prTitle: 'perf(roster): isolate drag state so over-transitions do not re-render the grid',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Settings open-state decoupled from the roster render path',
+        description:
+          'Moved the settings panel open/close + active-tab state into a dedicated store (settingsPanelStore) so toggling the drawer no longer re-renders GroupView and the player grid. Combined with a single root TooltipProvider and memoized cards, this removes the ~450-575ms main-thread stall when opening/closing settings on the Roster page.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'improvement',
+        title: 'Settings is available everywhere with a single docked toggle',
+        description:
+          'Settings is now reachable on every page while signed in — outside a static it opens your account preferences, and inside a static it adds the role-aware static tabs. On desktop the open/close control is a single toggle docked to the right edge that mirrors the left navigation rail\'s collapse chevron and slides with the panel; on mobile it stays in the header. Opening the panel no longer nudges the header icons.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        category: 'feature',
+        title: 'Join our Discord from the home page',
+        description:
+          'The landing page hero now has a "Join our Discord" button so new visitors can find the community without signing in first.',
+        pr: 152,
+        prTitle: 'Plan I — Navigation, context & misc polish',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Tokenize the theme',
+        description: 'Generate the app @theme from tokens.json with a CI drift guard; no visual change.',
+        pr: 155,
+        prTitle: 'feat(tokens): F1 token pipeline — generated @theme, CI drift guard, PageContainer rail tiers',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'ESLint boundary guard: shared UI layer cannot import feature/app modules',
+        description:
+          'Installed eslint-plugin-boundaries (v6) with one enforced rule: files in components/primitives/** and components/ui/** may not import from domain folders, pages/, stores/, or services/. Two pre-existing violations fixed: TabNavigation relocated to layout/ (restoring its analytics.track call), and ToastContainer relocated to layout/ since it reads directly from toastStore.',
+        commits: [{ hash: '03dd54f', message: 'lint(boundaries): shared layer (primitives/ui) cannot import features (error)' }],
+      },
+    ],
+  },
+  {
+    version: '1.28.0',
+    date: '2026-06-26T18:00:00Z',
+    title: 'UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+    highlights: [
+      'New header switcher jumps between your Player Hub and your statics',
+      'Roster sub-tabs and controls now stay pinned while you scroll',
+    ],
+    items: [
+      {
+        category: 'feature',
+        title: 'Header context switcher for Player Hub ↔ Static',
+        description:
+          'A new segmented control in the header lets you jump straight between your Player Hub and your current static, with a dropdown to pick any other static, find a new one, or open the dashboard. Replaces the separate Player Hub icon for a clearer, more modern navigation.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Roster toolbar is now sticky with pinned sub-tabs',
+        description:
+          'The Members / Characters / Split Planner sub-tabs and the roster controls now stay pinned to the top while you scroll the roster. The member-only controls (add player, sort, drag lock, substitutes, group view, density) appear only on the Members tab, so the Characters and Split Planner tabs stay clean and uncluttered.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Collapsible roster sections, drag lock, and expand/collapse-all',
+        description:
+          'G1, G2, and Substitutes sections can each be collapsed independently, and a "Show Subs" toggle hides the substitutes section entirely. Card drag-and-drop is now locked by default — flip the lock in the toolbar to rearrange — so cards no longer move by accident. Clicking Expanded view while already in Expanded view toggles every section at once: collapses them all if they\'re all open, otherwise expands everything.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Gear & Sync tab cleanup',
+        description:
+          'The gear tab sub-tabs were renamed for clarity (History → Log, BiS → Priority) and now sit below the page title, matching every other tab. The Priority view reorders its panels to Gear Priority, Weapon Priority, then Who Needs It.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Gear status toggles now explain themselves',
+        description:
+          'Hovering a gear status circle now shows what each state means — a single obtained on/off toggle for raid, crafted, and base-tome gear, and the obtained → augmented cycle for tomestone gear. The hint appears only where you can actually edit: your own card as a member, every card as a lead or owner.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'Content no longer shifts when scrollbars appear',
+        description:
+          'Reserved the scrollbar gutter so pages (notably Gear & Sync) no longer jump sideways when expanding a panel adds or removes a scrollbar.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'Cross-tab navigation scrolls to the right place',
+        description:
+          'Alt-clicking a gear slot or jumping to a player or loot entry now reliably scrolls the target into view and highlights all four edges, even across the animated tab switch that previously made the scroll miss.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: '"Mark all read" now clears every notification',
+        description:
+          'Fixed a bug where Mark all read left the oldest notification still marked unread.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Browser back and forward now work everywhere',
+        description:
+          'Tabs and sub-tabs across the app now create proper browser history, so the back and forward buttons step through where you have been — accidentally clicked the wrong tab? Just hit back. This works in the static view, the Settings panel, and the Player Hub.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Sub-tabs are now deep-linkable and remembered across reloads',
+        description:
+          'Sub-tabs throughout the app live in the URL — Roster (Members / Characters / Split Planner), Schedule (Upcoming / Calendar plus the Sessions / Availability / Integrations sub-tabs and the This-week / Typical-week availability toggle), Goals & Farms (Objectives / Farms) and its inner Farms tabs, Mount Farms (Group / My Progress), the Settings panel tabs and their sub-sections (Priority, Goals & Farms, Recruitment), and the Player Hub sidebar plus its Collections & Goals sub-tabs (Tasks & Goals / My Priorities / Browse Catalog). Copy a link or reload and you land back on the exact view you were on. "Open Mount Farms" links open the Farms tab directly.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Consistent Settings panel sub-tab styling',
+        description:
+          'The Goals & Farms and Recruitment sub-tabs now use the same pill styling as the Priority tab and sit in a fixed position, so switching between Settings tabs no longer nudges the sub-tabs around.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Loot fairness legend sits under the grid; longer static names shown',
+        description:
+          'The loot fairness legend on the Gear & Sync log now appears directly beneath the grid instead of floating at the bottom of the page. The active static name in the top-left switcher also gets more room before truncating.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'PR review hardening for the navigation/preferences work',
+        description:
+          'Code-review follow-ups: constrained useUrlTabState defaults (NoInfer), centralized nav-preference defaults + transient param list, guarded the settings-panel open-while-open edge, clearer savePref error reporting, and added unit tests for useUrlTabState, the URL parse helpers, and the preferences endpoint. Second pass: moved the roster collapse/expand resets out of render into effects and made fold state re-read on tier switch, guarded synthetic-notification localStorage against private-mode crashes, gave each Settings sub-tab its own URL param (gsub/psub/rcsub) to avoid cross-tab leakage, stopped the schedule session deep-link from piling up browser history, resynced the nav-preference toggles when the account loads, switched those toggles to save with the Save button instead of instantly, made browser back/forward restore the default gear/loot sub-tab when stepping back to a history entry that had none (without disturbing remembered sub-tabs on forward navigation), hardened the roster fold-state read against a corrupt localStorage value, stopped a background static refetch from blocking a member from saving their own navigation preferences, gave the cross-tab scroll helper a cancel handle so a fast navigate-away cannot fire a stale scroll, added explicit type="button" to the raw toolbar/toggle buttons, and seeded the sub-tab param registry so a deep-linked sub-tab param is still reset on a primary-tab switch when Remember sub-tabs is off, even if that view never rendered (while protecting the primary tab and the open settings panel tab from that reset), stopped a card-density switch (Compact/Expanded) from wiping your saved G1/G2/Subs collapse preferences, made the General settings Save report per-operation so a partial failure says exactly what saved, and kept disabled settings sub-tab items tooltip-discoverable via aria-disabled.',
+        internal: true,
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'feature',
+        title: 'Two new navigation preferences (Static Settings → General)',
+        description:
+          'Added two personal navigation settings that apply to your account across all your statics (they don\'t affect other members). "Remember sub-tabs" (on by default): keep the last sub-tab when you return to a view, or turn it off to always reset to the default (e.g. Roster always opens on Members). "Remember tab per static" (off by default): when switching statics, return to that static\'s last tab — or leave it off to stay on the tab you\'re currently viewing when you switch.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Header, catalog, and accent-contrast polish',
+        description:
+          'The Invite button moved to the left side of the header next to the tier controls. The Player Hub catalog gained a search box (search by reward or duty name) and the reward list now scrolls on its own so the filters stay in view. The New Task dialog\'s mode toggle was shortened to "Personal Task" / "Static Goal". And a site-wide pass fixed buttons/chips that showed white text on a solid teal background — they now use dark text per the design system.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'Segmented tabs no longer jump when switching',
+        description:
+          'The Sessions / Availability / Integrations tabs under Schedule — and the This-week / Typical-week and time-preset toggles on the availability grid — used to shift a couple of pixels (and the label briefly popped) when you switched, because the active tab added a border the inactive tabs lacked. The inactive tabs now reserve the same border space, so only the color changes — the tabs stay put.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'No more stray scrollbar when opening dropdowns',
+        description:
+          'Opening a dropdown or combobox no longer flashes a vertical scrollbar on the right edge of the app. The scroll-lock workaround was forcing the page body to overflow: visible, which briefly exposed the document overflow; it now keeps the body in its normal state while still protecting the sticky header.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'Notification badge clears when the last unread is a release note',
+        description:
+          'After "Mark all read", the avatar notification badge could keep showing a count when the only unread item was a release-note announcement. The badge now updates immediately.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'Log Loot Drop — lower-ranked recommended players now stick',
+        description:
+          'In the Log Loot Drop dialog, picking a recommended recipient beyond the top few could silently snap back to the suggested player. The recipient selection is now initialized only when the dialog opens, so a background roster refresh no longer resets your choice mid-pick, and every recommended candidate is always selectable.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Layout, width, and header alignment consistency',
+        description:
+          'Standardized page widths so Find a Static and the Player Hub match the rest of the app, tightened the header so the logo and user menu sit flush, and closed the gap between the header and page content. The old "new release" banner was removed now that the notification system covers it.',
+        pr: 146,
+        prTitle: 'feat: UI/UX polish pass — header switcher, sticky roster, gear tab cleanup',
+      },
+    ],
+  },
   {
     version: '1.27.1',
     date: '2026-06-26T05:00:00Z',

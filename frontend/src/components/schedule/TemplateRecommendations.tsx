@@ -60,7 +60,7 @@ export function TemplateRecommendations({
                 onClick={() => onDurationChange(min)}
                 className={`rounded-md px-2 py-1 transition-colors ${
                   durationMinutes === min
-                    ? 'bg-accent text-white'
+                    ? 'bg-accent text-accent-contrast'
                     : 'bg-surface-elevated text-text-secondary hover:bg-surface-interactive'
                 }`}
               >

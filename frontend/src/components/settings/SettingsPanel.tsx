@@ -9,10 +9,14 @@
 
 /* eslint-disable design-system/no-raw-button */
 
-import { useState, useCallback, useEffect } from 'react';
-import { Settings, ListOrdered, Users, Globe, Target, Plus, Trash2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { Settings, ListOrdered, Users, Globe, Target, Shield, Plus, Trash2 } from 'lucide-react';
+import { SettingsSubNav } from './SettingsSubNav';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
+import { StaticTab } from './StaticTab';
 import { GeneralTab } from './GeneralTab';
 import { PriorityTab } from './PriorityTab';
 import { RecruitmentTab, type RecruitmentSection } from './RecruitmentTab';
@@ -28,26 +32,36 @@ import { useContentSuggestionStore } from '../../stores/contentSuggestionStore';
 import { useModal } from '../../hooks/useModal';
 import type { JoinRequest, StaticGroup, SnapshotPlayer } from '../../types';
 
-export type SettingsTab = 'general' | 'priority' | 'goals' | 'recruitment' | 'members';
-type GoalsSection = 'overview' | 'objectives' | 'farms' | 'suggestions';
+export type SettingsTab = 'general' | 'static' | 'priority' | 'goals' | 'recruitment' | 'members';
+const GOALS_SECTION_VALUES = ['overview', 'objectives', 'farms', 'suggestions'] as const;
+type GoalsSection = (typeof GOALS_SECTION_VALUES)[number];
 
 export type { RecruitmentSection };
 
-const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'goals', 'recruitment', 'members'];
+type Role = StaticGroup['userRole'];
+const isManager = (r: Role, isAdmin?: boolean) => r === 'owner' || r === 'lead' || !!isAdmin;
+const isMemberRole = (r: Role) => r === 'member';
 
 interface TabItem {
   id: SettingsTab;
   label: string;
   icon: typeof Settings;
+  /** Whether the tab is visible for this role. */
+  visible: (r: Role, isAdmin?: boolean) => boolean;
 }
 
-const TAB_ITEMS: TabItem[] = [
-  { id: 'general',     label: 'General',        icon: Settings },
-  { id: 'priority',    label: 'Priority',        icon: ListOrdered },
-  { id: 'goals',       label: 'Goals & Farms',   icon: Target },
-  { id: 'recruitment', label: 'Recruitment',     icon: Globe },
-  { id: 'members',     label: 'Members',         icon: Users },
+// Role → tab visibility. General/Goals/Members show for everyone (Members is
+// read-only below manager); Static/Recruitment are managers-only; Priority is
+// manager-edit or member-read-only (hidden from viewers).
+const ALL_TABS: TabItem[] = [
+  { id: 'general',     label: 'General',       icon: Settings,    visible: () => true },
+  { id: 'static',      label: 'Static',        icon: Shield,      visible: (r, a) => isManager(r, a) },
+  { id: 'priority',    label: 'Priority',      icon: ListOrdered, visible: (r, a) => isManager(r, a) || isMemberRole(r) },
+  { id: 'goals',       label: 'Goals & Farms', icon: Target,      visible: () => true },
+  { id: 'recruitment', label: 'Recruitment',   icon: Globe,       visible: (r, a) => isManager(r, a) },
+  { id: 'members',     label: 'Members',       icon: Users,       visible: () => true },
 ];
+
 
 // ─── Goals & Farms sub-nav ───────────────────────────────────────────────────
 
@@ -57,32 +71,6 @@ const GOALS_SECTIONS: { id: GoalsSection; label: string }[] = [
   { id: 'farms',       label: 'Farms' },
   { id: 'suggestions', label: 'Suggestions' },
 ];
-
-function GoalsSubNav({ active, onChange }: { active: GoalsSection; onChange: (s: GoalsSection) => void }) {
-  return (
-    <div
-      className="flex gap-1 pb-3 mb-0 border-b border-border-subtle flex-shrink-0 overflow-x-auto scrollbar-none"
-      role="tablist"
-    >
-      {GOALS_SECTIONS.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          role="tab"
-          aria-selected={active === s.id}
-          onClick={() => onChange(s.id)}
-          className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            active === s.id
-              ? 'bg-accent/15 text-accent'
-              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-          }`}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 // ─── Goals Overview section ──────────────────────────────────────────────────
 
@@ -284,13 +272,17 @@ function GoalsFarmsTabContent({
   groupId: string;
   canManage: boolean;
 }) {
-  const [section, setSection] = useState<GoalsSection>('overview');
+  // Section in the URL (?gsub=overview|objectives|farms|suggestions). Each
+  // settings tab uses its own sub-tab param (gsub/psub/rcsub) so switching main
+  // tabs can't carry a stale section across. Pushes; closing the panel collapses
+  // its sub-history.
+  const [section, setSection] = useUrlTabState('gsub', GOALS_SECTION_VALUES, 'overview');
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 pt-1">
-      <GoalsSubNav active={section} onChange={setSection} />
+    <div className="flex flex-col flex-1 min-h-0">
+      <SettingsSubNav active={section} onChange={setSection} items={GOALS_SECTIONS} />
 
-      <div className="flex flex-col flex-1 min-h-0 pt-4">
+      <div className="flex flex-col flex-1 min-h-0">
         {section === 'overview' && (
           <GoalsOverview onNavigate={setSection} />
         )}
@@ -320,57 +312,72 @@ function GoalsFarmsTabContent({
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  group: StaticGroup;
-  players: SnapshotPlayer[];
+  /**
+   * The static this panel configures. Optional: when absent (e.g. opened from a
+   * non-static route), only the account-level General tab is shown.
+   */
+  group?: StaticGroup;
+  players?: SnapshotPlayer[];
   tierId?: string;
   isAdmin?: boolean;
-  /** Initial tab to show when panel opens */
-  initialTab?: SettingsTab;
-  /** Override the initial Recruitment sub-section (e.g. from badge routing). */
-  initialRecruitmentSection?: RecruitmentSection;
-  /** Whether to highlight the create invitation button */
-  highlightCreateInvite?: boolean;
   /** Start the roster add flow from an accepted join request */
   onAddToRoster?: (request: JoinRequest) => void;
+  /**
+   * Where the panel is rendered. `'slideout'` (default) wraps the body in the
+   * full-overlay `SlideOutPanel` (mobile); `'dock'` renders the body bare so a
+   * `RightDockPanel` can supply the chrome (desktop).
+   */
+  container?: 'slideout' | 'dock';
 }
 
 export function SettingsPanel({
   isOpen,
   onClose,
   group,
-  players,
+  players = [],
   tierId,
   isAdmin,
-  initialTab = 'general',
-  initialRecruitmentSection,
-  highlightCreateInvite = false,
   onAddToRoster,
+  container = 'slideout',
 }: SettingsPanelProps) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  // Open-state, active tab, and routed sub-section all live in the settings
+  // store (NOT the URL) so toggling the panel never re-renders the roster that
+  // sits under the same Layout subtree. Selectors keep this component the only
+  // settings consumer that re-renders on a tab change.
+  const activeTab = useSettingsPanelStore((s) => s.tab);
+  const setActiveTab = useSettingsPanelStore((s) => s.setTab);
+  const initialRecruitmentSection = useSettingsPanelStore((s) => s.recruitmentSection);
+  const highlightCreateInvite = useSettingsPanelStore((s) => s.highlightCreateInvite);
 
-  // Sync activeTab with initialTab when it changes (e.g., from keyboard shortcuts)
-  useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
-
-  const canManage = group.userRole === 'owner' || group.userRole === 'lead';
+  const role = group?.userRole;
+  const canManage = !!group && isManager(role, isAdmin);
+  // Tabs filtered by role; clamp the active tab into the visible set (a deep
+  // link to a tab the role can't see falls back to General). Memoized so the
+  // arrays are stable across renders (keeps navigateTab's memoization intact).
+  // With no static (account-level open), only the General tab is shown.
+  const visibleTabs = useMemo(
+    () => (group ? ALL_TABS.filter((t) => t.visible(role, isAdmin)) : ALL_TABS.filter((t) => t.id === 'general')),
+    [group, role, isAdmin]
+  );
+  const tabOrder = useMemo(() => visibleTabs.map((t) => t.id), [visibleTabs]);
+  const effectiveTab: SettingsTab = tabOrder.includes(activeTab) ? activeTab : 'general';
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);
 
   useEffect(() => {
-    if (isOpen && canManage) {
+    if (isOpen && canManage && group) {
       useJoinRequestStore.getState().fetchGroupRequests(group.id);
     }
-  }, [isOpen, canManage, group.id]);
+  }, [isOpen, canManage, group]);
 
-  // Navigate to next/previous tab
+  // Navigate to next/previous visible tab
   const navigateTab = useCallback((direction: 'next' | 'prev') => {
-    const currentIndex = TAB_ORDER.indexOf(activeTab);
-    if (direction === 'next' && currentIndex < TAB_ORDER.length - 1) {
-      setActiveTab(TAB_ORDER[currentIndex + 1]);
+    const currentIndex = tabOrder.indexOf(effectiveTab);
+    if (direction === 'next' && currentIndex < tabOrder.length - 1) {
+      setActiveTab(tabOrder[currentIndex + 1]);
     } else if (direction === 'prev' && currentIndex > 0) {
-      setActiveTab(TAB_ORDER[currentIndex - 1]);
+      setActiveTab(tabOrder[currentIndex - 1]);
     }
-  }, [activeTab]);
+  }, [tabOrder, effectiveTab, setActiveTab]);
 
   // Swipe handlers for tab navigation
   const swipeHandlers = useSwipe({
@@ -379,22 +386,11 @@ export function SettingsPanel({
     minSwipeDistance: 50,
   });
 
-  return (
-    <SlideOutPanel
-      isOpen={isOpen}
-      onClose={onClose}
-      title={
-        <span className="flex items-center gap-2">
-          <Settings className="w-5 h-5" />
-          Static Settings
-        </span>
-      }
-      width="3xl"
-    >
-      <div className="flex flex-col h-[calc(100%+2rem)] -m-4">
-        {/* Tabs */}
+  const body = (
+      <div className={`flex flex-col ${container === 'dock' ? 'h-full' : 'h-[calc(100%+2rem)] -m-4'}`}>
+        {/* Tabs (filtered by role) */}
         <div className="flex border-b border-border-default px-4 overflow-x-auto overflow-y-hidden scrollbar-none flex-shrink-0">
-          {TAB_ITEMS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             return (
               /* design-system-ignore: Tab selector with border-bottom active indicator */
@@ -402,7 +398,7 @@ export function SettingsPanel({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1.5 px-3 sm:px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
+                  effectiveTab === tab.id
                     ? 'text-accent border-b-2 border-accent -mb-[1px]'
                     : 'text-text-secondary hover:text-text-primary'
                 }`}
@@ -421,27 +417,30 @@ export function SettingsPanel({
 
         {/* Content */}
         <div className="flex-1 min-h-0 px-4 pt-4 flex flex-col overflow-x-hidden" {...swipeHandlers}>
-          {activeTab === 'general' && (
-            <GeneralTab
+          {effectiveTab === 'general' && <GeneralTab />}
+
+          {effectiveTab === 'static' && group && (
+            <StaticTab
               group={group}
               onClose={onClose}
             />
           )}
 
-          {activeTab === 'priority' && (
+          {effectiveTab === 'priority' && group && (
             <PriorityTab
               group={group}
               players={players}
               tierId={tierId}
               onClose={onClose}
+              readOnly={!canManage}
             />
           )}
 
-          {activeTab === 'goals' && (
+          {effectiveTab === 'goals' && group && (
             <GoalsFarmsTabContent groupId={group.id} canManage={canManage} />
           )}
 
-          {activeTab === 'recruitment' && (
+          {effectiveTab === 'recruitment' && group && (
             <RecruitmentTab
               key={initialRecruitmentSection ?? 'default'}
               group={group}
@@ -453,15 +452,33 @@ export function SettingsPanel({
             />
           )}
 
-          {activeTab === 'members' && (
+          {effectiveTab === 'members' && group && (
             <MembersPanel
               groupId={group.id}
               currentUserRole={group.userRole}
               isAdmin={isAdmin}
+              readOnly={!canManage}
             />
           )}
         </div>
       </div>
+  );
+
+  if (container === 'dock') return body;
+
+  return (
+    <SlideOutPanel
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <span className="flex items-center gap-2">
+          <Settings className="w-5 h-5" />
+          Settings
+        </span>
+      }
+      width="3xl"
+    >
+      {body}
     </SlideOutPanel>
   );
 }

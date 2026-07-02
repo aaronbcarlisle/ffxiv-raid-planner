@@ -2,8 +2,9 @@ import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import { ErrorBoundary } from 'react-error-boundary';
+import { TooltipProvider } from './components/primitives/Tooltip';
 import { Layout } from './components/layout/Layout';
-import { ToastContainer } from './components/ui/ToastContainer';
+import { ToastContainer } from './components/layout/ToastContainer';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
 import { analytics } from './services/analytics';
@@ -19,7 +20,7 @@ const AdminStatics = lazy(() => import('./pages/admin/AdminStatics').then(m => (
 const AdminUsage = lazy(() => import('./pages/admin/AdminUsage').then(m => ({ default: m.AdminUsage })));
 const AdminErrors = lazy(() => import('./pages/admin/AdminErrors').then(m => ({ default: m.AdminErrors })));
 const Discover = lazy(() => import('./pages/Discover').then(m => ({ default: m.Discover })));
-const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
+const GroupRoute = lazy(() => import('./pages/GroupRoute').then(m => ({ default: m.GroupRoute })));
 const Profile = lazy(() => import('./pages/Profile'));
 const PublicProfile = lazy(() => import('./pages/PublicProfile'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
@@ -67,7 +68,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
               attemptChunkReload();
               window.location.reload();
             }}
-            className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+            className="px-4 py-2 bg-accent text-accent-contrast rounded hover:bg-accent/80 transition-colors"
           >
             Reload app
           </button>
@@ -84,7 +85,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
 {/* design-system-ignore: error boundary uses inline button to minimize dependencies */}
         <button
           onClick={resetErrorBoundary}
-          className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+          className="px-4 py-2 bg-accent text-accent-contrast rounded hover:bg-accent/80 transition-colors"
         >
           Try again
         </button>
@@ -141,6 +142,10 @@ function App() {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
+      {/* Single app-root tooltip provider. Radix expects one provider near the
+          root; per-instance providers (one per <Tooltip>) multiplied roster
+          reconciliation cost ~50-70x per player card. */}
+      <TooltipProvider delayDuration={500} skipDelayDuration={100}>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -156,7 +161,7 @@ function App() {
               <Route path="usage" element={<AdminUsage />} />
               <Route path="errors" element={<AdminErrors />} />
             </Route>
-            <Route path="group/:shareCode" element={<GroupView />} />
+            <Route path="group/:shareCode" element={<GroupRoute />} />
             {/* Documentation routes */}
             <Route path="docs" element={<DocsIndex />} />
             <Route path="docs/quick-start" element={<QuickStartGuide />} />
@@ -188,6 +193,7 @@ function App() {
         </Routes>
         <ToastContainer />
       </Suspense>
+      </TooltipProvider>
     </ErrorBoundary>
   );
 }

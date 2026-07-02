@@ -14,7 +14,6 @@ import {
   Calendar,
   Target,
   Users,
-  ChevronRight,
   AlertCircle,
   Swords,
   Sparkles,
@@ -66,7 +65,7 @@ function PriorityBadge({ priority }: { priority: string }) {
 
 interface ObjectiveCardProps {
   card: ObjectiveCommandCard;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: (tab: PageMode, subTab?: string) => void;
 }
 
 function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
@@ -84,7 +83,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
         onNavigate('schedule');
         break;
       case 'collection':
-        onNavigate('goals');
+        onNavigate('goals', 'farms');
         break;
       case 'bis':
         onNavigate('roster');
@@ -205,7 +204,6 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
             variant="accent-subtle"
             size="sm"
             onClick={handleCta}
-            rightIcon={<ChevronRight className="w-3 h-3" />}
             className="text-[11px] px-2 py-1 min-h-0"
           >
             Go
@@ -221,7 +219,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
 interface ObjectiveCommandCenterProps {
   groupId: string;
   isMember: boolean;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: (tab: PageMode, subTab?: string) => void;
 }
 
 export function ObjectiveCommandCenter({

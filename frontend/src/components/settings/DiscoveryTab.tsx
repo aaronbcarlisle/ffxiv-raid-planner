@@ -16,6 +16,7 @@ import {
   Mic, Headphones, MessageSquare,
 } from 'lucide-react';
 import { Label, Select, Toggle, TextArea, Input } from '../ui';
+import { WorldSelect } from '../player/WorldSelect';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { toast } from '../../stores/toastStore';
@@ -23,8 +24,6 @@ import { authRequest } from '../../services/api';
 import {
   getJobsByRole,
   getRoleForJob,
-  DC_NAMES,
-  getWorldsForDC,
   getDCForWorld,
   TIMEZONES,
   LANGUAGES,
@@ -779,10 +778,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
   };
 
   // ── Options ──────────────────────────────────────────────────────────────────
-  const serverOptions = dataCenter
-    ? [{ value: '', label: 'Any server' }, ...getWorldsForDC(dataCenter).map(w => ({ value: w, label: w }))]
-    : [{ value: '', label: 'Select a data center first' }];
-
+  // DC/World options now live inside the shared WorldSelect component.
   const tzOptions = [
     { value: '', label: 'Not specified' },
     ...TIMEZONES.map(tz => ({ value: tz.value, label: tz.label })),
@@ -790,10 +786,6 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
   const timeOptions = [
     { value: '', label: 'Not set' },
     ...TIME_SLOTS.map(t => ({ value: t, label: t })),
-  ];
-  const dcOptions = [
-    { value: '', label: 'Not specified' },
-    ...DC_NAMES.map(dc => ({ value: dc, label: dc })),
   ];
 
   // ── Recruiting role helpers ──────────────────────────────────────────────────
@@ -893,10 +885,6 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
     }
   };
 
-  const handleDCChange = (dc: string) => {
-    setDataCenter(dc);
-    if (dc !== dataCenter) setServer('');
-  };
 
   // ── Checklist ────────────────────────────────────────────────────────────────
   const checklist: ChecklistItem[] = [
@@ -1074,16 +1062,14 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
                 <Select id="intensity" value={intensity} onChange={setIntensity} options={INTENSITY_OPTIONS} disabled={!canEdit} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="dataCenter">Data Center</Label>
-                  <Select id="dataCenter" value={dataCenter} onChange={handleDCChange} options={dcOptions} disabled={!canEdit} />
-                </div>
-                <div>
-                  <Label htmlFor="server">Server</Label>
-                  <Select id="server" value={server} onChange={setServer} options={serverOptions} disabled={!canEdit || !dataCenter} />
-                </div>
-              </div>
+              <WorldSelect
+                showDataCenter
+                dataCenter={dataCenter}
+                onDataCenterChange={setDataCenter}
+                world={server}
+                onWorldChange={setServer}
+                disabled={!canEdit}
+              />
             </SectionBlock>
 
             {/* ─── Schedule section ─── */}

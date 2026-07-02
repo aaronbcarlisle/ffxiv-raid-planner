@@ -25,7 +25,7 @@ import type { DragListeners, DragAttributes } from './DroppablePlayerCard';
 import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode, GearSlot, AssignPlayerRequest } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
-import { isSlotComplete } from '../../utils/calculations';
+import { isSlotComplete, computeGearSlotUpdate } from '../../utils/calculations';
 import {
   Copy,
   ClipboardPaste,
@@ -188,61 +188,8 @@ export const PlayerCard = memo(function PlayerCard({
 
   // Handlers
   const handleGearChange = async (slot: string, updates: Partial<GearSlotStatus>) => {
-    const newGear = player.gear.map((g) => {
-      if (g.slot !== slot) return g;
-
-      const merged = { ...g, ...updates };
-
-      // Recalculate currentSource when hasItem or isAugmented changes
-      // to keep iLv calculation accurate
-      if ('hasItem' in updates || 'isAugmented' in updates) {
-        if (merged.hasItem) {
-          // Has the BiS item - set source based on what they acquired
-          if (merged.bisSource === 'raid') {
-            merged.currentSource = 'savage';
-          } else {
-            merged.currentSource = merged.isAugmented ? 'tome_up' : 'tome';
-          }
-        } else {
-          // Doesn't have item - revert to crafted
-          merged.currentSource = 'crafted';
-        }
-      }
-
-      return merged;
-    });
-
-    // Check if this is the raid weapon and hasItem changed
-    const isWeaponSlot = slot === 'weapon';
-    const updatingRaidWeapon = isWeaponSlot && player.gear.find(g => g.slot === 'weapon' && g.bisSource === 'raid');
-    const hasItemChanged = 'hasItem' in updates && updatingRaidWeapon;
-
     try {
-      // Sync raid weapon with main job's weapon priority
-      if (hasItemChanged && player.job) {
-        const mainJobPriority = player.weaponPriorities.find((wp) => wp.job === player.job);
-
-        // Only update if the received status is different
-        if (mainJobPriority && mainJobPriority.received !== updates.hasItem) {
-          const updatedPriorities = player.weaponPriorities.map((wp) => {
-            if (wp.job === player.job) {
-              return {
-                ...wp,
-                received: Boolean(updates.hasItem),
-                receivedDate: updates.hasItem ? new Date().toISOString() : undefined,
-              };
-            }
-            return wp;
-          });
-
-          // Batch both updates in single API call
-          await onUpdate({ gear: newGear, weaponPriorities: updatedPriorities });
-          return;
-        }
-      }
-
-      // Just update gear if no weapon priority sync needed
-      await onUpdate({ gear: newGear });
+      await onUpdate(computeGearSlotUpdate(player, slot, updates));
     } catch (_error) {
       // Error already handled by api.ts (toast shown)
     }

@@ -22,6 +22,7 @@ import { Label } from '../components/ui/Label';
 import { InputGroup } from '../components/ui/InputGroup';
 import { Checkbox } from '../components/ui/Checkbox';
 import { ThreeStateCheckbox, type ThreeState } from '../components/ui/ThreeStateCheckbox';
+import { Tag, Tabs, LinkText, NavRow, TriStateToggle, type TriState } from '../components/ui';
 import { GearStatusCircle } from '../components/ui/GearStatusCircle';
 import { Toggle } from '../components/ui/Toggle';
 import { NumberInput } from '../components/ui/NumberInput';
@@ -349,6 +350,7 @@ const NAV_GROUPS = [
       { id: 'buttons', label: 'Buttons' },
       { id: 'badges', label: 'Badges' },
       { id: 'icon-buttons', label: 'Icon Buttons' },
+      { id: 'design-language', label: 'Constrained Primitives' },
       { id: 'icon-library', label: 'Icon Library' },
       { id: 'job-icons', label: 'Job Icons' },
       { id: 'tooltips', label: 'Tooltips' },
@@ -391,6 +393,58 @@ function Subsection({ title, children }: { title: string; children: React.ReactN
       <h3 className="text-lg font-medium text-text-primary mb-4">{title}</h3>
       {children}
     </div>
+  );
+}
+
+// Design-language primitives — the constrained components that make drift
+// structurally hard (Plan L Phase 1). Variant semantics are enforced by type.
+function DesignLanguageSection() {
+  const [filterOn, setFilterOn] = useState(false);
+  const [tab, setTab] = useState('overview');
+  const [owned, setOwned] = useState<TriState>('have');
+  return (
+    <Section id="design-language" title="Constrained Primitives">
+      <p className="text-sm text-text-secondary mb-6 max-w-2xl">
+        These primitives make illegal UI unrepresentable: a <code>Tag</code> must declare whether it is a
+        label, a filter, or navigation; <code>Tabs</code> can only switch in-surface views (never routes);
+        navigational text is a real <code>LinkText</code>/<code>NavRow</code>, never plain text with an
+        <code>onClick</code>. Raw colors and sub-<code>text-xs</code> sizes are lint warnings.
+      </p>
+
+      <Subsection title="Tag — variant carries the semantics">
+        <div className="flex flex-wrap items-center gap-3">
+          <Tag variant="label" tone="success">Have</Tag>
+          <Tag variant="label" tone="warning">In progress</Tag>
+          <Tag variant="filter" pressed={filterOn} onClick={() => setFilterOn(v => !v)} tone="accent">
+            Tanks
+          </Tag>
+          <Tag variant="nav" onNavigate={() => {}} tone="info">Open static</Tag>
+        </div>
+        <p className="text-xs text-text-muted mt-2">label = inert · filter = aria-pressed toggle · nav = chevron + href/onNavigate (required by type)</p>
+      </Subsection>
+
+      <Subsection title="Tabs — in-surface view switch (no route API)">
+        <Tabs
+          tabs={[{ id: 'overview', label: 'Overview' }, { id: 'roster', label: 'Roster' }, { id: 'gear', label: 'Gear' }]}
+          value={tab}
+          onChange={setTab}
+          aria-label="Demo tabs"
+        />
+      </Subsection>
+
+      <Subsection title="LinkText / NavRow — navigational by construction">
+        <div className="flex flex-col gap-2 max-w-xs">
+          <span className="text-sm text-text-secondary">
+            Synced 2 minutes ago — <LinkText onClick={() => {}}>sync now</LinkText>
+          </span>
+          <NavRow label="Static Settings" description="Members, invitations, recruitment" onClick={() => {}} />
+        </div>
+      </Subsection>
+
+      <Subsection title="TriStateToggle — labeled have / missing / unknown">
+        <TriStateToggle value={owned} onChange={setOwned} />
+      </Subsection>
+    </Section>
   );
 }
 
@@ -795,15 +849,6 @@ function FormsSection() {
               onChange={setSearchValue}
               placeholder="Search..."
               leftIcon={<Search className="w-4 h-4" />}
-            />
-          </div>
-          <div>
-            <Label>With Right Icon</Label>
-            <Input
-              value=""
-              onChange={() => {}}
-              placeholder="Amount"
-              rightIcon={<span className="text-text-muted text-sm">USD</span>}
             />
           </div>
         </div>
@@ -1683,7 +1728,7 @@ function MenusSection() {
           {/* Basic Dropdown */}
           <Dropdown>
             <DropdownTrigger>
-              <Button variant="secondary" rightIcon={<ChevronDown className="w-4 h-4" />}>
+              <Button variant="secondary" trailing="chevron">
                 Basic Menu
               </Button>
             </DropdownTrigger>
@@ -1707,7 +1752,7 @@ function MenusSection() {
           {/* With Checkboxes */}
           <Dropdown>
             <DropdownTrigger>
-              <Button variant="secondary" rightIcon={<ChevronDown className="w-4 h-4" />}>
+              <Button variant="secondary" trailing="chevron">
                 With Checkboxes
               </Button>
             </DropdownTrigger>
@@ -1731,7 +1776,7 @@ function MenusSection() {
           {/* With Submenu */}
           <Dropdown>
             <DropdownTrigger>
-              <Button variant="secondary" rightIcon={<ChevronDown className="w-4 h-4" />}>
+              <Button variant="secondary" trailing="chevron">
                 With Submenu
               </Button>
             </DropdownTrigger>
@@ -2087,7 +2132,8 @@ function ContainersSection() {
   return (
     <Section id="containers" title="Container System">
       <p className="text-text-secondary mb-6">
-        A 5-tier container system for consistent width constraints across page types.
+        A 4-tier container system for consistent width constraints across page types.
+        The context rail lives outside these ceilings; they cap the content column only.
         Prevents content from stretching infinitely on ultrawide monitors (3440px+).
       </p>
 
@@ -2095,14 +2141,14 @@ function ContainersSection() {
       <Subsection title="Container Tiers">
         <p className="text-sm text-text-muted mb-4">
           Each tier serves a specific purpose. Use the PageContainer component or apply classes directly.
+          Widths come from <code>--container-&#123;tier&#125;</code> tokens in <code>tokens.generated.css</code>.
         </p>
         <div className="space-y-3">
           {[
-            { name: 'data', width: '160rem (2560px)', desc: 'Data-dense grids, player cards', example: 'GroupView' },
-            { name: 'wide', width: '120rem (1920px)', desc: 'Documentation with sidebar', example: 'API Docs, Guides' },
-            { name: 'focus', width: '80rem (1280px)', desc: 'Focused content, simple docs', example: 'Release Notes' },
-            { name: 'narrow', width: 'max-w-6xl (1152px)', desc: 'Card grids, dashboards', example: 'Dashboard' },
-            { name: 'compact', width: 'max-w-4xl (896px)', desc: 'Marketing, landing pages', example: 'Home page' },
+            { name: 'data', width: '2160px', desc: 'Data-dense spine pages (Roster, Loot) on ultrawide', example: 'GroupView' },
+            { name: 'standard', width: '1760px', desc: 'Dashboards', example: 'Home, Schedule' },
+            { name: 'focus', width: '1100px', desc: 'Player Hub, settings, forms', example: 'Player Hub' },
+            { name: 'doc', width: '960px', desc: 'Docs / reading', example: 'Release Notes, Guides' },
           ].map(tier => (
             <div key={tier.name} className="flex items-center gap-4 p-3 bg-surface-elevated rounded-lg border border-border-default">
               <code className="px-2 py-1 bg-accent/10 text-accent rounded text-sm font-mono min-w-[80px]">
@@ -2132,8 +2178,8 @@ import { PageContainer } from '../components/layout';
   <PlayerGrid />
 </PageContainer>
 
-// Or use Tailwind classes directly
-<div className="max-w-[160rem] mx-auto">
+// Or use Tailwind classes directly (token-generated utilities)
+<div className="max-w-data mx-auto">
   <PlayerGrid />
 </div>`}
         />
@@ -2738,6 +2784,9 @@ export function DesignSystem() {
             </div>
           </Subsection>
         </Section>
+
+        {/* Design Language primitives */}
+        <DesignLanguageSection />
 
         {/* Icon Library */}
         <IconLibrarySection />

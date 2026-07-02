@@ -532,6 +532,17 @@ className="bg-surface-elevated"   // Nested containers
 className="bg-surface-overlay"    // Modals, dropdowns
 ```
 
+### Typography Scale
+
+Use semantic sizes, never arbitrary `text-[Npx]`:
+
+- `text-xs` (12px) — captions, badges, dense metadata; **the floor for readable text**
+- `text-sm` (14px) — body, form labels, table cells
+- `text-base` (16px) — primary content
+- `text-lg`+ — headings
+
+**Floor rule:** no `text-[Npx]` below `text-xs` for readable text. The only sub-12px allowed is a numeric **badge count**, and never below `text-[9px]`. Never use `text-[7px]`/`text-[8px]`. Map arbitrary sizes: `text-[10–12px]` → `text-xs`, `text-[13px]` → `text-sm`. See [DESIGN_SYSTEM_SUMMARY.md](./DESIGN_SYSTEM_SUMMARY.md#-typography-scale--size-floor) for the full table.
+
 ---
 
 ## State Management

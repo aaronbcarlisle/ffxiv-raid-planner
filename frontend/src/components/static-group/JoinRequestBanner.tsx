@@ -64,7 +64,7 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
 
   if (!user) {
     return (
-      <div className="rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center justify-between gap-3">
+      <div className="mb-3 rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center justify-between gap-3">
         <p className="text-sm text-text-secondary">
           Interested in joining this static? Log in to send a request.
         </p>
@@ -79,7 +79,7 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
     const config = STATUS_CONFIG[activeRequest.status as keyof typeof STATUS_CONFIG];
     const Icon = config?.icon || Clock;
     return (
-      <div className="rounded-lg border border-border-default bg-surface-elevated p-3 flex items-center justify-between gap-3">
+      <div className="mb-3 rounded-lg border border-border-default bg-surface-elevated p-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Icon className={`w-4 h-4 ${config?.color || 'text-text-muted'}`} />
           <span className={`text-sm font-medium ${config?.color || 'text-text-muted'}`}>
@@ -102,7 +102,7 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
 
   return (
     <>
-      <div className="rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center justify-between gap-3">
+      <div className="mb-3 rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center justify-between gap-3">
         <p className="text-sm text-text-secondary">
           Looking for a static? Send a request to join.
         </p>

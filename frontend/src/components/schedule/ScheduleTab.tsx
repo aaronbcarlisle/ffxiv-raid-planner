@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, CheckCircle, Copy, ExternalLink, LayoutGrid, List, Link2, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Sparkles, Trash2, Unlink } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -13,7 +14,8 @@ import { AvailabilityGrid } from './AvailabilityGrid';
 import type { DiscordMirrorStatus, ScheduleSession, ScheduleSessionCreate, RsvpStatus, MemberRole, Membership } from '../../types';
 import { buildScheduleDraftFromContent, type ScheduleContentDraftRequest } from './sessionDrafts';
 
-type SchedulerSubTab = 'sessions' | 'availability' | 'integrations';
+const SCHED_SUB_TABS = ['sessions', 'availability', 'integrations'] as const;
+type SchedulerSubTab = (typeof SCHED_SUB_TABS)[number];
 type WebhookMentionTarget = 'none' | 'here' | 'role';
 
 const DISCORD_ROLE_ID_PATTERN = /^(?:<@&)?(\d{17,20})>?$/;
@@ -99,12 +101,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     const saved = localStorage.getItem('schedule-session-view');
     return saved === 'tiles' ? 'tiles' : 'list';
   });
-  const [activeSubTab, setActiveSubTab] = useState<SchedulerSubTab>(() => {
-    const saved = sessionStorage.getItem(`schedule-subtab-${groupId}`);
-    return saved === 'availability' || saved === 'integrations' || saved === 'sessions'
-      ? saved
-      : 'sessions';
-  });
+  // Sub-tab in the URL (?stab=sessions|availability|integrations) — deep-linkable,
+  // reload-safe, back/forward-aware. Replaces the old per-group sessionStorage key.
+  const [activeSubTab, setActiveSubTab] = useUrlTabState('stab', SCHED_SUB_TABS, 'sessions');
 
   // Listen for content schedule requests from farm/reward views.
   useEventBus<ScheduleContentDraftRequest>(
@@ -150,20 +149,23 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     }
   }, [settings]);
 
+  // Tracks the sessionId we've already jumped to, so the effect below acts once
+  // per deep-linked session rather than on every `sessions` refetch.
+  const handledSessionRef = useRef<string | null>(null);
   useEffect(() => {
-    const saved = sessionStorage.getItem(`schedule-subtab-${groupId}`);
-    if (saved === 'availability' || saved === 'integrations' || saved === 'sessions') {
-      setActiveSubTab(saved);
-    } else {
-      setActiveSubTab('sessions');
-    }
-  }, [groupId]);
-
-  useEffect(() => {
-    const sessionId = new URLSearchParams(window.location.search).get('sessionId');
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('sessionId');
     if (!sessionId || !sessions.some((session) => session.id === sessionId)) return;
+    // Only act the first time this sessionId becomes resolvable. Without this,
+    // a `sessions` refetch (e.g. after an RSVP) would re-run the jump and yank
+    // the user back to Sessions if they'd navigated away.
+    if (handledSessionRef.current === sessionId) return;
+    handledSessionRef.current = sessionId;
 
-    setActiveSubTab('sessions');
+    // Jump to the Sessions sub-tab, but only if not already there. `stab` omits
+    // its default ('sessions') from the URL, so a missing param means we're
+    // already on Sessions — treat it as such to avoid a redundant navigation.
+    if ((params.get('stab') ?? 'sessions') !== 'sessions') setActiveSubTab('sessions');
     setHighlightedSessionId(sessionId);
     window.setTimeout(() => {
       document.getElementById(`schedule-session-${sessionId}`)?.scrollIntoView({
@@ -174,7 +176,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
     const clearHighlight = window.setTimeout(() => setHighlightedSessionId(null), 5000);
     return () => window.clearTimeout(clearHighlight);
-  }, [sessions]);
+  }, [sessions, setActiveSubTab]);
 
   useEffect(() => {
     if (!userRole || sessions.length === 0) {
@@ -296,7 +298,6 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
   const handleSubTabChange = (nextTab: SchedulerSubTab) => {
     setActiveSubTab(nextTab);
-    sessionStorage.setItem(`schedule-subtab-${groupId}`, nextTab);
   };
 
   const handleSaveIntegrations = async () => {
@@ -472,6 +473,11 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                 key={tab.id}
                 type="button"
                 variant={isActive ? 'accent-subtle' : 'ghost'}
+                // The active variant carries a 1px border; reserve the same
+                // border (transparent) on the inactive tabs so switching tabs
+                // only changes the border *color*, never the box size. Without
+                // this the tabs grow/shrink ~2px and the label visibly pops.
+                className={isActive ? '' : 'border border-transparent'}
                 size="sm"
                 leftIcon={<Icon className="h-4 w-4" />}
                 onClick={() => handleSubTabChange(tab.id)}
@@ -1028,7 +1034,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                                 type="button"
                                 size="sm"
                                 variant="ghost"
-                                rightIcon={<ExternalLink className="h-3 w-3" />}
+                                trailing="external"
                                 onClick={() => window.open(buildDiscordInstallUrl(settings?.discordClientId), '_blank', 'noopener,noreferrer')}
                                 disabled={!settings?.discordClientId}
                                 className="inline-flex"
