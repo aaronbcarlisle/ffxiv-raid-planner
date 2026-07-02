@@ -673,8 +673,11 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
 
   // Prevent page scroll for Gear/History sub-tab (internal scroll only)
   // On mobile: also prevent for Gear Priority sub-tab
-  const preventPageScroll = (pageMode === 'gear' && gearSubTab === 'history') ||
-    (isSmallScreen && pageMode === 'gear' && gearSubTab === 'priority');
+  // Gated on `!slots?.gear` so a v2 gear slot (which owns its own scroll) isn't
+  // forced into the legacy internal-scroll layout; no-op on legacy (`slots`
+  // undefined → `!slots?.gear === true`).
+  const preventPageScroll = !slots?.gear && ((pageMode === 'gear' && gearSubTab === 'history') ||
+    (isSmallScreen && pageMode === 'gear' && gearSubTab === 'priority'));
 
   return (
     <>
@@ -1260,7 +1263,10 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
           )}
 
           {/* Gear Tab Controls */}
-          {pageMode === 'gear' && (
+          {/* Gated on `!slots?.gear` so a v2 gear slot (which owns its own
+              controls) doesn't stack the legacy gear view selector; no-op on
+              legacy (`slots` undefined). */}
+          {pageMode === 'gear' && !slots?.gear && (
             <>
               {/* Sub-tab selector */}
               <div>
@@ -1315,7 +1321,10 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
           )}
 
           {/* Gear/Log Tab Controls */}
-          {pageMode === 'gear' && gearSubTab === 'history' && canManageRoster(userRole, isAdminAccess).allowed && (
+          {/* Gated on `!slots?.gear` so a v2 gear slot (which owns its own reset
+              actions) doesn't stack the legacy reset controls; no-op on legacy
+              (`slots` undefined). */}
+          {pageMode === 'gear' && !slots?.gear && gearSubTab === 'history' && canManageRoster(userRole, isAdminAccess).allowed && (
             <>
               {/* Reset Data Actions */}
               <div>

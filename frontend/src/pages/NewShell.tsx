@@ -7,6 +7,7 @@ import { GroupActionModals, useGroupActions } from './groupActionsContext';
 import { V2SettingsHost } from './V2SettingsHost';
 import { Home as StaticHome } from '../components/home/Home';
 import { Roster } from '../components/roster/Roster';
+import { Loot } from '../components/loot/Loot';
 import { canManageRoster } from '../utils/permissions';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
@@ -76,10 +77,23 @@ export function ShellContent() {
     />
   ) : undefined;
 
+  // F6d: in v2 the `gear` tab (Spine label "Loot") is the redesigned <Loot/>
+  // screen, injected as the `gear` slot — mirroring `overview`/`roster` above.
+  // The legacy route passes no slots, so GroupViewContent renders its legacy
+  // gear body byte-for-byte (mobile gear chrome gated on `!slots?.gear`).
+  const loot = currentGroup ? (
+    <Loot
+      group={currentGroup}
+      tier={currentTier}
+      canEdit={canManage}
+      onNavigate={gv.setPageMode}
+    />
+  ) : undefined;
+
   return (
     <GroupViewContent
       actions={useGroupActions()}
-      slots={currentGroup ? { overview, roster } : undefined}
+      slots={currentGroup ? { overview, roster, gear: loot } : undefined}
     />
   );
 }
