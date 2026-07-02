@@ -22,7 +22,10 @@ interface PersonalAvailabilityCardProps {
   focusAvailability?: boolean;
 }
 
-export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = false }: PersonalAvailabilityCardProps) {
+export function PersonalAvailabilityCard({
+  primaryStatic,
+  focusAvailability = false,
+}: PersonalAvailabilityCardProps) {
   const { t, i18n } = useTranslation();
   const { days, isLoading, fetchPersonalAvailability } = usePersonalAvailabilityStore();
   const editModal = useModal();
@@ -56,14 +59,22 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
   const configuredCount = configuredDays.length;
   const totalSlots = configuredDays.reduce((total, day) => total + day.slots.length, 0);
   const approximateHours = totalSlots / 2;
-  const timezone = useMemo(() => configuredDays[0]?.timezone || getBrowserTimezone(), [configuredDays]);
+  const timezone = useMemo(
+    () => configuredDays[0]?.timezone || getBrowserTimezone(),
+    [configuredDays]
+  );
   const handleEditorDirtyChange = (isDirty: boolean) => {
     editorDirtyRef.current = isDirty;
   };
 
-  const scheduleLink = primaryStatic ? `/group/${primaryStatic.shareCode}?tab=schedule` : '/discover';
+  const scheduleLink = primaryStatic
+    ? `/group/${primaryStatic.shareCode}?tab=schedule`
+    : '/discover';
   const handleEditorClose = () => {
-    if (editorDirtyRef.current && !window.confirm(t('profile.availability.discardUnsavedChanges'))) {
+    if (
+      editorDirtyRef.current &&
+      !window.confirm(t('profile.availability.discardUnsavedChanges'))
+    ) {
       return;
     }
     handleEditorDirtyChange(false);
@@ -75,16 +86,18 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
       <div
         ref={cardRef}
         id="player-hub-availability"
-        className={`bg-surface-raised rounded-lg border p-3 sm:p-4 transition-all ${
-          isFocused ? 'border-accent/70 shadow-lg shadow-accent/15 ring-2 ring-accent/30' : 'border-border-default'
+        className={`bg-surface-raised rounded-lg border p-3 transition-all sm:p-4 ${
+          isFocused
+            ? 'border-accent/70 shadow-accent/15 ring-accent/30 shadow-lg ring-2'
+            : 'border-border-default'
         }`}
       >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="font-display font-semibold text-text-primary text-sm">
+            <h3 className="font-display text-text-primary text-sm font-semibold">
               {t('profile.availability.title')}
             </h3>
-            <p className="mt-0.5 text-xs text-text-tertiary">
+            <p className="text-text-tertiary mt-0.5 text-xs">
               {t('profile.availability.cardSubtitle')}
             </p>
           </div>
@@ -94,26 +107,26 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
         </div>
 
         {isLoading ? (
-          <div className="h-8 bg-surface-elevated rounded animate-pulse" />
+          <div className="bg-surface-elevated h-8 animate-pulse rounded" />
         ) : configuredCount > 0 ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
-                <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
-                  <Calendar className="h-3.5 w-3.5 text-accent" />
+              <div className="border-border-subtle bg-surface-elevated/70 rounded-lg border px-3 py-2">
+                <div className="text-text-tertiary flex items-center gap-1.5 text-xs">
+                  <Calendar className="text-accent h-3.5 w-3.5" />
                   {t('profile.availability.daysLabel')}
                 </div>
-                <div className="mt-1 text-lg font-display text-text-primary">
-                  {configuredCount}
-                </div>
+                <div className="font-display text-text-primary mt-1 text-lg">{configuredCount}</div>
               </div>
-              <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
-                <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
-                  <Clock3 className="h-3.5 w-3.5 text-accent" />
+              <div className="border-border-subtle bg-surface-elevated/70 rounded-lg border px-3 py-2">
+                <div className="text-text-tertiary flex items-center gap-1.5 text-xs">
+                  <Clock3 className="text-accent h-3.5 w-3.5" />
                   {t('profile.availability.hoursLabel')}
                 </div>
-                <div className="mt-1 text-lg font-display text-text-primary">
-                  {Number.isInteger(approximateHours) ? approximateHours : approximateHours.toFixed(1)}
+                <div className="font-display text-text-primary mt-1 text-lg">
+                  {Number.isInteger(approximateHours)
+                    ? approximateHours
+                    : approximateHours.toFixed(1)}
                 </div>
               </div>
             </div>
@@ -121,7 +134,7 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
               {configuredDays.map((d) => (
                 <span
                   key={d.dayOfWeek}
-                  className="text-[11px] px-2 py-1 rounded-full bg-accent/10 text-accent font-medium"
+                  className="bg-accent/10 text-accent rounded-full px-2 py-1 text-[11px] font-medium"
                 >
                   {formatDayOfWeekLabel(d.dayOfWeek as never, uiLocale)}
                 </span>
@@ -133,7 +146,7 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
               </Button>
               <Link
                 to={scheduleLink}
-                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 sm:min-h-0"
+                className="text-accent hover:bg-accent/10 inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors sm:min-h-0"
               >
                 {primaryStatic ? t('profile.availability.useInSchedule') : t('nav.findAStatic')}
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -142,10 +155,8 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-text-tertiary text-sm">
-              {t('profile.availability.setOnceReuse')}
-            </p>
-            <div className="rounded-lg border border-border-subtle bg-surface-elevated/60 px-3 py-2 text-xs text-text-secondary">
+            <p className="text-text-tertiary text-sm">{t('profile.availability.setOnceReuse')}</p>
+            <div className="border-border-subtle bg-surface-elevated/60 text-text-secondary rounded-lg border px-3 py-2 text-xs">
               {t('profile.availability.quickFillPlanning')}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -154,7 +165,7 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
               </Button>
               <Link
                 to={scheduleLink}
-                className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 sm:min-h-0"
+                className="text-accent hover:bg-accent/10 inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors sm:min-h-0"
               >
                 {primaryStatic ? t('profile.availability.openSchedule') : t('nav.findAStatic')}
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -170,7 +181,10 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
         onClose={handleEditorClose}
         size="3xl"
       >
-        <PersonalAvailabilityEditor onDone={handleEditorClose} onDirtyChange={handleEditorDirtyChange} />
+        <PersonalAvailabilityEditor
+          onDone={handleEditorClose}
+          onDirtyChange={handleEditorDirtyChange}
+        />
       </Modal>
     </>
   );

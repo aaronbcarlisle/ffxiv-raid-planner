@@ -124,7 +124,6 @@ export const RELEASES: Release[] = [
     highlights: [
       'New header switcher jumps between your Player Hub and your statics',
       'Roster sub-tabs and controls now stay pinned while you scroll',
-      'Navigation icons now use FFXIV in-game sprites instead of generic icons',
     ],
     items: [
       {

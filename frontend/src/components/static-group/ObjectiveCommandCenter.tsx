@@ -11,11 +11,7 @@
 
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Target,
-  ChevronRight,
-  AlertCircle,
-} from 'lucide-react';
+import { Target, ChevronRight, AlertCircle } from 'lucide-react';
 import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { Skeleton } from '../ui/Skeleton';
@@ -34,7 +30,9 @@ function PriorityBadge({ priority }: { priority: string }) {
   };
   const cls = styles[priority] ?? styles.optional;
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide flex-shrink-0 ${cls}`}>
+    <span
+      className={`inline-flex flex-shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide uppercase ${cls}`}
+    >
       {t(`objectivePriority.${priority}`, { defaultValue: priority })}
     </span>
   );
@@ -77,30 +75,36 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
   const categoryLabel = t(`objectiveCategory.${card.category}`, { defaultValue: card.category });
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
+    <div className="border-border-subtle bg-surface-card overflow-hidden rounded-xl border">
       {/* Card header */}
       <div className="flex items-start gap-2 px-3 pt-3 pb-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+        <div className="min-w-0 flex-1">
+          <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
             <PriorityBadge priority={card.priority} />
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-accent/10 text-accent flex-shrink-0">
+            <span className="bg-accent/10 text-accent inline-flex flex-shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-medium">
               {categoryLabel}
             </span>
           </div>
-          <p className="text-sm font-bold text-text-primary leading-tight truncate mt-0.5">
+          <p className="text-text-primary mt-0.5 truncate text-sm leading-tight font-bold">
             {card.title}
           </p>
         </div>
       </div>
 
       {/* Stats row */}
-      <div className="flex items-center gap-3 px-3 pb-2 text-[11px] text-text-secondary flex-wrap">
+      <div className="text-text-secondary flex flex-wrap items-center gap-3 px-3 pb-2 text-[11px]">
         {/* Roster readiness */}
         <span className="flex items-center gap-1">
           <XivIcon name="party" size={12} className="flex-shrink-0" />
           <span>
             {t('overview.objectiveRoster')}{' '}
-            <span className={rosterReadiness.ready < rosterReadiness.total ? 'text-status-warning font-semibold' : 'text-status-success font-semibold'}>
+            <span
+              className={
+                rosterReadiness.ready < rosterReadiness.total
+                  ? 'text-status-warning font-semibold'
+                  : 'text-status-success font-semibold'
+              }
+            >
               {rosterReadiness.ready}/{rosterReadiness.total}
             </span>
           </span>
@@ -108,15 +112,23 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
 
         {/* Goal alignment */}
         <span className="flex items-center gap-1">
-          <Target className="w-3 h-3 text-text-muted flex-shrink-0" />
+          <Target className="text-text-muted h-3 w-3 flex-shrink-0" />
           <span>
             {t('overview.objectiveGoals')}{' '}
-            <span className="text-status-success font-semibold">{t('overview.objectiveAligned', { count: goalAlignment.aligned })}</span>
+            <span className="text-status-success font-semibold">
+              {t('overview.objectiveAligned', { count: goalAlignment.aligned })}
+            </span>
             {goalAlignment.conflicts > 0 && (
-              <span className="text-status-error font-semibold"> · {t('overview.objectiveConflicts', { count: goalAlignment.conflicts })}</span>
+              <span className="text-status-error font-semibold">
+                {' '}
+                · {t('overview.objectiveConflicts', { count: goalAlignment.conflicts })}
+              </span>
             )}
             {goalAlignment.partial > 0 && goalAlignment.conflicts === 0 && (
-              <span className="text-text-muted"> · {t('overview.objectivePartial', { count: goalAlignment.partial })}</span>
+              <span className="text-text-muted">
+                {' '}
+                · {t('overview.objectivePartial', { count: goalAlignment.partial })}
+              </span>
             )}
           </span>
         </span>
@@ -127,7 +139,13 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
             <XivIcon name="sword" size={12} className="flex-shrink-0" />
             <span>
               {t('overview.objectiveBis')}{' '}
-              <span className={bisReadiness.missing > 2 ? 'text-status-error font-semibold' : 'text-status-success font-semibold'}>
+              <span
+                className={
+                  bisReadiness.missing > 2
+                    ? 'text-status-error font-semibold'
+                    : 'text-status-success font-semibold'
+                }
+              >
                 {bisReadiness.ready}/{bisReadiness.ready + bisReadiness.missing}
               </span>
             </span>
@@ -136,10 +154,10 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
 
         {/* Linked collection goal */}
         {linkedCollectionGoal && (
-          <span className="flex items-center gap-1 text-text-muted">
-            <span className="truncate max-w-[120px]">{linkedCollectionGoal.title}</span>
+          <span className="text-text-muted flex items-center gap-1">
+            <span className="max-w-[120px] truncate">{linkedCollectionGoal.title}</span>
             {linkedCollectionGoal.target != null && (
-              <span className="font-semibold text-text-secondary">
+              <span className="text-text-secondary font-semibold">
                 {linkedCollectionGoal.progress ?? 0}/{linkedCollectionGoal.target}
               </span>
             )}
@@ -152,11 +170,12 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
         <XivIcon name="schedule" size={12} className="flex-shrink-0" />
         {nextSession ? (
           <span className="text-text-secondary">
-            <span className="font-medium">{t('overview.objectiveNext')}:</span>{' '}
-            {nextSession.title}{' '}
+            <span className="font-medium">{t('overview.objectiveNext')}:</span> {nextSession.title}{' '}
             <span className="text-text-muted">
               {new Date(nextSession.date).toLocaleDateString(uiLocale, {
-                weekday: 'short', month: 'short', day: 'numeric',
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
               })}
             </span>
           </span>
@@ -166,16 +185,16 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
       </div>
 
       {/* CTA footer */}
-      <div className="border-t border-border-subtle px-3 py-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+      <div className="border-border-subtle flex items-center justify-between gap-2 border-t px-3 py-2">
+        <div className="text-text-muted flex items-center gap-1.5 text-[11px]">
           {card.nextActionTarget === null ? (
-            <span className="text-status-success font-semibold flex items-center gap-1">
+            <span className="text-status-success flex items-center gap-1 font-semibold">
               <XivIcon name="crystal" size={12} />
               {card.nextAction}
             </span>
           ) : (
             <span className="flex items-center gap-1">
-              <AlertCircle className="w-3 h-3 text-accent flex-shrink-0" />
+              <AlertCircle className="text-accent h-3 w-3 flex-shrink-0" />
               <span className="text-text-secondary">{card.nextAction}</span>
             </span>
           )}
@@ -185,8 +204,8 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
             variant="accent-subtle"
             size="sm"
             onClick={handleCta}
-            rightIcon={<ChevronRight className="w-3 h-3" />}
-            className="text-[11px] px-2 py-1 min-h-0"
+            rightIcon={<ChevronRight className="h-3 w-3" />}
+            className="min-h-0 px-2 py-1 text-[11px]"
           >
             {t('common.go')}
           </Button>
@@ -231,8 +250,8 @@ export function ObjectiveCommandCenter({
 
   if (error && cards.length === 0) {
     return (
-      <div className="rounded-xl border border-border-subtle bg-surface-card px-3 py-4 text-center">
-        <p className="text-xs text-text-muted">{t('goalsPage.loadFailed')}</p>
+      <div className="border-border-subtle bg-surface-card rounded-xl border px-3 py-4 text-center">
+        <p className="text-text-muted text-xs">{t('goalsPage.loadFailed')}</p>
       </div>
     );
   }
@@ -241,13 +260,13 @@ export function ObjectiveCommandCenter({
     return (
       <div
         data-testid="objective-command-empty"
-        className="rounded-xl border border-border-subtle bg-surface-card px-3 py-5 text-center"
+        className="border-border-subtle bg-surface-card rounded-xl border px-3 py-5 text-center"
       >
-        <Target className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
-        <p className="text-xs font-medium text-text-secondary mb-0.5">{t('goalsPage.noObjectives')}</p>
-        <p className="text-[11px] text-text-muted">
-          {t('overview.objectiveCommandEmptyDesc')}
+        <Target className="text-text-muted mx-auto mb-1.5 h-5 w-5 opacity-40" />
+        <p className="text-text-secondary mb-0.5 text-xs font-medium">
+          {t('goalsPage.noObjectives')}
         </p>
+        <p className="text-text-muted text-[11px]">{t('overview.objectiveCommandEmptyDesc')}</p>
       </div>
     );
   }
