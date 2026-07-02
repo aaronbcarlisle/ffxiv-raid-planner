@@ -27,8 +27,12 @@ export function WeekGroupHeader({ week, isCurrent, range, count }: WeekGroupHead
     <div className="flex items-center justify-between px-4 py-2">
       <div className="flex items-center gap-2">
         <span
+          /* text-accent-hover (not text-accent): the default accent (#0c7d71) only clears AA
+             on solid surface-base/card backgrounds, not on the bg-accent/15 tint composited
+             over them (#dbebea ≈ 4.07:1 in light theme, measured via the contrast harness).
+             accent-hover (#0a6b60) is darker and clears AA on the tinted pill with margin. */
           className={`font-display text-xs font-extrabold rounded-full px-2.5 py-0.5 ${
-            isCurrent ? 'bg-accent/15 text-accent' : 'bg-surface-elevated text-text-secondary'
+            isCurrent ? 'bg-accent/15 text-accent-hover' : 'bg-surface-elevated text-text-secondary'
           }`}
         >
           {`WEEK ${week}`}

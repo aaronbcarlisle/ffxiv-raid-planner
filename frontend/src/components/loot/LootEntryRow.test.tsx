@@ -220,7 +220,7 @@ describe('WeekGroupHeader', () => {
       />
     );
     const pill = screen.getByText('WEEK 2');
-    expect(pill).toHaveClass('bg-accent/15', 'text-accent');
+    expect(pill).toHaveClass('bg-accent/15', 'text-accent-hover');
     expect(screen.getByText(/Jun 24.*Jun 30/)).toBeInTheDocument();
     expect(screen.getByText('5 drops')).toBeInTheDocument();
   });

@@ -100,7 +100,7 @@ export function FloorCard({
 
   return (
     <div className="overflow-hidden rounded-lg border border-border-default bg-surface-card">
-      <div className="flex items-center gap-3 border-b border-border-default bg-surface-raised px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-border-default bg-surface-base px-4 py-3">
         <Tag variant="label" tone="muted">{floorName}</Tag>
         <span className="font-display text-sm font-bold">Floor {floorNumber}</span>
         <span className="text-xs text-text-tertiary">

@@ -104,7 +104,7 @@ describe('LootHistoryTable', () => {
   it('marks the current-week header with the accent pill', () => {
     const lootLog = [makeLootEntry({ id: 1, weekNumber: 2 }), makeLootEntry({ id: 2, weekNumber: 1 })];
     renderTable({ lootLog, currentWeek: 2 });
-    expect(screen.getByText('WEEK 2')).toHaveClass('bg-accent/15', 'text-accent');
+    expect(screen.getByText('WEEK 2')).toHaveClass('bg-accent/15', 'text-accent-hover');
     expect(screen.getByText('WEEK 1')).toHaveClass('bg-surface-elevated', 'text-text-secondary');
   });
 

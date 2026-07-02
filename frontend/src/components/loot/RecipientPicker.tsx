@@ -460,8 +460,11 @@ export function RecipientPicker({
                   )}
                   <span
                     aria-hidden
-                    className="grid h-[30px] w-[30px] flex-none place-items-center rounded-full text-xs font-bold text-white"
-                    style={{ backgroundColor: `var(--color-role-${role}, var(--color-text-muted))` }}
+                    /* Role color is a border ring (not a fill) — mirrors ui/PlayerIdentity's fallback-avatar
+                       treatment. A filled circle + white text fails AA for several role colors
+                       (e.g. healer/ranged/caster); see PriorityRow.tsx's identical fix. */
+                    className="grid h-[30px] w-[30px] flex-none place-items-center rounded-full border-2 bg-surface-interactive text-xs font-bold text-text-secondary"
+                    style={{ borderColor: `var(--color-role-${role}, var(--color-text-muted))` }}
                   >
                     {initials(entry.player.name)}
                   </span>

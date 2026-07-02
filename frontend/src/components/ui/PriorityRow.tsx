@@ -43,19 +43,22 @@ export function PriorityRow({ entries, maxVisible = 3, emptyLabel = 'no one need
             key={entry.playerId}
             data-top={top ? 'true' : undefined}
             className={`flex flex-none items-center gap-1.5 rounded-full border py-0.5 pl-1 pr-2.5 ${
-              top ? 'border-accent bg-accent/15' : 'border-border-subtle bg-surface-interactive'
+              top ? 'border-accent bg-accent/5' : 'border-border-subtle bg-surface-interactive'
             }`}
           >
             <span
               aria-hidden
-              /* design-system-ignore: 10px initials inside a 22px avatar glyph — decorative, name is adjacent */
-              className="grid h-[22px] w-[22px] flex-none place-items-center rounded-full text-[10px] font-bold text-white"
-              style={{ backgroundColor: `var(--color-role-${entry.role}, var(--color-text-muted))` }}
+              /* design-system-ignore: 10px initials inside a 22px avatar glyph — decorative, name is adjacent.
+                 Role color is a border ring (not a fill) so the white-on-pastel contrast failure that a
+                 filled circle would hit for several role colors (e.g. healer/ranged/caster) never applies —
+                 mirrors ui/PlayerIdentity's fallback-avatar treatment (role-colored ring + neutral fill/text). */
+              className="grid h-[22px] w-[22px] flex-none place-items-center rounded-full border-2 bg-surface-interactive text-[10px] font-bold text-text-secondary"
+              style={{ borderColor: `var(--color-role-${entry.role}, var(--color-text-muted))` }}
             >
               {initials(entry.name)}
             </span>
             <span className="truncate text-xs font-semibold text-text-primary">{entry.name}</span>
-            <span className={`font-display text-xs font-extrabold ${top ? 'text-accent' : 'text-text-muted'}`}>
+            <span className={`font-display text-xs font-extrabold ${top ? 'text-accent' : 'text-text-secondary'}`}>
               #{entry.rank}
             </span>
           </li>
