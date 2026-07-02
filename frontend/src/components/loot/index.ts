@@ -1,6 +1,5 @@
 export { FilterBar, ROLE_FILTERS, type RoleFilter } from './FilterBar';
 export { FloorSelector } from './FloorSelector';
-export { LootAdjustmentsModal, type AdjustmentUpdate, type LootAdjustmentsModalProps } from './LootAdjustmentsModal';
 export { LootPriorityPanel } from './LootPriorityPanel';
 export { QuickLogDropModal } from './QuickLogDropModal';
 export { QuickLogWeaponModal } from './QuickLogWeaponModal';

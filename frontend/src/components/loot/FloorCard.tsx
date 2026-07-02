@@ -109,7 +109,7 @@ export function FloorCard({
         <div className="ml-auto flex items-center gap-2">
           {collapsed && <LinkText onClick={() => setExpanded(true)}>Show</LinkText>}
           {status.pendingCount > 0 ? (
-            <Tag variant="label" tone="muted">{status.pendingCount} items pending</Tag>
+            <Tag variant="label" tone="muted">{status.pendingCount} item{status.pendingCount === 1 ? '' : 's'} pending</Tag>
           ) : (
             <Tag variant="label" tone="success">{status.loggedCount} logged</Tag>
           )}
