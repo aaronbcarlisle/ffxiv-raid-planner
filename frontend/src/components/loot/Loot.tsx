@@ -1,17 +1,21 @@
 /**
- * Loot — v2 Loot · Priority screen assembly (F6d, spec §2 / §5.2).
+ * Loot — v2 Loot screen assembly (F6d, spec §2 / §5.2 / §5.9).
  *
  * The ring-0 composition Task 10 passes as GroupViewContent's `gear` slot
  * (mirroring F6b `Home` / F6c `Roster`'s prop contract). It owns the screen's
- * modal + week-scope state and sources every context value the floor cards need
- * directly from stores + hooks — the same derivations legacy `GroupViewContent`
- * feeds `LootPriorityPanel`, re-expressed for the v2 floor grid.
+ * modal + week-scope state and the URL-backed Priority⇄History view axis, and
+ * sources every context value both views need directly from stores + hooks —
+ * the same derivations legacy `GroupViewContent` feeds, re-expressed for the v2
+ * floor grid (Priority) and the transparent record (History).
  *
  * Boundary discipline (ring0): composes `loot/` siblings (LootToolbar /
  * WeekScopeControl / FloorCard / RecipientPicker / WeaponPriorityBridge /
- * LootAdjustmentsModal / LogWeekWizard / QuickLogMaterialModal) + the shell
- * `PageHeader`, and reads STORES/HOOKS directly (useWeekClock, useLootTrackingStore,
- * useTierStore, useSettingsPanelStore). It never imports a legacy body.
+ * LootAdjustmentsModal / LogWeekWizard / QuickLogMaterialModal / LootResetMenu /
+ * FairnessSummary / BookLedgerCard / LootHistoryTable / HistoryFilters) + shared
+ * `ui/` (SegmentedToggle) + the reused legacy confirm modals (DeleteLootConfirmModal,
+ * ResetConfirmModal, ConfirmModal — read-only reuse, never edited), and reads
+ * STORES/HOOKS directly (useWeekClock, useUrlTabState, useLootTrackingStore,
+ * useTierStore, useAuthStore, useViewAsStore, useSettingsPanelStore).
  *
  * Deliberate decisions (documented to pre-empt review false-positives):
  *   - `scopedWeek` is a LOCAL view override (null → follow the clock's current
@@ -27,7 +31,19 @@
  *     effect also covers under `pageMode`; v2 must not depend on legacy chrome
  *     ordering, and the fetches are idempotent.
  *   - `onNavigate` is part of the slot contract (Task 10, mirroring Roster/Home)
- *     but the Priority view has no cross-tab affordance yet — reserved.
+ *     but neither view has a cross-tab affordance yet — reserved.
+ *   - Only `lview` (Priority⇄History) is URL-backed; the History filters are
+ *     session-local `useState` (matches legacy filter locality). A fresh
+ *     deep-link therefore always shows everything (filters default to all/all/all),
+ *     so an `?entry=` deep-link can never be hidden by a filter on first mount;
+ *     only a mid-session filter change can hide a row, which is acceptable.
+ *   - The book-row highlight FLASH (legacy `highlightedBookPlayerId`) is dropped
+ *     in v2 — BookLedgerCard anchors rows (`id="book-row-…"`) but no v2 navigation
+ *     produces a book highlight yet.
+ *   - Material delete + the Reset "loot"/"data" paths always revert gear
+ *     (`{ revertGear: true }`), matching the legacy reset semantics
+ *     (`SectionedLogView.tsx:450-511`); the History reset reproduces exactly the
+ *     six configs the LootResetMenu emits (week/all × loot/books/data).
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -42,19 +58,36 @@ import { RecipientPicker, type DropItemContext } from './RecipientPicker';
 import { LootAdjustmentsModal, type AdjustmentUpdate } from './LootAdjustmentsModal';
 import { LogWeekWizard } from './LogWeekWizard';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
+import { LootResetMenu } from './LootResetMenu';
+import { FairnessSummary } from './FairnessSummary';
+import { BookLedgerCard } from './BookLedgerCard';
+import { LootHistoryTable } from './LootHistoryTable';
+import { HistoryFilters } from './HistoryFilters';
+import type { HistoryItem } from './LootEntryRow';
+
+import { SegmentedToggle } from '../ui/SegmentedToggle';
+import { DeleteLootConfirmModal } from '../history/DeleteLootConfirmModal';
+import { ResetConfirmModal, type ResetConfig } from '../ui/ResetConfirmModal';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 import { useWeekClock } from '../../hooks/useWeekClock';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useTierStore } from '../../stores/tierStore';
+import { useAuthStore } from '../../stores/authStore';
+import { useViewAsStore } from '../../stores/viewAsStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { toast } from '../../stores/toastStore';
 
+import { deleteLootAndRevertGear } from '../../utils/lootCoordination';
+import { deleteMaterialAndRevertGear } from '../../utils/materialCoordination';
 import { getTierById } from '../../gamedata/raid-tiers';
 import { getEffectivePriorityMode } from '../../utils/priority';
+import { DEFAULT_HISTORY_FILTERS, historyWeeks, buildHistoryItems } from '../../utils/historyItems';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
-import { type FloorNumber } from '../../gamedata/loot-tables';
+import { type FloorNumber, UPGRADE_MATERIAL_DISPLAY_NAMES } from '../../gamedata/loot-tables';
 import type {
-  PageMode, SnapshotPlayer, StaticGroup, TierSnapshot, MaterialType, GearSlot,
+  PageMode, SnapshotPlayer, StaticGroup, TierSnapshot, MaterialType, GearSlot, LootLogEntry,
 } from '../../types';
 
 /** Stable empty fallback so a missing/empty tier doesn't churn memo deps. */
@@ -80,10 +113,17 @@ export interface LootProps {
   onNavigate: (tab: PageMode, extra?: Record<string, string>) => void;
 }
 
-// Discriminated so `mode: 'assign'` always carries its `item` — mirrors the
-// RecipientPickerProps union (PR review finding: assign-mode item required).
-type PickerState = { mode: 'assign'; item: DropItemContext } | { mode: 'log' } | null;
+// Discriminated so `mode: 'assign'` always carries its `item` and `mode: 'edit'`
+// its `editEntry` — mirrors the RecipientPickerProps union (PR review finding:
+// assign-mode item required; edit-mode editEntry required).
+type PickerState =
+  | { mode: 'assign'; item: DropItemContext }
+  | { mode: 'log' }
+  | { mode: 'edit'; editEntry: LootLogEntry }
+  | null;
 type MaterialState = { material: MaterialType; floorName: string; suggested: SnapshotPlayer } | null;
+
+const HISTORY_SUBTITLE = 'Every drop, who received it, and why — the transparent record';
 
 export function Loot({ group, tier, canEdit }: LootProps) {
   // ── Derivations (mirror GroupViewContent; safe with a null tier) ──
@@ -109,16 +149,28 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const fetchTier = useTierStore((s) => s.fetchTier);
   const updatePlayer = useTierStore((s) => s.updatePlayer);
 
+  // ── Effective viewer identity (BookLedgerCard's member-own-row exception) —
+  // sourced exactly as Roster.tsx does. ──
+  const user = useAuthStore((s) => s.user);
+  const viewAsUser = useViewAsStore((s) => s.viewAsUser);
+  const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
+
   // ── Shared week clock + local scope override ──
   const clock = useWeekClock(group.id, tier?.tierId);
   const [scopedWeekOverride, setScopedWeekOverride] = useState<number | null>(null);
   const scopedWeek = scopedWeekOverride ?? clock.currentWeek;
+
+  // ── Priority ⇄ History view (URL-backed) + session-local History filters ──
+  const [lview, setLview] = useUrlTabState('lview', ['priority', 'history'] as const, 'priority');
+  const [filters, setFilters] = useState(DEFAULT_HISTORY_FILTERS);
 
   // ── Modal state (each surface owns an independent slot) ──
   const [pickerState, setPickerState] = useState<PickerState>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [materialState, setMaterialState] = useState<MaterialState>(null);
   const [adjustmentsOpen, setAdjustmentsOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<HistoryItem | null>(null);
+  const [resetConfig, setResetConfig] = useState<ResetConfig | null>(null);
 
   // Mount fetch — v2 must not depend on legacy chrome's own loot effect ordering.
   const groupId = group.id;
@@ -164,6 +216,74 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     useSettingsPanelStore.getState().open({ tab: 'priority' });
   }, []);
 
+  // ── History handlers (edit / copy-link / delete / reset) ──
+  const openEdit = useCallback((entry: LootLogEntry) => {
+    setPickerState({ mode: 'edit', editEntry: entry });
+  }, []);
+
+  const copyLink = useCallback((item: HistoryItem) => {
+    // v2 deep-link: keep legacy's `entry`/`entryType` names (LootHistoryTable's
+    // highlight effect reads them) and add v2's own routing params.
+    const base = `${window.location.origin}${window.location.pathname}?shell=v2&tab=gear&lview=history&entry=${item.entry.id}`;
+    const url = item.kind === 'material' ? `${base}&entryType=material` : base;
+    void navigator.clipboard.writeText(url);
+    toast.success('Link copied');
+  }, []);
+
+  const requestDelete = useCallback((item: HistoryItem) => {
+    setDeleteTarget(item);
+  }, []);
+
+  const playerNameFor = useCallback(
+    (playerId: string, fallback: string) => players.find((p) => p.id === playerId)?.name ?? fallback,
+    [players],
+  );
+
+  // Reproduces the legacy reset semantics (SectionedLogView.tsx:450-511) for the
+  // six configs LootResetMenu emits (week/all × loot/books/data). Loot/data →
+  // filter the logs by week (or all) and loop the coordination deletes with
+  // `{ revertGear: true }`; books/data → clearWeekPageLedger / clearAllPageLedger.
+  const groupIdSafe = group.id;
+  const tierIdSafe = tier?.tierId;
+  const handleResetConfirm = useCallback(async () => {
+    if (!resetConfig || !tierIdSafe) return;
+    const { scope, target, week } = resetConfig;
+    const { clearAllPageLedger, clearWeekPageLedger } = useLootTrackingStore.getState();
+    try {
+      const shouldResetLoot = target === 'loot' || target === 'data';
+      const shouldResetBooks = target === 'books' || target === 'data';
+
+      if (shouldResetLoot) {
+        // Read fresh from the store at confirm-time (legacy parity).
+        const allLoot = useLootTrackingStore.getState().lootLog;
+        const allMaterial = useLootTrackingStore.getState().materialLog;
+        const lootEntries =
+          scope === 'week' && week != null ? allLoot.filter((e) => e.weekNumber === week) : allLoot;
+        const materialEntries =
+          scope === 'week' && week != null ? allMaterial.filter((e) => e.weekNumber === week) : allMaterial;
+        for (const entry of lootEntries) {
+          await deleteLootAndRevertGear(groupIdSafe, tierIdSafe, entry.id, entry, { revertGear: true });
+        }
+        for (const entry of materialEntries) {
+          await deleteMaterialAndRevertGear(groupIdSafe, tierIdSafe, entry.id, entry, { revertGear: true });
+        }
+      }
+
+      if (shouldResetBooks) {
+        if (scope === 'week' && week != null) await clearWeekPageLedger(groupIdSafe, tierIdSafe, week);
+        else await clearAllPageLedger(groupIdSafe, tierIdSafe);
+      }
+
+      refresh();
+      await fetchPageLedger(groupIdSafe, tierIdSafe);
+      toast.success(`Reset ${scope === 'week' ? `Week ${week}` : 'all'} ${target} complete`);
+    } catch {
+      toast.error('Reset failed');
+    } finally {
+      setResetConfig(null);
+    }
+  }, [resetConfig, groupIdSafe, tierIdSafe, refresh, fetchPageLedger]);
+
   const subtitle = `Who's up next, and the record of what's dropped · fairness rules: ${MODE_LABELS[getEffectivePriorityMode(settings)]}`;
 
   // Empty-tier shell parity — legacy gates the loot region on a current tier.
@@ -189,18 +309,44 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       <PageHeader
         icon={<Shield size={14} className="text-accent" />}
         title="Loot"
-        subtitle={subtitle}
+        subtitle={lview === 'history' ? HISTORY_SUBTITLE : subtitle}
       />
 
       <div className="mb-5">
         <LootToolbar
-          weekControl={
-            <WeekScopeControl
-              clock={clock}
-              scopedWeek={scopedWeek}
-              onScopedWeekChange={setScopedWeekOverride}
-              canEdit={canEdit}
+          viewToggle={
+            <SegmentedToggle
+              size="sm"
+              ariaLabel="Loot view"
+              value={lview}
+              onChange={setLview}
+              options={[
+                { value: 'priority', label: 'Priority' },
+                { value: 'history', label: 'History' },
+              ]}
             />
+          }
+          weekControl={
+            lview === 'history' ? (
+              <HistoryFilters
+                filters={filters}
+                onChange={setFilters}
+                weeks={historyWeeks(buildHistoryItems(lootLog, materialLog))}
+                players={players.filter((p) => p.configured)}
+              />
+            ) : (
+              <WeekScopeControl
+                clock={clock}
+                scopedWeek={scopedWeek}
+                onScopedWeekChange={setScopedWeekOverride}
+                canEdit={canEdit}
+              />
+            )
+          }
+          resetMenu={
+            lview === 'history' && canEdit ? (
+              <LootResetMenu week={clock.currentWeek} onSelect={setResetConfig} />
+            ) : undefined
           }
           canEdit={canEdit}
           onLogDrop={() => setPickerState({ mode: 'log' })}
@@ -210,46 +356,82 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         />
       </div>
 
-      <div className="grid gap-3.5">
-        {([4, 3, 2, 1] as FloorNumber[]).map((n) => (
-          <FloorCard
-            key={n}
-            floorNumber={n}
-            floorName={floors[n - 1] ?? `Floor ${n}`}
+      {lview === 'history' ? (
+        <div className="grid gap-3.5">
+          <FairnessSummary
             players={mainRosterPlayers}
             settings={settings}
             lootLog={lootLog}
             materialLog={materialLog}
             pageLedger={pageLedger}
-            scopedWeek={scopedWeek}
+            currentWeek={clock.currentWeek}
+            floors={floors}
+          />
+          <BookLedgerCard
+            groupId={group.id}
+            tierId={tier.tierId}
+            players={players}
+            floors={floors}
             currentWeek={clock.currentWeek}
             canEdit={canEdit}
-            onAssignGear={(item: { slot: GearSlot | 'ring'; label: string }) =>
-              setPickerState({
-                mode: 'assign',
-                item: { ...item, floorName: floors[n - 1] ?? `Floor ${n}`, floorNumber: n },
-              })
-            }
-            onAssignMaterial={(material, suggested) =>
-              setMaterialState({ material, floorName: floors[n - 1] ?? `Floor ${n}`, suggested })
-            }
-            footer={
-              n === 4 ? (
-                <WeaponPriorityBridge
-                  players={mainRosterPlayers}
-                  settings={settings}
-                  groupId={group.id}
-                  tierId={tier.tierId}
-                  floors={floors}
-                  maxWeek={clock.maxWeek}
-                  canEdit={canEdit}
-                  onLogSuccess={refresh}
-                />
-              ) : undefined
-            }
+            effectiveUserId={effectiveUserId}
           />
-        ))}
-      </div>
+          <LootHistoryTable
+            lootLog={lootLog}
+            materialLog={materialLog}
+            players={players}
+            floors={floors}
+            filters={filters}
+            currentWeek={clock.currentWeek}
+            rangeOfWeek={clock.rangeOfWeek}
+            canEdit={canEdit}
+            onEdit={openEdit}
+            onCopyLink={copyLink}
+            onDelete={requestDelete}
+          />
+        </div>
+      ) : (
+        <div className="grid gap-3.5">
+          {([4, 3, 2, 1] as FloorNumber[]).map((n) => (
+            <FloorCard
+              key={n}
+              floorNumber={n}
+              floorName={floors[n - 1] ?? `Floor ${n}`}
+              players={mainRosterPlayers}
+              settings={settings}
+              lootLog={lootLog}
+              materialLog={materialLog}
+              pageLedger={pageLedger}
+              scopedWeek={scopedWeek}
+              currentWeek={clock.currentWeek}
+              canEdit={canEdit}
+              onAssignGear={(item: { slot: GearSlot | 'ring'; label: string }) =>
+                setPickerState({
+                  mode: 'assign',
+                  item: { ...item, floorName: floors[n - 1] ?? `Floor ${n}`, floorNumber: n },
+                })
+              }
+              onAssignMaterial={(material, suggested) =>
+                setMaterialState({ material, floorName: floors[n - 1] ?? `Floor ${n}`, suggested })
+              }
+              footer={
+                n === 4 ? (
+                  <WeaponPriorityBridge
+                    players={mainRosterPlayers}
+                    settings={settings}
+                    groupId={group.id}
+                    tierId={tier.tierId}
+                    floors={floors}
+                    maxWeek={clock.maxWeek}
+                    canEdit={canEdit}
+                    onLogSuccess={refresh}
+                  />
+                ) : undefined
+              }
+            />
+          ))}
+        </div>
+      )}
 
       {pickerState?.mode === 'assign' ? (
         <RecipientPicker
@@ -257,6 +439,14 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           onClose={() => setPickerState(null)}
           mode="assign"
           item={pickerState.item}
+          {...pickerCommonProps}
+        />
+      ) : pickerState?.mode === 'edit' ? (
+        <RecipientPicker
+          isOpen
+          onClose={() => setPickerState(null)}
+          mode="edit"
+          editEntry={pickerState.editEntry}
           {...pickerCommonProps}
         />
       ) : (
@@ -305,6 +495,46 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         players={mainRosterPlayers}
         onSave={handleSaveAdjustments}
       />
+
+      {/* Delete — loot rows reuse the legacy DeleteLootConfirmModal (gear-revert
+          checkbox); material rows use the lightweight ConfirmModal (legacy
+          reset-path always reverts materials, so revertGear is fixed true). */}
+      {deleteTarget?.kind === 'loot' && (
+        <DeleteLootConfirmModal
+          isOpen
+          onClose={() => setDeleteTarget(null)}
+          entry={deleteTarget.entry}
+          playerName={playerNameFor(deleteTarget.entry.recipientPlayerId, deleteTarget.entry.recipientPlayerName)}
+          onConfirm={async (revertGear) => {
+            await deleteLootAndRevertGear(group.id, tier.tierId, deleteTarget.entry.id, deleteTarget.entry, { revertGear });
+            refresh();
+            setDeleteTarget(null);
+          }}
+        />
+      )}
+      {deleteTarget?.kind === 'material' && (
+        <ConfirmModal
+          isOpen
+          variant="danger"
+          title="Delete material entry?"
+          message={`Delete ${UPGRADE_MATERIAL_DISPLAY_NAMES[deleteTarget.entry.materialType]} for ${playerNameFor(deleteTarget.entry.recipientPlayerId, deleteTarget.entry.recipientPlayerName)}? This cannot be undone.`}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            await deleteMaterialAndRevertGear(group.id, tier.tierId, deleteTarget.entry.id, deleteTarget.entry, { revertGear: true });
+            refresh();
+            setDeleteTarget(null);
+          }}
+        />
+      )}
+
+      {resetConfig && (
+        <ResetConfirmModal
+          isOpen
+          config={resetConfig}
+          onConfirm={handleResetConfirm}
+          onCancel={() => setResetConfig(null)}
+        />
+      )}
     </div>
   );
 }
