@@ -62,7 +62,7 @@ export function HistoryFilters({ filters, onChange, weeks, players }: HistoryFil
   const playerLabel =
     filters.playerId === 'all'
       ? 'All players'
-      : configuredPlayers.find((p) => p.id === filters.playerId)?.name ?? 'All players';
+      : configuredPlayers.find((p) => p.id === filters.playerId)?.name ?? 'Unknown player';
   const sourceLabel = SOURCE_LABELS[filters.source];
 
   return (

@@ -28,11 +28,6 @@ export interface LootHistoryTableProps {
   onDelete: (item: HistoryItem) => void;
 }
 
-interface DeepLinkHighlight {
-  id: string;
-  type: 'loot' | 'material';
-}
-
 function groupByWeek(items: HistoryItem[]): Array<{ week: number; items: HistoryItem[] }> {
   const order: number[] = [];
   const groups = new Map<number, HistoryItem[]>();
@@ -65,25 +60,29 @@ export function LootHistoryTable({
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Derived (not stored) — the highlight tracks the URL param directly, so
-  // there's nothing to desync. The effect below only owns the side effects:
-  // the scroll-into-view and the 2.5s param-clearing timer.
-  const highlight: DeepLinkHighlight | null = (() => {
-    const entryParam = searchParams.get('entry');
-    if (!entryParam) return null;
-    const entryType: 'loot' | 'material' = searchParams.get('entryType') === 'material' ? 'material' : 'loot';
-    const entryId = parseInt(entryParam, 10);
-    const found =
-      entryType === 'material'
-        ? materialLog.some((e) => e.id === entryId)
-        : lootLog.some((e) => e.id === entryId);
-    return found ? { id: entryParam, type: entryType } : null;
-  })();
+  // there's nothing to desync. Two primitives (not an object) so the effect's
+  // dep array can name them directly — an object identity would either
+  // re-fire every render (new object each time) or need a memo keyed on the
+  // stores, which would re-fire the scroll on unrelated store refetches.
+  // `null` when the param is absent OR the id isn't found in the *unfiltered*
+  // logs (matches the brief).
+  const entryParam = searchParams.get('entry');
+  const entryType: 'loot' | 'material' = searchParams.get('entryType') === 'material' ? 'material' : 'loot';
+  const parsedEntryId = entryParam ? parseInt(entryParam, 10) : null;
+  const entryFound =
+    parsedEntryId != null &&
+    !Number.isNaN(parsedEntryId) &&
+    (entryType === 'material'
+      ? materialLog.some((e) => e.id === parsedEntryId)
+      : lootLog.some((e) => e.id === parsedEntryId));
+  const highlightId: number | null = entryFound ? parsedEntryId : null;
+  const highlightType: 'loot' | 'material' | null = entryFound ? entryType : null;
 
   useEffect(() => {
-    if (!highlight) return;
+    if (highlightId == null || highlightType == null) return;
 
     const elementId =
-      highlight.type === 'material' ? `material-entry-${highlight.id}` : `loot-entry-${highlight.id}`;
+      highlightType === 'material' ? `material-entry-${highlightId}` : `loot-entry-${highlightId}`;
     setTimeout(() => {
       document.getElementById(elementId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
@@ -98,7 +97,7 @@ export function LootHistoryTable({
     }, 2500);
 
     return () => clearTimeout(clearTimer);
-  }, [highlight?.id, highlight?.type, setSearchParams]);
+  }, [highlightId, highlightType, setSearchParams]);
 
   const playersById = new Map(players.map((p) => [p.id, p]));
   const allItems = buildHistoryItems(lootLog, materialLog);
@@ -124,7 +123,7 @@ export function LootHistoryTable({
             count={items.length}
           />
           {items.map((item) => {
-            const isHighlighted = highlight?.type === item.kind && highlight.id === String(item.entry.id);
+            const isHighlighted = highlightType === item.kind && highlightId === item.entry.id;
             return (
               <LootEntryRow
                 key={`${item.kind}-${item.entry.id}`}

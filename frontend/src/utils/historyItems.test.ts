@@ -103,7 +103,7 @@ describe('filterHistoryItems', () => {
 
   it('source=tome picks method=tome and method=purchase loot', () => {
     const result = filterHistoryItems(items, { ...DEFAULT_HISTORY_FILTERS, source: 'tome' });
-    expect(result.map((i) => i.entry.id).sort()).toEqual([2, 3]);
+    expect(result.map((i) => i.entry.id).sort((a, b) => a - b)).toEqual([2, 3]);
   });
 
   it('source=book picks only method=book loot', () => {
@@ -120,12 +120,12 @@ describe('filterHistoryItems', () => {
 
   it('week filter narrows to the matching weekNumber', () => {
     const result = filterHistoryItems(items, { ...DEFAULT_HISTORY_FILTERS, week: 2 });
-    expect(result.map((i) => i.entry.id).sort()).toEqual([3, 4, 5]);
+    expect(result.map((i) => i.entry.id).sort((a, b) => a - b)).toEqual([3, 4, 5]);
   });
 
   it('player filter narrows to the matching recipientPlayerId', () => {
     const result = filterHistoryItems(items, { ...DEFAULT_HISTORY_FILTERS, playerId: 'p2' });
-    expect(result.map((i) => i.entry.id).sort()).toEqual([2, 4]);
+    expect(result.map((i) => i.entry.id).sort((a, b) => a - b)).toEqual([2, 4]);
   });
 
   it('week + player + source compose (AND)', () => {
