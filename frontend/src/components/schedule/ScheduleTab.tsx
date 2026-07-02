@@ -326,7 +326,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       enableMissingRsvpReminder: enableMissingRsvp,
     });
     setWebhookUrl('');
-    setIntegrationMessage('Webhook saved.');
+    setIntegrationMessage(t('schedule.integrationWebhookSaved'));
   };
 
   const handleConnectDiscord = async () => {
@@ -336,7 +336,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       setDiscordClaimCode(claim.claimCode);
       setDiscordClaimExpiry(claim.expiresAt);
     } catch {
-      setIntegrationMessage('Failed to start Discord connection. Please try again.');
+      setIntegrationMessage(t('schedule.integrationConnectStartFailed'));
     } finally {
       setDiscordClaimLoading(false);
     }
@@ -350,9 +350,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
         setDiscordClaimCode(null);
         setDiscordClaimExpiry(null);
         await fetchSettings(groupId);
-        setIntegrationMessage('Discord server connected successfully!');
+        setIntegrationMessage(t('schedule.integrationConnected'));
       } else {
-        setIntegrationMessage('Not linked yet — run /xrp link <code> in your Discord server first.');
+        setIntegrationMessage(t('schedule.integrationLinkPending'));
       }
     } finally {
       setDiscordCheckLoading(false);
@@ -364,9 +364,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       await disconnectDiscordLink(groupId);
       setDiscordClaimCode(null);
       setDiscordClaimExpiry(null);
-      setIntegrationMessage('Discord server disconnected.');
+      setIntegrationMessage(t('schedule.integrationDisconnected'));
     } catch {
-      setIntegrationMessage('Failed to disconnect. Please try again.');
+      setIntegrationMessage(t('schedule.integrationDisconnectFailed'));
     }
   };
 
@@ -376,7 +376,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     try {
       if (sessions.length === 0) {
         const actions = await syncAllDiscordMirrors(groupId);
-        setIntegrationMessage(`Discord sync: ${actions.join('; ')}`);
+        setIntegrationMessage(t('schedule.integrationSyncResult', { summary: actions.join('; ') }));
         return;
       }
       const allLogs = await syncAllDiscordMirrors(groupId);
@@ -398,12 +398,17 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
         failed.length ? `${failed.length} failed` : '',
       ].filter(Boolean).join(', ');
       if (failed.length > 0) {
-        setIntegrationMessage(`Discord sync: ${parts || 'done'}. Errors: ${failed.slice(0, 2).join('; ')}`);
+        setIntegrationMessage(t('schedule.integrationSyncErrors', {
+          summary: parts || t('schedule.integrationSyncDone'),
+          errors: failed.slice(0, 2).join('; '),
+        }));
       } else {
-        setIntegrationMessage(`Discord sync complete — ${parts || `${allLogs.length} action(s)`}.`);
+        setIntegrationMessage(t('schedule.integrationSyncComplete', {
+          summary: parts || t('schedule.integrationSyncActions', { count: allLogs.length }),
+        }));
       }
     } catch {
-      setIntegrationMessage('Discord sync failed. Check bot token and guild ID.');
+      setIntegrationMessage(t('schedule.integrationSyncFailed'));
     } finally {
       setSyncingDiscord(false);
     }
@@ -412,7 +417,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   const handleCopyCalendarUrl = async () => {
     if (!settings?.calendarUrl) return;
     await navigator.clipboard.writeText(settings.calendarUrl);
-    setIntegrationMessage('Copied!');
+    setIntegrationMessage(t('common.copied'));
   };
 
   const nextSession = sessions[0];
@@ -433,13 +438,13 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     {
       id: 'availability',
       label: t('schedule.tabAvailability'),
-      badge: `${trackedMemberCount} tracked`,
+      badge: t('schedule.trackedCount', { count: trackedMemberCount }),
       icon: Sparkles,
     },
     {
       id: 'integrations',
       label: t('schedule.tabIntegrations'),
-      badge: canManage ? 'Setup' : 'View',
+      badge: canManage ? t('common.configure') : t('common.view'),
       icon: Link2,
     },
   ];
@@ -774,7 +779,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                         type="button"
                         size="sm"
                         variant="secondary"
-                        onClick={() => void sendTestReminder(groupId).then(() => setIntegrationMessage('Test reminder sent!'))}
+                        onClick={() => void sendTestReminder(groupId).then(() => setIntegrationMessage(t('schedule.testReminderSent')))}
                         disabled={!settings?.webhookConfigured && !webhookUrl}
                       >
                         {t('schedule.discordSendTest')}
@@ -788,11 +793,11 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                           if (postingPreview) return;
                           setPostingPreview(true);
                           void postSessionPreview(groupId)
-                            .then(() => setIntegrationMessage('Session posted to Discord.'))
+                            .then(() => setIntegrationMessage(t('schedule.sessionPostedToDiscord')))
                             .finally(() => setPostingPreview(false));
                         }}
                         disabled={!settings?.webhookConfigured || sessions.length === 0 || postingPreview}
-                        title={sessions.length === 0 ? 'No upcoming sessions to post' : 'Post the next session to Discord'}
+                        title={sessions.length === 0 ? t('schedule.noUpcomingSessionsToPost') : t('schedule.postNextSessionToDiscord')}
                       >
                         {postingPreview ? t('schedule.discordPosting') : t('schedule.discordPostSession')}
                       </Button>
@@ -1017,9 +1022,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                               size="sm"
                               variant="ghost"
                               leftIcon={<Copy className="h-3 w-3" />}
-                              onClick={() => void navigator.clipboard.writeText(discordClaimCode ?? '').then(() => setIntegrationMessage('Copied!'))}
+                              onClick={() => void navigator.clipboard.writeText(discordClaimCode ?? '').then(() => setIntegrationMessage(t('common.copied')))}
                             >
-                              Copy
+                              {t('common.copy')}
                             </Button>
                           </div>
                           {discordClaimExpiry && (
@@ -1165,7 +1170,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                     onClick={() => void handleCopyCalendarUrl()}
                     disabled={!settings?.calendarUrl}
                   >
-                    {integrationMessage === 'Copied!' ? t('schedule.calendarCopied') : t('schedule.calendarCopyUrl')}
+                    {integrationMessage === t('common.copied') ? t('schedule.calendarCopied') : t('schedule.calendarCopyUrl')}
                   </Button>
                   {settings?.calendarUrl && (
                     <Button

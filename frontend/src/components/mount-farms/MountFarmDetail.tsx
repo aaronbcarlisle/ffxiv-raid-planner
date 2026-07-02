@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, ShoppingCart, X, Plug, PenLine, HelpCircle } from 'lucide-react';
 import type { MountFarmTrial } from '../../gamedata';
-import { getCurrencyLabelPlural, getExchangeSummary, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
+import { getCurrencyLabelPlural, getExchangeSummary, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
 import type { TrialSummary, MemberProgress, DataSource } from '../../stores/mountFarmStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { Checkbox } from '../ui/Checkbox';
@@ -10,6 +10,10 @@ import { NumberInput } from '../ui/NumberInput';
 import { Tooltip } from '../primitives/Tooltip';
 import { toast } from '../../stores/toastStore';
 import { FarmCurrencyProgress } from './FarmProgress';
+import {
+  getLocalizedTrialRewardName,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 interface MountFarmDetailProps {
   trial: MountFarmTrial;
@@ -164,9 +168,10 @@ function MemberRow({
   member, trial, canEdit, isCurrentUser, canBuyMount, hasTotemTracking, isSaving,
   onToggleMount, onToggleWants, onTotemChange,
 }: MemberRowProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const displayTotem = member.totemCount;
   const rewardNoun = getRewardNoun(trial);
+  const localizedRewardName = getLocalizedTrialRewardName(trial, resolveUiLocale(i18n.resolvedLanguage));
 
   // Determine the "effective source" to show one badge
   const effectiveSource = member.ownershipSource !== 'unknown' ? member.ownershipSource : member.totemSource;
@@ -246,7 +251,7 @@ function MemberRow({
             </span>
           </Tooltip>
         ) : canBuyMount ? (
-          <Tooltip content={t('mountFarm.enoughForReward', { count: member.totemCount, currency: getCurrencyLabelPlural(trial), reward: getRewardLabel(trial) })}>
+          <Tooltip content={t('mountFarm.enoughForReward', { count: member.totemCount, currency: getCurrencyLabelPlural(trial), reward: localizedRewardName })}>
             <span className="inline-flex items-center gap-1 text-amber-400">
               <ShoppingCart className="w-3.5 h-3.5" /><span className="text-xs">{t('mountFarm.statusReadyShort')}</span>
             </span>

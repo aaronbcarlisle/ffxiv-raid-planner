@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronDown, Lock } from 'lucide-react';
+import { ArrowRight, CalendarClock, ChevronDown, Lock } from 'lucide-react';
 import { XivIcon } from '../ui/XivIcon';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
@@ -16,16 +16,7 @@ import { usePersonalAvailabilityStore } from '../../stores/personalAvailabilityS
 import type { StaticGroupListItem } from '../../types';
 import { getBrowserTimezone } from '../../utils/timezone';
 import { PersonalAvailabilityEditor } from './PersonalAvailabilityEditor';
-
-const DAY_LABELS: Record<string, string> = {
-  MO: 'Mon',
-  TU: 'Tue',
-  WE: 'Wed',
-  TH: 'Thu',
-  FR: 'Fri',
-  SA: 'Sat',
-  SU: 'Sun',
-};
+import { formatDayOfWeekLabel } from '../schedule/availabilityUtils';
 
 interface PlayerAvailabilityTabProps {
   primaryStatic?: StaticGroupListItem | null;
@@ -33,8 +24,9 @@ interface PlayerAvailabilityTabProps {
 }
 
 export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primaryStatic ? [primaryStatic] : [] }: PlayerAvailabilityTabProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { days, fetchPersonalAvailability } = usePersonalAvailabilityStore();
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
 
   useEffect(() => {
     fetchPersonalAvailability();
@@ -63,10 +55,10 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
           <div className="flex flex-wrap gap-2">
             <Badge variant="default" size="sm">{timezone}</Badge>
             <Badge variant={configuredDays.length > 0 ? 'success' : 'warning'} size="sm">
-              {configuredDays.length} day{configuredDays.length !== 1 ? 's' : ''}
+              {t('profile.availability.daysCount', { count: configuredDays.length })}
             </Badge>
             <Badge variant="info" size="sm">
-              {totalSlots / 2} hour{totalSlots === 2 ? '' : 's'}
+              {t('profile.availability.hoursCount', { count: totalSlots / 2 })}
             </Badge>
           </div>
         </div>
@@ -74,7 +66,7 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
         <div className="mt-4 flex flex-wrap gap-1.5">
           {configuredDays.length > 0 ? configuredDays.map((day) => (
             <span key={day.dayOfWeek} className="rounded-full bg-accent/10 px-2 py-1 text-xs font-medium text-accent">
-              {DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek}
+              {formatDayOfWeekLabel(day.dayOfWeek as never, uiLocale)}
             </span>
           )) : (
             <span className="text-sm text-text-tertiary">{t('profile.availability.noTypicalAvailability')}</span>
@@ -84,7 +76,7 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
             <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
-              <XivIcon name="crystal" size={14} />
+              <CalendarClock className="h-3.5 w-3.5" />
               {t('profile.availability.usedByScheduleQuickFill')}
             </div>
             <p className="mt-1 text-xs text-text-tertiary">{t('profile.availability.fillsEmptyThisWeek')}</p>

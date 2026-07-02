@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, Clock, Trash2 } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
@@ -12,9 +13,9 @@ import { getBrowserTimezone } from '../../utils/timezone';
 import { toast } from '../../stores/toastStore';
 import {
   DAYS_OF_WEEK,
-  DAY_LABELS,
   TIME_PRESETS,
   filterSlotsByPreset,
+  formatDayOfWeekLabel,
   formatTimeLabel,
   getAvailabilitySlotKeyForPresetColumn,
   splitAvailabilitySlotKey,
@@ -27,12 +28,14 @@ interface PersonalAvailabilityEditorProps {
 }
 
 export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAvailabilityEditorProps) {
+  const { t, i18n } = useTranslation();
   const {
     days,
     isLoading,
     submitPersonalAvailability,
   } = usePersonalAvailabilityStore();
 
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
   const timezone = getBrowserTimezone();
   const [saving, setSaving] = useState<string | null>(null);
   const [localSlots, setLocalSlots] = useState<Record<string, Set<string>>>({});
@@ -50,6 +53,11 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
   });
 
   const filteredTimeSlots = useMemo(() => filterSlotsByPreset(timePreset), [timePreset]);
+  const presetLabels: Record<TimePreset, string> = useMemo(() => ({
+    prime: t('profile.availability.presetPrime'),
+    evening: t('profile.availability.presetEvening'),
+    full: t('profile.availability.presetFullDay'),
+  }), [t]);
 
   // Initialize local state from store
   useEffect(() => {
@@ -186,10 +194,10 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
       }
       setDirty(new Set());
       onDirtyChange?.(false);
-      toast.success(`Saved availability for ${dirtyDays.length} day${dirtyDays.length !== 1 ? 's' : ''}`);
+      toast.success(t('profile.availability.savedDays', { count: dirtyDays.length }));
       onDone?.();
     } catch {
-      toast.error('Failed to save availability');
+      toast.error(t('profile.availability.saveFailed'));
     } finally {
       setSaving(null);
     }
@@ -198,17 +206,17 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
   const configuredCount = Object.values(localSlots).filter((s) => s.size > 0).length;
 
   if (isLoading && days.length === 0) {
-    return <div className="h-32 flex items-center justify-center text-text-tertiary text-sm">Loading...</div>;
+    return <div className="h-32 flex items-center justify-center text-text-tertiary text-sm">{t('common.loading')}</div>;
   }
 
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-border-default bg-surface-elevated/60 px-4 py-3">
         <h3 className="font-display text-base font-semibold text-text-primary">
-          Set your personal weekly default
+          {t('profile.availability.editorTitle')}
         </h3>
         <p className="mt-1 text-sm text-text-secondary">
-          These hours stay private to you and can be reused when filling static schedules.
+          {t('profile.availability.editorDesc')}
         </p>
       </div>
 
@@ -232,14 +240,14 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
               }}
               className="justify-center"
             >
-              {TIME_PRESETS[preset].label}
+              {presetLabels[preset]}
             </Button>
           ))}
         </div>
       </div>
 
       <p className="text-xs text-text-tertiary">
-        Click or drag to select your usual availability. Use presets to keep the grid focused while your saved slots stay intact.
+        {t('profile.availability.instructions')}
       </p>
 
       {/* Grid */}
@@ -251,9 +259,10 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
                 <th className="sticky left-0 z-10 bg-surface-card w-14 text-xs text-text-tertiary font-medium py-1" />
                 {DAYS_OF_WEEK.map((day) => {
                   const slotCount = getDisplayDaySlotCount(day);
+                  const dayLabel = formatDayOfWeekLabel(day, uiLocale);
                   return (
                 <th key={day} className="text-center px-0.5 py-1 min-w-[40px]">
-                  <div className="text-xs font-medium text-text-secondary">{DAY_LABELS[day]}</div>
+                  <div className="text-xs font-medium text-text-secondary">{dayLabel}</div>
                   {slotCount > 0 && (
                         <div className="flex items-center justify-center gap-0.5 mt-0.5">
                           <Badge variant="info" size="sm">{slotCount}</Badge>
@@ -262,8 +271,8 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
                             type="button"
                             onClick={() => handleClearColumn(day)}
                             className="text-text-tertiary hover:text-status-error transition-colors p-0.5"
-                            title={`Clear ${DAY_LABELS[day]}`}
-                            aria-label={`Clear ${DAY_LABELS[day]} availability`}
+                            title={t('profile.availability.clearDay', { day: dayLabel })}
+                            aria-label={t('profile.availability.clearDayAvailability', { day: dayLabel })}
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>
@@ -278,7 +287,7 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
               {filteredTimeSlots.map((time) => (
                 <tr key={time}>
                   <td className="sticky left-0 z-10 bg-surface-card text-[10px] text-text-tertiary font-mono pr-1 py-0 text-right whitespace-nowrap">
-                    {time.endsWith(':00') ? formatTimeLabel(time) : ''}
+                    {time.endsWith(':00') ? formatTimeLabel(time, uiLocale) : ''}
                   </td>
                   {DAYS_OF_WEEK.map((day) => {
                     const isSelected = isCellSelected(day, time);
@@ -312,17 +321,17 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
       <div className="flex flex-col gap-3 pt-2 border-t border-border-default sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-text-secondary">
           {configuredCount > 0 ? (
-            <span>{configuredCount} day{configuredCount !== 1 ? 's' : ''} configured</span>
+            <span>{t('profile.availability.configuredDays', { count: configuredCount })}</span>
           ) : (
-            <span className="text-text-tertiary">No days configured</span>
+            <span className="text-text-tertiary">{t('profile.availability.noDaysConfigured')}</span>
           )}
           {dirty.size > 0 && (
-            <span className="text-status-warning ml-2">({dirty.size} unsaved)</span>
+            <span className="text-status-warning ml-2">({t('profile.availability.unsavedCount', { count: dirty.size })})</span>
           )}
         </div>
         <div className="flex flex-col-reverse gap-2 sm:flex-row">
           <Button variant="ghost" size="sm" onClick={handleCancel}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -330,10 +339,10 @@ export function PersonalAvailabilityEditor({ onDone, onDirtyChange }: PersonalAv
             onClick={handleSave}
             disabled={dirty.size === 0 || !!saving}
           >
-            {saving ? 'Saving...' : (
+            {saving ? t('common.saving') : (
               <>
                 <Check className="w-4 h-4 mr-1" />
-                Save{dirty.size > 0 ? ` ${dirty.size} day${dirty.size !== 1 ? 's' : ''}` : ''}
+                {dirty.size > 0 ? t('profile.availability.saveDays', { count: dirty.size }) : t('common.save')}
               </>
             )}
           </Button>

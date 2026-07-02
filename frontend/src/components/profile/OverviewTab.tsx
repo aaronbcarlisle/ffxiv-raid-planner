@@ -20,6 +20,7 @@ import { getFreshness, freshnessColor } from './freshness';
 import { formatGearActivity, formatGearSourceLabel, hasUsableGearSnapshot } from './jobGearUtils';
 import { ActivityFeedCard, useActivityFeed } from './ActivityFeed';
 import { usePersonalAvailabilityStore } from '../../stores/personalAvailabilityStore';
+import { formatDayOfWeekLabel } from '../schedule/availabilityUtils';
 import type {
   CollectionSuggestion,
   GearSnapshot,
@@ -32,10 +33,6 @@ import { getJobDisplayName } from '../../gamedata/jobs';
 import { staggerContainerProps, staggerItemProps } from '../../lib/motion';
 import type { StaticGroupListItem } from '../../types';
 import { getBrowserTimezone } from '../../utils/timezone';
-
-const DAY_LABELS: Record<string, string> = {
-  MO: 'Mon', TU: 'Tue', WE: 'Wed', TH: 'Thu', FR: 'Fri', SA: 'Sat', SU: 'Sun',
-};
 
 interface OverviewTabProps {
   profile: PlayerProfile;
@@ -185,7 +182,7 @@ export function OverviewTab({
   staticGroups = primaryStatic ? [primaryStatic] : [],
   focusAvailability = false,
 }: OverviewTabProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const characters = profile.characters;
   const jobProfiles = profile.jobProfiles;
   const mainJob = jobProfiles.find((j) => j.priority === 'main');
@@ -223,11 +220,15 @@ export function OverviewTab({
   const availabilitySlots = configuredAvailabilityDays.reduce((total, day) => total + day.slots.length, 0);
   const availabilityHours = availabilitySlots / 2;
   const availabilityTimezone = configuredAvailabilityDays[0]?.timezone || getBrowserTimezone();
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
   const availabilitySummary = availabilityDayCount > 0
-    ? `${availabilityDayCount} day${availabilityDayCount === 1 ? '' : 's'} · ${Number.isInteger(availabilityHours) ? availabilityHours : availabilityHours.toFixed(1)}h`
-    : 'Missing';
+    ? t('profile.overview.availabilitySummary', {
+      days: availabilityDayCount,
+      hours: Number.isInteger(availabilityHours) ? availabilityHours : availabilityHours.toFixed(1),
+    })
+    : t('profile.jobsGear.missing');
   const availabilityDayLabels = configuredAvailabilityDays
-    .map((day) => DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek)
+    .map((day) => formatDayOfWeekLabel(day.dayOfWeek as never, uiLocale))
     .join(' / ');
   const staticCount = staticGroups.length;
   const staticSummary = staticCount === 0
@@ -238,8 +239,8 @@ export function OverviewTab({
   const staticDetail = staticCount === 0
     ? t('profile.overview.openStaticFinder')
     : staticCount === 1
-      ? (staticGroups[0].userRole ?? 'Member')
-      : 'Use My Statics menu';
+      ? t(`auth.role${(staticGroups[0].userRole ?? 'member').charAt(0).toUpperCase()}${(staticGroups[0].userRole ?? 'member').slice(1)}`, { defaultValue: staticGroups[0].userRole ?? 'member' })
+      : t('profile.overview.useMyStaticsMenu');
   const staticLink = staticCount === 1 && primaryStatic
     ? `/group/${primaryStatic.shareCode}`
     : staticCount === 0
@@ -304,7 +305,7 @@ export function OverviewTab({
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
           <CommandChip
             label={t('profile.overview.gear')}
-            value={latestSnapshot ? `iLv ${latestSnapshot.avgItemLevel}` : 'Missing'}
+            value={latestSnapshot ? `iLv ${latestSnapshot.avgItemLevel}` : t('profile.jobsGear.missing')}
             detail={latestSnapshot ? syncHealthLabel : t('profile.overview.syncNeeded')}
             to="/profile?tab=sync"
             icon={<XivIcon name="loot" size={14} />}
@@ -537,7 +538,7 @@ export function OverviewTab({
 
               <DashboardCard
                 title={t('profile.overview.jobs')}
-                subtitle="Static Finder and Request to Join"
+                subtitle={t('profile.overview.staticFinderRequestJoin')}
                 icon={<Crosshair className="h-4 w-4" />}
                 footer={<InlineLink to="/profile?tab=jobs-gear">{t('profile.overview.manageJobsAndGear')}</InlineLink>}
               >

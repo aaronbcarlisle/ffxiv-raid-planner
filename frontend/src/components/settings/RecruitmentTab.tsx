@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CheckCircle2, XCircle, Globe, MailOpen, Users, Plus,
 } from 'lucide-react';
@@ -39,13 +40,6 @@ interface RecruitmentTabProps {
 
 // ─── Section sub-nav ─────────────────────────────────────────────────────────
 
-const SECTIONS: { id: RecruitmentSection; label: string }[] = [
-  { id: 'overview',     label: 'Overview' },
-  { id: 'listing',      label: 'Listing' },
-  { id: 'requests',     label: 'Requests' },
-  { id: 'invitations',  label: 'Invitations' },
-];
-
 interface SubNavProps {
   active: RecruitmentSection;
   onChange: (s: RecruitmentSection) => void;
@@ -53,11 +47,18 @@ interface SubNavProps {
 }
 
 function SubNav({ active, onChange, pendingCount }: SubNavProps) {
+  const { t } = useTranslation();
+  const sections: { id: RecruitmentSection; label: string }[] = [
+    { id: 'overview',    label: t('settings.recruitmentOverview') },
+    { id: 'listing',     label: t('settings.listing') },
+    { id: 'requests',    label: t('settings.recruitmentRequests') },
+    { id: 'invitations', label: t('settings.invitations') },
+  ];
   return (
     <SettingsSubNav
       active={active}
       onChange={onChange}
-      items={SECTIONS.map((s) => ({
+      items={sections.map((s) => ({
         id: s.id,
         label: s.label,
         badge: s.id === 'requests' ? pendingCount : undefined,
@@ -115,15 +116,16 @@ function RecruitmentOverview({
   canManage: boolean;
   onNavigate: (s: RecruitmentSection) => void;
 }) {
+  const { t } = useTranslation();
   const { invitations } = useInvitationStore();
   const discovery = group.settings?.discovery ?? { enabled: false, recruitmentStatus: 'closed' };
   const isListed = !!(group.isPublic && discovery.enabled);
   const activeInvitations = invitations.filter((inv) => inv.isValid);
 
   const STATUS_LABEL: Record<string, string> = {
-    open: 'Open',
-    limited: 'Limited',
-    closed: 'Closed',
+    open: t('settings.recruitmentStatusOpen'),
+    limited: t('settings.recruitmentStatusLimited'),
+    closed: t('settings.recruitmentStatusClosed'),
   };
 
   return (
@@ -137,7 +139,7 @@ function RecruitmentOverview({
               : 'border-border-default bg-surface-elevated'
           }`}
         >
-          <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Listing</p>
+          <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">{t('settings.recruitmentListingLabel')}</p>
           <div className="flex items-center gap-1.5">
             {isListed ? (
               <CheckCircle2 className="w-4 h-4 text-status-success" />
@@ -145,7 +147,7 @@ function RecruitmentOverview({
               <XCircle className="w-4 h-4 text-text-muted" />
             )}
             <p className={`text-sm font-semibold ${isListed ? 'text-status-success' : 'text-text-secondary'}`}>
-              {isListed ? 'Live' : 'Hidden'}
+              {isListed ? t('settings.recruitmentListingLive') : t('settings.recruitmentListingHidden')}
             </p>
           </div>
           <button
@@ -153,21 +155,21 @@ function RecruitmentOverview({
             className="text-xs text-accent hover:underline text-left mt-1"
             onClick={() => onNavigate('listing')}
           >
-            Edit listing →
+            {t('settings.recruitmentEditListing')}
           </button>
         </div>
 
         <div className="rounded-xl border border-border-default bg-surface-elevated p-4 flex flex-col gap-1">
-          <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Recruitment</p>
+          <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">{t('settings.recruitmentStatusLabel')}</p>
           <p className="text-sm font-semibold text-text-primary">
-            {STATUS_LABEL[discovery.recruitmentStatus ?? 'closed'] ?? 'Closed'}
+            {STATUS_LABEL[discovery.recruitmentStatus ?? 'closed'] ?? t('settings.recruitmentStatusClosed')}
           </p>
           <button
             type="button"
             className="text-xs text-accent hover:underline text-left mt-1"
             onClick={() => onNavigate('listing')}
           >
-            Edit status →
+            {t('settings.recruitmentEditStatus')}
           </button>
         </div>
       </div>
@@ -175,17 +177,17 @@ function RecruitmentOverview({
       {/* Action row */}
       <div className="grid grid-cols-2 gap-3">
         <StatusCard
-          label="Pending Requests"
+          label={t('settings.recruitmentPendingRequests')}
           value={pendingCount}
           valueClass={pendingCount > 0 ? 'text-accent' : 'text-text-muted'}
           accent={pendingCount > 0}
-          cta={pendingCount > 0 ? 'Review requests →' : 'No pending requests'}
+          cta={pendingCount > 0 ? t('settings.recruitmentReviewRequests') : t('settings.recruitmentNoPendingRequests')}
           onCta={() => onNavigate('requests')}
         />
         <StatusCard
-          label="Active Invitations"
+          label={t('settings.recruitmentActiveInvitations')}
           value={activeInvitations.length}
-          cta={canManage ? 'Manage invitations →' : 'View invitations →'}
+          cta={canManage ? t('settings.recruitmentManageInvitations') : t('settings.recruitmentViewInvitations')}
           onCta={() => onNavigate('invitations')}
         />
       </div>
@@ -196,11 +198,11 @@ function RecruitmentOverview({
           <div className="flex items-center gap-2">
             <MailOpen className="w-4 h-4 text-accent" />
             <p className="text-sm font-semibold text-accent">
-              {pendingCount} application{pendingCount !== 1 ? 's' : ''} waiting for review
+              {t('settings.recruitmentApplicationsWaiting', { count: pendingCount })}
             </p>
           </div>
           <p className="text-xs text-text-secondary">
-            Review each applicant&apos;s job, gear, and availability before accepting.
+            {t('settings.recruitmentReviewApplicants')}
           </p>
           <Button
             variant="primary"
@@ -209,7 +211,7 @@ function RecruitmentOverview({
             onClick={() => onNavigate('requests')}
             className="w-full justify-center"
           >
-            Review Requests
+            {t('settings.recruitmentReviewRequestsButton')}
           </Button>
         </div>
       )}
@@ -219,12 +221,12 @@ function RecruitmentOverview({
         <div className="rounded-xl border border-border-default bg-surface-elevated p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Globe className="w-4 h-4 text-text-muted" />
-            <p className="text-sm font-medium text-text-secondary">Static Finder listing is off</p>
+            <p className="text-sm font-medium text-text-secondary">{t('settings.recruitmentListingOff')}</p>
           </div>
           <p className="text-xs text-text-muted">
             {!group.isPublic
-              ? 'Enable "Public Static" in General settings first, then configure your listing.'
-              : 'Turn on your listing to appear in Static Finder and start receiving applications.'}
+              ? t('settings.recruitmentEnablePublicFirst')
+              : t('settings.recruitmentTurnOnListing')}
           </p>
           <Button
             variant="secondary"
@@ -232,7 +234,7 @@ function RecruitmentOverview({
             leftIcon={<Plus className="w-3.5 h-3.5" />}
             onClick={() => onNavigate('listing')}
           >
-            Set up listing
+            {t('settings.recruitmentSetUpListing')}
           </Button>
         </div>
       )}

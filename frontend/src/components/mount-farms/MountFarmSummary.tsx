@@ -2,10 +2,15 @@ import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, Calendar, ShoppingCart, Check } from 'lucide-react';
 import type { MountFarmTrial } from '../../gamedata';
-import { getCurrencyLabelPlural, getExchangeSummary, getRewardLabel, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
+import { getCurrencyLabelPlural, getExchangeSummary, getRewardNoun, hasCurrencyTracking } from '../../gamedata';
 import type { TrialSummary } from '../../stores/mountFarmStore';
 import { MountFarmDetail } from './MountFarmDetail';
 import { FarmMetadataBadges } from './FarmProgress';
+import {
+  getLocalizedTrialDutyName,
+  getLocalizedTrialRewardName,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 interface MountFarmSummaryProps {
   trials: MountFarmTrial[];
@@ -28,8 +33,9 @@ export function MountFarmSummary({
   onScheduleFarm,
   onRefresh,
 }: MountFarmSummaryProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [expandedTrialId, setExpandedTrialId] = useState<string | null>(null);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
 
   const toggleExpand = useCallback((trialId: string) => {
     setExpandedTrialId(prev => prev === trialId ? null : trialId);
@@ -48,6 +54,8 @@ export function MountFarmSummary({
       {trials.map(trial => {
         const summary = trialSummaryMap.get(trial.id);
         const isExpanded = expandedTrialId === trial.id;
+        const localizedDutyName = getLocalizedTrialDutyName(trial, uiLocale);
+        const localizedRewardName = getLocalizedTrialRewardName(trial, uiLocale);
         const totalMembers = summary?.totalMembers ?? 0;
         const complete = summary?.membersComplete ?? 0;
         const missing = summary?.membersMissing ?? totalMembers;
@@ -81,11 +89,11 @@ export function MountFarmSummary({
               {/* Trial info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-text-primary truncate">{trial.dutyName}</span>
+                  <span className="font-medium text-text-primary truncate">{localizedDutyName}</span>
                   {allComplete && <Check className="w-4 h-4 text-status-success flex-shrink-0" />}
                 </div>
                 <div className="text-xs text-text-secondary flex items-center gap-2 mt-0.5">
-                  <span>{getRewardLabel(trial)}</span>
+                  <span>{localizedRewardName}</span>
                   {myProgress ? (
                     <span className={myProgress.hasMount ? 'text-status-success' : 'text-text-tertiary'}>
                       &middot; {myProgress.hasMount ? t('mountFarm.obtained') : hasCurrencyTracking(trial) ? `${myProgress.totemCount}/${trial.exchangeCost ?? trial.totemTarget} ${getCurrencyLabelPlural(trial)}` : getExchangeSummary(trial)}
@@ -136,7 +144,7 @@ export function MountFarmSummary({
                   }}
                   className="flex-shrink-0 text-text-tertiary hover:text-accent transition-colors p-1"
                   title={trial.contentType === 'ultimate' ? t('mountFarm.scheduleSession') : t('mountFarm.scheduleFarmEvent')}
-                  aria-label={trial.contentType === 'ultimate' ? t('mountFarm.scheduleNamed', { name: trial.dutyName }) : t('mountFarm.scheduleRewardFarm', { reward: getRewardNoun(trial) })}
+                  aria-label={trial.contentType === 'ultimate' ? t('mountFarm.scheduleNamed', { name: localizedDutyName }) : t('mountFarm.scheduleRewardFarm', { reward: getRewardNoun(trial) })}
                 >
                   <Calendar className="w-4 h-4" />
                 </span>

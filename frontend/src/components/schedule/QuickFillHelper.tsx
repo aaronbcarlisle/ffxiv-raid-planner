@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Calendar, RefreshCw, ArrowRight, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../primitives/Button';
@@ -26,6 +27,7 @@ interface QuickFillHelperProps {
 }
 
 export function QuickFillHelper({ groupId, userId, dates }: QuickFillHelperProps) {
+  const { t } = useTranslation();
   const { days: personalDays } = usePersonalAvailabilityStore();
   const fetchPersonalAvailability = usePersonalAvailabilityStore((s) => s.fetchPersonalAvailability);
   const { data, templateData, submitAvailability, fetchAvailability } = useAvailabilityStore();
@@ -45,7 +47,7 @@ export function QuickFillHelper({ groupId, userId, dates }: QuickFillHelperProps
 
     const currentPersonalDays = usePersonalAvailabilityStore.getState().days;
     if (currentPersonalDays.length === 0 || currentPersonalDays.every((d) => d.slots.length === 0)) {
-      toast.info('Set up Player Hub availability first');
+      toast.info(t('schedule.quickFillSetUpPlayerHubFirst'));
       return;
     }
 

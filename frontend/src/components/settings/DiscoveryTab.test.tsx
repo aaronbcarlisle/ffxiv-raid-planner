@@ -84,7 +84,7 @@ describe('DiscoveryTab', () => {
     expect(screen.getByText('Recruitment Status')).toBeInTheDocument();
     expect(screen.getByText('Description')).toBeInTheDocument();
     // Status card options
-    expect(screen.getByText('Open')).toBeInTheDocument();
+    expect(screen.getAllByText('Open').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Selective')).toBeInTheDocument();
     expect(screen.getByText('Paused')).toBeInTheDocument();
     expect(screen.getByText('Closed')).toBeInTheDocument();

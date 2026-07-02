@@ -976,12 +976,12 @@ export function GroupView() {
                   <div className="flex items-center gap-3">
                     {/* Sub-tabs — always visible (mobile + desktop) */}
                     <div className="overflow-x-auto flex-shrink-0">
-                      <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" role="tablist" aria-label="Roster view" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
+                        <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" role="tablist" aria-label="Roster view" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
                         {ROSTER_SUB_VIEWS.map(view => {
                           const labels: Record<typeof view, string> = {
-                            members: 'Members',
-                            characters: 'Characters',
-                            'split-planner': 'Split Planner',
+                            members: t('roster.members'),
+                            characters: t('roster.characters'),
+                            'split-planner': t('roster.splitPlanner'),
                           };
                           return (
                             <button
@@ -1147,12 +1147,12 @@ export function GroupView() {
               >
 
               {/* Page headers */}
-              {pageMode === 'overview' && <PageHeader icon={<LayoutDashboard size={14} className="text-accent" />} title={t('nav.overview')} subtitle="Command center for your static." />}
-              {pageMode === 'roster' && <PageHeader icon={<XivIcon name="party" size={14} />} title={t('nav.roster')} subtitle="Manage members, roles, and characters." />}
-              {pageMode === 'schedule' && <PageHeader icon={<XivIcon name="schedule" size={14} />} title={t('nav.schedule')} subtitle="Plan sessions and manage recurring events." />}
-              {pageMode === 'goals' && <PageHeader icon={<XivIcon name="goals" size={14} />} title={t('nav.goalsAndFarms')} subtitle="Track objectives, farms, and weekly goals." />}
-              {pageMode === 'gear' && <PageHeader icon={<Shield size={14} className="text-accent" />} title={t('nav.gearAndSync')} subtitle="Jobs, BiS, and sync health." />}
-              {pageMode === 'more' && <PageHeader icon={<MoreHorizontal size={14} className="text-accent" />} title={t('nav.more')} subtitle="Lead tools, requests, and settings." />}
+              {pageMode === 'overview' && <PageHeader icon={<LayoutDashboard size={14} className="text-accent" />} title={t('nav.overview')} subtitle={t('groupView.overviewSubtitle')} />}
+              {pageMode === 'roster' && <PageHeader icon={<XivIcon name="party" size={14} />} title={t('nav.roster')} subtitle={t('groupView.rosterSubtitle')} />}
+              {pageMode === 'schedule' && <PageHeader icon={<XivIcon name="schedule" size={14} />} title={t('nav.schedule')} subtitle={t('groupView.scheduleSubtitle')} />}
+              {pageMode === 'goals' && <PageHeader icon={<XivIcon name="goals" size={14} />} title={t('nav.goalsAndFarms')} subtitle={t('groupView.goalsSubtitle')} />}
+              {pageMode === 'gear' && <PageHeader icon={<Shield size={14} className="text-accent" />} title={t('nav.gearAndSync')} subtitle={t('groupView.gearSubtitle')} />}
+              {pageMode === 'more' && <PageHeader icon={<MoreHorizontal size={14} className="text-accent" />} title={t('nav.more')} subtitle={t('groupView.moreSubtitle')} />}
 
               {/* Overview Tab */}
               {pageMode === 'overview' && currentGroup && (
@@ -1302,10 +1302,10 @@ export function GroupView() {
                   <div className="overflow-x-auto mb-4 flex-shrink-0">
                     <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
                       {([
-                        { id: 'history' as GearSubTab, label: 'Log' },
-                        { id: 'priority' as GearSubTab, label: 'Priority' },
-                        { id: 'sync' as GearSubTab, label: 'Sync' },
-                        { id: 'stats' as GearSubTab, label: 'Summary' },
+                        { id: 'history' as GearSubTab, label: t('groupView.gearLog') },
+                        { id: 'priority' as GearSubTab, label: t('groupView.gearPriority') },
+                        { id: 'sync' as GearSubTab, label: t('groupView.gearSync') },
+                        { id: 'stats' as GearSubTab, label: t('groupView.gearSummary') },
                       ]).map(tab => (
                         /* design-system-ignore: sub-tab inline buttons */
                         <button
@@ -1411,8 +1411,8 @@ export function GroupView() {
                   <div className="overflow-x-auto mb-5 flex-shrink-0">
                     <div className="flex gap-1 p-1 bg-surface-raised rounded-lg w-fit border border-border-subtle">
                       {([
-                        { id: 'upcoming' as const, label: 'Upcoming' },
-                        { id: 'calendar' as const, label: 'Calendar' },
+                        { id: 'upcoming' as const, label: t('groupView.scheduleViewUpcoming') },
+                        { id: 'calendar' as const, label: t('groupView.scheduleViewCalendar') },
                       ]).map(v => (
                         /* design-system-ignore: view switcher inline button */
                         <button

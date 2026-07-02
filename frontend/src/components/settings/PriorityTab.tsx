@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Save, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../primitives';
 import { SettingsSubNav } from './SettingsSubNav';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
@@ -42,6 +43,7 @@ interface PriorityTabProps {
 }
 
 export function PriorityTab({ group, players, tierId, onClose: _onClose }: PriorityTabProps) {
+  const { t } = useTranslation();
   const { updateGroup } = useStaticGroupStore();
 
   // Subtab in the URL (?psub=mode|advanced) — its own settings sub-tab param
@@ -200,10 +202,10 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
         },
       });
 
-      toast.success('Priority settings saved!');
+      toast.success(t('settings.prioritySaved'));
       setHasChanges(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save settings';
+      const message = err instanceof Error ? err.message : t('settings.prioritySaveFailed');
       setError(message);
       toast.error(message);
     } finally {
@@ -221,14 +223,14 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
         active={activeSubTab}
         onChange={setActiveSubTab}
         items={[
-          { id: 'mode', label: 'Mode', tooltip: 'Configure priority mode and order' },
+          { id: 'mode', label: t('settings.prioritySubMode'), tooltip: t('settings.prioritySubModeTooltip') },
           {
             id: 'advanced',
-            label: 'Advanced',
+            label: t('settings.prioritySubAdvanced'),
             disabled: settings.mode === 'disabled',
             tooltip: settings.mode === 'disabled'
-              ? 'Advanced options are not available when priority is disabled'
-              : 'Fine-tune priority calculations',
+              ? t('settings.prioritySubAdvancedDisabledTooltip')
+              : t('settings.prioritySubAdvancedTooltip'),
           },
         ]}
       />
@@ -239,7 +241,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
         {!canEdit && (
           <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded text-status-warning text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            Only owners and leads can modify priority settings.
+            {t('settings.onlyLeadsOwners')}
           </div>
         )}
 
@@ -251,7 +253,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
           <>
             {/* Mode selector */}
             <div>
-              <Label>Priority Mode</Label>
+              <Label>{t('settings.priorityMode')}</Label>
               <ModeSelector
                 value={settings.mode}
                 onChange={handleModeChange}
@@ -262,7 +264,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
             {/* Mode-specific editor */}
             {settings.mode === 'role-based' && settings.roleBasedConfig && (
               <div>
-                <Label>Role Priority Order</Label>
+                <Label>{t('settings.priorityRoleOrder')}</Label>
                 <RoleBasedEditor
                   roleOrder={settings.roleBasedConfig.roleOrder}
                   onChange={handleRoleOrderChange}
@@ -273,7 +275,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
 
             {settings.mode === 'job-based' && settings.jobBasedConfig && (
               <div>
-                <Label>Job Priority</Label>
+                <Label>{t('settings.priorityJobLabel')}</Label>
                 <JobBasedEditor
                   config={settings.jobBasedConfig}
                   onChange={handleJobBasedConfigChange}
@@ -285,7 +287,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
 
             {settings.mode === 'player-based' && settings.playerBasedConfig && (
               <div>
-                <Label>Player Priority</Label>
+                <Label>{t('settings.priorityPlayerLabel')}</Label>
                 <PlayerBasedEditor
                   config={settings.playerBasedConfig}
                   onChange={handlePlayerBasedConfigChange}
@@ -298,8 +300,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
             {settings.mode === 'manual-planning' && (
               <div className="p-4 bg-surface-elevated rounded-lg border border-border-default">
                 <p className="text-text-muted text-sm">
-                  Manual planning mode lets you pre-assign loot to players for each week.
-                  Go to the Priority tab to create weekly assignments.
+                  {t('settings.priorityManualPlanningDesc')}
                 </p>
               </div>
             )}
@@ -307,8 +308,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
             {settings.mode === 'disabled' && (
               <div className="p-4 bg-surface-elevated rounded-lg border border-border-default">
                 <p className="text-text-muted text-sm">
-                  Priority is disabled. All players will show equal priority in the Priority tab.
-                  This is useful for groups that prefer equal distribution.
+                  {t('settings.priorityDisabledDesc')}
                 </p>
               </div>
             )}
@@ -338,7 +338,7 @@ export function PriorityTab({ group, players, tierId, onClose: _onClose }: Prior
             loading={isSaving}
           >
             <Save className="w-4 h-4 mr-1.5" />
-            Save Changes
+            {t('settings.saveChanges')}
           </Button>
         </div>
       )}

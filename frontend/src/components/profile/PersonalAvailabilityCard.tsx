@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, Calendar, Clock3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../primitives/Button';
@@ -12,12 +13,9 @@ import { Modal } from '../ui/Modal';
 import { useModal } from '../../hooks/useModal';
 import { usePersonalAvailabilityStore } from '../../stores/personalAvailabilityStore';
 import { PersonalAvailabilityEditor } from './PersonalAvailabilityEditor';
+import { formatDayOfWeekLabel } from '../schedule/availabilityUtils';
 import { getBrowserTimezone } from '../../utils/timezone';
 import type { StaticGroupListItem } from '../../types';
-
-const DAY_LABELS: Record<string, string> = {
-  MO: 'Mon', TU: 'Tue', WE: 'Wed', TH: 'Thu', FR: 'Fri', SA: 'Sat', SU: 'Sun',
-};
 
 interface PersonalAvailabilityCardProps {
   primaryStatic?: StaticGroupListItem | null;
@@ -25,12 +23,14 @@ interface PersonalAvailabilityCardProps {
 }
 
 export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = false }: PersonalAvailabilityCardProps) {
+  const { t, i18n } = useTranslation();
   const { days, isLoading, fetchPersonalAvailability } = usePersonalAvailabilityStore();
   const editModal = useModal();
   const hasFetchedRef = useRef(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const editorDirtyRef = useRef(false);
   const [isFocused, setIsFocused] = useState(false);
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
 
   useEffect(() => {
     if (!hasFetchedRef.current) {
@@ -63,7 +63,7 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
 
   const scheduleLink = primaryStatic ? `/group/${primaryStatic.shareCode}?tab=schedule` : '/discover';
   const handleEditorClose = () => {
-    if (editorDirtyRef.current && !window.confirm('Discard unsaved availability changes?')) {
+    if (editorDirtyRef.current && !window.confirm(t('profile.availability.discardUnsavedChanges'))) {
       return;
     }
     handleEditorDirtyChange(false);
@@ -82,10 +82,10 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="font-display font-semibold text-text-primary text-sm">
-              Availability
+              {t('profile.availability.title')}
             </h3>
             <p className="mt-0.5 text-xs text-text-tertiary">
-              Your personal weekly default
+              {t('profile.availability.editorTitle')}
             </p>
           </div>
           <Badge variant="default" size="sm">
@@ -101,7 +101,7 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
               <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
                 <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
                   <Calendar className="h-3.5 w-3.5 text-accent" />
-                  Days
+                  {t('profile.availability.daysLabel')}
                 </div>
                 <div className="mt-1 text-lg font-display text-text-primary">
                   {configuredCount}
@@ -110,7 +110,7 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
               <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
                 <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
                   <Clock3 className="h-3.5 w-3.5 text-accent" />
-                  Hours
+                  {t('profile.availability.hoursLabel')}
                 </div>
                 <div className="mt-1 text-lg font-display text-text-primary">
                   {Number.isInteger(approximateHours) ? approximateHours : approximateHours.toFixed(1)}
@@ -123,19 +123,19 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
                   key={d.dayOfWeek}
                   className="text-[11px] px-2 py-1 rounded-full bg-accent/10 text-accent font-medium"
                 >
-                  {DAY_LABELS[d.dayOfWeek] ?? d.dayOfWeek}
+                  {formatDayOfWeekLabel(d.dayOfWeek as never, uiLocale)}
                 </span>
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" size="sm" onClick={editModal.open}>
-                Edit availability
+                {t('profile.availability.editAvailability')}
               </Button>
               <Link
                 to={scheduleLink}
                 className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 sm:min-h-0"
               >
-                {primaryStatic ? 'Use in schedule' : 'Find a static'}
+                {primaryStatic ? t('profile.availability.useInSchedule') : t('nav.findAStatic')}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -143,20 +143,20 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
         ) : (
           <div className="space-y-3">
             <p className="text-text-tertiary text-sm">
-              Set your usual availability once, then reuse it across statics.
+              {t('profile.availability.setOnceReuse')}
             </p>
             <div className="rounded-lg border border-border-subtle bg-surface-elevated/60 px-3 py-2 text-xs text-text-secondary">
-              Used by schedule quick fill when planning this week.
+              {t('profile.availability.quickFillPlanning')}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" size="sm" onClick={editModal.open}>
-                Set availability
+                {t('profile.availability.setAvailability')}
               </Button>
               <Link
                 to={scheduleLink}
                 className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 sm:min-h-0"
               >
-                {primaryStatic ? 'Open schedule' : 'Find a static'}
+                {primaryStatic ? t('profile.availability.openSchedule') : t('nav.findAStatic')}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -166,7 +166,7 @@ export function PersonalAvailabilityCard({ primaryStatic, focusAvailability = fa
 
       <Modal
         isOpen={editModal.isOpen}
-        title="Personal Typical Availability"
+        title={t('profile.availability.typicalAvailability')}
         onClose={handleEditorClose}
         size="3xl"
       >

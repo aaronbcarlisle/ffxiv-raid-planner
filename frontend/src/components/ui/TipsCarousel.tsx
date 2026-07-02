@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Lightbulb, X } from 'lucide-react';
 import { Tooltip } from '../primitives/Tooltip';
 
@@ -15,7 +16,7 @@ type MembershipRole = 'owner' | 'lead' | 'member' | 'viewer';
 
 interface Tip {
   id: string;
-  text: string;
+  textKey: string;
   /** Context where this tip is most relevant (optional filter) */
   context?: 'roster' | 'loot' | 'log' | 'summary' | 'global';
   /** Minimum role required to see this tip (defaults to showing to all) */
@@ -24,34 +25,34 @@ interface Tip {
 
 const TIPS: Tip[] = [
   // Navigation tips (available to all)
-  { id: 'shortcuts', text: 'Press Shift+? to see all keyboard shortcuts', context: 'global' },
-  { id: 'tabs', text: 'Press 1-4 to switch tabs', context: 'global' },
-  { id: 'statics', text: 'Press Shift+S to return to My Statics', context: 'global' },
-  { id: 'static-nav', text: 'Press Ctrl+[ or Ctrl+] to switch statics', context: 'global' },
-  { id: 'tier-nav', text: 'Press Alt+[ or Alt+] to switch tiers', context: 'global' },
+  { id: 'shortcuts', textKey: 'tips.shortcuts', context: 'global' },
+  { id: 'tabs', textKey: 'tips.tabs', context: 'global' },
+  { id: 'statics', textKey: 'tips.statics', context: 'global' },
+  { id: 'static-nav', textKey: 'tips.staticNav', context: 'global' },
+  { id: 'tier-nav', textKey: 'tips.tierNav', context: 'global' },
 
   // Roster tips
-  { id: 'add-player', text: 'Press Alt+Shift+P to add a new player', context: 'roster', requiredRole: 'lead' },
-  { id: 'copy-link', text: 'Shift+Click a player card to copy link', context: 'roster' },
-  { id: 'group-view', text: 'Press G to toggle G1/G2 view', context: 'roster' },
-  { id: 'expand', text: 'Press V to toggle compact/expanded', context: 'roster' },
+  { id: 'add-player', textKey: 'tips.addPlayer', context: 'roster', requiredRole: 'lead' },
+  { id: 'copy-link', textKey: 'tips.copyLink', context: 'roster' },
+  { id: 'group-view', textKey: 'tips.groupView', context: 'roster' },
+  { id: 'expand', textKey: 'tips.expand', context: 'roster' },
 
   // Loot tips (requires edit permission)
-  { id: 'log-loot', text: 'Press Alt+L to log a loot drop', context: 'loot', requiredRole: 'member' },
-  { id: 'floor-cleared', text: 'Press Alt+B to mark floor cleared', context: 'loot', requiredRole: 'member' },
-  { id: 'loot-subtabs', text: 'Press Alt+1-3 to switch sub tabs', context: 'loot' },
+  { id: 'log-loot', textKey: 'tips.logLoot', context: 'loot', requiredRole: 'member' },
+  { id: 'floor-cleared', textKey: 'tips.floorCleared', context: 'loot', requiredRole: 'member' },
+  { id: 'loot-subtabs', textKey: 'tips.lootSubtabs', context: 'loot' },
 
   // Log tips
-  { id: 'log-material', text: 'Press Alt+M to log material', context: 'log', requiredRole: 'member' },
-  { id: 'copy-entry', text: 'Shift+Click entry to copy link', context: 'log' },
-  { id: 'go-player', text: 'Alt+Click entry to jump to player', context: 'log' },
-  { id: 'grid-toggle', text: 'Press G to toggle grid/list view', context: 'log' },
-  { id: 'week-nav', text: 'Press Alt+← or Alt+→ to change week', context: 'log' },
-  { id: 'expand-all', text: 'Press V to expand/collapse all', context: 'log' },
+  { id: 'log-material', textKey: 'tips.logMaterial', context: 'log', requiredRole: 'member' },
+  { id: 'copy-entry', textKey: 'tips.copyEntry', context: 'log' },
+  { id: 'go-player', textKey: 'tips.goPlayer', context: 'log' },
+  { id: 'grid-toggle', textKey: 'tips.gridToggle', context: 'log' },
+  { id: 'week-nav', textKey: 'tips.weekNav', context: 'log' },
+  { id: 'expand-all', textKey: 'tips.expandAll', context: 'log' },
 
   // Management tips (requires elevated permissions)
-  { id: 'new-tier', text: 'Press Alt+Shift+N to create a new tier', context: 'global', requiredRole: 'lead' },
-  { id: 'settings', text: 'Press Alt+Shift+S for static settings', context: 'global', requiredRole: 'lead' },
+  { id: 'new-tier', textKey: 'tips.newTier', context: 'global', requiredRole: 'lead' },
+  { id: 'settings', textKey: 'tips.settings', context: 'global', requiredRole: 'lead' },
 ];
 
 const STORAGE_KEY = 'tips-dismissed';
@@ -70,6 +71,7 @@ interface TipsCarouselProps {
 const ROLE_HIERARCHY: MembershipRole[] = ['viewer', 'member', 'lead', 'owner'];
 
 export function TipsCarousel({ context, userRole, className = '' }: TipsCarouselProps) {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(() => {
     try {
@@ -145,21 +147,21 @@ export function TipsCarousel({ context, userRole, className = '' }: TipsCarousel
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>
       <Lightbulb className="w-3 h-3 text-text-muted/50 flex-shrink-0" />
-      <Tooltip content="Click for next tip">
+      <Tooltip content={t('tips.nextTip')}>
         <button
           onClick={handleCycleNext}
           className={`text-xs text-text-muted/60 hover:text-text-muted transition-all duration-200 cursor-pointer ${
             isVisible ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          {currentTip.text}
+          {t(currentTip.textKey)}
         </button>
       </Tooltip>
-      <Tooltip content="Dismiss tips">
+      <Tooltip content={t('tips.dismissTips')}>
         <button
           onClick={handleDismiss}
           className="p-0.5 text-text-muted/30 hover:text-text-muted/60 transition-colors flex-shrink-0"
-          aria-label="Dismiss tips"
+          aria-label={t('tips.dismissTips')}
         >
           <X className="w-3 h-3" />
         </button>

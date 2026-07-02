@@ -2,10 +2,14 @@ import { useTranslation } from 'react-i18next';
 import type { MountFarmTrial } from '../../gamedata';
 import {
   getExchangeSummary,
-  getRewardLabel,
   hasCurrencyTracking,
 } from '../../gamedata';
 import { Badge } from '../primitives/Badge';
+import {
+  getLocalizedTrialDutyName,
+  getLocalizedTrialRewardName,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 import {
   formatFarmProgress,
   getFarmCurrencyKind,
@@ -112,10 +116,13 @@ export function FarmMetadataBadges({ trial }: { trial: MountFarmTrial }) {
 }
 
 export function FarmCatalogSummary({ trial }: { trial: MountFarmTrial }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isUltimate = trial.contentType === 'ultimate' || trial.category === 'ultimate';
-  const primaryLabel = isUltimate ? (trial.dutyName ?? getRewardLabel(trial)) : getRewardLabel(trial);
-  const subtitleLabel = isUltimate ? t('mountFarm.ultimateWeaponExchange') : (trial.sourceContent ?? trial.dutyName);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const localizedDutyName = getLocalizedTrialDutyName(trial, uiLocale);
+  const localizedRewardName = getLocalizedTrialRewardName(trial, uiLocale);
+  const primaryLabel = isUltimate ? localizedDutyName : localizedRewardName;
+  const subtitleLabel = isUltimate ? t('mountFarm.ultimateWeaponExchange') : localizedDutyName;
 
   return (
     <div className="min-w-0">

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PageMode } from '../../types';
 import { Tooltip } from '../primitives/Tooltip';
 import { analytics } from '../../services/analytics';
@@ -19,16 +20,17 @@ const PAGE_TO_XIV_ICON: Partial<Record<PageMode, ReactNode>> = {
   more: <XivIcon name="options" size={20} />,
 };
 
-const BASE_TABS: { id: PageMode; label: string; hotkey: string; description: string }[] = [
-  { id: 'overview', label: 'Overview', hotkey: '`', description: 'Static overview, next raid, and pending applications' },
-  { id: 'roster', label: 'Roster', hotkey: '1', description: 'View and edit player gear progress' },
-  { id: 'gear', label: 'Gear & Sync', hotkey: '2', description: 'Loot priority, loot log, and team summary' },
-  { id: 'goals', label: 'Goals & Farms', hotkey: '3', description: 'Track mounts, music, rare drops, ownership, and farm plans' },
-  { id: 'schedule', label: 'Schedule', hotkey: '4', description: 'Raid schedule and RSVP across time zones' },
-  { id: 'more', label: 'More', hotkey: '', description: 'Settings, integrations, and admin tools' },
+const BASE_TABS: { id: PageMode; labelKey: string; hotkey: string; descriptionKey: string }[] = [
+  { id: 'overview', labelKey: 'nav.overview', hotkey: '`', descriptionKey: 'nav.overviewDesc' },
+  { id: 'roster', labelKey: 'nav.roster', hotkey: '1', descriptionKey: 'nav.rosterDesc' },
+  { id: 'gear', labelKey: 'nav.gearAndSync', hotkey: '2', descriptionKey: 'nav.gearAndSyncDesc' },
+  { id: 'goals', labelKey: 'nav.goalsAndFarms', hotkey: '3', descriptionKey: 'nav.goalsAndFarmsDesc' },
+  { id: 'schedule', labelKey: 'nav.schedule', hotkey: '4', descriptionKey: 'nav.scheduleDesc' },
+  { id: 'more', labelKey: 'nav.more', hotkey: '', descriptionKey: 'nav.moreDesc' },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
+  const { t } = useTranslation();
   const TABS = BASE_TABS;
   return (
     <div className="flex gap-1 bg-surface-raised rounded-lg p-1">
@@ -38,12 +40,12 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
           content={
             <div>
               <div className="flex items-center gap-2 font-medium">
-                {tab.label}
+                {t(tab.labelKey)}
                 <kbd className="px-1.5 py-0.5 text-xs bg-surface-base rounded border border-border-default">
                   {tab.hotkey}
                 </kbd>
               </div>
-              <div className="text-text-secondary text-xs mt-0.5">{tab.description}</div>
+              <div className="text-text-secondary text-xs mt-0.5">{t(tab.descriptionKey)}</div>
             </div>
           }
         >
@@ -67,7 +69,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
                 {PAGE_TO_XIV_ICON[tab.id]}
               </span>
             )}
-            <span>{tab.label}</span>
+            <span>{t(tab.labelKey)}</span>
           </button>
         </Tooltip>
       ))}

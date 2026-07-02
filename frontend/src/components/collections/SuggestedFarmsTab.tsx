@@ -7,6 +7,7 @@
  */
 
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertCircle, Lightbulb, RefreshCw } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { Skeleton } from '../ui/Skeleton';
@@ -25,6 +26,8 @@ interface SuggestedFarmsTabProps {
 }
 
 export function SuggestedFarmsTab({ groupId, canManage, onViewGoal, onGoalCreated }: SuggestedFarmsTabProps) {
+  const { i18n } = useTranslation();
+  const isJapanese = (i18n.resolvedLanguage ?? '').toLowerCase().startsWith('ja');
   const { suggestions, suggestionsLoading, fetchSuggestions } = useCollectionIntentStore();
   const { goals, createGoalFromSuggestion } = useCollectionGoalStore();
 
@@ -47,20 +50,20 @@ export function SuggestedFarmsTab({ groupId, canManage, onViewGoal, onGoalCreate
     const data: CollectionGoalFromSuggestion = { catalogItemId };
     try {
       const goal = await createGoalFromSuggestion(groupId, data);
-      toast.success(`"${goal.title}" added as active farm. Participant states preloaded.`);
+      toast.success(isJapanese ? `「${goal.title}」をアクティブ周回に追加しました。参加状況も読み込み済みです。` : `"${goal.title}" added as active farm. Participant states preloaded.`);
       // Refresh suggestions so the card shows "Active" badge
       fetchSuggestions(groupId);
       // Let parent switch to Active Farms tab and open the new goal
       onGoalCreated?.(goal);
     } catch {
-      toast.error('Failed to create farm goal.');
+      toast.error(isJapanese ? '周回目標の作成に失敗しました。' : 'Failed to create farm goal.');
     }
   }
 
   function handleCopyPlan(text: string) {
     navigator.clipboard.writeText(text).then(
-      () => toast.success('Farm plan copied to clipboard!'),
-      () => toast.error('Failed to copy to clipboard.'),
+      () => toast.success(isJapanese ? '周回プランをクリップボードにコピーしました。' : 'Farm plan copied to clipboard!'),
+      () => toast.error(isJapanese ? 'クリップボードへのコピーに失敗しました。' : 'Failed to copy to clipboard.'),
     );
   }
 
@@ -86,14 +89,15 @@ export function SuggestedFarmsTab({ groupId, canManage, onViewGoal, onGoalCreate
       <div className="text-center py-16 text-text-muted flex flex-col items-center gap-3">
         <Lightbulb size={36} className="opacity-30" />
         <div>
-          <p className="font-medium text-text-secondary">No suggestions yet</p>
+          <p className="font-medium text-text-secondary">{isJapanese ? 'まだ提案がありません' : 'No suggestions yet'}</p>
           <p className="text-sm mt-1 max-w-sm mx-auto">
-            Suggestions appear when roster members share Hunting or Interested preferences
-            via their Player Hub (visibility set to "Shared with statics" or higher).
+            {isJapanese
+              ? 'ロスターのメンバーがプレイヤーハブで「希望」や「興味あり」を共有すると、ここに提案が表示されます。'
+              : 'Suggestions appear when roster members share Hunting or Interested preferences via their Player Hub (visibility set to "Shared with statics" or higher).'}
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={handleRefresh} className="flex items-center gap-1.5 mt-2">
-          <RefreshCw size={13} /> Refresh
+          <RefreshCw size={13} /> {isJapanese ? '更新' : 'Refresh'}
         </Button>
       </div>
     );
@@ -124,12 +128,13 @@ export function SuggestedFarmsTab({ groupId, canManage, onViewGoal, onGoalCreate
         <div className="flex items-center gap-2 text-xs text-text-muted">
           <AlertCircle size={12} className="opacity-60" />
           <span>
-            Based on Player Hub preferences shared with this static.
-            Scores update when members sync their plugin.
+            {isJapanese
+              ? 'この固定と共有されたプレイヤーハブ設定をもとに表示しています。メンバーがプラグイン同期するとスコアも更新されます。'
+              : 'Based on Player Hub preferences shared with this static. Scores update when members sync their plugin.'}
           </span>
         </div>
         <Button variant="ghost" size="sm" onClick={handleRefresh} className="flex items-center gap-1 text-xs">
-          <RefreshCw size={12} /> Refresh
+          <RefreshCw size={12} /> {isJapanese ? '更新' : 'Refresh'}
         </Button>
       </div>
 
@@ -137,9 +142,19 @@ export function SuggestedFarmsTab({ groupId, canManage, onViewGoal, onGoalCreate
       <div className="flex items-start gap-2 rounded-lg border border-border-subtle bg-surface-raised/40 px-3 py-2 text-[11px] text-text-muted">
         <Info size={12} className="flex-shrink-0 mt-0.5 opacity-60" />
         <span>
-          Only preferences shared as <strong className="text-text-secondary font-medium">Shared with statics</strong> or{' '}
-          <strong className="text-text-secondary font-medium">Public on dossier</strong> appear here.
-          Private choices stay private.
+          {isJapanese ? (
+            <>
+              <strong className="text-text-secondary font-medium">固定と共有</strong> または{' '}
+              <strong className="text-text-secondary font-medium">プロフィールで公開</strong> にした設定だけがここに表示されます。
+              非公開の設定は表示されません。
+            </>
+          ) : (
+            <>
+              Only preferences shared as <strong className="text-text-secondary font-medium">Shared with statics</strong> or{' '}
+              <strong className="text-text-secondary font-medium">Public on dossier</strong> appear here.
+              Private choices stay private.
+            </>
+          )}
         </span>
       </div>
 

@@ -18,6 +18,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Check, Clock, Copy, ExternalLink, Eye, ScrollText, Target, UserPlus, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
@@ -36,22 +37,6 @@ import { getJobDisplayName } from '../../gamedata/jobs';
 import type { JoinRequest, DiscoverySettings } from '../../types';
 
 // --- Status display ---
-
-const STATUS_CONFIG: Record<string, { label: string; variant: 'warning' | 'info' | 'success' | 'default' }> = {
-  pending: { label: 'Pending', variant: 'warning' },
-  under_review: { label: 'Under Review', variant: 'info' },
-  accepted: { label: 'Accepted', variant: 'success' },
-  declined: { label: 'Declined', variant: 'default' },
-  cancelled: { label: 'Cancelled', variant: 'default' },
-};
-
-const READINESS_EXPLANATIONS: Record<string, string> = {
-  ready: 'Ready for review',
-  in_progress: 'Still preparing — gear may be incomplete',
-  needs_gear: 'Needs to acquire more gear',
-  not_ready: 'Not yet ready for this role',
-  unknown: 'Applicant has not self-assessed readiness yet',
-};
 
 // --- Section header helper ---
 
@@ -119,13 +104,6 @@ function deriveFitLevel(request: JoinRequest, discoverySettings?: DiscoverySetti
   return 'partial';
 }
 
-const FIT_DOT_STYLE: Record<FitLevel, { color: string; label: string }> = {
-  strong: { color: '#4a9e5a', label: 'Strong fit' },
-  partial: { color: '#d4aa4a', label: 'Partial fit' },
-  risk: { color: '#c04040', label: 'Risk factors' },
-  unknown: { color: '#8c7a60', label: 'Fit unknown' },
-};
-
 // --- Parchment ornamental divider ---
 
 function ParchmentDivider() {
@@ -165,6 +143,7 @@ export function JoinRequestReviewModal({
   onMarkUnderReview,
   onAddToRoster,
 }: JoinRequestReviewModalProps) {
+  const { t } = useTranslation();
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [acceptSuccess, setAcceptSuccess] = useState(false);
@@ -172,17 +151,37 @@ export function JoinRequestReviewModal({
   const [showWindows, setShowWindows] = useState(false);
   const acceptConfirm = useModal();
   const { prefersReducedMotion } = useDevice();
+  const statusConfig: Record<string, { label: string; variant: 'warning' | 'info' | 'success' | 'default' }> = {
+    pending: { label: t('joinRequest.review.pending'), variant: 'warning' },
+    under_review: { label: t('joinRequest.review.underReview'), variant: 'info' },
+    accepted: { label: t('joinRequest.review.accepted'), variant: 'success' },
+    declined: { label: t('joinRequest.review.declined'), variant: 'default' },
+    cancelled: { label: t('joinRequest.review.cancelled'), variant: 'default' },
+  };
+  const readinessExplanations: Record<string, string> = {
+    ready: t('joinRequest.review.readinessReady'),
+    in_progress: t('joinRequest.review.readinessInProgress'),
+    needs_gear: t('joinRequest.review.readinessNeedsGear'),
+    not_ready: t('joinRequest.review.readinessNotReady'),
+    unknown: t('joinRequest.review.readinessUnknown'),
+  };
+  const fitDotStyle: Record<FitLevel, { color: string; label: string }> = {
+    strong: { color: '#4a9e5a', label: t('discover.fitScoreStrong') },
+    partial: { color: '#d4aa4a', label: t('discover.fitScorePartial') },
+    risk: { color: '#c04040', label: t('joinRequest.review.riskFactors') },
+    unknown: { color: '#8c7a60', label: t('discover.fitScoreUnknown') },
+  };
 
   const isActionable = request.status === 'pending' || request.status === 'under_review';
   const requester = request.requester;
   const gearSummary = request.gearSnapshotSummary;
   const gearFreshness = gearSummary?.syncedAt ? getFreshness(gearSummary.syncedAt) : 'none';
   const isStaleGear = gearFreshness === 'stale' || gearFreshness === 'old';
-  const statusInfo = STATUS_CONFIG[request.status] ?? STATUS_CONFIG.pending;
+  const statusInfo = statusConfig[request.status] ?? statusConfig.pending;
 
   // AR 2.0: fit indicator
   const fitLevel = deriveFitLevel(request, discoverySettings);
-  const fitDot = FIT_DOT_STYLE[fitLevel];
+  const fitDot = fitDotStyle[fitLevel];
 
   // Fit matching (for job fit section)
   const neededRoles = discoverySettings?.neededRoles?.map((r) => r.toLowerCase()) ?? [];
@@ -245,7 +244,7 @@ export function JoinRequestReviewModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Recruitment Dossier"
+      title={t('joinRequest.review.recruitmentDossier')}
       size="4xl"
       hideDefaultHeader
       animateBackdrop
@@ -256,7 +255,7 @@ export function JoinRequestReviewModal({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close dossier"
+          aria-label={t('joinRequest.review.closeDossier')}
           className="w-7 h-7 rounded-full flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
         >
           <X className="w-3.5 h-3.5" />
@@ -335,7 +334,7 @@ export function JoinRequestReviewModal({
             <div className="flex items-center gap-1.5">
               <ScrollText className="w-4 h-4 flex-shrink-0" style={{ color: '#8b6914' }} />
               <p className="text-[10px] font-bold uppercase tracking-[0.38em]" style={{ color: '#8b6914' }}>
-                Recruitment Dossier
+                {t('joinRequest.review.recruitmentDossier')}
               </p>
             </div>
             <div className="h-px flex-1 max-w-[48px]" style={{ background: 'linear-gradient(90deg, #b8933a, transparent)' }} />
@@ -344,12 +343,12 @@ export function JoinRequestReviewModal({
             className="font-display font-bold text-2xl leading-tight"
             style={{ color: '#2d1e13', fontFamily: '"Exo 2", var(--font-display), serif' }}
           >
-            An Adventurer Seeks Enlistment
+            {t('joinRequest.review.adventurerSeeksEnlistment')}
           </h2>
           <p className="text-xs italic mt-1.5" style={{ color: '#7a5c3a' }}>
-            Submitted to{' '}
+            {t('joinRequest.review.submittedTo')}{' '}
             <span style={{ fontWeight: 600, color: '#4a2d14' }}>{staticName}</span>{' '}
-            for your consideration
+            {t('joinRequest.review.forYourConsideration')}
           </p>
         </div>
 
@@ -364,14 +363,14 @@ export function JoinRequestReviewModal({
               <Check className="w-7 h-7" style={{ color: '#2a7a3a' }} />
             </div>
             <h3 className="font-display font-bold text-xl" style={{ color: '#2d1e13' }}>
-              {applicantName} accepted
+              {t('joinRequest.review.applicantAccepted', { name: applicantName })}
             </h3>
             <p className="text-sm" style={{ color: '#5c3d2e' }}>
-              They have been added as a member of {staticName}.
-              {!request.rosterPlayerId && ' Add them to the roster to complete onboarding.'}
+              {t('joinRequest.review.addedAsMember', { staticName })}
+              {!request.rosterPlayerId && ` ${t('joinRequest.review.addToRosterToComplete')}`}
             </p>
             {request.rosterPlayerId && (
-              <Badge variant="success" size="sm">On Roster</Badge>
+              <Badge variant="success" size="sm">{t('joinRequest.review.onRoster')}</Badge>
             )}
           </div>
         ) : (
@@ -440,7 +439,7 @@ export function JoinRequestReviewModal({
               {/* Applied date */}
               <div className="text-center w-full">
                 <p className="text-[9px] font-bold uppercase tracking-widest mb-0.5" style={{ color: '#8b6914' }}>
-                  Submitted
+                  {t('joinRequest.review.submitted')}
                 </p>
                 <p className="text-xs font-semibold" style={{ color: '#2d1e13' }}>{formattedDate}</p>
               </div>
@@ -464,7 +463,7 @@ export function JoinRequestReviewModal({
                       border: '1px solid rgba(184,147,58,0.3)',
                       color: '#4a2d14',
                     }}
-                    title={copied ? 'Copied!' : `Copy: ${request.contactDiscord}`}
+                    title={copied ? t('common.copied') : `${t('common.copy')}: ${request.contactDiscord}`}
                   >
                     <span className="truncate">{request.contactDiscord}</span>
                     {copied
@@ -516,7 +515,7 @@ export function JoinRequestReviewModal({
                 {/* Application message */}
                 {request.message && (
                   <div className="mt-3">
-                    <SectionHeader label="In Their Own Words" />
+                    <SectionHeader label={t('joinRequest.review.inTheirOwnWords')} />
                     <blockquote className="rounded-lg px-4 py-3"
                       style={{
                         background: 'rgba(240,230,206,0.45)',
@@ -533,12 +532,13 @@ export function JoinRequestReviewModal({
                       <div className="flex items-center justify-between mt-2">
                         <footer className="text-xs font-medium" style={{ color: '#8c7a60' }}>— {applicantName}</footer>
                         {request.message.length > 160 && (
-                          <button type="button" /* design-system-ignore: parchment inline expand toggle */
+                          /* design-system-ignore: parchment inline expand toggle */
+                          <button type="button"
                             onClick={() => setShowFullMessage(!showFullMessage)}
                             className="text-xs underline underline-offset-2 ml-2 flex-shrink-0"
                             style={{ color: '#8b6914' }}
                           >
-                            {showFullMessage ? 'Show less' : 'Read full message'}
+                            {showFullMessage ? t('common.showLess') : t('joinRequest.review.readFullMessage')}
                           </button>
                         )}
                       </div>
@@ -562,8 +562,9 @@ export function JoinRequestReviewModal({
                     color: '#5c3d2e',
                   }}
                 >
-                  <span style={{ fontWeight: 600, color: '#2d1e13' }}>No fit snapshot</span>
-                  {' — submitted before snapshots were recorded.'}
+                  <span style={{ fontWeight: 600, color: '#2d1e13' }}>{t('joinRequest.review.noFitSnapshot')}</span>
+                  {' — '}
+                  {t('joinRequest.review.submittedBeforeSnapshots')}
                 </div>
               )}
 
@@ -573,7 +574,7 @@ export function JoinRequestReviewModal({
                       SECTION 2 — Job Fit
                       ══════════════════════════════════════════ */}
                   <div data-testid="section-job-fit">
-                    <SectionHeader label="Job Fit" />
+                    <SectionHeader label={t('joinRequest.review.jobFit')} />
 
                     {/* Applying job */}
                     {(snap?.job || request.selectedJob) ? (
@@ -632,14 +633,14 @@ export function JoinRequestReviewModal({
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs italic" style={{ color: '#8c7a60' }}>No job specified</p>
+                      <p className="text-xs italic" style={{ color: '#8c7a60' }}>{t('joinRequest.review.noJobSpecified')}</p>
                     )}
 
                     {/* Alt jobs */}
                     {(snapAltJobs.length > 0 || (request.includedAltJobs && request.includedAltJobs.length > 0)) && (
                       <div className="mt-2">
                         <p className="text-[9px] font-bold uppercase tracking-[0.22em] mb-1" style={{ color: '#8b6914' }}>
-                          Also Available As
+                          {t('joinRequest.modal.alsoAvailableAs')}
                         </p>
                         <div className="flex gap-2 flex-wrap">
                           {snapAltJobs.length > 0
@@ -740,7 +741,7 @@ export function JoinRequestReviewModal({
                         <div className="space-y-1">
                           <ReadinessBadge readiness={request.readinessAtApply} />
                           <p className="text-xs leading-snug" style={{ color: '#5c3d2e' }}>
-                            {READINESS_EXPLANATIONS[request.readinessAtApply] ?? READINESS_EXPLANATIONS.unknown}
+                            {readinessExplanations[request.readinessAtApply] ?? readinessExplanations.unknown}
                           </p>
                         </div>
                       ) : (
@@ -774,7 +775,7 @@ export function JoinRequestReviewModal({
                           </div>
                         ))}
                         <p className="text-[10px] w-full mt-0.5" style={{ color: '#8c7a60' }}>
-                          Counts from public goals only — goal text is not shared.
+                          {t('joinRequest.review.publicGoalsOnly')}
                         </p>
                       </div>
                     ) : request.playerProfileId && (groupId ?? request.staticGroupId) ? (
@@ -784,7 +785,7 @@ export function JoinRequestReviewModal({
                         snapshot={request.goalAlignmentSnapshot}
                       />
                     ) : (
-                      <p className="text-xs italic" style={{ color: '#8c7a60' }}>No goal data</p>
+                      <p className="text-xs italic" style={{ color: '#8c7a60' }}>{t('joinRequest.review.noGoalData')}</p>
                     )}
                   </div>
 
@@ -794,12 +795,12 @@ export function JoinRequestReviewModal({
                       SECTION 5 — Schedule & Comms
                       ══════════════════════════════════════════ */}
                   <div data-testid="section-schedule-comms">
-                    <SectionHeader label="Schedule & Comms" />
+                    <SectionHeader label={t('joinRequest.review.scheduleAndComms')} />
                     <div className="space-y-2">
                       {/* Schedule overlap from fit_snapshot */}
                       <div>
                         <p className="text-[9px] font-bold uppercase tracking-[0.22em] mb-1" style={{ color: '#8b6914' }}>
-                          Availability
+                          {t('profile.overview.availability')}
                         </p>
                         {snapScheduleOverlap !== null && snapScheduleOverlap !== undefined ? (
                           snapScheduleOverlap.length > 0 ? (
@@ -813,12 +814,13 @@ export function JoinRequestReviewModal({
                                   )}
                                   {request.availabilitySummary?.detailLevel === 'exact' &&
                                     (request.availabilitySummary?.exactWindows?.length ?? 0) > 0 && (
-                                    <button type="button" /* design-system-ignore: parchment inline toggle */
+                                    /* design-system-ignore: parchment inline toggle */
+                                    <button type="button"
                                       onClick={() => setShowWindows(!showWindows)}
                                       className="text-xs underline underline-offset-2 transition-colors"
                                       style={{ color: '#8b6914' }}
                                     >
-                                      {showWindows ? 'Hide windows' : 'Show windows'}
+                                      {showWindows ? t('joinRequest.review.hideWindows') : t('joinRequest.review.showWindows')}
                                     </button>
                                   )}
                                 </div>
@@ -836,7 +838,7 @@ export function JoinRequestReviewModal({
                               </div>
                             </div>
                           ) : (
-                            <p className="text-xs italic" style={{ color: '#8c7a60' }}>Unknown</p>
+                            <p className="text-xs italic" style={{ color: '#8c7a60' }}>{t('common.unknown')}</p>
                           )
                         ) : request.availabilitySummary ? (
                           <div className="flex items-start gap-2 text-sm" style={{ color: '#5c3d2e' }}>
@@ -854,7 +856,7 @@ export function JoinRequestReviewModal({
                             <span>{request.availabilityNote}</span>
                           </div>
                         ) : (
-                          <p className="text-xs italic" style={{ color: '#8c7a60' }}>Unknown</p>
+                          <p className="text-xs italic" style={{ color: '#8c7a60' }}>{t('common.unknown')}</p>
                         )}
                       </div>
 
@@ -978,11 +980,11 @@ export function JoinRequestReviewModal({
                         <div className="space-y-1">
                           <ReadinessBadge readiness={request.readinessAtApply} />
                           <p className="text-xs leading-snug" style={{ color: '#5c3d2e' }}>
-                            {READINESS_EXPLANATIONS[request.readinessAtApply] ?? READINESS_EXPLANATIONS.unknown}
+                            {readinessExplanations[request.readinessAtApply] ?? readinessExplanations.unknown}
                           </p>
                         </div>
                       ) : (
-                        <p className="text-xs italic" style={{ color: '#8c7a60' }}>Not self-rated</p>
+                        <p className="text-xs italic" style={{ color: '#8c7a60' }}>{t('joinRequest.review.notSelfRated')}</p>
                       )}
                     </div>
                   </div>
@@ -990,7 +992,7 @@ export function JoinRequestReviewModal({
                   {/* Legacy alt jobs */}
                   {request.includedAltJobs && request.includedAltJobs.length > 0 && (
                     <div>
-                      <SectionHeader label="Also Available As" />
+                      <SectionHeader label={t('joinRequest.modal.alsoAvailableAs')} />
                       <div className="flex gap-2 flex-wrap">
                         {request.includedAltJobs.map((alt) => (
                           <div key={alt.job} className="flex items-center gap-1.5 rounded-lg px-2 py-1"
@@ -1008,7 +1010,7 @@ export function JoinRequestReviewModal({
                   {/* Legacy availability */}
                   {(request.availabilitySummary || request.availabilityNote) && (
                     <div>
-                      <SectionHeader label="Availability" />
+                      <SectionHeader label={t('profile.overview.availability')} />
                       {request.availabilitySummary ? (
                         <div className="flex items-start gap-2 text-sm" style={{ color: '#5c3d2e' }}>
                           <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: '#8c7a60' }} />
@@ -1020,17 +1022,20 @@ export function JoinRequestReviewModal({
                                   : `${request.availabilitySummary.configuredDays}d`}
                                 {request.availabilitySummary.timezone && `, ${request.availabilitySummary.timezone}`}
                                 <span style={{ color: '#8c7a60' }}>
-                                  {request.availabilitySummary.detailLevel === 'exact' ? ' · exact windows' : ' · summary only'}
+                                  {request.availabilitySummary.detailLevel === 'exact'
+                                    ? ` · ${t('joinRequest.modal.exactWindows')}`
+                                    : ` · ${t('joinRequest.review.summaryOnly')}`}
                                 </span>
                               </span>
                               {request.availabilitySummary.detailLevel === 'exact' &&
                                 (request.availabilitySummary.exactWindows?.length ?? 0) > 0 && (
-                                <button type="button" /* design-system-ignore: parchment inline toggle */
+                                /* design-system-ignore: parchment inline toggle */
+                                <button type="button"
                                   onClick={() => setShowWindows(!showWindows)}
                                   className="text-xs underline underline-offset-2 transition-colors"
                                   style={{ color: '#8b6914' }}
                                 >
-                                  {showWindows ? 'Hide windows' : 'Show windows'}
+                                  {showWindows ? t('joinRequest.review.hideWindows') : t('joinRequest.review.showWindows')}
                                 </button>
                               )}
                             </div>

@@ -64,7 +64,8 @@ interface CollectionsHubProps {
 }
 
 export function CollectionsHub({ groupId, currentUserId, canManage }: CollectionsHubProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isJapanese = (i18n.resolvedLanguage ?? '').toLowerCase().startsWith('ja');
   const { goals, isLoading, participants, fetchGoals, fetchParticipants } = useCollectionGoalStore();
 
   const [tab, setTab] = useUrlTabState('farm', HUB_TABS, 'suggested');
@@ -107,7 +108,16 @@ export function CollectionsHub({ groupId, currentUserId, canManage }: Collection
 
   function handleCopyPlan(goal: CollectionGoal) {
     const parts = participants[goal.id] ?? [];
-    const text = buildDiscordPlan(goal, parts);
+    const text = isJapanese ? buildDiscordPlan(goal, parts)
+      .replace('farm plan', '周回プラン')
+      .replace('Mode:', '方式:')
+      .replace('Exchange:', '交換:')
+      .replace('**Need (', '**必要 (')
+      .replace('**Want (', '**希望 (')
+      .replace('**Can buy now:**', '**今すぐ交換可能:**')
+      .replace('**Have (', '**所持 (')
+      .replace('📝', '📝')
+      : buildDiscordPlan(goal, parts);
     navigator.clipboard.writeText(text).then(
       () => toast.success(t('collections.farmPlanCopied')),
       () => toast.error(t('collections.failedToCopyFarmPlan')),

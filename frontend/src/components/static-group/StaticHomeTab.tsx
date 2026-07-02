@@ -1,5 +1,6 @@
 /* eslint-disable design-system/no-raw-button */
 import { useEffect, useMemo, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -44,6 +45,11 @@ import type { JoinRequest, PageMode, SnapshotPlayer, SplitClearData, StaticGroup
 import { normalizeApplicationSnapshot } from '../../utils/applicationSnapshot';
 import { getSplitClearReadiness } from '../../utils/splitClear';
 import { api } from '../../services/api';
+import {
+  getLocalizedTrialDutyName,
+  getLocalizedTrialRewardName,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 // ─── Prop types ───────────────────────────────────────────────────────────────
 
@@ -92,14 +98,50 @@ function playerGearReadiness(p: SnapshotPlayer): GearReadiness {
   return 'needs_gear';
 }
 
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+function relativeTime(iso: string, locale = 'en-US'): string {
+  const age = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(age / 60000);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  if (minutes < 1) {
+    return locale.startsWith('ja') ? 'たった今' : 'just now';
+  }
+  if (minutes < 60) {
+    return rtf.format(-minutes, 'minute');
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return rtf.format(-hours, 'hour');
+  }
+  return rtf.format(-Math.floor(hours / 24), 'day');
+}
+
+function translateOverviewActivity(
+  eventType: string,
+  actorName: string | null | undefined,
+  trialId: string | null | undefined,
+  locale: string,
+  t: TFunction,
+  fallbackLabel?: string,
+): string {
+  const trialInfo = trialId ? getTrialById(trialId) : null;
+  const dutyName = trialInfo ? getLocalizedTrialDutyName(trialInfo, locale) : (trialId ?? t('common.unknown'));
+  const rewardName = trialInfo ? getLocalizedTrialRewardName(trialInfo, locale) : dutyName;
+  const actor = actorName?.trim() || t('overview.activityMember');
+
+  switch (eventType) {
+    case 'mount_obtained':
+      return t('overview.activityMountObtained', { actor, reward: rewardName });
+    case 'totem_updated':
+      return actorName
+        ? t('overview.activityProgressUpdated', { actor, duty: dutyName })
+        : t('overview.activityCollectionProgressUpdated', { actor });
+    case 'tracking_started':
+      return t('overview.activityTrackingStarted', { actor, duty: dutyName });
+    case 'plugin_sync':
+      return t('overview.activitySharedMountDataUpdated');
+    default:
+      return fallbackLabel ?? '';
+  }
 }
 
 function sessionCountdown(startIso: string): string {
@@ -155,6 +197,8 @@ interface StaticActivityItem {
 
 function deriveActivityItems(
   data: MountFarmData,
+  t: TFunction,
+  locale: string,
   currentUserId?: string | null,
   activityDisplayMode?: 'named' | 'anonymous' | null,
 ): StaticActivityItem[] {
@@ -162,6 +206,8 @@ function deriveActivityItems(
     key: string;
     createdAt: string;
     icon: StaticActivityItem['icon'];
+    eventType: string;
+    trialId?: string | null;
     label: string;
     actorDisplay: ActivityActorDisplay;
     visibility: ActivityVisibility;
@@ -174,10 +220,6 @@ function deriveActivityItems(
   let pluginSyncAt: string | null = null;
 
   for (const trial of data.trials) {
-    const trialInfo = getTrialById(trial.trialId);
-    const dutyName = trialInfo?.dutyName ?? trial.trialId;
-    const mountName = trialInfo?.mountName ?? 'mount';
-
     for (const mp of trial.memberProgress) {
       if (!mp.updatedAt) continue;
 
@@ -197,7 +239,9 @@ function deriveActivityItems(
             key: `${trial.trialId}-${mp.userId}-obtained`,
             createdAt: mp.updatedAt,
             icon: 'mount',
-            label: `A member obtained ${mountName}`,
+            eventType: 'mount_obtained',
+            trialId: trial.trialId,
+            label: translateOverviewActivity('mount_obtained', null, trial.trialId, locale, t),
             actorDisplay: 'anonymous',
             visibility: 'static',
             type: 'mount_progress',
@@ -209,7 +253,9 @@ function deriveActivityItems(
             key: `${trial.trialId}-${mp.userId}-currency`,
             createdAt: mp.updatedAt,
             icon: 'currency',
-            label: `A member updated collection progress`,
+            eventType: 'totem_updated',
+            trialId: trial.trialId,
+            label: translateOverviewActivity('totem_updated', null, trial.trialId, locale, t),
             actorDisplay: 'anonymous',
             visibility: 'static',
             type: 'mount_progress',
@@ -226,7 +272,9 @@ function deriveActivityItems(
           key: `${trial.trialId}-${mp.userId}-obtained`,
           createdAt: mp.updatedAt,
           icon: 'mount',
-          label: `${mp.displayName} obtained ${mountName}`,
+          eventType: 'mount_obtained',
+          trialId: trial.trialId,
+          label: translateOverviewActivity('mount_obtained', mp.displayName, trial.trialId, locale, t),
           actorDisplay: 'named',
           visibility: 'static',
           type: 'mount_progress',
@@ -238,7 +286,9 @@ function deriveActivityItems(
           key: `${trial.trialId}-${mp.userId}-currency`,
           createdAt: mp.updatedAt,
           icon: 'currency',
-          label: `${mp.displayName} updated ${dutyName} progress`,
+          eventType: 'totem_updated',
+          trialId: trial.trialId,
+          label: translateOverviewActivity('totem_updated', mp.displayName, trial.trialId, locale, t),
           actorDisplay: 'named',
           visibility: 'static',
           type: 'mount_progress',
@@ -250,7 +300,9 @@ function deriveActivityItems(
           key: `${trial.trialId}-${mp.userId}-tracking`,
           createdAt: mp.updatedAt,
           icon: 'tracking',
-          label: `${mp.displayName} started tracking ${dutyName}`,
+          eventType: 'tracking_started',
+          trialId: trial.trialId,
+          label: translateOverviewActivity('tracking_started', mp.displayName, trial.trialId, locale, t),
           actorDisplay: 'named',
           visibility: 'static',
           type: 'mount_progress',
@@ -267,7 +319,9 @@ function deriveActivityItems(
       key: 'plugin-sync',
       createdAt: pluginSyncAt,
       icon: 'plugin',
-      label: 'Shared mount data updated',
+      eventType: 'plugin_sync',
+      trialId: null,
+      label: translateOverviewActivity('plugin_sync', null, null, locale, t),
       actorDisplay: 'system',
       visibility: 'static',
       type: 'plugin_sync',
@@ -293,9 +347,11 @@ function deriveActivityItems(
       visibility: f.visibility,
       type: f.type,
       icon: f.icon,
-      label: shouldAnonymize ? f.label.replace(f.actorDisplayName ?? '', 'A member') : f.label,
+      label: shouldAnonymize
+        ? translateOverviewActivity(f.eventType, null, f.trialId, locale, t, f.label)
+        : f.label,
       createdAt: f.createdAt,
-      time: relativeTime(f.createdAt),
+      time: relativeTime(f.createdAt, locale),
     };
   });
 }
@@ -1138,9 +1194,12 @@ function BestNextFarmModule({
   onNavigate: (tab: PageMode) => void;
   onScheduleFarm?: (trial: MountFarmTrial) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const top = recommendations[0] ?? null;
   const trialInfo = top ? getTrialById(top.trialId) : null;
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const localizedDutyName = getLocalizedTrialDutyName(trialInfo, uiLocale);
+  const localizedRewardName = getLocalizedTrialRewardName(trialInfo, uiLocale);
 
   return (
     <div>
@@ -1163,10 +1222,10 @@ function BestNextFarmModule({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-0.5 truncate">
-                  {trialInfo.dutyName}
+                  {localizedDutyName}
                 </p>
                 <p className="text-sm font-bold text-text-primary leading-tight truncate">
-                  {trialInfo.mountName}
+                  {localizedRewardName}
                 </p>
               </div>
             </div>
@@ -1232,46 +1291,11 @@ function BestNextFarmModule({
 
 // ── Static Objectives constants ──────────────────────────────────────────────
 
-const OBJECTIVE_CATEGORY_LABELS: Record<string, string> = {
-  ultimate_clear:     'Ultimate — Clear',
-  ultimate_farm:      'Ultimate — Farm',
-  savage_bis:         'Savage — BiS',
-  savage_mount:       'Savage — Mount',
-  savage_achievement: 'Savage — Achievement',
-  savage_alt_jobs:    'Savage — Alt Jobs',
-  criterion_title:    'Criterion — Title',
-  gil_farm:           'Gil Farm',
-  loot_farm:          'Loot Farm',
-  mount_farm:         'Mount Farm',
-  custom:             'Custom',
-};
-
 const OBJECTIVE_PRIORITY_COLORS: Record<string, string> = {
   required:  'text-status-error',
   preferred: 'text-accent',
   optional:  'text-text-tertiary',
   not_doing: 'text-text-muted',
-};
-
-const OBJECTIVE_PRIORITY_LABELS: Record<string, string> = {
-  required:  'Required',
-  preferred: 'Preferred',
-  optional:  'Optional',
-  not_doing: 'Not Doing',
-};
-
-// ── Collection Goals constants ────────────────────────────────────────────────
-
-const GOAL_TYPE_LABELS: Record<string, string> = {
-  mount: 'Mount', token: 'Token', minion: 'Minion',
-  orchestrion: 'Orchestrion', glam: 'Glamour', custom_reward: 'Custom',
-  weapon: 'Weapon', weapon_coffer: 'Weapon Coffer',
-  title: 'Title', clear_count: 'Clear Count',
-};
-
-const CONTENT_TYPE_LABELS: Record<string, string> = {
-  extreme: 'EX', savage: 'Savage', ultimate: 'Ultimate',
-  criterion: 'Criterion', chaotic_alliance: 'Chaotic', field_operation: 'Field Op', custom: '',
 };
 
 const GOAL_STATUS_COLORS: Record<string, string> = {
@@ -1281,12 +1305,60 @@ const GOAL_STATUS_COLORS: Record<string, string> = {
   complete: 'text-status-success',
 };
 
-const GOAL_STATUS_LABELS: Record<string, string> = {
-  wanted: 'Wanted',
-  farming: 'Farming',
-  scheduled: 'Scheduled',
-  complete: 'Complete',
-};
+function getObjectiveCategoryLabel(category: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const key = `objectiveCategory.${category}`;
+  const translated = t(key);
+  return translated === key ? category : translated;
+}
+
+function getObjectivePriorityLabel(priority: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const key = `objectivePriority.${priority}`;
+  const translated = t(key);
+  return translated === key ? priority : translated;
+}
+
+function getOverviewGoalTypeLabel(goalType: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const keys: Record<string, string> = {
+    mount: 'collections.typeMount',
+    token: 'collections.typeToken',
+    minion: 'collections.typeMinion',
+    orchestrion: 'collections.typeOrchestrion',
+    glam: 'collections.typeGlam',
+    custom_reward: 'collections.typeCustom',
+    weapon: 'collections.typeWeapon',
+    weapon_coffer: 'collections.typeWeaponCoffer',
+    title: 'collections.typeTitle',
+    clear_count: 'collections.typeClearCount',
+  };
+  const key = keys[goalType];
+  if (!key) {
+    return goalType;
+  }
+  return t(key);
+}
+
+function getOverviewContentTypeLabel(contentType: string, isJapanese: boolean): string {
+  return {
+    extreme: 'EX',
+    savage: isJapanese ? '零式' : 'Savage',
+    ultimate: isJapanese ? '絶' : 'Ultimate',
+    criterion: isJapanese ? '異聞' : 'Criterion',
+    chaotic_alliance: isJapanese ? 'カオティック' : 'Chaotic',
+    field_operation: isJapanese ? 'フィールド' : 'Field Op',
+    custom: '',
+  }[contentType] ?? contentType;
+}
+
+function getOverviewGoalStatusLabel(status: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+  const keys: Record<string, string> = {
+    wanted: 'settings.collectionGoalStatusWanted',
+    farming: 'settings.collectionGoalStatusFarming',
+    scheduled: 'settings.collectionGoalStatusScheduled',
+    complete: 'settings.collectionGoalStatusComplete',
+  };
+  const key = keys[status];
+  return key ? t(key) : status;
+}
 
 function SubLabel({ children, aside }: { children: React.ReactNode; aside?: React.ReactNode }) {
   return (
@@ -1330,7 +1402,8 @@ function GoalsFarmsModule({
   onCreateGoal: () => void;
   onDeleteGoal: (id: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isJapanese = resolveUiLocale(i18n.resolvedLanguage).startsWith('ja');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const openGoalsTab = () => {
@@ -1362,7 +1435,7 @@ function GoalsFarmsModule({
             </div>
           ) : objectivesError && activeObjectives.length === 0 ? (
             <div className="px-3 py-3 text-center">
-              <p className="text-[11px] text-text-muted">Couldn&apos;t load objectives.</p>
+              <p className="text-[11px] text-text-muted">{t('goalsPage.loadFailed')}</p>
             </div>
           ) : activeObjectives.length === 0 ? (
             <div className="px-3 py-3 text-center">
@@ -1395,10 +1468,10 @@ function GoalsFarmsModule({
                       className="px-3 py-1.5 flex items-center gap-2 border-b border-border-subtle last:border-b-0"
                     >
                       <span className="text-[12px] text-text-primary truncate flex-1">
-                        {OBJECTIVE_CATEGORY_LABELS[obj.category] ?? obj.category}
+                        {getObjectiveCategoryLabel(obj.category, t)}
                       </span>
                       <span className={`text-[10px] font-semibold flex-shrink-0 ${OBJECTIVE_PRIORITY_COLORS[obj.priority] ?? 'text-text-muted'}`}>
-                        {OBJECTIVE_PRIORITY_LABELS[obj.priority] ?? obj.priority}
+                        {getObjectivePriorityLabel(obj.priority, t)}
                       </span>
                     </motion.li>
                   ))}
@@ -1406,7 +1479,7 @@ function GoalsFarmsModule({
               </ul>
               {activeObjectives.length > 3 && (
                 <div className="px-3 py-1 flex items-center justify-between">
-                  <span className="text-[10px] text-text-muted">+{activeObjectives.length - 3} more</span>
+                  <span className="text-[10px] text-text-muted">{isJapanese ? `他${activeObjectives.length - 3}件` : `+${activeObjectives.length - 3} more`}</span>
                   {/* design-system-ignore: inline text link within overflow panel */}<button type="button" onClick={openGoalsTab} className="text-[10px] text-accent hover:underline">
                     {canManage ? t('overview.manageGoals') : t('overview.viewGoals')}
                   </button>
@@ -1478,11 +1551,11 @@ function GoalsFarmsModule({
                           <span className={`text-[10px] font-semibold flex-shrink-0 ${GOAL_STATUS_COLORS[goal.status] ?? 'text-text-muted'}`}>
                             {goal.status === 'complete'
                               ? <Check className="w-3 h-3 text-status-success" />
-                              : (GOAL_STATUS_LABELS[goal.status] ?? goal.status)}
+                              : getOverviewGoalStatusLabel(goal.status, t)}
                           </span>
                         </div>
                         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                          {goal.contentType && CONTENT_TYPE_LABELS[goal.contentType] && (
+                          {goal.contentType && getOverviewContentTypeLabel(goal.contentType, isJapanese) && (
                             <span
                               className="text-[10px] font-semibold px-1 py-0.5 rounded"
                               style={
@@ -1491,10 +1564,10 @@ function GoalsFarmsModule({
                                   : { background: 'var(--color-surface-elevated)', color: 'var(--color-text-muted)' }
                               }
                             >
-                              {CONTENT_TYPE_LABELS[goal.contentType]}
+                              {getOverviewContentTypeLabel(goal.contentType, isJapanese)}
                             </span>
                           )}
-                          <span className="text-[10px] text-text-muted">{GOAL_TYPE_LABELS[goal.goalType] ?? goal.goalType}</span>
+                          <span className="text-[10px] text-text-muted">{getOverviewGoalTypeLabel(goal.goalType, t)}</span>
                           {goal.targetCount != null && (
                             <span className="text-[10px] text-text-muted tabular-nums">
                               · {goal.currentCount ?? 0}/{goal.targetCount}
@@ -1596,7 +1669,7 @@ function GoalsFarmsModule({
                   <li key={s.id} className="px-3 py-1.5 flex items-center justify-between gap-2 border-b border-border-subtle last:border-b-0">
                     <span className="text-[12px] text-text-primary truncate flex-1">{s.title}</span>
                     <span className="text-[10px] text-text-muted flex-shrink-0">
-                      {s.voteSummary.total} vote{s.voteSummary.total !== 1 ? 's' : ''}
+                      {isJapanese ? `${s.voteSummary.total}票` : `${s.voteSummary.total} vote${s.voteSummary.total !== 1 ? 's' : ''}`}
                     </span>
                   </li>
                 ))}
@@ -1610,7 +1683,7 @@ function GoalsFarmsModule({
                   {canManage ? t('overview.manageSuggestions') : t('overview.voteSuggest')}
                 </button>
                 {openSuggestions.length > 3 && (
-                  <span className="text-[10px] text-text-muted">+{openSuggestions.length - 3} more</span>
+                  <span className="text-[10px] text-text-muted">{isJapanese ? `他${openSuggestions.length - 3}件` : `+${openSuggestions.length - 3} more`}</span>
                 )}
               </div>
             </>
@@ -1656,9 +1729,10 @@ function RecentActivityModule({
   onNavigate: (tab: PageMode) => void;
   canManage: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const currentUser = useAuthStore((s) => s.user);
   const [apiItems, setApiItems] = useState<ActivityLogItem[] | null>(null);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
 
   useEffect(() => {
     let cancelled = false;
@@ -1671,8 +1745,8 @@ function RecentActivityModule({
 
   const derivedItems = useMemo(() => {
     if (!farmData) return [];
-    return deriveActivityItems(farmData, currentUser?.id, currentUser?.activityDisplayMode);
-  }, [farmData, currentUser?.id, currentUser?.activityDisplayMode]);
+    return deriveActivityItems(farmData, t, uiLocale, currentUser?.id, currentUser?.activityDisplayMode);
+  }, [farmData, t, uiLocale, currentUser?.id, currentUser?.activityDisplayMode]);
 
   // Use API items when available; fall back to derived while loading or when empty API
   const items: { key: string; label: string; icon: StaticActivityItem['icon']; time: string; actorUserId: string | null }[] = useMemo(() => {
@@ -1690,15 +1764,22 @@ function RecentActivityModule({
         };
         return {
           key: item.id,
-          label: shouldAnonymize ? item.label.replace(item.actorDisplayName ?? '', 'A member') : item.label,
+          label: translateOverviewActivity(
+            item.eventType,
+            shouldAnonymize ? null : item.actorDisplayName,
+            item.trialId,
+            uiLocale,
+            t,
+            item.label,
+          ),
           icon: iconMap[item.eventType] ?? 'tracking',
-          time: relativeTime(item.createdAt),
+          time: relativeTime(item.createdAt, uiLocale),
           actorUserId: shouldAnonymize ? null : (item.actorUserId ?? null),
         };
       });
     }
     return derivedItems.map((item) => ({ ...item, actorUserId: item.actorUserId ?? null }));
-  }, [apiItems, derivedItems, currentUser?.id, currentUser?.activityDisplayMode]);
+  }, [apiItems, derivedItems, currentUser?.id, currentUser?.activityDisplayMode, t, uiLocale]);
 
   const ACTIVITY_ICON_STYLE: Record<StaticActivityItem['icon'], { bg: string; color: string }> = {
     mount:    { bg: 'rgba(234,179,8,0.15)',   color: 'var(--color-status-warning)' },

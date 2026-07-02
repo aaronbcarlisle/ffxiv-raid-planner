@@ -10,6 +10,7 @@
  */
 
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Target,
   ChevronRight,
@@ -22,39 +23,19 @@ import { useObjectiveCommandStore } from '../../stores/objectiveCommandStore';
 import type { ObjectiveCommandCard } from '../../stores/objectiveCommandStore';
 import type { PageMode } from '../../types';
 
-// ── Category display labels ───────────────────────────────────────────────────
-
-const CATEGORY_LABELS: Record<string, string> = {
-  ultimate_clear:     'Ultimate — Clear',
-  ultimate_farm:      'Ultimate — Farm',
-  savage_bis:         'Savage — BiS',
-  savage_mount:       'Savage — Mount',
-  savage_achievement: 'Savage — Achievement',
-  savage_alt_jobs:    'Savage — Alt Jobs',
-  criterion_title:    'Criterion — Title',
-  gil_farm:           'Gil Farm',
-  loot_farm:          'Loot Farm',
-  mount_farm:         'Mount Farm',
-  custom:             'Custom',
-};
-
 // ── Priority badge styles ─────────────────────────────────────────────────────
 
 function PriorityBadge({ priority }: { priority: string }) {
+  const { t } = useTranslation();
   const styles: Record<string, string> = {
     required: 'bg-status-error/15 text-status-error border border-status-error/30',
     preferred: 'bg-status-warning/15 text-status-warning border border-status-warning/30',
     optional: 'bg-surface-elevated text-text-muted border border-border-subtle',
   };
-  const labels: Record<string, string> = {
-    required: 'Required',
-    preferred: 'Preferred',
-    optional: 'Optional',
-  };
   const cls = styles[priority] ?? styles.optional;
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide flex-shrink-0 ${cls}`}>
-      {labels[priority] ?? priority}
+      {t(`objectivePriority.${priority}`, { defaultValue: priority })}
     </span>
   );
 }
@@ -67,7 +48,9 @@ interface ObjectiveCardProps {
 }
 
 function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
+  const { t, i18n } = useTranslation();
   const { rosterReadiness, goalAlignment, bisReadiness, linkedCollectionGoal, nextSession } = card;
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
 
   function handleCta() {
     switch (card.nextActionTarget) {
@@ -91,7 +74,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
     }
   }
 
-  const categoryLabel = CATEGORY_LABELS[card.category] ?? card.category;
+  const categoryLabel = t(`objectiveCategory.${card.category}`, { defaultValue: card.category });
 
   return (
     <div className="rounded-xl border border-border-subtle bg-surface-card overflow-hidden">
@@ -116,7 +99,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
         <span className="flex items-center gap-1">
           <XivIcon name="party" size={12} className="flex-shrink-0" />
           <span>
-            Roster{' '}
+            {t('overview.objectiveRoster')}{' '}
             <span className={rosterReadiness.ready < rosterReadiness.total ? 'text-status-warning font-semibold' : 'text-status-success font-semibold'}>
               {rosterReadiness.ready}/{rosterReadiness.total}
             </span>
@@ -127,13 +110,13 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
         <span className="flex items-center gap-1">
           <Target className="w-3 h-3 text-text-muted flex-shrink-0" />
           <span>
-            Goals{' '}
-            <span className="text-status-success font-semibold">{goalAlignment.aligned} aligned</span>
+            {t('overview.objectiveGoals')}{' '}
+            <span className="text-status-success font-semibold">{t('overview.objectiveAligned', { count: goalAlignment.aligned })}</span>
             {goalAlignment.conflicts > 0 && (
-              <span className="text-status-error font-semibold"> · {goalAlignment.conflicts} conflict{goalAlignment.conflicts !== 1 ? 's' : ''}</span>
+              <span className="text-status-error font-semibold"> · {t('overview.objectiveConflicts', { count: goalAlignment.conflicts })}</span>
             )}
             {goalAlignment.partial > 0 && goalAlignment.conflicts === 0 && (
-              <span className="text-text-muted"> · {goalAlignment.partial} partial</span>
+              <span className="text-text-muted"> · {t('overview.objectivePartial', { count: goalAlignment.partial })}</span>
             )}
           </span>
         </span>
@@ -143,7 +126,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
           <span className="flex items-center gap-1">
             <XivIcon name="sword" size={12} className="flex-shrink-0" />
             <span>
-              BiS{' '}
+              {t('overview.objectiveBis')}{' '}
               <span className={bisReadiness.missing > 2 ? 'text-status-error font-semibold' : 'text-status-success font-semibold'}>
                 {bisReadiness.ready}/{bisReadiness.ready + bisReadiness.missing}
               </span>
@@ -169,16 +152,16 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
         <XivIcon name="schedule" size={12} className="flex-shrink-0" />
         {nextSession ? (
           <span className="text-text-secondary">
-            <span className="font-medium">Next:</span>{' '}
+            <span className="font-medium">{t('overview.objectiveNext')}:</span>{' '}
             {nextSession.title}{' '}
             <span className="text-text-muted">
-              {new Date(nextSession.date).toLocaleDateString(undefined, {
+              {new Date(nextSession.date).toLocaleDateString(uiLocale, {
                 weekday: 'short', month: 'short', day: 'numeric',
               })}
             </span>
           </span>
         ) : (
-          <span className="text-text-muted italic">No session scheduled</span>
+          <span className="text-text-muted italic">{t('overview.noSessionsScheduled')}</span>
         )}
       </div>
 
@@ -205,7 +188,7 @@ function ObjectiveCard({ card, onNavigate }: ObjectiveCardProps) {
             rightIcon={<ChevronRight className="w-3 h-3" />}
             className="text-[11px] px-2 py-1 min-h-0"
           >
-            Go
+            {t('common.open')}
           </Button>
         )}
       </div>
@@ -226,6 +209,7 @@ export function ObjectiveCommandCenter({
   isMember,
   onNavigate,
 }: ObjectiveCommandCenterProps) {
+  const { t } = useTranslation();
   const { cards, loading, error, fetchCards } = useObjectiveCommandStore();
 
   useEffect(() => {
@@ -248,7 +232,7 @@ export function ObjectiveCommandCenter({
   if (error && cards.length === 0) {
     return (
       <div className="rounded-xl border border-border-subtle bg-surface-card px-3 py-4 text-center">
-        <p className="text-xs text-text-muted">Couldn&apos;t load objective data.</p>
+        <p className="text-xs text-text-muted">{t('goalsPage.loadFailed')}</p>
       </div>
     );
   }
@@ -260,9 +244,9 @@ export function ObjectiveCommandCenter({
         className="rounded-xl border border-border-subtle bg-surface-card px-3 py-5 text-center"
       >
         <Target className="w-5 h-5 text-text-muted mx-auto mb-1.5 opacity-40" />
-        <p className="text-xs font-medium text-text-secondary mb-0.5">No objectives set</p>
+        <p className="text-xs font-medium text-text-secondary mb-0.5">{t('goalsPage.noObjectives')}</p>
         <p className="text-[11px] text-text-muted">
-          Add one in Goals &amp; Farms to get actionable suggestions here.
+          {t('overview.objectiveCommandEmptyDesc')}
         </p>
       </div>
     );

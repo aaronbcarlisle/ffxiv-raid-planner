@@ -567,7 +567,7 @@ describe('StaticHomeTab — Recent Activity', () => {
     setFarmStore({ data: FARM_DATA_WITH_ACTIVITY });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByRole('button', { name: /view all activity/i }));
-    expect(onNavigate).toHaveBeenCalledWith('goals', 'farms');
+    expect(onNavigate).toHaveBeenCalledWith('goals');
   });
 
   it('never shows more than 5 activity rows', () => {
@@ -642,7 +642,7 @@ describe('StaticHomeTab — Best Next Farm', () => {
     setFarmStore({ recommendations: [TOP_RECOMMENDATION] });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByTestId('schedule-farm-btn'));
-    expect(onNavigate).toHaveBeenCalledWith('goals', 'farms');
+    expect(onNavigate).toHaveBeenCalledWith('goals');
   });
 
   it('"Schedule Farm" calls onScheduleFarm with trial when provided — carries duty context', () => {

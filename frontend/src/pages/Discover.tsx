@@ -105,55 +105,6 @@ interface DiscoveryResponse {
 
 // ─── Constants ───────────────────────────────────────────────
 
-const ROLE_OPTIONS = [
-  { value: '', label: 'Any role' },
-  { value: 'tank', label: 'Tank' },
-  { value: 'healer', label: 'Healer' },
-  { value: 'melee', label: 'Melee' },
-  { value: 'ranged', label: 'Physical Ranged' },
-  { value: 'caster', label: 'Caster' },
-];
-
-const INTENSITY_OPTIONS = [
-  { value: '', label: 'Any vibe' },
-  { value: 'casual', label: 'Casual' },
-  { value: 'midcore', label: 'Midcore' },
-  { value: 'hardcore', label: 'Hardcore' },
-];
-
-const RECRUITMENT_OPTIONS = [
-  { value: '', label: 'Any status' },
-  { value: 'open', label: 'Open' },
-  { value: 'limited', label: 'Limited' },
-  { value: 'closed', label: 'Closed' },
-];
-
-const SORT_OPTIONS = [
-  { value: 'recent', label: 'Recently updated' },
-  { value: 'members', label: 'Most members' },
-  { value: 'name', label: 'Name A–Z' },
-];
-
-const DC_OPTIONS = [
-  { value: '', label: 'Any data center' },
-  ...DC_NAMES.map(dc => ({ value: dc, label: dc })),
-];
-
-const TZ_OPTIONS = [
-  { value: '', label: 'Any timezone' },
-  ...TIMEZONES.map(tz => ({ value: tz.value, label: tz.label })),
-];
-
-const LANG_OPTIONS = [
-  { value: '', label: 'Any language' },
-  ...LANGUAGES.map(l => ({ value: l.code, label: l.label })),
-];
-
-const JOB_OPTIONS = [
-  { value: '', label: 'Any job' },
-  ...RAID_JOBS.map(j => ({ value: j.abbreviation, label: `${j.abbreviation} — ${j.name}` })),
-];
-
 const STATUS_COLORS: Record<string, string> = {
   open:    'bg-status-success/15 text-status-success border-status-success/25',
   limited: 'bg-status-warning/15 text-status-warning border-status-warning/25',
@@ -164,20 +115,6 @@ const STATUS_BORDER: Record<string, string> = {
   open:    'rgba(74,222,128,0.35)',
   limited: 'rgba(234,179,8,0.3)',
   closed:  'rgba(255,255,255,0.06)',
-};
-
-const GOAL_CATEGORY_LABELS: Record<string, string> = {
-  ultimate_clear:     'Ultimate — Clear',
-  ultimate_farm:      'Ultimate — Farm',
-  savage_bis:         'Savage — BiS',
-  savage_mount:       'Savage — Mount',
-  savage_achievement: 'Savage — Achievement',
-  savage_alt_jobs:    'Savage — Alt Jobs',
-  criterion_title:    'Criterion — Title',
-  gil_farm:           'Gil Farm',
-  loot_farm:          'Loot Farm',
-  mount_farm:         'Mount Farm',
-  custom:             'Custom',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -194,33 +131,11 @@ function shortDay(day: string): string {
   return day.length > 3 ? day.slice(0, 3) : day;
 }
 
-const CONTACT_LABELS: Record<string, string> = {
-  discord: 'Discord',
-  discord_server: 'Discord Server',
-  url: 'Link',
-  text: 'Contact',
-};
-
 /** Only allow http/https URLs — reject javascript:, data:, etc. */
 function isSafeUrl(url: string): boolean {
   const lower = url.trim().toLowerCase();
   return lower.startsWith('https://') || lower.startsWith('http://');
 }
-
-const GOAL_CATEGORY_OPTIONS = [
-  { value: '', label: 'Any objectives' },
-  { value: 'ultimate_clear',     label: 'Ultimate — Clear' },
-  { value: 'ultimate_farm',      label: 'Ultimate — Farm' },
-  { value: 'savage_bis',         label: 'Savage — BiS' },
-  { value: 'savage_mount',       label: 'Savage — Mount' },
-  { value: 'savage_achievement', label: 'Savage — Achievement' },
-  { value: 'savage_alt_jobs',    label: 'Savage — Alt Jobs' },
-  { value: 'criterion_title',    label: 'Criterion — Title' },
-  { value: 'gil_farm',           label: 'Gil Farm' },
-  { value: 'loot_farm',          label: 'Loot Farm' },
-  { value: 'mount_farm',         label: 'Mount Farm' },
-  { value: 'custom',             label: 'Custom' },
-];
 
 /** Filter keys that map 1:1 to URL params and API query params */
 const FILTER_KEYS = ['role', 'job', 'intensity', 'recruitmentStatus', 'dataCenter', 'server', 'timezone', 'language', 'goalCategory'] as const;
@@ -231,6 +146,88 @@ type FilterKey = (typeof FILTER_KEYS)[number];
 export function Discover() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const roleOptions = useMemo(
+    () => [
+      { value: '', label: t('discover.filterRoleAny') },
+      { value: 'tank', label: t('discover.filterRoleTank') },
+      { value: 'healer', label: t('discover.filterRoleHealer') },
+      { value: 'melee', label: t('discover.filterRoleMelee') },
+      { value: 'ranged', label: t('discover.filterRoleRanged') },
+      { value: 'caster', label: t('discover.filterRoleCaster') },
+    ],
+    [t]
+  );
+  const intensityOptions = useMemo(
+    () => [
+      { value: '', label: t('discover.filterVibeAny') },
+      { value: 'casual', label: t('discover.filterVibeCasual') },
+      { value: 'midcore', label: t('discover.filterVibeMidcore') },
+      { value: 'hardcore', label: t('discover.filterVibeHardcore') },
+    ],
+    [t]
+  );
+  const recruitmentOptions = useMemo(
+    () => [
+      { value: '', label: t('discover.filterStatusAny') },
+      { value: 'open', label: t('discover.filterStatusOpen') },
+      { value: 'limited', label: t('discover.filterStatusLimited') },
+      { value: 'closed', label: t('discover.filterStatusClosed') },
+    ],
+    [t]
+  );
+  const sortOptions = useMemo(
+    () => [
+      { value: 'recent', label: t('discover.sortRecentlyUpdated') },
+      { value: 'members', label: t('discover.sortMostMembers') },
+      { value: 'name', label: t('discover.sortNameAZ') },
+    ],
+    [t]
+  );
+  const dcOptions = useMemo(
+    () => [
+      { value: '', label: t('discover.filterDcAny') },
+      ...DC_NAMES.map((dc) => ({ value: dc, label: dc })),
+    ],
+    [t]
+  );
+  const tzOptions = useMemo(
+    () => [
+      { value: '', label: t('discover.filterTimezoneAny') },
+      ...TIMEZONES.map((tz) => ({ value: tz.value, label: tz.label })),
+    ],
+    [t]
+  );
+  const langOptions = useMemo(
+    () => [
+      { value: '', label: t('discover.filterLanguageAny') },
+      ...LANGUAGES.map((lang) => ({ value: lang.code, label: lang.label })),
+    ],
+    [t]
+  );
+  const jobOptions = useMemo(
+    () => [
+      { value: '', label: t('discover.filterJobAny') },
+      ...RAID_JOBS.map((job) => ({ value: job.abbreviation, label: `${job.abbreviation} — ${job.name}` })),
+    ],
+    [t]
+  );
+  const goalCategoryOptions = useMemo(
+    () => [
+      { value: '', label: t('discover.filterGoalCatAny') },
+      { value: 'ultimate_clear', label: t('objectiveCategory.ultimate_clear') },
+      { value: 'ultimate_farm', label: t('objectiveCategory.ultimate_farm') },
+      { value: 'savage_bis', label: t('objectiveCategory.savage_bis') },
+      { value: 'savage_mount', label: t('objectiveCategory.savage_mount') },
+      { value: 'savage_achievement', label: t('objectiveCategory.savage_achievement') },
+      { value: 'savage_alt_jobs', label: t('objectiveCategory.savage_alt_jobs') },
+      { value: 'criterion_title', label: t('objectiveCategory.criterion_title') },
+      { value: 'gil_farm', label: t('objectiveCategory.gil_farm') },
+      { value: 'loot_farm', label: t('objectiveCategory.loot_farm') },
+      { value: 'mount_farm', label: t('objectiveCategory.mount_farm') },
+      { value: 'custom', label: t('objectiveCategory.custom') },
+    ],
+    [t]
+  );
 
   // Read initial state from URL
   const readParam = (key: string) => searchParams.get(key) ?? '';
@@ -267,9 +264,9 @@ export function Discover() {
   // Server options depend on DC
   const serverOptions = useMemo(() =>
     filters.dataCenter
-      ? [{ value: '', label: 'Any server' }, ...getWorldsForDC(filters.dataCenter).map(w => ({ value: w, label: w }))]
-      : [{ value: '', label: 'Select data center first' }],
-    [filters.dataCenter],
+      ? [{ value: '', label: t('discover.filterServerAny') }, ...getWorldsForDC(filters.dataCenter).map(w => ({ value: w, label: w }))]
+      : [{ value: '', label: t('discover.filterServerSelectFirst') }],
+    [filters.dataCenter, t],
   );
 
   const setFilter = useCallback((key: FilterKey, value: string) => {
@@ -382,7 +379,7 @@ export function Discover() {
             <Select
               value={sort}
               onChange={setSort}
-              options={SORT_OPTIONS}
+              options={sortOptions}
             />
           </div>
           <Button
@@ -418,19 +415,19 @@ export function Discover() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <Label htmlFor="f-role">{t('discover.filterRole')}</Label>
-                <Select id="f-role" value={filters.role} onChange={v => setFilter('role', v)} options={ROLE_OPTIONS} />
+                <Select id="f-role" value={filters.role} onChange={v => setFilter('role', v)} options={roleOptions} />
               </div>
               <div>
                 <Label htmlFor="f-job">{t('discover.filterJob')}</Label>
-                <Select id="f-job" value={filters.job} onChange={v => setFilter('job', v)} options={JOB_OPTIONS} />
+                <Select id="f-job" value={filters.job} onChange={v => setFilter('job', v)} options={jobOptions} />
               </div>
               <div>
                 <Label htmlFor="f-intensity">{t('discover.filterVibe')}</Label>
-                <Select id="f-intensity" value={filters.intensity} onChange={v => setFilter('intensity', v)} options={INTENSITY_OPTIONS} />
+                <Select id="f-intensity" value={filters.intensity} onChange={v => setFilter('intensity', v)} options={intensityOptions} />
               </div>
               <div>
                 <Label htmlFor="f-status">{t('discover.filterStatus')}</Label>
-                <Select id="f-status" value={filters.recruitmentStatus} onChange={v => setFilter('recruitmentStatus', v)} options={RECRUITMENT_OPTIONS} />
+                <Select id="f-status" value={filters.recruitmentStatus} onChange={v => setFilter('recruitmentStatus', v)} options={recruitmentOptions} />
               </div>
             </div>
           </div>
@@ -440,7 +437,7 @@ export function Discover() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
               <div>
                 <Label htmlFor="f-goalcat">{t('discover.filterGoalCat')}</Label>
-                <Select id="f-goalcat" value={filters.goalCategory} onChange={v => setFilter('goalCategory', v)} options={GOAL_CATEGORY_OPTIONS} />
+                <Select id="f-goalcat" value={filters.goalCategory} onChange={v => setFilter('goalCategory', v)} options={goalCategoryOptions} />
               </div>
               {user && (
                 <div className="flex flex-col gap-2 pb-1">
@@ -479,7 +476,7 @@ export function Discover() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <Label htmlFor="f-dc">{t('discover.filterDc')}</Label>
-                <Select id="f-dc" value={filters.dataCenter} onChange={v => setFilter('dataCenter', v)} options={DC_OPTIONS} />
+                <Select id="f-dc" value={filters.dataCenter} onChange={v => setFilter('dataCenter', v)} options={dcOptions} />
               </div>
               <div>
                 <Label htmlFor="f-server">{t('discover.filterServer')}</Label>
@@ -487,11 +484,11 @@ export function Discover() {
               </div>
               <div>
                 <Label htmlFor="f-tz">{t('discover.filterTimezone')}</Label>
-                <Select id="f-tz" value={filters.timezone} onChange={v => setFilter('timezone', v)} options={TZ_OPTIONS} />
+                <Select id="f-tz" value={filters.timezone} onChange={v => setFilter('timezone', v)} options={tzOptions} />
               </div>
               <div>
                 <Label htmlFor="f-lang">{t('discover.filterLanguage')}</Label>
-                <Select id="f-lang" value={filters.language} onChange={v => setFilter('language', v)} options={LANG_OPTIONS} />
+                <Select id="f-lang" value={filters.language} onChange={v => setFilter('language', v)} options={langOptions} />
               </div>
             </div>
           </div>
@@ -502,7 +499,7 @@ export function Discover() {
       {!loading && !error && (
         <p className="text-text-muted text-sm mb-4">
           {t('discover.resultsCount', { count: total })}
-          {(hasFilters || debouncedSearch) ? ' matching your filters' : ''}
+          {(hasFilters || debouncedSearch) ? t('discover.matchingFilters') : ''}
         </p>
       )}
 
@@ -529,7 +526,7 @@ export function Discover() {
               ? t('discover.emptyDescFiltered')
               : t('discover.emptyDescDefault')
           }
-          action={hasFilters || debouncedSearch ? { label: 'Clear filters', onClick: clearFilters } : undefined}
+          action={hasFilters || debouncedSearch ? { label: t('discover.clearFilters'), onClick: clearFilters } : undefined}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -680,7 +677,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
             <div className="flex flex-wrap gap-1">
               {item.objectiveCategories.map((cat) => (
                 <span key={cat} className="px-2 py-0.5 bg-surface-elevated text-text-secondary border border-border-default rounded text-xs">
-                  {GOAL_CATEGORY_LABELS[cat] ?? cat}
+                  {t(`objectiveCategory.${cat}`, { defaultValue: cat })}
                 </span>
               ))}
             </div>
@@ -727,7 +724,7 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
                 onClick={() => setExpanded(!expanded)}
                 className="text-accent text-xs mt-1 hover:underline"
               >
-                {expanded ? 'Show less' : 'Show more'}
+                {expanded ? t('common.showLess') : t('common.showMore')}
               </button>
             )}
           </div>
@@ -737,7 +734,16 @@ function ListingCard({ item, existingRequest, isLoggedIn }: {
         {item.contactMethod && item.contactValue ? (
           <div className="mb-3 flex items-center gap-1.5 text-sm min-w-0">
             <MessageCircle className="w-3.5 h-3.5 text-accent flex-shrink-0" />
-            <span className="text-text-muted text-xs">{CONTACT_LABELS[item.contactMethod] ?? 'Contact'}:</span>
+            <span className="text-text-muted text-xs">
+              {item.contactMethod === 'discord'
+                ? t('discover.contactDiscord')
+                : item.contactMethod === 'discord_server'
+                  ? t('discover.contactDiscordServer')
+                  : item.contactMethod === 'url'
+                    ? t('discover.contact')
+                    : t('discover.contact')}
+              :
+            </span>
             {item.contactMethod === 'url' && isSafeUrl(item.contactValue) ? (
               <a
                 href={item.contactValue}

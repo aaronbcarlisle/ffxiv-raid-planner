@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
@@ -21,6 +22,7 @@ const JOB_OPTIONS = RAID_JOBS.map((j) => ({
 }));
 
 export function CharacterCard({ character }: CharacterCardProps) {
+  const { t } = useTranslation();
   const { unlinkCharacter, syncGear, updateCharacter } = usePlayerProfileStore();
   const syncing = usePlayerProfileStore((s) => s.syncing);
   const unlinkModal = useModal();
@@ -33,9 +35,9 @@ export function CharacterCard({ character }: CharacterCardProps) {
     setShowJobFallback(false);
     try {
       const result = await syncGear(character.id, false, manualJob);
-      toast.success(`Refreshed ${result.job} gear from Lodestone — iLv ${result.avgItemLevel}`);
+      toast.success(t('profile.characterCard.refreshedFromLodestone', { job: result.job, itemLevel: result.avgItemLevel }));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Sync failed';
+      const msg = err instanceof Error ? err.message : t('profile.characterCard.syncFailed');
       if (msg.includes('active job') || msg.includes('determine')) {
         setSyncError(msg);
         setShowJobFallback(true);
@@ -54,9 +56,9 @@ export function CharacterCard({ character }: CharacterCardProps) {
   const handleUnlink = async () => {
     try {
       await unlinkCharacter(character.id);
-      toast.success('Character unlinked');
+      toast.success(t('profile.characterCard.characterUnlinked'));
     } catch {
-      toast.error('Failed to unlink character');
+      toast.error(t('profile.characterCard.unlinkFailed'));
     }
   };
 
@@ -64,7 +66,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
     try {
       await updateCharacter(character.id, { isMain: true });
     } catch {
-      toast.error('Failed to set main character');
+      toast.error(t('profile.characterCard.setMainFailed'));
     }
   };
 
@@ -95,7 +97,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
                   {character.name}
                 </span>
                 {character.isMain && (
-                  <Badge variant="raid" size="sm">Main</Badge>
+                  <Badge variant="raid" size="sm">{t('profile.jobsGear.priorityMain')}</Badge>
                 )}
               </div>
               <div className="text-text-secondary text-sm mt-0.5">
@@ -105,13 +107,13 @@ export function CharacterCard({ character }: CharacterCardProps) {
                 )}
               </div>
               <div className="text-text-tertiary text-xs mt-1">
-                Lodestone ID: {character.lodestoneId}
+                {t('profile.characterCard.lodestoneId')}: {character.lodestoneId}
               </div>
             </div>
             {/* Unlink button — visible on all screen sizes */}
             <IconButton
               icon="×"
-              aria-label="Unlink character"
+              aria-label={t('profile.characterCard.unlinkCharacter')}
               variant="ghost"
               size="sm"
               onClick={unlinkModal.open}
@@ -123,7 +125,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
           <div className="flex flex-wrap gap-2 mt-2">
             {!character.isMain && (
               <Button variant="ghost" size="sm" onClick={handleSetMain}>
-                Set Main
+                {t('profile.characterCard.setMain')}
               </Button>
             )}
             <Button
@@ -132,7 +134,7 @@ export function CharacterCard({ character }: CharacterCardProps) {
               onClick={() => handleSync()}
               disabled={syncing}
             >
-              {syncing ? 'Refreshing…' : 'Refresh from Lodestone'}
+              {syncing ? `${t('common.refresh')}…` : t('profile.characterCard.refreshFromLodestone')}
             </Button>
           </div>
         </div>
@@ -142,37 +144,37 @@ export function CharacterCard({ character }: CharacterCardProps) {
       {syncError && (
         <div className="mt-3 rounded-lg border border-status-warning/30 bg-status-warning/5 p-3">
           <div className="text-sm text-status-warning font-medium mb-1">
-            {showJobFallback ? "Couldn't detect your active job" : syncError}
+            {showJobFallback ? t('profile.characterCard.activeJobNotDetected') : syncError}
           </div>
           {showJobFallback ? (
             <>
               <p className="text-xs text-text-secondary mb-2">
-                Lodestone can only refresh the currently equipped job. Choose a job only if the current job could not be detected.
+                {t('profile.characterCard.fallbackDesc')}
               </p>
               <div className="flex items-center gap-2 flex-wrap">
                 <Select
                   value={fallbackJob}
                   onChange={setFallbackJob}
-                  options={[{ value: '', label: 'Select job…' }, ...JOB_OPTIONS]}
+                  options={[{ value: '', label: t('profile.characterCard.selectJob') }, ...JOB_OPTIONS]}
                   className="w-48"
                 />
                 <Button size="sm" onClick={handleManualSync} disabled={!fallbackJob || syncing}>
-                  {syncing ? 'Refreshing…' : 'Refresh as Selected Job'}
+                  {syncing ? `${t('common.refresh')}…` : t('profile.characterCard.refreshAsSelectedJob')}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => handleSync()}>
-                  Retry Auto
+                  {t('profile.characterCard.retryAuto')}
                 </Button>
               </div>
               {fallbackJob && (
                 <div className="flex items-center gap-2 mt-2 text-xs text-text-secondary">
                   <JobIcon job={fallbackJob} size="sm" />
-                  <span>Will sync gear as {getJobDisplayName(fallbackJob)}</span>
+                  <span>{t('profile.characterCard.syncAsJob', { job: getJobDisplayName(fallbackJob) })}</span>
                 </div>
               )}
             </>
           ) : (
             <div className="flex gap-2 mt-1">
-              <Button size="sm" variant="ghost" onClick={() => handleSync()}>Retry</Button>
+              <Button size="sm" variant="ghost" onClick={() => handleSync()}>{t('common.retry')}</Button>
             </div>
           )}
         </div>
@@ -181,9 +183,9 @@ export function CharacterCard({ character }: CharacterCardProps) {
       {unlinkModal.isOpen && (
         <ConfirmModal
           isOpen={unlinkModal.isOpen}
-          title="Unlink Character"
-          message={`Remove ${character.name} from your profile? Saved gear for this character will also be deleted.`}
-          confirmLabel="Unlink"
+          title={t('profile.characterCard.unlinkTitle')}
+          message={t('profile.characterCard.unlinkMessage', { name: character.name })}
+          confirmLabel={t('profile.characterCard.unlink')}
           variant="danger"
           onConfirm={handleUnlink}
           onCancel={unlinkModal.close}

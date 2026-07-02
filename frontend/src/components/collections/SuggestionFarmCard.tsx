@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertCircle, Search, ChevronDown,
 } from 'lucide-react';
@@ -13,6 +14,14 @@ import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import type { StaticCollectionSuggestion, MemberSuggestionEntry } from '../../stores/collectionIntentStore';
 import type { CollectionGoalCreate, CollectionGoalType, CollectionContentType } from '../../stores/collectionGoalStore';
+import {
+  getCollectionSourceTypeLabel,
+} from '../../utils/collectionBadgeConfig';
+import {
+  getLocalizedDutyNameByText,
+  getLocalizedRewardNameByText,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,13 +57,13 @@ function sourceTypeToContentType(st: string | null): CollectionContentType | nul
 
 const MAX_PREVIEW = 4;
 
-function intentLabel(m: MemberSuggestionEntry): string {
-  if (m.ownershipState === 'have') return 'Owned';
-  if (m.intent === 'hunting') return 'Hunting';
-  if (m.intent === 'interested') return 'Interested';
-  if (m.intent === 'pass' || m.intent === 'hidden') return 'Pass';
-  if (m.ownershipState === 'missing') return 'Missing';
-  return 'Unknown';
+function intentLabel(m: MemberSuggestionEntry, isJapanese: boolean): string {
+  if (m.ownershipState === 'have') return isJapanese ? '所持' : 'Owned';
+  if (m.intent === 'hunting') return isJapanese ? '希望' : 'Hunting';
+  if (m.intent === 'interested') return isJapanese ? '興味あり' : 'Interested';
+  if (m.intent === 'pass' || m.intent === 'hidden') return isJapanese ? 'パス' : 'Pass';
+  if (m.ownershipState === 'missing') return isJapanese ? '未所持' : 'Missing';
+  return isJapanese ? '不明' : 'Unknown';
 }
 
 function intentColor(m: MemberSuggestionEntry): string {
@@ -66,25 +75,31 @@ function intentColor(m: MemberSuggestionEntry): string {
   return 'text-text-muted opacity-60';
 }
 
-function buildCopyText(s: StaticCollectionSuggestion): string {
+function buildCopyText(s: StaticCollectionSuggestion, locale: string): string {
+  const isJapanese = locale.startsWith('ja');
+  const rewardName = getLocalizedRewardNameByText(s.catalogItemName, locale) || s.catalogItemName;
+  const dutyName = getLocalizedDutyNameByText(s.sourceDutyName, locale) || s.sourceDutyName;
   const hunting = s.members.filter(m => m.intent === 'hunting').map(m => m.displayName ?? m.userId);
   const interested = s.members.filter(m => m.intent === 'interested').map(m => m.displayName ?? m.userId);
   const canBuy = s.members.filter(m => m.canBuy && m.ownershipState !== 'have').map(m => m.displayName ?? m.userId);
   const have = s.members.filter(m => m.ownershipState === 'have').map(m => m.displayName ?? m.userId);
 
-  const lines = [`**${s.catalogItemName}** farm suggestion`];
-  if (s.sourceDutyName) lines.push(`Source: ${s.sourceDutyName}`);
+  const lines = [isJapanese ? `**${rewardName}** 周回案` : `**${rewardName}** farm suggestion`];
+  if (dutyName) lines.push(`${isJapanese ? '対象' : 'Source'}: ${dutyName}`);
   lines.push('');
-  if (hunting.length) lines.push(`🔍 **Hunting (${hunting.length}):** ${hunting.join(', ')}`);
-  if (interested.length) lines.push(`⭐ **Interested (${interested.length}):** ${interested.join(', ')}`);
-  if (canBuy.length) lines.push(`💰 **Can buy now:** ${canBuy.join(', ')}`);
-  if (have.length) lines.push(`✅ **Have (${have.length}):** ${have.join(', ')}`);
+  if (hunting.length) lines.push(isJapanese ? `🔍 **希望 (${hunting.length}):** ${hunting.join(', ')}` : `🔍 **Hunting (${hunting.length}):** ${hunting.join(', ')}`);
+  if (interested.length) lines.push(isJapanese ? `⭐ **興味あり (${interested.length}):** ${interested.join(', ')}` : `⭐ **Interested (${interested.length}):** ${interested.join(', ')}`);
+  if (canBuy.length) lines.push(isJapanese ? `💰 **今すぐ交換可能:** ${canBuy.join(', ')}` : `💰 **Can buy now:** ${canBuy.join(', ')}`);
+  if (have.length) lines.push(isJapanese ? `✅ **所持 (${have.length}):** ${have.join(', ')}` : `✅ **Have (${have.length}):** ${have.join(', ')}`);
   return lines.join('\n');
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function TeamSummaryBar({ members }: { members: MemberSuggestionEntry[] }) {
+  const { i18n } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
   const hunting   = members.filter(m => m.intent === 'hunting' && m.ownershipState !== 'have').length;
   const interested = members.filter(m => m.intent === 'interested' && m.ownershipState !== 'have').length;
   const have      = members.filter(m => m.ownershipState === 'have').length;
@@ -92,11 +107,11 @@ function TeamSummaryBar({ members }: { members: MemberSuggestionEntry[] }) {
   const unknown   = members.filter(m => m.ownershipState === 'unknown' && !m.intent).length;
 
   const stats = [
-    { icon: <XivIcon name="goals" size={10} />, label: 'Owned',     value: have,      color: 'text-status-success' },
-    { icon: <Search size={10} />, label: 'Hunting',   value: hunting,   color: 'text-status-info' },
-    { icon: <XivIcon name="earthlyStar" size={10} />,   label: 'Interested',value: interested, color: 'text-status-warning' },
-    { icon: <XivIcon name="gil" size={10} />,  label: 'Can buy',   value: canBuy,    color: 'text-amber-400' },
-    { icon: <AlertCircle size={10} />, label: 'Unknown', value: unknown, color: 'text-text-muted opacity-50' },
+    { icon: <XivIcon name="goals" size={10} />, label: isJapanese ? '所持' : 'Owned', value: have, color: 'text-status-success' },
+    { icon: <Search size={10} />, label: isJapanese ? '希望' : 'Hunting', value: hunting, color: 'text-status-info' },
+    { icon: <XivIcon name="earthlyStar" size={10} />, label: isJapanese ? '興味' : 'Interested', value: interested, color: 'text-status-warning' },
+    { icon: <XivIcon name="gil" size={10} />, label: isJapanese ? '交換可' : 'Can buy', value: canBuy, color: 'text-amber-400' },
+    { icon: <AlertCircle size={10} />, label: isJapanese ? '不明' : 'Unknown', value: unknown, color: 'text-text-muted opacity-50' },
   ].filter(s => s.value > 0);
 
   if (stats.length === 0) return null;
@@ -130,9 +145,14 @@ export function SuggestionFarmCard({
   onViewGoal,
   onCopyPlan,
 }: SuggestionFarmCardProps) {
+  const { i18n } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
   const [expanded, setExpanded] = useState(false);
 
   const contentTypeCfg = CONTENT_TYPE_LABELS[s.sourceType ?? ''];
+  const rewardName = getLocalizedRewardNameByText(s.catalogItemName, uiLocale) || s.catalogItemName;
+  const dutyName = getLocalizedDutyNameByText(s.sourceDutyName, uiLocale) || s.sourceDutyName;
 
   // Filter out pass/hidden from preview
   const visibleMembers = s.members.filter(m => m.intent !== 'hidden');
@@ -164,15 +184,15 @@ export function SuggestionFarmCard({
           <div className="flex items-center gap-2 flex-wrap">
             {contentTypeCfg && (
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${contentTypeCfg.colorClass}`}>
-                {contentTypeCfg.label}
+                {getCollectionSourceTypeLabel(s.sourceType, uiLocale) || contentTypeCfg.label}
               </span>
             )}
             <span className="text-sm font-semibold text-text-primary truncate">
-              {s.catalogItemName}
+              {rewardName}
             </span>
           </div>
-          {s.sourceDutyName && (
-            <p className="text-[11px] text-text-muted mt-0.5 truncate">{s.sourceDutyName}</p>
+          {dutyName && (
+            <p className="text-[11px] text-text-muted mt-0.5 truncate">{dutyName}</p>
           )}
           <div className="mt-1.5">
             <TeamSummaryBar members={s.members} />
@@ -181,7 +201,7 @@ export function SuggestionFarmCard({
         <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
           {hasGoal && (
             <span className="text-[10px] text-accent font-medium bg-accent/10 px-2 py-0.5 rounded-full border border-accent/30">
-              Active
+              {isJapanese ? 'アクティブ' : 'Active'}
             </span>
           )}
           <ChevronDown
@@ -208,7 +228,7 @@ export function SuggestionFarmCard({
                   {m.displayName ?? m.userId}
                 </span>
                 <span className={`flex-shrink-0 ${intentColor(m)}`}>
-                  {intentLabel(m)}
+                  {intentLabel(m, isJapanese)}
                 </span>
                 {m.tokenCount != null && m.ownershipState !== 'have' && (
                   <span className={`flex-shrink-0 text-[10px] ${m.canBuy ? 'text-amber-400 font-medium' : 'text-text-muted'}`}>
@@ -222,7 +242,7 @@ export function SuggestionFarmCard({
             ))}
             {hiddenCount > 0 && (
               <p className="text-[10px] text-text-muted opacity-60 pl-3.5">
-                +{hiddenCount} more member{hiddenCount > 1 ? 's' : ''}
+                {isJapanese ? `他${hiddenCount}人` : `+${hiddenCount} more member${hiddenCount > 1 ? 's' : ''}`}
               </p>
             )}
           </div>
@@ -242,7 +262,7 @@ export function SuggestionFarmCard({
                   onClick={() => onViewGoal(s.staticGoalId!)}
                   className="flex items-center gap-1"
                 >
-                  <XivIcon name="goals" size={12} /> View Farm
+                  <XivIcon name="goals" size={12} /> {isJapanese ? '周回を見る' : 'View Farm'}
                 </Button>
               )
             ) : (
@@ -252,17 +272,17 @@ export function SuggestionFarmCard({
                   onClick={handleMakeActiveFarm}
                   className="flex items-center gap-1"
                 >
-                  <XivIcon name="goals" size={12} /> Make Active Farm
+                  <XivIcon name="goals" size={12} /> {isJapanese ? 'アクティブ周回にする' : 'Make Active Farm'}
                 </Button>
               )
             )}
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => onCopyPlan(buildCopyText(s))}
+              onClick={() => onCopyPlan(buildCopyText(s, uiLocale))}
               className="flex items-center gap-1 text-text-secondary"
             >
-              <XivIcon name="party" size={12} /> Copy Plan
+              <XivIcon name="party" size={12} /> {isJapanese ? 'プランをコピー' : 'Copy Plan'}
             </Button>
           </div>
         </div>

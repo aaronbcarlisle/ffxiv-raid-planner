@@ -12,17 +12,19 @@
  */
 
 import { AlertCircle, Search, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { XivIcon } from '../ui/XivIcon';
 import type { MemberSuggestionEntry, StaticCollectionSuggestion } from '../../stores/collectionIntentStore';
+import { resolveUiLocale } from '../../gamedata/mount-farm-i18n';
 
 const MAX_NAMES = 3;
 
-function nameList(members: MemberSuggestionEntry[]): string {
+function nameList(members: MemberSuggestionEntry[], isJapanese: boolean): string {
   const names = members
-    .map(m => m.displayName ?? 'Unknown')
+    .map(m => m.displayName ?? (isJapanese ? '不明' : 'Unknown'))
     .slice(0, MAX_NAMES);
   const rest = members.length - MAX_NAMES;
-  return rest > 0 ? `${names.join(', ')} +${rest}` : names.join(', ');
+  return rest > 0 ? (isJapanese ? `${names.join('、')} 他${rest}人` : `${names.join(', ')} +${rest}`) : (isJapanese ? names.join('、') : names.join(', '));
 }
 
 interface SuggestionRowProps {
@@ -48,6 +50,9 @@ interface SmartSuggestionsPanelProps {
 }
 
 export function SmartSuggestionsPanel({ suggestion }: SmartSuggestionsPanelProps) {
+  const { i18n } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
   const hunting   = suggestion.members.filter(m => m.intent === 'hunting' && m.ownershipState !== 'have');
   const missing   = suggestion.members.filter(m => m.ownershipState === 'missing' && m.intent == null);
   const canBuy    = suggestion.members.filter(m => m.canBuy && m.ownershipState !== 'have' && m.intent !== 'pass' && m.intent !== 'hidden');
@@ -63,14 +68,14 @@ export function SmartSuggestionsPanel({ suggestion }: SmartSuggestionsPanelProps
   return (
     <div className="flex flex-col gap-1 px-4 py-2.5 bg-accent/5 border-t border-border-subtle/40">
       <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">
-        Smart Suggestions
+        {isJapanese ? 'おすすめ' : 'Smart Suggestions'}
       </p>
 
       {hunting.length > 0 && (
         <SuggestionRow
           icon={<Search size={11} />}
-          label="Hunting"
-          names={nameList(hunting)}
+          label={isJapanese ? '希望' : 'Hunting'}
+          names={nameList(hunting, isJapanese)}
           colorClass="text-status-info"
         />
       )}
@@ -78,8 +83,8 @@ export function SmartSuggestionsPanel({ suggestion }: SmartSuggestionsPanelProps
       {missing.length > 0 && (
         <SuggestionRow
           icon={<XivIcon name="earthlyStar" size={11} />}
-          label="Suggested"
-          names={nameList(missing)}
+          label={isJapanese ? 'おすすめ' : 'Suggested'}
+          names={nameList(missing, isJapanese)}
           colorClass="text-status-warning"
         />
       )}
@@ -87,8 +92,8 @@ export function SmartSuggestionsPanel({ suggestion }: SmartSuggestionsPanelProps
       {canBuy.length > 0 && (
         <SuggestionRow
           icon={<XivIcon name="gil" size={11} />}
-          label="Can buy"
-          names={nameList(canBuy)}
+          label={isJapanese ? '交換可' : 'Can buy'}
+          names={nameList(canBuy, isJapanese)}
           colorClass="text-amber-400"
         />
       )}
@@ -96,8 +101,8 @@ export function SmartSuggestionsPanel({ suggestion }: SmartSuggestionsPanelProps
       {passing.length > 0 && (
         <SuggestionRow
           icon={<X size={11} />}
-          label="Passed"
-          names={nameList(passing)}
+          label={isJapanese ? 'パス' : 'Passed'}
+          names={nameList(passing, isJapanese)}
           colorClass="text-text-muted"
         />
       )}
@@ -105,8 +110,8 @@ export function SmartSuggestionsPanel({ suggestion }: SmartSuggestionsPanelProps
       {noSync.length > 0 && (
         <SuggestionRow
           icon={<AlertCircle size={11} />}
-          label="Missing sync"
-          names={`${noSync.length} player${noSync.length === 1 ? '' : 's'}`}
+          label={isJapanese ? '未同期' : 'Missing sync'}
+          names={isJapanese ? `${noSync.length}人` : `${noSync.length} player${noSync.length === 1 ? '' : 's'}`}
           colorClass="text-text-muted opacity-60"
         />
       )}

@@ -92,7 +92,13 @@ function CategoryBadge({ category }: { category: EventCategory }) {
   );
 }
 
-function buildDiscordMessage(session: ScheduleSession, rsvpSummary: Record<string, number>, shareCode?: string, staticName?: string): string {
+function buildDiscordMessage(
+  session: ScheduleSession,
+  rsvpSummary: Record<string, number>,
+  availabilityNotRequired: string,
+  shareCode?: string,
+  staticName?: string,
+): string {
   const timeStr = formatInTimezone(session.startTime, session.timezone);
   const duration = getDurationMinutes(session.startTime, session.endTime);
   const lines: string[] = [];
@@ -111,7 +117,7 @@ function buildDiscordMessage(session: ScheduleSession, rsvpSummary: Record<strin
     if (rsvpSummary.unavailable > 0) rsvpParts.push(`\u{274c} ${rsvpSummary.unavailable}`);
     if (rsvpParts.length > 0) lines.push(rsvpParts.join(' \u{2502} '));
   } else {
-    lines.push('Availability not required');
+    lines.push(availabilityNotRequired);
   }
 
   if (shareCode) {
@@ -228,7 +234,7 @@ export function SessionCard({ session, currentUserId, shareCode, staticName, can
   };
 
   const handleCopyDiscord = async () => {
-    const msg = buildDiscordMessage(session, rsvpSummary, shareCode, staticName);
+    const msg = buildDiscordMessage(session, rsvpSummary, t('session.availabilityNotRequired'), shareCode, staticName);
     await navigator.clipboard.writeText(msg);
     toast.success(t('session.copiedDiscordMessage'));
   };

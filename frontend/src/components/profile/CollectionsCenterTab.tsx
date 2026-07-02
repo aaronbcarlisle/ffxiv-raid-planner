@@ -11,8 +11,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, ChevronDown, Globe, Lock, Search, Users, X } from 'lucide-react';
-import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -27,33 +27,103 @@ import { toast } from '../../stores/toastStore';
 import {
   CATEGORY_BADGE as CATEGORY_CONFIG,
   SOURCE_TYPE_BADGE as SOURCE_TYPE_CONFIG,
-  EXPANSION_FULL as EXPANSION_NAMES,
   EXPANSION_ORDER,
   expKey,
-  expansionLabel,
 } from '../../utils/collectionBadgeConfig';
+import {
+  getLocalizedDutyNameByText,
+  getLocalizedRewardNameByText,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
-const INTENT_CONFIG: Record<IntentValue, { label: string; colorClass: string; bgClass: string; borderClass: string }> = {
-  hunting:    { label: 'Want',     colorClass: 'text-status-info',    bgClass: 'bg-status-info/10',    borderClass: 'border-status-info/40'    },
-  interested: { label: 'Farming',  colorClass: 'text-status-warning', bgClass: 'bg-status-warning/10', borderClass: 'border-status-warning/40' },
-  pass:       { label: 'Pass',     colorClass: 'text-text-muted',     bgClass: 'bg-surface-raised',    borderClass: 'border-border-subtle'     },
-  hidden:     { label: 'Hidden',   colorClass: 'text-text-muted',     bgClass: 'bg-surface-raised',    borderClass: 'border-border-subtle'     },
-};
+function getIntentConfig(t: (key: string, options?: Record<string, unknown>) => string): Record<IntentValue, { label: string; colorClass: string; bgClass: string; borderClass: string }> {
+  return {
+    hunting:    { label: t('profile.collectionsCenter.intentWant'), colorClass: 'text-status-info', bgClass: 'bg-status-info/10', borderClass: 'border-status-info/40' },
+    interested: { label: t('profile.collectionsCenter.intentFarming'), colorClass: 'text-status-warning', bgClass: 'bg-status-warning/10', borderClass: 'border-status-warning/40' },
+    pass:       { label: t('profile.collectionsCenter.intentPass'), colorClass: 'text-text-muted', bgClass: 'bg-surface-raised', borderClass: 'border-border-subtle' },
+    hidden:     { label: t('profile.collectionsCenter.intentHidden'), colorClass: 'text-text-muted', bgClass: 'bg-surface-raised', borderClass: 'border-border-subtle' },
+  };
+}
 
 const FULL_INTENT_ORDER: IntentValue[] = ['hunting', 'interested', 'pass', 'hidden'];
 
-const FULL_INTENT_LABELS: Record<IntentValue, string> = {
-  hunting:    'Hunting',
-  interested: 'Interested',
-  pass:       'Pass',
-  hidden:     'Hidden',
-};
+function getFullIntentLabels(t: (key: string, options?: Record<string, unknown>) => string): Record<IntentValue, string> {
+  return {
+    hunting: t('profile.collectionsCenter.intentHunting'),
+    interested: t('profile.collectionsCenter.intentInterested'),
+    pass: t('profile.collectionsCenter.intentPass'),
+    hidden: t('profile.collectionsCenter.intentHidden'),
+  };
+}
 
-const VISIBILITY_OPTIONS = [
-  { value: 'private',        label: 'Private — only you'          },
-  { value: 'static_only',    label: 'Shared with statics'         },
-  { value: 'dossier_public', label: 'Public on dossier'           },
-];
+function getVisibilityOptions(t: (key: string, options?: Record<string, unknown>) => string) {
+  return [
+    { value: 'private', label: t('profile.collectionsCenter.privateOnlyYou') },
+    { value: 'static_only', label: t('profile.collectionsCenter.sharedWithStatics') },
+    { value: 'dossier_public', label: t('profile.collectionsCenter.publicOnDossier') },
+  ];
+}
+
+function getCategoryLabel(category: string | null | undefined, t: (key: string, options?: Record<string, unknown>) => string) {
+  switch (category) {
+    case 'mount':
+      return t('collections.typeMount');
+    case 'orchestrion':
+      return t('collections.typeOrchestrion');
+    case 'minion':
+      return t('collections.typeMinion');
+    case 'weapon':
+      return t('collections.typeWeapon');
+    case 'glam':
+      return t('collections.typeGlam');
+    case 'card':
+      return t('profile.collectionsCenter.typeCard');
+    case 'other':
+      return t('profile.collectionsCenter.typeOther');
+    default:
+      return category ?? '';
+  }
+}
+
+function getExpansionDisplay(expansion: string | null | undefined, t: (key: string, options?: Record<string, unknown>) => string) {
+  switch (expKey(expansion)) {
+    case 'dt':
+      return t('profile.collectionsCenter.expansionDt');
+    case 'ew':
+      return t('profile.collectionsCenter.expansionEw');
+    case 'shb':
+      return t('profile.collectionsCenter.expansionShb');
+    case 'sb':
+      return t('profile.collectionsCenter.expansionSb');
+    case 'hw':
+      return t('profile.collectionsCenter.expansionHw');
+    case 'arr':
+      return t('profile.collectionsCenter.expansionArr');
+    default:
+      return expansion ?? '';
+  }
+}
+
+function getSourceTypeLabel(sourceType: string | null | undefined, t: (key: string, options?: Record<string, unknown>) => string) {
+  switch (sourceType) {
+    case 'extreme':
+      return t('profile.collectionsCenter.sourceExtreme');
+    case 'savage':
+      return t('profile.collectionsCenter.sourceSavage');
+    case 'ultimate':
+      return t('profile.collectionsCenter.sourceUltimate');
+    case 'criterion':
+      return t('profile.collectionsCenter.sourceCriterion');
+    case 'chaotic_alliance':
+      return t('profile.collectionsCenter.sourceChaoticAlliance');
+    case 'collaboration':
+      return t('profile.collectionsCenter.sourceCollaboration');
+    case 'field_operation':
+      return t('profile.collectionsCenter.sourceFieldOperation');
+    default:
+      return sourceType ?? '';
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -77,12 +147,11 @@ function groupBySourceDuty(entries: CatalogPlayerEntry[]): DutyGroup[] {
   return [...map.entries()]
     .map(([key, items]): DutyGroup => {
       const first = items[0];
-      const eKey = expKey(first?.expansion);
       return {
         dutyKey:        key,
         dutyName:       key === '__none__' ? null : key,
         expansionKey:   first?.expansion ?? null,
-        expansionLabel: EXPANSION_NAMES[eKey] ?? first?.expansion ?? null,
+        expansionLabel: first?.expansion ?? null,
         sourceType:     first?.sourceType ?? null,
         items,
       };
@@ -153,6 +222,7 @@ function FilterBar({
   onExpansionChange: (v: string | null) => void;
   onSourceTypeChange: (v: string | null) => void;
 }) {
+  const { t } = useTranslation();
   const categories = useMemo(() => {
     const s = new Set<string>();
     for (const e of catalog) if (e.catalogItemCategory) s.add(e.catalogItemCategory);
@@ -177,14 +247,14 @@ function FilterBar({
     <div className="rounded-lg border border-border-subtle bg-surface-raised/40 px-3 py-2.5 flex flex-col gap-2">
       {categories.length > 1 && (
         <div className="flex flex-wrap items-start gap-1.5">
-          <span className="text-[10px] text-text-muted pt-1 mr-1 min-w-[5.5rem]">Reward type</span>
+          <span className="text-[10px] text-text-muted pt-1 mr-1 min-w-[5.5rem]">{t('profile.collectionsCenter.rewardType')}</span>
           <div className="flex flex-wrap gap-1.5">
-            <FilterChip active={!categoryFilter} label="All" onClick={() => onCategoryChange(null)} />
+            <FilterChip active={!categoryFilter} label={t('common.all')} onClick={() => onCategoryChange(null)} />
             {categories.map(cat => (
               <FilterChip
                 key={cat}
                 active={categoryFilter === cat}
-                label={CATEGORY_CONFIG[cat]?.label ?? cat}
+                label={getCategoryLabel(cat, t)}
                 onClick={() => onCategoryChange(categoryFilter === cat ? null : cat)}
               />
             ))}
@@ -194,14 +264,14 @@ function FilterBar({
 
       {expansions.length > 1 && (
         <div className="flex flex-wrap items-start gap-1.5">
-          <span className="text-[10px] text-text-muted pt-1 mr-1 min-w-[5.5rem]">Expansion</span>
+          <span className="text-[10px] text-text-muted pt-1 mr-1 min-w-[5.5rem]">{t('profile.collectionsCenter.expansion')}</span>
           <div className="flex flex-wrap gap-1.5">
-            <FilterChip active={!expansionFilter} label="All" onClick={() => onExpansionChange(null)} />
+            <FilterChip active={!expansionFilter} label={t('common.all')} onClick={() => onExpansionChange(null)} />
             {expansions.map(ek => (
               <FilterChip
                 key={ek}
                 active={expansionFilter === ek}
-                label={EXPANSION_NAMES[ek] ?? ek}
+                label={getExpansionDisplay(ek, t)}
                 onClick={() => onExpansionChange(expansionFilter === ek ? null : ek)}
               />
             ))}
@@ -211,14 +281,14 @@ function FilterBar({
 
       {sourceTypes.length > 1 && (
         <div className="flex flex-wrap items-start gap-1.5">
-          <span className="text-[10px] text-text-muted pt-1 mr-1 min-w-[5.5rem]">Source</span>
+          <span className="text-[10px] text-text-muted pt-1 mr-1 min-w-[5.5rem]">{t('profile.collectionsCenter.source')}</span>
           <div className="flex flex-wrap gap-1.5">
-            <FilterChip active={!sourceTypeFilter} label="All" onClick={() => onSourceTypeChange(null)} />
+            <FilterChip active={!sourceTypeFilter} label={t('common.all')} onClick={() => onSourceTypeChange(null)} />
             {sourceTypes.map(st => (
               <FilterChip
                 key={st}
                 active={sourceTypeFilter === st}
-                label={SOURCE_TYPE_CONFIG[st]?.label ?? st}
+                label={getSourceTypeLabel(st, t)}
                 onClick={() => onSourceTypeChange(sourceTypeFilter === st ? null : st)}
               />
             ))}
@@ -232,10 +302,11 @@ function FilterBar({
 // ── VisibilityIcon ────────────────────────────────────────────────────────────
 
 function VisibilityBadge({ visibility, intent }: { visibility: IntentVisibility | null; intent: IntentValue | null }) {
+  const { t } = useTranslation();
   if (!intent || (intent !== 'hunting' && intent !== 'interested')) return null;
-  if (visibility === 'static_only')   return <Users  size={11} className="text-accent flex-shrink-0" aria-label="Shared with statics" />;
-  if (visibility === 'dossier_public') return <Globe  size={11} className="text-accent flex-shrink-0" aria-label="Public on dossier" />;
-  return                                      <Lock   size={11} className="text-text-muted opacity-40 flex-shrink-0" aria-label="Private" />;
+  if (visibility === 'static_only')   return <Users  size={11} className="text-accent flex-shrink-0" aria-label={t('profile.collectionsCenter.sharedWithStatics')} />;
+  if (visibility === 'dossier_public') return <Globe  size={11} className="text-accent flex-shrink-0" aria-label={t('profile.collectionsCenter.publicOnDossier')} />;
+  return                                      <Lock   size={11} className="text-text-muted opacity-40 flex-shrink-0" aria-label={t('common.private')} />;
 }
 
 // ── Quick action buttons (always visible, no expansion required) ───────────────
@@ -243,6 +314,7 @@ function VisibilityBadge({ visibility, intent }: { visibility: IntentVisibility 
 function QuickActions({
   entry, onWant, onFarming, onIntentClear, onOwnershipChange,
 }: Pick<RewardCallbacks, 'onWant' | 'onFarming' | 'onIntentClear' | 'onOwnershipChange'> & { entry: CatalogPlayerEntry }) {
+  const { t } = useTranslation();
   const id = entry.catalogItemId;
   const vis = entry.visibility ?? 'private';
   const isOwned    = entry.ownershipState === 'have';
@@ -252,7 +324,7 @@ function QuickActions({
   if (isOwned) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-status-success bg-status-success/15 border border-status-success/40 px-2 py-0.5 rounded-full">
-        <Check size={9} /> Owned
+        <Check size={9} /> {t('profile.collectionsCenter.owned')}
       </span>
     );
   }
@@ -264,7 +336,7 @@ function QuickActions({
       <button
         type="button"
         onClick={() => isWanting ? onIntentClear(id) : onWant(id, vis)}
-        title={isWanting ? 'Remove Want' : 'Mark as Wanted'}
+        title={isWanting ? t('profile.collectionsCenter.removeWant') : t('profile.collectionsCenter.markAsWanted')}
         className={`inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full border font-semibold transition-colors ${
           isWanting
             ? 'border-status-info bg-status-info/25 text-status-info'
@@ -272,7 +344,7 @@ function QuickActions({
         }`}
       >
         {isWanting && <Check size={9} />}
-        Want
+        {t('profile.collectionsCenter.intentWant')}
       </button>
 
       {/* Farming */}
@@ -281,7 +353,7 @@ function QuickActions({
         <button
           type="button"
           onClick={() => isFarming ? onIntentClear(id) : onFarming(id, vis)}
-          title={isFarming ? 'Remove Farming' : 'Mark as Farming'}
+          title={isFarming ? t('profile.collectionsCenter.removeFarming') : t('profile.collectionsCenter.markAsFarming')}
           className={`inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full border font-semibold transition-colors ${
             isFarming
               ? 'border-status-warning bg-status-warning/25 text-status-warning'
@@ -289,7 +361,7 @@ function QuickActions({
           }`}
         >
           {isFarming && <Check size={9} />}
-          Farming
+          {t('profile.collectionsCenter.intentFarming')}
         </button>
       )}
 
@@ -298,10 +370,10 @@ function QuickActions({
       <button
         type="button"
         onClick={() => onOwnershipChange(id, 'have')}
-        title="Mark as Owned"
+        title={t('profile.collectionsCenter.markAsOwned')}
         className="inline-flex items-center gap-0.5 text-[10px] px-2 py-0.5 rounded-full border border-border-default bg-surface-elevated text-text-secondary hover:border-status-success/60 hover:text-status-success hover:bg-status-success/10 font-semibold transition-colors"
       >
-        Have
+        {t('profile.collectionsCenter.have')}
       </button>
     </div>
   );
@@ -310,19 +382,23 @@ function QuickActions({
 // ── RewardCard ────────────────────────────────────────────────────────────────
 
 function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEntry; compact?: boolean } & RewardCallbacks) {
+  const { t, i18n } = useTranslation();
   const id = entry.catalogItemId;
   const [expanded, setExpanded] = useState(false);
   const [shareDismissed, setShareDismissed] = useState(false);
   const [tokenInput, setTokenInput] = useState(entry.tokenCount?.toString() ?? '');
   const [prevTokenCount, setPrevTokenCount] = useState(entry.tokenCount);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const localizedItemName = getLocalizedRewardNameByText(entry.catalogItemName, uiLocale) || entry.catalogItemName;
+  const localizedDutyName = getLocalizedDutyNameByText(entry.sourceDutyName, uiLocale) || entry.sourceDutyName;
   if (prevTokenCount !== entry.tokenCount) {
     setPrevTokenCount(entry.tokenCount);
     setTokenInput(entry.tokenCount?.toString() ?? '');
   }
 
   const catCfg      = CATEGORY_CONFIG[entry.catalogItemCategory ?? ''] ?? null;
-  const catLabel    = catCfg?.label ?? entry.catalogItemCategory ?? '';
-  const expLabel    = expansionLabel(entry.expansion);
+  const catLabel    = getCategoryLabel(entry.catalogItemCategory, t);
+  const expLabel    = getExpansionDisplay(entry.expansion, t);
   const isPlugin    = entry.snapshotSource === 'plugin';
   const isOwned     = entry.ownershipState === 'have';
   const currentVis  = (entry.visibility ?? 'private') as IntentVisibility;
@@ -330,7 +406,10 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
     && (entry.intent === 'hunting' || entry.intent === 'interested')
     && entry.visibility === 'private';
 
-  const cfg = entry.intent ? INTENT_CONFIG[entry.intent] : null;
+  const intentConfig = getIntentConfig(t);
+  const fullIntentLabels = getFullIntentLabels(t);
+  const visibilityOptions = getVisibilityOptions(t);
+  const cfg = entry.intent ? intentConfig[entry.intent] : null;
 
   function handleTokenBlur() {
     const n = parseInt(tokenInput, 10);
@@ -368,11 +447,11 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
           {/* Name + source */}
           <div className="flex-1 min-w-0">
             <span className="text-sm font-semibold text-text-primary truncate block">
-              {entry.catalogItemName}
+              {localizedItemName}
             </span>
-            {!compact && (entry.sourceDutyName || expLabel) && (
+            {!compact && (localizedDutyName || expLabel) && (
               <span className="text-[10px] text-text-muted truncate block mt-0.5">
-                {[entry.sourceDutyName, expLabel].filter(Boolean).join(' · ')}
+                {[localizedDutyName, expLabel].filter(Boolean).join(' · ')}
               </span>
             )}
           </div>
@@ -380,7 +459,7 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
           {/* Intent badge */}
           {cfg && (
             <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border flex-shrink-0 ${cfg.colorClass} ${cfg.bgClass} ${cfg.borderClass}`}>
-              {FULL_INTENT_LABELS[entry.intent!]}
+              {fullIntentLabels[entry.intent!]}
             </span>
           )}
 
@@ -400,7 +479,7 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
         {/* design-system-ignore: standalone expand chevron button */}
         <button
           type="button"
-          aria-label={expanded ? 'Collapse' : 'Expand'}
+          aria-label={expanded ? t('profile.collectionsCenter.collapse') : t('profile.collectionsCenter.expand')}
           onClick={() => setExpanded(e => !e)}
           className="flex-shrink-0 p-1 rounded hover:bg-surface-raised text-text-muted transition-colors"
         >
@@ -413,7 +492,7 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
         <div className="border-t border-border-subtle/50 bg-surface-raised/10 px-3 py-3 flex flex-col gap-2.5">
           {/* Full intent selector */}
           <div>
-            <p className="text-[10px] font-medium text-text-muted mb-1.5">Intent</p>
+            <p className="text-[10px] font-medium text-text-muted mb-1.5">{t('profile.collectionsCenter.intent')}</p>
             <div className="flex flex-wrap gap-1.5">
               {/* eslint-disable-next-line design-system/no-raw-button */}
               <button
@@ -425,10 +504,10 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
                     : 'border-border-subtle text-text-muted hover:border-border-default'
                 }`}
               >
-                None
+                {t('common.none')}
               </button>
               {FULL_INTENT_ORDER.map(iv => {
-                const c = INTENT_CONFIG[iv];
+                const c = intentConfig[iv];
                 const active = entry.intent === iv;
                 return (
                   // eslint-disable-next-line design-system/no-raw-button
@@ -441,8 +520,8 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
                         ? `${c.colorClass} ${c.bgClass} ${c.borderClass}`
                         : 'border-border-subtle text-text-muted hover:border-border-default'
                     }`}
-                  >
-                    {FULL_INTENT_LABELS[iv]}
+                    >
+                    {fullIntentLabels[iv]}
                   </button>
                 );
               })}
@@ -453,15 +532,15 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
           {(entry.intent === 'hunting' || entry.intent === 'interested') && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <p className="text-[10px] font-medium text-text-muted mb-1">Visibility</p>
+                <p className="text-[10px] font-medium text-text-muted mb-1">{t('profile.collectionsCenter.visibility')}</p>
                 <Select
                   value={currentVis}
                   onChange={value => cbs.onVisibilityChange(id, value as IntentVisibility)}
-                  options={VISIBILITY_OPTIONS}
+                  options={visibilityOptions}
                 />
               </div>
               <div>
-                <p className="text-[10px] font-medium text-text-muted mb-1">Ownership</p>
+                <p className="text-[10px] font-medium text-text-muted mb-1">{t('profile.collectionsCenter.ownership')}</p>
                 {/* design-system-ignore: compact ownership toggle chips */}
                 <div className="flex gap-1">
                   {(['have', 'missing', 'unknown'] as const).map(state => (
@@ -490,7 +569,7 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
           {/* Token count */}
           {!isOwned && (
             <div className="flex items-center gap-2.5">
-              <span className="text-[10px] text-text-muted">Tokens collected</span>
+              <span className="text-[10px] text-text-muted">{t('profile.collectionsCenter.tokensCollected')}</span>
               {/* design-system-ignore: small inline number input */}
               <input
                 type="number"
@@ -502,25 +581,25 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
                 disabled={isPlugin}
                 className="w-20 text-xs px-2 py-1 rounded border border-border-subtle bg-surface-base text-text-primary focus:border-accent focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
               />
-              {isPlugin && <span className="text-[10px] text-accent opacity-60">synced from plugin</span>}
+              {isPlugin && <span className="text-[10px] text-accent opacity-60">{t('profile.collectionsCenter.syncedFromPlugin')}</span>}
             </div>
           )}
 
           {/* Visibility description */}
           {entry.intent && entry.visibility && (
             <p className="text-[10px] text-text-muted">
-              {entry.visibility === 'private'        && '🔒 Only you can see this.'}
-              {entry.visibility === 'static_only'    && '👥 Visible to your statics. Feeds into Suggested Farms.'}
-              {entry.visibility === 'dossier_public' && '🌐 Visible on your public dossier and to statics via Suggested Farms.'}
+              {entry.visibility === 'private'        && t('profile.collectionsCenter.visibilityPrivateDesc')}
+              {entry.visibility === 'static_only'    && t('profile.collectionsCenter.visibilityStaticDesc')}
+              {entry.visibility === 'dossier_public' && t('profile.collectionsCenter.visibilityPublicDesc')}
             </p>
           )}
 
           {/* Share prompt (compact, inline) */}
           {showShare && (
             <div className="flex items-center gap-2 rounded border border-status-info/25 bg-status-info/5 px-2.5 py-2">
-              <XivIcon name="crystal" size={11} className="flex-shrink-0" />
+              <Users size={11} className="flex-shrink-0 text-accent" />
               <p className="text-[11px] text-text-secondary flex-1 min-w-0">
-                Share with statics so your team sees this in Suggested Farms?
+                {t('profile.collectionsCenter.sharePrompt')}
               </p>
               <div className="flex gap-1.5 flex-shrink-0">
                 <Button
@@ -528,7 +607,7 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
                   variant="accent-subtle"
                   onClick={() => { cbs.onVisibilityChange(id, 'static_only'); setShareDismissed(true); }}
                 >
-                  Share
+                  {t('profile.collectionsCenter.share')}
                 </Button>
                 <Button
                   size="xs"
@@ -536,7 +615,7 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
                   onClick={() => setShareDismissed(true)}
                   className="text-text-muted"
                 >
-                  Keep private
+                  {t('profile.collectionsCenter.keepPrivate')}
                 </Button>
               </div>
             </div>
@@ -550,8 +629,11 @@ function RewardCard({ entry, compact = false, ...cbs }: { entry: CatalogPlayerEn
 // ── DutyGroupSection (Browse Catalog) ─────────────────────────────────────────
 
 function DutyGroupSection({ group, ...cbs }: { group: DutyGroup } & RewardCallbacks) {
+  const { t, i18n } = useTranslation();
   const srcCfg   = group.sourceType ? SOURCE_TYPE_CONFIG[group.sourceType] ?? null : null;
-  const srcLabel = srcCfg?.label ?? group.sourceType ?? null;
+  const srcLabel = getSourceTypeLabel(group.sourceType, t);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const localizedDutyName = getLocalizedDutyNameByText(group.dutyName, uiLocale) || group.dutyName;
 
   return (
     <div className="rounded-lg border border-border-subtle overflow-hidden">
@@ -559,7 +641,7 @@ function DutyGroupSection({ group, ...cbs }: { group: DutyGroup } & RewardCallba
       <div className="flex items-center gap-2 px-3 py-2 bg-surface-raised/60 border-b border-border-subtle/40">
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <span className="text-sm font-semibold text-text-primary truncate">
-            {group.dutyName ?? 'Other Rewards'}
+            {localizedDutyName ?? t('profile.collectionsCenter.otherRewards')}
           </span>
           {srcLabel && (
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${
@@ -570,7 +652,7 @@ function DutyGroupSection({ group, ...cbs }: { group: DutyGroup } & RewardCallba
           )}
         </div>
         {group.expansionLabel && (
-          <span className="text-[10px] text-text-muted flex-shrink-0">{group.expansionLabel}</span>
+          <span className="text-[10px] text-text-muted flex-shrink-0">{getExpansionDisplay(group.expansionLabel, t)}</span>
         )}
       </div>
 
@@ -587,16 +669,17 @@ function DutyGroupSection({ group, ...cbs }: { group: DutyGroup } & RewardCallba
 // ── My Priorities view ────────────────────────────────────────────────────────
 
 function MyPrioritiesView({ items, onBrowse, ...cbs }: { items: CatalogPlayerEntry[]; onBrowse: () => void } & RewardCallbacks) {
+  const { t } = useTranslation();
   if (items.length === 0) {
     return (
       <div className="rounded-lg border border-border-default bg-surface-raised/30 px-6 py-10 text-center">
         <Search size={28} className="mx-auto mb-3 text-text-muted opacity-30" />
-        <p className="font-semibold text-text-primary text-sm">Nothing tracked yet</p>
+        <p className="font-semibold text-text-primary text-sm">{t('profile.collectionsCenter.nothingTrackedYet')}</p>
         <p className="mt-1 text-xs text-text-secondary">
-          Browse the catalog and mark rewards as Wanted or Farming.
+          {t('profile.collectionsCenter.nothingTrackedDesc')}
         </p>
         <Button size="sm" variant="accent-subtle" onClick={onBrowse} className="mt-4">
-          Browse Catalog
+          {t('profile.collectionsTabs.browse')}
         </Button>
       </div>
     );
@@ -608,10 +691,10 @@ function MyPrioritiesView({ items, onBrowse, ...cbs }: { items: CatalogPlayerEnt
   for (const item of items) if (item.intent) grouped[item.intent].push(item);
 
   const sections = ([
-    { key: 'hunting',    label: 'Want',    items: grouped.hunting    },
-    { key: 'interested', label: 'Farming', items: grouped.interested },
-    { key: 'pass',       label: 'Pass',    items: grouped.pass       },
-    { key: 'hidden',     label: 'Hidden',  items: grouped.hidden     },
+    { key: 'hunting',    label: t('profile.collectionsCenter.intentWant'), items: grouped.hunting    },
+    { key: 'interested', label: t('profile.collectionsCenter.intentFarming'), items: grouped.interested },
+    { key: 'pass',       label: t('profile.collectionsCenter.intentPass'), items: grouped.pass       },
+    { key: 'hidden',     label: t('profile.collectionsCenter.intentHidden'),  items: grouped.hidden     },
   ] as { key: IntentValue; label: string; items: CatalogPlayerEntry[] }[]).filter(s => s.items.length > 0);
 
   const sectionColorClass: Record<IntentValue, string> = {
@@ -645,12 +728,13 @@ function MyPrioritiesView({ items, onBrowse, ...cbs }: { items: CatalogPlayerEnt
 // ── Browse Catalog view ───────────────────────────────────────────────────────
 
 function BrowseCatalogView({ items, ...cbs }: { items: CatalogPlayerEntry[] } & RewardCallbacks) {
+  const { t } = useTranslation();
   const groups = useMemo(() => groupBySourceDuty(items), [items]);
 
   if (items.length === 0) {
     return (
       <p className="text-center text-sm text-text-muted py-8 opacity-60">
-        No rewards match your filters.
+        {t('profile.collectionsCenter.noRewardsMatch')}
       </p>
     );
   }
@@ -658,7 +742,7 @@ function BrowseCatalogView({ items, ...cbs }: { items: CatalogPlayerEntry[] } & 
   return (
     <div className="flex flex-col gap-2">
       <p className="text-[10px] text-text-muted mb-1">
-        {groups.length} {groups.length === 1 ? 'duty' : 'duties'} · {items.length} rewards
+        {t('profile.collectionsCenter.browseSummary', { duties: groups.length, rewards: items.length })}
       </p>
       {groups.map(g => (
         <DutyGroupSection key={g.dutyKey} group={g} {...cbs} />
@@ -676,10 +760,12 @@ export function CollectionsCenterTab({
   view?: 'priorities' | 'browse';
   onViewChange?: (v: 'priorities' | 'browse') => void;
 } = {}) {
+  const { t, i18n } = useTranslation();
   const {
     myCatalog, myCatalogLoaded, fetchMyCatalog,
     upsertIntent, deleteIntent, upsertSnapshot,
   } = useCollectionIntentStore();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
 
   const [viewInternal, setViewInternal] = useState<'priorities' | 'browse'>('priorities');
   const view = viewProp ?? viewInternal;
@@ -706,9 +792,11 @@ export function CollectionsCenterTab({
       (!sourceTypeFilter || e.sourceType === sourceTypeFilter) &&
       (!q ||
         e.catalogItemName.toLowerCase().includes(q) ||
-        (e.sourceDutyName ?? '').toLowerCase().includes(q))
+        (e.sourceDutyName ?? '').toLowerCase().includes(q) ||
+        getLocalizedRewardNameByText(e.catalogItemName, uiLocale).toLowerCase().includes(q) ||
+        getLocalizedDutyNameByText(e.sourceDutyName, uiLocale).toLowerCase().includes(q))
     );
-  }, [myCatalog, categoryFilter, expansionFilter, sourceTypeFilter, searchQuery]);
+  }, [myCatalog, categoryFilter, expansionFilter, sourceTypeFilter, searchQuery, uiLocale]);
 
   // My Priorities: items with any intent, sorted
   const priorityItems = useMemo(() => {
@@ -735,44 +823,44 @@ export function CollectionsCenterTab({
   const onWant = useCallback(async (id: string, vis: IntentVisibility) => {
     try {
       await upsertIntent(id, { intent: 'hunting', priority: getEntry(id)?.priority ?? 'medium', visibility: vis });
-    } catch { toast.error('Failed to update intent'); }
-  }, [upsertIntent, getEntry]);
+    } catch { toast.error(t('profile.collectionsCenter.failedToUpdateIntent')); }
+  }, [upsertIntent, getEntry, t]);
 
   const onFarming = useCallback(async (id: string, vis: IntentVisibility) => {
     try {
       await upsertIntent(id, { intent: 'interested', priority: getEntry(id)?.priority ?? 'medium', visibility: vis });
-    } catch { toast.error('Failed to update intent'); }
-  }, [upsertIntent, getEntry]);
+    } catch { toast.error(t('profile.collectionsCenter.failedToUpdateIntent')); }
+  }, [upsertIntent, getEntry, t]);
 
   const onIntentClear = useCallback(async (id: string) => {
     try { await deleteIntent(id); }
-    catch { toast.error('Failed to remove intent'); }
-  }, [deleteIntent]);
+    catch { toast.error(t('profile.collectionsCenter.failedToRemoveIntent')); }
+  }, [deleteIntent, t]);
 
   const onFullIntent = useCallback(async (id: string, intent: IntentValue, vis: IntentVisibility) => {
     try {
       await upsertIntent(id, { intent, priority: getEntry(id)?.priority ?? 'medium', visibility: vis });
-    } catch { toast.error('Failed to update intent'); }
-  }, [upsertIntent, getEntry]);
+    } catch { toast.error(t('profile.collectionsCenter.failedToUpdateIntent')); }
+  }, [upsertIntent, getEntry, t]);
 
   const onVisibilityChange = useCallback(async (id: string, vis: IntentVisibility) => {
     const e = getEntry(id);
     if (!e?.intent) return;
     try {
       await upsertIntent(id, { intent: e.intent, priority: e.priority ?? 'medium', visibility: vis });
-    } catch { toast.error('Failed to update visibility'); }
-  }, [upsertIntent, getEntry]);
+    } catch { toast.error(t('profile.collectionsCenter.failedToUpdateVisibility')); }
+  }, [upsertIntent, getEntry, t]);
 
   const onOwnershipChange = useCallback(async (id: string, state: 'have' | 'missing' | 'unknown') => {
     try { await upsertSnapshot(id, { ownershipState: state }); }
-    catch { toast.error('Failed to update ownership'); }
-  }, [upsertSnapshot]);
+    catch { toast.error(t('profile.collectionsCenter.failedToUpdateOwnership')); }
+  }, [upsertSnapshot, t]);
 
   const onTokenChange = useCallback(async (id: string, count: number | null) => {
     const e = getEntry(id);
     try { await upsertSnapshot(id, { ownershipState: e?.ownershipState ?? 'unknown', tokenCount: count }); }
-    catch { toast.error('Failed to update token count'); }
-  }, [upsertSnapshot, getEntry]);
+    catch { toast.error(t('profile.collectionsCenter.failedToUpdateTokenCount')); }
+  }, [upsertSnapshot, getEntry, t]);
 
   const callbacks: RewardCallbacks = {
     onWant, onFarming, onIntentClear, onFullIntent,
@@ -800,25 +888,25 @@ export function CollectionsCenterTab({
         {/* Stat pills */}
         <div className="flex flex-wrap gap-2 mb-3">
           <StatPill
-            label="Hunting"
+            label={t('profile.collectionsCenter.hunting')}
             value={stats.hunting}
             colorClass="text-status-info"
             icon={<span className="text-[9px]">🎯</span>}
           />
           <StatPill
-            label="Shared"
+            label={t('profile.collectionsCenter.shared')}
             value={stats.shared}
             colorClass="text-accent"
             icon={<Users size={9} className="text-accent" />}
           />
           <StatPill
-            label="Can buy"
+            label={t('profile.collectionsCenter.canBuy')}
             value={stats.withTokens}
             colorClass="text-status-warning"
             icon={<span className="text-[9px]">💰</span>}
           />
           <StatPill
-            label="Public"
+            label={t('common.public')}
             value={stats.public}
             colorClass="text-accent"
             icon={<Globe size={9} className="text-accent" />}
@@ -829,8 +917,8 @@ export function CollectionsCenterTab({
         {viewProp === undefined && (
           <div className="flex gap-1 bg-surface-base rounded-lg p-1">
             {([
-              { id: 'priorities' as const, label: `My Priorities${priorityItems.length > 0 ? ` (${priorityItems.length})` : ''}` },
-              { id: 'browse'     as const, label: 'Browse Catalog' },
+              { id: 'priorities' as const, label: `${t('profile.collectionsTabs.priorities')}${priorityItems.length > 0 ? ` (${priorityItems.length})` : ''}` },
+              { id: 'browse'     as const, label: t('profile.collectionsTabs.browse') },
             ]).map(tab => (
               /* design-system-ignore: view toggle tab */
               <button
@@ -867,7 +955,7 @@ export function CollectionsCenterTab({
         <Input
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Search rewards or duties…"
+          placeholder={t('profile.collectionsCenter.searchPlaceholder')}
           className="pl-8 pr-8"
         />
         {searchQuery && (
@@ -875,7 +963,7 @@ export function CollectionsCenterTab({
           <button
             type="button"
             onClick={() => setSearchQuery('')}
-            aria-label="Clear search"
+            aria-label={t('profile.collectionsCenter.clearSearch')}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
           >
             <X size={14} />
@@ -885,9 +973,9 @@ export function CollectionsCenterTab({
 
       {/* ── Compact privacy legend ── */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[10px] text-text-muted">
-        <span className="flex items-center gap-1"><Lock size={9} className="opacity-40" /> Private — only you</span>
-        <span className="flex items-center gap-1"><Users size={9} className="text-accent" /> Shared — feeds Suggested Farms</span>
-        <span className="flex items-center gap-1"><Globe size={9} className="text-accent" /> Public — on your dossier</span>
+        <span className="flex items-center gap-1"><Lock size={9} className="opacity-40" /> {t('profile.collectionsCenter.privateOnlyYou')}</span>
+        <span className="flex items-center gap-1"><Users size={9} className="text-accent" /> {t('profile.collectionsCenter.sharedFeedsFarms')}</span>
+        <span className="flex items-center gap-1"><Globe size={9} className="text-accent" /> {t('profile.collectionsCenter.publicOnDossier')}</span>
       </div>
 
       {/* ── Content ──

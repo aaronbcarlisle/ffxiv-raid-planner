@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { CalendarPlus, Copy } from 'lucide-react';
-import { XivIcon } from '../ui/XivIcon';
+import { useTranslation } from 'react-i18next';
+import { CalendarPlus, CalendarRange, Copy } from 'lucide-react';
 import { toast } from '../../stores/toastStore';
 import { Button, Badge } from '../primitives';
 import { Label } from '../ui/Label';
@@ -30,7 +30,7 @@ interface AvailabilityRecommendationsProps {
   onCreateSession: (recommendation: AvailabilityRecommendation) => void;
 }
 
-function formatRecommendationRange(startIso: string, endIso: string, timeZone: string): string {
+function formatRecommendationRange(startIso: string, endIso: string, timeZone: string, locale: string): string {
   const startLabel = formatInTimeZone(startIso, timeZone, {
     weekday: 'short',
     month: 'short',
@@ -38,21 +38,21 @@ function formatRecommendationRange(startIso: string, endIso: string, timeZone: s
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  });
+  }, locale);
   const endLabel = formatInTimeZone(endIso, timeZone, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
     timeZoneName: 'short',
-  });
+  }, locale);
   return `${startLabel} - ${endLabel}`;
 }
 
-function confidenceLabel(index: number, availableCount: number, totalMembers: number): string {
+function confidenceLabel(index: number, availableCount: number, totalMembers: number, t: (key: string) => string): string {
   const ratio = totalMembers > 0 ? availableCount / totalMembers : 0;
-  if (index === 0 && ratio >= 0.75) return 'Great fit';
-  if (ratio >= 0.5) return 'Good backup';
-  return 'Thin option';
+  if (index === 0 && ratio >= 0.75) return t('schedule.confidenceGreatFit');
+  if (ratio >= 0.5) return t('schedule.confidenceGoodBackup');
+  return t('schedule.confidenceThinOption');
 }
 
 export function AvailabilityRecommendations({
@@ -68,6 +68,8 @@ export function AvailabilityRecommendations({
   canCreateSession,
   onCreateSession,
 }: AvailabilityRecommendationsProps) {
+  const { t, i18n } = useTranslation();
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
   const [copiedProposal, setCopiedProposal] = useState(false);
   const proposalText = useMemo(() => {
     if (recommendations.length === 0) {
@@ -75,18 +77,18 @@ export function AvailabilityRecommendations({
     }
 
     const lines = [
-      `Raid time proposal for ${staticName}`,
-      `Reference timezone: ${referenceTimezone}`,
+      t('schedule.proposalHeader', { staticName }),
+      t('schedule.proposalTimezone', { referenceTimezone }),
       '',
       ...recommendations.map((recommendation, index) => (
-        `${index + 1}. ${formatRecommendationRange(recommendation.startIso, recommendation.endIso, referenceTimezone)} - `
-        + `${recommendation.availableCount}/${recommendation.totalMembers} available`
+        `${index + 1}. ${formatRecommendationRange(recommendation.startIso, recommendation.endIso, referenceTimezone, uiLocale)} - `
+        + t('schedule.proposalAvailable', { availableCount: recommendation.availableCount, totalMembers: recommendation.totalMembers })
       )),
       '',
-      `Scheduler: ${schedulePageUrl}`,
+      t('schedule.proposalSchedulerUrl', { schedulePageUrl }),
     ];
     return lines.join('\n');
-  }, [recommendations, referenceTimezone, schedulePageUrl, staticName]);
+  }, [recommendations, referenceTimezone, schedulePageUrl, staticName, t, uiLocale]);
 
   const handleCopyProposal = async () => {
     if (!proposalText) {
@@ -97,9 +99,9 @@ export function AvailabilityRecommendations({
       await navigator.clipboard.writeText(proposalText);
       setCopiedProposal(true);
       window.setTimeout(() => setCopiedProposal(false), 1800);
-      toast.success('Copied!');
+      toast.success(t('common.copied'));
     } catch {
-      toast.error('Failed to copy scheduler proposal');
+      toast.error(t('schedule.failedToCopyProposal'));
     }
   };
 
@@ -108,21 +110,21 @@ export function AvailabilityRecommendations({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-            <XivIcon name="crystal" size={14} />
-            Best Raid Windows
+            <CalendarRange className="h-3.5 w-3.5" />
+            {t('schedule.bestRaidWindowsBadge')}
           </div>
           <div className="space-y-1">
             <h4 className="font-display text-lg text-text-primary">
-              Best raid windows
+              {t('schedule.bestRaidWindowsHeading')}
             </h4>
             <p className="max-w-3xl text-sm text-text-secondary">
-              These are the strongest overlap windows from your static&apos;s availability.
+              {t('schedule.bestRaidWindowsDesc')}
             </p>
           </div>
         </div>
 
         <div className="w-full max-w-xs">
-          <Label size="sm">Target session length</Label>
+          <Label size="sm">{t('schedule.targetSessionLength')}</Label>
           <Select
             value={String(durationMinutes)}
             onChange={(value) => onDurationChange(Number(value))}
@@ -132,17 +134,17 @@ export function AvailabilityRecommendations({
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Badge variant="default">{responderCount} responders</Badge>
-        <Badge variant="default">{totalMembers} tracked members</Badge>
+        <Badge variant="default">{t('schedule.respondersCount', { count: responderCount })}</Badge>
+        <Badge variant="default">{t('schedule.trackedMembersCount', { count: totalMembers })}</Badge>
         <Badge variant="info">{referenceTimezone}</Badge>
         {referenceTimezone !== localTimezone && (
-          <Badge variant="default">Local: {localTimezone}</Badge>
+          <Badge variant="default">{t('schedule.localTzBadge', { tz: localTimezone })}</Badge>
         )}
       </div>
 
       {recommendations.length === 0 ? (
         <div className="mt-5 rounded-2xl border border-border-default bg-surface-elevated/70 px-4 py-5 text-sm text-text-secondary">
-          No availability marked yet. Ask your static to paint the grid so the planner can find your best raid windows.
+          {t('schedule.noAvailabilityMarked')}
         </div>
       ) : (
         <div className="mt-5 grid gap-3 xl:grid-cols-3">
@@ -154,10 +156,10 @@ export function AvailabilityRecommendations({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-[11px] uppercase tracking-[0.18em] text-text-muted">
-                    {index === 0 ? 'Best' : `Backup ${index}`}
+                    {index === 0 ? t('schedule.rankBest') : t('schedule.rankBackup', { n: index })}
                   </div>
                   <div className="mt-1 font-medium text-text-primary">
-                    {formatRecommendationRange(recommendation.startIso, recommendation.endIso, referenceTimezone)}
+                    {formatRecommendationRange(recommendation.startIso, recommendation.endIso, referenceTimezone, uiLocale)}
                   </div>
                 </div>
                 <Badge variant={index === 0 ? 'success' : 'default'}>
@@ -165,21 +167,21 @@ export function AvailabilityRecommendations({
                 </Badge>
               </div>
               <Badge variant={index === 0 ? 'success' : 'info'} className="mt-3">
-                {confidenceLabel(index, recommendation.availableCount, recommendation.totalMembers)}
+                {confidenceLabel(index, recommendation.availableCount, recommendation.totalMembers, t)}
               </Badge>
 
               {referenceTimezone !== localTimezone && (
                 <p className="mt-2 text-xs text-text-muted">
-                  Your time: {formatRecommendationRange(recommendation.startIso, recommendation.endIso, localTimezone)}
+                  {t('session.yourTime', { time: formatRecommendationRange(recommendation.startIso, recommendation.endIso, localTimezone, uiLocale) })}
                 </p>
               )}
 
               <div className="mt-3 space-y-2 text-xs">
                 <div className="text-status-success">
-                  Available: {recommendation.availableNames.join(', ') || 'No marked members'}
+                  {t('schedule.availableLabel')}: {recommendation.availableNames.join(', ') || t('schedule.noMarkedMembers')}
                 </div>
                 <div className="text-text-secondary">
-                  Not marked: {recommendation.missingNames.join(', ') || 'Nobody'}
+                  {t('schedule.notMarkedLabel')}: {recommendation.missingNames.join(', ') || t('schedule.nobodyNotMarked')}
                 </div>
               </div>
 
@@ -191,7 +193,7 @@ export function AvailabilityRecommendations({
                   leftIcon={<CalendarPlus className="h-4 w-4" />}
                   onClick={() => onCreateSession(recommendation)}
                 >
-                  Create session from this time
+                  {t('schedule.createSessionFromTime')}
                 </Button>
               )}
             </div>
@@ -207,19 +209,18 @@ export function AvailabilityRecommendations({
           disabled={recommendations.length === 0}
           onClick={handleCopyProposal}
         >
-          {copiedProposal ? 'Copied!' : 'Copy proposal to Discord'}
+          {copiedProposal ? t('common.copied') : t('schedule.copyProposalToDiscord')}
         </Button>
         {canCreateSession ? (
           <span className="text-xs text-text-muted">
-            Owners and leads can turn any highlighted recommendation into a ready-to-edit session draft.
+            {t('schedule.ownersLeadsCanCreateDraft')}
           </span>
         ) : (
           <span className="text-xs text-text-muted">
-            Owners and leads can create sessions directly from these recommended blocks.
+            {t('schedule.ownersLeadsCanCreateFromBlocks')}
           </span>
         )}
       </div>
     </div>
   );
 }
-
