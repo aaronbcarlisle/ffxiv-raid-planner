@@ -7,7 +7,8 @@
  */
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, AlertTriangle, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { Tooltip } from '../primitives';
@@ -150,7 +151,7 @@ export function LootRecommendationCandidates({
     <div className={`rounded-lg border ${CONFIDENCE_COLORS[confidence]} p-2.5 space-y-1.5`}>
       {/* Header */}
       <div className="flex items-center gap-1.5">
-        <Sparkles className={`w-3.5 h-3.5 ${CONFIDENCE_LABEL_COLORS[confidence]}`} />
+        <XivIcon name="crystal" size={14} />
         <span className={`text-xs font-medium ${CONFIDENCE_LABEL_COLORS[confidence]}`}>
           Recommendation
         </span>
@@ -165,8 +166,9 @@ export function LootRecommendationCandidates({
         </p>
       ))}
 
-      {/* Candidate rows */}
-      <div className="space-y-0.5">
+      {/* Candidate rows — capped so a long expanded list scrolls inside the
+          panel and stays fully interactive rather than overflowing the modal. */}
+      <div className="space-y-0.5 max-h-[280px] overflow-y-auto">
         {shown.map((c, i) => (
           <CandidateRow
             key={c.rosterPlayerId}

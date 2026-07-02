@@ -118,12 +118,14 @@ export function generateTimeSlots(): string[] {
 
 export const TIME_SLOTS = generateTimeSlots();
 
-export function formatTimeLabel(slot: string): string {
+export function formatTimeLabel(slot: string, locale = 'en-US'): string {
   const [hourText, minuteText] = slot.split(':');
-  const hour = Number(hourText);
-  const amPm = hour >= 12 ? 'PM' : 'AM';
-  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  return `${displayHour}:${minuteText} ${amPm}`;
+  const value = new Date(Date.UTC(2024, 0, 1, Number(hourText), Number(minuteText)));
+  return new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  }).format(value);
 }
 
 export function getNextNDates(count: number): string[] {
@@ -139,18 +141,21 @@ export function getNextNDates(count: number): string[] {
   return dates;
 }
 
-export function formatDateHeader(dateString: string): { day: string; date: string } {
+export function formatDateHeader(dateString: string, locale = 'en-US'): { day: string; date: string } {
   const value = new Date(`${dateString}T12:00:00`);
   return {
-    day: value.toLocaleDateString('en-US', { weekday: 'short' }),
-    date: value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    day: value.toLocaleDateString(locale, { weekday: 'short' }),
+    date: value.toLocaleDateString(locale, { month: 'short', day: 'numeric' }),
   };
 }
 
-export function formatHoveredSlotLabel(slotKey: string): string {
+export function formatHoveredSlotLabel(slotKey: string, locale = 'en-US'): string {
   const [date, time] = slotKey.split('|');
-  const { day, date: dateLabel } = formatDateHeader(date);
-  return `${day}, ${dateLabel} at ${formatTimeLabel(time)}`;
+  const { day, date: dateLabel } = formatDateHeader(date, locale);
+  if (locale.startsWith('ja')) {
+    return `${day} ${dateLabel} ${formatTimeLabel(time, locale)}`;
+  }
+  return `${day}, ${dateLabel} at ${formatTimeLabel(time, locale)}`;
 }
 
 export function localSlotToUtc(localDate: string, localTime: string): { utcDate: string; utcTime: string } {
@@ -369,6 +374,27 @@ export const DAY_FULL_LABELS: Record<DayOfWeek, string> = {
   SA: 'Saturday',
   SU: 'Sunday',
 };
+
+const DAY_REFERENCE_DATES: Record<DayOfWeek, Date> = {
+  SU: new Date(Date.UTC(2024, 0, 7)),
+  MO: new Date(Date.UTC(2024, 0, 8)),
+  TU: new Date(Date.UTC(2024, 0, 9)),
+  WE: new Date(Date.UTC(2024, 0, 10)),
+  TH: new Date(Date.UTC(2024, 0, 11)),
+  FR: new Date(Date.UTC(2024, 0, 12)),
+  SA: new Date(Date.UTC(2024, 0, 13)),
+};
+
+export function formatDayOfWeekLabel(
+  day: DayOfWeek,
+  locale = 'en-US',
+  width: 'short' | 'long' = 'short'
+): string {
+  return new Intl.DateTimeFormat(locale, {
+    weekday: width,
+    timeZone: 'UTC',
+  }).format(DAY_REFERENCE_DATES[day]);
+}
 
 export function buildTemplateHeatMap(
   templateData: AvailabilityTemplateDaySummary[]

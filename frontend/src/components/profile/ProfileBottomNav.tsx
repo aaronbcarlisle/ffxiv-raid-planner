@@ -8,6 +8,7 @@
 
 import { MoreHorizontal, Users } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useDevice } from '../../hooks/useDevice';
 import { TAB_ICONS } from '../../types';
@@ -21,21 +22,22 @@ interface ProfileBottomNavProps {
   primaryStaticName?: string;
 }
 
-const PRIMARY_TABS: { id: ProfileTab; label: string; icon: keyof typeof TAB_ICONS }[] = [
-  { id: 'overview', label: 'Overview', icon: 'playerOverview' },
-  { id: 'sync', label: 'Sync', icon: 'playerSync' },
-  { id: 'jobs-gear', label: 'Jobs & Gear', icon: 'playerGear' },
-  { id: 'availability', label: 'Avail', icon: 'playerAvailability' },
+const PRIMARY_TABS: { id: ProfileTab; labelKey: string; icon: keyof typeof TAB_ICONS }[] = [
+  { id: 'overview', labelKey: 'profile.tabOverview', icon: 'playerOverview' },
+  { id: 'sync', labelKey: 'profile.tabSync', icon: 'playerSync' },
+  { id: 'jobs-gear', labelKey: 'profile.tabJobsGear', icon: 'playerGear' },
+  { id: 'availability', labelKey: 'profile.tabAvail', icon: 'playerAvailability' },
 ];
 
-const MORE_TABS: { id: ProfileTab; label: string; icon: keyof typeof TAB_ICONS }[] = [
-  { id: 'collections', label: 'Collections', icon: 'playerHunts' },
-  { id: 'preview', label: 'Share', icon: 'playerShare' },
+const MORE_TABS: { id: ProfileTab; labelKey: string; icon: keyof typeof TAB_ICONS }[] = [
+  { id: 'collections', labelKey: 'profile.tabCollections', icon: 'playerHunts' },
+  { id: 'preview', labelKey: 'profile.tabShare', icon: 'playerShare' },
 ];
 
 const ALL_MORE_IDS = new Set(MORE_TABS.map(t => t.id));
 
 export function ProfileBottomNav({ activeTab, onTabChange, primaryStaticPath, primaryStaticName }: ProfileBottomNavProps) {
+  const { t } = useTranslation();
   const { isSmallScreen } = useDevice();
   const [showMore, setShowMore] = useState(false);
 
@@ -70,8 +72,8 @@ export function ProfileBottomNav({ activeTab, onTabChange, primaryStaticPath, pr
                   className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-sm font-medium transition-colors text-text-secondary hover:text-text-primary hover:bg-surface-interactive"
                 >
                   <Users className="w-5 h-5 text-accent flex-shrink-0" />
-                  <span className="flex-1 truncate">{primaryStaticName ?? 'My Static'}</span>
-                  <span className="text-xs text-text-tertiary flex-shrink-0">← Back</span>
+                  <span className="flex-1 truncate">{primaryStaticName ?? t('profile.backToStatic')}</span>
+                  <span className="text-xs text-text-tertiary flex-shrink-0">{t('common.back')}</span>
                 </Link>
               )}
               {MORE_TABS.map((tab) => {
@@ -87,7 +89,7 @@ export function ProfileBottomNav({ activeTab, onTabChange, primaryStaticPath, pr
                     `}
                   >
                     <img src={TAB_ICONS[tab.icon]} alt="" className="w-5 h-5" />
-                    <span>{tab.label}</span>
+                    <span>{t(tab.labelKey)}</span>
                   </button>
                 );
               })}
@@ -115,7 +117,7 @@ export function ProfileBottomNav({ activeTab, onTabChange, primaryStaticPath, pr
                   transition-colors
                   ${isActive ? 'text-accent' : 'text-text-secondary active:text-text-primary'}
                 `}
-                aria-label={tab.label}
+                aria-label={t(tab.labelKey)}
                 aria-current={isActive ? 'page' : undefined}
               >
                 <img
@@ -123,7 +125,7 @@ export function ProfileBottomNav({ activeTab, onTabChange, primaryStaticPath, pr
                   alt=""
                   className={`w-5 h-5 ${isActive ? 'opacity-100' : 'opacity-60'}`}
                 />
-                <span className="text-[10px] mt-0.5 font-medium">{tab.label}</span>
+                <span className="text-[10px] mt-0.5 font-medium">{t(tab.labelKey)}</span>
               </button>
             );
           })}
@@ -143,12 +145,12 @@ export function ProfileBottomNav({ activeTab, onTabChange, primaryStaticPath, pr
             {isMoreActive && activeMoreTab ? (
               <>
                 <img src={TAB_ICONS[activeMoreTab.icon]} alt="" className="w-5 h-5 opacity-100" />
-                <span className="text-[10px] mt-0.5 font-medium">{activeMoreTab.label}</span>
+                <span className="text-[10px] mt-0.5 font-medium">{t(activeMoreTab.labelKey)}</span>
               </>
             ) : (
               <>
                 <MoreHorizontal className={`w-5 h-5 ${showMore ? 'opacity-100' : 'opacity-60'}`} />
-                <span className="text-[10px] mt-0.5 font-medium">More</span>
+                <span className="text-[10px] mt-0.5 font-medium">{t('profile.tabMore')}</span>
               </>
             )}
           </button>

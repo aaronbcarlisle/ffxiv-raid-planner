@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
@@ -12,6 +13,11 @@ import type { PlayerGoal } from '../../stores/playerProfileStore';
 import { OBJECTIVE_CATEGORY_OPTIONS } from '../../data/goalObjectiveCategories';
 import { api } from '../../services/api';
 import { toast } from '../../stores/toastStore';
+import {
+  getLocalizedDutyNameByText,
+  getLocalizedRewardNameByText,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 interface CatalogEntry {
   trialId: string;
@@ -26,35 +32,44 @@ interface CatalogEntry {
   category?: 'standard' | 'collaboration';
 }
 
-const GOAL_TYPE_OPTIONS = [
-  { value: 'weekly_clear', label: 'Weekly Clear' },
-  { value: 'personal', label: 'Personal' },
-  { value: 'gear', label: 'Gear' },
-  { value: 'raid', label: 'Raid' },
-  { value: 'custom', label: 'Custom' },
-];
+function isJapaneseLanguage(language?: string): boolean {
+  return (language ?? '').toLowerCase().startsWith('ja');
+}
 
+function getGoalTypeOptions(isJapanese: boolean) {
+  return [
+    { value: 'weekly_clear', label: isJapanese ? '週消化' : 'Weekly Clear' },
+    { value: 'personal', label: isJapanese ? '個人' : 'Personal' },
+    { value: 'gear', label: isJapanese ? '装備' : 'Gear' },
+    { value: 'raid', label: isJapanese ? 'レイド' : 'Raid' },
+    { value: 'custom', label: isJapanese ? 'カスタム' : 'Custom' },
+  ];
+}
 
-const INTENT_LEVEL_OPTIONS = [
-  { value: '', label: 'Not set' },
-  { value: 'must_have', label: 'Must Have' },
-  { value: 'want', label: 'Want' },
-  { value: 'willing', label: 'Willing' },
-  { value: 'not_interested', label: 'Not Interested' },
-  { value: 'avoid', label: 'Avoid' },
-];
+function getIntentLevelOptions(isJapanese: boolean) {
+  return [
+    { value: '', label: isJapanese ? '未設定' : 'Not set' },
+    { value: 'must_have', label: isJapanese ? '必須' : 'Must Have' },
+    { value: 'want', label: isJapanese ? '希望' : 'Want' },
+    { value: 'willing', label: isJapanese ? '前向き' : 'Willing' },
+    { value: 'not_interested', label: isJapanese ? '興味なし' : 'Not Interested' },
+    { value: 'avoid', label: isJapanese ? '避けたい' : 'Avoid' },
+  ];
+}
 
 // Goal types that can participate in static matching
 const INTENT_ELIGIBLE_TYPES = new Set([
   'weekly_clear', 'personal', 'gear', 'raid', 'custom',
 ]);
 
-const STATUS_OPTIONS = [
-  { value: 'active', label: 'Active' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'abandoned', label: 'Abandoned' },
-];
+function getStatusOptions(isJapanese: boolean) {
+  return [
+    { value: 'active', label: isJapanese ? '進行中' : 'Active' },
+    { value: 'completed', label: isJapanese ? '完了' : 'Completed' },
+    { value: 'paused', label: isJapanese ? '一時停止' : 'Paused' },
+    { value: 'abandoned', label: isJapanese ? '中止' : 'Abandoned' },
+  ];
+}
 
 const EXPANSION_ORDER = ['DT', 'EW', 'ShB', 'SB', 'HW', 'ARR'];
 
@@ -67,9 +82,15 @@ interface GoalModalProps {
 type ModalMode = 'catalog' | 'custom';
 
 export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps) {
+  const { i18n } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = isJapaneseLanguage(i18n.resolvedLanguage);
   const { createGoal, updateGoal } = usePlayerProfileStore();
   const isEditing = !!existing;
   const showCatalog = !isEditing && (defaultGoalType === 'mount_farm' || defaultGoalType === 'totem_farm');
+  const goalTypeOptions = getGoalTypeOptions(isJapanese);
+  const intentLevelOptions = getIntentLevelOptions(isJapanese);
+  const statusOptions = getStatusOptions(isJapanese);
 
   const [mode, setMode] = useState<ModalMode>(showCatalog ? 'catalog' : 'custom');
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
@@ -110,8 +131,9 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
     setSaving(true);
     setError(null);
     try {
+      const mountName = getLocalizedRewardNameByText(entry.mountName, uiLocale) || entry.mountName;
       await createGoal({
-        title: `${entry.mountName} Mount`,
+        title: isJapanese ? `${mountName}マウント` : `${entry.mountName} Mount`,
         goalType: 'mount_farm',
         sourceContent: entry.trialId,
         sourceItem: entry.totemName ?? entry.mountName,
@@ -120,10 +142,10 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         intentLevel: intentLevel || null,
         isPublic,
       });
-      toast.success(`Added ${entry.mountName} mount farm`);
+      toast.success(isJapanese ? `「${mountName}」の周回目標を追加しました` : `Added ${entry.mountName} mount farm`);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create goal');
+      setError(err instanceof Error ? err.message : (isJapanese ? '目標の作成に失敗しました' : 'Failed to create goal'));
     } finally {
       setSaving(false);
     }
@@ -151,14 +173,14 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
 
       if (isEditing) {
         await updateGoal(existing.id, data);
-        toast.success('Goal updated');
+        toast.success(isJapanese ? '目標を更新しました' : 'Goal updated');
       } else {
         await createGoal(data as Parameters<typeof createGoal>[0]);
-        toast.success('Goal created');
+        toast.success(isJapanese ? '目標を作成しました' : 'Goal created');
       }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      setError(err instanceof Error ? err.message : (isJapanese ? '保存に失敗しました' : 'Failed to save'));
     } finally {
       setSaving(false);
     }
@@ -174,10 +196,10 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
 
   if (mode === 'catalog' && !isEditing) {
     return (
-      <Modal isOpen={true} title="Add Mount Farm Goal" onClose={onClose} className="max-w-lg">
+      <Modal isOpen={true} title={isJapanese ? 'マウント周回目標を追加' : 'Add Mount Farm Goal'} onClose={onClose} className="max-w-lg">
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
-            Pick an EX trial to track, or create a custom goal.
+            {isJapanese ? '追跡したい極コンテンツを選ぶか、カスタム目標を作成してください。' : 'Pick an EX trial to track, or create a custom goal.'}
           </p>
 
           {loadingCatalog ? (
@@ -191,6 +213,10 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
                   </div>
                   <div className="space-y-1">
                     {entries.map((entry) => (
+                      (() => {
+                        const localizedMountName = getLocalizedRewardNameByText(entry.mountName, uiLocale) || entry.mountName;
+                        const localizedDutyName = getLocalizedDutyNameByText(entry.dutyName, uiLocale) || entry.dutyName;
+                        return (
                       /* design-system-ignore: Catalog item requires specific clickable card styling */
                       <button
                         key={entry.trialId}
@@ -200,15 +226,17 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-border-default bg-surface-elevated hover:border-accent/40 hover:bg-accent/5 transition-colors text-left"
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-text-primary truncate">{entry.mountName}</div>
-                          <div className="text-xs text-text-tertiary truncate">{entry.dutyName}</div>
+                          <div className="text-sm font-medium text-text-primary truncate">{localizedMountName}</div>
+                          <div className="text-xs text-text-tertiary truncate">{localizedDutyName}</div>
                         </div>
                         <Badge variant={entry.exchangeStatus === 'not_yet_available' ? 'default' : entry.category === 'collaboration' ? 'info' : 'default'} size="sm">
                           {entry.exchangeStatus === 'not_yet_available'
-                            ? 'Exchange pending'
-                            : `${entry.exchangeCost ?? entry.totemTarget} ${entry.totemName ?? 'currency'}`}
+                            ? (isJapanese ? '交換待ち' : 'Exchange pending')
+                            : `${entry.exchangeCost ?? entry.totemTarget} ${entry.totemName ?? (isJapanese ? '通貨' : 'currency')}`}
                         </Badge>
                       </button>
+                        );
+                      })()
                     ))}
                   </div>
                 </div>
@@ -224,9 +252,9 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
 
           <div className="flex justify-between items-center pt-2 border-t border-border-default">
             <Button variant="ghost" size="sm" onClick={() => setMode('custom')}>
-              Custom Goal Instead
+              {isJapanese ? 'カスタム目標を作る' : 'Custom Goal Instead'}
             </Button>
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button variant="ghost" onClick={onClose}>{isJapanese ? 'キャンセル' : 'Cancel'}</Button>
           </div>
         </div>
       </Modal>
@@ -236,7 +264,7 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
   return (
     <Modal
       isOpen={true}
-      title={isEditing ? 'Edit Task' : 'New Task'}
+      title={isEditing ? (isJapanese ? '目標を編集' : 'Edit Task') : (isJapanese ? '新しい目標' : 'New Task')}
       onClose={onClose}
     >
       <div className="space-y-4">
@@ -249,11 +277,11 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
               onClick={() => setGoalMode('task')}
               className={`flex-1 px-3 py-2 transition-colors ${
                 goalMode === 'task'
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-contrast'
                   : 'bg-surface-elevated text-text-secondary hover:bg-surface-elevated/80'
               }`}
             >
-              Track a personal task
+              {isJapanese ? '個人タスク' : 'Personal Task'}
             </button>
             {/* design-system-ignore: segmented control — no Button primitive covers this style */}
             <button
@@ -261,22 +289,22 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
               onClick={() => setGoalMode('objective')}
               className={`flex-1 px-3 py-2 transition-colors border-l border-border-default ${
                 goalMode === 'objective'
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent text-accent-contrast'
                   : 'bg-surface-elevated text-text-secondary hover:bg-surface-elevated/80'
               }`}
             >
-              Declare a static-matching goal
+              {isJapanese ? '共有目標' : 'Static Goal'}
             </button>
           </div>
         )}
 
         {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Title</label> {/* design-system-ignore */}
+          <label className="block text-sm font-medium text-text-secondary mb-1">{isJapanese ? 'タイトル' : 'Title'}</label> {/* design-system-ignore */}
           <Input
             value={title}
             onChange={setTitle}
-            placeholder="e.g., Farm Valigarmanda mount"
+            placeholder={isJapanese ? '例：ヴァリガルマンダ周回' : 'e.g., Farm Valigarmanda mount'}
             maxLength={200}
           />
         </div>
@@ -284,7 +312,7 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         {/* Objective mode: category picker */}
         {goalMode === 'objective' && (
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Category</label> {/* design-system-ignore */}
+            <label className="block text-sm font-medium text-text-secondary mb-1">{isJapanese ? 'カテゴリ' : 'Category'}</label> {/* design-system-ignore */}
             <Select
               value={objectiveCategory}
               onChange={setObjectiveCategory}
@@ -296,11 +324,11 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         {/* Task mode: goal type (only for new) */}
         {goalMode === 'task' && !isEditing && (
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Type</label> {/* design-system-ignore */}
+            <label className="block text-sm font-medium text-text-secondary mb-1">{isJapanese ? '種類' : 'Type'}</label> {/* design-system-ignore */}
             <Select
               value={goalType}
               onChange={setGoalType}
-              options={GOAL_TYPE_OPTIONS}
+              options={goalTypeOptions}
             />
           </div>
         )}
@@ -308,11 +336,11 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         {/* Status (only for editing) */}
         {isEditing && (
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Status</label> {/* design-system-ignore */}
+            <label className="block text-sm font-medium text-text-secondary mb-1">{isJapanese ? 'ステータス' : 'Status'}</label> {/* design-system-ignore */}
             <Select
               value={status}
               onChange={setStatus}
-              options={STATUS_OPTIONS}
+              options={statusOptions}
             />
           </div>
         )}
@@ -321,12 +349,12 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         {(goalMode === 'objective' || INTENT_ELIGIBLE_TYPES.has(goalType)) && (
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-1"> {/* design-system-ignore */}
-              How strongly do you want this?
+              {isJapanese ? 'どのくらい重視しますか？' : 'How strongly do you want this?'}
             </label>
             <Select
               value={intentLevel}
               onChange={setIntentLevel}
-              options={INTENT_LEVEL_OPTIONS}
+              options={intentLevelOptions}
             />
           </div>
         )}
@@ -334,34 +362,34 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         {/* Share toggle */}
         <div className="flex items-center justify-between rounded-lg border border-border-default bg-surface-elevated px-3 py-2.5">
           <div>
-            <div className="text-sm font-medium text-text-primary">Share with my statics</div>
+            <div className="text-sm font-medium text-text-primary">{isJapanese ? '固定と共有する' : 'Share with my statics'}</div>
             <div className="text-xs text-text-tertiary">
               {goalMode === 'objective'
-                ? 'Shared goals are used for Static Finder, applications, and roster alignment. Private goals stay personal.'
-                : 'Only shared goals can be used for static matching.'}
+                ? (isJapanese ? '共有した目標は Static Finder、参加申請、ロスター調整に使われます。非公開の目標は自分だけに表示されます。' : 'Shared goals are used for Static Finder, applications, and roster alignment. Private goals stay personal.')
+                : (isJapanese ? '固定マッチングに使われるのは共有目標のみです。' : 'Only shared goals can be used for static matching.')}
             </div>
           </div>
-          <Toggle checked={isPublic} onChange={setIsPublic} size="sm" aria-label="Share goal with statics" />
+          <Toggle checked={isPublic} onChange={setIsPublic} size="sm" aria-label={isJapanese ? '固定と目標を共有する' : 'Share goal with statics'} />
         </div>
 
         {/* Source fields for content-based goals */}
         {showSourceFields && (
           <>
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Content / Duty</label> {/* design-system-ignore */}
+              <label className="block text-sm font-medium text-text-secondary mb-1">{isJapanese ? 'コンテンツ / 任務' : 'Content / Duty'}</label> {/* design-system-ignore */}
               <Input
                 value={sourceContent}
                 onChange={setSourceContent}
-                placeholder="e.g., Worqor Lar Dor (Extreme)"
+                placeholder={isJapanese ? '例：極ヴァリガルマンダ討滅戦' : 'e.g., Worqor Lar Dor (Extreme)'}
                 maxLength={200}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Target Item</label> {/* design-system-ignore */}
+              <label className="block text-sm font-medium text-text-secondary mb-1">{isJapanese ? '対象アイテム' : 'Target Item'}</label> {/* design-system-ignore */}
               <Input
                 value={sourceItem}
                 onChange={setSourceItem}
-                placeholder="e.g., Valigarmanda Totem"
+                placeholder={isJapanese ? '例：ヴァリガルマンダのトーテム像' : 'e.g., Valigarmanda Totem'}
                 maxLength={200}
               />
             </div>
@@ -371,17 +399,17 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         {/* Count tracking */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1">Target Count</label> {/* design-system-ignore */}
+            <label className="block text-sm font-medium text-text-secondary mb-1">{isJapanese ? '目標数' : 'Target Count'}</label> {/* design-system-ignore */}
             <Input
               value={targetCount}
               onChange={setTargetCount}
-              placeholder="Leave empty for checkbox goal"
+              placeholder={isJapanese ? 'チェックだけの目標なら空欄' : 'Leave empty for checkbox goal'}
               type="number"
             />
           </div>
           {isCountBased && (
             <div>
-              <label className="block text-sm font-medium text-text-secondary mb-1">Current Count</label> {/* design-system-ignore */}
+              <label className="block text-sm font-medium text-text-secondary mb-1">{isJapanese ? '現在数' : 'Current Count'}</label> {/* design-system-ignore */}
               <Input
                 value={currentCount}
                 onChange={setCurrentCount}
@@ -394,11 +422,11 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
 
         {/* Notes */}
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Notes</label> {/* design-system-ignore */}
+          <label className="block text-sm font-medium text-text-secondary mb-1">{isJapanese ? 'メモ' : 'Notes'}</label> {/* design-system-ignore */}
           <TextArea
             value={description}
             onChange={setDescription}
-            placeholder="Optional notes"
+            placeholder={isJapanese ? '補足メモ（任意）' : 'Optional notes'}
             maxLength={2000}
             rows={2}
           />
@@ -413,12 +441,12 @@ export function GoalModal({ existing, defaultGoalType, onClose }: GoalModalProps
         <div className="flex justify-end gap-3 pt-2">
           {showCatalog && !isEditing && (
             <Button variant="ghost" size="sm" onClick={() => setMode('catalog')} className="mr-auto">
-              Pick from Catalog
+              {isJapanese ? 'カタログから選ぶ' : 'Pick from Catalog'}
             </Button>
           )}
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{isJapanese ? 'キャンセル' : 'Cancel'}</Button>
           <Button onClick={handleSubmit} disabled={saving || !title.trim()}>
-            {saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Create Task'}
+            {saving ? (isJapanese ? '保存中…' : 'Saving…') : isEditing ? (isJapanese ? '変更を保存' : 'Save Changes') : (isJapanese ? '目標を作成' : 'Create Task')}
           </Button>
         </div>
       </div>

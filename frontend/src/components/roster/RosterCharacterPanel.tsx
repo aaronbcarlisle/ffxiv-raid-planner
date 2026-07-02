@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { SnapshotPlayer, StaticCharacterRegistrationCreate, StaticCharacterRegistrationUpdate } from '../../types';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { RosterCharacterMemberCard } from './RosterCharacterMemberCard';
@@ -10,6 +11,7 @@ interface RosterCharacterPanelProps {
 }
 
 export function RosterCharacterPanel({ groupId, players, canEdit }: RosterCharacterPanelProps) {
+  const { t } = useTranslation();
   const {
     registrationsByGroup,
     availableForLinkingByGroup,
@@ -78,7 +80,7 @@ export function RosterCharacterPanel({ groupId, players, canEdit }: RosterCharac
   if (players.length === 0) {
     return (
       <div className="rounded-xl border border-border-subtle bg-surface-raised p-6 text-center">
-        <p className="text-sm text-text-muted">No roster members found.</p>
+        <p className="text-sm text-text-muted">{t('roster.noRosterMembersFound')}</p>
       </div>
     );
   }
@@ -87,10 +89,13 @@ export function RosterCharacterPanel({ groupId, players, canEdit }: RosterCharac
     <div className="space-y-2">
       <div className="flex items-baseline justify-between mb-1">
         <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wide">
-          Registered characters
+          {t('roster.registeredCharacters')}
         </h3>
         <p className="text-xs text-text-muted">
-          {players.filter(p => (registrations[p.id]?.length ?? 0) > 0).length}/{players.length} configured
+          {t('roster.configuredCount', {
+            configured: players.filter(p => (registrations[p.id]?.length ?? 0) > 0).length,
+            total: players.length,
+          })}
         </p>
       </div>
       {players.map(player => (

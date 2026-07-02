@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CalendarDays, XCircle, RefreshCw, RotateCcw } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives';
@@ -17,10 +18,10 @@ interface OccurrenceListModalProps {
   canManage: boolean;
 }
 
-function formatOccurrenceDate(isoDate: string, startTime: string, tz: string): string {
+function formatOccurrenceDate(isoDate: string, startTime: string, tz: string, locale: string): string {
   try {
     const dt = new Date(startTime);
-    return new Intl.DateTimeFormat('en-US', {
+    return new Intl.DateTimeFormat(locale, {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -54,6 +55,8 @@ export function OccurrenceListModal({
   groupId,
   canManage,
 }: OccurrenceListModalProps) {
+  const { t, i18n } = useTranslation();
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
   const { fetchOccurrences, fetchExceptions, createException, deleteException } = useScheduleStore();
 
   const [occurrences, setOccurrences] = useState<OccurrenceResponse[]>([]);
@@ -74,11 +77,11 @@ export function OccurrenceListModal({
       setOccurrences(occs);
       setExceptions(excs);
     } catch {
-      toast.error('Failed to load occurrences');
+      toast.error(t('schedule.failedToLoadOccurrences'));
     } finally {
       setIsLoading(false);
     }
-  }, [isOpen, groupId, session.id, fetchOccurrences, fetchExceptions]);
+  }, [isOpen, groupId, session.id, fetchOccurrences, fetchExceptions, t]);
 
   useEffect(() => {
     load();
@@ -91,10 +94,10 @@ export function OccurrenceListModal({
         occurrenceDate: pendingDate,
         type: 'cancelled',
       });
-      toast.success('Occurrence cancelled');
+      toast.success(t('schedule.occurrenceCancelled'));
       await load();
     } catch {
-      toast.error('Failed to cancel occurrence');
+      toast.error(t('schedule.failedToCancelOccurrence'));
     } finally {
       cancelModal.close();
       setPendingDate(null);
@@ -105,10 +108,10 @@ export function OccurrenceListModal({
     if (!pendingDate) return;
     try {
       await deleteException(groupId, session.id, pendingDate);
-      toast.success('Occurrence restored');
+      toast.success(t('schedule.occurrenceRestored'));
       await load();
     } catch {
-      toast.error('Failed to restore occurrence');
+      toast.error(t('schedule.failedToRestoreOccurrence'));
     } finally {
       restoreModal.close();
       setPendingDate(null);
@@ -150,7 +153,7 @@ export function OccurrenceListModal({
         title={
           <span className="flex items-center gap-2">
             <CalendarDays className="w-5 h-5 text-accent" />
-            Upcoming Occurrences
+            {t('schedule.upcomingOccurrences')}
           </span>
         }
         size="lg"
@@ -158,20 +161,20 @@ export function OccurrenceListModal({
           <div className="flex justify-between items-center">
             <Button variant="secondary" size="sm" onClick={load} disabled={isLoading}>
               <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
+              {t('common.refresh')}
             </Button>
-            <Button variant="secondary" onClick={onClose}>Close</Button>
+            <Button variant="secondary" onClick={onClose}>{t('common.close')}</Button>
           </div>
         }
       >
         <div className="space-y-2">
           {isLoading && (
-            <div className="text-center text-text-muted text-sm py-6">Loading…</div>
+            <div className="text-center text-text-muted text-sm py-6">{t('common.loading')}</div>
           )}
 
           {!isLoading && occurrences.length === 0 && cancelledOnlyExceptions.length === 0 && (
             <div className="text-center text-text-muted text-sm py-6">
-              No upcoming occurrences in the next 4 weeks.
+              {t('schedule.noUpcomingOccurrences')}
             </div>
           )}
 
@@ -199,17 +202,17 @@ export function OccurrenceListModal({
                     </span>
                     {isEdited && (
                       <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded font-medium">
-                        EDITED
+                        {t('schedule.occurrenceEditedBadge')}
                       </span>
                     )}
                     {isCancelled && (
                       <span className="text-[10px] bg-red-400/20 text-red-300 px-1.5 py-0.5 rounded font-medium">
-                        CANCELLED
+                        {t('schedule.occurrenceCancelledBadge')}
                       </span>
                     )}
                   </div>
                   <div className="text-xs text-text-secondary mt-0.5">
-                    {formatOccurrenceDate(occ.occurrenceDate, occ.startTime, session.timezone)}
+                    {formatOccurrenceDate(occ.occurrenceDate, occ.startTime, session.timezone, uiLocale)}
                     <span className="text-text-muted ml-2">({formatDuration(duration)})</span>
                   </div>
                 </div>
@@ -219,12 +222,12 @@ export function OccurrenceListModal({
                     {isCancelled ? (
                       <Button variant="secondary" size="sm" onClick={() => openRestore(localKey)}>
                         <RotateCcw className="w-3 h-3 mr-1" />
-                        Restore
+                        {t('schedule.restoreOccurrence')}
                       </Button>
                     ) : (
                       <Button variant="secondary" size="sm" onClick={() => openCancel(localKey)}>
                         <XCircle className="w-3 h-3 mr-1" />
-                        Cancel
+                        {t('schedule.cancelOccurrence')}
                       </Button>
                     )}
                   </div>
@@ -236,7 +239,7 @@ export function OccurrenceListModal({
           {/* Cancelled occurrences not in the upcoming window */}
           {cancelledOnlyExceptions.length > 0 && (
             <>
-              <p className="text-xs text-text-muted pt-2 pb-1">Previously cancelled (outside window)</p>
+              <p className="text-xs text-text-muted pt-2 pb-1">{t('schedule.previouslyCancelled')}</p>
               {cancelledOnlyExceptions.map((exc) => (
                 <div
                   key={exc.occurrenceDate}
@@ -248,7 +251,7 @@ export function OccurrenceListModal({
                         {exc.occurrenceDate}
                       </span>
                       <span className="text-[10px] bg-red-400/20 text-red-300 px-1.5 py-0.5 rounded font-medium">
-                        CANCELLED
+                        {t('schedule.occurrenceCancelledBadge')}
                       </span>
                     </div>
                     {exc.cancellationReason && (
@@ -258,7 +261,7 @@ export function OccurrenceListModal({
                   {canManage && (
                     <Button variant="secondary" size="sm" onClick={() => openRestore(exc.occurrenceDate)}>
                       <RotateCcw className="w-3 h-3 mr-1" />
-                      Restore
+                      {t('schedule.restoreOccurrence')}
                     </Button>
                   )}
                 </div>
@@ -270,9 +273,9 @@ export function OccurrenceListModal({
 
       <ConfirmModal
         isOpen={cancelModal.isOpen}
-        title="Cancel Occurrence"
-        message={`Cancel the occurrence on ${pendingDate ?? ''}? Members will no longer see it in the upcoming schedule.`}
-        confirmLabel="Cancel Occurrence"
+        title={t('schedule.cancelOccurrenceTitle')}
+        message={t('schedule.cancelOccurrenceMessage', { date: pendingDate ?? '' })}
+        confirmLabel={t('schedule.cancelOccurrenceConfirm')}
         variant="danger"
         onConfirm={handleCancel}
         onCancel={() => { cancelModal.close(); setPendingDate(null); }}
@@ -280,9 +283,9 @@ export function OccurrenceListModal({
 
       <ConfirmModal
         isOpen={restoreModal.isOpen}
-        title="Restore Occurrence"
-        message={`Restore the occurrence on ${pendingDate ?? ''} back to the schedule?`}
-        confirmLabel="Restore"
+        title={t('schedule.restoreOccurrenceTitle')}
+        message={t('schedule.restoreOccurrenceMessage', { date: pendingDate ?? '' })}
+        confirmLabel={t('schedule.restoreOccurrenceConfirm')}
         variant="default"
         onConfirm={handleRestore}
         onCancel={() => { restoreModal.close(); setPendingDate(null); }}

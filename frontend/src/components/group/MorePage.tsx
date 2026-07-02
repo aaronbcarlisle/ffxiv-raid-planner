@@ -1,4 +1,5 @@
 /* eslint-disable design-system/no-raw-button */
+import { useTranslation } from 'react-i18next';
 import {
   Users, Settings, Link2, Book, Sword, Download, Activity,
   AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle, PlugZap,
@@ -20,8 +21,12 @@ interface MorePageProps {
   userRole: MemberRole | null;
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+function getUiLocale(language: string): string {
+  return language.startsWith('ja') ? 'ja-JP' : 'en-US';
+}
+
+function formatDate(iso: string, locale: string): string {
+  return new Date(iso).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function MorePage({
@@ -34,6 +39,8 @@ export function MorePage({
   canManage,
   userRole,
 }: MorePageProps) {
+  const { t, i18n } = useTranslation();
+  const uiLocale = getUiLocale(i18n.resolvedLanguage ?? i18n.language ?? 'en');
   const pendingCount = useJoinRequestStore(s => s.pendingCount);
   const groupRequests = useJoinRequestStore(s => s.groupRequests);
   const recentApps = groupRequests.filter(r => r.status !== 'pending').length;
@@ -57,13 +64,13 @@ export function MorePage({
 
       {/* Tools & Management */}
       <section>
-        <SectionLabel className="mb-3">Tools & Management</SectionLabel>
+        <SectionLabel className="mb-3">{t('morePage.toolsAndManagement')}</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           {/* Requests */}
           {canManage && (
             <DashboardCard
-              title="Requests"
+              title={t('morePage.requests')}
               icon={<Users size={13} />}
               accentColor={pendingCount > 0 ? 'teal' : undefined}
               badge={pendingCount > 0 ? (
@@ -74,22 +81,22 @@ export function MorePage({
               onClick={() => onOpenSettings('recruitment')}
             >
               <p className="text-xs text-text-secondary mb-4">
-                Review and manage join requests from prospective members.
+                {t('morePage.requestsDesc')}
               </p>
               <div className="space-y-1.5 text-sm mb-4">
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Pending</span>
+                  <span className="text-text-secondary">{t('morePage.pending')}</span>
                   <span className={`font-semibold ${pendingCount > 0 ? 'text-accent' : 'text-text-primary'}`}>
                     {pendingCount}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Recent applications</span>
+                  <span className="text-text-secondary">{t('morePage.recentApplications')}</span>
                   <span className="text-text-primary font-medium">{recentApps}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1 text-accent text-xs font-medium">
-                Review requests <ChevronRight size={12} />
+                {t('morePage.reviewRequests')} <ChevronRight size={12} />
               </div>
             </DashboardCard>
           )}
@@ -97,154 +104,154 @@ export function MorePage({
           {/* Lead Tools */}
           {canManage && (
             <DashboardCard
-              title="Lead Tools"
+              title={t('morePage.leadTools')}
               icon={<Settings size={13} />}
               onClick={() => onOpenSettings('general')}
             >
               <p className="text-xs text-text-secondary mb-4">
-                Manage static details, roles, permissions, and membership settings.
+                {t('morePage.leadToolsDesc')}
               </p>
               <div className="space-y-1.5 text-sm mb-4">
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Settings</span>
-                  <span className="text-accent font-medium">Configure</span>
+                  <span className="text-text-secondary">{t('common.settings')}</span>
+                  <span className="text-accent font-medium">{t('common.configure')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-secondary">Permissions</span>
-                  <span className="text-accent font-medium">Manage</span>
+                  <span className="text-text-secondary">{t('morePage.permissions')}</span>
+                  <span className="text-accent font-medium">{t('common.manage')}</span>
                 </div>
               </div>
               <div className="flex items-center gap-1 text-accent text-xs font-medium">
-                Open lead tools <ChevronRight size={12} />
+                {t('morePage.openLeadTools')} <ChevronRight size={12} />
               </div>
             </DashboardCard>
           )}
 
           {/* Loot History */}
           <DashboardCard
-            title="Loot History"
+            title={t('morePage.lootHistory')}
             icon={<Book size={13} />}
             onClick={() => { onSetGearSubTab('history'); onNavigate('gear'); }}
           >
             <p className="text-xs text-text-secondary mb-4">
-              Track and review loot entries logged across all raid sessions.
+              {t('morePage.lootHistoryDesc')}
             </p>
             <div className="space-y-1.5 text-sm mb-4">
               <div className="flex justify-between">
-                <span className="text-text-secondary">Items logged</span>
+                <span className="text-text-secondary">{t('morePage.itemsLogged')}</span>
                 <span className="text-text-primary font-medium">{lootCount > 0 ? lootCount : '—'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-text-secondary">Last entry</span>
+                <span className="text-text-secondary">{t('morePage.lastEntry')}</span>
                 <span className="text-text-primary font-medium">
-                  {lastLootAt ? formatDate(lastLootAt) : '—'}
+                  {lastLootAt ? formatDate(lastLootAt, uiLocale) : '—'}
                 </span>
               </div>
             </div>
             <div className="flex items-center gap-1 text-accent text-xs font-medium">
-              View loot history <ChevronRight size={12} />
+              {t('morePage.viewLootHistory')} <ChevronRight size={12} />
             </div>
           </DashboardCard>
 
           {/* Split Planner — live shortcut */}
           <DashboardCard
-            title="Split Planner"
+            title={t('roster.splitPlanner')}
             icon={<Sword size={13} />}
             accentColor="teal"
             onClick={onOpenSplitPlanner}
             badge={<ExternalLink size={11} className="text-text-muted" />}
           >
             <p className="text-xs text-text-secondary mb-4">
-              Plan loot splits and assign roles for split clears.
+              {t('morePage.splitPlannerDesc')}
             </p>
             <div className="flex items-center gap-1 text-accent text-xs font-medium">
-              Open Split Planner <ChevronRight size={12} />
+              {t('overview.openSplitPlanner')} <ChevronRight size={12} />
             </div>
           </DashboardCard>
 
           {/* Integrations */}
           <DashboardCard
-            title="Integrations"
+            title={t('morePage.integrations')}
             icon={<Link2 size={13} />}
             accentColor={discordLinked || webhookOk ? 'teal' : undefined}
             onClick={onOpenIntegrations}
           >
             <p className="text-xs text-text-secondary mb-4">
-              Connect Discord and other services to enhance scheduling and reminders.
+              {t('morePage.integrationsDesc')}
             </p>
             <div className="space-y-2 text-sm mb-4">
               <div className="flex justify-between items-center">
-                <span className="text-text-secondary">Discord</span>
+                <span className="text-text-secondary">{t('morePage.discord')}</span>
                 {discordLinked || webhookOk ? (
                   <div className="flex items-center gap-1 text-status-success">
                     <CheckCircle size={12} />
                     <span className="text-xs font-medium">
-                      {discordLinked && discordGuild ? discordGuild : 'Connected'}
+                      {discordLinked && discordGuild ? discordGuild : t('common.connected')}
                     </span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 text-text-muted">
                     <XCircle size={12} />
-                    <span className="text-xs">Not connected</span>
+                    <span className="text-xs">{t('common.notConnected')}</span>
                   </div>
                 )}
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-text-secondary">Plugin sync</span>
-                <span className="text-text-secondary text-xs">Via API key</span>
+                <span className="text-text-secondary">{t('morePage.pluginSync')}</span>
+                <span className="text-text-secondary text-xs">{t('morePage.viaApiKey')}</span>
               </div>
             </div>
             <div className="flex items-center gap-1 text-accent text-xs font-medium">
-              Manage integrations <ChevronRight size={12} />
+              {t('morePage.manageIntegrations')} <ChevronRight size={12} />
             </div>
           </DashboardCard>
 
           {/* Plugin */}
           <DashboardCard
-            title="Dalamud Plugin"
+            title={t('nav.dalamudPlugin')}
             icon={<PlugZap size={13} />}
             accentColor="teal"
             onClick={onOpenPlugin}
           >
             <p className="text-xs text-text-secondary mb-4">
-              Sync gear scores, jobs, and character data directly from FFXIV with the XIVRaidPlanner plugin.
+              {t('morePage.pluginDesc')}
             </p>
             <div className="space-y-2 text-sm mb-4">
               <div className="flex justify-between items-center">
-                <span className="text-text-secondary">Sync method</span>
-                <span className="text-xs text-text-muted">API key</span>
+                <span className="text-text-secondary">{t('morePage.syncMethod')}</span>
+                <span className="text-xs text-text-muted">{t('morePage.apiKey')}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-text-secondary">Auto-syncs</span>
-                <span className="text-xs text-text-muted">Gear & jobs</span>
+                <span className="text-text-secondary">{t('morePage.autoSyncs')}</span>
+                <span className="text-xs text-text-muted">{t('morePage.gearAndJobs')}</span>
               </div>
             </div>
             <div className="flex items-center gap-1 text-accent text-xs font-medium">
-              Setup & manage <ChevronRight size={12} />
+              {t('morePage.setupAndManage')} <ChevronRight size={12} />
             </div>
           </DashboardCard>
 
           {/* Settings */}
           <DashboardCard
-            title="Settings"
+            title={t('common.settings')}
             icon={<Settings size={13} />}
             onClick={() => onOpenSettings('general')}
           >
             <p className="text-xs text-text-secondary mb-4">
-              Configure your static details, visibility, and member notifications.
+              {t('morePage.settingsDesc')}
             </p>
             <div className="space-y-1.5 text-sm mb-4">
               <div className="flex justify-between">
-                <span className="text-text-secondary">General settings</span>
-                <span className="text-accent font-medium">Open</span>
+                <span className="text-text-secondary">{t('morePage.generalSettings')}</span>
+                <span className="text-accent font-medium">{t('common.open')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-text-secondary">Notifications</span>
-                <span className="text-accent font-medium">Configure</span>
+                <span className="text-text-secondary">{t('auth.notifications')}</span>
+                <span className="text-accent font-medium">{t('common.configure')}</span>
               </div>
             </div>
             <div className="flex items-center gap-1 text-accent text-xs font-medium">
-              Open settings <ChevronRight size={12} />
+              {t('morePage.openSettings')} <ChevronRight size={12} />
             </div>
           </DashboardCard>
 
@@ -253,44 +260,44 @@ export function MorePage({
 
       {/* Data & History */}
       <section>
-        <SectionLabel className="mb-3">Data & History</SectionLabel>
+        <SectionLabel className="mb-3">{t('morePage.dataAndHistory')}</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           {/* Exports — coming soon */}
           <DashboardCard
-            title="Exports"
+            title={t('morePage.exports')}
             icon={<Download size={13} />}
-            badge={<span className="text-xs bg-surface-raised text-text-secondary border border-border-subtle px-2 py-0.5 rounded-full">Coming soon</span>}
+            badge={<span className="text-xs bg-surface-raised text-text-secondary border border-border-subtle px-2 py-0.5 rounded-full">{t('common.comingSoon')}</span>}
             className="opacity-60"
           >
             <p className="text-xs text-text-secondary">
-              Export roster data, loot history, and gear snapshots for backups or external tools.
+              {t('morePage.exportsDesc')}
             </p>
           </DashboardCard>
 
           {/* Activity Log — coming soon */}
           <DashboardCard
-            title="Activity Log"
+            title={t('morePage.activityLog')}
             icon={<Activity size={13} />}
-            badge={<span className="text-xs bg-surface-raised text-text-secondary border border-border-subtle px-2 py-0.5 rounded-full">Coming soon</span>}
+            badge={<span className="text-xs bg-surface-raised text-text-secondary border border-border-subtle px-2 py-0.5 rounded-full">{t('common.comingSoon')}</span>}
             className="opacity-60"
           >
             <p className="text-xs text-text-secondary">
-              View important changes and recent activity across your static.
+              {t('morePage.activityLogDesc')}
             </p>
           </DashboardCard>
 
           {/* Session History */}
           <DashboardCard
-            title="Session History"
+            title={t('morePage.sessionHistory')}
             icon={<Clock size={13} />}
             onClick={() => onNavigate('schedule')}
           >
             <p className="text-xs text-text-secondary mb-4">
-              View past sessions, attendance records, and recurring event history.
+              {t('morePage.sessionHistoryDesc')}
             </p>
             <div className="flex items-center gap-1 text-accent text-xs font-medium">
-              View schedule <ChevronRight size={12} />
+              {t('morePage.viewSchedule')} <ChevronRight size={12} />
             </div>
           </DashboardCard>
 
@@ -300,7 +307,7 @@ export function MorePage({
       {/* Danger Zone */}
       {isMember && (
         <section>
-          <SectionLabel color="red" className="mb-3">Danger Zone</SectionLabel>
+          <SectionLabel color="red" className="mb-3">{t('morePage.dangerZone')}</SectionLabel>
           <div
             className="rounded-xl p-5 border"
             style={{
@@ -311,9 +318,9 @@ export function MorePage({
             <div className="flex items-start gap-3 mb-5">
               <IconMedallion icon={<AlertTriangle size={16} />} color="red" size="sm" />
               <div>
-                <p className="text-sm font-semibold text-text-primary">Irreversible actions</p>
+                <p className="text-sm font-semibold text-text-primary">{t('morePage.irreversibleActions')}</p>
                 <p className="text-xs text-text-secondary mt-0.5">
-                  These actions cannot be undone. Proceed with caution.
+                  {t('morePage.irreversibleActionsDesc')}
                 </p>
               </div>
             </div>
@@ -323,7 +330,7 @@ export function MorePage({
                   onClick={() => onOpenSettings('danger')}
                   className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
                 >
-                  Leave Static
+                  {t('morePage.leaveStatic')}
                 </button>
               )}
               {isOwner && (
@@ -332,13 +339,13 @@ export function MorePage({
                     onClick={() => onOpenSettings('danger')}
                     className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
                   >
-                    Archive Static
+                    {t('morePage.archiveStatic')}
                   </button>
                   <button
                     onClick={() => onOpenSettings('danger')}
                     className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
                   >
-                    Delete Static
+                    {t('morePage.deleteStatic')}
                   </button>
                 </>
               )}

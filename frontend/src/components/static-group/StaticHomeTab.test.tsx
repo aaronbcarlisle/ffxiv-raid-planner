@@ -563,7 +563,7 @@ describe('StaticHomeTab — Recent Activity', () => {
     expect(screen.getByText(/Dev Owner obtained Lynx of Fallen Shadow/i)).toBeInTheDocument();
   });
 
-  it('shows "View all activity" link that navigates to goals', () => {
+  it('shows "View all activity" link that navigates to the Farms sub-tab', () => {
     setFarmStore({ data: FARM_DATA_WITH_ACTIVITY });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByRole('button', { name: /view all activity/i }));
@@ -638,7 +638,7 @@ describe('StaticHomeTab — Best Next Farm', () => {
     expect(memberChip.textContent).toMatch(/3 members still need this/i);
   });
 
-  it('"Schedule Farm" falls back to goals navigation when onScheduleFarm is not provided', () => {
+  it('"Schedule Farm" falls back to the Farms sub-tab when onScheduleFarm is not provided', () => {
     setFarmStore({ recommendations: [TOP_RECOMMENDATION] });
     render(<StaticHomeTab group={makeGroup()} tier={null} onNavigate={onNavigate} canManage onOpenRequests={onOpenRequests} />);
     fireEvent.click(screen.getByTestId('schedule-farm-btn'));

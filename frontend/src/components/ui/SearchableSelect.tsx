@@ -15,6 +15,7 @@
  */
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Search, X } from 'lucide-react';
 import type { SelectOption } from './Select';
@@ -48,14 +49,15 @@ export function SearchableSelect({
   value,
   onChange,
   options,
-  placeholder = 'Select...',
-  searchPlaceholder = 'Search...',
+  placeholder,
+  searchPlaceholder,
   disabled,
   className = '',
   clearable = false,
-  emptyMessage = 'No results found',
+  emptyMessage,
   groupOrder,
 }: SearchableSelectProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -68,7 +70,9 @@ export function SearchableSelect({
 
   // Filter out empty-value options and use as placeholder
   const emptyOption = options.find(opt => opt.value === '');
-  const effectivePlaceholder = emptyOption?.label || placeholder;
+  const effectivePlaceholder = emptyOption?.label || placeholder || t('searchableSelect.selectPlaceholder');
+  const effectiveSearchPlaceholder = searchPlaceholder || t('searchableSelect.searchPlaceholder');
+  const effectiveEmptyMessage = emptyMessage || t('searchableSelect.emptyMessage');
   const validOptions = options.filter(opt => opt.value !== '');
 
   // Find selected option
@@ -295,7 +299,7 @@ export function SearchableSelect({
             <button
               type="button"
               onClick={handleClear}
-              aria-label="Clear selection"
+              aria-label={t('searchableSelect.clearSelection')}
               className="p-0.5 rounded hover:bg-surface-interactive text-text-muted hover:text-text-primary"
             >
               <X className="w-3.5 h-3.5" />
@@ -329,13 +333,14 @@ export function SearchableSelect({
           <div className="p-2 border-b border-border-default">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+              {/* design-system-ignore: searchable dropdown filter field */}
               <input
                 ref={inputRef}
                 type="text"
                 value={search}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={searchPlaceholder}
+                placeholder={effectiveSearchPlaceholder}
                 className="
                   w-full pl-8 pr-3 py-1.5
                   bg-surface-base border border-border-default rounded
@@ -350,7 +355,7 @@ export function SearchableSelect({
           <div ref={listRef} className={`max-h-60 overflow-y-auto ${groupedOptions ? 'pb-1' : 'p-1'}`}>
             {flatFilteredOptions.length === 0 ? (
               <div className="px-3 py-6 text-sm text-text-muted text-center">
-                {emptyMessage}
+                {effectiveEmptyMessage}
               </div>
             ) : groupedOptions ? (
               // Grouped rendering

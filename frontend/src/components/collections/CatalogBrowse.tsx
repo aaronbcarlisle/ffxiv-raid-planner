@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, AlertCircle, RefreshCw, Search, X } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { Input } from '../../components/ui/Input';
@@ -34,14 +35,6 @@ interface CatalogBrowseProps {
 //   Mounts / Music   = all extreme+ultimate trial rewards  (comprehensive)
 //   Trial Minions    = only farm-obtained minions, not vendor/achievement
 //   Ultimate Weapons = only ultimate weapon farm groups, not savage BiS drops
-const CHIP_CATEGORIES: { key: CatalogCategory; label: string }[] = [
-  { key: 'mount',       label: 'Mounts'           },
-  { key: 'orchestrion', label: 'Music'             },
-  { key: 'minion',      label: 'Trial Minions'     },
-  { key: 'weapon',      label: 'Ultimate Weapons'  },
-  { key: 'other',       label: 'Rare'              },
-];
-
 // Source type chips are built dynamically from data; never hardcoded.
 // This prevents showing "Savage" when there are zero Savage source groups.
 // Active classes imported from shared badge config.
@@ -51,6 +44,15 @@ const SOURCE_TYPE_ORDER = ['ultimate', 'savage', 'extreme', 'criterion', 'chaoti
 const EXPANSION_CHIP_KEYS = EXPANSION_KEYS as unknown as CatalogExpansion[];
 
 export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
+  const { t } = useTranslation();
+  const CHIP_CATEGORIES: { key: CatalogCategory; label: string }[] = [
+    { key: 'mount',       label: t('collections.chipMounts')   },
+    { key: 'orchestrion', label: t('collections.chipMusic')    },
+    { key: 'minion',      label: t('collections.chipMinions')  },
+    { key: 'weapon',      label: t('collections.chipWeapons')  },
+    { key: 'other',       label: t('collections.chipRare')     },
+  ];
+
   const { catalog, catalogLoading, catalogLoaded, catalogError, fetchCatalog } = useCollectionGoalStore();
 
   const [activeCategory, setActiveCategory] = useState<CatalogCategory | 'all'>('all');
@@ -134,7 +136,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
     return (
       <div className="flex items-center justify-center py-16 text-text-muted gap-2">
         <Loader2 size={18} className="animate-spin" />
-        <span>Loading collection catalog…</span>
+        <span>{t('collections.loadingCatalog')}</span>
       </div>
     );
   }
@@ -147,8 +149,8 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
           <AlertCircle size={15} className="flex-shrink-0" />
           <span className="flex-1">
             {catalogError
-              ? 'Catalog service unavailable — showing built-in curated farms.'
-              : 'Catalog returned empty — showing built-in curated farms.'}
+              ? t('collections.catalogUnavailable')
+              : t('collections.catalogEmpty')}
           </span>
           <Button
             variant="ghost"
@@ -159,7 +161,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
             }}
             className="flex items-center gap-1 text-status-warning hover:bg-status-warning/10"
           >
-            <RefreshCw size={13} /> Retry
+            <RefreshCw size={13} /> {t('common.retry')}
           </Button>
         </div>
       )}
@@ -170,7 +172,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
         <Input
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Search duties, rewards, tokens…"
+          placeholder={t('collections.searchPlaceholder')}
           className="pl-8 pr-8"
         />
         {searchQuery && (
@@ -188,13 +190,17 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
       {/* Result summary + inline clear */}
       <div className="flex items-center justify-between min-h-[20px]">
         <p className="text-xs text-text-muted">
-          <span className="font-medium text-text-secondary">{allGroups.length}</span> farm sources
+          <span className="font-medium text-text-secondary">{allGroups.length}</span>{' '}
+          {t('collections.farmSources', { count: allGroups.length })}
           {' · '}
-          <span className="font-medium text-text-secondary">{totalRewards}</span> rewards
+          <span className="font-medium text-text-secondary">{totalRewards}</span>{' '}
+          {t('collections.rewards', { count: totalRewards })}
           {hasActiveFilters && (
             <>
               {' · '}
-              <span className="text-accent font-medium">{visibleGroups.length} showing</span>
+              <span className="text-accent font-medium">
+                {t('collections.showing', { count: visibleGroups.length })}
+              </span>
             </>
           )}
         </p>
@@ -205,7 +211,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
             onClick={clearFilters}
             className="flex items-center gap-1 text-text-muted hover:text-text-primary text-xs h-auto py-0.5 px-1.5"
           >
-            <X size={11} /> Clear
+            <X size={11} /> {t('common.clear')}
           </Button>
         )}
       </div>
@@ -218,11 +224,11 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
           onClick={() => setActiveCategory('all')}
           className={`rounded-full text-xs font-medium px-3 py-1 transition-colors ${
             activeCategory === 'all'
-              ? 'bg-accent text-white hover:bg-accent/90'
+              ? 'bg-accent text-accent-contrast hover:bg-accent/90'
               : 'bg-surface-card text-text-secondary hover:bg-surface-hover'
           }`}
         >
-          All
+          {t('collections.chipAll')}
           <span className="ml-1.5 opacity-60 font-normal">{totalRewards}</span>
         </Button>
         {CHIP_CATEGORIES.map(({ key, label }) => {
@@ -236,7 +242,7 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
               onClick={() => setActiveCategory(key === activeCategory ? 'all' : key)}
               className={`rounded-full text-xs font-medium px-3 py-1 transition-colors ${
                 activeCategory === key
-                  ? 'bg-accent text-white hover:bg-accent/90'
+                  ? 'bg-accent text-accent-contrast hover:bg-accent/90'
                   : 'bg-surface-card text-text-secondary hover:bg-surface-hover'
               }`}
             >
@@ -298,11 +304,11 @@ export function CatalogBrowse({ groupId, activeGoals }: CatalogBrowseProps) {
         <div className="flex flex-col items-center gap-3 py-12 text-text-muted">
           <Search size={32} className="opacity-20" />
           <p className="font-medium text-sm">
-            {hasActiveFilters ? 'No farms match these filters' : 'No catalog data available'}
+            {hasActiveFilters ? t('collections.noFarmsMatch') : t('collections.noCatalogData')}
           </p>
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters} className="flex items-center gap-1">
-              <X size={13} /> Clear filters
+              <X size={13} /> {t('collections.clearFilters')}
             </Button>
           )}
         </div>

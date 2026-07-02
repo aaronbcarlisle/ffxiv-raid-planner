@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Check, Clock, Eye, LogIn, Send, X as XIcon } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
@@ -19,19 +20,19 @@ function isDiscoverable(settings?: StaticGroupSettings): boolean {
   return settings?.discovery?.enabled === true;
 }
 
-const STATUS_CONFIG = {
-  pending: { icon: Clock, label: 'Request pending', color: 'text-status-warning' },
-  under_review: { icon: Eye, label: 'Under review', color: 'text-status-info' },
-  accepted: { icon: Check, label: 'Request accepted', color: 'text-status-success' },
-  declined: { icon: XIcon, label: 'Request declined', color: 'text-status-error' },
-  cancelled: { icon: XIcon, label: 'Request cancelled', color: 'text-text-muted' },
-} as const;
-
 export function JoinRequestBanner({ shareCode, staticName, groupId, settings, userRole }: JoinRequestBannerProps) {
+  const { t } = useTranslation();
   const { user, login } = useAuthStore();
   const { myRequests, fetchMyRequests, cancelRequest } = useJoinRequestStore();
   const modal = useModal();
   const [isCancelling, setIsCancelling] = useState(false);
+  const statusConfig = {
+    pending: { icon: Clock, label: t('joinRequest.banner.requestPending'), color: 'text-status-warning' },
+    under_review: { icon: Eye, label: t('joinRequest.banner.underReview'), color: 'text-status-info' },
+    accepted: { icon: Check, label: t('joinRequest.banner.requestAccepted'), color: 'text-status-success' },
+    declined: { icon: XIcon, label: t('joinRequest.banner.requestDeclined'), color: 'text-status-error' },
+    cancelled: { icon: XIcon, label: t('joinRequest.banner.requestCancelled'), color: 'text-text-muted' },
+  } as const;
 
   useEffect(() => {
     if (user) {
@@ -64,22 +65,22 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
 
   if (!user) {
     return (
-      <div className="rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center justify-between gap-3">
+      <div className="mb-3 rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center justify-between gap-3">
         <p className="text-sm text-text-secondary">
-          Interested in joining this static? Log in to send a request.
+          {t('joinRequest.banner.loginPrompt')}
         </p>
         <Button size="sm" leftIcon={<LogIn className="w-4 h-4" />} onClick={() => login()}>
-          Log In
+          {t('joinRequest.banner.logIn')}
         </Button>
       </div>
     );
   }
 
   if (activeRequest) {
-    const config = STATUS_CONFIG[activeRequest.status as keyof typeof STATUS_CONFIG];
+    const config = statusConfig[activeRequest.status as keyof typeof statusConfig];
     const Icon = config?.icon || Clock;
     return (
-      <div className="rounded-lg border border-border-default bg-surface-elevated p-3 flex items-center justify-between gap-3">
+      <div className="mb-3 rounded-lg border border-border-default bg-surface-elevated p-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Icon className={`w-4 h-4 ${config?.color || 'text-text-muted'}`} />
           <span className={`text-sm font-medium ${config?.color || 'text-text-muted'}`}>
@@ -93,7 +94,7 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
             onClick={handleCancel}
             loading={isCancelling}
           >
-            Cancel Request
+            {t('joinRequest.banner.cancelRequest')}
           </Button>
         )}
       </div>
@@ -102,16 +103,16 @@ export function JoinRequestBanner({ shareCode, staticName, groupId, settings, us
 
   return (
     <>
-      <div className="rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center justify-between gap-3">
+      <div className="mb-3 rounded-lg border border-accent/20 bg-accent/5 p-3 flex items-center justify-between gap-3">
         <p className="text-sm text-text-secondary">
-          Looking for a static? Send a request to join.
+          {t('joinRequest.banner.cta')}
         </p>
         <Button
           size="sm"
           leftIcon={<Send className="w-4 h-4" />}
           onClick={modal.open}
         >
-          Request to Join
+          {t('discover.requestToJoin')}
         </Button>
       </div>
 

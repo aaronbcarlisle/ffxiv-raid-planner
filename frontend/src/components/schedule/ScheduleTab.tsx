@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, CheckCircle, Copy, ExternalLink, LayoutGrid, List, Link2, Plus, RefreshCw, RotateCcw, Send, ShieldCheck, Sparkles, Trash2, Unlink } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -44,6 +45,7 @@ interface ScheduleTabProps {
 }
 
 export function ScheduleTab({ groupId, staticName, shareCode, members, userRole }: ScheduleTabProps) {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const {
     sessions,
@@ -150,20 +152,23 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     }
   }, [settings]);
 
+  // Tracks the sessionId we've already jumped to, so the effect below acts once
+  // per deep-linked session rather than on every `sessions` refetch.
+  const handledSessionRef = useRef<string | null>(null);
   useEffect(() => {
-    const saved = sessionStorage.getItem(`schedule-subtab-${groupId}`);
-    if (saved === 'availability' || saved === 'integrations' || saved === 'sessions') {
-      setActiveSubTab(saved);
-    } else {
-      setActiveSubTab('sessions');
-    }
-  }, [groupId]);
-
-  useEffect(() => {
-    const sessionId = new URLSearchParams(window.location.search).get('sessionId');
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('sessionId');
     if (!sessionId || !sessions.some((session) => session.id === sessionId)) return;
+    // Only act the first time this sessionId becomes resolvable. Without this,
+    // a `sessions` refetch (e.g. after an RSVP) would re-run the jump and yank
+    // the user back to Sessions if they'd navigated away.
+    if (handledSessionRef.current === sessionId) return;
+    handledSessionRef.current = sessionId;
 
-    setActiveSubTab('sessions');
+    // Jump to the Sessions sub-tab, but only if not already there. `stab` omits
+    // its default ('sessions') from the URL, so a missing param means we're
+    // already on Sessions — treat it as such to avoid a redundant navigation.
+    if ((params.get('stab') ?? 'sessions') !== 'sessions') setActiveSubTab('sessions');
     setHighlightedSessionId(sessionId);
     window.setTimeout(() => {
       document.getElementById(`schedule-session-${sessionId}`)?.scrollIntoView({
@@ -321,7 +326,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       enableMissingRsvpReminder: enableMissingRsvp,
     });
     setWebhookUrl('');
-    setIntegrationMessage('Webhook saved.');
+    setIntegrationMessage(t('schedule.integrationWebhookSaved'));
   };
 
   const handleConnectDiscord = async () => {
@@ -331,7 +336,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       setDiscordClaimCode(claim.claimCode);
       setDiscordClaimExpiry(claim.expiresAt);
     } catch {
-      setIntegrationMessage('Failed to start Discord connection. Please try again.');
+      setIntegrationMessage(t('schedule.integrationConnectStartFailed'));
     } finally {
       setDiscordClaimLoading(false);
     }
@@ -345,9 +350,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
         setDiscordClaimCode(null);
         setDiscordClaimExpiry(null);
         await fetchSettings(groupId);
-        setIntegrationMessage('Discord server connected successfully!');
+        setIntegrationMessage(t('schedule.integrationConnected'));
       } else {
-        setIntegrationMessage('Not linked yet — run /xrp link <code> in your Discord server first.');
+        setIntegrationMessage(t('schedule.integrationLinkPending'));
       }
     } finally {
       setDiscordCheckLoading(false);
@@ -359,9 +364,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
       await disconnectDiscordLink(groupId);
       setDiscordClaimCode(null);
       setDiscordClaimExpiry(null);
-      setIntegrationMessage('Discord server disconnected.');
+      setIntegrationMessage(t('schedule.integrationDisconnected'));
     } catch {
-      setIntegrationMessage('Failed to disconnect. Please try again.');
+      setIntegrationMessage(t('schedule.integrationDisconnectFailed'));
     }
   };
 
@@ -371,7 +376,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
     try {
       if (sessions.length === 0) {
         const actions = await syncAllDiscordMirrors(groupId);
-        setIntegrationMessage(`Discord sync: ${actions.join('; ')}`);
+        setIntegrationMessage(t('schedule.integrationSyncResult', { summary: actions.join('; ') }));
         return;
       }
       const allLogs = await syncAllDiscordMirrors(groupId);
@@ -393,12 +398,17 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
         failed.length ? `${failed.length} failed` : '',
       ].filter(Boolean).join(', ');
       if (failed.length > 0) {
-        setIntegrationMessage(`Discord sync: ${parts || 'done'}. Errors: ${failed.slice(0, 2).join('; ')}`);
+        setIntegrationMessage(t('schedule.integrationSyncErrors', {
+          summary: parts || t('schedule.integrationSyncDone'),
+          errors: failed.slice(0, 2).join('; '),
+        }));
       } else {
-        setIntegrationMessage(`Discord sync complete — ${parts || `${allLogs.length} action(s)`}.`);
+        setIntegrationMessage(t('schedule.integrationSyncComplete', {
+          summary: parts || t('schedule.integrationSyncActions', { count: allLogs.length }),
+        }));
       }
     } catch {
-      setIntegrationMessage('Discord sync failed. Check bot token and guild ID.');
+      setIntegrationMessage(t('schedule.integrationSyncFailed'));
     } finally {
       setSyncingDiscord(false);
     }
@@ -407,7 +417,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   const handleCopyCalendarUrl = async () => {
     if (!settings?.calendarUrl) return;
     await navigator.clipboard.writeText(settings.calendarUrl);
-    setIntegrationMessage('Copied!');
+    setIntegrationMessage(t('common.copied'));
   };
 
   const nextSession = sessions[0];
@@ -421,20 +431,20 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
   }> = [
     {
       id: 'sessions',
-      label: 'Sessions',
+      label: t('schedule.tabSessions'),
       badge: String(upcomingSessionCount),
       icon: CalendarClock,
     },
     {
       id: 'availability',
-      label: 'Availability',
-      badge: `${trackedMemberCount} tracked`,
+      label: t('schedule.tabAvailability'),
+      badge: t('schedule.trackedCount', { count: trackedMemberCount }),
       icon: Sparkles,
     },
     {
       id: 'integrations',
-      label: 'Integrations',
-      badge: canManage ? 'Setup' : 'View',
+      label: t('schedule.tabIntegrations'),
+      badge: canManage ? t('common.configure') : t('common.view'),
       icon: Link2,
     },
   ];
@@ -453,11 +463,10 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
         <div className="space-y-1">
           <h2 className="flex items-center gap-2 text-lg font-medium text-text-primary">
             <Calendar className="h-5 w-5 text-accent" />
-            Raid Schedule
+            {t('schedule.raidSchedule')}
           </h2>
           <p className="text-sm text-text-secondary">
-            Times are shown in the static's timezone and automatically converted to your local time
-            ({Intl.DateTimeFormat().resolvedOptions().timeZone}).
+            {t('schedule.timezoneNote', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })}
           </p>
         </div>
       </div>
@@ -472,6 +481,11 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                 key={tab.id}
                 type="button"
                 variant={isActive ? 'accent-subtle' : 'ghost'}
+                // The active variant carries a 1px border; reserve the same
+                // border (transparent) on the inactive tabs so switching tabs
+                // only changes the border *color*, never the box size. Without
+                // this the tabs grow/shrink ~2px and the label visibly pops.
+                className={isActive ? '' : 'border border-transparent'}
                 size="sm"
                 leftIcon={<Icon className="h-4 w-4" />}
                 onClick={() => handleSubTabChange(tab.id)}
@@ -491,7 +505,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
         {canManage && activeSubTab === 'sessions' && (
           <Button onClick={createModal.open} size="sm" data-testid="add-session-btn" leftIcon={<Plus className="h-4 w-4" />}>
-            Add Session
+            {t('schedule.addSession')}
           </Button>
         )}
       </div>
@@ -502,7 +516,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
             <div className="flex flex-col gap-3 rounded-xl border border-border-default bg-surface-card/80 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
-                  Next scheduled raid
+                  {t('schedule.nextScheduledRaid')}
                 </div>
                 <div className="mt-1 text-sm text-text-primary">{nextSession.title}</div>
               </div>
@@ -513,7 +527,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                 leftIcon={<Sparkles className="h-4 w-4" />}
                 onClick={() => handleSubTabChange('availability')}
               >
-                View best overlap
+                {t('schedule.viewBestOverlap')}
               </Button>
             </div>
           )}
@@ -521,9 +535,9 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
           {sessions.length === 0 ? (
             <div className="py-12 text-center text-text-muted">
               <Calendar className="mx-auto mb-3 h-12 w-12 opacity-40" />
-              <p className="text-lg">No raid sessions yet.</p>
+              <p className="text-lg">{t('schedule.noRaidSessions')}</p>
               {canManage && (
-                <p className="mt-1 text-sm">Create your first raid night and choose whether availability needs to be tracked.</p>
+                <p className="mt-1 text-sm">{t('schedule.createFirstRaidNight')}</p>
               )}
             </div>
           ) : (
@@ -535,7 +549,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                   <button
                     onClick={() => { setSessionViewMode('tiles'); localStorage.setItem('schedule-session-view', 'tiles'); }}
                     className={`p-1.5 rounded-md transition-colors ${sessionViewMode === 'tiles' ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
-                    aria-label="Tile view"
+                    aria-label={t('schedule.tileView')}
                   >
                     <LayoutGrid className="w-4 h-4" />
                   </button>
@@ -543,7 +557,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                   <button
                     onClick={() => { setSessionViewMode('list'); localStorage.setItem('schedule-session-view', 'list'); }}
                     className={`p-1.5 rounded-md transition-colors ${sessionViewMode === 'list' ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
-                    aria-label="List view"
+                    aria-label={t('schedule.listView')}
                   >
                     <List className="w-4 h-4" />
                   </button>
@@ -623,17 +637,17 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
           <div className="rounded-xl border border-border-default bg-surface-card/80 p-4">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="font-display text-sm font-semibold text-text-primary">Discord Integration</p>
+                <p className="font-display text-sm font-semibold text-text-primary">{t('schedule.discordIntegration')}</p>
                 <p className="mt-1 text-xs text-text-muted">
-                  Events and reminders share the same XIVRaidPlanner raid schedule. Native Discord Events mirror upcoming occurrences; reminder messages ping from those same raid times.
+                  {t('schedule.discordSharedSource')}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-[11px] text-text-secondary">
                 <span className="rounded-full border border-border-subtle bg-surface-elevated px-2.5 py-1">
-                  Connected to: {settings?.discordGuildName ?? settings?.reminderChannelLabel ?? 'Not connected'}
+                  {t('schedule.discordConnectedTo', { server: settings?.discordGuildName ?? settings?.reminderChannelLabel ?? t('common.notConnected') })}
                 </span>
                 <span className="rounded-full border border-border-subtle bg-surface-elevated px-2.5 py-1">
-                  Shared source: raid schedule
+                  {t('schedule.discordSharedSourceLabel')}
                 </span>
               </div>
             </div>
@@ -650,8 +664,8 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                   <Bell className="h-4 w-4 text-purple-300" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-display font-semibold text-text-primary leading-tight">Discord Reminders</p>
-                  <p className="text-xs text-text-muted mt-0.5">Webhook pings for the same raid occurrences</p>
+                  <p className="font-display font-semibold text-text-primary leading-tight">{t('schedule.discordReminders')}</p>
+                  <p className="text-xs text-text-muted mt-0.5">{t('schedule.discordWebhookPings')}</p>
                 </div>
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium shrink-0 ${
                   settings?.webhookConfigured
@@ -659,7 +673,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                     : 'bg-surface-elevated text-text-muted border border-border-subtle'
                 }`}>
                   <span className={`h-1.5 w-1.5 rounded-full ${settings?.webhookConfigured ? 'bg-status-success' : 'bg-text-muted/50'}`} />
-                  {settings?.webhookConfigured ? 'Active' : 'Not set up'}
+                  {settings?.webhookConfigured ? t('schedule.discordActive') : t('schedule.discordNotSetUp')}
                 </span>
               </div>
 
@@ -701,13 +715,13 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
                     <div className="space-y-2">
                       <Label className="block text-xs font-medium uppercase tracking-[0.14em] text-text-muted">
-                        Ping target
+                        {t('schedule.discordPingTarget')}
                       </Label>
                       <div className="grid grid-cols-3 gap-1.5">
                         {([
-                          ['none', 'No ping'],
-                          ['here', '@here'],
-                          ['role', 'Role'],
+                          ['none', t('schedule.discordNoPing')],
+                          ['here', t('schedule.discordAtHere')],
+                          ['role', t('schedule.discordRole')],
                         ] as const).map(([value, label]) => (
                           <Button
                             key={value}
@@ -741,34 +755,34 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
                     <div className="space-y-1.5">
                       <Label className="block text-xs font-medium uppercase tracking-[0.14em] text-text-muted">
-                        Send reminders
+                        {t('schedule.discordSendReminders')}
                       </Label>
                       <p className="text-[11px] text-text-muted">
-                        Recommended defaults: 24 hrs, 1 hr, and Missing RSVP.
+                        {t('schedule.discordRecommendedDefaults')}
                       </p>
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-                        <Checkbox checked={enableAtStart} onChange={setEnableAtStart} label="At start" />
-                        <Checkbox checked={enable15m} onChange={setEnable15m} label="15 min before" />
-                        <Checkbox checked={enable1h} onChange={setEnable1h} label="1 hr before" />
-                        <Checkbox checked={enable6h} onChange={setEnable6h} label="6 hrs before" />
-                        <Checkbox checked={enable12h} onChange={setEnable12h} label="12 hrs before" />
-                        <Checkbox checked={enable24h} onChange={setEnable24h} label="24 hrs before" />
-                        <Checkbox checked={enableMissingRsvp} onChange={setEnableMissingRsvp} label="Missing RSVP" />
+                        <Checkbox checked={enableAtStart} onChange={setEnableAtStart} label={t('schedule.discordAtStart')} />
+                        <Checkbox checked={enable15m} onChange={setEnable15m} label={t('schedule.discord15MinBefore')} />
+                        <Checkbox checked={enable1h} onChange={setEnable1h} label={t('schedule.discord1HrBefore')} />
+                        <Checkbox checked={enable6h} onChange={setEnable6h} label={t('schedule.discord6HrsBefore')} />
+                        <Checkbox checked={enable12h} onChange={setEnable12h} label={t('schedule.discord12HrsBefore')} />
+                        <Checkbox checked={enable24h} onChange={setEnable24h} label={t('schedule.discord24HrsBefore')} />
+                        <Checkbox checked={enableMissingRsvp} onChange={setEnableMissingRsvp} label={t('schedule.discordMissingRsvp')} />
                       </div>
                     </div>
 
                     <div className="mt-auto flex flex-wrap gap-2 pt-1">
                       <Button type="button" size="sm" onClick={() => void handleSaveIntegrations()}>
-                        Save
+                        {t('common.save')}
                       </Button>
                       <Button
                         type="button"
                         size="sm"
                         variant="secondary"
-                        onClick={() => void sendTestReminder(groupId).then(() => setIntegrationMessage('Test reminder sent!'))}
+                        onClick={() => void sendTestReminder(groupId).then(() => setIntegrationMessage(t('schedule.testReminderSent')))}
                         disabled={!settings?.webhookConfigured && !webhookUrl}
                       >
-                        Send test
+                        {t('schedule.discordSendTest')}
                       </Button>
                       <Button
                         type="button"
@@ -779,19 +793,19 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                           if (postingPreview) return;
                           setPostingPreview(true);
                           void postSessionPreview(groupId)
-                            .then(() => setIntegrationMessage('Session posted to Discord.'))
+                            .then(() => setIntegrationMessage(t('schedule.sessionPostedToDiscord')))
                             .finally(() => setPostingPreview(false));
                         }}
                         disabled={!settings?.webhookConfigured || sessions.length === 0 || postingPreview}
-                        title={sessions.length === 0 ? 'No upcoming sessions to post' : 'Post the next session to Discord'}
+                        title={sessions.length === 0 ? t('schedule.noUpcomingSessionsToPost') : t('schedule.postNextSessionToDiscord')}
                       >
-                        {postingPreview ? 'Posting…' : 'Post session'}
+                        {postingPreview ? t('schedule.discordPosting') : t('schedule.discordPostSession')}
                       </Button>
                     </div>
                   </>
                 ) : (
                   <p className="text-xs text-text-muted">
-                    Only Leads and Owners can manage integrations.
+                    {t('schedule.discordOnlyLeadsOwners')}
                   </p>
                 )}
               </div>
@@ -810,35 +824,35 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                 statusBadge = (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-status-warning/30 bg-status-warning/15 px-2.5 py-1 text-[11px] font-medium text-status-warning shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-status-warning" />
-                    Needs permission
+                    {t('schedule.discordNeedsPermission')}
                   </span>
                 );
               } else if (isConnected && isLegacy) {
                 statusBadge = (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-status-success/25 bg-status-success/15 px-2.5 py-1 text-[11px] font-medium text-status-success shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
-                    Active
+                    {t('schedule.discordActive')}
                   </span>
                 );
               } else if (isConnected) {
                 statusBadge = (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-status-success/25 bg-status-success/15 px-2.5 py-1 text-[11px] font-medium text-status-success shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-status-success" />
-                    Connected
+                    {t('schedule.discordConnected')}
                   </span>
                 );
               } else if (isPending) {
                 statusBadge = (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-status-info/25 bg-status-info/15 px-2.5 py-1 text-[11px] font-medium text-status-info shrink-0">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-status-info" />
-                    Pending
+                    {t('schedule.discordPending')}
                   </span>
                 );
               } else {
                 statusBadge = (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-surface-elevated px-2.5 py-1 text-[11px] font-medium text-text-muted shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-text-muted/50" />
-                    Not connected
+                    {t('schedule.discordNotConnected')}
                   </span>
                 );
               }
@@ -851,8 +865,8 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                       <CalendarDays className="h-4 w-4 text-blue-300" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-display font-semibold text-text-primary leading-tight">Discord Events</p>
-                      <p className="text-xs text-text-muted mt-0.5">Native Discord events, next 4 weeks</p>
+                      <p className="font-display font-semibold text-text-primary leading-tight">{t('schedule.discordGuildEvents')}</p>
+                      <p className="text-xs text-text-muted mt-0.5">{t('schedule.discordNativeEvents')}</p>
                     </div>
                     {statusBadge}
                   </div>
@@ -861,7 +875,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                   <div className="flex flex-col flex-1 gap-4 p-5">
                     {!canManage ? (
                       <p className="text-xs text-text-muted">
-                        Only Leads and Owners can manage Discord Guild Events.
+                        {t('schedule.discordOnlyLeadsOwnersEvents')}
                       </p>
                     ) : isConnected ? (
                       /* ── Connected state ─────────────────────────── */
@@ -895,29 +909,29 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
 
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2">
-                            <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">Rolling window</p>
-                            <p className="mt-1 font-medium text-text-primary">Next 4 weeks</p>
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">{t('schedule.discordRollingWindow')}</p>
+                            <p className="mt-1 font-medium text-text-primary">{t('schedule.discordNextFourWeeks')}</p>
                           </div>
                           <div className="rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2">
-                            <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">Mirror status</p>
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">{t('schedule.discordMirrorStatus')}</p>
                             <p className="mt-1 font-medium text-text-primary">
                               {loadingMirrorStatus
-                                ? 'Checking...'
-                                : `${discordMirrorSummary.synced} synced${discordMirrorSummary.failed ? ` / ${discordMirrorSummary.failed} failed` : ''}${discordMirrorSummary.pending ? ` / ${discordMirrorSummary.pending} pending` : ''}`}
+                                ? t('common.checking')
+                                : `${discordMirrorSummary.synced} ${t('schedule.discordSynced')}${discordMirrorSummary.failed ? ` / ${discordMirrorSummary.failed} ${t('schedule.discordFailed')}` : ''}${discordMirrorSummary.pending ? ` / ${discordMirrorSummary.pending} ${t('common.pending')}` : ''}`}
                             </p>
                           </div>
                           <div className="rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2">
-                            <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">Last sync</p>
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">{t('schedule.discordLastSync')}</p>
                             <p className="mt-1 font-medium text-text-primary">
                               {discordMirrorSummary.lastSyncedAt
                                 ? new Date(discordMirrorSummary.lastSyncedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
-                                : 'Not synced yet'}
+                                : t('schedule.discordNotSyncedYet')}
                             </p>
                           </div>
                           <div className="rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2">
-                            <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">Retry</p>
+                            <p className="text-[11px] uppercase tracking-[0.12em] text-text-muted">{t('schedule.discordRetry')}</p>
                             <p className="mt-1 font-medium text-text-primary">
-                              {discordMirrorSummary.failed ? 'Sync failed rows' : 'Sync all'}
+                              {discordMirrorSummary.failed ? 'Sync failed rows' : t('schedule.discordSyncAll')}
                             </p>
                           </div>
                         </div>
@@ -925,22 +939,22 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                         {discordMirrorSummary.latestError && (
                           <div className="flex items-start gap-2 rounded-lg border border-status-error/30 bg-status-error/10 px-3 py-2 text-xs text-status-error">
                             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                            <span>Last Discord Event sync error: {discordMirrorSummary.latestError}</span>
+                            <span>{t('schedule.discordLastEventSyncError', { error: discordMirrorSummary.latestError })}</span>
                           </div>
                         )}
 
                         {linkStatus === 'permission_missing' ? (
                           /* ── Permission fix instructions ─────────────── */
                           <div className="rounded-lg border border-status-warning/30 bg-status-warning/8 px-3 py-2.5 space-y-2">
-                            <p className="text-xs font-medium text-status-warning">Fix in one of two ways:</p>
+                            <p className="text-xs font-medium text-status-warning">{t('schedule.discordFixOneOfTwoWays')}</p>
                             <ol className="space-y-1.5 text-[11px] text-text-muted list-decimal list-inside">
                               <li>
-                                <span className="font-medium text-text-secondary">Re-invite the bot</span>{' '}
-                                — use the button below to re-authorize with the correct permissions. Manage Events will be pre-checked.
+                                <span className="font-medium text-text-secondary">{t('schedule.discordReinviteBot')}</span>{' '}
+                                — {t('schedule.discordReinviteBotDesc')}
                               </li>
                               <li>
-                                <span className="font-medium text-text-secondary">Grant manually in Discord</span>{' '}
-                                — Server Settings → Integrations → <em>XIVRaidPlanner</em> (or your bot name) → enable <code className="rounded bg-surface-sunken px-1 py-0.5">Manage Events</code>
+                                <span className="font-medium text-text-secondary">{t('schedule.discordGrantManually')}</span>{' '}
+                                — {t('schedule.discordGrantManuallyDesc')}
                               </li>
                             </ol>
                             <div className="flex flex-wrap gap-2 pt-0.5">
@@ -951,7 +965,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                                 onClick={() => window.open(buildDiscordInstallUrl(settings?.discordClientId), '_blank', 'noopener,noreferrer')}
                                 disabled={!settings?.discordClientId}
                               >
-                                Re-invite bot
+                                {t('schedule.discordReinviteBotButton')}
                               </Button>
                               <Button
                                 type="button"
@@ -961,13 +975,13 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                                 onClick={() => void handleRefreshLink()}
                                 disabled={discordCheckLoading}
                               >
-                                {discordCheckLoading ? 'Checking…' : 'Check now'}
+                                {discordCheckLoading ? t('schedule.discordChecking') : t('schedule.discordCheckNow')}
                               </Button>
                             </div>
                           </div>
                         ) : (
                           <p className="text-xs text-text-muted leading-relaxed">
-                            Upcoming raid occurrences sync automatically as Discord Events with a 4-week rolling window. Reminder messages use those same schedule occurrences.
+                            {t('schedule.discordUpcomingOccurrences')}
                           </p>
                         )}
 
@@ -979,7 +993,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                             onClick={() => void handleSyncAllDiscord()}
                             disabled={syncingDiscord}
                           >
-                            {syncingDiscord ? 'Syncing…' : 'Sync now'}
+                            {syncingDiscord ? t('schedule.discordSyncing') : t('schedule.discordSyncNow')}
                           </Button>
                           {!isLegacy && (
                             <Button
@@ -989,7 +1003,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                               leftIcon={<Unlink className="h-3.5 w-3.5" />}
                               onClick={() => void handleDisconnectDiscord()}
                             >
-                              Disconnect
+                              {t('schedule.discordDisconnect')}
                             </Button>
                           )}
                         </div>
@@ -998,7 +1012,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                       /* ── Pending / claim code state ──────────────── */
                       <>
                         <div className="space-y-1">
-                          <p className="text-xs font-medium text-text-secondary">Your link code</p>
+                          <p className="text-xs font-medium text-text-secondary">{t('schedule.discordYourLinkCode')}</p>
                           <div className="flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-sunken px-3 py-2">
                             <code className="flex-1 font-mono text-sm font-semibold tracking-widest text-accent">
                               {discordClaimCode}
@@ -1008,14 +1022,14 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                               size="sm"
                               variant="ghost"
                               leftIcon={<Copy className="h-3 w-3" />}
-                              onClick={() => void navigator.clipboard.writeText(discordClaimCode ?? '').then(() => setIntegrationMessage('Copied!'))}
+                              onClick={() => void navigator.clipboard.writeText(discordClaimCode ?? '').then(() => setIntegrationMessage(t('common.copied')))}
                             >
-                              Copy
+                              {t('common.copy')}
                             </Button>
                           </div>
                           {discordClaimExpiry && (
                             <p className="text-[11px] text-text-muted">
-                              Expires {new Date(discordClaimExpiry).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {t('schedule.discordExpires', { time: new Date(discordClaimExpiry).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })}
                             </p>
                           )}
                         </div>
@@ -1033,24 +1047,20 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                                 disabled={!settings?.discordClientId}
                                 className="inline-flex"
                               >
-                                Invite XIVRaidPlanner Bot
+                                {t('schedule.discordInviteBot')}
                               </Button>{' '}
-                              to your server
+                              {t('schedule.discordToYourServer')}
                             </span>
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border-subtle bg-surface-elevated text-[10px] font-semibold text-text-secondary">2</span>
                             <span>
-                              Run{' '}
-                              <code className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-text-secondary">
-                                /xrp link {discordClaimCode}
-                              </code>{' '}
-                              in any channel
+                              {t('schedule.discordRunInChannel', { code: `/xrp link ${discordClaimCode}` })}
                             </span>
                           </li>
                           <li className="flex items-start gap-2">
                             <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border-subtle bg-surface-elevated text-[10px] font-semibold text-text-secondary">3</span>
-                            <span>Return here and click <strong className="text-text-primary">Check now</strong></span>
+                            <span>{t('schedule.discordReturnAndClick')}</span>
                           </li>
                         </ol>
 
@@ -1062,7 +1072,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                             onClick={() => void handleRefreshLink()}
                             disabled={discordCheckLoading}
                           >
-                            {discordCheckLoading ? 'Checking…' : 'Check now'}
+                            {discordCheckLoading ? t('schedule.discordChecking') : t('schedule.discordCheckNow')}
                           </Button>
                           <Button
                             type="button"
@@ -1070,7 +1080,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                             variant="ghost"
                             onClick={() => { setDiscordClaimCode(null); setDiscordClaimExpiry(null); }}
                           >
-                            Cancel
+                            {t('common.cancel')}
                           </Button>
                         </div>
                       </>
@@ -1078,26 +1088,26 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                       /* ── Disconnected state ──────────────────────── */
                       <>
                         <p className="text-xs text-text-muted leading-relaxed">
-                          Connect the XIVRaidPlanner bot to your Discord server to automatically publish raid sessions as native Guild Events.
+                          {t('schedule.discordConnectBotDesc')}
                         </p>
 
                         <div className="rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2.5 text-xs text-text-muted space-y-1">
-                          <p className="font-medium text-text-secondary">What you get</p>
+                          <p className="font-medium text-text-secondary">{t('schedule.discordWhatYouGet')}</p>
                           <ul className="space-y-0.5 list-disc list-inside">
-                            <li>Sessions appear in your server's Events tab</li>
-                            <li>Members can RSVP directly in Discord</li>
-                            <li>Auto-sync on every session change</li>
+                            <li>{t('schedule.discordSessionsInEventsTab')}</li>
+                            <li>{t('schedule.discordMembersCanRsvp')}</li>
+                            <li>{t('schedule.discordAutoSync')}</li>
                           </ul>
                         </div>
 
                         <p className="text-[11px] text-text-muted">
-                          Requires the bot to have <code className="rounded bg-surface-sunken px-1 py-0.5">Manage Events</code> permission.
+                          {t('schedule.discordRequiresPermission')}
                         </p>
 
                         <div className="mt-auto pt-1">
                           {settings?.discordOfficialBotAvailable === false ? (
                             <p className="text-[11px] text-text-muted">
-                              Discord Events bot is not configured on this server. Contact your site admin.
+                              {t('schedule.discordNotConfigured')}
                             </p>
                           ) : (
                             <Button
@@ -1107,7 +1117,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                               onClick={() => void handleConnectDiscord()}
                               disabled={discordClaimLoading}
                             >
-                              {discordClaimLoading ? 'Starting…' : 'Connect Discord'}
+                              {discordClaimLoading ? t('schedule.discordStarting') : t('schedule.discordConnect')}
                             </Button>
                           )}
                         </div>
@@ -1126,8 +1136,8 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                   <CalendarClock className="h-4 w-4 text-accent" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-display font-semibold text-text-primary leading-tight">Calendar Feed</p>
-                  <p className="text-xs text-text-muted mt-0.5">Subscribe via Google, Apple, or Outlook</p>
+                  <p className="font-display font-semibold text-text-primary leading-tight">{t('schedule.calendarFeed')}</p>
+                  <p className="text-xs text-text-muted mt-0.5">{t('schedule.calendarSubscribeVia')}</p>
                 </div>
                 <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium shrink-0 ${
                   settings?.calendarUrl
@@ -1147,7 +1157,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                   </div>
                 ) : (
                   <div className="rounded-lg border border-border-subtle bg-surface-elevated px-3 py-2.5 text-xs text-text-muted">
-                    Generate a private feed link to subscribe from your calendar app.
+                    {t('schedule.calendarGenerateFeedLink')}
                   </div>
                 )}
 
@@ -1160,7 +1170,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                     onClick={() => void handleCopyCalendarUrl()}
                     disabled={!settings?.calendarUrl}
                   >
-                    {integrationMessage === 'Copied!' ? 'Copied!' : 'Copy URL'}
+                    {integrationMessage === t('common.copied') ? t('schedule.calendarCopied') : t('schedule.calendarCopyUrl')}
                   </Button>
                   {settings?.calendarUrl && (
                     <Button
@@ -1170,7 +1180,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                       leftIcon={<Calendar className="h-3.5 w-3.5" />}
                       onClick={() => window.open(`https://calendar.google.com/calendar/render?cid=${encodeURIComponent(settings.calendarUrl || '')}`, '_blank', 'noopener,noreferrer')}
                     >
-                      Add to Google
+                      {t('schedule.calendarAddToGoogle')}
                     </Button>
                   )}
                   {canManage && (
@@ -1182,7 +1192,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                         leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
                         onClick={() => void regenerateCalendar(groupId)}
                       >
-                        Regenerate
+                        {t('schedule.calendarRegenerate')}
                       </Button>
                       <Button
                         type="button"
@@ -1192,7 +1202,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
                         onClick={() => void revokeCalendar(groupId)}
                         disabled={!settings?.calendarEnabled}
                       >
-                        Revoke
+                        {t('schedule.calendarRevoke')}
                       </Button>
                     </>
                   )}
@@ -1206,9 +1216,7 @@ export function ScheduleTab({ groupId, staticName, shareCode, members, userRole 
             <div className="flex items-start gap-2.5">
               <ShieldCheck className="mt-0.5 h-4 w-4 text-text-secondary flex-shrink-0" />
               <p>
-                <span className="font-medium text-text-secondary">Integration secrets are permission-gated.</span>
-                {' '}Webhook URLs and bot tokens are never shown to Members or Viewers.
-                Calendar links are personal tokens that Leads and Owners can regenerate or revoke at any time.
+                {t('schedule.integrationSecrets')}
               </p>
             </div>
           </div>

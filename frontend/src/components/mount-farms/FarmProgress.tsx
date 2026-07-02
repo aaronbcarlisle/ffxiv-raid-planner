@@ -1,10 +1,15 @@
+import { useTranslation } from 'react-i18next';
 import type { MountFarmTrial } from '../../gamedata';
 import {
   getExchangeSummary,
-  getRewardLabel,
   hasCurrencyTracking,
 } from '../../gamedata';
 import { Badge } from '../primitives/Badge';
+import {
+  getLocalizedTrialDutyName,
+  getLocalizedTrialRewardName,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 import {
   formatFarmProgress,
   getFarmCurrencyKind,
@@ -60,39 +65,41 @@ export function FarmStatusBadge({
   status: FarmTrackingStatus;
   canBuy?: boolean;
 }) {
+  const { t } = useTranslation();
   if (canBuy && status !== 'completed') {
-    return <Badge variant="warning" size="sm">Ready to buy</Badge>;
+    return <Badge variant="warning" size="sm">{t('mountFarm.statusReadyToBuy')}</Badge>;
   }
 
   switch (status) {
     case 'completed':
-      return <Badge variant="success" size="sm">Owned</Badge>;
+      return <Badge variant="success" size="sm">{t('mountFarm.statusOwned')}</Badge>;
     case 'farming':
-      return <Badge variant="info" size="sm">Farming</Badge>;
+      return <Badge variant="info" size="sm">{t('mountFarm.statusFarmingShort')}</Badge>;
     case 'wanted':
-      return <Badge variant="default" size="sm">Wanted later</Badge>;
+      return <Badge variant="default" size="sm">{t('mountFarm.statusWantedLater')}</Badge>;
     default:
-      return <Badge variant="default" size="sm">Not tracking</Badge>;
+      return <Badge variant="default" size="sm">{t('mountFarm.statusNotTracking')}</Badge>;
   }
 }
 
 export function FarmMetadataBadges({ trial }: { trial: MountFarmTrial }) {
+  const { t } = useTranslation();
   const badges: Array<{ label: string; variant: 'default' | 'info' | 'warning' }> = [];
 
   if (trial.category === 'ultimate' || trial.contentType === 'ultimate') {
-    badges.push({ label: 'Ultimate', variant: 'info' });
+    badges.push({ label: t('mountFarm.badgeUltimate'), variant: 'info' });
   } else if (trial.category === 'collaboration' || trial.contentType === 'collaboration') {
-    badges.push({ label: 'Collaboration', variant: 'info' });
+    badges.push({ label: t('mountFarm.badgeCollaboration'), variant: 'info' });
   } else if (trial.category === 'special') {
-    badges.push({ label: 'Special', variant: 'info' });
+    badges.push({ label: t('mountFarm.badgeSpecial'), variant: 'info' });
   }
 
   if (trial.exchangeStatus === 'not_yet_available') {
-    badges.push({ label: 'Pending exchange', variant: 'warning' });
+    badges.push({ label: t('mountFarm.badgePendingExchange'), variant: 'warning' });
   } else if (trial.exchangeStatus === 'drop_only') {
-    badges.push({ label: 'Drop only', variant: 'default' });
+    badges.push({ label: t('mountFarm.badgeDropOnly'), variant: 'default' });
   } else if (trial.exchangeStatus === 'unknown' && trial.contentType !== 'ultimate') {
-    badges.push({ label: 'Exchange unknown', variant: 'default' });
+    badges.push({ label: t('mountFarm.badgeExchangeUnknown'), variant: 'default' });
   }
 
   if (badges.length === 0) return null;
@@ -109,9 +116,13 @@ export function FarmMetadataBadges({ trial }: { trial: MountFarmTrial }) {
 }
 
 export function FarmCatalogSummary({ trial }: { trial: MountFarmTrial }) {
+  const { t, i18n } = useTranslation();
   const isUltimate = trial.contentType === 'ultimate' || trial.category === 'ultimate';
-  const primaryLabel = isUltimate ? (trial.dutyName ?? getRewardLabel(trial)) : getRewardLabel(trial);
-  const subtitleLabel = isUltimate ? 'Ultimate weapon exchange' : (trial.sourceContent ?? trial.dutyName);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const localizedDutyName = getLocalizedTrialDutyName(trial, uiLocale);
+  const localizedRewardName = getLocalizedTrialRewardName(trial, uiLocale);
+  const primaryLabel = isUltimate ? localizedDutyName : localizedRewardName;
+  const subtitleLabel = isUltimate ? t('mountFarm.ultimateWeaponExchange') : localizedDutyName;
 
   return (
     <div className="min-w-0">

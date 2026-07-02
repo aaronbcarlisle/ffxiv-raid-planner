@@ -1,12 +1,15 @@
 import { motion } from 'framer-motion';
-import { Plus, ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Plus } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { CharacterCard } from './CharacterCard';
 import { JobProfileCard } from './JobProfileCard';
 import type { GearSnapshot, PlayerJobProfile, PlayerProfile } from '../../stores/playerProfileStore';
 import { staggerContainerProps, staggerItemProps } from '../../lib/motion';
 import { GameIcon } from '../ui/GameIcon';
-import { formatGearActivity, hasUsableGearSnapshot, resolveJobGearSnapshot } from './jobGearUtils';
+import { hasUsableGearSnapshot, resolveJobGearSnapshot } from './jobGearUtils';
+import { formatRelativeTimeAgo } from './freshness';
 
 interface JobsGearTabProps {
   profile: PlayerProfile;
@@ -49,8 +52,10 @@ export function JobsGearTab({
   onNavigate,
   onManageBiS,
 }: JobsGearTabProps) {
+  const { t, i18n } = useTranslation();
   const characters = profile.characters;
   const jobProfiles = profile.jobProfiles;
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
   const mainCharacter = characters.find((character) => character.isMain) ?? characters[0];
   const mainJob = jobProfiles.find((job) => job.priority === 'main');
   const jobsWithSnapshots = jobProfiles.map((jobProfile) => ({
@@ -73,12 +78,12 @@ export function JobsGearTab({
       <motion.div {...staggerContainerProps} className="min-w-0 space-y-4 pb-24 md:pb-4" data-testid="jobs-gear-tab">
         <motion.div {...staggerItemProps} className="rounded-lg border border-border-default bg-surface-raised px-4 py-10 text-center">
           <div className="mb-3 text-accent"><GameIcon name="shield-person" size="xl" /></div>
-          <h3 className="font-display text-lg font-semibold text-text-primary">Link a character first</h3>
+          <h3 className="font-display text-lg font-semibold text-text-primary">{t('profile.jobsGear.linkCharacterFirst')}</h3>
           <p className="mx-auto mt-1 max-w-lg text-sm text-text-secondary">
-            Jobs & Gear starts from a connected character, then tracks each job loadout separately.
+            {t('profile.jobsGear.linkCharacterDesc')}
           </p>
           <Button className="mt-4" size="sm" onClick={onOpenLinkModal}>
-            Link character
+            {t('profile.overview.linkCharacter')}
           </Button>
         </motion.div>
       </motion.div>
@@ -90,9 +95,9 @@ export function JobsGearTab({
       <motion.section {...staggerItemProps} className="min-w-0 rounded-lg border border-border-default bg-surface-raised p-3 sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <h3 className="font-display text-base font-semibold text-text-primary">Jobs & Gear</h3>
+            <h3 className="font-display text-base font-semibold text-text-primary">{t('profile.tabJobsGear')}</h3>
             <p className="mt-1 max-w-3xl text-sm text-text-secondary">
-              Choose which jobs you want to share, and keep their gear ready for applications.
+              {t('profile.jobsGear.headerDesc')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -103,31 +108,31 @@ export function JobsGearTab({
                 onClick={() => onNavigate('sync')}
                 data-testid="manage-sync-cta"
               >
-                Manage Sync
+                {t('profile.jobsGear.manageSync')}
               </Button>
             )}
             <Button size="sm" onClick={onAddJob} leftIcon={<Plus className="h-4 w-4" />}>
-              Add Job
+              {t('profile.jobsGear.addJob')}
             </Button>
           </div>
         </div>
 
         <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-3 xl:grid-cols-6">
-          <SummaryTile label="Main job" value={mainJob ? `${mainJob.job} Main` : 'Missing'} tone={mainJob ? 'positive' : 'attention'} testId="tile-main-job" />
-          <SummaryTile label="Tracked jobs" value={String(jobProfiles.length)} tone="info" testId="tile-tracked-jobs" />
-          <SummaryTile label="Gear saved" value={String(jobsWithGear)} tone={jobsWithGear === jobProfiles.length && jobProfiles.length > 0 ? 'positive' : 'info'} testId="tile-gear-saved" />
-          <SummaryTile label="Missing gear" value={String(jobsMissingGear)} tone={jobsMissingGear > 0 ? 'attention' : 'positive'} testId="tile-missing-gear" />
-          <SummaryTile label="Needs review" value={String(jobsBelowTarget)} tone={jobsBelowTarget > 0 ? 'attention' : 'positive'} testId="tile-below-target" tooltip="Gear is saved but the job is still marked as not ready. Update readiness when the job meets your target." />
-          <SummaryTile label="Last gear update" value={lastSync ? formatGearActivity(lastSync) : 'Never'} tone={lastSync ? 'info' : 'attention'} testId="tile-last-update" />
+          <SummaryTile label={t('profile.jobsGear.mainJob')} value={mainJob ? t('profile.jobsGear.mainJobValue', { job: mainJob.job }) : t('profile.jobsGear.missing')} tone={mainJob ? 'positive' : 'attention'} testId="tile-main-job" />
+          <SummaryTile label={t('profile.jobsGear.trackedJobs')} value={String(jobProfiles.length)} tone="info" testId="tile-tracked-jobs" />
+          <SummaryTile label={t('profile.jobsGear.gearSaved')} value={String(jobsWithGear)} tone={jobsWithGear === jobProfiles.length && jobProfiles.length > 0 ? 'positive' : 'info'} testId="tile-gear-saved" />
+          <SummaryTile label={t('profile.jobsGear.missingGear')} value={String(jobsMissingGear)} tone={jobsMissingGear > 0 ? 'attention' : 'positive'} testId="tile-missing-gear" />
+          <SummaryTile label={t('profile.jobsGear.needsReview')} value={String(jobsBelowTarget)} tone={jobsBelowTarget > 0 ? 'attention' : 'positive'} testId="tile-below-target" tooltip={t('profile.jobsGear.needsReviewTooltip')} />
+          <SummaryTile label={t('profile.jobsGear.lastGearUpdate')} value={lastSync ? formatRelativeTimeAgo(lastSync.syncedAt ?? lastSync.updatedAt, uiLocale) : t('common.never')} tone={lastSync ? 'info' : 'attention'} testId="tile-last-update" />
         </div>
       </motion.section>
 
       <motion.section {...staggerItemProps} className="min-w-0 rounded-lg border border-border-default bg-surface-raised p-3 sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="font-display text-sm font-semibold text-text-primary">Tracked jobs</h3>
+            <h3 className="font-display text-sm font-semibold text-text-primary">{t('profile.jobsGear.trackedJobs')}</h3>
             <p className="mt-1 text-xs text-text-tertiary">
-              Static leads see the job and gear you choose when you apply.
+              {t('profile.jobsGear.trackedJobsDesc')}
             </p>
           </div>
         </div>
@@ -135,12 +140,12 @@ export function JobsGearTab({
         {sortedJobs.length === 0 ? (
           <div className="mt-4 rounded-lg border border-border-subtle bg-surface-elevated/60 px-4 py-8 text-center">
             <div className="mb-2 text-accent"><GameIcon name="crossed-swords" size="lg" /></div>
-            <p className="font-medium text-text-primary">No job profiles yet</p>
+            <p className="font-medium text-text-primary">{t('profile.jobsGear.noJobProfilesYet')}</p>
             <p className="mx-auto mt-1 max-w-md text-sm text-text-secondary">
-              Add a main job, then add alt or flex jobs you might use for other statics.
+              {t('profile.jobsGear.noJobProfilesDesc')}
             </p>
             <Button className="mt-4" size="sm" onClick={onAddJob}>
-              Add Main Job
+              {t('profile.jobsGear.addMainJob')}
             </Button>
           </div>
         ) : (
@@ -161,16 +166,16 @@ export function JobsGearTab({
       <motion.section {...staggerItemProps} className="min-w-0 rounded-lg border border-border-default bg-surface-raised p-3 sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-2">
-            <ShieldCheck className="mt-0.5 h-4 w-4 flex-shrink-0 text-accent" />
+            <XivIcon name="loot" size={16} className="mt-0.5 flex-shrink-0" />
             <div className="min-w-0">
-              <h3 className="font-display text-sm font-semibold text-text-primary">Application gear</h3>
+              <h3 className="font-display text-sm font-semibold text-text-primary">{t('profile.jobsGear.applicationGear')}</h3>
               <p className="mt-1 text-xs text-text-tertiary">
-                Static leads see the job and gear you choose when you apply. Later gear changes will not rewrite old applications.
+                {t('profile.jobsGear.applicationGearDesc')}
               </p>
             </div>
           </div>
           <Button variant="secondary" size="sm" onClick={onOpenLinkModal}>
-            Manage linked character
+            {t('profile.jobsGear.manageLinkedCharacter')}
           </Button>
         </div>
         {mainCharacter && (

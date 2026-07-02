@@ -7,10 +7,12 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  ChevronDown, PlusCircle, Coins,
+  ChevronDown, PlusCircle,
   Loader2, Copy, Check, Zap,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
 import type { CatalogItem, CollectionGoal, ParticipantSource, ParticipantState } from '../../stores/collectionGoalStore';
@@ -22,9 +24,16 @@ import type { SourceFarmGroup } from '../../utils/collectionSourceGrouping';
 import {
   SOURCE_TYPE_BADGE,
   CATEGORY_BADGE as CATEGORY_BADGE_CONFIG,
-  expansionLabel,
-  expansionShortLabel,
+  getCollectionCategoryLabel,
+  getCollectionExpansionLabel,
+  getCollectionExpansionShortLabel,
+  getCollectionSourceTypeLabel,
 } from '../../utils/collectionBadgeConfig';
+import {
+  getLocalizedCatalogItemName,
+  getLocalizedDutyName,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -50,25 +59,30 @@ function RewardChip({ item, existingGoal, groupId, trackDisabled }: {
   groupId: string;
   trackDisabled?: boolean;
 }) {
+  const { i18n } = useTranslation();
   const [trackOpen, setTrackOpen] = useState(false);
   const catCfg = CATEGORY_BADGE_CONFIG[item.category] ?? CATEGORY_BADGE_CONFIG.other;
   const isTracked = Boolean(existingGoal);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
+  const itemName = getLocalizedCatalogItemName(item, uiLocale);
+  const categoryLabel = getCollectionCategoryLabel(item.category, uiLocale);
 
   return (
     <>
       <div className="flex items-center gap-2.5 py-1.5 group/chip">
         {/* Colored category badge pill */}
         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-widest flex-shrink-0 ${catCfg.colorClass} ${catCfg.bgClass} ${catCfg.borderClass}`}>
-          {catCfg.label}
+          {categoryLabel}
         </span>
-        <span className="text-sm text-text-primary flex-1 min-w-0 truncate">{item.name}</span>
+        <span className="text-sm text-text-primary flex-1 min-w-0 truncate">{itemName}</span>
         {item.category === 'mount' && (
           item.gameMountId != null
-            ? <Zap size={11} className="flex-shrink-0 text-status-info opacity-50" aria-label="Plugin ready — ownership detected automatically" />
-            : <Zap size={11} className="flex-shrink-0 text-text-muted opacity-25" aria-label="Manual only — no game ID yet" />
+            ? <Zap size={11} className="flex-shrink-0 text-status-info opacity-50" aria-label={isJapanese ? 'プラグインで所持状況を自動判定できます' : 'Plugin ready — ownership detected automatically'} />
+            : <Zap size={11} className="flex-shrink-0 text-text-muted opacity-25" aria-label={isJapanese ? 'ゲーム内連携対象外のため手動管理です' : 'Manual only — no game ID yet'} />
         )}
         {isTracked ? (
-          <Badge variant="success" size="sm" className="flex-shrink-0">Tracking</Badge>
+          <Badge variant="success" size="sm" className="flex-shrink-0">{isJapanese ? '追跡中' : 'Tracking'}</Badge>
         ) : trackDisabled ? null : (
           <Button
             size="sm"
@@ -76,7 +90,7 @@ function RewardChip({ item, existingGoal, groupId, trackDisabled }: {
             onClick={e => { e.stopPropagation(); setTrackOpen(true); }}
             className="flex items-center gap-1 flex-shrink-0 text-accent hover:bg-accent/10 opacity-30 group-hover/chip:opacity-100 transition-opacity"
           >
-            <PlusCircle size={12} /> Track
+            <PlusCircle size={12} /> {isJapanese ? '追跡' : 'Track'}
           </Button>
         )}
       </div>
@@ -92,20 +106,22 @@ function RewardChip({ item, existingGoal, groupId, trackDisabled }: {
   );
 }
 
-const SOURCE_BADGE: Partial<Record<ParticipantSource, { label: string; cls: string }>> = {
-  plugin:     { label: 'Plugin', cls: 'bg-status-info/15 text-status-info' },
-  player_hub: { label: 'Hub',    cls: 'bg-status-success/15 text-status-success' },
-};
-
 function MemberRow({ participant }: { participant: { id: string; displayName: string | null; state: ParticipantState; tokenCount: number | null; source?: ParticipantSource } }) {
+  const { i18n, t } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
   const cfg = { dot: STATE_DOT[participant.state], text: STATE_TEXT[participant.state] };
   const faded = participant.state === 'have' || participant.state === 'pass';
-  const sourceBadge = participant.source ? SOURCE_BADGE[participant.source] : undefined;
+  const sourceBadge = participant.source ? {
+    manual: { label: isJapanese ? '手動' : 'Manual', cls: 'bg-surface-elevated text-text-muted' },
+    plugin: { label: isJapanese ? 'プラグイン' : 'Plugin', cls: 'bg-status-info/15 text-status-info' },
+    player_hub: { label: isJapanese ? 'ハブ' : 'Hub', cls: 'bg-status-success/15 text-status-success' },
+  }[participant.source] : undefined;
   return (
     <div className="flex items-center gap-2 text-xs py-0.5">
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
       <span className={`flex-1 min-w-0 truncate ${faded ? 'text-text-muted line-through opacity-60' : 'text-text-primary font-medium'}`}>
-        {participant.displayName ?? 'Unknown'}
+        {participant.displayName ?? t('common.unknown')}
       </span>
       {sourceBadge && (
         <span className={`text-[10px] font-medium px-1 py-0.5 rounded ${sourceBadge.cls}`}>
@@ -113,7 +129,13 @@ function MemberRow({ participant }: { participant: { id: string; displayName: st
         </span>
       )}
       <span className={`font-semibold ${cfg.text}`}>
-        {participant.state === 'need' ? 'Need' : participant.state === 'want' ? 'Want' : participant.state === 'have' ? 'Have' : 'Pass'}
+        {participant.state === 'need'
+          ? (isJapanese ? '必要' : 'Need')
+          : participant.state === 'want'
+            ? (isJapanese ? '希望' : 'Want')
+            : participant.state === 'have'
+              ? (isJapanese ? '所持' : 'Have')
+              : (isJapanese ? 'パス' : 'Pass')}
       </span>
       {participant.tokenCount != null && participant.tokenCount > 0 && (
         <span className="text-text-muted opacity-70 tabular-nums">{participant.tokenCount}×</span>
@@ -132,8 +154,12 @@ interface SourceFarmCardProps {
 }
 
 export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = false }: SourceFarmCardProps) {
+  const { i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
+  const localizedDutyName = getLocalizedDutyName(group.sourceDutyKey, group.sourceDutyName, uiLocale);
 
   const { participants, participantsLoading, fetchParticipants } = useCollectionGoalStore();
   const { suggestions, fetchSuggestions } = useCollectionIntentStore();
@@ -200,30 +226,30 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
   // Copy farm plan text
   const handleCopyPlan = useCallback(async () => {
     const lines = [
-      `Farm Plan: ${group.sourceDutyName}`,
+      `${isJapanese ? '周回プラン' : 'Farm Plan'}: ${localizedDutyName}`,
       '',
-      'Rewards:',
+      `${isJapanese ? '報酬' : 'Rewards'}:`,
       ...group.rewards.map(r => {
-        const cat = CATEGORY_BADGE_CONFIG[r.category]?.label ?? r.category;
-        return `  ${cat}: ${r.name}`;
+        const cat = getCollectionCategoryLabel(r.category, uiLocale) || r.category;
+        return `  ${cat}: ${getLocalizedCatalogItemName(r, uiLocale)}`;
       }),
     ];
     if (group.tokenName && group.tokenCost) {
-      const perWeapon = group.sourceType === 'ultimate' ? ' per weapon' : '';
-      lines.push(`Currency: ${group.tokenCost}× ${group.tokenName}${perWeapon}`);
+      const perWeapon = group.sourceType === 'ultimate' ? (isJapanese ? ' / 武器1本' : ' per weapon') : '';
+      lines.push(`${isJapanese ? '通貨' : 'Currency'}: ${group.tokenCost}× ${group.tokenName}${perWeapon}`);
     }
     if (members.length > 0) {
       lines.push('');
-      lines.push('Static:');
+      lines.push(`${isJapanese ? '固定' : 'Static'}:`);
       const needs = members.filter(m => m.state === 'need');
       const wants = members.filter(m => m.state === 'want');
-      if (needs.length) lines.push(`  Need: ${needs.map(m => m.displayName).join(', ')}`);
-      if (wants.length) lines.push(`  Want: ${wants.map(m => m.displayName).join(', ')}`);
+      if (needs.length) lines.push(`  ${isJapanese ? '必要' : 'Need'}: ${needs.map(m => m.displayName ?? (isJapanese ? '不明' : 'Unknown')).join(', ')}`);
+      if (wants.length) lines.push(`  ${isJapanese ? '希望' : 'Want'}: ${wants.map(m => m.displayName ?? (isJapanese ? '不明' : 'Unknown')).join(', ')}`);
     }
     await navigator.clipboard.writeText(lines.join('\n'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [group, members]);
+  }, [group, isJapanese, localizedDutyName, members, uiLocale]);
 
   const srcCfg = group.sourceType ? SOURCE_TYPE_BADGE[group.sourceType] : null;
   const borderClass = srcCfg?.leftBorderClass ?? 'border-l-border-default';
@@ -248,13 +274,13 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             {srcCfg && (
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${srcCfg.colorClass}`}>
-                {srcCfg.label}
+                {getCollectionSourceTypeLabel(group.sourceType, uiLocale)}
               </span>
             )}
             {group.expansion && (
               <span className="text-[10px] font-medium text-text-muted opacity-70 flex-shrink-0">
-                <span className="hidden sm:inline">{expansionLabel(group.expansion)}</span>
-                <span className="sm:hidden">{expansionShortLabel(group.expansion)}</span>
+                <span className="hidden sm:inline">{getCollectionExpansionLabel(group.expansion, uiLocale)}</span>
+                <span className="sm:hidden">{getCollectionExpansionShortLabel(group.expansion, uiLocale)}</span>
               </span>
             )}
             <span className="text-[9px] font-medium bg-surface-raised text-text-muted border border-border-subtle/60 px-1.5 py-0.5 rounded-full flex-shrink-0 ml-auto tabular-nums">
@@ -263,7 +289,7 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
           </div>
 
           {/* Row 2: duty name */}
-          <span className="text-base font-bold text-text-primary leading-snug block truncate">{group.sourceDutyName}</span>
+          <span className="text-base font-bold text-text-primary leading-snug block truncate">{localizedDutyName}</span>
 
           {/* Row 3: reward category pills (collapsed only) */}
           {!expanded && (
@@ -275,12 +301,14 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
                   <span
                     key={r.id}
                     className={`flex items-center gap-1.5 text-xs ${tracked ? '' : 'opacity-55'}`}
-                    title={r.name}
+                    title={getLocalizedCatalogItemName(r, uiLocale)}
                   >
                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-widest flex-shrink-0 ${catCfg.colorClass} ${catCfg.bgClass} ${catCfg.borderClass}`}>
-                      {catCfg.label}
+                      {getCollectionCategoryLabel(r.category, uiLocale)}
                     </span>
-                    <span className="truncate max-w-[130px] sm:max-w-[180px] text-text-secondary text-[11px]">{r.name}</span>
+                    <span className="truncate max-w-[130px] sm:max-w-[180px] text-text-secondary text-[11px]">
+                      {getLocalizedCatalogItemName(r, uiLocale)}
+                    </span>
                     {tracked && <span className="w-1.5 h-1.5 rounded-full bg-status-success flex-shrink-0" />}
                   </span>
                 );
@@ -294,7 +322,7 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
           {/* Token cost pill */}
           {group.tokenName && group.tokenCost && (
             <div className="hidden sm:flex items-center gap-1 text-[10px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-md whitespace-nowrap">
-              <Coins size={10} />
+              <XivIcon name="gil" size={10} />
               {group.tokenCost}×
               {group.sourceType === 'ultimate' && <span className="opacity-70 ml-0.5">/ weapon</span>}
             </div>
@@ -341,7 +369,7 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
         <div className="border-t border-border-subtle/50">
           {/* All rewards from this source */}
           <div className="px-4 pt-3 pb-2">
-            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">Rewards</p>
+            <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">{isJapanese ? '報酬' : 'Rewards'}</p>
             <div className="flex flex-col divide-y divide-border-subtle/30">
               {group.rewards.map(r => (
                 <RewardChip
@@ -359,11 +387,11 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
           {group.tokenName && group.tokenCost && (
             <div className="px-4 pb-3">
               <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-                <Coins size={12} className="text-amber-400" />
+                <XivIcon name="gil" size={12} />
                 <span className="font-semibold">{group.tokenCost}×</span>
                 <span>{group.tokenName}</span>
                 {group.sourceType === 'ultimate' && (
-                  <span className="opacity-60">per weapon</span>
+                  <span className="opacity-60">{isJapanese ? ' / 武器1本' : 'per weapon'}</span>
                 )}
               </div>
             </div>
@@ -373,19 +401,21 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
           {isAnyTracked && (
             <div className="border-t border-border-subtle/40 px-4 py-3">
               <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">
-                Static Members
+                {isJapanese ? '固定メンバー' : 'Static Members'}
               </p>
               {isLoadingAny ? (
                 <div className="flex items-center gap-2 text-xs text-text-muted">
                   <Loader2 size={12} className="animate-spin" />
-                  Loading…
+                  {isJapanese ? '読み込み中…' : 'Loading…'}
                 </div>
               ) : members.length > 0 ? (
                 <div className="flex flex-col">
                   {members.map(m => <MemberRow key={m.id} participant={m} />)}
                 </div>
               ) : (
-                <p className="text-xs text-text-muted opacity-60">No members have shared their Player Hub preferences with this static yet.</p>
+                <p className="text-xs text-text-muted opacity-60">
+                  {isJapanese ? 'まだプレイヤーハブの希望設定を共有しているメンバーはいません。' : 'No members have shared their Player Hub preferences with this static yet.'}
+                </p>
               )}
             </div>
           )}
@@ -408,8 +438,8 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
               {group.patch && group.expansion && <span className="opacity-40">·</span>}
               {group.expansion && (
                 <>
-                  <span className="hidden sm:inline">{expansionLabel(group.expansion)}</span>
-                  <span className="sm:hidden">{expansionShortLabel(group.expansion)}</span>
+                  <span className="hidden sm:inline">{getCollectionExpansionLabel(group.expansion, uiLocale)}</span>
+                  <span className="sm:hidden">{getCollectionExpansionShortLabel(group.expansion, uiLocale)}</span>
                 </>
               )}
             </div>
@@ -420,7 +450,7 @@ export function SourceFarmCard({ group, groupId, goalsByItemId, trackDisabled = 
               className="flex items-center gap-1 text-text-muted hover:text-text-primary text-xs"
             >
               {copied ? <Check size={12} className="text-status-success" /> : <Copy size={12} />}
-              {copied ? 'Copied' : 'Copy plan'}
+              {copied ? (isJapanese ? 'コピー済み' : 'Copied') : (isJapanese ? 'プランをコピー' : 'Copy plan')}
             </Button>
           </div>
         </div>

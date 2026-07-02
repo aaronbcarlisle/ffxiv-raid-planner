@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Package } from 'lucide-react';
 import { Modal, Select, Checkbox, Label, NumberInput } from '../ui';
 import { Button } from '../primitives';
@@ -52,6 +53,7 @@ export function QuickLogDropModal({
   currentWeek = 1,
   onSuccess,
 }: QuickLogDropModalProps) {
+  const { t } = useTranslation();
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
   const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [updateGear, setUpdateGear] = useState(true);
@@ -217,9 +219,9 @@ export function QuickLogDropModal({
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsItem: boolean): string => {
     if (!needsItem) return '';
-    if (priority === 1) return ' - Top Priority';
-    if (priority === 2) return ' - 2nd Priority';
-    if (priority === 3) return ' - 3rd Priority';
+    if (priority === 1) return ' - ' + t('loot.topPriority');
+    if (priority === 2) return ' - ' + t('loot.secondPriority');
+    if (priority === 3) return ' - ' + t('loot.thirdPriority');
     return '';
   };
 

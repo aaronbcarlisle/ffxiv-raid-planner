@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Clock, Info, ScrollText } from 'lucide-react';
 import { SafeAvatar } from '../ui/SafeAvatar';
@@ -19,16 +20,7 @@ import { staggerContainerProps, staggerItemProps } from '../../lib/motion';
 import { GameIcon } from '../ui/GameIcon';
 import { buildPublicProfileUrl } from '../../utils/publicUrl';
 import { formatGearActivity, hasUsableGearSnapshot, resolveJobGearSnapshot } from './jobGearUtils';
-
-const VISIBILITY_OPTIONS = [
-  { value: 'private', label: 'Private — only you can see' },
-  { value: 'shareable', label: 'Shareable — anyone with the link' },
-  { value: 'discoverable', label: 'Discoverable — visible to statics' },
-];
-
-const DAY_LABELS: Record<string, string> = {
-  MO: 'Mon', TU: 'Tue', WE: 'Wed', TH: 'Thu', FR: 'Fri', SA: 'Sat', SU: 'Sun',
-};
+import { formatDayOfWeekLabel } from '../schedule/availabilityUtils';
 
 interface PreviewShareTabProps {
   profile: PlayerProfile;
@@ -36,9 +28,16 @@ interface PreviewShareTabProps {
 }
 
 export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps) {
+  const { t, i18n } = useTranslation();
   const { updateProfile, rotateShareCode } = usePlayerProfileStore();
   const availabilityDays = usePersonalAvailabilityStore((s) => s.days);
   const [rotating, setRotating] = useState(false);
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
+  const visibilityOptions = [
+    { value: 'private', label: t('profile.preview.visibilityPrivate') },
+    { value: 'shareable', label: t('profile.preview.visibilityShareable') },
+    { value: 'discoverable', label: t('profile.preview.visibilityDiscoverable') },
+  ];
 
   const characters = profile.characters;
   const jobProfiles = profile.jobProfiles;
@@ -64,14 +63,14 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
     : null;
 
   const configuredDays = availabilityDays.filter((d) => d.slots.length > 0);
-  const dayLabels = configuredDays.map((d) => DAY_LABELS[d.dayOfWeek] ?? d.dayOfWeek);
+  const dayLabels = configuredDays.map((d) => formatDayOfWeekLabel(d.dayOfWeek as never, uiLocale));
 
   const handleVisibilityChange = async (value: string) => {
     try {
       await updateProfile({ visibility: value });
-      toast.success('Visibility updated');
+      toast.success(t('profile.preview.visibilityUpdated'));
     } catch {
-      toast.error('Failed to update visibility');
+      toast.error(t('profile.preview.failedToUpdateVisibility'));
     }
   };
 
@@ -79,9 +78,9 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
     try {
       const enabling = !profile.shareEnabled;
       await updateProfile({ shareEnabled: enabling });
-      toast.success(enabling ? 'Sharing enabled' : 'Sharing disabled');
+      toast.success(enabling ? t('profile.preview.sharingEnabled') : t('profile.preview.sharingDisabled'));
     } catch {
-      toast.error('Failed to toggle sharing');
+      toast.error(t('profile.preview.failedToToggleSharing'));
     }
   };
 
@@ -89,9 +88,9 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
     setRotating(true);
     try {
       await rotateShareCode();
-      toast.success('Share link regenerated — old links no longer work');
+      toast.success(t('profile.preview.shareLinkRegenerated'));
     } catch {
-      toast.error('Failed to regenerate link');
+      toast.error(t('profile.preview.failedToRegenerateLink'));
     } finally {
       setRotating(false);
     }
@@ -100,7 +99,7 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
   const handleCopyLink = () => {
     if (shareUrl) {
       navigator.clipboard.writeText(shareUrl);
-      toast.success('Share link copied to clipboard');
+      toast.success(t('profile.preview.shareLinkCopied'));
     }
   };
 
@@ -110,18 +109,18 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
     <motion.div {...staggerContainerProps} className="space-y-4">
       {/* Share controls */}
       <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-4">
-        <h3 className="font-display font-semibold text-text-primary mb-1">Profile Sharing</h3>
+        <h3 className="font-display font-semibold text-text-primary mb-1">{t('profile.preview.profileSharing')}</h3>
         <p className="text-sm text-text-tertiary mb-4">
-          Choose who can view your profile. Private notes and goals are never shown.
+          {t('profile.preview.profileSharingDesc')}
         </p>
 
         <div className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-            <Label className="text-sm text-text-secondary font-medium">Who can see this profile?</Label>
+            <Label className="text-sm text-text-secondary font-medium">{t('profile.preview.whoCanSee')}</Label>
             <Select
               value={profile.visibility}
               onChange={handleVisibilityChange}
-              options={VISIBILITY_OPTIONS}
+              options={visibilityOptions}
               className="w-full sm:w-72"
             />
           </div>
@@ -132,30 +131,31 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
               size="sm"
               onClick={handleToggleShare}
             >
-              {profile.shareEnabled ? 'Disable Sharing' : 'Enable Sharing'}
+              {profile.shareEnabled ? t('profile.preview.disableSharing') : t('profile.preview.enableSharing')}
             </Button>
 
             {profile.shareEnabled && (
               <Button variant="ghost" size="sm" onClick={handleRotateCode} disabled={rotating}>
-                {rotating ? 'Regenerating…' : 'Regenerate Link'}
+                {rotating ? t('profile.preview.regenerating') : t('profile.preview.regenerateLink')}
               </Button>
             )}
           </div>
 
           {shareUrl && profile.visibility !== 'private' && (
             <div className="rounded-lg border border-border-default bg-surface-base px-3 py-2">
-              <p className="mb-1 text-xs font-medium text-text-tertiary">Share link</p>
+              <p className="mb-1 text-xs font-medium text-text-tertiary">{t('profile.preview.shareLink')}</p>
               <div className="flex items-center gap-2">
                 <span className="min-w-0 flex-1 truncate select-all font-mono text-sm text-text-secondary">{shareUrl}</span>
-                <Button variant="secondary" size="sm" onClick={handleCopyLink}>Copy Link</Button>
+                <Button variant="secondary" size="sm" onClick={handleCopyLink}>{t('profile.preview.copyLink')}</Button>
               </div>
             </div>
           )}
 
           {profile.shareEnabled && profile.visibility === 'private' && (
             <div className="text-sm text-status-warning bg-status-warning/10 rounded-lg px-4 py-3 border border-status-warning/20">
-              Your share link exists, but your profile is still <strong>Private</strong>.
-              Change visibility to <strong>Shareable</strong> to let others view it.
+              {t('profile.preview.privateWarningPrefix')} <strong>{t('profile.preview.visibilityPrivateShort')}</strong>.
+              {' '}
+              {t('profile.preview.privateWarningSuffix')} <strong>{t('profile.preview.visibilityShareableShort')}</strong>{t('profile.preview.privateWarningPeriod')}
             </div>
           )}
         </div>
@@ -165,9 +165,9 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
       <motion.div {...staggerItemProps} className="flex items-center gap-2">
         <ScrollText className="w-4 h-4 text-[#b8933a] flex-shrink-0" />
         <div>
-          <h3 className="font-display font-semibold text-text-primary leading-tight">Application Preview</h3>
+          <h3 className="font-display font-semibold text-text-primary leading-tight">{t('profile.preview.applicationPreview')}</h3>
           <p className="text-xs text-text-tertiary">
-            This is what static leads see when reviewing your application.
+            {t('profile.preview.applicationPreviewDesc')}
           </p>
         </div>
       </motion.div>
@@ -176,7 +176,7 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
         <motion.div {...staggerItemProps} className="bg-surface-raised rounded-lg border border-border-default p-6 text-center">
           <div className="mb-2 text-text-tertiary"><GameIcon name="scroll-quill" size="xl" /></div>
           <p className="text-text-secondary text-sm">
-            Complete your character and job setup to see a preview of your application profile.
+            {t('profile.preview.completeSetupToPreview')}
           </p>
         </motion.div>
       ) : (
@@ -191,10 +191,10 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
             {/* Header band */}
             <div className="px-5 py-4 border-b border-[#b8933a]/25 bg-gradient-to-r from-[#f0e6ce]/70 to-[#faf7f0]">
               <p className="text-[10px] font-bold text-[#8b6914] uppercase tracking-[0.2em]">
-                Application Preview
+                {t('profile.preview.applicationPreview')}
               </p>
               <p className="text-sm text-[#5c3d2e] mt-0.5">
-                What a static lead sees when you apply
+                {t('profile.preview.whatLeadSees')}
               </p>
             </div>
 
@@ -238,7 +238,7 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
 
               {/* Main Job */}
               <div>
-                <p className="text-[10px] font-bold text-[#8b6914] uppercase tracking-[0.15em] mb-2">Main Job</p>
+                <p className="text-[10px] font-bold text-[#8b6914] uppercase tracking-[0.15em] mb-2">{t('profile.preview.mainJob')}</p>
                 <div className="flex items-center gap-3">
                   <JobIcon job={mainJob.job} size="lg" />
                   <div className="flex-1 min-w-0">
@@ -259,7 +259,7 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
                         </>
                       )}
                       {!mainJobSnapshot && hasAnyGearSnapshots && (
-                        <span className="text-xs text-[#8c7a60]">No gear saved for this job</span>
+                        <span className="text-xs text-[#8c7a60]">{t('profile.preview.noGearSavedForJob')}</span>
                       )}
                     </div>
                   </div>
@@ -270,7 +270,7 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
               {altJobs.length > 0 && (
                 <div>
                   <p className="text-[10px] font-bold text-[#8b6914] uppercase tracking-[0.15em] mb-2">
-                    Also Available As
+                    {t('profile.preview.alsoAvailableAs')}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {altJobs.slice(0, 6).map((jp) => {
@@ -293,7 +293,7 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
                       );
                     })}
                     {altJobs.length > 6 && (
-                      <span className="text-xs text-[#8c7a60] self-center">+{altJobs.length - 6} more</span>
+                      <span className="text-xs text-[#8c7a60] self-center">{t('profile.overview.more', { count: altJobs.length - 6 })}</span>
                     )}
                   </div>
                 </div>
@@ -302,7 +302,7 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
               {/* Availability (derived from personal availability store if set) */}
               {dayLabels.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-bold text-[#8b6914] uppercase tracking-[0.15em] mb-1.5">Availability</p>
+                  <p className="text-[10px] font-bold text-[#8b6914] uppercase tracking-[0.15em] mb-1.5">{t('profile.overview.availability')}</p>
                   <div className="flex items-center gap-2 text-sm text-[#5c3d2e]">
                     <Clock className="w-4 h-4 text-[#8c7a60] flex-shrink-0" />
                     <span>{dayLabels.join(' / ')}</span>
@@ -321,9 +321,8 @@ export function PreviewShareTab({ profile, gearSnapshots }: PreviewShareTabProps
               <div className="flex items-start gap-2 rounded-lg bg-[#f5ede0]/60 px-3 py-2.5 border border-[#b8933a]/20">
                 <Info className="w-3.5 h-3.5 text-[#8c7a60] flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-[#5c3d2e] leading-relaxed">
-                  Applications keep a copy of your profile at the time you apply.
-                  Later changes will not rewrite submitted applications.
-                  <strong className="text-[#2d1e13]"> Private notes and goals are never included.</strong>
+                  {t('profile.preview.snapshotDisclaimer')}
+                  <strong className="text-[#2d1e13]"> {t('profile.preview.privateNotesNeverIncluded')}</strong>
                 </p>
               </div>
             </div>

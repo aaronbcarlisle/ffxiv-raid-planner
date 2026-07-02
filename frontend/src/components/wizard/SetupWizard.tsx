@@ -8,6 +8,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Wand2 } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -44,6 +45,7 @@ const getInitialState = (): WizardState => ({
 
 export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [state, setState] = useState<WizardState>(getInitialState());
 
   // Submission state
@@ -206,7 +208,7 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
       setPendingShareCode(null);
       setState((prev) => ({ ...prev, step: 4 }));
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to create static');
+      setSubmitError(error instanceof Error ? error.message : t('wizard.createStaticError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -295,7 +297,9 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
   const modalTitle = (
     <span className="flex items-center gap-2">
       <Wand2 className="w-5 h-5 text-accent" />
-      {state.staticName.trim() ? `Create Static: ${state.staticName.trim()}` : 'Create Static'}
+      {state.staticName.trim()
+        ? t('wizard.modalTitleWithName', { name: state.staticName.trim() })
+        : t('wizard.modalTitle')}
     </span>
   );
 
@@ -376,10 +380,10 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
       {/* Cancel confirmation */}
       <ConfirmModal
         isOpen={showCancelConfirm}
-        title="Discard Changes?"
-        message="You have unsaved changes in the wizard. Are you sure you want to discard them?"
-        confirmLabel="Discard"
-        cancelLabel="Keep Editing"
+        title={t('wizard.discardChangesTitle')}
+        message={t('wizard.discardChangesMessage')}
+        confirmLabel={t('wizard.discardConfirmLabel')}
+        cancelLabel={t('wizard.keepEditingLabel')}
         variant="warning"
         onConfirm={handleConfirmCancel}
         onCancel={() => setShowCancelConfirm(false)}

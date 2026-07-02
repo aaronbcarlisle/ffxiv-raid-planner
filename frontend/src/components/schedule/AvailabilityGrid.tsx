@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { Clock3, Eye, Moon, MousePointer2, RefreshCw, Sun, Sunrise, Sunset, Users } from 'lucide-react';
 import type { Membership, ScheduleSession, ScheduleSessionCreate } from '../../types';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
@@ -20,10 +22,10 @@ import {
   computeAvailabilityRecommendations,
   computeTemplateRecommendations,
   DAY_FULL_LABELS,
-  DAY_LABELS,
   DAYS_OF_WEEK,
   filterSlotsByPreset,
   formatDateHeader,
+  formatDayOfWeekLabel,
   formatHoveredSlotLabel,
   formatTimeLabel,
   getAvailabilitySlotKeyForPresetColumn,
@@ -33,11 +35,10 @@ import {
   isSlotInPreset,
   localSlotsToUtcMap,
   splitAvailabilitySlotKey,
-  TIME_PRESETS,
   type TimePreset,
 } from './availabilityUtils';
 
-type AvailabilityMode = 'this-week' | 'typical-week';
+const AVAILABILITY_MODES = ['this-week', 'typical-week'] as const;
 
 interface AvailabilityGridProps {
   groupId: string;
@@ -73,6 +74,7 @@ export function AvailabilityGrid({
   shareCode,
   onCreateSessionDraft,
 }: AvailabilityGridProps) {
+  const { t, i18n } = useTranslation();
   const { user } = useAuthStore();
   const {
     data,
@@ -84,12 +86,14 @@ export function AvailabilityGrid({
     submitTemplate,
   } = useAvailabilityStore();
   const fetchPersonalAvailability = usePersonalAvailabilityStore((s) => s.fetchPersonalAvailability);
-  const [mode, setMode] = useState<AvailabilityMode>('this-week');
+  // This-week vs typical-week in the URL (?avail=this-week|typical-week).
+  const [mode, setMode] = useUrlTabState('avail', AVAILABILITY_MODES, 'this-week');
   const [importingPersonalTemplate, setImportingPersonalTemplate] = useState(false);
   const [dates] = useState(() => getNextNDates(7));
   const [durationMinutes, setDurationMinutes] = useState(120);
   const localTimezone = getBrowserTimezone();
   const canEditAvailability = canSubmit && !!user;
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
 
   const PRESET_STORAGE_KEY = 'schedule-time-preset';
   const [timePreset, setTimePreset] = useState<TimePreset>(() => {
@@ -408,8 +412,11 @@ export function AvailabilityGrid({
     const dayIndex = new Date(resolvedStart).getUTCDay();
     const bydayKey = BYDAY_KEYS[dayIndex];
     onCreateSessionDraft({
-      title: 'Recommended Raid Night',
-      description: `${recommendation.availableCount}/${recommendation.totalMembers} marked available from the best raid windows panel.`,
+      title: t('schedule.availabilityGrid.recommendedRaidNight'),
+      description: t('schedule.availabilityGrid.bestRaidWindowsDesc', {
+        available: recommendation.availableCount,
+        total: recommendation.totalMembers,
+      }),
       startTime: resolvedStart,
       endTime: resolvedEnd,
       timezone: referenceTimezone,
@@ -436,8 +443,11 @@ export function AvailabilityGrid({
     const startIso = `${dateStr}T${rec.startTime}:00Z`;
     const endIso = `${dateStr}T${rec.endTime}:00Z`;
     onCreateSessionDraft({
-      title: 'Recommended Raid Night',
-      description: `${rec.availableCount}/${rec.totalMembers} available based on typical weekly schedule.`,
+      title: t('schedule.availabilityGrid.recommendedRaidNight'),
+      description: t('schedule.availabilityGrid.recommendedRaidNightDesc', {
+        available: rec.availableCount,
+        total: rec.totalMembers,
+      }),
       startTime: startIso,
       endTime: endIso,
       timezone: referenceTimezone,
@@ -455,7 +465,7 @@ export function AvailabilityGrid({
       const personalByDay = buildPersonalSourceByDay(personalDays);
 
       if (personalByDay.size === 0) {
-        toast.info('Set up Player Hub availability first.');
+        toast.info(t('schedule.availabilityGrid.setUpPlayerHubAvailabilityFirst'));
         return;
       }
 
@@ -476,16 +486,16 @@ export function AvailabilityGrid({
 
       if (importedDays.length > 0) {
         const skippedText = skippedDays.length > 0
-          ? ` Skipped ${skippedDays.length} existing day${skippedDays.length !== 1 ? 's' : ''}.`
+          ? ` ${t('schedule.availabilityGrid.skippedExistingDays', { count: skippedDays.length })}`
           : '';
-        toast.success(`Imported ${importedDays.length} day${importedDays.length !== 1 ? 's' : ''} from Player Hub.${skippedText}`);
+        toast.success(`${t('schedule.availabilityGrid.importedDays', { count: importedDays.length })}${skippedText}`);
       } else if (skippedDays.length > 0) {
-        toast.info('No empty Typical Week days to import - existing static templates were preserved.');
+        toast.info(t('schedule.availabilityGrid.noEmptyTypicalWeekDays'));
       } else {
-        toast.info('No Player Hub availability days matched this static template.');
+        toast.info(t('schedule.availabilityGrid.noPlayerHubDaysMatched'));
       }
     } catch {
-      toast.error('Failed to import Player Hub availability.');
+      toast.error(t('schedule.availabilityGrid.failedToImportPlayerHubAvailability'));
     } finally {
       setImportingPersonalTemplate(false);
     }
@@ -523,20 +533,22 @@ export function AvailabilityGrid({
             <div className="space-y-3 text-center lg:text-left">
               <div className="inline-flex items-center justify-center gap-2 rounded-full border border-border-default bg-accent/10 px-3 py-1 text-xs font-medium text-accent lg:justify-start">
                 <Users className="h-3.5 w-3.5" />
-                Static Availability
+                {t('schedule.availabilityGrid.staticAvailability')}
               </div>
               <div className="space-y-1">
                 <h3 className="font-display text-xl text-text-primary">
-                  {mode === 'typical-week' ? 'Typical weekly schedule' : 'Find overlap windows'}
+                  {mode === 'typical-week'
+                    ? t('schedule.availabilityGrid.typicalWeeklySchedule')
+                    : t('schedule.availabilityGrid.findOverlapWindows')}
                 </h3>
                 <p className="max-w-2xl text-sm text-text-secondary">
                   {mode === 'typical-week'
                     ? canSubmit
-                      ? 'Mark your usual free hours for each day of the week. This stays saved and helps the static find a permanent raid night.'
-                      : 'View the static\'s typical weekly availability. Sign in as a member to add yours.'
+                      ? t('schedule.availabilityGrid.typicalWeeklyScheduleEditableDesc')
+                      : t('schedule.availabilityGrid.typicalWeeklyScheduleViewOnlyDesc')
                     : canSubmit
-                      ? 'Drag across the grid to mark when you are free. Your picks stay highlighted while the static heat map shows the best windows.'
-                      : 'Browse the static heat map to spot the best raid windows for the next seven days.'}
+                      ? t('schedule.availabilityGrid.findOverlapWindowsEditableDesc')
+                      : t('schedule.availabilityGrid.findOverlapWindowsViewOnlyDesc')}
                 </p>
               </div>
             </div>
@@ -547,24 +559,32 @@ export function AvailabilityGrid({
                   type="button"
                   size="sm"
                   variant={mode === 'this-week' ? 'accent-subtle' : 'ghost'}
+                  // Reserve the active variant's 1px border on the inactive tab
+                  // so toggling only changes color, never the box size.
+                  className={mode === 'this-week' ? '' : 'border border-transparent'}
                   onClick={() => setMode('this-week')}
                 >
-                  This week
+                  {t('schedule.availabilityGrid.thisWeek')}
                 </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant={mode === 'typical-week' ? 'accent-subtle' : 'ghost'}
+                  className={mode === 'typical-week' ? '' : 'border border-transparent'}
                   leftIcon={<RefreshCw className="h-3.5 w-3.5" />}
                   onClick={() => setMode('typical-week')}
                 >
-                  Typical week
+                  {t('schedule.availabilityGrid.typicalWeek')}
                 </Button>
               </div>
               <Badge variant={canSubmit ? 'success' : 'info'}>
-                {canEditAvailability ? 'Editable' : canSubmit ? 'Loading account' : 'View only'}
+                {canEditAvailability
+                  ? t('schedule.availabilityGrid.editable')
+                  : canSubmit
+                    ? t('schedule.availabilityGrid.loadingAccount')
+                    : t('schedule.availabilityGrid.viewOnly')}
               </Badge>
-              <Badge variant="default">{mode === 'typical-week' ? '7 days' : `${dates.length} days`}</Badge>
+              <Badge variant="default">{t('schedule.availabilityGrid.daysCount', { count: mode === 'typical-week' ? 7 : dates.length })}</Badge>
               <Badge variant="default">{localTimezone}</Badge>
             </div>
           </div>
@@ -572,37 +592,39 @@ export function AvailabilityGrid({
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-border-default bg-surface-elevated/80 px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.18em] text-text-muted">
-                Your Slots
+                {t('schedule.availabilityGrid.yourSlots')}
               </div>
               <div className="mt-1 font-display text-2xl text-text-primary">
                 {selectedSlotCount}
               </div>
               <div className="text-xs text-text-secondary">
-                {canEditAvailability ? 'Marked in the next seven days' : 'Sign in as a static member to add yours'}
+                {canEditAvailability
+                  ? t('schedule.availabilityGrid.markedInNextSevenDays')
+                  : t('schedule.availabilityGrid.signInToAddYours')}
               </div>
             </div>
 
             <div className="rounded-xl border border-border-default bg-surface-elevated/80 px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.18em] text-text-muted">
-                Members Tracked
+                {t('schedule.availabilityGrid.membersTracked')}
               </div>
               <div className="mt-1 font-display text-2xl text-text-primary">
                 {totalMembers}
               </div>
               <div className="text-xs text-text-secondary">
-                Party members counted for best raid windows
+                {t('schedule.availabilityGrid.membersTrackedDesc')}
               </div>
             </div>
 
             <div className="rounded-xl border border-border-default bg-surface-elevated/80 px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.18em] text-text-muted">
-                Shared Windows
+                {t('schedule.availabilityGrid.sharedWindows')}
               </div>
               <div className="mt-1 font-display text-2xl text-text-primary">
                 {sharedWindowCount}
               </div>
               <div className="text-xs text-text-secondary">
-                Slots where at least half the static is available
+                {t('schedule.availabilityGrid.sharedWindowsDesc')}
               </div>
             </div>
           </div>
@@ -622,11 +644,11 @@ export function AvailabilityGrid({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <RefreshCw className="h-4 w-4 text-accent" />
-                    <span className="text-sm font-medium text-text-primary">Import from Player Hub availability</span>
-                    <Badge variant="default" size="sm">Empty days only</Badge>
+                    <span className="text-sm font-medium text-text-primary">{t('schedule.availabilityGrid.importFromPlayerHubAvailability')}</span>
+                    <Badge variant="default" size="sm">{t('schedule.availabilityGrid.emptyDaysOnly')}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-text-tertiary">
-                    Use your personal default as this static&apos;s Typical Week. Existing static days are preserved.
+                    {t('schedule.availabilityGrid.importFromPlayerHubAvailabilityDesc')}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -637,13 +659,13 @@ export function AvailabilityGrid({
                     onClick={handleImportPersonalTemplate}
                     loading={importingPersonalTemplate}
                   >
-                    Import from Player Hub availability
+                    {t('schedule.availabilityGrid.importFromPlayerHubAvailability')}
                   </Button>
                   <Link
                     to="/profile?tab=availability&focus=availability"
                     className="inline-flex min-h-[44px] items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/10 sm:min-h-0"
                   >
-                    Edit Player Hub availability
+                    {t('schedule.availabilityGrid.editPlayerHubAvailability')}
                   </Link>
                 </div>
               </div>
@@ -658,7 +680,9 @@ export function AvailabilityGrid({
               <div className="flex flex-wrap items-center gap-2">
                 <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5 text-xs text-text-secondary">
                   <MousePointer2 className="h-3.5 w-3.5 text-accent" />
-                  {canEditAvailability ? 'Drag to paint availability' : 'Hover to inspect overlap'}
+                  {canEditAvailability
+                    ? t('schedule.availabilityGrid.dragToPaintAvailability')
+                    : t('schedule.availabilityGrid.hoverToInspectOverlap')}
                 </div>
                 {hiddenSlotCount > 0 && (
                   <Button
@@ -669,7 +693,7 @@ export function AvailabilityGrid({
                     onClick={() => handlePresetChange('full')}
                     className="rounded-full border border-status-warning/40 bg-status-warning/10 text-xs font-medium text-status-warning hover:bg-status-warning/20"
                   >
-                    {hiddenSlotCount} slot{hiddenSlotCount !== 1 ? 's' : ''} in hidden hours — show all
+                    {t('schedule.availabilityGrid.hiddenSlotsShowAll', { count: hiddenSlotCount })}
                   </Button>
                 )}
               </div>
@@ -684,10 +708,15 @@ export function AvailabilityGrid({
                         type="button"
                         size="sm"
                         variant={timePreset === preset ? 'accent-subtle' : 'ghost'}
+                        className={timePreset === preset ? '' : 'border border-transparent'}
                         leftIcon={<Icon className="h-3.5 w-3.5" />}
                         onClick={() => handlePresetChange(preset)}
                       >
-                        {TIME_PRESETS[preset].label}
+                        {preset === 'prime'
+                          ? t('profile.availability.presetPrime')
+                          : preset === 'evening'
+                            ? t('profile.availability.presetEvening')
+                            : t('profile.availability.presetFullDay')}
                       </Button>
                     );
                   })}
@@ -700,7 +729,7 @@ export function AvailabilityGrid({
             </div>
             {timePreset === 'prime' && (
               <p className="text-center text-xs text-text-muted lg:text-left">
-                Showing 6 PM – 2 AM. Slots after midnight are the next calendar day.
+                {t('schedule.availabilityGrid.primePresetNotice')}
               </p>
             )}
           </div>
@@ -725,7 +754,7 @@ export function AvailabilityGrid({
                 <div className="sticky left-0 z-[1] rounded-xl bg-surface-card/90 p-1" />
                 {columns.map((col) => {
                   const isTemplate = mode === 'typical-week';
-                  const label = isTemplate ? DAY_LABELS[col as keyof typeof DAY_LABELS] : formatDateHeader(col).day;
+                  const label = isTemplate ? formatDayOfWeekLabel(col as never, uiLocale) : formatDateHeader(col).day;
                   const sublabel = isTemplate ? null : formatDateHeader(col).date;
                   return (
                     <div
@@ -770,10 +799,10 @@ export function AvailabilityGrid({
                 let sectionDivider: React.ReactNode = null;
                 if (timePreset === 'full' && isHourBoundary && hour % 6 === 0) {
                   const sections: Record<number, { label: string; Icon: typeof Sun }> = {
-                    0: { label: 'Late Night', Icon: Moon },
-                    6: { label: 'Morning', Icon: Sunrise },
-                    12: { label: 'Afternoon', Icon: Sun },
-                    18: { label: 'Evening', Icon: Sunset },
+                    0: { label: t('schedule.availabilityGrid.lateNight'), Icon: Moon },
+                    6: { label: t('schedule.availabilityGrid.morning'), Icon: Sunrise },
+                    12: { label: t('schedule.availabilityGrid.afternoon'), Icon: Sun },
+                    18: { label: t('schedule.availabilityGrid.evening'), Icon: Sunset },
                   };
                   const section = sections[hour];
                   if (section) {
@@ -800,7 +829,7 @@ export function AvailabilityGrid({
                     >
                       <Moon className="h-3.5 w-3.5 text-text-muted" />
                       <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-                        After Midnight (+1 day)
+                        {t('schedule.availabilityGrid.afterMidnight')}
                       </span>
                       <div className="h-px flex-1 bg-border-subtle" />
                     </div>
@@ -902,34 +931,34 @@ export function AvailabilityGrid({
                   {hoveredLabel}
                 </span>
                 <span className="text-status-success">
-                  {hoveredInfo.count} available
+                  {t('schedule.availabilityGrid.countAvailable', { count: hoveredInfo.count })}
                 </span>
                 <span>{hoveredInfo.names.join(', ')}</span>
               </div>
             ) : (
               <div className="text-xs text-text-muted">
-                Hover a populated slot to see who is available there.
+                {t('schedule.availabilityGrid.hoverPopulatedSlot')}
               </div>
             )}
 
             {error && (
               <div className="inline-flex items-center rounded-xl border border-status-error/30 bg-status-error/10 px-4 py-2 text-sm text-status-error">
-                Failed to save availability: {error}
+                {t('schedule.availabilityGrid.failedToSaveAvailability', { error })}
               </div>
             )}
 
             <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-text-secondary">
               <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5">
                 <div className="h-3 w-3 rounded-sm border border-accent/30 bg-accent/25" />
-                <span>Your selection</span>
+                <span>{t('schedule.availabilityGrid.yourSelection')}</span>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5">
                 <div className="h-3 w-3 rounded-sm border border-status-success/20 bg-status-success/12" />
-                <span>Some overlap</span>
+                <span>{t('schedule.availabilityGrid.someOverlap')}</span>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5">
                 <div className="h-3 w-3 rounded-sm border border-status-success/40 bg-status-success/45" />
-                <span>Strong overlap</span>
+                <span>{t('schedule.availabilityGrid.strongOverlap')}</span>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-border-default bg-surface-elevated px-3 py-1.5">
                 <div className="h-3 w-3 rounded-sm border border-status-warning/50 bg-status-warning/25" />

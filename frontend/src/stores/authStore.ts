@@ -202,7 +202,11 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
   fetchUser: () => Promise<void>;
-  updatePreferences: (prefs: { activityDisplayMode?: 'named' | 'anonymous' }) => Promise<void>;
+  updatePreferences: (prefs: {
+    activityDisplayMode?: 'named' | 'anonymous';
+    rememberSubTabs?: boolean;
+    rememberStaticTab?: boolean;
+  }) => Promise<void>;
   clearError: () => void;
 }
 
@@ -218,6 +222,15 @@ async function authRequest<T>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+
+  // Attach the CSRF token on state-changing requests (double-submit cookie
+  // pattern). Without this, mutating calls made through authRequest — e.g.
+  // updatePreferences — are rejected with 403 csrf_validation_failed.
+  const method = (options.method ?? 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+    const csrfToken = getCSRFToken();
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+  }
 
   const response = await fetch(url, {
     ...options,

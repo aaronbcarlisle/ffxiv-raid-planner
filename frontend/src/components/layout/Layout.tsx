@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Header } from './Header';
 import { PageTransition } from './PageTransition';
-import { ReleaseBanner } from './ReleaseBanner';
 import { ViewAsBanner } from '../admin';
 import { KeyboardShortcutsHelp } from '../ui';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
@@ -38,7 +37,6 @@ export function Layout() {
     <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
       <Header />
       <ViewAsBanner />
-      <ReleaseBanner />
       {/* Content container - scrollable area below sticky header */}
       {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears.
           Applied here on <main> (not globally on <html>) because:

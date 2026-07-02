@@ -9,7 +9,10 @@
 
 /* eslint-disable design-system/no-raw-button */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { useTranslation } from 'react-i18next';
 import { Settings, ListOrdered, Users, Globe, Target, Plus, Trash2 } from 'lucide-react';
 import { SlideOutPanel } from '../ui/SlideOutPanel';
 import { useSwipe } from '../../hooks/useSwipe';
@@ -37,28 +40,31 @@ const TAB_ORDER: SettingsTab[] = ['general', 'priority', 'goals', 'recruitment',
 
 interface TabItem {
   id: SettingsTab;
-  label: string;
+  labelKey: string;
   icon: typeof Settings;
 }
 
 const TAB_ITEMS: TabItem[] = [
-  { id: 'general',     label: 'General',        icon: Settings },
-  { id: 'priority',    label: 'Priority',        icon: ListOrdered },
-  { id: 'goals',       label: 'Goals & Farms',   icon: Target },
-  { id: 'recruitment', label: 'Recruitment',     icon: Globe },
-  { id: 'members',     label: 'Members',         icon: Users },
+  { id: 'general',     labelKey: 'settings.general',      icon: Settings },
+  { id: 'priority',    labelKey: 'settings.priority',     icon: ListOrdered },
+  { id: 'goals',       labelKey: 'settings.goalsAndFarms', icon: Target },
+  { id: 'recruitment', labelKey: 'settings.recruitment',  icon: Globe },
+  { id: 'members',     labelKey: 'common.members',        icon: Users },
 ];
 
 // ─── Goals & Farms sub-nav ───────────────────────────────────────────────────
 
-const GOALS_SECTIONS: { id: GoalsSection; label: string }[] = [
-  { id: 'overview',    label: 'Overview' },
-  { id: 'objectives',  label: 'Objectives' },
-  { id: 'farms',       label: 'Farms' },
-  { id: 'suggestions', label: 'Suggestions' },
+const GOALS_SECTIONS: { id: GoalsSection; labelKey: string }[] = [
+  { id: 'overview',    labelKey: 'settings.recruitmentOverview' },
+  { id: 'objectives',  labelKey: 'goalsPage.tabObjectives' },
+  { id: 'farms',       labelKey: 'goalsPage.tabFarms' },
+  { id: 'suggestions', labelKey: 'settings.goalsSuggestions' },
 ];
 
+const GOALS_SECTION_VALUES = GOALS_SECTIONS.map(s => s.id) as readonly GoalsSection[];
+
 function GoalsSubNav({ active, onChange }: { active: GoalsSection; onChange: (s: GoalsSection) => void }) {
+  const { t } = useTranslation();
   return (
     <div
       className="flex gap-1 pb-3 mb-0 border-b border-border-subtle flex-shrink-0 overflow-x-auto scrollbar-none"
@@ -77,7 +83,7 @@ function GoalsSubNav({ active, onChange }: { active: GoalsSection; onChange: (s:
               : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
           }`}
         >
-          {s.label}
+          {t(s.labelKey)}
         </button>
       ))}
     </div>
@@ -91,6 +97,7 @@ function GoalsOverview({
 }: {
   onNavigate: (s: GoalsSection) => void;
 }) {
+  const { t } = useTranslation();
   const { objectives } = useObjectiveGoalStore();
   const { goals } = useCollectionGoalStore();
   const { suggestions } = useContentSuggestionStore();
@@ -100,25 +107,25 @@ function GoalsOverview({
 
   const cards = [
     {
-      label: 'Objectives',
+      label: t('goalsPage.tabObjectives'),
       value: objectives.length,
-      sub: objectives.length > 0 ? `${objectives.length} goal${objectives.length !== 1 ? 's' : ''} set` : 'None set',
+      sub: objectives.length > 0 ? t('settings.goalsObjectivesSet', { count: objectives.length }) : t('settings.goalsNoneSet'),
       section: 'objectives' as GoalsSection,
-      cta: 'Manage objectives →',
+      cta: t('settings.manageObjectives'),
     },
     {
-      label: 'Active Farms',
+      label: t('overview.activeFarms'),
       value: activeFarms,
-      sub: goals.length > 0 ? `${goals.length} total tracked` : 'None tracked',
+      sub: goals.length > 0 ? t('settings.goalsTotalTracked', { count: goals.length }) : t('settings.goalsNoneTracked'),
       section: 'farms' as GoalsSection,
-      cta: 'Manage farms →',
+      cta: t('settings.manageFarms'),
     },
     {
-      label: 'Open Suggestions',
+      label: t('settings.goalsOpenSuggestions'),
       value: openSuggestions,
-      sub: suggestions.length > 0 ? `${suggestions.length} total` : 'None submitted',
+      sub: suggestions.length > 0 ? t('settings.goalsTotalSuggestions', { count: suggestions.length }) : t('settings.goalsNoneSubmitted'),
       section: 'suggestions' as GoalsSection,
-      cta: 'View suggestions →',
+      cta: t('settings.viewSuggestions'),
     },
   ];
 
@@ -156,6 +163,7 @@ function CollectionGoalsSection({
   groupId: string;
   canManage: boolean;
 }) {
+  const { t } = useTranslation();
   const { goals, isLoading, fetchGoals, deleteGoal } = useCollectionGoalStore();
   const createModal = useModal();
 
@@ -164,10 +172,10 @@ function CollectionGoalsSection({
   }, [groupId, fetchGoals]);
 
   const STATUS_LABEL: Record<string, string> = {
-    wanted: 'Wanted',
-    farming: 'Farming',
-    scheduled: 'Scheduled',
-    complete: 'Complete',
+    wanted: t('settings.collectionGoalStatusWanted'),
+    farming: t('settings.collectionGoalStatusFarming'),
+    scheduled: t('settings.collectionGoalStatusScheduled'),
+    complete: t('settings.collectionGoalStatusComplete'),
   };
 
   const STATUS_COLOR: Record<string, string> = {
@@ -182,7 +190,7 @@ function CollectionGoalsSection({
       <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
         {/* Header row */}
         <div className="flex items-center justify-between mb-3">
-          <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">Collection Goals</p>
+          <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t('settings.collectionGoals')}</p>
           {canManage && (
             <Button
               variant="secondary"
@@ -190,7 +198,7 @@ function CollectionGoalsSection({
               leftIcon={<Plus className="w-3 h-3" />}
               onClick={createModal.open}
             >
-              New Farm
+              {t('settings.newFarm')}
             </Button>
           )}
         </div>
@@ -207,8 +215,8 @@ function CollectionGoalsSection({
             data-testid="collection-goals-empty-heading"
           >
             <Target className="w-8 h-8 text-text-muted opacity-30" />
-            <p className="text-sm font-medium text-text-secondary">No active farms</p>
-            <p className="text-xs text-text-muted">Track mount farms, tokens, and other group goals.</p>
+            <p className="text-sm font-medium text-text-secondary">{t('settings.noActiveFarms')}</p>
+            <p className="text-xs text-text-muted">{t('settings.noActiveFarmsDesc')}</p>
             {canManage && (
               <Button
                 variant="secondary"
@@ -217,7 +225,7 @@ function CollectionGoalsSection({
                 onClick={createModal.open}
                 data-testid="create-collection-goal-btn"
               >
-                Start Tracking
+                {t('settings.startTracking')}
               </Button>
             )}
           </div>
@@ -241,7 +249,7 @@ function CollectionGoalsSection({
                 {canManage && (
                   <IconButton
                     icon={<Trash2 className="w-3.5 h-3.5" />}
-                    aria-label="Delete"
+                    aria-label={t('settings.deleteCollectionGoal')}
                     variant="ghost"
                     size="sm"
                     className="opacity-0 group-hover:opacity-100 transition-opacity text-status-error"
@@ -259,7 +267,7 @@ function CollectionGoalsSection({
                 className="w-full justify-center mt-1"
                 data-testid="create-collection-goal-btn"
               >
-                Add Farm
+                {t('settings.addFarm')}
               </Button>
             )}
           </div>
@@ -284,7 +292,11 @@ function GoalsFarmsTabContent({
   groupId: string;
   canManage: boolean;
 }) {
-  const [section, setSection] = useState<GoalsSection>('overview');
+  // Section in the URL (?gsub=overview|objectives|farms|suggestions). Each
+  // settings tab uses its own sub-tab param (gsub/psub/rcsub) so switching main
+  // tabs can't carry a stale section across. Pushes; closing the panel collapses
+  // its sub-history.
+  const [section, setSection] = useUrlTabState('gsub', GOALS_SECTION_VALUES, 'overview');
 
   return (
     <div className="flex flex-col flex-1 min-h-0 pt-1">
@@ -346,12 +358,34 @@ export function SettingsPanel({
   highlightCreateInvite = false,
   onAddToRoster,
 }: SettingsPanelProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
 
-  // Sync activeTab with initialTab when it changes (e.g., from keyboard shortcuts)
+  // Event-driven open-to-tab (header buttons / badge routing) arrives via the
+  // initialTab prop. Reflect it into the URL when the panel opens, or when a
+  // changed initialTab is routed in while already open — via REPLACE so opening
+  // directly to a tab doesn't leave a phantom history entry (user-driven tab
+  // clicks still push, so back steps through them). On open we don't clobber a
+  // ?settings already pinned by a deep-link / back entry.
+  const [, setSearchParams] = useSearchParams();
+  const prevInitialTab = useRef(initialTab);
+  const wasOpenRef = useRef(isOpen);
   useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
+    const justOpened = isOpen && !wasOpenRef.current;
+    const tabChanged = isOpen && initialTab !== prevInitialTab.current;
+    if (justOpened || tabChanged) {
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        // A deep-link / back entry that already pins ?settings wins over the
+        // prop default when the panel is merely (re)opening.
+        if (justOpened && !tabChanged && params.get('settings')) return prev;
+        params.set('settings', initialTab);
+        return params;
+      }, { replace: true });
+    }
+    prevInitialTab.current = initialTab;
+    wasOpenRef.current = isOpen;
+  }, [isOpen, initialTab, setSearchParams]);
 
   const canManage = group.userRole === 'owner' || group.userRole === 'lead';
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);
@@ -386,7 +420,7 @@ export function SettingsPanel({
       title={
         <span className="flex items-center gap-2">
           <Settings className="w-5 h-5" />
-          Static Settings
+          {t('settings.title')}
         </span>
       }
       width="3xl"
@@ -408,7 +442,7 @@ export function SettingsPanel({
                 }`}
               >
                 <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <span className="hidden sm:inline">{t(tab.labelKey)}</span>
                 {tab.id === 'recruitment' && pendingCount > 0 && (
                   <span className="inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-full bg-accent text-accent-contrast">
                     {pendingCount}

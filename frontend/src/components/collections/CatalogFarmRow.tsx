@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, PlusCircle, Coins, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ChevronDown, ChevronRight, PlusCircle, Loader2 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
 import type { BadgeVariant } from '../primitives/Badge';
 import type { CatalogItem, CollectionGoal, ParticipantState } from '../../stores/collectionGoalStore';
 import { useCollectionGoalStore } from '../../stores/collectionGoalStore';
 import { TrackFromCatalogModal } from './TrackFromCatalogModal';
+import {
+  getLocalizedCatalogItemName,
+  getLocalizedDutyName,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 interface CatalogFarmRowProps {
   item: CatalogItem;
@@ -15,26 +22,42 @@ interface CatalogFarmRowProps {
   trackDisabled?: boolean;
 }
 
-const EXPANSION_LABELS: Record<string, string> = {
-  arr: 'A Realm Reborn', hw: 'Heavensward', sb: 'Stormblood',
-  shb: 'Shadowbringers', ew: 'Endwalker', dt: 'Dawntrail',
+const EXPANSION_LABELS: Record<string, { en: string; ja: string }> = {
+  arr: { en: 'A Realm Reborn', ja: '新生エオルゼア' },
+  hw: { en: 'Heavensward', ja: '蒼天のイシュガルド' },
+  sb: { en: 'Stormblood', ja: '紅蓮のリベレーター' },
+  shb: { en: 'Shadowbringers', ja: '漆黒のヴィランズ' },
+  ew: { en: 'Endwalker', ja: '暁月のフィナーレ' },
+  dt: { en: 'Dawntrail', ja: '黄金のレガシー' },
 };
 
-const SOURCE_TYPE_CONFIG: Record<string, { label: string; variant: BadgeVariant }> = {
-  extreme:  { label: 'Extreme',  variant: 'warning' },
-  savage:   { label: 'Savage',   variant: 'error'   },
-  ultimate: { label: 'Ultimate', variant: 'info'    },
+function getSourceTypeConfig(isJapanese: boolean): Record<string, { label: string; variant: BadgeVariant }> {
+  return {
+    extreme:  { label: isJapanese ? '極' : 'Extreme', variant: 'warning' },
+    savage:   { label: isJapanese ? '零式' : 'Savage', variant: 'error' },
+    ultimate: { label: isJapanese ? '絶' : 'Ultimate', variant: 'info' },
+  };
+}
+
+function getStateConfig(isJapanese: boolean): Record<ParticipantState, { label: string; dotClass: string; textClass: string }> {
+  return {
+    need: { label: isJapanese ? '必要' : 'Need', dotClass: 'bg-status-error', textClass: 'text-status-error' },
+    want: { label: isJapanese ? '希望' : 'Want', dotClass: 'bg-status-warning', textClass: 'text-status-warning' },
+    have: { label: isJapanese ? '所持' : 'Have', dotClass: 'bg-status-success', textClass: 'text-status-success' },
+    pass: { label: isJapanese ? 'パス' : 'Pass', dotClass: 'bg-text-muted', textClass: 'text-text-muted' },
+  };
 };
 
-const STATE_CONFIG: Record<ParticipantState, { label: string; dotClass: string; textClass: string }> = {
-  need: { label: 'Need', dotClass: 'bg-status-error',   textClass: 'text-status-error'   },
-  want: { label: 'Want', dotClass: 'bg-status-warning', textClass: 'text-status-warning' },
-  have: { label: 'Have', dotClass: 'bg-status-success', textClass: 'text-status-success' },
-  pass: { label: 'Pass', dotClass: 'bg-text-muted',     textClass: 'text-text-muted'     },
-};
-
-function StatePill({ state, tokenCount }: { state: ParticipantState; tokenCount: number | null }) {
-  const cfg = STATE_CONFIG[state];
+function StatePill({
+  state,
+  tokenCount,
+  stateConfig,
+}: {
+  state: ParticipantState;
+  tokenCount: number | null;
+  stateConfig: Record<ParticipantState, { label: string; dotClass: string; textClass: string }>;
+}) {
+  const cfg = stateConfig[state];
   return (
     <span className={`flex items-center gap-1.5 text-xs font-medium ${cfg.textClass}`}>
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dotClass}`} />
@@ -47,8 +70,15 @@ function StatePill({ state, tokenCount }: { state: ParticipantState; tokenCount:
 }
 
 export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trackDisabled = false }: CatalogFarmRowProps) {
+  const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [trackOpen, setTrackOpen] = useState(false);
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
+  const sourceTypeConfig = getSourceTypeConfig(isJapanese);
+  const stateConfig = getStateConfig(isJapanese);
+  const itemName = getLocalizedCatalogItemName(item, uiLocale);
+  const dutyName = item.sourceDutyName ? getLocalizedDutyName(item.sourceDutyKey, item.sourceDutyName, uiLocale) : null;
 
   const { participants, participantsLoading, fetchParticipants } = useCollectionGoalStore();
   const goalId = existingGoal?.id;
@@ -68,7 +98,7 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
       ? Math.min(100, Math.round((myTokenCount / item.tokenCost) * 100))
       : null;
 
-  const sourceConfig = item.sourceType ? SOURCE_TYPE_CONFIG[item.sourceType] : null;
+  const sourceConfig = item.sourceType ? sourceTypeConfig[item.sourceType] : null;
   const isRareDrop = !item.tokenCost && item.sourceType !== 'ultimate';
   const summary = existingGoal?.participantSummary;
 
@@ -96,28 +126,28 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
           {/* Item name + source type badge */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold text-text-primary leading-tight">{item.name}</span>
+              <span className="font-semibold text-text-primary leading-tight">{itemName}</span>
               {sourceConfig && (
                 <Badge variant={sourceConfig.variant} size="sm">{sourceConfig.label}</Badge>
               )}
             </div>
-            {item.sourceDutyName && (
-              <p className="text-xs text-text-muted mt-0.5 truncate">{item.sourceDutyName}</p>
+            {dutyName && (
+              <p className="text-xs text-text-muted mt-0.5 truncate">{dutyName}</p>
             )}
           </div>
 
           {/* Token cost OR rare-drop pill */}
           {item.tokenCost != null && item.tokenName ? (
             <div className="hidden sm:flex items-center gap-1.5 flex-shrink-0">
-              <Coins size={12} className="text-amber-400" />
+              <XivIcon name="gil" size={12} />
               <span className="text-xs text-text-secondary whitespace-nowrap">
                 {item.tokenCost}× {item.tokenName}
               </span>
-              {canBuy && <Badge variant="success" size="sm">Can buy</Badge>}
+              {canBuy && <Badge variant="success" size="sm">{isJapanese ? '交換可' : 'Can buy'}</Badge>}
             </div>
           ) : isRareDrop ? (
             <Badge variant="default" size="sm" className="hidden sm:inline-flex flex-shrink-0">
-              Rare drop
+              {isJapanese ? 'レアドロップ' : 'Rare drop'}
             </Badge>
           ) : null}
 
@@ -147,9 +177,9 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
 
           {/* Track / Tracking */}
           {isTracked ? (
-            <Badge variant="success" size="sm" className="flex-shrink-0">Tracking</Badge>
+            <Badge variant="success" size="sm" className="flex-shrink-0">{isJapanese ? '追跡中' : 'Tracking'}</Badge>
           ) : trackDisabled ? (
-            <span className="text-xs text-text-muted opacity-40 flex-shrink-0">Unavailable</span>
+            <span className="text-xs text-text-muted opacity-40 flex-shrink-0">{isJapanese ? '利用不可' : 'Unavailable'}</span>
           ) : (
             <Button
               size="sm"
@@ -157,7 +187,7 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
               onClick={e => { e.stopPropagation(); setTrackOpen(true); }}
               className="flex items-center gap-1 flex-shrink-0 text-accent hover:bg-accent/10"
             >
-              <PlusCircle size={13} /> Track
+              <PlusCircle size={13} /> {isJapanese ? '追跡' : 'Track'}
             </Button>
           )}
         </button>
@@ -170,11 +200,11 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
               <div className="px-4 pt-3 pb-1">
                 <div className="flex justify-between text-xs text-text-secondary mb-1.5">
                   <span className="flex items-center gap-1.5">
-                    <Coins size={11} className="text-amber-400" />
+                    <XivIcon name="gil" size={11} />
                     {myTokenCount} / {item.tokenCost} {item.tokenName}
                   </span>
                   <span className={canBuy ? 'text-status-success font-semibold' : 'text-text-muted'}>
-                    {canBuy ? 'Ready to exchange' : `${tokenProgressPercent}%`}
+                    {canBuy ? (isJapanese ? '交換可能' : 'Ready to exchange') : `${tokenProgressPercent}%`}
                   </span>
                 </div>
                 <div className="h-1.5 bg-surface-base rounded-full overflow-hidden">
@@ -192,12 +222,12 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
                 {isLoadingParticipants ? (
                   <div className="flex items-center gap-2 text-xs text-text-muted">
                     <Loader2 size={12} className="animate-spin" />
-                    Loading static members…
+                    {isJapanese ? '固定メンバーを読み込み中…' : 'Loading static members…'}
                   </div>
                 ) : goalParticipants && goalParticipants.length > 0 ? (
                   <div>
                     <p className="text-[10px] font-semibold text-text-muted uppercase tracking-widest mb-2">
-                      Static members
+                      {isJapanese ? '固定メンバー' : 'Static members'}
                     </p>
                     <div className="flex flex-col gap-1.5">
                       {goalParticipants.map(p => (
@@ -211,9 +241,9 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
                                 : 'text-text-primary text-sm font-medium'
                             }
                           >
-                            {p.displayName ?? 'Unknown'}
+                            {p.displayName ?? t('common.unknown')}
                           </span>
-                          <StatePill state={p.state} tokenCount={p.tokenCount} />
+                          <StatePill state={p.state} tokenCount={p.tokenCount} stateConfig={stateConfig} />
                         </div>
                       ))}
                     </div>
@@ -225,19 +255,19 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
                       {existingGoal.participantSummary.need > 0 && (
                         <span className="flex items-center gap-1.5 text-status-error font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-status-error" />
-                          {existingGoal.participantSummary.need} need
+                          {existingGoal.participantSummary.need} {isJapanese ? '必要' : 'need'}
                         </span>
                       )}
                       {existingGoal.participantSummary.want > 0 && (
                         <span className="flex items-center gap-1.5 text-status-warning font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-status-warning" />
-                          {existingGoal.participantSummary.want} want
+                          {existingGoal.participantSummary.want} {isJapanese ? '希望' : 'want'}
                         </span>
                       )}
                       {existingGoal.participantSummary.have > 0 && (
                         <span className="flex items-center gap-1.5 text-status-success font-medium">
                           <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                          {existingGoal.participantSummary.have} have
+                          {existingGoal.participantSummary.have} {isJapanese ? '所持' : 'have'}
                         </span>
                       )}
                     </div>
@@ -263,13 +293,13 @@ export function CatalogFarmRow({ item, groupId, existingGoal, myTokenCount, trac
               {item.expansion && (
                 <>
                   <span className="opacity-40">·</span>
-                  <span>{EXPANSION_LABELS[item.expansion] ?? item.expansion}</span>
+                  <span>{(EXPANSION_LABELS[item.expansion]?.[isJapanese ? 'ja' : 'en']) ?? item.expansion}</span>
                 </>
               )}
               {item.rarityOwnedPercent != null && (
                 <>
                   <span className="opacity-40">·</span>
-                  <span>{item.rarityOwnedPercent.toFixed(1)}% of players own this</span>
+                  <span>{isJapanese ? `プレイヤー所持率 ${item.rarityOwnedPercent.toFixed(1)}%` : `${item.rarityOwnedPercent.toFixed(1)}% of players own this`}</span>
                 </>
               )}
             </div>

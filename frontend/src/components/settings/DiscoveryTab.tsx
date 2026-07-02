@@ -9,12 +9,14 @@
  */
 
 import { useState, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  Globe, AlertTriangle, Sparkles, Info,
-  CheckCircle2, XCircle, Clock, MapPin, Swords, Users, Eye,
+  Globe, AlertTriangle, Info,
+  CheckCircle2, XCircle, Clock, MapPin, Users, Eye,
   MessageCircle, ChevronDown, ChevronRight, Plus, X, Check,
   Mic, Headphones, MessageSquare,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Label, Select, Toggle, TextArea, Input } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
@@ -49,98 +51,83 @@ type RecruitmentStatus = 'open' | 'selective' | 'paused' | 'closed';
 
 const STATUS_CONFIGS: {
   value: RecruitmentStatus;
-  label: string;
-  desc: string;
+  labelKey: string;
+  descKey: string;
   color: string;
   border: string;
   icon: typeof CheckCircle2;
 }[] = [
   {
     value: 'open',
-    label: 'Open',
-    desc: 'Actively recruiting — anyone can apply',
+    labelKey: 'listingForm.statusOpen',
+    descKey: 'listingForm.statusOpenDesc',
     color: 'text-status-success',
     border: 'border-status-success/40 bg-status-success/5',
     icon: CheckCircle2,
   },
   {
     value: 'selective',
-    label: 'Selective',
-    desc: 'Reviewing strong fits only',
+    labelKey: 'listingForm.statusSelective',
+    descKey: 'listingForm.statusSelectiveDesc',
     color: 'text-status-warning',
     border: 'border-status-warning/40 bg-status-warning/5',
     icon: AlertTriangle,
   },
   {
     value: 'paused',
-    label: 'Paused',
-    desc: 'Not currently accepting new applications',
+    labelKey: 'listingForm.statusPaused',
+    descKey: 'listingForm.statusPausedDesc',
     color: 'text-text-secondary',
     border: 'border-border-default bg-surface-elevated',
     icon: Clock,
   },
   {
     value: 'closed',
-    label: 'Closed',
-    desc: 'Hidden from Static Finder search results',
+    labelKey: 'listingForm.statusClosed',
+    descKey: 'listingForm.statusClosedDesc',
     color: 'text-status-error',
     border: 'border-status-error/40 bg-status-error/5',
     icon: XCircle,
   },
 ];
 
-const PROMPT_CHIPS = [
-  { label: 'Midcore savage',      text: 'Midcore savage static. Consistent prog with no drama.' },
-  { label: 'Blind prog friendly', text: 'Blind prog friendly — we figure out mechanics together.' },
-  { label: 'Reclear focused',     text: 'Reclear-focused static. BiS farming and smooth clears.' },
-  { label: 'Ultimate prog',       text: 'Currently progging Ultimate content.' },
-  { label: 'Alt job friendly',    text: 'Alt job friendly — bring what works for the team.' },
+const ROLE_CONFIGS: { role: Role; labelKey: string; colorClass: string }[] = [
+  { role: 'tank',   labelKey: 'common.roleTank',           colorClass: 'text-role-tank' },
+  { role: 'healer', labelKey: 'common.roleHealer',         colorClass: 'text-role-healer' },
+  { role: 'melee',  labelKey: 'common.roleMelee',          colorClass: 'text-role-melee' },
+  { role: 'ranged', labelKey: 'common.roleRanged',         colorClass: 'text-role-ranged' },
+  { role: 'caster', labelKey: 'common.roleCaster',         colorClass: 'text-role-caster' },
 ];
 
-const INTENSITY_OPTIONS = [
-  { value: '',          label: 'Not specified' },
-  { value: 'casual',    label: 'Casual' },
-  { value: 'midcore',   label: 'Midcore' },
-  { value: 'hardcore',  label: 'Hardcore' },
-];
-
-const ROLE_CONFIGS: { role: Role; label: string; colorClass: string }[] = [
-  { role: 'tank',   label: 'Tank',           colorClass: 'text-role-tank' },
-  { role: 'healer', label: 'Healer',         colorClass: 'text-role-healer' },
-  { role: 'melee',  label: 'Melee',          colorClass: 'text-role-melee' },
-  { role: 'ranged', label: 'Physical Ranged', colorClass: 'text-role-ranged' },
-  { role: 'caster', label: 'Caster',         colorClass: 'text-role-caster' },
-];
-
-const VOICE_OPTIONS: { value: VoiceRequirement; label: string; icon: typeof Mic }[] = [
-  { value: 'required',     label: 'Voice required',     icon: Mic },
-  { value: 'preferred',    label: 'Voice preferred',    icon: Mic },
-  { value: 'listening_ok', label: 'Listening only OK',  icon: Headphones },
-  { value: 'text_only',    label: 'Text only OK',       icon: MessageSquare },
+const VOICE_OPTION_CONFIGS: { value: VoiceRequirement; labelKey: string; icon: typeof Mic }[] = [
+  { value: 'required',     labelKey: 'listingForm.voiceRequired',     icon: Mic },
+  { value: 'preferred',    labelKey: 'listingForm.voicePreferred',    icon: Mic },
+  { value: 'listening_ok', labelKey: 'listingForm.voiceListeningOk',  icon: Headphones },
+  { value: 'text_only',    labelKey: 'listingForm.voiceTextOnly',     icon: MessageSquare },
 ];
 
 const CONTACT_METHOD_CONFIGS: {
   value: ContactMethod;
-  label: string;
-  placeholder: string;
+  labelKey: string;
+  placeholderKey: string;
 }[] = [
-  { value: 'discord',        label: 'Discord username',        placeholder: 'e.g. @username or username#1234' },
-  { value: 'discord_server', label: 'Discord server invite',   placeholder: 'e.g. https://discord.gg/abcdef' },
-  { value: 'url',            label: 'Link (Lodestone / site)', placeholder: 'e.g. https://na.finalfantasyxiv.com/...' },
-  { value: 'text',           label: 'Other / instructions',    placeholder: 'e.g. DM me on Twitter @handle' },
+  { value: 'discord',        labelKey: 'listingForm.contactDiscord',        placeholderKey: 'listingForm.contactDiscordPlaceholder' },
+  { value: 'discord_server', labelKey: 'listingForm.contactDiscordServer',   placeholderKey: 'listingForm.contactDiscordServerPlaceholder' },
+  { value: 'url',            labelKey: 'listingForm.contactUrl',            placeholderKey: 'listingForm.contactUrlPlaceholder' },
+  { value: 'text',           labelKey: 'listingForm.contactText',           placeholderKey: 'listingForm.contactTextPlaceholder' },
 ];
 
 const EMPTY_DISCOVERY: DiscoverySettings = { enabled: false, recruitmentStatus: 'closed' };
 
 const SECTION_IDS = ['status', 'about', 'schedule', 'recruiting', 'comms', 'contact'] as const;
 type SectionId = typeof SECTION_IDS[number];
-const SECTION_LABELS: Record<SectionId, string> = {
-  status:     'Status',
-  about:      'About',
-  schedule:   'Schedule',
-  recruiting: 'Recruiting',
-  comms:      'Comms',
-  contact:    'Contact',
+const SECTION_LABEL_KEYS: Record<SectionId, string> = {
+  status:     'listingForm.sectionStatus',
+  about:      'listingForm.sectionAbout',
+  schedule:   'listingForm.sectionSchedule',
+  recruiting: 'listingForm.sectionRecruiting',
+  comms:      'listingForm.sectionComms',
+  contact:    'listingForm.sectionContact',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -184,7 +171,13 @@ function initRecruitingRoles(existing: DiscoverySettings): RecruitingRoleEntry[]
   return entries;
 }
 
-function getLangLabel(code: string): string {
+function getLangLabel(code: string, t?: (key: string) => string): string {
+  if (t) {
+    const translated = t(`language.${code}`);
+    if (translated !== `language.${code}`) {
+      return translated;
+    }
+  }
   return LANGUAGES.find(l => l.code === code)?.label ?? code;
 }
 
@@ -196,6 +189,50 @@ function getStatusColors(status: RecruitmentStatus) {
     closed:    'bg-status-error/20 text-status-error border-status-error/30',
   };
   return map[status] ?? map.closed;
+}
+
+function getUiLocale(language?: string): string {
+  return language === 'ja' ? 'ja-JP' : 'en-US';
+}
+
+const RAID_DAY_INDEX: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
+
+function getRaidDayLabel(day: string, locale: string, width: 'short' | 'long' = 'short'): string {
+  const weekdayIndex = RAID_DAY_INDEX[day];
+  if (weekdayIndex === undefined) return day;
+  const value = new Date(Date.UTC(2024, 0, 7 + weekdayIndex));
+  return new Intl.DateTimeFormat(locale, { weekday: width, timeZone: 'UTC' }).format(value);
+}
+
+function getRecruitmentStatusLabel(status: RecruitmentStatus, t: (key: string) => string): string {
+  const config = STATUS_CONFIGS.find((entry) => entry.value === status);
+  return config ? t(config.labelKey) : status;
+}
+
+function getRoleLabel(role: string, t: (key: string) => string): string {
+  const config = ROLE_CONFIGS.find((entry) => entry.role === role);
+  return config ? t(config.labelKey) : role;
+}
+
+function getIntensityLabel(intensity: string, t: (key: string) => string): string {
+  switch (intensity) {
+    case 'casual':
+      return t('listingForm.intensityCasual');
+    case 'midcore':
+      return t('listingForm.intensityMidcore');
+    case 'hardcore':
+      return t('listingForm.intensityHardcore');
+    default:
+      return intensity;
+  }
 }
 
 // ─── Shared small components ──────────────────────────────────────────────────
@@ -260,6 +297,7 @@ function StatusCards({
   onChange: (v: RecruitmentStatus) => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-2 gap-2">
       {STATUS_CONFIGS.map(cfg => {
@@ -280,11 +318,11 @@ function StatusCards({
             <div className="flex items-center gap-1.5 mb-0.5">
               <Icon className={`w-3.5 h-3.5 flex-shrink-0 ${active ? cfg.color : 'text-text-muted'}`} />
               <span className={`text-xs font-semibold ${active ? cfg.color : 'text-text-primary'}`}>
-                {cfg.label}
+                {t(cfg.labelKey)}
               </span>
               {active && <Check className="w-3 h-3 ml-auto text-accent" />}
             </div>
-            <p className="text-[10px] text-text-muted leading-snug">{cfg.desc}</p>
+            <p className="text-[10px] text-text-muted leading-snug">{t(cfg.descKey)}</p>
           </button>
         );
       })}
@@ -309,12 +347,14 @@ function RoleCard({
   onJobToggle: (job: string) => void;
   canEdit: boolean;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const jobs = getJobsByRole(config.role);
   const selected = entry !== undefined;
   const selectedJobs = entry?.jobs ?? [];
   const allSelected = selectedJobs.length === 0; // empty jobs = whole role
   const jobCount = selectedJobs.length;
+  const roleLabel = t(config.labelKey);
 
   return (
     <div
@@ -339,7 +379,7 @@ function RoleCard({
           {selected && <Check className="w-2.5 h-2.5 text-accent-contrast" />}
         </button>
 
-        <span className={`text-sm font-semibold flex-1 ${config.colorClass}`}>{config.label}</span>
+        <span className={`text-sm font-semibold flex-1 ${config.colorClass}`}>{roleLabel}</span>
 
         {selected && (
           <>
@@ -355,11 +395,11 @@ function RoleCard({
                   : 'bg-surface-base text-text-muted border-border-default'
               } ${!canEdit ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >
-              {entry?.priority === 'needed' ? 'Needed' : 'Nice to have'}
+              {entry?.priority === 'needed' ? t('listingForm.priorityNeeded') : t('listingForm.priorityNiceToHave')}
             </button>
 
             <span className="text-[10px] text-text-muted">
-              {allSelected ? `All ${jobs.length}` : `${jobCount}/${jobs.length}`}
+              {allSelected ? t('listingForm.jobCountAll', { count: jobs.length }) : t('listingForm.jobCountSome', { selected: jobCount, total: jobs.length })}
             </span>
           </>
         )}
@@ -379,7 +419,7 @@ function RoleCard({
       {expanded && (
         <div className="px-3 pb-3 border-t border-border-subtle pt-2 space-y-2">
           <p className="text-[10px] text-text-muted">
-            Select specific jobs, or leave blank to accept any {config.label}.
+            {t('listingForm.jobSelectHint', { role: roleLabel })}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {jobs.map(j => (
@@ -402,7 +442,7 @@ function RoleCard({
                   if (!selectedJobs.includes(j.abbreviation)) onJobToggle(j.abbreviation);
                 })}
               >
-                Select all
+                {t('listingForm.jobSelectAll')}
               </button>
               {selectedJobs.length > 0 && (
                 /* design-system-ignore */
@@ -411,7 +451,7 @@ function RoleCard({
                   className="text-[10px] text-text-muted hover:underline"
                   onClick={() => selectedJobs.forEach(j => onJobToggle(j))}
                 >
-                  Clear
+                  {t('listingForm.jobClear')}
                 </button>
               )}
             </div>
@@ -433,6 +473,7 @@ function LanguageSelector({
   onChange: (langs: string[]) => void;
   canEdit: boolean;
 }) {
+  const { t } = useTranslation();
   const [customInput, setCustomInput] = useState('');
 
   const toggle = (code: string) => {
@@ -455,7 +496,7 @@ function LanguageSelector({
         {LANGUAGES.map(l => (
           <Chip
             key={l.code}
-            label={l.label}
+            label={getLangLabel(l.code, t)}
             active={selected.includes(l.code)}
             onClick={() => toggle(l.code)}
             disabled={!canEdit}
@@ -496,7 +537,7 @@ function LanguageSelector({
             value={customInput}
             onChange={e => setCustomInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustom(); } }}
-            placeholder="Add language…"
+            placeholder={t('listingForm.languageAddPlaceholder')}
             maxLength={40}
             className="flex-1 min-w-0 px-2.5 py-1 rounded-lg border border-border-default bg-surface-elevated text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent/50 transition-colors"
           />
@@ -524,18 +565,19 @@ interface ChecklistItem {
 }
 
 function CompletionChecklist({ items, enabled }: { items: ChecklistItem[]; enabled: boolean }) {
+  const { t } = useTranslation();
   const done   = items.filter(i => i.done).length;
   const total  = items.length;
   const pct    = Math.round((done / total) * 100);
   const qualityLabel =
-    pct === 100 ? 'Complete' : pct >= 70 ? 'Good' : pct >= 40 ? 'Fair' : 'Incomplete';
+    pct === 100 ? t('listingForm.qualityComplete') : pct >= 70 ? t('listingForm.qualityGood') : pct >= 40 ? t('listingForm.qualityFair') : t('listingForm.qualityIncomplete');
   const qualityColor =
     pct === 100 ? 'text-status-success' : pct >= 70 ? 'text-accent' : pct >= 40 ? 'text-status-warning' : 'text-text-muted';
 
   return (
     <div className="rounded-xl border border-border-default bg-surface-elevated p-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-text-primary">Listing Quality</p>
+        <p className="text-xs font-semibold text-text-primary">{t('listingForm.listingQuality')}</p>
         <span className={`text-xs font-semibold ${qualityColor}`}>{qualityLabel}</span>
       </div>
 
@@ -564,7 +606,7 @@ function CompletionChecklist({ items, enabled }: { items: ChecklistItem[]; enabl
 
       {!enabled && (
         <p className="text-[10px] text-status-warning border-t border-border-subtle pt-2">
-          Enable listing to appear in Static Finder.
+          {t('listingForm.enableListingHint')}
         </p>
       )}
     </div>
@@ -597,40 +639,46 @@ function ListingPreview({
   contactMethod: string;
   contactValue: string;
 }) {
+  const { t, i18n } = useTranslation();
+  const uiLocale = getUiLocale(i18n.resolvedLanguage);
   const statusClass = getStatusColors(recruitmentStatus);
-  const tzDisplay = TIMEZONES.find(t => t.value === timezone)?.label ?? timezone;
-  const shortDay = (d: string) => d.slice(0, 3);
+  const tzDisplay = TIMEZONES.find(tz => tz.value === timezone)?.label ?? timezone;
+  const shortDay = (d: string) => getRaidDayLabel(d, uiLocale, 'short');
+  const statusLabel = getRecruitmentStatusLabel(recruitmentStatus, t);
+  const intensityLabel = intensity ? getIntensityLabel(intensity, t) : '';
 
   // Flatten roles/jobs for display
   const neededRoleLabels = recruitingRoles
     .filter(r => r.priority === 'needed')
     .map(r => r.jobs.length === 0
-      ? ROLE_CONFIGS.find(c => c.role === r.role)?.label ?? r.role
+      ? getRoleLabel(r.role, t)
       : r.jobs.join('/')
     );
   const niceRoleLabels = recruitingRoles
     .filter(r => r.priority === 'nice_to_have')
     .map(r => r.jobs.length === 0
-      ? (ROLE_CONFIGS.find(c => c.role === r.role)?.label ?? r.role) + '?'
+      ? `${getRoleLabel(r.role, t)}?`
       : r.jobs.join('/') + '?'
     );
   const allRoleLabels = [...neededRoleLabels, ...niceRoleLabels];
 
-  const voiceLabel = VOICE_OPTIONS.find(v => v.value === communicationStyle.voiceRequirement)?.label;
+  const voiceLabel = VOICE_OPTION_CONFIGS.find(v => v.value === communicationStyle.voiceRequirement)?.labelKey
+    ? t(VOICE_OPTION_CONFIGS.find(v => v.value === communicationStyle.voiceRequirement)!.labelKey)
+    : undefined;
 
   return (
     <div className="rounded-xl border border-border-default bg-surface-base overflow-hidden">
       <div className="px-3 py-2 bg-surface-elevated border-b border-border-default flex items-center gap-1.5 text-text-muted text-xs">
-        <Eye className="w-3.5 h-3.5" />
-        <span className="font-medium">Live Preview</span>
-        <span className="text-[10px] ml-auto opacity-60">What players see</span>
+        <XivIcon name="handshake" size={14} />
+        <span className="font-medium">{t('listingForm.previewTitle')}</span>
+        <span className="text-[10px] ml-auto opacity-60">{t('listingForm.previewSubtitle')}</span>
       </div>
       <div className="p-3 space-y-2">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
-          <span className="font-display font-semibold text-sm text-text-primary break-words min-w-0">{name || 'Static name'}</span>
+          <span className="font-display font-semibold text-sm text-text-primary break-words min-w-0">{name || t('listingForm.previewStaticNamePlaceholder')}</span>
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border flex-shrink-0 capitalize ${statusClass}`}>
-            {recruitmentStatus}
+            {statusLabel}
           </span>
         </div>
 
@@ -648,9 +696,9 @@ function ListingPreview({
               {tzDisplay}
             </span>
           )}
-          {intensity && (
+          {intensityLabel && (
             <span className="px-1.5 py-0.5 bg-accent/10 text-accent border border-accent/20 rounded text-[10px] capitalize">
-              {intensity}
+              {intensityLabel}
             </span>
           )}
         </div>
@@ -658,7 +706,7 @@ function ListingPreview({
         {/* Schedule */}
         {scheduleDays.length > 0 && (
           <div className="flex items-center gap-1 text-xs text-text-secondary">
-            <Swords className="w-3 h-3 text-text-muted" />
+            <XivIcon name="sword" size={12} />
             <span>
               {scheduleDays.map(shortDay).join(' / ')}
               {scheduleStartTime && ` · ${scheduleStartTime}`}
@@ -690,7 +738,7 @@ function ListingPreview({
           <div className="flex flex-wrap gap-1">
             {selectedLangs.map(l => (
               <span key={l} className="px-1.5 py-0.5 bg-surface-elevated text-text-secondary border border-border-default rounded text-[10px]">
-                {getLangLabel(l)}
+                {getLangLabel(l, t)}
               </span>
             ))}
             {voiceLabel && (
@@ -706,7 +754,7 @@ function ListingPreview({
         {description ? (
           <p className="text-text-secondary text-xs line-clamp-2 break-words">{description}</p>
         ) : (
-          <p className="text-text-muted text-xs italic">No description yet</p>
+          <p className="text-text-muted text-xs italic">{t('listingForm.previewNoDescription')}</p>
         )}
 
         {/* Contact */}
@@ -721,7 +769,7 @@ function ListingPreview({
         {memberCount > 0 && (
           <div className="flex items-center gap-1 text-text-muted text-[10px] pt-1 border-t border-border-default">
             <Users className="w-3 h-3" />
-            <span>{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
+            <span>{t('listingForm.memberCount', { count: memberCount })}</span>
           </div>
         )}
       </div>
@@ -737,6 +785,8 @@ interface DiscoveryTabProps {
 }
 
 export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
+  const { t, i18n } = useTranslation();
+  const uiLocale = getUiLocale(i18n.resolvedLanguage);
   const { updateGroup } = useStaticGroupStore();
   const existing = getDiscovery(group);
 
@@ -780,20 +830,35 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
 
   // ── Options ──────────────────────────────────────────────────────────────────
   const serverOptions = dataCenter
-    ? [{ value: '', label: 'Any server' }, ...getWorldsForDC(dataCenter).map(w => ({ value: w, label: w }))]
-    : [{ value: '', label: 'Select a data center first' }];
+    ? [{ value: '', label: t('listingForm.serverAny') }, ...getWorldsForDC(dataCenter).map(w => ({ value: w, label: w }))]
+    : [{ value: '', label: t('listingForm.serverSelectDCFirst') }];
 
   const tzOptions = [
-    { value: '', label: 'Not specified' },
+    { value: '', label: t('listingForm.notSpecified') },
     ...TIMEZONES.map(tz => ({ value: tz.value, label: tz.label })),
   ];
   const timeOptions = [
-    { value: '', label: 'Not set' },
-    ...TIME_SLOTS.map(t => ({ value: t, label: t })),
+    { value: '', label: t('listingForm.timeNotSet') },
+    ...TIME_SLOTS.map(ts => ({ value: ts, label: ts })),
   ];
   const dcOptions = [
-    { value: '', label: 'Not specified' },
+    { value: '', label: t('listingForm.notSpecified') },
     ...DC_NAMES.map(dc => ({ value: dc, label: dc })),
+  ];
+
+  const intensityOptions = [
+    { value: '',          label: t('listingForm.notSpecified') },
+    { value: 'casual',    label: t('listingForm.intensityCasual') },
+    { value: 'midcore',   label: t('listingForm.intensityMidcore') },
+    { value: 'hardcore',  label: t('listingForm.intensityHardcore') },
+  ];
+
+  const promptChips = [
+    { label: t('listingForm.promptMidcoreSavage'),      text: t('listingForm.promptMidcoreSavageText') },
+    { label: t('listingForm.promptBlindProg'),           text: t('listingForm.promptBlindProgText') },
+    { label: t('listingForm.promptReclearFocused'),      text: t('listingForm.promptReclearFocusedText') },
+    { label: t('listingForm.promptUltimateProg'),        text: t('listingForm.promptUltimateProgText') },
+    { label: t('listingForm.promptAltJobFriendly'),      text: t('listingForm.promptAltJobFriendlyText') },
   ];
 
   // ── Recruiting role helpers ──────────────────────────────────────────────────
@@ -840,10 +905,10 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
         setRecruitingRoles((suggestions.neededRoles as string[]).map(role => ({ role, priority: 'needed', jobs: [] })));
         filled++;
       }
-      if (filled > 0) toast.success(`Filled ${filled} field${filled > 1 ? 's' : ''} from your static`);
-      else            toast.info('All fields already have values, or no suggestions available');
+      if (filled > 0) toast.success(t('listingForm.suggestFilledFields', { count: filled }));
+      else            toast.info(t('listingForm.suggestNoFields'));
     } catch {
-      toast.error('Could not load suggestions');
+      toast.error(t('listingForm.suggestError'));
     } finally {
       setIsSuggesting(false);
     }
@@ -881,11 +946,11 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
 
     try {
       await updateGroup(group.id, { settings: { ...group.settings, discovery } });
-      if (enabled && group.isPublic)  toast.success('Saved! Your listing is live in Static Finder.');
-      else if (enabled)               toast.success('Saved! It will go live once Public Static is enabled.');
-      else                            toast.success('Listing settings saved.');
+      if (enabled && group.isPublic)  toast.success(t('listingForm.saveSuccessLive'));
+      else if (enabled)               toast.success(t('listingForm.saveSuccessPendingPublic'));
+      else                            toast.success(t('listingForm.saveSuccessDisabled'));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save';
+      const msg = err instanceof Error ? err.message : t('listingForm.saveError');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -900,14 +965,14 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
 
   // ── Checklist ────────────────────────────────────────────────────────────────
   const checklist: ChecklistItem[] = [
-    { key: 'public',    label: 'Static is public',        done: group.isPublic },
-    { key: 'enabled',   label: 'Listed in Static Finder', done: enabled },
-    { key: 'status',    label: 'Recruitment status set',  done: recruitmentStatus !== 'closed' },
-    { key: 'desc',      label: 'Description added',       done: description.length > 0 },
-    { key: 'roles',     label: 'Roles / jobs recruiting', done: recruitingRoles.length > 0 },
-    { key: 'schedule',  label: 'Schedule set',            done: scheduleDays.length > 0 && !!scheduleStartTime },
-    { key: 'contact',   label: 'Contact method',          done: !!(contactMethod && contactValue) },
-    { key: 'comms',     label: 'Languages / comms',       done: selectedLangs.length > 0 || !!communicationStyle.voiceRequirement },
+    { key: 'public',    label: t('listingForm.checklistPublic'),        done: group.isPublic },
+    { key: 'enabled',   label: t('listingForm.checklistEnabled'),       done: enabled },
+    { key: 'status',    label: t('listingForm.checklistStatus'),        done: recruitmentStatus !== 'closed' },
+    { key: 'desc',      label: t('listingForm.checklistDescription'),   done: description.length > 0 },
+    { key: 'roles',     label: t('listingForm.checklistRoles'),         done: recruitingRoles.length > 0 },
+    { key: 'schedule',  label: t('listingForm.checklistSchedule'),      done: scheduleDays.length > 0 && !!scheduleStartTime },
+    { key: 'contact',   label: t('listingForm.checklistContact'),       done: !!(contactMethod && contactValue) },
+    { key: 'comms',     label: t('listingForm.checklistComms'),         done: selectedLangs.length > 0 || !!communicationStyle.voiceRequirement },
   ];
 
   // ── Preview props ────────────────────────────────────────────────────────────
@@ -931,9 +996,9 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
   };
 
   const scheduleLabel = [
-    scheduleDays.length > 0 ? scheduleDays.map(d => d.slice(0, 3)).join(' / ') : null,
+    scheduleDays.length > 0 ? scheduleDays.map(d => getRaidDayLabel(d, uiLocale, 'short')).join(' / ') : null,
     scheduleStartTime && scheduleEndTime ? `${scheduleStartTime}–${scheduleEndTime}` : scheduleStartTime || null,
-    timezone ? (TIMEZONES.find(t => t.value === timezone)?.label ?? timezone) : null,
+    timezone ? (TIMEZONES.find(tz => tz.value === timezone)?.label ?? timezone) : null,
   ].filter(Boolean).join(' · ');
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -957,7 +1022,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
                   onClick={() => scrollTo(id)}
                   className="flex-shrink-0 px-3 py-1 rounded-lg text-xs font-medium text-text-secondary border border-border-default bg-surface-elevated hover:text-text-primary hover:border-border-subtle transition-colors"
                 >
-                  {SECTION_LABELS[id]}
+                  {t(SECTION_LABEL_KEYS[id])}
                 </button>
               ))}
             </div>
@@ -972,7 +1037,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               >
                 <span className="flex items-center gap-1.5">
                   <Eye className="w-3.5 h-3.5" />
-                  {showMobilePreview ? 'Hide Preview & Checklist' : 'View Preview & Checklist'}
+                  {showMobilePreview ? t('listingForm.hidePreview') : t('listingForm.viewPreview')}
                 </span>
                 {showMobilePreview ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
@@ -991,12 +1056,12 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
             )}
 
             {/* ─── Status section ─── */}
-            <SectionBlock id="status" title="Status" innerRef={refs.status}>
+            <SectionBlock id="status" title={t('listingForm.sectionStatus')} innerRef={refs.status}>
               {!group.isPublic && (
                 <div className="p-3 bg-status-warning/10 border border-status-warning/30 rounded-lg flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-status-warning flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-text-secondary">
-                    Static is <strong className="text-text-primary">private</strong> — enable Public Static in the General tab for this listing to go live.
+                    {t('listingForm.privateStaticWarning')}
                   </p>
                 </div>
               )}
@@ -1005,51 +1070,51 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
                 checked={enabled}
                 onChange={setEnabled}
                 disabled={!canEdit}
-                label="List in Static Finder"
-                hint="Players can discover your static when browsing for groups"
+                label={t('listingForm.toggleListInFinder')}
+                hint={t('listingForm.toggleListInFinderHint')}
               />
 
               {enabled && (
                 <>
-                  <Label>Recruitment Status</Label>
+                  <Label>{t('listingForm.recruitmentStatusLabel')}</Label>
                   <StatusCards value={recruitmentStatus} onChange={setRecruitmentStatus} disabled={!canEdit} />
                   <Toggle
                     checked={showMemberCount}
                     onChange={setShowMemberCount}
                     disabled={!canEdit}
-                    label="Show member count"
-                    hint="Optional — lets applicants see how full your group is"
+                    label={t('listingForm.toggleShowMemberCount')}
+                    hint={t('listingForm.toggleShowMemberCountHint')}
                   />
                 </>
               )}
             </SectionBlock>
 
             {/* ─── About section ─── */}
-            <SectionBlock id="about" title="About" innerRef={refs.about}>
+            <SectionBlock id="about" title={t('listingForm.sectionAbout')} innerRef={refs.about}>
               <div className="p-2.5 bg-surface-elevated border border-border-default rounded-lg flex items-start gap-2">
                 <Info className="w-3.5 h-3.5 text-accent flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-text-secondary">
-                  Description and contact info are <strong className="text-text-primary">public</strong>. Do not include anything private.
+                  {t('listingForm.aboutPublicNotice')}
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="discoveryDesc">Description</Label>
+                <Label htmlFor="discoveryDesc">{t('common.description')}</Label>
                 <TextArea
                   id="discoveryDesc"
                   value={description}
                   onChange={setDescription}
-                  placeholder="Tell recruits about your static — goals, vibe, loot rules, raid history."
+                  placeholder={t('listingForm.descriptionPlaceholder')}
                   rows={3}
                   maxLength={500}
                   disabled={!canEdit}
                 />
                 <div className="flex items-center justify-between mt-1">
-                  <p className="text-text-muted text-[10px]">{description.length}/500</p>
+                  <p className="text-text-muted text-[10px]">{t('listingForm.charCount', { count: description.length, max: 500 })}</p>
                 </div>
                 {/* Prompt chips */}
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {PROMPT_CHIPS.map(chip => (
+                  {promptChips.map(chip => (
                     /* design-system-ignore */
                     <button
                       key={chip.label}
@@ -1070,41 +1135,41 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               </div>
 
               <div>
-                <Label htmlFor="intensity">Vibe</Label>
-                <Select id="intensity" value={intensity} onChange={setIntensity} options={INTENSITY_OPTIONS} disabled={!canEdit} />
+                <Label htmlFor="intensity">{t('listingForm.vibeLabel')}</Label>
+                <Select id="intensity" value={intensity} onChange={setIntensity} options={intensityOptions} disabled={!canEdit} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="dataCenter">Data Center</Label>
+                  <Label htmlFor="dataCenter">{t('listingForm.dataCenterLabel')}</Label>
                   <Select id="dataCenter" value={dataCenter} onChange={handleDCChange} options={dcOptions} disabled={!canEdit} />
                 </div>
                 <div>
-                  <Label htmlFor="server">Server</Label>
+                  <Label htmlFor="server">{t('listingForm.serverLabel')}</Label>
                   <Select id="server" value={server} onChange={setServer} options={serverOptions} disabled={!canEdit || !dataCenter} />
                 </div>
               </div>
             </SectionBlock>
 
             {/* ─── Schedule section ─── */}
-            <SectionBlock id="schedule" title="Schedule" innerRef={refs.schedule}>
+            <SectionBlock id="schedule" title={t('listingForm.sectionSchedule')} innerRef={refs.schedule}>
               {canEdit && (
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button variant="secondary" size="sm" onClick={handleSuggest} loading={isSuggesting}>
-                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                    Fill from current schedule
+                    <XivIcon name="crystal" size={14} className="mr-1.5" />
+                    {t('listingForm.fillFromSchedule')}
                   </Button>
-                  <span className="text-[10px] text-text-muted">Only fills empty fields</span>
+                  <span className="text-[10px] text-text-muted">{t('listingForm.fillFromScheduleHint')}</span>
                 </div>
               )}
 
               <div>
-                <Label>Raid Days</Label>
+                <Label>{t('listingForm.raidDaysLabel')}</Label>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {RAID_DAYS.map(d => (
                     <Chip
                       key={d}
-                      label={d.slice(0, 3)}
+                      label={getRaidDayLabel(d, uiLocale, 'short')}
                       active={scheduleDays.includes(d)}
                       onClick={() => setScheduleDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
                       disabled={!canEdit}
@@ -1115,32 +1180,32 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="startTime">Start Time</Label>
+                  <Label htmlFor="startTime">{t('listingForm.startTimeLabel')}</Label>
                   <Select id="startTime" value={scheduleStartTime} onChange={setScheduleStartTime} options={timeOptions} disabled={!canEdit} />
                 </div>
                 <div>
-                  <Label htmlFor="endTime">End Time</Label>
+                  <Label htmlFor="endTime">{t('listingForm.endTimeLabel')}</Label>
                   <Select id="endTime" value={scheduleEndTime} onChange={setScheduleEndTime} options={timeOptions} disabled={!canEdit} />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="timezone">Timezone</Label>
+                <Label htmlFor="timezone">{t('listingForm.timezoneLabel')}</Label>
                 <Select id="timezone" value={timezone} onChange={setTimezone} options={tzOptions} disabled={!canEdit} />
               </div>
 
               {scheduleLabel && (
                 <p className="text-xs text-text-secondary bg-surface-elevated border border-border-default rounded-lg px-3 py-2">
-                  <Swords className="w-3 h-3 inline mr-1.5 text-text-muted" />
+                  <XivIcon name="sword" size={12} className="inline mr-1.5" />
                   {scheduleLabel}
                 </p>
               )}
             </SectionBlock>
 
             {/* ─── Recruiting section ─── */}
-            <SectionBlock id="recruiting" title="Recruiting" innerRef={refs.recruiting}>
+            <SectionBlock id="recruiting" title={t('listingForm.sectionRecruiting')} innerRef={refs.recruiting}>
               <p className="text-xs text-text-muted">
-                Select role groups to recruit. Expand a role to choose specific jobs or adjust priority.
+                {t('listingForm.recruitingHint')}
               </p>
               <div className="space-y-2">
                 {ROLE_CONFIGS.map(cfg => (
@@ -1158,9 +1223,9 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
             </SectionBlock>
 
             {/* ─── Comms section ─── */}
-            <SectionBlock id="comms" title="Communication" innerRef={refs.comms}>
+            <SectionBlock id="comms" title={t('listingForm.sectionComms')} innerRef={refs.comms}>
               <div>
-                <Label>Languages</Label>
+                <Label>{t('listingForm.languagesLabel')}</Label>
                 <LanguageSelector
                   selected={selectedLangs}
                   onChange={setSelectedLangs}
@@ -1169,9 +1234,9 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
               </div>
 
               <div>
-                <Label>Voice / Comms</Label>
+                <Label>{t('listingForm.voiceCommsLabel')}</Label>
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  {VOICE_OPTIONS.map(opt => {
+                  {VOICE_OPTION_CONFIGS.map(opt => {
                     const active = communicationStyle.voiceRequirement === opt.value;
                     const Icon = opt.icon;
                     return (
@@ -1191,7 +1256,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
                         } ${!canEdit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                       >
                         <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                        {opt.label}
+                        {t(opt.labelKey)}
                       </button>
                     );
                   })}
@@ -1202,17 +1267,17 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
                 checked={communicationStyle.discordRequired ?? false}
                 onChange={v => setCommunicationStyle(prev => ({ ...prev, discordRequired: v || undefined }))}
                 disabled={!canEdit}
-                label="Discord required"
-                hint="Members must be in a Discord server"
+                label={t('listingForm.discordRequiredLabel')}
+                hint={t('listingForm.discordRequiredHint')}
               />
             </SectionBlock>
 
             {/* ─── Contact section ─── */}
-            <SectionBlock id="contact" title="Contact" innerRef={refs.contact}>
+            <SectionBlock id="contact" title={t('listingForm.sectionContact')} innerRef={refs.contact}>
               <div className="p-2.5 bg-surface-elevated border border-border-default rounded-lg flex items-start gap-2">
                 <Info className="w-3.5 h-3.5 text-text-muted flex-shrink-0 mt-0.5" />
                 <p className="text-[10px] text-text-muted leading-relaxed">
-                  Contact info is <strong className="text-text-secondary">public</strong> on Static Finder. Do not post anything you want to keep private.
+                  {t('listingForm.contactPublicNotice')}
                 </p>
               </div>
 
@@ -1235,7 +1300,7 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
                           : 'border-border-default bg-surface-elevated text-text-secondary hover:border-border-subtle hover:text-text-primary'
                       } ${!canEdit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     >
-                      {cfg.label}
+                      {t(cfg.labelKey)}
                     </button>
                   );
                 })}
@@ -1246,11 +1311,11 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
                   <Input
                     value={contactValue}
                     onChange={setContactValue}
-                    placeholder={CONTACT_METHOD_CONFIGS.find(c => c.value === contactMethod)?.placeholder ?? ''}
+                    placeholder={t(CONTACT_METHOD_CONFIGS.find(c => c.value === contactMethod)?.placeholderKey ?? '')}
                     maxLength={200}
                     disabled={!canEdit}
                   />
-                  <p className="text-[10px] text-text-muted mt-1">{contactValue.length}/200</p>
+                  <p className="text-[10px] text-text-muted mt-1">{t('listingForm.charCount', { count: contactValue.length, max: 200 })}</p>
                 </div>
               )}
             </SectionBlock>
@@ -1270,10 +1335,10 @@ export function DiscoveryTab({ group, onClose }: DiscoveryTabProps) {
 
       {/* ─── Sticky footer ─── */}
       <div className="flex-shrink-0 flex justify-end gap-3 pt-3 pb-4 pr-4 border-t border-border-default">
-        <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+        <Button type="button" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
         <Button onClick={handleSave} disabled={!canEdit} loading={isSaving}>
           <Globe className="w-4 h-4 mr-1.5" />
-          Save Listing
+          {t('listingForm.saveButton')}
         </Button>
       </div>
     </div>

@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useUrlTabState, clearRegisteredTabParams } from '../hooks/useUrlTabState';
+import { prefRememberSubTabs } from '../lib/navPreferences';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import {
   Calendar, ChevronDown, ChevronLeft, ChevronRight,
-  Crosshair, Eye, LayoutDashboard, PlugZap, Shield, Sparkles, User, Users,
+  PlugZap, User, Users,
 } from 'lucide-react';
+import { XivIcon } from '../components/ui/XivIcon';
+import type { XivIconKey } from '../utils/xivIcons';
 import { Button } from '../components/primitives/Button';
 import { Badge } from '../components/primitives/Badge';
 import {
@@ -51,26 +56,28 @@ const LEGACY_TAB_REDIRECTS: Record<string, ProfileTab> = {
 };
 
 const ROLE_LABELS: Partial<Record<MemberRole, string>> = {
-  owner: 'Owner',
-  lead: 'Lead',
-  member: 'Member',
-  viewer: 'Viewer',
+  owner: 'auth.roleOwner',
+  lead: 'auth.roleLead',
+  member: 'auth.roleMember',
+  viewer: 'auth.roleViewer',
 };
 
 // ── Profile sidebar nav ────────────────────────────────────────────────────
+const COLL_SUB_TABS = ['goals', 'priorities', 'browse'] as const;
+
 const PROFILE_NAV_ITEMS: Array<{
   id: ProfileTab;
-  label: string;
+  labelKey: string;
   description: string;
   shortcut: string;
-  icon: React.FC<{ size?: number; className?: string }>;
+  icon: XivIconKey;
 }> = [
-  { id: 'overview',     label: 'Overview',          description: 'Character overview, goals, and quick actions',              shortcut: '`', icon: LayoutDashboard },
-  { id: 'sync',         label: 'Sync & Gear',       description: 'Plugin sync status and character gear snapshots',           shortcut: '1', icon: Shield },
-  { id: 'jobs-gear',    label: 'Jobs & Gear',       description: 'Job profiles, BiS targets, and readiness status',          shortcut: '2', icon: Crosshair },
-  { id: 'collections',  label: 'Collections & Goals', description: 'Mounts, music, weapons, collection goals, and tasks',    shortcut: '3', icon: Sparkles },
-  { id: 'availability', label: 'Availability',      description: 'Your weekly availability for raid nights',                 shortcut: '4', icon: Calendar },
-  { id: 'preview',      label: 'Share',             description: 'Preview and manage your shareable profile',                shortcut: '5', icon: Eye },
+  { id: 'overview',     labelKey: 'profile.tabOverview',    description: 'profile.sidebar.overviewDesc',     shortcut: '`', icon: 'stats' },
+  { id: 'sync',         labelKey: 'profile.tabSync',        description: 'profile.sidebar.syncDesc',         shortcut: '1', icon: 'history' },
+  { id: 'jobs-gear',    labelKey: 'profile.tabJobsGear',    description: 'profile.sidebar.jobsGearDesc',     shortcut: '2', icon: 'loot' },
+  { id: 'collections',  labelKey: 'profile.tabCollections', description: 'profile.sidebar.collectionsDesc',  shortcut: '3', icon: 'goals' },
+  { id: 'availability', labelKey: 'profile.tabAvail',       description: 'profile.sidebar.availabilityDesc', shortcut: '4', icon: 'schedule' },
+  { id: 'preview',      labelKey: 'profile.tabShare',       description: 'profile.sidebar.previewDesc',      shortcut: '5', icon: 'handshake' },
 ];
 
 const PROFILE_SIDEBAR_KEY = 'profile-sidebar-collapsed';
@@ -89,6 +96,7 @@ function ProfileSidebarNav({
   primaryStaticPath?: string;
   primaryStaticName?: string;
 }) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem(PROFILE_SIDEBAR_KEY) === 'true'; } catch { return false; }
   });
@@ -103,7 +111,7 @@ function ProfileSidebarNav({
 
   return (
     <motion.nav
-      aria-label="Player Hub navigation"
+      aria-label={t('profile.playerHub')}
       className="hidden sm:flex flex-col flex-shrink-0 border-r border-border-subtle"
       style={{
         background: 'linear-gradient(180deg, #0c0c14 0%, #090910 60%, #07070e 100%)',
@@ -124,7 +132,7 @@ function ProfileSidebarNav({
           <button
             type="button"
             onClick={toggle}
-            aria-label="Expand sidebar"
+            aria-label={t('nav.expandSidebar')}
             className="w-full h-12 flex items-center justify-center text-text-muted hover:text-accent transition-colors"
           >
             <ChevronRight size={14} />
@@ -140,7 +148,7 @@ function ProfileSidebarNav({
               >
                 <ChevronLeft size={12} className="flex-shrink-0 group-hover:text-accent transition-colors" />
                 <span className="text-xs font-semibold leading-none truncate min-w-0 group-hover:text-accent transition-colors">
-                  {primaryStaticName ?? 'My Static'}
+                  {primaryStaticName ?? t('profile.backToStatic')}
                 </span>
               </Link>
             ) : (
@@ -160,13 +168,13 @@ function ProfileSidebarNav({
                   className="text-xs font-semibold text-accent truncate font-display tracking-wide leading-none"
                   title={characterName}
                 >
-                  {characterName ?? 'Player Hub'}
+                  {characterName ?? t('profile.playerHub')}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={toggle}
-                aria-label="Collapse sidebar"
+                aria-label={t('nav.collapseSidebar')}
                 className="flex-shrink-0 px-2.5 h-full flex items-center text-text-muted hover:text-accent transition-colors border-l border-border-subtle"
               >
                 <ChevronLeft size={13} />
@@ -180,7 +188,6 @@ function ProfileSidebarNav({
       <LayoutGroup id="sidebar-profile-nav">
         <div className="flex flex-col py-2 flex-1">
           {PROFILE_NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <div key={item.id}>
@@ -188,12 +195,12 @@ function ProfileSidebarNav({
                   content={
                     <div className="max-w-[200px]">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="font-semibold text-text-primary text-sm">{item.label}</span>
+                        <span className="font-semibold text-text-primary text-sm">{t(item.labelKey)}</span>
                         <kbd className="text-[10px] px-1.5 py-0.5 rounded border border-border-subtle bg-surface-base text-text-muted font-mono leading-none flex-shrink-0">
                           {item.shortcut}
                         </kbd>
                       </div>
-                      <p className="text-xs text-text-secondary leading-relaxed">{item.description}</p>
+                      <p className="text-xs text-text-secondary leading-relaxed">{t(item.description)}</p>
                     </div>
                   }
                   side="right"
@@ -235,9 +242,9 @@ function ProfileSidebarNav({
                         transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
                       />
                     )}
-                    <Icon size={15} className="flex-shrink-0 relative z-10" />
+                    <XivIcon name={item.icon} size={15} className={`flex-shrink-0 relative z-10 transition-opacity ${isActive ? 'opacity-100' : 'opacity-45'}`} />
                     {!collapsed && (
-                      <span className="leading-none relative z-10 whitespace-nowrap">{item.label}</span>
+                      <span className="leading-none relative z-10 whitespace-nowrap">{t(item.labelKey)}</span>
                     )}
                   </button>
                 </Tooltip>
@@ -254,7 +261,7 @@ function ProfileSidebarNav({
           content={
             <div className="max-w-[200px]">
               <p className="font-semibold text-text-primary text-sm mb-0.5">Plugin Sync</p>
-              <p className="text-xs text-text-secondary leading-relaxed">Open Sync & Gear to manage the Dalamud plugin</p>
+              <p className="text-xs text-text-secondary leading-relaxed">{t('profile.sidebar.pluginSyncDesc')}</p>
             </div>
           }
           side="right"
@@ -272,7 +279,7 @@ function ProfileSidebarNav({
             <PlugZap size={13} className="flex-shrink-0" />
             {!collapsed && (
               <span className="text-[10px] font-semibold uppercase tracking-[0.16em] leading-none">
-                Plugin Sync
+                {t('profile.sidebar.pluginSync')}
               </span>
             )}
           </button>
@@ -287,6 +294,8 @@ function ProfileSidebarNav({
 // ──────────────────────────────────────────────────────────────────────────────
 
 function StaticShortcut({ groups, mobile = false }: { groups: StaticGroupListItem[]; mobile?: boolean }) {
+  const { t } = useTranslation();
+
   if (groups.length === 0) {
     return (
       <Link
@@ -294,7 +303,7 @@ function StaticShortcut({ groups, mobile = false }: { groups: StaticGroupListIte
         className={`${mobile ? 'flex w-full px-3 py-2' : 'inline-flex px-3 py-1.5'} items-center gap-2 rounded-lg border border-border-default bg-surface-raised text-sm text-text-secondary transition-colors hover:border-accent/30 hover:text-accent`}
       >
         <Users className="h-4 w-4 flex-shrink-0 text-accent" />
-        <span>Find a static</span>
+        <span>{t('profile.overview.findAStatic')}</span>
       </Link>
     );
   }
@@ -308,8 +317,8 @@ function StaticShortcut({ groups, mobile = false }: { groups: StaticGroupListIte
       >
         <Users className="h-4 w-4 flex-shrink-0 text-accent" />
         <span className="truncate">{group.name}</span>
-        {group.userRole && <Badge variant="info" size="sm">{ROLE_LABELS[group.userRole] ?? group.userRole}</Badge>}
-        {mobile && <span className="ml-auto flex-shrink-0 text-xs text-text-tertiary">Go to static</span>}
+        {group.userRole && <Badge variant="info" size="sm">{t(ROLE_LABELS[group.userRole] ?? '', { defaultValue: group.userRole })}</Badge>}
+        {mobile && <span className="ml-auto flex-shrink-0 text-xs text-text-tertiary">{t('profile.staticShortcut.goToStatic')}</span>}
       </Link>
     );
   }
@@ -324,7 +333,7 @@ function StaticShortcut({ groups, mobile = false }: { groups: StaticGroupListIte
           className={`${mobile ? 'flex w-full justify-start px-3 py-2' : 'inline-flex px-3 py-1.5'} gap-2 bg-surface-raised font-normal hover:text-accent`}
         >
           <Users className="h-4 w-4 flex-shrink-0 text-accent" />
-          <span className="truncate">My Statics ({groups.length})</span>
+          <span className="truncate">{t('profile.staticShortcut.myStatics', { count: groups.length })}</span>
           <ChevronDown className="ml-auto h-3.5 w-3.5 flex-shrink-0 text-text-tertiary" />
         </Button>
       </DropdownTrigger>
@@ -336,12 +345,12 @@ function StaticShortcut({ groups, mobile = false }: { groups: StaticGroupListIte
               <span className="min-w-0">
                 <span className="block truncate font-medium">{group.name}</span>
                 <span className="block truncate text-xs text-text-tertiary">
-                  {ROLE_LABELS[group.userRole ?? 'member'] ?? group.userRole ?? 'Member'}
+                  {t(ROLE_LABELS[group.userRole ?? 'member'] ?? '', { defaultValue: group.userRole ?? t('auth.roleMember') })}
                 </span>
               </span>
             </DropdownItem>
             <DropdownItem href={`/group/${group.shareCode}?tab=schedule`} icon={<Calendar className="h-4 w-4" />} className="pl-8 text-xs">
-              Schedule
+              {t('profile.staticShortcut.schedule')}
             </DropdownItem>
           </div>
         ))}
@@ -358,6 +367,7 @@ function parseProfileTab(search: string): ProfileTab {
 }
 
 export default function Profile() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
@@ -371,18 +381,23 @@ export default function Profile() {
   const { groups, fetchGroups } = useStaticGroupStore();
   const { fetchTargets } = useSharedBisStore();
   const { isSmallScreen } = useDevice();
-  const [activeTab, setActiveTab] = useState<ProfileTab>(() => parseProfileTab(location.search));
-  const [collSubTab, setCollSubTab] = useState<'goals' | 'priorities' | 'browse'>('goals');
+  const [, setSearchParams] = useSearchParams();
+  const activeTab = parseProfileTab(location.search);
+  const setActiveTab = useCallback((tab: ProfileTab) => {
+    const resetSubTabs = !prefRememberSubTabs(useAuthStore.getState().user);
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      if (tab === 'overview') params.delete('tab');
+      else params.set('tab', tab);
+      if (resetSubTabs) clearRegisteredTabParams(params);
+      return params;
+    });
+  }, [setSearchParams]);
+  const [collSubTab, setCollSubTab] = useUrlTabState('coll', COLL_SUB_TABS, 'goals');
   const linkModal = useModal();
   const addJobModal = useModal();
   const [editingJob, setEditingJob] = useState<PlayerJobProfile | null>(null);
   const [managingBisJobId, setManagingBisJobId] = useState<{ id: string; job: string } | null>(null);
-
-  useEffect(() => {
-    const nextTab = parseProfileTab(location.search);
-    const frameId = requestAnimationFrame(() => setActiveTab(nextTab));
-    return () => cancelAnimationFrame(frameId);
-  }, [location.search]);
 
   // Swipe to change tabs — native listeners on the page container
   const activeTabRef = useRef(activeTab);
@@ -419,7 +434,7 @@ export default function Profile() {
       el.removeEventListener('touchstart', onStart);
       el.removeEventListener('touchend', onEnd);
     };
-  }, []); // stable — reads from ref
+  }, [setActiveTab]); // stable — reads from ref
 
 
   useEffect(() => {
@@ -578,7 +593,7 @@ export default function Profile() {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-[0.18em] mb-0.5 select-none" style={{ color: 'rgba(20,184,166,0.6)' }}>
-                Player Hub
+                {t('profile.playerHub')}
               </div>
               <h1 className="text-base sm:text-xl font-display font-bold text-text-primary truncate leading-tight">
                 {mainCharacter?.name ?? 'Your Character'}
@@ -591,11 +606,11 @@ export default function Profile() {
               <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                 {mainJob && (
                   <Badge variant={mainJob.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster'} size="sm">
-                    {mainJob.job} Main
+                    {t('profile.jobsGear.mainJobValue', { job: mainJob.job })}
                   </Badge>
                 )}
                 <Badge variant={profile?.visibility === 'private' ? 'default' : 'info'} size="sm">
-                  {profile?.visibility === 'private' ? 'Private' : profile?.shareEnabled ? 'Shared' : 'Not Shared'}
+                  {profile?.visibility === 'private' ? t('common.private') : profile?.shareEnabled ? t('profile.goals.shared') : t('profile.preview.notShared')}
                 </Badge>
               </div>
             </div>
@@ -675,9 +690,9 @@ export default function Profile() {
             <div className="flex flex-col gap-1.5">
               <div className="flex border-b border-border-subtle">
                 {([
-                  { id: 'goals'      as const, label: 'Tasks & Goals' },
-                  { id: 'priorities' as const, label: 'My Priorities' },
-                  { id: 'browse'     as const, label: 'Browse Catalog' },
+                  { id: 'goals'      as const, label: t('profile.collectionsTabs.goals') },
+                  { id: 'priorities' as const, label: t('profile.collectionsTabs.priorities') },
+                  { id: 'browse'     as const, label: t('profile.collectionsTabs.browse') },
                 ] satisfies { id: typeof collSubTab; label: string }[]).map(tab => (
                   // eslint-disable-next-line design-system/no-raw-button
                   <button
@@ -700,9 +715,9 @@ export default function Profile() {
 
               {/* Per-tab description */}
               <p className="text-[11px] text-text-muted px-0.5 leading-relaxed">
-                {collSubTab === 'goals' && 'Personal tasks — gearing, clears, raid prep, or custom reminders. Not tied to collection rewards.'}
-                {collSubTab === 'priorities' && "Mounts, music, weapons, and other rewards you're hunting or farming. Mark visibility to share with your statics."}
-                {collSubTab === 'browse' && "Browse the full rewards catalog to discover what's available and set your intent on new items."}
+                {collSubTab === 'goals' && t('profile.collectionsTabs.goalsDesc')}
+                {collSubTab === 'priorities' && t('profile.collectionsTabs.prioritiesDesc')}
+                {collSubTab === 'browse' && t('profile.collectionsTabs.browseDesc')}
               </p>
             </div>
 

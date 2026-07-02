@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { BookCheck } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Modal, Select, Checkbox, TextArea, Label } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
@@ -116,7 +116,7 @@ export function MarkFloorClearedModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <BookCheck className="w-5 h-5" />
+          <XivIcon name="tomestone" size={20} />
           Mark Floor Cleared
         </span>
       }

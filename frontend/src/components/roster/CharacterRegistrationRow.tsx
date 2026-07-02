@@ -1,4 +1,6 @@
-import { Star, Trash2, Edit3 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Trash2, Edit3 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import type { StaticCharacterRegistration } from '../../types';
 import { Button } from '../primitives';
 import { CharacterRoleBadge } from './CharacterRoleBadge';
@@ -20,6 +22,7 @@ export function CharacterRegistrationRow({
   onEdit,
   onDelete,
 }: CharacterRegistrationRowProps) {
+  const { t } = useTranslation();
   const name = reg.resolvedName ?? reg.manualCharacterName ?? '—';
   const world = reg.resolvedWorld ?? reg.manualWorld ?? null;
   const lastSynced = reg.linkedCharacter?.lastSyncedAt ?? null;
@@ -55,10 +58,10 @@ export function CharacterRegistrationRow({
               size="xs"
               variant="ghost"
               onClick={() => onSetPrimary(reg)}
-              title="Set as primary"
-              aria-label={`Set ${name} as primary character`}
+              title={t('roster.setAsPrimary')}
+              aria-label={t('roster.setAsPrimaryAriaLabel', { name })}
             >
-              <Star className="h-3 w-3" />
+              <XivIcon name="earthlyStar" size={12} />
             </Button>
           )}
           <Button
@@ -66,8 +69,8 @@ export function CharacterRegistrationRow({
             size="xs"
             variant="ghost"
             onClick={() => onEdit(reg)}
-            title="Edit"
-            aria-label={`Edit ${name}`}
+            title={t('common.edit')}
+            aria-label={t('roster.editCharacterAriaLabel', { name })}
           >
             <Edit3 className="h-3 w-3" />
           </Button>
@@ -76,8 +79,8 @@ export function CharacterRegistrationRow({
             size="xs"
             variant="ghost"
             onClick={() => onDelete(reg)}
-            title="Remove"
-            aria-label={`Remove ${name}`}
+            title={t('common.remove')}
+            aria-label={t('roster.removeCharacterAriaLabel', { name })}
             className="text-status-error hover:bg-status-error/10"
           >
             <Trash2 className="h-3 w-3" />

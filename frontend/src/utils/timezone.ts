@@ -77,9 +77,10 @@ export function getBrowserTimezone(): string {
 export function formatInTimeZone(
   isoString: string,
   timeZone: string,
-  options: Intl.DateTimeFormatOptions
+  options: Intl.DateTimeFormatOptions,
+  locale = 'en-US'
 ): string {
-  return new Intl.DateTimeFormat('en-US', { ...options, timeZone }).format(new Date(isoString));
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone }).format(new Date(isoString));
 }
 
 export function toZonedDatetimeLocalValue(isoString: string, timeZone: string): string {

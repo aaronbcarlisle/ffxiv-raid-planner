@@ -29,6 +29,16 @@ export const SOURCE_TYPE_BADGE: Record<string, SourceTypeBadgeConfig> = {
   field_operation:  { label: 'Field Op',        colorClass: 'bg-text-muted/20 text-text-muted border-text-muted/40',               leftBorderClass: 'border-l-border-default'   },
 };
 
+const JA_SOURCE_TYPE_LABELS: Record<string, string> = {
+  extreme: '極',
+  savage: '零式',
+  ultimate: '絶',
+  criterion: '異聞',
+  chaotic_alliance: 'カオティック',
+  collaboration: 'コラボ',
+  field_operation: 'フィールド',
+};
+
 /** Active-chip class for source type filter buttons. */
 export const SOURCE_TYPE_ACTIVE_CLASS: Record<string, string> = {
   extreme:  'bg-status-warning/20 text-status-warning ring-1 ring-status-warning/50',
@@ -59,6 +69,16 @@ export const CATEGORY_BADGE: Record<string, CategoryBadgeConfig> = {
   other:       { label: 'Rare',   colorClass: 'text-text-secondary',  bgClass: 'bg-surface-elevated',  borderClass: 'border-border-subtle'     },
 };
 
+const JA_CATEGORY_LABELS: Record<string, string> = {
+  mount: 'マウント',
+  orchestrion: 'オーケストリオン譜',
+  minion: 'ミニオン',
+  weapon: '武器',
+  glam: 'ミラプリ',
+  card: 'カード',
+  other: 'レア',
+};
+
 // ── Expansion ─────────────────────────────────────────────────────────────────
 
 /** Full expansion names, used on desktop. */
@@ -71,9 +91,27 @@ export const EXPANSION_FULL: Record<string, string> = {
   arr: 'A Realm Reborn',
 };
 
+const EXPANSION_FULL_JA: Record<string, string> = {
+  dt: '黄金のレガシー',
+  ew: '暁月のフィナーレ',
+  shb: '漆黒のヴィランズ',
+  sb: '紅蓮のリベレーター',
+  hw: '蒼天のイシュガルド',
+  arr: '新生エオルゼア',
+};
+
 /** Abbreviated expansion names, used on mobile (xs). */
 export const EXPANSION_SHORT: Record<string, string> = {
   dt: 'DT', ew: 'EW', shb: 'ShB', sb: 'SB', hw: 'HW', arr: 'ARR',
+};
+
+const EXPANSION_SHORT_JA: Record<string, string> = {
+  dt: '黄金',
+  ew: '暁月',
+  shb: '漆黒',
+  sb: '紅蓮',
+  hw: '蒼天',
+  arr: '新生',
 };
 
 /** Sort order: newest first. */
@@ -96,4 +134,44 @@ export function expansionLabel(raw: string | null | undefined): string {
 /** Short label with graceful fallback. */
 export function expansionShortLabel(raw: string | null | undefined): string {
   return EXPANSION_SHORT[expKey(raw)] ?? expKey(raw).toUpperCase();
+}
+
+function isJapaneseLocale(locale?: string): boolean {
+  return (locale ?? '').toLowerCase().startsWith('ja');
+}
+
+export function getCollectionSourceTypeLabel(raw: string | null | undefined, locale?: string): string {
+  if (!raw) {
+    return '';
+  }
+  return isJapaneseLocale(locale)
+    ? JA_SOURCE_TYPE_LABELS[raw] ?? SOURCE_TYPE_BADGE[raw]?.label ?? raw
+    : SOURCE_TYPE_BADGE[raw]?.label ?? raw;
+}
+
+export function getCollectionCategoryLabel(raw: string | null | undefined, locale?: string): string {
+  if (!raw) {
+    return '';
+  }
+  return isJapaneseLocale(locale)
+    ? JA_CATEGORY_LABELS[raw] ?? CATEGORY_BADGE[raw]?.label ?? raw
+    : CATEGORY_BADGE[raw]?.label ?? raw;
+}
+
+export function getCollectionExpansionLabel(raw: string | null | undefined, locale?: string): string {
+  if (!raw) {
+    return '';
+  }
+  return isJapaneseLocale(locale)
+    ? EXPANSION_FULL_JA[expKey(raw)] ?? raw
+    : expansionLabel(raw);
+}
+
+export function getCollectionExpansionShortLabel(raw: string | null | undefined, locale?: string): string {
+  if (!raw) {
+    return '';
+  }
+  return isJapaneseLocale(locale)
+    ? EXPANSION_SHORT_JA[expKey(raw)] ?? expKey(raw).toUpperCase()
+    : expansionShortLabel(raw);
 }

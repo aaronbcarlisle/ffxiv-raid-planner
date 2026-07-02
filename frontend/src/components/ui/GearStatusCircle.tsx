@@ -11,6 +11,8 @@
  * - Tome: 3-state (missing → have → augmented → missing)
  */
 
+import type { ReactNode } from 'react';
+import { Tooltip } from '../primitives/Tooltip';
 import type { GearSource } from '../../types';
 import type { GearState } from '../../utils/calculations';
 
@@ -27,6 +29,12 @@ interface GearStatusCircleProps {
   disabled?: boolean;
   /** Size of the circle (default: 'md') */
   size?: 'sm' | 'md' | 'lg';
+  /**
+   * Optional hover tooltip explaining the toggle states. Only rendered for the
+   * interactive (non-null bisSource) states — callers gate this on edit
+   * permission so the hint appears only where the user can actually toggle.
+   */
+  tooltip?: ReactNode;
 }
 
 /**
@@ -103,6 +111,7 @@ export function GearStatusCircle({
   onChange,
   disabled = false,
   size = 'md',
+  tooltip,
 }: GearStatusCircleProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -159,9 +168,20 @@ export function GearStatusCircle({
     );
   }
 
+  // Wrap the interactive circle in the optional explanatory tooltip. The native
+  // <div> forwards the ref Radix's Trigger needs (a function component wouldn't).
+  const withTooltip = (element: ReactNode) =>
+    tooltip ? (
+      <Tooltip content={tooltip} side="left">
+        {element}
+      </Tooltip>
+    ) : (
+      element
+    );
+
   // Missing state: solid gray filled circle (no ring)
   if (isMissing) {
-    return (
+    return withTooltip(
       <div
         role="checkbox"
         aria-checked={false}
@@ -185,7 +205,7 @@ export function GearStatusCircle({
   }
 
   // Have or Complete state: colored ring with optional inner fill
-  return (
+  return withTooltip(
     <div
       role="checkbox"
       aria-checked={isComplete ? true : 'mixed'}

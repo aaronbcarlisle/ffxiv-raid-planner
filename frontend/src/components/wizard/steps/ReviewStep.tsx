@@ -6,6 +6,7 @@
  * Displays roster preview with empty slot warnings.
  */
 
+import { useTranslation } from 'react-i18next';
 import { Users, AlertCircle, FileText, Shield, X } from 'lucide-react';
 import { getTierById } from '../../../gamedata/raid-tiers';
 import { JobIcon } from '../../ui/JobIcon';
@@ -41,6 +42,7 @@ export function ReviewStep({
   error,
   onRetry,
 }: ReviewStepProps) {
+  const { t } = useTranslation();
   const tier = getTierById(tierId);
   const filledSlots = players.filter((p) => p.name.trim() || p.job).length;
   const emptySlots = 8 - filledSlots;
@@ -54,14 +56,14 @@ export function ReviewStep({
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-status-error flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-medium text-status-error">Failed to create static</p>
+              <p className="text-sm font-medium text-status-error">{t('wizard.createStaticError')}</p>
               <p className="text-sm text-text-secondary mt-1">{error}</p>
               <button
                 onClick={onRetry}
                 className="mt-2 text-sm text-accent hover:text-accent-bright underline"
                 disabled={isSubmitting}
               >
-                Try again
+                {t('common.retry')}
               </button>
             </div>
           </div>
@@ -72,29 +74,29 @@ export function ReviewStep({
       <div className="bg-surface-elevated rounded-lg border border-border-default p-4">
         <h3 className="text-sm font-medium text-text-muted mb-3 flex items-center gap-2">
           <FileText className="w-4 h-4" />
-          Static Details
+          {t('wizard.staticDetailsHeading')}
         </h3>
         <div className="space-y-2">
           <div className="flex justify-between">
-            <span className="text-sm text-text-muted">Name</span>
+            <span className="text-sm text-text-muted">{t('common.name')}</span>
             <span className="text-sm font-medium text-text-primary">{staticName}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-text-muted">Raid Tier</span>
+            <span className="text-sm text-text-muted">{t('wizard.raidTierLabel')}</span>
             <span className="text-sm font-medium text-text-primary">
               {tier?.shortName || tierId}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-text-muted">Visibility</span>
+            <span className="text-sm text-text-muted">{t('wizard.visibilityLabel')}</span>
             <span className="text-sm font-medium text-text-primary">
-              {isPublic ? 'Public' : 'Private'}
+              {isPublic ? t('wizard.visibilityPublic') : t('wizard.visibilityPrivate')}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-text-muted">Split-clear planning</span>
+            <span className="text-sm text-text-muted">{t('wizard.splitClearPlanningLabel')}</span>
             <span className="text-sm font-medium text-text-primary">
-              {splitClearEnabled ? 'Enabled' : 'Off'}
+              {splitClearEnabled ? t('wizard.splitClearEnabled') : t('wizard.splitClearOff')}
             </span>
           </div>
         </div>
@@ -104,7 +106,7 @@ export function ReviewStep({
       <div className="bg-surface-elevated rounded-lg border border-border-default p-4">
         <h3 className="text-sm font-medium text-text-muted mb-3 flex items-center gap-2">
           <Users className="w-4 h-4" />
-          Roster ({filledSlots}/8 configured)
+          {t('wizard.rosterHeading', { filled: filledSlots })}
         </h3>
 
         {/* Roster grid - 2x4 */}
@@ -140,7 +142,7 @@ export function ReviewStep({
                   player.name.trim() ? 'text-text-primary' : 'text-text-muted italic'
                 }`}
               >
-                {player.name.trim() || 'Empty'}
+                {player.name.trim() || t('wizard.emptySlot')}
               </span>
             </div>
           ))}
@@ -151,7 +153,7 @@ export function ReviewStep({
           <div className="mt-3 pt-3 border-t border-border-subtle flex items-center gap-4 text-xs text-text-muted">
             <span className="flex items-center gap-1">
               <X className="w-3.5 h-3.5 text-status-warning" />
-              {players.filter((p) => !p.job).length} missing jobs
+              {t('wizard.missingJobs', { count: players.filter((p) => !p.job).length })}
             </span>
           </div>
         )}
@@ -163,10 +165,10 @@ export function ReviewStep({
           <AlertCircle className="w-5 h-5 text-status-warning flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm text-text-primary">
-              {emptySlots} slot{emptySlots > 1 ? 's' : ''} not configured
+              {t('wizard.slotsNotConfigured', { count: emptySlots })}
             </p>
             <p className="text-xs text-text-muted mt-0.5">
-              Empty slots will be created as placeholders. You can configure them later.
+              {t('wizard.emptySlotNote')}
             </p>
           </div>
         </div>
@@ -176,9 +178,9 @@ export function ReviewStep({
       <div className="flex items-start gap-3 p-4 bg-accent/10 border border-accent/30 rounded-lg">
         <Shield className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm text-text-primary font-medium">Ready to create</p>
+          <p className="text-sm text-text-primary font-medium">{t('wizard.readyToCreate')}</p>
           <p className="text-xs text-text-muted mt-0.5">
-            Click "Create Static" below to finish. You'll be the owner with full control.
+            {t('wizard.readyToCreateNote')}
           </p>
         </div>
       </div>

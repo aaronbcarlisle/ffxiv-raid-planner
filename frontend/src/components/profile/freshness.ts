@@ -12,6 +12,29 @@ export function getFreshness(syncedAt: string | null): FreshnessLevel {
   return 'old';
 }
 
+export function formatRelativeTimeAgo(value: string | null, locale = 'en-US'): string {
+  if (!value) {
+    return locale.startsWith('ja') ? 'なし' : 'never';
+  }
+
+  const age = Date.now() - new Date(value).getTime();
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  if (age < HOUR) {
+    return locale.startsWith('ja') ? 'たった今' : 'just now';
+  }
+  if (age < DAY) {
+    return rtf.format(-Math.floor(age / HOUR), 'hour');
+  }
+  const days = Math.floor(age / DAY);
+  if (days < 7) {
+    return rtf.format(-days, 'day');
+  }
+  if (days < 30) {
+    return rtf.format(-Math.floor(days / 7), 'week');
+  }
+  return rtf.format(-Math.floor(days / 30), 'month');
+}
+
 export function formatSyncAge(syncedAt: string | null): string {
   if (!syncedAt) return 'Never synced';
   const age = Date.now() - new Date(syncedAt).getTime();

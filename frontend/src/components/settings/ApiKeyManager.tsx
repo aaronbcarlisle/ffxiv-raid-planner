@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Key, Copy, Check, Trash2, Plus, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useApiKeyStore, type ApiKey, type ApiKeyCreateResponse } from '../../stores/apiKeyStore';
 import { Modal } from '../ui/Modal';
 import { useModal } from '../../hooks/useModal';
@@ -17,6 +18,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { toast } from '../../stores/toastStore';
 
 export function ApiKeyManager() {
+  const { t } = useTranslation();
   const { keys, isLoading, error, fetchKeys, createKey, revokeKey } = useApiKeyStore();
   const createModal = useModal();
   const [newKeyName, setNewKeyName] = useState('');
@@ -36,37 +38,37 @@ export function ApiKeyManager() {
       const result = await createKey(newKeyName.trim());
       setCreatedKey(result);
       setNewKeyName('');
-      toast.success('API key created');
+      toast.success(t('settings.apiKeyCreated'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create API key');
+      toast.error(err instanceof Error ? err.message : t('settings.apiKeyCreateFailed'));
     } finally {
       setIsCreating(false);
     }
-  }, [newKeyName, createKey]);
+  }, [newKeyName, createKey, t]);
 
   const handleCopyKey = useCallback(async () => {
     if (!createdKey) return;
     try {
       await navigator.clipboard.writeText(createdKey.key);
       setCopied(true);
-      toast.success('API key copied to clipboard');
+      toast.success(t('settings.apiKeyCopied'));
       setTimeout(() => setCopied(false), 3000);
     } catch {
-      toast.error('Failed to copy to clipboard');
+      toast.error(t('settings.apiKeyCopyFailed'));
     }
-  }, [createdKey]);
+  }, [createdKey, t]);
 
   const handleRevoke = useCallback(async () => {
     if (!revokeTarget) return;
     try {
       await revokeKey(revokeTarget.id);
-      toast.success('API key revoked');
+      toast.success(t('settings.apiKeyRevoked'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to revoke API key');
+      toast.error(err instanceof Error ? err.message : t('settings.apiKeyRevokeFailed'));
     } finally {
       setRevokeTarget(null);
     }
-  }, [revokeTarget, revokeKey]);
+  }, [revokeTarget, revokeKey, t]);
 
   const handleCloseCreatedKey = useCallback(() => {
     setCreatedKey(null);
@@ -81,10 +83,10 @@ export function ApiKeyManager() {
         <div>
           <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
             <Key className="w-5 h-5 text-accent" />
-            API Keys
+            {t('settings.apiKeys')}
           </h3>
           <p className="text-sm text-text-secondary mt-1">
-            API keys allow external tools like the Dalamud plugin to access your data.
+            {t('settings.apiKeysDesc')}
           </p>
         </div>
         <Button
@@ -94,7 +96,7 @@ export function ApiKeyManager() {
           disabled={activeKeys.length >= 10}
         >
           <Plus className="w-4 h-4" />
-          Create Key
+          {t('settings.apiKeyCreate')}
         </Button>
       </div>
 
@@ -113,8 +115,8 @@ export function ApiKeyManager() {
       ) : activeKeys.length === 0 ? (
         <div className="text-center py-8 text-text-muted">
           <Key className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p>No API keys yet</p>
-          <p className="text-xs mt-1">Create one to use with external tools</p>
+          <p>{t('settings.apiKeysEmpty')}</p>
+          <p className="text-xs mt-1">{t('settings.apiKeysEmptyHint')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -131,9 +133,9 @@ export function ApiKeyManager() {
                   </code>
                 </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-text-muted">
-                  <span>Created {formatDate(key.createdAt)}</span>
+                  <span>{t('settings.apiKeyCreatedDate', { date: formatDate(key.createdAt, t) })}</span>
                   {key.lastUsedAt && (
-                    <span>Last used {formatDate(key.lastUsedAt)}</span>
+                    <span>{t('settings.apiKeyLastUsed', { date: formatDate(key.lastUsedAt, t) })}</span>
                   )}
                 </div>
               </div>
@@ -142,7 +144,7 @@ export function ApiKeyManager() {
                 size="sm"
                 onClick={() => setRevokeTarget(key)}
                 className="text-status-error hover:text-status-error"
-                aria-label={`Revoke API key "${key.name}"`}
+                aria-label={t('settings.apiKeyRevokeAriaLabel', { name: key.name })}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -152,25 +154,25 @@ export function ApiKeyManager() {
       )}
 
       {/* Create Key Modal */}
-      <Modal isOpen={createModal.isOpen} onClose={handleCloseCreatedKey} title="Create API Key">
+      <Modal isOpen={createModal.isOpen} onClose={handleCloseCreatedKey} title={t('settings.apiKeyModalTitle')}>
         {createdKey ? (
           <div className="space-y-4">
             <div className="p-3 rounded-md bg-status-warning/10 border border-status-warning/30">
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-status-warning mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-status-warning">
-                  Copy this key now. It will not be shown again.
+                  {t('settings.apiKeyOneTimeWarning')}
                 </p>
               </div>
             </div>
 
             <div className="space-y-2">
-              {/* design-system-ignore */}<label className="text-sm font-medium text-text-secondary">API Key</label>
+              {/* design-system-ignore */}<label className="text-sm font-medium text-text-secondary">{t('settings.apiKeys')}</label>
               <div className="flex items-center gap-2">
                 <code className="flex-1 text-sm bg-surface-tertiary p-2 rounded border border-border-default font-mono break-all text-text-primary">
                   {createdKey.key}
                 </code>
-                <Button variant="secondary" size="sm" onClick={handleCopyKey} aria-label="Copy API key">
+                <Button variant="secondary" size="sm" onClick={handleCopyKey} aria-label={t('settings.apiKeyCopyAriaLabel')}>
                   {copied ? <Check className="w-4 h-4 text-status-success" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
@@ -178,16 +180,16 @@ export function ApiKeyManager() {
 
             <div className="flex justify-end">
               <Button variant="primary" onClick={handleCloseCreatedKey}>
-                Done
+                {t('common.done')}
               </Button>
             </div>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              {/* design-system-ignore */}<label className="text-sm font-medium text-text-secondary">Key Name</label>
+              {/* design-system-ignore */}<label className="text-sm font-medium text-text-secondary">{t('settings.apiKeyNameLabel')}</label>
               <Input
-                placeholder="e.g., Dalamud Plugin"
+                placeholder={t('settings.apiKeyNamePlaceholder')}
                 value={newKeyName}
                 onChange={(value) => setNewKeyName(value)}
                 maxLength={100}
@@ -197,18 +199,18 @@ export function ApiKeyManager() {
               />
             </div>
             <p className="text-xs text-text-muted">
-              This key will have access to read priority data and write loot/material logs for your statics.
+              {t('settings.apiKeyPermissionsNote')}
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={createModal.close}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="primary"
                 onClick={handleCreate}
                 disabled={!newKeyName.trim() || isCreating}
               >
-                {isCreating ? 'Creating...' : 'Create Key'}
+                {isCreating ? t('settings.apiKeyCreating') : t('settings.apiKeyCreate')}
               </Button>
             </div>
           </div>
@@ -221,8 +223,8 @@ export function ApiKeyManager() {
           isOpen={!!revokeTarget}
           onCancel={() => setRevokeTarget(null)}
           onConfirm={handleRevoke}
-          title="Revoke API Key"
-          message={`Are you sure you want to revoke "${revokeTarget.name}"? Any applications using this key will lose access immediately.`}
+          title={t('settings.apiKeyRevokeTitle')}
+          message={t('settings.apiKeyRevokeConfirm', { name: revokeTarget.name })}
           variant="danger"
         />
       )}
@@ -230,15 +232,15 @@ export function ApiKeyManager() {
   );
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const date = new Date(iso);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
   if (days < 0) return date.toLocaleDateString();
-  if (days === 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 30) return `${days}d ago`;
+  if (days === 0) return t('settings.apiKeyDateToday');
+  if (days === 1) return t('settings.apiKeyDateYesterday');
+  if (days < 30) return t('settings.apiKeyDateDaysAgo', { count: days });
   return date.toLocaleDateString();
 }

@@ -7,6 +7,7 @@
  */
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { JobIcon } from '../ui/JobIcon';
 import { Input } from '../ui/Input';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
@@ -93,6 +94,8 @@ export function AllWeeksView({
   highlightedEntryId,
   highlightedEntryType,
 }: AllWeeksViewProps) {
+  const { t, i18n } = useTranslation();
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
   // --- State ---
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -344,24 +347,24 @@ export function AllWeeksView({
 
     if (canEdit) {
       if (row.type === 'loot' && row.originalLoot && onEditLoot) {
-        items.push({
-          label: 'Edit',
-          icon: <Pencil className="w-4 h-4" />,
-          onClick: () => onEditLoot(row.originalLoot!),
-        });
+      items.push({
+        label: t('common.edit'),
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => onEditLoot(row.originalLoot!),
+      });
       }
       if (row.type === 'material' && row.originalMaterial && onEditMaterial) {
-        items.push({
-          label: 'Edit',
-          icon: <Pencil className="w-4 h-4" />,
-          onClick: () => onEditMaterial(row.originalMaterial!),
-        });
+      items.push({
+        label: t('common.edit'),
+        icon: <Pencil className="w-4 h-4" />,
+        onClick: () => onEditMaterial(row.originalMaterial!),
+      });
       }
     }
 
     if (onCopyEntryUrl) {
       items.push({
-        label: 'Copy URL',
+        label: t('lootLog.copyUrl'),
         icon: <Link className="w-4 h-4" />,
         onClick: () => onCopyEntryUrl(row.id, row.type),
       });
@@ -369,7 +372,7 @@ export function AllWeeksView({
 
     if (onNavigateToPlayer && row.playerId) {
       items.push({
-        label: `Jump to ${row.playerName}`,
+        label: t('lootLog.jumpToPlayer', { name: row.playerName }),
         icon: <UserRound className="w-4 h-4" />,
         onClick: () => onNavigateToPlayer(row.playerId, row.type === 'loot' ? row.slotRaw : row.slotAugmented),
       });
@@ -379,12 +382,12 @@ export function AllWeeksView({
     if (onJumpToWeek) {
       items.push({ separator: true });
       items.push({
-        label: `View Week ${row.weekNumber} in Grid`,
+        label: t('lootLog.viewWeekInGrid', { week: row.weekNumber }),
         icon: <LayoutGrid className="w-4 h-4" />,
         onClick: () => onJumpToWeek(row.weekNumber, 'grid'),
       });
       items.push({
-        label: `View Week ${row.weekNumber} in List`,
+        label: t('lootLog.viewWeekInList', { week: row.weekNumber }),
         icon: <List className="w-4 h-4" />,
         onClick: () => onJumpToWeek(row.weekNumber, 'split'),
       });
@@ -394,7 +397,7 @@ export function AllWeeksView({
       items.push({ separator: true });
       if (row.type === 'loot' && row.originalLoot && onDeleteLoot) {
         items.push({
-          label: 'Delete',
+          label: t('common.delete'),
           icon: <Trash2 className="w-4 h-4" />,
           onClick: () => onDeleteLoot(row.originalLoot!),
           danger: true,
@@ -402,7 +405,7 @@ export function AllWeeksView({
       }
       if (row.type === 'material' && row.originalMaterial && onDeleteMaterial) {
         items.push({
-          label: 'Delete',
+          label: t('common.delete'),
           icon: <Trash2 className="w-4 h-4" />,
           onClick: () => onDeleteMaterial(row.originalMaterial!),
           danger: true,
@@ -411,7 +414,7 @@ export function AllWeeksView({
     }
 
     return items;
-  }, [contextMenu, canEdit, onEditLoot, onEditMaterial, onDeleteLoot, onDeleteMaterial, onCopyEntryUrl, onNavigateToPlayer, onJumpToWeek]);
+  }, [contextMenu, canEdit, onEditLoot, onEditMaterial, onDeleteLoot, onDeleteMaterial, onCopyEntryUrl, onNavigateToPlayer, onJumpToWeek, t]);
 
   // --- Stats ---
   const stats = useMemo(() => {
@@ -422,12 +425,12 @@ export function AllWeeksView({
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', {
+    return d.toLocaleDateString(uiLocale, {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true,
+      hour12: !uiLocale.startsWith('ja'),
     });
   };
 
@@ -443,7 +446,7 @@ export function AllWeeksView({
             ref={searchInputRef}
             value={searchQuery}
             onChange={(value) => setSearchQuery(value)}
-            placeholder="Search... slot:weapon player:name type:bis (Ctrl+Shift+F)"
+            placeholder={t('lootLog.searchPlaceholder')}
             className="pl-9 pr-8"
           />
           {searchQuery && (
@@ -451,7 +454,7 @@ export function AllWeeksView({
             <button
               onClick={() => setSearchQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
-              aria-label="Clear search"
+              aria-label={t('lootLog.clearSearch')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -463,24 +466,24 @@ export function AllWeeksView({
           {/* Type Toggle */}
           {/* design-system-ignore: Type toggle requires specific toggle styling */}
           <div className="flex gap-1 bg-surface-raised rounded-lg p-0.5 border border-surface-overlay">
-            {(['all', 'loot', 'materials'] as const).map(t => (
+            {(['all', 'loot', 'materials'] as const).map(typeOption => (
               <button
-                key={t}
-                onClick={() => setEntryType(t)}
+                key={typeOption}
+                onClick={() => setEntryType(typeOption)}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors font-medium capitalize ${
-                  entryType === t
+                  entryType === typeOption
                     ? 'bg-accent/20 text-accent'
                     : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised'
                 }`}
               >
-                {t === 'all' ? 'All' : t === 'loot' ? 'Gear' : 'Materials'}
+                {typeOption === 'all' ? t('common.all') : typeOption === 'loot' ? t('lootLog.gear') : t('lootLog.materials')}
               </button>
             ))}
           </div>
 
           {/* Floor Filter Chips */}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-text-muted">Floor:</span>
+            <span className="text-xs text-text-muted">{t('common.floor')}:</span>
             {([1, 2, 3, 4] as FloorNumber[]).map(floor => {
               const isActive = activeFloors.has(floor);
               const colors = FLOOR_COLORS[floor];
@@ -504,9 +507,9 @@ export function AllWeeksView({
 
           {/* Stats */}
           <div className="ml-auto text-xs text-text-muted">
-            {stats.total} {stats.total === 1 ? 'entry' : 'entries'}
+            {t('lootLog.entriesCount', { count: stats.total })}
             {entryType === 'all' && stats.total > 0 && (
-              <span> ({stats.lootCount} gear, {stats.matCount} material)</span>
+              <span> ({t('lootLog.entriesBreakdown', { gearCount: stats.lootCount, materialCount: stats.matCount })})</span>
             )}
           </div>
         </div>
@@ -517,13 +520,13 @@ export function AllWeeksView({
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-surface-raised z-10">
             <tr>
-              <SortableHeader field="week" label="Week" currentField={sortField} currentDirection={sortDir} onSort={handleSort} className="w-16" />
-              <SortableHeader field="floor" label="Floor" currentField={sortField} currentDirection={sortDir} onSort={handleSort} className="w-20" />
-              <SortableHeader field="slot" label="Slot" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
-              <SortableHeader field="player" label="Player" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
-              <SortableHeader field="method" label="Method" currentField={sortField} currentDirection={sortDir} onSort={handleSort} className="w-24" />
-              <SortableHeader field="date" label="Date" currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
-              <SortableHeader field="type" label="Type" currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" className="w-16" />
+              <SortableHeader field="week" label={t('common.week')} currentField={sortField} currentDirection={sortDir} onSort={handleSort} className="w-16" />
+              <SortableHeader field="floor" label={t('common.floor')} currentField={sortField} currentDirection={sortDir} onSort={handleSort} className="w-20" />
+              <SortableHeader field="slot" label={t('lootLog.slot')} currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
+              <SortableHeader field="player" label={t('common.player')} currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
+              <SortableHeader field="method" label={t('lootLog.method')} currentField={sortField} currentDirection={sortDir} onSort={handleSort} className="w-24" />
+              <SortableHeader field="date" label={t('common.date')} currentField={sortField} currentDirection={sortDir} onSort={handleSort} />
+              <SortableHeader field="type" label={t('common.type')} currentField={sortField} currentDirection={sortDir} onSort={handleSort} align="center" className="w-16" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle">
@@ -531,8 +534,8 @@ export function AllWeeksView({
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-text-muted">
                   {debouncedQuery || entryType !== 'all' || activeFloors.size < 4
-                    ? 'No entries match your filters.'
-                    : 'No loot or materials logged this tier.'}
+                    ? t('lootLog.noEntriesMatch')
+                    : t('lootLog.noEntriesThisTier')}
                 </td>
               </tr>
             ) : (
@@ -550,7 +553,12 @@ export function AllWeeksView({
                     id={`${row.type}-entry-${row.id}`}
                     className={`hover:bg-surface-elevated/50 transition-colors cursor-pointer select-none ${isHighlighted ? 'highlight-pulse' : ''}`}
                     tabIndex={0}
-                    aria-label={`${row.type === 'loot' ? 'Loot' : 'Material'}: ${row.slot} - ${row.playerName}, Week ${row.weekNumber}`}
+                    aria-label={t('lootLog.entryAriaLabel', {
+                      type: row.type === 'loot' ? t('lootLog.logLoot') : t('lootLog.logMaterial'),
+                      slot: row.slot,
+                      player: row.playerName,
+                      week: row.weekNumber,
+                    })}
                     onClick={(e) => handleRowClick(e, row)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -629,7 +637,7 @@ export function AllWeeksView({
                             ? 'bg-status-info/15 text-status-info'
                             : 'bg-accent/10 text-accent'
                         }`}>
-                          {row.isExtra ? 'Extra' : 'BiS'}
+                          {row.isExtra ? t('lootLog.extra') : 'BiS'}
                         </span>
                       )}
                     </td>

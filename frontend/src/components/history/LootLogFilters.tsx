@@ -7,7 +7,8 @@
  * - Right: Action buttons (Log Loot, Log Material)
  */
 
-import { Package, Gem, ClipboardList } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { XivIcon } from '../ui/XivIcon';
 import {
   Dropdown,
   DropdownTrigger,
@@ -65,6 +66,7 @@ export function LootLogFilters({
   onLogWeek,
   weekSelector,
 }: LootLogFiltersProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center gap-2 sm:gap-3 border-b border-border-default pb-3">
       {/* Left group: Layout toggle + Reset */}
@@ -75,9 +77,9 @@ export function LootLogFilters({
             content={
               <div>
                 <div className="flex items-center gap-2 font-medium">
-                  Grid View
+                  {t('lootLog.gridView')}
                 </div>
-                <div className="text-text-secondary text-xs mt-0.5">Spreadsheet-style weekly loot grid. <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">G</kbd> cycles layout</div>
+                <div className="text-text-secondary text-xs mt-0.5">{t('lootLog.gridViewDesc')} <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">G</kbd> {t('lootLog.cyclesLayout')}</div>
               </div>
             }
           >
@@ -97,16 +99,16 @@ export function LootLogFilters({
                 <rect x="1" y="9" width="6" height="6" rx="1" />
                 <rect x="9" y="9" width="6" height="6" rx="1" />
               </svg>
-              <span className="hidden sm:inline">Grid</span>
+              <span className="hidden sm:inline">{t('lootLog.grid')}</span>
             </button>
           </Tooltip>
           <Tooltip
             content={
               <div>
                 <div className="flex items-center gap-2 font-medium">
-                  List View
+                  {t('lootLog.listView')}
                 </div>
-                <div className="text-text-secondary text-xs mt-0.5">Chronological loot list by floor or timeline. <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">G</kbd> cycles layout</div>
+                <div className="text-text-secondary text-xs mt-0.5">{t('lootLog.listViewDesc')} <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">G</kbd> {t('lootLog.cyclesLayout')}</div>
               </div>
             }
           >
@@ -125,14 +127,14 @@ export function LootLogFilters({
                 <rect x="1" y="7" width="14" height="4" rx="1" />
                 <rect x="1" y="13" width="14" height="2" rx="0.5" opacity="0.6" />
               </svg>
-              <span className="hidden sm:inline">List</span>
+              <span className="hidden sm:inline">{t('lootLog.list')}</span>
             </button>
           </Tooltip>
           <Tooltip
             content={
               <div>
-                <div className="font-medium">All Weeks</div>
-                <div className="text-text-secondary text-xs mt-0.5">View all loot across every week</div>
+                <div className="font-medium">{t('lootLog.allWeeks')}</div>
+                <div className="text-text-secondary text-xs mt-0.5">{t('lootLog.allWeeksDesc')}</div>
               </div>
             }
           >
@@ -155,7 +157,7 @@ export function LootLogFilters({
                 <rect x="3.5" y="11" width="2" height="1.5" rx="0.3" opacity="0.7" />
                 <rect x="7" y="11" width="2" height="1.5" rx="0.3" opacity="0.7" />
               </svg>
-              <span className="hidden sm:inline">All Weeks</span>
+              <span className="hidden sm:inline">{t('lootLog.allWeeks')}</span>
             </button>
           </Tooltip>
         </div>
@@ -167,8 +169,8 @@ export function LootLogFilters({
             <Tooltip
               content={
                 <div>
-                  <div className="font-medium">Reset Data</div>
-                  <div className="text-text-secondary text-xs mt-0.5">Clear loot, books, or all data</div>
+                  <div className="font-medium">{t('lootLog.resetData')}</div>
+                  <div className="text-text-secondary text-xs mt-0.5">{t('lootLog.resetDataDesc')}</div>
                 </div>
               }
             >
@@ -187,7 +189,7 @@ export function LootLogFilters({
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                       />
                     </svg>
-                    <span className="hidden sm:inline">Reset</span>
+                    <span className="hidden sm:inline">{t('common.reset')}</span>
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -197,7 +199,7 @@ export function LootLogFilters({
             </Tooltip>
             <DropdownContent align="start" className="w-48">
               {/* Week-specific resets */}
-              <DropdownLabel>Week {currentWeek}</DropdownLabel>
+              <DropdownLabel>{t('lootLog.weekLabel', { week: currentWeek })}</DropdownLabel>
               <DropdownItem
                 onSelect={onResetWeekLoot}
                 icon={
@@ -207,7 +209,7 @@ export function LootLogFilters({
                 }
                 className="hover:text-status-warning focus:text-status-warning"
               >
-                Reset W{currentWeek} Loot
+                {t('lootLog.resetWeekLoot', { week: currentWeek })}
               </DropdownItem>
               <DropdownItem
                 onSelect={onResetWeekBooks}
@@ -218,7 +220,7 @@ export function LootLogFilters({
                 }
                 className="hover:text-status-warning focus:text-status-warning"
               >
-                Reset W{currentWeek} Books
+                {t('lootLog.resetWeekBooks', { week: currentWeek })}
               </DropdownItem>
               <DropdownItem
                 onSelect={onResetWeekData}
@@ -229,13 +231,13 @@ export function LootLogFilters({
                 }
                 className="hover:text-status-warning focus:text-status-warning"
               >
-                Reset W{currentWeek} Data
+                {t('lootLog.resetWeekData', { week: currentWeek })}
               </DropdownItem>
 
               <DropdownSeparator />
 
               {/* Tier-wide resets */}
-              <DropdownLabel>All Weeks</DropdownLabel>
+              <DropdownLabel>{t('lootLog.allWeeks')}</DropdownLabel>
               <DropdownItem
                 onSelect={onResetAllLoot}
                 icon={
@@ -245,7 +247,7 @@ export function LootLogFilters({
                 }
                 className="hover:text-status-error focus:text-status-error"
               >
-                Reset All Loot
+                {t('lootLog.resetAllLoot')}
               </DropdownItem>
               <DropdownItem
                 onSelect={onResetAllBooks}
@@ -256,7 +258,7 @@ export function LootLogFilters({
                 }
                 className="hover:text-status-error focus:text-status-error"
               >
-                Reset All Books
+                {t('lootLog.resetAllBooks')}
               </DropdownItem>
 
               <DropdownSeparator />
@@ -270,7 +272,7 @@ export function LootLogFilters({
                 }
                 className="font-semibold hover:text-status-error focus:text-status-error"
               >
-                Reset All Data
+                {t('lootLog.resetAllData')}
               </DropdownItem>
             </DropdownContent>
           </Dropdown>
@@ -290,10 +292,10 @@ export function LootLogFilters({
         <div className="hidden sm:flex items-center gap-2 flex-1 justify-end">
           {onLogWeek && (
             <>
-              <Tooltip content="Log all drops for this week using a step-by-step wizard">
+              <Tooltip content={t('lootLog.logWeekDesc')}>
                 <Button size="sm" variant="primary" onClick={onLogWeek}>
-                  <ClipboardList className="w-4 h-4 mr-1.5" />
-                  Log Week
+                  <XivIcon name="history" size={16} className="mr-1.5" />
+                  {t('lootLog.logWeek')}
                 </Button>
               </Tooltip>
 
@@ -305,36 +307,36 @@ export function LootLogFilters({
           <Tooltip
             content={
               <div className="flex items-start gap-2">
-                <Package className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                <XivIcon name="loot" size={16} className="flex-shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-medium">Log Loot</div>
+                  <div className="font-medium">{t('lootLog.logLoot')}</div>
                   <div className="text-text-secondary text-xs mt-0.5">
-                    Record a gear drop. Press <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Alt+L</kbd>
+                    {t('lootLog.logLootDesc')} <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Alt+L</kbd>
                   </div>
                 </div>
               </div>
             }
           >
             <Button size="sm" variant="accent-subtle" onClick={onOpenLootModal}>
-              + Log Loot
+              + {t('lootLog.logLoot')}
             </Button>
           </Tooltip>
 
           <Tooltip
             content={
               <div className="flex items-start gap-2">
-                <Gem className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+                <XivIcon name="materia" size={16} className="flex-shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-medium">Log Material</div>
+                  <div className="font-medium">{t('lootLog.logMaterial')}</div>
                   <div className="text-text-secondary text-xs mt-0.5">
-                    Record twine, glaze, or solvent. Press <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Alt+M</kbd>
+                    {t('lootLog.logMaterialDesc')} <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">Alt+M</kbd>
                   </div>
                 </div>
               </div>
             }
           >
             <Button size="sm" variant="accent-subtle" onClick={onOpenMaterialModal}>
-              + Log Material
+              + {t('lootLog.logMaterial')}
             </Button>
           </Tooltip>
         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send, ExternalLink, ScrollText, Eye } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
@@ -23,16 +24,7 @@ import type { JoinRequestCreatePayload, AltJobEntry, GearSnapshotSummary } from 
 import { getJobDisplayName } from '../../gamedata/jobs';
 import { GameIcon } from '../ui/GameIcon';
 import { resolveJobGearSnapshot } from '../profile/jobGearUtils';
-
-const DAY_LABELS: Record<string, string> = {
-  MO: 'Mon',
-  TU: 'Tue',
-  WE: 'Wed',
-  TH: 'Thu',
-  FR: 'Fri',
-  SA: 'Sat',
-  SU: 'Sun',
-};
+import { formatDayOfWeekLabel } from '../schedule/availabilityUtils';
 
 interface JoinRequestModalProps {
   isOpen: boolean;
@@ -53,6 +45,7 @@ interface JobCardProps {
 }
 
 function JobCard({ jp, snapshot, selected, onSelect, compact }: JobCardProps) {
+  const { t } = useTranslation();
   const freshness = snapshot?.syncedAt ? getFreshness(snapshot.syncedAt) : 'none';
   const isStale = freshness === 'stale' || freshness === 'old';
 
@@ -85,7 +78,7 @@ function JobCard({ jp, snapshot, selected, onSelect, compact }: JobCardProps) {
           <span className={freshnessColor(freshness)}>
             {formatSyncAge(snapshot.syncedAt)}
           </span>
-          {isStale && <Badge variant="warning" size="sm">Stale</Badge>}
+          {isStale && <Badge variant="warning" size="sm">{t('joinRequest.modal.stale')}</Badge>}
         </div>
       )}
       {snapshot && compact && (
@@ -106,6 +99,7 @@ export function JoinRequestModal({
   neededRoles,
   recruitmentStatus,
 }: JoinRequestModalProps) {
+  const { t, i18n } = useTranslation();
   const {
     profile,
     gearSnapshots,
@@ -126,6 +120,7 @@ export function JoinRequestModal({
   const [contactDiscord, setContactDiscord] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
 
   // Load profile data when modal opens
   useEffect(() => {
@@ -172,13 +167,13 @@ export function JoinRequestModal({
         configuredDays: configuredAvailabilityDays.length,
         timezone: configuredAvailabilityDays[0].timezone,
         detailLevel: includeExactAvailability ? 'exact' as const : 'summary_only' as const,
-        dayLabels: configuredAvailabilityDays.map((day) => DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek),
+        dayLabels: configuredAvailabilityDays.map((day) => formatDayOfWeekLabel(day.dayOfWeek as never, uiLocale)),
         source: 'player_hub' as const,
         ...(includeExactAvailability
           ? {
               exactWindows: configuredAvailabilityDays.map((day) => ({
                 dayOfWeek: day.dayOfWeek,
-                dayLabel: DAY_LABELS[day.dayOfWeek] ?? day.dayOfWeek,
+                dayLabel: formatDayOfWeekLabel(day.dayOfWeek as never, uiLocale),
                 slots: day.slots,
               })),
             }
@@ -200,6 +195,14 @@ export function JoinRequestModal({
   const roleMatches = selectedRole && neededRoles?.map((r) => r.toLowerCase()).includes(selectedRole);
   const jobMatches = selectedJob && neededJobs?.map((j) => j.toLowerCase()).includes(selectedJob);
   const hasMatch = roleMatches || jobMatches;
+  const formatRoleLabel = (role: string) => {
+    if (role === 'tank') return t('common.roleTank');
+    if (role === 'healer') return t('common.roleHealer');
+    if (role === 'melee') return t('common.roleMelee');
+    if (role === 'ranged') return t('common.roleRanged');
+    if (role === 'caster') return t('common.roleCaster');
+    return role;
+  };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -262,10 +265,10 @@ export function JoinRequestModal({
       }
 
       await createRequest(shareCode, payload);
-      toast.success('Request sent! The static lead will review your application.');
+      toast.success(t('joinRequest.modal.requestSent'));
       handleClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to send request');
+      toast.error(error instanceof Error ? error.message : t('joinRequest.modal.requestSendFailed'));
     } finally {
       setIsSubmitting(false);
     }
@@ -297,14 +300,14 @@ export function JoinRequestModal({
       title={
         <span className="flex items-center gap-2">
           <Send className="w-4 h-4 text-accent" />
-          Request to Join
+          {t('discover.requestToJoin')}
         </span>
       }
       size="lg"
       footer={
         <div className="flex justify-end gap-3">
           <Button variant="secondary" onClick={handleClose} disabled={isSubmitting}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -313,7 +316,7 @@ export function JoinRequestModal({
             disabled={!canSubmit}
             leftIcon={<Send className="w-4 h-4" />}
           >
-            Send Request
+            {t('joinRequest.modal.sendRequest')}
           </Button>
         </div>
       }
@@ -322,7 +325,7 @@ export function JoinRequestModal({
         {/* Static info header */}
         <div>
           <p className="text-sm text-text-secondary">
-            Applying to <span className="font-semibold text-text-primary">{staticName}</span>
+            {t('joinRequest.modal.applyingTo')} <span className="font-semibold text-text-primary">{staticName}</span>
           </p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             {recruitmentStatus && (
@@ -335,7 +338,7 @@ export function JoinRequestModal({
             )}
             {neededRoles && neededRoles.length > 0 && (
               <span className="text-xs text-text-tertiary">
-                Looking for: {neededRoles.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(', ')}
+                {t('discover.lookingForLabel')}: {neededRoles.map((role) => formatRoleLabel(role)).join(', ')}
               </span>
             )}
           </div>
@@ -353,12 +356,12 @@ export function JoinRequestModal({
         {!profileLoading && !hasCharacter && (
           <div className="rounded-lg border border-status-warning/30 bg-status-warning/5 p-4 text-center">
             <div className="mb-2 text-status-warning"><GameIcon name="shield-person" size="xl" /></div>
-            <p className="text-sm text-text-primary font-medium mb-1">Link a character first</p>
+            <p className="text-sm text-text-primary font-medium mb-1">{t('joinRequest.modal.linkCharacterFirst')}</p>
             <p className="text-xs text-text-secondary mb-3">
-              Set up your Player Hub profile with a linked character before applying.
+              {t('joinRequest.modal.linkCharacterFirstDesc')}
             </p>
             <Button size="sm" onClick={() => window.open('/profile', '_blank')}>
-              Open Player Hub
+              {t('joinRequest.modal.openPlayerHub')}
             </Button>
           </div>
         )}
@@ -366,12 +369,12 @@ export function JoinRequestModal({
         {!profileLoading && hasCharacter && !hasJobs && (
           <div className="rounded-lg border border-status-warning/30 bg-status-warning/5 p-4 text-center">
             <div className="mb-2 text-status-warning"><GameIcon name="crossed-swords" size="xl" /></div>
-            <p className="text-sm text-text-primary font-medium mb-1">Set your main job first</p>
+            <p className="text-sm text-text-primary font-medium mb-1">{t('joinRequest.modal.setMainJobFirst')}</p>
             <p className="text-xs text-text-secondary mb-3">
-              Add at least one job profile in your Player Hub before applying.
+              {t('joinRequest.modal.setMainJobFirstDesc')}
             </p>
             <Button size="sm" onClick={() => window.open('/profile', '_blank')}>
-              Open Player Hub
+              {t('joinRequest.modal.openPlayerHub')}
             </Button>
           </div>
         )}
@@ -392,7 +395,7 @@ export function JoinRequestModal({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="font-display font-semibold text-text-primary text-sm truncate">
-                  {mainCharacter?.name ?? 'Unknown'}
+                  {mainCharacter?.name ?? t('common.unknown')}
                 </div>
                 <div className="text-xs text-text-secondary">
                   {mainCharacter?.server}
@@ -401,9 +404,9 @@ export function JoinRequestModal({
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {profile?.shareEnabled ? (
-                  <Badge variant="success" size="sm">Profile Shared</Badge>
+                  <Badge variant="success" size="sm">{t('joinRequest.modal.profileShared')}</Badge>
                 ) : (
-                  <Badge variant="default" size="sm">Profile Private</Badge>
+                  <Badge variant="default" size="sm">{t('joinRequest.modal.profilePrivate')}</Badge>
                 )}
                 <Button
                   variant="ghost"
@@ -411,41 +414,46 @@ export function JoinRequestModal({
                   onClick={() => window.open('/profile', '_blank')}
                   leftIcon={<ExternalLink className="w-3 h-3" />}
                 >
-                  Edit
+                  {t('common.edit')}
                 </Button>
               </div>
             </div>
 
             {/* Setup warnings and profile links */}
             <div className="rounded-lg border border-border-default bg-surface-raised p-3">
-              <p className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-2">Player Hub checks</p>
+              <p className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-2">{t('joinRequest.modal.playerHubChecks')}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="rounded-lg bg-surface-elevated/70 px-3 py-2 text-xs">
                   <span className={hasGearSnapshot && !gearNeedsAttention ? 'text-status-success' : 'text-status-warning'}>
-                    {hasGearSnapshot ? (gearNeedsAttention ? 'Gear may be stale' : 'Gear ready') : 'No gear saved'}
+                    {hasGearSnapshot
+                      ? (gearNeedsAttention ? t('joinRequest.modal.gearMayBeStale') : t('joinRequest.modal.gearReady'))
+                      : t('joinRequest.modal.noGearSaved')}
                   </span>
                   <Button variant="link" size="sm" onClick={() => window.open('/profile?tab=sync', '_blank')} className="ml-2">
-                    Sync Center
+                    {t('profile.jobsGear.manageSync')}
                   </Button>
                 </div>
                 <div className="rounded-lg bg-surface-elevated/70 px-3 py-2 text-xs">
                   <span className={availabilitySummary ? 'text-status-success' : 'text-text-tertiary'}>
                     {availabilitySummary
-                      ? `${availabilitySummary.configuredDays} availability days: ${availabilitySummary.dayLabels?.join(' / ')}`
-                      : 'No availability summary included'}
+                      ? t('joinRequest.modal.availabilitySummaryIncluded', {
+                          count: availabilitySummary.configuredDays,
+                          days: availabilitySummary.dayLabels?.join(' / ') ?? '',
+                        })
+                      : t('joinRequest.modal.noAvailabilitySummary')}
                   </span>
                   <Button variant="link" size="sm" onClick={() => window.open('/profile?tab=availability', '_blank')} className="ml-2">
-                    Availability
+                    {t('profile.overview.availability')}
                   </Button>
                 </div>
                 <div className="rounded-lg bg-surface-elevated/70 px-3 py-2 text-xs sm:col-span-2">
                   <span className={profile?.shareEnabled && profile.visibility !== 'private' ? 'text-status-success' : 'text-text-tertiary'}>
                     {profile?.shareEnabled && profile.visibility !== 'private'
-                      ? 'Profile preview can be shared'
-                      : 'Profile is private; leads will see only this application snapshot'}
+                      ? t('joinRequest.modal.profilePreviewShared')
+                      : t('joinRequest.modal.profilePrivateSnapshotOnly')}
                   </span>
                   <Button variant="link" size="sm" onClick={() => window.open('/profile?tab=share', '_blank')} className="ml-2">
-                    Sharing
+                    {t('profile.overview.sharing')}
                   </Button>
                 </div>
               </div>
@@ -453,7 +461,7 @@ export function JoinRequestModal({
 
             {/* Section 2: Apply As (primary job) */}
             <div>
-              <Label>Apply As</Label>
+              <Label>{t('joinRequest.modal.applyAs')}</Label>
               <div className="space-y-2 mt-1">
                 {jobProfiles.map((jp) => (
                   <JobCard
@@ -475,14 +483,14 @@ export function JoinRequestModal({
                 leftIcon={<Eye className="w-4 h-4" />}
                 onClick={() => setShowPreview(true)}
               >
-                Preview Application
+                {t('joinRequest.modal.previewApplication')}
               </Button>
             </div>
 
             {/* Section 3: Also Available (alt jobs) */}
             {altJobs.length > 0 && (
               <div>
-                <Label description="Toggle jobs to include in your application">Also Available As</Label>
+                <Label description={t('joinRequest.modal.alsoAvailableDesc')}>{t('joinRequest.modal.alsoAvailableAs')}</Label>
                 <div className="grid grid-cols-2 gap-2 mt-1">
                   {altJobs.map((jp) => (
                     <div key={jp.id} className="flex items-center gap-2">
@@ -505,20 +513,20 @@ export function JoinRequestModal({
             {/* Section 4: Fit match */}
             {(neededRoles?.length || neededJobs?.length) ? (
               <div className="rounded-lg bg-surface-raised border border-border-default p-3">
-                <div className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1.5">Fit</div>
+                <div className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1.5">{t('joinRequest.modal.fit')}</div>
                 {hasMatch ? (
                   <div className="flex items-center gap-2 text-sm">
                     <span className="w-2 h-2 rounded-full bg-status-success flex-shrink-0" />
                     <span className="text-text-primary">
-                      {jobMatches && `Your ${getJobDisplayName(selectedJob!)} matches a needed job`}
-                      {jobMatches && roleMatches && ' and '}
-                      {roleMatches && !jobMatches && `Your ${selectedRole} role matches a needed role`}
+                      {jobMatches && t('joinRequest.modal.jobMatchesNeededJob', { job: getJobDisplayName(selectedJob!) })}
+                      {jobMatches && roleMatches && ` ${t('common.and')} `}
+                      {roleMatches && !jobMatches && t('joinRequest.modal.roleMatchesNeededRole', { role: formatRoleLabel(selectedRole!) })}
                     </span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-sm">
                     <span className="w-2 h-2 rounded-full bg-text-tertiary flex-shrink-0" />
-                    <span className="text-text-secondary">No specific role/job match, but you can still apply</span>
+                    <span className="text-text-secondary">{t('joinRequest.modal.noDirectMatch')}</span>
                   </div>
                 )}
               </div>
@@ -526,43 +534,43 @@ export function JoinRequestModal({
 
             {/* Section 5: Discord handle */}
             <div>
-              <Label htmlFor="join-discord" description="So the lead can reach you. Removed after they respond.">
-                Discord handle
+              <Label htmlFor="join-discord" description={t('joinRequest.modal.discordHandleDesc')}>
+                {t('joinRequest.modal.discordHandle')}
               </Label>
               <Input
                 id="join-discord"
                 value={contactDiscord}
                 onChange={setContactDiscord}
-                placeholder="e.g. username"
+                placeholder={t('joinRequest.modal.discordHandlePlaceholder')}
                 maxLength={100}
               />
               <p className="text-xs text-text-muted mt-1">
-                Your handle is only visible while the request is pending and is automatically deleted once accepted, declined, or cancelled.
+                {t('joinRequest.modal.discordHandlePrivacy')}
               </p>
             </div>
 
             {/* Section 6: Availability */}
             <div className="space-y-3">
-              <Label htmlFor="join-availability" description="Days/times you can raid, timezone, flexibility.">
-                Availability
+              <Label htmlFor="join-availability" description={t('joinRequest.modal.availabilityDesc')}>
+                {t('profile.overview.availability')}
               </Label>
               <div className="rounded-lg border border-border-default bg-surface-raised p-3">
                 <Checkbox
                   checked={includeAvailabilitySummary}
                   onChange={() => setIncludeAvailabilitySummary((value) => !value)}
-                  label="Include Player Hub availability summary"
+                  label={t('joinRequest.modal.includeAvailabilitySummary')}
                 />
                 <p className="mt-1 text-xs text-text-tertiary">
-                  Shares timezone and configured day labels from Player Hub, not exact time windows.
+                  {t('joinRequest.modal.includeAvailabilitySummaryDesc')}
                 </p>
                 <div className="mt-3 border-t border-border-subtle pt-3">
                   <Checkbox
                     checked={includeExactAvailability}
                     onChange={() => setIncludeExactAvailability((value) => !value)}
-                    label="Include exact available windows for this application"
+                    label={t('joinRequest.modal.includeExactAvailability')}
                   />
                   <p className="mt-1 text-xs text-text-tertiary">
-                    Optional. Exact windows are stored only in this application snapshot and are not shown on your public profile.
+                    {t('joinRequest.modal.includeExactAvailabilityDesc')}
                   </p>
                 </div>
               </div>
@@ -570,7 +578,7 @@ export function JoinRequestModal({
                 id="join-availability"
                 value={availabilityNote}
                 onChange={setAvailabilityNote}
-                placeholder="e.g. Tue/Thu 8-11pm EST, flexible on weekends"
+                placeholder={t('joinRequest.modal.availabilityPlaceholder')}
                 maxLength={300}
                 rows={2}
               />
@@ -579,14 +587,14 @@ export function JoinRequestModal({
 
             {/* Section 7: Message */}
             <div>
-              <Label htmlFor="join-message" description="Introduce yourself, your experience, goals, and why you want to join.">
-                Message
+              <Label htmlFor="join-message" description={t('joinRequest.modal.messageDesc')}>
+                {t('joinRequest.modal.message')}
               </Label>
               <TextArea
                 id="join-message"
                 value={message}
                 onChange={setMessage}
-                placeholder="Tell the lead about yourself and why you'd be a good fit..."
+                placeholder={t('joinRequest.modal.messagePlaceholder')}
                 maxLength={500}
                 rows={3}
               />
@@ -647,6 +655,7 @@ function ApplicationPreviewModal({
   message,
   shareEnabled,
 }: ApplicationPreviewModalProps) {
+  const { t } = useTranslation();
   const includedAlts = altJobs.filter((j) => includedAltIds.has(j.id));
 
   return (
@@ -656,14 +665,14 @@ function ApplicationPreviewModal({
       title={
         <span className="flex items-center gap-2">
           <Eye className="w-4 h-4 text-accent" />
-          Application Preview
+          {t('joinRequest.modal.applicationPreview')}
         </span>
       }
       size="lg"
       footer={
         <div className="flex justify-between">
           <Button variant="secondary" onClick={onBack}>
-            Back to Edit
+            {t('joinRequest.modal.backToEdit')}
           </Button>
           <Button
             variant="primary"
@@ -672,7 +681,7 @@ function ApplicationPreviewModal({
             disabled={!canSubmit}
             leftIcon={<Send className="w-4 h-4" />}
           >
-            Send Request
+            {t('joinRequest.modal.sendRequest')}
           </Button>
         </div>
       }
@@ -693,10 +702,10 @@ function ApplicationPreviewModal({
         {/* Preview header */}
         <div className="px-4 pt-3 pb-2.5 text-center" style={{ borderBottom: '1px solid rgba(184,147,58,0.2)' }}>
           <p className="text-[10px] font-bold uppercase tracking-[0.3em]" style={{ color: '#8b6914' }}>
-            ✦&nbsp;&nbsp;Application Preview&nbsp;&nbsp;✦
+            ✦&nbsp;&nbsp;{t('joinRequest.modal.applicationPreview')}&nbsp;&nbsp;✦
           </p>
           <p className="text-xs italic mt-0.5" style={{ color: '#7a5c3a' }}>
-            This is what the static lead will see. Later Player Hub changes will not rewrite this.
+            {t('joinRequest.modal.previewLeadWillSee')}
           </p>
         </div>
 
@@ -722,7 +731,7 @@ function ApplicationPreviewModal({
             {/* Character identity */}
             <div>
               <p className="font-display font-bold text-base leading-tight" style={{ color: '#2d1e13' }}>
-                {character?.name ?? <span style={{ color: '#8c7a60' }}>Character not set</span>}
+                {character?.name ?? <span style={{ color: '#8c7a60' }}>{t('joinRequest.modal.characterNotSet')}</span>}
               </p>
               {character?.server && (
                 <p className="text-xs" style={{ color: '#7a5c3a' }}>{character.server}</p>
@@ -732,7 +741,7 @@ function ApplicationPreviewModal({
             {/* Applying as */}
             {jobProfile && (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: '#8b6914' }}>Applying as</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: '#8b6914' }}>{t('joinRequest.modal.applyingAs')}</p>
                 <JobIcon job={jobProfile.job.toUpperCase()} size="sm" />
                 <span className="text-sm font-semibold" style={{ color: '#2d1e13' }}>
                   {getJobDisplayName(jobProfile.job.toUpperCase())}
@@ -746,7 +755,7 @@ function ApplicationPreviewModal({
                     iLv {snapshot.avgItemLevel}
                   </span>
                 ) : (
-                  <span className="text-[10px]" style={{ color: '#8c7a60' }}>No gear snapshot submitted</span>
+                  <span className="text-[10px]" style={{ color: '#8c7a60' }}>{t('joinRequest.modal.noGearSnapshotSubmitted')}</span>
                 )}
               </div>
             )}
@@ -754,7 +763,7 @@ function ApplicationPreviewModal({
             {/* Included alt jobs */}
             {includedAlts.length > 0 && (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: '#8b6914' }}>Also available</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: '#8b6914' }}>{t('joinRequest.modal.alsoAvailable')}</p>
                 {includedAlts.map((alt) => (
                   <div key={alt.id} className="flex items-center gap-1 rounded-md px-1.5 py-0.5"
                     style={{ background: '#f5ede0', border: '1px solid rgba(184,147,58,0.2)' }}
@@ -770,11 +779,11 @@ function ApplicationPreviewModal({
             {/* Availability */}
             {availabilitySummary && (
               <p className="text-xs" style={{ color: '#5c3d2e' }}>
-                <span style={{ color: '#8b6914', fontWeight: 600 }}>Availability: </span>
+                <span style={{ color: '#8b6914', fontWeight: 600 }}>{t('profile.overview.availability')}: </span>
                 {availabilitySummary.dayLabels?.join(' / ')}
                 {availabilitySummary.timezone ? `, ${availabilitySummary.timezone}` : ''}
                 <span style={{ color: '#8c7a60' }}>
-                  {availabilitySummary.detailLevel === 'exact' ? ' · exact windows' : ''}
+                  {availabilitySummary.detailLevel === 'exact' ? ` · ${t('joinRequest.modal.exactWindows')}` : ''}
                 </span>
               </p>
             )}
@@ -803,12 +812,12 @@ function ApplicationPreviewModal({
           style={{ borderTop: '1px solid rgba(184,147,58,0.15)', background: 'rgba(240,230,206,0.25)' }}
         >
           <Badge variant={shareEnabled ? 'success' : 'default'} size="sm">
-            {shareEnabled ? 'Profile Shared' : 'Profile Private'}
+            {shareEnabled ? t('joinRequest.modal.profileShared') : t('joinRequest.modal.profilePrivate')}
           </Badge>
           <p className="text-xs" style={{ color: '#7a5c3a' }}>
             {shareEnabled
-              ? 'The static lead will be able to view your full Player Hub profile.'
-              : 'The static lead will see only this application snapshot.'}
+              ? t('joinRequest.modal.fullProfileVisible')
+              : t('joinRequest.modal.snapshotOnlyVisible')}
           </p>
         </div>
 
@@ -818,53 +827,52 @@ function ApplicationPreviewModal({
           style={{ borderTop: '1px solid rgba(184,147,58,0.15)', background: 'rgba(240,230,206,0.18)' }}
         >
           <p className="text-[9px] font-bold uppercase tracking-[0.25em]" style={{ color: '#8b6914' }}>
-            ✦ What the lead will see
+            ✦ {t('joinRequest.modal.whatLeadWillSee')}
           </p>
           <ul className="space-y-1">
             <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
               <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
               <span>
-                <span style={{ fontWeight: 600 }}>Job:</span>{' '}
-                {jobProfile ? jobProfile.job.toUpperCase() : 'None selected'}
-                {includedAlts.length > 0 && ` · also ${includedAlts.map((a) => a.job.toUpperCase()).join(', ')}`}
+                <span style={{ fontWeight: 600 }}>{t('common.job')}:</span>{' '}
+                {jobProfile ? jobProfile.job.toUpperCase() : t('joinRequest.modal.noneSelected')}
+                {includedAlts.length > 0 && ` · ${t('joinRequest.modal.also')} ${includedAlts.map((a) => a.job.toUpperCase()).join(', ')}`}
               </span>
             </li>
             <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
               <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
               <span>
-                <span style={{ fontWeight: 600 }}>Gear:</span>{' '}
-                {snapshot ? `iLv ${snapshot.avgItemLevel} avg` : 'No gear snapshot'}
+                <span style={{ fontWeight: 600 }}>{t('profile.overview.gear')}:</span>{' '}
+                {snapshot ? t('joinRequest.modal.averageItemLevel', { level: snapshot.avgItemLevel }) : t('joinRequest.modal.noGearSnapshot')}
               </span>
             </li>
             <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
               <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
               <span>
-                <span style={{ fontWeight: 600 }}>Goals:</span>{' '}
-                Aligned/conflict counts from your{' '}
-                <span style={{ fontWeight: 600 }}>public</span> goals only.
+                <span style={{ fontWeight: 600 }}>{t('overview.objectiveGoals')}:</span>{' '}
+                {t('joinRequest.modal.publicGoalsOnly')}
               </span>
             </li>
             <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
               <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
               <span>
-                <span style={{ fontWeight: 600 }}>BiS:</span>{' '}
-                Name of your active{' '}
-                <span style={{ fontWeight: 600 }}>public</span>{' '}
-                BiS target for this job (e.g. "Savage BiS"), or Private if not set.
+                <span style={{ fontWeight: 600 }}>{t('overview.objectiveBis')}:</span>{' '}
+                {t('joinRequest.modal.publicBisOnly')}
               </span>
             </li>
             <li className="flex items-start gap-1.5 text-xs" style={{ color: '#5c3d2e' }}>
               <span style={{ color: '#8b6914', flexShrink: 0 }}>·</span>
               <span>
-                <span style={{ fontWeight: 600 }}>Schedule:</span>{' '}
+                <span style={{ fontWeight: 600 }}>{t('schedule.title')}:</span>{' '}
                 {availabilitySummary
-                  ? `${availabilitySummary.dayLabels?.join(', ') ?? 'configured days'} from your Player Hub availability.`
-                  : 'Not included.'}
+                  ? t('joinRequest.modal.scheduleFromPlayerHub', {
+                      days: availabilitySummary.dayLabels?.join(', ') ?? t('joinRequest.modal.configuredDays'),
+                    })
+                  : t('joinRequest.modal.notIncluded')}
               </span>
             </li>
           </ul>
           <p className="text-[10px] mt-1" style={{ color: '#8c7a60' }}>
-            Private goals and private BiS targets are never shared.
+            {t('joinRequest.modal.privateGoalsNeverShared')}
           </p>
         </div>
 

@@ -5,7 +5,8 @@
  * Handles both main roster and substitutes sections.
  */
 
-import { memo, useMemo, useCallback } from 'react';
+import { memo, useMemo, useCallback, useState, useEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { DroppablePlayerCard } from './DroppablePlayerCard';
 import { EmptySlotCard } from './EmptySlotCard';
 import { InlinePlayerEdit } from './InlinePlayerEdit';
@@ -16,6 +17,25 @@ import { canResetGear } from '../../utils/permissions';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import type { SnapshotPlayer, ViewMode, ResetMode, GearSlot, MemberRole, ContentType, AssignPlayerRequest } from '../../types';
 import type { DragState } from '../dnd/useDragAndDrop';
+
+// Collapsible-section state (G1 / G2 / Subs), persisted per static+tier.
+// localStorage can throw (private mode / disabled / quota); the helpers swallow
+// failures so a storage error never breaks rendering or a fold toggle.
+type CollapsedState = { g1?: boolean; g2?: boolean; subs?: boolean };
+
+function readCollapsedState(key: string): CollapsedState {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || '{}');
+    // Guard against a non-object value (e.g. a stale "null" / "[]" / "true")
+    // that would otherwise break `collapsed.g1` reads downstream.
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function writeCollapsedState(key: string, value: CollapsedState): void {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+}
 
 // Memoized player card renderer to prevent unnecessary re-renders
 interface PlayerCardRendererProps {
@@ -261,6 +281,14 @@ export interface PlayerGridProps {
   groupedPlayers: GroupedPlayers | null;
   groupView: boolean;
   subsView: boolean;
+  /** Hide the substitutes section entirely (controlled by the roster toolbar) */
+  subsHidden: boolean;
+  /**
+   * Monotonic counter bumped each time the user clicks the "Expanded" view
+   * control. Lets re-clicking Expanded (even while already in Expanded view)
+   * re-expand all collapsed G1/G2/Subs sections.
+   */
+  expandAllSignal?: number;
   viewMode: ViewMode;
   contentType: ContentType;
   editingPlayerId: string | null;
@@ -313,6 +341,8 @@ export function PlayerGrid({
   groupedPlayers,
   groupView,
   subsView,
+  subsHidden,
+  expandAllSignal,
   viewMode,
   contentType,
   editingPlayerId,
@@ -434,6 +464,67 @@ export function PlayerGrid({
     onCancelEdit,
   ]);
 
+  // ── Collapsible section state (G1 / G2 / Subs) ──
+  // Persisted per static+tier so the layout sticks between visits.
+  // (Show/hide of the whole substitutes section is controlled by the sticky
+  //  roster toolbar via the `subsHidden` prop.)
+  const collapseKey = `roster-collapse-${groupId}-${tierId}`;
+
+  const [collapsed, setCollapsed] = useState<CollapsedState>(() => readCollapsedState(collapseKey));
+
+  const toggleCollapse = useCallback((section: 'g1' | 'g2' | 'subs') => {
+    setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
+  }, []);
+
+  // The following two blocks use React's "adjust state while rendering" pattern
+  // (a conditional setState during render that React applies before committing)
+  // to react to prop changes. Persistence is deliberately NOT done here — render
+  // stays free of side effects; a single effect below mirrors the resulting
+  // state into localStorage.
+  //
+  // Note: switching card density (Compact ⇄ Expanded) intentionally does NOT
+  // touch fold state — the collapse prefs persist independently of density. The
+  // explicit expand/collapse-all affordance is the expandAllSignal below.
+
+  // Re-read persisted fold state when the static/tier (and thus the storage key)
+  // changes. The component stays mounted across tier switches, so without this
+  // the previous tier's folds would linger until the user toggled a section.
+  const [lastCollapseKey, setLastCollapseKey] = useState(collapseKey);
+  if (collapseKey !== lastCollapseKey) {
+    setLastCollapseKey(collapseKey);
+    setCollapsed(readCollapsedState(collapseKey));
+  }
+
+  // Clicking "Expanded" again while already in Expanded view bumps this signal.
+  // Treat it as a toggle across the currently-rendered sections: if every
+  // section is already expanded, collapse them all; otherwise expand everything.
+  const [lastExpandSignal, setLastExpandSignal] = useState(expandAllSignal);
+  if (expandAllSignal !== lastExpandSignal) {
+    setLastExpandSignal(expandAllSignal);
+    const sections: Array<'g1' | 'g2' | 'subs'> = [];
+    if (groupView && groupedPlayers) {
+      if (groupedPlayers.group1.length > 0) sections.push('g1');
+      if (groupedPlayers.group2.length > 0) sections.push('g2');
+    }
+    const hasSubsSection = subsView && !subsHidden && (
+      groupView && groupedPlayers
+        ? groupedPlayers.substitutes.length > 0
+        : players.some((p) => p.isSubstitute)
+    );
+    if (hasSubsSection) sections.push('subs');
+    const everyExpanded = sections.length > 0 && sections.every((s) => !collapsed[s]);
+    const next: CollapsedState = {};
+    if (everyExpanded) sections.forEach((s) => { next[s] = true; });
+    setCollapsed(next);
+  }
+
+  // Persist fold state for the current key. This is the single localStorage
+  // write path, kept in an effect so render stays pure. Storing `{}` is
+  // equivalent to clearing the key (readCollapsedState treats both as no folds).
+  useEffect(() => {
+    writeCollapsedState(collapseKey, collapsed);
+  }, [collapseKey, collapsed]);
+
   // Grouped View (G1/G2) - G1 on top, G2 below
   if (groupView && groupedPlayers) {
     return (
@@ -441,36 +532,50 @@ export function PlayerGrid({
         {/* Group 1 */}
         {groupedPlayers.group1.length > 0 && (
           <div>
-            <LightPartyHeader groupNumber={1} players={groupedPlayers.group1} />
-            <div className={gridClasses}>
-              {groupedPlayers.group1.map((player) => (
-                <PlayerCardRenderer
-                  key={player.id}
-                  player={player}
-                  playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                  {...renderCardProps}
-                />
-              ))}
-            </div>
+            <LightPartyHeader
+              groupNumber={1}
+              players={groupedPlayers.group1}
+              collapsed={collapsed.g1}
+              onToggleCollapse={() => toggleCollapse('g1')}
+            />
+            {!collapsed.g1 && (
+              <div className={gridClasses}>
+                {groupedPlayers.group1.map((player) => (
+                  <PlayerCardRenderer
+                    key={player.id}
+                    player={player}
+                    playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                    playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+                    {...renderCardProps}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* Group 2 */}
         {groupedPlayers.group2.length > 0 && (
           <div>
-            <LightPartyHeader groupNumber={2} players={groupedPlayers.group2} />
-            <div className={gridClasses}>
-              {groupedPlayers.group2.map((player) => (
-                <PlayerCardRenderer
-                  key={player.id}
-                  player={player}
-                  playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                  {...renderCardProps}
-                />
-              ))}
-            </div>
+            <LightPartyHeader
+              groupNumber={2}
+              players={groupedPlayers.group2}
+              collapsed={collapsed.g2}
+              onToggleCollapse={() => toggleCollapse('g2')}
+            />
+            {!collapsed.g2 && (
+              <div className={gridClasses}>
+                {groupedPlayers.group2.map((player) => (
+                  <PlayerCardRenderer
+                    key={player.id}
+                    player={player}
+                    playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                    playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+                    {...renderCardProps}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -494,10 +599,15 @@ export function PlayerGrid({
           </div>
         )}
 
-        {/* Substitutes - shown when subsView is enabled */}
-        {subsView && groupedPlayers.substitutes.length > 0 && (
+        {/* Substitutes - shown when subsView is enabled and not hidden */}
+        {subsView && !subsHidden && groupedPlayers.substitutes.length > 0 && (
           <div className="opacity-75">
             <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+              <SectionCollapseButton
+                collapsed={collapsed.subs}
+                onToggle={() => toggleCollapse('subs')}
+                label="Substitutes"
+              />
               <Tooltip
                 content={
                   <div>
@@ -510,17 +620,19 @@ export function PlayerGrid({
               </Tooltip>
               Substitutes
             </h3>
-            <div className={gridClasses}>
-              {groupedPlayers.substitutes.map((player) => (
-                <PlayerCardRenderer
-                  key={player.id}
-                  player={player}
-                  playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                  {...renderCardProps}
-                />
-              ))}
-            </div>
+            {!collapsed.subs && (
+              <div className={gridClasses}>
+                {groupedPlayers.substitutes.map((player) => (
+                  <PlayerCardRenderer
+                    key={player.id}
+                    player={player}
+                    playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                    playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+                    {...renderCardProps}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -528,34 +640,33 @@ export function PlayerGrid({
   }
 
   // Standard View - with optional subs section
+  // When subs have their own section (subsView) OR are hidden, exclude them from the main grid.
+  const mainGridPlayers = (subsView || subsHidden)
+    ? players.filter(p => !p.isSubstitute)
+    : players;
+
   return (
     <div className="space-y-3 mb-3">
       <div className={gridClasses}>
-        {subsView
-          ? players.filter(p => !p.isSubstitute).map((player) => (
-              <PlayerCardRenderer
-                key={player.id}
-                player={player}
-                playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                {...renderCardProps}
-              />
-            ))
-          : players.map((player) => (
-              <PlayerCardRenderer
-                key={player.id}
-                player={player}
-                playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                {...renderCardProps}
-              />
-            ))
-        }
+        {mainGridPlayers.map((player) => (
+          <PlayerCardRenderer
+            key={player.id}
+            player={player}
+            playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+            playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+            {...renderCardProps}
+          />
+        ))}
       </div>
-      {/* Substitutes section - shown in standard view when subsView is enabled */}
-      {subsView && players.some(p => p.isSubstitute) && (
+      {/* Substitutes section - shown in standard view when subsView is enabled and not hidden */}
+      {subsView && !subsHidden && players.some(p => p.isSubstitute) && (
         <div className="opacity-75">
           <h3 className="text-text-secondary text-sm font-medium mb-3 flex items-center gap-2">
+            <SectionCollapseButton
+              collapsed={collapsed.subs}
+              onToggle={() => toggleCollapse('subs')}
+              label="Substitutes"
+            />
             <Tooltip
               content={
                 <div>
@@ -568,19 +679,48 @@ export function PlayerGrid({
             </Tooltip>
             Substitutes
           </h3>
-          <div className={gridClasses}>
-            {players.filter(p => p.isSubstitute).map((player) => (
-              <PlayerCardRenderer
-                key={player.id}
-                player={player}
-                playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
-                playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
-                {...renderCardProps}
-              />
-            ))}
-          </div>
+          {!collapsed.subs && (
+            <div className={gridClasses}>
+              {players.filter(p => p.isSubstitute).map((player) => (
+                <PlayerCardRenderer
+                  key={player.id}
+                  player={player}
+                  playerSlotsWithLootEntries={playerSlotsWithLootEntries.get(player.id)}
+                  playerSlotsWithMaterialEntries={playerSlotsWithMaterialEntries?.get(player.id)}
+                  {...renderCardProps}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+/** Small chevron button used to collapse/expand a roster section. */
+function SectionCollapseButton({
+  collapsed,
+  onToggle,
+  label,
+}: {
+  collapsed?: boolean;
+  onToggle: () => void;
+  label: string;
+}) {
+  return (
+    /* eslint-disable-next-line design-system/no-raw-button */
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
+      className="flex items-center justify-center w-5 h-5 rounded text-text-muted hover:text-accent hover:bg-white/[0.04] transition-colors"
+    >
+      <ChevronDown
+        size={14}
+        className={`transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`}
+      />
+    </button>
   );
 }

@@ -10,7 +10,8 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { Package, Pencil } from 'lucide-react';
+import { Pencil } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Modal, Select, Checkbox, RadioGroup, TextArea, Label } from '../ui';
 import { NumberInput } from '../ui/NumberInput';
 import { Button } from '../primitives';
@@ -267,28 +268,31 @@ export function AddLootEntryModal({
       result = sortedRecipients.filter(r => r.needsItem);
     }
 
-    // In edit mode, ALWAYS ensure the current recipient is in the list
-    // (they may no longer need the item if they already received it)
-    if (isEditMode && editEntry?.recipientPlayerId) {
-      const currentRecipientInList = result.some(r => r.player.id === editEntry.recipientPlayerId);
-      if (!currentRecipientInList) {
-        // Find the recipient directly from players prop (unfiltered)
-        const player = players.find(p => p.id === editEntry.recipientPlayerId);
-        if (player) {
-          // Check if they're in sortedRecipients for priority info
-          const sortedEntry = sortedRecipients.find(r => r.player.id === editEntry.recipientPlayerId);
-          result = [{
-            player,
-            priority: sortedEntry?.priority ?? 999,
-            score: sortedEntry?.score ?? 0,
-            needsItem: sortedEntry?.needsItem ?? false,
-          }, ...result];
-        }
+    // ALWAYS ensure the currently-selected recipient is in the list, even if
+    // they don't "need" the item. This covers two cases:
+    //   • edit mode — the original recipient may already have the item
+    //   • add mode — a fallback candidate picked from the recommendation panel
+    //     (priorityRank: null, source: player_fallback) isn't in the "needs
+    //     item" set, so it has no <option> in the recipient <Select>.
+    // Without this, the controlled <Select> rejects the value and the visibility
+    // effect below snaps the selection back to the top priority recipient —
+    // which is exactly the "can't select these players" bug.
+    const ensureId = recipientPlayerId || (isEditMode ? editEntry?.recipientPlayerId : undefined);
+    if (ensureId && !result.some(r => r.player.id === ensureId)) {
+      const player = players.find(p => p.id === ensureId);
+      if (player) {
+        const sortedEntry = sortedRecipients.find(r => r.player.id === ensureId);
+        result = [{
+          player,
+          priority: sortedEntry?.priority ?? 999,
+          score: sortedEntry?.score ?? 0,
+          needsItem: sortedEntry?.needsItem ?? false,
+        }, ...result];
       }
     }
 
     return result;
-  }, [sortedRecipients, showAllRecipients, includeSubs, isEditMode, editEntry, players]);
+  }, [sortedRecipients, showAllRecipients, includeSubs, isEditMode, editEntry, players, recipientPlayerId]);
 
   // Auto-select top priority recipient when slot changes (add mode only)
   // Only triggers on itemSlot change, not on filter checkbox changes
@@ -477,7 +481,7 @@ export function AddLootEntryModal({
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          {isEditMode ? <Pencil className="w-5 h-5" /> : <Package className="w-5 h-5" />}
+          {isEditMode ? <Pencil className="w-5 h-5" /> : <XivIcon name="loot" size={20} />}
           {isEditMode ? "Edit Loot Entry" : "Log Loot Drop"}
         </span>
       }

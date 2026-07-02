@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore, useAuthHydrated } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useDevice } from '../hooks/useDevice';
 import { LoginButton } from '../components/auth';
 import { Input, Spinner } from '../components/ui';
 import { Button, Tooltip } from '../components/primitives';
-import { BookOpen, Users, Calculator, Sparkles, Swords, BarChart3, Layers, Globe } from 'lucide-react';
+import { BookOpen, Users, Calculator, Sparkles, BarChart3, Layers, Globe } from 'lucide-react';
+import { XivIcon } from '../components/ui/XivIcon';
 import { staggerContainer, staggerItem, instantVariants } from '../lib/motion';
 import type { MemberRole } from '../types';
 
@@ -31,6 +33,7 @@ function getRecentStaticCodes(): string[] {
 
 export function Home() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user, isLoading } = useAuthStore();
   const isHydrated = useAuthHydrated();
   const { groups, fetchGroups } = useStaticGroupStore();
@@ -130,7 +133,7 @@ export function Home() {
         <motion.div className="mb-6 relative" variants={itemVariants}>
           <img
             src="/logo-hero.svg"
-            alt="FFXIV Raid Planner"
+            alt={t('home.heroHeading')}
             className="w-32 h-32 mx-auto glow-teal"
           />
         </motion.div>
@@ -139,13 +142,13 @@ export function Home() {
           className="font-display text-4xl sm:text-5xl text-accent mb-4"
           variants={itemVariants}
         >
-          FFXIV Raid Planner
+          {t('home.heroHeading')}
         </motion.h1>
         <motion.p
           className="text-text-secondary text-lg mb-8 max-w-2xl mx-auto"
           variants={itemVariants}
         >
-          Gear tracking & loot planning for your static
+          {t('home.heroTagline')}
         </motion.p>
 
         {/* Primary CTA */}
@@ -158,14 +161,14 @@ export function Home() {
                 to="/dashboard"
                 className="inline-block bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors"
               >
-                Go to My Statics
+                {t('home.ctaMyStatics')}
               </Link>
               <Link
                 to="/profile"
                 className="inline-flex items-center gap-2 px-6 py-4 text-lg rounded-lg font-medium border border-accent/30 text-accent hover:bg-accent/10 transition-colors"
               >
-                <Swords className="w-5 h-5" />
-                Player Hub
+                <XivIcon name="sword" size={20} />
+                {t('home.ctaPlayerHub')}
               </Link>
             </div>
           ) : (
@@ -179,7 +182,7 @@ export function Home() {
       {/* Divider */}
       <div className="flex items-center gap-4 max-w-md mx-auto mb-8">
         <div className="flex-1 border-t border-border-default" />
-        <span className="text-text-muted text-sm">or view a public static</span>
+        <span className="text-text-muted text-sm">{t('home.dividerText')}</span>
         <div className="flex-1 border-t border-border-default" />
       </div>
 
@@ -189,7 +192,7 @@ export function Home() {
           <Input
             value={shareCode}
             onChange={(val) => setShareCode(val.toUpperCase())}
-            placeholder="Enter share code..."
+            placeholder={t('home.shareCodePlaceholder')}
             maxLength={8}
             className="w-48 text-center font-mono uppercase"
           />
@@ -198,7 +201,7 @@ export function Home() {
             variant="secondary"
             disabled={!shareCode.trim()}
           >
-            View
+            {t('home.shareCodeButton')}
           </Button>
         </form>
         <div className="text-center">
@@ -207,7 +210,7 @@ export function Home() {
             className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-accent transition-colors"
           >
             <Globe className="w-4 h-4" />
-            <span>or browse the <span className="text-accent font-medium">Static Finder</span></span>
+            <span>{t('home.discoverLinkText')} <span className="text-accent font-medium">{t('home.discoverLinkHighlight')}</span></span>
           </Link>
         </div>
       </div>
@@ -217,7 +220,7 @@ export function Home() {
         /* Recent Statics for logged-in users */
         <div className="max-w-4xl mx-auto">
           <h2 className="font-display text-xl text-text-primary mb-4 text-left">
-            Recent Statics
+            {t('home.recentStaticsHeading')}
           </h2>
           <div className="grid md:grid-cols-3 gap-6 stagger-children">
             {recentStatics.map((group) => (
@@ -253,16 +256,16 @@ export function Home() {
                           d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
                         />
                       </svg>
-                      {group.memberCount}
+                      {t('common.count_member', { count: group.memberCount })}
                     </span>
                     <span className="font-mono text-xs text-accent">{group.shareCode}</span>
                   </div>
                   <Tooltip
                     content={
                       <div>
-                        <div className="font-medium">Copy Share Code</div>
+                        <div className="font-medium">{t('common.copyShareCode')}</div>
                         <div className="text-text-secondary text-xs mt-0.5">
-                          Hold <kbd className="px-1 py-0.5 bg-surface-base rounded border border-border-default">Shift</kbd> for full URL
+                          {t('common.holdShiftForFullUrl')}
                         </div>
                       </div>
                     }
@@ -293,7 +296,7 @@ export function Home() {
                 to="/dashboard"
                 className="text-sm text-accent hover:text-accent-bright transition-colors"
               >
-                View all {groups.length} statics →
+                {t('home.viewAllStatics', { count: groups.length })}
               </Link>
             </div>
           )}
@@ -304,29 +307,29 @@ export function Home() {
           <div className="grid md:grid-cols-3 gap-6 text-left max-w-4xl mx-auto stagger-children">
             <div className="card-interactive p-6">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-3">
-                <Swords className="w-5 h-5 text-accent" />
+                <XivIcon name="sword" size={20} />
               </div>
-              <h3 className="font-display text-lg text-accent mb-2">Gear Tracking</h3>
+              <h3 className="font-display text-lg text-accent mb-2">{t('home.featureGearTrackingTitle')}</h3>
               <p className="text-text-secondary text-sm">
-                Track BiS progress for your entire static. See who needs what at a glance.
+                {t('home.featureGearTrackingDesc')}
               </p>
             </div>
             <div className="card-interactive p-6">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-3">
                 <Calculator className="w-5 h-5 text-accent" />
               </div>
-              <h3 className="font-display text-lg text-accent mb-2">Loot Priority</h3>
+              <h3 className="font-display text-lg text-accent mb-2">{t('home.featureLootPriorityTitle')}</h3>
               <p className="text-text-secondary text-sm">
-                Smart loot suggestions based on need, role priority, and past distributions.
+                {t('home.featureLootPriorityDesc')}
               </p>
             </div>
             <div className="card-interactive p-6">
               <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center mb-3">
                 <BarChart3 className="w-5 h-5 text-accent" />
               </div>
-              <h3 className="font-display text-lg text-accent mb-2">Team Summary</h3>
+              <h3 className="font-display text-lg text-accent mb-2">{t('home.featureTeamSummaryTitle')}</h3>
               <p className="text-text-secondary text-sm">
-                See total materials needed, books required, and estimated weeks to BiS.
+                {t('home.featureTeamSummaryDesc')}
               </p>
             </div>
           </div>
@@ -338,10 +341,9 @@ export function Home() {
                 <Layers className="w-5 h-5 text-accent" />
               </div>
               <div className="text-left">
-                <h3 className="font-display text-lg text-accent mb-2">Multi-Tier Support</h3>
+                <h3 className="font-display text-lg text-accent mb-2">{t('home.featureMultiTierTitle')}</h3>
                 <p className="text-text-secondary text-sm mb-4">
-                  Keep your roster across raid tiers. Roll over from M1S-M4S to M5S-M8S without losing your setup.
-                  Switch between tiers anytime to view historical progress.
+                  {t('home.featureMultiTierDesc')}
                 </p>
                 {/* Tier timeline visualization */}
                 <div className="flex items-center gap-2 text-xs">
@@ -362,7 +364,7 @@ export function Home() {
         <div className="mt-16 max-w-4xl mx-auto">
           <div className="flex items-center justify-center gap-3 mb-6">
             <BookOpen className="w-5 h-5 text-accent" />
-            <h2 className="font-display text-xl text-text-primary">Documentation</h2>
+            <h2 className="font-display text-xl text-text-primary">{t('home.docsHeading')}</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-4">
             <Link
@@ -374,11 +376,11 @@ export function Home() {
                   <Users className="w-4 h-4 text-accent" />
                 </div>
                 <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                  Quick Start
+                  {t('home.docsQuickStartTitle')}
                 </h3>
               </div>
               <p className="text-sm text-text-muted">
-                Get your static set up in 5 minutes
+                {t('home.docsQuickStartDesc')}
               </p>
             </Link>
             <Link
@@ -390,11 +392,11 @@ export function Home() {
                   <Calculator className="w-4 h-4 text-accent" />
                 </div>
                 <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                  Understanding Priority
+                  {t('home.docsPriorityTitle')}
                 </h3>
               </div>
               <p className="text-sm text-text-muted">
-                How loot distribution works
+                {t('home.docsPriorityDesc')}
               </p>
             </Link>
             <Link
@@ -406,11 +408,11 @@ export function Home() {
                   <Sparkles className="w-4 h-4 text-accent" />
                 </div>
                 <h3 className="font-medium text-text-primary group-hover:text-accent transition-colors">
-                  How-To Guides
+                  {t('home.docsHowToTitle')}
                 </h3>
               </div>
               <p className="text-sm text-text-muted">
-                Step-by-step guides for common tasks
+                {t('home.docsHowToDesc')}
               </p>
             </Link>
           </div>
@@ -419,7 +421,7 @@ export function Home() {
               to="/docs"
               className="text-sm text-accent hover:text-accent-bright transition-colors"
             >
-              View all documentation →
+              {t('home.docsViewAll')}
             </Link>
           </div>
         </div>

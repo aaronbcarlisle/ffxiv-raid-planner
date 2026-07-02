@@ -23,6 +23,38 @@ import { toast } from '../../stores/toastStore';
 import { getCorrectBisSource } from '../../utils/bisSourceDetection';
 import { RefreshCw, FileSearch } from 'lucide-react';
 
+/**
+ * Explanatory tooltip for a status circle, tailored to the slot's BiS source.
+ *
+ * Raid / Base Tome / Crafted (and non-augmented tome) are a single on/off
+ * toggle; augmented tome slots are a two-step cycle where the ring means the
+ * base item is obtained and the filled center means it's been augmented. Only
+ * shown to users who can edit this card's gear (members on their own card,
+ * leads/owners on every card) — callers gate on edit permission.
+ */
+function statusTooltipContent(bisSource: GearSource | null, requiresAug: boolean): React.ReactNode | undefined {
+  if (!bisSource) return undefined;
+  const isTwoStep = bisSource === 'tome' && requiresAug;
+  if (isTwoStep) {
+    return (
+      <div className="max-w-[15rem]">
+        <div className="font-medium">Tomestone gear status</div>
+        <div className="text-text-secondary text-xs mt-1">
+          Click the circle to cycle: empty = not obtained, ring = base obtained, ring + filled center = augmented.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="max-w-[15rem]">
+      <div className="font-medium">{BIS_SOURCE_FULL_NAMES[bisSource]} status</div>
+      <div className="text-text-secondary text-xs mt-1">
+        Click the circle to toggle: empty = not obtained, filled = obtained.
+      </div>
+    </div>
+  );
+}
+
 // Reusable slot icon component with optional item icon and hover card
 function SlotIcon({
   slot,
@@ -329,6 +361,7 @@ function WeaponSlotRow({
               requiresAugmentation={false}
               disabled={disabled}
               onChange={onGearStateChange}
+              tooltip={!disabled ? statusTooltipContent('raid', false) : undefined}
             />
           </div>
         </td>
@@ -386,6 +419,7 @@ function WeaponSlotRow({
                 requiresAugmentation={true}
                 disabled={disabled}
                 onChange={handleTomeWeaponStateChange}
+                tooltip={!disabled ? statusTooltipContent('tome', true) : undefined}
               />
             </div>
           </td>
@@ -693,6 +727,7 @@ export function GearTable({
                       requiresAugmentation={needsAug}
                       disabled={!gearPermission.allowed}
                       onChange={(newState) => handleGearStateChange(slot, newState)}
+                      tooltip={gearPermission.allowed ? statusTooltipContent(status.bisSource, needsAug) : undefined}
                     />
                   </div>
                 </td>

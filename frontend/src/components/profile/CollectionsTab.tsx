@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Check, Play, ShoppingCart, Sparkles, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Check, Play, ShoppingCart, X } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Badge } from '../primitives/Badge';
 import { Button } from '../primitives/Button';
 import { Select } from '../ui/Select';
@@ -29,6 +31,13 @@ import {
 } from '../mount-farms/farmProgressUtils';
 import { toast } from '../../stores/toastStore';
 import { GameIcon } from '../ui/GameIcon';
+import {
+  getCollectionExpansionLabel,
+} from '../../utils/collectionBadgeConfig';
+import {
+  getLocalizedTrialRewardName,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 const DISMISSED_KEY = 'dismissed-collection-suggestions';
 
@@ -64,14 +73,17 @@ interface PlayerFarmItem {
 
 type CatalogFilter = Expansion | 'ultimate' | 'special';
 
-const CATALOG_FILTERS: { value: CatalogFilter; label: string }[] = [
-  ...EXPANSIONS.map((exp) => ({
-    value: exp.id,
-    label: exp.name,
-  })),
-  { value: 'ultimate', label: 'Ultimate / Rare rewards' },
-  { value: 'special', label: 'Special' },
-];
+function getCatalogFilters(locale: string): { value: CatalogFilter; label: string }[] {
+  const isJapanese = locale.startsWith('ja');
+  return [
+    ...EXPANSIONS.map((exp) => ({
+      value: exp.id,
+      label: getCollectionExpansionLabel(exp.id, locale) || exp.name,
+    })),
+    { value: 'ultimate', label: isJapanese ? '絶 / レア報酬' : 'Ultimate / Rare rewards' },
+    { value: 'special', label: isJapanese ? '特殊' : 'Special' },
+  ];
+}
 
 function trialForGoal(goal: PlayerGoal): MountFarmTrial | undefined {
   if (goal.sourceContent) {
@@ -125,9 +137,13 @@ function goalStatusForFarmStatus(status: FarmTrackingStatus): string {
 }
 
 export function CollectionsTab({ goals, suggestions }: CollectionsTabProps) {
+  const { i18n } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
   const { createGoal, updateGoal, fetchCollectionSuggestions } = usePlayerProfileStore();
   const [selectedCatalogFilter, setSelectedCatalogFilter] = useState<CatalogFilter>('DT');
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(loadDismissed);
+  const catalogFilters = useMemo(() => getCatalogFilters(uiLocale), [uiLocale]);
   const collectionGoals = goals.filter((g) => COLLECTION_GOAL_TYPES.includes(g.goalType as never));
   const visibleSuggestions = suggestions.filter((s) => !dismissedSuggestions.has(s.trialId));
 
@@ -184,7 +200,7 @@ export function CollectionsTab({ goals, suggestions }: CollectionsTabProps) {
         });
       } else if (nextStatus !== 'not_tracking') {
         await createGoal({
-          title: `${getRewardLabel(item.trial)} farm`,
+          title: isJapanese ? `${getLocalizedTrialRewardName(item.trial, uiLocale)}周回` : `${getRewardLabel(item.trial)} farm`,
           goalType: 'mount_farm',
           sourceContent: item.trial.id,
           sourceItem: getCurrencyLabel(item.trial),
@@ -195,18 +211,18 @@ export function CollectionsTab({ goals, suggestions }: CollectionsTabProps) {
       }
       toast.success(
         nextStatus === 'completed'
-          ? `Marked ${getRewardLabel(item.trial)} owned`
+          ? (isJapanese ? `「${getLocalizedTrialRewardName(item.trial, uiLocale)}」を取得済みにしました` : `Marked ${getRewardLabel(item.trial)} owned`)
           : nextStatus === 'farming'
-            ? `Marked ${getRewardLabel(item.trial)} farming`
+            ? (isJapanese ? `「${getLocalizedTrialRewardName(item.trial, uiLocale)}」を周回中にしました` : `Marked ${getRewardLabel(item.trial)} farming`)
             : nextStatus === 'wanted'
-              ? `Marked ${getRewardLabel(item.trial)} wanted`
-              : `Stopped tracking ${getRewardLabel(item.trial)}`
+              ? (isJapanese ? `「${getLocalizedTrialRewardName(item.trial, uiLocale)}」を希望にしました` : `Marked ${getRewardLabel(item.trial)} wanted`)
+              : (isJapanese ? `「${getLocalizedTrialRewardName(item.trial, uiLocale)}」の追跡を停止しました` : `Stopped tracking ${getRewardLabel(item.trial)}`)
       );
       fetchCollectionSuggestions();
     } catch {
-      toast.error('Failed to update collection farm');
+      toast.error(isJapanese ? '周回目標の更新に失敗しました' : 'Failed to update collection farm');
     }
-  }, [createGoal, fetchCollectionSuggestions, updateGoal]);
+  }, [createGoal, fetchCollectionSuggestions, isJapanese, uiLocale, updateGoal]);
 
   const handleDismiss = useCallback((trialId: string) => {
     setDismissedSuggestions((prev) => {
@@ -222,32 +238,34 @@ export function CollectionsTab({ goals, suggestions }: CollectionsTabProps) {
       <section className="rounded-lg border border-border-default bg-surface-raised p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="font-display text-base font-semibold text-text-primary">Reward farms</h3>
+            <h3 className="font-display text-base font-semibold text-text-primary">{isJapanese ? '報酬周回' : 'Reward farms'}</h3>
             <p className="mt-1 max-w-3xl text-sm text-text-secondary">
-              Track mounts, tokens, and rewards using the same catalog as Static Mount Farms.
+              {isJapanese ? '固定のマウント周回と同じカタログで、マウントやトークン報酬を追跡できます。' : 'Track mounts, tokens, and rewards using the same catalog as Static Mount Farms.'}
             </p>
           </div>
-          <Badge variant="info" size="sm">Same catalog as Static Mount Farms</Badge>
+          <Badge variant="info" size="sm">{isJapanese ? '固定のマウント周回と同じカタログ' : 'Same catalog as Static Mount Farms'}</Badge>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-4">
-          <SummaryMetric label="Owned" value={completedFarms.length} tone="success" />
-          <SummaryMetric label="Wanted" value={wantedCount} tone="accent" />
-          <SummaryMetric label="Can buy" value={readyToBuy.length} tone="warning" />
-          <SummaryMetric label="Farming" value={activeFarms.length} tone="primary" />
+          <SummaryMetric label={isJapanese ? '所持' : 'Owned'} value={completedFarms.length} tone="success" />
+          <SummaryMetric label={isJapanese ? '希望' : 'Wanted'} value={wantedCount} tone="accent" />
+          <SummaryMetric label={isJapanese ? '交換可' : 'Can buy'} value={readyToBuy.length} tone="warning" />
+          <SummaryMetric label={isJapanese ? '周回中' : 'Farming'} value={activeFarms.length} tone="primary" />
         </div>
         <CatalogFilterControls
+          locale={uiLocale}
+          filters={catalogFilters}
           selected={selectedCatalogFilter}
           onChange={setSelectedCatalogFilter}
         />
         <p className="mt-3 rounded-lg border border-border-subtle bg-surface-elevated/50 px-3 py-2 text-xs text-text-tertiary">
-          Static farm matching will use your Wanted and Farming rewards later.
+          {isJapanese ? '共有した「希望」と「周回中」は、今後の固定周回マッチングに使われます。' : 'Static farm matching will use your Wanted and Farming rewards later.'}
         </p>
       </section>
 
       {/* Ready to buy — urgent, show first if any */}
       <FarmSection
-        title="Ready to buy"
-        description="You have enough currency for these rewards."
+        title={isJapanese ? '今すぐ交換可能' : 'Ready to buy'}
+        description={isJapanese ? '必要な通貨がそろっている報酬です。' : 'You have enough currency for these rewards.'}
         items={readyToBuy}
         onSetStatus={setFarmStatus}
       />
@@ -255,9 +273,9 @@ export function CollectionsTab({ goals, suggestions }: CollectionsTabProps) {
       {/* Suggestions from static farms */}
       {visibleSuggestions.length > 0 && (
         <section className="rounded-lg border border-accent/20 bg-accent/5 p-4">
-          <h3 className="font-display text-sm font-semibold text-text-primary">Suggested from static farms</h3>
+          <h3 className="font-display text-sm font-semibold text-text-primary">{isJapanese ? '固定周回からの提案' : 'Suggested from static farms'}</h3>
           <p className="mt-1 text-xs text-text-tertiary">
-            Your static farm data found these rewards or currency counts. Keep them here as your own farm progress.
+            {isJapanese ? '固定で共有されている報酬や通貨数から見つかった候補です。個人用の周回進捗として残せます。' : 'Your static farm data found these rewards or currency counts. Keep them here as your own farm progress.'}
           </p>
           <div className="mt-3 space-y-2">
             {visibleSuggestions.map((suggestion) => {
@@ -281,9 +299,9 @@ export function CollectionsTab({ goals, suggestions }: CollectionsTabProps) {
       <section className="rounded-lg border border-border-default bg-surface-raised p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h3 className="font-display text-sm font-semibold text-text-primary">Browse rewards</h3>
+            <h3 className="font-display text-sm font-semibold text-text-primary">{isJapanese ? '報酬カタログ' : 'Browse rewards'}</h3>
             <p className="mt-1 text-xs text-text-tertiary">
-              Mark rewards as Wanted, Farming, or Owned. Tasks stay in Goals.
+              {isJapanese ? '報酬を「希望」「周回中」「所持」で管理できます。タスクは Goals に残ります。' : 'Mark rewards as Wanted, Farming, or Owned. Tasks stay in Goals.'}
             </p>
           </div>
         </div>
@@ -301,31 +319,31 @@ export function CollectionsTab({ goals, suggestions }: CollectionsTabProps) {
       {farmItems.length === 0 && visibleSuggestions.length === 0 && (
         <div className="text-center rounded-lg border border-border-default bg-surface-raised px-4 py-10">
           <div className="mb-3 text-accent"><GameIcon name="trophy" size="xl" /></div>
-          <h3 className="font-display text-lg font-semibold text-text-primary">No tracked farms yet</h3>
+          <h3 className="font-display text-lg font-semibold text-text-primary">{isJapanese ? 'まだ周回を追跡していません' : 'No tracked farms yet'}</h3>
           <p className="mx-auto mt-1 max-w-lg text-sm text-text-secondary">
-            Pick rewards from the catalog above to mark them as Wanted, Farming, or Owned.
+            {isJapanese ? '上のカタログから報酬を選んで、「希望」「周回中」「所持」を設定してください。' : 'Pick rewards from the catalog above to mark them as Wanted, Farming, or Owned.'}
           </p>
         </div>
       )}
 
       {/* Tracking sections — below browse */}
       <FarmSection
-        title="Farming now"
-        description="Rewards you are actively farming. Farming also keeps them Wanted."
+        title={isJapanese ? '現在周回中' : 'Farming now'}
+        description={isJapanese ? '今まさに集めている報酬です。周回中にすると希望状態も維持されます。' : 'Rewards you are actively farming. Farming also keeps them Wanted.'}
         items={activeFarms}
         onSetStatus={setFarmStatus}
       />
 
       <FarmSection
-        title="Wanted later"
-        description="Rewards you want eventually, but are not farming right now."
+        title={isJapanese ? '後でほしいもの' : 'Wanted later'}
+        description={isJapanese ? 'いつか欲しいが、今は周回していない報酬です。' : 'Rewards you want eventually, but are not farming right now.'}
         items={wantedFarms}
         onSetStatus={setFarmStatus}
       />
 
       {completedFarms.length > 0 && (
         <section className="rounded-lg border border-border-default bg-surface-raised p-4 opacity-80">
-          <h3 className="font-display text-sm font-semibold text-text-primary">Owned / completed</h3>
+          <h3 className="font-display text-sm font-semibold text-text-primary">{isJapanese ? '所持済み / 完了' : 'Owned / completed'}</h3>
           <div className="mt-3 space-y-2">
             {completedFarms.map((item) => (
               <FarmCollectionRow
@@ -343,25 +361,30 @@ export function CollectionsTab({ goals, suggestions }: CollectionsTabProps) {
 }
 
 function CatalogFilterControls({
+  locale,
+  filters,
   selected,
   onChange,
 }: {
+  locale: string;
+  filters: { value: CatalogFilter; label: string }[];
   selected: CatalogFilter;
   onChange: (filter: CatalogFilter) => void;
 }) {
+  const isJapanese = locale.startsWith('ja');
   return (
     <div className="mt-4 rounded-lg border border-border-subtle bg-surface-elevated/50 p-3">
-      <Label className="mb-2 block text-xs font-medium text-text-tertiary">Expansion</Label>
+      <Label className="mb-2 block text-xs font-medium text-text-tertiary">{isJapanese ? '拡張パック' : 'Expansion'}</Label>
       <div className="sm:hidden">
         <Select
           value={selected}
           onChange={(value) => onChange(value as CatalogFilter)}
-          options={CATALOG_FILTERS}
+          options={filters}
           className="w-full"
         />
       </div>
       <div className="hidden flex-wrap gap-2 sm:flex">
-        {CATALOG_FILTERS.map((filter) => (
+        {filters.map((filter) => (
           /* design-system-ignore: Segmented filter chip needs compact selected styling */
           <button
             key={filter.value}
@@ -443,12 +466,21 @@ function FarmCollectionRow({
   onDismiss?: () => void;
   compact?: boolean;
 }) {
+  const { i18n } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
+  const rewardName = getLocalizedTrialRewardName(item.trial, uiLocale);
+  const sourceLabel = item.source === 'Manual'
+    ? (isJapanese ? '手動' : 'Manual')
+    : item.source === 'Not set'
+      ? (isJapanese ? '未設定' : 'Not set')
+      : item.source;
   return (
     <div className={`rounded-lg border border-border-subtle bg-surface-elevated/60 px-3 ${compact ? 'py-2' : 'py-3'}`}>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_250px] lg:items-center">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-1 rounded-lg border border-border-subtle bg-surface-raised p-1.5 text-accent">
-            {item.canBuy ? <ShoppingCart className="h-4 w-4" /> : item.owned ? <Check className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+            {item.canBuy ? <ShoppingCart className="h-4 w-4" /> : item.owned ? <Check className="h-4 w-4" /> : <XivIcon name="crystal" size={16} />}
           </div>
           <FarmCatalogSummary trial={item.trial} />
         </div>
@@ -457,7 +489,7 @@ function FarmCollectionRow({
           <FarmCurrencyProgress trial={item.trial} currentCount={item.currentCount} />
           <div className="mt-1 flex flex-wrap gap-1">
             <FarmStatusBadge status={item.status} canBuy={item.canBuy} />
-            {item.source !== 'Not set' && <Badge variant="default" size="sm">{item.source}</Badge>}
+            {item.source !== 'Not set' && <Badge variant="default" size="sm">{sourceLabel}</Badge>}
           </div>
         </div>
 
@@ -465,17 +497,17 @@ function FarmCollectionRow({
           <Checkbox
             checked={item.owned}
             onChange={() => onSetStatus(item, item.owned ? 'wanted' : 'completed')}
-            label="Owned"
+            label={isJapanese ? '所持' : 'Owned'}
             color="teal"
-            aria-label={`Mark ${getRewardLabel(item.trial)} owned`}
+            aria-label={isJapanese ? `${rewardName}を所持済みにする` : `Mark ${getRewardLabel(item.trial)} owned`}
             className="items-center text-xs"
           />
           <Checkbox
             checked={item.wanted}
             onChange={() => onSetStatus(item, item.wanted ? 'not_tracking' : 'wanted')}
-            label="Want"
+            label={isJapanese ? '希望' : 'Want'}
             color="teal"
-            aria-label={`Mark ${getRewardLabel(item.trial)} wanted`}
+            aria-label={isJapanese ? `${rewardName}を希望にする` : `Mark ${getRewardLabel(item.trial)} wanted`}
             className="items-center text-xs"
           />
           <Button
@@ -484,12 +516,12 @@ function FarmCollectionRow({
             onClick={() => onSetStatus(item, item.status === 'farming' ? 'wanted' : 'farming')}
           >
             <Play className="h-3.5 w-3.5" />
-            Farming
+            {isJapanese ? '周回中' : 'Farming'}
           </Button>
           {onDismiss && (
             <Button size="sm" variant="ghost" onClick={onDismiss}>
               <X className="h-3.5 w-3.5" />
-              Dismiss
+              {isJapanese ? '閉じる' : 'Dismiss'}
             </Button>
           )}
         </div>

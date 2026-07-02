@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, ExternalLink, EyeOff, PlugZap, RefreshCw, ShieldAlert } from 'lucide-react';
 import { Badge } from '../primitives/Badge';
@@ -8,7 +9,7 @@ import type { GearSnapshot, PlayerGoal, PlayerProfile } from '../../stores/playe
 import { usePersonalAvailabilityStore } from '../../stores/personalAvailabilityStore';
 import { toast } from '../../stores/toastStore';
 import type { StaticGroupListItem } from '../../types';
-import { formatSyncAge } from './freshness';
+import { formatRelativeTimeAgo } from './freshness';
 import { hasUsableGearSnapshot, resolveJobGearSnapshot } from './jobGearUtils';
 
 interface SyncCenterTabProps {
@@ -25,37 +26,9 @@ interface SyncLogEntry {
   id: string;
   label: string;
   time: string;
-  latestAt: string;
 }
 
 const PLUGIN_URL = 'https://github.com/aaronbcarlisle/XIVRaidPlannerPlugin';
-
-function deriveSyncLog(allSnapshots: GearSnapshot[]): SyncLogEntry[] {
-  const bySource = new Map<string, { count: number; latestAt: string }>();
-  for (const snap of allSnapshots) {
-    if (!hasUsableGearSnapshot(snap) || !snap.syncedAt) continue;
-    const key = snap.source?.toLowerCase() ?? 'manual';
-    const entry = bySource.get(key) ?? { count: 0, latestAt: '' };
-    entry.count += 1;
-    const at = String(snap.syncedAt);
-    if (!entry.latestAt || at > entry.latestAt) entry.latestAt = at;
-    bySource.set(key, entry);
-  }
-  return Array.from(bySource.entries())
-    .sort(([, a], [, b]) => b.latestAt.localeCompare(a.latestAt))
-    .slice(0, 5)
-    .map(([source, { count, latestAt }]) => ({
-      id: source,
-      label:
-        source === 'plugin'
-          ? `Plugin synced ${count} job gearset${count === 1 ? '' : 's'}`
-          : source === 'lodestone'
-          ? `Lodestone updated ${count} job${count === 1 ? '' : 's'}`
-          : `Manually updated ${count} job gearset${count === 1 ? '' : 's'}`,
-      time: formatSyncAge(latestAt),
-      latestAt,
-    }));
-}
 
 function StatusIcon({ status }: { status: 'ok' | 'missing' | 'info' }) {
   if (status === 'ok') return <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-status-success" />;
@@ -72,6 +45,7 @@ export function SyncCenterTab({
   onNavigate,
   onOpenLinkModal,
 }: SyncCenterTabProps) {
+  const { t, i18n } = useTranslation();
   const {
     fetchProfile,
     fetchGoals,
@@ -83,9 +57,10 @@ export function SyncCenterTab({
   const { fetchPersonalAvailability } = usePersonalAvailabilityStore();
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncCompleteAt, setSyncCompleteAt] = useState(0);
+  const uiLocale = i18n.resolvedLanguage === 'ja' ? 'ja-JP' : 'en-US';
 
   const allSnapshots = useMemo(() => Object.values(gearSnapshots).flat(), [gearSnapshots]);
-  const trackedJobs = profile?.jobProfiles ?? [];
+  const trackedJobs = useMemo(() => profile?.jobProfiles ?? [], [profile?.jobProfiles]);
   const characters = profile?.characters ?? [];
 
   useEffect(() => {
@@ -93,7 +68,7 @@ export function SyncCenterTab({
   }, [fetchPersonalAvailability]);
 
   const pluginSnapshots = useMemo(
-    () => allSnapshots.filter((s) => s.source?.toLowerCase() === 'plugin' && hasUsableGearSnapshot(s)),
+    () => allSnapshots.filter((snapshot) => snapshot.source?.toLowerCase() === 'plugin' && hasUsableGearSnapshot(snapshot)),
     [allSnapshots]
   );
   const pluginConnected = pluginSnapshots.length > 0;
@@ -106,25 +81,65 @@ export function SyncCenterTab({
   const jobsMissingGear = trackedJobs.length - jobsWithGear;
 
   const pluginJobCount = jobSnapshots.filter(({ snapshot }) => snapshot?.source?.toLowerCase() === 'plugin').length;
-  const lodestoneJobCount = jobSnapshots.filter(({ snapshot }) => snapshot?.source?.toLowerCase() === 'lodestone').length;
+  const lodestoneJobCount = jobSnapshots.filter(({ snapshot }) => {
+    const source = snapshot?.source?.toLowerCase();
+    return source === 'lodestone' || source === 'xivapi' || source === 'tomestone';
+  }).length;
   const manualJobCount = jobsWithGear - pluginJobCount - lodestoneJobCount;
 
   const latestAnySnapshot = useMemo(
     () =>
       allSnapshots
-        .filter((s) => hasUsableGearSnapshot(s) && s.syncedAt)
-        .sort((a, b) => String(b.syncedAt).localeCompare(String(a.syncedAt)))[0] ?? null,
+        .filter((snapshot) => hasUsableGearSnapshot(snapshot) && snapshot.syncedAt)
+        .sort((left, right) => String(right.syncedAt).localeCompare(String(left.syncedAt)))[0] ?? null,
     [allSnapshots]
   );
 
-  const syncLog = useMemo(() => deriveSyncLog(allSnapshots), [allSnapshots]);
+  const syncLog = useMemo<SyncLogEntry[]>(() => {
+    const bySource = new Map<string, { count: number; latestAt: string }>();
+    for (const snapshot of allSnapshots) {
+      if (!hasUsableGearSnapshot(snapshot) || !snapshot.syncedAt) continue;
+      const key = snapshot.source?.toLowerCase() ?? 'manual';
+      const entry = bySource.get(key) ?? { count: 0, latestAt: '' };
+      entry.count += 1;
+      const at = String(snapshot.syncedAt);
+      if (!entry.latestAt || at > entry.latestAt) entry.latestAt = at;
+      bySource.set(key, entry);
+    }
+    return Array.from(bySource.entries())
+      .sort(([, left], [, right]) => right.latestAt.localeCompare(left.latestAt))
+      .slice(0, 5)
+      .map(([source, { count, latestAt }]) => ({
+        id: source,
+        label:
+          source === 'plugin'
+            ? t('profile.syncCenter.logPlugin', { count })
+            : source === 'lodestone' || source === 'xivapi' || source === 'tomestone'
+              ? t('profile.syncCenter.logLodestone', { count })
+              : t('profile.syncCenter.logManual', { count }),
+        time: formatRelativeTimeAgo(latestAt, uiLocale),
+      }));
+  }, [allSnapshots, t, uiLocale]);
 
   const isRefreshing = syncingAll || syncing;
+  const roleLabel = (role?: string | null) => {
+    switch (role) {
+      case 'owner':
+        return t('auth.roleOwner');
+      case 'lead':
+        return t('auth.roleLead');
+      case 'viewer':
+        return t('auth.roleViewer');
+      case 'member':
+      default:
+        return t('auth.roleMember');
+    }
+  };
 
   const handleRefreshStatus = async () => {
     if (characters.length === 0) {
       onOpenLinkModal();
-      toast.info('Link a character before checking gear status.');
+      toast.info(t('profile.syncCenter.linkCharacterFirst'));
       return;
     }
 
@@ -141,7 +156,7 @@ export function SyncCenterTab({
           // skip failed characters
         }
       }
-      toast.success('Status refreshed');
+      toast.success(t('profile.syncCenter.statusRefreshed'));
       setSyncCompleteAt(Date.now());
     } finally {
       setSyncingAll(false);
@@ -150,13 +165,12 @@ export function SyncCenterTab({
 
   return (
     <div className="space-y-5">
-      {/* Section 1 — Sync Status */}
       <section className="rounded-lg border border-accent/20 bg-surface-raised p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <h2 className="font-display text-xl font-semibold text-text-primary">Sync</h2>
+            <h2 className="font-display text-xl font-semibold text-text-primary">{t('profile.tabSync')}</h2>
             <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-              Use the plugin to keep jobs and gear updated automatically. Gear can also be entered manually in Jobs &amp; Gear.
+              {t('profile.syncCenter.headerDesc')}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <motion.div
@@ -166,7 +180,7 @@ export function SyncCenterTab({
                 transition={{ duration: 0.4 }}
               >
                 <Badge variant={pluginConnected ? 'success' : 'warning'} size="sm" data-testid="plugin-status-badge">
-                  {pluginConnected ? 'Plugin connected' : 'Plugin not connected'}
+                  {pluginConnected ? t('profile.syncCenter.pluginConnected') : t('profile.syncCenter.pluginNotConnected')}
                 </Badge>
               </motion.div>
               {latestAnySnapshot?.syncedAt && (
@@ -177,7 +191,7 @@ export function SyncCenterTab({
                   transition={{ duration: 0.4, delay: 0.05 }}
                 >
                   <Badge variant="info" size="sm" data-testid="last-gear-badge">
-                    Last gear: {formatSyncAge(latestAnySnapshot.syncedAt)}
+                    {t('profile.syncCenter.lastGear', { time: formatRelativeTimeAgo(latestAnySnapshot.syncedAt, uiLocale) })}
                   </Badge>
                 </motion.div>
               )}
@@ -194,7 +208,7 @@ export function SyncCenterTab({
                 leftIcon={<RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
                 data-testid="plugin-primary-cta"
               >
-                Refresh status
+                {t('profile.syncCenter.refreshStatus')}
               </Button>
             ) : (
               <a
@@ -205,16 +219,15 @@ export function SyncCenterTab({
                 className="inline-flex min-h-[44px] items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-all duration-fast hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base sm:min-h-0"
               >
                 <ExternalLink className="h-4 w-4" />
-                Get the plugin
+                {t('profile.syncCenter.getPlugin')}
               </a>
             )}
             <Button type="button" variant="secondary" size="sm" onClick={() => onNavigate('jobs-gear')}>
-              Edit manually
+              {t('profile.syncCenter.editManually')}
             </Button>
           </div>
         </div>
 
-        {/* Character identity inline */}
         <div
           className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border-subtle bg-surface-elevated/40 px-3 py-2"
           data-testid="character-identity-row"
@@ -223,21 +236,22 @@ export function SyncCenterTab({
             <StatusIcon status={characters.length > 0 ? 'ok' : 'missing'} />
             <span className="min-w-0 truncate text-sm text-text-secondary">
               {characters.length > 0
-                ? characters.map((c) => `${c.name} · ${c.server}`).join(', ')
-                : 'No character linked — sync requires a linked character'}
+                ? characters.map((character) => `${character.name} · ${character.server}`).join(', ')
+                : t('profile.syncCenter.noCharacterLinked')}
             </span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             onClick={onOpenLinkModal}
-            className="flex-shrink-0 text-xs font-medium text-accent hover:text-accent-hover"
+            className="min-h-0 flex-shrink-0 px-0 py-0 text-xs font-medium"
           >
-            {characters.length > 0 ? 'Manage' : 'Link'}
-          </button>
+            {characters.length > 0 ? t('common.manage') : t('profile.syncCenter.link')}
+          </Button>
         </div>
       </section>
 
-      {/* Plugin setup (only when not connected) */}
       {!pluginConnected && (
         <section className="rounded-lg border border-border-default bg-surface-raised p-4">
           <div className="flex items-start gap-3">
@@ -245,28 +259,26 @@ export function SyncCenterTab({
               <PlugZap className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-display text-sm font-semibold text-text-primary">Set up automatic sync</h3>
+              <h3 className="font-display text-sm font-semibold text-text-primary">{t('profile.syncCenter.setupAutoSync')}</h3>
               <p className="mt-1 text-sm text-text-secondary">
-                Install the XIVRaidPlannerPlugin to sync your saved gearsets into Jobs &amp; Gear.
-                Each sync reads all gearsets saved in-game and uploads them in one batch.
+                {t('profile.syncCenter.setupAutoSyncDesc')}
               </p>
             </div>
           </div>
         </section>
       )}
 
-      {/* Section 2 — Sync Sources */}
       <section className="rounded-lg border border-border-default bg-surface-raised p-4" data-testid="sync-sources-section">
-        <h3 className="font-display text-sm font-semibold text-text-primary">Sync Sources</h3>
+        <h3 className="font-display text-sm font-semibold text-text-primary">{t('profile.syncCenter.syncSources')}</h3>
         <p className="mt-0.5 text-xs text-text-tertiary">
-          Gear data is resolved in priority order — Plugin overrides Lodestone, Lodestone overrides manual entry.
+          {t('profile.syncCenter.syncSourcesDesc')}
         </p>
         <div className="mt-3 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-0">
           {[
-            { label: 'Plugin', desc: 'Saved gearsets from game', active: pluginConnected },
-            { label: 'Lodestone', desc: 'Public character page', active: characters.length > 0 },
-            { label: 'Manual', desc: 'Entered in Jobs & Gear', active: true },
-          ].map((source, i, arr) => (
+            { label: t('profile.syncCenter.sourcePlugin'), desc: t('profile.syncCenter.sourcePluginDesc'), active: pluginConnected },
+            { label: t('profile.syncCenter.sourceLodestone'), desc: t('profile.syncCenter.sourceLodestoneDesc'), active: characters.length > 0 },
+            { label: t('profile.syncCenter.sourceManual'), desc: t('profile.syncCenter.sourceManualDesc'), active: true },
+          ].map((source, index, all) => (
             <div key={source.label} className="flex items-center gap-1.5 sm:gap-0">
               <div
                 className={`flex min-w-0 flex-1 flex-col rounded-lg border px-3 py-2 ${
@@ -278,29 +290,27 @@ export function SyncCenterTab({
                 </span>
                 <span className="text-xs text-text-tertiary">{source.desc}</span>
               </div>
-              {i < arr.length - 1 && (
+              {index < all.length - 1 && (
                 <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-text-tertiary sm:mx-1.5" />
               )}
             </div>
           ))}
         </div>
         <p className="mt-3 rounded-lg border border-border-subtle bg-surface-elevated/50 px-3 py-2 text-xs text-text-tertiary">
-          <span className="font-medium text-text-secondary">Lodestone fallback:</span>{' '}
-          When plugin data is missing or stale, gear from your public Lodestone profile is used automatically.
-          Make sure your character page is set to public for fallback to work.
+          <span className="font-medium text-text-secondary">{t('profile.syncCenter.lodestoneFallbackTitle')}:</span>{' '}
+          {t('profile.syncCenter.lodestoneFallbackDesc')}
         </p>
       </section>
 
-      {/* Section 3 — Sync Coverage */}
       {trackedJobs.length > 0 && (
         <section className="rounded-lg border border-border-default bg-surface-raised p-4" data-testid="sync-coverage-section">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="font-display text-sm font-semibold text-text-primary">Sync Coverage</h3>
+              <h3 className="font-display text-sm font-semibold text-text-primary">{t('profile.syncCenter.syncCoverage')}</h3>
               <p className="mt-0.5 text-xs text-text-tertiary">
-                {jobsWithGear} of {trackedJobs.length} tracked job{trackedJobs.length === 1 ? '' : 's'} have gear.
-                {jobsMissingGear > 0 ? ` ${jobsMissingGear} missing.` : ''}{' '}
-                Readiness is managed in Jobs &amp; Gear.
+                {t('profile.syncCenter.coverageDesc', { jobsWithGear, trackedJobs: trackedJobs.length })}
+                {jobsMissingGear > 0 ? ` ${t('profile.syncCenter.coverageMissing', { jobsMissingGear })}` : ''}{' '}
+                {t('profile.syncCenter.coverageReadiness')}
               </p>
             </div>
             <Button
@@ -310,44 +320,42 @@ export function SyncCenterTab({
               onClick={() => onNavigate('jobs-gear')}
               data-testid="view-jobs-cta"
             >
-              View in Jobs & Gear
+              {t('profile.syncCenter.viewInJobsGear')}
             </Button>
           </div>
           {jobsWithGear > 0 && (
             <div className="mt-3 flex flex-wrap gap-2" data-testid="source-distribution">
               {pluginJobCount > 0 && (
                 <span className="rounded-full border border-accent/20 bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">
-                  Plugin · {pluginJobCount}
+                  {t('profile.syncCenter.sourcePlugin')} · {pluginJobCount}
                 </span>
               )}
               {lodestoneJobCount > 0 && (
                 <span className="rounded-full border border-border-subtle bg-surface-elevated/60 px-2.5 py-0.5 text-xs text-text-secondary">
-                  Lodestone · {lodestoneJobCount}
+                  {t('profile.syncCenter.sourceLodestone')} · {lodestoneJobCount}
                 </span>
               )}
               {manualJobCount > 0 && (
                 <span className="rounded-full border border-border-subtle bg-surface-elevated/60 px-2.5 py-0.5 text-xs text-text-secondary">
-                  Manual · {manualJobCount}
+                  {t('profile.syncCenter.sourceManual')} · {manualJobCount}
                 </span>
               )}
               {jobsMissingGear > 0 && (
                 <span className="rounded-full border border-status-warning/20 bg-status-warning/10 px-2.5 py-0.5 text-xs text-status-warning">
-                  Missing · {jobsMissingGear}
+                  {t('profile.syncCenter.missing')} · {jobsMissingGear}
                 </span>
               )}
             </div>
           )}
           <p className="mt-3 rounded-lg border border-border-subtle bg-surface-elevated/50 px-3 py-2 text-xs text-text-tertiary">
-            When you apply to a static, the request captures your selected job and gear at that moment.
-            Later profile changes will not rewrite old applications.
+            {t('profile.syncCenter.applicationSnapshotNote')}
           </p>
         </section>
       )}
 
-      {/* Section 4 — Sync Log */}
       {syncLog.length > 0 && (
         <section className="rounded-lg border border-border-default bg-surface-raised p-4" data-testid="sync-log-section">
-          <h3 className="font-display text-sm font-semibold text-text-primary">Sync Log</h3>
+          <h3 className="font-display text-sm font-semibold text-text-primary">{t('profile.syncCenter.syncLog')}</h3>
           <div className="mt-3 space-y-1.5">
             <AnimatePresence initial={false}>
               {syncLog.map((entry) => (
@@ -368,37 +376,33 @@ export function SyncCenterTab({
         </section>
       )}
 
-      {/* Section 5 — Privacy */}
       <section className="rounded-lg border border-border-default bg-surface-raised p-4" data-testid="privacy-section">
         <div className="flex items-start gap-3">
           <EyeOff className="mt-0.5 h-4 w-4 flex-shrink-0 text-text-tertiary" />
           <div className="min-w-0">
-            <h3 className="font-display text-sm font-semibold text-text-primary">Privacy</h3>
+            <h3 className="font-display text-sm font-semibold text-text-primary">{t('profile.syncCenter.privacy')}</h3>
             <p className="mt-1 text-sm text-text-secondary">
-              Plugin sync activity appears in your static's overview feed as{' '}
-              <span className="font-medium text-text-primary">"A member synced"</span> — your name is not
-              shown to other members. Aggregate updates use a system label with no actor name.
+              {t('profile.syncCenter.privacyDesc')}
             </p>
           </div>
         </div>
       </section>
 
-      {/* Roster links */}
       {staticGroups.length > 0 && (
         <section className="rounded-lg border border-border-default bg-surface-raised p-4">
-          <h3 className="font-display text-sm font-semibold text-text-primary">Roster links</h3>
+          <h3 className="font-display text-sm font-semibold text-text-primary">{t('profile.syncCenter.rosterLinks')}</h3>
           <p className="mt-0.5 text-xs text-text-tertiary">
-            Connected to {staticGroups.length} static{staticGroups.length === 1 ? '' : 's'}.
+            {t('profile.syncCenter.connectedStatics', { count: staticGroups.length })}
           </p>
           <div className="mt-2 space-y-1">
-            {staticGroups.map((sg) => (
+            {staticGroups.map((group) => (
               <a
-                key={sg.id}
-                href={`/group/${sg.shareCode}`}
+                key={group.id}
+                href={`/group/${group.shareCode}`}
                 className="block rounded-lg bg-surface-elevated/60 px-3 py-2 text-sm text-text-primary transition-colors hover:bg-surface-elevated"
               >
-                {sg.name}
-                <span className="ml-2 text-xs text-text-tertiary">{sg.userRole ?? 'Member'}</span>
+                {group.name}
+                <span className="ml-2 text-xs text-text-tertiary">{roleLabel(group.userRole)}</span>
               </a>
             ))}
           </div>

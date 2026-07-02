@@ -1,4 +1,4 @@
-import { Book } from 'lucide-react';
+import { XivIcon } from '../../ui/XivIcon';
 import { Label } from '../../ui';
 import { Button } from '../../primitives';
 import { JobIcon } from '../../ui/JobIcon';
@@ -99,7 +99,7 @@ export function BooksStep({
           <div key={floorName} className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Book className="w-4 h-4" style={{ color: floorColor.hex }} />
+                <XivIcon name="tomestone" size={16} />
                 <Label className="mb-0" style={{ color: floorColor.hex }}>{floorName}</Label>
                 <span className="text-xs text-text-muted">
                   ({floor.booksCleared.length} selected)

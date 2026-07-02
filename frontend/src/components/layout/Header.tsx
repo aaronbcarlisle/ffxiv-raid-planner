@@ -8,6 +8,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Copy, UserPlus, Settings, Plus, Trash2, Globe, Swords } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
@@ -18,7 +19,7 @@ import { useInvitationStore } from '../../stores/invitationStore';
 import { toast } from '../../stores/toastStore';
 import { LoginButton, UserMenu } from '../auth';
 import { StaticSwitcher, TierSelector } from '../static-group';
-import { TierActionsMenu, TipsCarousel, DiscordIcon, GitHubIcon, ThemeToggle } from '../ui';
+import { TierActionsMenu, TipsCarousel, DiscordIcon, GitHubIcon, ThemeToggle, LanguageToggle } from '../ui';
 import { Tooltip, IconButton } from '../primitives';
 import { RAID_TIERS } from '../../gamedata';
 import { canManageTiers, canManageGroup } from '../../utils/permissions';
@@ -36,6 +37,7 @@ export const HEADER_EVENTS = {
 } as const;
 
 export function Header() {
+  const { t } = useTranslation();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [inviteCopied, setInviteCopied] = useState(false);
@@ -102,8 +104,8 @@ export function Header() {
   const activeInvitation = invitations.find(inv => inv.isValid);
 
   // Calculate available tiers for creation
-  const existingTierIds = tiers.map(t => t.tierId);
-  const availableTiers = RAID_TIERS.filter(t => !existingTierIds.includes(t.id));
+  const existingTierIds = tiers.map(tier => tier.tierId);
+  const availableTiers = RAID_TIERS.filter(tier => !existingTierIds.includes(tier.id));
 
   // Handle invite members button click
   const handleInviteMembers = async () => {
@@ -151,29 +153,29 @@ export function Header() {
     return [
       {
         id: 'new-tier',
-        label: 'Create New Tier',
+        label: t('header.createNewTier'),
         icon: <Plus className="w-4 h-4" />,
         shortcut: 'Alt+Shift+N',
         disabled: availableTiers.length === 0,
-        tooltip: availableTiers.length === 0 ? 'All tiers have been created' : undefined,
+        tooltip: availableTiers.length === 0 ? t('header.allTiersCreated') : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.NEW_TIER),
       },
       {
         id: 'rollover',
-        label: 'Copy to New Tier',
+        label: t('header.rolloverTier'),
         icon: <Copy className="w-4 h-4" />,
         shortcut: 'Alt+Shift+R',
         disabled: !currentTier || availableTiers.length === 0,
-        tooltip: !currentTier ? 'Create a tier first' : availableTiers.length === 0 ? 'All tiers have been created' : undefined,
+        tooltip: !currentTier ? t('header.createTierFirst') : availableTiers.length === 0 ? t('header.allTiersCreated') : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.ROLLOVER),
       },
       {
         id: 'delete-tier',
-        label: 'Delete Tier',
+        label: t('header.deleteTier'),
         icon: <Trash2 className="w-4 h-4" />,
         danger: true,
         disabled: !currentTier || tiers.length <= 1,
-        tooltip: !currentTier ? 'No tier to delete' : tiers.length <= 1 ? 'Cannot delete the last tier' : undefined,
+        tooltip: !currentTier ? t('header.noTierToDelete') : tiers.length <= 1 ? t('header.cannotDeleteLastTier') : undefined,
         onClick: () => dispatchHeaderEvent(HEADER_EVENTS.DELETE_TIER),
       },
     ];
@@ -188,9 +190,9 @@ export function Header() {
           <Tooltip
             content={
               <div>
-                <div className="font-medium">FFXIV Raid Planner</div>
+                <div className="font-medium">{t('header.logoTooltipTitle')}</div>
                 <div className="text-text-secondary text-xs mt-0.5">
-                  Return to home page
+                  {t('header.logoTooltipDesc')}
                 </div>
               </div>
             }
@@ -223,22 +225,23 @@ export function Header() {
                 />
               </div>
 
-              {/* Breadcrumb separator and Tier selector - hidden on mobile */}
-              {tiers.length > 0 && (
-                <div className="hidden sm:flex items-center gap-1">
-                  <span className="text-text-muted text-lg">›</span>
-                  <TierSelector
-                    tiers={tiers}
-                    currentTierId={currentTier?.tierId}
-                    onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
-                  />
-                  {/* Tier actions kebab menu */}
-                  {canEdit && tierActions.length > 0 && (
-                    <TierActionsMenu actions={tierActions} />
-                  )}
-                </div>
-              )}
             </>
+          )}
+
+          {/* Breadcrumb separator and Tier selector - group routes only, hidden on mobile */}
+          {isGroupRoute && currentGroup && tiers.length > 0 && (
+            <div className="hidden sm:flex items-center gap-1">
+              <span className="text-text-muted text-lg">›</span>
+              <TierSelector
+                tiers={tiers}
+                currentTierId={currentTier?.tierId}
+                onTierChange={(tierId) => dispatchHeaderEvent(HEADER_EVENTS.TIER_CHANGE, { tierId })}
+              />
+              {/* Tier actions kebab menu */}
+              {canEdit && tierActions.length > 0 && (
+                <TierActionsMenu actions={tierActions} />
+              )}
+            </div>
           )}
         </div>
 
@@ -260,11 +263,11 @@ export function Header() {
                       <div className="flex items-start gap-2 max-w-xs">
                         <UserPlus className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
                         <div>
-                          <div className="font-medium">Invite Members</div>
+                          <div className="font-medium">{t('header.inviteMembersTitle')}</div>
                           <div className="text-text-secondary text-xs mt-0.5">
                             {activeInvitation
-                              ? 'Click to copy invitation link'
-                              : 'Click to create an invitation link'}
+                              ? t('header.inviteMembersActive')
+                              : t('header.inviteMembersInactive')}
                           </div>
                         </div>
                       </div>
@@ -272,6 +275,7 @@ export function Header() {
                   >
                     <button
                       onClick={handleInviteMembers}
+                      aria-label={t('header.inviteMembersTitle')}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/30 hover:border-accent/50 transition-colors group flex-shrink-0"
                     >
                       {inviteCopied ? (
@@ -282,7 +286,7 @@ export function Header() {
                         <UserPlus className="w-4 h-4 text-accent" />
                       )}
                       <span className="text-sm font-medium text-accent">
-                        {inviteCopied ? 'Copied!' : 'Invite'}
+                        {inviteCopied ? t('header.inviteCopied') : t('header.inviteButton')}
                       </span>
                     </button>
                   </Tooltip>
@@ -294,10 +298,10 @@ export function Header() {
                 <Tooltip
                   content={
                     <div>
-                      <div className="font-medium">Static Settings</div>
+                      <div className="font-medium">{t('header.settingsTitle')}</div>
                       <div className="text-text-secondary text-xs mt-0.5">
-                        Manage settings, members, and invitations
-                        {pendingJoinRequests > 0 && ` — ${pendingJoinRequests} pending join request${pendingJoinRequests > 1 ? 's' : ''}`}
+                        {t('header.settingsDesc')}
+                        {pendingJoinRequests > 0 && ` — ${t('header.settingsPendingRequests', { count: pendingJoinRequests })}`}
                       </div>
                       <div className="text-text-muted text-xs mt-1 flex gap-1">
                         <kbd className="px-1.5 py-0.5 bg-surface-base rounded text-[10px]">Alt+G</kbd>
@@ -316,7 +320,7 @@ export function Header() {
                         pendingJoinRequests > 0 ? { tab: 'recruitment' } : undefined,
                       )}
                       variant="ghost"
-                      aria-label="Static settings"
+                      aria-label={t('header.settingsTitle')}
                     />
                     {pendingJoinRequests > 0 && (
                       <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-accent text-accent-contrast pointer-events-none">
@@ -344,40 +348,41 @@ export function Header() {
                     </Link>
                   </Tooltip>
                 )}
-                <Tooltip content="Find a static">
+                <Tooltip content={t('header.findAStatic')}>
                   <Link
                     to="/discover"
-                    aria-label="Find a static"
+                    aria-label={t('header.findAStatic')}
                     className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-accent hover:bg-surface-interactive transition-colors flex-shrink-0"
                   >
                     <Globe className="w-4 h-4 sm:w-5 sm:h-5" />
                   </Link>
                 </Tooltip>
-                <Tooltip content="Join our Discord community">
+                <Tooltip content={t('header.discordCommunity')}>
                   <a
                     href={DISCORD_INVITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="Join our Discord community"
+                    aria-label={t('header.discordCommunity')}
                     className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-discord hover:bg-surface-interactive transition-colors flex-shrink-0"
                   >
                     <DiscordIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </a>
                 </Tooltip>
-                <Tooltip content="View source on GitHub">
+                <Tooltip content={t('header.viewOnGitHub')}>
                   <a
                     href={GITHUB_REPO_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="View source on GitHub"
+                    aria-label={t('header.viewOnGitHub')}
                     className="flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-text-muted hover:text-text-primary hover:bg-surface-interactive transition-colors flex-shrink-0"
                   >
                     <GitHubIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   </a>
                 </Tooltip>
               </div>
-              {/* Theme toggle — hidden on mobile (available in user menu) */}
-              <div className="hidden sm:flex items-center border-l border-border-subtle pl-3">
+              {/* Language + theme toggles — hidden on mobile */}
+              <div className="hidden sm:flex items-center gap-1 border-l border-border-subtle pl-3">
+                <LanguageToggle />
                 <ThemeToggle />
               </div>
             </>

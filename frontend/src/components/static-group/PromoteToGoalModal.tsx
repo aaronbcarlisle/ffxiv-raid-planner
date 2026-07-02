@@ -4,19 +4,13 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Select } from '../ui/Select';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
 import type { ContentSuggestion } from '../../stores/contentSuggestionStore';
-
-const PRIORITY_OPTIONS = [
-  { value: 'required',  label: 'Required' },
-  { value: 'preferred', label: 'Preferred' },
-  { value: 'optional',  label: 'Optional' },
-  { value: 'not_doing', label: 'Not Doing' },
-];
 
 interface PromoteToGoalModalProps {
   suggestion: ContentSuggestion;
@@ -25,10 +19,17 @@ interface PromoteToGoalModalProps {
 }
 
 export function PromoteToGoalModal({ suggestion, onPromote, onClose }: PromoteToGoalModalProps) {
+  const { t } = useTranslation();
   const [priority, setPriority] = useState('required');
   const [titleOverride, setTitleOverride] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const PRIORITY_OPTIONS = [
+    { value: 'required',  label: t('objectivePriority.required') },
+    { value: 'preferred', label: t('objectivePriority.preferred') },
+    { value: 'optional',  label: t('objectivePriority.optional') },
+    { value: 'not_doing', label: t('objectivePriority.not_doing') },
+  ];
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -40,30 +41,28 @@ export function PromoteToGoalModal({ suggestion, onPromote, onClose }: PromoteTo
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to promote suggestion');
+      setError(err instanceof Error ? err.message : t('settings.promoteSuggestionFailed'));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal isOpen title="Promote to Objective Goal" onClose={onClose} size="md">
+    <Modal isOpen title={t('settings.promoteToObjectiveGoal')} onClose={onClose} size="md">
       <div className="space-y-4">
         <p className="text-sm text-text-secondary">
-          Promoting{' '}
-          <span className="font-semibold text-text-primary">"{suggestion.title}"</span>{' '}
-          will create a new static objective goal from this suggestion.
+          {t('settings.promoteSuggestionDesc', { title: suggestion.title })}
         </p>
 
         <div>
-          <Label htmlFor="promote-priority">Priority</Label>
+          <Label htmlFor="promote-priority">{t('goalsPage.priority')}</Label>
           <Select id="promote-priority" value={priority} onChange={setPriority} options={PRIORITY_OPTIONS} />
         </div>
 
         <div>
           <Label htmlFor="promote-title">
-            Title override{' '}
-            <span className="text-text-muted font-normal">(optional — uses suggestion title if blank)</span>
+            {t('settings.titleOverride')}{' '}
+            <span className="text-text-muted font-normal">({t('settings.titleOverrideHint')})</span>
           </Label>
           <Input id="promote-title"
             value={titleOverride}
@@ -78,9 +77,9 @@ export function PromoteToGoalModal({ suggestion, onPromote, onClose }: PromoteTo
         )}
 
         <div className="flex justify-end gap-3 pt-2">
-          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>{t('common.cancel')}</Button>
           <Button onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Promoting…' : 'Promote to Goal'}
+            {saving ? t('settings.promoting') : t('settings.promoteToGoal')}
           </Button>
         </div>
       </div>

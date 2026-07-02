@@ -4,12 +4,15 @@
  * Contains: name, visibility, banner settings, share link, delete static
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { Label, Input, ErrorBox, Select, Toggle } from '../ui';
 import { Button } from '../primitives';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { useAuthStore } from '../../stores/authStore';
+import { prefRememberSubTabs, prefRememberStaticTab } from '../../lib/navPreferences';
 import { toast } from '../../stores/toastStore';
 import type { StaticGroup } from '../../types';
 
@@ -19,6 +22,7 @@ interface GeneralTabProps {
 }
 
 export function GeneralTab({ group, onClose }: GeneralTabProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { updateGroup, deleteGroup } = useStaticGroupStore();
 
@@ -28,6 +32,25 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
   const [hideBisBanners, setHideBisBanners] = useState(group.settings?.hideBisBanners ?? false);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(group.settings?.autoSyncEnabled ?? false);
   const [autoSyncIntervalHours, setAutoSyncIntervalHours] = useState(group.settings?.autoSyncIntervalHours ?? 8);
+
+  // User-level navigation preferences (apply to YOUR account across all statics,
+  // not to the static). Staged in local state and persisted on the Save button,
+  // same as the static fields below. They're user-scoped, so any member may save
+  // them regardless of their role in this static.
+  const user = useAuthStore((s) => s.user);
+  const updatePreferences = useAuthStore((s) => s.updatePreferences);
+  const [rememberSubTabs, setRememberSubTabs] = useState(prefRememberSubTabs(user));
+  const [rememberStaticTab, setRememberStaticTab] = useState(prefRememberStaticTab(user));
+  // The toggles seed from `user` at mount; if the account loads (or switches)
+  // after mount, resync so they reflect the real saved prefs instead of the
+  // defaults. Keyed on the user id (not the pref values), so saving — which
+  // updates the same user object — never re-fires and clobbers a staged edit.
+  useEffect(() => {
+    setRememberSubTabs(prefRememberSubTabs(user));
+    setRememberStaticTab(prefRememberStaticTab(user));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -45,8 +68,16 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
     hideBisBanners !== (group.settings?.hideBisBanners ?? false) ||
     autoSyncEnabled !== (group.settings?.autoSyncEnabled ?? false) ||
     autoSyncIntervalHours !== (group.settings?.autoSyncIntervalHours ?? 8);
-  const hasChanges = ownerFieldsChanged || leadFieldsChanged;
-  const canSave = hasChanges && (!ownerFieldsChanged || isOwner) && (!leadFieldsChanged || canEdit);
+  // User-scoped nav prefs — any member can change/save their own, no role gate.
+  const navPrefsChanged = rememberSubTabs !== prefRememberSubTabs(user) ||
+    rememberStaticTab !== prefRememberStaticTab(user);
+  // Only count static-field changes the user is actually allowed to make. The
+  // inputs are disabled without permission, but the live `group` prop can still
+  // diverge from local state via a background refetch — which must not block a
+  // user-scoped nav-pref save or trigger a forbidden group update.
+  const savableStaticChange = (isOwner && ownerFieldsChanged) || (canEdit && leadFieldsChanged);
+  const hasChanges = savableStaticChange || navPrefsChanged;
+  const canSave = hasChanges;
 
   const handleSave = async () => {
     if (!hasChanges) {
@@ -56,40 +87,72 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
     setIsSaving(true);
     setError(null);
 
+    // The static-group update and the user-preference update hit independent
+    // endpoints, so run them separately and report per-operation. That way a
+    // failure in one doesn't hide that the other persisted (and the user knows
+    // exactly what still needs saving), rather than a single "failed" message
+    // implying nothing was saved.
+    const failed: string[] = [];
+    const saved: string[] = [];
     try {
-      const updateData: {
-        name?: string;
-        isPublic?: boolean;
-        settings?: {
-          hideSetupBanners: boolean;
-          hideBisBanners: boolean;
-          autoSyncEnabled: boolean;
-          autoSyncIntervalHours: number;
-        };
-      } = {};
+      // Static fields — only push a group update for changes the user is
+      // permitted to make. Skips the update entirely when only the user-scoped
+      // nav prefs changed (or when a static field merely diverged via refetch),
+      // so members without edit rights never hit a forbidden update.
+      if (savableStaticChange) {
+        const updateData: {
+          name?: string;
+          isPublic?: boolean;
+          settings?: {
+            hideSetupBanners: boolean;
+            hideBisBanners: boolean;
+            autoSyncEnabled: boolean;
+            autoSyncIntervalHours: number;
+          };
+        } = {};
 
-      if (name !== group.name) {
-        updateData.name = name;
-      }
-      if (isPublic !== group.isPublic) {
-        updateData.isPublic = isPublic;
-      }
-      if (leadFieldsChanged) {
-        updateData.settings = {
-          ...group.settings,
-          hideSetupBanners,
-          hideBisBanners,
-          autoSyncEnabled,
-          autoSyncIntervalHours,
-        };
+        if (name !== group.name) {
+          updateData.name = name;
+        }
+        if (isPublic !== group.isPublic) {
+          updateData.isPublic = isPublic;
+        }
+        if (leadFieldsChanged) {
+          updateData.settings = {
+            ...group.settings,
+            hideSetupBanners,
+            hideBisBanners,
+            autoSyncEnabled,
+            autoSyncIntervalHours,
+          };
+        }
+
+        try {
+          await updateGroup(group.id, updateData);
+          saved.push('static settings');
+        } catch {
+          failed.push('static settings');
+        }
       }
 
-      await updateGroup(group.id, updateData);
-      toast.success('Settings saved!');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save changes';
-      setError(message);
-      toast.error(message);
+      // User-scoped navigation preferences.
+      if (navPrefsChanged) {
+        try {
+          await updatePreferences({ rememberSubTabs, rememberStaticTab });
+          saved.push('navigation preferences');
+        } catch {
+          failed.push('navigation preferences');
+        }
+      }
+
+      if (failed.length === 0) {
+        toast.success('Settings saved!');
+      } else {
+        const tail = saved.length ? ` ${saved.join(' and ')} saved.` : '';
+        const message = `Failed to save ${failed.join(' and ')}.${tail}`;
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -153,7 +216,7 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
               setDeleteConfirmText('');
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
@@ -246,6 +309,29 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
         )}
       </div>
 
+      {/* Your navigation preferences — user-scoped, saved with the Save button */}
+      <div className="border-t border-border-default pt-4">
+        <p className="text-sm font-medium text-text-primary mb-1">Your Navigation</p>
+        <p className="text-xs text-text-muted mb-3">
+          These apply to your account across all your statics — they don't affect other members.
+        </p>
+        <div className="space-y-4">
+          <Toggle
+            checked={rememberSubTabs}
+            onChange={setRememberSubTabs}
+            label={t('settings.rememberSubTabs')}
+            hint="Keep the last sub-tab when you return to a view. Turn off to always reset to the default sub-tab (e.g. Roster → Members)."
+          />
+          <Toggle
+            checked={rememberStaticTab}
+            onChange={setRememberStaticTab}
+            label={t('settings.rememberTabPerStatic')}
+            hint="When switching statics, return to that static's last tab. Turn off to stay on the tab you're currently viewing."
+          />
+        </div>
+      </div>
+
+
         {/* Share Code */}
         <div>
           <Label>Share Link</Label>
@@ -287,14 +373,14 @@ export function GeneralTab({ group, onClose }: GeneralTabProps) {
         </div>
         <div className="flex gap-3">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={!canSave}
             loading={isSaving}
           >
-            Save
+            {isSaving ? t('common.saving') : t('common.save')}
           </Button>
         </div>
       </div>

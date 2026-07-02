@@ -3,10 +3,12 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Select } from '../ui/Select';
 import { TextArea } from '../ui/TextArea';
+import { Label } from '../ui/Label';
 import { JobIcon } from '../ui/JobIcon';
 import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import type { PlayerJobProfile } from '../../stores/playerProfileStore';
@@ -14,41 +16,39 @@ import { RAID_JOBS, getRoleForJob, getJobDisplayName, type Role } from '../../ga
 import { hasUsableGearSnapshot } from './jobGearUtils';
 import { toast } from '../../stores/toastStore';
 
-const PRIORITIES = [
-  { value: 'main', label: 'Main' },
-  { value: 'preferred_alt', label: 'Preferred Alt' },
-  { value: 'flex', label: 'Flex' },
-  { value: 'emergency', label: 'Emergency' },
-  { value: 'casual', label: 'Casual' },
-];
-
-const READINESS_OPTIONS = [
-  { value: 'ready', label: 'Ready' },
-  { value: 'needs_gear', label: 'Needs Gear' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'not_ready', label: 'Not Ready' },
-  { value: 'unknown', label: 'Unknown' },
-];
-
-const ROLE_FILTERS: { value: Role | 'all'; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'tank', label: 'Tanks' },
-  { value: 'healer', label: 'Healers' },
-  { value: 'melee', label: 'Melee' },
-  { value: 'ranged', label: 'Ranged' },
-  { value: 'caster', label: 'Casters' },
-];
-
 interface JobProfileModalProps {
   existing?: PlayerJobProfile;
   onClose: () => void;
 }
 
 export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
+  const { t } = useTranslation();
   const { createJobProfile, updateJobProfile } = usePlayerProfileStore();
   const profile = usePlayerProfileStore((s) => s.profile);
   const gearSnapshots = usePlayerProfileStore((s) => s.gearSnapshots);
   const isEditing = !!existing;
+  const PRIORITIES = [
+    { value: 'main', label: t('profile.jobsGear.priorityMain') },
+    { value: 'preferred_alt', label: t('profile.jobsGear.priorityPreferredAlt') },
+    { value: 'flex', label: t('profile.jobsGear.priorityFlex') },
+    { value: 'emergency', label: t('profile.jobsGear.priorityEmergency') },
+    { value: 'casual', label: t('profile.jobsGear.priorityCasual') },
+  ];
+  const READINESS_OPTIONS = [
+    { value: 'ready', label: t('profile.jobsGear.readinessReady') },
+    { value: 'needs_gear', label: t('profile.jobsGear.readinessNeedsGear') },
+    { value: 'in_progress', label: t('profile.jobsGear.readinessInProgress') },
+    { value: 'not_ready', label: t('profile.jobsGear.readinessNotReady') },
+    { value: 'unknown', label: t('profile.jobsGear.readinessUnknown') },
+  ];
+  const ROLE_FILTERS: { value: Role | 'all'; label: string }[] = [
+    { value: 'all', label: t('common.all') },
+    { value: 'tank', label: t('profile.jobsGear.roleTanks') },
+    { value: 'healer', label: t('profile.jobsGear.roleHealers') },
+    { value: 'melee', label: t('common.roleMelee') },
+    { value: 'ranged', label: t('profile.jobsGear.roleRanged') },
+    { value: 'caster', label: t('profile.jobsGear.roleCasters') },
+  ];
 
   const [selectedJobs, setSelectedJobs] = useState<Set<string>>(new Set());
   const [roleFilter, setRoleFilter] = useState<Role | 'all'>('all');
@@ -106,7 +106,7 @@ export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
     try {
       if (isEditing) {
         await updateJobProfile(existing.id, { priority, readiness, notes: notes || undefined });
-        toast.success(`Updated ${getJobDisplayName(existing.job)} profile`);
+        toast.success(t('profile.jobsGear.jobProfileUpdated', { job: getJobDisplayName(existing.job) }));
       } else {
         const jobs = [...selectedJobs];
         for (const abbreviation of jobs) {
@@ -115,24 +115,28 @@ export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
           await createJobProfile({ job: abbreviation, role, priority, readiness, notes: notes || undefined });
         }
         const count = jobs.length;
-        toast.success(count === 1 ? `Added ${getJobDisplayName(jobs[0])} profile` : `Added ${count} job profiles`);
+        toast.success(
+          count === 1
+            ? t('profile.jobsGear.jobProfileAddedOne', { job: getJobDisplayName(jobs[0]) })
+            : t('profile.jobsGear.jobProfileAddedMany', { count })
+        );
       }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      setError(err instanceof Error ? err.message : t('profile.jobsGear.jobProfileSaveFailed'));
     } finally {
       setSaving(false);
     }
   };
 
   const addButtonLabel = selectedJobs.size > 1
-    ? `Add ${selectedJobs.size} Jobs`
-    : 'Add Job';
+    ? t('profile.jobsGear.addJobsCount', { count: selectedJobs.size })
+    : t('profile.jobsGear.addJob');
 
   return (
     <Modal
       isOpen={true}
-      title={isEditing ? `Edit ${getJobDisplayName(existing.job)}` : 'Add Job'}
+      title={isEditing ? t('profile.jobsGear.editJobTitle', { job: getJobDisplayName(existing.job) }) : t('profile.jobsGear.addJob')}
       onClose={onClose}
     >
       <div className="space-y-4">
@@ -140,16 +144,18 @@ export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
         {!isEditing && (
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <label className="text-sm font-medium text-text-secondary">Jobs</label> {/* design-system-ignore */}
+              <Label className="mb-0">{t('profile.jobsGear.jobsLabel')}</Label>
               {syncedUntracked.length > 0 && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="xs"
                   onClick={selectAllSynced}
-                  className="text-xs font-medium text-accent hover:text-accent-hover"
+                  className="min-h-0 px-0 py-0 text-xs font-medium"
                   data-testid="select-all-synced"
                 >
-                  Select all synced ({syncedUntracked.length})
-                </button>
+                  {t('profile.jobsGear.selectAllSynced', { count: syncedUntracked.length })}
+                </Button>
               )}
             </div>
 
@@ -179,6 +185,7 @@ export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
               {filteredJobs.map((j) => {
                 const isSelected = selectedJobs.has(j.abbreviation);
                 return (
+                  /* design-system-ignore: Custom job chip toggle */
                   <button
                     key={j.abbreviation}
                     type="button"
@@ -216,7 +223,7 @@ export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
 
         {/* Priority */}
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Priority</label> {/* design-system-ignore */}
+          <Label>{t('goalsPage.priority')}</Label>
           <Select
             value={priority}
             onChange={setPriority}
@@ -226,7 +233,7 @@ export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
 
         {/* Readiness */}
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Gear Readiness</label> {/* design-system-ignore */}
+          <Label>{t('profile.jobsGear.gearReadiness')}</Label>
           <Select
             value={readiness}
             onChange={setReadiness}
@@ -236,11 +243,11 @@ export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
 
         {/* Notes */}
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Notes</label> {/* design-system-ignore */}
+          <Label>{t('common.notes')}</Label>
           <TextArea
             value={notes}
             onChange={setNotes}
-            placeholder="e.g., Missing weapon, BiS except ring2"
+            placeholder={t('profile.jobsGear.notesPlaceholder')}
             maxLength={500}
             rows={2}
           />
@@ -253,13 +260,13 @@ export function JobProfileModal({ existing, onClose }: JobProfileModalProps) {
         )}
 
         <div className="flex justify-end gap-3 pt-2">
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
           <Button
             onClick={handleSubmit}
             disabled={saving || (!isEditing && selectedJobs.size === 0)}
             data-testid="submit-add-job"
           >
-            {saving ? 'Saving…' : isEditing ? 'Save Changes' : addButtonLabel}
+            {saving ? t('common.saving') : isEditing ? t('settings.saveChanges') : addButtonLabel}
           </Button>
         </div>
       </div>

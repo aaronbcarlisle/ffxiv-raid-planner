@@ -9,26 +9,37 @@
  */
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  AlertCircle, ChevronDown, Coins, Eye, Search, Star, Trophy, Users,
+  AlertCircle, ChevronDown, Search,
 } from 'lucide-react';
+import { XivIcon } from '../ui/XivIcon';
 import { Button } from '../primitives/Button';
 import type { StaticCollectionSuggestion, MemberSuggestionEntry } from '../../stores/collectionIntentStore';
 import {
-  SOURCE_TYPE_BADGE as CONTENT_TYPE_CONFIG,
   CATEGORY_BADGE,
-  expansionLabel,
-  expansionShortLabel,
+  SOURCE_TYPE_BADGE as CONTENT_TYPE_CONFIG,
+  getCollectionCategoryLabel,
+  getCollectionExpansionLabel,
+  getCollectionExpansionShortLabel,
+  getCollectionSourceTypeLabel,
 } from '../../utils/collectionBadgeConfig';
+import {
+  getLocalizedDutyNameByText,
+  getLocalizedRewardNameByText,
+  resolveUiLocale,
+} from '../../gamedata/mount-farm-i18n';
 
 /** Build a duty-level copy plan covering all rewards in the card. */
-function buildDutyCopyText(dutyName: string, suggestions: StaticCollectionSuggestion[]): string {
-  const lines: string[] = ['Tonight\'s Farm Plan', `Source: ${dutyName}`];
+function buildDutyCopyText(dutyName: string, suggestions: StaticCollectionSuggestion[], locale: string): string {
+  const isJapanese = locale.startsWith('ja');
+  const lines: string[] = [isJapanese ? '今夜の周回プラン' : 'Tonight\'s Farm Plan', `${isJapanese ? '対象' : 'Source'}: ${dutyName}`];
 
-  lines.push('Rewards:');
+  lines.push(`${isJapanese ? '報酬' : 'Rewards'}:`);
   for (const s of suggestions) {
-    const categoryLabel = CATEGORY_BADGE[s.catalogItemCategory ?? '']?.label ?? s.catalogItemCategory ?? 'Reward';
-    lines.push(`- ${categoryLabel}: ${s.catalogItemName}`);
+    const categoryLabel = getCollectionCategoryLabel(s.catalogItemCategory, locale) || (isJapanese ? '報酬' : 'Reward');
+    const rewardName = getLocalizedRewardNameByText(s.catalogItemName, locale) || s.catalogItemName;
+    lines.push(`- ${categoryLabel}: ${rewardName}`);
   }
 
   // Aggregate members across all rewards (highest-priority per user)
@@ -49,8 +60,8 @@ function buildDutyCopyText(dutyName: string, suggestions: StaticCollectionSugges
     return (m.displayName ?? m.userId) + token;
   });
 
-  if (wantNames.length)  lines.push(`Still want: ${wantNames.join(', ')}`);
-  if (canBuyNames.length) lines.push(`Can buy: ${canBuyNames.join(', ')}`);
+  if (wantNames.length)  lines.push(`${isJapanese ? 'まだ欲しい人' : 'Still want'}: ${wantNames.join(', ')}`);
+  if (canBuyNames.length) lines.push(`${isJapanese ? '交換できる人' : 'Can buy'}: ${canBuyNames.join(', ')}`);
   return lines.join('\n');
 }
 
@@ -98,12 +109,15 @@ function aggregateMembers(suggestions: StaticCollectionSuggestion[]): AggregateC
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function MiniTeamBar({ counts }: { counts: AggregateCounts }) {
+  const { i18n } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
   const stats = [
-    { icon: <Trophy size={10} />,        label: 'Owned',      value: counts.have,      color: 'text-status-success' },
-    { icon: <Search size={10} />,        label: 'Hunting',    value: counts.hunting,   color: 'text-status-info' },
-    { icon: <Star size={10} />,          label: 'Interested', value: counts.interested, color: 'text-status-warning' },
-    { icon: <Coins size={10} />,         label: 'Can buy',    value: counts.canBuy,    color: 'text-amber-400' },
-    { icon: <AlertCircle size={10} />,   label: 'Unknown',    value: counts.unknown,   color: 'text-text-muted opacity-50' },
+    { icon: <XivIcon name="goals" size={10} />, label: isJapanese ? '所持' : 'Owned', value: counts.have, color: 'text-status-success' },
+    { icon: <Search size={10} />, label: isJapanese ? '希望' : 'Hunting', value: counts.hunting, color: 'text-status-info' },
+    { icon: <XivIcon name="earthlyStar" size={10} />, label: isJapanese ? '興味' : 'Interested', value: counts.interested, color: 'text-status-warning' },
+    { icon: <XivIcon name="gil" size={10} />, label: isJapanese ? '交換可' : 'Can buy', value: counts.canBuy, color: 'text-amber-400' },
+    { icon: <AlertCircle size={10} />, label: isJapanese ? '不明' : 'Unknown', value: counts.unknown, color: 'text-text-muted opacity-50' },
   ].filter(s => s.value > 0);
 
   if (stats.length === 0) return null;
@@ -130,10 +144,14 @@ function RewardRow({
   onMakeActiveFarm: (catalogItemId: string) => void;
   onViewGoal?: (goalId: string) => void;
 }) {
+  const { i18n } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
   const [expanded, setExpanded] = useState(false);
   const catCfg = CATEGORY_BADGE[s.catalogItemCategory ?? ''] ?? null;
-  const categoryLabel = catCfg?.label ?? s.catalogItemCategory ?? '';
+  const categoryLabel = getCollectionCategoryLabel(s.catalogItemCategory, uiLocale) || s.catalogItemCategory || '';
   const hasGoal = !!s.staticGoalId;
+  const rewardName = getLocalizedRewardNameByText(s.catalogItemName, uiLocale) || s.catalogItemName;
 
   const visibleMembers = s.members.filter(m => m.intent !== 'hidden');
   const previewMembers = visibleMembers.slice(0, 4);
@@ -159,15 +177,15 @@ function RewardRow({
             {categoryLabel}
           </span>
         )}
-        <span className="flex-1 text-sm text-text-primary truncate">{s.catalogItemName}</span>
+        <span className="flex-1 text-sm text-text-primary truncate">{rewardName}</span>
         {/* Mini stats */}
         <div className="flex items-center gap-2 flex-shrink-0 text-[10px] text-text-muted">
-          {huntingCount > 0 && <span className="text-status-info">{huntingCount} hunting</span>}
-          {haveCount > 0 && <span className="text-status-success">{haveCount} owned</span>}
+          {huntingCount > 0 && <span className="text-status-info">{isJapanese ? `${huntingCount}人希望` : `${huntingCount} hunting`}</span>}
+          {haveCount > 0 && <span className="text-status-success">{isJapanese ? `${haveCount}人所持` : `${haveCount} owned`}</span>}
         </div>
         {hasGoal && (
           <span className="text-[10px] text-accent font-medium bg-accent/10 px-1.5 py-0.5 rounded-full border border-accent/30 flex-shrink-0">
-            Active
+            {isJapanese ? 'アクティブ' : 'Active'}
           </span>
         )}
         <ChevronDown
@@ -195,10 +213,15 @@ function RewardRow({
                   m.intent === 'interested'   ? 'text-status-warning' :
                   'text-text-muted opacity-60'
                 }`}>
-                  {m.ownershipState === 'have' ? 'Owned' :
-                   m.intent === 'hunting' ? 'Hunting' :
-                   m.intent === 'interested' ? 'Interested' :
-                   m.ownershipState === 'missing' ? 'Missing' : 'Unknown'}
+                  {m.ownershipState === 'have'
+                    ? (isJapanese ? '所持' : 'Owned')
+                    : m.intent === 'hunting'
+                      ? (isJapanese ? '希望' : 'Hunting')
+                      : m.intent === 'interested'
+                        ? (isJapanese ? '興味あり' : 'Interested')
+                        : m.ownershipState === 'missing'
+                          ? (isJapanese ? '未所持' : 'Missing')
+                          : (isJapanese ? '不明' : 'Unknown')}
                 </span>
                 {m.tokenCount != null && m.ownershipState !== 'have' && (
                   <span className={`flex-shrink-0 text-[10px] ${m.canBuy ? 'text-amber-400 font-medium' : 'text-text-muted'}`}>
@@ -206,13 +229,13 @@ function RewardRow({
                   </span>
                 )}
                 {m.ownershipState === 'unknown' && !m.intent && (
-                  <Eye size={10} className="text-text-muted opacity-40 flex-shrink-0" />
+                  <XivIcon name="handshake" size={10} className="opacity-40 flex-shrink-0" />
                 )}
               </div>
             ))}
             {hiddenCount > 0 && (
               <p className="text-[10px] text-text-muted opacity-60 pl-3.5">
-                +{hiddenCount} more
+                {isJapanese ? `他${hiddenCount}人` : `+${hiddenCount} more`}
               </p>
             )}
           </div>
@@ -226,7 +249,7 @@ function RewardRow({
                   onClick={() => onViewGoal(s.staticGoalId!)}
                   className="flex items-center gap-1"
                 >
-                  <Trophy size={12} /> View Farm
+                  <XivIcon name="goals" size={12} /> {isJapanese ? '周回を見る' : 'View Farm'}
                 </Button>
               )
             ) : (
@@ -236,7 +259,7 @@ function RewardRow({
                   onClick={() => onMakeActiveFarm(s.catalogItemId)}
                   className="flex items-center gap-1"
                 >
-                  <Trophy size={12} /> Make Active Farm
+                  <XivIcon name="goals" size={12} /> {isJapanese ? 'アクティブ周回にする' : 'Make Active Farm'}
                 </Button>
               )
             )}
@@ -266,6 +289,9 @@ export function DutyFarmCard({
   onViewGoal,
   onCopyPlan,
 }: DutyFarmCardProps) {
+  const { i18n } = useTranslation();
+  const uiLocale = resolveUiLocale(i18n.resolvedLanguage);
+  const isJapanese = uiLocale.startsWith('ja');
   const [expanded, setExpanded] = useState(true);
 
   const first = suggestions[0];
@@ -274,6 +300,7 @@ export function DutyFarmCard({
   const contentTypeCfg = CONTENT_TYPE_CONFIG[sourceType ?? ''] ?? null;
   const aggregate = aggregateMembers(suggestions);
   const activeCount = suggestions.filter(s => !!s.staticGoalId).length;
+  const localizedDutyName = getLocalizedDutyNameByText(dutyName, uiLocale) || dutyName;
 
   return (
     <div className={`border border-border-default rounded-xl overflow-hidden bg-surface-card border-l-4 ${contentTypeCfg?.leftBorderClass ?? 'border-l-border-default'}`}>
@@ -290,31 +317,31 @@ export function DutyFarmCard({
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
               {contentTypeCfg && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border flex-shrink-0 ${contentTypeCfg.colorClass}`}>
-                  {contentTypeCfg.label}
+                  {getCollectionSourceTypeLabel(sourceType, uiLocale)}
                 </span>
               )}
               {expansion && (
                 <span className="text-[10px] font-medium text-text-muted flex-shrink-0">
-                  <span className="hidden sm:inline">{expansionLabel(expansion)}</span>
-                  <span className="sm:hidden">{expansionShortLabel(expansion)}</span>
+                  <span className="hidden sm:inline">{getCollectionExpansionLabel(expansion, uiLocale)}</span>
+                  <span className="sm:hidden">{getCollectionExpansionShortLabel(expansion, uiLocale)}</span>
                 </span>
               )}
               {activeCount > 0 && (
                 <span className="text-[10px] text-accent font-medium bg-accent/10 px-2 py-0.5 rounded-full border border-accent/30 ml-auto flex-shrink-0">
-                  {activeCount > 1 ? `${activeCount} Active` : 'Active'}
+                  {isJapanese ? (activeCount > 1 ? `${activeCount}件アクティブ` : 'アクティブ') : (activeCount > 1 ? `${activeCount} Active` : 'Active')}
                 </span>
               )}
             </div>
 
             {/* Row 2: duty name */}
-            <span className="text-sm font-bold text-text-primary truncate block">{dutyName}</span>
+            <span className="text-sm font-bold text-text-primary truncate block">{localizedDutyName}</span>
 
             {/* Row 3: reward category chips */}
             <div className="flex flex-wrap gap-1 mt-1.5">
               {suggestions.map(s => {
                 const cat = s.catalogItemCategory ?? '';
                 const catCfg = CATEGORY_BADGE[cat] ?? null;
-                const label = catCfg?.label ?? cat;
+                const label = getCollectionCategoryLabel(cat, uiLocale) || cat;
                 return label ? (
                   <span
                     key={s.catalogItemId}
@@ -348,9 +375,9 @@ export function DutyFarmCard({
             size="sm"
             variant="ghost"
             className="flex items-center gap-1 text-text-secondary h-6 px-2 text-[11px]"
-            onClick={() => onCopyPlan(buildDutyCopyText(dutyName, suggestions))}
+            onClick={() => onCopyPlan(buildDutyCopyText(localizedDutyName, suggestions, uiLocale))}
           >
-            <Users size={11} /> Copy Plan
+            <XivIcon name="party" size={11} /> {isJapanese ? 'プランをコピー' : 'Copy Plan'}
           </Button>
         </div>
       </div>

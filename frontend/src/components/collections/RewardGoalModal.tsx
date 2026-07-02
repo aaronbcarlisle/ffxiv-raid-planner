@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Input } from '../ui/Input';
@@ -58,6 +59,7 @@ interface RewardGoalModalProps {
 }
 
 export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGoalModalProps) {
+  const { t } = useTranslation();
   const { createGoal, updateGoal } = useCollectionGoalStore();
 
   const [title, setTitle] = useState('');
@@ -106,15 +108,15 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
       if (editGoal) {
         const data: CollectionGoalUpdate = baseData;
         await updateGoal(groupId, editGoal.id, data);
-        toast.success('Goal updated.');
+        toast.success(t('collections.goalUpdated'));
       } else {
         const data: CollectionGoalCreate = baseData;
         await createGoal(groupId, data);
-        toast.success('Goal created.');
+        toast.success(t('collections.goalCreated'));
       }
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save goal');
+      toast.error(err instanceof Error ? err.message : t('collections.failedToSaveGoal'));
     } finally {
       setSubmitting(false);
     }
@@ -124,11 +126,11 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editGoal ? 'Edit Collection Goal' : 'New Collection Goal'}
+      title={editGoal ? t('collections.editGoal') : t('collections.newGoal')}
     >
       <div className="flex flex-col gap-4">
         <div>
-          <Label className="block text-sm text-text-secondary mb-1">Title *</Label>
+          <Label className="block text-sm text-text-secondary mb-1">{t('collections.goalTitle')} *</Label>
           <Input
             value={title}
             onChange={setTitle}
@@ -139,7 +141,7 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="block text-sm text-text-secondary mb-1">Type</Label>
+            <Label className="block text-sm text-text-secondary mb-1">{t('collections.goalType')}</Label>
             <Select
               value={goalType}
               onChange={(v) => setGoalType(v as CollectionGoalType)}
@@ -147,7 +149,7 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
             />
           </div>
           <div>
-            <Label className="block text-sm text-text-secondary mb-1">Status</Label>
+            <Label className="block text-sm text-text-secondary mb-1">{t('collections.goalStatus')}</Label>
             <Select
               value={status}
               onChange={(v) => setStatus(v as CollectionGoalStatus)}
@@ -158,7 +160,7 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label className="block text-sm text-text-secondary mb-1">Content Type</Label>
+            <Label className="block text-sm text-text-secondary mb-1">{t('collections.contentType')}</Label>
             <Select
               value={contentType}
               onChange={setContentType}
@@ -166,7 +168,7 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
             />
           </div>
           <div>
-            <Label className="block text-sm text-text-secondary mb-1">Content Key (optional)</Label>
+            <Label className="block text-sm text-text-secondary mb-1">{t('collections.contentKey')}</Label>
             <Input
               value={contentKey}
               onChange={setContentKey}
@@ -176,7 +178,7 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
         </div>
 
         <div>
-          <Label className="block text-sm text-text-secondary mb-1">Priority Mode</Label>
+          <Label className="block text-sm text-text-secondary mb-1">{t('collections.priorityMode')}</Label>
           <Select
             value={priorityMode}
             onChange={(v) => setPriorityMode(v as CollectionPriorityMode | '')}
@@ -185,7 +187,7 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
         </div>
 
         <div>
-          <Label className="block text-sm text-text-secondary mb-1">Notes (optional)</Label>
+          <Label className="block text-sm text-text-secondary mb-1">{t('collections.goalNotes')}</Label>
           <Input
             value={summary}
             onChange={setSummary}
@@ -195,10 +197,10 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={onClose} disabled={submitting}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button onClick={handleSubmit} disabled={submitting || !title.trim()}>
-            {submitting ? 'Saving…' : editGoal ? 'Save Changes' : 'Create Goal'}
+            {submitting ? t('common.saving') : editGoal ? t('collections.saveChanges') : t('collections.createGoal')}
           </Button>
         </div>
       </div>

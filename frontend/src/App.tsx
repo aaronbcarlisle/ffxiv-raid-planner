@@ -1,5 +1,6 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 import { ErrorBoundary } from 'react-error-boundary';
 import { Layout } from './components/layout/Layout';
@@ -41,6 +42,8 @@ const GearMathDocs = lazy(() => import('./pages/GearMathDocs'));
 const FAQDocs = lazy(() => import('./pages/FAQDocs'));
 
 export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+  const { i18n, t } = useTranslation();
+  const isJapanese = (i18n.resolvedLanguage ?? '').toLowerCase().startsWith('ja');
   const isStaleChunk = isChunkLoadError(error);
   const alreadyTriedReload = isStaleChunk && hasAttemptedChunkReload();
 
@@ -54,12 +57,14 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
     return (
       <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
         <div className="bg-surface-card border border-border-default rounded-lg p-6 max-w-md text-center">
-          <h2 className="text-xl font-display text-accent mb-2">The app was updated</h2>
+          <h2 className="text-xl font-display text-accent mb-2">{isJapanese ? 'アプリが更新されました' : 'The app was updated'}</h2>
           <p className="text-text-secondary text-sm mb-4">
-            Please reload to get the latest version. If this keeps happening, use your browser refresh button once.
+            {isJapanese
+              ? '最新のバージョンを読み込むため、再読み込みしてください。繰り返し起きる場合はブラウザの更新ボタンを一度押してください。'
+              : 'Please reload to get the latest version. If this keeps happening, use your browser refresh button once.'}
           </p>
           {!alreadyTriedReload && (
-            <p className="text-text-tertiary text-xs mb-4">Reloading once automatically...</p>
+            <p className="text-text-tertiary text-xs mb-4">{isJapanese ? '一度だけ自動で再読み込みしています…' : 'Reloading once automatically...'}</p>
           )}
 {/* design-system-ignore: error boundary uses inline button to minimize dependencies */}
           <button
@@ -67,9 +72,9 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
               attemptChunkReload();
               window.location.reload();
             }}
-            className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+            className="px-4 py-2 bg-accent text-accent-contrast rounded hover:bg-accent/80 transition-colors"
           >
-            Reload app
+            {isJapanese ? '再読み込み' : 'Reload app'}
           </button>
         </div>
       </div>
@@ -79,14 +84,14 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
   return (
     <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
       <div className="bg-surface-card border border-border-default rounded-lg p-6 max-w-md text-center">
-        <h2 className="text-xl font-display text-status-error mb-2">Something went wrong</h2>
+        <h2 className="text-xl font-display text-status-error mb-2">{isJapanese ? '問題が発生しました' : 'Something went wrong'}</h2>
         <p className="text-text-secondary text-sm mb-4">{error.message}</p>
 {/* design-system-ignore: error boundary uses inline button to minimize dependencies */}
         <button
           onClick={resetErrorBoundary}
-          className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+          className="px-4 py-2 bg-accent text-accent-contrast rounded hover:bg-accent/80 transition-colors"
         >
-          Try again
+          {isJapanese ? t('common.retry') : 'Try again'}
         </button>
       </div>
     </div>

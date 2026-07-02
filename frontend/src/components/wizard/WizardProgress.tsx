@@ -4,14 +4,25 @@
  * Shows 4 steps with labels and visual indicators for active/completed states.
  */
 
-import { STEP_TITLES, type WizardStep } from './types';
+import { useTranslation } from 'react-i18next';
+import { type WizardStep } from './types';
 
 interface WizardProgressProps {
   currentStep: WizardStep;
 }
 
 export function WizardProgress({ currentStep }: WizardProgressProps) {
+  const { t } = useTranslation();
   const steps: WizardStep[] = [1, 2, 3, 4];
+
+  const stepTitle = (step: WizardStep): string => {
+    switch (step) {
+      case 1: return t('wizard.stepDetails');
+      case 2: return t('wizard.stepRoster');
+      case 3: return t('wizard.stepCreate');
+      case 4: return t('wizard.stepShare');
+    }
+  };
 
   return (
     <div className="flex items-center justify-center gap-2 sm:gap-8 mb-4 sm:mb-8">
@@ -70,7 +81,7 @@ export function WizardProgress({ currentStep }: WizardProgressProps) {
                   }
                 `}
               >
-                {STEP_TITLES[step]}
+                {stepTitle(step)}
               </span>
             </div>
 

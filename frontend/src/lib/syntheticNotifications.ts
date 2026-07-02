@@ -1,12 +1,50 @@
+import { useSyncExternalStore } from 'react';
 import { RELEASES } from '../data/releaseNotes';
 import type { AppNotification } from '../stores/notificationStore';
 
 export const SEEN_RELEASES_KEY = 'seen-release-notes';
 
+// ── Reactivity ──────────────────────────────────────────────────────────────
+// Synthetic (release-note) read state lives in localStorage, which React can't
+// observe. Components that show the unread count subscribe here so the badge
+// updates the moment something is marked read — without this, marking the only
+// unread item (a release note) read wouldn't re-render the header badge, since
+// the server-backed unreadCount never changes.
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+export function subscribeSyntheticNotifications(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function notifySyntheticChange(): void {
+  listeners.forEach((l) => l());
+}
+
+// localStorage can throw (private mode, storage disabled, quota). These run
+// during render via useSyncExternalStore, so a throw would crash the header
+// badge / notifications. Treat any failure as "nothing seen" / a no-op write.
+function readSeenVersions(): Set<string> {
+  try {
+    return new Set(
+      (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function writeSeenVersions(seen: Set<string>): void {
+  try {
+    localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
+  } catch {
+    /* storage unavailable — skip persistence */
+  }
+}
+
 export function getSyntheticNotifications(): AppNotification[] {
-  const seen = new Set(
-    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
-  );
+  const seen = readSeenVersions();
   return RELEASES
     .filter((r) => r.version !== 'Unreleased' && !r.internal)
     .filter((r, i, arr) => arr.findIndex((x) => x.version === r.version) === i)
@@ -29,17 +67,28 @@ export function getSyntheticUnreadCount(): number {
 
 export function markSyntheticRead(id: string): void {
   const version = id.replace('__release__', '');
-  const seen = new Set(
-    (localStorage.getItem(SEEN_RELEASES_KEY) ?? '').split(',').filter(Boolean)
-  );
+  const seen = readSeenVersions();
   seen.add(version);
-  localStorage.setItem(SEEN_RELEASES_KEY, Array.from(seen).join(','));
+  writeSeenVersions(seen);
+  notifySyntheticChange();
 }
 
 export function markAllSyntheticRead(): void {
-  const versions = RELEASES
-    .filter((r) => r.version !== 'Unreleased' && !r.internal)
-    .slice(0, 5)
-    .map((r) => r.version);
-  localStorage.setItem(SEEN_RELEASES_KEY, versions.join(','));
+  // Derive versions from the same source the panel renders, so the set of
+  // versions marked read exactly matches what's shown (dedup + slice applied).
+  // Merge with any already-seen versions so we never clobber prior reads.
+  const shown = getSyntheticNotifications().map((n) => n.id.replace('__release__', ''));
+  const seen = readSeenVersions();
+  shown.forEach((v) => seen.add(v));
+  writeSeenVersions(seen);
+  notifySyntheticChange();
+}
+
+/**
+ * React hook returning the live synthetic unread count. Re-renders whenever a
+ * release note is marked read (via the subscription above), so badges stay in
+ * sync even when the server-backed unread count doesn't change.
+ */
+export function useSyntheticUnreadCount(): number {
+  return useSyncExternalStore(subscribeSyntheticNotifications, getSyntheticUnreadCount);
 }

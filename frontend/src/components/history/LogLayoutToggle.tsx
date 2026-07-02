@@ -7,6 +7,7 @@
  * Uses same icons as the Roster tab's compact/expanded toggle.
  */
 
+import { useTranslation } from 'react-i18next';
 import type { LogLayoutMode } from './LootLogFilters';
 
 interface LogLayoutToggleProps {
@@ -16,6 +17,7 @@ interface LogLayoutToggleProps {
 }
 
 export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayoutToggleProps) {
+  const { t } = useTranslation();
   if (!visible) return null;
 
   return (
@@ -28,7 +30,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
             ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary'
         }`}
-        aria-label="Grid view"
+        aria-label={t('lootLog.gridView')}
         aria-pressed={layoutMode === 'grid'}
       >
         {/* Grid icon - 4 squares */}
@@ -46,7 +48,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
             ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary'
         }`}
-        aria-label="List view"
+        aria-label={t('lootLog.listView')}
         aria-pressed={layoutMode === 'split'}
       >
         {/* List icon - horizontal bars */}
@@ -63,7 +65,7 @@ export function LogLayoutToggle({ layoutMode, onLayoutChange, visible }: LogLayo
             ? 'bg-accent/20 text-accent'
             : 'text-text-secondary hover:text-text-primary'
         }`}
-        aria-label="All weeks view"
+        aria-label={t('lootLog.allWeeksView')}
         aria-pressed={layoutMode === 'allWeeks'}
       >
         {/* Calendar icon for all weeks */}

@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ChevronDown, ChevronUp, Plus, Trash2, TrendingUp, X,
 } from 'lucide-react';
@@ -26,35 +27,77 @@ import { PromoteToGoalModal } from './PromoteToGoalModal';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const VOTE_OPTIONS = [
-  { value: 'must_have',     label: 'Must Have',     color: 'text-status-success' },
-  { value: 'want',          label: 'Want',          color: 'text-accent' },
-  { value: 'willing',       label: 'Willing',       color: 'text-text-secondary' },
-  { value: 'not_interested',label: 'Not Interested',color: 'text-text-muted' },
-  { value: 'avoid',         label: 'Avoid',         color: 'text-status-error' },
-];
+function isJapaneseLanguage(language?: string): boolean {
+  return (language ?? '').toLowerCase().startsWith('ja');
+}
 
-const STATUS_OPTIONS = [
-  { value: '', label: 'All' },
-  { value: 'open', label: 'Open' },
-  { value: 'promoted', label: 'Promoted' },
-  { value: 'closed', label: 'Closed' },
-  { value: 'rejected', label: 'Rejected' },
-];
+function getVoteOptions(isJapanese: boolean) {
+  return [
+    { value: 'must_have', label: isJapanese ? '必須' : 'Must Have', color: 'text-status-success' },
+    { value: 'want', label: isJapanese ? '希望' : 'Want', color: 'text-accent' },
+    { value: 'willing', label: isJapanese ? '前向き' : 'Willing', color: 'text-text-secondary' },
+    { value: 'not_interested', label: isJapanese ? '興味なし' : 'Not Interested', color: 'text-text-muted' },
+    { value: 'avoid', label: isJapanese ? '避けたい' : 'Avoid', color: 'text-status-error' },
+  ];
+}
 
-const CATEGORY_LABELS: Record<string, string> = {
-  ultimate_clear:     'Ultimate — Clear',
-  ultimate_farm:      'Ultimate — Farm',
-  savage_bis:         'Savage — BiS',
-  savage_mount:       'Savage — Mount',
-  savage_achievement: 'Savage — Achievement',
-  savage_alt_jobs:    'Savage — Alt Jobs',
-  criterion_title:    'Criterion — Title',
-  gil_farm:           'Gil Farm',
-  loot_farm:          'Loot Farm',
-  mount_farm:         'Mount Farm',
-  custom:             'Custom',
-};
+function getStatusOptions(isJapanese: boolean) {
+  return [
+    { value: '', label: isJapanese ? 'すべて' : 'All' },
+    { value: 'open', label: isJapanese ? '受付中' : 'Open' },
+    { value: 'promoted', label: isJapanese ? '昇格済み' : 'Promoted' },
+    { value: 'closed', label: isJapanese ? 'クローズ' : 'Closed' },
+    { value: 'rejected', label: isJapanese ? '却下' : 'Rejected' },
+  ];
+}
+
+function getCategoryLabel(category: string, isJapanese: boolean): string {
+  if (!isJapanese) {
+    return {
+      ultimate_clear: 'Ultimate — Clear',
+      ultimate_farm: 'Ultimate — Farm',
+      savage_bis: 'Savage — BiS',
+      savage_mount: 'Savage — Mount',
+      savage_achievement: 'Savage — Achievement',
+      savage_alt_jobs: 'Savage — Alt Jobs',
+      criterion_title: 'Criterion — Title',
+      gil_farm: 'Gil Farm',
+      loot_farm: 'Loot Farm',
+      mount_farm: 'Mount Farm',
+      custom: 'Custom',
+    }[category] ?? category;
+  }
+  return {
+    ultimate_clear: '絶クリア',
+    ultimate_farm: '絶周回',
+    savage_bis: '零式BiS',
+    savage_mount: '零式マウント',
+    savage_achievement: '零式アチーブメント',
+    savage_alt_jobs: '零式サブジョブ',
+    criterion_title: '異聞称号',
+    gil_farm: 'ギル稼ぎ',
+    loot_farm: '戦利品周回',
+    mount_farm: 'マウント周回',
+    custom: 'カスタム',
+  }[category] ?? category;
+}
+
+function getStatusLabel(status: string, isJapanese: boolean): string {
+  if (!isJapanese) {
+    return {
+      open: 'Open',
+      promoted: 'Promoted',
+      closed: 'Closed',
+      rejected: 'Rejected',
+    }[status] ?? status;
+  }
+  return {
+    open: '受付中',
+    promoted: '昇格済み',
+    closed: 'クローズ',
+    rejected: '却下',
+  }[status] ?? status;
+}
 
 const STATUS_BADGE: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
   open:     'info',
@@ -66,8 +109,11 @@ const STATUS_BADGE: Record<string, 'default' | 'info' | 'success' | 'warning' | 
 // ─── Vote Bar ────────────────────────────────────────────────────────────────
 
 function VoteBar({ suggestion, groupId }: { suggestion: ContentSuggestion; groupId: string }) {
+  const { i18n } = useTranslation();
+  const isJapanese = isJapaneseLanguage(i18n.resolvedLanguage);
   const { upsertVote, deleteVote } = useContentSuggestionStore();
   const [working, setWorking] = useState(false);
+  const voteOptions = getVoteOptions(isJapanese);
 
   const handleVote = async (vote: string) => {
     if (working) return;
@@ -79,7 +125,7 @@ function VoteBar({ suggestion, groupId }: { suggestion: ContentSuggestion; group
         await upsertVote(groupId, suggestion.id, vote);
       }
     } catch {
-      toast.error('Failed to save vote');
+      toast.error(isJapanese ? '投票の保存に失敗しました' : 'Failed to save vote');
     } finally {
       setWorking(false);
     }
@@ -87,7 +133,7 @@ function VoteBar({ suggestion, groupId }: { suggestion: ContentSuggestion; group
 
   return (
     <div className="flex items-center gap-1 flex-wrap mt-2">
-      {VOTE_OPTIONS.map(({ value, label, color }) => {
+      {voteOptions.map(({ value, label, color }) => {
         const isActive = suggestion.currentUserVote === value;
         const count = suggestion.voteSummary[value as keyof typeof suggestion.voteSummary] as number;
         return (
@@ -133,6 +179,8 @@ function SuggestionRow({
   onStatusChange,
   onPromote,
 }: SuggestionRowProps) {
+  const { i18n } = useTranslation();
+  const isJapanese = isJapaneseLanguage(i18n.resolvedLanguage);
   const [expanded, setExpanded] = useState(false);
   const { total, conflictCount } = suggestion.voteSummary;
 
@@ -143,14 +191,14 @@ function SuggestionRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <Badge variant="default" size="sm">
-              {CATEGORY_LABELS[suggestion.category] ?? suggestion.category}
+              {getCategoryLabel(suggestion.category, isJapanese)}
             </Badge>
             <Badge variant={STATUS_BADGE[suggestion.status] ?? 'default'} size="sm">
-              {suggestion.status}
+              {getStatusLabel(suggestion.status, isJapanese)}
             </Badge>
             {conflictCount > 0 && (
               <span className="text-[10px] text-status-warning font-medium">
-                {conflictCount} conflict{conflictCount !== 1 ? 's' : ''}
+                {isJapanese ? `競合 ${conflictCount}件` : `${conflictCount} conflict${conflictCount !== 1 ? 's' : ''}`}
               </span>
             )}
           </div>
@@ -158,9 +206,9 @@ function SuggestionRow({
           <p className="text-sm font-medium text-text-primary">{suggestion.title}</p>
 
           <p className="text-xs text-text-muted mt-0.5">
-            Suggested by {suggestion.suggestedByDisplayName ?? 'a member'}
+            {isJapanese ? '提案者' : 'Suggested by'} {suggestion.suggestedByDisplayName ?? (isJapanese ? 'メンバー' : 'a member')}
             {total > 0 && (
-              <span className="ml-1">· {total} vote{total !== 1 ? 's' : ''}</span>
+              <span className="ml-1">{isJapanese ? `・${total}票` : `· ${total} vote${total !== 1 ? 's' : ''}`}</span>
             )}
           </p>
 
@@ -169,7 +217,7 @@ function SuggestionRow({
             <>
               <VoteBar suggestion={suggestion} groupId={groupId} />
               <p className="text-[10px] text-text-muted mt-1">
-                Member interest · not used for official matching yet
+                {isJapanese ? 'メンバーの関心度です。まだ公式マッチングには使われません。' : 'Member interest · not used for official matching yet'}
               </p>
             </>
           )}
@@ -177,7 +225,7 @@ function SuggestionRow({
           {/* Promoted note */}
           {suggestion.status === 'promoted' && (
             <p className="text-xs text-status-success mt-1">
-              Promoted · now used in goal matching
+              {isJapanese ? '昇格済み・目標マッチングに使用中' : 'Promoted · now used in goal matching'}
             </p>
           )}
         </div>
@@ -187,7 +235,7 @@ function SuggestionRow({
           {suggestion.description && (
             <IconButton
               icon={expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              aria-label={expanded ? 'Collapse details' : 'Expand details'}
+              aria-label={expanded ? (isJapanese ? '詳細を閉じる' : 'Collapse details') : (isJapanese ? '詳細を開く' : 'Expand details')}
               variant="ghost"
               size="sm"
               onClick={() => setExpanded(!expanded)}
@@ -196,7 +244,7 @@ function SuggestionRow({
           {canManage && suggestion.status === 'open' && (
             <IconButton
               icon={<TrendingUp className="w-3.5 h-3.5" />}
-              aria-label="Promote to goal"
+              aria-label={isJapanese ? '目標に昇格' : 'Promote to goal'}
               variant="ghost"
               size="sm"
               onClick={() => onPromote(suggestion)}
@@ -205,7 +253,7 @@ function SuggestionRow({
           {canManage && suggestion.status === 'open' && (
             <IconButton
               icon={<X className="w-3.5 h-3.5" />}
-              aria-label="Close suggestion"
+              aria-label={isJapanese ? '提案をクローズ' : 'Close suggestion'}
               variant="ghost"
               size="sm"
               onClick={() => onStatusChange(suggestion.id, 'closed')}
@@ -214,7 +262,7 @@ function SuggestionRow({
           {canManage && (
             <IconButton
               icon={<Trash2 className="w-3.5 h-3.5" />}
-              aria-label="Delete suggestion"
+              aria-label={isJapanese ? '提案を削除' : 'Delete suggestion'}
               variant="ghost"
               size="sm"
               onClick={() => onDelete(suggestion.id)}
@@ -243,6 +291,8 @@ interface ContentSuggestionsPanelProps {
 }
 
 export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestionsPanelProps) {
+  const { i18n } = useTranslation();
+  const isJapanese = isJapaneseLanguage(i18n.resolvedLanguage);
   const {
     suggestions,
     loading,
@@ -260,6 +310,7 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
   const promoteModal = useModal();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<ContentSuggestion | null>(null);
+  const statusOptions = getStatusOptions(isJapanese);
 
   useEffect(() => {
     fetchSuggestions(groupId);
@@ -271,15 +322,15 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
 
   const handleCreate = async (data: { category: string; title: string; description?: string }) => {
     await createSuggestion(groupId, data);
-    toast.success('Suggestion submitted');
+    toast.success(isJapanese ? '提案を送信しました' : 'Suggestion submitted');
   };
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
       await updateSuggestion(groupId, id, { status });
-      toast.success(`Suggestion ${status}`);
+      toast.success(isJapanese ? `提案を${getStatusLabel(status, true)}にしました` : `Suggestion ${status}`);
     } catch {
-      toast.error('Failed to update suggestion');
+      toast.error(isJapanese ? '提案の更新に失敗しました' : 'Failed to update suggestion');
     }
   };
 
@@ -287,9 +338,9 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
     if (!pendingDeleteId) return;
     try {
       await deleteSuggestion(groupId, pendingDeleteId);
-      toast.success('Suggestion removed');
+      toast.success(isJapanese ? '提案を削除しました' : 'Suggestion removed');
     } catch {
-      toast.error('Failed to remove suggestion');
+      toast.error(isJapanese ? '提案の削除に失敗しました' : 'Failed to remove suggestion');
     } finally {
       setPendingDeleteId(null);
       deleteModal.close();
@@ -299,7 +350,7 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
   const handlePromote = async (data: { priority: string; title?: string; description?: string }) => {
     if (!pendingPromotion) return;
     await promoteToGoal(groupId, pendingPromotion.id, data);
-    toast.success('Promoted to static objective goal');
+    toast.success(isJapanese ? '固定目標に昇格しました' : 'Promoted to static objective goal');
     setPendingPromotion(null);
   };
 
@@ -308,11 +359,11 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-text-primary">Content Suggestions</h3>
+          <h3 className="text-sm font-semibold text-text-primary">{isJapanese ? 'コンテンツ提案' : 'Content Suggestions'}</h3>
           <p className="text-xs text-text-tertiary mt-0.5">
             {canManage
-              ? 'Suggestions collect member interest. Promote a suggestion to make it an official static goal used for matching and discovery.'
-              : 'Suggest content and vote to show interest. Leads can promote popular suggestions into official static goals.'}
+              ? (isJapanese ? '提案でメンバーの関心度を集められます。昇格すると、マッチングや公開募集に使う正式な固定目標になります。' : 'Suggestions collect member interest. Promote a suggestion to make it an official static goal used for matching and discovery.')
+              : (isJapanese ? '遊びたいコンテンツを提案して投票できます。人気の提案はリーダーが正式な固定目標へ昇格できます。' : 'Suggest content and vote to show interest. Leads can promote popular suggestions into official static goals.')}
           </p>
         </div>
         <Button
@@ -321,7 +372,7 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
           leftIcon={<Plus className="w-3.5 h-3.5" />}
           onClick={suggestModal.open}
         >
-          Suggest
+          {isJapanese ? '提案する' : 'Suggest'}
         </Button>
       </div>
 
@@ -330,7 +381,7 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
         <Select
           value={statusFilter}
           onChange={setStatusFilter}
-          options={STATUS_OPTIONS}
+          options={statusOptions}
         />
       </div>
 
@@ -346,8 +397,8 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
       {!loading && filtered.length === 0 && (
         <p className="text-sm text-text-tertiary italic py-4 text-center">
           {statusFilter === 'open'
-            ? 'No open suggestions. Be the first to suggest something!'
-            : `No ${statusFilter} suggestions.`}
+            ? (isJapanese ? '受付中の提案はまだありません。最初の提案をしてみましょう。' : 'No open suggestions. Be the first to suggest something!')
+            : (isJapanese ? `${getStatusLabel(statusFilter, true)}の提案はありません。` : `No ${statusFilter} suggestions.`)}
         </p>
       )}
 
@@ -394,9 +445,9 @@ export function ContentSuggestionsPanel({ groupId, canManage }: ContentSuggestio
       {deleteModal.isOpen && (
         <ConfirmModal
           isOpen={deleteModal.isOpen}
-          title="Remove Suggestion"
-          message="Remove this suggestion? This cannot be undone."
-          confirmLabel="Remove"
+          title={isJapanese ? '提案を削除' : 'Remove Suggestion'}
+          message={isJapanese ? 'この提案を削除しますか？この操作は取り消せません。' : 'Remove this suggestion? This cannot be undone.'}
+          confirmLabel={isJapanese ? '削除' : 'Remove'}
           variant="danger"
           onConfirm={handleDeleteConfirm}
           onCancel={() => {

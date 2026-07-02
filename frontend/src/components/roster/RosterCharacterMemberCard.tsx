@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link2, PenLine } from 'lucide-react';
 import type {
   LinkedCharacterSummary,
@@ -34,6 +35,7 @@ export function RosterCharacterMemberCard({
   onSetPrimary,
   onDelete,
 }: RosterCharacterMemberCardProps) {
+  const { t } = useTranslation();
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [editingReg, setEditingReg] = useState<StaticCharacterRegistration | null>(null);
@@ -84,8 +86,8 @@ export function RosterCharacterMemberCard({
               variant="ghost"
               onClick={() => setShowLinkModal(true)}
               disabled={!hasLinkedChars && availableForLinking.length === 0}
-              title={hasLinkedChars ? 'Link Player Hub character' : 'No Player Hub characters available'}
-              aria-label={`Link Player Hub character for ${player.name}`}
+              title={hasLinkedChars ? t('roster.linkPlayerHubCharacter') : t('roster.noPlayerHubCharactersAvailableShort')}
+              aria-label={t('roster.linkPlayerHubCharacterForAriaLabel', { name: player.name })}
             >
               <Link2 className="h-3.5 w-3.5" />
             </Button>
@@ -94,8 +96,8 @@ export function RosterCharacterMemberCard({
               size="xs"
               variant="ghost"
               onClick={() => setShowManualModal(true)}
-              title="Add manual character"
-              aria-label={`Add manual character for ${player.name}`}
+              title={t('roster.addManualCharacter')}
+              aria-label={t('roster.addManualCharacterForAriaLabel', { name: player.name })}
             >
               <PenLine className="h-3.5 w-3.5" />
             </Button>
@@ -106,7 +108,7 @@ export function RosterCharacterMemberCard({
       {/* Registrations */}
       {registrations.length === 0 ? (
         <div className="rounded-lg bg-surface-base px-3 py-2 text-center">
-          <p className="text-xs text-text-muted">No characters registered</p>
+          <p className="text-xs text-text-muted">{t('roster.noCharactersRegistered')}</p>
           {canEdit && (
             <div className="flex justify-center gap-2 mt-1.5">
               {hasLinkedChars && (
@@ -116,7 +118,7 @@ export function RosterCharacterMemberCard({
                   variant="secondary"
                   onClick={() => setShowLinkModal(true)}
                 >
-                  Link Player Hub character
+                  {t('roster.linkPlayerHubCharacter')}
                 </Button>
               )}
               <Button
@@ -125,13 +127,13 @@ export function RosterCharacterMemberCard({
                 variant="ghost"
                 onClick={() => setShowManualModal(true)}
               >
-                Add manually
+                {t('roster.addManually')}
               </Button>
             </div>
           )}
           {!canEdit && !hasLinkedChars && (
             <p className="text-xs text-text-muted mt-1">
-              No Player Hub characters found — ask the player to link a character.
+              {t('roster.noPlayerHubCharactersFoundAskPlayer')}
             </p>
           )}
         </div>
