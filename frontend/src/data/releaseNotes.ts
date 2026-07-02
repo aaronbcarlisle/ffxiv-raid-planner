@@ -99,6 +99,15 @@ export const RELEASES: Release[] = [
         pr: 166,
         prTitle: 'F6c (part 2) — Roster Board',
       },
+      {
+        internal: true,
+        category: 'feature',
+        title: 'F6d (part 1) — v2 Loot Priority view behind ?shell=v2',
+        description:
+          'Flag-gated redesign slice: floor cards + ranked queues + unified RecipientPicker + week clock. No user-facing change.',
+        pr: 0,
+        prTitle: 'F6d (part 1) — Loot Priority',
+      },
     ],
     internal: true,
   },
