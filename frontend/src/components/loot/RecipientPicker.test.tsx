@@ -64,9 +64,31 @@ describe('RecipientPicker (assign mode)', () => {
     expect(payload).toMatchObject({
       weekNumber: 3, floor: 'M12S', itemSlot: 'weapon', method: 'drop', isExtra: false,
     });
+    // default pick pinned at open = top-ranked entry (equal scores → alphabetical → Caster One)
+    expect(payload.recipientPlayerId).toBe('c1');
     // weapon parity: weaponJob = recipient's main job; weapon-priority sync on
     expect(payload.weaponJob).toBe(payload.recipientPlayerId === 'c1' ? 'BLM' : 'SAM');
+    // legacy auto-note parity: `${weaponJob} weapon` (no ' (extra)' suffix when not extra)
+    expect(payload.notes).toBe('BLM weapon');
     expect(options).toMatchObject({ updateGear: true, updateWeaponPriority: true });
+  });
+
+  it('keyboard interaction can change the selection', async () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    const rows = screen.getAllByRole('radio');
+    expect(rows).toHaveLength(2);
+    // every row is tabbable for keyboard users, not just the selected one
+    for (const row of rows) expect(row).toHaveAttribute('tabindex', '0');
+    // default pick is Caster One (rows[0]); Enter on the second row moves selection
+    fireEvent.keyDown(rows[1], { key: 'Enter' });
+    expect(rows[1]).toHaveAttribute('aria-checked', 'true');
+    expect(rows[0]).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(screen.getByRole('button', { name: /Assign to/ }));
+    await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(logLootAndUpdateGear).mock.calls[0][2].recipientPlayerId).toBe('m1');
   });
 
   it('ring context submits itemSlot ring1 (legacy parity)', async () => {

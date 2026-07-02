@@ -140,10 +140,17 @@ export function RecipientPicker({
     return q ? entries.filter((e) => e.player.name.toLowerCase().includes(q)) : entries;
   }, [entries, search]);
 
-  // Selection is derived with a fallback to the first entry, so store churn can
-  // never revert an explicit pick and there's always a valid default on open.
+  // Selection: `selectedId` is PINNED into state at open (below) — parity with
+  // QuickLogDropModal.tsx:106 materialising the suggested player — so a mid-open
+  // store churn (30s roster poll) reordering `entries` can't silently retarget
+  // an untouched pick. The derived fallback to `entries[0]` stays as a safety
+  // net for scope switches that drop the pinned player from the visible pool.
   const selected = entries.find((e) => e.player.id === selectedId) ?? entries[0] ?? null;
   const recipientId = selected?.player.id;
+
+  // Forced-extra under off-spec: single source of truth used by the payload,
+  // the weapon auto-note, AND the (disabled) checkbox state.
+  const effectiveExtra = scope === 'offspec' ? true : isExtra;
 
   // Initialise state ONLY on the open transition (closed → open) — mirrors
   // QuickLogDropModal.tsx:97-115. Keying off a ref (not raw isOpen) means a
@@ -154,7 +161,13 @@ export function RecipientPicker({
     if (isOpen && !wasOpenRef.current) {
       wasOpenRef.current = true;
       setScope('priority');
-      setSelectedId(null);
+      // Pin the default recipient: top of the initial priority ranking for the
+      // opening drop context (scope always resets to 'priority' on open).
+      const initialSlot: GearSlot | 'ring' = mode === 'log' ? firstSlotForFloor(1) : (item?.slot ?? 'weapon');
+      const initialEntries = buildRecipientEntries({
+        players, slot: initialSlot, scope: 'priority', settings, lootLog, currentWeek, enhancedActive,
+      });
+      setSelectedId(initialEntries[0]?.player.id ?? null);
       setSearch('');
       setWeek(currentWeek);
       setMethod('drop');
@@ -171,7 +184,7 @@ export function RecipientPicker({
     } else if (!isOpen) {
       wasOpenRef.current = false;
     }
-  }, [isOpen, currentWeek, mode, floors]);
+  }, [isOpen, currentWeek, mode, floors, item, players, settings, lootLog, enhancedActive]);
 
   // Auto-select the recipient's primary character registration on recipient
   // change (mirrors QuickLogDropModal.tsx:117-121).
@@ -197,7 +210,6 @@ export function RecipientPicker({
       const recipient = players.find((p) => p.id === recipientPlayerId);
       const weaponJob = isWeapon ? recipient?.job : undefined;
       const itemSlot = slot === 'ring' ? 'ring1' : slot;
-      const effectiveExtra = scope === 'offspec' ? true : isExtra;
 
       const selectedReg = characterRegId
         ? recipientRegistrations.find((r) => r.id === characterRegId)
@@ -219,7 +231,7 @@ export function RecipientPicker({
           isExtra: effectiveExtra,
           notes: mode === 'log'
             ? (notes || undefined)
-            : (isWeapon && weaponJob ? `${weaponJob} weapon${isExtra ? ' (extra)' : ''}` : undefined),
+            : (isWeapon && weaponJob ? `${weaponJob} weapon${effectiveExtra ? ' (extra)' : ''}` : undefined),
           recipientCharacterRegistrationId: characterRegId ?? undefined,
           recipientCharacterName: charName,
         },
@@ -330,7 +342,11 @@ export function RecipientPicker({
                   key={entry.player.id}
                   role="radio"
                   aria-checked={isSel}
-                  tabIndex={isSel ? 0 : -1}
+                  // Every row is tabbable (GearBoardCell-faithful): a roving
+                  // tabindex without arrow-key movement would strand keyboard
+                  // users on the default pick — and leave ZERO tabbable rows
+                  // when search filters out the selected one.
+                  tabIndex={0}
                   onClick={select}
                   onKeyDown={(e) => {
                     if (e.key === ' ' || e.key === 'Enter') {
@@ -422,7 +438,7 @@ export function RecipientPicker({
 
             {isWeapon && mode === 'assign' && (
               <Checkbox
-                checked={scope === 'offspec' ? true : isExtra}
+                checked={effectiveExtra}
                 onChange={setIsExtra}
                 disabled={scope === 'offspec'}
                 label="Extra loot (not BiS priority)"
