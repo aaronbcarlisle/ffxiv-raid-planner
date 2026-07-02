@@ -97,10 +97,16 @@ vi.mock('../stores/viewAsStore', () => ({
   },
 }));
 vi.mock('../stores/lootTrackingStore', () => ({
-  useLootTrackingStore: () => ({
-    currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
-    lootLog: [], fetchMaterialLog: vi.fn(), materialLog: [],
-  }),
+  // Dual-form: GroupViewContent reads the whole object (`useStore()`), while
+  // Roster uses selectors (`useStore((s) => s.lootLog)` etc.) for its Board
+  // next-upgrade highlight + mount fetch.
+  useLootTrackingStore: (sel?: (s: Record<string, unknown>) => unknown) => {
+    const state = {
+      currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
+      lootLog: [], fetchMaterialLog: vi.fn(), materialLog: [],
+    };
+    return sel ? sel(state) : state;
+  },
 }));
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
 vi.mock('../stores/splitClearStore', () => ({

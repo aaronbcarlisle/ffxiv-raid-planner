@@ -28,10 +28,27 @@ describe('GearBoardCell', () => {
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 
-  it('reserved priority renders plain need (no priority glyph) — F6d owns need.up', () => {
-    render(<GearBoardCell slot={s({ hasItem: false })} priority />);
-    expect(screen.getByText('·')).toBeInTheDocument();
+  it('renders the next-upgrade glyph in the player role color when priority && !obtained', () => {
+    render(<GearBoardCell slot={s({ bisSource: 'raid', hasItem: false })} priority role="caster" />);
+    const cell = screen.getByText('●');
+    expect(cell).toBeInTheDocument();
+    expect(cell.getAttribute('aria-label')).toMatch(/— next upgrade priority$/);
+    expect(cell.getAttribute('style')).toContain('var(--color-role-caster)');
+    // The plain need dot is replaced, not rendered alongside.
+    expect(screen.queryByText('·')).not.toBeInTheDocument();
+  });
+
+  it('ignores priority for an OBTAINED slot (renders the normal source letter)', () => {
+    render(<GearBoardCell slot={s({ bisSource: 'raid', hasItem: true })} priority role="caster" />);
+    expect(screen.getByText('R')).toBeInTheDocument();
     expect(screen.queryByText('●')).not.toBeInTheDocument();
+  });
+
+  it('renders the priority glyph without a role (no style crash)', () => {
+    render(<GearBoardCell slot={s({ bisSource: 'raid', hasItem: false })} priority />);
+    const cell = screen.getByText('●');
+    expect(cell).toBeInTheDocument();
+    expect(cell.getAttribute('style')).toBeFalsy();
   });
 
   it('calls onCycle with the slot and stops propagation on click', () => {

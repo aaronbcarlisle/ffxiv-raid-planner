@@ -74,6 +74,8 @@ vi.mock('./CharacterManageBridge', () => ({
 }));
 
 import { Roster } from './Roster';
+import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import type { GearSlotStatus } from '../../types';
 
 function makePlayer(overrides: Partial<SnapshotPlayer> & { id: string }): SnapshotPlayer {
   return {
@@ -125,7 +127,25 @@ function renderRoster(tier: TierSnapshot | null) {
 
 beforeEach(() => {
   window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster');
+  // Roster now subscribes to lootTrackingStore and fires two fetch actions on
+  // mount (fetchLootLog / fetchCurrentWeek). Stub them via setState so they never
+  // fall through to the real api client — unstubbed they reject with
+  // ECONNREFUSED in CI (no backend) as an unhandled rejection. Same pattern as
+  // Loot.test.tsx.
+  useLootTrackingStore.setState({
+    lootLog: [], currentWeek: 1,
+    fetchLootLog: vi.fn().mockResolvedValue(undefined),
+    fetchCurrentWeek: vi.fn().mockResolvedValue(undefined),
+  });
 });
+
+/** A gear array with a single raid BiS-target `body` slot still needed. */
+function bodyNeededGear(): GearSlotStatus[] {
+  return [
+    { slot: 'body', bisSource: 'raid', hasItem: false, isAugmented: false },
+    { slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false },
+  ] as GearSlotStatus[];
+}
 
 describe('Roster', () => {
   it('renders the "Roster" header with a raider-count subtitle, a card per player, and the gear-source legend', () => {
@@ -168,5 +188,25 @@ describe('Roster', () => {
     // Board has a "Player" column header + the Board subtitle names BiS slots.
     expect(screen.getByRole('columnheader', { name: 'Player' })).toBeInTheDocument();
     expect(screen.getByText(/BiS slots obtained/i)).toBeInTheDocument();
+  });
+
+  // The Board lights the next-upgrade (●) glyph for the #1 needer of a slot and
+  // adds the swatch to the legend; disabling priority in settings removes both.
+  it('shows the next-upgrade glyph + legend swatch on the Board when priority is active', () => {
+    window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster&rview=board');
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One', role: 'melee', position: 'M1', gear: bodyNeededGear() })]));
+    expect(screen.getAllByText('●').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('● next upgrade')).toBeInTheDocument();
+  });
+
+  it('renders no next-upgrade glyph on the Board when priority is disabled in settings', () => {
+    window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster&rview=board');
+    const disabledGroup = { ...group, settings: { priorityMode: 'disabled' } } as unknown as StaticGroup;
+    render(
+      <BrowserRouter>
+        <Roster {...baseProps} group={disabledGroup} tier={makeTier([makePlayer({ id: 'p1', name: 'Tank One', role: 'melee', position: 'M1', gear: bodyNeededGear() })])} />
+      </BrowserRouter>,
+    );
+    expect(screen.queryByText('●')).not.toBeInTheDocument();
   });
 });

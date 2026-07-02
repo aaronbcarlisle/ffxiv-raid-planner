@@ -87,6 +87,21 @@ describe('computeNextUpgradePriorities', () => {
     expect(map.get('a')?.has('body') ?? false).toBe(false);
   });
 
+  it('accumulates multiple slots into one player set (union, not overwrite)', () => {
+    // A lone melee needs BOTH Floor-3 drops (body + legs), so they are the #1
+    // needer for each. The player's set must contain BOTH slots — a
+    // `map.set(id, new Set([resolved]))` overwrite would drop the first.
+    const player = makePlayer('a', 'Alice', 'melee', [
+      { slot: 'body', bisSource: 'raid', hasItem: false },
+      { slot: 'legs', bisSource: 'raid', hasItem: false },
+    ]);
+    const map = computeNextUpgradePriorities({
+      players: [player], settings: { ...DEFAULT_SETTINGS }, lootLog: [], currentWeek: 1,
+    });
+    expect(map.get('a')?.has('body')).toBe(true);
+    expect(map.get('a')?.has('legs')).toBe(true);
+  });
+
   it('a slot with zero needers marks no one', () => {
     // Player needs 'body' only; nobody needs 'head'. No set may contain 'head'.
     const player = makePlayer('a', 'Alice', 'melee', [

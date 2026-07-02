@@ -35,7 +35,7 @@
  *     intentionally not consumed here.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Users } from 'lucide-react';
 
 import { PageHeader } from '../layout/PageHeader';
@@ -50,10 +50,12 @@ import { usePlayerActions } from '../../hooks/usePlayerActions';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useAuthStore } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
+import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
 
 import { sortPlayersByRole, groupPlayersByLightParty } from '../../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../../utils/constants';
+import { computeNextUpgradePriorities } from '../../utils/nextUpgradePriority';
 import { rosterAvgIlv, bisSlotTotals } from '../../utils/rosterReadiness';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import type { PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
@@ -61,12 +63,17 @@ import type { PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } 
 /** Stable empty fallback so a missing/empty tier doesn't churn memo deps. */
 const EMPTY_PLAYERS: SnapshotPlayer[] = [];
 
-/** Board gear-source legend — R/T/A/empty. The `need.up` priority swatch is F6d's. */
+/**
+ * Board gear-source legend — R/T/A/empty + the F6d next-upgrade swatch.
+ * The swatch color is mockup-faithful (`02-roster-board.html:553` uses
+ * role-ranged); the per-cell ● is colored by the player's OWN role.
+ */
 const BOARD_LEGEND_ITEMS: LegendItem[] = [
   { label: 'raid (R)', token: 'var(--color-gear-raid)' },
   { label: 'tome (T)', token: 'var(--color-gear-tome)' },
   { label: 'augmented (A)', token: 'var(--color-gear-augmented)' },
   { label: 'empty', token: 'transparent' },
+  { label: '● next upgrade', token: 'var(--color-role-ranged)' },
 ];
 
 export interface RosterProps {
@@ -142,6 +149,13 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   const user = useAuthStore((s) => s.user);
   const viewAsUser = useViewAsStore((s) => s.viewAsUser);
 
+  // Loot state — the Board's next-upgrade (●) highlight must AGREE with the Loot
+  // queue, so it reads the SAME loot log + REAL clock week the Loot screen uses.
+  const lootLog = useLootTrackingStore((s) => s.lootLog);
+  const clockWeek = useLootTrackingStore((s) => s.currentWeek);
+  const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
+  const fetchCurrentWeek = useLootTrackingStore((s) => s.fetchCurrentWeek);
+
   const adminModeParam = searchParams.get('adminMode') === 'true';
   const isAdmin = user?.isAdmin ?? false;
   const isAdminAccess = !viewAsUser && isAdmin && adminModeParam;
@@ -164,6 +178,29 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   const mainRosterPlayers = useMemo(
     () => sortedPlayers.filter((p) => p.configured && !p.isSubstitute),
     [sortedPlayers],
+  );
+
+  // ── Board next-upgrade (●) highlight (F6d, spec §5.8) ──
+  // Merge settings exactly as Loot does so the priority gate matches.
+  const settings = useMemo(() => ({ ...DEFAULT_SETTINGS, ...group.settings }), [group.settings]);
+
+  // Mount fetch — the Board must not depend on the Loot tab having been visited
+  // (Loot.tsx:126-133 rationale). Idempotent; the store dedupes.
+  useEffect(() => {
+    if (group.id && tierId) {
+      void fetchLootLog(group.id, tierId);
+      void fetchCurrentWeek(group.id, tierId);
+    }
+  }, [group.id, tierId, fetchLootLog, fetchCurrentWeek]);
+
+  // Only compute for the Board view. MUST pass the REAL clock week (not a scoped
+  // view week) and the SAME main-roster set the Loot screen uses — else the
+  // Board's ● can silently disagree with the Loot queue #1.
+  const priorities = useMemo(
+    () => rosterView === 'board'
+      ? computeNextUpgradePriorities({ players: mainRosterPlayers, settings, lootLog, currentWeek: clockWeek })
+      : undefined,
+    [rosterView, mainRosterPlayers, settings, lootLog, clockWeek],
   );
 
   const hasSubstitutes = useMemo(() => sortedPlayers.some((p) => p.isSubstitute), [sortedPlayers]);
@@ -280,6 +317,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           tierId={tierId}
           canManage={canManage}
           actionsForPlayer={actionsForPlayer}
+          priorities={priorities}
         />
       ) : (
         <RosterCards
