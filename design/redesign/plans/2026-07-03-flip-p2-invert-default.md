@@ -4,7 +4,7 @@
 
 **Goal:** Make the v2 `NewShell` the default `/group/:code` experience, with `?shell=legacy` as an escape hatch that keeps the legacy `GroupView` reachable through the soak window — reversibly, without breaking any deep link in circulation.
 
-**Architecture:** Invert the two render gates that key on the `shell` param (`GroupRoute` chooses the shell; `Layout` suppresses the legacy header when v2), landing them atomically. Keep the legacy Playwright smoke suite as the soak-window characterization of the still-shipping legacy surface by pinning it to `?shell=legacy`; add a new `flip.spec.ts` that proves the gate itself. Everything stays flag-reachable and one-line-revertible; nothing is deleted (deletion is P3).
+**Architecture:** Invert the two render gates that key on the `shell` param (`GroupRoute` chooses the shell; `Layout` suppresses the legacy header when v2), landing them atomically. Keep the legacy Playwright smoke suite as the soak-window characterization of the still-shipping legacy surface by pinning it to `?shell=legacy`; add a new `flip.spec.ts` that proves the gate itself. Everything stays flag-reachable and reversible (`git revert 65c22a5`, or flip **both** gate predicates back — reverting only `GroupRoute` would leave `Layout` still suppressing the legacy Header); nothing is deleted (deletion is P3).
 
 **Tech Stack:** React 19 + react-router-dom (`useSearchParams`), Vitest + Testing Library (unit/component), Playwright (`@playwright/test` 1.60, chromium-only, no `webServer`), TypeScript (`tsc -b`).
 
@@ -99,7 +99,7 @@ to:
   if (searchParams.get('shell') === 'legacy') return <GroupView />;
 ```
 
-(Leave lines 1-9, 11-12 unchanged: `GroupView` stays eager, `NewShell` stays lazy behind `Suspense`. Reverting the flip is this one line back to `!== 'v2'`.)
+(Leave lines 1-9, 11-12 unchanged: `GroupView` stays eager, `NewShell` stays lazy behind `Suspense`. NOTE: reverting the flip requires flipping BOTH this gate AND `Layout.tsx`'s `isGroupV2Shell` predicate — `git revert 65c22a5` does both atomically. Reverting only this line leaves the bare route rendering legacy `GroupView` with its Header suppressed.)
 
 - [ ] **Step 4: Run the test — verify it passes**
 

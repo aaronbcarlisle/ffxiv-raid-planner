@@ -24,7 +24,8 @@ export function Layout() {
   const [searchParams] = useSearchParams();
   // `startsWith('/group/')` is intentionally broad (matches any share code); the
   // `shell !== 'legacy'` gate on the right-hand side scopes suppression to the v2
-  // default (bare + ?shell=v2), leaving the legacy escape hatch its Header.
+  // default (bare, ?shell=v2, and any other non-legacy value), leaving only the
+  // legacy escape hatch (?shell=legacy) its Header.
   const isGroupV2Shell =
     location.pathname.startsWith('/group/') && searchParams.get('shell') !== 'legacy';
 
