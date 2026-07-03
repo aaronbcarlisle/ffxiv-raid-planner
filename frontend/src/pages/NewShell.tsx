@@ -4,6 +4,8 @@ import { CommandPalette } from '../components/layout/CommandPalette';
 import { Home, Globe } from 'lucide-react';
 import { GroupViewContent } from './GroupViewContent';
 import { ShellContentStates } from './ShellContentStates';
+import { AdminBanners } from '../components/admin/AdminBanners';
+import { JoinRequestBanner } from '../components/static-group';
 import { GroupActionModals, useGroupActions } from './groupActionsContext';
 import { V2SettingsHost } from './V2SettingsHost';
 import { Home as StaticHome } from '../components/home/Home';
@@ -47,7 +49,9 @@ function getInitials(name: string): string {
  *  still renders `StaticHomeTab` byte-for-byte. Exported for the slot-wiring test. */
 export function ShellContent() {
   const gv = useGroupViewState();
+  const { shareCode } = useParams<{ shareCode: string }>();
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
+  const fetchGroupByShareCode = useStaticGroupStore((s) => s.fetchGroupByShareCode);
   const currentTier = useCurrentTier();
   // F6a hook: `canEdit` (owner/lead/admin-access) is the v2 "can manage" gate;
   // `userRole` is the effective role the roster slot re-checks via canManageRoster
@@ -120,6 +124,29 @@ export function ShellContent() {
   // five branches around its body.
   return (
     <ShellContentStates>
+      {/* Admin access banner (View As banner is in Layout) — GroupView.tsx:392-401 parity. */}
+      <AdminBanners
+        isAdminAccess={isAdminAccess}
+        onExitAdminMode={() => {
+          // Refetch group to get correct permissions without admin elevation.
+          if (shareCode) {
+            fetchGroupByShareCode(shareCode);
+          }
+        }}
+      />
+      {/* Join request banner for non-members viewing a discoverable static.
+          The banner supplies its own bottom margin only when it renders, so
+          members (where it returns null) don't get phantom spacing pushing
+          the content down. GroupView.tsx:403-415 parity. */}
+      {currentGroup && (
+        <JoinRequestBanner
+          shareCode={currentGroup.shareCode}
+          staticName={currentGroup.name}
+          groupId={currentGroup.id}
+          settings={currentGroup.settings}
+          userRole={userRole}
+        />
+      )}
       <GroupViewContent
         actions={useGroupActions()}
         slots={currentGroup ? { overview, roster, gear: loot, schedule } : undefined}

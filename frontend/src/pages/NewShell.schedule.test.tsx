@@ -159,6 +159,13 @@ vi.mock('../components/schedule/Schedule', () => ({ Schedule: () => <div data-te
 // actual GroupViewContent import specifiers.
 vi.mock('../components/schedule/ScheduleUpcomingPanel', () => ({ ScheduleUpcomingPanel: () => <div data-testid="legacy-upcoming" /> }));
 vi.mock('../components/schedule', () => ({ ScheduleTab: () => <div data-testid="legacy-schedule-tab" /> }));
+// Task 4: ShellContent now mounts AdminBanners/JoinRequestBanner above the
+// schedule slot (not under test here). Stub both — the real JoinRequestBanner
+// subscribes to the un-mocked joinRequestStore, and this file's authStore mock
+// returns a fresh `user` object identity every call, which would spin its mount
+// effect into an infinite update loop.
+vi.mock('../components/admin/AdminBanners', () => ({ AdminBanners: () => null }));
+vi.mock('../components/static-group/JoinRequestBanner', () => ({ JoinRequestBanner: () => null }));
 vi.mock('../components/ui', async (orig) => {
   const actual = await orig<typeof import('../components/ui')>();
   return { ...actual, MobileBottomNav: () => <div data-testid="mobile-nav" /> };
