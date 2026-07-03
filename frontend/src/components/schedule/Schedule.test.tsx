@@ -152,9 +152,18 @@ describe('Schedule', () => {
   // of the deep-link RESOLVING effect, that effect's cleanup must NOT own the
   // 50ms scroll / 5000ms highlight timers — the churn would clear them and the
   // handledRef early-return would never re-arm them.
-  it('fires the deep-link scroll after 50ms despite exceptions-map churn', () => {
+  it('fires the deep-link scroll after 50ms despite exceptions-map churn', async () => {
     vi.useFakeTimers();
+    // A recurring session (alongside the deep-linked s3) forces the exceptions
+    // effect down the async path, so the fresh-Map identity churn lands BEFORE
+    // the 50ms scroll timer fires — the same hazard the highlight-clear test
+    // pins below. Without this, the test can't discriminate a partial revert
+    // that re-introduces the timer-ownership bug.
+    useScheduleStore.setState({ sessions: [sRec, s3] } as never);
     renderSchedule({}, ['/?sessionId=s3']);
+    // Flush the fetchExceptions microtasks so the fresh Map lands.
+    await act(async () => {});
+    expect(useScheduleStore.getState().fetchExceptions).toHaveBeenCalledWith('g1', 'sRec');
     const scrollSpy = Element.prototype.scrollIntoView as unknown as Mock;
     expect(scrollSpy).not.toHaveBeenCalled();
     act(() => {

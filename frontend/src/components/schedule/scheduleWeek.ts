@@ -14,7 +14,12 @@ export interface HeatCell { date: string; hour: number; count: number; names: st
 const DAY_MS = 86_400_000;
 const MAX_OCCURRENCES_PER_WEEK = 8;
 
-/** Prime-window display hours: 18:00 → 02:00 (spec §2.j.4). */
+/**
+ * Prime-window display hours: 18:00 → 02:00 (spec §2.j.4). Reads
+ * `TIME_PRESETS.prime.start`/`.end` and always builds a wrap-around
+ * (start→24, then 0→end) window — this assumes `crossesMidnight` is true,
+ * which holds for the only preset in use today.
+ */
 export const PRIME_HOURS: number[] = (() => {
   const { start, end } = TIME_PRESETS.prime; // { start: 18, end: 2, crossesMidnight: true }
   const hours: number[] = [];
@@ -23,6 +28,12 @@ export const PRIME_HOURS: number[] = (() => {
   return hours;
 })();
 
+/**
+ * Expands sessions into occurrences falling within a half-open 7-day range.
+ * Caveat: `cancelledBySession` is honored by {@link computeNextOccurrence}
+ * only for WEEKLY recurrence rules — DAILY/MONTHLY rules ignore it. Only
+ * WEEKLY rules exist in practice, so this is a latent gap, not a live bug.
+ */
 export function sessionOccurrencesInRange(
   sessions: ScheduleSession[],
   range: { start: Date; end: Date },
@@ -123,10 +134,10 @@ export function deriveRecurringSummary(sessions: ScheduleSession[]): string | nu
     try {
       time = new Intl.DateTimeFormat('en-US', {
         hour: 'numeric', minute: '2-digit', timeZone: s.timezone,
-      }).format(new Date(s.startTime));
+      }).format(new Date(s.startTime)).replace(/\u202f/g, ' ');
     } catch {
       time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' })
-        .format(new Date(s.startTime));
+        .format(new Date(s.startTime)).replace(/\u202f/g, ' ');
     }
     parts.push(`${days} ${time}`);
   }

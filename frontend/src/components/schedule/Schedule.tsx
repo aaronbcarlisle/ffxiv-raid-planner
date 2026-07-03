@@ -328,7 +328,10 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   const [confirmDelete, setConfirmDelete] = useState<ScheduleSession | null>(null);
 
   const handleDelete = (occ: SessionOccurrence) => {
-    if (occ.session.isRecurring) setDeleteChoice(occ);
+    // A rule-less "recurring" session has no occurrence to cancel individually
+    // (its cancel-occurrence action would be inert) — route it straight to the
+    // whole-series confirm, matching the rest of the slice's recurring checks.
+    if (occ.session.isRecurring && occ.session.recurrenceRule) setDeleteChoice(occ);
     else setConfirmDelete(occ.session);
   };
 

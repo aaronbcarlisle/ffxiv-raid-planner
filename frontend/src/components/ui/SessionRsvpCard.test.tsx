@@ -265,7 +265,10 @@ describe('SessionRsvpCard — F6e new behaviors', () => {
 
   it('headerActions: renders the passed node in the header row', () => {
     render(
-      <SessionRsvpCard session={makeSession()} headerActions={<button data-testid="kebab-probe" />} />,
+      <SessionRsvpCard
+        session={makeSession()}
+        headerActions={<button aria-label="kebab" data-testid="kebab-probe" />}
+      />,
     );
     expect(screen.getByTestId('kebab-probe')).toBeInTheDocument();
   });

@@ -280,7 +280,9 @@ export function SessionRsvpCard({
   // `members` is provided; the map is cheap so we build it unconditionally.
   const rsvpByUser = new Map(session.rsvps.map((r) => [r.userId, r]));
   const noAnswerCount = members ? members.filter((m) => !rsvpByUser.has(m.userId)).length : 0;
-  const useGrid = memberDetail === 'grid' && Boolean(members);
+  // Narrowed (not `members!`) so the grid render below is type-safe without an
+  // assertion: defined only when grid mode is actually active.
+  const gridMembers = memberDetail === 'grid' ? members : undefined;
 
   // Contextual warning note — gated on `members` (Home's line is unchanged).
   const tentativeNames = session.rsvps.filter((r) => r.status === 'tentative').map((r) => r.username ?? 'Unknown');
@@ -372,10 +374,10 @@ export function SessionRsvpCard({
         ) : (
           <>
             {/* Member grid (Schedule) OR avatar stack (Home) + counts */}
-            {useGrid ? (
+            {gridMembers ? (
               <div className="flex flex-col gap-2">
                 <ul data-testid="rsvp-member-grid" className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
-                  {members!.map((member) => {
+                  {gridMembers.map((member) => {
                     const rsvp = rsvpByUser.get(member.userId);
                     const glyph = rsvp ? GRID_GLYPH[rsvp.status] : NO_ANSWER_GLYPH;
                     return (

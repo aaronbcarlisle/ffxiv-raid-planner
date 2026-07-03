@@ -117,6 +117,15 @@ export const RELEASES: Release[] = [
         pr: 169,
         prTitle: 'feat(redesign): f6d-history — v2 Loot History + need.up',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'F6e — redesigned Schedule (behind ?shell=v2)',
+        description:
+          'New two-region Schedule: week-scoped sessions with an RSVP member grid on the shared week clock, a read-only team availability heatmap with best-times recommendations, and a Person-layer availability entry point — wired as the v2 schedule slot. Legacy Schedule unchanged.',
+        pr: 0,
+        prTitle: 'feat(redesign): f6e-schedule — v2 Schedule behind ?shell=v2',
+      },
     ],
     internal: true,
   },
