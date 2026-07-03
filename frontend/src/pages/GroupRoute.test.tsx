@@ -8,6 +8,15 @@ import { GroupRoute } from './GroupRoute';
 const at = (url: string) => render(
   <MemoryRouter initialEntries={[url]}><Routes><Route path="group/:c" element={<GroupRoute />} /></Routes></MemoryRouter>
 );
-it('renders legacy GroupView without ?shell=v2', () => { at('/group/ABC'); expect(screen.getByTestId('legacy')).toBeInTheDocument(); });
-// NewShell is lazy-loaded behind Suspense; findByTestId waits for the Promise to resolve.
-it('renders NewShell with ?shell=v2', async () => { at('/group/ABC?shell=v2'); expect(await screen.findByTestId('v2')).toBeInTheDocument(); });
+it('renders NewShell by default (bare route, no ?shell)', async () => {
+  at('/group/ABC');
+  expect(await screen.findByTestId('v2')).toBeInTheDocument();
+});
+it('renders NewShell for ?shell=v2 (no-op alias survives)', async () => {
+  at('/group/ABC?shell=v2');
+  expect(await screen.findByTestId('v2')).toBeInTheDocument();
+});
+it('renders legacy GroupView for ?shell=legacy (escape hatch)', () => {
+  at('/group/ABC?shell=legacy');
+  expect(screen.getByTestId('legacy')).toBeInTheDocument();
+});
