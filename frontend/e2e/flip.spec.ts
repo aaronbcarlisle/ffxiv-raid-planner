@@ -10,19 +10,19 @@
  *
  * Prereqs: backend :8001 (DEV_AUTH_MODE=true) + frontend :5174. Run: pnpm test:e2e
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { loginAsOwner, DEV_SHARE_CODE } from './helpers/auth';
 
 // The v2 shell root; present only when NewShell mounts.
 const V2_ROOT = '[data-testid="new-shell"]';
 // The legacy header renders the Roster tab as a role=button; the v2 Spine renders it
 // as role=tab. So a role=button match named "Roster" is a legacy-only signal.
-const legacyRosterButton = (page: import('@playwright/test').Page) =>
+const legacyRosterButton = (page: Page) =>
   page.getByRole('button', { name: 'Roster', exact: true });
 // The legacy <Header/> (Layout chrome) renders this link; the v2 shell does not.
 // It exists only in Header.tsx, so it directly observes Layout's isGroupV2Shell
 // suppression (present under ?shell=legacy, absent when v2 suppresses the Header).
-const legacyHeaderLink = (page: import('@playwright/test').Page) =>
+const legacyHeaderLink = (page: Page) =>
   page.getByRole('link', { name: 'View source on GitHub', exact: true });
 
 test.describe('FLIP P2 — group route shell selection', () => {
