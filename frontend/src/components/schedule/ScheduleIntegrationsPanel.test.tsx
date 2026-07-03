@@ -114,16 +114,34 @@ describe('ScheduleIntegrationsPanel', () => {
     render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
     fireEvent.click(screen.getByText('Save'));
     await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
-    expect(updateSettings).toHaveBeenCalledWith(
-      'g1',
-      expect.objectContaining({
-        reminderChannelLabel: 'raid',
-        mentionTarget: 'none',
-        enable24hReminder: true,
-        enable1hReminder: true,
-        enableMissingRsvpReminder: true,
-      }),
-    );
+    // Pin the full assembled shape (not a subset) so a regression that drops
+    // or mis-derives any field — webhookUrl/mentionRoleId included — is caught.
+    expect(updateSettings).toHaveBeenCalledWith('g1', {
+      webhookUrl: undefined,
+      reminderChannelLabel: 'raid',
+      mentionTarget: 'none',
+      mentionRoleId: null,
+      enableAtStartReminder: false,
+      enable15mReminder: false,
+      enable24hReminder: true,
+      enable1hReminder: true,
+      enable6hReminder: false,
+      enable12hReminder: false,
+      enableMissingRsvpReminder: true,
+    });
+  });
+
+  it('does not save and sets a mention error when mentionTarget is role with an invalid role ID', async () => {
+    const updateSettings = vi.fn(async () => {});
+    seedStore({ settings: makeSettings(), updateSettings });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Role'));
+    fireEvent.change(screen.getByTestId('schedule-webhook-role-id-input'), {
+      target: { value: 'not-a-role-id' },
+    });
+    fireEvent.click(screen.getByText('Save'));
+    expect(await screen.findByText('Enter a valid Discord role ID or <@&ROLE_ID> mention.')).toBeInTheDocument();
+    expect(updateSettings).not.toHaveBeenCalled();
   });
 
   it('send test calls sendTestReminder', async () => {
@@ -171,11 +189,42 @@ describe('ScheduleIntegrationsPanel', () => {
     await waitFor(() => expect(fetchSettings).toHaveBeenCalledWith('g1'));
   });
 
-  it('does not refetch settings on mount when they are already loaded', () => {
+  it('does not refetch settings on mount when they are already loaded for the same static', () => {
     const fetchSettings = vi.fn(async () => {});
-    seedStore({ settings: makeSettings(), fetchSettings });
+    seedStore({ settings: makeSettings({ staticGroupId: 'g1' }), fetchSettings });
     render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
     expect(fetchSettings).not.toHaveBeenCalled();
+  });
+
+  it('refetches settings when the loaded settings belong to a different static (cross-static stale guard)', async () => {
+    // Regression for: scheduleStore.settings persists across static switches
+    // (v2 Schedule never clears it). A manager who previously opened static
+    // A's Integrations, then switches to static B, must not see A's stale
+    // settings reused for B — the mismatch must trigger a refetch.
+    const fetchSettings = vi.fn(async () => {});
+    seedStore({ settings: makeSettings({ staticGroupId: 'other-static' }), fetchSettings });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    await waitFor(() => expect(fetchSettings).toHaveBeenCalledWith('g1'));
+  });
+
+  it('does not fetch settings on mount for a role-less viewer (no 403 error-toast loop)', () => {
+    // Regression for legacy ScheduleTab's `if (userRole)` guard — a share-code
+    // viewer with no role must never trigger a settings fetch (403 -> error
+    // toast -> re-fires on every remount).
+    const fetchSettings = vi.fn(async () => {});
+    seedStore({ settings: null, fetchSettings });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage={false} userRole={null} />);
+    expect(fetchSettings).not.toHaveBeenCalled();
+  });
+
+  it('fetches settings on mount for an admin non-member (userRole undefined, canManage true)', async () => {
+    // The Settings host derives `canManage` from `isManager(role, isAdmin)`,
+    // so an admin who isn't a member of the static gets `userRole=undefined`
+    // with `canManage=true`. The fetch must still fire for them.
+    const fetchSettings = vi.fn(async () => {});
+    seedStore({ settings: null, fetchSettings });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole={undefined} />);
+    await waitFor(() => expect(fetchSettings).toHaveBeenCalledWith('g1'));
   });
 
   it('hides management controls for non-managers', () => {

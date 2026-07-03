@@ -9,9 +9,16 @@
  * the Settings → Integrations tab.
  *
  * When mounted standalone (Settings), `ScheduleTab` never runs, so on mount the
- * panel loads settings itself if they're absent (mirrors ScheduleTab's
- * member-gated settings fetch). Sessions come from the same shared store slice,
- * so the Discord-mirror poll and "Post session" behave identically in both hosts.
+ * panel loads settings itself if they're absent OR stale for a different
+ * static — `scheduleStore.settings` persists across static switches (v2
+ * `Schedule` never clears it, unlike legacy `ScheduleTab`'s `clearSessions`),
+ * so a manager reopening Integrations after switching statics must not reuse
+ * the previous static's settings. The fetch is gated on `(userRole ||
+ * canManage)`, mirroring ScheduleTab's role-gated settings fetch (a role-less
+ * share-code viewer must never 403 into a repeated error toast), while still
+ * covering the Settings host's admin-non-member case (`userRole` undefined,
+ * `canManage` true). Sessions come from the same shared store slice, so the
+ * Discord-mirror poll and "Post session" behave identically in both hosts.
  *
  * The `!userRole` gate on the mirror poll is a MEMBERSHIP check (a viewer with no
  * role clears mirrors), NOT a manager check — `canManage` is a separate prop.
@@ -92,14 +99,20 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
   const [discordCheckLoading, setDiscordCheckLoading] = useState(false);
 
   // Standalone load: when mounted from Settings (ScheduleTab never runs), fetch
-  // settings ourselves if they're absent. In the ScheduleTab host the tab has
-  // already loaded them, so the guard makes this a no-op there. `settings` is a
-  // dep, but the guard means it only ever fetches on the null→populated edge.
+  // settings ourselves if they're absent or belong to a different static (the
+  // store slice persists across static switches, so stale settings from a
+  // previously viewed static must not leak into this one). In the ScheduleTab
+  // host the tab has already loaded matching settings, so the guard is a
+  // no-op there. Gated on `(userRole || canManage)` so a role-less share-code
+  // viewer never fetches (avoids a 403 error-toast loop), while still
+  // covering the admin-non-member case (`userRole` undefined, `canManage`
+  // true). This converges: once the fetch resolves, `settings.staticGroupId`
+  // equals `groupId`, so the guard goes false and the effect stops re-firing.
   useEffect(() => {
-    if (!settings) {
+    if ((userRole || canManage) && (!settings || settings.staticGroupId !== groupId)) {
       void fetchSettings(groupId).catch(() => undefined);
     }
-  }, [groupId, settings, fetchSettings]);
+  }, [groupId, settings, fetchSettings, userRole, canManage]);
 
   useEffect(() => {
     if (!settings) return;
