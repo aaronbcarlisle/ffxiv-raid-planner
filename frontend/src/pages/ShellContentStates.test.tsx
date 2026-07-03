@@ -42,9 +42,28 @@ const group = {
 
 const tier = { id: 'snap1', tierId: 'm5s', players: [] } as unknown as never;
 
+// Captured once, before any test mutates the real stores, so `resetStores()`
+// can restore the genuine `clearError` actions after a test stubs them (e.g.
+// 5b / 6a below). Without this, a spy assigned via `setState({ clearError })`
+// leaks into every later test in the file (order-coupled leakage).
+const originalClearGroupError = useStaticGroupStore.getState().clearError;
+const originalClearTierError = useTierStore.getState().clearError;
+
 function resetStores() {
-  useStaticGroupStore.setState({ currentGroup: null, isLoading: false, error: null, errorStack: null });
-  useTierStore.setState({ tiers: [], isLoading: false });
+  useStaticGroupStore.setState({
+    currentGroup: null,
+    isLoading: false,
+    error: null,
+    errorStack: null,
+    clearError: originalClearGroupError,
+  });
+  useTierStore.setState({
+    tiers: [],
+    isLoading: false,
+    error: null,
+    errorStack: null,
+    clearError: originalClearTierError,
+  });
   useAuthStore.setState({ user: null, login: vi.fn() as never });
   useViewAsStore.setState({ viewAsUser: null });
 }
@@ -190,5 +209,33 @@ describe('ShellContentStates', () => {
     expect(screen.queryByTestId('shell-state-not-found')).not.toBeInTheDocument();
     expect(screen.queryByTestId('shell-state-no-tiers')).not.toBeInTheDocument();
     expect(screen.queryByText('Report Bug')).not.toBeInTheDocument();
+  });
+
+  it('6a. tier-only error (group loaded, no group error): still raises the error modal, and dismiss clears BOTH stores (legacy parity: error = groupError || tierError)', () => {
+    const clearGroupSpy = vi.fn();
+    const clearTierSpy = vi.fn();
+    useStaticGroupStore.setState({ currentGroup: group, error: null, clearError: clearGroupSpy });
+    useTierStore.setState({ tiers: [tier], isLoading: false, error: 'tier save failed', clearError: clearTierSpy });
+    renderStates();
+    // children still render underneath the overlay…
+    expect(screen.getByTestId('content')).toBeInTheDocument();
+    // …AND the error modal fires off the tier-only error.
+    expect(screen.getByText('Error')).toBeInTheDocument();
+    expect(screen.getByText('tier save failed')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Close modal'));
+    expect(clearGroupSpy).toHaveBeenCalledTimes(1);
+    expect(clearTierSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('6b. no-tiers suppressed while the group store is mid-switch (stale currentGroup + isLoading, legacy parity: !isLoading guard)', () => {
+    // Simulates a rail static-switch mid-flight: fetchGroupByShareCode has set
+    // isLoading:true WITHOUT nulling the stale currentGroup, and the tier list
+    // is momentarily empty because the tier-fetch effect hasn't populated it
+    // for the new group yet. This must NOT flash "No Raid Tiers".
+    useStaticGroupStore.setState({ currentGroup: group, isLoading: true, error: null });
+    useTierStore.setState({ tiers: [], isLoading: false });
+    renderStates();
+    expect(screen.queryByTestId('shell-state-no-tiers')).not.toBeInTheDocument();
+    expect(screen.getByTestId('content')).toBeInTheDocument();
   });
 });

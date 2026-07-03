@@ -19,10 +19,16 @@
  *                  loaded but a (subsequent) error is present.
  *
  * Store reads mirror the interface the legacy chrome uses: the group-scoped
- * loading/error/not-found gate reads `staticGroupStore`; the no-tiers gate reads
- * the tier list + its own loading flag from `tierStore`.
+ * loading/not-found gate reads `staticGroupStore`; the no-tiers gate reads the
+ * tier list + its own loading flag from `tierStore` (plus the group store's
+ * loading flag, so a static switch never flashes "No Raid Tiers" for a stale,
+ * still-populated group — GroupView.tsx:271,382). The error surfaced by
+ * branches 2 and 5 is `groupError || tierError` (GroupView.tsx:271-274) — a
+ * tier-store failure (failed gear save, rollover, add/remove/reorder player,
+ * claim/assign, etc.) raises the same modal legacy does; dismissing it clears
+ * both stores (GroupView.tsx:293-297).
  */
-import { useCallback, useState, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Check, Copy, Layers, SearchX } from 'lucide-react';
 import { Button, Tooltip } from '../components/primitives';
@@ -50,17 +56,38 @@ export function ShellContentStates({ children }: { children: ReactNode }): React
   const navigate = useNavigate();
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
   const isLoading = useStaticGroupStore((s) => s.isLoading);
-  const error = useStaticGroupStore((s) => s.error);
-  const errorStack = useStaticGroupStore((s) => s.errorStack);
-  const clearError = useStaticGroupStore((s) => s.clearError);
-  const tiers = useTierStore((s) => s.tiers);
-  const tiersLoading = useTierStore((s) => s.isLoading);
+  const groupError = useStaticGroupStore((s) => s.error);
+  const groupErrorStack = useStaticGroupStore((s) => s.errorStack);
+  const clearGroupError = useStaticGroupStore((s) => s.clearError);
+  // Single non-selector read (mirrors legacy GroupView.tsx:108-118) rather than
+  // per-field selectors — the error/errorStack/clearError fields are destructured
+  // off the one returned state object below.
+  const {
+    tiers,
+    isLoading: tiersLoading,
+    error: tierError,
+    errorStack: tierErrorStack,
+    clearError: clearTierError,
+  } = useTierStore();
   const user = useAuthStore((s) => s.user);
   const login = useAuthStore((s) => s.login);
   const { onNewTier } = useGroupActions();
   const { canEdit } = useStaticPermissions();
 
+  // Fold both stores' errors into one, matching legacy (GroupView.tsx:271-274):
+  // group error takes precedence, and the technical-details stack follows
+  // whichever error is actually being displayed.
+  const error = groupError || tierError;
+  const errorStack = error === groupError ? groupErrorStack : tierErrorStack;
+
   const [errorCopied, setErrorCopied] = useState(false);
+
+  // Reset errorCopied whenever the combined error clears — from any path, not
+  // only explicit dismiss (mirrors legacy GroupView.tsx:277-280).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset derived state when error clears
+    if (!error) setErrorCopied(false);
+  }, [error]);
 
   const handleCopyError = useCallback(() => {
     if (!error) return;
@@ -70,9 +97,10 @@ export function ShellContentStates({ children }: { children: ReactNode }): React
   }, [error, errorStack]);
 
   const handleDismissError = useCallback(() => {
-    clearError();
+    clearGroupError();
+    clearTierError();
     setErrorCopied(false);
-  }, [clearError]);
+  }, [clearGroupError, clearTierError]);
 
   // ── 1. Loading ──
   if (isLoading && !currentGroup) {
@@ -127,7 +155,11 @@ export function ShellContentStates({ children }: { children: ReactNode }): React
   }
 
   // ── 4. No tiers ──
-  if (tiers.length === 0 && !tiersLoading) {
+  // The `!isLoading` guard mirrors legacy (GroupView.tsx:271,382): on a static
+  // switch, `fetchGroupByShareCode` sets the group store's isLoading:true
+  // WITHOUT nulling the stale currentGroup, so without this guard a still-
+  // populated static would flash "No Raid Tiers" for the roundtrip.
+  if (tiers.length === 0 && !tiersLoading && !isLoading) {
     return (
       <div data-testid="shell-state-no-tiers" className="mx-auto w-full max-w-2xl p-6">
         <EmptyState
