@@ -209,4 +209,30 @@ describe('TopBar invite affordance', () => {
 
     expect(fetchInvitations).toHaveBeenCalledWith('g1');
   });
+
+  it('fetches invitations once on mount for a manager and not again on an unrelated re-render', () => {
+    // Characterization test (behavior-neutrality lock for the exhaustive-deps
+    // fix): pins "fetch fires once per (canManageInvitations, groupId)" so the
+    // TopBar.tsx deps-array change (adding fetchInvitations, capturing
+    // currentGroupId) can be proven behavior-neutral. Must pass unchanged
+    // both before and after that refactor.
+    const fetchInvitations = vi.fn().mockResolvedValue(undefined);
+    useInvitationStore.setState({ invitations: [], fetchInvitations });
+
+    const { rerender } = renderTopBar();
+    expect(fetchInvitations).toHaveBeenCalledTimes(1);
+    expect(fetchInvitations).toHaveBeenCalledWith('g1');
+
+    // Unrelated re-render: a new element (fresh onOpenPalette/onOpenNotifications
+    // refs) with the same group id / canManageInvitations — must not refetch.
+    rerender(
+      <ThemeProvider>
+        <MemoryRouter initialEntries={['/group/ABC?shell=v2']}>
+          <TopBar onOpenPalette={vi.fn()} onOpenNotifications={vi.fn()} />
+        </MemoryRouter>
+      </ThemeProvider>
+    );
+
+    expect(fetchInvitations).toHaveBeenCalledTimes(1);
+  });
 });
