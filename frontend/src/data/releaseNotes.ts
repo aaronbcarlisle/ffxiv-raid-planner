@@ -141,7 +141,7 @@ export const RELEASES: Release[] = [
         title: 'Flip — v2 shell is now the default group experience',
         description:
           'The redesigned v2 shell now renders by default at /group/:code; the legacy view remains reachable at ?shell=legacy as a soak-window escape hatch, and ?shell=v2 stays a working alias. No public-facing release yet — this ships to users only when the redesign branch merges to main.',
-        pr: 0,
+        pr: 172,
         prTitle: 'feat(redesign): flip-p2 — invert group route default to v2',
       },
     ],
