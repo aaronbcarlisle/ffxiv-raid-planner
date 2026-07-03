@@ -15,7 +15,7 @@ import { ChevronRight } from 'lucide-react';
 export type Tone = 'accent' | 'success' | 'warning' | 'error' | 'muted' | 'info';
 
 const TONE_CLASS: Record<Tone, string> = {
-  accent: 'bg-accent/15 text-accent border-accent/30',
+  accent: 'bg-accent/15 text-accent-hover border-accent/30',
   success: 'bg-status-success/10 text-status-success border-status-success/30',
   warning: 'bg-status-warning/10 text-status-warning border-status-warning/30',
   error: 'bg-status-error/10 text-status-error border-status-error/30',

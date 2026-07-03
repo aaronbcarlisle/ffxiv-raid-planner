@@ -123,6 +123,45 @@
  *     tokens.json description) — clears ~5.2:1 against the bg-accent/15
  *     composite. Two existing unit test assertions (LootHistoryTable.test.tsx,
  *     LootEntryRow.test.tsx) updated to match.
+ *
+ * v2 Schedule (f6e-schedule Task 10): ASSERTED GREEN — scoped to
+ * [data-testid="schedule-screen"], both themes. Unlike Roster/Loot, Schedule has
+ * no view toggle, so there is a single axe pass per theme. No excludes: all-new
+ * token-clean code, and the harness never opens a modal, so the reused legacy
+ * CreateSessionModal/OccurrenceListModal surfaces are never in scope. The
+ * legacy ScheduleUpcomingPanel light-mode debt (FOUNDATION_ROADMAP §3.1) is
+ * bypassed entirely — its v2 replacement (SessionRsvpCard, ring0-shared with
+ * Home since F6b) never mounts it.
+ *
+ * Two genuine v2-owned contrast bugs were found and fixed at the shared
+ * component level (both pre-date f6e-schedule — introduced in F6b — but were
+ * only now exercised by a scoped axe pass, since no prior harness block
+ * touched Home or this Schedule surface):
+ *   • ui/Tag.tsx: the `accent` tone (`bg-accent/15 text-accent`) is the same
+ *     text-accent-on-bg-accent/15 pairing documented above for PriorityRow /
+ *     WeekGroupHeader — 4.07:1 in light theme. Surfaced here via
+ *     SessionRsvpCard's countdown chip (`<Tag variant="label" tone="accent">`).
+ *     Since `Tag`'s `accent` tone is a shared, generically-named token (not
+ *     schedule-specific — also used by the design-system reference page's
+ *     filter-pill demo), thinning the tint would ripple into every future
+ *     consumer; instead mirrored the WeekGroupHeader fix and swapped the
+ *     darker `text-accent-hover` token in, preserving the tint's visual
+ *     weight. No unit test asserted the old class.
+ *   • primitives/Button.tsx: the `success` variant's idle background
+ *     (`bg-status-success/20`) is a shared primitive used by every
+ *     variant="success" button app-wide. Surfaced here via SessionRsvpCard's
+ *     active "I'm in" RSVP button rendered inside the `next` variant's
+ *     accent-ringed CardShell (bg-surface-card, white in light theme):
+ *     text-status-success (#0f7234) over the /20-tinted white composite
+ *     (#cfe3d6) measured 4.49:1 — a hair under AA, because the token's F2/F6c
+ *     fix was validated against solid surfaces (white/surface-raised, where it
+ *     clears 6.04:1/5.18:1), not this self-tinting overlay case. Thinned the
+ *     overlay to `/15` (and rebalanced hover/active to `/25`/`/35`) — a lighter
+ *     overlay sits further from the dark-green text's own hue, restoring
+ *     margin (~4.9:1) in light theme, dark theme unaffected (already passing,
+ *     and the same direction of change only widens its margin). No unit test
+ *     asserted the old opacity classes; full unit suite (1685 tests) reverified
+ *     green after the change.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 import { test, expect } from '@playwright/test'
@@ -258,5 +297,32 @@ for (const theme of THEMES) {
     await page.waitForTimeout(300)
     const history = await new AxeBuilder({ page }).include('[data-testid="loot-screen"]').withRules(['color-contrast']).analyze()
     expect(history.violations, JSON.stringify(history.violations, null, 2)).toEqual([])
+  })
+}
+
+// ── Risk view: v2 Schedule, scoped to the schedule region ─────────────────────
+// The v2 Schedule screen is built token-clean; scope Axe to
+// [data-testid="schedule-screen"] so legacy Header / shell chrome debt (deferred
+// to later F6 slices) doesn't gate this. No excludes expected — all-new
+// token-clean code. Unlike Roster/Loot, Schedule has no view toggle, so there's
+// only a single pass per theme (no second view click). The harness never opens
+// a modal, so the reused legacy CreateSessionModal/OccurrenceListModal surfaces
+// are never in scope. The legacy ScheduleUpcomingPanel light-mode debt
+// (FOUNDATION_ROADMAP §3.1) is bypassed — its v2 replacement never mounts it.
+for (const theme of THEMES) {
+  test(`v2 schedule has zero contrast violations (${theme})`, async ({ page }) => {
+    await forceTheme(page, theme)
+    await loginAsOwner(page)
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=schedule`)
+    const scheduleScreen = page.locator('[data-testid="schedule-screen"]')
+    await scheduleScreen.waitFor({ timeout: 15_000 })
+    await page.waitForLoadState('networkidle')
+    // Settle CSS transitions (Button uses `transition-all duration-fast` = 150ms;
+    // a re-render shortly after mount can otherwise be caught mid-transition,
+    // producing a transient/false contrast reading).
+    await page.waitForTimeout(300)
+
+    const schedule = await new AxeBuilder({ page }).include('[data-testid="schedule-screen"]').withRules(['color-contrast']).analyze()
+    expect(schedule.violations, JSON.stringify(schedule.violations, null, 2)).toEqual([])
   })
 }
