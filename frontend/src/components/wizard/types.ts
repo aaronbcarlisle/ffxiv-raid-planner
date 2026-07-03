@@ -14,7 +14,6 @@ export interface WizardState {
   staticName: string;
   tierId: string;
   isPublic: boolean;
-  splitClearEnabled: boolean;
   players: WizardPlayer[];
   inviteCode: string | null;
 }

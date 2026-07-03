@@ -112,9 +112,6 @@ vi.mock('../stores/lootTrackingStore', () => ({
     sel ? sel(lootTrackingState) : lootTrackingState,
 }));
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
-vi.mock('../stores/splitClearStore', () => ({
-  useSplitClearStore: () => ({ fetchData: vi.fn(), clearData: vi.fn() }),
-}));
 vi.mock('../stores/settingsPanelStore', () => ({
   useSettingsPanelStore: { getState: () => ({ open: vi.fn(), close: vi.fn() }) },
 }));
@@ -178,10 +175,7 @@ vi.mock('../components/roster/CharacterManageBridge', () => ({
   CharacterManageBridge: () => <div data-testid="char-bridge" />,
 }));
 // Legacy roster body leaves (only mount without the slot; stubbed for the RED run).
-vi.mock('../components/player/PlayerGrid', () => ({ PlayerGrid: () => <div data-testid="legacy-player-grid" /> }));
-vi.mock('../components/player/RosterDragOverlay', () => ({ RosterDragOverlay: () => null }));
 vi.mock('../components/roster/RosterCharacterPanel', () => ({ RosterCharacterPanel: () => null }));
-vi.mock('../components/split-clear/SplitClearPlanner', () => ({ SplitClearPlanner: () => null }));
 // Task 4: ShellContent now mounts AdminBanners/JoinRequestBanner above the roster
 // slot (not under test here). Stub both — the real JoinRequestBanner subscribes
 // to the un-mocked joinRequestStore, and this file's authStore mock returns a

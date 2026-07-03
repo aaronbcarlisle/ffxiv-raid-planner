@@ -9,11 +9,6 @@
       "count": 1
     }
   },
-  "src/components/history/AllWeeksView.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
   "src/components/layout/GlobalSettingsPanel.tsx": {
     "boundaries/dependencies": {
       "count": 1

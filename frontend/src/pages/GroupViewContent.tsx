@@ -369,13 +369,8 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
                 }}
                 onNavigate={setPageMode}
                 onSetGearSubTab={setGearSubTab}
-                onOpenSplitPlanner={() => {
-                  // One history entry: switch to Roster and the Split Planner sub-tab together.
-                  setPageMode('roster', { rsub: 'split-planner' });
-                }}
                 onOpenIntegrations={() => {
-                  // One history entry: Schedule tab → Calendar view → Integrations sub-tab.
-                  setPageMode('schedule', { sched: 'calendar', stab: 'integrations' });
+                  useSettingsPanelStore.getState().open({ tab: 'integrations' });
                 }}
                 onOpenPlugin={() => setPageMode('plugin')}
                 canManage={canManageRoster(userRole).allowed}

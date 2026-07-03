@@ -6,14 +6,13 @@
  * `roster` / F6d `gear` slots. Renders the REAL chain ShellContent →
  * GroupViewContent → (mocked) Schedule and asserts:
  *   (a) the v2 Schedule screen mounts (the `schedule` slot is wired);
- *   (b) the legacy Upcoming|Calendar switcher + ScheduleUpcomingPanel/ScheduleTab
- *       leaves are ABSENT (the `slots?.schedule ?? (legacy)` fallback never runs).
+ *   (b) the legacy Upcoming|Calendar switcher chrome is ABSENT (the legacy
+ *       schedule body — `ScheduleUpcomingPanel`/`ScheduleTab` — was deleted
+ *       in flip-P3, so there is no fallback left to render).
  *
  * The mock surface mirrors `NewShell.gear.test.tsx` (real GroupViewContent at a
  * pinned pageMode). `Schedule` is stubbed — the point is the slot WIRING, not
- * Schedule's internals (covered by its own tests). Both legacy schedule leaves
- * are stubbed: `ScheduleUpcomingPanel` (concrete path) and the `ScheduleTab`
- * barrel export (`../components/schedule`).
+ * Schedule's internals (covered by its own tests).
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -95,9 +94,6 @@ vi.mock('../stores/lootTrackingStore', () => ({
   }),
 }));
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
-vi.mock('../stores/splitClearStore', () => ({
-  useSplitClearStore: () => ({ fetchData: vi.fn(), clearData: vi.fn() }),
-}));
 vi.mock('../stores/settingsPanelStore', () => ({
   useSettingsPanelStore: { getState: () => ({ open: vi.fn(), close: vi.fn() }) },
 }));
@@ -154,11 +150,6 @@ vi.mock('../components/roster/Roster', () => ({ Roster: () => <div data-testid="
 vi.mock('../components/loot/Loot', () => ({ Loot: () => <div data-testid="v2-loot" /> }));
 // The v2 schedule slot under test — assert it WIRES, not its internals.
 vi.mock('../components/schedule/Schedule', () => ({ Schedule: () => <div data-testid="v2-schedule" /> }));
-// Legacy schedule leaves (mount via the `slots?.schedule ?? (legacy)` fallback,
-// pre-wiring). Mocked at both the concrete path and the barrel, matching the
-// actual GroupViewContent import specifiers.
-vi.mock('../components/schedule/ScheduleUpcomingPanel', () => ({ ScheduleUpcomingPanel: () => <div data-testid="legacy-upcoming" /> }));
-vi.mock('../components/schedule', () => ({ ScheduleTab: () => <div data-testid="legacy-schedule-tab" /> }));
 // Task 4: ShellContent now mounts AdminBanners/JoinRequestBanner above the
 // schedule slot (not under test here). Stub both — the real JoinRequestBanner
 // subscribes to the un-mocked joinRequestStore, and this file's authStore mock

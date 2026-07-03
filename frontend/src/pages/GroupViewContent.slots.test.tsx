@@ -1,15 +1,17 @@
 /**
- * GroupViewContent — post-surgery slots contract (flip-P3 Task 2).
+ * GroupViewContent — post-surgery slots contract (flip-P3 Task 2, dead-tree
+ * deletion in Task 4).
  *
  * Pins the v2-only contract after the legacy fallback bodies were deleted:
  *   1. `slots` is REQUIRED — each spine tab renders its slot, and no legacy
- *      leaf (StaticHomeTab, PlayerGrid, SplitClearPlanner, GearSyncDashboard,
- *      TeamSummaryEnhanced, HistoryView, ScheduleTab, …) renders anywhere.
+ *      leaf (StaticHomeTab, PlayerGrid, SplitClearPlanner, TeamSummaryEnhanced,
+ *      HistoryView, ScheduleTab, … — all deleted in Task 4) renders anywhere.
+ *      GearSyncDashboard/RosterCharacterPanel are KEPT files re-homed
+ *      elsewhere; still mocked here so they stay out of this tab's tree.
  *   2. Slotless pageModes (goals / more / plugin) render their bodies
  *      unconditionally.
  *   3. The legacy sticky roster toolbar is gone (no roster sub-tab tablist),
- *      and no legacy data-fetching side effects fire (split-clear fetch,
- *      LogWeekWizard mount).
+ *      and no legacy data-fetching side effects fire (LogWeekWizard mount).
  *   4. Shared wiring survives: MobileBottomNav mounts, the GroupActions
  *      context still gates keyboard shortcuts, the added-player highlight
  *      signal is consumed one-shot.
@@ -81,12 +83,6 @@ vi.mock('../stores/lootTrackingStore', () => ({
   }),
 }));
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
-// Spy: the legacy Split Planner fallback was the ONLY consumer of this store in
-// GroupViewContent — post-surgery, nothing here may touch it.
-const fetchSplitClearSpy = vi.fn();
-vi.mock('../stores/splitClearStore', () => ({
-  useSplitClearStore: () => ({ fetchData: fetchSplitClearSpy, clearData: vi.fn() }),
-}));
 vi.mock('../stores/settingsPanelStore', () => ({
   useSettingsPanelStore: { getState: () => ({ open: vi.fn(), close: vi.fn() }) },
 }));
@@ -124,45 +120,18 @@ vi.mock('./groupActionsContext', () => ({
 }));
 
 // ── Legacy leaves: mocked with testids so their ABSENCE is assertable.
-//    (Files still exist on disk until Task 4; GroupViewContent must no longer
-//    import or render any of them.) ──
-vi.mock('../components/static-group/StaticHomeTab', () => ({
-  StaticHomeTab: () => <div data-testid="legacy-overview" />,
-}));
-vi.mock('../components/player/PlayerGrid', () => ({
-  PlayerGrid: () => <div data-testid="legacy-player-grid" />,
-}));
-vi.mock('../components/player/RosterDragOverlay', () => ({
-  RosterDragOverlay: () => null,
-}));
-vi.mock('../components/player/RosterViewToggle', () => ({
-  RosterViewToggle: () => <div data-testid="legacy-roster-view-toggle" />,
-}));
+//    (RosterCharacterPanel and GearSyncDashboard are KEEP files — task 4 only
+//    re-homed/left them in place, so they're still mocked here to keep them
+//    out of this contract test's render tree.) ──
 vi.mock('../components/roster/RosterCharacterPanel', () => ({
   RosterCharacterPanel: () => <div data-testid="legacy-character-panel" />,
-}));
-vi.mock('../components/split-clear/SplitClearPlanner', () => ({
-  SplitClearPlanner: () => <div data-testid="legacy-split-planner" />,
 }));
 vi.mock('../components/group/GearSyncDashboard', () => ({
   GearSyncDashboard: () => <div data-testid="legacy-gear-sync" />,
 }));
 const logWeekWizardSpy = vi.fn();
 vi.mock('../components/loot', () => ({
-  LootPriorityPanel: () => <div data-testid="legacy-loot-priority" />,
   LogWeekWizard: () => { logWeekWizardSpy(); return null; },
-}));
-vi.mock('../components/history/HistoryView', () => ({
-  HistoryView: () => <div data-testid="legacy-history" />,
-}));
-vi.mock('../components/team/TeamSummaryEnhanced', () => ({
-  TeamSummaryEnhanced: () => <div data-testid="legacy-team-summary" />,
-}));
-vi.mock('../components/schedule', () => ({
-  ScheduleTab: () => <div data-testid="legacy-schedule-tab" />,
-}));
-vi.mock('../components/schedule/ScheduleUpcomingPanel', () => ({
-  ScheduleUpcomingPanel: () => <div data-testid="legacy-schedule-upcoming" />,
 }));
 
 // ── Slotless page bodies (kept, spec §4) ──
@@ -211,7 +180,6 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     mockAddedPlayer = null;
     keyboardSpy.mockClear();
     clearAddedPlayerSpy.mockClear();
-    fetchSplitClearSpy.mockClear();
     logWeekWizardSpy.mockClear();
   });
   afterEach(() => { mockAddedPlayer = null; });
@@ -264,12 +232,6 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
   });
 
   // ── Legacy side effects are gone ──
-  it('does not fetch split-clear data on the roster tab (Split Planner fallback removed)', () => {
-    mockPageMode = 'roster';
-    renderContent();
-    expect(fetchSplitClearSpy).not.toHaveBeenCalled();
-  });
-
   it('never mounts the legacy LogWeekWizard', () => {
     mockPageMode = 'gear';
     renderContent();

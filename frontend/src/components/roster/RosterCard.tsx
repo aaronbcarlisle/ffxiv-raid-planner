@@ -41,7 +41,7 @@ import {
   useRosterCardActions,
   type RosterCardActions,
 } from '../../hooks/useRosterCardActions';
-import type { DragAttributes, DragListeners } from '../player/DroppablePlayerCard';
+import type { DragAttributes, DragListeners } from './dragTypes';
 import {
   calculateAverageItemLevel,
   isSlotComplete,
