@@ -31,6 +31,7 @@ import { JoinRequestBanner } from '../components/static-group';
 import { StaticSettingsHost } from '../components/settings';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useGroupViewState } from '../hooks/useGroupViewState';
+import { useViewAsUrlSync } from '../hooks/useViewAsUrlSync';
 import { TRANSIENT_NAV_PARAMS } from '../lib/navPreferences';
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { sortPlayersByRole } from '../utils/calculations';
@@ -116,7 +117,7 @@ export function GroupView() {
     clearError: clearTierError,
   } = useTierStore();
   const { user, login } = useAuthStore();
-  const { viewAsUser, startViewAs, stopViewAs } = useViewAsStore();
+  const { viewAsUser } = useViewAsStore();
 
   // Use extracted state hook. GroupViewContent has its own instance for the
   // content; this chrome instance reads pageMode/setPageMode (SidebarNav),
@@ -139,32 +140,8 @@ export function GroupView() {
 
   const [errorCopied, setErrorCopied] = useState(false);
 
-  // Handle viewAs URL parameter
-  useEffect(() => {
-    const viewAsUserId = searchParams.get('viewAs');
-    if (viewAsUserId && currentGroup?.id && user?.isAdmin) {
-      if (!viewAsUser || viewAsUser.userId !== viewAsUserId || viewAsUser.groupId !== currentGroup.id) {
-        startViewAs(currentGroup.id, viewAsUserId);
-      }
-    } else if (!viewAsUserId && viewAsUser) {
-      stopViewAs();
-    }
-  }, [searchParams, currentGroup?.id, user?.isAdmin, startViewAs, stopViewAs, viewAsUser]);
-
-  // Clear stale viewAs state if group changed
-  useEffect(() => {
-    if (viewAsUser && currentGroup?.id && viewAsUser.groupId !== currentGroup.id) {
-      stopViewAs();
-    }
-  }, [viewAsUser, currentGroup?.id, stopViewAs]);
-
-  // Clean up viewAs state when unmounting
-  useEffect(() => {
-    return () => {
-      stopViewAs();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Handle viewAs URL parameter (shared with NewShell — see useViewAsUrlSync)
+  useViewAsUrlSync(currentGroup?.id);
 
   // Clear tiers and errors when shareCode changes (switching groups)
   useEffect(() => {
@@ -281,6 +258,7 @@ export function GroupView() {
   // Sorted main-roster players — duplicated for chrome; Task 8 removes. The
   // settings panel (StaticSettingsHost.players) needs the same sorted set the
   // content passes, so derive it identically here.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- optional-chained dep (currentTier?.players) is intentional: currentTier can be null, and the compiler's inferred non-optional access would throw
   const sortedPlayers = useMemo(() => {
     if (!currentTier?.players) return [];
     const displayOrder = SORT_PRESETS[sortPreset]?.order ?? DEFAULT_SETTINGS.displayOrder;
@@ -297,6 +275,7 @@ export function GroupView() {
 
   // Reset errorCopied when error clears (modal closes)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset derived state when error clears
     if (!error) setErrorCopied(false);
   }, [error]);
 

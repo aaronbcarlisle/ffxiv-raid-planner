@@ -12,6 +12,7 @@ import { Schedule } from '../components/schedule/Schedule';
 import { canManageRoster } from '../utils/permissions';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
+import { useViewAsUrlSync } from '../hooks/useViewAsUrlSync';
 import { useModal } from '../hooks/useModal';
 import { useCurrentTier } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
@@ -174,6 +175,11 @@ export function NewShell() {
       fetchGroupByShareCode(shareCode);
     }
   }, [shareCode, fetchGroupByShareCode]);
+
+  // Admin "View As" URL sync (shared with GroupView — see useViewAsUrlSync). Not
+  // part of the cold-fetch replication above; this is the F6a gap-2 fix so v2
+  // also runs the ?viewAs= effects (previously only the legacy chrome did).
+  useViewAsUrlSync(currentGroup?.id);
 
   // Fetch tiers and load a tier (from URL, localStorage, or active) sequentially.
   useEffect(() => {
