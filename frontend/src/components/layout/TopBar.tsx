@@ -17,10 +17,14 @@
  * Header/ContextSwitcher/TierSelector internals are untouched (byte-for-byte).
  */
 
-import { Command } from 'lucide-react';
+import { useEffect } from 'react';
+import { Command, UserPlus } from 'lucide-react';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useInvitationStore } from '../../stores/invitationStore';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
+import { toast } from '../../stores/toastStore';
 import { useStaticPermissions } from '../../hooks/useStaticPermissions';
 import { TierBreadcrumb } from '../../pages/TierBreadcrumb';
 import { IconButton, Tooltip } from '../primitives';
@@ -59,7 +63,47 @@ export function TopBar({ onOpenPalette, onOpenNotifications }: TopBarProps) {
   const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
   const tiers = useTierStore((s) => s.tiers);
 
-  const { userRole, isMember } = useStaticPermissions();
+  const { userRole, isMember, canManageInvitations } = useStaticPermissions();
+
+  const invitations = useInvitationStore((s) => s.invitations);
+  const fetchInvitations = useInvitationStore((s) => s.fetchInvitations);
+
+  // Fetch invitations for the invite affordance — mirrors legacy Header.tsx:100-105
+  // (canManageInvitations-gated; the legacy isGroupRoute/currentGroup conditions are
+  // implied here since TopBar only mounts in group view).
+  useEffect(() => {
+    if (canManageInvitations && currentGroup) {
+      fetchInvitations(currentGroup.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canManageInvitations, currentGroup?.id]);
+
+  // Fresh-audited port of legacy Header.tsx's handleInviteMembers (Header.tsx:123-150).
+  // DELIBERATE DEVIATION: legacy falls back to a document.execCommand('copy') textarea
+  // on clipboard failure; v2 drops that fallback and shows toast.error('Failed to copy')
+  // instead, per the F6d/F6e clipboard rule (try/catch, success toast only on
+  // fulfillment, error toast on rejection).
+  const activeInvitation = invitations.find((inv) => inv.isValid);
+
+  const handleInvite = async () => {
+    if (!currentGroup) return;
+
+    if (activeInvitation) {
+      const url = `${window.location.origin}/invite/${activeInvitation.inviteCode}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success('Invite link copied!');
+      } catch {
+        toast.error('Failed to copy');
+      }
+    } else {
+      useSettingsPanelStore.getState().open({
+        tab: 'recruitment',
+        section: 'invitations',
+        highlightCreateInvite: true,
+      });
+    }
+  };
 
   return (
     <header
@@ -96,6 +140,17 @@ export function TopBar({ onOpenPalette, onOpenNotifications }: TopBarProps) {
               onClick={onOpenPalette}
             />
           </Tooltip>
+          {canManageInvitations && (
+            <Tooltip content="Invite members">
+              <IconButton
+                aria-label="Invite members"
+                icon={<UserPlus size={16} />}
+                variant="ghost"
+                size="sm"
+                onClick={handleInvite}
+              />
+            </Tooltip>
+          )}
           <NotificationBell onOpen={onOpenNotifications} />
           <SettingsGear />
           <ThemeToggle />
