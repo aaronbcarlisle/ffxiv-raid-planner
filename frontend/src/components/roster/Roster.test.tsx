@@ -6,9 +6,9 @@
 // components (`RosterCard`, `CharacterManageBridge`) so we assert only the
 // Roster assembly's own contract: header + subtitle, a card per player, and the
 // once-per-screen gear-source legend.
-import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import type { SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
 
 // ── Wiring mocks ──────────────────────────────────────────────────────────────
@@ -125,6 +125,26 @@ function renderRoster(tier: TierSnapshot | null) {
   );
 }
 
+// The `?player=` deep-link effect reads `useSearchParams()` directly (NOT via
+// the mocked `useGroupViewState`, which always returns a fixed, URL-independent
+// snapshot — see Roster.tsx's deep-link effect comment), so these tests need a
+// router that actually reflects the seeded URL. `MemoryRouter` + `initialEntries`
+// (same pattern as Loot.test.tsx / Schedule.test.tsx) rather than the
+// `BrowserRouter` + `history.pushState` convention above.
+function LocationProbe() {
+  const loc = useLocation();
+  return <div data-testid="loc" data-search={loc.search} />;
+}
+
+function renderRosterAtUrl(tier: TierSnapshot | null, initialEntries: string[]) {
+  return render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <Roster {...baseProps} tier={tier} />
+      <LocationProbe />
+    </MemoryRouter>,
+  );
+}
+
 beforeEach(() => {
   window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster');
   // Roster now subscribes to lootTrackingStore and fires two fetch actions on
@@ -137,6 +157,10 @@ beforeEach(() => {
     fetchLootLog: vi.fn().mockResolvedValue(undefined),
     fetchCurrentWeek: vi.fn().mockResolvedValue(undefined),
   });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 /** A gear array with a single raid BiS-target `body` slot still needed. */
@@ -208,5 +232,74 @@ describe('Roster', () => {
       </BrowserRouter>,
     );
     expect(screen.queryByText('●')).not.toBeInTheDocument();
+  });
+});
+
+// `?player=` deep link (Spec §3.2 / flip-P1 readiness Task 2). GroupViewContent's
+// shared effect (GroupViewContent.tsx:234-257) owns the tab-switch, the 100ms
+// scroll, and the 2500ms clear + URL-strip — but its `highlightedPlayerId`
+// state never reaches this slotted Roster. Roster must resolve the id against
+// ITS OWN players, track its own local highlight, render the SAME
+// `player-card-${id}` anchor id the shared effect scrolls to, and — critically
+// — never touch the URL itself (the shared effect owns the strip).
+describe('Roster — ?player= deep link', () => {
+  it('anchors + highlights the matching card; other cards get the anchor id without the highlight', () => {
+    const players = [
+      makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
+      makePlayer({ id: 'p2', name: 'Healer One', job: 'WHM', role: 'healer', position: 'H1' }),
+    ];
+
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?shell=v2&tab=roster&player=p2'],
+    );
+
+    const targetCard = container.querySelector('#player-card-p2');
+    expect(targetCard).not.toBeNull();
+    expect(targetCard).toHaveClass('highlight-pulse');
+
+    const otherCard = container.querySelector('#player-card-p1');
+    expect(otherCard).not.toBeNull();
+    expect(otherCard).not.toHaveClass('highlight-pulse');
+  });
+
+  it('clears the highlight 2500ms after it is set', () => {
+    vi.useFakeTimers();
+    const players = [makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' })];
+
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?shell=v2&tab=roster&player=p1'],
+    );
+
+    expect(container.querySelector('#player-card-p1')).toHaveClass('highlight-pulse');
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(container.querySelector('#player-card-p1')).not.toHaveClass('highlight-pulse');
+  });
+
+  it('does not highlight (and does not crash) for an unresolvable player id', () => {
+    const players = [makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' })];
+
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?shell=v2&tab=roster&player=does-not-exist'],
+    );
+
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
+    // The card itself still renders (with its anchor id) — resolution merely
+    // found no match, it didn't blow up the render.
+    expect(container.querySelector('#player-card-p1')).not.toBeNull();
+  });
+
+  it('does not strip the ?player= param from the URL (GroupViewContent owns the strip)', () => {
+    const players = [makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' })];
+
+    renderRosterAtUrl(makeTier(players), ['/group/DEVTST?shell=v2&tab=roster&player=p1']);
+
+    expect(screen.getByTestId('loc').dataset.search).toContain('player=p1');
   });
 });
