@@ -291,6 +291,37 @@ describe('ScheduleIntegrationsPanel', () => {
     expect(updateSettings).not.toHaveBeenCalled();
   });
 
+  // ── Save-before-load guard (PR-bot fix: MEDIUM data corruption) ───────────
+  // Regression for: `handleSaveIntegrations` only guarded against
+  // cross-static stale settings (`settings && settings.staticGroupId !==
+  // groupId`). When mounted standalone from Settings, the mount-fetch is a
+  // real in-flight window — `settings` is still `null` while
+  // `isLoadingSettings` is `true` — and that guard passes straight through.
+  // The form is still at its unhydrated default/empty state in that window,
+  // so a Save fired then would overwrite the static's real backend settings
+  // with defaults (reminderChannelLabel: null, all reminders false, etc.).
+  it('does not call updateSettings on Save while settings are still loading (fetch in flight)', () => {
+    const updateSettings = vi.fn(async () => {});
+    seedStore({ settings: null, isLoadingSettings: true, updateSettings });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Save'));
+    expect(updateSettings).not.toHaveBeenCalled();
+  });
+
+  // Companion case: once the fetch COMPLETES and the static genuinely has no
+  // backend settings yet (`settings` stays `null`, `isLoadingSettings` flips
+  // back to `false`), Save must still work — this is legitimate first-time
+  // configure, not a stale/in-flight read. Gating on `isLoadingSettings`
+  // (the in-flight signal) rather than `!settings` is what keeps this path
+  // open.
+  it('still allows Save for first-time configure once loading completes with no backend settings', async () => {
+    const updateSettings = vi.fn(async () => {});
+    seedStore({ settings: null, isLoadingSettings: false, updateSettings });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1));
+  });
+
   // ── Standalone sessions mount-fetch (PR-bot fix: cursor MEDIUM) ───────────
   // Regression for: mounted from Settings (ScheduleTab never runs), nothing
   // fetched sessions for this panel — the Discord-mirror summary would stay

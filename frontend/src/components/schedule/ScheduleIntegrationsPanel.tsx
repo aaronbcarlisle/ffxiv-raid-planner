@@ -217,12 +217,18 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
   }, [discordMirrors]);
 
   const handleSaveIntegrations = async () => {
-    // Cross-static guard mirrors the settings-sync effect above: if the
-    // store's settings haven't resolved for THIS groupId yet, the local
-    // form state is either stale (another static's data) or still at its
-    // unhydrated defaults — either way, saving now would write the wrong
-    // (or blank) config against `groupId`. No-op until they match.
-    if (settings && settings.staticGroupId !== groupId) return;
+    // Guards against two distinct stale-write windows. (1) Cross-static: if
+    // the store's settings haven't resolved for THIS groupId yet, the local
+    // form state is stale (another static's data) — saving now would write
+    // the wrong config against `groupId`. (2) In-flight fetch: when mounted
+    // standalone (Settings), the mount-fetch effect above can still be in
+    // flight — `settings` is `null` and the form is at its unhydrated
+    // default/empty state — so a Save here would overwrite the static's
+    // real backend settings with defaults. Gate on `isLoadingSettings` (the
+    // in-flight signal) rather than `!settings`, so legitimate first-time
+    // configure (fetch resolved, static genuinely has no settings yet)
+    // still works once loading completes.
+    if (isLoadingSettings || (settings && settings.staticGroupId !== groupId)) return;
     const normalizedRoleId = normalizeDiscordRoleId(mentionRoleId);
     if (mentionTarget === 'role' && !normalizedRoleId) {
       setMentionError('Enter a valid Discord role ID or <@&ROLE_ID> mention.');
@@ -494,7 +500,7 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
                 </div>
 
                 <div className="mt-auto flex flex-wrap gap-2 pt-1">
-                  <Button type="button" size="sm" onClick={() => void handleSaveIntegrations()}>
+                  <Button type="button" size="sm" onClick={() => void handleSaveIntegrations()} disabled={isLoadingSettings}>
                     Save
                   </Button>
                   <Button
