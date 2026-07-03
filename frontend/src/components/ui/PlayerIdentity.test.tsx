@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { PlayerIdentity } from './PlayerIdentity';
 
 describe('PlayerIdentity', () => {
@@ -62,15 +62,6 @@ describe('PlayerIdentity', () => {
     expect(screen.queryByText('Tank')).not.toBeInTheDocument();
   });
 
-  it('renders nothing for reserved variants', () => {
-    // 'rsvp-row' is documented as reserved (F6e); the component must return null
-    // so callers that accidentally pass it get a no-op rather than a crash.
-    const { container } = render(
-      <PlayerIdentity name="X" variant="rsvp-row" />,
-    );
-    expect(container.firstChild).toBeNull();
-  });
-
   it('renders no border when role is absent', () => {
     const { container } = render(<PlayerIdentity name="Unknown" />);
     const ring = container.querySelector('[data-testid="player-identity-ring"]') as HTMLElement;
@@ -94,5 +85,29 @@ describe('PlayerIdentity board-cell variant', () => {
   it('still renders the inline variant', () => {
     render(<PlayerIdentity variant="inline" name="Inline Guy" job="WHM" role="healer" />);
     expect(screen.getByText('Inline Guy')).toBeInTheDocument();
+  });
+});
+
+describe('PlayerIdentity rsvp-row variant', () => {
+  it('renders a 24px avatar row with the name at text-xs (no null return, no DEV warn)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    render(<PlayerIdentity name="Alice Ray" variant="rsvp-row" />);
+    expect(screen.getByText('Alice Ray')).toBeInTheDocument();
+    expect(screen.getByText('AR')).toBeInTheDocument(); // initials fallback
+    const ring = screen.getByTestId('player-identity-ring');
+    expect(ring.className).toContain('h-6');
+    expect(ring.className).toContain('w-6');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+  it('applies a role ring via CSS var only when role is passed', () => {
+    const { rerender } = render(<PlayerIdentity name="A" variant="rsvp-row" role="caster" />);
+    expect(screen.getByTestId('player-identity-ring').style.borderColor).toBe('var(--color-role-caster)');
+    rerender(<PlayerIdentity name="A" variant="rsvp-row" />);
+    expect(screen.getByTestId('player-identity-ring').style.borderColor).toBe('');
+  });
+  it('emits the sr-only role label when role is set with no textual signal', () => {
+    render(<PlayerIdentity name="A" variant="rsvp-row" role="tank" />);
+    expect(screen.getByText('Tank')).toHaveClass('sr-only');
   });
 });

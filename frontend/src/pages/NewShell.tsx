@@ -8,11 +8,14 @@ import { V2SettingsHost } from './V2SettingsHost';
 import { Home as StaticHome } from '../components/home/Home';
 import { Roster } from '../components/roster/Roster';
 import { Loot } from '../components/loot/Loot';
+import { Schedule } from '../components/schedule/Schedule';
 import { canManageRoster } from '../utils/permissions';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
 import { useModal } from '../hooks/useModal';
 import { useCurrentTier } from '../stores/tierStore';
+import { useAuthStore } from '../stores/authStore';
+import { useViewAsStore } from '../stores/viewAsStore';
 import { useSettingsPanelStore } from '../stores/settingsPanelStore';
 import { Spine } from '../components/layout/Spine';
 import { AppRail } from '../components/layout/AppRail';
@@ -90,10 +93,28 @@ export function ShellContent() {
     />
   ) : undefined;
 
+  // F6e: effective viewer identity for the schedule slot (Roster/Loot precedent).
+  const user = useAuthStore((s) => s.user);
+  const viewAsUser = useViewAsStore((s) => s.viewAsUser);
+  const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
+
+  // F6e: in v2 the `schedule` tab is the redesigned <Schedule/> screen, injected
+  // as the `schedule` slot — mirroring overview/roster/gear above. The legacy
+  // route passes no slots, so GroupViewContent renders the entire legacy
+  // schedule body (switcher + ScheduleUpcomingPanel/ScheduleTab) byte-for-byte.
+  const schedule = currentGroup ? (
+    <Schedule
+      group={currentGroup}
+      tier={currentTier}
+      canManage={canManage}
+      currentUserId={effectiveUserId ?? null}
+    />
+  ) : undefined;
+
   return (
     <GroupViewContent
       actions={useGroupActions()}
-      slots={currentGroup ? { overview, roster, gear: loot } : undefined}
+      slots={currentGroup ? { overview, roster, gear: loot, schedule } : undefined}
     />
   );
 }

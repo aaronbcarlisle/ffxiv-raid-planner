@@ -36,7 +36,7 @@ const variantStyles: Record<ButtonVariant, string> = {
   warning:
     'bg-status-warning/20 text-status-warning border border-status-warning/40 hover:bg-status-warning/30 active:bg-status-warning/40 focus-visible:ring-status-warning/50',
   success:
-    'bg-status-success/20 text-status-success border border-status-success/40 hover:bg-status-success/30 active:bg-status-success/40 focus-visible:ring-status-success/50',
+    'bg-status-success/15 text-status-success border border-status-success/40 hover:bg-status-success/25 active:bg-status-success/35 focus-visible:ring-status-success/50',
   link:
     'bg-transparent text-accent text-sm underline-offset-4 hover:underline active:text-accent-hover',
 };
