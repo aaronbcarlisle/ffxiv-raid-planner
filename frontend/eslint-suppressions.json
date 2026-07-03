@@ -39,11 +39,6 @@
       "count": 1
     }
   },
-  "src/components/layout/SidebarNav.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
   "src/components/profile/CharacterLinkModal.tsx": {
     "boundaries/dependencies": {
       "count": 1

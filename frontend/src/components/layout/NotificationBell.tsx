@@ -43,8 +43,8 @@ export function NotificationBell({ onOpen }: NotificationBellProps) {
   const { canManageInvitations } = useStaticPermissions();
 
   // Replicate Header's canManageInvitations-gated join-count fetch for v2.
-  // The legacy Header is suppressed when ?shell=v2, so this effect keeps the
-  // pendingCount badge live. Mirrors Header.tsx:107-113.
+  // The app-wide Header is suppressed on the group route, so this effect
+  // keeps the pendingCount badge live. Mirrors Header.tsx:107-113.
   useEffect(() => {
     if (currentGroup && canManageInvitations) {
       useJoinRequestStore.getState().fetchGroupRequests(currentGroup.id);

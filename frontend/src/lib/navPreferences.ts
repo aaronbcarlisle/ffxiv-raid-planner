@@ -15,18 +15,11 @@
 import type { User } from '../types';
 
 /** URL params that are transient/modal and should not be persisted, restored,
- *  or carried across a static switch. `shell` is included so the v2 flip gate
- *  is never baked into per-static tab memory: without it, visiting a static in
- *  v2 (where the URL carries `?shell=v2`) would persist that into
- *  `static-nav-{code}`, and a legacy user with "remember tab" ON would then
- *  read that same key and get silently flipped into v2 on their next
- *  navigation. Stripping it here means it never gets written into (or read
- *  back out of) tab memory — v2 re-adds it explicitly via `extraParams`. */
+ *  or carried across a static switch. */
 export const TRANSIENT_NAV_PARAMS = [
   'player', 'viewAs', 'adminMode', 'showSettings', 'settings',
   // Per-tab settings sub-section params (Goals / Priority / Recruitment).
   'gsub', 'psub', 'rcsub',
-  'shell',
 ] as const;
 
 /**
@@ -40,8 +33,8 @@ export const TRANSIENT_NAV_PARAMS = [
  *    degrades to the bare href.
  *
  * `extraParams` are applied last via `URLSearchParams.set`, so a caller-
- * supplied key (e.g. v2's `shell=v2` flip gate) overrides any same-named
- * persisted/carried key rather than appearing twice.
+ * supplied key overrides any same-named persisted/carried key rather than
+ * appearing twice.
  *
  * Promoted verbatim from `ContextSwitcher`'s `buildStaticHref` (the legacy
  * component keeps calling this with `extraParams: {}` for byte-identical

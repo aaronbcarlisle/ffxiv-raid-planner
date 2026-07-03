@@ -125,7 +125,7 @@ beforeEach(() => {
 
 function renderShell(shareCode = 'DEVTST') {
   return render(
-    <MemoryRouter initialEntries={[`/group/${shareCode}?shell=v2`]}>
+    <MemoryRouter initialEntries={[`/group/${shareCode}`]}>
       <Routes>
         <Route path="/group/:shareCode" element={<ShellContent />} />
       </Routes>

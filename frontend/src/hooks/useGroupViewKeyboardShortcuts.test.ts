@@ -1,11 +1,8 @@
 /**
  * useGroupViewKeyboardShortcuts — Mod+[/] static-switch navigation tests.
  *
- * Verifies that:
- *   - When shellParam is present (e.g. "v2"), the navigate target keeps
- *     `?shell=v2` so the shell gate is not dropped.
- *   - When shellParam is absent (legacy caller), navigate is called with a
- *     plain `/group/<code>` path (no query string appended).
+ * Verifies that the Mod+[/] shortcuts navigate to a plain `/group/<code>`
+ * path (no query string appended).
  */
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -110,37 +107,8 @@ describe('useGroupViewKeyboardShortcuts — Mod+[ / Mod+] static navigation', ()
     mockedUseKeyboardShortcuts.mockClear();
   });
 
-  it('navigates to previous static with ?shell=v2 when shellParam is "v2"', () => {
+  it('navigates to previous static with a plain /group/<code> path', () => {
     const navigate = vi.fn();
-    renderHook(() =>
-      useGroupViewKeyboardShortcuts(makeParams({ navigate, shellParam: 'v2' }), false),
-    );
-
-    const prevAction = getAction('[', { requireMod: true });
-    expect(prevAction).toBeDefined();
-    prevAction!.action();
-
-    // currentGroup is g2 (index 1); previous is g1 (ALPHA01)
-    expect(navigate).toHaveBeenCalledWith('/group/ALPHA01?shell=v2');
-  });
-
-  it('navigates to next static with ?shell=v2 when shellParam is "v2"', () => {
-    const navigate = vi.fn();
-    renderHook(() =>
-      useGroupViewKeyboardShortcuts(makeParams({ navigate, shellParam: 'v2' }), false),
-    );
-
-    const nextAction = getAction(']', { requireMod: true });
-    expect(nextAction).toBeDefined();
-    nextAction!.action();
-
-    // currentGroup is g2 (index 1); next is g3 (GAMMA03)
-    expect(navigate).toHaveBeenCalledWith('/group/GAMMA03?shell=v2');
-  });
-
-  it('navigates without query param when shellParam is absent (legacy path)', () => {
-    const navigate = vi.fn();
-    // No shellParam — simulates legacy GroupView caller
     renderHook(() =>
       useGroupViewKeyboardShortcuts(makeParams({ navigate }), false),
     );
@@ -149,23 +117,22 @@ describe('useGroupViewKeyboardShortcuts — Mod+[ / Mod+] static navigation', ()
     expect(prevAction).toBeDefined();
     prevAction!.action();
 
+    // currentGroup is g2 (index 1); previous is g1 (ALPHA01)
     expect(navigate).toHaveBeenCalledWith('/group/ALPHA01');
-    // Confirm no shell param was appended
-    expect(navigate.mock.calls[0][0]).not.toContain('shell');
   });
 
-  it('navigates without query param when shellParam is undefined (explicit undefined)', () => {
+  it('navigates to next static with a plain /group/<code> path', () => {
     const navigate = vi.fn();
     renderHook(() =>
-      useGroupViewKeyboardShortcuts(makeParams({ navigate, shellParam: undefined }), false),
+      useGroupViewKeyboardShortcuts(makeParams({ navigate }), false),
     );
 
     const nextAction = getAction(']', { requireMod: true });
     expect(nextAction).toBeDefined();
     nextAction!.action();
 
+    // currentGroup is g2 (index 1); next is g3 (GAMMA03)
     expect(navigate).toHaveBeenCalledWith('/group/GAMMA03');
-    expect(navigate.mock.calls[0][0]).not.toContain('shell');
   });
 
   it('does not navigate when already at the first static (Mod+[)', () => {
@@ -173,7 +140,7 @@ describe('useGroupViewKeyboardShortcuts — Mod+[ / Mod+] static navigation', ()
     const groups = makeGroups();
     renderHook(() =>
       useGroupViewKeyboardShortcuts(
-        makeParams({ navigate, shellParam: 'v2', currentGroup: groups[0] }),
+        makeParams({ navigate, currentGroup: groups[0] }),
         false,
       ),
     );
@@ -189,7 +156,7 @@ describe('useGroupViewKeyboardShortcuts — Mod+[ / Mod+] static navigation', ()
     const groups = makeGroups();
     renderHook(() =>
       useGroupViewKeyboardShortcuts(
-        makeParams({ navigate, shellParam: 'v2', currentGroup: groups[2] }),
+        makeParams({ navigate, currentGroup: groups[2] }),
         false,
       ),
     );

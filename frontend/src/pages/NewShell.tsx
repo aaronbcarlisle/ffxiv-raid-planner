@@ -189,15 +189,12 @@ export function NewShell() {
   const fetchCurrentWeek = useLootTrackingStore((s) => s.fetchCurrentWeek);
 
   // ── Cold-fetch (F6a, Task 9, gap 2) ──
-  // The legacy GroupView *chrome* owns the group/tier fetch from the route
-  // `shareCode`; NewShell previously relied on a warm store, so a hard reload of
-  // `/group/X?shell=v2` rendered nothing. These three effects are replicated
-  // verbatim from GroupView (clear-on-switch → fetch group → fetch tiers + load
-  // the URL/localStorage/active tier) so a cold v2 load self-fetches. Only the
-  // group-fetch is replicated here. viewAs (useViewAsUrlSync) and recent-statics
-  // + static-nav persistence (useStaticNavMemory) are now wired into NewShell via
-  // their shared hooks (Task 1, Task 7) — sortPreset is the only GroupView chrome
-  // effect genuinely not replicated (not needed to render).
+  // NewShell previously relied on a warm store, so a hard reload of `/group/X`
+  // rendered nothing. These three effects (clear-on-switch → fetch group →
+  // fetch tiers + load the URL/localStorage/active tier) ensure a cold load
+  // self-fetches. viewAs (useViewAsUrlSync) and recent-statics + static-nav
+  // persistence (useStaticNavMemory) are wired into NewShell via their shared
+  // hooks (Task 1, Task 7).
 
   // Fetch the groups list on cold v2 load so the AppRail avatars are populated.
   // Guarded: skips if groups are already loaded (warm store from prior navigation),
@@ -281,8 +278,6 @@ export function NewShell() {
   }, [currentGroup?.id, fetchTiers, fetchTier, fetchCurrentWeek, searchParams, setSearchParams]);
 
   // ── v2-scoped mod-K binding ──────────────────────────────────────────────
-  // NewShell only mounts for ?shell=v2, so this listener never fires on the
-  // legacy /group/:shareCode route — it is unmounted when the legacy shell renders.
   // Destructure open so the effect dep-array references the stable callback
   // directly (avoids the exhaustive-deps warning for the `palette` object).
   const openPalette = palette.open;
@@ -324,14 +319,13 @@ export function NewShell() {
       initials: getInitials(g.name),
       isActive: g.shareCode === shareCode,
       onSelect: () => {
-        // SPA navigation — preserves ?shell=v2 gate without a full page reload,
-        // and restores the target static's saved tab when "remember tab per
-        // static" is ON (Task 7 follow-up: same buildStaticNavHref repoint as
-        // StaticPicker, instead of a bare href that dropped the saved tab).
+        // SPA navigation — restores the target static's saved tab when
+        // "remember tab per static" is ON (Task 7 follow-up: same
+        // buildStaticNavHref repoint as StaticPicker, instead of a bare href
+        // that dropped the saved tab).
         navigate(buildStaticNavHref(g.shareCode, {
           remember: rememberStaticTab,
           currentParams: searchParams,
-          extraParams: { shell: 'v2' },
         }));
       },
     })),

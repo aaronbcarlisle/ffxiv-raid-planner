@@ -76,7 +76,7 @@ beforeEach(() => {
 function renderTopBar(onOpenPalette = vi.fn(), onOpenNotifications = vi.fn()) {
   return render(
     <ThemeProvider>
-      <MemoryRouter initialEntries={['/group/ABC?shell=v2']}>
+      <MemoryRouter initialEntries={['/group/ABC']}>
         <TopBar onOpenPalette={onOpenPalette} onOpenNotifications={onOpenNotifications} />
       </MemoryRouter>
     </ThemeProvider>

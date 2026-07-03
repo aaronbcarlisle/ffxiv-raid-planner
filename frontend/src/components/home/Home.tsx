@@ -4,8 +4,8 @@
  * The F6b assembly: a "This week" page header (dynamic subtitle), a 3-card hero
  * (next session + RSVP · this week's loot · roster readiness), and a two-region
  * dashboard (actionable left: "Needs your attention" + BiS-by-role; ambient
- * right: recent activity + a display-only Track card). Wired in behind
- * `?shell=v2` as the `overview` slot on `GroupViewContent` (see NewShell).
+ * right: recent activity + a display-only Track card). Wired in as the
+ * `overview` slot on `GroupViewContent` (see NewShell).
  *
  * Boundary discipline (ring0): composes `home/` siblings + shared `ui/`
  * components + the existing shell `PageHeader`, and reads STORES directly for

@@ -1,12 +1,12 @@
 /**
  * CommandPalette (F6a, Task 11) — minimal navigate-only palette.
  *
- * Scope: v2 shell only — mounted from NewShell, which only renders for ?shell=v2.
+ * Scope: v2 shell only — mounted from NewShell.
  *
  * Navigate targets:
  *   - Go to Home / Roster / Loot / Schedule (via useGroupViewState().setPageMode)
  *   - Open Settings (via useGroupViewState().setShowSettingsModal)
- *   - Switch static — one row per group (via useNavigate, preserving ?shell=v2)
+ *   - Switch static — one row per group (via useNavigate)
  *
  * Also renders a "Keyboard Shortcuts" reference absorbed from keyboardShortcutGroups.
  *
@@ -147,7 +147,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       // Repointed (Task 7 follow-up) to the same `buildStaticNavHref` call
       // StaticPicker uses, so this affordance also restores the target
       // static's saved tab when "remember tab per static" is ON, instead of
-      // hardcoding a bare `/group/{code}?shell=v2` that dropped it.
+      // hardcoding a bare `/group/{code}` that dropped it.
       ...groups.map((g) => ({
         id: `switch-${g.id}`,
         label: `Switch to ${g.name}`,
@@ -157,7 +157,6 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           navigate(buildStaticNavHref(g.shareCode, {
             remember: rememberStaticTab,
             currentParams: searchParams,
-            extraParams: { shell: 'v2' },
           }));
           handleClose();
         },

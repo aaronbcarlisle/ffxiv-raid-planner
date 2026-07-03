@@ -59,30 +59,30 @@ function renderAt(path: string, props: Record<string, unknown> = {}) {
 
 describe('StaticPicker', () => {
   it('renders the active static name', () => {
-    renderAt('/group/ABC?shell=v2');
+    renderAt('/group/ABC');
     expect(screen.getByText('Alpha Static')).toBeInTheDocument();
   });
 
   it('has NO Player Hub or Static Finder segments (those moved to the rail)', () => {
-    renderAt('/group/ABC?shell=v2');
+    renderAt('/group/ABC');
     expect(screen.queryByText('Player Hub')).toBeNull();
     expect(screen.queryByText('Static Finder')).toBeNull();
   });
 
   it('exposes the switch trigger as an IconButton (role=button, aria-label, not a raw button)', () => {
-    renderAt('/group/ABC?shell=v2');
+    renderAt('/group/ABC');
     const trigger = screen.getByRole('button', { name: 'Switch static' });
     expect(trigger).toBeInTheDocument();
     // IconButton hallmark class — a raw <button> would not carry the focus-ring token.
     expect(trigger.className).toContain('focus-visible:ring-focus-ring');
   });
 
-  it('navigates via SPA preserving ?shell=v2 when selecting another static while on a static', async () => {
-    renderAt('/group/ABC?shell=v2');
+  it('navigates via SPA when selecting another static while on a static', async () => {
+    renderAt('/group/ABC');
     fireEvent.keyDown(screen.getByRole('button', { name: 'Switch static' }), { key: 'Enter' });
     const item = await screen.findByText('Beta Static');
     fireEvent.click(item);
-    expect(screen.getByTestId('loc').getAttribute('data-path')).toBe('/group/XYZ?shell=v2');
+    expect(screen.getByTestId('loc').getAttribute('data-path')).toBe('/group/XYZ');
   });
 
   it('does NOT navigate when not already on a static (off-route selection only updates intent)', async () => {
@@ -94,12 +94,12 @@ describe('StaticPicker', () => {
     expect(screen.getByTestId('loc').getAttribute('data-path')).toBe(before);
   });
 
-  it('restores the target static\'s saved tab (remember ON, the default) and re-adds ?shell=v2 via extraParams', async () => {
+  it('restores the target static\'s saved tab (remember ON, the default)', async () => {
     localStorage.setItem('static-nav-XYZ', 'tab=loot&sub=weapon');
-    renderAt('/group/ABC?shell=v2');
+    renderAt('/group/ABC');
     fireEvent.keyDown(screen.getByRole('button', { name: 'Switch static' }), { key: 'Enter' });
     const item = await screen.findByText('Beta Static');
     fireEvent.click(item);
-    expect(screen.getByTestId('loc').getAttribute('data-path')).toBe('/group/XYZ?tab=loot&sub=weapon&shell=v2');
+    expect(screen.getByTestId('loc').getAttribute('data-path')).toBe('/group/XYZ?tab=loot&sub=weapon');
   });
 });

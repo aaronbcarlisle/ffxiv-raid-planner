@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { PageTransition } from './PageTransition';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
@@ -15,19 +15,11 @@ export function Layout() {
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.isAdmin ?? false;
 
-  // The v2 shell (F6a) renders its own TopBar, so suppress the legacy Header for
-  // the group route by default. FLIP P2: v2 is now the default, so suppression
-  // applies to every /group/ route EXCEPT the `?shell=legacy` escape hatch, which
-  // still renders <Header /> exactly as before (byte-for-byte). All non-group
-  // routes always render <Header />.
+  // The v2 shell renders its own TopBar, so the app-wide Header (and the
+  // settings dock toggle) are suppressed on the group route. All non-group
+  // routes render them.
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-  // `startsWith('/group/')` is intentionally broad (matches any share code); the
-  // `shell !== 'legacy'` gate on the right-hand side scopes suppression to the v2
-  // default (bare, ?shell=v2, and any other non-legacy value), leaving only the
-  // legacy escape hatch (?shell=legacy) its Header.
-  const isGroupV2Shell =
-    location.pathname.startsWith('/group/') && searchParams.get('shell') !== 'legacy';
+  const isGroupRoute = location.pathname.startsWith('/group/');
 
   // Global event listener for keyboard shortcuts modal
   // This allows the UserMenu to trigger shortcuts from any page
@@ -53,7 +45,7 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
-      {!isGroupV2Shell && <Header />}
+      {!isGroupRoute && <Header />}
       <ViewAsBanner />
       {/* Content container - scrollable area below sticky header */}
       {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears.
@@ -69,14 +61,15 @@ export function Layout() {
       <SettingsPanelController />
 
       {/* Account-level settings panel for non-static routes (the in-static panel
-          is rendered by GroupView). Shows only the General tab. */}
+          is rendered by V2SettingsHost). Shows only the General tab. */}
       <GlobalSettingsPanel />
 
       {/* Desktop settings open/close toggle, docked to the right edge to mirror
           the left rail's collapse chevron. (Mobile uses the header gear.)
-          Suppressed in v2 — v2 has no settings panel mounted yet, so the toggle
-          would be dead chrome. v1 and all non-group routes still render it. */}
-      {!isGroupV2Shell && <SettingsDockToggle />}
+          Suppressed on the group route — the v2 shell has no settings panel
+          mounted yet, so the toggle would be dead chrome. All non-group routes
+          still render it. */}
+      {!isGroupRoute && <SettingsDockToggle />}
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp

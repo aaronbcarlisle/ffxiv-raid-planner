@@ -36,12 +36,6 @@ export interface GroupViewShortcutParams {
 
   // Navigation
   navigate: (path: string) => void;
-  /**
-   * If the current URL has a `shell` query param (e.g. "v2"), it is preserved
-   * when the Mod+[/] shortcuts navigate between statics. Legacy callers omit
-   * this and navigate exactly as before (no param appended).
-   */
-  shellParam?: string;
 
   // Modal toggles
   setShowKeyboardHelp: (show: boolean) => void;
@@ -75,7 +69,6 @@ export function useGroupViewKeyboardShortcuts(
     currentGroup,
     tiers,
     navigate,
-    shellParam,
     setShowKeyboardHelp,
     setEditingPlayerId,
     setHighlightedPlayerId,
@@ -83,12 +76,6 @@ export function useGroupViewKeyboardShortcuts(
     setShowLogMaterialModal,
     setShowMarkFloorClearedModal,
   } = params;
-
-  /** Build a group route URL, preserving the current `shell` param when present. */
-  function groupRoute(shareCode: string): string {
-    const base = `/group/${shareCode}`;
-    return shellParam ? `${base}?shell=${shellParam}` : base;
-  }
 
   // Tier-change / add-player / new-tier / rollover now go through the shared
   // GroupActions context instead of dispatching HEADER_EVENTS. (The legacy
@@ -226,13 +213,13 @@ export function useGroupViewKeyboardShortcuts(
       { key: '[', description: 'Previous static', action: () => {
         const currentIndex = groups.findIndex(g => g.id === currentGroup?.id);
         if (currentIndex > 0) {
-          navigate(groupRoute(groups[currentIndex - 1].shareCode));
+          navigate(`/group/${groups[currentIndex - 1].shareCode}`);
         }
       }, requireMod: true },
       { key: ']', description: 'Next static', action: () => {
         const currentIndex = groups.findIndex(g => g.id === currentGroup?.id);
         if (currentIndex >= 0 && currentIndex < groups.length - 1) {
-          navigate(groupRoute(groups[currentIndex + 1].shareCode));
+          navigate(`/group/${groups[currentIndex + 1].shareCode}`);
         }
       }, requireMod: true },
       { key: '[', description: 'Previous tier', action: () => {

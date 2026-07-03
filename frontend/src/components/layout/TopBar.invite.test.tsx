@@ -134,7 +134,7 @@ beforeEach(() => {
 function renderTopBar() {
   return render(
     <ThemeProvider>
-      <MemoryRouter initialEntries={['/group/ABC?shell=v2']}>
+      <MemoryRouter initialEntries={['/group/ABC']}>
         <TopBar onOpenPalette={vi.fn()} onOpenNotifications={vi.fn()} />
       </MemoryRouter>
     </ThemeProvider>
@@ -227,7 +227,7 @@ describe('TopBar invite affordance', () => {
     // refs) with the same group id / canManageInvitations — must not refetch.
     rerender(
       <ThemeProvider>
-        <MemoryRouter initialEntries={['/group/ABC?shell=v2']}>
+        <MemoryRouter initialEntries={['/group/ABC']}>
           <TopBar onOpenPalette={vi.fn()} onOpenNotifications={vi.fn()} />
         </MemoryRouter>
       </ThemeProvider>

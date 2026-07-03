@@ -4,8 +4,8 @@
  * Locks that the v2 rail's avatar static-switch affordance (`personLayerEntries`
  * inside `NewShell()`) calls the SAME `buildStaticNavHref` repoint as
  * `StaticPicker` — restoring the target static's saved tab when "remember tab
- * per static" is ON, instead of hardcoding a bare `/group/{code}?shell=v2`
- * (which silently dropped the saved tab).
+ * per static" is ON, instead of hardcoding a bare `/group/{code}` (which
+ * silently dropped the saved tab).
  *
  * Heavy mocking isolates the rail-click wiring from the rest of the v2 shell
  * (ShellContent's slots, TopBar, CommandPalette, V2SettingsHost, etc. — none of
@@ -125,7 +125,7 @@ beforeEach(() => {
 
 function renderShell(shareCode = 'ABC') {
   return render(
-    <MemoryRouter initialEntries={[`/group/${shareCode}?shell=v2`]}>
+    <MemoryRouter initialEntries={[`/group/${shareCode}`]}>
       <Routes>
         <Route path="/group/:shareCode" element={<NewShell />} />
       </Routes>
@@ -134,16 +134,16 @@ function renderShell(shareCode = 'ABC') {
 }
 
 describe('NewShell rail avatar static-switch — restores saved tabs', () => {
-  it('restores the target static\'s saved tab (remember ON, the default) and re-adds ?shell=v2', () => {
+  it('restores the target static\'s saved tab (remember ON, the default)', () => {
     localStorage.setItem('static-nav-XYZ', 'tab=loot&sub=weapon');
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Beta Static' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/group/XYZ?tab=loot&sub=weapon&shell=v2');
+    expect(mockNavigate).toHaveBeenCalledWith('/group/XYZ?tab=loot&sub=weapon');
   });
 
   it('falls back to a bare href when there is no saved tab for the target static', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Beta Static' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/group/XYZ?shell=v2');
+    expect(mockNavigate).toHaveBeenCalledWith('/group/XYZ');
   });
 });
