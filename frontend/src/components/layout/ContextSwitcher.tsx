@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Shield, ChevronDown, Users, Calendar } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
-import { TRANSIENT_NAV_PARAMS, prefRememberTabs } from '../../lib/navPreferences';
+import { prefRememberTabs, buildStaticNavHref } from '../../lib/navPreferences';
 import type { StaticGroup, StaticGroupListItem, MemberRole } from '../../types';
 import {
   Dropdown,
@@ -106,29 +106,18 @@ export function ContextSwitcher({
   //  • ON  → restore that static's last saved tab + sub-tabs (per-static memory).
   //  • OFF → carry the current tab + sub-tabs across (stay on the same view),
   //          dropping `tier` so the target picks its own active tier.
-  const buildStaticHref = useCallback((shareCode: string) => {
-    const base = `/group/${shareCode}`;
-    if (rememberStaticTab) {
-      try {
-        const saved = localStorage.getItem(`static-nav-${shareCode}`);
-        if (saved) {
-          const p = new URLSearchParams(saved);
-          TRANSIENT_NAV_PARAMS.forEach((k) => p.delete(k));
-          const s = p.toString();
-          return s ? `${base}?${s}` : base;
-        }
-      } catch { /* ignore */ }
-      return base;
-    }
-    // Stay-on-current: only meaningful when already viewing a static.
-    if (onStatic) {
-      const p = new URLSearchParams(searchParams);
-      [...TRANSIENT_NAV_PARAMS, 'tier'].forEach((k) => p.delete(k));
-      const s = p.toString();
-      return s ? `${base}?${s}` : base;
-    }
-    return base;
-  }, [rememberStaticTab, onStatic, searchParams]);
+  // Promoted to `buildStaticNavHref` in lib/navPreferences (Task 7); this is a
+  // byte-identical repoint (`extraParams: {}` — the `onStatic` gate stays here,
+  // passed as `currentParams: onStatic ? searchParams : undefined`).
+  const buildStaticHref = useCallback(
+    (shareCode: string) =>
+      buildStaticNavHref(shareCode, {
+        remember: rememberStaticTab,
+        currentParams: onStatic ? searchParams : undefined,
+        extraParams: {},
+      }),
+    [rememberStaticTab, onStatic, searchParams]
+  );
 
   // Picking a static from the dropdown: always update the selection; navigate
   // immediately only when already in the Static view (switch the view you're on).

@@ -4,7 +4,10 @@
  * Centralizes two things that were previously duplicated across components and
  * therefore prone to drift:
  *   - the set of URL params that must never carry across (or be restored) when
- *     switching statics, and that closing the settings panel strips, and
+ *     switching statics, and that must never be baked into per-static tab
+ *     memory (`static-nav-{code}`) — read/written by `buildStaticNavHref` and
+ *     `useStaticNavMemory`. (Closing the settings panel strips its own,
+ *     separate subset inline in `useGroupViewState.ts` — not this const.)
  *   - the per-user navigation-preference defaults (different per field), so a
  *     single stray `?? false` can't silently change behavior at one read site.
  */
@@ -12,12 +15,66 @@
 import type { User } from '../types';
 
 /** URL params that are transient/modal and should not be persisted, restored,
- *  or carried across a static switch. */
+ *  or carried across a static switch. `shell` is included so the v2 flip gate
+ *  is never baked into per-static tab memory: without it, visiting a static in
+ *  v2 (where the URL carries `?shell=v2`) would persist that into
+ *  `static-nav-{code}`, and a legacy user with "remember tab" ON would then
+ *  read that same key and get silently flipped into v2 on their next
+ *  navigation. Stripping it here means it never gets written into (or read
+ *  back out of) tab memory — v2 re-adds it explicitly via `extraParams`. */
 export const TRANSIENT_NAV_PARAMS = [
   'player', 'viewAs', 'adminMode', 'showSettings', 'settings',
   // Per-tab settings sub-section params (Goals / Priority / Recruitment).
   'gsub', 'psub', 'rcsub',
+  'shell',
 ] as const;
+
+/**
+ * Builds the URL to navigate/link to a given static, honoring the "remember
+ * tab per static" preference:
+ *  • `remember: true`  → restore that static's last saved tab + sub-tabs
+ *    (per-static memory, read from `static-nav-{shareCode}`).
+ *  • `remember: false` → carry `currentParams` (the current tab + sub-tabs)
+ *    across, dropping `tier` so the target picks its own active tier. When
+ *    `currentParams` is omitted (not currently viewing a static), this
+ *    degrades to the bare href.
+ *
+ * `extraParams` are applied last via `URLSearchParams.set`, so a caller-
+ * supplied key (e.g. v2's `shell=v2` flip gate) overrides any same-named
+ * persisted/carried key rather than appearing twice.
+ *
+ * Promoted verbatim from `ContextSwitcher`'s `buildStaticHref` (the legacy
+ * component keeps calling this with `extraParams: {}` for byte-identical
+ * output); `StaticPicker` is the first caller to pass `extraParams`.
+ */
+export function buildStaticNavHref(
+  shareCode: string,
+  opts: { remember: boolean; currentParams?: URLSearchParams; extraParams?: Record<string, string> }
+): string {
+  const { remember, currentParams, extraParams = {} } = opts;
+  const base = `/group/${shareCode}`;
+
+  let params = new URLSearchParams();
+  if (remember) {
+    try {
+      const saved = localStorage.getItem(`static-nav-${shareCode}`);
+      if (saved) {
+        params = new URLSearchParams(saved);
+        TRANSIENT_NAV_PARAMS.forEach((k) => params.delete(k));
+      }
+    } catch {
+      // Ignore localStorage errors — fall through with empty params.
+    }
+  } else {
+    params = new URLSearchParams(currentParams);
+    [...TRANSIENT_NAV_PARAMS, 'tier'].forEach((k) => params.delete(k));
+  }
+
+  Object.entries(extraParams).forEach(([key, value]) => params.set(key, value));
+
+  const s = params.toString();
+  return s ? `${base}?${s}` : base;
+}
 
 /**
  * The site-wide navigational tab-memory mode. `'remember'` (default) reopens

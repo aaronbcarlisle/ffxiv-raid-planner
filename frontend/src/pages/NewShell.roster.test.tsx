@@ -182,6 +182,13 @@ vi.mock('../components/player/PlayerGrid', () => ({ PlayerGrid: () => <div data-
 vi.mock('../components/player/RosterDragOverlay', () => ({ RosterDragOverlay: () => null }));
 vi.mock('../components/roster/RosterCharacterPanel', () => ({ RosterCharacterPanel: () => null }));
 vi.mock('../components/split-clear/SplitClearPlanner', () => ({ SplitClearPlanner: () => null }));
+// Task 4: ShellContent now mounts AdminBanners/JoinRequestBanner above the roster
+// slot (not under test here). Stub both — the real JoinRequestBanner subscribes
+// to the un-mocked joinRequestStore, and this file's authStore mock returns a
+// fresh `user` object identity every call, which would spin its mount effect
+// into an infinite update loop.
+vi.mock('../components/admin/AdminBanners', () => ({ AdminBanners: () => null }));
+vi.mock('../components/static-group/JoinRequestBanner', () => ({ JoinRequestBanner: () => null }));
 vi.mock('../components/ui', async (orig) => {
   const actual = await orig<typeof import('../components/ui')>();
   return { ...actual, MobileBottomNav: () => <div data-testid="mobile-nav" /> };

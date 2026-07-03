@@ -3,6 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { CommandPalette } from '../components/layout/CommandPalette';
 import { Home, Globe } from 'lucide-react';
 import { GroupViewContent } from './GroupViewContent';
+import { ShellContentStates } from './ShellContentStates';
+import { AdminBanners } from '../components/admin/AdminBanners';
+import { JoinRequestBanner } from '../components/static-group';
 import { GroupActionModals, useGroupActions } from './groupActionsContext';
 import { V2SettingsHost } from './V2SettingsHost';
 import { Home as StaticHome } from '../components/home/Home';
@@ -12,11 +15,14 @@ import { Schedule } from '../components/schedule/Schedule';
 import { canManageRoster } from '../utils/permissions';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
+import { useViewAsUrlSync } from '../hooks/useViewAsUrlSync';
+import { useStaticNavMemory } from '../hooks/useStaticNavMemory';
 import { useModal } from '../hooks/useModal';
 import { useCurrentTier } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { useViewAsStore } from '../stores/viewAsStore';
 import { useSettingsPanelStore } from '../stores/settingsPanelStore';
+import { buildStaticNavHref, prefRememberTabs } from '../lib/navPreferences';
 import { Spine } from '../components/layout/Spine';
 import { AppRail } from '../components/layout/AppRail';
 import { TopBar } from '../components/layout/TopBar';
@@ -45,7 +51,9 @@ function getInitials(name: string): string {
  *  still renders `StaticHomeTab` byte-for-byte. Exported for the slot-wiring test. */
 export function ShellContent() {
   const gv = useGroupViewState();
+  const { shareCode } = useParams<{ shareCode: string }>();
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
+  const fetchGroupByShareCode = useStaticGroupStore((s) => s.fetchGroupByShareCode);
   const currentTier = useCurrentTier();
   // F6a hook: `canEdit` (owner/lead/admin-access) is the v2 "can manage" gate;
   // `userRole` is the effective role the roster slot re-checks via canManageRoster
@@ -111,11 +119,49 @@ export function ShellContent() {
     />
   ) : undefined;
 
+  // ShellContentStates renders the v2 load / error / not-found / no-tiers states
+  // (legacy copy, new chrome) BEFORE the content — falling through to the
+  // GroupViewContent children only on the happy path (and overlaying an error
+  // Modal when a loaded group later errors). Mirrors legacy GroupView's own
+  // five branches around its body. Banners are passed via the `banners` slot
+  // (not as children) so they render in EVERY currentGroup-truthy branch —
+  // including no-tiers — matching legacy, where they sit past all five
+  // branches (GroupView.tsx:381-415) rather than only past the happy path.
   return (
-    <GroupViewContent
-      actions={useGroupActions()}
-      slots={currentGroup ? { overview, roster, gear: loot, schedule } : undefined}
-    />
+    <ShellContentStates
+      banners={
+        <>
+          {/* Admin access banner (View As banner is in Layout) — GroupView.tsx:392-401 parity. */}
+          <AdminBanners
+            isAdminAccess={isAdminAccess}
+            onExitAdminMode={() => {
+              // Refetch group to get correct permissions without admin elevation.
+              if (shareCode) {
+                fetchGroupByShareCode(shareCode);
+              }
+            }}
+          />
+          {/* Join request banner for non-members viewing a discoverable static.
+              The banner supplies its own bottom margin only when it renders, so
+              members (where it returns null) don't get phantom spacing pushing
+              the content down. GroupView.tsx:403-415 parity. */}
+          {currentGroup && (
+            <JoinRequestBanner
+              shareCode={currentGroup.shareCode}
+              staticName={currentGroup.name}
+              groupId={currentGroup.id}
+              settings={currentGroup.settings}
+              userRole={userRole}
+            />
+          )}
+        </>
+      }
+    >
+      <GroupViewContent
+        actions={useGroupActions()}
+        slots={currentGroup ? { overview, roster, gear: loot, schedule } : undefined}
+      />
+    </ShellContentStates>
   );
 }
 
@@ -129,6 +175,10 @@ export function NewShell() {
 
   const groups = useStaticGroupStore((s) => s.groups);
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
+  const user = useAuthStore((s) => s.user);
+  // Task 7 follow-up (FIX 3): "remember tab per static" preference for the
+  // rail avatar static-switch repoint below — same accessor StaticPicker uses.
+  const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
   const fetchGroupByShareCode = useStaticGroupStore((s) => s.fetchGroupByShareCode);
   const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
   const clearGroupError = useStaticGroupStore((s) => s.clearError);
@@ -144,22 +194,35 @@ export function NewShell() {
   // `/group/X?shell=v2` rendered nothing. These three effects are replicated
   // verbatim from GroupView (clear-on-switch → fetch group → fetch tiers + load
   // the URL/localStorage/active tier) so a cold v2 load self-fetches. Only the
-  // group-fetch is replicated; the other GroupView chrome effects (viewAs,
-  // sortPreset, recent-statics, static-nav persistence) are not needed to render.
+  // group-fetch is replicated here. viewAs (useViewAsUrlSync) and recent-statics
+  // + static-nav persistence (useStaticNavMemory) are now wired into NewShell via
+  // their shared hooks (Task 1, Task 7) — sortPreset is the only GroupView chrome
+  // effect genuinely not replicated (not needed to render).
 
   // Fetch the groups list on cold v2 load so the AppRail avatars are populated.
-  // Guarded: skips if groups are already loaded (warm store from prior navigation).
-  // This mirrors the `fetchGroups` call the legacy GroupView chrome triggers via
-  // its own mount effect; NewShell previously skipped it because it only fetched
-  // the current group. (Fix 2, PR #163)
+  // Guarded: skips if groups are already loaded (warm store from prior navigation),
+  // AND gated on auth — `fetchGroups()` hits the auth-required GET /api/static-groups
+  // ("my statics" list), which 401s for a logged-out guest and writes into the
+  // shared staticGroupStore.error, surfacing a false "Not authenticated" error
+  // Modal (ShellContentStates) over an otherwise-correct read-only guest view of
+  // a public static. Legacy never eagerly fetches this for anyone — its
+  // Header/TopBar chrome only calls it lazily, when the static-switcher dropdown
+  // opens AND the viewer is a member (StaticPicker.tsx:76). A guest has no "my
+  // statics" list to fetch, so skip it entirely for them. This mirrors the
+  // `fetchGroups` call the legacy GroupView chrome triggers via its own mount
+  // effect; NewShell previously skipped it because it only fetched the current
+  // group. (Fix 2, PR #163)
   useEffect(() => {
-    if (groups.length === 0) {
+    if (user && groups.length === 0) {
       fetchGroups();
     }
-    // Run once on mount only — adding `groups.length` would re-fetch on every
-    // static navigation when the list clears momentarily.
+    // Run once on mount (plus the null->authed transition via `user`) only —
+    // adding `groups.length` would re-fetch on every static navigation when the
+    // list clears momentarily. `user` is included so a guest who logs in while
+    // on the page still gets their groups fetched; the store's `user` reference
+    // is stable once set (no refetch-loop risk).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchGroups]);
+  }, [fetchGroups, user]);
 
   // Clear tiers and errors when shareCode changes (switching statics in v2).
   useEffect(() => {
@@ -174,6 +237,16 @@ export function NewShell() {
       fetchGroupByShareCode(shareCode);
     }
   }, [shareCode, fetchGroupByShareCode]);
+
+  // Admin "View As" URL sync (shared with GroupView — see useViewAsUrlSync). Not
+  // part of the cold-fetch replication above; this is the F6a gap-2 fix so v2
+  // also runs the ?viewAs= effects (previously only the legacy chrome did).
+  useViewAsUrlSync(currentGroup?.id);
+
+  // Recent-statics MRU + per-static tab memory (shared with GroupView — see
+  // useStaticNavMemory). Previously only the legacy chrome ran this, so
+  // v2 dropped recent-statics tracking and per-static tab restore.
+  useStaticNavMemory(shareCode);
 
   // Fetch tiers and load a tier (from URL, localStorage, or active) sequentially.
   useEffect(() => {
@@ -251,11 +324,18 @@ export function NewShell() {
       initials: getInitials(g.name),
       isActive: g.shareCode === shareCode,
       onSelect: () => {
-        // SPA navigation — preserves ?shell=v2 gate without a full page reload.
-        navigate(`/group/${g.shareCode}?shell=v2`);
+        // SPA navigation — preserves ?shell=v2 gate without a full page reload,
+        // and restores the target static's saved tab when "remember tab per
+        // static" is ON (Task 7 follow-up: same buildStaticNavHref repoint as
+        // StaticPicker, instead of a bare href that dropped the saved tab).
+        navigate(buildStaticNavHref(g.shareCode, {
+          remember: rememberStaticTab,
+          currentParams: searchParams,
+          extraParams: { shell: 'v2' },
+        }));
       },
     })),
-  ], [groups, shareCode, navigate]);
+  ], [groups, shareCode, navigate, rememberStaticTab, searchParams]);
 
   return (
     <GroupActionModals onTierCreated={() => gv.setPageMode('roster')}>

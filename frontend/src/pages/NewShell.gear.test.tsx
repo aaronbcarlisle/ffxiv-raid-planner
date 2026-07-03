@@ -154,6 +154,13 @@ vi.mock('../components/roster/Roster', () => ({ Roster: () => <div data-testid="
 vi.mock('../components/loot/Loot', () => ({ Loot: () => <div data-testid="v2-loot" /> }));
 // Legacy gear body leaf (mounts at gearSubTab='sync' in the RED run, pre-wiring).
 vi.mock('../components/group/GearSyncDashboard', () => ({ GearSyncDashboard: () => <div data-testid="legacy-gear-sync" /> }));
+// Task 4: ShellContent now mounts AdminBanners/JoinRequestBanner above the gear
+// slot (not under test here). Stub both — the real JoinRequestBanner subscribes
+// to the un-mocked joinRequestStore, and this file's authStore mock returns a
+// fresh `user` object identity every call, which would spin its mount effect
+// into an infinite update loop.
+vi.mock('../components/admin/AdminBanners', () => ({ AdminBanners: () => null }));
+vi.mock('../components/static-group/JoinRequestBanner', () => ({ JoinRequestBanner: () => null }));
 vi.mock('../components/ui', async (orig) => {
   const actual = await orig<typeof import('../components/ui')>();
   return { ...actual, MobileBottomNav: () => <div data-testid="mobile-nav" /> };

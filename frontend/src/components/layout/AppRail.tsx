@@ -138,7 +138,7 @@ export function AppRail({ logo, entries, footer }: AppRailProps) {
       <SkipLink />
       <nav
         aria-label="Primary navigation"
-        className="w-[72px] shrink-0 flex flex-col border-r border-border-default"
+        className="hidden sm:flex w-[72px] shrink-0 flex-col border-r border-border-default"
         style={{ background: 'var(--color-surface-nav, var(--color-surface-raised))' }}
       >
         {/* ── Logo block ── */}

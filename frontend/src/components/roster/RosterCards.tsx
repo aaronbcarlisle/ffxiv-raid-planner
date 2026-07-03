@@ -95,6 +95,14 @@ export interface RosterCardsProps {
   currentUserId: string | null;
   isAdminAccess: boolean;
   clipboardPlayer: SnapshotPlayer | null;
+  /**
+   * `?player=` deep-link target (Roster's own local highlight state — see
+   * `Roster.tsx`'s deep-link effect). Every rendered card wrapper carries the
+   * `player-card-${player.id}` anchor id (so `GroupViewContent`'s shared
+   * scroll-into-view effect finds it); only the matching id also gets the
+   * `highlight-pulse` treatment.
+   */
+  highlightedPlayerId?: string | null;
   // ── Shared context, forwarded straight through to every RosterCard ──
   groupId?: string;
   tierId?: string;
@@ -254,6 +262,7 @@ export function RosterCards({
   currentUserId,
   isAdminAccess,
   clipboardPlayer,
+  highlightedPlayerId,
   groupId,
   tierId,
   contentType,
@@ -294,33 +303,39 @@ export function RosterCards({
     player: SnapshotPlayer,
     dragHandle?: { attributes: DragAttributes; listeners: DragListeners },
   ): ReactNode => (
-    <RosterCard
+    <div
       key={player.id}
-      player={player}
-      userRole={userRole}
-      currentUserId={currentUserId}
-      isAdminAccess={isAdminAccess}
-      canManage={canManage}
-      clipboardPlayer={clipboardPlayer}
-      reorderMode={reorderMode}
-      dragHandle={dragHandle}
-      actions={actionsForPlayer(player)}
-      groupId={groupId}
-      tierId={tierId}
-      contentType={contentType}
-      allPlayers={allPlayers ?? players}
-      isAdmin={isAdmin}
-      userHasClaimedPlayer={userHasClaimedPlayer}
-      onModalOpen={handleCardModalOpen}
-      onModalClose={handleCardModalClose}
-    />
+      id={`player-card-${player.id}`}
+      className={player.id === highlightedPlayerId ? 'highlight-pulse rounded-lg' : undefined}
+    >
+      <RosterCard
+        player={player}
+        userRole={userRole}
+        currentUserId={currentUserId}
+        isAdminAccess={isAdminAccess}
+        canManage={canManage}
+        clipboardPlayer={clipboardPlayer}
+        reorderMode={reorderMode}
+        dragHandle={dragHandle}
+        actions={actionsForPlayer(player)}
+        groupId={groupId}
+        tierId={tierId}
+        contentType={contentType}
+        allPlayers={allPlayers ?? players}
+        isAdmin={isAdmin}
+        userHasClaimedPlayer={userHasClaimedPlayer}
+        onModalOpen={handleCardModalOpen}
+        onModalClose={handleCardModalClose}
+      />
+    </div>
   );
 
   const renderPlayer = (player: SnapshotPlayer): ReactNode => {
     if (!player.configured) {
       const roleLabel = emptySeatRoleLabel(player);
+      const highlightClass = player.id === highlightedPlayerId ? ' highlight-pulse rounded-lg' : '';
       return (
-        <div key={player.id} className="relative">
+        <div key={player.id} id={`player-card-${player.id}`} className={`relative${highlightClass}`}>
           <CardShell as="div" className="relative overflow-hidden border-dashed">
             <span
               aria-hidden="true"

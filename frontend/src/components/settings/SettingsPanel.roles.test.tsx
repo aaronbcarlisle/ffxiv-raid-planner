@@ -2,9 +2,11 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingsPanel } from './SettingsPanel';
+import { useScheduleStore } from '../../stores/scheduleStore';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import type { StaticGroup, SnapshotPlayer } from '../../types';
 
 vi.mock('../../stores/joinRequestStore', () => ({
@@ -63,5 +65,55 @@ describe('SettingsPanel role filtering', () => {
     renderPanel('viewer');
     expect(screen.queryByText('Priority')).not.toBeInTheDocument();
     expect(screen.getByText('Members')).toBeInTheDocument();
+  });
+});
+
+describe('SettingsPanel Integrations tab', () => {
+  beforeEach(() => {
+    // Reset the shared (module-singleton) panel store between cases so a tab
+    // switched in one test can't leak into the next.
+    useSettingsPanelStore.setState({ tab: 'general' } as never);
+    // Seed the schedule store so the mounted panel never falls through to the
+    // real api client (settings present ⇒ no mount-fetch; empty sessions ⇒ no
+    // mirror poll, but DOES trigger the standalone sessions mount-fetch since
+    // `sessions` is empty — `fetchSessions` must be stubbed too). Actions are
+    // stubbed defensively.
+    useScheduleStore.setState({
+      sessions: [],
+      settings: {
+        staticGroupId: 'g1',
+        webhookConfigured: false,
+        mentionTarget: 'none',
+        enable24hReminder: false,
+        enable1hReminder: false,
+        enableMissingRsvpReminder: false,
+        calendarEnabled: false,
+        canManage: true,
+      },
+      isLoadingSettings: false,
+      error: null,
+      fetchSettings: vi.fn(async () => {}),
+      fetchSessions: vi.fn(async () => {}),
+      fetchDiscordMirrors: vi.fn(async () => []),
+    } as never);
+  });
+
+  it('is visible to managers (owner) but not to members or viewers', () => {
+    const { unmount } = renderPanel('owner');
+    expect(screen.getByText('Integrations')).toBeInTheDocument();
+    unmount();
+
+    const member = renderPanel('member');
+    expect(screen.queryByText('Integrations')).not.toBeInTheDocument();
+    member.unmount();
+
+    renderPanel('viewer');
+    expect(screen.queryByText('Integrations')).not.toBeInTheDocument();
+  });
+
+  it('renders the ScheduleIntegrationsPanel when the Integrations tab is activated', () => {
+    renderPanel('owner');
+    fireEvent.click(screen.getByText('Integrations'));
+    expect(screen.getByTestId('schedule-integrations-panel')).toBeInTheDocument();
   });
 });

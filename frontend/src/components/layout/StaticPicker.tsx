@@ -8,13 +8,19 @@
  * `text-xs` role badge (no `text-[10px]`), and SPA `useNavigate` that preserves
  * the `?shell=v2` gate (no full reload).
  *
- * `ContextSwitcher` is intentionally NOT edited — it still renders in the legacy
- * route and must stay byte-for-byte. This is the new, conformant peer.
+ * `ContextSwitcher` was repointed (Task 7) to share this component's
+ * `buildStaticNavHref` util for its own static-switch — output is byte-
+ * identical to its previous inline logic (characterization-locked by
+ * `ContextSwitcher.test.tsx`), so the legacy route's behavior is unchanged.
+ * `StaticPicker` calls the same util, adding `extraParams: { shell: 'v2' }` to
+ * keep the v2 flip gate on the URL.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Shield, ChevronDown, Users } from 'lucide-react';
+import { useAuthStore } from '../../stores/authStore';
+import { prefRememberTabs, buildStaticNavHref } from '../../lib/navPreferences';
 import type { StaticGroup, StaticGroupListItem, MemberRole } from '../../types';
 import {
   Dropdown,
@@ -59,6 +65,8 @@ export function StaticPicker({
 }: StaticPickerProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
   const [open, setOpen] = useState(false);
 
   const onStatic = location.pathname.startsWith('/group/');
@@ -82,12 +90,22 @@ export function StaticPicker({
   }, [targetStatic, currentGroup, userRole, groups]);
 
   // Selecting another static navigates immediately ONLY when already viewing a
-  // static (you're switching the view you're on). The ?shell=v2 gate is
-  // preserved so the SPA navigation stays in the v2 shell (no full reload).
+  // static (you're switching the view you're on). Restores that static's saved
+  // tab when "remember tab per static" is ON (previously dropped in v2 — this
+  // repoint shares ContextSwitcher's `buildStaticNavHref` logic). The
+  // ?shell=v2 gate is re-added via `extraParams` so the SPA navigation stays
+  // in the v2 shell (no full reload) regardless of what the restored/carried
+  // params contain.
   const selectStatic = useCallback((shareCode: string) => {
     setOpen(false);
-    if (onStatic) navigate(`/group/${shareCode}?shell=v2`);
-  }, [onStatic, navigate]);
+    if (onStatic) {
+      navigate(buildStaticNavHref(shareCode, {
+        remember: rememberStaticTab,
+        currentParams: searchParams,
+        extraParams: { shell: 'v2' },
+      }));
+    }
+  }, [onStatic, navigate, rememberStaticTab, searchParams]);
 
   if (!targetStatic) {
     return (

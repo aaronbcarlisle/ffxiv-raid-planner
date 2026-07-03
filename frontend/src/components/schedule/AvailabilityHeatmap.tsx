@@ -10,6 +10,7 @@
  */
 import { useMemo } from 'react';
 import { CardShell } from '../ui';
+import { Button } from '../primitives';
 import { buildHeatMap, formatTimeLabel, formatDateHeader } from './availabilityUtils';
 import { deriveHourlyHeatCells, PRIME_HOURS, localSlotKeyOf } from './scheduleWeek';
 import type {
@@ -26,6 +27,9 @@ export interface AvailabilityHeatmapProps {
   sessions: Array<{ session: ScheduleSession; occursAt: string }>;
   canManage: boolean;
   onProposeSession?: (draft: ScheduleSessionCreate) => void;
+  /** Task 10 (§5.1 stopgap): opens the legacy AvailabilityGrid editor in a v2
+   * modal. Additive — omitting this prop leaves the header render unchanged. */
+  onEditWeek?: () => void;
 }
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -55,6 +59,7 @@ export function AvailabilityHeatmap({
   sessions,
   canManage,
   onProposeSession,
+  onEditWeek,
 }: AvailabilityHeatmapProps) {
   const heat = useMemo(() => buildHeatMap(data), [data]);
   const rows = useMemo(() => deriveHourlyHeatCells(heat, weekDates), [heat, weekDates]);
@@ -109,7 +114,18 @@ export function AvailabilityHeatmap({
     <CardShell
       as="div"
       title="Team availability"
-      headerRight={<span className="text-xs text-text-tertiary">{members.length} raiders</span>}
+      headerRight={
+        onEditWeek ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-tertiary">{members.length} raiders</span>
+            <Button variant="ghost" size="sm" onClick={onEditWeek}>
+              Edit week
+            </Button>
+          </div>
+        ) : (
+          <span className="text-xs text-text-tertiary">{members.length} raiders</span>
+        )
+      }
     >
       <p className="text-xs text-text-tertiary mb-2">{noteLine}</p>
       <div className="grid" style={{ gridTemplateColumns: '44px repeat(7, minmax(0, 1fr))' }}>

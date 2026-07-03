@@ -93,4 +93,13 @@ describe('StaticPicker', () => {
     fireEvent.click(item);
     expect(screen.getByTestId('loc').getAttribute('data-path')).toBe(before);
   });
+
+  it('restores the target static\'s saved tab (remember ON, the default) and re-adds ?shell=v2 via extraParams', async () => {
+    localStorage.setItem('static-nav-XYZ', 'tab=loot&sub=weapon');
+    renderAt('/group/ABC?shell=v2');
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Switch static' }), { key: 'Enter' });
+    const item = await screen.findByText('Beta Static');
+    fireEvent.click(item);
+    expect(screen.getByTestId('loc').getAttribute('data-path')).toBe('/group/XYZ?tab=loot&sub=weapon&shell=v2');
+  });
 });

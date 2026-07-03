@@ -126,6 +126,15 @@ export const RELEASES: Release[] = [
         pr: 170,
         prTitle: 'feat(redesign): f6e-schedule — v2 Schedule behind ?shell=v2',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Flip readiness — v2 shell parity gaps closed',
+        description:
+          'View As, player deep links, load/error/empty states, join-request and admin banners, invite affordance, mobile rail behavior, per-static tab memory, Tracking/Plugin/More palette entries, a Settings Integrations tab, and in-app availability editing now all work under ?shell=v2 — clearing the road to making v2 the default.',
+        pr: 171,
+        prTitle: 'feat(redesign): flip-p1 — v2 shell readiness (parity gaps closed)',
+      },
     ],
     internal: true,
   },

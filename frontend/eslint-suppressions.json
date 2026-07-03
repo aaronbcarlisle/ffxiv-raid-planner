@@ -81,7 +81,7 @@
   },
   "src/components/settings/SettingsPanel.tsx": {
     "boundaries/dependencies": {
-      "count": 4
+      "count": 5
     }
   }
 }

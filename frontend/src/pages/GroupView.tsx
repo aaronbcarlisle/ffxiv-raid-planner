@@ -31,7 +31,8 @@ import { JoinRequestBanner } from '../components/static-group';
 import { StaticSettingsHost } from '../components/settings';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useGroupViewState } from '../hooks/useGroupViewState';
-import { TRANSIENT_NAV_PARAMS } from '../lib/navPreferences';
+import { useViewAsUrlSync } from '../hooks/useViewAsUrlSync';
+import { useStaticNavMemory } from '../hooks/useStaticNavMemory';
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { sortPlayersByRole } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
@@ -116,7 +117,7 @@ export function GroupView() {
     clearError: clearTierError,
   } = useTierStore();
   const { user, login } = useAuthStore();
-  const { viewAsUser, startViewAs, stopViewAs } = useViewAsStore();
+  const { viewAsUser } = useViewAsStore();
 
   // Use extracted state hook. GroupViewContent has its own instance for the
   // content; this chrome instance reads pageMode/setPageMode (SidebarNav),
@@ -139,32 +140,12 @@ export function GroupView() {
 
   const [errorCopied, setErrorCopied] = useState(false);
 
-  // Handle viewAs URL parameter
-  useEffect(() => {
-    const viewAsUserId = searchParams.get('viewAs');
-    if (viewAsUserId && currentGroup?.id && user?.isAdmin) {
-      if (!viewAsUser || viewAsUser.userId !== viewAsUserId || viewAsUser.groupId !== currentGroup.id) {
-        startViewAs(currentGroup.id, viewAsUserId);
-      }
-    } else if (!viewAsUserId && viewAsUser) {
-      stopViewAs();
-    }
-  }, [searchParams, currentGroup?.id, user?.isAdmin, startViewAs, stopViewAs, viewAsUser]);
+  // Handle viewAs URL parameter (shared with NewShell — see useViewAsUrlSync)
+  useViewAsUrlSync(currentGroup?.id);
 
-  // Clear stale viewAs state if group changed
-  useEffect(() => {
-    if (viewAsUser && currentGroup?.id && viewAsUser.groupId !== currentGroup.id) {
-      stopViewAs();
-    }
-  }, [viewAsUser, currentGroup?.id, stopViewAs]);
-
-  // Clean up viewAs state when unmounting
-  useEffect(() => {
-    return () => {
-      stopViewAs();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Recent-statics MRU + per-static tab memory (shared with NewShell — see
+  // useStaticNavMemory).
+  useStaticNavMemory(shareCode);
 
   // Clear tiers and errors when shareCode changes (switching groups)
   useEffect(() => {
@@ -179,37 +160,6 @@ export function GroupView() {
       fetchGroupByShareCode(shareCode);
     }
   }, [shareCode, fetchGroupByShareCode]);
-
-  // Track recently accessed statics in localStorage
-  useEffect(() => {
-    if (!shareCode) return;
-    try {
-      const MAX_RECENT = 10;
-      const saved = localStorage.getItem('recent-statics');
-      const recent: string[] = saved ? JSON.parse(saved) : [];
-      const filtered = recent.filter(code => code !== shareCode);
-      const updated = [shareCode, ...filtered].slice(0, MAX_RECENT);
-      localStorage.setItem('recent-statics', JSON.stringify(updated));
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, [shareCode]);
-
-  // Persist this static's navigation state (tab + sub-tabs, minus transient
-  // params) so the context switcher can restore it when the user enables
-  // "remember tab per static". Keyed by share code — the unit it navigates by.
-  // When that preference is OFF, the switcher instead carries the current tab
-  // across, and when it's ON it reads this. Either way no forced reset here.
-  useEffect(() => {
-    if (!currentGroup?.shareCode) return;
-    try {
-      const params = new URLSearchParams(searchParams);
-      TRANSIENT_NAV_PARAMS.forEach(k => params.delete(k));
-      localStorage.setItem(`static-nav-${currentGroup.shareCode}`, params.toString());
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, [searchParams, currentGroup?.shareCode]);
 
   // Load sortPreset from localStorage when tier changes.
   // Duplicated for chrome; Task 8 removes — chrome needs sortPreset to derive the
@@ -281,6 +231,7 @@ export function GroupView() {
   // Sorted main-roster players — duplicated for chrome; Task 8 removes. The
   // settings panel (StaticSettingsHost.players) needs the same sorted set the
   // content passes, so derive it identically here.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- the manual dep (currentTier?.players) is intentionally finer-grained than what the compiler would infer, so manual memoization can't be provably preserved; surfaced when the viewAs effects moved out (un-bailing component-level analysis). Chrome removed at the flip.
   const sortedPlayers = useMemo(() => {
     if (!currentTier?.players) return [];
     const displayOrder = SORT_PRESETS[sortPreset]?.order ?? DEFAULT_SETTINGS.displayOrder;
@@ -297,6 +248,7 @@ export function GroupView() {
 
   // Reset errorCopied when error clears (modal closes)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset derived state when error clears
     if (!error) setErrorCopied(false);
   }, [error]);
 

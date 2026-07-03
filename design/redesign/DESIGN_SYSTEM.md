@@ -232,6 +232,7 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
 - **Token gaps (F3):** `surface.nav` and the pill-indicator size/color need component-tier tokens (`nav.item-active-indicator`, `nav.item-bg-hover`, etc.). These are scoped to F3's component-tokenization work.
 - **Motion gap (v3.1):** enter/exit animation for the pill indicator and hover state are not yet specified — flagged under §7 (motion tokens).
 - **Built F6a (Task 7):** Delivered as `AppRail` (`frontend/src/components/layout/AppRail.tsx`) against this spec. Tokens scoped in Task 1 (`nav.*` / `surface.nav` / `motion.nav-pill`); hover/pressed state + SPA static-switch landed in the Task 7 review fixes. Motion (pill enter/exit) deferred to v3.1 per the gap above.
+- **Responsive (flip-p1 Task 6):** hidden below the `sm` breakpoint (`hidden sm:flex`, mirroring the legacy rail) — `MobileBottomNav` serves small viewports until the Ring-1 mobile pass gives the rail its own collapsed/narrow treatment.
 
 ### 3.10 CommandPalette — F6a
 

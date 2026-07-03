@@ -35,7 +35,8 @@
  *     intentionally not consumed here.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Users } from 'lucide-react';
 
 import { PageHeader } from '../layout/PageHeader';
@@ -236,6 +237,46 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     setSortPreset: setSortPresetWithTier,
   });
 
+  // ── ?player= deep link (mirrors Schedule.tsx's ?sessionId= shape) ──────────
+  // `useGroupViewState`'s `searchParams` is fully mocked in this component's unit
+  // tests (a fixed, URL-independent snapshot), so — like `Schedule.tsx` — this
+  // effect reads the URL via its OWN `useSearchParams()` call, keeping it
+  // driveable by a `MemoryRouter` in tests regardless of that mock.
+  //
+  // `GroupViewContent.tsx:234-257` owns the tab-switch (`setPageMode('roster')`),
+  // the 100ms `getElementById('player-card-${id}')` scroll, and the 2500ms
+  // clear + URL-strip. That effect's own `highlightedPlayerId` state never
+  // reaches this slotted `Roster`, so Roster keeps its OWN local highlight and
+  // renders the SAME `player-card-${id}` id on every card (see `RosterCards`)
+  // so the shared effect's scroll still finds it here. Roster must NOT touch
+  // the URL — `GroupViewContent.tsx:248-255` already strips `player` at 2500ms.
+  const [playerLinkParams] = useSearchParams();
+  const playerHandledRef = useRef<string | null>(null);
+  const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const playerParam = playerLinkParams.get('player');
+    if (!playerParam) return;
+    if (!players.some((p) => p.id === playerParam)) return;
+    if (playerHandledRef.current === playerParam) return;
+    playerHandledRef.current = playerParam;
+    // Resolves a URL deep-link id against roster data that arrives asynchronously
+    // (the tier fetch); must run in an effect so it re-evaluates once `players`
+    // populates. `playerHandledRef` above guards it to one-shot.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deep-link highlight is set in response to the URL param; mirrors Schedule's resolving effect (no scroll side-effect here — the shared GroupViewContent effect owns scroll+strip)
+    setHighlightedPlayerId(playerParam);
+  }, [playerLinkParams, players]);
+
+  // Highlight clears 2500ms after it is set, via its OWN effect keyed on the
+  // highlight itself (F6e timer-ownership lesson — never in the resolving
+  // effect's cleanup, so unrelated `players`/`playerLinkParams` identity churn
+  // during the window can't kill the timer before it fires).
+  useEffect(() => {
+    if (!highlightedPlayerId) return;
+    const timer = window.setTimeout(() => setHighlightedPlayerId(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [highlightedPlayerId]);
+
   // Copy a deep-link to a player card (replicates GroupViewContent.handleCopyUrl).
   const handleCopyUrl = useCallback((playerId: string) => {
     const url = new URL(window.location.href);
@@ -332,6 +373,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           currentUserId={effectiveUserId ?? null}
           isAdminAccess={isAdminAccess}
           clipboardPlayer={clipboardPlayer}
+          highlightedPlayerId={highlightedPlayerId}
           groupId={group.id}
           tierId={tierId}
           contentType={contentType}
