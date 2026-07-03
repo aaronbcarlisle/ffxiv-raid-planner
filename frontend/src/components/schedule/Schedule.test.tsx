@@ -202,6 +202,44 @@ describe('Schedule', () => {
     expect(useScheduleStore.getState().fetchExceptions).toHaveBeenCalledWith('g1', 'sRec');
   });
 
+  // Regression pin for the deep-link-before-exceptions defect (Bugbot finding):
+  // on the FIRST pass of the resolving effect, `cancelledBySession` has no entry
+  // for a recurring target yet (fetchExceptions is still in flight), so
+  // computeNextOccurrence would treat every occurrence as non-cancelled. Without
+  // the exceptions-wait gate, the effect marks `handledRef` and permanently
+  // scopes to 07-01's week (week 2) even though 07-01 is actually cancelled —
+  // the real next occurrence is 07-08 (week 3). This test fails against the
+  // ungated code (reverting the `!cancelledBySession.has(...)` gate makes the
+  // scoped week lock to week 2 / "Jul 1", never reaching week 3 / "Jul 8").
+  it('waits for exceptions before resolving a recurring deep link, landing on the first NON-cancelled occurrence instead of the cancelled one', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-25T00:00:00Z'));
+    useScheduleStore.setState({
+      sessions: [sRec],
+      fetchExceptions: vi.fn(async (_groupId: string, sessionId: string) =>
+        sessionId === 'sRec'
+          ? [
+              {
+                id: 'ex1', sessionId: 'sRec', occurrenceDate: '2026-07-01', type: 'cancelled',
+                overrideStartTime: null, overrideEndTime: null, overrideTitle: null,
+                overrideDescription: null, overrideBannerUrl: null, overrideBannerKey: null,
+                cancellationReason: null, createdById: 'u1', createdAt: '',
+              },
+            ]
+          : [],
+      ),
+    } as never);
+
+    renderSchedule({}, ['/?sessionId=sRec']);
+    // Flush the fetchExceptions microtasks so the cancellation lands. `waitFor`
+    // polls via real timers, which never fire under `vi.useFakeTimers()`, so
+    // assert directly once the microtask queue (the Promise.all resolution) drains.
+    await act(async () => {});
+
+    expect(screen.getByTestId('session-daytime').textContent).toMatch(/Jul 8/);
+    expect(screen.getByTestId('session-daytime').textContent).not.toMatch(/Jul 1/);
+  });
+
   it('hides RSVP controls from viewers and submits an RSVP for members', () => {
     // Viewer: session renders, but no RSVP buttons.
     const viewerGroup = { ...group, userRole: 'viewer' } as unknown as StaticGroup;

@@ -114,6 +114,31 @@ describe('SessionList', () => {
     expect(document.getElementById('schedule-session-hl1')).not.toHaveClass('highlight-pulse');
   });
 
+  it('assigns the schedule-session-{id} anchor to only the EARLIEST occurrence of a recurring session with multiple BYDAY days in the same week', () => {
+    // A single session rendering twice in one scoped week (e.g. BYDAY=MO,WE)
+    // must not produce two elements sharing the same DOM id.
+    const session = makeSession({ id: 'rec', title: 'Recurring Raid', isRecurring: true });
+    const earlier = occ(session, '2026-07-06T20:00:00.000Z');
+    const later = occ(session, '2026-07-08T20:00:00.000Z');
+    renderList({ occurrences: [earlier, later], isCurrentWeek: false });
+
+    const matches = document.querySelectorAll('[id="schedule-session-rec"]');
+    expect(matches.length).toBe(1);
+    // The anchored element wraps the earliest occurrence's card, not the later one.
+    expect(matches[0].textContent).toMatch(/Jul 6/);
+  });
+
+  it('restricts highlight-pulse to the anchored (first) occurrence when a session renders more than once', () => {
+    const session = makeSession({ id: 'rec', isRecurring: true });
+    const earlier = occ(session, '2026-07-06T20:00:00.000Z');
+    const later = occ(session, '2026-07-08T20:00:00.000Z');
+    renderList({ occurrences: [earlier, later], isCurrentWeek: false, highlightedSessionId: 'rec' });
+
+    const highlighted = document.querySelectorAll('.highlight-pulse');
+    expect(highlighted.length).toBe(1);
+    expect(highlighted[0].id).toBe('schedule-session-rec');
+  });
+
   it('kebab: Edit fires onEdit(session), and Manage occurrences shows only for recurring + canManage', async () => {
     const onEdit = vi.fn();
     const session = makeSession({ id: 's1', isRecurring: true });

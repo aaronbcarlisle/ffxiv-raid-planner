@@ -226,6 +226,18 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
     if (!sessionId) return;
     const session = sessions.find((s) => s.id === sessionId);
     if (!session) return;
+
+    // Recurring targets: wait for the batched exceptions fetch to land before
+    // resolving. On the FIRST pass `cancelledBySession` has no entry for this
+    // id yet (fetchExceptions is still in flight), so computeNextOccurrence
+    // would treat every occurrence as non-cancelled and can resolve to one
+    // that's actually cancelled — scoping the wrong week PERMANENTLY, since
+    // handledRef would already be marked by the time the real data arrives.
+    // `cancelledBySession` is already a dep of this effect, and the exceptions
+    // effect always sets an entry per recurring id (an empty Set on fetch
+    // failure — see that effect), so this is guaranteed to converge.
+    if (session.isRecurring && session.recurrenceRule && !cancelledBySession.has(session.id)) return;
+
     if (handledRef.current === sessionId) return;
     handledRef.current = sessionId;
 

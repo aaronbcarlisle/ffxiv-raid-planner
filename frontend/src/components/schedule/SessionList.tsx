@@ -208,6 +208,15 @@ export function SessionList({
   }
 
   const nextIndex = findNextIndex(occurrences, isCurrentWeek);
+  // A recurring session with multiple BYDAY days can render several occurrence
+  // cards for the SAME session in one scoped week. The `schedule-session-{id}`
+  // anchor (deep-link scroll target + highlight) must stay a unique DOM id, so
+  // only the FIRST-rendered occurrence of each session gets it — the earliest
+  // occurrence is the natural scroll target for a sessionId-only deep link.
+  // The highlight is restricted to that same anchored card (rather than every
+  // occurrence of the session) so "the highlighted card" and "the anchor" are
+  // always the same element.
+  const seenSessionIds = new Set<string>();
 
   return (
     <div className="grid gap-3.5">
@@ -215,7 +224,9 @@ export function SessionList({
         const { session, occursAt } = occ;
         const displaySession = buildDisplaySession(occ);
         const variant = index === nextIndex ? 'next' : 'later';
-        const highlighted = highlightedSessionId === session.id;
+        const isFirstOccurrenceOfSession = !seenSessionIds.has(session.id);
+        seenSessionIds.add(session.id);
+        const highlighted = isFirstOccurrenceOfSession && highlightedSessionId === session.id;
         const currentUserRsvp = currentUserId
           ? session.rsvps.find((r) => r.userId === currentUserId)?.status
           : undefined;
@@ -223,7 +234,7 @@ export function SessionList({
         return (
           <div
             key={`${session.id}-${occursAt}`}
-            id={`schedule-session-${session.id}`}
+            id={isFirstOccurrenceOfSession ? `schedule-session-${session.id}` : undefined}
             className={highlighted ? 'highlight-pulse rounded-lg' : undefined}
           >
             <SessionRsvpCard
