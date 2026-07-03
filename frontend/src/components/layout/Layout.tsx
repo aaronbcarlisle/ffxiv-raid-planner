@@ -16,15 +16,18 @@ export function Layout() {
   const isAdmin = user?.isAdmin ?? false;
 
   // The v2 shell (F6a) renders its own TopBar, so suppress the legacy Header for
-  // the group route under `?shell=v2` to avoid a double top bar. EVERY other case
-  // — all non-group routes, and the legacy group route without `?shell=v2` —
-  // renders <Header /> exactly as before (byte-for-byte).
+  // the group route by default. FLIP P2: v2 is now the default, so suppression
+  // applies to every /group/ route EXCEPT the `?shell=legacy` escape hatch, which
+  // still renders <Header /> exactly as before (byte-for-byte). All non-group
+  // routes always render <Header />.
   const location = useLocation();
   const [searchParams] = useSearchParams();
   // `startsWith('/group/')` is intentionally broad (matches any share code); the
-  // `shell=v2` gate on the right-hand side already scopes suppression to v2-only.
+  // `shell !== 'legacy'` gate on the right-hand side scopes suppression to the v2
+  // default (bare, ?shell=v2, and any other non-legacy value), leaving only the
+  // legacy escape hatch (?shell=legacy) its Header.
   const isGroupV2Shell =
-    location.pathname.startsWith('/group/') && searchParams.get('shell') === 'v2';
+    location.pathname.startsWith('/group/') && searchParams.get('shell') !== 'legacy';
 
   // Global event listener for keyboard shortcuts modal
   // This allows the UserMenu to trigger shortcuts from any page

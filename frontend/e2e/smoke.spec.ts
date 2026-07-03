@@ -464,7 +464,7 @@ test.describe('Viewer restrictions', () => {
   }) => {
     const ctx = await browser.newContext({ baseURL: FRONTEND_BASE });
     const page = await ctx.newPage();
-    await page.goto(`/group/${DEV_SHARE_CODE}`);
+    await page.goto(`/group/${DEV_SHARE_CODE}?shell=legacy`);
 
     // The dev static is private → "Private Static" error wall
     await expect(page.getByText('Private Static')).toBeVisible({ timeout: 15_000 });
@@ -497,7 +497,7 @@ test.describe('Settings access', () => {
   }) => {
     const ctx = await browser.newContext({ baseURL: FRONTEND_BASE });
     const page = await ctx.newPage();
-    await page.goto(`/group/${DEV_SHARE_CODE}`);
+    await page.goto(`/group/${DEV_SHARE_CODE}?shell=legacy`);
     await expect(page.getByText('Private Static')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('button', { name: /Static settings/i })).toBeHidden();
     await ctx.close();

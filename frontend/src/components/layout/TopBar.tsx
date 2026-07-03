@@ -71,12 +71,12 @@ export function TopBar({ onOpenPalette, onOpenNotifications }: TopBarProps) {
   // Fetch invitations for the invite affordance — mirrors legacy Header.tsx:100-105
   // (canManageInvitations-gated; the legacy isGroupRoute/currentGroup conditions are
   // implied here since TopBar only mounts in group view).
+  const currentGroupId = currentGroup?.id;
   useEffect(() => {
-    if (canManageInvitations && currentGroup) {
-      fetchInvitations(currentGroup.id);
+    if (canManageInvitations && currentGroupId) {
+      fetchInvitations(currentGroupId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManageInvitations, currentGroup?.id]);
+  }, [canManageInvitations, currentGroupId, fetchInvitations]);
 
   // Fresh-audited port of legacy Header.tsx's handleInviteMembers (Header.tsx:123-150).
   // DELIBERATE DEVIATION: legacy falls back to a document.execCommand('copy') textarea

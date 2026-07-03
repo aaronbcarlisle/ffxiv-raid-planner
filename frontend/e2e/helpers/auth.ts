@@ -57,7 +57,11 @@ export async function loginAsMember(page: Page): Promise<void> {
  * If no login was performed, pass waitForAuth=false.
  */
 export async function goToTestStatic(page: Page, waitForAuth = true): Promise<void> {
-  await page.goto(`/group/${DEV_SHARE_CODE}`);
+  // FLIP P2: v2 is now the default group route. This smoke suite characterizes the
+  // LEGACY surface, which still ships behind the `?shell=legacy` escape hatch through
+  // the soak window, so pin it there. The v2-selector rewrite of these flows lands in
+  // P3, coupled to legacy deletion (when the escape hatch is removed).
+  await page.goto(`/group/${DEV_SHARE_CODE}?shell=legacy`);
   // The Roster tab button is always present once the group loads
   await page.getByRole('button', { name: 'Roster', exact: true }).first().waitFor({ timeout: 15_000 });
   // Wait for auth hydration: the UserMenu button (aria-label "User menu for …")
