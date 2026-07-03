@@ -210,4 +210,43 @@ describe('AvailabilityHeatmap', () => {
     expect(styles[3]).toContain('var(--color-accent) 45%');
     expect(styles[4]).toContain('var(--color-accent) 70%');
   });
+
+  // Task 10 (§5.1 stopgap): an optional Edit-week affordance in the card header,
+  // additive-only — see the paired regression pin below for the unset case.
+  it('renders an "Edit week" button that fires onEditWeek when set', () => {
+    const alice = makeMember('u1', 'Alice');
+    const onEditWeek = vi.fn();
+    render(
+      <AvailabilityHeatmap
+        data={[]}
+        members={[alice]}
+        weekDates={WEEK_DATES}
+        sessions={[]}
+        canManage={false}
+        onEditWeek={onEditWeek}
+      />,
+    );
+    const button = screen.getByRole('button', { name: 'Edit week' });
+    fireEvent.click(button);
+    expect(onEditWeek).toHaveBeenCalledTimes(1);
+    // The raiders count still renders alongside the button.
+    expect(screen.getByText('1 raiders')).toBeInTheDocument();
+  });
+
+  // Regression pin: default render (onEditWeek unset) must stay byte-identical
+  // to every other test above — no button, just the bare raiders span.
+  it('renders the bare raiders span with no "Edit week" button when onEditWeek is unset', () => {
+    const alice = makeMember('u1', 'Alice');
+    render(
+      <AvailabilityHeatmap
+        data={[]}
+        members={[alice]}
+        weekDates={WEEK_DATES}
+        sessions={[]}
+        canManage={false}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'Edit week' })).not.toBeInTheDocument();
+    expect(screen.getByText('1 raiders')).toBeInTheDocument();
+  });
 });

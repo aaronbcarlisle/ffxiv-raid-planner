@@ -45,6 +45,9 @@ import { BestTimesCard } from './BestTimesCard';
 import { PersonLayerEntryPoint } from './PersonLayerEntryPoint';
 import { CreateSessionModal } from './CreateSessionModal';
 import { OccurrenceListModal } from './OccurrenceListModal';
+// Task 10 (§5.1 stopgap): the only availability EDITOR reachable from v2 —
+// reused import-only inside a Modal, until the Ring-1 Person→Static pipe.
+import { AvailabilityGrid } from './AvailabilityGrid';
 import type {
   AvailabilityRecommendation,
 } from './availabilityUtils';
@@ -279,6 +282,18 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
     return () => window.clearTimeout(clearTimer);
   }, [highlightedSessionId]);
 
+  // ── Availability edit modal (Task 10 §5.1 stopgap) ──────────────────────────
+  // Hosts the legacy AvailabilityGrid import-only until Ring-1's Person→Static
+  // pipe replaces it. Gated the same way `canRsvp` gates RSVP controls — any
+  // non-viewer member can paint their own week (mirrors AvailabilityGrid's own
+  // `canSubmit` semantics, verified against ScheduleTab.tsx:402).
+  const editModal = useModal();
+  const handleEditClose = () => {
+    editModal.close();
+    const { startDate, endDate } = getUtcDateRange(weekDates);
+    void fetchAvailability(group.id, startDate, endDate);
+  };
+
   // ── Create / edit modal ─────────────────────────────────────────────────────
   const createModal = useModal();
   const [editSession, setEditSession] = useState<ScheduleSession | null>(null);
@@ -432,6 +447,7 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
               sessions={occurrences}
               canManage={canManage}
               onProposeSession={handlePropose}
+              onEditWeek={canRsvp ? editModal.open : undefined}
             />
             <BestTimesCard
               recommendations={recommendations}
@@ -461,6 +477,24 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
           editSession={editSession}
           initialDraft={createDraft}
         />
+      )}
+
+      {editModal.isOpen && (
+        <Modal isOpen onClose={handleEditClose} title="Edit availability" size="5xl">
+          <AvailabilityGrid
+            groupId={group.id}
+            canSubmit={canRsvp}
+            canCreateSession={canManage}
+            sessions={sessions}
+            members={members}
+            staticName={group.name}
+            shareCode={group.shareCode}
+            onCreateSessionDraft={(draft) => {
+              editModal.close();
+              handlePropose(draft);
+            }}
+          />
+        </Modal>
       )}
 
       {deleteChoice && (

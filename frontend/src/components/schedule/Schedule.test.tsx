@@ -11,11 +11,32 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, it, expect, vi, type Mock } from 'vitest';
+
+// Task 10: AvailabilityGrid + CreateSessionModal are mounted only inside the
+// edit/create modals — mocked to prop-capturing stubs (project convention, see
+// WeaponPriorityBridge.test.tsx) so this suite stays store/router-only and
+// never has to satisfy AvailabilityGrid's own store dependencies.
+let mockAvailabilityGridProps: Record<string, unknown> | null = null;
+vi.mock('./AvailabilityGrid', () => ({
+  AvailabilityGrid: (props: Record<string, unknown>) => {
+    mockAvailabilityGridProps = props;
+    return <div data-testid="availability-grid-stub" />;
+  },
+}));
+
+let mockCreateSessionModalProps: Record<string, unknown> | null = null;
+vi.mock('./CreateSessionModal', () => ({
+  CreateSessionModal: (props: Record<string, unknown>) => {
+    mockCreateSessionModalProps = props;
+    return <div data-testid="create-session-modal-stub" />;
+  },
+}));
+
 import { Schedule } from './Schedule';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
-import type { ScheduleSession, StaticGroup } from '../../types';
+import type { ScheduleSession, ScheduleSessionCreate, StaticGroup } from '../../types';
 
 function makeSession(overrides: Partial<ScheduleSession> = {}): ScheduleSession {
   return {
@@ -270,5 +291,84 @@ describe('Schedule', () => {
     const { unmount } = renderSchedule();
     unmount();
     expect(clearSessions).not.toHaveBeenCalled();
+  });
+
+  // Task 10 (§5.1 stopgap): the only availability EDITOR reachable from v2 is
+  // the legacy AvailabilityGrid, hosted in a modal off the heatmap's Edit-week
+  // affordance, until the Ring-1 Person→Static pipe replaces it.
+  describe('availability edit modal (Task 10 stopgap)', () => {
+    it("opens via the heatmap's Edit week affordance, mounting AvailabilityGrid with legacy-mirrored props", async () => {
+      renderSchedule();
+      await waitFor(() => expect(availabilityMock()).toHaveBeenCalled());
+
+      expect(screen.queryByTestId('availability-grid-stub')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit week' }));
+
+      expect(screen.getByTestId('availability-grid-stub')).toBeInTheDocument();
+      expect(mockAvailabilityGridProps).toMatchObject({
+        groupId: 'g1',
+        canSubmit: true, // canRsvp mirrored (owner, non-viewer)
+        canCreateSession: true, // canManage
+        staticName: 'Test Static',
+        shareCode: 'DEVTST',
+      });
+      expect(mockAvailabilityGridProps?.sessions).toEqual([s2, s3]);
+      expect(mockAvailabilityGridProps?.members).toEqual(group.members);
+      expect(typeof mockAvailabilityGridProps?.onCreateSessionDraft).toBe('function');
+    });
+
+    it('hides the Edit week affordance for viewers (canRsvp=false)', async () => {
+      const viewerGroup = { ...group, userRole: 'viewer' } as unknown as StaticGroup;
+      render(
+        <MemoryRouter>
+          <Schedule group={viewerGroup} tier={null} canManage={false} currentUserId="u1" />
+        </MemoryRouter>,
+      );
+      await waitFor(() => expect(availabilityMock()).toHaveBeenCalled());
+      expect(screen.queryByRole('button', { name: 'Edit week' })).not.toBeInTheDocument();
+    });
+
+    it('re-fires the scoped-week availability fetch when the modal closes', async () => {
+      renderSchedule();
+      await waitFor(() => expect(availabilityMock()).toHaveBeenCalledTimes(1));
+      const [, firstStart, firstEnd] = availabilityMock().mock.calls[0];
+
+      fireEvent.click(screen.getByRole('button', { name: 'Edit week' }));
+      expect(screen.getByTestId('availability-grid-stub')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByLabelText('Close modal'));
+
+      expect(screen.queryByTestId('availability-grid-stub')).not.toBeInTheDocument();
+      await waitFor(() => expect(availabilityMock()).toHaveBeenCalledTimes(2));
+      const [gid, secondStart, secondEnd] = availabilityMock().mock.calls[1];
+      expect(gid).toBe('g1');
+      expect(secondStart).toBe(firstStart);
+      expect(secondEnd).toBe(firstEnd);
+    });
+
+    it("the grid's draft callback closes the edit modal and opens the create modal with the draft", async () => {
+      renderSchedule();
+      await waitFor(() => expect(availabilityMock()).toHaveBeenCalled());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Edit week' }));
+      expect(screen.getByTestId('availability-grid-stub')).toBeInTheDocument();
+      expect(screen.queryByTestId('create-session-modal-stub')).not.toBeInTheDocument();
+
+      const draft: ScheduleSessionCreate = {
+        title: 'Recommended Raid Night',
+        startTime: '2026-07-01T20:00:00Z',
+        endTime: '2026-07-01T22:00:00Z',
+        timezone: 'UTC',
+        isRecurring: false,
+      };
+      const onCreateSessionDraft = mockAvailabilityGridProps?.onCreateSessionDraft as (
+        d: ScheduleSessionCreate,
+      ) => void;
+      act(() => onCreateSessionDraft(draft));
+
+      expect(screen.queryByTestId('availability-grid-stub')).not.toBeInTheDocument();
+      expect(screen.getByTestId('create-session-modal-stub')).toBeInTheDocument();
+      expect(mockCreateSessionModalProps?.initialDraft).toEqual(draft);
+    });
   });
 });
