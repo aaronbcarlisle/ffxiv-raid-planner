@@ -5,7 +5,7 @@
  * ran these two effects on its own — meaning neither "recently accessed
  * statics" nor per-static tab memory updated while browsing in the v2 shell
  * (NewShell never ran them). This hook is now the single source of both
- * behaviors; both GroupView and NewShell call it.
+ * behaviors; NewShell (the sole shell since flip-P3) calls it.
  *
  * Both effects key on the passed `shareCode` argument (the route param). The
  * original two effects keyed on two different things — the first on the raw

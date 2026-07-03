@@ -157,9 +157,13 @@ export function ShellContent() {
         </>
       }
     >
+      {/* Slots are unconditional (flip-P3 Task 2): ShellContentStates renders
+          these children only in its branch 5, where `currentGroup` is loaded
+          and tiers exist — so the per-slot `currentGroup ?` builders above are
+          always populated by the time GroupViewContent mounts. */}
       <GroupViewContent
         actions={useGroupActions()}
-        slots={currentGroup ? { overview, roster, gear: loot, schedule } : undefined}
+        slots={{ overview, roster, gear: loot, schedule }}
       />
     </ShellContentStates>
   );

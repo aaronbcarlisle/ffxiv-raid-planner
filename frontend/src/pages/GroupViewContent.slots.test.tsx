@@ -1,0 +1,300 @@
+/**
+ * GroupViewContent — post-surgery slots contract (flip-P3 Task 2).
+ *
+ * Pins the v2-only contract after the legacy fallback bodies were deleted:
+ *   1. `slots` is REQUIRED — each spine tab renders its slot, and no legacy
+ *      leaf (StaticHomeTab, PlayerGrid, SplitClearPlanner, GearSyncDashboard,
+ *      TeamSummaryEnhanced, HistoryView, ScheduleTab, …) renders anywhere.
+ *   2. Slotless pageModes (goals / more / plugin) render their bodies
+ *      unconditionally.
+ *   3. The legacy sticky roster toolbar is gone (no roster sub-tab tablist),
+ *      and no legacy data-fetching side effects fire (split-clear fetch,
+ *      LogWeekWizard mount).
+ *   4. Shared wiring survives: MobileBottomNav mounts, the GroupActions
+ *      context still gates keyboard shortcuts, the added-player highlight
+ *      signal is consumed one-shot.
+ *
+ * Heavy hooks/stores/leaf-components are mocked — the point is the contract,
+ * not full integration. (Scaffold adapted from the deleted GroupViewContent.test.tsx.)
+ */
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { AddedPlayerSignal } from './groupActionsContext';
+
+// ── Mock the state hook: a controllable, fully-shaped useGroupViewState ──
+const setPageMode = vi.fn();
+let mockPageMode = 'overview';
+const noop = vi.fn();
+function makeState() {
+  return {
+    searchParams: new URLSearchParams(),
+    setSearchParams: noop,
+    pageMode: mockPageMode,
+    setPageMode,
+    gearSubTab: 'sync', setGearSubTab: noop,
+    lootSubTab: 'gear', setLootSubTab: noop,
+    viewMode: 'compact', setViewMode: noop,
+    groupView: false, setGroupView: noop, setGroupViewState: noop,
+    subsView: false, setSubsView: noop,
+    selectedFloor: 1, setSelectedFloor: noop,
+    sortPreset: 'standard', setSortPreset: noop, setSortPresetState: noop,
+    editingPlayerId: null, setEditingPlayerId: noop,
+    clipboardPlayer: null, setClipboardPlayer: noop,
+    showCreateTierModal: false, setShowCreateTierModal: noop,
+    showSettingsModal: false, setShowSettingsModal: noop,
+    showRolloverDialog: false, setShowRolloverDialog: noop,
+    showDeleteTierConfirm: false, setShowDeleteTierConfirm: noop,
+    showKeyboardHelp: false, setShowKeyboardHelp: noop,
+    showLogLootModal: false, setShowLogLootModal: noop,
+    showLogMaterialModal: false, setShowLogMaterialModal: noop,
+    showMarkFloorClearedModal: false, setShowMarkFloorClearedModal: noop,
+    showLogWeekWizard: false, setShowLogWeekWizard: noop,
+    logWeekWizardFloor: null, setLogWeekWizardFloor: noop,
+    logWeekWizardWeek: null, setLogWeekWizardWeek: noop,
+    playerModalCount: 0, setPlayerModalCount: noop,
+    highlightedPlayerId: null, setHighlightedPlayerId: noop,
+    highlightedSlot: null, setHighlightedSlot: noop,
+    highlightedEntry: null, setHighlightedEntry: noop,
+    highlightedBookPlayerId: null, setHighlightedBookPlayerId: noop,
+  };
+}
+vi.mock('../hooks/useGroupViewState', () => ({
+  useGroupViewState: () => makeState(),
+}));
+
+// ── Stores ──
+const currentTier = { id: 'snap1', tierId: 'm5s', contentType: 'savage', players: [] as unknown[] };
+const currentGroup = { id: 'g1', name: 'Test Static', shareCode: 'DEVTST', settings: {}, userRole: 'owner' };
+vi.mock('../stores/tierStore', () => ({
+  useTierStore: () => ({ currentTier, tiers: [currentTier], isSaving: false, fetchTier: vi.fn() }),
+}));
+vi.mock('../stores/staticGroupStore', () => ({
+  useStaticGroupStore: () => ({ currentGroup, groups: [currentGroup] }),
+}));
+vi.mock('../stores/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1', isAdmin: false } }) }));
+vi.mock('../stores/viewAsStore', () => ({ useViewAsStore: () => ({ viewAsUser: null }) }));
+vi.mock('../stores/lootTrackingStore', () => ({
+  useLootTrackingStore: () => ({
+    currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
+    lootLog: [], fetchMaterialLog: vi.fn(), materialLog: [],
+  }),
+}));
+vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
+// Spy: the legacy Split Planner fallback was the ONLY consumer of this store in
+// GroupViewContent — post-surgery, nothing here may touch it.
+const fetchSplitClearSpy = vi.fn();
+vi.mock('../stores/splitClearStore', () => ({
+  useSplitClearStore: () => ({ fetchData: fetchSplitClearSpy, clearData: vi.fn() }),
+}));
+vi.mock('../stores/settingsPanelStore', () => ({
+  useSettingsPanelStore: { getState: () => ({ open: vi.fn(), close: vi.fn() }) },
+}));
+
+// ── Hooks ──
+const keyboardSpy = vi.fn();
+vi.mock('../hooks/useGroupViewKeyboardShortcuts', () => ({
+  useGroupViewKeyboardShortcuts: (_params: unknown, isAnyModalOpen: boolean) => keyboardSpy(isAnyModalOpen),
+}));
+vi.mock('../hooks/usePlayerActions', () => ({ usePlayerActions: () => ({ handleAddPlayer: vi.fn() }) }));
+vi.mock('../components/dnd/useDragAndDrop', () => ({
+  useDragAndDrop: () => ({ sensors: [], handleDragStart: vi.fn(), handleDragOver: vi.fn(), handleDragEnd: vi.fn(), handleDragCancel: vi.fn() }),
+}));
+vi.mock('../hooks/useDevice', () => ({ useDevice: () => ({ isSmallScreen: false }) }));
+vi.mock('../hooks/useSwipe', () => ({ useSwipe: () => ({}) }));
+vi.mock('../hooks/useViewNavigation', () => ({
+  useViewNavigation: () => ({ handleNavigateToPlayer: vi.fn(), handleNavigateToLootEntry: vi.fn(), handleNavigateToMaterialEntry: vi.fn(), handleNavigateToBooksPanel: vi.fn() }),
+}));
+vi.mock('../hooks/useVisibilityRefresh', () => ({ useVisibilityRefresh: vi.fn() }));
+vi.mock('../hooks/useUrlTabState', () => ({ useUrlTabState: (_k: string, _v: unknown, d: string) => [d, vi.fn()] }));
+vi.mock('../lib/eventBus', () => ({
+  useEventBus: vi.fn(),
+  eventBus: { emit: vi.fn(), on: vi.fn(() => vi.fn()) },
+  Events: { MEMBER_ROLE_CHANGED: 'membership:role-changed', MOUNT_FARM_SCHEDULE: 'mount-farm:schedule' },
+}));
+
+// ── GroupActions context: control modal-open + addedPlayer signal ──
+let mockActionModalOpen = false;
+let mockAddedPlayer: AddedPlayerSignal | null = null;
+const clearAddedPlayerSpy = vi.fn();
+vi.mock('./groupActionsContext', () => ({
+  useGroupActionModalOpen: () => mockActionModalOpen,
+  useGroupAddedPlayer: () => mockAddedPlayer,
+  useGroupClearAddedPlayer: () => clearAddedPlayerSpy,
+}));
+
+// ── Legacy leaves: mocked with testids so their ABSENCE is assertable.
+//    (Files still exist on disk until Task 4; GroupViewContent must no longer
+//    import or render any of them.) ──
+vi.mock('../components/static-group/StaticHomeTab', () => ({
+  StaticHomeTab: () => <div data-testid="legacy-overview" />,
+}));
+vi.mock('../components/player/PlayerGrid', () => ({
+  PlayerGrid: () => <div data-testid="legacy-player-grid" />,
+}));
+vi.mock('../components/player/RosterDragOverlay', () => ({
+  RosterDragOverlay: () => null,
+}));
+vi.mock('../components/player/RosterViewToggle', () => ({
+  RosterViewToggle: () => <div data-testid="legacy-roster-view-toggle" />,
+}));
+vi.mock('../components/roster/RosterCharacterPanel', () => ({
+  RosterCharacterPanel: () => <div data-testid="legacy-character-panel" />,
+}));
+vi.mock('../components/split-clear/SplitClearPlanner', () => ({
+  SplitClearPlanner: () => <div data-testid="legacy-split-planner" />,
+}));
+vi.mock('../components/group/GearSyncDashboard', () => ({
+  GearSyncDashboard: () => <div data-testid="legacy-gear-sync" />,
+}));
+const logWeekWizardSpy = vi.fn();
+vi.mock('../components/loot', () => ({
+  LootPriorityPanel: () => <div data-testid="legacy-loot-priority" />,
+  LogWeekWizard: () => { logWeekWizardSpy(); return null; },
+}));
+vi.mock('../components/history/HistoryView', () => ({
+  HistoryView: () => <div data-testid="legacy-history" />,
+}));
+vi.mock('../components/team/TeamSummaryEnhanced', () => ({
+  TeamSummaryEnhanced: () => <div data-testid="legacy-team-summary" />,
+}));
+vi.mock('../components/schedule', () => ({
+  ScheduleTab: () => <div data-testid="legacy-schedule-tab" />,
+}));
+vi.mock('../components/schedule/ScheduleUpcomingPanel', () => ({
+  ScheduleUpcomingPanel: () => <div data-testid="legacy-schedule-upcoming" />,
+}));
+
+// ── Slotless page bodies (kept, spec §4) ──
+vi.mock('../components/group/GoalsPage', () => ({
+  GoalsPage: () => <div data-testid="goals-page" />,
+}));
+vi.mock('../components/group/MorePage', () => ({
+  MorePage: () => <div data-testid="more-page" />,
+}));
+vi.mock('../components/group/PluginPage', () => ({
+  PluginPage: () => <div data-testid="plugin-page" />,
+}));
+vi.mock('../components/ui', async (orig) => {
+  const actual = await orig<typeof import('../components/ui')>();
+  return { ...actual, MobileBottomNav: () => <div data-testid="mobile-nav" /> };
+});
+
+import { GroupViewContent } from './GroupViewContent';
+
+const actions = { onTierChange: vi.fn(), onAddPlayer: vi.fn(), onNewTier: vi.fn(), onRollover: vi.fn(), onDeleteTier: vi.fn() };
+const slots = {
+  overview: <div data-testid="s-o" />,
+  roster: <div data-testid="s-r" />,
+  gear: <div data-testid="s-g" />,
+  schedule: <div data-testid="s-s" />,
+};
+const renderContent = () =>
+  render(<MemoryRouter><GroupViewContent actions={actions} slots={slots} /></MemoryRouter>);
+
+const LEGACY_TESTIDS = [
+  'legacy-overview', 'legacy-player-grid', 'legacy-roster-view-toggle',
+  'legacy-character-panel', 'legacy-split-planner', 'legacy-gear-sync',
+  'legacy-loot-priority', 'legacy-history', 'legacy-team-summary',
+  'legacy-schedule-tab', 'legacy-schedule-upcoming',
+];
+function expectNoLegacyLeaves() {
+  for (const id of LEGACY_TESTIDS) {
+    expect(screen.queryByTestId(id)).toBeNull();
+  }
+}
+
+describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () => {
+  beforeEach(() => {
+    mockPageMode = 'overview';
+    mockActionModalOpen = false;
+    mockAddedPlayer = null;
+    keyboardSpy.mockClear();
+    clearAddedPlayerSpy.mockClear();
+    fetchSplitClearSpy.mockClear();
+    logWeekWizardSpy.mockClear();
+  });
+  afterEach(() => { mockAddedPlayer = null; });
+
+  // ── 1. Each spine tab renders its slot; no legacy leaf anywhere ──
+  it.each([
+    ['overview', 's-o'],
+    ['roster', 's-r'],
+    ['gear', 's-g'],
+    ['schedule', 's-s'],
+  ] as const)('pageMode %s renders its slot and no legacy leaves', (mode, testid) => {
+    mockPageMode = mode;
+    renderContent();
+    expect(screen.getByTestId(testid)).toBeInTheDocument();
+    expectNoLegacyLeaves();
+    // No legacy gear sub-tab buttons or schedule view-switcher buttons.
+    expect(screen.queryByRole('button', { name: 'Sync' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Summary' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Upcoming' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Calendar' })).toBeNull();
+    expect(screen.queryByText('Split Planner')).toBeNull();
+  });
+
+  // ── 2/3. Slotless pageModes render their bodies unconditionally ──
+  it("pageMode 'goals' renders the GoalsPage body", () => {
+    mockPageMode = 'goals';
+    renderContent();
+    expect(screen.getByTestId('goals-page')).toBeInTheDocument();
+    expectNoLegacyLeaves();
+  });
+
+  it("pageMode 'more' renders the MorePage body", () => {
+    mockPageMode = 'more';
+    renderContent();
+    expect(screen.getByTestId('more-page')).toBeInTheDocument();
+  });
+
+  it("pageMode 'plugin' renders the PluginPage body", () => {
+    mockPageMode = 'plugin';
+    renderContent();
+    expect(screen.getByTestId('plugin-page')).toBeInTheDocument();
+  });
+
+  // ── 4. Legacy sticky roster toolbar is gone ──
+  it('renders no roster sub-tab tablist on the roster tab', () => {
+    mockPageMode = 'roster';
+    renderContent();
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('tab')).toBeNull();
+  });
+
+  // ── Legacy side effects are gone ──
+  it('does not fetch split-clear data on the roster tab (Split Planner fallback removed)', () => {
+    mockPageMode = 'roster';
+    renderContent();
+    expect(fetchSplitClearSpy).not.toHaveBeenCalled();
+  });
+
+  it('never mounts the legacy LogWeekWizard', () => {
+    mockPageMode = 'gear';
+    renderContent();
+    expect(logWeekWizardSpy).not.toHaveBeenCalled();
+  });
+
+  // ── Shared wiring survives ──
+  it('mounts the MobileBottomNav', () => {
+    renderContent();
+    expect(screen.getByTestId('mobile-nav')).toBeInTheDocument();
+  });
+
+  it('disables the content keyboard shortcuts when an action modal is open (from context)', () => {
+    mockActionModalOpen = false;
+    renderContent();
+    expect(keyboardSpy).toHaveBeenLastCalledWith(false);
+    keyboardSpy.mockClear();
+    mockActionModalOpen = true;
+    renderContent();
+    expect(keyboardSpy).toHaveBeenLastCalledWith(true);
+  });
+
+  it('clears the addedPlayer signal immediately after consuming it (one-shot)', async () => {
+    mockAddedPlayer = { playerId: 'p-new', nonce: 1 };
+    renderContent();
+    await waitFor(() => expect(clearAddedPlayerSpy).toHaveBeenCalledTimes(1));
+  });
+});
