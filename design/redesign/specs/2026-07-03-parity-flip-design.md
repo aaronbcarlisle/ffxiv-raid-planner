@@ -1,6 +1,6 @@
 # Parity Flip — Design Spec (v2 shell becomes the default group route)
 
-**Status:** DRAFT for the user's holistic-review checkpoint (AUTONOMOUS_RUN §4 HARD STOP). Nothing in this spec is implemented; the flip is **not** merged by the autonomous run. Every ❓ item is a go/no-go input for the user.
+**Status:** APPROVED — **user gave the FLIP GO 2026-07-03** (do the flip now; `main` frozen until the whole redesign is done; the flip lives on `redesign/foundation` only; prod-data testing at the end via a Railway DB copy). §8 go/no-go items adopted per decide+ratify doctrine. **P1 (readiness) IMPLEMENTED + MERGED** into foundation `7e0cb0d` (PR #171, 2026-07-03 — closes the §3–§5 parity gaps behind `?shell=v2`). **P2 (the flip: GroupRoute inversion + `?shell=legacy` escape hatch + smoke-suite migration + public release note) is NEXT.** **P3 (legacy deletion) is gated on the user's holistic review after P2.** Two P1 decisions to ratify at that pause: SettingsPanel `boundaries/dependencies` suppression 4→5, and the legacy-visible Settings Integrations tab.
 
 **Inputs:** F6a–F6e all merged (foundation `13a1726`); legacy-surface + flip-debt inventories (2026-07-03, file:line-verified against `13a1726`); F6d/F6e flip-blocker ledgers (F6e spec §6.3); holistic "revisit when whole" list items 1–41 (memory `feedback_defer_holistic_review`).
 
