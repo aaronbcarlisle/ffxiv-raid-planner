@@ -172,4 +172,16 @@ describe('NewShell ShellContent — admin + join-request banners', () => {
     expect(screen.queryByTestId('join-request-banner')).not.toBeInTheDocument();
     expect(screen.queryByTestId('gvc')).not.toBeInTheDocument();
   });
+
+  it('(d) mounts BOTH banners in the no-tiers state — legacy parity: banners render whenever currentGroup exists, including a zero-tier static (GroupView.tsx early-return guards are all !currentGroup)', () => {
+    mocks.tier = null; // ShellContentStates' tierStore mock maps a null tier to tiers:[] -> branch 4 (no-tiers)
+    mocks.isAdminAccess = true;
+    mocks.userRole = null;
+    renderShell();
+    expect(screen.getByTestId('shell-state-no-tiers')).toBeInTheDocument();
+    expect(screen.getByTestId('admin-banners')).toHaveAttribute('data-is-admin-access', 'true');
+    const banner = screen.getByTestId('join-request-banner');
+    expect(banner).toHaveAttribute('data-share-code', 'DEVTST');
+    expect(banner).toHaveAttribute('data-group-id', 'g1');
+  });
 });

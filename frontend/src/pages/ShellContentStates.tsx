@@ -18,6 +18,13 @@
  *   5. otherwise — render `children`, plus an error Modal overlay when a group is
  *                  loaded but a (subsequent) error is present.
  *
+ * The optional `banners` slot (self-contained admin/join-request banners) is
+ * rendered in BOTH currentGroup-truthy branches (4 and 5), never in 1-3 — legacy
+ * parity: every early-return guard in GroupView.tsx (loading/private/not-found)
+ * requires `!currentGroup`, so legacy's banners render below its own no-tiers
+ * box too (GroupView.tsx:381-415). Rendered outside the centered `max-w-2xl`
+ * wrapper in branch 4 so the banners keep their own full content-width margins.
+ *
  * Store reads mirror the interface the legacy chrome uses: the group-scoped
  * loading/not-found gate reads `staticGroupStore`; the no-tiers gate reads the
  * tier list + its own loading flag from `tierStore` (plus the group store's
@@ -52,7 +59,22 @@ function formatErrorDetails(message: string, stack: string | null): string {
     .join('\n');
 }
 
-export function ShellContentStates({ children }: { children: ReactNode }): ReactElement {
+export function ShellContentStates({
+  children,
+  banners,
+}: {
+  children: ReactNode;
+  /**
+   * Self-contained banners (AdminBanners / JoinRequestBanner) that must render
+   * whenever `currentGroup` is truthy — legacy parity: every early-return guard
+   * in GroupView.tsx (loading/private/not-found) requires `!currentGroup`, so
+   * legacy's banners render below ITS no-tiers box too. Rendered in BOTH
+   * currentGroup-truthy branches here (4. no-tiers, 5. otherwise) so a static
+   * with zero tiers doesn't lose "Exit Admin Mode" / "Request to Join". Never
+   * rendered in branches 1-3 (all `!currentGroup`).
+   */
+  banners?: ReactNode;
+}): ReactElement {
   const navigate = useNavigate();
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
   const isLoading = useStaticGroupStore((s) => s.isLoading);
@@ -161,14 +183,17 @@ export function ShellContentStates({ children }: { children: ReactNode }): React
   // populated static would flash "No Raid Tiers" for the roundtrip.
   if (tiers.length === 0 && !tiersLoading && !isLoading) {
     return (
-      <div data-testid="shell-state-no-tiers" className="mx-auto w-full max-w-2xl p-6">
-        <EmptyState
-          icon={<Layers className="w-6 h-6" />}
-          heading="No Raid Tiers"
-          description="Create your first tier snapshot to start tracking gear progress."
-          action={canEdit ? { label: 'Create First Tier', onClick: () => onNewTier() } : undefined}
-        />
-      </div>
+      <>
+        {banners}
+        <div data-testid="shell-state-no-tiers" className="mx-auto w-full max-w-2xl p-6">
+          <EmptyState
+            icon={<Layers className="w-6 h-6" />}
+            heading="No Raid Tiers"
+            description="Create your first tier snapshot to start tracking gear progress."
+            action={canEdit ? { label: 'Create First Tier', onClick: () => onNewTier() } : undefined}
+          />
+        </div>
+      </>
     );
   }
 
@@ -177,6 +202,7 @@ export function ShellContentStates({ children }: { children: ReactNode }): React
   //    the happy path never mounts the Modal. ──
   return (
     <>
+      {banners}
       {children}
       {error && currentGroup && (
         <Modal

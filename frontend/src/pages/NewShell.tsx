@@ -121,32 +121,40 @@ export function ShellContent() {
   // (legacy copy, new chrome) BEFORE the content — falling through to the
   // GroupViewContent children only on the happy path (and overlaying an error
   // Modal when a loaded group later errors). Mirrors legacy GroupView's own
-  // five branches around its body.
+  // five branches around its body. Banners are passed via the `banners` slot
+  // (not as children) so they render in EVERY currentGroup-truthy branch —
+  // including no-tiers — matching legacy, where they sit past all five
+  // branches (GroupView.tsx:381-415) rather than only past the happy path.
   return (
-    <ShellContentStates>
-      {/* Admin access banner (View As banner is in Layout) — GroupView.tsx:392-401 parity. */}
-      <AdminBanners
-        isAdminAccess={isAdminAccess}
-        onExitAdminMode={() => {
-          // Refetch group to get correct permissions without admin elevation.
-          if (shareCode) {
-            fetchGroupByShareCode(shareCode);
-          }
-        }}
-      />
-      {/* Join request banner for non-members viewing a discoverable static.
-          The banner supplies its own bottom margin only when it renders, so
-          members (where it returns null) don't get phantom spacing pushing
-          the content down. GroupView.tsx:403-415 parity. */}
-      {currentGroup && (
-        <JoinRequestBanner
-          shareCode={currentGroup.shareCode}
-          staticName={currentGroup.name}
-          groupId={currentGroup.id}
-          settings={currentGroup.settings}
-          userRole={userRole}
-        />
-      )}
+    <ShellContentStates
+      banners={
+        <>
+          {/* Admin access banner (View As banner is in Layout) — GroupView.tsx:392-401 parity. */}
+          <AdminBanners
+            isAdminAccess={isAdminAccess}
+            onExitAdminMode={() => {
+              // Refetch group to get correct permissions without admin elevation.
+              if (shareCode) {
+                fetchGroupByShareCode(shareCode);
+              }
+            }}
+          />
+          {/* Join request banner for non-members viewing a discoverable static.
+              The banner supplies its own bottom margin only when it renders, so
+              members (where it returns null) don't get phantom spacing pushing
+              the content down. GroupView.tsx:403-415 parity. */}
+          {currentGroup && (
+            <JoinRequestBanner
+              shareCode={currentGroup.shareCode}
+              staticName={currentGroup.name}
+              groupId={currentGroup.id}
+              settings={currentGroup.settings}
+              userRole={userRole}
+            />
+          )}
+        </>
+      }
+    >
       <GroupViewContent
         actions={useGroupActions()}
         slots={currentGroup ? { overview, roster, gear: loot, schedule } : undefined}
