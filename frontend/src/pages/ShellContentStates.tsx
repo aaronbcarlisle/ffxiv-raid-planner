@@ -111,11 +111,19 @@ export function ShellContentStates({
     if (!error) setErrorCopied(false);
   }, [error]);
 
-  const handleCopyError = useCallback(() => {
+  const handleCopyError = useCallback(async () => {
     if (!error) return;
-    navigator.clipboard.writeText(formatErrorDetails(error, errorStack));
-    setErrorCopied(true);
-    setTimeout(() => setErrorCopied(false), 2000);
+    // Await inside try: only surface "Copied!" once the write actually
+    // resolves. A blocked/denied clipboard must not report false success or
+    // escape as an unhandled rejection (redesign clipboard rule — matches
+    // SessionList.tsx's copy handlers).
+    try {
+      await navigator.clipboard.writeText(formatErrorDetails(error, errorStack));
+      setErrorCopied(true);
+      setTimeout(() => setErrorCopied(false), 2000);
+    } catch {
+      // Swallow — no success state on a rejected write.
+    }
   }, [error, errorStack]);
 
   const handleDismissError = useCallback(() => {
@@ -229,7 +237,7 @@ export function ShellContentStates({
                     type="button"
                     size="xs"
                     variant="secondary"
-                    onClick={handleCopyError}
+                    onClick={() => void handleCopyError()}
                     aria-label={errorCopied ? 'Copied to clipboard' : 'Copy error details'}
                     leftIcon={
                       errorCopied ? (

@@ -11,7 +11,7 @@
  * (never `@testing-library/user-event`, not a dependency here); `navigate` is
  * asserted via a MemoryRouter probe route.
  */
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ReactNode } from 'react';
@@ -237,5 +237,31 @@ describe('ShellContentStates', () => {
     renderStates();
     expect(screen.queryByTestId('shell-state-no-tiers')).not.toBeInTheDocument();
     expect(screen.getByTestId('content')).toBeInTheDocument();
+  });
+
+  it('7. copy error: a rejected clipboard write does not set the Copied state (no false-positive UI, no unhandled rejection)', async () => {
+    // PR-bot fix (Copilot): handleCopyError previously called
+    // navigator.clipboard.writeText(...) without awaiting/catching, and set
+    // errorCopied unconditionally. In a blocked-clipboard context this is an
+    // unhandled rejection AND a false "Copied!" UI state.
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    useStaticGroupStore.setState({ currentGroup: group, error: 'Save failed' });
+    useTierStore.setState({ tiers: [tier], isLoading: false });
+    renderStates();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy error details' }));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
+    expect(screen.queryByText('Copied!')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy error details' })).toBeInTheDocument();
+  });
+
+  it('7b. copy error: a successful clipboard write sets the Copied state', async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+    useStaticGroupStore.setState({ currentGroup: group, error: 'Save failed' });
+    useTierStore.setState({ tiers: [tier], isLoading: false });
+    renderStates();
+    fireEvent.click(screen.getByRole('button', { name: 'Copy error details' }));
+    await waitFor(() => expect(screen.getByText('Copied!')).toBeInTheDocument());
   });
 });

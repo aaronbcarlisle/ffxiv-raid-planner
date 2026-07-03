@@ -75,7 +75,9 @@ describe('SettingsPanel Integrations tab', () => {
     useSettingsPanelStore.setState({ tab: 'general' } as never);
     // Seed the schedule store so the mounted panel never falls through to the
     // real api client (settings present ⇒ no mount-fetch; empty sessions ⇒ no
-    // mirror poll). Actions are stubbed defensively.
+    // mirror poll, but DOES trigger the standalone sessions mount-fetch since
+    // `sessions` is empty — `fetchSessions` must be stubbed too). Actions are
+    // stubbed defensively.
     useScheduleStore.setState({
       sessions: [],
       settings: {
@@ -91,6 +93,7 @@ describe('SettingsPanel Integrations tab', () => {
       isLoadingSettings: false,
       error: null,
       fetchSettings: vi.fn(async () => {}),
+      fetchSessions: vi.fn(async () => {}),
       fetchDiscordMirrors: vi.fn(async () => []),
     } as never);
   });

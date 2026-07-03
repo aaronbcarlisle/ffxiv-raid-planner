@@ -13,7 +13,7 @@
  * Convention (matches Schedule.test.tsx): drive via `fireEvent`, stub every
  * store fetch action so mount effects never fall through to the real api client.
  */
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ScheduleIntegrationsPanel } from './ScheduleIntegrationsPanel';
 import { useScheduleStore } from '../../stores/scheduleStore';
@@ -64,6 +64,7 @@ function seedStore(over: Record<string, unknown> = {}) {
     isLoadingSettings: false,
     error: null,
     fetchSettings: vi.fn(async () => {}),
+    fetchSessions: vi.fn(async () => {}),
     updateSettings: vi.fn(async () => {}),
     sendTestReminder: vi.fn(async () => {}),
     postSessionPreview: vi.fn(async () => {}),
@@ -246,5 +247,81 @@ describe('ScheduleIntegrationsPanel', () => {
     seedStore({ sessions: [makeSession({ id: 'sX' })], settings: makeSettings(), fetchDiscordMirrors });
     render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
     await waitFor(() => expect(fetchDiscordMirrors).toHaveBeenCalledWith('g1', 'sX'));
+  });
+
+  // ── Cross-static settings-sync guard (PR-bot fix: cursor HIGH) ────────────
+  // Regression for: the settings-sync effect hydrated the form from
+  // WHATEVER `settings` the store held, without checking it belonged to
+  // this panel's `groupId`. During a cross-static open (manager viewed
+  // static A, switches to B, opens B's Integrations before the mount-fetch
+  // for B resolves), the store still holds A's settings — the effect must
+  // not hydrate the form with A's data in that window.
+  it('does not hydrate the form from stale cross-static settings, and hydrates once matching settings arrive', async () => {
+    const fetchSettings = vi.fn(async () => {});
+    seedStore({
+      settings: makeSettings({ staticGroupId: 'A', reminderChannelLabel: 'a-static-channel' }),
+      fetchSettings,
+    });
+    render(<ScheduleIntegrationsPanel groupId="B" canManage userRole="owner" />);
+
+    // Mount-fetch fires for B (existing stale-group guard) …
+    await waitFor(() => expect(fetchSettings).toHaveBeenCalledWith('B'));
+    // … but until it resolves, the form must NOT show A's cross-static data.
+    expect(screen.getByPlaceholderText('Channel label (e.g. raid-reminders)')).toHaveValue('');
+
+    // B's settings resolve — NOW the form hydrates.
+    act(() => {
+      useScheduleStore.setState({
+        settings: makeSettings({ staticGroupId: 'B', reminderChannelLabel: 'b-static-channel' }),
+      } as never);
+    });
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('Channel label (e.g. raid-reminders)')).toHaveValue('b-static-channel')
+    );
+  });
+
+  it('does not call updateSettings on Save while the loaded settings belong to a different static (cross-static Save guard)', () => {
+    const updateSettings = vi.fn(async () => {});
+    seedStore({
+      settings: makeSettings({ staticGroupId: 'A' }),
+      updateSettings,
+    });
+    render(<ScheduleIntegrationsPanel groupId="B" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Save'));
+    expect(updateSettings).not.toHaveBeenCalled();
+  });
+
+  // ── Standalone sessions mount-fetch (PR-bot fix: cursor MEDIUM) ───────────
+  // Regression for: mounted from Settings (ScheduleTab never runs), nothing
+  // fetched sessions for this panel — the Discord-mirror summary would stay
+  // empty forever, or (cross-static) reflect a previously viewed static.
+  it('fetches sessions on mount when none are loaded yet (standalone Settings mount)', async () => {
+    const fetchSessions = vi.fn(async () => {});
+    seedStore({ sessions: [], fetchSessions });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    await waitFor(() => expect(fetchSessions).toHaveBeenCalledWith('g1'));
+    // No infinite loop: the mock never mutates `sessions`, so a naive
+    // `sessions.length === 0` guard (without a per-group latch) would refire
+    // on every store update. Give effects a tick, then assert exactly one call.
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fetchSessions).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not refetch sessions on mount when the loaded sessions already belong to this static', async () => {
+    const fetchSessions = vi.fn(async () => {});
+    seedStore({ sessions: [makeSession({ staticGroupId: 'g1' })], fetchSessions });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    // Settle the (unrelated) discord-mirror poll — sessions being non-empty
+    // with a role also triggers that effect — before asserting, so the
+    // assertion isn't racing a pending act() outside this test.
+    await waitFor(() => expect(useScheduleStore.getState().fetchDiscordMirrors).toHaveBeenCalled());
+    expect(fetchSessions).not.toHaveBeenCalled();
+  });
+
+  it('refetches sessions when the loaded sessions belong to a different static (cross-static stale guard)', async () => {
+    const fetchSessions = vi.fn(async () => {});
+    seedStore({ sessions: [makeSession({ staticGroupId: 'other-static' })], fetchSessions });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    await waitFor(() => expect(fetchSessions).toHaveBeenCalledWith('g1'));
   });
 });

@@ -23,7 +23,7 @@
  * The `!userRole` gate on the mirror poll is a MEMBERSHIP check (a viewer with no
  * role clears mirrors), NOT a manager check — `canManage` is a separate prop.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Bell, Calendar, CalendarClock, CalendarDays, CheckCircle, Copy, ExternalLink, RefreshCw, RotateCcw, Send, ShieldCheck, Trash2, Unlink } from 'lucide-react';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { Button } from '../primitives';
@@ -64,6 +64,7 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
     isLoadingSettings,
     error,
     fetchSettings,
+    fetchSessions,
     updateSettings,
     sendTestReminder,
     postSessionPreview,
@@ -115,7 +116,15 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
   }, [groupId, settings, fetchSettings, userRole, canManage]);
 
   useEffect(() => {
-    if (!settings) return;
+    // Cross-static guard: `settings` is a shared store slice that persists
+    // across static switches (see the mount-fetch effect above). During a
+    // cross-static open — manager viewed static A, switches to B, opens B's
+    // Integrations before the mount-fetch for B resolves — the store still
+    // holds A's settings. Hydrating the form here would leak A's webhook/
+    // reminder config into a Save against B. Only hydrate once `settings`
+    // actually belongs to THIS panel's `groupId`; otherwise leave the form
+    // as-is (cleared/default) until the matching settings arrive.
+    if (!settings || settings.staticGroupId !== groupId) return;
     setWebhookUrl('');
     setChannelLabel(settings.reminderChannelLabel || '');
     setEnableAtStart(Boolean(settings.enableAtStartReminder));
@@ -133,7 +142,27 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
       setDiscordClaimCode(null);
       setDiscordClaimExpiry(null);
     }
-  }, [settings]);
+  }, [settings, groupId]);
+
+  // Standalone load: when mounted from Settings (ScheduleTab never runs),
+  // nothing else fetches sessions for this panel — without this, the
+  // Discord-mirror summary below stays empty forever, or (cross-static)
+  // reflects a previously viewed static's sessions. Sessions carry their own
+  // `staticGroupId`, so a mismatch (or an empty list) means the loaded
+  // sessions don't cover this panel's static. A per-groupId latch (rather
+  // than re-checking `sessions.length === 0` on every store update) avoids
+  // refetching forever when a static genuinely has zero sessions.
+  const fetchedSessionsForGroupRef = useRef<string | null>(null);
+  useEffect(() => {
+    const belongsToGroup = sessions.length > 0 && sessions[0].staticGroupId === groupId;
+    if (belongsToGroup) {
+      fetchedSessionsForGroupRef.current = groupId;
+      return;
+    }
+    if (fetchedSessionsForGroupRef.current === groupId) return;
+    fetchedSessionsForGroupRef.current = groupId;
+    void fetchSessions(groupId).catch(() => undefined);
+  }, [groupId, sessions, fetchSessions]);
 
   useEffect(() => {
     if (!userRole || sessions.length === 0) {
@@ -178,6 +207,12 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
   }, [discordMirrors]);
 
   const handleSaveIntegrations = async () => {
+    // Cross-static guard mirrors the settings-sync effect above: if the
+    // store's settings haven't resolved for THIS groupId yet, the local
+    // form state is either stale (another static's data) or still at its
+    // unhydrated defaults — either way, saving now would write the wrong
+    // (or blank) config against `groupId`. No-op until they match.
+    if (settings && settings.staticGroupId !== groupId) return;
     const normalizedRoleId = normalizeDiscordRoleId(mentionRoleId);
     if (mentionTarget === 'role' && !normalizedRoleId) {
       setMentionError('Enter a valid Discord role ID or <@&ROLE_ID> mention.');
