@@ -175,6 +175,7 @@ export function NewShell() {
 
   const groups = useStaticGroupStore((s) => s.groups);
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
+  const user = useAuthStore((s) => s.user);
   // Task 7 follow-up (FIX 3): "remember tab per static" preference for the
   // rail avatar static-switch repoint below — same accessor StaticPicker uses.
   const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
@@ -197,18 +198,29 @@ export function NewShell() {
   // sortPreset, recent-statics, static-nav persistence) are not needed to render.
 
   // Fetch the groups list on cold v2 load so the AppRail avatars are populated.
-  // Guarded: skips if groups are already loaded (warm store from prior navigation).
-  // This mirrors the `fetchGroups` call the legacy GroupView chrome triggers via
-  // its own mount effect; NewShell previously skipped it because it only fetched
-  // the current group. (Fix 2, PR #163)
+  // Guarded: skips if groups are already loaded (warm store from prior navigation),
+  // AND gated on auth — `fetchGroups()` hits the auth-required GET /api/static-groups
+  // ("my statics" list), which 401s for a logged-out guest and writes into the
+  // shared staticGroupStore.error, surfacing a false "Not authenticated" error
+  // Modal (ShellContentStates) over an otherwise-correct read-only guest view of
+  // a public static. Legacy never eagerly fetches this for anyone — its
+  // Header/TopBar chrome only calls it lazily, when the static-switcher dropdown
+  // opens AND the viewer is a member (StaticPicker.tsx:76). A guest has no "my
+  // statics" list to fetch, so skip it entirely for them. This mirrors the
+  // `fetchGroups` call the legacy GroupView chrome triggers via its own mount
+  // effect; NewShell previously skipped it because it only fetched the current
+  // group. (Fix 2, PR #163)
   useEffect(() => {
-    if (groups.length === 0) {
+    if (user && groups.length === 0) {
       fetchGroups();
     }
-    // Run once on mount only — adding `groups.length` would re-fetch on every
-    // static navigation when the list clears momentarily.
+    // Run once on mount (plus the null->authed transition via `user`) only —
+    // adding `groups.length` would re-fetch on every static navigation when the
+    // list clears momentarily. `user` is included so a guest who logs in while
+    // on the page still gets their groups fetched; the store's `user` reference
+    // is stable once set (no refetch-loop risk).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchGroups]);
+  }, [fetchGroups, user]);
 
   // Clear tiers and errors when shareCode changes (switching statics in v2).
   useEffect(() => {
