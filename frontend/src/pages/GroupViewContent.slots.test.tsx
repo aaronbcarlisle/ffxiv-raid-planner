@@ -83,8 +83,9 @@ vi.mock('../stores/lootTrackingStore', () => ({
   }),
 }));
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
+const settingsPanelOpenSpy = vi.fn();
 vi.mock('../stores/settingsPanelStore', () => ({
-  useSettingsPanelStore: { getState: () => ({ open: vi.fn(), close: vi.fn() }) },
+  useSettingsPanelStore: { getState: () => ({ open: settingsPanelOpenSpy, close: vi.fn() }) },
 }));
 
 // ── Hooks ──
@@ -139,7 +140,11 @@ vi.mock('../components/group/GoalsPage', () => ({
   GoalsPage: () => <div data-testid="goals-page" />,
 }));
 vi.mock('../components/group/MorePage', () => ({
-  MorePage: () => <div data-testid="more-page" />,
+  MorePage: (props: { onOpenIntegrations: () => void }) => (
+    <div data-testid="more-page">
+      <button onClick={() => props.onOpenIntegrations()}>open-integrations</button>
+    </div>
+  ),
 }));
 vi.mock('../components/group/PluginPage', () => ({
   PluginPage: () => <div data-testid="plugin-page" />,
@@ -161,12 +166,10 @@ const slots = {
 const renderContent = () =>
   render(<MemoryRouter><GroupViewContent actions={actions} slots={slots} /></MemoryRouter>);
 
-const LEGACY_TESTIDS = [
-  'legacy-overview', 'legacy-player-grid', 'legacy-roster-view-toggle',
-  'legacy-character-panel', 'legacy-split-planner', 'legacy-gear-sync',
-  'legacy-loot-priority', 'legacy-history', 'legacy-team-summary',
-  'legacy-schedule-tab', 'legacy-schedule-upcoming',
-];
+// Only the still-mocked KEEP leaves (RosterCharacterPanel/GearSyncDashboard,
+// see lines ~126-131) can ever render here — every other legacy id's backing
+// mock was deleted in Task 4, so checking for them would be a vacuous no-op.
+const LEGACY_TESTIDS = ['legacy-character-panel', 'legacy-gear-sync'];
 function expectNoLegacyLeaves() {
   for (const id of LEGACY_TESTIDS) {
     expect(screen.queryByTestId(id)).toBeNull();
@@ -181,6 +184,7 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     keyboardSpy.mockClear();
     clearAddedPlayerSpy.mockClear();
     logWeekWizardSpy.mockClear();
+    settingsPanelOpenSpy.mockClear();
   });
   afterEach(() => { mockAddedPlayer = null; });
 
@@ -215,6 +219,18 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     mockPageMode = 'more';
     renderContent();
     expect(screen.getByTestId('more-page')).toBeInTheDocument();
+  });
+
+  // ── Integrations re-route (flip-P3 Task 4 fold-in): the More page's
+  //    Integrations card must open the Settings panel directly on the
+  //    integrations tab, not navigate to the deleted legacy schedule tab. ──
+  it("wires MorePage's onOpenIntegrations to open the settings panel on the integrations tab", () => {
+    mockPageMode = 'more';
+    renderContent();
+    screen.getByText('open-integrations').click();
+    expect(settingsPanelOpenSpy).toHaveBeenCalledTimes(1);
+    expect(settingsPanelOpenSpy).toHaveBeenCalledWith({ tab: 'integrations' });
+    expect(setPageMode).not.toHaveBeenCalled();
   });
 
   it("pageMode 'plugin' renders the PluginPage body", () => {

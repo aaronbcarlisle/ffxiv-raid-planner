@@ -62,7 +62,7 @@ describe('MorePage', () => {
     expect(onOpenIntegrations).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the Integrations card copy and icon unchanged', () => {
+  it('keeps the Integrations card copy unchanged', () => {
     renderMorePage();
     expect(screen.getByText('Integrations')).toBeInTheDocument();
     expect(screen.getByText(/Connect Discord and other services/i)).toBeInTheDocument();
