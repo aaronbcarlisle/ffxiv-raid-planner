@@ -123,7 +123,7 @@ export const RELEASES: Release[] = [
         title: 'F6e — redesigned Schedule (behind ?shell=v2)',
         description:
           'New two-region Schedule: week-scoped sessions with an RSVP member grid on the shared week clock, a read-only team availability heatmap with best-times recommendations, and a Person-layer availability entry point — wired as the v2 schedule slot. Legacy Schedule unchanged.',
-        pr: 0,
+        pr: 170,
         prTitle: 'feat(redesign): f6e-schedule — v2 Schedule behind ?shell=v2',
       },
     ],
