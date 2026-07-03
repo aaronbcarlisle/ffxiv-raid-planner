@@ -193,9 +193,12 @@ describe('TopBar invite affordance', () => {
       canEdit: false,
       canManageInvitations: false,
     });
+    const fetchInvitations = vi.fn().mockResolvedValue(undefined);
+    useInvitationStore.setState({ invitations: [], fetchInvitations });
 
     renderTopBar();
     expect(screen.queryByRole('button', { name: 'Invite members' })).toBeNull();
+    expect(fetchInvitations).not.toHaveBeenCalled();
   });
 
   it('fetches invitations on mount when the user can manage invitations', () => {

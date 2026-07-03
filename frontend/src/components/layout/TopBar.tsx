@@ -144,9 +144,9 @@ export function TopBar({ onOpenPalette, onOpenNotifications }: TopBarProps) {
             <Tooltip content="Invite members">
               <IconButton
                 aria-label="Invite members"
-                icon={<UserPlus size={16} />}
+                icon={<UserPlus className="w-5 h-5" />}
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={handleInvite}
               />
             </Tooltip>
