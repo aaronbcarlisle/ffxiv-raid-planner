@@ -324,4 +324,19 @@ describe('ScheduleIntegrationsPanel', () => {
     render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
     await waitFor(() => expect(fetchSessions).toHaveBeenCalledWith('g1'));
   });
+
+  it('does not fetch sessions on mount for a role-less viewer (no 403 error-toast loop)', async () => {
+    // Regression: legacy ScheduleTab renders its Integrations sub-tab for ALL
+    // roles (badge "View" for non-managers) and it's deep-linkable via
+    // `?stab=integrations`, so a role-less share-code viewer can land here
+    // directly. The sessions mount-fetch must be gated on `(userRole ||
+    // canManage)` exactly like the settings mount-fetch above — otherwise it
+    // 403s and surfaces a red error banner for a population that previously
+    // saw a clean read-only panel.
+    const fetchSessions = vi.fn(async () => {});
+    seedStore({ sessions: [], fetchSessions });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage={false} userRole={null} />);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fetchSessions).not.toHaveBeenCalled();
+  });
 });

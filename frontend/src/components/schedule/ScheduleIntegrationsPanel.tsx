@@ -9,16 +9,19 @@
  * the Settings → Integrations tab.
  *
  * When mounted standalone (Settings), `ScheduleTab` never runs, so on mount the
- * panel loads settings itself if they're absent OR stale for a different
- * static — `scheduleStore.settings` persists across static switches (v2
- * `Schedule` never clears it, unlike legacy `ScheduleTab`'s `clearSessions`),
- * so a manager reopening Integrations after switching statics must not reuse
- * the previous static's settings. The fetch is gated on `(userRole ||
- * canManage)`, mirroring ScheduleTab's role-gated settings fetch (a role-less
- * share-code viewer must never 403 into a repeated error toast), while still
- * covering the Settings host's admin-non-member case (`userRole` undefined,
- * `canManage` true). Sessions come from the same shared store slice, so the
- * Discord-mirror poll and "Post session" behave identically in both hosts.
+ * panel loads settings AND sessions itself if they're absent OR stale for a
+ * different static — `scheduleStore.settings`/`sessions` persist across
+ * static switches (v2 `Schedule` never clears them, unlike legacy
+ * `ScheduleTab`'s `clearSessions`), so a manager reopening Integrations after
+ * switching statics must not reuse the previous static's data. Both
+ * mount-fetches are gated on `(userRole || canManage)`, mirroring
+ * ScheduleTab's role-gated settings fetch (a role-less share-code viewer —
+ * reachable via legacy ScheduleTab's Integrations sub-tab, which renders for
+ * ALL roles and is deep-linkable via `?stab=integrations` — must never 403
+ * into a repeated error toast), while still covering the Settings host's
+ * admin-non-member case (`userRole` undefined, `canManage` true). Sessions
+ * come from the same shared store slice, so the Discord-mirror poll and
+ * "Post session" behave identically in both hosts.
  *
  * The `!userRole` gate on the mirror poll is a MEMBERSHIP check (a viewer with no
  * role clears mirrors), NOT a manager check — `canManage` is a separate prop.
@@ -151,9 +154,16 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
   // `staticGroupId`, so a mismatch (or an empty list) means the loaded
   // sessions don't cover this panel's static. A per-groupId latch (rather
   // than re-checking `sessions.length === 0` on every store update) avoids
-  // refetching forever when a static genuinely has zero sessions.
+  // refetching forever when a static genuinely has zero sessions. Gated on
+  // `(userRole || canManage)` exactly like the settings mount-fetch above —
+  // legacy `ScheduleTab` renders its Integrations sub-tab for ALL roles
+  // (deep-linkable via `?stab=integrations`), so a role-less share-code
+  // viewer must never fetch here either (avoids a 403 error-toast loop),
+  // while still covering the admin-non-member case (`userRole` undefined,
+  // `canManage` true).
   const fetchedSessionsForGroupRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!(userRole || canManage)) return;
     const belongsToGroup = sessions.length > 0 && sessions[0].staticGroupId === groupId;
     if (belongsToGroup) {
       fetchedSessionsForGroupRef.current = groupId;
@@ -162,7 +172,7 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
     if (fetchedSessionsForGroupRef.current === groupId) return;
     fetchedSessionsForGroupRef.current = groupId;
     void fetchSessions(groupId).catch(() => undefined);
-  }, [groupId, sessions, fetchSessions]);
+  }, [groupId, sessions, fetchSessions, userRole, canManage]);
 
   useEffect(() => {
     if (!userRole || sessions.length === 0) {
