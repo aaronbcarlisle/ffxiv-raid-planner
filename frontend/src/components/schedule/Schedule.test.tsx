@@ -88,6 +88,12 @@ function renderSchedule(
 }
 
 beforeEach(() => {
+  // Prop-capture stubs are module-level `let`s assigned by the mocked
+  // components; without a reset a later test could read a previous test's
+  // captured props if its own render never re-mounts that stub.
+  mockAvailabilityGridProps = null;
+  mockCreateSessionModalProps = null;
+
   vi.stubGlobal(
     'matchMedia',
     vi.fn().mockImplementation((query: string) => ({
@@ -346,9 +352,10 @@ describe('Schedule', () => {
       expect(secondEnd).toBe(firstEnd);
     });
 
-    it("the grid's draft callback closes the edit modal and opens the create modal with the draft", async () => {
+    it("the grid's draft callback re-fetches scoped-week availability, then closes the edit modal and opens the create modal with the draft", async () => {
       renderSchedule();
-      await waitFor(() => expect(availabilityMock()).toHaveBeenCalled());
+      await waitFor(() => expect(availabilityMock()).toHaveBeenCalledTimes(1));
+      const [, firstStart, firstEnd] = availabilityMock().mock.calls[0];
 
       fireEvent.click(screen.getByRole('button', { name: 'Edit week' }));
       expect(screen.getByTestId('availability-grid-stub')).toBeInTheDocument();
@@ -369,6 +376,19 @@ describe('Schedule', () => {
       expect(screen.queryByTestId('availability-grid-stub')).not.toBeInTheDocument();
       expect(screen.getByTestId('create-session-modal-stub')).toBeInTheDocument();
       expect(mockCreateSessionModalProps?.initialDraft).toEqual(draft);
+
+      // Regression pin: AvailabilityGrid fetches its OWN rolling window
+      // (today→+6d) into the shared store on mount, wholesale-replacing
+      // `data`. If the draft path only closes the modal (no re-fetch), the
+      // store is left holding that rolling-window data instead of the
+      // scoped week's — the heatmap + BestTimesCard would silently derive
+      // from the wrong range until something else re-fetches. Must re-fire
+      // the SAME scoped range the plain-close path re-fetches.
+      await waitFor(() => expect(availabilityMock()).toHaveBeenCalledTimes(2));
+      const [gid, secondStart, secondEnd] = availabilityMock().mock.calls[1];
+      expect(gid).toBe('g1');
+      expect(secondStart).toBe(firstStart);
+      expect(secondEnd).toBe(firstEnd);
     });
   });
 });

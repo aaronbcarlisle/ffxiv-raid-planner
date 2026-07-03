@@ -490,7 +490,12 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
             staticName={group.name}
             shareCode={group.shareCode}
             onCreateSessionDraft={(draft) => {
-              editModal.close();
+              // handleEditClose (not editModal.close()) — AvailabilityGrid's
+              // own mount-fetch wholesale-replaces the shared store's `data`
+              // with its rolling today→+6d window, so this path must also
+              // repair the store with the scoped-week re-fetch, same as the
+              // plain close path.
+              handleEditClose();
               handlePropose(draft);
             }}
           />
