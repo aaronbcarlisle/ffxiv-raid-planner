@@ -24,6 +24,9 @@ import {
   Calendar,
   Settings,
   ChevronRight,
+  Target,
+  Plug,
+  MoreHorizontal,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Modal } from '../ui/Modal';
@@ -111,6 +114,24 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         label: 'Go to Schedule',
         icon: <Calendar className="w-4 h-4" aria-hidden="true" />,
         onSelect: () => { setPageMode('schedule'); handleClose(); },
+      },
+      {
+        id: 'go-goals',
+        label: 'Go to Tracking',
+        icon: <Target className="w-4 h-4" aria-hidden="true" />,
+        onSelect: () => { setPageMode('goals'); handleClose(); },
+      },
+      {
+        id: 'go-plugin',
+        label: 'Go to Plugin',
+        icon: <Plug className="w-4 h-4" aria-hidden="true" />,
+        onSelect: () => { setPageMode('plugin'); handleClose(); },
+      },
+      {
+        id: 'go-more',
+        label: 'Go to More',
+        icon: <MoreHorizontal className="w-4 h-4" aria-hidden="true" />,
+        onSelect: () => { setPageMode('more'); handleClose(); },
       },
       // ── Settings ─────────────────────────────────────────────────────
       {

@@ -213,4 +213,35 @@ describe('CommandPalette', () => {
     expect(mockSetPageMode).toHaveBeenCalledWith('schedule');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('renders the three slotless tab entries: Tracking, Plugin, More', () => {
+    renderPalette();
+    expect(screen.getByText('Go to Tracking')).toBeInTheDocument();
+    expect(screen.getByText('Go to Plugin')).toBeInTheDocument();
+    expect(screen.getByText('Go to More')).toBeInTheDocument();
+  });
+
+  it('calls setPageMode("goals") and onClose when "Go to Tracking" is clicked', () => {
+    const onClose = vi.fn();
+    renderPalette(true, onClose);
+    fireEvent.click(screen.getByText('Go to Tracking'));
+    expect(mockSetPageMode).toHaveBeenCalledWith('goals');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls setPageMode("plugin") and onClose when "Go to Plugin" is clicked', () => {
+    const onClose = vi.fn();
+    renderPalette(true, onClose);
+    fireEvent.click(screen.getByText('Go to Plugin'));
+    expect(mockSetPageMode).toHaveBeenCalledWith('plugin');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls setPageMode("more") and onClose when "Go to More" is clicked', () => {
+    const onClose = vi.fn();
+    renderPalette(true, onClose);
+    fireEvent.click(screen.getByText('Go to More'));
+    expect(mockSetPageMode).toHaveBeenCalledWith('more');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
