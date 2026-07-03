@@ -16,6 +16,7 @@ import { canManageRoster } from '../utils/permissions';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
 import { useViewAsUrlSync } from '../hooks/useViewAsUrlSync';
+import { useStaticNavMemory } from '../hooks/useStaticNavMemory';
 import { useModal } from '../hooks/useModal';
 import { useCurrentTier } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
@@ -223,6 +224,11 @@ export function NewShell() {
   // part of the cold-fetch replication above; this is the F6a gap-2 fix so v2
   // also runs the ?viewAs= effects (previously only the legacy chrome did).
   useViewAsUrlSync(currentGroup?.id);
+
+  // Recent-statics MRU + per-static tab memory (shared with GroupView — see
+  // useStaticNavMemory). Previously only the legacy chrome ran this, so
+  // v2 dropped recent-statics tracking and per-static tab restore.
+  useStaticNavMemory(shareCode);
 
   // Fetch tiers and load a tier (from URL, localStorage, or active) sequentially.
   useEffect(() => {

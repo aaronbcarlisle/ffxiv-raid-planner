@@ -32,7 +32,7 @@ import { StaticSettingsHost } from '../components/settings';
 import { AdminBanners } from '../components/admin/AdminBanners';
 import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useViewAsUrlSync } from '../hooks/useViewAsUrlSync';
-import { TRANSIENT_NAV_PARAMS } from '../lib/navPreferences';
+import { useStaticNavMemory } from '../hooks/useStaticNavMemory';
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { sortPlayersByRole } from '../utils/calculations';
 import { SORT_PRESETS, DEFAULT_SETTINGS } from '../utils/constants';
@@ -143,6 +143,10 @@ export function GroupView() {
   // Handle viewAs URL parameter (shared with NewShell — see useViewAsUrlSync)
   useViewAsUrlSync(currentGroup?.id);
 
+  // Recent-statics MRU + per-static tab memory (shared with NewShell — see
+  // useStaticNavMemory).
+  useStaticNavMemory(shareCode);
+
   // Clear tiers and errors when shareCode changes (switching groups)
   useEffect(() => {
     clearTiers();
@@ -156,37 +160,6 @@ export function GroupView() {
       fetchGroupByShareCode(shareCode);
     }
   }, [shareCode, fetchGroupByShareCode]);
-
-  // Track recently accessed statics in localStorage
-  useEffect(() => {
-    if (!shareCode) return;
-    try {
-      const MAX_RECENT = 10;
-      const saved = localStorage.getItem('recent-statics');
-      const recent: string[] = saved ? JSON.parse(saved) : [];
-      const filtered = recent.filter(code => code !== shareCode);
-      const updated = [shareCode, ...filtered].slice(0, MAX_RECENT);
-      localStorage.setItem('recent-statics', JSON.stringify(updated));
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, [shareCode]);
-
-  // Persist this static's navigation state (tab + sub-tabs, minus transient
-  // params) so the context switcher can restore it when the user enables
-  // "remember tab per static". Keyed by share code — the unit it navigates by.
-  // When that preference is OFF, the switcher instead carries the current tab
-  // across, and when it's ON it reads this. Either way no forced reset here.
-  useEffect(() => {
-    if (!currentGroup?.shareCode) return;
-    try {
-      const params = new URLSearchParams(searchParams);
-      TRANSIENT_NAV_PARAMS.forEach(k => params.delete(k));
-      localStorage.setItem(`static-nav-${currentGroup.shareCode}`, params.toString());
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, [searchParams, currentGroup?.shareCode]);
 
   // Load sortPreset from localStorage when tier changes.
   // Duplicated for chrome; Task 8 removes — chrome needs sortPreset to derive the
