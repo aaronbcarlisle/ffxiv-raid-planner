@@ -164,4 +164,18 @@ describe('AppRail', () => {
     const avatarBtn = screen.getByRole('button', { name: 'My Static' });
     expect(avatarBtn.className).toContain('hover:bg-[var(--color-nav-item-bg-hover)]');
   });
+
+  // Task 6: below `sm`, the rail must be hidden (display:none) so MobileBottomNav serves
+  // small viewports instead of a stacked 72px rail — mirrors legacy SidebarRail.tsx:42
+  // (`hidden sm:flex`). Split on whitespace so a bare `flex` token (display:flex at ALL
+  // sizes) can't hide behind a substring match against `sm:flex`.
+  it('is hidden below sm and flex at sm+ — no bare `flex` token (§3.9)', () => {
+    render(<AppRail entries={makeEntries()} />);
+    const nav = screen.getByRole('navigation', { name: 'Primary navigation' });
+    const classTokens = nav.className.split(/\s+/).filter(Boolean);
+    expect(classTokens).toContain('hidden');
+    expect(classTokens).toContain('sm:flex');
+    expect(classTokens).toContain('flex-col');
+    expect(classTokens).not.toContain('flex');
+  });
 });
