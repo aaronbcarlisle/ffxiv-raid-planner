@@ -263,7 +263,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     // Resolves a URL deep-link id against roster data that arrives asynchronously
     // (the tier fetch); must run in an effect so it re-evaluates once `players`
     // populates. `playerHandledRef` above guards it to one-shot.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deep-link highlight is set in response to the URL param; mirrors Schedule's resolving effect (no scroll side-effect here — the shared GroupViewContent effect owns scroll+strip)
     setHighlightedPlayerId(playerParam);
   }, [playerLinkParams, players]);
 

@@ -279,6 +279,11 @@ describe('Roster — ?player= deep link', () => {
     });
 
     expect(container.querySelector('#player-card-p1')).not.toHaveClass('highlight-pulse');
+    // Roster's clear-timer effect must only clear the local highlight — never
+    // touch the URL. GroupViewContent.tsx:248-255 owns the `player` strip on its
+    // OWN 2500ms timer; a copy-paste of that strip into THIS effect (same magic
+    // number) must fail here, not just in the synchronous no-strip test below.
+    expect(screen.getByTestId('loc').dataset.search).toContain('player=p1');
   });
 
   it('does not highlight (and does not crash) for an unresolvable player id', () => {
