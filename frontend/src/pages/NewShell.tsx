@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { CommandPalette } from '../components/layout/CommandPalette';
 import { Home, Globe } from 'lucide-react';
 import { GroupViewContent } from './GroupViewContent';
+import { ShellContentStates } from './ShellContentStates';
 import { GroupActionModals, useGroupActions } from './groupActionsContext';
 import { V2SettingsHost } from './V2SettingsHost';
 import { Home as StaticHome } from '../components/home/Home';
@@ -112,11 +113,18 @@ export function ShellContent() {
     />
   ) : undefined;
 
+  // ShellContentStates renders the v2 load / error / not-found / no-tiers states
+  // (legacy copy, new chrome) BEFORE the content — falling through to the
+  // GroupViewContent children only on the happy path (and overlaying an error
+  // Modal when a loaded group later errors). Mirrors legacy GroupView's own
+  // five branches around its body.
   return (
-    <GroupViewContent
-      actions={useGroupActions()}
-      slots={currentGroup ? { overview, roster, gear: loot, schedule } : undefined}
-    />
+    <ShellContentStates>
+      <GroupViewContent
+        actions={useGroupActions()}
+        slots={currentGroup ? { overview, roster, gear: loot, schedule } : undefined}
+      />
+    </ShellContentStates>
   );
 }
 
