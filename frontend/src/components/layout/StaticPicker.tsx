@@ -8,8 +8,12 @@
  * `text-xs` role badge (no `text-[10px]`), and SPA `useNavigate` that preserves
  * the `?shell=v2` gate (no full reload).
  *
- * `ContextSwitcher` is intentionally NOT edited — it still renders in the legacy
- * route and must stay byte-for-byte. This is the new, conformant peer.
+ * `ContextSwitcher` was repointed (Task 7) to share this component's
+ * `buildStaticNavHref` util for its own static-switch — output is byte-
+ * identical to its previous inline logic (characterization-locked by
+ * `ContextSwitcher.test.tsx`), so the legacy route's behavior is unchanged.
+ * `StaticPicker` calls the same util, adding `extraParams: { shell: 'v2' }` to
+ * keep the v2 flip gate on the URL.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';

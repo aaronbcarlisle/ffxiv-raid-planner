@@ -25,12 +25,14 @@ import {
   Settings,
   ChevronRight,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Modal } from '../ui/Modal';
 import { SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
 import { useGroupViewState } from '../../hooks/useGroupViewState';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
+import { useAuthStore } from '../../stores/authStore';
+import { buildStaticNavHref, prefRememberTabs } from '../../lib/navPreferences';
 
 // ── Platform label ──────────────────────────────────────────────────────────
 
@@ -67,9 +69,11 @@ interface PaletteCommand {
 export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setPageMode } = useGroupViewState();
   const openSettingsPanel = useSettingsPanelStore((s) => s.open);
   const groups = useStaticGroupStore((s) => s.groups);
+  const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
 
   // Compute at render time so tests can stub navigator.platform.
   const cmdkLabel = computeCmdkLabel();
@@ -119,15 +123,26 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         onSelect: () => { openSettingsPanel(); handleClose(); },
       },
       // ── Switch static — one row per group ────────────────────────────
+      // Repointed (Task 7 follow-up) to the same `buildStaticNavHref` call
+      // StaticPicker uses, so this affordance also restores the target
+      // static's saved tab when "remember tab per static" is ON, instead of
+      // hardcoding a bare `/group/{code}?shell=v2` that dropped it.
       ...groups.map((g) => ({
         id: `switch-${g.id}`,
         label: `Switch to ${g.name}`,
         sub: g.shareCode,
         icon: <ChevronRight className="w-4 h-4" aria-hidden="true" />,
-        onSelect: () => { navigate(`/group/${g.shareCode}?shell=v2`); handleClose(); },
+        onSelect: () => {
+          navigate(buildStaticNavHref(g.shareCode, {
+            remember: rememberStaticTab,
+            currentParams: searchParams,
+            extraParams: { shell: 'v2' },
+          }));
+          handleClose();
+        },
       })),
     ],
-    [setPageMode, openSettingsPanel, groups, navigate, handleClose],
+    [setPageMode, openSettingsPanel, groups, navigate, handleClose, rememberStaticTab, searchParams],
   );
 
   const filtered = useMemo(() => {

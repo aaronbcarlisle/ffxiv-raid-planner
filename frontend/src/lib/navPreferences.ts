@@ -4,7 +4,10 @@
  * Centralizes two things that were previously duplicated across components and
  * therefore prone to drift:
  *   - the set of URL params that must never carry across (or be restored) when
- *     switching statics, and that closing the settings panel strips, and
+ *     switching statics, and that must never be baked into per-static tab
+ *     memory (`static-nav-{code}`) — read/written by `buildStaticNavHref` and
+ *     `useStaticNavMemory`. (Closing the settings panel strips its own,
+ *     separate subset inline in `useGroupViewState.ts` — not this const.)
  *   - the per-user navigation-preference defaults (different per field), so a
  *     single stray `?? false` can't silently change behavior at one read site.
  */

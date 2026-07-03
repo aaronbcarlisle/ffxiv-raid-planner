@@ -57,6 +57,7 @@ beforeEach(() => {
   mockNavigate.mockClear();
   mockSetPageMode.mockClear();
   mockSetShowSettingsModal.mockClear();
+  try { localStorage.clear(); } catch { /* ignore */ }
   useStaticGroupStore.setState({ groups: [groupA, groupB] });
 
   // Radix / framer-motion stubs required in jsdom.
@@ -159,11 +160,23 @@ describe('CommandPalette', () => {
     expect(screen.getByText('Switch to Beta Static')).toBeInTheDocument();
   });
 
-  it('calls navigate("/group/ABC?shell=v2") when Alpha Static row is clicked', () => {
+  it('calls navigate("/group/ABC?shell=v2") when Alpha Static row is clicked (no saved tab)', () => {
     const onClose = vi.fn();
     renderPalette(true, onClose);
     fireEvent.click(screen.getByText('Switch to Alpha Static'));
     expect(mockNavigate).toHaveBeenCalledWith('/group/ABC?shell=v2');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores the target static\'s saved tab (remember ON, the default) and re-adds ?shell=v2 via extraParams', () => {
+    // Task 7 follow-up (FIX 3): the "Switch to …" row must repoint through the
+    // same buildStaticNavHref call StaticPicker uses, instead of hardcoding a
+    // bare `/group/{code}?shell=v2` that drops the saved tab.
+    localStorage.setItem('static-nav-ABC', 'tab=loot&sub=weapon');
+    const onClose = vi.fn();
+    renderPalette(true, onClose);
+    fireEvent.click(screen.getByText('Switch to Alpha Static'));
+    expect(mockNavigate).toHaveBeenCalledWith('/group/ABC?tab=loot&sub=weapon&shell=v2');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

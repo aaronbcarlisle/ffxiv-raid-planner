@@ -22,6 +22,7 @@ import { useCurrentTier } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { useViewAsStore } from '../stores/viewAsStore';
 import { useSettingsPanelStore } from '../stores/settingsPanelStore';
+import { buildStaticNavHref, prefRememberTabs } from '../lib/navPreferences';
 import { Spine } from '../components/layout/Spine';
 import { AppRail } from '../components/layout/AppRail';
 import { TopBar } from '../components/layout/TopBar';
@@ -174,6 +175,9 @@ export function NewShell() {
 
   const groups = useStaticGroupStore((s) => s.groups);
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
+  // Task 7 follow-up (FIX 3): "remember tab per static" preference for the
+  // rail avatar static-switch repoint below — same accessor StaticPicker uses.
+  const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
   const fetchGroupByShareCode = useStaticGroupStore((s) => s.fetchGroupByShareCode);
   const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
   const clearGroupError = useStaticGroupStore((s) => s.clearError);
@@ -306,11 +310,18 @@ export function NewShell() {
       initials: getInitials(g.name),
       isActive: g.shareCode === shareCode,
       onSelect: () => {
-        // SPA navigation — preserves ?shell=v2 gate without a full page reload.
-        navigate(`/group/${g.shareCode}?shell=v2`);
+        // SPA navigation — preserves ?shell=v2 gate without a full page reload,
+        // and restores the target static's saved tab when "remember tab per
+        // static" is ON (Task 7 follow-up: same buildStaticNavHref repoint as
+        // StaticPicker, instead of a bare href that dropped the saved tab).
+        navigate(buildStaticNavHref(g.shareCode, {
+          remember: rememberStaticTab,
+          currentParams: searchParams,
+          extraParams: { shell: 'v2' },
+        }));
       },
     })),
-  ], [groups, shareCode, navigate]);
+  ], [groups, shareCode, navigate, rememberStaticTab, searchParams]);
 
   return (
     <GroupActionModals onTierCreated={() => gv.setPageMode('roster')}>
