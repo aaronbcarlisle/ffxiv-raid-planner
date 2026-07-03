@@ -10,7 +10,7 @@
 /* eslint-disable design-system/no-raw-button */
 
 import { useCallback, useEffect, useMemo } from 'react';
-import { Settings, ListOrdered, Users, Globe, Target, Shield, Plus, Trash2 } from 'lucide-react';
+import { Settings, ListOrdered, Users, Globe, Target, Shield, Plus, Trash2, Webhook } from 'lucide-react';
 import { SettingsSubNav } from './SettingsSubNav';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
@@ -24,6 +24,7 @@ import { MembersPanel } from '../static-group/MembersPanel';
 import { ObjectiveGoalsPanel } from '../static-group/ObjectiveGoalsPanel';
 import { ContentSuggestionsPanel } from '../static-group/ContentSuggestionsPanel';
 import { CreateCollectionGoalModal } from '../static-group/CreateCollectionGoalModal';
+import { ScheduleIntegrationsPanel } from '../schedule/ScheduleIntegrationsPanel';
 import { Button, IconButton } from '../primitives';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useObjectiveGoalStore } from '../../stores/objectiveGoalStore';
@@ -32,7 +33,7 @@ import { useContentSuggestionStore } from '../../stores/contentSuggestionStore';
 import { useModal } from '../../hooks/useModal';
 import type { JoinRequest, StaticGroup, SnapshotPlayer } from '../../types';
 
-export type SettingsTab = 'general' | 'static' | 'priority' | 'goals' | 'recruitment' | 'members';
+export type SettingsTab = 'general' | 'static' | 'priority' | 'goals' | 'recruitment' | 'integrations' | 'members';
 const GOALS_SECTION_VALUES = ['overview', 'objectives', 'farms', 'suggestions'] as const;
 type GoalsSection = (typeof GOALS_SECTION_VALUES)[number];
 
@@ -59,6 +60,7 @@ const ALL_TABS: TabItem[] = [
   { id: 'priority',    label: 'Priority',      icon: ListOrdered, visible: (r, a) => isManager(r, a) || isMemberRole(r) },
   { id: 'goals',       label: 'Goals & Farms', icon: Target,      visible: () => true },
   { id: 'recruitment', label: 'Recruitment',   icon: Globe,       visible: (r, a) => isManager(r, a) },
+  { id: 'integrations', label: 'Integrations', icon: Webhook,     visible: (r, a) => isManager(r, a) },
   { id: 'members',     label: 'Members',       icon: Users,       visible: () => true },
 ];
 
@@ -450,6 +452,12 @@ export function SettingsPanel({
               onClose={onClose}
               initialSection={initialRecruitmentSection}
             />
+          )}
+
+          {effectiveTab === 'integrations' && group && (
+            <div className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: 'stable' }}>
+              <ScheduleIntegrationsPanel groupId={group.id} canManage={canManage} userRole={role} />
+            </div>
           )}
 
           {effectiveTab === 'members' && group && (
