@@ -194,8 +194,10 @@ export function NewShell() {
   // `/group/X?shell=v2` rendered nothing. These three effects are replicated
   // verbatim from GroupView (clear-on-switch → fetch group → fetch tiers + load
   // the URL/localStorage/active tier) so a cold v2 load self-fetches. Only the
-  // group-fetch is replicated; the other GroupView chrome effects (viewAs,
-  // sortPreset, recent-statics, static-nav persistence) are not needed to render.
+  // group-fetch is replicated here. viewAs (useViewAsUrlSync) and recent-statics
+  // + static-nav persistence (useStaticNavMemory) are now wired into NewShell via
+  // their shared hooks (Task 1, Task 7) — sortPreset is the only GroupView chrome
+  // effect genuinely not replicated (not needed to render).
 
   // Fetch the groups list on cold v2 load so the AppRail avatars are populated.
   // Guarded: skips if groups are already loaded (warm store from prior navigation),

@@ -77,6 +77,19 @@ describe('useUrlTabState', () => {
     expect(params.get('keep')).toBe('1');
   });
 
+  it('clears the roster/loot view-toggle params (rview/lview) even if their view never mounted this session', () => {
+    // Regression: rview (Roster.tsx Cards/Board) and lview (Loot.tsx
+    // Priority/History) are real useUrlTabState params that must be seeded so
+    // a deep-linked ?rview=board or ?lview=history is cleared on a
+    // primary-tab switch even before their owning view has mounted this
+    // session — same staleness gap as the goal/stab case above.
+    const params = new URLSearchParams('rview=board&lview=history&keep=1');
+    clearRegisteredTabParams(params);
+    expect(params.has('rview')).toBe(false);
+    expect(params.has('lview')).toBe(false);
+    expect(params.get('keep')).toBe('1');
+  });
+
   it('never clears the protected primary tab / settings params, even when registered', () => {
     // setup() mounts useUrlTabState('tab') and the app mounts
     // useUrlTabState('settings'); both register on render but must survive a

@@ -231,7 +231,7 @@ export function GroupView() {
   // Sorted main-roster players — duplicated for chrome; Task 8 removes. The
   // settings panel (StaticSettingsHost.players) needs the same sorted set the
   // content passes, so derive it identically here.
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- optional-chained dep (currentTier?.players) is intentional: currentTier can be null, and the compiler's inferred non-optional access would throw
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- the manual dep (currentTier?.players) is intentionally finer-grained than what the compiler would infer, so manual memoization can't be provably preserved; surfaced when the viewAs effects moved out (un-bailing component-level analysis). Chrome removed at the flip.
   const sortedPlayers = useMemo(() => {
     if (!currentTier?.players) return [];
     const displayOrder = SORT_PRESETS[sortPreset]?.order ?? DEFAULT_SETTINGS.displayOrder;
