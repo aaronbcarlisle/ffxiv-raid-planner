@@ -144,6 +144,15 @@ export const RELEASES: Release[] = [
         pr: 172,
         prTitle: 'feat(redesign): flip-p2 — invert group route default to v2',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Flip P3 — legacy group view deleted',
+        description:
+          'The legacy group view, its ?shell= escape hatch, and every legacy-only tab body are gone; the v2 shell is the only /group experience. The plugin gear-sync dashboard moved to the Plugin tab, and the e2e smoke suite now exercises the v2 interface end to end.',
+        pr: 0,
+        prTitle: 'feat(redesign): flip-p3 — delete legacy group chrome',
+      },
     ],
     internal: true,
   },
