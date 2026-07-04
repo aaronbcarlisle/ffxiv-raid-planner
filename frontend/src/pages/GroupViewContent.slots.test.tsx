@@ -59,8 +59,11 @@ vi.mock('../hooks/useGroupViewState', () => ({
 // ── Stores ──
 const currentTier = { id: 'snap1', tierId: 'm5s', contentType: 'savage', players: [] as unknown[] };
 const currentGroup = { id: 'g1', name: 'Test Static', shareCode: 'DEVTST', settings: {}, userRole: 'owner' };
+// Switchable: the tier LIST stays non-empty (ShellContentStates branch-5 semantics)
+// while the SNAPSHOT (currentTier) can be nulled to simulate the in-flight fetch.
+let mockCurrentTier: typeof currentTier | null = currentTier;
 vi.mock('../stores/tierStore', () => ({
-  useTierStore: () => ({ currentTier, tiers: [currentTier], isSaving: false, fetchTier: vi.fn() }),
+  useTierStore: () => ({ currentTier: mockCurrentTier, tiers: [currentTier], isSaving: false, fetchTier: vi.fn() }),
 }));
 vi.mock('../stores/staticGroupStore', () => ({
   useStaticGroupStore: () => ({ currentGroup, groups: [currentGroup] }),
@@ -169,6 +172,7 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     mockPageMode = 'overview';
     mockActionModalOpen = false;
     mockAddedPlayer = null;
+    mockCurrentTier = currentTier;
     keyboardSpy.mockClear();
     clearAddedPlayerSpy.mockClear();
     logWeekWizardSpy.mockClear();
@@ -193,6 +197,14 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     expect(screen.queryByRole('button', { name: 'Upcoming' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Calendar' })).toBeNull();
     expect(screen.queryByText('Split Planner')).toBeNull();
+  });
+
+  // ── 1b. Tier snapshot still in flight → skeleton, never a blank pane ──
+  it('renders a loading skeleton (not blank) while the tier snapshot fetch is in flight', () => {
+    mockCurrentTier = null; // group loaded, tier list non-empty, snapshot pending
+    renderContent();
+    expect(screen.getByTestId('content-tier-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('s-o')).toBeNull();
   });
 
   // ── 2/3. Slotless pageModes render their bodies unconditionally ──

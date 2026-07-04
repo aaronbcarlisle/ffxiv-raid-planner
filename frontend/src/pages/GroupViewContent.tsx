@@ -27,7 +27,7 @@ import { useTierStore } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { useLootTrackingStore } from '../stores/lootTrackingStore';
 import { useViewAsStore } from '../stores/viewAsStore';
-import { MobileBottomNav, Modal } from '../components/ui';
+import { MobileBottomNav, Modal, PageSkeleton } from '../components/ui';
 import { PageHeader } from '../components/layout/PageHeader';
 import { MorePage } from '../components/group/MorePage';
 import { GoalsPage } from '../components/group/GoalsPage';
@@ -284,10 +284,18 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
     setHighlightedPlayerId,
   }, isAnyModalOpen);
 
-  // GroupViewContent only renders inside an existing-tier shell; this guard satisfies
-  // the type narrowing and never fires in practice (ShellContentStates only renders
-  // its children in branch 5, where the group is loaded and tiers exist).
-  if (!currentGroup || !currentTier) return null;
+  // ShellContentStates renders children once the group is loaded and the tier LIST
+  // is non-empty (its branch 5) — but the tier SNAPSHOT fetch can still be in
+  // flight at that moment (cold navigation: group loaded → tiers listed →
+  // fetchTier pending). Render the skeleton for that window instead of a blank
+  // content area; the guard also satisfies type narrowing below.
+  if (!currentGroup || !currentTier) {
+    return (
+      <div data-testid="content-tier-loading">
+        <PageSkeleton />
+      </div>
+    );
+  }
 
   return (
     <>
