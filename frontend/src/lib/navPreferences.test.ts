@@ -19,9 +19,14 @@ describe('buildStaticNavHref', () => {
   });
 
   it('remember=true restores the saved static-nav params (minus transient) and appends extraParams', () => {
-    localStorage.setItem('static-nav-ABC', 'tab=roster&sub=weapon');
+    // Includes a transient param (`viewAs`) in the saved fixture so the
+    // read-side strip in the `remember: true` branch is actually exercised —
+    // a saved static-nav blob can carry a stale `viewAs` from whatever
+    // session wrote it, and it must never be restored into a fresh nav.
+    localStorage.setItem('static-nav-ABC', 'tab=roster&sub=weapon&viewAs=u1');
     const href = buildStaticNavHref('ABC', { remember: true, extraParams: { foo: 'bar' } });
     expect(href).toBe('/group/ABC?tab=roster&sub=weapon&foo=bar');
+    expect(href).not.toContain('viewAs');
   });
 
   it('extraParams overrides a same-named persisted key without duplicating it', () => {

@@ -80,8 +80,6 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
     setPageMode,
     gearSubTab,
     setGearSubTab,
-    lootSubTab,
-    setLootSubTab,
     viewMode,
     setViewMode,
     groupView,
@@ -90,14 +88,6 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
     subsView,
     setSubsView,
     setEditingPlayerId,
-    showKeyboardHelp,
-    setShowKeyboardHelp,
-    showLogLootModal,
-    setShowLogLootModal,
-    showLogMaterialModal,
-    setShowLogMaterialModal,
-    showMarkFloorClearedModal,
-    setShowMarkFloorClearedModal,
     setHighlightedPlayerId,
     setHighlightedSlot,
   } = state;
@@ -273,10 +263,7 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
   // shortcuts exactly as before the F6a split.
   const isActionModalOpen = useGroupActionModalOpen();
   const isErrorModalOpen = !!error && !!currentGroup;
-  const isAnyModalOpen = isActionModalOpen ||
-                          showKeyboardHelp || showLogLootModal ||
-                          showLogMaterialModal || showMarkFloorClearedModal ||
-                          isErrorModalOpen;
+  const isAnyModalOpen = isActionModalOpen || isErrorModalOpen;
 
   // Use extracted keyboard shortcuts hook
   useGroupViewKeyboardShortcuts({
@@ -284,8 +271,6 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
     setPageMode,
     gearSubTab,
     setGearSubTab,
-    lootSubTab,
-    setLootSubTab,
     viewMode,
     setViewMode,
     groupView,
@@ -299,12 +284,8 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
     currentGroup,
     tiers,
     navigate,
-    setShowKeyboardHelp,
     setEditingPlayerId,
     setHighlightedPlayerId,
-    setShowLogLootModal,
-    setShowLogMaterialModal,
-    setShowMarkFloorClearedModal,
   }, isAnyModalOpen);
 
   // GroupViewContent only renders inside an existing-tier shell; this guard satisfies

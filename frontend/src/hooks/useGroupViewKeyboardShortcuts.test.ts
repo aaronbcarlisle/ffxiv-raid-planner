@@ -75,8 +75,6 @@ function makeParams(overrides: Partial<GroupViewShortcutParams> = {}): GroupView
     setPageMode: noop,
     gearSubTab: 'priority',
     setGearSubTab: noop,
-    lootSubTab: 'gear',
-    setLootSubTab: noop,
     viewMode: 'compact',
     setViewMode: noop,
     groupView: false,
@@ -90,12 +88,8 @@ function makeParams(overrides: Partial<GroupViewShortcutParams> = {}): GroupView
     currentGroup: makeGroups()[1], // start at 'g2' (middle)
     tiers: [],
     navigate: noop,
-    setShowKeyboardHelp: noop,
     setEditingPlayerId: noop,
     setHighlightedPlayerId: noop,
-    setShowLogLootModal: noop,
-    setShowLogMaterialModal: noop,
-    setShowMarkFloorClearedModal: noop,
     ...overrides,
   };
 }
@@ -165,5 +159,61 @@ describe('useGroupViewKeyboardShortcuts — Mod+[ / Mod+] static navigation', ()
     nextAction!.action();
 
     expect(navigate).not.toHaveBeenCalled();
+  });
+});
+
+// ── Removed dead-flag bindings (flip-P3 whole-branch fix) ──────────────────
+// Alt+L/U/B used to open the deleted HistoryView log modals, and Shift+?
+// used to set a GVC-local `showKeyboardHelp` flag with no renderer (the real
+// shortcuts modal is owned by Layout.tsx via the always-mounted
+// useGlobalKeyboardShortcuts). None of the four had a renderer left after
+// flip-P3's cascade deletion, so setting them left `isAnyModalOpen` latched
+// true with no way to clear it (Alt+L/U/B) or duplicated global behavior
+// (Shift+?). Pin that the registry no longer contains any of them.
+describe('useGroupViewKeyboardShortcuts — dead-flag bindings removed', () => {
+  beforeEach(() => {
+    mockedUseKeyboardShortcuts.mockClear();
+  });
+
+  it('does not register Alt+L / Alt+U / Alt+B (deleted log-modal openers)', () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(makeParams(), false));
+
+    expect(getAction('l', { requireAlt: true })).toBeUndefined();
+    expect(getAction('u', { requireAlt: true })).toBeUndefined();
+    expect(getAction('b', { requireAlt: true })).toBeUndefined();
+  });
+
+  it('does not register a Shift+? binding (global shortcut owns the real modal)', () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(makeParams(), false));
+
+    expect(getAction('?', { requireAlt: false })).toBeUndefined();
+  });
+
+  it('pressing Alt+L (canEdit) no longer disables subsequent shortcuts via isAnyModalOpen', () => {
+    // Regression guard for the latch: `isAnyModalOpen` is now driven entirely
+    // by the caller (GroupViewContent), not by any state this hook sets. The
+    // hook has no bearing on `disabled` beyond echoing the flag it's given.
+    renderHook(() => useGroupViewKeyboardShortcuts(makeParams({ canEdit: true }), false));
+    const lastCall = mockedUseKeyboardShortcuts.mock.calls.at(-1)![0];
+    expect(lastCall.disabled).toBe(false);
+  });
+
+  it('Escape only clears editing/highlight state — no keyboard-help setter call', () => {
+    const setEditingPlayerId = vi.fn();
+    const setHighlightedPlayerId = vi.fn();
+    renderHook(() =>
+      useGroupViewKeyboardShortcuts(
+        makeParams({ setEditingPlayerId, setHighlightedPlayerId }),
+        false,
+      ),
+    );
+
+    const escapeAction = getAction('Escape');
+    expect(escapeAction).toBeDefined();
+    // Must not throw (would if it still referenced a removed setter) and
+    // must still clear the live edit/highlight state.
+    expect(() => escapeAction!.action()).not.toThrow();
+    expect(setEditingPlayerId).toHaveBeenCalledWith(null);
+    expect(setHighlightedPlayerId).toHaveBeenCalledWith(null);
   });
 });

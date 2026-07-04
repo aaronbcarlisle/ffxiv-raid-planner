@@ -153,6 +153,15 @@ export const RELEASES: Release[] = [
         pr: 0,
         prTitle: 'feat(redesign): flip-p3 — delete legacy group chrome',
       },
+      {
+        internal: true,
+        category: 'fix',
+        title: 'Flip P3 whole-branch fix wave',
+        description:
+          'Deleted five more files orphaned by the legacy-deletion cascade (four dead loot/history modals plus their shared recommendation-candidates helper), removed a dead-flag keyboard-shortcut latch that could permanently disable content shortcuts (including Escape) after Alt+L/U/B, and pruned the unused LogWeekWizard/lootSubTab state trio it left behind.',
+        pr: 0,
+        prTitle: 'fix(redesign): flip-p3 whole-branch fixes — prune 4 orphaned loot files, dead shortcut-latch state, doc/test touch-ups',
+      },
     ],
     internal: true,
   },

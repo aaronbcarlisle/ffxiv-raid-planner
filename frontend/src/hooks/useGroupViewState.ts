@@ -15,14 +15,11 @@ import { recallTab, rememberTab, tabKey } from '../lib/tabMemory';
 import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
 
-type LootSubTab = 'matrix' | 'gear' | 'weapon';
-
-// Defaults for the gear/loot sub-tabs — the value shown when their URL param is
+// Default for the gear sub-tab — the value shown when its URL param is
 // omitted (non-default values are written to the URL). Kept here so the
 // back/forward reconciliation can restore the default that a param-less history
-// entry represents. Must match the fallbacks in the initial-state setup.
+// entry represents. Must match the fallback in the initial-state setup.
 const DEFAULT_GEAR_SUB: GearSubTab = 'sync';
-const DEFAULT_LOOT_SUB: LootSubTab = 'gear';
 
 // ── URL → state parsers (shared by initial state and back/forward reconciliation) ──
 // Each returns null when the param is absent/unrecognized so callers can fall
@@ -44,11 +41,6 @@ export function gearSubFromParam(urlSub: string | null): GearSubTab | null {
   if (urlSub === 'sync' || urlSub === 'priority' || urlSub === 'history' || urlSub === 'stats') return urlSub;
   if (urlSub === 'weapon') return 'priority';
   if (urlSub === 'summary') return 'stats';
-  return null;
-}
-
-export function lootSubFromParam(urlSubtab: string | null): LootSubTab | null {
-  if (urlSubtab === 'matrix' || urlSubtab === 'gear' || urlSubtab === 'weapon') return urlSubtab;
   return null;
 }
 
@@ -91,8 +83,6 @@ export interface UseGroupViewStateReturn {
   setPageMode: (mode: PageMode, extraParams?: Record<string, string>) => void;
   gearSubTab: GearSubTab;
   setGearSubTab: (tab: GearSubTab) => void;
-  lootSubTab: 'matrix' | 'gear' | 'weapon';
-  setLootSubTab: (tab: 'matrix' | 'gear' | 'weapon') => void;
 
   // View state
   viewMode: ViewMode;
@@ -125,20 +115,6 @@ export interface UseGroupViewStateReturn {
   setShowRolloverDialog: (show: boolean) => void;
   showDeleteTierConfirm: boolean;
   setShowDeleteTierConfirm: (show: boolean) => void;
-  showKeyboardHelp: boolean;
-  setShowKeyboardHelp: (show: boolean) => void;
-  showLogLootModal: boolean;
-  setShowLogLootModal: (show: boolean) => void;
-  showLogMaterialModal: boolean;
-  setShowLogMaterialModal: (show: boolean) => void;
-  showMarkFloorClearedModal: boolean;
-  setShowMarkFloorClearedModal: (show: boolean) => void;
-  showLogWeekWizard: boolean;
-  setShowLogWeekWizard: (show: boolean) => void;
-  logWeekWizardFloor: FloorNumber | null;
-  setLogWeekWizardFloor: (floor: FloorNumber | null) => void;
-  logWeekWizardWeek: number | null;
-  setLogWeekWizardWeek: (week: number | null) => void;
   playerModalCount: number;
   setPlayerModalCount: React.Dispatch<React.SetStateAction<number>>;
 
@@ -181,13 +157,6 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   const showSettingsModal = searchParams.get('showSettings') === 'true' || !!searchParams.get('settings');
   const [showRolloverDialog, setShowRolloverDialog] = useState(false);
   const [showDeleteTierConfirm, setShowDeleteTierConfirm] = useState(false);
-  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
-  const [showLogLootModal, setShowLogLootModal] = useState(false);
-  const [showLogMaterialModal, setShowLogMaterialModal] = useState(false);
-  const [showMarkFloorClearedModal, setShowMarkFloorClearedModal] = useState(false);
-  const [showLogWeekWizard, setShowLogWeekWizard] = useState(false);
-  const [logWeekWizardFloor, setLogWeekWizardFloor] = useState<FloorNumber | null>(null);
-  const [logWeekWizardWeek, setLogWeekWizardWeek] = useState<number | null>(null);
   const [playerModalCount, setPlayerModalCount] = useState(0);
 
   // Note: showSettingsModalState is initialized from URL but not bi-directionally synced.
@@ -227,15 +196,6 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlTab === 'summary') return 'stats';
     // Remembered gear sub-tab (per static), gated on the tab-persistence pref.
     return recallTab(tabKey('gear-subtab', scope), ['sync', 'priority', 'history', 'stats'] as const, 'sync');
-  });
-
-  // Subtab state for loot panel: URL param > localStorage > default
-  const [lootSubTab, setLootSubTabState] = useState<'matrix' | 'gear' | 'weapon'>(() => {
-    const urlSubtab = searchParams.get('subtab');
-    if (urlSubtab === 'matrix' || urlSubtab === 'gear' || urlSubtab === 'weapon') {
-      return urlSubtab;
-    }
-    return recallTab(tabKey('loot-priority-subtab', scope), ['matrix', 'gear', 'weapon'] as const, 'gear');
   });
 
   // ===== View state: URL param > localStorage > default =====
@@ -328,7 +288,6 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     });
     if (resetSubTabs) {
       setGearSubTabState('sync');
-      setLootSubTabState('gear');
     }
     // Note: pushes a history entry (no { replace }) so browser back/forward
     // returns to the previously-viewed tab.
@@ -343,17 +302,6 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       params.set('sub', tab);
       return params;
     }); // push so back/forward returns to the prior gear sub-tab
-  }, [setSearchParams, scope]);
-
-  // Wrapper to persist lootSubTab and update URL
-  const setLootSubTab = useCallback((tab: 'matrix' | 'gear' | 'weapon') => {
-    setLootSubTabState(tab);
-    rememberTab(tabKey('loot-priority-subtab', scope), tab);
-    setSearchParams(prev => {
-      const params = new URLSearchParams(prev);
-      params.set('subtab', tab);
-      return params;
-    }); // push so back/forward returns to the prior priority sub-tab
   }, [setSearchParams, scope]);
 
   // Wrapper to persist viewMode and update URL
@@ -506,8 +454,8 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   // setters this is a no-op (state already matches what we just wrote); for
   // browser back/forward it's what actually moves the UI to the popped entry.
   //
-  // The gear/loot sub-tab params parse to null when absent OR unrecognized, so
-  // we normally "leave current" (which lets a remembered sub-tab persist when
+  // The gear sub-tab param parses to null when absent OR unrecognized, so we
+  // normally "leave current" (which lets a remembered sub-tab persist when
   // the URL carries no param). But on a browser POP an *absent* param means the
   // popped entry showed the default sub-tab, so we must restore that default —
   // otherwise back/forward leaves a stale sub-tab. We only do this on real pops
@@ -525,11 +473,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     const subRaw = searchParams.get('sub');
     const nextGear = reconcileSubTab(gearSubTab, subRaw, gearSubFromParam(subRaw), isPop, DEFAULT_GEAR_SUB);
     if (nextGear !== gearSubTab) setGearSubTabState(nextGear);
-
-    const subtabRaw = searchParams.get('subtab');
-    const nextLoot = reconcileSubTab(lootSubTab, subtabRaw, lootSubFromParam(subtabRaw), isPop, DEFAULT_LOOT_SUB);
-    if (nextLoot !== lootSubTab) setLootSubTabState(nextLoot);
-  }, [searchParams, pageMode, gearSubTab, lootSubTab, navigationType]);
+  }, [searchParams, pageMode, gearSubTab, navigationType]);
 
   return {
     // URL params
@@ -541,8 +485,6 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     setPageMode,
     gearSubTab,
     setGearSubTab,
-    lootSubTab,
-    setLootSubTab,
 
     // View state
     viewMode,
@@ -575,20 +517,6 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     setShowRolloverDialog,
     showDeleteTierConfirm,
     setShowDeleteTierConfirm,
-    showKeyboardHelp,
-    setShowKeyboardHelp,
-    showLogLootModal,
-    setShowLogLootModal,
-    showLogMaterialModal,
-    setShowLogMaterialModal,
-    showMarkFloorClearedModal,
-    setShowMarkFloorClearedModal,
-    showLogWeekWizard,
-    setShowLogWeekWizard,
-    logWeekWizardFloor,
-    setLogWeekWizardFloor,
-    logWeekWizardWeek,
-    setLogWeekWizardWeek,
     playerModalCount,
     setPlayerModalCount,
 

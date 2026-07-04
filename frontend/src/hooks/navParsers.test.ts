@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { pageModeFromTabParam, gearSubFromParam, lootSubFromParam, reconcileSubTab } from './useGroupViewState';
+import { pageModeFromTabParam, gearSubFromParam, reconcileSubTab } from './useGroupViewState';
 
 describe('pageModeFromTabParam', () => {
   it('passes through current tab values', () => {
@@ -50,16 +50,6 @@ describe('gearSubFromParam', () => {
   });
 });
 
-describe('lootSubFromParam', () => {
-  it('passes through valid values and rejects the rest', () => {
-    expect(lootSubFromParam('matrix')).toBe('matrix');
-    expect(lootSubFromParam('gear')).toBe('gear');
-    expect(lootSubFromParam('weapon')).toBe('weapon');
-    expect(lootSubFromParam(null)).toBeNull();
-    expect(lootSubFromParam('other')).toBeNull();
-  });
-});
-
 describe('reconcileSubTab', () => {
   // gear sub-tab: default 'sync', parser = gearSubFromParam
   const gear = (current: 'sync' | 'priority' | 'history' | 'stats', raw: string | null, isPop: boolean) =>
@@ -93,11 +83,13 @@ describe('reconcileSubTab', () => {
     expect(gear('sync', 'stats', true)).toBe('stats');
   });
 
-  it('works for the loot sub-tab defaults too', () => {
-    const loot = (current: 'matrix' | 'gear' | 'weapon', raw: string | null, isPop: boolean) =>
-      reconcileSubTab(current, raw, lootSubFromParam(raw), isPop, 'gear');
-    expect(loot('weapon', null, true)).toBe('gear');   // POP, absent → default
-    expect(loot('weapon', null, false)).toBe('weapon'); // forward, absent → keep
-    expect(loot('gear', 'matrix', true)).toBe('matrix'); // explicit wins
+  it('is generic over any string-literal sub-tab union, not just gear', () => {
+    // reconcileSubTab has no gear-specific logic; pin that against a
+    // differently-shaped union so a future gear-only refactor is caught.
+    const other = (current: 'a' | 'b' | 'c', raw: string | null, isPop: boolean) =>
+      reconcileSubTab(current, raw, (raw === 'a' || raw === 'b' || raw === 'c') ? raw : null, isPop, 'b');
+    expect(other('c', null, true)).toBe('b');   // POP, absent → default
+    expect(other('c', null, false)).toBe('c');  // forward, absent → keep
+    expect(other('b', 'a', true)).toBe('a');    // explicit wins
   });
 });

@@ -66,9 +66,9 @@ export function Layout() {
 
       {/* Desktop settings open/close toggle, docked to the right edge to mirror
           the left rail's collapse chevron. (Mobile uses the header gear.)
-          Suppressed on the group route — the v2 shell has no settings panel
-          mounted yet, so the toggle would be dead chrome. All non-group routes
-          still render it. */}
+          Suppressed on the group route — the v2 shell mounts its own
+          SettingsGear (via V2SettingsHost) instead, so this toggle would be a
+          redundant duplicate. All non-group routes still render it. */}
       {!isGroupRoute && <SettingsDockToggle />}
 
       {/* Global keyboard shortcuts modal */}

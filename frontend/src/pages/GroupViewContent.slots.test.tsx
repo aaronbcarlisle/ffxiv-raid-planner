@@ -35,7 +35,6 @@ function makeState() {
     pageMode: mockPageMode,
     setPageMode,
     gearSubTab: 'sync', setGearSubTab: noop,
-    lootSubTab: 'gear', setLootSubTab: noop,
     viewMode: 'compact', setViewMode: noop,
     groupView: false, setGroupView: noop, setGroupViewState: noop,
     subsView: false, setSubsView: noop,
@@ -47,13 +46,6 @@ function makeState() {
     showSettingsModal: false, setShowSettingsModal: noop,
     showRolloverDialog: false, setShowRolloverDialog: noop,
     showDeleteTierConfirm: false, setShowDeleteTierConfirm: noop,
-    showKeyboardHelp: false, setShowKeyboardHelp: noop,
-    showLogLootModal: false, setShowLogLootModal: noop,
-    showLogMaterialModal: false, setShowLogMaterialModal: noop,
-    showMarkFloorClearedModal: false, setShowMarkFloorClearedModal: noop,
-    showLogWeekWizard: false, setShowLogWeekWizard: noop,
-    logWeekWizardFloor: null, setLogWeekWizardFloor: noop,
-    logWeekWizardWeek: null, setLogWeekWizardWeek: noop,
     playerModalCount: 0, setPlayerModalCount: noop,
     highlightedPlayerId: null, setHighlightedPlayerId: noop,
     highlightedSlot: null, setHighlightedSlot: noop,
@@ -92,10 +84,6 @@ vi.mock('../stores/settingsPanelStore', () => ({
 const keyboardSpy = vi.fn();
 vi.mock('../hooks/useGroupViewKeyboardShortcuts', () => ({
   useGroupViewKeyboardShortcuts: (_params: unknown, isAnyModalOpen: boolean) => keyboardSpy(isAnyModalOpen),
-}));
-vi.mock('../hooks/usePlayerActions', () => ({ usePlayerActions: () => ({ handleAddPlayer: vi.fn() }) }));
-vi.mock('../components/dnd/useDragAndDrop', () => ({
-  useDragAndDrop: () => ({ sensors: [], handleDragStart: vi.fn(), handleDragOver: vi.fn(), handleDragEnd: vi.fn(), handleDragCancel: vi.fn() }),
 }));
 vi.mock('../hooks/useDevice', () => ({ useDevice: () => ({ isSmallScreen: false }) }));
 vi.mock('../hooks/useSwipe', () => ({ useSwipe: () => ({}) }));

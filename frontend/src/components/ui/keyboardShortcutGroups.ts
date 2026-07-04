@@ -62,14 +62,6 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
-    title: 'Quick Actions',
-    shortcuts: [
-      { key: 'Alt+L', description: 'Log Loot' },
-      { key: 'Alt+U', description: 'Log Material' },
-      { key: 'Alt+B', description: 'Mark Floor Cleared' },
-    ],
-  },
-  {
     title: 'Mouse',
     shortcuts: [
       { key: 'Shift+Click', description: 'Copy link' },

@@ -38,7 +38,9 @@ export const TRANSIENT_NAV_PARAMS = [
  *
  * Promoted verbatim from `ContextSwitcher`'s `buildStaticHref` (the legacy
  * component keeps calling this with `extraParams: {}` for byte-identical
- * output); `StaticPicker` is the first caller to pass `extraParams`.
+ * output). No caller passes `extraParams` today — it's kept available for a
+ * future caller that needs to set an additional param atomically with the
+ * nav (e.g. a target sub-tab).
  */
 export function buildStaticNavHref(
   shareCode: string,

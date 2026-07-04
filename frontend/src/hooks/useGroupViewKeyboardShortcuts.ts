@@ -17,8 +17,6 @@ export interface GroupViewShortcutParams {
   setPageMode: (mode: PageMode) => void;
   gearSubTab: GearSubTab;
   setGearSubTab: (tab: GearSubTab) => void;
-  lootSubTab: 'matrix' | 'gear' | 'weapon';
-  setLootSubTab: (tab: 'matrix' | 'gear' | 'weapon') => void;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   groupView: boolean;
@@ -38,12 +36,8 @@ export interface GroupViewShortcutParams {
   navigate: (path: string) => void;
 
   // Modal toggles
-  setShowKeyboardHelp: (show: boolean) => void;
   setEditingPlayerId: (id: string | null) => void;
   setHighlightedPlayerId: (id: string | null) => void;
-  setShowLogLootModal: (show: boolean) => void;
-  setShowLogMaterialModal: (show: boolean) => void;
-  setShowMarkFloorClearedModal: (show: boolean) => void;
 }
 
 export function useGroupViewKeyboardShortcuts(
@@ -55,7 +49,6 @@ export function useGroupViewKeyboardShortcuts(
     setPageMode,
     gearSubTab: _gearSubTab,
     setGearSubTab,
-    setLootSubTab: _setLootSubTab,
     viewMode,
     setViewMode,
     groupView,
@@ -69,12 +62,8 @@ export function useGroupViewKeyboardShortcuts(
     currentGroup,
     tiers,
     navigate,
-    setShowKeyboardHelp,
     setEditingPlayerId,
     setHighlightedPlayerId,
-    setShowLogLootModal,
-    setShowLogMaterialModal,
-    setShowMarkFloorClearedModal,
   } = params;
 
   // Tier-change / add-player / new-tier / rollover now go through the shared
@@ -159,29 +148,6 @@ export function useGroupViewKeyboardShortcuts(
         }
       }, requireAlt: true },
 
-      // ===== Quick actions (Alt+letter) =====
-      { key: 'l', description: 'Log Loot', action: () => {
-        if (canEdit) {
-          setPageMode('gear');
-          setGearSubTab('history');
-          setShowLogLootModal(true);
-        }
-      }, requireAlt: true },
-      { key: 'u', description: 'Log Material', action: () => {
-        if (canEdit) {
-          setPageMode('gear');
-          setGearSubTab('history');
-          setShowLogMaterialModal(true);
-        }
-      }, requireAlt: true },
-      { key: 'b', description: 'Mark Floor Cleared', action: () => {
-        if (canEdit) {
-          setPageMode('gear');
-          setGearSubTab('history');
-          setShowMarkFloorClearedModal(true);
-        }
-      }, requireAlt: true },
-
       // ===== Static Settings (Alt+letter) =====
       // These are alwaysEnabled so you can switch tabs or close panel while it's open
       { key: 'g', description: 'Settings: General', action: () => {
@@ -206,8 +172,10 @@ export function useGroupViewKeyboardShortcuts(
       }, requireAlt: true, alwaysEnabled: true },
 
       // ===== Navigation (Shift modifiers) =====
+      // Shift+? (show keyboard shortcuts) is handled globally by
+      // useGlobalKeyboardShortcuts (Layout.tsx owns the actual modal); no
+      // binding needed here.
       { key: 's', description: 'My Statics', action: () => navigate('/profile?tab=statics'), requireShift: true },
-      { key: '?', description: 'Show keyboard shortcuts', action: () => setShowKeyboardHelp(true), requireShift: true },
 
       // ===== Static/Tier navigation (brackets) =====
       { key: '[', description: 'Previous static', action: () => {
@@ -254,7 +222,6 @@ export function useGroupViewKeyboardShortcuts(
 
       // ===== Escape =====
       { key: 'Escape', description: 'Close/clear', action: () => {
-        setShowKeyboardHelp(false);
         setEditingPlayerId(null);
         setHighlightedPlayerId(null);
       }},
