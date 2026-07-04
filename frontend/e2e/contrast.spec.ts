@@ -30,26 +30,10 @@
  *       bg-accent/10 tinted bg (#d7e2e5) = 3.79:1 on 9.8pt normal. The tinted
  *       background is applied by the sidebar's active-state styling; F3 rebuild.
  *
- * GroupView (legacy route) dark/light: Scoped SKIP (§3.1 pre-existing tint/card/badge
- * debt, deferred to F6 — see the "legacy §3.1 debt" note below the v2 roster test):
- *   RESOLVED by F2 token fix: text-text-muted player-card violations (dark) and base
- *   text-accent surface violations (light) — both now ≥ 4.5:1 on standard surfaces. ✓
- *   REMAINING dark  — keyboard-hint/60: #57575f on #0a0a0f = 2.75:1 (12px normal);
- *                     membership-owner badge: #14b8a6 on #104443 = 4.37:1 (10px normal);
- *                     role position btns: #d45a5a on #361d22 = 3.99:1 (12px bold);
- *                     text-muted@opacity on hardcoded dark-card bg: #696971 on #0c0c11 = 3.58:1
- *   REMAINING light — text-accent (#0c7d71) on bg-accent/10 tinted surfaces: 3.42–4.07:1;
- *                     #0f9688 (membership-owner/gear-source-tome tokens, unchanged by F2 fix)
- *                       on tinted bg: 2.42–3.80:1;
- *                     keyboard-hint/60: #9f9fac on #ededf2 = 2.24:1 (12px normal);
- *                     role position btns on tinted bg: 3.40–4.00:1 (12px bold)
- *   Both themes deferred to F6 GroupView rebuild.
- *
- * v2 Roster (Cards + Board, f6c-board Task 10): ASSERTED GREEN — replaces the
- * legacy GroupView skip above. The v2 Roster is built token-clean; the assertion
- * is scoped to [data-testid="roster-screen"] so legacy Header/shell chrome debt
- * (the §3.1 items listed above, still pending a later F6 slice) doesn't gate it.
- * Both the Cards grid and the Board gear matrix are asserted, both themes.
+ * v2 Roster (Cards + Board, f6c-board Task 10): ASSERTED GREEN. The v2 Roster
+ * is built token-clean; the assertion is scoped to [data-testid="roster-screen"]
+ * so shell chrome debt doesn't gate it. Both the Cards grid and the Board gear
+ * matrix are asserted, both themes.
  *
  * Three genuine v2-owned contrast bugs were found and fixed at the token level
  * (tokens/tokens.json + tokens/tokens.light.json, regenerated via `pnpm tokens:build`),
@@ -215,12 +199,8 @@ for (const theme of THEMES) {
 
 // ── Risk view: v2 Roster (Cards + Board), scoped to the roster region ──────────
 // The v2 Roster is built token-clean; scope Axe to [data-testid="roster-screen"]
-// so legacy Header / shell chrome debt (deferred to later F6 slices) doesn't gate
-// this. Asserts both the Cards grid and the Board gear matrix.
-//
-// The legacy /group/${DEV_SHARE_CODE} route (no ?shell=v2) still carries the
-// §3.1 card/badge/tint debt documented in the file header and is not asserted
-// here — it's superseded by this v2 roster assertion, not merely skipped.
+// so shell chrome debt (deferred to later F6 slices) doesn't gate this. Asserts
+// both the Cards grid and the Board gear matrix.
 //
 // EXCLUDED (Cards only): the role-colored badge triggers rendered by the shared
 // (pre-existing, non-v2) `components/player/PositionSelector` (T1/T2/H1/H2/M1/M2/R1/R2)
@@ -241,7 +221,7 @@ for (const theme of THEMES) {
   test(`v2 roster has zero contrast violations (${theme})`, async ({ page }) => {
     await forceTheme(page, theme)
     await loginAsOwner(page)
-    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=roster`)
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?tab=roster`)
     const roster = page.locator('[data-testid="roster-screen"]')
     await roster.waitFor({ timeout: 15_000 })
     await page.waitForLoadState('networkidle')
@@ -270,15 +250,15 @@ for (const theme of THEMES) {
 
 // ── Risk view: v2 Loot (Priority + History), scoped to the loot region ────────
 // The v2 Loot screen is built token-clean; scope Axe to [data-testid="loot-screen"]
-// so legacy Header / shell chrome debt (deferred to later F6 slices) doesn't gate
-// this. Asserts both the Priority view and the History view. No excludes — unlike
-// v2 Roster, Loot doesn't reuse any legacy role-badge selectors, and the harness
-// never opens a modal, so no reused-legacy-modal surface is ever in scope.
+// so shell chrome debt (deferred to later F6 slices) doesn't gate this. Asserts
+// both the Priority view and the History view. No excludes — unlike v2 Roster,
+// Loot doesn't reuse any legacy role-badge selectors, and the harness never
+// opens a modal, so no reused-legacy-modal surface is ever in scope.
 for (const theme of THEMES) {
   test(`v2 loot has zero contrast violations (${theme})`, async ({ page }) => {
     await forceTheme(page, theme)
     await loginAsOwner(page)
-    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=gear`)
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?tab=gear`)
     const loot = page.locator('[data-testid="loot-screen"]')
     await loot.waitFor({ timeout: 15_000 })
     await page.waitForLoadState('networkidle')
@@ -302,18 +282,17 @@ for (const theme of THEMES) {
 
 // ── Risk view: v2 Schedule, scoped to the schedule region ─────────────────────
 // The v2 Schedule screen is built token-clean; scope Axe to
-// [data-testid="schedule-screen"] so legacy Header / shell chrome debt (deferred
-// to later F6 slices) doesn't gate this. No excludes expected — all-new
-// token-clean code. Unlike Roster/Loot, Schedule has no view toggle, so there's
-// only a single pass per theme (no second view click). The harness never opens
-// a modal, so the reused legacy CreateSessionModal/OccurrenceListModal surfaces
-// are never in scope. The legacy ScheduleUpcomingPanel light-mode debt
-// (FOUNDATION_ROADMAP §3.1) is bypassed — its v2 replacement never mounts it.
+// [data-testid="schedule-screen"] so shell chrome debt (deferred to later F6
+// slices) doesn't gate this. No excludes expected — all-new token-clean code.
+// Unlike Roster/Loot, Schedule has no view toggle, so there's only a single
+// pass per theme (no second view click). The harness never opens a modal, so
+// the reused legacy CreateSessionModal/OccurrenceListModal surfaces are never
+// in scope.
 for (const theme of THEMES) {
   test(`v2 schedule has zero contrast violations (${theme})`, async ({ page }) => {
     await forceTheme(page, theme)
     await loginAsOwner(page)
-    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=schedule`)
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?tab=schedule`)
     const scheduleScreen = page.locator('[data-testid="schedule-screen"]')
     await scheduleScreen.waitFor({ timeout: 15_000 })
     await page.waitForLoadState('networkidle')
