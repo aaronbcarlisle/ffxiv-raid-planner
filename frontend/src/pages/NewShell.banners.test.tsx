@@ -78,9 +78,10 @@ vi.mock('./groupActionsContext', () => ({
   GroupActionModals: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useGroupActions: () => ({}),
 }));
-vi.mock('../hooks/useGroupViewState', () => ({
-  useGroupViewState: () => ({ setPageMode: vi.fn(), pageMode: 'overview' }),
-}));
+vi.mock('../hooks/useGroupViewState', async () => {
+  const { makeGroupViewStateMock } = await import('./newShellTestScaffold');
+  return { useGroupViewState: () => makeGroupViewStateMock({ pageMode: 'overview' }) };
+});
 vi.mock('../stores/staticGroupStore', () => ({
   useStaticGroupStore: (sel: (s: {
     currentGroup: unknown;
@@ -125,7 +126,7 @@ beforeEach(() => {
 
 function renderShell(shareCode = 'DEVTST') {
   return render(
-    <MemoryRouter initialEntries={[`/group/${shareCode}?shell=v2`]}>
+    <MemoryRouter initialEntries={[`/group/${shareCode}`]}>
       <Routes>
         <Route path="/group/:shareCode" element={<ShellContent />} />
       </Routes>

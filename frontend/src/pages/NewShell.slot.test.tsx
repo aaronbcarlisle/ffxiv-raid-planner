@@ -1,15 +1,14 @@
 /**
  * NewShell — ShellContent slot-wiring test (F6b).
  *
- * Locks that the v2 chrome injects `<Home/>` as the `overview` slot:
- *   - with a current group, ShellContent passes `slots.overview` to GroupViewContent;
- *   - with no current group, it passes no slots (so GroupViewContent falls through
- *     to its legacy body).
+ * Locks that the v2 chrome injects `<Home/>` as the `overview` slot when a
+ * static is active. With no current group, `ShellContentStates` renders the
+ * not-found state instead (GroupViewContent never mounts, so no slot is
+ * passed at all — the legacy no-slots fallback body was deleted in flip-P3).
  *
- * The "absent slots → legacy StaticHomeTab" branch itself is owned by
- * GroupViewContent.test.tsx (the slot-contract regression lock); here we only
- * verify ShellContent's decision to pass / withhold the slot. GroupViewContent
- * and Home are stubbed — the point is the wiring, not the rendered screens.
+ * GroupViewContent and Home are stubbed — the point is the wiring, not the
+ * rendered screens. See `GroupViewContent.slots.test.tsx` for the slot-contract
+ * regression lock (no legacy leaf renders when slots are provided).
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -31,9 +30,10 @@ vi.mock('./groupActionsContext', () => ({
   GroupActionModals: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useGroupActions: () => ({}),
 }));
-vi.mock('../hooks/useGroupViewState', () => ({
-  useGroupViewState: () => ({ setPageMode: vi.fn(), pageMode: 'overview' }),
-}));
+vi.mock('../hooks/useGroupViewState', async () => {
+  const { makeGroupViewStateMock } = await import('./newShellTestScaffold');
+  return { useGroupViewState: () => makeGroupViewStateMock({ pageMode: 'overview' }) };
+});
 vi.mock('../stores/staticGroupStore', () => ({
   useStaticGroupStore: (sel: (s: { currentGroup: unknown }) => unknown) => sel({ currentGroup: mocks.currentGroup }),
 }));

@@ -8,7 +8,7 @@
  *   - Click "Go to Loot" → setPageMode('gear') + onClose
  *   - Type "rost" → filters to Roster only
  *   - navigator.platform=MacIntel → ⌘K label; Win32 → Ctrl K label
- *   - 2 mocked groups → 2 "Switch to …" rows; click → navigate('/group/<code>?shell=v2')
+ *   - 2 mocked groups → 2 "Switch to …" rows; click → navigate('/group/<code>')
  *   - Absorbed shortcut description is rendered
  *   - Escape closes (Modal handles it)
  *   - isOpen=false → dialog not in DOM
@@ -84,7 +84,7 @@ function renderPalette(isOpen = true, onClose = vi.fn()) {
   return render(
     // MemoryRouter provides router context needed by useSearchParams etc.
     // (used by Modal internally, not by CommandPalette itself since we mock useGroupViewState).
-    <MemoryRouter initialEntries={['/group/ABC?shell=v2']}>
+    <MemoryRouter initialEntries={['/group/ABC']}>
       <CommandPalette isOpen={isOpen} onClose={onClose} />
     </MemoryRouter>,
   );
@@ -160,23 +160,23 @@ describe('CommandPalette', () => {
     expect(screen.getByText('Switch to Beta Static')).toBeInTheDocument();
   });
 
-  it('calls navigate("/group/ABC?shell=v2") when Alpha Static row is clicked (no saved tab)', () => {
+  it('calls navigate("/group/ABC") when Alpha Static row is clicked (no saved tab)', () => {
     const onClose = vi.fn();
     renderPalette(true, onClose);
     fireEvent.click(screen.getByText('Switch to Alpha Static'));
-    expect(mockNavigate).toHaveBeenCalledWith('/group/ABC?shell=v2');
+    expect(mockNavigate).toHaveBeenCalledWith('/group/ABC');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('restores the target static\'s saved tab (remember ON, the default) and re-adds ?shell=v2 via extraParams', () => {
+  it('restores the target static\'s saved tab (remember ON, the default)', () => {
     // Task 7 follow-up (FIX 3): the "Switch to …" row must repoint through the
     // same buildStaticNavHref call StaticPicker uses, instead of hardcoding a
-    // bare `/group/{code}?shell=v2` that drops the saved tab.
+    // bare `/group/{code}` that drops the saved tab.
     localStorage.setItem('static-nav-ABC', 'tab=loot&sub=weapon');
     const onClose = vi.fn();
     renderPalette(true, onClose);
     fireEvent.click(screen.getByText('Switch to Alpha Static'));
-    expect(mockNavigate).toHaveBeenCalledWith('/group/ABC?tab=loot&sub=weapon&shell=v2');
+    expect(mockNavigate).toHaveBeenCalledWith('/group/ABC?tab=loot&sub=weapon');
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

@@ -267,21 +267,24 @@ export function GearSyncDashboard({ players, onViewStats }: GearSyncDashboardPro
             )}
           </DashboardCard>
 
-          {/* Team Summary shortcut */}
-          <DashboardCard
-            title="Team Summary"
-            icon={<BarChart3 size={13} />}
-            onClick={onViewStats}
-            accentColor="teal"
-          >
-            <p className="text-sm text-text-secondary mb-4 leading-relaxed">
-              View job distribution, BiS gaps by slot, and overall progress across all roster members.
-            </p>
-            <div className="flex items-center gap-1.5 text-accent text-sm font-medium">
-              <span>Open Team Summary</span>
-              <span className="text-xs">→</span>
-            </div>
-          </DashboardCard>
+          {/* Team Summary shortcut — only when a caller wires a destination;
+              otherwise this is a dead control (looks clickable, does nothing). */}
+          {onViewStats && (
+            <DashboardCard
+              title="Team Summary"
+              icon={<BarChart3 size={13} />}
+              onClick={onViewStats}
+              accentColor="teal"
+            >
+              <p className="text-sm text-text-secondary mb-4 leading-relaxed">
+                View job distribution, BiS gaps by slot, and overall progress across all roster members.
+              </p>
+              <div className="flex items-center gap-1.5 text-accent text-sm font-medium">
+                <span>Open Team Summary</span>
+                <span className="text-xs">→</span>
+              </div>
+            </DashboardCard>
+          )}
 
         </div>
       </div>

@@ -47,8 +47,8 @@ function getInitials(name: string): string {
  *  (provided by the <GroupActionModals> wrapper below).
  *
  *  F6b: in v2 the `overview` tab is the redesigned <Home/> dashboard, injected as
- *  the `overview` slot. The legacy route passes no slots, so `GroupViewContent`
- *  still renders `StaticHomeTab` byte-for-byte. Exported for the slot-wiring test. */
+ *  the `overview` slot (now the only overview body — the legacy fallback was
+ *  removed in flip-P3). Exported for the slot-wiring test. */
 export function ShellContent() {
   const gv = useGroupViewState();
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -107,9 +107,8 @@ export function ShellContent() {
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
   // F6e: in v2 the `schedule` tab is the redesigned <Schedule/> screen, injected
-  // as the `schedule` slot — mirroring overview/roster/gear above. The legacy
-  // route passes no slots, so GroupViewContent renders the entire legacy
-  // schedule body (switcher + ScheduleUpcomingPanel/ScheduleTab) byte-for-byte.
+  // as the `schedule` slot — mirroring overview/roster/gear above (now the only
+  // schedule body — the legacy switcher + panel were removed in flip-P3).
   const schedule = currentGroup ? (
     <Schedule
       group={currentGroup}
@@ -157,9 +156,13 @@ export function ShellContent() {
         </>
       }
     >
+      {/* Slots are unconditional (flip-P3 Task 2): ShellContentStates renders
+          these children only in its branch 5, where `currentGroup` is loaded
+          and tiers exist — so the per-slot `currentGroup ?` builders above are
+          always populated by the time GroupViewContent mounts. */}
       <GroupViewContent
         actions={useGroupActions()}
-        slots={currentGroup ? { overview, roster, gear: loot, schedule } : undefined}
+        slots={{ overview, roster, gear: loot, schedule }}
       />
     </ShellContentStates>
   );
@@ -189,15 +192,12 @@ export function NewShell() {
   const fetchCurrentWeek = useLootTrackingStore((s) => s.fetchCurrentWeek);
 
   // ── Cold-fetch (F6a, Task 9, gap 2) ──
-  // The legacy GroupView *chrome* owns the group/tier fetch from the route
-  // `shareCode`; NewShell previously relied on a warm store, so a hard reload of
-  // `/group/X?shell=v2` rendered nothing. These three effects are replicated
-  // verbatim from GroupView (clear-on-switch → fetch group → fetch tiers + load
-  // the URL/localStorage/active tier) so a cold v2 load self-fetches. Only the
-  // group-fetch is replicated here. viewAs (useViewAsUrlSync) and recent-statics
-  // + static-nav persistence (useStaticNavMemory) are now wired into NewShell via
-  // their shared hooks (Task 1, Task 7) — sortPreset is the only GroupView chrome
-  // effect genuinely not replicated (not needed to render).
+  // NewShell previously relied on a warm store, so a hard reload of `/group/X`
+  // rendered nothing. These three effects (clear-on-switch → fetch group →
+  // fetch tiers + load the URL/localStorage/active tier) ensure a cold load
+  // self-fetches. viewAs (useViewAsUrlSync) and recent-statics + static-nav
+  // persistence (useStaticNavMemory) are wired into NewShell via their shared
+  // hooks (Task 1, Task 7).
 
   // Fetch the groups list on cold v2 load so the AppRail avatars are populated.
   // Guarded: skips if groups are already loaded (warm store from prior navigation),
@@ -281,8 +281,6 @@ export function NewShell() {
   }, [currentGroup?.id, fetchTiers, fetchTier, fetchCurrentWeek, searchParams, setSearchParams]);
 
   // ── v2-scoped mod-K binding ──────────────────────────────────────────────
-  // NewShell only mounts for ?shell=v2, so this listener never fires on the
-  // legacy /group/:shareCode route — it is unmounted when the legacy shell renders.
   // Destructure open so the effect dep-array references the stable callback
   // directly (avoids the exhaustive-deps warning for the `palette` object).
   const openPalette = palette.open;
@@ -324,14 +322,13 @@ export function NewShell() {
       initials: getInitials(g.name),
       isActive: g.shareCode === shareCode,
       onSelect: () => {
-        // SPA navigation — preserves ?shell=v2 gate without a full page reload,
-        // and restores the target static's saved tab when "remember tab per
-        // static" is ON (Task 7 follow-up: same buildStaticNavHref repoint as
-        // StaticPicker, instead of a bare href that dropped the saved tab).
+        // SPA navigation — restores the target static's saved tab when
+        // "remember tab per static" is ON (Task 7 follow-up: same
+        // buildStaticNavHref repoint as StaticPicker, instead of a bare href
+        // that dropped the saved tab).
         navigate(buildStaticNavHref(g.shareCode, {
           remember: rememberStaticTab,
           currentParams: searchParams,
-          extraParams: { shell: 'v2' },
         }));
       },
     })),

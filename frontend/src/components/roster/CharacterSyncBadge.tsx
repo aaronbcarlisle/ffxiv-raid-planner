@@ -1,4 +1,4 @@
-import { isSyncStale, formatSyncLabel } from '../../utils/splitClearScoringService';
+import { isSyncStale, formatSyncLabel } from './syncStatus';
 
 interface CharacterSyncBadgeProps {
   lastSyncedAt: string | null | undefined;

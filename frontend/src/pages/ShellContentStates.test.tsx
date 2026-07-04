@@ -2,8 +2,8 @@
  * ShellContentStates — v2 load / error / not-found / no-tiers states (flip-P1 Task 3).
  *
  * Locks the precedence + copy of the v2 states component that `ShellContent`
- * renders BEFORE `GroupViewContent`. The COPY is verbatim-legacy (mirrors
- * GroupView.tsx); the MARKUP is new v2 (EmptyState / CardShell / Modal). Uses the
+ * renders BEFORE `GroupViewContent`. The COPY is verbatim-legacy (mirrors the
+ * deleted legacy GroupView); the MARKUP is new v2 (EmptyState / CardShell / Modal). Uses the
  * REAL stores via `setState` (nothing hits the network — the component only READS
  * store state, it never triggers a fetch) with `./groupActionsContext` mocked so
  * `onNewTier` is a spy, and `../hooks/useDevice` mocked so the error Modal's

@@ -17,9 +17,10 @@
  * `Roster.test.tsx` (which renders the real Roster). The store mocks are made
  * dual-form (return the whole state to GroupViewContent's `useStore()` reads,
  * and honour the selector for ShellContent's / Roster's `useStore((s) => …)`
- * reads). The heavy leaves that neither assertion inspects (Home behind the
- * overview slot, CharacterManageBridge, the legacy roster body components) are
- * stubbed. Interaction (unused here) would use `fireEvent`, never
+ * reads) via the shared `./newShellTestScaffold` builders. The heavy leaves
+ * that neither assertion inspects (Home behind the overview slot,
+ * CharacterManageBridge, the legacy roster body components) are stubbed.
+ * Interaction (unused here) would use `fireEvent`, never
  * `@testing-library/user-event` (not a dependency of this project).
  */
 import { render, screen } from '@testing-library/react';
@@ -27,94 +28,45 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 
 // ── View state: pinned to the roster tab, with every field GVC + Roster read ──
-const noop = vi.fn();
-function makeState() {
-  return {
-    searchParams: new URLSearchParams(),
-    setSearchParams: noop,
-    pageMode: 'roster',
-    setPageMode: noop,
-    gearSubTab: 'sync', setGearSubTab: noop,
-    lootSubTab: 'gear', setLootSubTab: noop,
-    viewMode: 'compact', setViewMode: noop,
-    groupView: false, setGroupView: noop, setGroupViewState: noop,
-    subsView: false, setSubsView: noop,
-    selectedFloor: 1, setSelectedFloor: noop,
-    sortPreset: 'standard', setSortPreset: noop, setSortPresetState: noop,
-    editingPlayerId: null, setEditingPlayerId: noop,
-    clipboardPlayer: null, setClipboardPlayer: noop,
-    showCreateTierModal: false, setShowCreateTierModal: noop,
-    showSettingsModal: false, setShowSettingsModal: noop,
-    showRolloverDialog: false, setShowRolloverDialog: noop,
-    showDeleteTierConfirm: false, setShowDeleteTierConfirm: noop,
-    showKeyboardHelp: false, setShowKeyboardHelp: noop,
-    showLogLootModal: false, setShowLogLootModal: noop,
-    showLogMaterialModal: false, setShowLogMaterialModal: noop,
-    showMarkFloorClearedModal: false, setShowMarkFloorClearedModal: noop,
-    showLogWeekWizard: false, setShowLogWeekWizard: noop,
-    logWeekWizardFloor: null, setLogWeekWizardFloor: noop,
-    logWeekWizardWeek: null, setLogWeekWizardWeek: noop,
-    playerModalCount: 0, setPlayerModalCount: noop,
-    highlightedPlayerId: null, setHighlightedPlayerId: noop,
-    highlightedSlot: null, setHighlightedSlot: noop,
-    highlightedEntry: null, setHighlightedEntry: noop,
-    highlightedBookPlayerId: null, setHighlightedBookPlayerId: noop,
-  };
-}
-vi.mock('../hooks/useGroupViewState', () => ({
-  useGroupViewState: () => makeState(),
-}));
-
-// ── Fixtures ──
-const currentTier = { id: 'snap1', tierId: 'm5s', contentType: 'savage', players: [] as unknown[] };
-const currentGroup = {
-  id: 'g1', name: 'Test Static', shareCode: 'DEVTST', settings: {},
-  userRole: 'owner', isAdminAccess: false,
-};
+vi.mock('../hooks/useGroupViewState', async () => {
+  const { makeGroupViewStateMock } = await import('./newShellTestScaffold');
+  return { useGroupViewState: () => makeGroupViewStateMock({ pageMode: 'roster' }) };
+});
 
 // ── Stores — dual-form: GroupViewContent reads the whole object (`useStore()`),
 //    while ShellContent / Roster use a selector (`useStore((s) => …)`). ──
-vi.mock('../stores/tierStore', () => ({
-  useTierStore: () => ({ currentTier, tiers: [currentTier], isSaving: false, fetchTier: vi.fn() }),
-  useCurrentTier: () => currentTier,
-}));
-vi.mock('../stores/staticGroupStore', () => ({
-  useStaticGroupStore: (sel?: (s: { currentGroup: unknown; groups: unknown[] }) => unknown) => {
-    const state = { currentGroup, groups: [currentGroup] };
-    return sel ? sel(state) : state;
-  },
-}));
-vi.mock('../stores/authStore', () => ({
-  useAuthStore: (sel?: (s: { user: { id: string; isAdmin: boolean } }) => unknown) => {
-    const state = { user: { id: 'u1', isAdmin: false } };
-    return sel ? sel(state) : state;
-  },
-}));
-vi.mock('../stores/viewAsStore', () => ({
-  useViewAsStore: (sel?: (s: { viewAsUser: null }) => unknown) => {
-    const state = { viewAsUser: null };
-    return sel ? sel(state) : state;
-  },
-}));
-// Hoisted so whole-state (`useStore()`) and selector (`useStore((s) => …)`)
-// consumers see the SAME store object/fn identities (PR review finding — a
-// fresh object per call broke referential identity between GroupViewContent's
-// whole-state read and Roster's selector reads).
-const lootTrackingState = vi.hoisted(() => ({
-  currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
-  lootLog: [] as unknown[], fetchMaterialLog: vi.fn(), materialLog: [] as unknown[],
-}));
-vi.mock('../stores/lootTrackingStore', () => ({
-  // Dual-form: GroupViewContent reads the whole object (`useStore()`), while
-  // Roster uses selectors (`useStore((s) => s.lootLog)` etc.) for its Board
-  // next-upgrade highlight + mount fetch.
-  useLootTrackingStore: (sel?: (s: Record<string, unknown>) => unknown) =>
-    sel ? sel(lootTrackingState) : lootTrackingState,
-}));
+vi.mock('../stores/tierStore', async () => {
+  const { makeTierStoreState, dualFormStoreMock } = await import('./newShellTestScaffold');
+  const state = makeTierStoreState();
+  return { useTierStore: dualFormStoreMock(state), useCurrentTier: () => state.currentTier };
+});
+vi.mock('../stores/staticGroupStore', async () => {
+  const { makeStaticGroupStoreState, dualFormStoreMock } = await import('./newShellTestScaffold');
+  return { useStaticGroupStore: dualFormStoreMock(makeStaticGroupStoreState()) };
+});
+vi.mock('../stores/authStore', async () => {
+  const { makeAuthStoreState, dualFormStoreMock } = await import('./newShellTestScaffold');
+  return { useAuthStore: dualFormStoreMock(makeAuthStoreState()) };
+});
+vi.mock('../stores/viewAsStore', async () => {
+  const { dualFormStoreMock } = await import('./newShellTestScaffold');
+  return { useViewAsStore: dualFormStoreMock({ viewAsUser: null }) };
+});
+// Dual-form: GroupViewContent reads the whole object (`useStore()`), while
+// Roster uses selectors (`useStore((s) => s.lootLog)` etc.) for its Board
+// next-upgrade highlight + mount fetch. `dualFormStoreMock` is called once
+// (module init) so both reads share the same state/fn identities — a fresh
+// object per call broke referential identity between GroupViewContent's
+// whole-state read and Roster's selector reads (PR review finding).
+vi.mock('../stores/lootTrackingStore', async () => {
+  const { dualFormStoreMock } = await import('./newShellTestScaffold');
+  const state = {
+    currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
+    lootLog: [] as unknown[], fetchMaterialLog: vi.fn(), materialLog: [] as unknown[],
+  };
+  return { useLootTrackingStore: dualFormStoreMock(state) };
+});
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
-vi.mock('../stores/splitClearStore', () => ({
-  useSplitClearStore: () => ({ fetchData: vi.fn(), clearData: vi.fn() }),
-}));
 vi.mock('../stores/settingsPanelStore', () => ({
   useSettingsPanelStore: { getState: () => ({ open: vi.fn(), close: vi.fn() }) },
 }));
@@ -178,15 +130,10 @@ vi.mock('../components/roster/CharacterManageBridge', () => ({
   CharacterManageBridge: () => <div data-testid="char-bridge" />,
 }));
 // Legacy roster body leaves (only mount without the slot; stubbed for the RED run).
-vi.mock('../components/player/PlayerGrid', () => ({ PlayerGrid: () => <div data-testid="legacy-player-grid" /> }));
-vi.mock('../components/player/RosterDragOverlay', () => ({ RosterDragOverlay: () => null }));
 vi.mock('../components/roster/RosterCharacterPanel', () => ({ RosterCharacterPanel: () => null }));
-vi.mock('../components/split-clear/SplitClearPlanner', () => ({ SplitClearPlanner: () => null }));
 // Task 4: ShellContent now mounts AdminBanners/JoinRequestBanner above the roster
 // slot (not under test here). Stub both — the real JoinRequestBanner subscribes
-// to the un-mocked joinRequestStore, and this file's authStore mock returns a
-// fresh `user` object identity every call, which would spin its mount effect
-// into an infinite update loop.
+// to the un-mocked joinRequestStore, which isn't set up for this test.
 vi.mock('../components/admin/AdminBanners', () => ({ AdminBanners: () => null }));
 vi.mock('../components/static-group/JoinRequestBanner', () => ({ JoinRequestBanner: () => null }));
 vi.mock('../components/ui', async (orig) => {

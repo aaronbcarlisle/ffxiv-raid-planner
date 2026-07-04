@@ -6,6 +6,8 @@
  */
 import { Download, Search, KeyRound, Gamepad2 } from 'lucide-react';
 import { ApiKeyManager } from '../settings/ApiKeyManager';
+import { GearSyncDashboard } from './GearSyncDashboard';
+import { useTierPlayers } from '../../stores/tierStore';
 
 const INSTALL_STEPS = [
   {
@@ -31,8 +33,10 @@ const INSTALL_STEPS = [
 ] as const;
 
 export function PluginPage() {
+  const players = useTierPlayers();
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl">
+    <div className="space-y-10 max-w-5xl">
       {/* Installation steps */}
       <div className="space-y-5">
         <p className="text-xs font-semibold text-text-secondary uppercase tracking-[0.14em]">Installation steps</p>
@@ -72,6 +76,13 @@ export function PluginPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Gear sync status */}
+      <div>
+        <p className="text-xs font-semibold text-text-secondary uppercase tracking-[0.14em]">Gear Sync</p>
+        <p className="text-xs text-text-secondary mt-1 mb-4">Plugin sync status for this tier.</p>
+        <GearSyncDashboard players={players} />
       </div>
 
       {/* API keys */}

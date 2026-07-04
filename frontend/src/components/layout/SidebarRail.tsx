@@ -1,10 +1,10 @@
 /**
  * SidebarRail — legacy Static-layer collapsible rail (56↔208px).
  *
- * This is the original AppRail implementation, preserved verbatim so that
- * SidebarNav (and the legacy /group/:shareCode route) continues to render
- * byte-for-byte identically after AppRail was rebuilt as the 72px Person-layer
- * rail in Task 7 (F6a). Do NOT add new consumers; use AppRail for new code.
+ * This is the original AppRail implementation, preserved verbatim for Profile
+ * so it continues to render byte-for-byte identically after AppRail was
+ * rebuilt as the 72px Person-layer rail in Task 7 (F6a). Do NOT add new
+ * consumers; use AppRail for new code.
  */
 
 /* eslint-disable design-system/no-raw-button */

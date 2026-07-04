@@ -3384,7 +3384,7 @@ export function DesignSystem() {
 
   {/* Toolbar: Contextual controls */}
   <div className="bg-surface-card border-b border-border-subtle px-6 py-2">
-    <FloorSelector />
+    <TierSelector />
     <ViewModeToggle />
   </div>
 

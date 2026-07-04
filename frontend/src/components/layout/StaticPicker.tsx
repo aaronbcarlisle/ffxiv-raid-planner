@@ -5,15 +5,13 @@
  * segment (the ▾ statics list + selection logic), but WITHOUT the Player Hub /
  * Static Finder segments (those are the rail's job now) and built from design-
  * system primitives only: an `IconButton` trigger (no raw `<button>`), a
- * `text-xs` role badge (no `text-[10px]`), and SPA `useNavigate` that preserves
- * the `?shell=v2` gate (no full reload).
+ * `text-xs` role badge (no `text-[10px]`), and SPA `useNavigate` (no full
+ * reload).
  *
  * `ContextSwitcher` was repointed (Task 7) to share this component's
  * `buildStaticNavHref` util for its own static-switch — output is byte-
  * identical to its previous inline logic (characterization-locked by
  * `ContextSwitcher.test.tsx`), so the legacy route's behavior is unchanged.
- * `StaticPicker` calls the same util, adding `extraParams: { shell: 'v2' }` to
- * keep the v2 flip gate on the URL.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -92,17 +90,13 @@ export function StaticPicker({
   // Selecting another static navigates immediately ONLY when already viewing a
   // static (you're switching the view you're on). Restores that static's saved
   // tab when "remember tab per static" is ON (previously dropped in v2 — this
-  // repoint shares ContextSwitcher's `buildStaticNavHref` logic). The
-  // ?shell=v2 gate is re-added via `extraParams` so the SPA navigation stays
-  // in the v2 shell (no full reload) regardless of what the restored/carried
-  // params contain.
+  // repoint shares ContextSwitcher's `buildStaticNavHref` logic).
   const selectStatic = useCallback((shareCode: string) => {
     setOpen(false);
     if (onStatic) {
       navigate(buildStaticNavHref(shareCode, {
         remember: rememberStaticTab,
         currentParams: searchParams,
-        extraParams: { shell: 'v2' },
       }));
     }
   }, [onStatic, navigate, rememberStaticTab, searchParams]);

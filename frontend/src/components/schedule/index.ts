@@ -1,1 +1,0 @@
-export { ScheduleTab } from './ScheduleTab';

@@ -146,7 +146,7 @@ function renderRosterAtUrl(tier: TierSnapshot | null, initialEntries: string[]) 
 }
 
 beforeEach(() => {
-  window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster');
+  window.history.pushState({}, '', '/group/DEVTST?tab=roster');
   // Roster now subscribes to lootTrackingStore and fires two fetch actions on
   // mount (fetchLootLog / fetchCurrentWeek). Stub them via setState so they never
   // fall through to the real api client — unstubbed they reject with
@@ -207,7 +207,7 @@ describe('Roster', () => {
 
   // With rview=board in the URL, the Board matrix renders instead of the cards grid.
   it('renders the Board (gear matrix) when rview=board', () => {
-    window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster&rview=board');
+    window.history.pushState({}, '', '/group/DEVTST?tab=roster&rview=board');
     renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' })]));
     // Board has a "Player" column header + the Board subtitle names BiS slots.
     expect(screen.getByRole('columnheader', { name: 'Player' })).toBeInTheDocument();
@@ -217,14 +217,14 @@ describe('Roster', () => {
   // The Board lights the next-upgrade (●) glyph for the #1 needer of a slot and
   // adds the swatch to the legend; disabling priority in settings removes both.
   it('shows the next-upgrade glyph + legend swatch on the Board when priority is active', () => {
-    window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster&rview=board');
+    window.history.pushState({}, '', '/group/DEVTST?tab=roster&rview=board');
     renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One', role: 'melee', position: 'M1', gear: bodyNeededGear() })]));
     expect(screen.getAllByText('●').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('● next upgrade')).toBeInTheDocument();
   });
 
   it('renders no next-upgrade glyph on the Board when priority is disabled in settings', () => {
-    window.history.pushState({}, '', '/group/DEVTST?shell=v2&tab=roster&rview=board');
+    window.history.pushState({}, '', '/group/DEVTST?tab=roster&rview=board');
     const disabledGroup = { ...group, settings: { priorityMode: 'disabled' } } as unknown as StaticGroup;
     render(
       <BrowserRouter>
@@ -251,7 +251,7 @@ describe('Roster — ?player= deep link', () => {
 
     const { container } = renderRosterAtUrl(
       makeTier(players),
-      ['/group/DEVTST?shell=v2&tab=roster&player=p2'],
+      ['/group/DEVTST?tab=roster&player=p2'],
     );
 
     const targetCard = container.querySelector('#player-card-p2');
@@ -269,7 +269,7 @@ describe('Roster — ?player= deep link', () => {
 
     const { container } = renderRosterAtUrl(
       makeTier(players),
-      ['/group/DEVTST?shell=v2&tab=roster&player=p1'],
+      ['/group/DEVTST?tab=roster&player=p1'],
     );
 
     expect(container.querySelector('#player-card-p1')).toHaveClass('highlight-pulse');
@@ -291,7 +291,7 @@ describe('Roster — ?player= deep link', () => {
 
     const { container } = renderRosterAtUrl(
       makeTier(players),
-      ['/group/DEVTST?shell=v2&tab=roster&player=does-not-exist'],
+      ['/group/DEVTST?tab=roster&player=does-not-exist'],
     );
 
     expect(container.querySelector('.highlight-pulse')).toBeNull();
@@ -303,7 +303,7 @@ describe('Roster — ?player= deep link', () => {
   it('does not strip the ?player= param from the URL (GroupViewContent owns the strip)', () => {
     const players = [makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' })];
 
-    renderRosterAtUrl(makeTier(players), ['/group/DEVTST?shell=v2&tab=roster&player=p1']);
+    renderRosterAtUrl(makeTier(players), ['/group/DEVTST?tab=roster&player=p1']);
 
     expect(screen.getByTestId('loc').dataset.search).toContain('player=p1');
   });

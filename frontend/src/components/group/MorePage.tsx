@@ -1,9 +1,9 @@
 /* eslint-disable design-system/no-raw-button */
 import {
-  Users, Settings, Link2, Book, Sword, Download, Activity,
-  AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle, PlugZap,
+  Users, Settings, Link2, Book, Download, Activity,
+  AlertTriangle, ChevronRight, Clock, CheckCircle, XCircle, PlugZap,
 } from 'lucide-react';
-import type { MemberRole, PageMode, GearSubTab } from '../../types';
+import type { MemberRole, PageMode } from '../../types';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
@@ -12,8 +12,9 @@ import { DashboardCard, IconMedallion, SectionLabel } from '../ui/DashboardCard'
 interface MorePageProps {
   onOpenSettings: (tab?: string) => void;
   onNavigate: (tab: PageMode) => void;
-  onSetGearSubTab: (sub: GearSubTab) => void;
-  onOpenSplitPlanner: () => void;
+  /** Open the v2 Loot screen on its History view (drives `lview`, the param
+   *  v2 Loot actually reads — NOT the legacy `gearSubTab`). */
+  onOpenLootHistory: () => void;
   onOpenIntegrations: () => void;
   onOpenPlugin: () => void;
   canManage: boolean;
@@ -27,8 +28,7 @@ function formatDate(iso: string): string {
 export function MorePage({
   onOpenSettings,
   onNavigate,
-  onSetGearSubTab,
-  onOpenSplitPlanner,
+  onOpenLootHistory,
   onOpenIntegrations,
   onOpenPlugin,
   canManage,
@@ -124,7 +124,7 @@ export function MorePage({
           <DashboardCard
             title="Loot History"
             icon={<Book size={13} />}
-            onClick={() => { onSetGearSubTab('history'); onNavigate('gear'); }}
+            onClick={onOpenLootHistory}
           >
             <p className="text-xs text-text-secondary mb-4">
               Track and review loot entries logged across all raid sessions.
@@ -143,22 +143,6 @@ export function MorePage({
             </div>
             <div className="flex items-center gap-1 text-accent text-xs font-medium">
               View loot history <ChevronRight size={12} />
-            </div>
-          </DashboardCard>
-
-          {/* Split Planner — live shortcut */}
-          <DashboardCard
-            title="Split Planner"
-            icon={<Sword size={13} />}
-            accentColor="teal"
-            onClick={onOpenSplitPlanner}
-            badge={<ExternalLink size={11} className="text-text-muted" />}
-          >
-            <p className="text-xs text-text-secondary mb-4">
-              Plan loot splits and assign roles for split clears.
-            </p>
-            <div className="flex items-center gap-1 text-accent text-xs font-medium">
-              Open Split Planner <ChevronRight size={12} />
             </div>
           </DashboardCard>
 

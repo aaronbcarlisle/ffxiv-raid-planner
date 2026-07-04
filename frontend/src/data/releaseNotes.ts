@@ -144,6 +144,42 @@ export const RELEASES: Release[] = [
         pr: 172,
         prTitle: 'feat(redesign): flip-p2 — invert group route default to v2',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Flip P3 — legacy group view deleted',
+        description:
+          'The legacy group view, its ?shell= escape hatch, and every legacy-only tab body are gone; the v2 shell is the only /group experience. The plugin gear-sync dashboard moved to the Plugin tab, and the e2e smoke suite now exercises the v2 interface end to end.',
+        pr: 173,
+        prTitle: 'feat(redesign): flip-p3 — delete legacy group chrome',
+      },
+      {
+        internal: true,
+        category: 'fix',
+        title: 'Flip P3 whole-branch fix wave',
+        description:
+          'Deleted five more files orphaned by the legacy-deletion cascade (four dead loot/history modals plus their shared recommendation-candidates helper), removed a dead-flag keyboard-shortcut latch that could permanently disable content shortcuts (including Escape) after Alt+L/U/B, and pruned the unused LogWeekWizard/lootSubTab state trio it left behind.',
+        pr: 0,
+        prTitle: 'fix(redesign): flip-p3 whole-branch fixes — prune 4 orphaned loot files, dead shortcut-latch state, doc/test touch-ups',
+      },
+      {
+        internal: true,
+        category: 'fix',
+        title: 'More page — Loot History card opened the wrong Loot view',
+        description:
+          'The More page\'s Loot History card opened the v2 Loot screen on Priority instead of History because it targeted the legacy gearSubTab state, which v2 Loot never reads. It now targets lview, the URL param v2 Loot actually uses.',
+        pr: 173,
+        prTitle: 'fix(redesign): flip-p3 — More-page Loot History card targets lview (v2 Loot\'s real view param)',
+      },
+      {
+        internal: true,
+        category: 'fix',
+        title: 'Pruned dead Loot keyboard shortcuts left over from the legacy sub-tab deletion',
+        description:
+          'Alt+1-3 and Alt+←/→ used to switch the deleted legacy gear sub-tabs and fire log:* events with no remaining listeners — silent no-ops. Removed them (and their entries in the shortcuts help panel + tips) and fixed the expand-all (V) shortcut, which was still gated on the removed sub-tab state, so it now fires whenever the Loot tab is open.',
+        pr: 173,
+        prTitle: 'fix(redesign): flip-p3 — prune dead loot shortcuts (legacy gear sub-tab bindings), fix expand-all gate',
+      },
     ],
     internal: true,
   },

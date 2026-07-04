@@ -59,14 +59,15 @@ vi.mock('./groupActionsContext', () => ({
   GroupActionModals: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useGroupActions: () => ({}),
 }));
-vi.mock('../hooks/useGroupViewState', () => ({
-  useGroupViewState: () => ({
-    setPageMode: vi.fn(),
-    pageMode: 'overview',
-    searchParams: new URLSearchParams('tab=roster'),
-    setSearchParams: vi.fn(),
-  }),
-}));
+vi.mock('../hooks/useGroupViewState', async () => {
+  const { makeGroupViewStateMock } = await import('./newShellTestScaffold');
+  return {
+    useGroupViewState: () => makeGroupViewStateMock({
+      pageMode: 'overview',
+      searchParams: new URLSearchParams('tab=roster'),
+    }),
+  };
+});
 vi.mock('../stores/staticGroupStore', () => ({
   useStaticGroupStore: (sel: (s: Record<string, unknown>) => unknown) =>
     sel({
@@ -150,7 +151,7 @@ beforeEach(() => {
 
 function renderShell(shareCode = 'ABC') {
   return render(
-    <MemoryRouter initialEntries={[`/group/${shareCode}?shell=v2`]}>
+    <MemoryRouter initialEntries={[`/group/${shareCode}`]}>
       <Routes>
         <Route path="/group/:shareCode" element={<NewShell />} />
       </Routes>

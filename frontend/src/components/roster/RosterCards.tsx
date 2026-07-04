@@ -67,7 +67,7 @@ import {
 import { Plus } from 'lucide-react';
 import { CardShell, EmptyStateInvite, PlayerIdentity, ProgressBar, Tag } from '../ui';
 import { RosterCard } from './RosterCard';
-import type { DragAttributes, DragListeners } from '../player/DroppablePlayerCard';
+import type { DragAttributes, DragListeners } from './dragTypes';
 import { useDragAndDrop, type PlayerUpdate } from '../dnd/useDragAndDrop';
 import { useDragStore } from '../../stores/dragStore';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';

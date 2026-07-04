@@ -23,7 +23,6 @@ import { analytics } from '../../services/analytics';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useInvitationStore } from '../../stores/invitationStore';
-import { useSplitClearStore } from '../../stores/splitClearStore';
 import { getJobInfo } from '../../gamedata';
 
 interface SetupWizardProps {
@@ -37,7 +36,6 @@ const getInitialState = (): WizardState => ({
   staticName: '',
   tierId: RAID_TIERS[0]?.id || '',
   isPublic: false,
-  splitClearEnabled: false,
   players: INITIAL_ROSTER,
   inviteCode: null,
 });
@@ -68,7 +66,6 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
   const createTier = useTierStore((s) => s.createTier);
   const updatePlayer = useTierStore((s) => s.updatePlayer);
   const createInvitation = useInvitationStore((s) => s.createInvitation);
-  const toggleSplitClearMode = useSplitClearStore((s) => s.toggleMode);
 
   // Track wizard open
   useEffect(() => {
@@ -85,7 +82,6 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
       state.staticName.trim() !== '' ||
       state.tierId !== initial.tierId ||
       state.isPublic !== initial.isPublic ||
-      state.splitClearEnabled !== initial.splitClearEnabled ||
       state.players.some((p) => p.name.trim() !== '' || p.job !== '')
     );
   };
@@ -182,12 +178,6 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
         }
 
         await Promise.all(updatePromises);
-      }
-
-      // Enabling split mode is idempotent. Character and run assignments remain
-      // empty so the wizard never invents alt-character data.
-      if (state.splitClearEnabled) {
-        await toggleSplitClearMode(groupId, true);
       }
 
       // Step 4: Always create a member invite for sharing
@@ -332,11 +322,9 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
               staticName={state.staticName}
               tierId={state.tierId}
               isPublic={state.isPublic}
-              splitClearEnabled={state.splitClearEnabled}
               onStaticNameChange={(name) => setState((prev) => ({ ...prev, staticName: name }))}
               onTierIdChange={(tierId) => setState((prev) => ({ ...prev, tierId }))}
               onIsPublicChange={(isPublic) => setState((prev) => ({ ...prev, isPublic }))}
-              onSplitClearEnabledChange={(splitClearEnabled) => setState((prev) => ({ ...prev, splitClearEnabled }))}
             />
           )}
 
@@ -353,7 +341,6 @@ export function SetupWizard({ isOpen, onClose, onComplete }: SetupWizardProps) {
               staticName={state.staticName}
               tierId={state.tierId}
               isPublic={state.isPublic}
-              splitClearEnabled={state.splitClearEnabled}
               players={state.players}
               isSubmitting={isSubmitting}
               error={submitError}
