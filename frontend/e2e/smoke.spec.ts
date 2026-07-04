@@ -57,9 +57,25 @@ const MOCK_CHARACTER_LODESTONE_ID = '910001';
  * inside the currently-scoped week.
  */
 function hoursFromNow(hours: number): string {
-  const d = new Date(Date.now() + hours * 60 * 60 * 1000);
-  const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60_000);
+  const now = new Date();
+  const target = new Date(now.getTime() + hours * 60 * 60 * 1000);
+
+  // Clamp the midnight/week-boundary hole: on the scoped week's last day
+  // (Friday, Sat-Fri reset per the comment above), pushing `hours` ahead can
+  // roll past local midnight into Saturday — the START of the NEXT scoped
+  // week — which would silently drop the created session outside the window
+  // every assertion here expects it in. If that happens, pin the target to
+  // late-but-still-Friday instead of letting it roll over. (Residual edge:
+  // if `now` itself is already within the last hour of Friday, both a
+  // caller's start- and end-offset can clamp to the same instant — accepted
+  // here as a negligible window vs. the boundary bug this fixes.)
+  if (target.getDate() !== now.getDate()) {
+    target.setTime(now.getTime());
+    target.setHours(23, 30, 0, 0);
+  }
+
+  const offset = target.getTimezoneOffset();
+  const local = new Date(target.getTime() - offset * 60_000);
   return local.toISOString().slice(0, 16);
 }
 
@@ -110,8 +126,14 @@ async function fillAndSubmitSession(
  */
 async function sessionIdByTitle(page: Page, title: string): Promise<string> {
   const groupRes = await page.request.get(`${API_BASE}/api/static-groups/by-code/${DEV_SHARE_CODE}`);
+  if (!groupRes.ok()) {
+    throw new Error(`sessionIdByTitle("${title}"): by-code lookup returned ${groupRes.status()}`);
+  }
   const group = await groupRes.json() as { id: string };
   const sessionsRes = await page.request.get(`${API_BASE}/api/static-groups/${group.id}/schedule`);
+  if (!sessionsRes.ok()) {
+    throw new Error(`sessionIdByTitle("${title}"): schedule lookup returned ${sessionsRes.status()}`);
+  }
   const sessions = await sessionsRes.json() as Array<{ id: string; title: string }>;
   const match = sessions.find((s) => s.title === title);
   if (!match) throw new Error(`sessionIdByTitle: no session titled "${title}" found via API`);
@@ -269,7 +291,7 @@ test.describe('Auth & Navigation', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 test.describe('Schedule', () => {
-  test.describe.configure({ mode: 'serial', retries: 1 });
+  test.describe.configure({ mode: 'serial' });
 
   // Extra headroom over the file's 30s default — Schedule fans out into the
   // most concurrent per-navigation fetches of any screen (schedule,
@@ -381,10 +403,42 @@ test.describe('Schedule', () => {
     await grid.scrollIntoViewIfNeeded();
     await expect(page.locator('[data-testid^="avail-cell-"]').first()).toBeVisible({ timeout: 10_000 });
 
-    const found = await findUnselectedCell(page);
+    let found = await findUnselectedCell(page);
     if (!found) {
-      test.skip(true, 'No unselected cell available — all evening slots already selected');
-      return;
+      // The probe window (1800-2030) is fully selected — this test's own
+      // prior runs (plus test 8's permanent claim on 1900) saturate it over
+      // time. The grid is a click-toggle, auto-save-on-click editor
+      // (AvailabilityGrid.tsx's window `mouseup` handler persists on every
+      // click, no separate save button), so deselecting a probe cell IS a
+      // real save — do that first to free a cell, then fall through to the
+      // normal select+save+verify path below. Skip 1900: test 8 depends on
+      // it staying selected. This makes the test idempotent long-term: once
+      // saturated, every future run deselects then reselects the same cell,
+      // always exercising a genuine click+save instead of permanently
+      // skipping.
+      const today = todayStr();
+      let toggled: { cell: ReturnType<Page['getByTestId']>; cellId: string } | null = null;
+      for (const time of ['1800', '1830', '1930', '2000', '2030']) {
+        const id = `avail-cell-${today}-${time}`;
+        const candidate = page.getByTestId(id);
+        if (await candidate.isVisible().catch(() => false)) {
+          toggled = { cell: candidate, cellId: id };
+          break;
+        }
+      }
+      if (!toggled) {
+        throw new Error('6 — Availability grid: no probe cell visible to deselect for un-saturation');
+      }
+
+      await toggled.cell.click();
+      await expect(page.getByTestId(toggled.cellId)).toHaveAttribute('data-user-selected', 'false', {
+        timeout: 5_000,
+      });
+
+      found = await findUnselectedCell(page);
+      if (!found) {
+        throw new Error('6 — Availability grid: still no unselected cell after deselecting a probe cell');
+      }
     }
     const { cell, cellId } = found;
 
@@ -532,9 +586,15 @@ test.describe('Viewer restrictions', () => {
     await page.goto(`/group/${DEV_SHARE_CODE}`);
     await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
 
+    // Anchor on a positive signal that the static actually rendered before
+    // asserting the negative — otherwise a count-0 assert would pass just as
+    // easily on a blank/broken page as on a correctly-gated one.
+    await expect(page.getByText('Dev Test Static').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole('button', { name: 'Invite members' })).toHaveCount(0);
 
     await switchTab(page, 'Schedule');
+    await expect(page.getByTestId('schedule-screen')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add session' })).toHaveCount(0);
 
     await ctx.close();
