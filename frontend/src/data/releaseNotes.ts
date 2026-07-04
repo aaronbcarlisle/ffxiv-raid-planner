@@ -162,6 +162,15 @@ export const RELEASES: Release[] = [
         pr: 0,
         prTitle: 'fix(redesign): flip-p3 whole-branch fixes — prune 4 orphaned loot files, dead shortcut-latch state, doc/test touch-ups',
       },
+      {
+        internal: true,
+        category: 'fix',
+        title: 'More page — Loot History card opened the wrong Loot view',
+        description:
+          'The More page\'s Loot History card opened the v2 Loot screen on Priority instead of History because it targeted the legacy gearSubTab state, which v2 Loot never reads. It now targets lview, the URL param v2 Loot actually uses.',
+        pr: 173,
+        prTitle: 'fix(redesign): flip-p3 — More-page Loot History card targets lview (v2 Loot\'s real view param)',
+      },
     ],
     internal: true,
   },

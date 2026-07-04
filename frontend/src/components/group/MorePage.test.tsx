@@ -32,7 +32,7 @@ function renderMorePage(overrides: Partial<Parameters<typeof MorePage>[0]> = {})
     <MorePage
       onOpenSettings={noop}
       onNavigate={noop}
-      onSetGearSubTab={noop}
+      onOpenLootHistory={noop}
       onOpenIntegrations={noop}
       onOpenPlugin={noop}
       canManage={true}
@@ -60,6 +60,17 @@ describe('MorePage', () => {
     fireEvent.click(screen.getByText('Integrations'));
 
     expect(onOpenIntegrations).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onOpenLootHistory (not onNavigate/onSetGearSubTab) when the Loot History card is clicked', () => {
+    const onOpenLootHistory = vi.fn();
+    const onNavigate = vi.fn();
+    renderMorePage({ onOpenLootHistory, onNavigate });
+
+    fireEvent.click(screen.getByText('Loot History'));
+
+    expect(onOpenLootHistory).toHaveBeenCalledTimes(1);
+    expect(onNavigate).not.toHaveBeenCalled();
   });
 
   it('keeps the Integrations card copy unchanged', () => {

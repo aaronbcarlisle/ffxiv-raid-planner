@@ -128,9 +128,10 @@ vi.mock('../components/group/GoalsPage', () => ({
   GoalsPage: () => <div data-testid="goals-page" />,
 }));
 vi.mock('../components/group/MorePage', () => ({
-  MorePage: (props: { onOpenIntegrations: () => void }) => (
+  MorePage: (props: { onOpenIntegrations: () => void; onOpenLootHistory: () => void }) => (
     <div data-testid="more-page">
       <button onClick={() => props.onOpenIntegrations()}>open-integrations</button>
+      <button onClick={() => props.onOpenLootHistory()}>open-loot-history</button>
     </div>
   ),
 }));
@@ -219,6 +220,18 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     expect(settingsPanelOpenSpy).toHaveBeenCalledTimes(1);
     expect(settingsPanelOpenSpy).toHaveBeenCalledWith({ tab: 'integrations' });
     expect(setPageMode).not.toHaveBeenCalled();
+  });
+
+  // ── Loot History re-route (Bugbot finding, flip-P3): the More page's Loot
+  //    History card must target `lview` — the URL param the v2 Loot screen
+  //    actually reads (useUrlTabState('lview', ...)) — not the legacy
+  //    gearSubTab, which v2 Loot never consumes. ──
+  it("wires MorePage's onOpenLootHistory to setPageMode('gear', { lview: 'history' })", () => {
+    mockPageMode = 'more';
+    renderContent();
+    screen.getByText('open-loot-history').click();
+    expect(setPageMode).toHaveBeenCalledTimes(1);
+    expect(setPageMode).toHaveBeenCalledWith('gear', { lview: 'history' });
   });
 
   it("pageMode 'plugin' renders the PluginPage body", () => {

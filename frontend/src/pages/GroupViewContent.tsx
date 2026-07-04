@@ -349,7 +349,7 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
                   useSettingsPanelStore.getState().open({ tab: (tab as SettingsTab) ?? 'general' });
                 }}
                 onNavigate={setPageMode}
-                onSetGearSubTab={setGearSubTab}
+                onOpenLootHistory={() => setPageMode('gear', { lview: 'history' })}
                 onOpenIntegrations={() => {
                   useSettingsPanelStore.getState().open({ tab: 'integrations' });
                 }}
