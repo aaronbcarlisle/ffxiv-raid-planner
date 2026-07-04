@@ -11,88 +11,46 @@
  *       in flip-P3, so there is no fallback left to render).
  *
  * The mock surface mirrors `NewShell.gear.test.tsx` (real GroupViewContent at a
- * pinned pageMode). `Schedule` is stubbed — the point is the slot WIRING, not
- * Schedule's internals (covered by its own tests).
+ * pinned pageMode, via the shared `./newShellTestScaffold` builders). `Schedule`
+ * is stubbed — the point is the slot WIRING, not Schedule's internals (covered
+ * by its own tests).
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 
 // ── View state: pinned to the schedule tab ──
-const noop = vi.fn();
-function makeState() {
-  return {
-    searchParams: new URLSearchParams(),
-    setSearchParams: noop,
-    pageMode: 'schedule',
-    setPageMode: noop,
-    gearSubTab: 'sync', setGearSubTab: noop,
-    lootSubTab: 'gear', setLootSubTab: noop,
-    viewMode: 'compact', setViewMode: noop,
-    groupView: false, setGroupView: noop, setGroupViewState: noop,
-    subsView: false, setSubsView: noop,
-    selectedFloor: 1, setSelectedFloor: noop,
-    sortPreset: 'standard', setSortPreset: noop, setSortPresetState: noop,
-    editingPlayerId: null, setEditingPlayerId: noop,
-    clipboardPlayer: null, setClipboardPlayer: noop,
-    showCreateTierModal: false, setShowCreateTierModal: noop,
-    showSettingsModal: false, setShowSettingsModal: noop,
-    showRolloverDialog: false, setShowRolloverDialog: noop,
-    showDeleteTierConfirm: false, setShowDeleteTierConfirm: noop,
-    showKeyboardHelp: false, setShowKeyboardHelp: noop,
-    showLogLootModal: false, setShowLogLootModal: noop,
-    showLogMaterialModal: false, setShowLogMaterialModal: noop,
-    showMarkFloorClearedModal: false, setShowMarkFloorClearedModal: noop,
-    showLogWeekWizard: false, setShowLogWeekWizard: noop,
-    logWeekWizardFloor: null, setLogWeekWizardFloor: noop,
-    logWeekWizardWeek: null, setLogWeekWizardWeek: noop,
-    playerModalCount: 0, setPlayerModalCount: noop,
-    highlightedPlayerId: null, setHighlightedPlayerId: noop,
-    highlightedSlot: null, setHighlightedSlot: noop,
-    highlightedEntry: null, setHighlightedEntry: noop,
-    highlightedBookPlayerId: null, setHighlightedBookPlayerId: noop,
-  };
-}
-vi.mock('../hooks/useGroupViewState', () => ({
-  useGroupViewState: () => makeState(),
-}));
-
-// ── Fixtures ──
-const currentTier = { id: 'snap1', tierId: 'm5s', contentType: 'savage', players: [] as unknown[] };
-const currentGroup = {
-  id: 'g1', name: 'Test Static', shareCode: 'DEVTST', settings: {},
-  userRole: 'owner', isAdminAccess: false,
-};
+vi.mock('../hooks/useGroupViewState', async () => {
+  const { makeGroupViewStateMock } = await import('./newShellTestScaffold');
+  return { useGroupViewState: () => makeGroupViewStateMock({ pageMode: 'schedule' }) };
+});
 
 // ── Stores — dual-form (GroupViewContent reads whole object; ShellContent uses a selector). ──
-vi.mock('../stores/tierStore', () => ({
-  useTierStore: () => ({ currentTier, tiers: [currentTier], isSaving: false, fetchTier: vi.fn() }),
-  useCurrentTier: () => currentTier,
-}));
-vi.mock('../stores/staticGroupStore', () => ({
-  useStaticGroupStore: (sel?: (s: { currentGroup: unknown; groups: unknown[] }) => unknown) => {
-    const state = { currentGroup, groups: [currentGroup] };
-    return sel ? sel(state) : state;
-  },
-}));
-vi.mock('../stores/authStore', () => ({
-  useAuthStore: (sel?: (s: { user: { id: string; isAdmin: boolean } }) => unknown) => {
-    const state = { user: { id: 'u1', isAdmin: false } };
-    return sel ? sel(state) : state;
-  },
-}));
-vi.mock('../stores/viewAsStore', () => ({
-  useViewAsStore: (sel?: (s: { viewAsUser: null }) => unknown) => {
-    const state = { viewAsUser: null };
-    return sel ? sel(state) : state;
-  },
-}));
-vi.mock('../stores/lootTrackingStore', () => ({
-  useLootTrackingStore: () => ({
+vi.mock('../stores/tierStore', async () => {
+  const { makeTierStoreState, dualFormStoreMock } = await import('./newShellTestScaffold');
+  const state = makeTierStoreState();
+  return { useTierStore: dualFormStoreMock(state), useCurrentTier: () => state.currentTier };
+});
+vi.mock('../stores/staticGroupStore', async () => {
+  const { makeStaticGroupStoreState, dualFormStoreMock } = await import('./newShellTestScaffold');
+  return { useStaticGroupStore: dualFormStoreMock(makeStaticGroupStoreState()) };
+});
+vi.mock('../stores/authStore', async () => {
+  const { makeAuthStoreState, dualFormStoreMock } = await import('./newShellTestScaffold');
+  return { useAuthStore: dualFormStoreMock(makeAuthStoreState()) };
+});
+vi.mock('../stores/viewAsStore', async () => {
+  const { dualFormStoreMock } = await import('./newShellTestScaffold');
+  return { useViewAsStore: dualFormStoreMock({ viewAsUser: null }) };
+});
+vi.mock('../stores/lootTrackingStore', async () => {
+  const { dualFormStoreMock } = await import('./newShellTestScaffold');
+  const state = {
     currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
-    lootLog: [], fetchMaterialLog: vi.fn(), materialLog: [],
-  }),
-}));
+    lootLog: [] as unknown[], fetchMaterialLog: vi.fn(), materialLog: [] as unknown[],
+  };
+  return { useLootTrackingStore: dualFormStoreMock(state) };
+});
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
 vi.mock('../stores/settingsPanelStore', () => ({
   useSettingsPanelStore: { getState: () => ({ open: vi.fn(), close: vi.fn() }) },
@@ -152,9 +110,7 @@ vi.mock('../components/loot/Loot', () => ({ Loot: () => <div data-testid="v2-loo
 vi.mock('../components/schedule/Schedule', () => ({ Schedule: () => <div data-testid="v2-schedule" /> }));
 // Task 4: ShellContent now mounts AdminBanners/JoinRequestBanner above the
 // schedule slot (not under test here). Stub both — the real JoinRequestBanner
-// subscribes to the un-mocked joinRequestStore, and this file's authStore mock
-// returns a fresh `user` object identity every call, which would spin its mount
-// effect into an infinite update loop.
+// subscribes to the un-mocked joinRequestStore, which isn't set up for this test.
 vi.mock('../components/admin/AdminBanners', () => ({ AdminBanners: () => null }));
 vi.mock('../components/static-group/JoinRequestBanner', () => ({ JoinRequestBanner: () => null }));
 vi.mock('../components/ui', async (orig) => {
