@@ -8,15 +8,13 @@
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { HEADER_EVENTS } from '../components/layout/Header';
 import { useGroupActions } from '../pages/groupActionsContext';
-import type { PageMode, GearSubTab, ViewMode } from '../types';
+import type { PageMode, ViewMode } from '../types';
 import type { TierSnapshot, StaticGroup } from '../types';
 
 export interface GroupViewShortcutParams {
   // Tab/view state
   pageMode: PageMode;
   setPageMode: (mode: PageMode) => void;
-  gearSubTab: GearSubTab;
-  setGearSubTab: (tab: GearSubTab) => void;
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
   groupView: boolean;
@@ -47,8 +45,6 @@ export function useGroupViewKeyboardShortcuts(
   const {
     pageMode,
     setPageMode,
-    gearSubTab: _gearSubTab,
-    setGearSubTab,
     viewMode,
     setViewMode,
     groupView,
@@ -82,42 +78,15 @@ export function useGroupViewKeyboardShortcuts(
       { key: '3', description: 'Tracking tab',      action: () => setPageMode('goals') },
       { key: '4', description: 'Loot Log tab',      action: () => setPageMode('gear') },
 
-      // ===== Sub tabs (Alt+1-3) =====
-      // Gear sub-tabs: Priority, Loot Log, Summary, Weapon
-      // History/List: By Floor, Timeline
-      // History/All Weeks: All, Gear, Materials
-      { key: '1', description: 'Sub tab 1', action: () => {
-        if (pageMode === 'gear') setGearSubTab('priority');
-        if (pageMode === 'gear' && _gearSubTab === 'history') {
-          window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'byFloor' }));
-          window.dispatchEvent(new CustomEvent('log:set-entry-type', { detail: 'all' }));
-        }
-      }, requireAlt: true },
-      { key: '2', description: 'Sub tab 2', action: () => {
-        if (pageMode === 'gear') setGearSubTab('history');
-        if (pageMode === 'gear' && _gearSubTab === 'history') {
-          window.dispatchEvent(new CustomEvent('log:set-view', { detail: 'chronological' }));
-          window.dispatchEvent(new CustomEvent('log:set-entry-type', { detail: 'loot' }));
-        }
-      }, requireAlt: true },
-      { key: '3', description: 'Sub tab 3', action: () => {
-        if (pageMode === 'gear') setGearSubTab('stats');
-        if (pageMode === 'gear' && _gearSubTab === 'history') {
-          window.dispatchEvent(new CustomEvent('log:set-entry-type', { detail: 'materials' }));
-        }
-      }, requireAlt: true },
-
       // ===== View controls =====
       { key: 'v', description: 'Toggle expand/collapse', action: () => {
         if (pageMode === 'roster') {
           setViewMode(viewMode === 'compact' ? 'expanded' : 'compact');
         }
-        // Expand/collapse all on Loot Log sub-tab
-        if (pageMode === 'gear' && _gearSubTab === 'history') {
-          window.dispatchEvent(new CustomEvent('log:toggle-expand-all'));
-        }
-        // Expand/collapse on Gear Priority sub-tab (weapon priorities)
-        if (pageMode === 'gear' && _gearSubTab === 'priority') {
+        // Expand/collapse all weapon-priority sections on the Loot tab (v2's
+        // WeaponPriorityList owns the listener; it's simply unmounted while
+        // the user is on the History view, so this is a harmless no-op there).
+        if (pageMode === 'gear') {
           window.dispatchEvent(new CustomEvent('loot:toggle-expand-all'));
         }
       }},
@@ -125,28 +94,12 @@ export function useGroupViewKeyboardShortcuts(
         if (pageMode === 'roster') {
           setGroupView(!groupView, currentGroup?.id);
         }
-        // Toggle grid/list on Loot Log sub-tab
-        if (pageMode === 'gear' && _gearSubTab === 'history') {
-          window.dispatchEvent(new CustomEvent('log:toggle-layout'));
-        }
       }},
       { key: 's', description: 'Toggle substitutes', action: () => {
         if (pageMode === 'roster' && hasSubstitutes) {
           setSubsView(!subsView);
         }
       }},
-
-      // ===== Week navigation (Alt+Arrow) =====
-      { key: 'ArrowLeft', description: 'Previous week', action: () => {
-        if (pageMode === 'gear' && _gearSubTab === 'history') {
-          window.dispatchEvent(new CustomEvent('log:prev-week'));
-        }
-      }, requireAlt: true },
-      { key: 'ArrowRight', description: 'Next week', action: () => {
-        if (pageMode === 'gear' && _gearSubTab === 'history') {
-          window.dispatchEvent(new CustomEvent('log:next-week'));
-        }
-      }, requireAlt: true },
 
       // ===== Static Settings (Alt+letter) =====
       // These are alwaysEnabled so you can switch tabs or close panel while it's open

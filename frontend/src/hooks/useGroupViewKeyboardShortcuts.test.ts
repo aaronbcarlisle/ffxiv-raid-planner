@@ -5,7 +5,7 @@
  * path (no query string appended).
  */
 import { renderHook } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useGroupViewKeyboardShortcuts } from './useGroupViewKeyboardShortcuts';
 import type { GroupViewShortcutParams } from './useGroupViewKeyboardShortcuts';
 import type { StaticGroup } from '../types';
@@ -73,8 +73,6 @@ function makeParams(overrides: Partial<GroupViewShortcutParams> = {}): GroupView
   return {
     pageMode: 'overview',
     setPageMode: noop,
-    gearSubTab: 'priority',
-    setGearSubTab: noop,
     viewMode: 'compact',
     setViewMode: noop,
     groupView: false,
@@ -215,5 +213,85 @@ describe('useGroupViewKeyboardShortcuts — dead-flag bindings removed', () => {
     expect(() => escapeAction!.action()).not.toThrow();
     expect(setEditingPlayerId).toHaveBeenCalledWith(null);
     expect(setHighlightedPlayerId).toHaveBeenCalledWith(null);
+  });
+});
+
+// ── Removed dead legacy gear sub-tab bindings (PR #173 bugbot round 2) ─────
+// FLIP-P3 deleted the legacy gear sub-tab UI (HistoryView + its `log:*` event
+// listeners); v2 Loot only ever switches Priority⇄History via the `lview` URL
+// param, never `gearSubTab`. Alt+1/2/3 and Alt+←/→ only ever (a) wrote the
+// now-unread `gearSubTab` state and (b) dispatched `log:*` CustomEvents with
+// zero listeners anywhere in the app — pure no-ops from the user's
+// perspective. Pin that the registry no longer contains any of them.
+describe('useGroupViewKeyboardShortcuts — dead legacy gear sub-tab bindings removed', () => {
+  beforeEach(() => {
+    mockedUseKeyboardShortcuts.mockClear();
+  });
+
+  it('does not register Alt+1 / Alt+2 / Alt+3 (deleted gear sub-tab switchers)', () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(makeParams(), false));
+
+    expect(getAction('1', { requireAlt: true })).toBeUndefined();
+    expect(getAction('2', { requireAlt: true })).toBeUndefined();
+    expect(getAction('3', { requireAlt: true })).toBeUndefined();
+  });
+
+  it('does not register Alt+ArrowLeft / Alt+ArrowRight (dead log:prev-week/next-week dispatches)', () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(makeParams(), false));
+
+    expect(getAction('ArrowLeft', { requireAlt: true })).toBeUndefined();
+    expect(getAction('ArrowRight', { requireAlt: true })).toBeUndefined();
+  });
+});
+
+// ── 'v'/'g' gear-tab dispatches: dead log:* dropped, expand-all gate fixed ──
+// (PR #173 bugbot round 2). `loot:toggle-expand-all` has a live listener
+// (WeaponPriorityList.tsx, mounted by v2 Loot); its dispatch used to be
+// gated on the deleted `gearSubTab === 'priority'` state, which nothing ever
+// set anymore (Alt+1 was itself dead) — so it never fired. The gate now
+// checks only `pageMode === 'gear'`.
+describe("useGroupViewKeyboardShortcuts — 'v' expand-all gate fixed, dead 'g'/'v' log:* dispatches dropped", () => {
+  let dispatchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockedUseKeyboardShortcuts.mockClear();
+    dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+  });
+
+  afterEach(() => {
+    dispatchSpy.mockRestore();
+  });
+
+  function dispatchedEventNames(): string[] {
+    return dispatchSpy.mock.calls.map((call: unknown[]) => (call[0] as CustomEvent).type);
+  }
+
+  it("'v' dispatches loot:toggle-expand-all when pageMode is 'gear' (no gearSubTab gate)", () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(makeParams({ pageMode: 'gear' }), false));
+
+    const vAction = getAction('v');
+    expect(vAction).toBeDefined();
+    vAction!.action();
+
+    expect(dispatchedEventNames()).toEqual(['loot:toggle-expand-all']);
+  });
+
+  it("'v' does not dispatch loot:toggle-expand-all when pageMode is not 'gear'", () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(makeParams({ pageMode: 'roster' }), false));
+
+    const vAction = getAction('v');
+    vAction!.action();
+
+    expect(dispatchedEventNames()).not.toContain('loot:toggle-expand-all');
+  });
+
+  it("'g' on the gear tab no longer dispatches the dead log:toggle-layout event", () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(makeParams({ pageMode: 'gear' }), false));
+
+    const gAction = getAction('g');
+    expect(gAction).toBeDefined();
+    gAction!.action();
+
+    expect(dispatchedEventNames()).toEqual([]);
   });
 });

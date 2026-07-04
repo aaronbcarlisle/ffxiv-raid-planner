@@ -23,7 +23,6 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     title: 'Tab Navigation',
     shortcuts: [
       { key: '1-4', description: 'Switch main tabs' },
-      { key: 'Alt+1-3', description: 'Switch sub tabs' },
       { key: 'Shift+S', description: 'My Statics' },
       { key: 'Ctrl+Shift+S', description: 'Admin Dashboard', adminOnly: true },
     ],
@@ -41,7 +40,6 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { key: 'V', description: 'Expand/collapse' },
       { key: 'G', description: 'Toggle grid view' },
       { key: 'S', description: 'Toggle subs' },
-      { key: 'Alt+← →', description: 'Change week' },
     ],
   },
   {

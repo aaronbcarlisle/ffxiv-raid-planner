@@ -6,20 +6,14 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useNavigationType, useParams } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 import { useAuthStore } from '../stores/authStore';
 import { clearRegisteredTabParams } from './useUrlTabState';
 import { prefRememberTabs } from '../lib/navPreferences';
 import { recallTab, rememberTab, tabKey } from '../lib/tabMemory';
-import type { PageMode, GearSubTab, ViewMode, SortPreset, SnapshotPlayer } from '../types';
+import type { PageMode, ViewMode, SortPreset, SnapshotPlayer } from '../types';
 import type { FloorNumber } from '../gamedata/loot-tables';
-
-// Default for the gear sub-tab — the value shown when its URL param is
-// omitted (non-default values are written to the URL). Kept here so the
-// back/forward reconciliation can restore the default that a param-less history
-// entry represents. Must match the fallback in the initial-state setup.
-const DEFAULT_GEAR_SUB: GearSubTab = 'sync';
 
 // ── URL → state parsers (shared by initial state and back/forward reconciliation) ──
 // Each returns null when the param is absent/unrecognized so callers can fall
@@ -35,13 +29,6 @@ export function pageModeFromTabParam(urlTab: string | null): PageMode | null {
     case 'mount-farms': case 'collections': return 'goals';
     default: return null;
   }
-}
-
-export function gearSubFromParam(urlSub: string | null): GearSubTab | null {
-  if (urlSub === 'sync' || urlSub === 'priority' || urlSub === 'history' || urlSub === 'stats') return urlSub;
-  if (urlSub === 'weapon') return 'priority';
-  if (urlSub === 'summary') return 'stats';
-  return null;
 }
 
 /**
@@ -81,8 +68,6 @@ export interface UseGroupViewStateReturn {
   /** Switch tabs; pass extraParams to set additional URL query params atomically
    *  (e.g. a target sub-tab) in the same history entry. */
   setPageMode: (mode: PageMode, extraParams?: Record<string, string>) => void;
-  gearSubTab: GearSubTab;
-  setGearSubTab: (tab: GearSubTab) => void;
 
   // View state
   viewMode: ViewMode;
@@ -136,11 +121,6 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   const { shareCode } = useParams<{ shareCode: string }>();
   const scope = shareCode ?? undefined;
   const navigate = useNavigate();
-  // Distinguishes a browser back/forward (POP) from forward/programmatic
-  // navigation, so the reconciliation effect can restore a param-less history
-  // entry's default sub-tab on POP without clobbering remembered sub-tabs on
-  // ordinary forward navigation.
-  const navigationType = useNavigationType();
   // History index from just before the settings panel was opened, so closing
   // can pop the entire settings sub-history (all the tab/section entries pushed
   // while it was open) in one go and land back on the page underneath.
@@ -177,25 +157,6 @@ export function useGroupViewState(): UseGroupViewStateReturn {
         'roster',
       )
     );
-  });
-
-  // ===== Gear sub-tab state: URL ?sub= > localStorage > default =====
-  const [gearSubTab, setGearSubTabState] = useState<GearSubTab>(() => {
-    const urlSub = searchParams.get('sub');
-    if (urlSub === 'sync' || urlSub === 'priority' || urlSub === 'history' || urlSub === 'stats') {
-      return urlSub;
-    }
-    // Backward-compat: old sub param values
-    if (urlSub === 'weapon') return 'priority';
-    if (urlSub === 'summary') return 'stats';
-    // Also handle old URL tab= values that map to specific gear sub-tabs
-    const urlTab = searchParams.get('tab');
-    if (urlTab === 'loot' || urlTab === 'priority') return 'priority';
-    if (urlTab === 'weapon') return 'priority';
-    if (urlTab === 'log' || urlTab === 'history') return 'history';
-    if (urlTab === 'summary') return 'stats';
-    // Remembered gear sub-tab (per static), gated on the tab-persistence pref.
-    return recallTab(tabKey('gear-subtab', scope), ['sync', 'priority', 'history', 'stats'] as const, 'sync');
   });
 
   // ===== View state: URL param > localStorage > default =====
@@ -267,17 +228,16 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     rememberTab(tabKey('group-view-tab', scope), mode);
     // When the user has turned tab memory OFF ('reset'), navigating to a primary
     // tab resets every view's sub-tab to its default. Clearing the registered
-    // sub-tab params resets the URL-derived ones; the gear/loot sub-tabs (held
-    // in state here) are reset explicitly just below.
+    // sub-tab params resets the URL-derived ones.
     const resetSubTabs = !prefRememberTabs(useAuthStore.getState().user);
     setSearchParams(prev => {
       const params = new URLSearchParams(prev);
       params.set('tab', mode);
-      // Clear old subtab param; gear sub-tab is stored as ?sub=
+      // Clear old subtab param (pre-dates the current per-view sub-tab params).
       params.delete('subtab');
       if (resetSubTabs) {
         clearRegisteredTabParams(params); // rsub, sched, goal, farm, coll, stab, avail, mf, …
-        params.delete('sub'); // gear sub-tab param (not managed by the hook)
+        params.delete('sub'); // legacy gear sub-tab param — no live consumer, still stripped for clean URLs
       }
       // Apply any caller-supplied params (e.g. a target sub-tab) AFTER the reset
       // so an explicit deep-link target (e.g. Open Mount Farms → goal=farms) wins.
@@ -286,22 +246,8 @@ export function useGroupViewState(): UseGroupViewStateReturn {
       }
       return params;
     });
-    if (resetSubTabs) {
-      setGearSubTabState('sync');
-    }
     // Note: pushes a history entry (no { replace }) so browser back/forward
     // returns to the previously-viewed tab.
-  }, [setSearchParams, scope]);
-
-  // Wrapper to persist gearSubTab and update URL
-  const setGearSubTab = useCallback((tab: GearSubTab) => {
-    setGearSubTabState(tab);
-    rememberTab(tabKey('gear-subtab', scope), tab);
-    setSearchParams(prev => {
-      const params = new URLSearchParams(prev);
-      params.set('sub', tab);
-      return params;
-    }); // push so back/forward returns to the prior gear sub-tab
   }, [setSearchParams, scope]);
 
   // Wrapper to persist viewMode and update URL
@@ -450,30 +396,13 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reconcile tab/sub-tab state FROM the URL whenever it changes. For our own
-  // setters this is a no-op (state already matches what we just wrote); for
-  // browser back/forward it's what actually moves the UI to the popped entry.
-  //
-  // The gear sub-tab param parses to null when absent OR unrecognized, so we
-  // normally "leave current" (which lets a remembered sub-tab persist when
-  // the URL carries no param). But on a browser POP an *absent* param means the
-  // popped entry showed the default sub-tab, so we must restore that default —
-  // otherwise back/forward leaves a stale sub-tab. We only do this on real pops
-  // (not the first run / initial mount, where leaving the remembered value is
-  // correct).
-  const didReconcileRef = useRef(false);
+  // Reconcile pageMode FROM the URL whenever it changes. For our own setters
+  // this is a no-op (state already matches what we just wrote); for browser
+  // back/forward it's what actually moves the UI to the popped entry.
   useEffect(() => {
-    const firstRun = !didReconcileRef.current;
-    didReconcileRef.current = true;
-    const isPop = navigationType === 'POP' && !firstRun;
-
     const t = pageModeFromTabParam(searchParams.get('tab'));
     if (t && t !== pageMode) setPageModeState(t);
-
-    const subRaw = searchParams.get('sub');
-    const nextGear = reconcileSubTab(gearSubTab, subRaw, gearSubFromParam(subRaw), isPop, DEFAULT_GEAR_SUB);
-    if (nextGear !== gearSubTab) setGearSubTabState(nextGear);
-  }, [searchParams, pageMode, gearSubTab, navigationType]);
+  }, [searchParams, pageMode]);
 
   return {
     // URL params
@@ -483,8 +412,6 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     // Tab state
     pageMode,
     setPageMode,
-    gearSubTab,
-    setGearSubTab,
 
     // View state
     viewMode,

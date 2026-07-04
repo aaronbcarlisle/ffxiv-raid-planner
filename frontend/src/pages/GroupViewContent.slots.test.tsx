@@ -34,7 +34,6 @@ function makeState() {
     setSearchParams: noop,
     pageMode: mockPageMode,
     setPageMode,
-    gearSubTab: 'sync', setGearSubTab: noop,
     viewMode: 'compact', setViewMode: noop,
     groupView: false, setGroupView: noop, setGroupViewState: noop,
     subsView: false, setSubsView: noop,

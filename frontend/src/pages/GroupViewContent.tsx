@@ -78,8 +78,6 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
     setSearchParams,
     pageMode,
     setPageMode,
-    gearSubTab,
-    setGearSubTab,
     viewMode,
     setViewMode,
     groupView,
@@ -269,8 +267,6 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
   useGroupViewKeyboardShortcuts({
     pageMode,
     setPageMode,
-    gearSubTab,
-    setGearSubTab,
     viewMode,
     setViewMode,
     groupView,

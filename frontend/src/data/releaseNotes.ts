@@ -171,6 +171,15 @@ export const RELEASES: Release[] = [
         pr: 173,
         prTitle: 'fix(redesign): flip-p3 — More-page Loot History card targets lview (v2 Loot\'s real view param)',
       },
+      {
+        internal: true,
+        category: 'fix',
+        title: 'Pruned dead Loot keyboard shortcuts left over from the legacy sub-tab deletion',
+        description:
+          'Alt+1-3 and Alt+←/→ used to switch the deleted legacy gear sub-tabs and fire log:* events with no remaining listeners — silent no-ops. Removed them (and their entries in the shortcuts help panel + tips) and fixed the expand-all (V) shortcut, which was still gated on the removed sub-tab state, so it now fires whenever the Loot tab is open.',
+        pr: 173,
+        prTitle: 'fix(redesign): flip-p3 — prune dead loot shortcuts (legacy gear sub-tab bindings), fix expand-all gate',
+      },
     ],
     internal: true,
   },

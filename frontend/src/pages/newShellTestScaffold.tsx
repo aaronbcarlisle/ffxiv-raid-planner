@@ -80,7 +80,6 @@ export function makeGroupViewStateMock(
     setSearchParams: noop,
     pageMode: 'roster',
     setPageMode: noop,
-    gearSubTab: 'sync', setGearSubTab: noop,
     viewMode: 'compact', setViewMode: noop,
     groupView: false, setGroupView: noop, setGroupViewState: noop,
     subsView: false, setSubsView: noop,

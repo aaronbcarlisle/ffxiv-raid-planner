@@ -39,14 +39,12 @@ const TIPS: Tip[] = [
   // Loot tips (requires edit permission)
   { id: 'log-loot', text: 'Press Alt+L to log a loot drop', context: 'loot', requiredRole: 'member' },
   { id: 'floor-cleared', text: 'Press Alt+B to mark floor cleared', context: 'loot', requiredRole: 'member' },
-  { id: 'loot-subtabs', text: 'Press Alt+1-3 to switch sub tabs', context: 'loot' },
 
   // Log tips
   { id: 'log-material', text: 'Press Alt+M to log material', context: 'log', requiredRole: 'member' },
   { id: 'copy-entry', text: 'Shift+Click entry to copy link', context: 'log' },
   { id: 'go-player', text: 'Alt+Click entry to jump to player', context: 'log' },
   { id: 'grid-toggle', text: 'Press G to toggle grid/list view', context: 'log' },
-  { id: 'week-nav', text: 'Press Alt+← or Alt+→ to change week', context: 'log' },
   { id: 'expand-all', text: 'Press V to expand/collapse all', context: 'log' },
 
   // Management tips (requires elevated permissions)
