@@ -1,7 +1,7 @@
 /* eslint-disable design-system/no-raw-button */
 import {
-  Users, Settings, Link2, Book, Download, Activity,
-  AlertTriangle, ChevronRight, Clock, CheckCircle, XCircle, PlugZap,
+  Users, Settings, Link2, Book, Sword, Download, Activity,
+  AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle, PlugZap,
 } from 'lucide-react';
 import type { MemberRole, PageMode } from '../../types';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
@@ -12,9 +12,13 @@ import { DashboardCard, IconMedallion, SectionLabel } from '../ui/DashboardCard'
 interface MorePageProps {
   onOpenSettings: (tab?: string) => void;
   onNavigate: (tab: PageMode) => void;
-  /** Open the v2 Loot screen on its History view (drives `lview`, the param
-   *  v2 Loot actually reads — NOT the legacy `gearSubTab`). */
+  /** Open the loot history — the caller (GroupViewContent) owns the shell
+   *  branch: v2 drives `lview` (the param v2 Loot actually reads), legacy
+   *  drives the gear tab's History sub-tab. */
   onOpenLootHistory: () => void;
+  /** Legacy shell only — v2 dropped the card (D-P3-2); rendered only when the
+   *  caller wires it. */
+  onOpenSplitPlanner?: () => void;
   onOpenIntegrations: () => void;
   onOpenPlugin: () => void;
   canManage: boolean;
@@ -29,6 +33,7 @@ export function MorePage({
   onOpenSettings,
   onNavigate,
   onOpenLootHistory,
+  onOpenSplitPlanner,
   onOpenIntegrations,
   onOpenPlugin,
   canManage,
@@ -145,6 +150,25 @@ export function MorePage({
               View loot history <ChevronRight size={12} />
             </div>
           </DashboardCard>
+
+          {/* Split Planner — live shortcut (legacy shell only: the card renders
+              only when the caller wires onOpenSplitPlanner; v2 dropped it, D-P3-2) */}
+          {onOpenSplitPlanner && (
+            <DashboardCard
+              title="Split Planner"
+              icon={<Sword size={13} />}
+              accentColor="teal"
+              onClick={onOpenSplitPlanner}
+              badge={<ExternalLink size={11} className="text-text-muted" />}
+            >
+              <p className="text-xs text-text-secondary mb-4">
+                Plan loot splits and assign roles for split clears.
+              </p>
+              <div className="flex items-center gap-1 text-accent text-xs font-medium">
+                Open Split Planner <ChevronRight size={12} />
+              </div>
+            </DashboardCard>
+          )}
 
           {/* Integrations */}
           <DashboardCard

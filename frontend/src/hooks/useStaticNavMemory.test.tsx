@@ -63,11 +63,12 @@ describe('useStaticNavMemory', () => {
     expect(saved.get('sub')).toBe('weapon');
   });
 
-  it('strips transient params (viewAs) before persisting static-nav', () => {
-    setup('/group/ABC?tab=roster&viewAs=u1', 'ABC');
+  it('strips transient params (viewAs, shell) before persisting static-nav', () => {
+    setup('/group/ABC?tab=roster&viewAs=u1&shell=v2', 'ABC');
     const saved = new URLSearchParams(localStorage.getItem('static-nav-ABC') ?? '');
     expect(saved.get('tab')).toBe('roster');
     expect(saved.has('viewAs')).toBe(false);
+    expect(saved.has('shell')).toBe(false);
   });
 
   it('does not write static-nav when shareCode is undefined', () => {

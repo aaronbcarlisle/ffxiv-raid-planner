@@ -295,3 +295,202 @@ describe("useGroupViewKeyboardShortcuts — 'v' expand-all gate fixed, dead 'g'/
     expect(dispatchedEventNames()).toEqual([]);
   });
 });
+
+// ── Legacy surface present (dual-shell restore, Phase R) ────────────────────
+// With `legacyLootSurface` passed (GroupViewContent does this only when the
+// legacy gear body can render, i.e. !slots?.gear), the f45a241 bindings return.
+describe('useGroupViewKeyboardShortcuts — legacy surface bindings', () => {
+  const legacySurface = () => ({
+    gearSubTab: 'history' as const,
+    setGearSubTab: vi.fn(),
+    setShowLogLootModal: vi.fn(),
+    setShowLogMaterialModal: vi.fn(),
+    setShowMarkFloorClearedModal: vi.fn(),
+  });
+
+  beforeEach(() => { mockedUseKeyboardShortcuts.mockClear(); });
+
+  it('registers Alt+L / Alt+U / Alt+B when the legacy surface is passed', () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ legacyLootSurface: legacySurface() }), false));
+    expect(getAction('l', { requireAlt: true })).toBeDefined();
+    expect(getAction('u', { requireAlt: true })).toBeDefined();
+    expect(getAction('b', { requireAlt: true })).toBeDefined();
+  });
+
+  it('Alt+L (canEdit) routes to gear/history and opens the log-loot modal', () => {
+    const surface = legacySurface();
+    const setPageMode = vi.fn();
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ canEdit: true, setPageMode, legacyLootSurface: surface }), false));
+    getAction('l', { requireAlt: true })!.action();
+    expect(setPageMode).toHaveBeenCalledWith('gear');
+    expect(surface.setGearSubTab).toHaveBeenCalledWith('history');
+    expect(surface.setShowLogLootModal).toHaveBeenCalledWith(true);
+  });
+
+  it('Alt+L without canEdit is a no-op', () => {
+    const surface = legacySurface();
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ canEdit: false, legacyLootSurface: surface }), false));
+    getAction('l', { requireAlt: true })!.action();
+    expect(surface.setShowLogLootModal).not.toHaveBeenCalled();
+  });
+
+  it('registers Alt+1/2/3 sub-tab switchers and Alt+←/→ week nav', () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ legacyLootSurface: legacySurface() }), false));
+    expect(getAction('1', { requireAlt: true })).toBeDefined();
+    expect(getAction('2', { requireAlt: true })).toBeDefined();
+    expect(getAction('3', { requireAlt: true })).toBeDefined();
+    expect(getAction('ArrowLeft', { requireAlt: true })).toBeDefined();
+    expect(getAction('ArrowRight', { requireAlt: true })).toBeDefined();
+  });
+
+  it("'v' on gear/history dispatches log:toggle-expand-all (legacy history body)", () => {
+    const spy = vi.spyOn(window, 'dispatchEvent');
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: legacySurface() }), false));
+    getAction('v')!.action();
+    expect(spy.mock.calls.map((c) => (c[0] as CustomEvent).type)).toEqual(['log:toggle-expand-all']);
+    spy.mockRestore();
+  });
+
+  it("'g' on gear/history dispatches log:toggle-layout (legacy grid/list toggle)", () => {
+    const spy = vi.spyOn(window, 'dispatchEvent');
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: legacySurface() }), false));
+    getAction('g')!.action();
+    expect(spy.mock.calls.map((c) => (c[0] as CustomEvent).type)).toEqual(['log:toggle-layout']);
+    spy.mockRestore();
+  });
+});
+
+// ── Legacy surface binding BODIES (review fix: behavioral, not just registry) ──
+// The suite above pins registration; these pin the f45a241 action bodies —
+// in particular the history-gated log:* dispatch quirks (Alt+1/2/3's
+// set-then-check-old-value behavior, Alt+←/→'s history gate) and the 'v'
+// no-op on the stats sub-tab.
+describe('useGroupViewKeyboardShortcuts — legacy surface binding bodies', () => {
+  const makeSurface = (gearSubTab: 'sync' | 'priority' | 'history' | 'stats') => ({
+    gearSubTab,
+    setGearSubTab: vi.fn(),
+    setShowLogLootModal: vi.fn(),
+    setShowLogMaterialModal: vi.fn(),
+    setShowMarkFloorClearedModal: vi.fn(),
+  });
+
+  let dispatchSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    mockedUseKeyboardShortcuts.mockClear();
+    dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+  });
+
+  afterEach(() => {
+    dispatchSpy.mockRestore();
+  });
+
+  function dispatchedEvents(): Array<{ type: string; detail: unknown }> {
+    return dispatchSpy.mock.calls.map((call: unknown[]) => {
+      const ev = call[0] as CustomEvent;
+      return { type: ev.type, detail: ev.detail };
+    });
+  }
+
+  it("Alt+1 on gear/history sets sub-tab 'priority' AND fires the byFloor/all log dispatches (f45a241 quirk)", () => {
+    const surface = makeSurface('history');
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: surface }), false));
+    getAction('1', { requireAlt: true })!.action();
+    expect(surface.setGearSubTab).toHaveBeenCalledWith('priority');
+    expect(dispatchedEvents()).toEqual([
+      { type: 'log:set-view', detail: 'byFloor' },
+      { type: 'log:set-entry-type', detail: 'all' },
+    ]);
+  });
+
+  it("Alt+1 on gear/sync (not history) sets sub-tab 'priority' and dispatches NOTHING", () => {
+    const surface = makeSurface('sync');
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: surface }), false));
+    getAction('1', { requireAlt: true })!.action();
+    expect(surface.setGearSubTab).toHaveBeenCalledWith('priority');
+    expect(dispatchedEvents()).toEqual([]);
+  });
+
+  it("Alt+2 on gear/history sets sub-tab 'history' AND fires the chronological/loot dispatches", () => {
+    const surface = makeSurface('history');
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: surface }), false));
+    getAction('2', { requireAlt: true })!.action();
+    expect(surface.setGearSubTab).toHaveBeenCalledWith('history');
+    expect(dispatchedEvents()).toEqual([
+      { type: 'log:set-view', detail: 'chronological' },
+      { type: 'log:set-entry-type', detail: 'loot' },
+    ]);
+  });
+
+  it("Alt+3 on gear/history sets sub-tab 'stats' AND fires the materials dispatch", () => {
+    const surface = makeSurface('history');
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: surface }), false));
+    getAction('3', { requireAlt: true })!.action();
+    expect(surface.setGearSubTab).toHaveBeenCalledWith('stats');
+    expect(dispatchedEvents()).toEqual([
+      { type: 'log:set-entry-type', detail: 'materials' },
+    ]);
+  });
+
+  it('Alt+←/→ on gear/history dispatch log:prev-week / log:next-week', () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: makeSurface('history') }), false));
+    getAction('ArrowLeft', { requireAlt: true })!.action();
+    getAction('ArrowRight', { requireAlt: true })!.action();
+    expect(dispatchedEvents().map((e) => e.type)).toEqual(['log:prev-week', 'log:next-week']);
+  });
+
+  it('Alt+←/→ off the history sub-tab dispatch nothing', () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: makeSurface('priority') }), false));
+    getAction('ArrowLeft', { requireAlt: true })!.action();
+    getAction('ArrowRight', { requireAlt: true })!.action();
+    expect(dispatchedEvents()).toEqual([]);
+  });
+
+  it('Alt+U (canEdit) routes to gear/history and opens the log-material modal', () => {
+    const surface = makeSurface('sync');
+    const setPageMode = vi.fn();
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ canEdit: true, setPageMode, legacyLootSurface: surface }), false));
+    getAction('u', { requireAlt: true })!.action();
+    expect(setPageMode).toHaveBeenCalledWith('gear');
+    expect(surface.setGearSubTab).toHaveBeenCalledWith('history');
+    expect(surface.setShowLogMaterialModal).toHaveBeenCalledWith(true);
+  });
+
+  it('Alt+B (canEdit) routes to gear/history and opens the mark-floor-cleared modal', () => {
+    const surface = makeSurface('sync');
+    const setPageMode = vi.fn();
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ canEdit: true, setPageMode, legacyLootSurface: surface }), false));
+    getAction('b', { requireAlt: true })!.action();
+    expect(setPageMode).toHaveBeenCalledWith('gear');
+    expect(surface.setGearSubTab).toHaveBeenCalledWith('history');
+    expect(surface.setShowMarkFloorClearedModal).toHaveBeenCalledWith(true);
+  });
+
+  it("'v' on gear/priority (legacy surface) dispatches loot:toggle-expand-all", () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: makeSurface('priority') }), false));
+    getAction('v')!.action();
+    expect(dispatchedEvents().map((e) => e.type)).toEqual(['loot:toggle-expand-all']);
+  });
+
+  it("'v' on gear/stats (legacy surface) dispatches nothing (f45a241 no-op on stats)", () => {
+    renderHook(() => useGroupViewKeyboardShortcuts(
+      makeParams({ pageMode: 'gear', legacyLootSurface: makeSurface('stats') }), false));
+    getAction('v')!.action();
+    expect(dispatchedEvents()).toEqual([]);
+  });
+});

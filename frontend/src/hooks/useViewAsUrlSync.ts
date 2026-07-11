@@ -4,7 +4,7 @@
  * Promoted verbatim from GroupView.tsx (the legacy chrome), which previously
  * ran these three effects on its own — meaning admin "View As" was inert in
  * the v2 shell (NewShell never ran them). This hook is now the single source
- * of the viewAs URL-sync behavior; NewShell (the sole shell since flip-P3) calls it.
+ * of the viewAs URL-sync behavior; both GroupView and NewShell call it.
  */
 
 import { useEffect } from 'react';

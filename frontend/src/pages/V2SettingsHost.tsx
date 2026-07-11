@@ -1,8 +1,9 @@
 /**
  * V2SettingsHost — mounts the existing `StaticSettingsHost` inside `NewShell`
- * so the v2 `SettingsGear` + command-palette "Open Settings" controls (which
- * toggle `settingsPanelStore`) actually open a panel. Pure reuse:
- * `StaticSettingsHost` is unchanged.
+ * (the v2 `?shell=v2` chrome) so the v2 `SettingsGear` + command-palette
+ * "Open Settings" controls (which toggle `settingsPanelStore`) actually open a
+ * panel. Pure reuse: `StaticSettingsHost` is unchanged; the legacy `GroupView`
+ * keeps its own `ConnectedSettingsHost`.
  *
  * Must be rendered inside `<GroupActionModals>` because it calls
  * `useGroupAddToRoster()` (the accepted-join-request → roster handler).

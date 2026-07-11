@@ -235,6 +235,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // names (LootHistoryTable's highlight effect reads them) alongside v2's own
     // routing params.
     const url = new URL(window.location.href);
+    url.searchParams.set('shell', 'v2');
     url.searchParams.set('tab', 'gear');
     url.searchParams.set('lview', 'history');
     url.searchParams.set('entry', String(item.entry.id));

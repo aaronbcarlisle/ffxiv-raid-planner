@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { pageModeFromTabParam, reconcileSubTab } from './useGroupViewState';
+import { pageModeFromTabParam, gearSubFromParam, lootSubFromParam, reconcileSubTab } from './useGroupViewState';
 
 describe('pageModeFromTabParam', () => {
   it('passes through current tab values', () => {
@@ -32,56 +32,72 @@ describe('pageModeFromTabParam', () => {
   });
 });
 
+describe('gearSubFromParam', () => {
+  it('passes through valid sub values', () => {
+    for (const s of ['sync', 'priority', 'history', 'stats'] as const) {
+      expect(gearSubFromParam(s)).toBe(s);
+    }
+  });
+
+  it('maps legacy sub values', () => {
+    expect(gearSubFromParam('weapon')).toBe('priority');
+    expect(gearSubFromParam('summary')).toBe('stats');
+  });
+
+  it('returns null for absent/unknown', () => {
+    expect(gearSubFromParam(null)).toBeNull();
+    expect(gearSubFromParam('nope')).toBeNull();
+  });
+});
+
+describe('lootSubFromParam', () => {
+  it('passes through valid values and rejects the rest', () => {
+    expect(lootSubFromParam('matrix')).toBe('matrix');
+    expect(lootSubFromParam('gear')).toBe('gear');
+    expect(lootSubFromParam('weapon')).toBe('weapon');
+    expect(lootSubFromParam(null)).toBeNull();
+    expect(lootSubFromParam('other')).toBeNull();
+  });
+});
+
 describe('reconcileSubTab', () => {
-  // Generic string-literal sub-tab union with legacy-alias normalization —
-  // exercises reconcileSubTab's contract without depending on any specific
-  // consumer's parser (gear/loot sub-tab parsers have both been pruned as
-  // their consuming state was removed; reconcileSubTab itself is generic
-  // and kept as a tested utility for any future URL-backed sub-tab).
-  const parse = (raw: string | null): 'sync' | 'priority' | 'history' | 'stats' | null => {
-    if (raw === 'sync' || raw === 'priority' || raw === 'history' || raw === 'stats') return raw;
-    if (raw === 'weapon') return 'priority';
-    if (raw === 'summary') return 'stats';
-    return null;
-  };
-  const sub = (current: 'sync' | 'priority' | 'history' | 'stats', raw: string | null, isPop: boolean) =>
-    reconcileSubTab(current, raw, parse(raw), isPop, 'sync');
+  // gear sub-tab: default 'sync', parser = gearSubFromParam
+  const gear = (current: 'sync' | 'priority' | 'history' | 'stats', raw: string | null, isPop: boolean) =>
+    reconcileSubTab(current, raw, gearSubFromParam(raw), isPop, 'sync');
 
   it('adopts a recognized param value (back/forward to an explicit sub-tab)', () => {
-    expect(sub('sync', 'history', true)).toBe('history');
-    expect(sub('priority', 'stats', false)).toBe('stats');
+    expect(gear('sync', 'history', true)).toBe('history');
+    expect(gear('priority', 'stats', false)).toBe('stats');
     // legacy normalization still applies through the parser
-    expect(sub('sync', 'weapon', true)).toBe('priority');
+    expect(gear('sync', 'weapon', true)).toBe('priority');
   });
 
   it('keeps the current value when the param is absent on forward/normal nav', () => {
     // This is what lets a remembered sub-tab persist when the URL has no param.
-    expect(sub('history', null, false)).toBe('history');
-    expect(sub('stats', null, false)).toBe('stats');
+    expect(gear('history', null, false)).toBe('history');
+    expect(gear('stats', null, false)).toBe('stats');
   });
 
   it('restores the default when the param is absent on a POP (the real fix)', () => {
     // Browser back/forward to a param-less entry → that entry showed the default.
-    expect(sub('history', null, true)).toBe('sync');
-    expect(sub('priority', null, true)).toBe('sync');
+    expect(gear('history', null, true)).toBe('sync');
+    expect(gear('priority', null, true)).toBe('sync');
   });
 
   it('is a no-op when already at the default', () => {
-    expect(sub('sync', null, true)).toBe('sync');
-    expect(sub('sync', null, false)).toBe('sync');
+    expect(gear('sync', null, true)).toBe('sync');
+    expect(gear('sync', null, false)).toBe('sync');
   });
 
   it('an explicit non-default param wins over the POP default reset', () => {
-    expect(sub('sync', 'stats', true)).toBe('stats');
+    expect(gear('sync', 'stats', true)).toBe('stats');
   });
 
-  it('is generic over any string-literal sub-tab union, not just this fixture', () => {
-    // reconcileSubTab has no gear-specific logic; pin that against a
-    // differently-shaped union so a future gear-only refactor is caught.
-    const other = (current: 'a' | 'b' | 'c', raw: string | null, isPop: boolean) =>
-      reconcileSubTab(current, raw, (raw === 'a' || raw === 'b' || raw === 'c') ? raw : null, isPop, 'b');
-    expect(other('c', null, true)).toBe('b');   // POP, absent → default
-    expect(other('c', null, false)).toBe('c');  // forward, absent → keep
-    expect(other('b', 'a', true)).toBe('a');    // explicit wins
+  it('works for the loot sub-tab defaults too', () => {
+    const loot = (current: 'matrix' | 'gear' | 'weapon', raw: string | null, isPop: boolean) =>
+      reconcileSubTab(current, raw, lootSubFromParam(raw), isPop, 'gear');
+    expect(loot('weapon', null, true)).toBe('gear');   // POP, absent → default
+    expect(loot('weapon', null, false)).toBe('weapon'); // forward, absent → keep
+    expect(loot('gear', 'matrix', true)).toBe('matrix'); // explicit wins
   });
 });

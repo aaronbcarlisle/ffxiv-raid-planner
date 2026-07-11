@@ -1,23 +1,25 @@
 /**
- * GroupViewContent — post-surgery slots contract (flip-P3 Task 2, dead-tree
- * deletion in Task 4).
+ * GroupViewContent — v2 (all-slots) contract in the dual shell (Phase R).
  *
- * Pins the v2-only contract after the legacy fallback bodies were deleted:
- *   1. `slots` is REQUIRED — each spine tab renders its slot, and no legacy
- *      leaf (StaticHomeTab, PlayerGrid, SplitClearPlanner, TeamSummaryEnhanced,
- *      HistoryView, ScheduleTab, … — all deleted in Task 4) renders anywhere.
- *      GearSyncDashboard/RosterCharacterPanel are KEPT files re-homed
- *      elsewhere; still mocked here so they stay out of this tab's tree.
+ * `slots` is OPTIONAL again (f45a241 contract, restored in Phase R): the legacy
+ * route renders GroupViewContent with no slots → the restored legacy bodies
+ * (pinned by the GroupViewContent.test.tsx / *.rosterSlot / *.gearSlot /
+ * *.canManageRoster characterization suites). THIS suite pins the other half:
+ * with all four slots passed (how NewShell always renders it), v2 output is
+ * unchanged from flip-P3:
+ *   1. Each spine tab renders its slot, and no legacy leaf or legacy chrome
+ *      (gear sub-tab bar, schedule view switcher, roster sticky toolbar)
+ *      renders anywhere — every legacy region is gated on its slot's absence.
+ *      GearSyncDashboard/RosterCharacterPanel are mocked with testids so their
+ *      absence is assertable.
  *   2. Slotless pageModes (goals / more / plugin) render their bodies
  *      unconditionally.
- *   3. The legacy sticky roster toolbar is gone (no roster sub-tab tablist),
- *      and no legacy data-fetching side effects fire (LogWeekWizard mount).
- *   4. Shared wiring survives: MobileBottomNav mounts, the GroupActions
+ *   3. Shared wiring survives: MobileBottomNav mounts, the GroupActions
  *      context still gates keyboard shortcuts, the added-player highlight
  *      signal is consumed one-shot.
  *
  * Heavy hooks/stores/leaf-components are mocked — the point is the contract,
- * not full integration. (Scaffold adapted from the deleted GroupViewContent.test.tsx.)
+ * not full integration. (Same scaffold family as GroupViewContent.test.tsx.)
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -34,6 +36,8 @@ function makeState() {
     setSearchParams: noop,
     pageMode: mockPageMode,
     setPageMode,
+    gearSubTab: 'sync', setGearSubTab: noop,
+    lootSubTab: 'gear', setLootSubTab: noop,
     viewMode: 'compact', setViewMode: noop,
     groupView: false, setGroupView: noop, setGroupViewState: noop,
     subsView: false, setSubsView: noop,
@@ -45,6 +49,13 @@ function makeState() {
     showSettingsModal: false, setShowSettingsModal: noop,
     showRolloverDialog: false, setShowRolloverDialog: noop,
     showDeleteTierConfirm: false, setShowDeleteTierConfirm: noop,
+    showKeyboardHelp: false, setShowKeyboardHelp: noop,
+    showLogLootModal: false, setShowLogLootModal: noop,
+    showLogMaterialModal: false, setShowLogMaterialModal: noop,
+    showMarkFloorClearedModal: false, setShowMarkFloorClearedModal: noop,
+    showLogWeekWizard: false, setShowLogWeekWizard: noop,
+    logWeekWizardFloor: null, setLogWeekWizardFloor: noop,
+    logWeekWizardWeek: null, setLogWeekWizardWeek: noop,
     playerModalCount: 0, setPlayerModalCount: noop,
     highlightedPlayerId: null, setHighlightedPlayerId: noop,
     highlightedSlot: null, setHighlightedSlot: noop,
@@ -77,6 +88,9 @@ vi.mock('../stores/lootTrackingStore', () => ({
   }),
 }));
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
+vi.mock('../stores/splitClearStore', () => ({
+  useSplitClearStore: () => ({ fetchData: vi.fn(), clearData: vi.fn() }),
+}));
 const settingsPanelOpenSpy = vi.fn();
 vi.mock('../stores/settingsPanelStore', () => ({
   useSettingsPanelStore: { getState: () => ({ open: settingsPanelOpenSpy, close: vi.fn() }) },
@@ -86,6 +100,10 @@ vi.mock('../stores/settingsPanelStore', () => ({
 const keyboardSpy = vi.fn();
 vi.mock('../hooks/useGroupViewKeyboardShortcuts', () => ({
   useGroupViewKeyboardShortcuts: (_params: unknown, isAnyModalOpen: boolean) => keyboardSpy(isAnyModalOpen),
+}));
+vi.mock('../hooks/usePlayerActions', () => ({ usePlayerActions: () => ({ handleAddPlayer: vi.fn() }) }));
+vi.mock('../components/dnd/useDragAndDrop', () => ({
+  useDragAndDrop: () => ({ sensors: [], handleDragStart: vi.fn(), handleDragOver: vi.fn(), handleDragEnd: vi.fn(), handleDragCancel: vi.fn() }),
 }));
 vi.mock('../hooks/useDevice', () => ({ useDevice: () => ({ isSmallScreen: false }) }));
 vi.mock('../hooks/useSwipe', () => ({ useSwipe: () => ({}) }));
@@ -110,19 +128,18 @@ vi.mock('./groupActionsContext', () => ({
   useGroupClearAddedPlayer: () => clearAddedPlayerSpy,
 }));
 
-// ── Legacy leaves: mocked with testids so their ABSENCE is assertable.
-//    (RosterCharacterPanel and GearSyncDashboard are KEEP files — task 4 only
-//    re-homed/left them in place, so they're still mocked here to keep them
-//    out of this contract test's render tree.) ──
+// ── Legacy leaves: mocked with testids so their ABSENCE is assertable. ──
 vi.mock('../components/roster/RosterCharacterPanel', () => ({
   RosterCharacterPanel: () => <div data-testid="legacy-character-panel" />,
 }));
 vi.mock('../components/group/GearSyncDashboard', () => ({
   GearSyncDashboard: () => <div data-testid="legacy-gear-sync" />,
 }));
-const logWeekWizardSpy = vi.fn();
+// The restored GroupViewContent imports both from the loot barrel; neither
+// mounts here (all slots passed + the fixture tierId resolves no tierInfo).
 vi.mock('../components/loot', () => ({
-  LogWeekWizard: () => { logWeekWizardSpy(); return null; },
+  LootPriorityPanel: () => <div data-testid="legacy-loot-priority" />,
+  LogWeekWizard: () => null,
 }));
 
 // ── Slotless page bodies (kept, spec §4) ──
@@ -157,17 +174,17 @@ const slots = {
 const renderContent = () =>
   render(<MemoryRouter><GroupViewContent actions={actions} slots={slots} /></MemoryRouter>);
 
-// Only the still-mocked KEEP leaves (RosterCharacterPanel/GearSyncDashboard,
-// see lines ~126-131) can ever render here — every other legacy id's backing
-// mock was deleted in Task 4, so checking for them would be a vacuous no-op.
-const LEGACY_TESTIDS = ['legacy-character-panel', 'legacy-gear-sync'];
+// Only the mocked leaves (RosterCharacterPanel/GearSyncDashboard/
+// LootPriorityPanel) carry assertable testids — the other restored legacy
+// leaves are real components here, and none should mount with slots passed.
+const LEGACY_TESTIDS = ['legacy-character-panel', 'legacy-gear-sync', 'legacy-loot-priority'];
 function expectNoLegacyLeaves() {
   for (const id of LEGACY_TESTIDS) {
     expect(screen.queryByTestId(id)).toBeNull();
   }
 }
 
-describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () => {
+describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () => {
   beforeEach(() => {
     mockPageMode = 'overview';
     mockActionModalOpen = false;
@@ -175,7 +192,7 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     mockCurrentTier = currentTier;
     keyboardSpy.mockClear();
     clearAddedPlayerSpy.mockClear();
-    logWeekWizardSpy.mockClear();
+    setPageMode.mockClear();
     settingsPanelOpenSpy.mockClear();
   });
   afterEach(() => { mockAddedPlayer = null; });
@@ -251,19 +268,12 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     expect(screen.getByTestId('plugin-page')).toBeInTheDocument();
   });
 
-  // ── 4. Legacy sticky roster toolbar is gone ──
+  // ── 4. Legacy sticky roster toolbar is gated off by the roster slot ──
   it('renders no roster sub-tab tablist on the roster tab', () => {
     mockPageMode = 'roster';
     renderContent();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab')).toBeNull();
-  });
-
-  // ── Legacy side effects are gone ──
-  it('never mounts the legacy LogWeekWizard', () => {
-    mockPageMode = 'gear';
-    renderContent();
-    expect(logWeekWizardSpy).not.toHaveBeenCalled();
   });
 
   // ── Shared wiring survives ──

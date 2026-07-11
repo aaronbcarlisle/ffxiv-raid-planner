@@ -47,8 +47,9 @@ function getInitials(name: string): string {
  *  (provided by the <GroupActionModals> wrapper below).
  *
  *  F6b: in v2 the `overview` tab is the redesigned <Home/> dashboard, injected as
- *  the `overview` slot (now the only overview body — the legacy fallback was
- *  removed in flip-P3). Exported for the slot-wiring test. */
+ *  the `overview` slot. Dual shell (Phase R): the legacy route renders
+ *  GroupViewContent with no slots, so its restored fallback bodies serve the
+ *  classic UI — v2 always passes all four slots. Exported for the slot-wiring test. */
 export function ShellContent() {
   const gv = useGroupViewState();
   const { shareCode } = useParams<{ shareCode: string }>();
@@ -107,8 +108,9 @@ export function ShellContent() {
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
   // F6e: in v2 the `schedule` tab is the redesigned <Schedule/> screen, injected
-  // as the `schedule` slot — mirroring overview/roster/gear above (now the only
-  // schedule body — the legacy switcher + panel were removed in flip-P3).
+  // as the `schedule` slot — mirroring overview/roster/gear above. Dual shell
+  // (Phase R): the legacy route renders GroupViewContent with no slots, so the
+  // restored legacy switcher + panel serve the classic UI there.
   const schedule = currentGroup ? (
     <Schedule
       group={currentGroup}

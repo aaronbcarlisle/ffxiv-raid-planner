@@ -67,6 +67,9 @@ vi.mock('../stores/lootTrackingStore', async () => {
   return { useLootTrackingStore: dualFormStoreMock(state) };
 });
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
+vi.mock('../stores/splitClearStore', () => ({
+  useSplitClearStore: () => ({ fetchData: vi.fn(), clearData: vi.fn() }),
+}));
 vi.mock('../stores/settingsPanelStore', () => ({
   useSettingsPanelStore: { getState: () => ({ open: vi.fn(), close: vi.fn() }) },
 }));

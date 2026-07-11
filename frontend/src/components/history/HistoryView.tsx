@@ -1,0 +1,322 @@
+/**
+ * Log View
+ *
+ * Main container for the Log tab.
+ * Shows sectioned view with Loot, Materials, and Books sections.
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ClipboardList } from 'lucide-react';
+import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { toast } from '../../stores/toastStore';
+import { logger } from '../../lib/logger';
+import { Button } from '../primitives';
+import { Tooltip } from '../primitives/Tooltip';
+import { WeekStepper } from './WeekStepper';
+import { SectionedLogView } from './SectionedLogView';
+import { RevertWeekConfirmModal } from './RevertWeekConfirmModal';
+import type { SnapshotPlayer } from '../../types';
+import type { FloorNumber } from '../../gamedata/loot-tables';
+
+interface HistoryViewProps {
+  groupId: string;
+  tierId: string;
+  players: SnapshotPlayer[];
+  floors: string[];
+  userRole: 'owner' | 'lead' | 'member' | 'viewer';
+  isAdmin?: boolean;
+  /** Current user ID for per-row edit permissions */
+  currentUserId?: string;
+  /** Highlighted book player ID (from navigation) */
+  highlightedBookPlayerId?: string | null;
+  onNavigateToPlayer?: (playerId: string, slot?: string) => void;
+  highlightedEntryId?: string | null;
+  highlightedEntryType?: 'loot' | 'material' | null;
+  /** Target week for navigation (switches to this week when set) */
+  targetWeek?: number | null;
+  /** Open Log Loot modal (from keyboard shortcut) */
+  openLogLootModal?: boolean;
+  onLogLootModalClose?: () => void;
+  /** Open Log Material modal (from keyboard shortcut) */
+  openLogMaterialModal?: boolean;
+  onLogMaterialModalClose?: () => void;
+  /** Open Mark Floor Cleared modal (from keyboard shortcut) */
+  openMarkFloorClearedModal?: boolean;
+  onMarkFloorClearedModalClose?: () => void;
+  /** Callback to open Log Week wizard for a specific week */
+  onLogWeek?: (week: number) => void;
+  /** Callback to open Log Week wizard in single floor mode */
+  onLogFloor?: (floor: FloorNumber) => void;
+}
+
+export function HistoryView({
+  groupId,
+  tierId,
+  players,
+  floors,
+  userRole,
+  isAdmin = false,
+  currentUserId,
+  highlightedBookPlayerId,
+  onNavigateToPlayer,
+  highlightedEntryId,
+  highlightedEntryType,
+  targetWeek,
+  openLogLootModal,
+  onLogLootModalClose,
+  openLogMaterialModal,
+  onLogMaterialModalClose,
+  openMarkFloorClearedModal,
+  onMarkFloorClearedModalClose,
+  onLogWeek,
+  onLogFloor,
+}: HistoryViewProps) {
+  const {
+    currentWeek,
+    maxWeek,
+    weeksWithEntries,
+    weekDataTypes,
+    lootLog,
+    materialLog,
+    pageLedger,
+    fetchCurrentWeek,
+    fetchWeekDataTypes,
+    fetchLootLog,
+    fetchMaterialLog,
+    fetchPageLedger,
+    startNextWeek,
+    revertWeek,
+  } = useLootTrackingStore();
+
+  // URL state management
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // State for start next week and revert week actions
+  const [isStartingNextWeek, setIsStartingNextWeek] = useState(false);
+  const [isRevertingWeek, setIsRevertingWeek] = useState(false);
+  const [showRevertConfirm, setShowRevertConfirm] = useState(false);
+
+  // Get localStorage key for this tier's week selection
+  const weekStorageKey = `history-week-${groupId}-${tierId}`;
+
+  // Initialize selected week from URL param > localStorage > currentWeek
+  const [selectedWeek, setSelectedWeekState] = useState(() => {
+    const urlWeek = searchParams.get('week');
+    if (urlWeek) {
+      const parsed = parseInt(urlWeek, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    try {
+      const saved = localStorage.getItem(weekStorageKey);
+      return saved ? parseInt(saved, 10) : currentWeek;
+    } catch {
+      return currentWeek;
+    }
+  });
+
+  // Persist week selection to localStorage and URL
+  const setSelectedWeek = useCallback((week: number) => {
+    setSelectedWeekState(week);
+    try {
+      localStorage.setItem(weekStorageKey, String(week));
+    } catch {
+      // Ignore localStorage errors
+    }
+    // Update URL - omit if viewing current calculated week
+    // Use getState() to avoid currentWeek in dependency array (prevents unnecessary recreations)
+    const storeCurrentWeek = useLootTrackingStore.getState().currentWeek;
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev);
+      if (week === storeCurrentWeek) {
+        params.delete('week');
+      } else {
+        params.set('week', String(week));
+      }
+      return params;
+    }, { replace: true });
+  }, [weekStorageKey, setSearchParams]);
+
+  // Fetch current week and week data types on mount
+  useEffect(() => {
+    fetchCurrentWeek(groupId, tierId);
+    fetchWeekDataTypes(groupId, tierId);
+  }, [groupId, tierId, fetchCurrentWeek, fetchWeekDataTypes]);
+
+  // Sync selected week with store's current week only on first load (when no saved value)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(weekStorageKey);
+      if (!saved) {
+        setSelectedWeek(currentWeek);
+      }
+    } catch {
+      setSelectedWeek(currentWeek);
+    }
+  }, [currentWeek, weekStorageKey, setSelectedWeek]);
+
+  // Switch to target week when navigation occurs (from gear slot → loot entry)
+  useEffect(() => {
+    if (targetWeek != null && targetWeek !== selectedWeek) {
+      setSelectedWeek(targetWeek);
+    }
+  }, [targetWeek, selectedWeek, setSelectedWeek]);
+
+  const handleWeekChange = (week: number) => {
+    setSelectedWeek(week);
+  };
+
+  // Handler for starting the next week manually
+  const handleStartNextWeek = useCallback(async () => {
+    setIsStartingNextWeek(true);
+    try {
+      const newWeek = await startNextWeek(groupId, tierId);
+      setSelectedWeek(newWeek);
+      toast.success(`Advanced to Week ${newWeek}`);
+    } catch {
+      toast.error('Failed to start next week');
+    } finally {
+      setIsStartingNextWeek(false);
+    }
+  }, [groupId, tierId, startNextWeek, setSelectedWeek]);
+
+  // Handler for confirming the revert (extracted to avoid circular dependency)
+  const executeRevert = useCallback(async () => {
+    setIsRevertingWeek(true);
+    setShowRevertConfirm(false);
+    try {
+      const newWeek = await revertWeek(groupId, tierId);
+      setSelectedWeek(newWeek);
+      // Refresh week data types to update the selector (non-critical)
+      try {
+        await fetchWeekDataTypes(groupId, tierId);
+      } catch {
+        // Secondary fetch failed - week selector may be stale until next page load
+        logger.warn('Failed to refresh week data types after revert');
+      }
+      toast.success(`Reverted to Week ${newWeek}`);
+    } catch {
+      toast.error('Failed to revert week');
+    } finally {
+      setIsRevertingWeek(false);
+    }
+  }, [groupId, tierId, revertWeek, setSelectedWeek, fetchWeekDataTypes]);
+
+  // Handler for revert week button click - show confirm if data exists
+  const handleRevertWeekClick = useCallback(async () => {
+    // Prevent double-clicks during the check/revert process
+    if (isRevertingWeek) return;
+    setIsRevertingWeek(true);
+
+    try {
+      // Fetch the latest data for the current week to show in the modal
+      await Promise.all([
+        fetchLootLog(groupId, tierId),
+        fetchMaterialLog(groupId, tierId),
+        fetchPageLedger(groupId, tierId),
+      ]);
+
+      // Re-check with fresh data (store will have updated)
+      const store = useLootTrackingStore.getState();
+      const hasLoot = store.lootLog.some((e) => e.weekNumber === currentWeek);
+      const hasMaterials = store.materialLog.some((e) => e.weekNumber === currentWeek);
+      const hasBooks = store.pageLedger.some((e) => e.weekNumber === currentWeek);
+
+      if (hasLoot || hasMaterials || hasBooks) {
+        // Show confirmation modal (will reset loading when user cancels or confirms)
+        setShowRevertConfirm(true);
+        setIsRevertingWeek(false); // Reset loading - modal will handle next step
+      } else {
+        // No data, proceed directly (executeRevert will manage its own loading state)
+        setIsRevertingWeek(false);
+        await executeRevert();
+      }
+    } catch {
+      toast.error('Failed to check week data');
+      setIsRevertingWeek(false);
+    }
+  }, [groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageLedger, currentWeek, executeRevert, isRevertingWeek]);
+
+  // Determine if user can edit (Owner/Lead or Admin)
+  const canEdit = ['owner', 'lead'].includes(userRole) || isAdmin;
+
+  // Build week selector props for consolidated toolbar
+  const weekSelectorProps = {
+    currentWeek: selectedWeek,
+    maxWeek,
+    calculatedCurrentWeek: currentWeek,
+    weeksWithEntries,
+    weekDataTypes,
+    onStartNextWeek: canEdit ? handleStartNextWeek : undefined,
+    isStartingNextWeek,
+    onRevertWeek: canEdit ? handleRevertWeekClick : undefined,
+    isRevertingWeek,
+  };
+
+  return (
+    <div className="flex flex-col h-full w-[calc(100%+2rem)] -mx-4 sm:w-full sm:mx-0">
+      {/* Mobile-only: Week selector row (desktop shows in consolidated toolbar) */}
+      <div className="flex-shrink-0 py-1 md:hidden">
+        <div className="flex items-center justify-center gap-4 px-2">
+          <WeekStepper
+            {...weekSelectorProps}
+            onWeekChange={handleWeekChange}
+          />
+          {canEdit && onLogWeek && (
+            <Tooltip content="Log all drops for this week using a step-by-step wizard">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => onLogWeek(selectedWeek)}
+              >
+                <ClipboardList className="w-4 h-4 mr-1.5" />
+                Log Week
+              </Button>
+            </Tooltip>
+          )}
+        </div>
+      </div>
+
+      {/* Sectioned log view - fills remaining space */}
+      <div className="flex-1 min-h-0 px-4 md:px-0 flex flex-col">
+        <SectionedLogView
+          groupId={groupId}
+          tierId={tierId}
+          players={players}
+          floors={floors}
+          currentWeek={selectedWeek}
+          canEdit={canEdit}
+          currentUserId={currentUserId}
+          userRole={userRole}
+          highlightedBookPlayerId={highlightedBookPlayerId}
+          onWeekChange={handleWeekChange}
+          onNavigateToPlayer={onNavigateToPlayer}
+          highlightedEntryId={highlightedEntryId}
+          highlightedEntryType={highlightedEntryType}
+          openLogLootModal={openLogLootModal}
+          onLogLootModalClose={onLogLootModalClose}
+          openLogMaterialModal={openLogMaterialModal}
+          onLogMaterialModalClose={onLogMaterialModalClose}
+          openMarkFloorClearedModal={openMarkFloorClearedModal}
+          onMarkFloorClearedModalClose={onMarkFloorClearedModalClose}
+          onLogFloor={onLogFloor}
+          weekSelectorProps={weekSelectorProps}
+          onLogWeek={onLogWeek}
+        />
+      </div>
+
+      {/* Revert week confirmation modal */}
+      <RevertWeekConfirmModal
+        isOpen={showRevertConfirm}
+        week={currentWeek}
+        lootLog={lootLog}
+        materialLog={materialLog}
+        pageLedger={pageLedger}
+        players={players}
+        isReverting={isRevertingWeek}
+        onConfirm={executeRevert}
+        onCancel={() => setShowRevertConfirm(false)}
+      />
+    </div>
+  );
+}

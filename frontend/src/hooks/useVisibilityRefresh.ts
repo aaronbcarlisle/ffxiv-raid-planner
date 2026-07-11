@@ -3,8 +3,8 @@ import { useEffect, useRef } from 'react';
 /**
  * Calls `callback` when the document becomes visible after being hidden for
  * at least `minHiddenMs` milliseconds. Useful for silently re-fetching data
- * when the user returns from another tab (e.g. re-syncing roster data after
- * linking characters on the profile page in a different tab).
+ * when the user returns from another tab (e.g. after linking characters in
+ * the profile page the split-clear board refreshes automatically).
  */
 export function useVisibilityRefresh(callback: () => void, minHiddenMs = 2000) {
   const callbackRef = useRef(callback);
