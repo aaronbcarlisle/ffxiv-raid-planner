@@ -18,6 +18,10 @@
  *      context still gates keyboard shortcuts, the added-player highlight
  *      signal is consumed one-shot.
  *
+ * A second describe at the bottom pins the legacy (slotless) More-page wiring
+ * — the `!slots?.roster` / `slots?.gear` shell-branch gates themselves, which
+ * no render-output assertion above can catch if inverted.
+ *
  * Heavy hooks/stores/leaf-components are mocked — the point is the contract,
  * not full integration. (Same scaffold family as GroupViewContent.test.tsx.)
  */
@@ -28,6 +32,9 @@ import type { AddedPlayerSignal } from './groupActionsContext';
 
 // ── Mock the state hook: a controllable, fully-shaped useGroupViewState ──
 const setPageMode = vi.fn();
+// Dedicated spy (not the shared noop) so the legacy loot-history shell branch
+// below can assert setGearSubTab('history') specifically.
+const setGearSubTab = vi.fn();
 let mockPageMode = 'overview';
 const noop = vi.fn();
 function makeState() {
@@ -36,7 +43,7 @@ function makeState() {
     setSearchParams: noop,
     pageMode: mockPageMode,
     setPageMode,
-    gearSubTab: 'sync', setGearSubTab: noop,
+    gearSubTab: 'sync', setGearSubTab,
     lootSubTab: 'gear', setLootSubTab: noop,
     viewMode: 'compact', setViewMode: noop,
     groupView: false, setGroupView: noop, setGroupViewState: noop,
@@ -146,11 +153,22 @@ vi.mock('../components/loot', () => ({
 vi.mock('../components/group/GoalsPage', () => ({
   GoalsPage: () => <div data-testid="goals-page" />,
 }));
+// Capture mock: surfaces the handlers as buttons, and renders the
+// split-planner button ONLY when the optional prop is passed — so the
+// shell-branch tests below can assert the prop's presence/absence AND
+// invoke the handler GroupViewContent wired.
 vi.mock('../components/group/MorePage', () => ({
-  MorePage: (props: { onOpenIntegrations: () => void; onOpenLootHistory: () => void }) => (
+  MorePage: (props: {
+    onOpenIntegrations: () => void;
+    onOpenLootHistory: () => void;
+    onOpenSplitPlanner?: () => void;
+  }) => (
     <div data-testid="more-page">
       <button onClick={() => props.onOpenIntegrations()}>open-integrations</button>
       <button onClick={() => props.onOpenLootHistory()}>open-loot-history</button>
+      {props.onOpenSplitPlanner && (
+        <button onClick={props.onOpenSplitPlanner}>open-split-planner</button>
+      )}
     </div>
   ),
 }));
@@ -238,6 +256,15 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     expect(screen.getByTestId('more-page')).toBeInTheDocument();
   });
 
+  // ── Split Planner prop gate, v2 half: with a roster slot present, MorePage
+  //    must NOT receive onOpenSplitPlanner (the capture mock only renders the
+  //    button when the prop is passed). The legacy half is pinned below. ──
+  it('does NOT pass onOpenSplitPlanner to MorePage when slots are present', () => {
+    mockPageMode = 'more';
+    renderContent();
+    expect(screen.queryByText('open-split-planner')).toBeNull();
+  });
+
   // ── Integrations re-route (flip-P3 Task 4 fold-in): the More page's
   //    Integrations card must open the Settings panel directly on the
   //    integrations tab, not navigate to the deleted legacy schedule tab. ──
@@ -296,5 +323,46 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     mockAddedPlayer = { playerId: 'p-new', nonce: 1 };
     renderContent();
     await waitFor(() => expect(clearAddedPlayerSpy).toHaveBeenCalledTimes(1));
+  });
+});
+
+// ── Legacy (slotless) More-page wiring — the other half of the Phase R shell
+//    branch. GroupViewContent owns two gates on the More page:
+//      · `!slots?.roster` → passes onOpenSplitPlanner (Split Planner card);
+//      · `slots?.gear` → v2 lview form vs legacy setGearSubTab('history').
+//    An inverted gate would pass every render-output test above (the capture
+//    mock renders either way), so these pin the wiring itself: which handlers
+//    MorePage receives with NO slots, and which setters they call. ──
+describe('GroupViewContent — legacy (slotless) More-page wiring (Phase R)', () => {
+  beforeEach(() => {
+    mockPageMode = 'more';
+    mockActionModalOpen = false;
+    mockAddedPlayer = null;
+    mockCurrentTier = currentTier;
+    setPageMode.mockClear();
+    setGearSubTab.mockClear();
+    settingsPanelOpenSpy.mockClear();
+  });
+
+  const renderSlotless = () =>
+    render(<MemoryRouter><GroupViewContent actions={actions} /></MemoryRouter>);
+
+  it('passes onOpenSplitPlanner to MorePage and wires it to the roster Split Planner sub-tab (one history entry)', () => {
+    renderSlotless();
+    // Prop present → the capture mock renders its button; invoking the handler
+    // must switch to Roster with the split-planner sub-tab in the same entry.
+    screen.getByText('open-split-planner').click();
+    expect(setPageMode).toHaveBeenCalledTimes(1);
+    expect(setPageMode).toHaveBeenCalledWith('roster', { rsub: 'split-planner' });
+  });
+
+  it("wires onOpenLootHistory to the legacy gear History sub-tab (setGearSubTab('history') + setPageMode('gear')), not the v2 lview form", () => {
+    renderSlotless();
+    screen.getByText('open-loot-history').click();
+    expect(setGearSubTab).toHaveBeenCalledTimes(1);
+    expect(setGearSubTab).toHaveBeenCalledWith('history');
+    expect(setPageMode).toHaveBeenCalledTimes(1);
+    // Exactly one argument — the lview extra-params form belongs to v2 only.
+    expect(setPageMode).toHaveBeenCalledWith('gear');
   });
 });
