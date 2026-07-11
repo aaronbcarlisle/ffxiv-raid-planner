@@ -70,9 +70,10 @@ export function Layout() {
 
       {/* Desktop settings open/close toggle, docked to the right edge to mirror
           the left rail's collapse chevron. (Mobile uses the header gear.)
-          Suppressed on the group route — the v2 shell mounts its own
-          SettingsGear (via V2SettingsHost) instead, so this toggle would be a
-          redundant duplicate. All non-group routes still render it. */}
+          Suppressed only when the group route resolves to the v2 shell — v2
+          mounts its own SettingsGear (via V2SettingsHost), so this toggle
+          would be a redundant duplicate there. Legacy group routes and all
+          non-group routes still render it. */}
       {!isGroupV2Shell && <SettingsDockToggle />}
 
       {/* Global keyboard shortcuts modal */}

@@ -39,12 +39,13 @@ export const TRANSIENT_NAV_PARAMS = [
  *    degrades to the bare href.
  *
  * `extraParams` are applied last via `URLSearchParams.set`, so a caller-
- * supplied key (e.g. v2's `shell=v2` flip gate) overrides any same-named
- * persisted/carried key rather than appearing twice.
+ * supplied key overrides any same-named persisted/carried key rather than
+ * appearing twice.
  *
  * Promoted verbatim from `ContextSwitcher`'s `buildStaticHref` (the legacy
  * component keeps calling this with `extraParams: {}` for byte-identical
- * output); `StaticPicker` is the first caller to pass `extraParams`.
+ * output). No caller passes `extraParams` today — the dual-shell gate is a
+ * persisted preference, not a URL param carried through navigation.
  */
 export function buildStaticNavHref(
   shareCode: string,
