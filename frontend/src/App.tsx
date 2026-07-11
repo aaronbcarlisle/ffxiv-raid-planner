@@ -7,6 +7,7 @@ import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/layout/ToastContainer';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
+import { useShellPreferenceSync } from './lib/shellPreference';
 import { analytics } from './services/analytics';
 import { errorReporter } from './services/errorReporter';
 import { attemptChunkReload, clearChunkReloadGuard, hasAttemptedChunkReload, isChunkLoadError } from './utils/chunkRecovery';
@@ -104,6 +105,9 @@ function PageLoader() {
 
 function App() {
   const location = useLocation();
+
+  // Backend-wins hydration of the dual-shell preference (Phase R, Task 8).
+  useShellPreferenceSync();
 
   // Initialize auth on app load (check for existing session)
   useEffect(() => {

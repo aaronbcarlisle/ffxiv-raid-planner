@@ -205,6 +205,7 @@ interface AuthState {
   updatePreferences: (prefs: {
     activityDisplayMode?: 'named' | 'anonymous';
     tabPersistence?: 'remember' | 'reset';
+    uiShell?: 'legacy' | 'v2';
   }) => Promise<void>;
   clearError: () => void;
 }

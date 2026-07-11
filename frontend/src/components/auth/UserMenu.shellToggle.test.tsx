@@ -17,12 +17,17 @@ import { TooltipProvider } from '../primitives';
 import { useShellPreferenceStore } from '../../lib/shellPreference';
 import { analytics } from '../../services/analytics';
 
-vi.mock('../../stores/authStore', () => ({
-  useAuthStore: () => ({
+vi.mock('../../stores/authStore', () => {
+  const authState = () => ({
     user: { id: 'u1', discordId: '123456789', discordUsername: 'tester', displayName: 'Tester', isAdmin: false, activityDisplayMode: 'named' },
-    logout: vi.fn(), updatePreferences: vi.fn(),
-  }),
-}));
+    logout: vi.fn(), updatePreferences: vi.fn().mockResolvedValue(undefined),
+  });
+  const useAuthStoreMock = () => authState();
+  // shellPreference.ts's setPreference reads useAuthStore.getState() directly
+  // (Task 8's backend mirror) — the mock must support both call forms.
+  useAuthStoreMock.getState = () => authState();
+  return { useAuthStore: useAuthStoreMock };
+});
 vi.mock('../../stores/notificationStore', () => ({
   useNotificationStore: () => ({ unreadCount: 0, fetchNotifications: vi.fn() }),
 }));

@@ -70,3 +70,24 @@ class TestUserPreferences:
             json={"tabPersistence": "reset"},
         )
         assert r.status_code in (401, 403)
+
+    async def test_patch_ui_shell(self, client, auth_headers):
+        """PATCH updates ui_shell and echoes it back (camelCase)."""
+        resp = await client.patch(
+            "/api/auth/me/preferences", json={"uiShell": "v2"}, headers=auth_headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["uiShell"] == "v2"
+        # /me reflects it
+        me = await client.get("/api/auth/me", headers=auth_headers)
+        assert me.json()["uiShell"] == "v2"
+
+    async def test_ui_shell_defaults_to_legacy(self, client, auth_headers):
+        me = await client.get("/api/auth/me", headers=auth_headers)
+        assert me.json()["uiShell"] == "legacy"
+
+    async def test_ui_shell_rejects_unknown_value(self, client, auth_headers):
+        resp = await client.patch(
+            "/api/auth/me/preferences", json={"uiShell": "classic"}, headers=auth_headers
+        )
+        assert resp.status_code == 422

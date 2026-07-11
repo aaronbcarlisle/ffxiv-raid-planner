@@ -3,10 +3,33 @@
  * Phase R (ROLLOUT_ROADMAP §2): ?shell= URL param → stored preference → default legacy.
  * The URL param NEVER writes the preference (support/deep-link override only).
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { useShellPreferenceStore, useResolvedShell, SHELL_STORAGE_KEY } from './shellPreference';
+import {
+  useShellPreferenceStore,
+  useResolvedShell,
+  useShellPreferenceSync,
+  SHELL_STORAGE_KEY,
+} from './shellPreference';
+
+// Callable selector mock with `.getState()` (mirrors NewShell.authGuard.test.tsx's
+// authStore mock pattern). `mocks.user` is mutated per-test to control whether a
+// PATCH mirror should fire.
+const mocks = vi.hoisted(() => ({
+  user: null as { uiShell?: 'legacy' | 'v2' } | null,
+  updatePreferences: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../stores/authStore', () => {
+  const authState = () => ({ user: mocks.user, updatePreferences: mocks.updatePreferences });
+  const useAuthStoreMock = (sel?: (s: ReturnType<typeof authState>) => unknown) => {
+    const state = authState();
+    return sel ? sel(state) : state;
+  };
+  useAuthStoreMock.getState = () => authState();
+  return { useAuthStore: useAuthStoreMock };
+});
 
 function resolveAt(url: string) {
   return renderHook(() => useResolvedShell(), {
@@ -17,6 +40,8 @@ function resolveAt(url: string) {
 beforeEach(() => {
   localStorage.clear();
   useShellPreferenceStore.setState({ preference: null });
+  mocks.user = null;
+  mocks.updatePreferences.mockClear();
 });
 
 describe('useShellPreferenceStore', () => {
@@ -51,5 +76,51 @@ describe('useResolvedShell precedence', () => {
     expect(result.current).toBe('legacy');
     act(() => useShellPreferenceStore.getState().setPreference('v2'));
     expect(result.current).toBe('v2');
+  });
+});
+
+describe('setPreference backend mirror (Task 8)', () => {
+  it('PATCH-mirrors uiShell when a user is authenticated', () => {
+    mocks.user = { uiShell: 'legacy' };
+    act(() => useShellPreferenceStore.getState().setPreference('v2'));
+    expect(mocks.updatePreferences).toHaveBeenCalledTimes(1);
+    expect(mocks.updatePreferences).toHaveBeenCalledWith({ uiShell: 'v2' });
+  });
+
+  it('skips the PATCH mirror for guests (no user)', () => {
+    mocks.user = null;
+    act(() => useShellPreferenceStore.getState().setPreference('v2'));
+    expect(mocks.updatePreferences).not.toHaveBeenCalled();
+  });
+});
+
+describe('useShellPreferenceSync (backend-wins hydration)', () => {
+  it('adopts the authed user\'s uiShell into the store + localStorage', () => {
+    mocks.user = { uiShell: 'v2' };
+    renderHook(() => useShellPreferenceSync());
+    expect(useShellPreferenceStore.getState().preference).toBe('v2');
+    expect(localStorage.getItem(SHELL_STORAGE_KEY)).toBe('v2');
+  });
+
+  it('never calls updatePreferences (hydration must not PATCH back)', () => {
+    mocks.user = { uiShell: 'v2' };
+    renderHook(() => useShellPreferenceSync());
+    expect(mocks.updatePreferences).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when there is no authed user', () => {
+    mocks.user = null;
+    renderHook(() => useShellPreferenceSync());
+    expect(useShellPreferenceStore.getState().preference).toBeNull();
+    expect(localStorage.getItem(SHELL_STORAGE_KEY)).toBeNull();
+  });
+
+  it('does not clobber an existing matching preference (no redundant write)', () => {
+    useShellPreferenceStore.setState({ preference: 'v2' });
+    mocks.user = { uiShell: 'v2' };
+    const setSpy = vi.spyOn(useShellPreferenceStore, 'setState');
+    renderHook(() => useShellPreferenceSync());
+    expect(setSpy).not.toHaveBeenCalled();
+    setSpy.mockRestore();
   });
 });

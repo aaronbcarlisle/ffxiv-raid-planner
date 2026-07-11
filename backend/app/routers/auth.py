@@ -413,6 +413,7 @@ async def get_current_user_info(
         is_admin=user.is_admin,
         activity_display_mode=user.activity_display_mode,
         tab_persistence=user.tab_persistence,
+        ui_shell=user.ui_shell,
         created_at=user.created_at,
         updated_at=user.updated_at,
         last_login_at=user.last_login_at,
@@ -434,6 +435,9 @@ async def update_user_preferences(
     if body.tab_persistence is not None:
         current_user.tab_persistence = body.tab_persistence
         changed = True
+    if body.ui_shell is not None:
+        current_user.ui_shell = body.ui_shell
+        changed = True
     if changed:
         current_user.updated_at = now
     await session.flush()
@@ -449,6 +453,7 @@ async def update_user_preferences(
         is_admin=current_user.is_admin,
         activity_display_mode=current_user.activity_display_mode,
         tab_persistence=current_user.tab_persistence,
+        ui_shell=current_user.ui_shell,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
         last_login_at=current_user.last_login_at,

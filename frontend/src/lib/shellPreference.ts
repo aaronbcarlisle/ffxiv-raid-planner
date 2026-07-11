@@ -11,8 +11,11 @@
  * TRANSIENT_NAV_PARAMS). localStorage covers guests + pre-auth paint; the
  * authed backend mirror (User.ui_shell) hydrates over it on login (Task 8).
  */
+import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useSearchParams } from 'react-router-dom';
+import { useAuthStore } from '../stores/authStore';
+// (tabMemory.ts already imports authStore from lib/ — no boundary violation)
 
 export type Shell = 'legacy' | 'v2';
 
@@ -42,6 +45,10 @@ export const useShellPreferenceStore = create<ShellPreferenceState>((set) => ({
     } catch {
       // Private-mode localStorage failures degrade to session-only preference.
     }
+    // Authed users mirror the preference server-side (cross-device). Fire and
+    // forget: a failed PATCH must not block the local toggle.
+    const { user, updatePreferences } = useAuthStore.getState();
+    if (user) void updatePreferences({ uiShell: shell }).catch(() => {});
   },
 }));
 
@@ -53,4 +60,18 @@ export function useResolvedShell(): Shell {
   const param = searchParams.get('shell');
   if (param === 'legacy' || param === 'v2') return param;
   return preference ?? 'legacy';
+}
+
+/** Backend-wins hydration (Phase R §4): when /me delivers a uiShell, adopt
+ *  it into the store + localStorage so subsequent paints agree. setState
+ *  (not setPreference) on purpose — hydration must never PATCH back. */
+export function useShellPreferenceSync(): void {
+  const uiShell = useAuthStore((s) => s.user?.uiShell);
+  useEffect(() => {
+    if (uiShell !== 'legacy' && uiShell !== 'v2') return;
+    if (useShellPreferenceStore.getState().preference !== uiShell) {
+      useShellPreferenceStore.setState({ preference: uiShell });
+      try { localStorage.setItem(SHELL_STORAGE_KEY, uiShell); } catch { /* noop */ }
+    }
+  }, [uiShell]);
 }
