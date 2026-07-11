@@ -24,6 +24,7 @@ import { StaticSwitcher, TierSelector } from '../static-group';
 import { ContextSwitcher } from './ContextSwitcher';
 import { TierActionsMenu, TipsCarousel, DiscordIcon, GitHubIcon, ThemeToggle } from '../ui';
 import { Tooltip, IconButton } from '../primitives';
+import { TryNewUiBanner } from './TryNewUiBanner';
 import { RAID_TIERS } from '../../gamedata';
 import { canManageTiers } from '../../utils/permissions';
 import { DISCORD_INVITE_URL, GITHUB_REPO_URL } from '../../config';
@@ -311,6 +312,14 @@ export function Header() {
 
         {/* Right side: Invite + Settings + Auth */}
         <div className="flex items-center gap-1 sm:gap-3">
+          {/* Phase R: legacy→v2 opt-in entry (self-gates on resolved shell + dismissal).
+              Sanctioned Header edit — ROLLOUT_ROADMAP §2 mandates this entry point. */}
+          {isGroupRoute && currentGroup && (
+            <div className="hidden sm:block">
+              <TryNewUiBanner />
+            </div>
+          )}
+
           {/* Settings gear — mobile only; desktop uses the docked toggle on the
               right edge (SettingsDockToggle) that mirrors the rail's chevron. */}
           {user && !isHomePage && (
