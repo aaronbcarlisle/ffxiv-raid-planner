@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { UserMenu } from './UserMenu';
 import { TooltipProvider } from '../primitives';
 import { useShellPreferenceStore } from '../../lib/shellPreference';
@@ -35,17 +35,28 @@ function openMenu() {
   fireEvent.keyDown(screen.getByRole('button', { name: /user menu/i }), { key: 'Enter' });
 }
 
+// Captures the live MemoryRouter location as a data attribute so tests can
+// assert on the real URL (see StaticPicker.test.tsx for the same pattern).
+function LocationDisplay() {
+  const loc = useLocation();
+  return <div data-testid="loc" data-path={loc.pathname + loc.search} />;
+}
+
 function renderAt(url: string) {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <TooltipProvider>
         <UserMenu />
       </TooltipProvider>
+      <LocationDisplay />
     </MemoryRouter>
   );
 }
 
 beforeEach(() => {
+  // The strip test's setPreference persists ui-shell to localStorage; clear it
+  // so test order can never leak a stored preference into the resolver.
+  localStorage.clear();
   useShellPreferenceStore.setState({ preference: null });
   // jsdom has no matchMedia; emulate a desktop environment (see RosterCard.test.tsx).
   vi.stubGlobal(
@@ -91,6 +102,11 @@ describe('UserMenu — Switch to classic UI', () => {
     expect(track).toHaveBeenCalledWith('navigation', 'ui_shell_toggle',
       { direction: 'to-legacy', surface: 'v2-user-menu' });
     expect(useShellPreferenceStore.getState().preference).toBe('legacy');
+    // Assert the ?shell= override was really stripped from the live URL —
+    // without the strip, ?shell=v2 would keep out-resolving the new preference.
+    const path = screen.getByTestId('loc').getAttribute('data-path');
+    expect(path).toBe('/group/ABC');
+    expect(path).not.toContain('shell=');
     track.mockRestore();
   });
 });

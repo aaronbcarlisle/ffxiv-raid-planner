@@ -43,6 +43,11 @@ describe('TryNewUiBanner', () => {
     expect(track).toHaveBeenCalledWith('navigation', 'ui_shell_toggle',
       { direction: 'to-v2', surface: 'legacy-banner' });
     expect(useShellPreferenceStore.getState().preference).toBe('v2');
+    // The banner can only disappear if ?shell=legacy was actually stripped:
+    // with the param intact the resolver keeps resolving legacy (param wins
+    // over preference) and the banner stays. This makes the URL strip
+    // observable through real behavior, not just implementation calls.
+    expect(screen.queryByRole('button', { name: /try the new ui/i })).toBeNull();
   });
   it('dismiss hides it, persists, and fires ui_shell_banner_dismiss', () => {
     renderAt();

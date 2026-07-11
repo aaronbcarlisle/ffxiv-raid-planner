@@ -1,7 +1,9 @@
 /**
  * TryNewUiBanner — the legacy shell's opt-in entry to the v2 UI (Phase R §5).
  * Rendered by the legacy Header on group routes; self-gates on the resolved
- * shell + a persisted dismissal, so mounting it unconditionally is safe.
+ * shell + a persisted dismissal. The Header's group-route gate is still
+ * required — off group routes the resolver defaults to legacy and the banner
+ * would show.
  */
 import { useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
