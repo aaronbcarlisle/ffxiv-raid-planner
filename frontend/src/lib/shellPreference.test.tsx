@@ -15,14 +15,20 @@ import {
 
 // Callable selector mock with `.getState()` (mirrors NewShell.authGuard.test.tsx's
 // authStore mock pattern). `mocks.user` is mutated per-test to control whether a
-// PATCH mirror should fire.
+// PATCH mirror should fire; `mocks.authInitialized` controls whether the sync
+// hook may trust `user` (false = still the stale zustand-persisted snapshot).
 const mocks = vi.hoisted(() => ({
   user: null as { uiShell?: 'legacy' | 'v2' } | null,
+  authInitialized: true,
   updatePreferences: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../stores/authStore', () => {
-  const authState = () => ({ user: mocks.user, updatePreferences: mocks.updatePreferences });
+  const authState = () => ({
+    user: mocks.user,
+    authInitialized: mocks.authInitialized,
+    updatePreferences: mocks.updatePreferences,
+  });
   const useAuthStoreMock = (sel?: (s: ReturnType<typeof authState>) => unknown) => {
     const state = authState();
     return sel ? sel(state) : state;
@@ -41,6 +47,7 @@ beforeEach(() => {
   localStorage.clear();
   useShellPreferenceStore.setState({ preference: null });
   mocks.user = null;
+  mocks.authInitialized = true;
   mocks.updatePreferences.mockClear();
 });
 
@@ -122,5 +129,27 @@ describe('useShellPreferenceSync (backend-wins hydration)', () => {
     renderHook(() => useShellPreferenceSync());
     expect(setSpy).not.toHaveBeenCalled();
     setSpy.mockRestore();
+  });
+
+  it('adopts NOTHING before authInitialized (stale persisted snapshot must not override the local choice)', () => {
+    // Cold load: `user` is the zustand-persisted snapshot, potentially staler
+    // than localStorage's ui-shell (e.g. a toggle whose PATCH mirror failed).
+    mocks.authInitialized = false;
+    mocks.user = { uiShell: 'legacy' };
+    useShellPreferenceStore.setState({ preference: 'v2' });
+    localStorage.setItem(SHELL_STORAGE_KEY, 'v2');
+    renderHook(() => useShellPreferenceSync());
+    expect(useShellPreferenceStore.getState().preference).toBe('v2');
+    expect(localStorage.getItem(SHELL_STORAGE_KEY)).toBe('v2');
+  });
+
+  it('adopts the /me uiShell once authInitialized flips true', () => {
+    mocks.authInitialized = true;
+    mocks.user = { uiShell: 'legacy' };
+    useShellPreferenceStore.setState({ preference: 'v2' });
+    localStorage.setItem(SHELL_STORAGE_KEY, 'v2');
+    renderHook(() => useShellPreferenceSync());
+    expect(useShellPreferenceStore.getState().preference).toBe('legacy');
+    expect(localStorage.getItem(SHELL_STORAGE_KEY)).toBe('legacy');
   });
 });

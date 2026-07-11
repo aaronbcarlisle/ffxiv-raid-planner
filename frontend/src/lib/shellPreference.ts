@@ -67,11 +67,18 @@ export function useResolvedShell(): Shell {
  *  (not setPreference) on purpose — hydration must never PATCH back. */
 export function useShellPreferenceSync(): void {
   const uiShell = useAuthStore((s) => s.user?.uiShell);
+  const authInitialized = useAuthStore((s) => s.authInitialized);
   useEffect(() => {
+    // Until initializeAuth() completes, `user` is authStore's zustand-PERSISTED
+    // snapshot, which can be STALER than localStorage's ui-shell (sharpest
+    // case: a local toggle whose PATCH mirror failed offline would be reverted
+    // by the user's own stale snapshot). Only adopt a uiShell delivered by a
+    // real /me response — never the rehydrated snapshot.
+    if (!authInitialized) return;
     if (uiShell !== 'legacy' && uiShell !== 'v2') return;
     if (useShellPreferenceStore.getState().preference !== uiShell) {
       useShellPreferenceStore.setState({ preference: uiShell });
       try { localStorage.setItem(SHELL_STORAGE_KEY, uiShell); } catch { /* noop */ }
     }
-  }, [uiShell]);
+  }, [authInitialized, uiShell]);
 }
