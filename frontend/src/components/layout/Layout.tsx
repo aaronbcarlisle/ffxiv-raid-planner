@@ -9,6 +9,7 @@ import { ViewAsBanner } from '../admin';
 import { KeyboardShortcutsHelp } from '../ui';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
 import { useAuthStore } from '../../stores/authStore';
+import { useResolvedShell } from '../../lib/shellPreference';
 
 export function Layout() {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
@@ -16,10 +17,13 @@ export function Layout() {
   const isAdmin = user?.isAdmin ?? false;
 
   // The v2 shell renders its own TopBar, so the app-wide Header (and the
-  // settings dock toggle) are suppressed on the group route. All non-group
-  // routes render them.
+  // settings dock toggle) are suppressed ONLY when the group route resolves to
+  // the v2 shell. Legacy group routes render <Header/> exactly as before the
+  // flip; all non-group routes always render it. Same resolver as GroupRoute —
+  // precedence lives in ONE place (lib/shellPreference).
   const location = useLocation();
-  const isGroupRoute = location.pathname.startsWith('/group/');
+  const resolvedShell = useResolvedShell();
+  const isGroupV2Shell = location.pathname.startsWith('/group/') && resolvedShell === 'v2';
 
   // Global event listener for keyboard shortcuts modal
   // This allows the UserMenu to trigger shortcuts from any page
@@ -45,7 +49,7 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
-      {!isGroupRoute && <Header />}
+      {!isGroupV2Shell && <Header />}
       <ViewAsBanner />
       {/* Content container - scrollable area below sticky header */}
       {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears.
@@ -69,7 +73,7 @@ export function Layout() {
           Suppressed on the group route — the v2 shell mounts its own
           SettingsGear (via V2SettingsHost) instead, so this toggle would be a
           redundant duplicate. All non-group routes still render it. */}
-      {!isGroupRoute && <SettingsDockToggle />}
+      {!isGroupV2Shell && <SettingsDockToggle />}
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp
