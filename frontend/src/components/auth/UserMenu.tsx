@@ -4,11 +4,13 @@
  * Migrated to Radix DropdownMenu for accessibility and consistent styling.
  */
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { useSyntheticUnreadCount } from '../../lib/syntheticNotifications';
+import { useResolvedShell } from '../../lib/shellPreference';
+import { useShellToggle } from '../../hooks/useShellToggle';
 import { NotificationCenter } from './NotificationCenter';
 import {
   Dropdown,
@@ -39,6 +41,7 @@ import {
   Swords,
   EyeOff,
   Bell,
+  ArrowLeftRight,
 } from 'lucide-react';
 import { useTheme } from '../../hooks/useTheme';
 import { Modal } from '../ui/Modal';
@@ -57,6 +60,10 @@ interface UserMenuProps {
 export function UserMenu({ className = '', variant = 'header', collapsed = false }: UserMenuProps) {
   const { user, logout, updatePreferences } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isGroupRoute = location.pathname.startsWith('/group/');
+  const resolvedShell = useResolvedShell();
+  const switchShell = useShellToggle('v2-user-menu');
   const { theme, setTheme } = useTheme();
   const apiKeysModal = useModal();
   const notificationsModal = useModal();
@@ -296,6 +303,17 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
             />
           </span>
         </div>
+
+        {/* Phase R: v2→legacy return path. Only meaningful where a shell is being
+            rendered (group routes) AND the v2 shell is active. */}
+        {isGroupRoute && resolvedShell === 'v2' && (
+          <DropdownItem
+            icon={<ArrowLeftRight className="w-4 h-4" />}
+            onSelect={() => switchShell('legacy')}
+          >
+            Switch to classic UI
+          </DropdownItem>
+        )}
 
         <DropdownSeparator />
 

@@ -7,6 +7,7 @@ import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/layout/ToastContainer';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
+import { useShellPreferenceSync } from './lib/shellPreference';
 import { analytics } from './services/analytics';
 import { errorReporter } from './services/errorReporter';
 import { attemptChunkReload, clearChunkReloadGuard, hasAttemptedChunkReload, isChunkLoadError } from './utils/chunkRecovery';
@@ -20,7 +21,7 @@ const AdminStatics = lazy(() => import('./pages/admin/AdminStatics').then(m => (
 const AdminUsage = lazy(() => import('./pages/admin/AdminUsage').then(m => ({ default: m.AdminUsage })));
 const AdminErrors = lazy(() => import('./pages/admin/AdminErrors').then(m => ({ default: m.AdminErrors })));
 const Discover = lazy(() => import('./pages/Discover').then(m => ({ default: m.Discover })));
-const NewShell = lazy(() => import('./pages/NewShell').then(m => ({ default: m.NewShell })));
+const GroupRoute = lazy(() => import('./pages/GroupRoute').then(m => ({ default: m.GroupRoute })));
 const Profile = lazy(() => import('./pages/Profile'));
 const PublicProfile = lazy(() => import('./pages/PublicProfile'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
@@ -105,6 +106,9 @@ function PageLoader() {
 function App() {
   const location = useLocation();
 
+  // Backend-wins hydration of the dual-shell preference (Phase R, Task 8).
+  useShellPreferenceSync();
+
   // Initialize auth on app load (check for existing session)
   useEffect(() => {
     const clearReloadGuardTimer = window.setTimeout(() => {
@@ -161,7 +165,7 @@ function App() {
               <Route path="usage" element={<AdminUsage />} />
               <Route path="errors" element={<AdminErrors />} />
             </Route>
-            <Route path="group/:shareCode" element={<NewShell />} />
+            <Route path="group/:shareCode" element={<GroupRoute />} />
             {/* Documentation routes */}
             <Route path="docs" element={<DocsIndex />} />
             <Route path="docs/quick-start" element={<QuickStartGuide />} />

@@ -89,9 +89,9 @@ export async function loginAsMember(page: Page): Promise<void> {
  * If no login was performed, pass waitForAuth=false.
  */
 export async function goToTestStatic(page: Page, waitForAuth = true): Promise<void> {
-  // FLIP P3: legacy GroupView chrome is deleted — the bare route always renders
-  // the v2 shell (the old `?shell=legacy` escape hatch is gone).
-  await page.goto(`/group/${DEV_SHARE_CODE}`);
+  // Phase R: the default shell is legacy again; this v2 suite pins `?shell=v2`
+  // (mirror of P2's legacy pinning, inverted). Assertions untouched.
+  await page.goto(`/group/${DEV_SHARE_CODE}?shell=v2`);
   await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
   // Wait for auth hydration: the UserMenu button (aria-label "User menu for …")
   // appears once the auth store has fetched and stored the current user.
@@ -111,6 +111,41 @@ export async function goToTestStatic(page: Page, waitForAuth = true): Promise<vo
   await page.waitForURL(/[?&]tab=/, { timeout: 15_000 }).catch(() => {
     // Best-effort — some entry points may already carry ?tab= or never need it.
   });
+}
+
+/**
+ * Navigate to the test static group page (LEGACY shell) and wait for the tab
+ * bar to appear.
+ *
+ * After the Roster button is visible, also waits for auth hydration to complete
+ * (the UserMenu button replaces the pulsing loading circle). This prevents a race
+ * where the group fetch returns before the auth store has hydrated, leaving
+ * userRole-dependent UI in a permanently stale "View only" state.
+ *
+ * Must be called AFTER loginAsOwner / loginAsMember so the user is authenticated.
+ * If no login was performed, pass waitForAuth=false.
+ */
+export async function goToTestStaticLegacy(page: Page, waitForAuth = true): Promise<void> {
+  await page.goto(`/group/${DEV_SHARE_CODE}?shell=legacy`);
+  // The Roster tab button is always present once the group loads
+  await page.getByRole('button', { name: 'Roster', exact: true }).first().waitFor({ timeout: 15_000 });
+  // Wait for auth hydration: the UserMenu button (aria-label "User menu for …")
+  // appears once the auth store has fetched and stored the current user.
+  // Without this, role-dependent props (canRsvp, canSubmit) can be null when
+  // callers switch into the Schedule / Availability tab immediately after.
+  if (waitForAuth) {
+    await page.getByRole('button', { name: /User menu for/i }).waitFor({ timeout: 15_000 }).catch(() => {
+      // Best-effort: if auth doesn't hydrate in time, tests will handle it via
+      // their own 'Editable' badge checks and graceful skips.
+    });
+  }
+}
+
+/**
+ * Click a tab in the GroupView (LEGACY shell) header.
+ */
+export async function switchTabLegacy(page: Page, tabName: string): Promise<void> {
+  await page.getByRole('button', { name: new RegExp(`^${tabName}$`, 'i') }).click();
 }
 
 /**

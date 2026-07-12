@@ -1,5 +1,5 @@
 /**
- * Unit tests for navPreferences — buildStaticNavHref.
+ * Unit tests for navPreferences — TRANSIENT_NAV_PARAMS + buildStaticNavHref.
  *
  * buildStaticNavHref is a promotion of ContextSwitcher's inline `buildStaticHref`
  * (Task 7). The "characterization pin" suite below reproduces that ORIGINAL
@@ -11,7 +11,13 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { buildStaticNavHref } from './navPreferences';
+import { TRANSIENT_NAV_PARAMS, buildStaticNavHref } from './navPreferences';
+
+describe('TRANSIENT_NAV_PARAMS', () => {
+  it('includes shell — the v2 flip gate must never be baked into persisted static-nav state', () => {
+    expect(TRANSIENT_NAV_PARAMS).toContain('shell');
+  });
+});
 
 describe('buildStaticNavHref', () => {
   beforeEach(() => {
@@ -19,14 +25,9 @@ describe('buildStaticNavHref', () => {
   });
 
   it('remember=true restores the saved static-nav params (minus transient) and appends extraParams', () => {
-    // Includes a transient param (`viewAs`) in the saved fixture so the
-    // read-side strip in the `remember: true` branch is actually exercised —
-    // a saved static-nav blob can carry a stale `viewAs` from whatever
-    // session wrote it, and it must never be restored into a fresh nav.
-    localStorage.setItem('static-nav-ABC', 'tab=roster&sub=weapon&viewAs=u1');
-    const href = buildStaticNavHref('ABC', { remember: true, extraParams: { foo: 'bar' } });
-    expect(href).toBe('/group/ABC?tab=roster&sub=weapon&foo=bar');
-    expect(href).not.toContain('viewAs');
+    localStorage.setItem('static-nav-ABC', 'tab=roster&sub=weapon');
+    const href = buildStaticNavHref('ABC', { remember: true, extraParams: { shell: 'v2' } });
+    expect(href).toBe('/group/ABC?tab=roster&sub=weapon&shell=v2');
   });
 
   it('extraParams overrides a same-named persisted key without duplicating it', () => {
@@ -38,8 +39,8 @@ describe('buildStaticNavHref', () => {
   });
 
   it('remember=true with no saved state → bare href + extras', () => {
-    const href = buildStaticNavHref('NEWCODE', { remember: true, extraParams: { foo: 'bar' } });
-    expect(href).toBe('/group/NEWCODE?foo=bar');
+    const href = buildStaticNavHref('NEWCODE', { remember: true, extraParams: { shell: 'v2' } });
+    expect(href).toBe('/group/NEWCODE?shell=v2');
   });
 
   it('remember=false carries currentParams minus transient minus tier', () => {
@@ -49,16 +50,24 @@ describe('buildStaticNavHref', () => {
   });
 
   it('remember=false with no currentParams (not on a static) → bare href + extras', () => {
-    const href = buildStaticNavHref('ABC', { remember: false, extraParams: { foo: 'bar' } });
-    expect(href).toBe('/group/ABC?foo=bar');
+    const href = buildStaticNavHref('ABC', { remember: false, extraParams: { shell: 'v2' } });
+    expect(href).toBe('/group/ABC?shell=v2');
+  });
+
+  it('flip-safety: a static-nav seeded with shell=v2 has shell stripped as transient on restore', () => {
+    localStorage.setItem('static-nav-ABC', 'tab=roster&shell=v2');
+    const href = buildStaticNavHref('ABC', { remember: true, extraParams: {} });
+    expect(href).toBe('/group/ABC?tab=roster');
+    expect(href).not.toContain('shell');
   });
 });
 
 describe('buildStaticNavHref — characterization pin (old ContextSwitcher inline logic)', () => {
-  // Frozen snapshot of the exact list the original ContextSwitcher.buildStaticHref
-  // closed over, so this suite pins equivalence against a fixed reference rather
-  // than the live export (which could otherwise drift in lockstep and mask a
-  // regression).
+  // Frozen snapshot of TRANSIENT_NAV_PARAMS as it was BEFORE this task added
+  // 'shell' — the exact list the original ContextSwitcher.buildStaticHref
+  // closed over. None of the fixtures below carry a `shell` key, so comparing
+  // against this frozen list (rather than the live, now-shell-aware export) is
+  // a true equivalence pin, independent of the flip-safety change.
   const OLD_TRANSIENT = ['player', 'viewAs', 'adminMode', 'showSettings', 'settings', 'gsub', 'psub', 'rcsub'];
 
   function oldBuildStaticHref(

@@ -15,11 +15,17 @@
 import type { User } from '../types';
 
 /** URL params that are transient/modal and should not be persisted, restored,
- *  or carried across a static switch. */
+ *  or carried across a static switch. `shell` is included so the shell gate is
+ *  never baked into per-static tab memory. This hazard is WORSE now that the
+ *  shell is a persisted user preference (Phase R): if `shell` leaked into
+ *  `static-nav-{code}` memory, a remembered-tab navigation would silently
+ *  override the user's chosen shell — the URL param must stay a one-shot
+ *  support/deep-link override, never a sticky one. */
 export const TRANSIENT_NAV_PARAMS = [
   'player', 'viewAs', 'adminMode', 'showSettings', 'settings',
   // Per-tab settings sub-section params (Goals / Priority / Recruitment).
   'gsub', 'psub', 'rcsub',
+  'shell',
 ] as const;
 
 /**
@@ -38,9 +44,8 @@ export const TRANSIENT_NAV_PARAMS = [
  *
  * Promoted verbatim from `ContextSwitcher`'s `buildStaticHref` (the legacy
  * component keeps calling this with `extraParams: {}` for byte-identical
- * output). No caller passes `extraParams` today — it's kept available for a
- * future caller that needs to set an additional param atomically with the
- * nav (e.g. a target sub-tab).
+ * output). No caller passes `extraParams` today — the dual-shell gate is a
+ * persisted preference, not a URL param carried through navigation.
  */
 export function buildStaticNavHref(
   shareCode: string,

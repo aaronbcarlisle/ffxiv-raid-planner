@@ -43,6 +43,12 @@ class User(Base):
     tab_persistence: Mapped[str] = mapped_column(
         String(20), nullable=False, default="remember", server_default="remember"
     )
+    # Dual-shell rollout preference (Phase R). 'legacy' = original chrome,
+    # 'v2' = redesign shell. Mirrors the localStorage preference in
+    # lib/shellPreference.ts for cross-device continuity once authed.
+    ui_shell: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="legacy", server_default="legacy"
+    )
 
     # Relationships
     memberships: Mapped[list["Membership"]] = relationship(

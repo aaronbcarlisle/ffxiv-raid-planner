@@ -595,6 +595,11 @@ export interface User {
    * tab; 'reset' always opens on the default tab. Default 'remember'.
    */
   tabPersistence?: 'remember' | 'reset';
+  /**
+   * Dual-shell rollout preference (Phase R), cross-device mirror of
+   * lib/shellPreference.ts's localStorage preference. 'legacy' | 'v2'.
+   */
+  uiShell?: 'legacy' | 'v2';
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;

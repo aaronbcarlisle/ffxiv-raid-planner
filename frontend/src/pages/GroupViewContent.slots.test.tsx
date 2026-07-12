@@ -1,23 +1,29 @@
 /**
- * GroupViewContent — post-surgery slots contract (flip-P3 Task 2, dead-tree
- * deletion in Task 4).
+ * GroupViewContent — v2 (all-slots) contract in the dual shell (Phase R).
  *
- * Pins the v2-only contract after the legacy fallback bodies were deleted:
- *   1. `slots` is REQUIRED — each spine tab renders its slot, and no legacy
- *      leaf (StaticHomeTab, PlayerGrid, SplitClearPlanner, TeamSummaryEnhanced,
- *      HistoryView, ScheduleTab, … — all deleted in Task 4) renders anywhere.
- *      GearSyncDashboard/RosterCharacterPanel are KEPT files re-homed
- *      elsewhere; still mocked here so they stay out of this tab's tree.
+ * `slots` is OPTIONAL again (f45a241 contract, restored in Phase R): the legacy
+ * route renders GroupViewContent with no slots → the restored legacy bodies
+ * (pinned by the GroupViewContent.test.tsx / *.rosterSlot / *.gearSlot /
+ * *.canManageRoster characterization suites). THIS suite pins the other half:
+ * with all four slots passed (how NewShell always renders it), v2 output is
+ * unchanged from flip-P3:
+ *   1. Each spine tab renders its slot, and no legacy leaf or legacy chrome
+ *      (gear sub-tab bar, schedule view switcher, roster sticky toolbar)
+ *      renders anywhere — every legacy region is gated on its slot's absence.
+ *      GearSyncDashboard/RosterCharacterPanel are mocked with testids so their
+ *      absence is assertable.
  *   2. Slotless pageModes (goals / more / plugin) render their bodies
  *      unconditionally.
- *   3. The legacy sticky roster toolbar is gone (no roster sub-tab tablist),
- *      and no legacy data-fetching side effects fire (LogWeekWizard mount).
- *   4. Shared wiring survives: MobileBottomNav mounts, the GroupActions
+ *   3. Shared wiring survives: MobileBottomNav mounts, the GroupActions
  *      context still gates keyboard shortcuts, the added-player highlight
  *      signal is consumed one-shot.
  *
+ * A second describe at the bottom pins the legacy (slotless) More-page wiring
+ * — the `!slots?.roster` / `slots?.gear` shell-branch gates themselves, which
+ * no render-output assertion above can catch if inverted.
+ *
  * Heavy hooks/stores/leaf-components are mocked — the point is the contract,
- * not full integration. (Scaffold adapted from the deleted GroupViewContent.test.tsx.)
+ * not full integration. (Same scaffold family as GroupViewContent.test.tsx.)
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -26,6 +32,9 @@ import type { AddedPlayerSignal } from './groupActionsContext';
 
 // ── Mock the state hook: a controllable, fully-shaped useGroupViewState ──
 const setPageMode = vi.fn();
+// Dedicated spy (not the shared noop) so the legacy loot-history shell branch
+// below can assert setGearSubTab('history') specifically.
+const setGearSubTab = vi.fn();
 let mockPageMode = 'overview';
 const noop = vi.fn();
 function makeState() {
@@ -34,6 +43,8 @@ function makeState() {
     setSearchParams: noop,
     pageMode: mockPageMode,
     setPageMode,
+    gearSubTab: 'sync', setGearSubTab,
+    lootSubTab: 'gear', setLootSubTab: noop,
     viewMode: 'compact', setViewMode: noop,
     groupView: false, setGroupView: noop, setGroupViewState: noop,
     subsView: false, setSubsView: noop,
@@ -45,6 +56,13 @@ function makeState() {
     showSettingsModal: false, setShowSettingsModal: noop,
     showRolloverDialog: false, setShowRolloverDialog: noop,
     showDeleteTierConfirm: false, setShowDeleteTierConfirm: noop,
+    showKeyboardHelp: false, setShowKeyboardHelp: noop,
+    showLogLootModal: false, setShowLogLootModal: noop,
+    showLogMaterialModal: false, setShowLogMaterialModal: noop,
+    showMarkFloorClearedModal: false, setShowMarkFloorClearedModal: noop,
+    showLogWeekWizard: false, setShowLogWeekWizard: noop,
+    logWeekWizardFloor: null, setLogWeekWizardFloor: noop,
+    logWeekWizardWeek: null, setLogWeekWizardWeek: noop,
     playerModalCount: 0, setPlayerModalCount: noop,
     highlightedPlayerId: null, setHighlightedPlayerId: noop,
     highlightedSlot: null, setHighlightedSlot: noop,
@@ -77,6 +95,9 @@ vi.mock('../stores/lootTrackingStore', () => ({
   }),
 }));
 vi.mock('../stores/mountFarmStore', () => ({ useMountFarmStore: { getState: () => ({ data: null }) } }));
+vi.mock('../stores/splitClearStore', () => ({
+  useSplitClearStore: () => ({ fetchData: vi.fn(), clearData: vi.fn() }),
+}));
 const settingsPanelOpenSpy = vi.fn();
 vi.mock('../stores/settingsPanelStore', () => ({
   useSettingsPanelStore: { getState: () => ({ open: settingsPanelOpenSpy, close: vi.fn() }) },
@@ -86,6 +107,10 @@ vi.mock('../stores/settingsPanelStore', () => ({
 const keyboardSpy = vi.fn();
 vi.mock('../hooks/useGroupViewKeyboardShortcuts', () => ({
   useGroupViewKeyboardShortcuts: (_params: unknown, isAnyModalOpen: boolean) => keyboardSpy(isAnyModalOpen),
+}));
+vi.mock('../hooks/usePlayerActions', () => ({ usePlayerActions: () => ({ handleAddPlayer: vi.fn() }) }));
+vi.mock('../components/dnd/useDragAndDrop', () => ({
+  useDragAndDrop: () => ({ sensors: [], handleDragStart: vi.fn(), handleDragOver: vi.fn(), handleDragEnd: vi.fn(), handleDragCancel: vi.fn() }),
 }));
 vi.mock('../hooks/useDevice', () => ({ useDevice: () => ({ isSmallScreen: false }) }));
 vi.mock('../hooks/useSwipe', () => ({ useSwipe: () => ({}) }));
@@ -110,30 +135,40 @@ vi.mock('./groupActionsContext', () => ({
   useGroupClearAddedPlayer: () => clearAddedPlayerSpy,
 }));
 
-// ── Legacy leaves: mocked with testids so their ABSENCE is assertable.
-//    (RosterCharacterPanel and GearSyncDashboard are KEEP files — task 4 only
-//    re-homed/left them in place, so they're still mocked here to keep them
-//    out of this contract test's render tree.) ──
+// ── Legacy leaves: mocked with testids so their ABSENCE is assertable. ──
 vi.mock('../components/roster/RosterCharacterPanel', () => ({
   RosterCharacterPanel: () => <div data-testid="legacy-character-panel" />,
 }));
 vi.mock('../components/group/GearSyncDashboard', () => ({
   GearSyncDashboard: () => <div data-testid="legacy-gear-sync" />,
 }));
-const logWeekWizardSpy = vi.fn();
+// The restored GroupViewContent imports both from the loot barrel; neither
+// mounts here (all slots passed + the fixture tierId resolves no tierInfo).
 vi.mock('../components/loot', () => ({
-  LogWeekWizard: () => { logWeekWizardSpy(); return null; },
+  LootPriorityPanel: () => <div data-testid="legacy-loot-priority" />,
+  LogWeekWizard: () => null,
 }));
 
 // ── Slotless page bodies (kept, spec §4) ──
 vi.mock('../components/group/GoalsPage', () => ({
   GoalsPage: () => <div data-testid="goals-page" />,
 }));
+// Capture mock: surfaces the handlers as buttons, and renders the
+// split-planner button ONLY when the optional prop is passed — so the
+// shell-branch tests below can assert the prop's presence/absence AND
+// invoke the handler GroupViewContent wired.
 vi.mock('../components/group/MorePage', () => ({
-  MorePage: (props: { onOpenIntegrations: () => void; onOpenLootHistory: () => void }) => (
+  MorePage: (props: {
+    onOpenIntegrations: () => void;
+    onOpenLootHistory: () => void;
+    onOpenSplitPlanner?: () => void;
+  }) => (
     <div data-testid="more-page">
       <button onClick={() => props.onOpenIntegrations()}>open-integrations</button>
       <button onClick={() => props.onOpenLootHistory()}>open-loot-history</button>
+      {props.onOpenSplitPlanner && (
+        <button onClick={props.onOpenSplitPlanner}>open-split-planner</button>
+      )}
     </div>
   ),
 }));
@@ -157,17 +192,17 @@ const slots = {
 const renderContent = () =>
   render(<MemoryRouter><GroupViewContent actions={actions} slots={slots} /></MemoryRouter>);
 
-// Only the still-mocked KEEP leaves (RosterCharacterPanel/GearSyncDashboard,
-// see lines ~126-131) can ever render here — every other legacy id's backing
-// mock was deleted in Task 4, so checking for them would be a vacuous no-op.
-const LEGACY_TESTIDS = ['legacy-character-panel', 'legacy-gear-sync'];
+// Only the mocked leaves (RosterCharacterPanel/GearSyncDashboard/
+// LootPriorityPanel) carry assertable testids — the other restored legacy
+// leaves are real components here, and none should mount with slots passed.
+const LEGACY_TESTIDS = ['legacy-character-panel', 'legacy-gear-sync', 'legacy-loot-priority'];
 function expectNoLegacyLeaves() {
   for (const id of LEGACY_TESTIDS) {
     expect(screen.queryByTestId(id)).toBeNull();
   }
 }
 
-describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () => {
+describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () => {
   beforeEach(() => {
     mockPageMode = 'overview';
     mockActionModalOpen = false;
@@ -175,7 +210,7 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     mockCurrentTier = currentTier;
     keyboardSpy.mockClear();
     clearAddedPlayerSpy.mockClear();
-    logWeekWizardSpy.mockClear();
+    setPageMode.mockClear();
     settingsPanelOpenSpy.mockClear();
   });
   afterEach(() => { mockAddedPlayer = null; });
@@ -221,6 +256,15 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     expect(screen.getByTestId('more-page')).toBeInTheDocument();
   });
 
+  // ── Split Planner prop gate, v2 half: with a roster slot present, MorePage
+  //    must NOT receive onOpenSplitPlanner (the capture mock only renders the
+  //    button when the prop is passed). The legacy half is pinned below. ──
+  it('does NOT pass onOpenSplitPlanner to MorePage when slots are present', () => {
+    mockPageMode = 'more';
+    renderContent();
+    expect(screen.queryByText('open-split-planner')).toBeNull();
+  });
+
   // ── Integrations re-route (flip-P3 Task 4 fold-in): the More page's
   //    Integrations card must open the Settings panel directly on the
   //    integrations tab, not navigate to the deleted legacy schedule tab. ──
@@ -251,19 +295,12 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     expect(screen.getByTestId('plugin-page')).toBeInTheDocument();
   });
 
-  // ── 4. Legacy sticky roster toolbar is gone ──
+  // ── 4. Legacy sticky roster toolbar is gated off by the roster slot ──
   it('renders no roster sub-tab tablist on the roster tab', () => {
     mockPageMode = 'roster';
     renderContent();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab')).toBeNull();
-  });
-
-  // ── Legacy side effects are gone ──
-  it('never mounts the legacy LogWeekWizard', () => {
-    mockPageMode = 'gear';
-    renderContent();
-    expect(logWeekWizardSpy).not.toHaveBeenCalled();
   });
 
   // ── Shared wiring survives ──
@@ -286,5 +323,46 @@ describe('GroupViewContent — unconditional slots (post flip-P3 Task 2)', () =>
     mockAddedPlayer = { playerId: 'p-new', nonce: 1 };
     renderContent();
     await waitFor(() => expect(clearAddedPlayerSpy).toHaveBeenCalledTimes(1));
+  });
+});
+
+// ── Legacy (slotless) More-page wiring — the other half of the Phase R shell
+//    branch. GroupViewContent owns two gates on the More page:
+//      · `!slots?.roster` → passes onOpenSplitPlanner (Split Planner card);
+//      · `slots?.gear` → v2 lview form vs legacy setGearSubTab('history').
+//    An inverted gate would pass every render-output test above (the capture
+//    mock renders either way), so these pin the wiring itself: which handlers
+//    MorePage receives with NO slots, and which setters they call. ──
+describe('GroupViewContent — legacy (slotless) More-page wiring (Phase R)', () => {
+  beforeEach(() => {
+    mockPageMode = 'more';
+    mockActionModalOpen = false;
+    mockAddedPlayer = null;
+    mockCurrentTier = currentTier;
+    setPageMode.mockClear();
+    setGearSubTab.mockClear();
+    settingsPanelOpenSpy.mockClear();
+  });
+
+  const renderSlotless = () =>
+    render(<MemoryRouter><GroupViewContent actions={actions} /></MemoryRouter>);
+
+  it('passes onOpenSplitPlanner to MorePage and wires it to the roster Split Planner sub-tab (one history entry)', () => {
+    renderSlotless();
+    // Prop present → the capture mock renders its button; invoking the handler
+    // must switch to Roster with the split-planner sub-tab in the same entry.
+    screen.getByText('open-split-planner').click();
+    expect(setPageMode).toHaveBeenCalledTimes(1);
+    expect(setPageMode).toHaveBeenCalledWith('roster', { rsub: 'split-planner' });
+  });
+
+  it("wires onOpenLootHistory to the legacy gear History sub-tab (setGearSubTab('history') + setPageMode('gear')), not the v2 lview form", () => {
+    renderSlotless();
+    screen.getByText('open-loot-history').click();
+    expect(setGearSubTab).toHaveBeenCalledTimes(1);
+    expect(setGearSubTab).toHaveBeenCalledWith('history');
+    expect(setPageMode).toHaveBeenCalledTimes(1);
+    // Exactly one argument — the lview extra-params form belongs to v2 only.
+    expect(setPageMode).toHaveBeenCalledWith('gear');
   });
 });

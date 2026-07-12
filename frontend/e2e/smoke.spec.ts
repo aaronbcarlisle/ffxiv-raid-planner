@@ -583,7 +583,7 @@ test.describe('Viewer restrictions', () => {
     // here — no setStaticPublic call needed for this half of the split.
     const ctx = await browser.newContext({ baseURL: FRONTEND_BASE });
     const page = await ctx.newPage();
-    await page.goto(`/group/${DEV_SHARE_CODE}`);
+    await page.goto(`/group/${DEV_SHARE_CODE}?shell=v2`);
     await page.locator('[data-testid="new-shell"]').waitFor({ timeout: 15_000 });
 
     // Anchor on a positive signal that the static actually rendered before
@@ -629,7 +629,7 @@ test.describe('Settings access', () => {
 
       const ctx = await browser.newContext({ baseURL: FRONTEND_BASE });
       const guestPage = await ctx.newPage();
-      await guestPage.goto(`/group/${DEV_SHARE_CODE}`);
+      await guestPage.goto(`/group/${DEV_SHARE_CODE}?shell=v2`);
       await expect(guestPage.getByTestId('shell-state-error')).toBeVisible({ timeout: 15_000 });
       await expect(guestPage.getByRole('heading', { name: 'Private Static' })).toBeVisible();
       await ctx.close();

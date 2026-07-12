@@ -180,6 +180,15 @@ export const RELEASES: Release[] = [
         pr: 173,
         prTitle: 'fix(redesign): flip-p3 — prune dead loot shortcuts (legacy gear sub-tab bindings), fix expand-all gate',
       },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Phase R — dual shell restored; classic UI is the default again',
+        description:
+          'The classic group UI (deleted at flip-P3) is restored byte-for-byte and is the default /group experience again. The redesigned v2 shell stays available behind a persisted "Try the new UI" opt-in (with a "Switch to classic UI" path back in the v2 user menu); the choice syncs to your account, ?shell= remains a one-shot support override, both toggle directions emit ui_shell_toggle telemetry, and the legacy e2e smoke suite is resurrected alongside the v2 one. No public-facing release yet — this ships to users when the redesign branch merges to main.',
+        pr: 174,
+        prTitle: 'feat(redesign): phase-r — restore the dual shell (legacy default + persisted opt-in toggle)',
+      },
     ],
     internal: true,
   },

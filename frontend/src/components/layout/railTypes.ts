@@ -1,7 +1,7 @@
 import type React from 'react';
 
 /**
- * Legacy — used by SidebarRail (the Static-layer collapsible rail).
+ * Legacy — used by SidebarRail (the Static-layer collapsible rail consumed by SidebarNav).
  * Do NOT add new usages; the Person-layer rail uses RailEntry below.
  */
 export interface RailNavItem {

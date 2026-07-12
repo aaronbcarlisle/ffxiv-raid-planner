@@ -221,7 +221,7 @@ for (const theme of THEMES) {
   test(`v2 roster has zero contrast violations (${theme})`, async ({ page }) => {
     await forceTheme(page, theme)
     await loginAsOwner(page)
-    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?tab=roster`)
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=roster`)
     const roster = page.locator('[data-testid="roster-screen"]')
     await roster.waitFor({ timeout: 15_000 })
     await page.waitForLoadState('networkidle')
@@ -258,7 +258,7 @@ for (const theme of THEMES) {
   test(`v2 loot has zero contrast violations (${theme})`, async ({ page }) => {
     await forceTheme(page, theme)
     await loginAsOwner(page)
-    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?tab=gear`)
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=gear`)
     const loot = page.locator('[data-testid="loot-screen"]')
     await loot.waitFor({ timeout: 15_000 })
     await page.waitForLoadState('networkidle')
@@ -292,7 +292,7 @@ for (const theme of THEMES) {
   test(`v2 schedule has zero contrast violations (${theme})`, async ({ page }) => {
     await forceTheme(page, theme)
     await loginAsOwner(page)
-    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?tab=schedule`)
+    await page.goto(`${FRONTEND_BASE}/group/${DEV_SHARE_CODE}?shell=v2&tab=schedule`)
     const scheduleScreen = page.locator('[data-testid="schedule-screen"]')
     await scheduleScreen.waitFor({ timeout: 15_000 })
     await page.waitForLoadState('networkidle')
