@@ -11,7 +11,7 @@
  *    calendar/integrations sub-tab. It now opens the Settings panel directly
  *    on the Integrations tab (both shells — the caller supplies the handler).
  */
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { MemberRole } from '../../types';
 
@@ -48,6 +48,22 @@ function renderMorePage(overrides: Partial<Parameters<typeof MorePage>[0]> = {})
 describe('MorePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // jsdom has no matchMedia; ConfirmModal -> Modal -> useDevice needs it
+    // (Modal's hooks run even while isOpen is false). Same stub as
+    // WeekScopeControl.test.tsx.
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }))
+    );
   });
 
   it('does not render the Split Planner card when onOpenSplitPlanner is not wired (v2 shell)', () => {
@@ -92,5 +108,63 @@ describe('MorePage', () => {
     renderMorePage();
     expect(screen.getByText('Integrations')).toBeInTheDocument();
     expect(screen.getByText(/Connect Discord and other services/i)).toBeInTheDocument();
+  });
+
+  // ── Danger Zone (Phase A Task 5 / A4) ──
+
+  it("owner: Delete Static opens the settings panel on the real 'static' tab (not the dead 'danger' id)", () => {
+    const onOpenSettings = vi.fn();
+    renderMorePage({ onOpenSettings });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Static' }));
+
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(onOpenSettings).toHaveBeenCalledWith('static');
+  });
+
+  it('owner: Archive Static is removed outright (no button, no Coming-soon placeholder)', () => {
+    renderMorePage();
+    expect(screen.queryByText('Archive Static')).toBeNull();
+  });
+
+  it('owner: never sees Leave Static, even when onLeaveStatic is wired', () => {
+    renderMorePage({ onLeaveStatic: vi.fn() });
+    expect(screen.queryByText('Leave Static')).toBeNull();
+  });
+
+  it('member: clicking Leave Static opens the confirm modal; confirming calls onLeaveStatic (settings panel never involved)', async () => {
+    const onLeaveStatic = vi.fn().mockResolvedValue(undefined);
+    const onOpenSettings = vi.fn();
+    renderMorePage({ userRole: 'member' as MemberRole, canManage: false, onLeaveStatic, onOpenSettings });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Static' }));
+
+    // The confirm modal opens with the unlink warning; nothing fired yet.
+    expect(screen.getByText(/claimed will be unlinked/i)).toBeInTheDocument();
+    expect(onLeaveStatic).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, Leave Static' }));
+
+    await waitFor(() => expect(onLeaveStatic).toHaveBeenCalledTimes(1));
+    expect(onOpenSettings).not.toHaveBeenCalled();
+    // The modal closes after the handler resolves.
+    await waitFor(() => expect(screen.queryByText(/claimed will be unlinked/i)).toBeNull());
+  });
+
+  it('member: cancelling the confirm modal closes it without calling onLeaveStatic', async () => {
+    const onLeaveStatic = vi.fn();
+    renderMorePage({ userRole: 'member' as MemberRole, canManage: false, onLeaveStatic });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Static' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByText(/claimed will be unlinked/i)).toBeNull());
+    expect(onLeaveStatic).not.toHaveBeenCalled();
+  });
+
+  it('member: Leave Static (and the then-empty Danger Zone) are absent when onLeaveStatic is not wired', () => {
+    renderMorePage({ userRole: 'member' as MemberRole, canManage: false });
+    expect(screen.queryByText('Leave Static')).toBeNull();
+    expect(screen.queryByText('Danger Zone')).toBeNull();
   });
 });

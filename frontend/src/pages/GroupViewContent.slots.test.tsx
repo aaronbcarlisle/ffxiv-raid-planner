@@ -83,8 +83,15 @@ let mockCurrentTier: typeof currentTier | null = currentTier;
 vi.mock('../stores/tierStore', () => ({
   useTierStore: () => ({ currentTier: mockCurrentTier, tiers: [currentTier], isSaving: false, fetchTier: vi.fn() }),
 }));
+const removeMemberSpy = vi.fn().mockResolvedValue(undefined);
+const setCurrentGroupSpy = vi.fn();
 vi.mock('../stores/staticGroupStore', () => ({
-  useStaticGroupStore: () => ({ currentGroup, groups: [currentGroup] }),
+  useStaticGroupStore: () => ({
+    currentGroup,
+    groups: [currentGroup],
+    removeMember: removeMemberSpy,
+    setCurrentGroup: setCurrentGroupSpy,
+  }),
 }));
 vi.mock('../stores/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1', isAdmin: false } }) }));
 vi.mock('../stores/viewAsStore', () => ({ useViewAsStore: () => ({ viewAsUser: null }) }));
@@ -162,12 +169,16 @@ vi.mock('../components/group/MorePage', () => ({
     onOpenIntegrations: () => void;
     onOpenLootHistory: () => void;
     onOpenSplitPlanner?: () => void;
+    onLeaveStatic?: () => void | Promise<void>;
   }) => (
     <div data-testid="more-page">
       <button onClick={() => props.onOpenIntegrations()}>open-integrations</button>
       <button onClick={() => props.onOpenLootHistory()}>open-loot-history</button>
       {props.onOpenSplitPlanner && (
         <button onClick={props.onOpenSplitPlanner}>open-split-planner</button>
+      )}
+      {props.onLeaveStatic && (
+        <button onClick={() => { void props.onLeaveStatic?.(); }}>leave-static</button>
       )}
     </div>
   ),
@@ -212,6 +223,8 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     clearAddedPlayerSpy.mockClear();
     setPageMode.mockClear();
     settingsPanelOpenSpy.mockClear();
+    removeMemberSpy.mockClear();
+    setCurrentGroupSpy.mockClear();
   });
   afterEach(() => { mockAddedPlayer = null; });
 
@@ -289,6 +302,18 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     expect(setPageMode).toHaveBeenCalledWith('gear', { lview: 'history' });
   });
 
+  // ── Leave Static (Phase A Task 5 / A4): GroupViewContent prebinds the real
+  //    self-leave handler — removeMember(currentGroup.id, effectiveUserId)
+  //    then setCurrentGroup(null) — and passes it to MorePage. ──
+  it('passes onLeaveStatic to MorePage and wires it to removeMember + setCurrentGroup(null)', async () => {
+    mockPageMode = 'more';
+    renderContent();
+    screen.getByText('leave-static').click();
+    await waitFor(() => expect(removeMemberSpy).toHaveBeenCalledTimes(1));
+    expect(removeMemberSpy).toHaveBeenCalledWith('g1', 'u1');
+    expect(setCurrentGroupSpy).toHaveBeenCalledWith(null);
+  });
+
   it("pageMode 'plugin' renders the PluginPage body", () => {
     mockPageMode = 'plugin';
     renderContent();
@@ -364,5 +389,10 @@ describe('GroupViewContent — legacy (slotless) More-page wiring (Phase R)', ()
     expect(setPageMode).toHaveBeenCalledTimes(1);
     // Exactly one argument — the lview extra-params form belongs to v2 only.
     expect(setPageMode).toHaveBeenCalledWith('gear');
+  });
+
+  it('passes onLeaveStatic in the legacy (slotless) shell too — the Danger Zone bugfix reaches both shells', () => {
+    renderSlotless();
+    expect(screen.getByText('leave-static')).toBeInTheDocument();
   });
 });

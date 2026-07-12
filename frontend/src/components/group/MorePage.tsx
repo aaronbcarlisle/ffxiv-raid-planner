@@ -1,13 +1,15 @@
 /* eslint-disable design-system/no-raw-button */
+import { useState } from 'react';
 import {
   Users, Settings, Link2, Book, Sword, Download, Activity,
-  AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle, PlugZap,
+  AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle, PlugZap, LogOut,
 } from 'lucide-react';
 import type { MemberRole, PageMode } from '../../types';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { DashboardCard, IconMedallion, SectionLabel } from '../ui/DashboardCard';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 interface MorePageProps {
   onOpenSettings: (tab?: string) => void;
@@ -23,6 +25,11 @@ interface MorePageProps {
   onOpenPlugin: () => void;
   canManage: boolean;
   userRole: MemberRole | null;
+  /** Self-service leave (non-owners). The caller (GroupViewContent) prebinds
+   *  the real handler — removeMember + toast + redirect. The Leave Static
+   *  button renders only when this is wired, so hosts that don't pass it
+   *  degrade gracefully to no button. */
+  onLeaveStatic?: () => void | Promise<void>;
 }
 
 function formatDate(iso: string): string {
@@ -38,6 +45,7 @@ export function MorePage({
   onOpenPlugin,
   canManage,
   userRole,
+  onLeaveStatic,
 }: MorePageProps) {
   const pendingCount = useJoinRequestStore(s => s.pendingCount);
   const groupRequests = useJoinRequestStore(s => s.groupRequests);
@@ -56,6 +64,7 @@ export function MorePage({
 
   const isOwner = userRole === 'owner';
   const isMember = !!userRole && userRole !== 'viewer';
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   return (
     <div className="flex flex-col gap-8">
@@ -305,8 +314,9 @@ export function MorePage({
         </div>
       </section>
 
-      {/* Danger Zone */}
-      {isMember && (
+      {/* Danger Zone — hidden entirely when it would render no buttons
+          (non-owner member whose host didn't wire onLeaveStatic). */}
+      {isMember && (isOwner || !!onLeaveStatic) && (
         <section>
           <SectionLabel color="red" className="mb-3">Danger Zone</SectionLabel>
           <div
@@ -326,34 +336,42 @@ export function MorePage({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {!isOwner && (
+              {!isOwner && onLeaveStatic && (
                 <button
-                  onClick={() => onOpenSettings('danger')}
+                  onClick={() => setShowLeaveConfirm(true)}
                   className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
                 >
                   Leave Static
                 </button>
               )}
               {isOwner && (
-                <>
-                  <button
-                    onClick={() => onOpenSettings('danger')}
-                    className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
-                  >
-                    Archive Static
-                  </button>
-                  <button
-                    onClick={() => onOpenSettings('danger')}
-                    className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
-                  >
-                    Delete Static
-                  </button>
-                </>
+                <button
+                  onClick={() => onOpenSettings('static')}
+                  className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
+                >
+                  Delete Static
+                </button>
               )}
             </div>
           </div>
         </section>
       )}
+
+      {/* Leave Static confirm — deliberately lighter than delete's
+          type-the-name flow: leaving is reversible by re-invite. */}
+      <ConfirmModal
+        isOpen={showLeaveConfirm}
+        title="Leave Static?"
+        message="You will be removed from this static's roster, and any players you've claimed will be unlinked from your account. You can rejoin later with a new invite."
+        confirmLabel="Yes, Leave Static"
+        variant="danger"
+        icon={<LogOut className="w-5 h-5 text-status-error" />}
+        onConfirm={async () => {
+          await onLeaveStatic?.();
+          setShowLeaveConfirm(false);
+        }}
+        onCancel={() => setShowLeaveConfirm(false)}
+      />
 
     </div>
   );

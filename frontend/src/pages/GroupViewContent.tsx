@@ -95,7 +95,7 @@ export interface GroupViewContentProps {
 
 export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
   const navigate = useNavigate();
-  const { currentGroup, groups, error: groupError } = useStaticGroupStore();
+  const { currentGroup, groups, error: groupError, removeMember, setCurrentGroup } = useStaticGroupStore();
   const { tiers, currentTier, isSaving, error: tierError, fetchTier } = useTierStore();
   const { user } = useAuthStore();
   const { viewAsUser } = useViewAsStore();
@@ -1170,6 +1170,23 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
                   useSettingsPanelStore.getState().open({ tab: 'integrations' });
                 }}
                 onOpenPlugin={() => setPageMode('plugin')}
+                onLeaveStatic={async () => {
+                  // Self-service leave (A4 / Plan M §1). Backend self-leave
+                  // defaults unlink_players=true; owner never sees the button
+                  // (MorePage gates it) and the backend owner-guard backstops.
+                  if (!effectiveUserId) return;
+                  try {
+                    await removeMember(currentGroup.id, effectiveUserId);
+                    // Minimal mirror of deleteGroup's local cleanup: drop the
+                    // loaded static. The groups list self-heals — Profile
+                    // calls fetchGroups() on mount at the redirect target.
+                    setCurrentGroup(null);
+                    toast.success(`You left ${currentGroup.name}`);
+                    navigate('/profile?tab=statics');
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : 'Failed to leave static');
+                  }
+                }}
                 canManage={canManageRoster(userRole).allowed}
                 userRole={userRole ?? null}
               />
