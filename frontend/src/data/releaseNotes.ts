@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.0.2';
+export const CURRENT_VERSION = '2.1.0';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -60,9 +60,19 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
-    version: 'UNRELEASED',
-    date: '2026-06-30T00:00:00Z',
+    version: '2.1.0',
+    date: '2026-07-12T15:00:00Z',
+    title: 'Try the new UI (opt-in beta)',
+    highlights: ['A redesigned interface is ready to try — opt in from the banner'],
     items: [
+      {
+        category: 'feature',
+        title: 'Try the new UI (opt-in beta)',
+        description:
+          'A ground-up redesign of the static experience is ready to try: a weekly-loop Home dashboard, redesigned Roster cards plus a savage gear board, unified loot priority and history, and an integrated schedule. Click "Try the new UI" in the banner to switch — your choice saves to your account, and you can switch back any time from the user menu (or the More page on mobile). The classic UI stays the default and is unchanged. The new UI also adds self-service Leave Static (leave a static yourself, no owner needed) and a per-player tome-weapon tracking toggle.',
+        pr: 161,
+        prTitle: 'release: Try the new UI (opt-in beta) — redesign/foundation → main (2.1.0)',
+      },
       {
         internal: true,
         category: 'fix',
@@ -168,8 +178,8 @@ export const RELEASES: Release[] = [
         title: 'Flip P3 whole-branch fix wave',
         description:
           'Deleted five more files orphaned by the legacy-deletion cascade (four dead loot/history modals plus their shared recommendation-candidates helper), removed a dead-flag keyboard-shortcut latch that could permanently disable content shortcuts (including Escape) after Alt+L/U/B, and pruned the unused LogWeekWizard/lootSubTab state trio it left behind.',
-        pr: 0,
-        prTitle: 'fix(redesign): flip-p3 whole-branch fixes — prune 4 orphaned loot files, dead shortcut-latch state, doc/test touch-ups',
+        pr: 173,
+        prTitle: 'feat(redesign): flip-p3 — delete legacy group chrome',
       },
       {
         internal: true,
@@ -199,7 +209,6 @@ export const RELEASES: Release[] = [
         prTitle: 'feat(redesign): phase-r — restore the dual shell (legacy default + persisted opt-in toggle)',
       },
     ],
-    internal: true,
   },
   {
     version: '2.0.2',
