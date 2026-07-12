@@ -69,7 +69,7 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'Try the new UI (opt-in beta)',
         description:
-          'A ground-up redesign of the static experience is ready to try: a weekly-loop Home dashboard, redesigned Roster cards plus a savage gear board, unified loot priority and history, and an integrated schedule. Click "Try the new UI" in the banner to switch — your choice saves to your account, and you can switch back any time from the user menu (or the More page on mobile). The classic UI stays the default and is unchanged. The new UI also adds self-service Leave Static (leave a static yourself, no owner needed) and a per-player tome-weapon tracking toggle.',
+          'A ground-up redesign of the static experience is ready to try: a weekly-loop Home dashboard, redesigned Roster cards plus a savage gear board, unified loot priority and history, and an integrated schedule. Click "Try the new UI" in the banner to switch — your choice saves to your account, and you can switch back any time from the user menu (or the More page). The classic UI stays the default and is unchanged. The new UI also adds self-service Leave Static (leave a static yourself, no owner needed) and brings the per-player tome-weapon tracking toggle into the redesigned roster.',
         pr: 161,
         prTitle: 'release: Try the new UI (opt-in beta) — redesign/foundation → main (2.1.0)',
       },
