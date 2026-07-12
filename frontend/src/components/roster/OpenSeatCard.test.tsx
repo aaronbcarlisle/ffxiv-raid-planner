@@ -36,7 +36,6 @@ const onConfigure = vi.fn();
 const onRemove = vi.fn();
 
 beforeEach(() => {
-  onConfigure.mockClear();
   onRemove.mockClear();
   onConfigure.mockReset();
   useToastStore.setState({ toasts: [] });

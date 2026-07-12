@@ -30,6 +30,15 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AddedPlayerSignal } from './groupActionsContext';
 
+// Spy on navigation (Finding 3: a rejected leave must NEVER navigate away).
+// Must be declared before vi.mock so the factory can close over it (see
+// NewShell.rail.test.tsx for the same pattern).
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 // ── Mock the state hook: a controllable, fully-shaped useGroupViewState ──
 const setPageMode = vi.fn();
 // Dedicated spy (not the shared noop) so the legacy loot-history shell branch
@@ -94,7 +103,10 @@ vi.mock('../stores/staticGroupStore', () => ({
   }),
 }));
 vi.mock('../stores/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1', isAdmin: false } }) }));
-vi.mock('../stores/viewAsStore', () => ({ useViewAsStore: () => ({ viewAsUser: null }) }));
+// Switchable (Finding 4): default null (normal view); a test sets an
+// impersonated user to pin the Leave-Static View-As safety gate.
+let mockViewAsUser: { userId: string; role: string } | null = null;
+vi.mock('../stores/viewAsStore', () => ({ useViewAsStore: () => ({ viewAsUser: mockViewAsUser }) }));
 vi.mock('../stores/lootTrackingStore', () => ({
   useLootTrackingStore: () => ({
     currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
@@ -196,6 +208,7 @@ vi.mock('../components/ui', async (orig) => {
 });
 
 import { GroupViewContent } from './GroupViewContent';
+import { useToastStore } from '../stores/toastStore';
 
 const actions = { onTierChange: vi.fn(), onAddPlayer: vi.fn(), onNewTier: vi.fn(), onRollover: vi.fn(), onDeleteTier: vi.fn() };
 const slots = {
@@ -223,12 +236,16 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     mockActionModalOpen = false;
     mockAddedPlayer = null;
     mockCurrentTier = currentTier;
+    mockViewAsUser = null;
     keyboardSpy.mockClear();
     clearAddedPlayerSpy.mockClear();
     setPageMode.mockClear();
     settingsPanelOpenSpy.mockClear();
     removeMemberSpy.mockClear();
+    removeMemberSpy.mockResolvedValue(undefined);
     setCurrentGroupSpy.mockClear();
+    mockNavigate.mockClear();
+    useToastStore.setState({ toasts: [] });
   });
   afterEach(() => { mockAddedPlayer = null; });
 
@@ -331,6 +348,37 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     await waitFor(() => expect(removeMemberSpy).toHaveBeenCalledTimes(1));
     expect(removeMemberSpy).toHaveBeenCalledWith('g1', 'u1');
     expect(setCurrentGroupSpy).toHaveBeenCalledWith(null);
+  });
+
+  // ── Finding 3 (whole-branch review): the leave-handler's contract is
+  //    "never re-throw" from removeMember's perspective — a rejected
+  //    removeMember must surface an error toast and MUST NOT navigate away or
+  //    clear the loaded static (both would desync the UI from a leave that
+  //    never actually happened). ──
+  it('a rejected removeMember on Leave Static toasts an error and does not navigate or clear the static', async () => {
+    mockPageMode = 'more';
+    removeMemberSpy.mockRejectedValueOnce(new Error('leave failed'));
+    renderContent();
+    screen.getByText('leave-static').click();
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'leave failed',
+      )).toBe(true);
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(setCurrentGroupSpy).not.toHaveBeenCalled();
+  });
+
+  // ── Finding 4 (whole-branch review, SAFE-DEFAULT): under admin View As,
+  //    `effectiveUserId` resolves to the IMPERSONATED user, not the admin —
+  //    leaving would eject that member behind first-person copy. Suppress
+  //    onLeaveStatic entirely under View As so MorePage hides the button (and
+  //    the Danger Zone section, per its own empty-section gate). ──
+  it('does NOT pass onLeaveStatic to MorePage while an admin is impersonating (View As)', () => {
+    mockPageMode = 'more';
+    mockViewAsUser = { userId: 'u2', role: 'member' };
+    renderContent();
+    expect(screen.queryByText('leave-static')).toBeNull();
   });
 
   it("pageMode 'plugin' renders the PluginPage body", () => {

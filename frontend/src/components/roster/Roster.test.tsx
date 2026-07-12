@@ -422,6 +422,27 @@ describe("Roster — A10 void'd-promise fixes", () => {
     });
   });
 
+  // Whole-branch review Finding 2: the PREFERRED fix guards at the SOURCE
+  // (this closure), not per-consumer — grep confirmed no consumer of
+  // RosterCardActions.onRemove awaits it or depends on its rejection, so a
+  // single guard here fixes OpenSeatCard's Remove AND the kebab Remove
+  // confirm (useRosterCardActions.tsx) in one place. This test drives the
+  // REAL (unstubbed) OpenSeatCard path — the only consumer reachable without
+  // also un-stubbing the heavy RosterCard.
+  it('onRemove (open seat): a rejected handleRemovePlayer surfaces an error toast instead of an unhandled rejection', async () => {
+    playerActions.handleRemovePlayer.mockRejectedValueOnce(new Error('remove failed'));
+    renderRoster(makeTier([
+      makePlayer({ id: 'p1', name: '', job: '', configured: false, position: 'H1', templateRole: 'pure-healer' }),
+    ]));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove open seat' }));
+    expect(playerActions.handleRemovePlayer).toHaveBeenCalledWith('p1');
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'remove failed',
+      )).toBe(true);
+    });
+  });
+
   it('mount fetches: rejecting store fetches surface ONE error toast instead of unhandled rejections', async () => {
     useLootTrackingStore.setState({
       fetchLootLog: vi.fn().mockRejectedValue(new Error('boom')),

@@ -327,7 +327,20 @@ export function Roster({ group, tier, canManage }: RosterProps) {
       onCopyUrl: () => handleCopyUrl(player.id),
       onDuplicate: () => playerActions.handleDuplicatePlayer(player),
       onPaste: () => { if (clipboardPlayer) void handlePastePlayer(player.id, clipboardPlayer); },
-      onRemove: () => playerActions.handleRemovePlayer(player.id),
+      // Whole-branch review Finding 2 — guard at the SOURCE (not per-consumer):
+      // handleRemovePlayer chains to tierStore.removePlayer, which re-throws
+      // after rollback. Every consumer of RosterCardActions.onRemove (open-seat
+      // Remove in OpenSeatCard.tsx, the kebab Remove confirm in
+      // useRosterCardActions.tsx) invokes it bare/fire-and-forget and none
+      // await it or depend on its rejection, so ONE guard here — not one per
+      // consumer — covers both without double-toasting.
+      onRemove: async () => {
+        try {
+          await playerActions.handleRemovePlayer(player.id);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to remove player');
+        }
+      },
       onResetGear: (mode) => playerActions.handleResetGear(player.id, mode),
       onClaimPlayer: () => playerActions.handleClaimPlayer(player.id),
       onReleasePlayer: () => playerActions.handleReleasePlayer(player.id),

@@ -228,10 +228,19 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
   items.push({
     label: player.tomeWeapon?.pursuing ? 'Stop Tracking Tome Weapon' : 'Track Tome Weapon',
     icon: <BookMarked className={ICON} />,
-    onClick: () =>
-      actions.onUpdate({
-        tomeWeapon: { ...player.tomeWeapon, pursuing: !player.tomeWeapon?.pursuing },
-      }),
+    onClick: async () => {
+      // Whole-branch review Finding 1: onUpdate re-throws (tierStore rollback
+      // contract) — await + toast so a rejected toggle can't become an
+      // unhandled rejection (ContextMenuItem.onClick is `() => void`, which
+      // silently dropped the bare promise before).
+      try {
+        await actions.onUpdate({
+          tomeWeapon: { ...player.tomeWeapon, pursuing: !player.tomeWeapon?.pursuing },
+        });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to update tome weapon tracking');
+      }
+    },
     disabled: !editPermission.allowed,
     tooltip: editTip,
   });
@@ -276,7 +285,16 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
   items.push({
     label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
     icon: player.isSubstitute ? <UserPlus className={ICON} /> : <UserMinus className={ICON} />,
-    onClick: () => actions.onUpdate({ isSubstitute: !player.isSubstitute }),
+    onClick: async () => {
+      // Whole-branch review Finding 1: same re-throw contract as the
+      // tome-weapon toggle above — guard so a rejected update can't become an
+      // unhandled rejection.
+      try {
+        await actions.onUpdate({ isSubstitute: !player.isSubstitute });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to update sub status');
+      }
+    },
     disabled: !rosterPermission.allowed,
     tooltip: rosterTip,
   });

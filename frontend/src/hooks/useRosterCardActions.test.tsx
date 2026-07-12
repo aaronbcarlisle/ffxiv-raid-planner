@@ -337,3 +337,72 @@ describe("useRosterCardActions — A10 void'd-promise fixes", () => {
     expect(onUpdate).toHaveBeenCalledWith({ bisLink: '' });
   });
 });
+
+// Whole-branch review Finding 1: the tome-toggle and Mark-as-Sub/Main items'
+// onClick handed a bare `() => actions.onUpdate(...)` promise straight to
+// ContextMenuItem.onClick (`() => void`), dropping it — a rejection (onUpdate
+// re-throws per the tierStore rollback contract) escaped as an unhandled
+// rejection instead of surfacing an error toast.
+describe('useRosterCardActions — whole-branch review: kebab direct-action guards', () => {
+  it('tome-weapon toggle: a rejected onUpdate surfaces an error toast instead of an unhandled rejection', async () => {
+    const onUpdate = vi.fn().mockRejectedValue(new Error('tome toggle failed'));
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        player: makePlayer(),
+        actions: { onUpdate, onCopy: vi.fn(), onDuplicate: vi.fn() },
+      }),
+    );
+    const item = result.current.menuItems.find(
+      (i) => 'label' in i && i.label === 'Track Tome Weapon',
+    )!;
+    await act(async () => {
+      if ('onClick' in item) await item.onClick?.();
+    });
+    expect(onUpdate).toHaveBeenCalledWith({
+      tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+    });
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'tome toggle failed',
+      )).toBe(true);
+    });
+  });
+
+  it('Mark as Sub: onClick toggles isSubstitute via actions.onUpdate', () => {
+    const onUpdate = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        player: makePlayer({ isSubstitute: false }),
+        actions: { onUpdate, onCopy: vi.fn(), onDuplicate: vi.fn() },
+      }),
+    );
+    const item = result.current.menuItems.find((i) => 'label' in i && i.label === 'Mark as Sub')!;
+    act(() => {
+      if ('onClick' in item) item.onClick?.();
+    });
+    expect(onUpdate).toHaveBeenCalledWith({ isSubstitute: true });
+  });
+
+  it('Mark as Sub/Main: a rejected onUpdate surfaces an error toast instead of an unhandled rejection', async () => {
+    const onUpdate = vi.fn().mockRejectedValue(new Error('sub status failed'));
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        player: makePlayer({ isSubstitute: false }),
+        actions: { onUpdate, onCopy: vi.fn(), onDuplicate: vi.fn() },
+      }),
+    );
+    const item = result.current.menuItems.find((i) => 'label' in i && i.label === 'Mark as Sub')!;
+    await act(async () => {
+      if ('onClick' in item) await item.onClick?.();
+    });
+    expect(onUpdate).toHaveBeenCalledWith({ isSubstitute: true });
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'sub status failed',
+      )).toBe(true);
+    });
+  });
+});

@@ -335,11 +335,15 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
   // Gated on `!slots?.roster` so a v2 roster slot (which dropped the legacy
   // Split Planner, D-P3-2) doesn't fire the split-clear fetch; no-op on
   // legacy (`slots` undefined).
+  // Dep-array-only boolean: a ReactNode's identity is unstable across renders
+  // (would refire both effects below every render) — only its presence matters.
+  const hasRosterSlot = !!slots?.roster;
   useEffect(() => {
     if (pageMode === 'roster' && !slots?.roster && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
-  }, [pageMode, slots?.roster, currentGroup?.id, fetchSplitClear]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `hasRosterSlot` IS `!!slots?.roster`, deliberately swapped in for the ReactNode itself (see comment above).
+  }, [pageMode, hasRosterSlot, currentGroup?.id, fetchSplitClear]);
   useEffect(() => { return () => clearSplitClear(); }, [clearSplitClear]);
 
   // Silently refetch split-clear data when the user returns from another tab
@@ -349,7 +353,8 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
     if (pageMode === 'roster' && !slots?.roster && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
-  }, [pageMode, slots?.roster, currentGroup?.id, fetchSplitClear]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- same deliberate `hasRosterSlot` swap as the mount effect above.
+  }, [pageMode, hasRosterSlot, currentGroup?.id, fetchSplitClear]));
 
   // Admin access only when navigating from Admin Dashboard with adminMode=true
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -1179,23 +1184,32 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
                   useSettingsPanelStore.getState().open({ tab: 'integrations' });
                 }}
                 onOpenPlugin={() => setPageMode('plugin')}
-                onLeaveStatic={async () => {
-                  // Self-service leave (A4 / Plan M §1). Backend self-leave
-                  // defaults unlink_players=true; owner never sees the button
-                  // (MorePage gates it) and the backend owner-guard backstops.
-                  if (!effectiveUserId) return;
-                  try {
-                    await removeMember(currentGroup.id, effectiveUserId);
-                    // Minimal mirror of deleteGroup's local cleanup: drop the
-                    // loaded static. The groups list self-heals — Profile
-                    // calls fetchGroups() on mount at the redirect target.
-                    setCurrentGroup(null);
-                    toast.success(`You left ${currentGroup.name}`);
-                    navigate('/profile?tab=statics');
-                  } catch (err) {
-                    toast.error(err instanceof Error ? err.message : 'Failed to leave static');
-                  }
-                }}
+                {...(!viewAsUser ? {
+                  // Deliberate safety gate (whole-branch review Finding 4): under
+                  // admin View As, `effectiveUserId` is the IMPERSONATED user, not
+                  // the admin — leaving here would eject that member behind
+                  // first-person copy ("You will be removed…"). View As is an
+                  // inspection tool, not an actor; suppress the prop entirely so
+                  // MorePage hides the button (and the Danger Zone section, if it
+                  // would otherwise render empty).
+                  onLeaveStatic: async () => {
+                    // Self-service leave (A4 / Plan M §1). Backend self-leave
+                    // defaults unlink_players=true; owner never sees the button
+                    // (MorePage gates it) and the backend owner-guard backstops.
+                    if (!effectiveUserId) return;
+                    try {
+                      await removeMember(currentGroup.id, effectiveUserId);
+                      // Minimal mirror of deleteGroup's local cleanup: drop the
+                      // loaded static. The groups list self-heals — Profile
+                      // calls fetchGroups() on mount at the redirect target.
+                      setCurrentGroup(null);
+                      toast.success(`You left ${currentGroup.name}`);
+                      navigate('/profile?tab=statics');
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : 'Failed to leave static');
+                    }
+                  },
+                } : {})}
                 canManage={canManageRoster(userRole).allowed}
                 userRole={userRole ?? null}
               />
