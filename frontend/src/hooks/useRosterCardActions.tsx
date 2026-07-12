@@ -43,6 +43,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import {
+  BookMarked,
   ClipboardPaste,
   Copy,
   CopyPlus,
@@ -215,6 +216,21 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
     label: 'Weapon Priorities',
     icon: <Swords className={ICON} />,
     onClick: open.weaponPriority,
+    disabled: !editPermission.allowed,
+    tooltip: editTip,
+  });
+  // Interim tome-weapon affordance (Phase A / A3): toggles `pursuing` ONLY.
+  // The tome weapon's have/augmented states stay legacy-only until Phase C
+  // restores the full GearTable in v2 — the dual shell covers them meanwhile.
+  // `player.tomeWeapon` is required in production but read defensively (`?.`)
+  // because test doubles may omit it.
+  items.push({
+    label: player.tomeWeapon?.pursuing ? 'Stop Tracking Tome Weapon' : 'Track Tome Weapon',
+    icon: <BookMarked className={ICON} />,
+    onClick: () =>
+      actions.onUpdate({
+        tomeWeapon: { ...player.tomeWeapon, pursuing: !player.tomeWeapon?.pursuing },
+      }),
     disabled: !editPermission.allowed,
     tooltip: editTip,
   });

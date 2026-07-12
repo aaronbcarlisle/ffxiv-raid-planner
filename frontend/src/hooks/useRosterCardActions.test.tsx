@@ -66,6 +66,7 @@ const makePlayer = (overrides: Partial<SnapshotPlayer> = {}): SnapshotPlayer =>
     gear: [],
     weaponPriorities: [],
     isSubstitute: false,
+    tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
     ...overrides,
   }) as unknown as SnapshotPlayer;
 
@@ -189,5 +190,62 @@ describe('useRosterCardActions', () => {
     });
     const { getByTestId } = render(<>{result.current.modalsNode}</>);
     expect(getByTestId('bis-import')).toBeInTheDocument();
+  });
+
+  it('adds the tome-weapon toggle to BiS & Gear, directly after Weapon Priorities', () => {
+    const { result } = renderHook(() => useRosterCardActions({ ...base, player: makePlayer() }));
+    const labels = result.current.menuItems.map(labelOrHeader);
+
+    expect(labels).toContain('Track Tome Weapon');
+    // Inside the BiS & Gear section (before the next section header)…
+    const idx = labels.indexOf('Track Tome Weapon');
+    expect(idx).toBeGreaterThan(labels.indexOf('BiS & Gear'));
+    expect(idx).toBeLessThan(labels.indexOf('Player Management'));
+    // …immediately after its weapon-slot sibling.
+    expect(labels[labels.indexOf('Weapon Priorities') + 1]).toBe('Track Tome Weapon');
+  });
+
+  it('flips the label to Stop Tracking Tome Weapon while pursuing', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        player: makePlayer({ tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false } }),
+      }),
+    );
+    const labels = result.current.menuItems.map(labelOrHeader);
+    expect(labels).toContain('Stop Tracking Tome Weapon');
+    expect(labels).not.toContain('Track Tome Weapon');
+  });
+
+  it('disables the tome-weapon toggle for a viewer', () => {
+    const { result } = renderHook(() =>
+      useRosterCardActions({ ...base, userRole: 'viewer', player: makePlayer() }),
+    );
+    const item = result.current.menuItems.find(
+      (i) => 'label' in i && i.label === 'Track Tome Weapon',
+    );
+    expect(item).toBeDefined();
+    expect(item && 'disabled' in item ? item.disabled : undefined).toBe(true);
+  });
+
+  it('onClick toggles pursuing via actions.onUpdate (spread of the existing status)', () => {
+    const onUpdate = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        player: makePlayer(),
+        actions: { onUpdate, onCopy: vi.fn(), onDuplicate: vi.fn() },
+      }),
+    );
+    const item = result.current.menuItems.find(
+      (i) => 'label' in i && i.label === 'Track Tome Weapon',
+    );
+    expect(item).toBeDefined();
+    act(() => {
+      if (item && 'onClick' in item) item.onClick?.();
+    });
+    expect(onUpdate).toHaveBeenCalledWith({
+      tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+    });
   });
 });
