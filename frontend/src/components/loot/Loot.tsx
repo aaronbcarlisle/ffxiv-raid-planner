@@ -184,10 +184,16 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const tierId = tier?.tierId;
   useEffect(() => {
     if (!groupId || !tierId) return;
-    void fetchLootLog(groupId, tierId);
-    void fetchMaterialLog(groupId, tierId);
-    void fetchPageLedger(groupId, tierId);
-    void fetchCurrentWeek(groupId, tierId);
+    // A10: these four re-throw after recording store error state, but this
+    // screen never renders lootTrackingStore.error — surface ONE toast for the
+    // batch instead of letting a failure become an unhandled rejection.
+    // fetchWeekDataTypes never re-throws (store catches internally) — left bare.
+    void Promise.all([
+      fetchLootLog(groupId, tierId),
+      fetchMaterialLog(groupId, tierId),
+      fetchPageLedger(groupId, tierId),
+      fetchCurrentWeek(groupId, tierId),
+    ]).catch(() => toast.error('Failed to load loot data'));
     void fetchWeekDataTypes(groupId, tierId);
   }, [groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageLedger, fetchCurrentWeek, fetchWeekDataTypes]);
 
@@ -199,7 +205,9 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const refresh = useCallback(() => {
     if (groupId && tierId) {
       void fetchTier(groupId, tierId);
-      void fetchCurrentWeek(groupId, tierId);
+      // A10: fetchCurrentWeek re-throws (fetchTier does not) — catch so a
+      // failed week-clock refresh can't become an unhandled rejection.
+      void fetchCurrentWeek(groupId, tierId).catch(() => toast.error('Failed to refresh the week clock'));
     }
   }, [groupId, tierId, fetchTier, fetchCurrentWeek]);
 

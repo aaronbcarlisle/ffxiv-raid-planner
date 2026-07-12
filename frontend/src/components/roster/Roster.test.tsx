@@ -6,7 +6,7 @@
 // components (`RosterCard`, `CharacterManageBridge`) so we assert only the
 // Roster assembly's own contract: header + subtitle, a card per player, and the
 // once-per-screen gear-source legend.
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import type { SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
@@ -17,6 +17,7 @@ const setSubsView = vi.fn();
 const setSortPreset = vi.fn();
 const setEditingPlayerId = vi.fn();
 const setClipboardPlayer = vi.fn();
+let mockClipboardPlayer: SnapshotPlayer | null = null;
 
 vi.mock('../../hooks/useGroupViewState', () => ({
   useGroupViewState: () => ({
@@ -28,7 +29,7 @@ vi.mock('../../hooks/useGroupViewState', () => ({
     sortPreset: 'standard',
     setSortPreset,
     setEditingPlayerId,
-    clipboardPlayer: null,
+    clipboardPlayer: mockClipboardPlayer,
     setClipboardPlayer,
   }),
 }));
@@ -79,8 +80,19 @@ vi.mock('../../pages/groupActionsContext', () => ({
 // RosterCard is heavy (kebab, modals, inline edits) — stub it so we only assert
 // the assembly's card-per-player contract.
 vi.mock('./RosterCard', () => ({
-  RosterCard: ({ player }: { player: SnapshotPlayer }) => (
-    <div data-testid="roster-card">{player.name}</div>
+  RosterCard: ({ player, actions }: {
+    player: SnapshotPlayer;
+    actions: { onCopyUrl?: () => void; onPaste?: () => void };
+  }) => (
+    <div data-testid="roster-card">
+      {player.name}
+      <button data-testid={`copy-url-${player.id}`} onClick={() => actions.onCopyUrl?.()}>
+        copy url
+      </button>
+      <button data-testid={`paste-${player.id}`} onClick={() => actions.onPaste?.()}>
+        paste
+      </button>
+    </div>
   ),
 }));
 
@@ -91,6 +103,7 @@ vi.mock('./CharacterManageBridge', () => ({
 
 import { Roster } from './Roster';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useToastStore } from '../../stores/toastStore';
 import type { GearSlotStatus } from '../../types';
 
 function makePlayer(overrides: Partial<SnapshotPlayer> & { id: string }): SnapshotPlayer {
@@ -166,6 +179,9 @@ beforeEach(() => {
   playerActions.handleAddPlayer.mockClear();
   playerActions.handleConfigurePlayer.mockClear();
   window.history.pushState({}, '', '/group/DEVTST?tab=roster');
+  mockClipboardPlayer = null;
+  Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
+  useToastStore.setState({ toasts: [] });
   // Roster now subscribes to lootTrackingStore and fires two fetch actions on
   // mount (fetchLootLog / fetchCurrentWeek). Stub them via setState so they never
   // fall through to the real api client — unstubbed they reject with
@@ -354,5 +370,68 @@ describe('Roster — ?player= deep link', () => {
     renderRosterAtUrl(makeTier(players), ['/group/DEVTST?tab=roster&player=p1']);
 
     expect(screen.getByTestId('loc').dataset.search).toContain('player=p1');
+  });
+});
+
+// A10 void'd-promise sweep: every site below previously void'd a re-throwing
+// store action (unhandled rejection → phantom /api/analytics/errors POST), and
+// handleCopyUrl toasted "Link copied" before/regardless of the clipboard write.
+// Vitest fails the run on genuine unhandled rejections — a free regression guard.
+describe("Roster — A10 void'd-promise fixes", () => {
+  it('handleCopyUrl: success toast fires only after the clipboard write resolves', async () => {
+    let resolveWrite!: () => void;
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn(() => new Promise<void>((res) => { resolveWrite = res; })) },
+    });
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One' })]));
+    fireEvent.click(screen.getByTestId('copy-url-p1'));
+    expect(navigator.clipboard.writeText).toHaveBeenCalled();
+    // Write still pending — the old code toasted success synchronously here.
+    expect(useToastStore.getState().toasts.some((t) => t.type === 'success')).toBe(false);
+    resolveWrite();
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'success' && t.message === 'Link copied to clipboard',
+      )).toBe(true);
+    });
+  });
+
+  it('handleCopyUrl: a rejected clipboard write shows an error toast and never a success toast', async () => {
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One' })]));
+    fireEvent.click(screen.getByTestId('copy-url-p1'));
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === "Couldn't copy the link",
+      )).toBe(true);
+    });
+    expect(useToastStore.getState().toasts.some((t) => t.type === 'success')).toBe(false);
+  });
+
+  it('handlePastePlayer: a rejected update surfaces an error toast instead of an unhandled rejection', async () => {
+    mockClipboardPlayer = makePlayer({ id: 'src', name: 'Source' });
+    playerActions.handleUpdatePlayer.mockRejectedValueOnce(new Error('update failed'));
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One' })]));
+    fireEvent.click(screen.getByTestId('paste-p1'));
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'update failed',
+      )).toBe(true);
+    });
+  });
+
+  it('mount fetches: rejecting store fetches surface ONE error toast instead of unhandled rejections', async () => {
+    useLootTrackingStore.setState({
+      fetchLootLog: vi.fn().mockRejectedValue(new Error('boom')),
+      fetchCurrentWeek: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One' })]));
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.filter(
+        (t) => t.type === 'error' && t.message === 'Failed to load loot data',
+      )).toHaveLength(1);
+    });
   });
 });

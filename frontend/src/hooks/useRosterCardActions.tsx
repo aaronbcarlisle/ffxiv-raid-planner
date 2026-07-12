@@ -62,6 +62,7 @@ import {
 } from 'lucide-react';
 import { Modal, RadioGroup, type ContextMenuItem } from '../components/ui';
 import { Button } from '../components/primitives';
+import { toast } from '../stores/toastStore';
 import { BiSImportModal } from '../components/player/BiSImportModal';
 import { BiSTargetManagerModal } from '../components/bis/BiSTargetManagerModal';
 import { WeaponPriorityModal } from '../components/weapon-priority/WeaponPriorityModal';
@@ -459,8 +460,13 @@ export function useRosterCardActions(params: RosterCardActionParams): RosterCard
         onClose={() => setShowBiSImport(false)}
         player={player}
         contentType={contentType}
-        onImport={(updates) => {
-          void actions.onUpdate(updates);
+        onImport={async (updates) => {
+          // A10 mutation shape: onUpdate re-throws (tierStore rollback contract).
+          try {
+            await actions.onUpdate(updates);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to import BiS');
+          }
         }}
       />
 
@@ -644,9 +650,14 @@ export function useRosterCardActions(params: RosterCardActionParams): RosterCard
           <Button
             type="button"
             variant="warning"
-            onClick={() => {
-              void actions.onUpdate({ bisLink: '' });
+            onClick={async () => {
               setShowUnlink(false);
+              // A10 mutation shape: onUpdate re-throws (tierStore rollback contract).
+              try {
+                await actions.onUpdate({ bisLink: '' });
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed to unlink BiS');
+              }
             }}
           >
             Unlink BiS

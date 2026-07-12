@@ -191,8 +191,14 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   // server response (Loot mount-fetch parity).
   useEffect(() => {
     if (group.id && tierId) {
-      void fetchLootLog(group.id, tierId);
-      void fetchCurrentWeek(group.id, tierId);
+      // A10: both fetches re-throw after recording store error state, but this
+      // screen never renders lootTrackingStore.error — a bare catch would make
+      // failures fully silent, so surface ONE toast for the pair (Promise.all
+      // attaches handlers to every member, so nothing escapes unhandled).
+      void Promise.all([
+        fetchLootLog(group.id, tierId),
+        fetchCurrentWeek(group.id, tierId),
+      ]).catch(() => toast.error('Failed to load loot data'));
     }
   }, [group.id, tierId, fetchLootLog, fetchCurrentWeek]);
 
@@ -279,25 +285,37 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   }, [highlightedPlayerId]);
 
   // Copy a deep-link to a player card (replicates GroupViewContent.handleCopyUrl).
+  // A10 clipboard shape (Loot.tsx copyLink / SessionList.tsx precedent): success
+  // fires only after the write resolves; a rejected write gets an error toast,
+  // never a false "Link copied".
   const handleCopyUrl = useCallback((playerId: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'roster');
     url.searchParams.set('player', playerId);
-    void navigator.clipboard.writeText(url.toString());
-    toast.success('Link copied to clipboard');
+    navigator.clipboard.writeText(url.toString()).then(
+      () => toast.success('Link copied to clipboard'),
+      () => toast.error("Couldn't copy the link"),
+    );
   }, []);
 
   // Paste = overwrite a card's config from the clipboard player (legacy parity).
-  const handlePastePlayer = useCallback((playerId: string, source: SnapshotPlayer) => {
-    void playerActions.handleUpdatePlayer(playerId, {
-      job: source.job,
-      role: source.role,
-      gear: source.gear,
-      tomeWeapon: source.tomeWeapon,
-      isSubstitute: source.isSubstitute,
-      notes: source.notes,
-      bisLink: source.bisLink,
-    });
+  // A10 mutation shape: handleUpdatePlayer chains to tierStore.updatePlayer,
+  // which re-throws after rollback — await + toast so a failed paste can't
+  // become an unhandled rejection.
+  const handlePastePlayer = useCallback(async (playerId: string, source: SnapshotPlayer) => {
+    try {
+      await playerActions.handleUpdatePlayer(playerId, {
+        job: source.job,
+        role: source.role,
+        gear: source.gear,
+        tomeWeapon: source.tomeWeapon,
+        isSubstitute: source.isSubstitute,
+        notes: source.notes,
+        bisLink: source.bisLink,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to paste player');
+    }
   }, [playerActions]);
 
   // Per-player action factory — bind `player.id` into each id-first handler so
@@ -308,7 +326,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
       onCopy: () => setClipboardPlayer(player),
       onCopyUrl: () => handleCopyUrl(player.id),
       onDuplicate: () => playerActions.handleDuplicatePlayer(player),
-      onPaste: () => { if (clipboardPlayer) handlePastePlayer(player.id, clipboardPlayer); },
+      onPaste: () => { if (clipboardPlayer) void handlePastePlayer(player.id, clipboardPlayer); },
       onRemove: () => playerActions.handleRemovePlayer(player.id),
       onResetGear: (mode) => playerActions.handleResetGear(player.id, mode),
       onClaimPlayer: () => playerActions.handleClaimPlayer(player.id),

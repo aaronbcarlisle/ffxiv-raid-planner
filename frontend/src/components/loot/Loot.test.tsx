@@ -545,3 +545,46 @@ describe('Loot', () => {
     await waitFor(() => expect(clearAllPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
   });
 });
+
+// A10 void'd-promise sweep: the mount effect void'd four re-throwing fetches
+// (fetchWeekDataTypes does NOT re-throw — left bare), and refresh() void'd the
+// re-throwing fetchCurrentWeek (fetchTier does not re-throw — left bare).
+describe("Loot — A10 void'd-promise fixes", () => {
+  it('mount fetches: rejecting store fetches surface ONE error toast instead of unhandled rejections', async () => {
+    useLootTrackingStore.setState({
+      fetchLootLog: vi.fn().mockRejectedValue(new Error('boom')),
+      fetchMaterialLog: vi.fn().mockRejectedValue(new Error('boom')),
+      fetchPageLedger: vi.fn().mockRejectedValue(new Error('boom')),
+      fetchCurrentWeek: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    renderLoot({ tier: makeTier(players) });
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.filter(
+        (t) => t.type === 'error' && t.message === 'Failed to load loot data',
+      )).toHaveLength(1);
+    });
+  });
+
+  it('refresh(): a rejecting fetchCurrentWeek surfaces an error toast instead of an unhandled rejection', async () => {
+    renderLoot({ tier: makeTier(players) });
+    // Re-stub AFTER mount. The mount effect re-runs with the rejecting stub too
+    // (fetchCurrentWeek is a dep) — the fixed effect catches that with the
+    // 'Failed to load loot data' toast; the refresh-specific message below is
+    // the discriminating assertion for THIS site.
+    act(() => {
+      useLootTrackingStore.setState({
+        fetchCurrentWeek: vi.fn().mockRejectedValue(new Error('boom')),
+      });
+    });
+    fireEvent.click(screen.getByRole('button', { name: /log a drop/i }));
+    const picker = pickerCalls[pickerCalls.length - 1];
+    act(() => {
+      (picker.onSuccess as () => void)();
+    });
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'Failed to refresh the week clock',
+      )).toBe(true);
+    });
+  });
+});

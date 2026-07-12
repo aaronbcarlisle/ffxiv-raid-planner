@@ -6,10 +6,11 @@
  * the right modal to the right menu item. The menu itself is the *audited*
  * one (Lodestone Sync, Adjust Priority, Edit Books are re-homed OUT).
  */
-import { renderHook, act, render } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { renderHook, act, render, fireEvent, waitFor, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SnapshotPlayer } from '../types';
 import type { ContextMenuItem } from '../components/ui';
+import { useToastStore } from '../stores/toastStore';
 
 // jsdom has no matchMedia; the reused confirm <Modal> runs useDevice() even
 // while closed (before its `if (!isOpen) return null`). Polyfill it.
@@ -28,8 +29,14 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 // Mock the 5 reused modal components → assert composition, not their internals.
+const { bisImportPropsLog } = vi.hoisted(() => ({
+  bisImportPropsLog: [] as Array<Record<string, unknown>>,
+}));
 vi.mock('../components/player/BiSImportModal', () => ({
-  BiSImportModal: (p: { isOpen: boolean }) => (p.isOpen ? <div data-testid="bis-import" /> : null),
+  BiSImportModal: (p: { isOpen: boolean } & Record<string, unknown>) => {
+    bisImportPropsLog.push(p);
+    return p.isOpen ? <div data-testid="bis-import" /> : null;
+  },
 }));
 vi.mock('../components/bis/BiSTargetManagerModal', () => ({
   BiSTargetManagerModal: () => <div data-testid="bis-targets" />,
@@ -69,6 +76,11 @@ const makePlayer = (overrides: Partial<SnapshotPlayer> = {}): SnapshotPlayer =>
     tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
     ...overrides,
   }) as unknown as SnapshotPlayer;
+
+beforeEach(() => {
+  bisImportPropsLog.length = 0;
+  useToastStore.setState({ toasts: [] });
+});
 
 /** Flatten menu items to their visible text (label | sectionHeader | sentinel). */
 function labelOrHeader(i: ContextMenuItem): string {
@@ -271,5 +283,57 @@ describe('useRosterCardActions', () => {
     expect(onUpdate).toHaveBeenCalledWith({
       tomeWeapon: { pursuing: false, hasItem: true, isAugmented: true },
     });
+  });
+});
+
+// A10: both sites void'd actions.onUpdate, which re-throws (tierStore rollback
+// contract) — a rejected import/unlink escaped as an unhandled rejection.
+describe("useRosterCardActions — A10 void'd-promise fixes", () => {
+  it('BiS import onImport: a rejected onUpdate surfaces an error toast instead of an unhandled rejection', async () => {
+    const onUpdate = vi.fn().mockRejectedValue(new Error('import failed'));
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        player: makePlayer(),
+        actions: { onUpdate, onCopy: vi.fn(), onDuplicate: vi.fn() },
+      }),
+    );
+    render(<>{result.current.modalsNode}</>);
+    // BiSImportModal renders unconditionally (isOpen-gated internally), so its
+    // props — including onImport — are captured without opening the modal.
+    const props = bisImportPropsLog[bisImportPropsLog.length - 1];
+    await act(async () => {
+      await (props.onImport as (u: { gear: never[]; bisLink?: string }) => Promise<void> | void)({
+        gear: [],
+        bisLink: 'https://xivgear.app/#/x',
+      });
+    });
+    expect(onUpdate).toHaveBeenCalledWith({ gear: [], bisLink: 'https://xivgear.app/#/x' });
+    expect(useToastStore.getState().toasts.some(
+      (t) => t.type === 'error' && t.message === 'import failed',
+    )).toBe(true);
+  });
+
+  it('Unlink BiS confirm: a rejected onUpdate surfaces an error toast (and still fired the update)', async () => {
+    const onUpdate = vi.fn().mockRejectedValue(new Error('unlink failed'));
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        player: makePlayer({ bisLink: 'https://xivgear.app/#/x' }),
+        actions: { onUpdate, onCopy: vi.fn(), onDuplicate: vi.fn() },
+      }),
+    );
+    const item = result.current.menuItems.find((i) => 'label' in i && i.label === 'Unlink BiS')!;
+    act(() => {
+      if ('onClick' in item) item.onClick?.();
+    });
+    render(<>{result.current.modalsNode}</>);
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink BiS' }));
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'unlink failed',
+      )).toBe(true);
+    });
+    expect(onUpdate).toHaveBeenCalledWith({ bisLink: '' });
   });
 });

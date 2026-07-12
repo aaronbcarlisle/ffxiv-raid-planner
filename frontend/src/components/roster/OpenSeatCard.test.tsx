@@ -4,10 +4,11 @@
 // per-seat Configure (inline name + JobPicker form, role derived from job)
 // and Remove affordances, both gated on the roster-manage permission
 // (`canManage` — same gate legacy EmptySlotCard/InlinePlayerEdit use).
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SnapshotPlayer } from '../../types';
 import { OpenSeatCard } from './OpenSeatCard';
+import { useToastStore } from '../../stores/toastStore';
 
 function makeOpenSeat(overrides: Partial<SnapshotPlayer> = {}): SnapshotPlayer {
   return {
@@ -37,6 +38,8 @@ const onRemove = vi.fn();
 beforeEach(() => {
   onConfigure.mockClear();
   onRemove.mockClear();
+  onConfigure.mockReset();
+  useToastStore.setState({ toasts: [] });
 });
 
 describe('OpenSeatCard', () => {
@@ -122,5 +125,25 @@ describe('OpenSeatCard', () => {
     expect(screen.queryByLabelText('Player name')).toBeNull();
     expect(screen.getByRole('button', { name: 'Configure' })).toBeInTheDocument();
     expect(onConfigure).not.toHaveBeenCalled();
+  });
+
+  // A10 void'd-promise sweep (carry-forward from Task 2's review): onConfigure
+  // chains to handleConfigurePlayer -> tierStore.updatePlayer, which re-throws
+  // after rollback — the old `void onConfigure(...)` call let a rejected
+  // configure escape as an unhandled rejection with no error surfaced.
+  it('a rejected onConfigure surfaces an error toast instead of an unhandled rejection', async () => {
+    onConfigure.mockRejectedValueOnce(new Error('configure failed'));
+    render(
+      <OpenSeatCard player={makeOpenSeat()} canManage onConfigure={onConfigure} onRemove={onRemove} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
+    fireEvent.change(screen.getByLabelText('Player name'), { target: { value: 'Aria Moonfall' } });
+    fireEvent.click(screen.getByTitle('WHM - White Mage'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'configure failed',
+      )).toBe(true);
+    });
   });
 });

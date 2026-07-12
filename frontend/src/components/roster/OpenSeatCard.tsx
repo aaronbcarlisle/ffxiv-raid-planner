@@ -28,6 +28,7 @@ import { Button, IconButton } from '../primitives';
 import { JobPicker } from '../player/JobPicker';
 import { getRoleForJob, getValidRole } from '../../gamedata';
 import { TEMPLATE_ROLE_INFO } from '../../utils/constants';
+import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer } from '../../types';
 
 export interface OpenSeatCardProps {
@@ -55,11 +56,18 @@ export function OpenSeatCard({ player, canManage, onConfigure, onRemove }: OpenS
   const roleLabel = seatRoleLabel(player);
   const canSubmit = name.trim().length > 0 && !!job;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
     // Mirror legacy InlinePlayerEdit.handleSubmit: role is DERIVED from the job.
-    void onConfigure(name.trim(), job, getRoleForJob(job) || '');
+    // A10 mutation shape: onConfigure chains to handleConfigurePlayer ->
+    // tierStore.updatePlayer, which re-throws after rollback — await + toast so
+    // a failed configure can't become an unhandled rejection.
+    try {
+      await onConfigure(name.trim(), job, getRoleForJob(job) || '');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to configure player');
+    }
   };
 
   const handleCancel = () => {
