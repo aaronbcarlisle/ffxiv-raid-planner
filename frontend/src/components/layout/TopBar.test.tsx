@@ -124,4 +124,27 @@ describe('TopBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Command palette' }));
     expect(onOpenPalette).toHaveBeenCalledTimes(1);
   });
+
+  // A12: affordance order is ⌘K · invite · bell · theme · │ · settings — theme
+  // joins the passive affordances; settings sits isolated after the divider.
+  it('orders the affordances ⌘K · invite · bell · theme · divider · settings (A12)', () => {
+    const { container } = renderTopBar();
+    const palette = screen.getByRole('button', { name: 'Command palette' });
+    const invite = screen.getByRole('button', { name: 'Invite members' });
+    const bell = screen.getByRole('button', { name: /^Notifications/ });
+    const theme = screen.getByRole('button', { name: 'Toggle theme' });
+    const settings = screen.getByRole('button', { name: 'Settings' });
+    const divider = container.querySelector('span.w-px');
+    expect(divider).not.toBeNull();
+    expect(divider).toHaveAttribute('aria-hidden');
+    // compareDocumentPosition: if a precedes b, a.compareDocumentPosition(b)
+    // carries DOCUMENT_POSITION_FOLLOWING (same pattern as AppRail.test.tsx).
+    const precedes = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(precedes(palette, invite)).toBe(true);
+    expect(precedes(invite, bell)).toBe(true);
+    expect(precedes(bell, theme)).toBe(true);
+    expect(precedes(theme, divider!)).toBe(true);
+    expect(precedes(divider!, settings)).toBe(true);
+  });
 });

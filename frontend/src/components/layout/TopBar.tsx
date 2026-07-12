@@ -1,7 +1,7 @@
 /**
  * TopBar (F6a, Task 9) — the v2 shell's top chrome bar.
  *
- *   [StaticPicker] › [TierSelector] [⋮]   [Week n ‹ ›]   ──spacer──   [⌘K][🔔][⚙][☾]
+ *   [StaticPicker] › [TierSelector] [⋮]   [Week n ‹ ›]   ──spacer──   [⌘K][🔔][☾]│[⚙]
  *
  * Composed from the new conformant `StaticPicker` + the `TierBreadcrumb`
  * composition fragment (which reuses the legacy `TierSelector` as-is; it lives
@@ -152,8 +152,9 @@ export function TopBar({ onOpenPalette, onOpenNotifications }: TopBarProps) {
             </Tooltip>
           )}
           <NotificationBell onOpen={onOpenNotifications} />
-          <SettingsGear />
           <ThemeToggle />
+          <span className="w-px h-4 bg-border-subtle flex-shrink-0" aria-hidden />
+          <SettingsGear />
         </div>
       </div>
     </header>

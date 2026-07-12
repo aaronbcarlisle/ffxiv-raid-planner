@@ -25,6 +25,13 @@ describe('PlayerIdentity', () => {
     expect(screen.getByText('HT')).toBeInTheDocument();
   });
 
+  it('inline avatar fallback initials carry leading-none (A12 centering)', () => {
+    // A12: flex centers the line box, not the glyph ink — leading-none collapses
+    // the line box so initials sit optically centered in the 32px chip.
+    render(<PlayerIdentity name="Healer Two" job="WHM" role="healer" />);
+    expect(screen.getByText('HT').className).toContain('leading-none');
+  });
+
   it('renders job and position subtitle together', () => {
     render(<PlayerIdentity name="Melee One" job="DRG" position="M1" />);
     expect(screen.getByText(/DRG/)).toBeInTheDocument();
@@ -109,5 +116,9 @@ describe('PlayerIdentity rsvp-row variant', () => {
   it('emits the sr-only role label when role is set with no textual signal', () => {
     render(<PlayerIdentity name="A" variant="rsvp-row" role="tank" />);
     expect(screen.getByText('Tank')).toHaveClass('sr-only');
+  });
+  it('rsvp-row avatar fallback initials carry leading-none (A12 centering)', () => {
+    render(<PlayerIdentity name="Alice Ray" variant="rsvp-row" />);
+    expect(screen.getByText('AR').className).toContain('leading-none');
   });
 });

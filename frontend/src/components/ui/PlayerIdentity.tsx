@@ -103,7 +103,7 @@ export function PlayerIdentity({
             className="w-full h-full rounded-full object-cover"
             fallback={
               <span
-                className="w-full h-full rounded-full bg-surface-interactive flex items-center justify-center text-xs font-medium text-text-secondary"
+                className="w-full h-full rounded-full bg-surface-interactive flex items-center justify-center text-xs font-medium text-text-secondary leading-none"
                 aria-hidden="true"
               >
                 {getInitials(name)}
@@ -158,7 +158,7 @@ export function PlayerIdentity({
           className="w-full h-full rounded-full object-cover"
           fallback={
             <span
-              className="w-full h-full rounded-full bg-surface-interactive flex items-center justify-center text-xs font-medium text-text-secondary"
+              className="w-full h-full rounded-full bg-surface-interactive flex items-center justify-center text-xs font-medium text-text-secondary leading-none"
               aria-hidden="true"
             >
               {initials}

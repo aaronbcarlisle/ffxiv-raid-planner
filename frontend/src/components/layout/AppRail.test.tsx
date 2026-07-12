@@ -165,6 +165,15 @@ describe('AppRail', () => {
     expect(avatarBtn.className).toContain('hover:bg-[var(--color-nav-item-bg-hover)]');
   });
 
+  // A12: flex centers the line box, not the glyph ink — leading-none collapses the
+  // line box so initials sit optically centered (codebase convention: UserMenu
+  // badges, RosterCard:372, DashboardCard). jsdom can't paint; pin the class.
+  it('avatar fallback initials span carries leading-none (A12 centering)', () => {
+    render(<AppRail entries={makeEntries()} />);
+    const initialsSpan = screen.getByText('MS');
+    expect(initialsSpan.className).toContain('leading-none');
+  });
+
   // Task 6: below `sm`, the rail must be hidden (display:none) so MobileBottomNav serves
   // small viewports instead of a stacked 72px rail — mirrors legacy SidebarRail.tsx:42
   // (`hidden sm:flex`). Split on whitespace so a bare `flex` token (display:flex at ALL
