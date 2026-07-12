@@ -174,4 +174,21 @@ describe('CreateSessionModal', () => {
     expect(screen.getByRole('button', { name: 'Sun' }).className).toContain('bg-accent');
     expect(screen.getByRole('button', { name: 'Thu' }).className).not.toContain('bg-accent');
   });
+
+  it('seeds from the start date when editing a rule with no explicit BYDAY', () => {
+    // A bare FREQ=WEEKLY rule (legacy/API-created) recurs on DTSTART's weekday —
+    // the picker must seed that weekday, not the 'SA' literal, or saving the
+    // edit would silently convert the session's recurrence to Saturday.
+    renderModal({
+      editSession: {
+        ...baseSession,
+        startTime: '2026-07-09T11:00:00Z', // Thu Jul 9 2026 8 PM JST
+        endTime: '2026-07-09T14:00:00Z',
+        recurrenceRule: 'FREQ=WEEKLY', // no BYDAY
+      },
+    });
+
+    expect(screen.getByRole('button', { name: 'Thu' }).className).toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Sat' }).className).not.toContain('bg-accent');
+  });
 });

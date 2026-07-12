@@ -72,10 +72,11 @@ interface CreateSessionModalProps {
   };
 }
 
-function parseDaysFromRule(rule: string | null | undefined): Set<string> {
-  if (!rule) return new Set(['SA']);
+/** Explicit BYDAY days from a rule, or null when the rule has none (unset). */
+function parseDaysFromRule(rule: string | null | undefined): Set<string> | null {
+  if (!rule) return null;
   const match = rule.match(/BYDAY=([A-Z,]+)/);
-  if (!match) return new Set(['SA']);
+  if (!match) return null;
   return new Set(match[1].split(','));
 }
 
@@ -100,11 +101,14 @@ function weekdayFromDatetimeLocal(value: string): string | null {
 }
 
 /**
- * Default recurrence days: an existing rule wins (edit flow keeps user intent);
- * otherwise derive from the chosen start date; 'SA' only while start is blank.
+ * Default recurrence days: a rule with explicit BYDAY wins (edit flow keeps
+ * user intent); otherwise — no rule, or a bare rule like FREQ=WEEKLY, which
+ * semantically recurs on DTSTART's weekday — derive from the chosen start
+ * date; 'SA' only while start is blank.
  */
 function seedSelectedDays(rule: string | null | undefined, startTimeLocal: string): Set<string> {
-  if (rule) return parseDaysFromRule(rule);
+  const ruleDays = parseDaysFromRule(rule);
+  if (ruleDays) return ruleDays;
   const weekday = startTimeLocal ? weekdayFromDatetimeLocal(startTimeLocal) : null;
   return weekday ? new Set([weekday]) : new Set(['SA']);
 }
