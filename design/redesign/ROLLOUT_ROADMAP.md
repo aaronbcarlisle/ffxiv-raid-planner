@@ -87,7 +87,15 @@ param), legacy byte-for-byte at its P2 state + P3's keeper fixes, v1 default.
 persists; both smoke suites green; full CI gate green; browser validation both shells,
 both themes.
 
-## 3. Phase A — v2 flip-debt fixes (pre-merge requirement)
+## 3. Phase A — v2 flip-debt fixes ✅ COMPLETE (2026-07-12, PR #175 → foundation `6c9da75`)
+
+> All 17 items landed as 13 tasks. Spec: `specs/2026-07-11-phase-a-flip-debt-fixes.md`
+> (status header carries the merge record + the View-As/Leave decision point). Deferred
+> follow-ups from the branch: frozen-file void sites (SplitClearPlanner ×4,
+> LodestoneSearchModal ×12) + remaining `actionsForPlayer` bindings
+> (claim/release/reset/duplicate, same dropped-rejection class) + Home.tsx unguarded
+> mount fetches → one bugfix-only micro-slice; the rest in spec §4.
+> **NEXT = Phase G (§4, USER-OWNED).**
 
 From the verified holistic-review list + the user's review. All v2-side; legacy's return
 lowers the stakes but every one is still required before v2 can ever become default:

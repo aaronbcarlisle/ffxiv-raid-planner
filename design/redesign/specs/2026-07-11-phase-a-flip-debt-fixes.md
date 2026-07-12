@@ -1,6 +1,11 @@
 # Phase A — v2 Flip-Debt Fixes (Design Spec)
 
-> **Status:** SPEC — awaiting user async skim (AUTONOMOUS_RUN §4 pause).
+> **Status:** EXECUTED + MERGED — PR #175 squash-merged to `redesign/foundation` as
+> `6c9da75` (2026-07-12). All 13 tasks landed; §6 defaults ratified; whole-branch
+> review Ready-to-merge after one fix wave; browser-validated both shells + mobile.
+> Decision point recorded in the PR: Leave Static is suppressed under View As (safe
+> default — reverse if impersonated-leave is wanted). Deferred items live in §4 + the
+> PR body's deferred list.
 > **Inputs:** ROLLOUT_ROADMAP §3 (the 12 verified fixes + 2 user quick wins + 3 Phase-R
 > follow-ups) · holistic review 2026-07-11 (memory `project-holistic-review-2026-07`) ·
 > a 13-investigator grounding pass against head `810a48d` (every finding re-verified on
