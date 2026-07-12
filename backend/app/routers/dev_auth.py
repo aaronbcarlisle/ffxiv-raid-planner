@@ -428,6 +428,11 @@ async def dev_login(
             },
         }
 
+    # Reset drifted preference state so e2e suites get a stable starting point
+    # (mirrors the is_public normalization above).
+    if user.tab_persistence != "remember":
+        user.tab_persistence = "remember"
+
     await session.commit()
 
     role_label = {0: "owner", 1: "member", 2: "applicant (no membership)"}.get(user_index, "member")

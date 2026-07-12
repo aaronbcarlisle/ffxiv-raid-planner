@@ -4,11 +4,13 @@ import json
 
 import pytest
 import pytest_asyncio
+from fastapi import Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Membership, MemberRole, SnapshotPlayer, User, UserAvailability
-from app.routers.dev_auth import DEV_USERS, _merge_duplicate_dev_users
+from app.routers import dev_auth as dev_auth_module
+from app.routers.dev_auth import DEV_USERS, _merge_duplicate_dev_users, dev_login
 from tests.factories import (
     create_membership,
     create_snapshot_player,
@@ -95,3 +97,76 @@ class TestDevAuthDuplicateMerge:
         )
         merged_availability = availability_lookup.scalar_one()
         assert json.loads(merged_availability.slots) == ["03:00", "03:30"]
+
+
+class TestDevLoginTabPersistenceNormalization:
+    """dev_login must reset drifted tab_persistence so e2e suites start stable (A13)."""
+
+    @pytest.fixture
+    def dev_mode(self, monkeypatch):
+        """Open the dev-auth guard for direct dev_login calls.
+
+        dev_auth reads the module-level `settings` object (dev_auth.py:36), so
+        patch that instance; monkeypatch restores both attributes at teardown.
+        """
+        monkeypatch.setattr(dev_auth_module.settings, "environment", "development")
+        monkeypatch.setattr(dev_auth_module.settings, "dev_auth_mode", True)
+
+    async def test_dev_login_resets_drifted_tab_persistence(
+        self,
+        session: AsyncSession,
+        dev_mode,
+    ):
+        seeded = await create_user(
+            session,
+            discord_id=DEV_USERS[0]["discord_id"],
+            discord_username=DEV_USERS[0]["discord_username"],
+        )
+        seeded.tab_persistence = "reset"
+        await session.flush()
+
+        result = await dev_login(user_index=0, response=Response(), session=session)
+
+        assert result["user_id"] == seeded.id
+        row = (
+            await session.execute(
+                select(User).where(User.discord_id == DEV_USERS[0]["discord_id"])
+            )
+        ).scalar_one()
+        assert row.tab_persistence == "remember"
+
+    async def test_dev_login_normalizes_only_the_logging_in_user(
+        self,
+        session: AsyncSession,
+        dev_mode,
+    ):
+        owner = await create_user(
+            session,
+            discord_id=DEV_USERS[0]["discord_id"],
+            discord_username=DEV_USERS[0]["discord_username"],
+        )
+        owner.tab_persistence = "reset"
+        member = await create_user(
+            session,
+            discord_id=DEV_USERS[1]["discord_id"],
+            discord_username=DEV_USERS[1]["discord_username"],
+        )
+        member.tab_persistence = "reset"
+        await session.flush()
+
+        await dev_login(user_index=1, response=Response(), session=session)
+
+        member_row = (
+            await session.execute(
+                select(User).where(User.discord_id == DEV_USERS[1]["discord_id"])
+            )
+        ).scalar_one()
+        owner_row = (
+            await session.execute(
+                select(User).where(User.discord_id == DEV_USERS[0]["discord_id"])
+            )
+        ).scalar_one()
+        assert member_row.tab_persistence == "remember"
+        # Deliberate: no 3-user sweep — each suite self-restores its own
+        # login's preconditions (Phase A spec A13b).
+        assert owner_row.tab_persistence == "reset"
