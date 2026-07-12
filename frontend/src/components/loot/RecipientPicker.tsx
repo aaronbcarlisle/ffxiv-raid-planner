@@ -213,13 +213,25 @@ export function RecipientPicker({
             : (editEntry.itemSlot as GearSlot),
         );
       } else {
-        setScope('priority');
         // Pin the default recipient: top of the initial priority ranking for the
-        // opening drop context (scope always resets to 'priority' on open).
+        // opening drop context. A11: when NOBODY needs the slot the priority
+        // pool is empty — opening on it would render "No players match." with
+        // submit permanently disabled until the user discovers the All-members
+        // toggle. Fall back to 'all' scope instead (guaranteed non-empty while
+        // any player is configured — recipientRanking.ts appends the
+        // needers-then-rest list) with its first entry pre-selected. Shared by
+        // assign AND log mode; the user can re-toggle scopes freely after open.
         const initialSlot: GearSlot | 'ring' = mode === 'log' ? firstSlotForFloor(1) : (item?.slot ?? 'weapon');
-        const initialEntries = buildRecipientEntries({
+        const priorityEntries = buildRecipientEntries({
           players, slot: initialSlot, scope: 'priority', settings, lootLog, currentWeek, enhancedActive,
         });
+        const initialScope: PickerScope = priorityEntries.length > 0 ? 'priority' : 'all';
+        const initialEntries = priorityEntries.length > 0
+          ? priorityEntries
+          : buildRecipientEntries({
+              players, slot: initialSlot, scope: 'all', settings, lootLog, currentWeek, enhancedActive,
+            });
+        setScope(initialScope);
         setSelectedId(initialEntries[0]?.player.id ?? null);
         setWeek(currentWeek);
         setMethod('drop');

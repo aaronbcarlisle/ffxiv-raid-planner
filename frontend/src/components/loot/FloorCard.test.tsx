@@ -92,9 +92,11 @@ describe('FloorCard', () => {
     expect(screen.queryByRole('button', { name: 'Assign' })).not.toBeInTheDocument();
   });
 
-  it('disables a material row Assign when the row has zero needers (no-op guard)', () => {
+  it('keeps a material row Assign enabled with zero needers and falls back to the first roster player (A11)', () => {
     // Fully raid-geared player with no tome pieces and no tome weapon → neither
-    // Floor 2 material (glaze / universal_tomestone) has a needer.
+    // Floor 2 material (glaze / universal_tomestone) has a needer. Assign must
+    // still work: the modal's own Select allows immediate reassignment, so the
+    // handler fires with players[0] as the suggested recipient.
     const player: SnapshotPlayer = {
       id: 'a', tierSnapshotId: 't1', name: 'Alice', job: 'PLD', role: 'tank',
       configured: true, sortOrder: 0, isSubstitute: false,
@@ -113,6 +115,26 @@ describe('FloorCard', () => {
         floorNumber={2}
         floorName="M10S"
         players={[player]}
+        onAssignMaterial={onAssignMaterial}
+      />
+    );
+    const glazeRow = screen.getByText('Glaze').closest('div.border-b') as HTMLElement;
+    const assign = within(glazeRow).getByRole('button', { name: 'Assign' });
+    expect(assign).not.toBeDisabled();
+    fireEvent.click(assign);
+    expect(onAssignMaterial).toHaveBeenCalledWith('glaze', expect.objectContaining({ id: 'a' }));
+  });
+
+  it('disables material Assign only when the roster is empty (nobody to assign to)', () => {
+    // Degenerate guard pin: with zero configured players, players[0] would be
+    // undefined at runtime — the ONLY case the button stays disabled.
+    const onAssignMaterial = vi.fn();
+    render(
+      <FloorCard
+        {...baseProps}
+        floorNumber={2}
+        floorName="M10S"
+        players={[]}
         onAssignMaterial={onAssignMaterial}
       />
     );

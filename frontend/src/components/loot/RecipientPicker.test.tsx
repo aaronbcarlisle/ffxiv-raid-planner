@@ -166,6 +166,45 @@ describe('RecipientPicker (assign mode)', () => {
     fireEvent.change(screen.getByPlaceholderText('Search players…'), { target: { value: '' } });
     expect(submit).toBeEnabled();
   });
+
+  it('falls back to All members with a pre-selected recipient when nobody needs the item (A11)', () => {
+    // Both players already hold the raid-BiS earring → the 'priority' scope
+    // pool (needers only) is EMPTY. The picker must not open into a dead-end:
+    // it opens on 'all' (never empty while anyone is configured) with the
+    // first entry pre-selected, so submit is immediately usable.
+    const gearedCaster = makePlayer('c1', 'Caster One', 'BLM');
+    gearedCaster.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    const gearedMelee = makePlayer('m1', 'Melee One', 'SAM');
+    gearedMelee.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    render(
+      <RecipientPicker {...baseProps} players={[gearedCaster, gearedMelee]} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.getByRole('button', { name: 'All members' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'By priority' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByText('No players match.')).not.toBeInTheDocument();
+    // First 'all'-scope entry (alphabetical among non-needers) is pre-selected
+    // and submit is enabled with a named recipient — not the bare disabled 'Assign'.
+    const submit = screen.getByRole('button', { name: 'Assign to Caster One' });
+    expect(submit).toBeEnabled();
+  });
+
+  it('opens on By priority when the priority pool is non-empty (fallback must not swallow the normal path)', () => {
+    // Default fixture: both players need the earring (hasItem: false) → pool
+    // non-empty → normal path. Payload-level pin for this path already exists in
+    // 'lists ranked eligible players with reasons and confirms the top pick';
+    // this adds the explicit scope-toggle assertion.
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.getByRole('button', { name: 'By priority' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'All members' })).toHaveAttribute('aria-pressed', 'false');
+  });
 });
 
 describe('RecipientPicker (log mode)', () => {
@@ -178,6 +217,22 @@ describe('RecipientPicker (log mode)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Assign to|Log drop/ }));
     await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalled());
     expect(vi.mocked(logLootAndUpdateGear).mock.calls[0][2].method).toBe('book');
+  });
+
+  it('log mode falls back to All members when nobody needs the initial placeholder slot (shared branch, A11)', () => {
+    // Log mode opens on firstSlotForFloor(1) = earring. Both players already
+    // hold it → empty priority pool → same 'all' fallback as assign mode.
+    const gearedCaster = makePlayer('c1', 'Caster One', 'BLM');
+    gearedCaster.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    const gearedMelee = makePlayer('m1', 'Melee One', 'SAM');
+    gearedMelee.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    render(<RecipientPicker {...baseProps} players={[gearedCaster, gearedMelee]} mode="log" />);
+    expect(screen.getByRole('button', { name: 'All members' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('No players match.')).not.toBeInTheDocument();
   });
 });
 
