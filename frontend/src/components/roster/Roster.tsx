@@ -49,6 +49,7 @@ import { CharacterManageBridge } from './CharacterManageBridge';
 import { useGroupViewState } from '../../hooks/useGroupViewState';
 import { usePlayerActions } from '../../hooks/usePlayerActions';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { useGroupActions } from '../../pages/groupActionsContext';
 import { useAuthStore } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
@@ -190,8 +191,14 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   // server response (Loot mount-fetch parity).
   useEffect(() => {
     if (group.id && tierId) {
-      void fetchLootLog(group.id, tierId);
-      void fetchCurrentWeek(group.id, tierId);
+      // A10: both fetches re-throw after recording store error state, but this
+      // screen never renders lootTrackingStore.error — a bare catch would make
+      // failures fully silent, so surface ONE toast for the pair (Promise.all
+      // attaches handlers to every member, so nothing escapes unhandled).
+      void Promise.all([
+        fetchLootLog(group.id, tierId),
+        fetchCurrentWeek(group.id, tierId),
+      ]).catch(() => toast.error('Failed to load loot data'));
     }
   }, [group.id, tierId, fetchLootLog, fetchCurrentWeek]);
 
@@ -278,25 +285,37 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   }, [highlightedPlayerId]);
 
   // Copy a deep-link to a player card (replicates GroupViewContent.handleCopyUrl).
+  // A10 clipboard shape (Loot.tsx copyLink / SessionList.tsx precedent): success
+  // fires only after the write resolves; a rejected write gets an error toast,
+  // never a false "Link copied".
   const handleCopyUrl = useCallback((playerId: string) => {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'roster');
     url.searchParams.set('player', playerId);
-    void navigator.clipboard.writeText(url.toString());
-    toast.success('Link copied to clipboard');
+    navigator.clipboard.writeText(url.toString()).then(
+      () => toast.success('Link copied to clipboard'),
+      () => toast.error("Couldn't copy the link"),
+    );
   }, []);
 
   // Paste = overwrite a card's config from the clipboard player (legacy parity).
-  const handlePastePlayer = useCallback((playerId: string, source: SnapshotPlayer) => {
-    void playerActions.handleUpdatePlayer(playerId, {
-      job: source.job,
-      role: source.role,
-      gear: source.gear,
-      tomeWeapon: source.tomeWeapon,
-      isSubstitute: source.isSubstitute,
-      notes: source.notes,
-      bisLink: source.bisLink,
-    });
+  // A10 mutation shape: handleUpdatePlayer chains to tierStore.updatePlayer,
+  // which re-throws after rollback — await + toast so a failed paste can't
+  // become an unhandled rejection.
+  const handlePastePlayer = useCallback(async (playerId: string, source: SnapshotPlayer) => {
+    try {
+      await playerActions.handleUpdatePlayer(playerId, {
+        job: source.job,
+        role: source.role,
+        gear: source.gear,
+        tomeWeapon: source.tomeWeapon,
+        isSubstitute: source.isSubstitute,
+        notes: source.notes,
+        bisLink: source.bisLink,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to paste player');
+    }
   }, [playerActions]);
 
   // Per-player action factory — bind `player.id` into each id-first handler so
@@ -307,8 +326,21 @@ export function Roster({ group, tier, canManage }: RosterProps) {
       onCopy: () => setClipboardPlayer(player),
       onCopyUrl: () => handleCopyUrl(player.id),
       onDuplicate: () => playerActions.handleDuplicatePlayer(player),
-      onPaste: () => { if (clipboardPlayer) handlePastePlayer(player.id, clipboardPlayer); },
-      onRemove: () => playerActions.handleRemovePlayer(player.id),
+      onPaste: () => { if (clipboardPlayer) void handlePastePlayer(player.id, clipboardPlayer); },
+      // Whole-branch review Finding 2 — guard at the SOURCE (not per-consumer):
+      // handleRemovePlayer chains to tierStore.removePlayer, which re-throws
+      // after rollback. Every consumer of RosterCardActions.onRemove (open-seat
+      // Remove in OpenSeatCard.tsx, the kebab Remove confirm in
+      // useRosterCardActions.tsx) invokes it bare/fire-and-forget and none
+      // await it or depend on its rejection, so ONE guard here — not one per
+      // consumer — covers both without double-toasting.
+      onRemove: async () => {
+        try {
+          await playerActions.handleRemovePlayer(player.id);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to remove player');
+        }
+      },
       onResetGear: (mode) => playerActions.handleResetGear(player.id, mode),
       onClaimPlayer: () => playerActions.handleClaimPlayer(player.id),
       onReleasePlayer: () => playerActions.handleReleasePlayer(player.id),
@@ -318,9 +350,15 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     [playerActions, setClipboardPlayer, handleCopyUrl, clipboardPlayer, handlePastePlayer],
   );
 
-  const handleAddPlayer = useCallback(() => {
-    void playerActions.handleAddPlayer();
-  }, [playerActions]);
+  // "Add player" → the SHARED AddPlayerModal flow (groupActionsContext) — the
+  // same modal legacy's toolbar and the v2 TopBar use. It creates AND
+  // configures the player atomically (name/job/position/tankRole), so no blank
+  // `configured: false` slot is ever left behind (Phase A A1). The raw
+  // blank-slot wrapper (`playerActions.handleAddPlayer`) is intentionally no
+  // longer called from any visible button; the store-level addPlayer primitive
+  // still backs the shared modal flow and duplicate-player. `<GroupActionModals>`
+  // is guaranteed to be an ancestor: NewShell.tsx:340 wraps the whole v2 tree.
+  const { onAddPlayer } = useGroupActions();
 
   return (
     <div data-testid="roster-screen">
@@ -349,7 +387,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           reorderMode={reorderMode}
           onReorderModeChange={setReorderMode}
           canManage={canManage}
-          onAddPlayer={handleAddPlayer}
+          onAddPlayer={onAddPlayer}
         />
       </div>
 
@@ -357,7 +395,9 @@ export function Roster({ group, tier, canManage }: RosterProps) {
         <GearBoard
           players={sortedPlayers}
           tierId={tierId}
-          canManage={canManage}
+          userRole={userRole}
+          currentUserId={effectiveUserId ?? null}
+          isAdminAccess={isAdminAccess}
           actionsForPlayer={actionsForPlayer}
           priorities={priorities}
         />
@@ -380,7 +420,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           isAdmin={isAdmin}
           userHasClaimedPlayer={userHasClaimedPlayer}
           actionsForPlayer={actionsForPlayer}
-          onAddPlayer={handleAddPlayer}
+          onConfigurePlayer={playerActions.handleConfigurePlayer}
           onReorder={playerActions.handleReorder}
         />
       )}

@@ -33,8 +33,9 @@ import {
   fromGearState,
 } from '../../utils/calculations';
 import { bisSlotTotals } from '../../utils/rosterReadiness';
+import { canEditGear } from '../../utils/permissions';
 import { getRoleColor, getValidRole } from '../../gamedata';
-import type { GearSlot, SnapshotPlayer } from '../../types';
+import type { GearSlot, MemberRole, SnapshotPlayer } from '../../types';
 
 const SLOT_ORDER: GearSlot[] = [
   'weapon', 'head', 'body', 'hands', 'legs', 'feet',
@@ -46,7 +47,18 @@ const TOTAL = 11;
 export interface GearBoardProps {
   players: SnapshotPlayer[];
   tierId?: string;
-  canManage: boolean;
+  /**
+   * Per-row gear-edit gate inputs — the exact trio `RosterCards` receives
+   * (RosterCards.tsx), fed to `canEditGear(userRole, player, currentUserId,
+   * isAdminAccess)` once per player row. Owner/lead/admin rows are all
+   * editable; a member's OWN claimed row (`player.userId === currentUserId`)
+   * is editable while every other row stays inert; viewers edit nothing.
+   * Replaces the old screen-wide `canManage` (the ROSTER-management
+   * permission, which wrongly locked members out of their own gear).
+   */
+  userRole: MemberRole | null | undefined;
+  currentUserId: string | null;
+  isAdminAccess: boolean;
   actionsForPlayer: (player: SnapshotPlayer) => {
     onUpdate: (updates: Partial<SnapshotPlayer>) => void | Promise<void>;
   };
@@ -66,7 +78,7 @@ function summaryColor(obtained: number, total: number): string {
   return 'text-text-primary';
 }
 
-export function GearBoard({ players, tierId, canManage, actionsForPlayer, priorities }: GearBoardProps) {
+export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAccess, actionsForPlayer, priorities }: GearBoardProps) {
   const grouped = groupPlayersByLightParty(players.filter((p) => p.configured), true);
   const sections: Array<{ label: string; rows: SnapshotPlayer[] }> = [
     { label: 'Light Party 1', rows: grouped.group1 },
@@ -75,8 +87,10 @@ export function GearBoard({ players, tierId, canManage, actionsForPlayer, priori
     { label: 'Substitutes', rows: grouped.substitutes },
   ].filter((s) => s.rows.length > 0);
 
+  // No permission guard inside `cycle`: it is only reachable via the per-row
+  // `onCycle` closures below, which are withheld entirely for non-editable
+  // rows (and `GearBoardCell` additionally no-ops while `disabled`).
   const cycle = async (player: SnapshotPlayer, slot: GearSlot) => {
-    if (!canManage) return;
     const g = player.gear.find((x) => x.slot === slot);
     if (!g || !g.bisSource) return;
     const next = getNextGearState(toGearState(g.hasItem, g.isAugmented), g.bisSource, requiresAugmentation(g));
@@ -130,6 +144,9 @@ export function GearBoard({ players, tierId, canManage, actionsForPlayer, priori
               </tr>
               {section.rows.map((player) => {
                 const role = getValidRole(player.role);
+                // Per-row gear-edit gate (legacy GearTable's per-player
+                // canEditGear pattern, adapted to one-row-per-player).
+                const editable = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess).allowed;
                 const { obtained, total } = playerBis(player);
                 const iLvl = calculateAverageItemLevel(player.gear, tierId ?? '');
                 const subtitle = `${player.position ?? player.tankRole ?? role} · ${iLvl > 0 ? iLvl : '—'}`;
@@ -155,8 +172,8 @@ export function GearBoard({ players, tierId, canManage, actionsForPlayer, priori
                                 slot={g}
                                 role={role}
                                 priority={priorities?.get(player.id)?.has(slot) ?? false}
-                                disabled={!canManage}
-                                onCycle={canManage ? () => void cycle(player, slot) : undefined}
+                                disabled={!editable}
+                                onCycle={editable ? () => void cycle(player, slot) : undefined}
                               />
                             ) : null}
                           </td>

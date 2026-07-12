@@ -1,9 +1,10 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RosterCard } from './RosterCard';
 import { TooltipProvider } from '../primitives';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import type { SnapshotPlayer } from '../../types';
+import { useToastStore } from '../../stores/toastStore';
 
 beforeEach(() => {
   // jsdom has no matchMedia; emulate a desktop/hover environment so useDevice
@@ -21,6 +22,7 @@ beforeEach(() => {
       dispatchEvent: vi.fn(),
     }))
   );
+  useToastStore.setState({ toasts: [] });
 });
 
 /**
@@ -134,5 +136,67 @@ describe('RosterCard', () => {
     // Unmount without closing the overlay → the cleanup must release the counter.
     unmount();
     expect(onModalClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+// A10: actions.onUpdate chains to tierStore.updatePlayer, which re-throws after
+// rollback — commitName/commitJobChange previously void'd it (unhandled
+// rejection → phantom /api/analytics/errors POST + silent failure).
+describe("RosterCard — A10 void'd-promise fixes", () => {
+  function renderWithActions(rejecting: RosterCardActions) {
+    return render(
+      <TooltipProvider>
+        <RosterCard
+          player={makePlayer()}
+          userRole="owner"
+          currentUserId="u1"
+          isAdminAccess={false}
+          canManage
+          clipboardPlayer={null}
+          reorderMode={false}
+          groupId="g1"
+          tierId="tier1"
+          contentType="savage"
+          actions={rejecting}
+        />
+      </TooltipProvider>
+    );
+  }
+
+  it('commitName: a rejected onUpdate surfaces an error toast instead of an unhandled rejection', async () => {
+    const rejecting: RosterCardActions = {
+      onUpdate: vi.fn().mockRejectedValue(new Error('rename failed')),
+      onCopy: vi.fn(),
+      onDuplicate: vi.fn(),
+    };
+    renderWithActions(rejecting);
+    fireEvent.doubleClick(screen.getByText('Tank One'));
+    const input = screen.getByLabelText('Player name');
+    fireEvent.change(input, { target: { value: 'New Name' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'rename failed',
+      )).toBe(true);
+    });
+  });
+
+  it('commitJobChange: a rejected onUpdate surfaces an error toast instead of an unhandled rejection', async () => {
+    const rejecting: RosterCardActions = {
+      onUpdate: vi.fn().mockRejectedValue(new Error('job change failed')),
+      onCopy: vi.fn(),
+      onDuplicate: vi.fn(),
+    };
+    renderWithActions(rejecting);
+    fireEvent.click(screen.getByRole('button', { name: /change job/i }));
+    // JobPicker (real, full-picker mode) — pick a different job than PLD.
+    fireEvent.click(screen.getByText('WAR'));
+    // Card-owned confirm modal → primary action commits.
+    fireEvent.click(screen.getByRole('button', { name: 'Change Job' }));
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'job change failed',
+      )).toBe(true);
+    });
   });
 });

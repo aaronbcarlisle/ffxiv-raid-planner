@@ -43,6 +43,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import {
+  BookMarked,
   ClipboardPaste,
   Copy,
   CopyPlus,
@@ -61,6 +62,7 @@ import {
 } from 'lucide-react';
 import { Modal, RadioGroup, type ContextMenuItem } from '../components/ui';
 import { Button } from '../components/primitives';
+import { toast } from '../stores/toastStore';
 import { BiSImportModal } from '../components/player/BiSImportModal';
 import { BiSTargetManagerModal } from '../components/bis/BiSTargetManagerModal';
 import { WeaponPriorityModal } from '../components/weapon-priority/WeaponPriorityModal';
@@ -218,6 +220,30 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
     disabled: !editPermission.allowed,
     tooltip: editTip,
   });
+  // Interim tome-weapon affordance (Phase A / A3): toggles `pursuing` ONLY.
+  // The tome weapon's have/augmented states stay legacy-only until Phase C
+  // restores the full GearTable in v2 — the dual shell covers them meanwhile.
+  // `player.tomeWeapon` is required in production but read defensively (`?.`)
+  // because test doubles may omit it.
+  items.push({
+    label: player.tomeWeapon?.pursuing ? 'Stop Tracking Tome Weapon' : 'Track Tome Weapon',
+    icon: <BookMarked className={ICON} />,
+    onClick: async () => {
+      // Whole-branch review Finding 1: onUpdate re-throws (tierStore rollback
+      // contract) — await + toast so a rejected toggle can't become an
+      // unhandled rejection (ContextMenuItem.onClick is `() => void`, which
+      // silently dropped the bare promise before).
+      try {
+        await actions.onUpdate({
+          tomeWeapon: { ...player.tomeWeapon, pursuing: !player.tomeWeapon?.pursuing },
+        });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to update tome weapon tracking');
+      }
+    },
+    disabled: !editPermission.allowed,
+    tooltip: editTip,
+  });
   items.push({
     label: 'Reset Gear',
     icon: <RotateCcw className={ICON} />,
@@ -259,7 +285,16 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
   items.push({
     label: player.isSubstitute ? 'Mark as Main' : 'Mark as Sub',
     icon: player.isSubstitute ? <UserPlus className={ICON} /> : <UserMinus className={ICON} />,
-    onClick: () => actions.onUpdate({ isSubstitute: !player.isSubstitute }),
+    onClick: async () => {
+      // Whole-branch review Finding 1: same re-throw contract as the
+      // tome-weapon toggle above — guard so a rejected update can't become an
+      // unhandled rejection.
+      try {
+        await actions.onUpdate({ isSubstitute: !player.isSubstitute });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to update sub status');
+      }
+    },
     disabled: !rosterPermission.allowed,
     tooltip: rosterTip,
   });
@@ -443,8 +478,13 @@ export function useRosterCardActions(params: RosterCardActionParams): RosterCard
         onClose={() => setShowBiSImport(false)}
         player={player}
         contentType={contentType}
-        onImport={(updates) => {
-          void actions.onUpdate(updates);
+        onImport={async (updates) => {
+          // A10 mutation shape: onUpdate re-throws (tierStore rollback contract).
+          try {
+            await actions.onUpdate(updates);
+          } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to import BiS');
+          }
         }}
       />
 
@@ -628,9 +668,14 @@ export function useRosterCardActions(params: RosterCardActionParams): RosterCard
           <Button
             type="button"
             variant="warning"
-            onClick={() => {
-              void actions.onUpdate({ bisLink: '' });
+            onClick={async () => {
               setShowUnlink(false);
+              // A10 mutation shape: onUpdate re-throws (tierStore rollback contract).
+              try {
+                await actions.onUpdate({ bisLink: '' });
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : 'Failed to unlink BiS');
+              }
             }}
           >
             Unlink BiS

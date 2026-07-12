@@ -652,3 +652,58 @@ def test_next_occurrence_non_recurring_legacy_utc_cancellation():
         timezone_name="America/Chicago",
     )
     assert occ is None
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Single BYDAY diverging from DTSTART's weekday (oracle pins for frontend A9 fix)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_weekly_single_byday_differs_from_dtstart_weekday():
+    """DTSTART is a Thursday but BYDAY=SA — occurrences must land on Saturday.
+
+    Oracle pin for the frontend engine fix (Phase A / A9): a single explicit
+    BYDAY is honored even when it differs from DTSTART's own weekday.
+    """
+    # 2020-01-02 is a Thursday; the Saturday of that week is 2020-01-04.
+    occs = generate_occurrences(
+        "2020-01-02T20:00:00+00:00",
+        "2020-01-02T23:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=SA",
+        after=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        count=3,
+    )
+    assert [o.occurrence_date for o in occs] == ["2020-01-04", "2020-01-11", "2020-01-18"]
+    for o in occs:
+        assert datetime.fromisoformat(o.start_time).weekday() == 5, "not a Saturday"
+
+
+def test_weekly_single_byday_divergent_interval_2():
+    """INTERVAL=2 with a divergent single BYDAY: weeks are Monday-based and
+    anchored to DTSTART's week — Jan 4 (week 0), then Jan 18 (week 2), Feb 1 (week 4).
+    """
+    occs = generate_occurrences(
+        "2020-01-02T20:00:00+00:00",  # Thursday
+        "2020-01-02T23:00:00+00:00",
+        "FREQ=WEEKLY;INTERVAL=2;BYDAY=SA",
+        after=datetime(2020, 1, 5, tzinfo=timezone.utc),  # past the first Saturday
+        count=2,
+    )
+    assert [o.occurrence_date for o in occs] == ["2020-01-18", "2020-02-01"]
+
+
+def test_weekly_single_byday_divergent_with_timezone():
+    """Thu Jan 15 2026 7 PM PST DTSTART (= Fri 03:00 UTC) with BYDAY=SA must
+    produce Saturday-local occurrences: Sat Jan 17 7 PM PST = Sun Jan 18 03:00 UTC,
+    crossing the UTC day boundary.
+    """
+    occs = generate_occurrences(
+        "2026-01-16T03:00:00+00:00",  # Thu Jan 15 2026 7 PM PST (UTC-8, no DST in Jan)
+        "2026-01-16T06:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=SA",
+        after=datetime(2026, 1, 14, tzinfo=timezone.utc),
+        count=2,
+        timezone_name="America/Los_Angeles",
+    )
+    assert [o.occurrence_date for o in occs] == ["2026-01-17", "2026-01-24"]
+    assert occs[0].start_time == "2026-01-18T03:00:00+00:00"

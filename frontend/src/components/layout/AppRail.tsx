@@ -110,7 +110,7 @@ function RailAvatarItemButton({ entry }: RailAvatarItemProps) {
         ) : (
           <span
             aria-hidden="true"
-            className="flex items-center justify-center rounded-full text-xs font-semibold"
+            className="flex items-center justify-center rounded-full text-xs font-semibold leading-none"
             style={{
               width: 'var(--nav-item-icon-size, 24px)',
               height: 'var(--nav-item-icon-size, 24px)',

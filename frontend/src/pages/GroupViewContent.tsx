@@ -91,11 +91,15 @@ export interface GroupViewContentProps {
   /** Chrome-triggered actions the content's toolbar/bodies invoke (add-player, tier ops).
    *  Fed from the shared GroupActions context (`useGroupActions()`) by each chrome. */
   actions: GroupActions;
+  /** v2 only (Phase A, A5c): NewShell threads the classic-UI escape hatch down
+   *  to the More page. The legacy chrome never passes it, so the More page's
+   *  "Switch to classic UI" section renders exclusively in v2. */
+  onSwitchToClassicUi?: () => void;
 }
 
-export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
+export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupViewContentProps) {
   const navigate = useNavigate();
-  const { currentGroup, groups, error: groupError } = useStaticGroupStore();
+  const { currentGroup, groups, error: groupError, removeMember, setCurrentGroup } = useStaticGroupStore();
   const { tiers, currentTier, isSaving, error: tierError, fetchTier } = useTierStore();
   const { user } = useAuthStore();
   const { viewAsUser } = useViewAsStore();
@@ -328,20 +332,27 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
   // each gives deep-linking, reload persistence, and browser back/forward.
   const [rosterSubView, setRosterSubView] = useUrlTabState('rsub', ROSTER_SUB_VIEWS, 'members');
   const [scheduleView, setScheduleView] = useUrlTabState('sched', SCHEDULE_VIEWS, 'upcoming');
+  // Gated on the roster slot's absence: a v2 roster slot (which dropped the
+  // legacy Split Planner, D-P3-2) must not fire the split-clear fetch; no-op
+  // on legacy (`slots` undefined). Boolean (not the ReactNode itself) so the
+  // effects key on stable slot PRESENCE — a ReactNode's identity churns every
+  // render and would refire both effects each time.
+  const hasRosterSlot = !!slots?.roster;
   useEffect(() => {
-    if (pageMode === 'roster' && currentGroup?.id) {
+    if (pageMode === 'roster' && !hasRosterSlot && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
-  }, [pageMode, currentGroup?.id, fetchSplitClear]);
+  }, [pageMode, hasRosterSlot, currentGroup?.id, fetchSplitClear]);
   useEffect(() => { return () => clearSplitClear(); }, [clearSplitClear]);
 
   // Silently refetch split-clear data when the user returns from another tab
-  // (e.g. after linking characters on the profile page).
+  // (e.g. after linking characters on the profile page). Same `!hasRosterSlot`
+  // gate as the mount fetch above.
   useVisibilityRefresh(useCallback(() => {
-    if (pageMode === 'roster' && currentGroup?.id) {
+    if (pageMode === 'roster' && !hasRosterSlot && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
-  }, [pageMode, currentGroup?.id, fetchSplitClear]));
+  }, [pageMode, hasRosterSlot, currentGroup?.id, fetchSplitClear]));
 
   // Admin access only when navigating from Admin Dashboard with adminMode=true
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -1166,10 +1177,37 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
                     setPageMode('roster', { rsub: 'split-planner' });
                   },
                 } : {})}
+                onSwitchToClassicUi={onSwitchToClassicUi}
                 onOpenIntegrations={() => {
                   useSettingsPanelStore.getState().open({ tab: 'integrations' });
                 }}
                 onOpenPlugin={() => setPageMode('plugin')}
+                {...(!viewAsUser ? {
+                  // Deliberate safety gate (whole-branch review Finding 4): under
+                  // admin View As, `effectiveUserId` is the IMPERSONATED user, not
+                  // the admin — leaving here would eject that member behind
+                  // first-person copy ("You will be removed…"). View As is an
+                  // inspection tool, not an actor; suppress the prop entirely so
+                  // MorePage hides the button (and the Danger Zone section, if it
+                  // would otherwise render empty).
+                  onLeaveStatic: async () => {
+                    // Self-service leave (A4 / Plan M §1). Backend self-leave
+                    // defaults unlink_players=true; owner never sees the button
+                    // (MorePage gates it) and the backend owner-guard backstops.
+                    if (!effectiveUserId) return;
+                    try {
+                      await removeMember(currentGroup.id, effectiveUserId);
+                      // Minimal mirror of deleteGroup's local cleanup: drop the
+                      // loaded static. The groups list self-heals — Profile
+                      // calls fetchGroups() on mount at the redirect target.
+                      setCurrentGroup(null);
+                      toast.success(`You left ${currentGroup.name}`);
+                      navigate('/profile?tab=statics');
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : 'Failed to leave static');
+                    }
+                  },
+                } : {})}
                 canManage={canManageRoster(userRole).allowed}
                 userRole={userRole ?? null}
               />

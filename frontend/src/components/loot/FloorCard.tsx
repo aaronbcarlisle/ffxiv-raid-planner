@@ -138,9 +138,13 @@ export function FloorCard({
               material={row.material}
               entries={row.entries}
               canEdit={canEdit}
-              // Zero needers → no suggested recipient → Assign would be a no-op.
-              disableAssign={!row.top}
-              onAssign={() => row.top && onAssignMaterial(row.material, row.top)}
+              // A11: always assignable while anyone is on the roster. Zero
+              // needers → fall back to the first roster player as the suggested
+              // recipient (QuickLogMaterialModal's own Select allows immediate
+              // reassignment). Disabled only in the degenerate empty-roster
+              // case, where players[0] would be undefined.
+              disableAssign={players.length === 0}
+              onAssign={() => onAssignMaterial(row.material, row.top ?? players[0])}
             />
           ))}
         </div>

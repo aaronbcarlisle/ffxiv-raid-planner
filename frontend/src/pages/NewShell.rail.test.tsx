@@ -148,3 +148,17 @@ describe('NewShell rail avatar static-switch — restores saved tabs', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/group/XYZ');
   });
 });
+
+describe('NewShell rail Person-layer entries — navigate to real routes (Phase A, A5a)', () => {
+  it('Player Hub navigates to /profile', () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Player Hub' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/profile');
+  });
+
+  it('Static Finder navigates to /discover', () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Static Finder' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/discover');
+  });
+});

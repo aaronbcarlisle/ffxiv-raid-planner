@@ -17,10 +17,12 @@ const mocks = vi.hoisted(() => ({
   pendingCount: 0,
   fetchGroupRequests: vi.fn(),
   lootLog: [] as unknown[],
+  materialLog: [] as unknown[],
   pageLedger: [] as unknown[],
   currentWeek: 3,
   fetchLootLog: vi.fn(),
   fetchPageLedger: vi.fn(),
+  fetchMaterialLog: vi.fn().mockResolvedValue(undefined),
   players: [] as SnapshotPlayer[],
   mountData: null as unknown,
   fetchProgress: vi.fn(),
@@ -39,10 +41,12 @@ vi.mock('../../stores/lootTrackingStore', () => ({
   useLootTrackingStore: (sel: (s: Record<string, unknown>) => unknown) =>
     sel({
       lootLog: mocks.lootLog,
+      materialLog: mocks.materialLog,
       pageLedger: mocks.pageLedger,
       currentWeek: mocks.currentWeek,
       fetchLootLog: mocks.fetchLootLog,
       fetchPageLedger: mocks.fetchPageLedger,
+      fetchMaterialLog: mocks.fetchMaterialLog,
     }),
 }));
 vi.mock('../../stores/tierStore', () => ({ useTierPlayers: () => mocks.players }));
@@ -127,10 +131,12 @@ beforeEach(() => {
   mocks.pendingCount = 0;
   mocks.fetchGroupRequests = vi.fn();
   mocks.lootLog = [];
+  mocks.materialLog = [];
   mocks.pageLedger = [];
   mocks.currentWeek = 3;
   mocks.fetchLootLog = vi.fn();
   mocks.fetchPageLedger = vi.fn();
+  mocks.fetchMaterialLog = vi.fn().mockResolvedValue(undefined);
   mocks.players = [];
   mocks.mountData = null;
   mocks.fetchProgress = vi.fn();
@@ -218,6 +224,7 @@ describe('Home', () => {
     renderHome({ group: nonMemberGroup, canManage: false });
     expect(mocks.fetchGroupRequests).not.toHaveBeenCalled();
     expect(mocks.fetchSessions).not.toHaveBeenCalled();
+    expect(mocks.fetchMaterialLog).not.toHaveBeenCalled();
   });
 
   it('fetches on mount for members (sessions, loot, progress) and group-requests when canManage', () => {
@@ -225,6 +232,7 @@ describe('Home', () => {
     expect(mocks.fetchSessions).toHaveBeenCalledWith('g1');
     expect(mocks.fetchLootLog).toHaveBeenCalledWith('g1', 't1');
     expect(mocks.fetchPageLedger).toHaveBeenCalledWith('g1', 't1');
+    expect(mocks.fetchMaterialLog).toHaveBeenCalledWith('g1', 't1');
     expect(mocks.fetchGroupRequests).toHaveBeenCalledWith('g1');
   });
 });

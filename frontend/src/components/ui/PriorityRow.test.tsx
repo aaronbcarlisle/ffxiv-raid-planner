@@ -47,4 +47,12 @@ describe('PriorityRow', () => {
     render(<PriorityRow entries={entries.slice(0, 3)} />);
     expect(screen.queryByText(/eligible/)).not.toBeInTheDocument();
   });
+
+  it('avatar initials glyph carries leading-none (A12 centering)', () => {
+    // A12: grid place-items-center centers the line box, not the glyph ink —
+    // leading-none collapses the line box (same fix as AppRail/PlayerIdentity).
+    render(<PriorityRow entries={entries} />);
+    const initialsSpan = screen.getByText('CO'); // initials('Caster One')
+    expect(initialsSpan.className).toContain('leading-none');
+  });
 });

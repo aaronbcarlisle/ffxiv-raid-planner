@@ -41,6 +41,7 @@ import {
   useRosterCardActions,
   type RosterCardActions,
 } from '../../hooks/useRosterCardActions';
+import { toast } from '../../stores/toastStore';
 import type { DragAttributes, DragListeners } from './dragTypes';
 import {
   calculateAverageItemLevel,
@@ -193,16 +194,25 @@ export function RosterCard({
     setDraftName(player.name);
     setIsEditingName(true);
   };
-  const commitName = () => {
+  const commitName = async () => {
     if (!editingRef.current) return;
     editingRef.current = false;
     const trimmed = draftName.trim();
-    if (trimmed && trimmed !== player.name) void actions.onUpdate({ name: trimmed });
     setIsEditingName(false);
+    if (trimmed && trimmed !== player.name) {
+      // A10 mutation shape: onUpdate chains to tierStore.updatePlayer, which
+      // re-throws after rollback — await + toast so a failed rename can't
+      // become an unhandled rejection (phantom /api/analytics/errors POST).
+      try {
+        await actions.onUpdate({ name: trimmed });
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Failed to rename player');
+      }
+    }
   };
   const onNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    if (e.key === 'Enter') commitName();
+    if (e.key === 'Enter') void commitName();
     else if (e.key === 'Escape') {
       editingRef.current = false;
       setDraftName(player.name);
@@ -218,14 +228,19 @@ export function RosterCard({
       setPendingJob(newJob);
     }
   };
-  const commitJobChange = () => {
+  const commitJobChange = async () => {
     if (!pendingJob) return;
     const nextRole = getRoleForJob(pendingJob);
     const updates: Partial<SnapshotPlayer> = { job: pendingJob };
     if (nextRole) updates.role = nextRole;
     if (jobChangeMode === 'unlink') updates.bisLink = '';
-    void actions.onUpdate(updates);
     setPendingJob(null);
+    // A10 mutation shape — see commitName.
+    try {
+      await actions.onUpdate(updates);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to change job');
+    }
   };
 
   // ── Derived display ──

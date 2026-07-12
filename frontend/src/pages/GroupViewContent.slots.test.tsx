@@ -30,6 +30,15 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AddedPlayerSignal } from './groupActionsContext';
 
+// Spy on navigation (Finding 3: a rejected leave must NEVER navigate away).
+// Must be declared before vi.mock so the factory can close over it (see
+// NewShell.rail.test.tsx for the same pattern).
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 // ── Mock the state hook: a controllable, fully-shaped useGroupViewState ──
 const setPageMode = vi.fn();
 // Dedicated spy (not the shared noop) so the legacy loot-history shell branch
@@ -83,11 +92,21 @@ let mockCurrentTier: typeof currentTier | null = currentTier;
 vi.mock('../stores/tierStore', () => ({
   useTierStore: () => ({ currentTier: mockCurrentTier, tiers: [currentTier], isSaving: false, fetchTier: vi.fn() }),
 }));
+const removeMemberSpy = vi.fn().mockResolvedValue(undefined);
+const setCurrentGroupSpy = vi.fn();
 vi.mock('../stores/staticGroupStore', () => ({
-  useStaticGroupStore: () => ({ currentGroup, groups: [currentGroup] }),
+  useStaticGroupStore: () => ({
+    currentGroup,
+    groups: [currentGroup],
+    removeMember: removeMemberSpy,
+    setCurrentGroup: setCurrentGroupSpy,
+  }),
 }));
 vi.mock('../stores/authStore', () => ({ useAuthStore: () => ({ user: { id: 'u1', isAdmin: false } }) }));
-vi.mock('../stores/viewAsStore', () => ({ useViewAsStore: () => ({ viewAsUser: null }) }));
+// Switchable (Finding 4): default null (normal view); a test sets an
+// impersonated user to pin the Leave-Static View-As safety gate.
+let mockViewAsUser: { userId: string; role: string } | null = null;
+vi.mock('../stores/viewAsStore', () => ({ useViewAsStore: () => ({ viewAsUser: mockViewAsUser }) }));
 vi.mock('../stores/lootTrackingStore', () => ({
   useLootTrackingStore: () => ({
     currentWeek: 1, maxWeek: 1, fetchCurrentWeek: vi.fn(), fetchLootLog: vi.fn(),
@@ -162,12 +181,20 @@ vi.mock('../components/group/MorePage', () => ({
     onOpenIntegrations: () => void;
     onOpenLootHistory: () => void;
     onOpenSplitPlanner?: () => void;
+    onSwitchToClassicUi?: () => void;
+    onLeaveStatic?: () => void | Promise<void>;
   }) => (
     <div data-testid="more-page">
       <button onClick={() => props.onOpenIntegrations()}>open-integrations</button>
       <button onClick={() => props.onOpenLootHistory()}>open-loot-history</button>
       {props.onOpenSplitPlanner && (
         <button onClick={props.onOpenSplitPlanner}>open-split-planner</button>
+      )}
+      {props.onSwitchToClassicUi && (
+        <button onClick={props.onSwitchToClassicUi}>switch-to-classic-ui</button>
+      )}
+      {props.onLeaveStatic && (
+        <button onClick={() => { void props.onLeaveStatic?.(); }}>leave-static</button>
       )}
     </div>
   ),
@@ -181,6 +208,7 @@ vi.mock('../components/ui', async (orig) => {
 });
 
 import { GroupViewContent } from './GroupViewContent';
+import { useToastStore } from '../stores/toastStore';
 
 const actions = { onTierChange: vi.fn(), onAddPlayer: vi.fn(), onNewTier: vi.fn(), onRollover: vi.fn(), onDeleteTier: vi.fn() };
 const slots = {
@@ -208,10 +236,16 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     mockActionModalOpen = false;
     mockAddedPlayer = null;
     mockCurrentTier = currentTier;
+    mockViewAsUser = null;
     keyboardSpy.mockClear();
     clearAddedPlayerSpy.mockClear();
     setPageMode.mockClear();
     settingsPanelOpenSpy.mockClear();
+    removeMemberSpy.mockClear();
+    removeMemberSpy.mockResolvedValue(undefined);
+    setCurrentGroupSpy.mockClear();
+    mockNavigate.mockClear();
+    useToastStore.setState({ toasts: [] });
   });
   afterEach(() => { mockAddedPlayer = null; });
 
@@ -265,6 +299,21 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     expect(screen.queryByText('open-split-planner')).toBeNull();
   });
 
+  // ── onSwitchToClassicUi pass-through (Phase A, A5c): GroupViewContent is a
+  //    pure conduit — MorePage receives the handler exactly when the chrome
+  //    provides it (NewShell does; legacy never does — pinned below). ──
+  it('forwards onSwitchToClassicUi to MorePage when the chrome provides it', () => {
+    mockPageMode = 'more';
+    const onSwitchToClassicUi = vi.fn();
+    render(
+      <MemoryRouter>
+        <GroupViewContent actions={actions} slots={slots} onSwitchToClassicUi={onSwitchToClassicUi} />
+      </MemoryRouter>,
+    );
+    screen.getByText('switch-to-classic-ui').click();
+    expect(onSwitchToClassicUi).toHaveBeenCalledTimes(1);
+  });
+
   // ── Integrations re-route (flip-P3 Task 4 fold-in): the More page's
   //    Integrations card must open the Settings panel directly on the
   //    integrations tab, not navigate to the deleted legacy schedule tab. ──
@@ -287,6 +336,49 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     screen.getByText('open-loot-history').click();
     expect(setPageMode).toHaveBeenCalledTimes(1);
     expect(setPageMode).toHaveBeenCalledWith('gear', { lview: 'history' });
+  });
+
+  // ── Leave Static (Phase A Task 5 / A4): GroupViewContent prebinds the real
+  //    self-leave handler — removeMember(currentGroup.id, effectiveUserId)
+  //    then setCurrentGroup(null) — and passes it to MorePage. ──
+  it('passes onLeaveStatic to MorePage and wires it to removeMember + setCurrentGroup(null)', async () => {
+    mockPageMode = 'more';
+    renderContent();
+    screen.getByText('leave-static').click();
+    await waitFor(() => expect(removeMemberSpy).toHaveBeenCalledTimes(1));
+    expect(removeMemberSpy).toHaveBeenCalledWith('g1', 'u1');
+    expect(setCurrentGroupSpy).toHaveBeenCalledWith(null);
+  });
+
+  // ── Finding 3 (whole-branch review): the leave-handler's contract is
+  //    "never re-throw" from removeMember's perspective — a rejected
+  //    removeMember must surface an error toast and MUST NOT navigate away or
+  //    clear the loaded static (both would desync the UI from a leave that
+  //    never actually happened). ──
+  it('a rejected removeMember on Leave Static toasts an error and does not navigate or clear the static', async () => {
+    mockPageMode = 'more';
+    removeMemberSpy.mockRejectedValueOnce(new Error('leave failed'));
+    renderContent();
+    screen.getByText('leave-static').click();
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'leave failed',
+      )).toBe(true);
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(setCurrentGroupSpy).not.toHaveBeenCalled();
+  });
+
+  // ── Finding 4 (whole-branch review, SAFE-DEFAULT): under admin View As,
+  //    `effectiveUserId` resolves to the IMPERSONATED user, not the admin —
+  //    leaving would eject that member behind first-person copy. Suppress
+  //    onLeaveStatic entirely under View As so MorePage hides the button (and
+  //    the Danger Zone section, per its own empty-section gate). ──
+  it('does NOT pass onLeaveStatic to MorePage while an admin is impersonating (View As)', () => {
+    mockPageMode = 'more';
+    mockViewAsUser = { userId: 'u2', role: 'member' };
+    renderContent();
+    expect(screen.queryByText('leave-static')).toBeNull();
   });
 
   it("pageMode 'plugin' renders the PluginPage body", () => {
@@ -364,5 +456,15 @@ describe('GroupViewContent — legacy (slotless) More-page wiring (Phase R)', ()
     expect(setPageMode).toHaveBeenCalledTimes(1);
     // Exactly one argument — the lview extra-params form belongs to v2 only.
     expect(setPageMode).toHaveBeenCalledWith('gear');
+  });
+
+  it('passes onLeaveStatic in the legacy (slotless) shell too — the Danger Zone bugfix reaches both shells', () => {
+    renderSlotless();
+    expect(screen.getByText('leave-static')).toBeInTheDocument();
+  });
+
+  it('passes NO switch-to-classic affordance when the chrome provides none (legacy)', () => {
+    renderSlotless();
+    expect(screen.queryByText('switch-to-classic-ui')).toBeNull();
   });
 });

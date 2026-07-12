@@ -55,7 +55,7 @@ const baseProps = {
   isAdminAccess: false,
   clipboardPlayer: null,
   actionsForPlayer: () => ({ onUpdate: vi.fn(), onCopy: vi.fn(), onDuplicate: vi.fn() }),
-  onAddPlayer: vi.fn(),
+  onConfigurePlayer: vi.fn(),
   onReorder: vi.fn(),
 };
 

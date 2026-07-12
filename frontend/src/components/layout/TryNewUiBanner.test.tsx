@@ -56,4 +56,15 @@ describe('TryNewUiBanner', () => {
     expect(localStorage.getItem('ui-shell-banner-dismissed')).toBe('true');
     expect(track).toHaveBeenCalledWith('navigation', 'ui_shell_banner_dismiss', {});
   });
+
+  it('merges a caller className onto the root (the Header mobile row passes sm:hidden w-full)', () => {
+    render(
+      <MemoryRouter initialEntries={['/group/ABC']}>
+        <TryNewUiBanner className="sm:hidden w-full" />
+      </MemoryRouter>
+    );
+    const root = screen.getByRole('button', { name: /try the new ui/i }).closest('div');
+    expect(root?.className).toContain('sm:hidden');
+    expect(root?.className).toContain('w-full');
+  });
 });

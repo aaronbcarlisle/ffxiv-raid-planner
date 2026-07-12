@@ -1,13 +1,17 @@
 /* eslint-disable design-system/no-raw-button */
+import { useState } from 'react';
 import {
   Users, Settings, Link2, Book, Sword, Download, Activity,
-  AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle, PlugZap,
+  AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle, PlugZap, LogOut,
+  ArrowLeftRight,
 } from 'lucide-react';
 import type { MemberRole, PageMode } from '../../types';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { DashboardCard, IconMedallion, SectionLabel } from '../ui/DashboardCard';
+import { ConfirmModal } from '../ui/ConfirmModal';
+import { Button } from '../primitives';
 
 interface MorePageProps {
   onOpenSettings: (tab?: string) => void;
@@ -19,10 +23,21 @@ interface MorePageProps {
   /** Legacy shell only — v2 dropped the card (D-P3-2); rendered only when the
    *  caller wires it. */
   onOpenSplitPlanner?: () => void;
+  /** v2 shell only (Phase A, A5c) — the classic-UI escape hatch. Legacy never
+   *  passes it, so the Interface section renders exclusively in v2 — at ALL
+   *  viewports (approved skim §6.5): on mobile it is the only reachable
+   *  v2→legacy affordance (the rail UserMenu is hidden below sm); on desktop
+   *  it is harmless redundancy with the rail entry. */
+  onSwitchToClassicUi?: () => void;
   onOpenIntegrations: () => void;
   onOpenPlugin: () => void;
   canManage: boolean;
   userRole: MemberRole | null;
+  /** Self-service leave (non-owners). The caller (GroupViewContent) prebinds
+   *  the real handler — removeMember + toast + redirect. The Leave Static
+   *  button renders only when this is wired, so hosts that don't pass it
+   *  degrade gracefully to no button. */
+  onLeaveStatic?: () => void | Promise<void>;
 }
 
 function formatDate(iso: string): string {
@@ -34,10 +49,12 @@ export function MorePage({
   onNavigate,
   onOpenLootHistory,
   onOpenSplitPlanner,
+  onSwitchToClassicUi,
   onOpenIntegrations,
   onOpenPlugin,
   canManage,
   userRole,
+  onLeaveStatic,
 }: MorePageProps) {
   const pendingCount = useJoinRequestStore(s => s.pendingCount);
   const groupRequests = useJoinRequestStore(s => s.groupRequests);
@@ -56,6 +73,7 @@ export function MorePage({
 
   const isOwner = userRole === 'owner';
   const isMember = !!userRole && userRole !== 'viewer';
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   return (
     <div className="flex flex-col gap-8">
@@ -305,8 +323,32 @@ export function MorePage({
         </div>
       </section>
 
-      {/* Danger Zone */}
-      {isMember && (
+      {/* Interface — v2-only classic-UI escape hatch (Phase A, A5c). Rendered
+          only when the caller wires onSwitchToClassicUi (NewShell does; the
+          legacy chrome never passes it). Deliberately NOT responsive-gated —
+          renders at all viewports (approved skim §6.5). Kept visually separate
+          from the Danger Zone below: switching UIs is safe and reversible. */}
+      {onSwitchToClassicUi && (
+        <section>
+          <SectionLabel className="mb-3">Interface</SectionLabel>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <DashboardCard title="New UI" icon={<ArrowLeftRight size={13} />} accentColor="teal">
+              <p className="text-xs text-text-secondary mb-4">
+                You're viewing the redesigned interface. Switch back to the
+                classic UI at any time — nothing about your static's data or
+                settings changes.
+              </p>
+              <Button variant="secondary" size="sm" onClick={onSwitchToClassicUi}>
+                Switch to classic UI
+              </Button>
+            </DashboardCard>
+          </div>
+        </section>
+      )}
+
+      {/* Danger Zone — hidden entirely when it would render no buttons
+          (non-owner member whose host didn't wire onLeaveStatic). */}
+      {isMember && (isOwner || !!onLeaveStatic) && (
         <section>
           <SectionLabel color="red" className="mb-3">Danger Zone</SectionLabel>
           <div
@@ -326,34 +368,42 @@ export function MorePage({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              {!isOwner && (
+              {!isOwner && onLeaveStatic && (
                 <button
-                  onClick={() => onOpenSettings('danger')}
+                  onClick={() => setShowLeaveConfirm(true)}
                   className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
                 >
                   Leave Static
                 </button>
               )}
               {isOwner && (
-                <>
-                  <button
-                    onClick={() => onOpenSettings('danger')}
-                    className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
-                  >
-                    Archive Static
-                  </button>
-                  <button
-                    onClick={() => onOpenSettings('danger')}
-                    className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
-                  >
-                    Delete Static
-                  </button>
-                </>
+                <button
+                  onClick={() => onOpenSettings('static')}
+                  className="px-3 py-1.5 text-sm border border-status-error/40 text-status-error rounded-lg hover:bg-status-error/10 transition-colors"
+                >
+                  Delete Static
+                </button>
               )}
             </div>
           </div>
         </section>
       )}
+
+      {/* Leave Static confirm — deliberately lighter than delete's
+          type-the-name flow: leaving is reversible by re-invite. */}
+      <ConfirmModal
+        isOpen={showLeaveConfirm}
+        title="Leave Static?"
+        message="You will be removed from this static's roster, and any players you've claimed will be unlinked from your account. You can rejoin later with a new invite."
+        confirmLabel="Yes, Leave Static"
+        variant="danger"
+        icon={<LogOut className="w-5 h-5 text-status-error" />}
+        onConfirm={async () => {
+          await onLeaveStatic?.();
+          setShowLeaveConfirm(false);
+        }}
+        onCancel={() => setShowLeaveConfirm(false)}
+      />
 
     </div>
   );

@@ -52,7 +52,7 @@ export function PriorityRow({ entries, maxVisible = 3, emptyLabel = 'no one need
                  Role color is a border ring (not a fill) so the white-on-pastel contrast failure that a
                  filled circle would hit for several role colors (e.g. healer/ranged/caster) never applies —
                  mirrors ui/PlayerIdentity's fallback-avatar treatment (role-colored ring + neutral fill/text). */
-              className="grid h-[22px] w-[22px] flex-none place-items-center rounded-full border-2 bg-surface-interactive text-[10px] font-bold text-text-secondary"
+              className="grid h-[22px] w-[22px] flex-none place-items-center rounded-full border-2 bg-surface-interactive text-[10px] font-bold text-text-secondary leading-none"
               style={{ borderColor: `var(--color-role-${entry.role}, var(--color-text-muted))` }}
             >
               {initials(entry.name)}

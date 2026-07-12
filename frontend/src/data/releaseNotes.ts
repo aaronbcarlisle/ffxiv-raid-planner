@@ -65,6 +65,15 @@ export const RELEASES: Release[] = [
     items: [
       {
         internal: true,
+        category: 'fix',
+        title: 'Phase A — v2 flip-debt fixes',
+        description:
+          'Thirteen fixes clearing v2 capability dead-ends and correctness traps: add-player flows through the shared modal with per-seat configure/remove, members can edit their own gear on the Board, tome-weapon tracking toggle in the kebab, Danger Zone works (Delete retargeted, self-service Leave Static implemented, Archive removed), rail/nav gaps closed with a mobile shell toggle in both directions, loot in the Home activity feed, a real 404 page, auth no longer logs out on rate-limit blips, BYDAY recurrence matches Discord/backend, a void-promise sweep (21 sites), assign works with zero needers, and visual quick wins — plus the Phase R follow-ups (split-clear fetch gating, dev_auth preference normalization).',
+        pr: 175,
+        prTitle: 'fix(redesign): phase-a — v2 flip-debt fixes (A1-A13)',
+      },
+      {
+        internal: true,
         category: 'improvement',
         title: 'F6a — redesigned app shell preview (behind ?shell=v2)',
         description:

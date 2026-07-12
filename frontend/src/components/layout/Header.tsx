@@ -60,10 +60,14 @@ export function Header() {
   const isGroupRoute = location.pathname.startsWith('/group/');
   const isHomePage = location.pathname === '/';
 
-  // The AppRail (with its user-menu footer) is present whenever the user is
-  // signed in or on a group route. When it is, the header avatar is redundant
-  // on desktop — keep it only for mobile (< sm), where there is no rail.
-  const railPresent = !!user || isGroupRoute;
+  // Routes that render their OWN rail + UserMenu (group routes in both shells,
+  // and the Player Hub at exactly /profile) make the header avatar redundant on
+  // desktop — keep it only for mobile (< sm), where the rail is hidden. On
+  // every other route (/discover, /docs*, /dashboard, /admin*, /profile/:code,
+  // /) the header avatar is the ONLY sign-out affordance, so it must show.
+  // Exact match for /profile on purpose: /profile/:shareCode is PublicProfile,
+  // which has no rail.
+  const hasOwnRailUserMenu = isGroupRoute || location.pathname === '/profile';
 
   // Settings panel open-state is URL-derived (same source GroupView uses), so the
   // gear icon and the header padding stay in sync with the docked panel.
@@ -402,8 +406,8 @@ export function Header() {
               <div className="w-8 h-8 rounded-full bg-surface-interactive animate-pulse" />
             ) : user ? (
               <span
-                data-rail-present={railPresent ? 'true' : 'false'}
-                className={railPresent ? 'sm:hidden' : ''}
+                data-rail-present={hasOwnRailUserMenu ? 'true' : 'false'}
+                className={hasOwnRailUserMenu ? 'sm:hidden' : ''}
               >
                 <UserMenu />
               </span>
@@ -425,6 +429,18 @@ export function Header() {
               fullWidthMobile
             />
           </div>
+        )}
+
+        {/* Mobile shell opt-in (Phase A, A5c): the desktop banner above is
+            hidden sm:block and v2's AppRail (whose UserMenu holds the v2
+            toggle) is hidden sm:flex — without this row a phone could never
+            opt in to the new UI. The banner self-gates (legacy-resolved shell
+            + not dismissed) and returns null otherwise, so no empty wrapper is
+            left behind — same dismiss persistence + telemetry as the desktop
+            instance. (v2 never renders this: Layout suppresses the Header
+            entirely when the v2 shell is active on group routes.) */}
+        {isGroupRoute && currentGroup && (
+          <TryNewUiBanner className="sm:hidden w-full" />
         )}
       </div>
     </header>

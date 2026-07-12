@@ -236,6 +236,70 @@ describe('computeNextOccurrence', () => {
     });
   });
 
+  describe('WEEKLY rrule — single BYDAY diverging from DTSTART weekday (backend parity)', () => {
+    // Oracle: backend/app/services/recurrence.py honors BYDAY unconditionally.
+    // Pinned by backend/tests/test_recurrence.py::test_weekly_single_byday_differs_from_dtstart_weekday
+    // and the two tests after it. Expected values below are the backend's outputs.
+    it('UTC: BYDAY=SA with a Thursday DTSTART lands on Saturday, not Thursday', () => {
+      const start = '2020-01-02T20:00:00Z'; // Thu
+      const rrule = 'FREQ=WEEKLY;BYDAY=SA';
+      const result = computeNextOccurrence(start, rrule, FIXED_AFTER);
+      // Saturday of DTSTART's week = 2020-01-04 (backend oracle), not Thu 2020-01-02
+      expect(result?.toISOString()).toBe('2020-01-04T20:00:00.000Z');
+    });
+
+    it('UTC: advances week by week on the BYDAY weekday', () => {
+      const start = '2020-01-02T20:00:00Z'; // Thu
+      const rrule = 'FREQ=WEEKLY;BYDAY=SA';
+      const after = new Date('2020-01-05T00:00:00Z'); // Sunday, past the first Saturday
+      const result = computeNextOccurrence(start, rrule, after);
+      expect(result?.toISOString()).toBe('2020-01-11T20:00:00.000Z');
+    });
+
+    it('timezone crossing a UTC day boundary: Thu 7 PM PST DTSTART with BYDAY=SA lands on Saturday local', () => {
+      // Thu Jan 15 2026 7 PM PST = 2026-01-16T03:00:00Z (Friday UTC).
+      // BYDAY=SA must resolve to Sat Jan 17 7 PM PST = 2026-01-18T03:00:00Z.
+      const start = '2026-01-16T03:00:00Z';
+      const rrule = 'FREQ=WEEKLY;BYDAY=SA';
+      const after = new Date('2026-01-14T00:00:00Z');
+      const result = computeNextOccurrence(start, rrule, after, undefined, 'America/Los_Angeles');
+      expect(result?.toISOString()).toBe('2026-01-18T03:00:00.000Z');
+    });
+
+    it('INTERVAL=2 divergent single BYDAY only lands in on-interval weeks (Mon-based, anchored to DTSTART week)', () => {
+      const start = '2020-01-02T20:00:00Z'; // Thu; first Saturday hit is Jan 4 (week 0)
+      const rrule = 'FREQ=WEEKLY;INTERVAL=2;BYDAY=SA';
+      const after = new Date('2020-01-05T00:00:00Z'); // past Jan 4
+      const result = computeNextOccurrence(start, rrule, after);
+      // Jan 11 is week 1 (off-interval) — next hit is Jan 18 (week 2), per backend oracle
+      expect(result?.toISOString()).toBe('2020-01-18T20:00:00.000Z');
+    });
+
+    it('skips a cancelled divergent occurrence and returns the following week', () => {
+      const start = '2020-01-02T20:00:00Z'; // Thu
+      const rrule = 'FREQ=WEEKLY;BYDAY=SA';
+      const cancelled = new Set(['2020-01-04']);
+      const result = computeNextOccurrence(start, rrule, FIXED_AFTER, cancelled);
+      expect(result?.toISOString()).toBe('2020-01-11T20:00:00.000Z');
+    });
+
+    it('regression: empty BYDAY still recurs on DTSTART weekday (fast path)', () => {
+      const start = '2020-01-02T20:00:00Z'; // Thu
+      const rrule = 'FREQ=WEEKLY';
+      const after = new Date('2020-01-06T00:00:00Z'); // Monday
+      const result = computeNextOccurrence(start, rrule, after);
+      expect(result?.toISOString()).toBe('2020-01-09T20:00:00.000Z');
+    });
+
+    it('regression: single BYDAY equal to DTSTART weekday gives the same result as before', () => {
+      const start = '2020-01-02T20:00:00Z'; // Thu
+      const rrule = 'FREQ=WEEKLY;BYDAY=TH';
+      const after = new Date('2020-01-06T00:00:00Z'); // Monday
+      const result = computeNextOccurrence(start, rrule, after);
+      expect(result?.toISOString()).toBe('2020-01-09T20:00:00.000Z');
+    });
+  });
+
   describe('addWeeksInTimezoneWallClock', () => {
     it('preserves 7 PM across spring-forward (CST→CDT)', () => {
       // Thu Mar 6 2025 7 PM CST = 2025-03-07T01:00:00Z. After +1 local week:

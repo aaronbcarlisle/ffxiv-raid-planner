@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { SnapshotPlayer } from '../../types';
 
@@ -35,9 +35,11 @@ const stubActions = {
   onUpdate: vi.fn(),
   onCopy: vi.fn(),
   onDuplicate: vi.fn(),
+  onRemove: vi.fn(),
 };
 
 const actionsForPlayer = vi.fn(() => stubActions);
+const onConfigurePlayer = vi.fn();
 
 const baseProps = {
   reorderMode: false,
@@ -47,12 +49,14 @@ const baseProps = {
   isAdminAccess: false,
   clipboardPlayer: null,
   actionsForPlayer,
-  onAddPlayer: vi.fn(),
+  onConfigurePlayer,
 };
 
 describe('RosterCards', () => {
   beforeEach(() => {
     actionsForPlayer.mockClear();
+    onConfigurePlayer.mockClear();
+    stubActions.onRemove.mockClear();
   });
 
   it('renders G1 + Substitutes party headers and a card per configured player', () => {
@@ -90,12 +94,13 @@ describe('RosterCards', () => {
     expect(actionsForPlayer).toHaveBeenNthCalledWith(3, players[2]);
   });
 
-  it('renders an EmptyStateInvite "open seat" card for an unconfigured position', () => {
+  it('renders an OpenSeatCard with per-seat Configure/Remove for an unconfigured position', () => {
     const players = [
       makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
       makePlayer({
         id: 'p2',
         name: '',
+        job: '',
         configured: false,
         position: 'H1',
         templateRole: 'pure-healer',
@@ -114,7 +119,99 @@ describe('RosterCards', () => {
 
     expect(screen.getAllByTestId('roster-card')).toHaveLength(1);
     expect(screen.getByText(/Open seat · Healer/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add player' })).toBeInTheDocument();
+    // Phase A A1: the old GLOBAL "Add player" CTA (which spawned another blank
+    // slot elsewhere) is gone — replaced by per-seat affordances.
+    expect(screen.queryByRole('button', { name: 'Add player' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Configure' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove open seat' })).toBeInTheDocument();
+    // The open seat gets REAL bound actions too (previously only configured
+    // cards invoked the factory — the kebab Remove was unreachable).
+    expect(actionsForPlayer).toHaveBeenCalledWith(players[1]);
+  });
+
+  it("wires the open seat's Remove to that seat's own onRemove", () => {
+    const players = [
+      makePlayer({
+        id: 'p2',
+        name: '',
+        job: '',
+        configured: false,
+        position: 'H1',
+        templateRole: 'pure-healer',
+      }),
+    ];
+
+    render(
+      <RosterCards
+        players={players}
+        groupView={false}
+        subsView={false}
+        subsHidden={false}
+        {...baseProps}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove open seat' }));
+    expect(stubActions.onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it("submits the inline configure form through onConfigurePlayer with THAT seat's id", () => {
+    const players = [
+      makePlayer({
+        id: 'p2',
+        name: '',
+        job: '',
+        configured: false,
+        position: 'H1',
+        templateRole: 'pure-healer',
+      }),
+    ];
+
+    render(
+      <RosterCards
+        players={players}
+        groupView={false}
+        subsView={false}
+        subsHidden={false}
+        {...baseProps}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
+    fireEvent.change(screen.getByLabelText('Player name'), { target: { value: 'New Healer' } });
+    fireEvent.click(screen.getByTitle('WHM - White Mage'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(onConfigurePlayer).toHaveBeenCalledTimes(1);
+    expect(onConfigurePlayer).toHaveBeenCalledWith('p2', 'New Healer', 'WHM', 'healer');
+  });
+
+  it('hides the open-seat Configure/Remove affordances without roster-manage permission', () => {
+    const players = [
+      makePlayer({
+        id: 'p2',
+        name: '',
+        job: '',
+        configured: false,
+        position: 'H1',
+        templateRole: 'pure-healer',
+      }),
+    ];
+
+    render(
+      <RosterCards
+        players={players}
+        groupView={false}
+        subsView={false}
+        subsHidden={false}
+        {...baseProps}
+        canManage={false}
+      />
+    );
+
+    expect(screen.getByText(/Open seat · Healer/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Configure' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove open seat' })).toBeNull();
   });
 
   it('does not render a Substitutes section when subsHidden is true', () => {

@@ -10,9 +10,10 @@
  * rendered screens. See `GroupViewContent.slots.test.tsx` for the slot-contract
  * regression lock (no legacy leaf renders when slots are provided).
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { useShellPreferenceStore } from '../lib/shellPreference';
 
 const mocks = vi.hoisted(() => ({
   currentGroup: { id: 'g1', name: 'Crescent', userRole: 'owner' } as unknown | null,
@@ -20,9 +21,18 @@ const mocks = vi.hoisted(() => ({
   canEdit: true,
 }));
 
+// Real analytics buffers + fetches — spy instead (same shape as
+// TryNewUiBanner.test.tsx). The toggle handler under test fires through it.
+const track = vi.fn();
+vi.mock('../services/analytics', () => ({ analytics: { track: (...a: unknown[]) => track(...a) } }));
+
 vi.mock('./GroupViewContent', () => ({
-  GroupViewContent: (p: { slots?: { overview?: unknown } }) => (
-    <div data-testid="gvc" data-has-overview={String(!!p.slots?.overview)} />
+  GroupViewContent: (p: { slots?: { overview?: unknown }; onSwitchToClassicUi?: () => void }) => (
+    <div data-testid="gvc" data-has-overview={String(!!p.slots?.overview)}>
+      {p.onSwitchToClassicUi && (
+        <button onClick={p.onSwitchToClassicUi}>switch-to-classic</button>
+      )}
+    </div>
   ),
 }));
 vi.mock('../components/home/Home', () => ({ Home: () => <div data-testid="home" /> }));
@@ -63,6 +73,9 @@ beforeEach(() => {
   mocks.currentGroup = { id: 'g1', name: 'Crescent', userRole: 'owner' };
   mocks.tier = { tierId: 't1', players: [] };
   mocks.canEdit = true;
+  track.mockClear();
+  localStorage.clear();
+  useShellPreferenceStore.setState({ preference: null });
 });
 
 const renderShell = () => render(<MemoryRouter><ShellContent /></MemoryRouter>);
@@ -71,6 +84,14 @@ describe('NewShell ShellContent slot wiring', () => {
   it('passes an overview slot to GroupViewContent when a static is active', () => {
     renderShell();
     expect(screen.getByTestId('gvc')).toHaveAttribute('data-has-overview', 'true');
+  });
+
+  it('threads a v2-only onSwitchToClassicUi that flips the shell to legacy with v2-more-page telemetry', () => {
+    renderShell();
+    fireEvent.click(screen.getByText('switch-to-classic'));
+    expect(track).toHaveBeenCalledWith('navigation', 'ui_shell_toggle',
+      { direction: 'to-legacy', surface: 'v2-more-page' });
+    expect(useShellPreferenceStore.getState().preference).toBe('legacy');
   });
 
   it('renders the not-found state (no gvc) when there is no current group', () => {

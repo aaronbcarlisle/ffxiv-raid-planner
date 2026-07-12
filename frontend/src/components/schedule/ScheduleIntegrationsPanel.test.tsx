@@ -371,3 +371,75 @@ describe('ScheduleIntegrationsPanel', () => {
     expect(fetchSessions).not.toHaveBeenCalled();
   });
 });
+
+// A10 void'd-promise sweep (Group B — legacy-shared, pure bugfix): these seven
+// handlers void'd re-throwing scheduleStore actions / clipboard writes with no
+// reject path. The store mocks here keep `error` null, so the failure
+// integrationMessage is what renders. Vitest fails the run on genuine unhandled
+// rejections — a free regression guard for every site below.
+describe("ScheduleIntegrationsPanel — A10 void'd-promise fixes", () => {
+  it('save failure sets the failure message and never "Webhook saved." (no unhandled rejection)', async () => {
+    const updateSettings = vi.fn(async () => { throw new Error('nope'); });
+    seedStore({ settings: makeSettings(), updateSettings });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Save'));
+    expect(await screen.findByText('Failed to save reminder settings. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByText('Webhook saved.')).not.toBeInTheDocument();
+  });
+
+  it('send-test failure sets the failure message (no unhandled rejection)', async () => {
+    const sendTestReminder = vi.fn(async () => { throw new Error('nope'); });
+    seedStore({ settings: makeSettings({ webhookConfigured: true }), sendTestReminder });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Send test'));
+    expect(await screen.findByText('Failed to send the test reminder. Please try again.')).toBeInTheDocument();
+  });
+
+  it('post-session failure sets the failure message and re-enables the button (finally still runs)', async () => {
+    const postSessionPreview = vi.fn(async () => { throw new Error('nope'); });
+    seedStore({
+      settings: makeSettings({ webhookConfigured: true }),
+      sessions: [makeSession()],
+      postSessionPreview,
+    });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Post session'));
+    expect(await screen.findByText('Failed to post the session to Discord. Please try again.')).toBeInTheDocument();
+    expect(screen.getByText('Post session')).toBeInTheDocument();
+  });
+
+  it('claim-code copy failure sets the failure message and never "Copied!"', async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } });
+    seedStore({ settings: makeSettings({ discordOfficialBotAvailable: true }) });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Connect Discord'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Copy' }));
+    expect(await screen.findByText('Failed to copy the link code.')).toBeInTheDocument();
+    expect(screen.queryByText('Copied!')).not.toBeInTheDocument();
+  });
+
+  it('calendar-URL copy failure sets the failure message and keeps the button label "Copy URL"', async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) } });
+    seedStore({ settings: makeSettings({ calendarUrl: 'https://x/cal.ics', calendarEnabled: true }) });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Copy URL' }));
+    expect(await screen.findByText('Failed to copy the calendar URL.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy URL' })).toBeInTheDocument();
+  });
+
+  it('regenerate failure sets the failure message (no unhandled rejection)', async () => {
+    const regenerateCalendar = vi.fn(async () => { throw new Error('nope'); });
+    seedStore({ settings: makeSettings({ calendarUrl: 'https://x/cal.ics', calendarEnabled: true }), regenerateCalendar });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Regenerate'));
+    expect(await screen.findByText('Failed to regenerate the calendar link. Please try again.')).toBeInTheDocument();
+  });
+
+  it('revoke failure sets the failure message (no unhandled rejection)', async () => {
+    const revokeCalendar = vi.fn(async () => { throw new Error('nope'); });
+    seedStore({ settings: makeSettings({ calendarUrl: 'https://x/cal.ics', calendarEnabled: true }), revokeCalendar });
+    render(<ScheduleIntegrationsPanel groupId="g1" canManage userRole="owner" />);
+    fireEvent.click(screen.getByText('Revoke'));
+    expect(await screen.findByText('Failed to revoke the calendar link. Please try again.')).toBeInTheDocument();
+  });
+});

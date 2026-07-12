@@ -121,4 +121,37 @@ describe('initializeAuth', () => {
     expect(state.isAuthenticated).toBe(false);
     expect(state.authInitialized).toBe(true);
   });
+
+  it('retains a persisted session when the refresh call is rate-limited (429)', async () => {
+    // Simulate app load with a persisted session: zustand persist only stores
+    // `user` (isAuthenticated is derived, never persisted, so it starts false).
+    useAuthStore.setState({ user: mockUser, isAuthenticated: false });
+
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ detail: 'Rate limit exceeded' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await initializeAuth();
+
+    const state = useAuthStore.getState();
+    // The transient 429 must NOT force a logout — the persisted user survives
+    // and the reactive 401 retry in services/api.ts recovers the session later.
+    expect(state.user).toEqual(mockUser);
+    expect(state.isLoading).toBe(false);
+    expect(state.authInitialized).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });
