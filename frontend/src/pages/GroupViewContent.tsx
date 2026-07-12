@@ -332,28 +332,26 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
   // each gives deep-linking, reload persistence, and browser back/forward.
   const [rosterSubView, setRosterSubView] = useUrlTabState('rsub', ROSTER_SUB_VIEWS, 'members');
   const [scheduleView, setScheduleView] = useUrlTabState('sched', SCHEDULE_VIEWS, 'upcoming');
-  // Gated on `!slots?.roster` so a v2 roster slot (which dropped the legacy
-  // Split Planner, D-P3-2) doesn't fire the split-clear fetch; no-op on
-  // legacy (`slots` undefined).
-  // Dep-array-only boolean: a ReactNode's identity is unstable across renders
-  // (would refire both effects below every render) — only its presence matters.
+  // Gated on the roster slot's absence: a v2 roster slot (which dropped the
+  // legacy Split Planner, D-P3-2) must not fire the split-clear fetch; no-op
+  // on legacy (`slots` undefined). Boolean (not the ReactNode itself) so the
+  // effects key on stable slot PRESENCE — a ReactNode's identity churns every
+  // render and would refire both effects each time.
   const hasRosterSlot = !!slots?.roster;
   useEffect(() => {
-    if (pageMode === 'roster' && !slots?.roster && currentGroup?.id) {
+    if (pageMode === 'roster' && !hasRosterSlot && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `hasRosterSlot` IS `!!slots?.roster`, deliberately swapped in for the ReactNode itself (see comment above).
   }, [pageMode, hasRosterSlot, currentGroup?.id, fetchSplitClear]);
   useEffect(() => { return () => clearSplitClear(); }, [clearSplitClear]);
 
   // Silently refetch split-clear data when the user returns from another tab
-  // (e.g. after linking characters on the profile page). Same `!slots?.roster`
+  // (e.g. after linking characters on the profile page). Same `!hasRosterSlot`
   // gate as the mount fetch above.
   useVisibilityRefresh(useCallback(() => {
-    if (pageMode === 'roster' && !slots?.roster && currentGroup?.id) {
+    if (pageMode === 'roster' && !hasRosterSlot && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- same deliberate `hasRosterSlot` swap as the mount effect above.
   }, [pageMode, hasRosterSlot, currentGroup?.id, fetchSplitClear]));
 
   // Admin access only when navigating from Admin Dashboard with adminMode=true
