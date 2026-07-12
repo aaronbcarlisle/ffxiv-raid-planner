@@ -79,6 +79,36 @@ function parseDaysFromRule(rule: string | null | undefined): Set<string> {
   return new Set(match[1].split(','));
 }
 
+// JS Date#getUTCDay() order — index 0 = Sunday.
+const ICS_WEEKDAYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'] as const;
+
+/**
+ * ICS weekday code for a datetime-local value ("YYYY-MM-DDTHH:mm").
+ * datetime-local values in this modal are wall-clock in the session's timezone
+ * (see toZonedDatetimeLocalValue / fromZonedDatetimeLocalValue), so the calendar
+ * date part alone determines the weekday the user sees — parse it directly,
+ * UTC-anchored, to avoid browser-local reinterpretation.
+ */
+function weekdayFromDatetimeLocal(value: string): string | null {
+  const [datePart] = value.split('T');
+  if (!datePart) return null;
+  const [year, month, day] = datePart.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (isNaN(parsed.getTime())) return null;
+  return ICS_WEEKDAYS[parsed.getUTCDay()];
+}
+
+/**
+ * Default recurrence days: an existing rule wins (edit flow keeps user intent);
+ * otherwise derive from the chosen start date; 'SA' only while start is blank.
+ */
+function seedSelectedDays(rule: string | null | undefined, startTimeLocal: string): Set<string> {
+  if (rule) return parseDaysFromRule(rule);
+  const weekday = startTimeLocal ? weekdayFromDatetimeLocal(startTimeLocal) : null;
+  return weekday ? new Set([weekday]) : new Set(['SA']);
+}
+
 function buildRecurrenceRule(days: Set<string>): string {
   const ordered = DAYS_OF_WEEK.filter((d) => days.has(d.key)).map((d) => d.key);
   return `FREQ=WEEKLY;BYDAY=${ordered.join(',')}`;
@@ -110,14 +140,15 @@ function toAbsoluteAssetUrl(path: string): string {
 function getInitialFormState(editSession?: ScheduleSession | null, initialDraft?: ScheduleSessionCreate | null) {
   const source = editSession ?? initialDraft ?? null;
   const timezone = source?.timezone ?? getBrowserTimezone();
+  const startTime = source?.startTime ? toZonedDatetimeLocalValue(source.startTime, timezone) : '';
   return {
     title: source?.title ?? '',
     description: source?.description ?? '',
-    startTime: source?.startTime ? toZonedDatetimeLocalValue(source.startTime, timezone) : '',
+    startTime,
     endTime: source?.endTime ? toZonedDatetimeLocalValue(source.endTime, timezone) : '',
     timezone,
     isRecurring: source?.isRecurring ?? false,
-    selectedDays: parseDaysFromRule(source?.recurrenceRule),
+    selectedDays: seedSelectedDays(source?.recurrenceRule, startTime),
     trackAvailability: source && 'trackAvailability' in source ? source.trackAvailability ?? true : true,
     category: (source && 'category' in source ? source.category : null) as EventCategory | null,
     contentName: (source && 'contentName' in source ? source.contentName : null) as string | null,
@@ -171,6 +202,8 @@ export function CreateSessionModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const initializedForRef = useRef<string | null>(null);
+  // First manual day toggle stops start-date re-seeding of the picker (new sessions only).
+  const daysDirtyRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -180,6 +213,7 @@ export function CreateSessionModal({
     const sessionKey = editSession?.id ?? initialDraft?.title ?? '__create__';
     if (initializedForRef.current === sessionKey) return;
     initializedForRef.current = sessionKey;
+    daysDirtyRef.current = false;
 
     const nextState = getInitialFormState(editSession, initialDraft);
     setTitle(nextState.title);
@@ -206,6 +240,7 @@ export function CreateSessionModal({
   }, [editSession, initialDraft, isOpen]);
 
   const toggleDay = (day: string) => {
+    daysDirtyRef.current = true;
     setSelectedDays((prev) => {
       const next = new Set(prev);
       if (next.has(day)) {
@@ -265,6 +300,10 @@ export function CreateSessionModal({
 
   const handleStartChange = (value: string) => {
     setStartTime(value);
+    if (!editSession && !daysDirtyRef.current && value) {
+      const weekday = weekdayFromDatetimeLocal(value);
+      if (weekday) setSelectedDays(new Set([weekday]));
+    }
     if (value && !endTime) {
       setEndTime(addDurationInTimeZone(value, DEFAULT_DURATION_MS, timezone));
     } else if (

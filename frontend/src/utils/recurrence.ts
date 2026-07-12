@@ -218,8 +218,14 @@ export function computeNextOccurrence(
       return getOccurrenceDateKeysForMatching(d.toISOString(), timezone).some(k => cancelledDates.has(k));
     };
 
-    if (rule.byday.length <= 1) {
-      // Fast path: single (or missing) BYDAY.
+    // DTSTART's weekday, computed the same way the day-scan matches candidates:
+    // local weekday when a timezone is provided, UTC weekday otherwise.
+    const dtstartWeekday = timezone ? localWeekday(dtstart, timezone) : dtstart.getUTCDay();
+
+    if (rule.byday.length === 0 || (rule.byday.length === 1 && rule.byday[0] === dtstartWeekday)) {
+      // Fast O(1) path: no BYDAY (recur on dtstart's own weekday), or a single
+      // BYDAY that already equals dtstart's weekday — advancing whole weeks
+      // from dtstart always lands on the right day.
       // When timezone is provided, advance by local calendar weeks to preserve
       // the wall-clock time across DST (e.g. "every Thu 7 PM" stays 7 PM after
       // spring-forward). Without timezone, fall back to naïve 7×DAY_MS advance.
@@ -242,7 +248,17 @@ export function computeNextOccurrence(
       return null;
     }
 
-    // Multiple BYDAY: scan days to find the next matching weekday.
+    // BYDAY divergent from DTSTART's weekday, or multiple BYDAY: scan days to
+    // find the next matching weekday. This honors an explicit BYDAY exactly like
+    // the backend engine (backend/app/services/recurrence.py) — the previous
+    // single-BYDAY fast path silently recurred on dtstart's own weekday instead.
+    // INTERVAL is honored by only accepting weeks whose Monday-based index from
+    // dtstart's week is a multiple of the interval (backend _advance semantics:
+    // base = current + interval weeks; week_start = base - base.weekday()).
+    const dtstartDaysFromMonday = (dtstartWeekday + 6) % 7;
+    const inIntervalWeek = (daysFromDtstart: number): boolean =>
+      Math.floor((dtstartDaysFromMonday + daysFromDtstart) / 7) % rule.interval === 0;
+
     // When timezone is provided, scan local calendar dates at the session's
     // wall-clock time so 7 PM CDT (midnight UTC) stays Thursday, not Friday,
     // and the local time is preserved across DST transitions.
@@ -253,7 +269,7 @@ export function computeNextOccurrence(
       let y = sy, mo = sm, d = sd;
       for (let i = 0; i < 730; i++) {
         const utcMs = localToUtcMs(y, mo, d, hour, minute, second, timezone);
-        if (utcMs > afterMs) {
+        if (utcMs > afterMs && inIntervalWeek(i)) {
           const candidate = new Date(utcMs);
           if (rule.byday.includes(localWeekday(candidate, timezone))) {
             if (!isCancelled(candidate)) return candidate;
@@ -269,7 +285,7 @@ export function computeNextOccurrence(
     // No timezone: UTC-naïve day-by-day scan
     const candidate = new Date(dtstart.getTime());
     for (let i = 0; i < 730; i++) {
-      if (candidate.getTime() > afterMs) {
+      if (candidate.getTime() > afterMs && inIntervalWeek(i)) {
         if (rule.byday.includes(candidate.getUTCDay())) {
           if (!isCancelled(candidate)) return new Date(candidate.getTime());
         }
