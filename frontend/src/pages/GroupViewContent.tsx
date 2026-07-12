@@ -332,20 +332,24 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
   // each gives deep-linking, reload persistence, and browser back/forward.
   const [rosterSubView, setRosterSubView] = useUrlTabState('rsub', ROSTER_SUB_VIEWS, 'members');
   const [scheduleView, setScheduleView] = useUrlTabState('sched', SCHEDULE_VIEWS, 'upcoming');
+  // Gated on `!slots?.roster` so a v2 roster slot (which dropped the legacy
+  // Split Planner, D-P3-2) doesn't fire the split-clear fetch; no-op on
+  // legacy (`slots` undefined).
   useEffect(() => {
-    if (pageMode === 'roster' && currentGroup?.id) {
+    if (pageMode === 'roster' && !slots?.roster && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
-  }, [pageMode, currentGroup?.id, fetchSplitClear]);
+  }, [pageMode, slots?.roster, currentGroup?.id, fetchSplitClear]);
   useEffect(() => { return () => clearSplitClear(); }, [clearSplitClear]);
 
   // Silently refetch split-clear data when the user returns from another tab
-  // (e.g. after linking characters on the profile page).
+  // (e.g. after linking characters on the profile page). Same `!slots?.roster`
+  // gate as the mount fetch above.
   useVisibilityRefresh(useCallback(() => {
-    if (pageMode === 'roster' && currentGroup?.id) {
+    if (pageMode === 'roster' && !slots?.roster && currentGroup?.id) {
       void fetchSplitClear(currentGroup.id);
     }
-  }, [pageMode, currentGroup?.id, fetchSplitClear]));
+  }, [pageMode, slots?.roster, currentGroup?.id, fetchSplitClear]));
 
   // Admin access only when navigating from Admin Dashboard with adminMode=true
   const adminModeParam = searchParams.get('adminMode') === 'true';
