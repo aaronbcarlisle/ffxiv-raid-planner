@@ -85,6 +85,7 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const currentWeek = useLootTrackingStore((s) => s.currentWeek);
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
   const fetchPageLedger = useLootTrackingStore((s) => s.fetchPageLedger);
+  const fetchMaterialLog = useLootTrackingStore((s) => s.fetchMaterialLog);
 
   const fetchProgress = useMountFarmStore((s) => s.fetchProgress);
 
@@ -106,6 +107,10 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
       if (tierId) {
         fetchLootLog(group.id, tierId);
         fetchPageLedger(group.id, tierId);
+        // fetchMaterialLog re-throws on failure (lootTrackingStore) — swallow like
+        // the ScheduleTab mount-fetch precedent so this new call can't become an
+        // unhandled-rejection site. Feeds the activity feed only; non-fatal.
+        void fetchMaterialLog(group.id, tierId).catch(() => undefined);
       }
     }
   }, [
@@ -118,6 +123,7 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     fetchProgress,
     fetchLootLog,
     fetchPageLedger,
+    fetchMaterialLog,
   ]);
 
   // ── Next session (first upcoming, ascending) ──────────────────────────────

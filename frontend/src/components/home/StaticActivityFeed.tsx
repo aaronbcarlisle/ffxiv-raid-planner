@@ -6,8 +6,9 @@
  * relative timestamp, matching the legacy `RecentActivityModule` row shape;
  * empty → `EmptyStateInvite`.
  *
- * Boundary discipline (ring0): reads stores (`mountFarmStore` + `authStore` —
- * ring0→store is allowed) and the not-ring-typed `utils/staticActivity` derivation,
+ * Boundary discipline (ring0): reads stores (`mountFarmStore` + `authStore` +
+ * `lootTrackingStore` — ring0→store is allowed) and the not-ring-typed
+ * `utils/staticActivity` + `utils/lootActivity` derivations,
  * and composes shared `ui/` components. It NEVER imports a ring1/ring3 component —
  * notably it reads the mount-farm *store*, not a `components/mount-farms/*` (ring3).
  *
@@ -16,26 +17,53 @@
  * `user.activityDisplayMode`). This component only renders the result.
  */
 
-import { Activity, Plug, Sparkles, Target, Trophy, type LucideIcon } from 'lucide-react';
+import { Activity, Gem, Package, Plug, Sparkles, Target, Trophy, type LucideIcon } from 'lucide-react';
 import { CardShell } from '../ui/CardShell';
 import { EmptyStateInvite } from '../ui/EmptyStateInvite';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { deriveActivityItems, type StaticActivityItem } from '../../utils/staticActivity';
+import { deriveLootActivityItems, type LootActivityItem } from '../../utils/lootActivity';
+
+/**
+ * The merged feed row. Component-LOCAL union: `StaticActivityItem`'s own icon
+ * union must never widen (the frozen legacy StaticHomeTab keys an exhaustive
+ * Record on it), so loot/material icons live in `LootActivityItem` and only
+ * this render type sees both.
+ */
+type FeedIcon = StaticActivityItem['icon'] | LootActivityItem['icon'];
+
+interface FeedRow {
+  key: string;
+  icon: FeedIcon;
+  label: string;
+  createdAt: string;
+  time: string;
+}
 
 /** Source badge per activity icon — token-clean tints (no raw color). */
-const ICON_BADGE: Record<StaticActivityItem['icon'], { Icon: LucideIcon; className: string }> = {
+const ICON_BADGE: Record<FeedIcon, { Icon: LucideIcon; className: string }> = {
   mount: { Icon: Trophy, className: 'bg-status-warning/15 text-status-warning' },
   currency: { Icon: Target, className: 'bg-status-info/15 text-status-info' },
   plugin: { Icon: Plug, className: 'bg-accent/15 text-accent' },
   tracking: { Icon: Sparkles, className: 'bg-membership-lead/15 text-membership-lead' },
+  loot: { Icon: Package, className: 'bg-gear-raid/15 text-gear-raid' },
+  material: { Icon: Gem, className: 'bg-gear-augmented/15 text-gear-augmented' },
 };
 
 export function StaticActivityFeed() {
   const data = useMountFarmStore((s) => s.data);
   const user = useAuthStore((s) => s.user);
+  const lootLog = useLootTrackingStore((s) => s.lootLog);
+  const materialLog = useLootTrackingStore((s) => s.materialLog);
 
-  const items = data ? deriveActivityItems(data, user?.id, user?.activityDisplayMode) : [];
+  const mountItems = data ? deriveActivityItems(data, user?.id, user?.activityDisplayMode) : [];
+  const lootItems = deriveLootActivityItems(lootLog, materialLog);
+  // Pure recency — a big raid night dominating the feed IS the recent activity.
+  const items: FeedRow[] = [...mountItems, ...lootItems]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 5);
 
   return (
     <CardShell
