@@ -27,6 +27,7 @@ const PublicProfile = lazy(() => import('./pages/PublicProfile'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ default: m.InviteAccept })));
 const PluginAuth = lazy(() => import('./pages/PluginAuth').then(m => ({ default: m.PluginAuth })));
+const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 // Documentation pages
 const DocsIndex = lazy(() => import('./pages/DocsIndex').then(m => ({ default: m.DocsIndex })));
@@ -187,6 +188,12 @@ function App() {
             <Route path="docs/privacy" element={<PrivacyDocs />} />
             {/* Legacy redirect for old /design-system URL */}
             <Route path="design-system" element={<DesignSystemPage />} />
+            {/* Catch-all 404 (A7) — MUST stay the LAST child inside the Layout
+                route so Header/nav chrome mounts around the not-found page.
+                Do NOT add a second top-level wildcard: route ranking already
+                lets /auth/callback, /invite/:inviteCode and /plugin-auth win
+                over "/" + "*", so this one splat catches every other URL. */}
+            <Route path="*" element={<NotFound />} />
           </Route>
           {/* Auth callback route (outside Layout for cleaner UX) */}
           <Route path="/auth/callback" element={<AuthCallback />} />
