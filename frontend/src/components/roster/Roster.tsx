@@ -364,7 +364,9 @@ export function Roster({ group, tier, canManage }: RosterProps) {
         <GearBoard
           players={sortedPlayers}
           tierId={tierId}
-          canManage={canManage}
+          userRole={userRole}
+          currentUserId={effectiveUserId ?? null}
+          isAdminAccess={isAdminAccess}
           actionsForPlayer={actionsForPlayer}
           priorities={priorities}
         />
