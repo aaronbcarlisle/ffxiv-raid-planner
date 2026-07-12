@@ -47,7 +47,13 @@ highest user-priority item after A.
 
 ---
 
-## 2. Phase R — Restore the dual shell ⚠️ riskiest phase
+## 2. Phase R — Restore the dual shell ✅ COMPLETE (2026-07-11, PR #174 → foundation `329c394`)
+
+> Executed per `specs/2026-07-11-phase-r-dual-shell-restore.md`; all exit-gate clauses
+> verified (both smoke suites in one run, full CI gate, byte-freeze loops, live browser
+> validation both shells × both themes). Restored files are back under the byte-for-byte
+> freeze (baseline = f45a241). Follow-up candidates surfaced by review are listed at the
+> end of §3.
 
 **Goal:** both shells live again behind a **persisted user preference** (not just a URL
 param), legacy byte-for-byte at its P2 state + P3's keeper fixes, v1 default.
@@ -116,6 +122,17 @@ lowers the stakes but every one is still required before v2 can ever become defa
   off-center at DT/TE and card icons).
 - TopBar icon order → `⌘K · invite · bell · theme │ settings` (settings far-right with a
   vertical divider to its left; theme moves left of the divider).
+
+**Phase R follow-up candidates (surfaced by the #174 review; fold in where cheap):**
+- **Mobile shell toggle** — neither toggle affordance is reachable on mobile (banner is
+  `hidden sm:block`; v2's UserMenu lives in the desktop-only rail). A desktop v2 opt-in
+  mirrors server-side, so a phone then hydrates v2 with only the per-load `?shell=legacy`
+  escape. Add a mobile-reachable toggle (e.g. v2 More-page entry + mobile banner row).
+- **Slot-gate the v2 splitClear fetch** — restored GVC fires the legacy split-clear fetch
+  on the roster tab even in v2 (contained: store-local error, nothing renders it; wasted
+  GET + guest 403 noise). Gate on `!slots?.roster`.
+- **dev_auth normalizes `tab_persistence` on login** (the `is_public` precedent) — the
+  legacy e2e run surfaced drifted dev-DB state; make suite preconditions self-restoring.
 
 ## 4. Phase G — Merge foundation→main (user-owned, EARLY)
 

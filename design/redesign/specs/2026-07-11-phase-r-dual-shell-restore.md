@@ -1,8 +1,11 @@
 # Phase R — Restore the Dual Shell (Design Spec)
 
-> **Status:** APPROVED (2026-07-11 user skim — no notes; all §11 recommendations stand:
+> **Status:** EXECUTED + MERGED (2026-07-11) — PR #174, foundation squash `329c394`.
+> All §10 exit-gate clauses verified (both smoke suites green in one run, full CI gate,
+> byte-freeze loops, live browser validation both shells × both themes).
+> Approved via user skim — no notes; all §11 recommendations stood:
 > C1/C2/C3 ratified, backend mirror in scope, `ui_shell_banner_dismiss` included,
-> banner copy via PR screenshots). Executes ROLLOUT_ROADMAP §2 (plan of
+> banner copy via PR screenshots. Executes ROLLOUT_ROADMAP §2 (plan of
 > record, user decisions locked 2026-07-11). Base: `redesign/foundation` @ `09ec09b`.
 > Restore source: `f45a241` (P2-final tree = `cf25c92^`).
 >
