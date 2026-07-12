@@ -106,19 +106,19 @@ describe('StaticActivityFeed', () => {
   it('renders the CardShell header', () => {
     render(<StaticActivityFeed />);
     expect(screen.getByRole('heading', { name: /recent activity/i })).toBeInTheDocument();
-    expect(screen.getByText('this week')).toBeInTheDocument();
+    expect(screen.getByText('latest')).toBeInTheDocument();
   });
 
   it('shows an empty state when there is no activity', () => {
     mocks.data = null;
     render(<StaticActivityFeed />);
-    expect(screen.getByText(/no activity yet this week/i)).toBeInTheDocument();
+    expect(screen.getByText(/no recent activity yet/i)).toBeInTheDocument();
   });
 
   it('shows an empty state when data has no qualifying rows', () => {
     mocks.data = { currentUserId: null, trials: [] };
     render(<StaticActivityFeed />);
-    expect(screen.getByText(/no activity yet this week/i)).toBeInTheDocument();
+    expect(screen.getByText(/no recent activity yet/i)).toBeInTheDocument();
   });
 
   it('renders activity rows with label and relative time when data is present', () => {
@@ -126,14 +126,14 @@ describe('StaticActivityFeed', () => {
     render(<StaticActivityFeed />);
     expect(screen.getByText('Alice obtained Wings of Ruin')).toBeInTheDocument();
     // No empty state once rows exist.
-    expect(screen.queryByText(/no activity yet this week/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no recent activity yet/i)).not.toBeInTheDocument();
   });
 
   it('renders a loot row with recipient, slot name, and fight', () => {
     mocks.lootLog = [makeLootEntry({ id: 1 })];
     render(<StaticActivityFeed />);
     expect(screen.getByText('Alice received Body — M11S')).toBeInTheDocument();
-    expect(screen.queryByText(/no activity yet this week/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no recent activity yet/i)).not.toBeInTheDocument();
   });
 
   it('renders a material row with recipient and material name', () => {

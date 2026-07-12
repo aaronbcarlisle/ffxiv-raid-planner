@@ -2,9 +2,10 @@
  * StaticActivityFeed (ring0 `home/`)
  *
  * "Recent activity" Home card (spec §5.12): privacy-filtered loot/material/mount
- * activity rows for the static this week. Each row is a source badge + text +
- * relative timestamp, matching the legacy `RecentActivityModule` row shape;
- * empty → `EmptyStateInvite`.
+ * activity rows for the static — pure recency across all weeks (the loot log
+ * spans the whole tier, so no "this week" framing). Each row is a source badge
+ * + text + relative timestamp, matching the legacy `RecentActivityModule` row
+ * shape; empty → `EmptyStateInvite`.
  *
  * Boundary discipline (ring0): reads stores (`mountFarmStore` + `authStore` +
  * `lootTrackingStore` — ring0→store is allowed) and the not-ring-typed
@@ -68,12 +69,12 @@ export function StaticActivityFeed() {
   return (
     <CardShell
       title="Recent activity"
-      headerRight={<span className="text-xs text-text-tertiary leading-none">this week</span>}
+      headerRight={<span className="text-xs text-text-tertiary leading-none">latest</span>}
     >
       {items.length === 0 ? (
         <EmptyStateInvite
           icon={<Activity className="h-5 w-5" />}
-          title="No activity yet this week"
+          title="No recent activity yet"
         />
       ) : (
         <ul className="flex flex-col divide-y divide-border-subtle">
