@@ -236,21 +236,28 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
     }
     setMentionError(null);
 
-    await updateSettings(groupId, {
-      webhookUrl: webhookUrl || undefined,
-      reminderChannelLabel: channelLabel || null,
-      mentionTarget,
-      mentionRoleId: mentionTarget === 'role' ? normalizedRoleId : null,
-      enableAtStartReminder: enableAtStart,
-      enable15mReminder: enable15m,
-      enable24hReminder: enable24h,
-      enable1hReminder: enable1h,
-      enable6hReminder: enable6h,
-      enable12hReminder: enable12h,
-      enableMissingRsvpReminder: enableMissingRsvp,
-    });
-    setWebhookUrl('');
-    setIntegrationMessage('Webhook saved.');
+    // A10: updateSettings re-throws — without the catch a failed Save was an
+    // unhandled rejection with NO error path at all (in-file precedent:
+    // handleConnectDiscord / handleDisconnectDiscord).
+    try {
+      await updateSettings(groupId, {
+        webhookUrl: webhookUrl || undefined,
+        reminderChannelLabel: channelLabel || null,
+        mentionTarget,
+        mentionRoleId: mentionTarget === 'role' ? normalizedRoleId : null,
+        enableAtStartReminder: enableAtStart,
+        enable15mReminder: enable15m,
+        enable24hReminder: enable24h,
+        enable1hReminder: enable1h,
+        enable6hReminder: enable6h,
+        enable12hReminder: enable12h,
+        enableMissingRsvpReminder: enableMissingRsvp,
+      });
+      setWebhookUrl('');
+      setIntegrationMessage('Webhook saved.');
+    } catch {
+      setIntegrationMessage('Failed to save reminder settings. Please try again.');
+    }
   };
 
   const handleConnectDiscord = async () => {
@@ -335,8 +342,14 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
 
   const handleCopyCalendarUrl = async () => {
     if (!settings?.calendarUrl) return;
-    await navigator.clipboard.writeText(settings.calendarUrl);
-    setIntegrationMessage('Copied!');
+    // A10 clipboard shape: success message only after the write resolves; a
+    // rejected write must not escape the void'd call site as an unhandled rejection.
+    try {
+      await navigator.clipboard.writeText(settings.calendarUrl);
+      setIntegrationMessage('Copied!');
+    } catch {
+      setIntegrationMessage('Failed to copy the calendar URL.');
+    }
   };
 
   return (
@@ -507,7 +520,10 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
                     type="button"
                     size="sm"
                     variant="secondary"
-                    onClick={() => void sendTestReminder(groupId).then(() => setIntegrationMessage('Test reminder sent!'))}
+                    onClick={() => void sendTestReminder(groupId).then(
+                      () => setIntegrationMessage('Test reminder sent!'),
+                      () => setIntegrationMessage('Failed to send the test reminder. Please try again.'),
+                    )}
                     disabled={!settings?.webhookConfigured && !webhookUrl}
                   >
                     Send test
@@ -522,6 +538,7 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
                       setPostingPreview(true);
                       void postSessionPreview(groupId)
                         .then(() => setIntegrationMessage('Session posted to Discord.'))
+                        .catch(() => setIntegrationMessage('Failed to post the session to Discord. Please try again.'))
                         .finally(() => setPostingPreview(false));
                     }}
                     disabled={!settings?.webhookConfigured || sessions.length === 0 || postingPreview}
@@ -750,7 +767,10 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
                           size="sm"
                           variant="ghost"
                           leftIcon={<Copy className="h-3 w-3" />}
-                          onClick={() => void navigator.clipboard.writeText(discordClaimCode ?? '').then(() => setIntegrationMessage('Copied!'))}
+                          onClick={() => void navigator.clipboard.writeText(discordClaimCode ?? '').then(
+                            () => setIntegrationMessage('Copied!'),
+                            () => setIntegrationMessage('Failed to copy the link code.'),
+                          )}
                         >
                           Copy
                         </Button>
@@ -922,7 +942,7 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
                     size="sm"
                     variant="secondary"
                     leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
-                    onClick={() => void regenerateCalendar(groupId)}
+                    onClick={() => void regenerateCalendar(groupId).catch(() => setIntegrationMessage('Failed to regenerate the calendar link. Please try again.'))}
                   >
                     Regenerate
                   </Button>
@@ -931,7 +951,7 @@ export function ScheduleIntegrationsPanel({ groupId, canManage, userRole }: Sche
                     size="sm"
                     variant="danger"
                     leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-                    onClick={() => void revokeCalendar(groupId)}
+                    onClick={() => void revokeCalendar(groupId).catch(() => setIntegrationMessage('Failed to revoke the calendar link. Please try again.'))}
                     disabled={!settings?.calendarEnabled}
                   >
                     Revoke
