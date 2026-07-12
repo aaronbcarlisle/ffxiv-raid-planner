@@ -49,6 +49,7 @@ import { CharacterManageBridge } from './CharacterManageBridge';
 import { useGroupViewState } from '../../hooks/useGroupViewState';
 import { usePlayerActions } from '../../hooks/usePlayerActions';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { useGroupActions } from '../../pages/groupActionsContext';
 import { useAuthStore } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
@@ -318,9 +319,15 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     [playerActions, setClipboardPlayer, handleCopyUrl, clipboardPlayer, handlePastePlayer],
   );
 
-  const handleAddPlayer = useCallback(() => {
-    void playerActions.handleAddPlayer();
-  }, [playerActions]);
+  // "Add player" → the SHARED AddPlayerModal flow (groupActionsContext) — the
+  // same modal legacy's toolbar and the v2 TopBar use. It creates AND
+  // configures the player atomically (name/job/position/tankRole), so no blank
+  // `configured: false` slot is ever left behind (Phase A A1). The raw
+  // blank-slot wrapper (`playerActions.handleAddPlayer`) is intentionally no
+  // longer called from any visible button; the store-level addPlayer primitive
+  // still backs the shared modal flow and duplicate-player. `<GroupActionModals>`
+  // is guaranteed to be an ancestor: NewShell.tsx:340 wraps the whole v2 tree.
+  const { onAddPlayer } = useGroupActions();
 
   return (
     <div data-testid="roster-screen">
@@ -349,7 +356,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           reorderMode={reorderMode}
           onReorderModeChange={setReorderMode}
           canManage={canManage}
-          onAddPlayer={handleAddPlayer}
+          onAddPlayer={onAddPlayer}
         />
       </div>
 
@@ -380,7 +387,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           isAdmin={isAdmin}
           userHasClaimedPlayer={userHasClaimedPlayer}
           actionsForPlayer={actionsForPlayer}
-          onAddPlayer={handleAddPlayer}
+          onConfigurePlayer={playerActions.handleConfigurePlayer}
           onReorder={playerActions.handleReorder}
         />
       )}

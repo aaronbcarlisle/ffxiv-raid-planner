@@ -6,7 +6,7 @@
 // components (`RosterCard`, `CharacterManageBridge`) so we assert only the
 // Roster assembly's own contract: header + subtitle, a card per player, and the
 // once-per-screen gear-source legend.
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import type { SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
@@ -58,6 +58,22 @@ vi.mock('../../stores/authStore', () => ({
 vi.mock('../../stores/viewAsStore', () => ({
   useViewAsStore: (selector: (s: { viewAsUser: null }) => unknown) =>
     selector({ viewAsUser: null }),
+}));
+
+// Phase A A1: Roster's "Add player" goes through the SHARED AddPlayerModal
+// flow (useGroupActions().onAddPlayer). Roster renders WITHOUT a
+// <GroupActionModals> provider in this suite, so the context hook must be
+// mocked (it throws outside a provider). Same shape NewShell.roster.test.tsx
+// already uses.
+const groupActionsOnAddPlayer = vi.fn();
+vi.mock('../../pages/groupActionsContext', () => ({
+  useGroupActions: () => ({
+    onTierChange: vi.fn(),
+    onAddPlayer: groupActionsOnAddPlayer,
+    onNewTier: vi.fn(),
+    onRollover: vi.fn(),
+    onDeleteTier: vi.fn(),
+  }),
 }));
 
 // RosterCard is heavy (kebab, modals, inline edits) — stub it so we only assert
@@ -146,6 +162,9 @@ function renderRosterAtUrl(tier: TierSnapshot | null, initialEntries: string[]) 
 }
 
 beforeEach(() => {
+  groupActionsOnAddPlayer.mockClear();
+  playerActions.handleAddPlayer.mockClear();
+  playerActions.handleConfigurePlayer.mockClear();
   window.history.pushState({}, '', '/group/DEVTST?tab=roster');
   // Roster now subscribes to lootTrackingStore and fires two fetch actions on
   // mount (fetchLootLog / fetchCurrentWeek). Stub them via setState so they never
@@ -232,6 +251,35 @@ describe('Roster', () => {
       </BrowserRouter>,
     );
     expect(screen.queryByText('●')).not.toBeInTheDocument();
+  });
+
+  // Phase A A1 — the toolbar's Add player must open the SHARED AddPlayerModal
+  // flow (create + configure atomically), NEVER the raw blank-slot primitive
+  // (which left permanently-stuck `configured: false` slots).
+  it('wires the toolbar "Add player" to useGroupActions().onAddPlayer, not the raw blank-slot primitive', () => {
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' })]));
+
+    fireEvent.click(screen.getByRole('button', { name: /add player/i }));
+
+    expect(groupActionsOnAddPlayer).toHaveBeenCalledTimes(1);
+    expect(playerActions.handleAddPlayer).not.toHaveBeenCalled();
+  });
+
+  // Phase A A1 — an open seat's inline configure routes through
+  // handleConfigurePlayer with THAT seat's id (real RosterCards + OpenSeatCard;
+  // only the RosterCard leaf is stubbed in this suite).
+  it("routes an open seat's inline configure to handleConfigurePlayer with that seat's id", () => {
+    renderRoster(makeTier([
+      makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
+      makePlayer({ id: 'p2', name: '', job: '', configured: false, position: 'H1', templateRole: 'pure-healer' }),
+    ]));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Configure' }));
+    fireEvent.change(screen.getByLabelText('Player name'), { target: { value: 'New Healer' } });
+    fireEvent.click(screen.getByTitle('WHM - White Mage'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(playerActions.handleConfigurePlayer).toHaveBeenCalledWith('p2', 'New Healer', 'WHM', 'healer');
   });
 });
 

@@ -3,8 +3,8 @@
  *
  * The Cards view's body: groups the roster into Light Party 1 / Light Party 2
  * / Unassigned / Substitutes sections (reusing `groupPlayersByLightParty`) and
- * renders one `RosterCard` (Task 5) per configured player, or a dashed
- * `EmptyStateInvite` "open seat" card for an unconfigured position. Visual
+ * renders one `RosterCard` (Task 5) per configured player, or an `OpenSeatCard`
+ * (per-seat Configure/Remove, Phase A A1) for an unconfigured position. Visual
  * target: `mockups/02-roster-cards.html` `.party-head` + `.pcards`; behaviour:
  * `design/redesign/specs/2026-07-01-f6c-roster-design.md` §5.6.
  *
@@ -36,11 +36,11 @@
  *     actions must already be bound to that card's player — exactly like
  *     legacy `PlayerGrid`'s `PlayerCardRenderer`, which wraps playerId-taking
  *     handlers in a `useCallback` per player. `renderPlayer` calls
- *     `actionsForPlayer(player)` per card so Task 10's assembly (which wires
- *     `usePlayerActions`' playerId-taking handlers) only has to supply one
- *     factory function, not pre-bind N objects itself. `onAddPlayer` is the
- *     one genuinely global action (opens the add flow) and is a separate,
- *     ungrouped prop.
+ *     `actionsForPlayer(player)` per card — for OPEN seats too (Phase A A1),
+ *     so their Remove is bound to that exact seat's id. `onConfigurePlayer` is
+ *     the one playerId-FIRST prop (the open-seat inline form submits through
+ *     it; the assembly wires `usePlayerActions.handleConfigurePlayer`, which
+ *     flips `configured: true` on that id).
  *   - Open-seat derivation = `!player.configured` (mirrors legacy `PlayerGrid`
  *     / `EmptySlotCard`, NOT "position with no player" — an unconfigured
  *     template slot already carries a position/templateRole from the wizard,
@@ -51,10 +51,10 @@
  *     overridden to `membership-linked`). The old legacy `LightPartyHeader`'s
  *     ad-hoc blue/red raw-color badges are NOT the reuse target — spec §7
  *     ("no raw palette") is explicit that G1/G2 do not get distinct hues in v2.
- *   - "Recruit" (Static Finder) is deferred — `EmptyStateInvite` renders a
- *     single "Add player" action wired to `onAddPlayer`. Recruiting from the
- *     Static Finder is a separate, not-yet-built screen (REDESIGN_SPEC §5.6
- *     Static Finder), out of scope here.
+ *   - "Recruit" (Static Finder) is deferred — open seats render `OpenSeatCard`
+ *     (per-seat Configure/Remove; Phase A A1 removed the global "Add player"
+ *     CTA that spawned blank slots). Recruiting from the Static Finder is a
+ *     separate, not-yet-built screen (REDESIGN_SPEC §5.6), out of scope here.
  */
 import { useCallback, useState, type ReactNode } from 'react';
 import {
@@ -64,8 +64,8 @@ import {
   useDraggable,
   useDroppable,
 } from '@dnd-kit/core';
-import { Plus } from 'lucide-react';
-import { CardShell, EmptyStateInvite, PlayerIdentity, ProgressBar, Tag } from '../ui';
+import { CardShell, PlayerIdentity, ProgressBar, Tag } from '../ui';
+import { OpenSeatCard } from './OpenSeatCard';
 import { RosterCard } from './RosterCard';
 import type { DragAttributes, DragListeners } from './dragTypes';
 import { useDragAndDrop, type PlayerUpdate } from '../dnd/useDragAndDrop';
@@ -73,7 +73,6 @@ import { useDragStore } from '../../stores/dragStore';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import { groupPlayersByLightParty } from '../../utils/calculations';
 import { bisSlotTotals } from '../../utils/rosterReadiness';
-import { TEMPLATE_ROLE_INFO } from '../../utils/constants';
 import { getValidRole } from '../../gamedata';
 import type { ContentType, MemberRole, SnapshotPlayer } from '../../types';
 
@@ -119,8 +118,12 @@ export interface RosterCardsProps {
    * player, mirroring legacy `PlayerGrid`'s per-player `useCallback` binding.
    */
   actionsForPlayer: (player: SnapshotPlayer) => RosterCardActions;
-  /** The one genuinely global action — opens the add-player flow. */
-  onAddPlayer: () => void;
+  /**
+   * Configure an OPEN seat in place (Phase A A1) — playerId-FIRST, mirroring
+   * `usePlayerActions.handleConfigurePlayer`: sets name/job/role and flips
+   * `configured: true` on that exact id.
+   */
+  onConfigurePlayer: (playerId: string, name: string, job: string, role: string) => Promise<void> | void;
   /**
    * GRID-level reorder handler (NOT a per-player action). Signature matches
    * `useDragAndDrop`'s `onReorder`: given the batch of `{ playerId, data }`
@@ -212,13 +215,6 @@ function RosterCardsDragOverlay({ players }: { players: SnapshotPlayer[] }) {
   );
 }
 
-/** "Tank" / "Healer" / "Melee" / ... label for an unconfigured seat's role. */
-function emptySeatRoleLabel(player: SnapshotPlayer): string {
-  if (player.templateRole) return TEMPLATE_ROLE_INFO[player.templateRole].shortLabel;
-  const role = getValidRole(player.role);
-  return role.charAt(0).toUpperCase() + role.slice(1);
-}
-
 /** Aggregate BiS ratio (obtained / total BiS slots) across a party's roster. */
 function partyBisRatio(partyPlayers: SnapshotPlayer[]): number {
   const { obtained, total } = bisSlotTotals(partyPlayers);
@@ -272,7 +268,7 @@ export function RosterCards({
   onModalOpen,
   onModalClose,
   actionsForPlayer,
-  onAddPlayer,
+  onConfigurePlayer,
   onReorder,
 }: RosterCardsProps) {
   // Open-modal counter → drives the hook's `disabled` (999999 sensor distance),
@@ -332,27 +328,20 @@ export function RosterCards({
 
   const renderPlayer = (player: SnapshotPlayer): ReactNode => {
     if (!player.configured) {
-      const roleLabel = emptySeatRoleLabel(player);
       const highlightClass = player.id === highlightedPlayerId ? ' highlight-pulse rounded-lg' : '';
+      // Open seats get REAL per-seat actions too (Phase A A1): the factory
+      // binds Remove to THIS seat's id, and Configure submits through
+      // `onConfigurePlayer(player.id, …)` — never a global add that would
+      // spawn yet another blank slot elsewhere.
+      const seatActions = actionsForPlayer(player);
       return (
         <div key={player.id} id={`player-card-${player.id}`} className={`relative${highlightClass}`}>
-          <CardShell as="div" className="relative overflow-hidden border-dashed">
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0 left-0 w-[3px]"
-              style={{ backgroundColor: 'var(--color-border-default)' }}
-            />
-            <EmptyStateInvite
-              icon={<Plus className="h-5 w-5" />}
-              title={`Open seat · ${roleLabel}`}
-              description={
-                player.position
-                  ? `Add a player to fill the ${player.position} slot.`
-                  : `Add a player to fill this ${roleLabel.toLowerCase()} slot.`
-              }
-              action={{ label: 'Add player', onClick: onAddPlayer }}
-            />
-          </CardShell>
+          <OpenSeatCard
+            player={player}
+            canManage={canManage}
+            onConfigure={(name, job, role) => onConfigurePlayer(player.id, name, job, role)}
+            onRemove={seatActions.onRemove}
+          />
         </div>
       );
     }
