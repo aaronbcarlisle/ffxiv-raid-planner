@@ -17,6 +17,7 @@ import { useGroupViewState } from '../hooks/useGroupViewState';
 import { useStaticPermissions } from '../hooks/useStaticPermissions';
 import { useViewAsUrlSync } from '../hooks/useViewAsUrlSync';
 import { useStaticNavMemory } from '../hooks/useStaticNavMemory';
+import { useShellToggle } from '../hooks/useShellToggle';
 import { useModal } from '../hooks/useModal';
 import { useCurrentTier } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
@@ -60,6 +61,13 @@ export function ShellContent() {
   // `userRole` is the effective role the roster slot re-checks via canManageRoster
   // (admin-aware — pass `isAdminAccess` so an admin non-manager still manages).
   const { canEdit: canManage, userRole, isAdminAccess } = useStaticPermissions();
+
+  // Phase A (A5c): v2→legacy escape hatch handed to the More page. Constructed
+  // ONLY here (the v2 chrome) — the legacy route renders GroupViewContent
+  // without it, so MorePage's "Switch to classic UI" section is v2-exclusive.
+  // On mobile this is the only reachable v2→legacy affordance (AppRail and its
+  // UserMenu toggle are hidden below sm). Mirrors UserMenu's switchShell call.
+  const switchShell = useShellToggle('v2-more-page');
 
   const overview = currentGroup ? (
     <StaticHome
@@ -165,6 +173,7 @@ export function ShellContent() {
       <GroupViewContent
         actions={useGroupActions()}
         slots={{ overview, roster, gear: loot, schedule }}
+        onSwitchToClassicUi={() => switchShell('legacy')}
       />
     </ShellContentStates>
   );
@@ -303,10 +312,11 @@ export function NewShell() {
       id: 'player-hub',
       label: 'Player Hub',
       icon: Home,
-      // Player Hub is active when we're not in any static context (future F6b);
-      // in F6a (always inside a static route) it is never active.
+      // NewShell only renders on /group/:shareCode routes, so the Person-layer
+      // targets (/profile, /discover) can never be the active route here —
+      // isActive stays hardcoded false (wiring it would be dead code).
       isActive: false,
-      onSelect: () => { /* F6b: navigate to /player-hub */ },
+      onSelect: () => navigate('/profile'),
     },
     {
       kind: 'icon',
@@ -314,7 +324,7 @@ export function NewShell() {
       label: 'Static Finder',
       icon: Globe,
       isActive: false,
-      onSelect: () => { /* F6b: navigate to /find-static */ },
+      onSelect: () => navigate('/discover'),
     },
     { kind: 'divider', id: 'div-statics' },
     ...groups.map((g): RailEntry => ({

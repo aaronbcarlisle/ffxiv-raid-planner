@@ -3,6 +3,7 @@ import { useState } from 'react';
 import {
   Users, Settings, Link2, Book, Sword, Download, Activity,
   AlertTriangle, ChevronRight, Clock, ExternalLink, CheckCircle, XCircle, PlugZap, LogOut,
+  ArrowLeftRight,
 } from 'lucide-react';
 import type { MemberRole, PageMode } from '../../types';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
@@ -10,6 +11,7 @@ import { useScheduleStore } from '../../stores/scheduleStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { DashboardCard, IconMedallion, SectionLabel } from '../ui/DashboardCard';
 import { ConfirmModal } from '../ui/ConfirmModal';
+import { Button } from '../primitives';
 
 interface MorePageProps {
   onOpenSettings: (tab?: string) => void;
@@ -21,6 +23,12 @@ interface MorePageProps {
   /** Legacy shell only — v2 dropped the card (D-P3-2); rendered only when the
    *  caller wires it. */
   onOpenSplitPlanner?: () => void;
+  /** v2 shell only (Phase A, A5c) — the classic-UI escape hatch. Legacy never
+   *  passes it, so the Interface section renders exclusively in v2 — at ALL
+   *  viewports (approved skim §6.5): on mobile it is the only reachable
+   *  v2→legacy affordance (the rail UserMenu is hidden below sm); on desktop
+   *  it is harmless redundancy with the rail entry. */
+  onSwitchToClassicUi?: () => void;
   onOpenIntegrations: () => void;
   onOpenPlugin: () => void;
   canManage: boolean;
@@ -41,6 +49,7 @@ export function MorePage({
   onNavigate,
   onOpenLootHistory,
   onOpenSplitPlanner,
+  onSwitchToClassicUi,
   onOpenIntegrations,
   onOpenPlugin,
   canManage,
@@ -313,6 +322,29 @@ export function MorePage({
 
         </div>
       </section>
+
+      {/* Interface — v2-only classic-UI escape hatch (Phase A, A5c). Rendered
+          only when the caller wires onSwitchToClassicUi (NewShell does; the
+          legacy chrome never passes it). Deliberately NOT responsive-gated —
+          renders at all viewports (approved skim §6.5). Kept visually separate
+          from the Danger Zone below: switching UIs is safe and reversible. */}
+      {onSwitchToClassicUi && (
+        <section>
+          <SectionLabel className="mb-3">Interface</SectionLabel>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <DashboardCard title="New UI" icon={<ArrowLeftRight size={13} />} accentColor="teal">
+              <p className="text-xs text-text-secondary mb-4">
+                You're viewing the redesigned interface. Switch back to the
+                classic UI at any time — nothing about your static's data or
+                settings changes.
+              </p>
+              <Button variant="secondary" size="sm" onClick={onSwitchToClassicUi}>
+                Switch to classic UI
+              </Button>
+            </DashboardCard>
+          </div>
+        </section>
+      )}
 
       {/* Danger Zone — hidden entirely when it would render no buttons
           (non-owner member whose host didn't wire onLeaveStatic). */}

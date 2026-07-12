@@ -1,5 +1,5 @@
 /**
- * useShellToggle — the ONE path both toggle affordances use to switch shells.
+ * useShellToggle — the ONE path every shell-toggle affordance uses to switch shells.
  * Fires the ui_shell_toggle analytics event (sunset telemetry — Phase H's
  * criteria depend on it existing from day one), persists the preference, and
  * strips any ?shell= URL override (otherwise the param would immediately
@@ -10,7 +10,7 @@ import { useSearchParams } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 import { useShellPreferenceStore, type Shell } from '../lib/shellPreference';
 
-export function useShellToggle(surface: 'legacy-banner' | 'v2-user-menu') {
+export function useShellToggle(surface: 'legacy-banner' | 'v2-user-menu' | 'v2-more-page') {
   const [searchParams, setSearchParams] = useSearchParams();
   const setPreference = useShellPreferenceStore((s) => s.setPreference);
   return useCallback((target: Shell) => {

@@ -169,6 +169,7 @@ vi.mock('../components/group/MorePage', () => ({
     onOpenIntegrations: () => void;
     onOpenLootHistory: () => void;
     onOpenSplitPlanner?: () => void;
+    onSwitchToClassicUi?: () => void;
     onLeaveStatic?: () => void | Promise<void>;
   }) => (
     <div data-testid="more-page">
@@ -176,6 +177,9 @@ vi.mock('../components/group/MorePage', () => ({
       <button onClick={() => props.onOpenLootHistory()}>open-loot-history</button>
       {props.onOpenSplitPlanner && (
         <button onClick={props.onOpenSplitPlanner}>open-split-planner</button>
+      )}
+      {props.onSwitchToClassicUi && (
+        <button onClick={props.onSwitchToClassicUi}>switch-to-classic-ui</button>
       )}
       {props.onLeaveStatic && (
         <button onClick={() => { void props.onLeaveStatic?.(); }}>leave-static</button>
@@ -276,6 +280,21 @@ describe('GroupViewContent — v2 all-slots contract (dual shell, Phase R)', () 
     mockPageMode = 'more';
     renderContent();
     expect(screen.queryByText('open-split-planner')).toBeNull();
+  });
+
+  // ── onSwitchToClassicUi pass-through (Phase A, A5c): GroupViewContent is a
+  //    pure conduit — MorePage receives the handler exactly when the chrome
+  //    provides it (NewShell does; legacy never does — pinned below). ──
+  it('forwards onSwitchToClassicUi to MorePage when the chrome provides it', () => {
+    mockPageMode = 'more';
+    const onSwitchToClassicUi = vi.fn();
+    render(
+      <MemoryRouter>
+        <GroupViewContent actions={actions} slots={slots} onSwitchToClassicUi={onSwitchToClassicUi} />
+      </MemoryRouter>,
+    );
+    screen.getByText('switch-to-classic-ui').click();
+    expect(onSwitchToClassicUi).toHaveBeenCalledTimes(1);
   });
 
   // ── Integrations re-route (flip-P3 Task 4 fold-in): the More page's
@@ -394,5 +413,10 @@ describe('GroupViewContent — legacy (slotless) More-page wiring (Phase R)', ()
   it('passes onLeaveStatic in the legacy (slotless) shell too — the Danger Zone bugfix reaches both shells', () => {
     renderSlotless();
     expect(screen.getByText('leave-static')).toBeInTheDocument();
+  });
+
+  it('passes NO switch-to-classic affordance when the chrome provides none (legacy)', () => {
+    renderSlotless();
+    expect(screen.queryByText('switch-to-classic-ui')).toBeNull();
   });
 });

@@ -84,6 +84,25 @@ describe('MorePage', () => {
     expect(onOpenSplitPlanner).toHaveBeenCalledTimes(1);
   });
 
+  it('does not render the Switch to classic UI section when onSwitchToClassicUi is not wired (legacy shell)', () => {
+    renderMorePage();
+    expect(screen.queryByRole('button', { name: /switch to classic ui/i })).toBeNull();
+    expect(screen.queryByText('Interface')).toBeNull();
+  });
+
+  it('renders the Switch to classic UI button at all viewports when onSwitchToClassicUi is wired (v2) and clicking fires it', () => {
+    const onSwitchToClassicUi = vi.fn();
+    renderMorePage({ onSwitchToClassicUi });
+
+    const button = screen.getByRole('button', { name: /switch to classic ui/i });
+    // All-viewports contract (approved skim §6.5): no responsive hiding on the
+    // button or its section — on mobile this is the ONLY v2→legacy path.
+    expect(button.className).not.toMatch(/(^|\s)(hidden|sm:hidden|max-sm:hidden)(\s|$)/);
+    expect(button.closest('section')?.className ?? '').not.toMatch(/(^|\s)(hidden|sm:hidden|max-sm:hidden)(\s|$)/);
+    fireEvent.click(button);
+    expect(onSwitchToClassicUi).toHaveBeenCalledTimes(1);
+  });
+
   it('calls onOpenIntegrations (settings-panel open with the integrations tab) when the Integrations card is clicked', () => {
     const onOpenIntegrations = vi.fn();
     renderMorePage({ onOpenIntegrations });

@@ -91,9 +91,13 @@ export interface GroupViewContentProps {
   /** Chrome-triggered actions the content's toolbar/bodies invoke (add-player, tier ops).
    *  Fed from the shared GroupActions context (`useGroupActions()`) by each chrome. */
   actions: GroupActions;
+  /** v2 only (Phase A, A5c): NewShell threads the classic-UI escape hatch down
+   *  to the More page. The legacy chrome never passes it, so the More page's
+   *  "Switch to classic UI" section renders exclusively in v2. */
+  onSwitchToClassicUi?: () => void;
 }
 
-export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
+export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupViewContentProps) {
   const navigate = useNavigate();
   const { currentGroup, groups, error: groupError, removeMember, setCurrentGroup } = useStaticGroupStore();
   const { tiers, currentTier, isSaving, error: tierError, fetchTier } = useTierStore();
@@ -1166,6 +1170,7 @@ export function GroupViewContent({ slots, actions }: GroupViewContentProps) {
                     setPageMode('roster', { rsub: 'split-planner' });
                   },
                 } : {})}
+                onSwitchToClassicUi={onSwitchToClassicUi}
                 onOpenIntegrations={() => {
                   useSettingsPanelStore.getState().open({ tab: 'integrations' });
                 }}
