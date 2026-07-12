@@ -248,4 +248,28 @@ describe('useRosterCardActions', () => {
       tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
     });
   });
+
+  it('preserves hasItem/isAugmented through the flip (spread, not clobber)', () => {
+    // The all-true fixture distinguishes the real `...player.tomeWeapon` spread
+    // from a mutant that hardcodes hasItem/isAugmented false — and pins the
+    // true→false pursuing direction at the same time.
+    const onUpdate = vi.fn();
+    const { result } = renderHook(() =>
+      useRosterCardActions({
+        ...base,
+        player: makePlayer({ tomeWeapon: { pursuing: true, hasItem: true, isAugmented: true } }),
+        actions: { onUpdate, onCopy: vi.fn(), onDuplicate: vi.fn() },
+      }),
+    );
+    const item = result.current.menuItems.find(
+      (i) => 'label' in i && i.label === 'Stop Tracking Tome Weapon',
+    );
+    expect(item).toBeDefined();
+    act(() => {
+      if (item && 'onClick' in item) item.onClick?.();
+    });
+    expect(onUpdate).toHaveBeenCalledWith({
+      tomeWeapon: { pursuing: false, hasItem: true, isAugmented: true },
+    });
+  });
 });
