@@ -159,17 +159,17 @@ describe('GroupViewContent — gear slot chrome gating', () => {
   it('LEGACY (no slots): renders the legacy gear sub-tab bar', () => {
     renderContent();
     // The four gear sub-tabs are the discriminator for the legacy gear body.
-    expect(screen.getByRole('button', { name: 'Log' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Priority' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sync' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Summary' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'BiS' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Jobs' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'History' })).toBeInTheDocument();
   });
 
   it('V2 (slots.gear provided): renders the slot and hides the legacy gear sub-tabs', () => {
     renderContent({ slots: { gear: <div data-testid="gear-slot" /> } });
     expect(screen.getByTestId('gear-slot')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sync' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Summary' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Jobs' })).not.toBeInTheDocument();
   });
 
   it('LEGACY (no slots): the mobile controls sheet shows the gear view selector + reset actions', () => {

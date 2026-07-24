@@ -22,7 +22,7 @@ type LootSubTab = 'matrix' | 'gear' | 'weapon';
 // back/forward reconciliation can restore the default that a param-less history
 // entry represents. Must match the fallbacks in the initial-state setup.
 const DEFAULT_GEAR_SUB: GearSubTab = 'sync';
-const DEFAULT_LOOT_SUB: LootSubTab = 'gear';
+const DEFAULT_LOOT_SUB: LootSubTab = 'matrix';
 
 // ── URL → state parsers (shared by initial state and back/forward reconciliation) ──
 // Each returns null when the param is absent/unrecognized so callers can fall
@@ -235,7 +235,7 @@ export function useGroupViewState(): UseGroupViewStateReturn {
     if (urlSubtab === 'matrix' || urlSubtab === 'gear' || urlSubtab === 'weapon') {
       return urlSubtab;
     }
-    return recallTab(tabKey('loot-priority-subtab', scope), ['matrix', 'gear', 'weapon'] as const, 'gear');
+    return recallTab(tabKey('loot-priority-subtab', scope), ['matrix', 'gear', 'weapon'] as const, 'matrix');
   });
 
   // ===== View state: URL param > localStorage > default =====

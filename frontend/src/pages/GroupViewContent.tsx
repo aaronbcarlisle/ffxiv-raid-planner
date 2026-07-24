@@ -976,16 +976,16 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
         {/* Gear Tab */}
         {pageMode === 'gear' && (slots?.gear ?? (
           <>
-            <PageHeader icon={<Shield size={14} className="text-accent" />} title="Loot Log" subtitle="Jobs, BiS, and sync health." />
+            <PageHeader icon={<Shield size={14} className="text-accent" />} title="Gear & Sync" subtitle="Jobs, BiS, and sync health." />
             {/* Sub-tab bar — sits below the page title, matching the
                 title-then-subtabs order used on every other tab. */}
             <div className="overflow-x-auto mb-4 flex-shrink-0">
               <div className="flex gap-0.5 p-1 bg-surface-raised rounded-lg border border-border-default w-fit" style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)' }}>
                 {([
-                  { id: 'history' as GearSubTab, label: 'Log' },
-                  { id: 'priority' as GearSubTab, label: 'Priority' },
                   { id: 'sync' as GearSubTab, label: 'Sync' },
-                  { id: 'stats' as GearSubTab, label: 'Summary' },
+                  { id: 'priority' as GearSubTab, label: 'BiS' },
+                  { id: 'stats' as GearSubTab, label: 'Jobs' },
+                  { id: 'history' as GearSubTab, label: 'History' },
                 ]).map(t => (
                   /* design-system-ignore: sub-tab inline buttons */
                   <button
@@ -1139,7 +1139,8 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
         {/* Goals & Farms Tab */}
         {pageMode === 'goals' && (
           <>
-            <PageHeader icon={<Trophy size={14} className="text-accent" />} title="Tracking" subtitle="Track objectives, farms, and weekly goals." />
+            {/* V1 parity: legacy shows main's "Goals & Farms"; v2 keeps the Track-centric "Tracking". `slots` is undefined only in the legacy shell. */}
+            <PageHeader icon={<Trophy size={14} className="text-accent" />} title={slots ? 'Tracking' : 'Goals & Farms'} subtitle="Track objectives, farms, and weekly goals." />
             {currentGroup && (
               <GoalsPage
                 groupId={currentGroup.id}
