@@ -87,9 +87,9 @@ param), legacy byte-for-byte at its P2 state + P3's keeper fixes, v1 default.
 persists; both smoke suites green; full CI gate green; browser validation both shells,
 both themes.
 
-## 3. Phase A — v2 flip-debt fixes ✅ COMPLETE (2026-07-12, PR #175 → foundation `6c9da75`)
+## 3. Phase A — v2 flip-debt fixes ✅ COMPLETE — 16/17 (item 10 partial) (2026-07-12, PR #175 → foundation `6c9da75`)
 
-> All 17 items landed as 13 tasks. Spec: `specs/2026-07-11-phase-a-flip-debt-fixes.md`
+> **16 of 17 items fully landed** as 13 tasks; **item 10 (void'd-promise sweep) is partial** — a bugfix-only micro-slice remains (see below). Spec: `specs/2026-07-11-phase-a-flip-debt-fixes.md`
 > (status header carries the merge record + the View-As/Leave decision point). Deferred
 > follow-ups from the branch: frozen-file void sites (SplitClearPlanner ×4,
 > LodestoneSearchModal ×12) + remaining `actionsForPlayer` bindings
@@ -145,13 +145,13 @@ lowers the stakes but every one is still required before v2 can ever become defa
 ## 4. Phase G — Merge foundation→main (user-owned, EARLY)
 
 Gate = R + A complete. Checklist (user executes):
-- [ ] Local `smoke` + `smoke-legacy` + `contrast` runs attached to the PR
-- [ ] One manual mobile-viewport pass (both shells, four Ring-0 screens)
-- [ ] Migration rehearsal + prod-data testing against a **Railway DB copy**
-- [ ] Release notes: public entry "Try the new UI (opt-in beta)" + `CURRENT_VERSION`
-      → **2.1.0** (3.0.0 is reserved for the v2-default flip in Phase H)
+- [x] Local `smoke` + `smoke-legacy` + `contrast` runs attached to the PR
+- [x] One manual mobile-viewport pass (both shells, four Ring-0 screens) — `25de30e`
+- [x] Migration rehearsal + prod-data testing against a **Railway DB copy**
+- [x] Release notes: public entry "Try the new UI (opt-in beta)" + `CURRENT_VERSION`
+      → **2.1.0** (3.0.0 is reserved for the v2-default flip in Phase H) — `71b854f`
 - [ ] Ratify list in the PR body (D-P3 decisions incl. SplitClearPlanner/TeamSummary
-      drops — note both are recoverable and Phase B may resurrect their capabilities)
+      drops — note both are recoverable and Phase B may resurrect their capabilities) — **awaits user ruling on the 2 decision points**
 - [ ] User reviews + merges; main's 5 required checks + reviews stand
 
 After G, `main` is live with v1 unchanged for users + opt-in v2. Branch freeze ends;

@@ -139,8 +139,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         label: 'Open Settings',
         icon: <Settings className="w-4 h-4" aria-hidden="true" />,
         // Use the same opener as SettingsGear (settingsPanelStore.open), not the
-        // legacy showSettings URL-param path. Still a no-op in v2 until the
-        // settings host is mounted — tracked deferral. (Fix 3, PR #163)
+        // legacy showSettings URL-param path. The palette mounts only in NewShell,
+        // where V2SettingsHost (F6b) hosts the panel — so this opens Settings in v2.
         onSelect: () => { openSettingsPanel(); handleClose(); },
       },
       // ── Switch static — one row per group ────────────────────────────
