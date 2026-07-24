@@ -76,6 +76,14 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'fix',
+        title: 'V1 parity — legacy shell matched back to main',
+        description:
+          'The classic (default) shell drifted from main during the redesign build-out; these reverts restore exact parity. Sidebar/page labels back to "Goals & Farms" and "Gear & Sync"; gear sub-tabs back to Sync · BiS · Jobs · History; loot priority defaults to "Who Needs It" with order Who Needs It · Gear Priority · Weapon Priority (Alt+1/2/3); and the wizard Next button regains its chevron. Verified surface-by-surface against main. No change to the opt-in v2 shell.',
+        commits: [{ hash: '9c8a770', message: 'fix(redesign): restore V1 legacy-shell parity with main (D1/D2/D3/D7)', date: '2026-07-24' }],
+      },
+      {
+        internal: true,
+        category: 'fix',
         title: 'Phase A — v2 flip-debt fixes',
         description:
           'Thirteen fixes clearing v2 capability dead-ends and correctness traps: add-player flows through the shared modal with per-seat configure/remove, members can edit their own gear on the Board, tome-weapon tracking toggle in the kebab, Danger Zone works (Delete retargeted, self-service Leave Static implemented, Archive removed), rail/nav gaps closed with a mobile shell toggle in both directions, loot in the Home activity feed, a real 404 page, auth no longer logs out on rate-limit blips, BYDAY recurrence matches Discord/backend, a void-promise sweep (21 sites), assign works with zero needers, and visual quick wins — plus the Phase R follow-ups (split-clear fetch gating, dev_auth preference normalization).',
