@@ -455,7 +455,7 @@ See **[docs/README.md](./docs/README.md)** for the full doc map. Canonical set:
 
 ### Source of truth
 - **[PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md)** - What the app is, the model, the roadmap **(READ FIRST)**
-- **[REDESIGN_SPEC.md](./docs/REDESIGN_SPEC.md)** - IA, visual language, flows + mockups *(in progress)*
+- **[REDESIGN_SPEC.md](./design/redesign/REDESIGN_SPEC.md)** - IA, visual language, flows + mockups *(in progress)*
 
 ### Design System
 - **[UI_COMPONENTS.md](./docs/UI_COMPONENTS.md)** - Component inventory **(READ BEFORE UI WORK)**

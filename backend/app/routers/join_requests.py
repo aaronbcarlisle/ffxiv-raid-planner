@@ -746,7 +746,10 @@ async def accept_join_request(
             notification_type="application_accepted",
             title="Application accepted",
             body=f"Your application to {group_name} has been accepted. Welcome!",
-            href="/dashboard",
+            # Link straight to the static they just joined (same form as the
+            # new_application notification above); fall back to My Statics if
+            # the group vanished before the notification was written.
+            href=f"/group/{group.share_code}" if group else "/profile?tab=statics",
             group_id=group.id if group else None,
         )
         await session.commit()
