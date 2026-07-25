@@ -9,11 +9,18 @@
  * writes the store, and this one host (mounted in App.tsx next to
  * ToastContainer) renders the center for both shells on every route.
  */
+import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { NotificationCenter } from './NotificationCenter';
 
 export function NotificationCenterHost() {
+  const user = useAuthStore((s) => s.user);
   const centerOpen = useNotificationStore((s) => s.centerOpen);
   const closeCenter = useNotificationStore((s) => s.closeCenter);
+  // Self-gates on the session exactly as the old UserMenu-hosted mount did
+  // (UserMenu returns null for guests): an open center must unmount the
+  // moment the session is cleared — including mid-flight auth failures —
+  // not linger with stale notifications and an unauthenticated retry.
+  if (!user) return null;
   return <NotificationCenter isOpen={centerOpen} onClose={closeCenter} />;
 }

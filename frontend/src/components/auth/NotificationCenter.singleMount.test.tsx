@@ -256,3 +256,18 @@ describe('NotificationCenter — V1 characterization (RC6)', () => {
     expect(screen.getByTestId('notification-center').getAttribute('data-open')).toBe('false');
   });
 });
+
+describe('NotificationCenterHost session gate', () => {
+  it('renders nothing when the session is cleared, even with centerOpen true', () => {
+    const savedUser = authState.user;
+    // Simulate mid-flight session loss (refresh-token failure clears user).
+    (authState as { user: typeof authState.user | null }).user = null;
+    useNotificationStore.setState({ centerOpen: true });
+    try {
+      const { container } = render(<NotificationCenterHost />);
+      expect(container).toBeEmptyDOMElement();
+    } finally {
+      (authState as { user: typeof authState.user | null }).user = savedUser;
+    }
+  });
+});

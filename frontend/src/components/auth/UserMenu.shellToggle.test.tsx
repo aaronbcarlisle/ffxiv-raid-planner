@@ -48,7 +48,7 @@ vi.mock('../../stores/authStore', () => {
   return { useAuthStore: useAuthStoreMock };
 });
 vi.mock('../../stores/notificationStore', () => ({
-  useNotificationStore: () => ({ unreadCount: 0, fetchNotifications: vi.fn() }),
+  useNotificationStore: () => ({ unreadCount: 0, fetchNotifications: vi.fn(), openCenter: vi.fn() }),
 }));
 vi.mock('../../hooks/useTheme', () => ({
   useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),

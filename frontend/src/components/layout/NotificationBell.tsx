@@ -1,8 +1,8 @@
 /**
  * NotificationBell (F6a, Task 10) — v2 TopBar bell affordance.
  *
- * Prop-driven: calls `onOpen` when clicked; the parent (NewShell, which is
- * boundary-exempt as a `pages/` module) hosts <NotificationCenter /> and passes
+ * Prop-driven: calls `onOpen` when clicked; openers write notificationStore
+ * and the single app-level NotificationCenterHost renders the center; passes
  * the opener down via TopBar → NotificationBell. This keeps the shell→person
  * boundary clean — no direct auth-component import here.
  *
@@ -13,7 +13,7 @@
  * `canManageInvitations`-gated `fetchGroupRequests` call. This component
  * replicates that effect so the badge is live in v2. Mirrors Header.tsx:107-113.
  *
- * Byte-for-byte rule: does NOT modify `NotificationCenter`, `UserMenu`,
+ * Byte-for-byte rule: does NOT modify `NotificationCenter`,
  * `Header`, or `SettingsDockToggle`. Those stay intact for the legacy route.
  */
 import { useEffect } from 'react';
@@ -26,7 +26,7 @@ import { useStaticPermissions } from '../../hooks/useStaticPermissions';
 import { IconButton, Tooltip } from '../primitives';
 
 interface NotificationBellProps {
-  /** Called when the bell is clicked; parent hosts <NotificationCenter />. */
+  /** Called when the bell is clicked; opens the app-level center host. */
   onOpen: () => void;
 }
 

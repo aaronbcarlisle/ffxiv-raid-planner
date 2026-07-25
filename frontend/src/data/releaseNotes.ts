@@ -94,7 +94,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Stage-1 seams: chrome-context signal + notification center single-mount',
         description:
-          'The v2 escape hatch now keys on an in-chrome context (renders on every v2-chromed route, never in legacy chrome); Discord/GitHub gain mobile-v2 menu homes; the notification center is mounted once app-wide via the store instead of twice.',
+          'The v2 escape hatch now keys on an in-chrome context (renders on every v2-chromed route, never in legacy chrome); Discord/GitHub menu seams added for mobile v2 (dormant until the mobile top bar lands); the notification center is mounted once app-wide via the store instead of twice.',
         pr: 179,
         prTitle: 'feat: Stage 1 PR-1 — chrome-context signal, G2 escape rekey, M2 links, NotificationCenter single-mount',
       },
