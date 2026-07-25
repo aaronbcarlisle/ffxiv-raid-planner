@@ -3,6 +3,7 @@ import { Scissors, RotateCcw, Wand2 } from 'lucide-react';
 import { AlertTriangle } from 'lucide-react';
 import type { SnapshotPlayer } from '../../types';
 import { useSplitClearStore } from '../../stores/splitClearStore';
+import { toast } from '../../stores/toastStore';
 import { getSplitClearReadiness } from '../../utils/splitClear';
 import {
   buildSplitClearDraft,
@@ -44,7 +45,14 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
             type="button"
             size="sm"
             variant="accent-subtle"
-            onClick={() => void toggleMode(groupId, true)}
+            onClick={() => {
+              // A3 (A10 shape): toggleMode re-throws after recording store error
+              // state, but this mode-OFF branch renders no error banner — toast
+              // so the failure can't become a silent unhandled rejection.
+              void toggleMode(groupId, true).catch((err) =>
+                toast.error(err instanceof Error ? err.message : 'Failed to enable split planning'),
+              );
+            }}
             disabled={isSaving}
           >
             Enable split planning
@@ -71,7 +79,10 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
       return;
     }
     setResetConfirm(false);
-    void resetWeek(groupId);
+    // A3 (A10 shape): resetWeek re-throws after recording store error state,
+    // which the error banner below renders — catch so the rejection can't go
+    // unhandled.
+    void resetWeek(groupId).catch(() => undefined);
   }
 
   function handleGenerateDraft() {
@@ -81,23 +92,31 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
 
   async function handleApplyDraft() {
     if (!draft) return;
-    await Promise.all(
-      draft.assignments.map(a =>
-        updateAssignment(groupId, a.playerId, {
-          runACharacterLinkId: a.runACharacterLinkId,
-          runBCharacterLinkId: a.runBCharacterLinkId,
-          // Mirror resolved names into legacy text fields for backward compat rendering
-          mainCharacterName: a.runACharacterName,
-          mainCharacterWorld: a.runACharacterWorld,
-          altCharacterName: a.runBCharacterName,
-          altCharacterWorld: a.runBCharacterWorld,
-          runACharacter: a.runACharacter,
-          runBCharacter: a.runBCharacter,
-          lootTarget: a.lootTarget,
-          lootTargetJob: a.lootTargetJob,
-        }),
-      ),
-    );
+    // A3 (A10 shape): updateAssignment re-throws after recording store error
+    // state, which the error banner below renders — catch so a failed apply
+    // can't go unhandled (Promise.all attaches handlers to every member); the
+    // draft stays open for retry, as before.
+    try {
+      await Promise.all(
+        draft.assignments.map(a =>
+          updateAssignment(groupId, a.playerId, {
+            runACharacterLinkId: a.runACharacterLinkId,
+            runBCharacterLinkId: a.runBCharacterLinkId,
+            // Mirror resolved names into legacy text fields for backward compat rendering
+            mainCharacterName: a.runACharacterName,
+            mainCharacterWorld: a.runACharacterWorld,
+            altCharacterName: a.runBCharacterName,
+            altCharacterWorld: a.runBCharacterWorld,
+            runACharacter: a.runACharacter,
+            runBCharacter: a.runBCharacter,
+            lootTarget: a.lootTarget,
+            lootTargetJob: a.lootTargetJob,
+          }),
+        ),
+      );
+    } catch {
+      return;
+    }
     setDraft(null);
     setManualBoardOpen(true); // Always open board after apply
   }
@@ -185,7 +204,12 @@ export function SplitClearPlanner({ groupId, players, canEdit }: SplitClearPlann
           players={players}
           assignmentMap={assignmentMap}
           canEdit={canEdit}
-          onUpdate={(playerId, update) => void updateAssignment(groupId, playerId, update)}
+          onUpdate={(playerId, update) => {
+            // A3 (A10 shape): updateAssignment re-throws after recording store
+            // error state, which the error banner above renders — catch so the
+            // rejection can't go unhandled.
+            void updateAssignment(groupId, playerId, update).catch(() => undefined);
+          }}
         />
       )}
     </div>

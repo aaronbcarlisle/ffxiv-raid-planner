@@ -42,6 +42,7 @@ import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
 import { useAuthStore } from '../../stores/authStore';
+import { toast } from '../../stores/toastStore';
 import { useWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
 import { relativeTime } from '../../utils/staticActivity';
 import { getAllTrialIds } from '../../gamedata';
@@ -105,8 +106,15 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
       fetchSessions(group.id);
       fetchProgress(group.id, getAllTrialIds());
       if (tierId) {
-        fetchLootLog(group.id, tierId);
-        fetchPageLedger(group.id, tierId);
+        // A3 (A10 shape, Roster/Loot mount-fetch precedent): fetchLootLog and
+        // fetchPageLedger re-throw after recording store error state, but this
+        // screen never renders lootTrackingStore.error — surface ONE toast for
+        // the pair (Promise.all attaches handlers to every member, so nothing
+        // escapes unhandled).
+        void Promise.all([
+          fetchLootLog(group.id, tierId),
+          fetchPageLedger(group.id, tierId),
+        ]).catch(() => toast.error('Failed to load loot data'));
         // fetchMaterialLog re-throws on failure (lootTrackingStore) — swallow like
         // the ScheduleTab mount-fetch precedent so this new call can't become an
         // unhandled-rejection site. Feeds the activity feed only; non-fatal.

@@ -341,9 +341,33 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           toast.error(err instanceof Error ? err.message : 'Failed to remove player');
         }
       },
-      onResetGear: (mode) => playerActions.handleResetGear(player.id, mode),
-      onClaimPlayer: () => playerActions.handleClaimPlayer(player.id),
-      onReleasePlayer: () => playerActions.handleReleasePlayer(player.id),
+      // A3 (A10 remainder): same source-guard for the other re-throwing
+      // bindings — handleResetGear/handleClaimPlayer/handleReleasePlayer chain
+      // to tierStore actions that re-throw after recording error state, and
+      // every consumer (kebab items, the reset confirm modal) invokes them
+      // bare. onDuplicate needs no guard: handleDuplicatePlayer catches
+      // internally and never rejects.
+      onResetGear: async (mode) => {
+        try {
+          await playerActions.handleResetGear(player.id, mode);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to reset gear');
+        }
+      },
+      onClaimPlayer: async () => {
+        try {
+          await playerActions.handleClaimPlayer(player.id);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to claim player');
+        }
+      },
+      onReleasePlayer: async () => {
+        try {
+          await playerActions.handleReleasePlayer(player.id);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to release player');
+        }
+      },
       onAdminAssignPlayer: (req) => playerActions.handleAdminAssignPlayer(player.id, req),
       onOwnerAssignPlayer: (req) => playerActions.handleOwnerAssignPlayer(player.id, req),
     }),
