@@ -92,6 +92,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'improvement',
+        title: 'Stage-1 seams: chrome-context signal + notification center single-mount',
+        description:
+          'The v2 escape hatch now keys on an in-chrome context (renders on every v2-chromed route, never in legacy chrome); Discord/GitHub gain mobile-v2 menu homes; the notification center is mounted once app-wide via the store instead of twice.',
+        pr: 179,
+        prTitle: 'feat: Stage 1 PR-1 — chrome-context signal, G2 escape rekey, M2 links, NotificationCenter single-mount',
+      },
+      {
+        internal: true,
+        category: 'improvement',
         title: 'New-UI entry: durable menu opt-in (admin-gated) + sticky ?shell= deep-links',
         description:
           'S1: a durable "Try the new UI" item in the legacy user menu (admin-only until Stage-1 un-gate, per D7). S2: an explicit ?shell= deep-link now sticks for the browser tab via a session override — above account preference, below a fresh param; explicit toggles clear it.',
