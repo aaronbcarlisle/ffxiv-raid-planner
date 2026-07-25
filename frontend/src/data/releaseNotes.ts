@@ -99,7 +99,7 @@ export const RELEASES: Release[] = [
         title: 'V1 parity — legacy shell matched back to main',
         description:
           'The classic (default) shell drifted from main during the redesign build-out; these reverts restore exact parity. Sidebar/page labels back to "Goals & Farms" and "Gear & Sync"; gear sub-tabs back to Sync · BiS · Jobs · History; loot priority defaults to "Who Needs It" with order Who Needs It · Gear Priority · Weapon Priority (Alt+1/2/3); and the wizard Next button regains its chevron. Verified surface-by-surface against main. No change to the opt-in v2 shell.',
-        commits: [{ hash: '9c8a770', message: 'fix(redesign): restore V1 legacy-shell parity with main (D1/D2/D3/D7)', date: '2026-07-24' }],
+        commits: [{ hash: '9c8a770', message: 'fix(redesign): restore V1 legacy-shell parity with main (D1/D2/D3/D7)', date: '2026-07-24T23:47:50Z' }],
       },
       {
         internal: true,
