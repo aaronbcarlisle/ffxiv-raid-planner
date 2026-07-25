@@ -266,6 +266,9 @@ describe('NotificationCenterHost session gate', () => {
     try {
       const { container } = render(<NotificationCenterHost />);
       expect(container).toBeEmptyDOMElement();
+      // The flag itself must be RESET, not just hidden: a surviving
+      // centerOpen=true would mount the center already open on next login.
+      expect(useNotificationStore.getState().centerOpen).toBe(false);
     } finally {
       (authState as { user: typeof authState.user | null }).user = savedUser;
     }
