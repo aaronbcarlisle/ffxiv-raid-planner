@@ -7,16 +7,18 @@
  * boundary clean — no direct auth-component import here.
  *
  * Unified unread badge: server notifications (`unreadCount`) + synthetic release
- * notes (`useSyntheticUnreadCount`) + pending join requests (`pendingCount`).
+ * notes (`useSyntheticUnreadCount`) + pending join requests (`pendingCount`,
+ * IN-STATIC ONLY — see the route gate below).
  *
- * Join-count fetch: the legacy `Header` (suppressed for v2 by Task 9) owns the
+ * Join-count fetch: the legacy `Header` (suppressed for v2) owns the
  * `canManageInvitations`-gated `fetchGroupRequests` call. This component
- * replicates that effect so the badge is live in v2. Mirrors Header.tsx:107-113.
+ * replicates that effect so the badge is live in v2. Mirrors Header.tsx:113-118.
  *
  * Byte-for-byte rule: does NOT modify `NotificationCenter`,
  * `Header`, or `SettingsDockToggle`. Those stay intact for the legacy route.
  */
 import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { useSyntheticUnreadCount } from '../../lib/syntheticNotifications';
@@ -41,18 +43,29 @@ export function NotificationBell({ onOpen }: NotificationBellProps) {
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
   const { canManageInvitations } = useStaticPermissions();
+  // Stage-1 T4 / RC5. The pending-join-request contribution is IN-STATIC ONLY,
+  // and the predicate is the ROUTE — the same one Header.tsx:60 and
+  // GlobalSettingsPanel.tsx:25 use — NOT `currentGroup`. `currentGroup` is
+  // never cleared when you navigate off a static (joinRequestStore likewise
+  // never resets `pendingCount`), so gating on it would leak a STALE join-
+  // request badge onto /profile after any static visit: precisely the
+  // unfulfillable affordance matrix row H7 rules out off-group (its tap
+  // promise, `tab: 'recruitment'`, cannot be honored there — GlobalSettingsPanel
+  // is account-only). In-static the badge behaves exactly as before.
+  const onGroupRoute = useLocation().pathname.startsWith('/group/');
 
   // Replicate Header's canManageInvitations-gated join-count fetch for v2.
   // The app-wide Header is suppressed on the group route, so this effect
-  // keeps the pendingCount badge live. Mirrors Header.tsx:107-113.
+  // keeps the pendingCount badge live. Mirrors Header.tsx:113-118 — including
+  // its `isGroupRoute` condition, since off-group the result is not displayed.
   useEffect(() => {
-    if (currentGroup && canManageInvitations) {
+    if (onGroupRoute && currentGroup && canManageInvitations) {
       useJoinRequestStore.getState().fetchGroupRequests(currentGroup.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentGroup?.id, canManageInvitations]);
+  }, [onGroupRoute, currentGroup?.id, canManageInvitations]);
 
-  const total = unreadCount + syntheticUnread + pendingCount;
+  const total = unreadCount + syntheticUnread + (onGroupRoute ? pendingCount : 0);
 
   return (
     <Tooltip content="Notifications">

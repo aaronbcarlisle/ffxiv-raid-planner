@@ -22,14 +22,10 @@ export function Layout() {
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.isAdmin ?? false;
 
-  // The v2 shell renders its own TopBar, so the app-wide Header (and the
-  // settings dock toggle) are suppressed ONLY when the group route resolves to
-  // the v2 shell. Legacy group routes render <Header/> exactly as before the
-  // flip; all non-group routes always render it. Same resolver as GroupRoute —
-  // precedence lives in ONE place (lib/shellPreference).
+  // Which chrome renders is a resolved-shell decision. Same resolver as
+  // GroupRoute — precedence lives in ONE place (lib/shellPreference).
   const location = useLocation();
   const resolvedShell = useResolvedShell();
-  const isGroupV2Shell = location.pathname.startsWith('/group/') && resolvedShell === 'v2';
 
   // S2: remember an explicit `?shell=` deep-link for this tab so v2 navigation
   // stays in v2 (and opt-out stays opted-out) without persisting to the account.
@@ -58,12 +54,20 @@ export function Layout() {
     isAdmin,
   });
 
-  // Stage-1 T3: when the group route resolves to v2, the chrome host
-  // (AppChrome) wraps the main area — rail + top-bar/spine slots +
-  // #main-content — instead of NewShell composing its own chrome inside the
-  // padded <main> below. SAME route set as the Header/dock suppression above
-  // (no coverage change in this PR; the flip to all non-`/` v2 routes is T4).
-  const chromeActive = isGroupV2Shell;
+  // Stage-1 T4 — THE COVERAGE FLIP. A v2-resolved user gets the chrome host
+  // (AppChrome: rail + top bar + #main-content) on EVERY route Layout owns
+  // except `/`. On `/group/*` the route still supplies TopBar + Spine through
+  // the host's portal slots; everywhere else the host renders NonGroupTopBar.
+  //
+  // `/` is excluded deliberately (matrix §8): the legacy Header self-strips to
+  // logo + auth there, SettingsDockToggle returns null, and the marketing/home
+  // page is not a Person-layer surface. So `/` keeps the legacy Header even for
+  // v2-resolved users — which is exactly why UserMenu's "Switch to classic UI"
+  // keys on the chrome CONTEXT and not on `resolvedShell` (ruling G2).
+  //
+  // Everyone resolving to legacy — the default, i.e. the overwhelming majority
+  // — takes the untouched return below on every route.
+  const chromeActive = resolvedShell === 'v2' && location.pathname !== '/';
 
   if (chromeActive) {
     return (
@@ -84,9 +88,10 @@ export function Layout() {
             panel is rendered by V2SettingsHost). Shows only the General tab. */}
         <GlobalSettingsPanel />
 
-        {/* No Header and no SettingsDockToggle here — both were already
-            suppressed under this exact condition (v2 mounts its own
-            SettingsGear via V2SettingsHost). */}
+        {/* No Header here — AppChrome's rail + top bar replace it. No
+            SettingsDockToggle either: ruling G1 re-homes desktop account
+            settings to the NonGroupTopBar's SettingsGear off-group, and the
+            group TopBar has carried its own gear since F6a. */}
 
         {/* Global keyboard shortcuts modal */}
         <KeyboardShortcutsHelp
@@ -100,7 +105,12 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
-      {!isGroupV2Shell && <Header />}
+      {/* The legacy branch is the V1 render path, byte-for-byte. Header is
+          unconditional here: `chromeActive` already took every v2-chromed
+          route out of this branch, so the old `!isGroupV2Shell` guard could
+          only ever be true (PR-2 director nit — a dead conditional reads like
+          a live one). */}
+      <Header />
       <ViewAsBanner />
       {/* Content container - scrollable area below sticky header */}
       {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears.
@@ -121,11 +131,10 @@ export function Layout() {
 
       {/* Desktop settings open/close toggle, docked to the right edge to mirror
           the left rail's collapse chevron. (Mobile uses the header gear.)
-          Suppressed only when the group route resolves to the v2 shell — v2
-          mounts its own SettingsGear (via V2SettingsHost), so this toggle
-          would be a redundant duplicate there. Legacy group routes and all
-          non-group routes still render it. */}
-      {!isGroupV2Shell && <SettingsDockToggle />}
+          Unconditional in this branch for the same reason as Header above: the
+          v2-chromed routes never reach it, and there it is replaced by the
+          SettingsGear in the v2 top bar (G1). It self-suppresses on `/`. */}
+      <SettingsDockToggle />
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp
