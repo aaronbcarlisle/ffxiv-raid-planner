@@ -433,6 +433,15 @@ async def dev_login(
     if user.tab_persistence != "remember":
         user.tab_persistence = "remember"
 
+    # DevOwner is the admin dogfooding account: the "Try the new UI" opt-in is
+    # admin-gated until v2 nav coverage lands (V2_COVERAGE_PLAN.md D7), so the
+    # documented /api/dev-auth/login/0 loop must yield an admin or the banner
+    # is untestable locally. Users 1/2 stay non-admin so the gated state is
+    # testable too. Normalized every login (is_public precedent above).
+    expected_admin = user_index == 0
+    if user.is_admin != expected_admin:
+        user.is_admin = expected_admin
+
     await session.commit()
 
     role_label = {0: "owner", 1: "member", 2: "applicant (no membership)"}.get(user_index, "member")
