@@ -82,6 +82,14 @@ export const RELEASES: Release[] = [
         prTitle: 'fix: Stage 0 — notification deep-link + A3 void-fix micro-slice',
       },
       {
+        category: 'fix',
+        title: 'Release notes no longer show internal development entries',
+        description:
+          'The release-notes page now hides internal housekeeping items (refactors, CI plumbing) that were mistakenly rendering alongside real changes.',
+        pr: 177,
+        prTitle: 'fix(redesign): v2 mobile TopBar overlap (Ring-0 blemish)',
+      },
+      {
         internal: true,
         category: 'fix',
         title: 'v2 mobile TopBar overlap',
