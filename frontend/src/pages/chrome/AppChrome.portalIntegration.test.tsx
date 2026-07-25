@@ -198,14 +198,19 @@ describe('negative control — TopBar at the host position (no provider) throws'
     render(
       <MemoryRouter initialEntries={['/group/ABC']}>
         <TooltipProvider>
-          <Catcher>
-            <Routes>
-              <Route
-                path="/group/:shareCode"
-                element={<TopBar onOpenPalette={() => {}} onOpenNotifications={() => {}} />}
-              />
-            </Routes>
-          </Catcher>
+          {/* ThemeProvider included so the ONLY missing provider is the one
+              under test — otherwise useTheme would throw first and this
+              control would document the wrong failure. */}
+          <ThemeProvider>
+            <Catcher>
+              <Routes>
+                <Route
+                  path="/group/:shareCode"
+                  element={<TopBar onOpenPalette={() => {}} onOpenNotifications={() => {}} />}
+                />
+              </Routes>
+            </Catcher>
+          </ThemeProvider>
         </TooltipProvider>
       </MemoryRouter>,
     );
