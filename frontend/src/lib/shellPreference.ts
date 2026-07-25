@@ -65,11 +65,19 @@ export const useShellPreferenceStore = create<ShellPreferenceState>((set) => ({
     // choice on the next navigation (the URL param itself is stripped separately
     // by useShellToggle). Both fields set atomically.
     set({ preference: shell, sessionOverride: null });
+    // Separate try/catches: if localStorage throws (private mode / blocked
+    // storage), the session-override removal must STILL run — otherwise a
+    // stale SESSION_STORAGE_KEY rehydrates on reload and out-resolves the
+    // preference the user just chose.
     try {
       localStorage.setItem(SHELL_STORAGE_KEY, shell);
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
     } catch {
       // Private-mode storage failures degrade to session-only preference.
+    }
+    try {
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch {
+      // Same degradation; the in-memory override is already cleared above.
     }
     // Authed users mirror the preference server-side (cross-device). Fire and
     // forget: a failed PATCH must not block the local toggle.

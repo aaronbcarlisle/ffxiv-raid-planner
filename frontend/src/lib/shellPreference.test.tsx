@@ -186,6 +186,21 @@ describe('setSessionOverride', () => {
 });
 
 describe('setPreference clears the session override', () => {
+
+  it('still removes the sessionStorage override when localStorage.setItem throws (private mode)', () => {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, 'v2');
+    useShellPreferenceStore.setState({ sessionOverride: 'v2' });
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string) {
+      if (key === 'ui-shell') throw new Error('QuotaExceededError');
+    });
+    try {
+      useShellPreferenceStore.getState().setPreference('legacy');
+    } finally {
+      spy.mockRestore();
+    }
+    expect(useShellPreferenceStore.getState().sessionOverride).toBeNull();
+    expect(sessionStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+  });
   it('an explicit toggle wipes any session override (store + sessionStorage) so it cannot be defeated', () => {
     useShellPreferenceStore.setState({ sessionOverride: 'legacy' });
     sessionStorage.setItem(SESSION_STORAGE_KEY, 'legacy');
