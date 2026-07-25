@@ -82,8 +82,14 @@ const CATEGORY_CONFIG: Record<
 /** Number of recent releases to show before grouping by month */
 const RECENT_RELEASES_COUNT = 10;
 
-/** Public-facing releases only — internal (dev-only) entries are never shown on this page */
-const PUBLIC_RELEASES = RELEASES.filter((r) => !r.internal);
+/** Public-facing releases only — internal (dev-only) entries are never shown
+ *  on this page. Both levels are filtered: whole internal releases AND
+ *  `internal: true` items inside public releases (the documented convention —
+ *  item-level filtering was missing, so internal items used to render).
+ *  Releases left with no public items are dropped entirely. */
+const PUBLIC_RELEASES = RELEASES.filter((r) => !r.internal)
+  .map((r) => ({ ...r, items: r.items.filter((item) => !item.internal) }))
+  .filter((r) => r.items.length > 0);
 
 /** Group releases by month for the "older" section */
 function groupReleasesByMonth(releases: Release[]): Map<string, Release[]> {
