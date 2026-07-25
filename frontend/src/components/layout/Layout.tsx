@@ -9,7 +9,7 @@ import { ViewAsBanner } from '../admin';
 import { KeyboardShortcutsHelp } from '../ui';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
 import { useAuthStore } from '../../stores/authStore';
-import { useResolvedShell } from '../../lib/shellPreference';
+import { useResolvedShell, useShellParamPersistence } from '../../lib/shellPreference';
 
 export function Layout() {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
@@ -24,6 +24,11 @@ export function Layout() {
   const location = useLocation();
   const resolvedShell = useResolvedShell();
   const isGroupV2Shell = location.pathname.startsWith('/group/') && resolvedShell === 'v2';
+
+  // S2: remember an explicit `?shell=` deep-link for this tab so v2 navigation
+  // stays in v2 (and opt-out stays opted-out) without persisting to the account.
+  // No-op when no `?shell=` param is present, so the legacy default is untouched.
+  useShellParamPersistence();
 
   // Global event listener for keyboard shortcuts modal
   // This allows the UserMenu to trigger shortcuts from any page

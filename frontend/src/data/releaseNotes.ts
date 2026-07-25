@@ -91,6 +91,15 @@ export const RELEASES: Release[] = [
       },
       {
         internal: true,
+        category: 'improvement',
+        title: 'New-UI entry: durable menu opt-in (admin-gated) + sticky ?shell= deep-links',
+        description:
+          'S1: a durable "Try the new UI" item in the legacy user menu (admin-only until Stage-1 un-gate, per D7). S2: an explicit ?shell= deep-link now sticks for the browser tab via a session override — above account preference, below a fresh param; explicit toggles clear it.',
+        pr: 178,
+        prTitle: 'feat: Stage 1 PR-0 — nav-entry opt-in (S1, admin-gated) + session-sticky ?shell= (S2)',
+      },
+      {
+        internal: true,
         category: 'fix',
         title: 'v2 mobile TopBar overlap',
         description:

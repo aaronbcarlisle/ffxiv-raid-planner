@@ -64,6 +64,7 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
   const isGroupRoute = location.pathname.startsWith('/group/');
   const resolvedShell = useResolvedShell();
   const switchShell = useShellToggle('v2-user-menu');
+  const switchToNewUi = useShellToggle('legacy-user-menu');
   const { theme, setTheme } = useTheme();
   const apiKeysModal = useModal();
   const notificationsModal = useModal();
@@ -303,6 +304,22 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
             />
           </span>
         </div>
+
+        {/* S1: legacy→v2 opt-in entry — the durable counterpart to the
+            TryNewUiBanner (which self-hides permanently on dismiss). Only
+            meaningful where a shell is being rendered (group routes) AND the
+            legacy shell is active; mutually exclusive with the return path
+            below (resolvedShell can't be both), so it never shows in the v2 rail.
+            LAUNCH GATE (D7): admin-only until coverage-plan Stage 1 lands —
+            same gate as TryNewUiBanner; remove both together at un-gate. */}
+        {user.isAdmin && isGroupRoute && resolvedShell === 'legacy' && (
+          <DropdownItem
+            icon={<Sparkles className="w-4 h-4" />}
+            onSelect={() => switchToNewUi('v2')}
+          >
+            Try the new UI
+          </DropdownItem>
+        )}
 
         {/* Phase R: v2→legacy return path. Only meaningful where a shell is being
             rendered (group routes) AND the v2 shell is active. */}

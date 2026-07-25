@@ -10,7 +10,7 @@ import { useSearchParams } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 import { useShellPreferenceStore, type Shell } from '../lib/shellPreference';
 
-export function useShellToggle(surface: 'legacy-banner' | 'v2-user-menu' | 'v2-more-page') {
+export function useShellToggle(surface: 'legacy-banner' | 'legacy-user-menu' | 'v2-user-menu' | 'v2-more-page') {
   const [searchParams, setSearchParams] = useSearchParams();
   const setPreference = useShellPreferenceStore((s) => s.setPreference);
   return useCallback((target: Shell) => {
@@ -18,7 +18,11 @@ export function useShellToggle(surface: 'legacy-banner' | 'v2-user-menu' | 'v2-m
       direction: target === 'v2' ? 'to-v2' : 'to-legacy',
       surface,
     });
-    setPreference(target);
+    // Strip the param BEFORE clearing the override: the S2 persistence effect
+    // rewrites the override from any ?shell= it observes, so the order must
+    // guarantee it can never re-observe the stale param after the clear —
+    // regardless of how React batches the two commits. (Pre-strip writes are
+    // harmless no-ops: the override already equals the param.)
     if (searchParams.has('shell')) {
       setSearchParams((prev) => {
         const params = new URLSearchParams(prev);
@@ -26,5 +30,6 @@ export function useShellToggle(surface: 'legacy-banner' | 'v2-user-menu' | 'v2-m
         return params;
       }, { replace: true });
     }
+    setPreference(target);
   }, [surface, setPreference, searchParams, setSearchParams]);
 }

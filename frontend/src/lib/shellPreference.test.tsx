@@ -4,13 +4,15 @@
  * The URL param NEVER writes the preference (support/deep-link override only).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { renderHook, act, render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import {
   useShellPreferenceStore,
   useResolvedShell,
   useShellPreferenceSync,
+  useShellParamPersistence,
   SHELL_STORAGE_KEY,
+  SESSION_STORAGE_KEY,
 } from './shellPreference';
 
 // Callable selector mock with `.getState()` (mirrors NewShell.authGuard.test.tsx's
@@ -45,7 +47,8 @@ function resolveAt(url: string) {
 
 beforeEach(() => {
   localStorage.clear();
-  useShellPreferenceStore.setState({ preference: null });
+  sessionStorage.clear();
+  useShellPreferenceStore.setState({ preference: null, sessionOverride: null });
   mocks.user = null;
   mocks.authInitialized = true;
   mocks.updatePreferences.mockClear();
@@ -151,5 +154,126 @@ describe('useShellPreferenceSync (backend-wins hydration)', () => {
     renderHook(() => useShellPreferenceSync());
     expect(useShellPreferenceStore.getState().preference).toBe('legacy');
     expect(localStorage.getItem(SHELL_STORAGE_KEY)).toBe('legacy');
+  });
+});
+
+// ── S2: session-sticky ?shell= override (per browser-tab) ──
+
+describe('useResolvedShell — session-override tier', () => {
+  it('resolves the session override when no param and no preference', () => {
+    useShellPreferenceStore.setState({ sessionOverride: 'v2' });
+    expect(resolveAt('/group/ABC').result.current).toBe('v2');
+  });
+  it('an explicit ?shell= param beats the session override', () => {
+    useShellPreferenceStore.setState({ sessionOverride: 'v2' });
+    expect(resolveAt('/group/ABC?shell=legacy').result.current).toBe('legacy');
+  });
+  it('the session override beats the stored preference', () => {
+    useShellPreferenceStore.setState({ sessionOverride: 'v2', preference: 'legacy' });
+    expect(resolveAt('/group/ABC').result.current).toBe('v2');
+  });
+  it('parity: no param + no session + no preference still resolves legacy', () => {
+    expect(resolveAt('/group/ABC').result.current).toBe('legacy');
+  });
+});
+
+describe('setSessionOverride', () => {
+  it('writes the store AND sessionStorage', () => {
+    act(() => useShellPreferenceStore.getState().setSessionOverride('v2'));
+    expect(useShellPreferenceStore.getState().sessionOverride).toBe('v2');
+    expect(sessionStorage.getItem(SESSION_STORAGE_KEY)).toBe('v2');
+  });
+});
+
+describe('setPreference clears the session override', () => {
+
+  it('aligns the stored override with the new preference when removeItem throws (transient storage failure)', () => {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, 'v2');
+    useShellPreferenceStore.setState({ sessionOverride: 'v2' });
+    const spy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+    try {
+      useShellPreferenceStore.getState().setPreference('legacy');
+    } finally {
+      spy.mockRestore();
+    }
+    // In-memory cleared; the surviving stored value now EQUALS the chosen
+    // preference, so a reload that rehydrates it resolves identically.
+    expect(useShellPreferenceStore.getState().sessionOverride).toBeNull();
+    expect(sessionStorage.getItem(SESSION_STORAGE_KEY)).toBe('legacy');
+  });
+
+  it('still removes the sessionStorage override when localStorage.setItem throws (private mode)', () => {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, 'v2');
+    useShellPreferenceStore.setState({ sessionOverride: 'v2' });
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string) {
+      if (key === 'ui-shell') throw new Error('QuotaExceededError');
+    });
+    try {
+      useShellPreferenceStore.getState().setPreference('legacy');
+    } finally {
+      spy.mockRestore();
+    }
+    expect(useShellPreferenceStore.getState().sessionOverride).toBeNull();
+    expect(sessionStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+  });
+  it('an explicit toggle wipes any session override (store + sessionStorage) so it cannot be defeated', () => {
+    useShellPreferenceStore.setState({ sessionOverride: 'legacy' });
+    sessionStorage.setItem(SESSION_STORAGE_KEY, 'legacy');
+    act(() => useShellPreferenceStore.getState().setPreference('v2'));
+    expect(useShellPreferenceStore.getState().sessionOverride).toBeNull();
+    expect(sessionStorage.getItem(SESSION_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('useShellParamPersistence (companion write effect)', () => {
+  function persistAt(url: string) {
+    return renderHook(() => useShellParamPersistence(), {
+      wrapper: ({ children }) => <MemoryRouter initialEntries={[url]}>{children}</MemoryRouter>,
+    });
+  }
+  it('persists ?shell=v2 into the session override (store + sessionStorage)', () => {
+    persistAt('/group/ABC?shell=v2');
+    expect(useShellPreferenceStore.getState().sessionOverride).toBe('v2');
+    expect(sessionStorage.getItem(SESSION_STORAGE_KEY)).toBe('v2');
+  });
+  it('persists ?shell=legacy too (symmetric opt-out sticks)', () => {
+    persistAt('/group/ABC?shell=legacy');
+    expect(useShellPreferenceStore.getState().sessionOverride).toBe('legacy');
+  });
+  it('leaves the session override untouched when no param is present', () => {
+    useShellPreferenceStore.setState({ sessionOverride: 'v2' });
+    persistAt('/group/ABC');
+    expect(useShellPreferenceStore.getState().sessionOverride).toBe('v2');
+  });
+  it('ignores an unrecognized ?shell= value', () => {
+    persistAt('/group/ABC?shell=bogus');
+    expect(useShellPreferenceStore.getState().sessionOverride).toBeNull();
+  });
+});
+
+describe('S2 end-to-end: a ?shell=v2 deep-link stays sticky across param-less navigation', () => {
+  function StickyHarness() {
+    useShellParamPersistence();
+    const shell = useResolvedShell();
+    const navigate = useNavigate();
+    return (
+      <>
+        <div data-testid="shell">{shell}</div>
+        <button type="button" onClick={() => navigate('/group/ABC')}>go-plain</button>
+      </>
+    );
+  }
+  it('resolves v2 after navigating to a URL with no ?shell= param', () => {
+    render(
+      <MemoryRouter initialEntries={['/group/ABC?shell=v2']}>
+        <StickyHarness />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId('shell').textContent).toBe('v2');
+    act(() => { fireEvent.click(screen.getByRole('button', { name: 'go-plain' })); });
+    // Without the session tier this would fall back to legacy; with it, v2 sticks.
+    expect(screen.getByTestId('shell').textContent).toBe('v2');
   });
 });
