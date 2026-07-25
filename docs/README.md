@@ -9,7 +9,7 @@ This folder is intentionally small. It holds the **source of truth** for what th
 | Doc | What it is |
 |---|---|
 | **[PRODUCT_MODEL.md](./PRODUCT_MODEL.md)** | The canonical model — vision, the Person↔Static layers, the weekly-loop spine, the Progress Engine + content tracks, the rings, the "where does it go?" rule, the full feature inventory, and the roadmap. **Read first.** |
-| **[REDESIGN_SPEC.md](./REDESIGN_SPEC.md)** | The IA, navigation, visual language, and core user flows that realize the model — with coded mockups. *(In progress.)* |
+| **[REDESIGN_SPEC.md](../design/redesign/REDESIGN_SPEC.md)** | The IA, navigation, visual language, and core user flows that realize the model — with coded mockups. *(In progress.)* |
 
 ## Living references
 
