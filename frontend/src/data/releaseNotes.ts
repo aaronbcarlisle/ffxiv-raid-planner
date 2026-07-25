@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.0';
+export const CURRENT_VERSION = '2.1.1';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,30 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.1',
+    date: '2026-07-25T09:00:00Z',
+    title: 'Notification links + quieter failures',
+    highlights: ['Application-accepted notifications now take you to your new static'],
+    items: [
+      {
+        category: 'fix',
+        title: 'Application-accepted notifications link to the static',
+        description:
+          'When your join request is accepted, the notification now takes you straight to the static you joined instead of a legacy dashboard page.',
+        pr: 176,
+        prTitle: 'fix: Stage 0 — notification deep-link + A3 void-fix micro-slice',
+      },
+      {
+        category: 'fix',
+        title: 'Failed actions no longer fail silently',
+        description:
+          'Split-planner and roster actions (claim, release, reset gear) now show an error message when a save fails instead of silently doing nothing.',
+        pr: 176,
+        prTitle: 'fix: Stage 0 — notification deep-link + A3 void-fix micro-slice',
+      },
+    ],
+  },
   {
     version: '2.1.0',
     date: '2026-07-12T15:00:00Z',
