@@ -64,9 +64,12 @@ function renderAt(url: string, props: { variant?: 'header' | 'rail' } = {}) {
 
 beforeEach(() => {
   // The strip test's setPreference persists ui-shell to localStorage; clear it
-  // so test order can never leak a stored preference into the resolver.
+  // so test order can never leak a stored preference into the resolver. The S2
+  // session-override tier (sessionStorage) resolves ABOVE the preference, so it
+  // must be reset too or a leaked override flips useResolvedShell mid-suite.
   localStorage.clear();
-  useShellPreferenceStore.setState({ preference: null });
+  sessionStorage.clear();
+  useShellPreferenceStore.setState({ preference: null, sessionOverride: null });
   // jsdom has no matchMedia; emulate a desktop environment (see RosterCard.test.tsx).
   vi.stubGlobal(
     'matchMedia',
