@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useUrlTabState, clearRegisteredTabParams } from '../hooks/useUrlTabState';
 import { prefRememberTabs } from '../lib/navPreferences';
+import { useInV2Chrome } from '../lib/chromeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
@@ -78,13 +79,24 @@ export function ProfileSidebarNav({
     onSelect: () => onTabChange(d.id),
   }));
 
+  // Stage-1 T5, matrix P4/M4 — SANCTIONED legacy-file seam. Under v2 chrome the
+  // AppRail footer already carries the identical UserMenu, so this footer would
+  // be a second menu (and, pre-PR-1, a second NotificationCenter) on the same
+  // screen. The gate is PROVABLY FALSE on every legacy render path: the
+  // V2ChromeContext provider is mounted only by AppChrome, which is mounted
+  // only by Layout's v2 branch, and the context default is `false` — so the
+  // legacy Player Hub renders byte-identically (pinned by the without-provider
+  // row in Profile.rail.test.tsx). Owned cosmetic delta: the rail footer's menu
+  // is hardcoded `collapsed`, so the expanded display name is not shown.
+  const inV2Chrome = useInV2Chrome();
+
   return (
     <SidebarRail
       context="profile"
       identity={{ icon: User, label: characterName ?? 'Player Hub' }}
       collapseKey="profile-sidebar-collapsed"
       items={items}
-      footer={(collapsed) => <UserMenu variant="rail" collapsed={collapsed} />}
+      footer={inV2Chrome ? undefined : (collapsed) => <UserMenu variant="rail" collapsed={collapsed} />}
     />
   );
 }
