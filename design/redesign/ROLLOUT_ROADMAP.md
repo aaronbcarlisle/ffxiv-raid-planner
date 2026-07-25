@@ -45,6 +45,22 @@ H  Feedback loop → flip default to v2 (3.0.0) → criteria sunset → delete l
 Phases B–F land as normal PRs to `main` after G. Order within B–F is flexible; C is the
 highest user-priority item after A.
 
+> **2026-07-25 re-sequencing (ratified):** the trailing "→ Rings 1–3" line is superseded
+> for its Person-layer portion — the user's 100%-V2-coverage directive pulls **B8 (v2
+> chrome on all routes)** forward, per `RECONCILIATION.md` §"Next moves" item 4 and the
+> staged plan in `V2_COVERAGE_PLAN.md` (Stage 1 lands after Phase G; the chrome
+> affordance-parity matrix is a user-signed pre-code gate). Everything else in this phase
+> order is unchanged.
+>
+> **2026-07-25 launch gate (user decision):** Phase G's opt-in ships **dark** — the
+> "Try the new UI" banner is admin-gated (`TryNewUiBanner.tsx`), so the merge delivers
+> the dual-shell code while regular users and guests cannot enter v2; admins dogfood in
+> production and `?shell=v2` remains a deliberate power-user escape hatch. Un-gate when
+> `V2_COVERAGE_PLAN.md` Stage 1 lands ("anything reachable from v2 stays in v2" + the
+> Ring-0 blemishes). Consequently Phase H's sunset inputs ("v2 opt-in available ≥4
+> weeks", opt-in cohort telemetry) start their clock at **un-gate**, not at the G merge,
+> and G's release-note entry reads "limited preview" rather than "opt-in beta".
+
 ---
 
 ## 2. Phase R — Restore the dual shell ✅ COMPLETE (2026-07-11, PR #174 → foundation `329c394`)
@@ -148,7 +164,8 @@ Gate = R + A complete. Checklist (user executes):
 - [x] Local `smoke` + `smoke-legacy` + `contrast` runs attached to the PR
 - [x] One manual mobile-viewport pass (both shells, four Ring-0 screens) — `25de30e`
 - [x] Migration rehearsal + prod-data testing against a **Railway DB copy**
-- [x] Release notes: public entry "Try the new UI (opt-in beta)" + `CURRENT_VERSION`
+- [x] Release notes: public 2.1.0 entries (now "limited preview" + self-service leave,
+      per the 2026-07-25 launch gate) + `CURRENT_VERSION`
       → **2.1.0** (3.0.0 is reserved for the v2-default flip in Phase H) — `71b854f`
 - [ ] Ratify list in the PR body (D-P3 decisions incl. SplitClearPlanner/TeamSummary
       drops — note both are recoverable and Phase B may resurrect their capabilities) — **awaits user ruling on the 2 decision points**
