@@ -121,20 +121,20 @@ export function TopBar({ onOpenPalette, onOpenNotifications }: TopBarProps) {
             userRole={userRole ?? undefined}
           />
           {/* Tier breadcrumb + week are desktop-only, matching the legacy
-              Header's mobile IA (tier selector hidden < sm, Header.tsx:252):
-              at phone widths the tier block refuses to shrink and overlaps
-              the icon cluster (Phase-G mobile-pass finding). Tier switching
-              on mobile stays available via Settings. */}
-          <span className="hidden sm:flex items-center gap-1.5 min-w-0">
+              Header's mobile IA (its tier selector is likewise hidden below
+              sm): at phone widths the tier block refuses to shrink and
+              overlaps the icon cluster (Phase-G mobile-pass finding). Tier
+              switching on mobile stays available via Settings. */}
+          <div className="hidden sm:flex items-center gap-1.5 min-w-0">
             <TierBreadcrumb />
-          </span>
+          </div>
         </div>
 
         {/* Week indicator (desktop-only, same rationale as the breadcrumb) */}
         {currentGroup && tiers.length > 0 && (
-          <span className="hidden sm:flex">
+          <div className="hidden sm:flex">
             <WeekIndicator />
-          </span>
+          </div>
         )}
 
         {/* Spacer */}
