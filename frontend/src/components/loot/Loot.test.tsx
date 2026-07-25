@@ -441,7 +441,10 @@ describe('Loot', () => {
     // Copy-link builds from the REAL `window.location.href` (not the
     // MemoryRouter's virtual location) so an existing `?tier=` param survives —
     // seed it via pushState to prove the fix, undone by the beforeEach reset.
-    window.history.pushState({}, '', '/group/g1?tier=xyz');
+    // The sender's ?shell= must be STRIPPED (coverage-plan D4): with the
+    // session-sticky shell tier, a pinned value would lock the recipient's
+    // whole tab into the sender's shell.
+    window.history.pushState({}, '', '/group/g1?tier=xyz&shell=v2');
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 4, weekNumber: 3 })] });
@@ -456,6 +459,7 @@ describe('Loot', () => {
     expect(copied).toContain('tier=xyz');
     expect(copied).toContain('lview=history&entry=4');
     expect(copied).not.toContain('entryType');
+    expect(copied).not.toContain('shell=');
   });
 
   it('sets entryType=material (and deletes it for loot) in the copied link', async () => {

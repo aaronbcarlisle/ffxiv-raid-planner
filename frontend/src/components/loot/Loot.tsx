@@ -241,9 +241,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // pattern) so existing params — notably `?tier=` — survive, then set/delete
     // only the params this link controls. Keeps legacy's `entry`/`entryType`
     // names (LootHistoryTable's highlight effect reads them) alongside v2's own
-    // routing params.
+    // routing params. `shell` is deliberately STRIPPED (coverage-plan ruling
+    // D4): with the session-sticky ?shell= tier, a pinned value would lock the
+    // recipient's whole tab into the sender's shell — links must respect the
+    // recipient's own preference. `tab`/`lview` resolve in both shells.
     const url = new URL(window.location.href);
-    url.searchParams.set('shell', 'v2');
+    url.searchParams.delete('shell');
     url.searchParams.set('tab', 'gear');
     url.searchParams.set('lview', 'history');
     url.searchParams.set('entry', String(item.entry.id));
