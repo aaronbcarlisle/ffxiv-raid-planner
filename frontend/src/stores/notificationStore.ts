@@ -18,10 +18,18 @@ interface NotificationState {
   unreadCount: number;
   loading: boolean;
   error: string | null;
+  /** NotificationCenter open-state (Stage-1 req 10). The center is mounted
+   *  ONCE, app-level, by NotificationCenterHost; every opener (legacy UserMenu
+   *  item, v2 TopBar bell) writes this store instead of self-mounting the
+   *  center. UI open-state joins the domain store deliberately — no new store,
+   *  no store→store edge. */
+  centerOpen: boolean;
 
   fetchNotifications(): Promise<void>;
   markRead(id: string): Promise<void>;
   markAllRead(): Promise<void>;
+  openCenter(): void;
+  closeCenter(): void;
 }
 
 export const useNotificationStore = create<NotificationState>((set) => ({
@@ -29,6 +37,7 @@ export const useNotificationStore = create<NotificationState>((set) => ({
   unreadCount: 0,
   loading: false,
   error: null,
+  centerOpen: false,
 
   async fetchNotifications() {
     set({ loading: true, error: null });
@@ -64,5 +73,13 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     } catch (err) {
       logger.error('notificationStore.markAllRead failed', { err });
     }
+  },
+
+  openCenter() {
+    set({ centerOpen: true });
+  },
+
+  closeCenter() {
+    set({ centerOpen: false });
   },
 }));

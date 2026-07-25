@@ -24,11 +24,12 @@ import { useAuthStore } from '../stores/authStore';
 import { useViewAsStore } from '../stores/viewAsStore';
 import { useSettingsPanelStore } from '../stores/settingsPanelStore';
 import { buildStaticNavHref, prefRememberTabs } from '../lib/navPreferences';
+import { V2ChromeContext } from '../lib/chromeContext';
 import { Spine } from '../components/layout/Spine';
 import { AppRail } from '../components/layout/AppRail';
 import { TopBar } from '../components/layout/TopBar';
 import { UserMenu } from '../components/auth';
-import { NotificationCenter } from '../components/auth/NotificationCenter';
+import { useNotificationStore } from '../stores/notificationStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { useLootTrackingStore } from '../stores/lootTrackingStore';
@@ -185,7 +186,10 @@ export function NewShell() {
   const { shareCode } = useParams<{ shareCode: string }>();
   const navigate = useNavigate();
   const palette = useModal();
-  const notifications = useModal();
+  // Stage-1 req 10: the NotificationCenter is mounted ONCE, app-level, by
+  // NotificationCenterHost (App.tsx) — the TopBar bell only writes the store's
+  // open-state. NewShell no longer self-mounts a center.
+  const openNotificationCenter = useNotificationStore((s) => s.openCenter);
 
   const groups = useStaticGroupStore((s) => s.groups);
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
@@ -347,24 +351,30 @@ export function NewShell() {
   ], [groups, shareCode, navigate, rememberStaticTab, searchParams]);
 
   return (
-    <GroupActionModals onTierCreated={() => gv.setPageMode('roster')}>
-      <div className="flex min-h-0 flex-1" data-testid="new-shell">
-        <AppRail
-          logo={<img src="/logo.svg" alt="FFXIV Raid Planner" className="w-8 h-8" />}
-          entries={personLayerEntries}
-          footer={<UserMenu variant="rail" collapsed />}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <TopBar onOpenPalette={palette.open} onOpenNotifications={notifications.open} />
-          <Spine activeTab={gv.pageMode} onTabChange={gv.setPageMode} />
-          <div id="main-content" className="min-h-0 flex-1 overflow-y-auto">
-            <ShellContent />
+    /* Stage-1 T1: NewShell is the TEMPORARY V2ChromeContext host — the provider
+       moves to AppChrome in T3 when the chrome hoists out of NewShell. Wrapping
+       here (the only v2 chrome host today) keeps the "Switch to classic UI"
+       escape item present in group-v2 menus mid-stack, while the default
+       `false` stays structurally guaranteed on every legacy render path. */
+    <V2ChromeContext.Provider value={true}>
+      <GroupActionModals onTierCreated={() => gv.setPageMode('roster')}>
+        <div className="flex min-h-0 flex-1" data-testid="new-shell">
+          <AppRail
+            logo={<img src="/logo.svg" alt="FFXIV Raid Planner" className="w-8 h-8" />}
+            entries={personLayerEntries}
+            footer={<UserMenu variant="rail" collapsed />}
+          />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <TopBar onOpenPalette={palette.open} onOpenNotifications={openNotificationCenter} />
+            <Spine activeTab={gv.pageMode} onTabChange={gv.setPageMode} />
+            <div id="main-content" className="min-h-0 flex-1 overflow-y-auto">
+              <ShellContent />
+            </div>
           </div>
         </div>
-      </div>
-      <NotificationCenter isOpen={notifications.isOpen} onClose={notifications.close} />
-      <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />
-      <V2SettingsHost />
-    </GroupActionModals>
+        <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />
+        <V2SettingsHost />
+      </GroupActionModals>
+    </V2ChromeContext.Provider>
   );
 }

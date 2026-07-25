@@ -10,8 +10,8 @@ import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { useSyntheticUnreadCount } from '../../lib/syntheticNotifications';
 import { useResolvedShell } from '../../lib/shellPreference';
+import { useInV2Chrome } from '../../lib/chromeContext';
 import { useShellToggle } from '../../hooks/useShellToggle';
-import { NotificationCenter } from './NotificationCenter';
 import {
   Dropdown,
   DropdownContent,
@@ -46,8 +46,9 @@ import {
 import { useTheme } from '../../hooks/useTheme';
 import { Modal } from '../ui/Modal';
 import { useModal } from '../../hooks/useModal';
-import { Toggle } from '../ui';
+import { Toggle, DiscordIcon, GitHubIcon } from '../ui';
 import { ApiKeyManager } from '../settings/ApiKeyManager';
+import { DISCORD_INVITE_URL, GITHUB_REPO_URL } from '../../config';
 
 interface UserMenuProps {
   className?: string;
@@ -63,12 +64,17 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
   const location = useLocation();
   const isGroupRoute = location.pathname.startsWith('/group/');
   const resolvedShell = useResolvedShell();
+  // Stage-1 T1 (H14/G2): true only under the v2 chrome host's provider —
+  // structurally false in every legacy Header render (including `/`).
+  const inV2Chrome = useInV2Chrome();
   const switchShell = useShellToggle('v2-user-menu');
   const switchToNewUi = useShellToggle('legacy-user-menu');
   const { theme, setTheme } = useTheme();
   const apiKeysModal = useModal();
-  const notificationsModal = useModal();
-  const { unreadCount, fetchNotifications } = useNotificationStore();
+  // Stage-1 req 10: the NotificationCenter itself is mounted ONCE, app-level,
+  // by NotificationCenterHost (App.tsx) — this menu only writes the store's
+  // open-state. Same item, same panel, one mount, both shells.
+  const { unreadCount, fetchNotifications, openCenter } = useNotificationStore();
   // useSyntheticUnreadCount re-renders this badge when a release note is marked
   // read — getSyntheticUnreadCount() alone wouldn't, since marking the only
   // unread item read doesn't change the server-backed unreadCount.
@@ -213,6 +219,33 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
           </DropdownSubContent>
         </DropdownSub>
 
+        {/* M2 (Stage 1): community links re-homed for mobile v2 — the legacy
+            Header (which carries these links) never renders inside v2 chrome,
+            and the AppRail is hidden below sm, so the user menu is their
+            mobile-v2 home. `sm:hidden` keeps them out of desktop menus, where
+            the v2 top bar carries the same links (director-mandated de-dup).
+            Chrome-context gated: never renders in the legacy menu. External
+            targets open via window.open — the shared Dropdown primitive stays
+            untouched (frozen layer). */}
+        {inV2Chrome && (
+          <>
+            <DropdownItem
+              className="sm:hidden"
+              icon={<DiscordIcon className="w-4 h-4" />}
+              onSelect={() => window.open(DISCORD_INVITE_URL, '_blank', 'noopener,noreferrer')}
+            >
+              Join our Discord
+            </DropdownItem>
+            <DropdownItem
+              className="sm:hidden"
+              icon={<GitHubIcon className="w-4 h-4" />}
+              onSelect={() => window.open(GITHUB_REPO_URL, '_blank', 'noopener,noreferrer')}
+            >
+              View on GitHub
+            </DropdownItem>
+          </>
+        )}
+
         <DropdownItem
           icon={<Key className="w-4 h-4" />}
           onSelect={() => apiKeysModal.open()}
@@ -231,7 +264,7 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
               )}
             </span>
           }
-          onSelect={() => notificationsModal.open()}
+          onSelect={() => openCenter()}
         >
           {totalBadge > 0 ? `${totalBadge} unread notifications` : 'Notifications'}
         </DropdownItem>
@@ -321,9 +354,15 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
           </DropdownItem>
         )}
 
-        {/* Phase R: v2→legacy return path. Only meaningful where a shell is being
-            rendered (group routes) AND the v2 shell is active. */}
-        {isGroupRoute && resolvedShell === 'v2' && (
+        {/* Phase R: v2→legacy return path. Stage-1 rekey (matrix H14/G2):
+            keyed on the chrome context, NOT on route/resolvedShell — it must
+            render in EVERY menu mounted inside v2 chrome (any route, once the
+            chrome goes app-wide), and must NEVER render in the legacy Header's
+            UserMenu. The provider only exists inside the v2 chrome host, so
+            the default `false` covers every legacy render path — including
+            v2-resolved users on `/`, where the legacy Header still renders
+            (a bare resolvedShell check would leak the item there). */}
+        {inV2Chrome && (
           <DropdownItem
             icon={<ArrowLeftRight className="w-4 h-4" />}
             onSelect={() => switchShell('legacy')}
@@ -354,9 +393,6 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
     <Modal isOpen={apiKeysModal.isOpen} onClose={apiKeysModal.close} title={<span className="flex items-center gap-2"><Key className="w-5 h-5" />API Keys</span>} size="lg">
       <ApiKeyManager />
     </Modal>
-
-    {/* Notification Center */}
-    <NotificationCenter isOpen={notificationsModal.isOpen} onClose={notificationsModal.close} />
     </>
   );
 }

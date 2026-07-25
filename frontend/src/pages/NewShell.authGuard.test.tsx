@@ -118,7 +118,6 @@ vi.mock('../hooks/useStaticPermissions', () => ({
 }));
 vi.mock('../components/layout/TopBar', () => ({ TopBar: () => <div data-testid="topbar-stub" /> }));
 vi.mock('../components/layout/CommandPalette', () => ({ CommandPalette: () => null }));
-vi.mock('../components/auth/NotificationCenter', () => ({ NotificationCenter: () => null }));
 vi.mock('../components/auth', () => ({ UserMenu: () => null }));
 vi.mock('./V2SettingsHost', () => ({ V2SettingsHost: () => null }));
 

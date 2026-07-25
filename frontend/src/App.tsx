@@ -5,6 +5,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { TooltipProvider } from './components/primitives/Tooltip';
 import { Layout } from './components/layout/Layout';
 import { ToastContainer } from './components/layout/ToastContainer';
+import { NotificationCenterHost } from './components/auth/NotificationCenterHost';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
 import { useShellPreferenceSync } from './lib/shellPreference';
@@ -203,6 +204,10 @@ function App() {
           <Route path="/plugin-auth" element={<PluginAuth />} />
         </Routes>
         <ToastContainer />
+        {/* Single app-level NotificationCenter mount (Stage-1 req 10) — the
+            legacy UserMenu item and the v2 TopBar bell both open it via
+            notificationStore. */}
+        <NotificationCenterHost />
       </Suspense>
       </TooltipProvider>
     </ErrorBoundary>
