@@ -81,6 +81,15 @@ export const RELEASES: Release[] = [
         pr: 176,
         prTitle: 'fix: Stage 0 — notification deep-link + A3 void-fix micro-slice',
       },
+      {
+        internal: true,
+        category: 'fix',
+        title: 'v2 mobile TopBar overlap',
+        description:
+          'In the (admin-preview) v2 shell, the tier breadcrumb painted over the top-bar icons at phone widths; breadcrumb + week indicator are now desktop-only, matching the legacy mobile IA.',
+        pr: 177,
+        prTitle: 'fix(redesign): v2 mobile TopBar overlap (Ring-0 blemish)',
+      },
     ],
   },
   {
