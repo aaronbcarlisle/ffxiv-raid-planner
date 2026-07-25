@@ -110,10 +110,10 @@ describe('Header mobile shell opt-in row (Phase A, A5c)', () => {
     renderHeaderAt('/group/ABC');
     const banners = screen.getAllByTestId('try-banner-stub');
     expect(banners).toHaveLength(2);
-    // Desktop instance: unchanged, inside the `hidden sm:block` wrapper.
-    expect(banners.some((b) => b.parentElement?.className === 'hidden sm:block')).toBe(true);
-    // Mobile instance: the banner itself carries the below-sm classes (no
-    // wrapper div, so a dismissed banner leaves no phantom flex-wrap row).
+    // BOTH instances carry their responsive classes directly — no wrapper div,
+    // so a null return (dismissed, or non-admin under the launch gate) leaves
+    // no phantom flex child/gap in either row.
+    expect(banners.map((b) => b.className)).toContain('hidden sm:flex');
     expect(banners.map((b) => b.className)).toContain('sm:hidden w-full');
   });
 

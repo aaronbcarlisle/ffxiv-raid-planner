@@ -62,14 +62,34 @@ export const RELEASES: Release[] = [
   {
     version: '2.1.0',
     date: '2026-07-12T15:00:00Z',
-    title: 'The new UI is coming (limited preview)',
-    highlights: ['A ground-up redesign is in limited preview while we finish polishing it'],
+    title: 'Leave statics yourself + the new UI in limited preview',
+    highlights: [
+      'Leave a static yourself — no owner needed',
+      'A ground-up redesign is in limited preview while we finish polishing it',
+    ],
     items: [
+      {
+        category: 'feature',
+        title: 'Leave a static yourself',
+        description:
+          'Members no longer need the owner to remove them: leave any static you belong to from its More page (Danger Zone). Owners still transfer or delete as before.',
+        pr: 161,
+        prTitle: 'release: Try the new UI (opt-in beta) — redesign/foundation → main (2.1.0)',
+      },
       {
         category: 'feature',
         title: 'The new UI is coming (limited preview)',
         description:
-          'A ground-up redesign of the static experience has landed under the hood: a weekly-loop Home dashboard, redesigned Roster cards plus a savage gear board, unified loot priority and history, and an integrated schedule. It ships in a limited preview for now — the classic UI stays the default and is completely unchanged — and the opt-in switch opens up to everyone once navigation coverage and polish are finished. Coming with it: self-service Leave Static (leave a static yourself, no owner needed) and the per-player tome-weapon tracking toggle built into the redesigned roster.',
+          'A ground-up redesign of the static experience has landed under the hood: a weekly-loop Home dashboard, redesigned Roster cards plus a savage gear board, unified loot priority and history, and an integrated schedule. It ships in a limited preview for now — the classic UI stays the default — and the opt-in switch opens up to everyone once navigation coverage and polish are finished.',
+        pr: 161,
+        prTitle: 'release: Try the new UI (opt-in beta) — redesign/foundation → main (2.1.0)',
+      },
+      {
+        internal: true,
+        category: 'improvement',
+        title: 'Dev-auth: DevOwner normalized to admin on login',
+        description:
+          'The admin-gated new-UI opt-in made the banner untestable via the documented dev login; /api/dev-auth/login/0 now yields an admin (users 1/2 stay non-admin), normalized on every login per the is_public precedent.',
         pr: 161,
         prTitle: 'release: Try the new UI (opt-in beta) — redesign/foundation → main (2.1.0)',
       },

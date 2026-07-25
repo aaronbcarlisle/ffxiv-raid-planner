@@ -316,12 +316,14 @@ export function Header() {
 
         {/* Right side: Invite + Settings + Auth */}
         <div className="flex items-center gap-1 sm:gap-3">
-          {/* Phase R: legacy→v2 opt-in entry (self-gates on resolved shell + dismissal).
-              Sanctioned Header edit — ROLLOUT_ROADMAP §2 mandates this entry point. */}
+          {/* Phase R: legacy→v2 opt-in entry (self-gates on resolved shell +
+              dismissal + admin launch gate). Sanctioned Header edit —
+              ROLLOUT_ROADMAP §2 mandates this entry point. The responsive class
+              is passed INTO the banner (like the mobile row below) so a null
+              return leaves no empty flex child — no phantom gap for the
+              non-admin majority while the launch gate is on. */}
           {isGroupRoute && currentGroup && (
-            <div className="hidden sm:block">
-              <TryNewUiBanner />
-            </div>
+            <TryNewUiBanner className="hidden sm:flex" />
           )}
 
           {/* Settings gear — mobile only; desktop uses the docked toggle on the
