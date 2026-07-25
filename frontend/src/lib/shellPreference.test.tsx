@@ -187,6 +187,23 @@ describe('setSessionOverride', () => {
 
 describe('setPreference clears the session override', () => {
 
+  it('aligns the stored override with the new preference when removeItem throws (transient storage failure)', () => {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, 'v2');
+    useShellPreferenceStore.setState({ sessionOverride: 'v2' });
+    const spy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+    try {
+      useShellPreferenceStore.getState().setPreference('legacy');
+    } finally {
+      spy.mockRestore();
+    }
+    // In-memory cleared; the surviving stored value now EQUALS the chosen
+    // preference, so a reload that rehydrates it resolves identically.
+    expect(useShellPreferenceStore.getState().sessionOverride).toBeNull();
+    expect(sessionStorage.getItem(SESSION_STORAGE_KEY)).toBe('legacy');
+  });
+
   it('still removes the sessionStorage override when localStorage.setItem throws (private mode)', () => {
     sessionStorage.setItem(SESSION_STORAGE_KEY, 'v2');
     useShellPreferenceStore.setState({ sessionOverride: 'v2' });

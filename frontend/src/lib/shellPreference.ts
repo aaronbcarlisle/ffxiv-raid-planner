@@ -77,7 +77,13 @@ export const useShellPreferenceStore = create<ShellPreferenceState>((set) => ({
     try {
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
     } catch {
-      // Same degradation; the in-memory override is already cleared above.
+      // removeItem threw but the stale value may still be readable on the
+      // next reload, where it would outrank the preference just chosen.
+      // Align it with the new choice instead — an override equal to the
+      // preference resolves identically. If this write also throws, the
+      // reload's readSessionOverride() will almost certainly throw too and
+      // degrade to null.
+      try { sessionStorage.setItem(SESSION_STORAGE_KEY, shell); } catch { /* fully degraded */ }
     }
     // Authed users mirror the preference server-side (cross-device). Fire and
     // forget: a failed PATCH must not block the local toggle.
