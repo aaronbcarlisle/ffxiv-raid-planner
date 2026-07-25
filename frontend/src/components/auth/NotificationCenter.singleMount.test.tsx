@@ -7,8 +7,9 @@
  * (NotificationCenterHost, mounted by App.tsx) renders the center for both
  * shells. This suite pins:
  *
- *   1. a v2 group render (real NewShell + the host, as App composes them)
- *      contains exactly ONE NotificationCenter instance;
+ *   1. a v2 group render (real AppChrome + real NewShell + the host, as the
+ *      app composes them post-T3) contains exactly ONE NotificationCenter
+ *      instance;
  *   2. both openers — the TopBar bell and the (rail) UserMenu Notifications
  *      item — open that single center via the store;
  *   3. RC6 (director-required V1 characterization): the change is an
@@ -146,6 +147,7 @@ vi.mock('../../services/api', () => ({
 }));
 
 import { NewShell } from '../../pages/NewShell';
+import { AppChrome } from '../../pages/chrome/AppChrome';
 import { NotificationCenterHost } from './NotificationCenterHost';
 import { UserMenu } from './UserMenu';
 import { TooltipProvider } from '../primitives';
@@ -179,14 +181,16 @@ beforeEach(() => {
   );
 });
 
-/** The v2 composition as App arranges it: NewShell on the group route plus the
- *  single app-level host. */
+/** The v2 composition as App arranges it (post-T3): Layout's v2 branch mounts
+ *  AppChrome (which owns the rail + its footer UserMenu and publishes the
+ *  TopBar slot node), the group route renders NewShell inside it (which
+ *  portals the TopBar stub into that slot), plus the single app-level host. */
 function renderV2() {
   return render(
     <MemoryRouter initialEntries={['/group/ABC']}>
       <TooltipProvider>
         <Routes>
-          <Route path="/group/:shareCode" element={<NewShell />} />
+          <Route path="/group/:shareCode" element={<AppChrome><NewShell /></AppChrome>} />
         </Routes>
         <NotificationCenterHost />
       </TooltipProvider>

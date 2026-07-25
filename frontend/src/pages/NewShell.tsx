@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useParams } from 'react-router-dom';
 import { CommandPalette } from '../components/layout/CommandPalette';
-import { Home, Globe } from 'lucide-react';
 import { GroupViewContent } from './GroupViewContent';
 import { ShellContentStates } from './ShellContentStates';
 import { AdminBanners } from '../components/admin/AdminBanners';
@@ -23,27 +23,14 @@ import { useCurrentTier } from '../stores/tierStore';
 import { useAuthStore } from '../stores/authStore';
 import { useViewAsStore } from '../stores/viewAsStore';
 import { useSettingsPanelStore } from '../stores/settingsPanelStore';
-import { buildStaticNavHref, prefRememberTabs } from '../lib/navPreferences';
-import { V2ChromeContext } from '../lib/chromeContext';
 import { Spine } from '../components/layout/Spine';
-import { AppRail } from '../components/layout/AppRail';
 import { TopBar } from '../components/layout/TopBar';
-import { UserMenu } from '../components/auth';
+import { useChromeSlotNodes } from './chrome/chromeSlots';
 import { useNotificationStore } from '../stores/notificationStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useTierStore } from '../stores/tierStore';
 import { useLootTrackingStore } from '../stores/lootTrackingStore';
 import { logger } from '../lib/logger';
-import type { RailEntry } from '../components/layout/railTypes';
-
-/** Derive two-letter initials from a static name. */
-function getInitials(name: string): string {
-  const words = name.trim().split(/\s+/);
-  if (words.length >= 2) {
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
-}
 
 /** Renders the shared content with `actions` pulled from the GroupActions context
  *  (provided by the <GroupActionModals> wrapper below).
@@ -184,21 +171,22 @@ export function NewShell() {
   const gv = useGroupViewState();
   const { searchParams, setSearchParams } = gv;
   const { shareCode } = useParams<{ shareCode: string }>();
-  const navigate = useNavigate();
   const palette = useModal();
   // Stage-1 req 10: the NotificationCenter is mounted ONCE, app-level, by
   // NotificationCenterHost (App.tsx) — the TopBar bell only writes the store's
   // open-state. NewShell no longer self-mounts a center.
   const openNotificationCenter = useNotificationStore((s) => s.openCenter);
 
-  const groups = useStaticGroupStore((s) => s.groups);
+  // Stage-1 T3: the chrome host (AppChrome, mounted by Layout's v2 branch)
+  // owns the rail, the V2ChromeContext provider, the authed-gated cold
+  // `fetchGroups()` (guest 401 guard moved verbatim — see AppChrome), and the
+  // TopBar/Spine slot containers. NewShell keeps everything route-scoped and
+  // renders its TopBar/Spine through portals into the published slot nodes
+  // (see chromeSlots.ts for the RC1/RC2 portal rationale).
+  const { topBar: topBarEl, spine: spineEl } = useChromeSlotNodes();
+
   const currentGroup = useStaticGroupStore((s) => s.currentGroup);
-  const user = useAuthStore((s) => s.user);
-  // Task 7 follow-up (FIX 3): "remember tab per static" preference for the
-  // rail avatar static-switch repoint below — same accessor StaticPicker uses.
-  const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
   const fetchGroupByShareCode = useStaticGroupStore((s) => s.fetchGroupByShareCode);
-  const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
   const clearGroupError = useStaticGroupStore((s) => s.clearError);
   const fetchTiers = useTierStore((s) => s.fetchTiers);
   const fetchTier = useTierStore((s) => s.fetchTier);
@@ -208,36 +196,12 @@ export function NewShell() {
 
   // ── Cold-fetch (F6a, Task 9, gap 2) ──
   // NewShell previously relied on a warm store, so a hard reload of `/group/X`
-  // rendered nothing. These three effects (clear-on-switch → fetch group →
+  // rendered nothing. These effects (clear-on-switch → fetch group →
   // fetch tiers + load the URL/localStorage/active tier) ensure a cold load
   // self-fetches. viewAs (useViewAsUrlSync) and recent-statics + static-nav
   // persistence (useStaticNavMemory) are wired into NewShell via their shared
-  // hooks (Task 1, Task 7).
-
-  // Fetch the groups list on cold v2 load so the AppRail avatars are populated.
-  // Guarded: skips if groups are already loaded (warm store from prior navigation),
-  // AND gated on auth — `fetchGroups()` hits the auth-required GET /api/static-groups
-  // ("my statics" list), which 401s for a logged-out guest and writes into the
-  // shared staticGroupStore.error, surfacing a false "Not authenticated" error
-  // Modal (ShellContentStates) over an otherwise-correct read-only guest view of
-  // a public static. Legacy never eagerly fetches this for anyone — its
-  // Header/TopBar chrome only calls it lazily, when the static-switcher dropdown
-  // opens AND the viewer is a member (StaticPicker.tsx:76). A guest has no "my
-  // statics" list to fetch, so skip it entirely for them. This mirrors the
-  // `fetchGroups` call the legacy GroupView chrome triggers via its own mount
-  // effect; NewShell previously skipped it because it only fetched the current
-  // group. (Fix 2, PR #163)
-  useEffect(() => {
-    if (user && groups.length === 0) {
-      fetchGroups();
-    }
-    // Run once on mount (plus the null->authed transition via `user`) only —
-    // adding `groups.length` would re-fetch on every static navigation when the
-    // list clears momentarily. `user` is included so a guest who logs in while
-    // on the page still gets their groups fetched; the store's `user` reference
-    // is stable once set (no refetch-loop risk).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchGroups, user]);
+  // hooks (Task 1, Task 7). The groups-list cold fetch for the rail avatars
+  // moved to AppChrome with the rail itself (Stage-1 T3).
 
   // Clear tiers and errors when shareCode changes (switching statics in v2).
   useEffect(() => {
@@ -310,71 +274,33 @@ export function NewShell() {
     return () => window.removeEventListener('keydown', handleModK);
   }, [openPalette]);
 
-  const personLayerEntries = useMemo<RailEntry[]>(() => [
-    {
-      kind: 'icon',
-      id: 'player-hub',
-      label: 'Player Hub',
-      icon: Home,
-      // NewShell only renders on /group/:shareCode routes, so the Person-layer
-      // targets (/profile, /discover) can never be the active route here —
-      // isActive stays hardcoded false (wiring it would be dead code).
-      isActive: false,
-      onSelect: () => navigate('/profile'),
-    },
-    {
-      kind: 'icon',
-      id: 'static-finder',
-      label: 'Static Finder',
-      icon: Globe,
-      isActive: false,
-      onSelect: () => navigate('/discover'),
-    },
-    { kind: 'divider', id: 'div-statics' },
-    ...groups.map((g): RailEntry => ({
-      kind: 'avatar',
-      id: `static-${g.id}`,
-      label: g.name,
-      initials: getInitials(g.name),
-      isActive: g.shareCode === shareCode,
-      onSelect: () => {
-        // SPA navigation — restores the target static's saved tab when
-        // "remember tab per static" is ON (Task 7 follow-up: same
-        // buildStaticNavHref repoint as StaticPicker, instead of a bare href
-        // that dropped the saved tab).
-        navigate(buildStaticNavHref(g.shareCode, {
-          remember: rememberStaticTab,
-          currentParams: searchParams,
-        }));
-      },
-    })),
-  ], [groups, shareCode, navigate, rememberStaticTab, searchParams]);
-
   return (
-    /* Stage-1 T1: NewShell is the TEMPORARY V2ChromeContext host — the provider
-       moves to AppChrome in T3 when the chrome hoists out of NewShell. Wrapping
-       here (the only v2 chrome host today) keeps the "Switch to classic UI"
-       escape item present in group-v2 menus mid-stack, while the default
-       `false` stays structurally guaranteed on every legacy render path. */
-    <V2ChromeContext.Provider value={true}>
-      <GroupActionModals onTierCreated={() => gv.setPageMode('roster')}>
-        <div className="flex min-h-0 flex-1" data-testid="new-shell">
-          <AppRail
-            logo={<img src="/logo.svg" alt="FFXIV Raid Planner" className="w-8 h-8" />}
-            entries={personLayerEntries}
-            footer={<UserMenu variant="rail" collapsed />}
-          />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <TopBar onOpenPalette={palette.open} onOpenNotifications={openNotificationCenter} />
-            <Spine activeTab={gv.pageMode} onTabChange={gv.setPageMode} />
-            <div id="main-content" className="min-h-0 flex-1 overflow-y-auto">
-              <ShellContent />
-            </div>
-          </div>
-        </div>
-        <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />
-        <V2SettingsHost />
-      </GroupActionModals>
-    </V2ChromeContext.Provider>
+    // The V2ChromeContext provider moved to AppChrome (Stage-1 T3) — the
+    // chrome host is the one structural v2 signal for BOTH the group route
+    // and (post-T4) every other v2-chromed route.
+    <GroupActionModals onTierCreated={() => gv.setPageMode('roster')}>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="new-shell">
+        <ShellContent />
+      </div>
+      {/* Stage-1 T3 portals: TopBar/Spine render into the chrome host's slot
+          containers (DOM position) while staying React children of THIS tree —
+          `TierBreadcrumb`'s `useGroupActions()` must resolve the
+          GroupActionModals provider above (RC1), and `Spine` needs the
+          route-scoped `gv.pageMode`/`setPageMode`. When no host is mounted
+          (slot nodes null — e.g. unit tests rendering NewShell bare) the
+          portals simply don't render; when NewShell unmounts, the portals
+          unmount with it and the host's empty-placeholder styling returns. */}
+      {topBarEl !== null
+        ? createPortal(
+            <TopBar onOpenPalette={palette.open} onOpenNotifications={openNotificationCenter} />,
+            topBarEl,
+          )
+        : null}
+      {spineEl !== null
+        ? createPortal(<Spine activeTab={gv.pageMode} onTabChange={gv.setPageMode} />, spineEl)
+        : null}
+      <CommandPalette isOpen={palette.isOpen} onClose={palette.close} />
+      <V2SettingsHost />
+    </GroupActionModals>
   );
 }

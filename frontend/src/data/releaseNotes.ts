@@ -92,6 +92,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'improvement',
+        title: 'Stage-1 chrome host: v2 rail/top-bar hoisted into a single AppChrome',
+        description:
+          'The v2 chrome (rail, top-bar position, spine position, skip-link target) now lives in one host mounted by Layout, with NewShell portaling its group top bar and spine in — same routes as before; the groundwork that lets PR-3 extend v2 chrome to every route. Rail gains real active states and a Player Hub logo link.',
+        pr: 180,
+        prTitle: 'feat: Stage 1 PR-2 — AppChrome host with portal slots, group chrome hoist',
+      },
+      {
+        internal: true,
+        category: 'improvement',
         title: 'Stage-1 seams: chrome-context signal + notification center single-mount',
         description:
           'The v2 escape hatch now keys on an in-chrome context (renders on every v2-chromed route, never in legacy chrome); Discord/GitHub menu seams added for mobile v2 (dormant until the mobile top bar lands); the notification center is mounted once app-wide via the store instead of twice.',

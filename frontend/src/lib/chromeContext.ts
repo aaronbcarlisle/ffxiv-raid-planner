@@ -1,9 +1,10 @@
 /**
  * chromeContext — the "am I rendered inside v2 app chrome?" signal (Stage 1, G2).
  *
- * `V2ChromeContext`'s provider is mounted ONLY by the v2 chrome host — today
- * that is NewShell (group routes), later AppChrome once the chrome hoists out
- * in Stage-1 T3. Because no legacy render path ever mounts the provider, the
+ * `V2ChromeContext`'s provider is mounted ONLY by the v2 chrome host —
+ * pages/chrome/AppChrome, mounted solely by Layout's v2 branch (T3 landed;
+ * NewShell hosted it temporarily during T1). Because no legacy render path
+ * ever mounts the provider, the
  * default value `false` is STRUCTURALLY guaranteed on every legacy render path
  * and on `/` (the excluded route, where the legacy Header renders even for
  * v2-resolved users). This is ruling G2's no-leak mechanism: consumers key
