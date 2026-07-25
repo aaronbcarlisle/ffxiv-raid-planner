@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom';
 import { useDevice } from '../../hooks/useDevice';
 import { TAB_ICONS } from '../../types';
 
-type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview';
+type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview' | 'statics';
 
 interface ProfileBottomNavProps {
   activeTab: ProfileTab;

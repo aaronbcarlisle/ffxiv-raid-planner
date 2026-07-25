@@ -2,14 +2,25 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'redesign/**']
   pull_request:
-    branches: [main]
+    # ready_for_review is included so that flipping a draft PR to ready
+    # re-triggers the full gate (the draft guard on each job below skips runs
+    # while a PR is a draft).
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main, 'redesign/**']
 
+# The long-running redesign/foundation -> main PR is kept as a draft until the
+# whole foundation (F0-F6) is complete. Without this guard, every push to
+# foundation (i.e. every phase squash-merge) would re-run the full suite for
+# that draft PR on top of the push-integration run - pure waste. The guard runs
+# CI on: any push, and any NON-draft PR. It skips only draft PRs. Marking the
+# foundation PR "Ready for review" fires ready_for_review and runs the gate.
 jobs:
   frontend:
     name: Frontend Checks
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     defaults:
       run:
         working-directory: frontend
@@ -40,6 +51,9 @@ jobs:
       - name: Type check
         run: pnpm tsc --noEmit
 
+      - name: Token source/output sync
+        run: pnpm tokens:check
+
       - name: Lint
         run: pnpm lint
 
@@ -52,9 +66,17 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Duplication check (jscpd)
+        run: pnpm dupes
+
+      - name: Dead-code report (knip, non-blocking)
+        continue-on-error: true
+        run: pnpm deadcode
+
   migrations:
     name: Migration Graph Check
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
 
     steps:
       - name: Checkout repository
@@ -75,6 +97,7 @@ jobs:
   scripts:
     name: Scripts Tests
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     defaults:
       run:
         working-directory: scripts
@@ -97,6 +120,7 @@ jobs:
   migration-exec:
     name: Migration Execution (PostgreSQL)
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     defaults:
       run:
         working-directory: backend
@@ -168,6 +192,7 @@ jobs:
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     defaults:
       run:
         working-directory: backend

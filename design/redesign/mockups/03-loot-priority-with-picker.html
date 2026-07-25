@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup · Loot (Priority + recipient picker)</title>
+<style>
+/* tokens.css */
+/* Design tokens extracted verbatim from frontend/src/index.css so mockups are
+   true-to-product. Dark is primary; light overrides under [data-theme="light"]. */
+@import url("https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  /* Surfaces */
+  --color-surface-base: #050508;
+  --color-surface-raised: #0a0a0f;
+  --color-surface-card: #0e0e14;
+  --color-surface-elevated: #121218;
+  --color-surface-overlay: #18181f;
+  --color-surface-interactive: #1e1e26;
+
+  /* Accent (teal) */
+  --color-accent: #14b8a6;
+  --color-accent-hover: #2dd4bf;
+  --color-accent-dim: rgba(20, 184, 166, 0.15);
+  --color-accent-muted: #0d7377;
+  --color-accent-deep: #0891b2;
+  --color-accent-contrast: #052e2b;
+
+  /* Roles */
+  --color-role-tank: #5a9fd4;
+  --color-role-healer: #5ad490;
+  --color-role-melee: #d45a5a;
+  --color-role-ranged: #d4a05a;
+  --color-role-caster: #b45ad4;
+
+  /* Membership */
+  --color-membership-owner: #14b8a6;
+  --color-membership-lead: #a855f7;
+  --color-membership-member: #3b82f6;
+  --color-membership-viewer: #71717a;
+  --color-membership-linked: #f59e0b;
+
+  /* Gear sources */
+  --color-gear-raid: #f87171;
+  --color-gear-tome: #2dd4bf;
+  --color-gear-base-tome: #60a5fa;
+  --color-gear-augmented: #fcd34d;
+  --color-gear-crafted: #fb923c;
+
+  /* Status */
+  --color-status-success: #22c55e;
+  --color-status-warning: #eab308;
+  --color-status-error: #ef4444;
+  --color-status-info: #3b82f6;
+
+  /* Materials */
+  --color-material-twine: #3b82f6;
+  --color-material-glaze: #a855f7;
+  --color-material-solvent: #eab308;
+  --color-material-tomestone: #f97316;
+
+  /* Text */
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary: #71717a;
+  --color-text-muted: #52525b;
+  --color-text-disabled: #3f3f46;
+
+  /* Borders */
+  --color-border-default: #1f1f28;
+  --color-border-subtle: #14141c;
+  --color-border-highlight: #14b8a6;
+  --color-border-focus: rgba(20, 184, 166, 0.5);
+
+  /* Interaction */
+  --color-focus-ring: rgba(20, 184, 166, 0.4);
+  --color-active-bg: rgba(20, 184, 166, 0.15);
+  --color-hover-overlay: rgba(255, 255, 255, 0.05);
+
+  /* Fonts */
+  --font-display: "Exo 2", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radii (mockup scale, matching rounded / rounded-lg / rounded-xl usage) */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+}
+
+[data-theme="light"] {
+  --color-surface-base: #f5f5f8;
+  --color-surface-raised: #ededf2;
+  --color-surface-card: #ffffff;
+  --color-surface-elevated: #e8e8ef;
+  --color-surface-overlay: #ffffff;
+  --color-surface-interactive: #dcdce6;
+  --color-accent: #0f9688;
+  --color-accent-hover: #0d7a6e;
+  --color-accent-dim: rgba(15, 150, 136, 0.12);
+  --color-accent-contrast: #ffffff;
+  --color-role-tank: #2e7ab4;
+  --color-role-healer: #1a8a4a;
+  --color-role-melee: #c0392b;
+  --color-role-ranged: #a06020;
+  --color-role-caster: #8b34b8;
+  --color-gear-raid: #dc2626;
+  --color-gear-tome: #0f9688;
+  --color-gear-base-tome: #2563eb;
+  --color-gear-augmented: #b45309;
+  --color-status-success: #16a34a;
+  --color-status-warning: #ca8a04;
+  --color-status-error: #dc2626;
+  --color-text-primary: #1a1a24;
+  --color-text-secondary: #4a4a58;
+  --color-text-tertiary: #5a5a6e;
+  --color-text-muted: #6b6b7e;
+  --color-border-default: #d4d4e0;
+  --color-border-subtle: #e2e2ea;
+}
+
+/* app.css */
+/* Shared mockup chrome + components, built only on tokens.css.
+   Not production code — a faithful visual prototype of the redesign. */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-sans);
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; }
+a { color: inherit; text-decoration: none; }
+.muted { color: var(--color-text-secondary); }
+.tertiary { color: var(--color-text-tertiary); }
+.mono { font-family: var(--font-mono); }
+.accent { color: var(--color-accent); }
+
+/* ---------- App layout ---------- */
+.app { display: grid; grid-template-columns: 72px 1fr; height: 100vh; overflow: hidden; }
+
+/* ---------- Context rail (Person layer) ---------- */
+.rail {
+  background: var(--color-surface-raised);
+  border-right: 1px solid var(--color-border-subtle);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 14px 0; gap: 6px;
+}
+.rail-logo {
+  width: 40px; height: 40px; border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-deep));
+  display: grid; place-items: center; color: var(--color-accent-contrast);
+  font-family: var(--font-display); font-weight: 800; font-size: 18px; margin-bottom: 8px;
+}
+.rail-item {
+  width: 44px; height: 44px; border-radius: var(--radius-lg);
+  display: grid; place-items: center; color: var(--color-text-tertiary);
+  position: relative; cursor: pointer; font-size: 18px;
+}
+.rail-item:hover { background: var(--color-hover-overlay); color: var(--color-text-secondary); }
+.rail-item .lbl { font-size: 9px; position: absolute; bottom: 3px; }
+.rail-item.active { color: var(--color-accent); background: var(--color-active-bg); }
+.rail-item.active::before {
+  content: ""; position: absolute; left: -14px; top: 10px; bottom: 10px; width: 3px;
+  background: var(--color-accent); border-radius: 0 3px 3px 0;
+}
+.rail-divider { width: 28px; height: 1px; background: var(--color-border-default); margin: 8px 0; }
+.rail-static {
+  width: 44px; height: 44px; border-radius: var(--radius-lg);
+  display: grid; place-items: center; font-family: var(--font-display); font-weight: 700;
+  font-size: 15px; cursor: pointer; position: relative;
+  background: var(--color-surface-interactive); color: var(--color-text-primary);
+  border: 2px solid var(--color-accent);
+}
+.rail-static.alt { border-color: transparent; color: var(--color-text-tertiary); font-weight: 600; }
+.rail-static.alt:hover { color: var(--color-text-primary); }
+.rail-spacer { flex: 1; }
+.rail-user {
+  width: 40px; height: 40px; border-radius: var(--radius-pill);
+  background: var(--color-membership-owner); color: var(--color-accent-contrast);
+  display: grid; place-items: center; font-weight: 700; cursor: pointer;
+  background-image: linear-gradient(135deg, #f59e0b, #d45a5a);
+}
+
+/* ---------- Main column ---------- */
+.main { display: flex; flex-direction: column; min-width: 0; }
+
+/* Top bar */
+.topbar {
+  height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+}
+.ctx { display: flex; align-items: center; gap: 8px; }
+.ctx-static { font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+.ctx-sep { color: var(--color-text-muted); }
+.dropdown { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.dropdown .caret { color: var(--color-text-tertiary); font-size: 10px; }
+.topbar-spacer { flex: 1; }
+.kbd {
+  font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-default); border-radius: var(--radius-sm);
+  padding: 3px 8px; display: inline-flex; gap: 6px; align-items: center; cursor: pointer;
+  background: var(--color-surface-elevated);
+}
+.kbd:hover { border-color: var(--color-border-highlight); color: var(--color-text-primary); }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: var(--radius); display: grid; place-items: center;
+  color: var(--color-text-secondary); cursor: pointer; position: relative; font-size: 16px;
+}
+.icon-btn:hover { background: var(--color-hover-overlay); color: var(--color-text-primary); }
+.badge-dot {
+  position: absolute; top: 5px; right: 5px; min-width: 15px; height: 15px; padding: 0 3px;
+  border-radius: var(--radius-pill); background: var(--color-status-error); color: #fff;
+  font-size: 9px; font-weight: 700; display: grid; place-items: center;
+  border: 2px solid var(--color-surface-raised);
+}
+
+/* Nav (the spine) */
+.nav {
+  height: 48px; flex: 0 0 48px; display: flex; align-items: center; gap: 4px;
+  padding: 0 16px; border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-base);
+}
+.nav-item {
+  padding: 7px 14px; border-radius: var(--radius); cursor: pointer; font-weight: 600;
+  color: var(--color-text-secondary); font-size: 13.5px; position: relative;
+}
+.nav-item:hover { color: var(--color-text-primary); background: var(--color-hover-overlay); }
+.nav-item.active { color: var(--color-accent); }
+.nav-item.active::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: -8px; height: 2px;
+  background: var(--color-accent); border-radius: 2px;
+}
+.nav-spacer { flex: 1; }
+.week-pill {
+  font-size: 11px; font-weight: 700; color: var(--color-accent);
+  background: var(--color-accent-dim); border-radius: var(--radius-pill);
+  padding: 3px 10px; letter-spacing: .02em;
+}
+.tier-pill {
+  font-size: 11px; font-weight: 600; color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-default); border-radius: var(--radius-pill); padding: 3px 10px;
+}
+
+/* Content */
+.content { flex: 1; overflow: auto; padding: 22px 28px 40px; }
+.content-wrap { max-width: min(94vw, 2160px); margin: 0 auto; }
+.page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 18px; }
+.page-head h1 { font-size: 22px; }
+.page-head .sub { color: var(--color-text-secondary); font-size: 13px; }
+.section-title {
+  font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--color-text-tertiary); margin: 26px 0 12px;
+}
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--color-surface-card); border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg); padding: 16px;
+}
+.card.raised { background: var(--color-surface-elevated); }
+.card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.card-head .t { font-family: var(--font-display); font-weight: 700; font-size: 13px;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--color-text-secondary); }
+.card-head .ic { color: var(--color-accent); font-size: 14px; }
+.card-head .right { margin-left: auto; }
+.grid { display: grid; gap: 16px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 13px;
+  border-radius: var(--radius); padding: 8px 14px; cursor: pointer; border: 1px solid transparent;
+  font-family: var(--font-sans); white-space: nowrap;
+}
+.btn-primary { background: var(--color-accent); color: var(--color-accent-contrast); }
+.btn-primary:hover { background: var(--color-accent-hover); }
+.btn-ghost { background: var(--color-surface-elevated); color: var(--color-text-primary);
+  border-color: var(--color-border-default); }
+.btn-ghost:hover { border-color: var(--color-border-highlight); }
+.btn-subtle { background: var(--color-accent-dim); color: var(--color-accent); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* ---------- Chips / tags ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+  border-radius: var(--radius-pill); padding: 3px 9px; background: var(--color-surface-interactive);
+  color: var(--color-text-secondary);
+}
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700;
+  border-radius: var(--radius-sm); padding: 2px 6px; letter-spacing: .02em; }
+.tag-rec { background: var(--color-accent); color: var(--color-accent-contrast); }
+.tag-sub { background: var(--color-membership-linked); color: #000; }
+.tag-warn { background: color-mix(in srgb, var(--color-status-warning) 22%, transparent); color: var(--color-status-warning); }
+
+/* Role accents */
+.role-tank { color: var(--color-role-tank); }
+.role-healer { color: var(--color-role-healer); }
+.role-melee { color: var(--color-role-melee); }
+.role-ranged { color: var(--color-role-ranged); }
+.role-caster { color: var(--color-role-caster); }
+.dot-role { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* Job/role square badge */
+.job {
+  width: 30px; height: 30px; border-radius: var(--radius); display: grid; place-items: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 10px; color: #fff;
+  border: 1px solid rgba(255,255,255,.12);
+}
+.j-tank { background: color-mix(in srgb, var(--color-role-tank) 30%, #0a0a0f); color: var(--color-role-tank); }
+.j-healer { background: color-mix(in srgb, var(--color-role-healer) 30%, #0a0a0f); color: var(--color-role-healer); }
+.j-melee { background: color-mix(in srgb, var(--color-role-melee) 30%, #0a0a0f); color: var(--color-role-melee); }
+.j-ranged { background: color-mix(in srgb, var(--color-role-ranged) 30%, #0a0a0f); color: var(--color-role-ranged); }
+.j-caster { background: color-mix(in srgb, var(--color-role-caster) 30%, #0a0a0f); color: var(--color-role-caster); }
+
+/* ---------- Progress bar ---------- */
+.bar { height: 7px; border-radius: var(--radius-pill); background: var(--color-surface-interactive); overflow: hidden; }
+.bar-fill { height: 100%; border-radius: var(--radius-pill); background: var(--color-accent); }
+.bar-fill.warn { background: var(--color-status-warning); }
+.bar-fill.role { background: currentColor; }
+
+/* Gear status dots (a player's 11 slots) */
+.gear-dots { display: flex; gap: 3px; }
+.gd { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--color-border-default); }
+.gd.have { background: var(--color-gear-raid); border-color: transparent; }
+.gd.tome { background: var(--color-gear-tome); border-color: transparent; }
+.gd.aug { background: var(--color-gear-augmented); border-color: transparent; }
+.gd.empty { background: transparent; }
+
+/* avatar circle */
+.av { width: 28px; height: 28px; border-radius: var(--radius-pill); display: grid; place-items: center;
+  font-weight: 700; font-size: 11px; color: #fff; }
+
+/* attention / list rows */
+.row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border-subtle); }
+.row:last-child { border-bottom: none; }
+.row .grow { flex: 1; min-width: 0; }
+.row .name { font-weight: 600; }
+.row .meta { font-size: 12px; color: var(--color-text-tertiary); }
+
+.stat { display: flex; flex-direction: column; gap: 2px; }
+.stat .v { font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: 1; }
+.stat .k { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .05em; }
+.divider-v { width: 1px; align-self: stretch; background: var(--color-border-default); }
+
+</style>
+<style>
+  .ic svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; display: block; }
+
+  /* sub-view tabs (Priority · History) — segmented, lives under the page head */
+  .subtabs { display: inline-flex; gap: 2px; background: var(--color-surface-elevated);
+    border: 1px solid var(--color-border-default); border-radius: var(--radius); padding: 3px; }
+  .subtabs .st { padding: 6px 16px; border-radius: var(--radius-sm); font-weight: 600; font-size: 13px;
+    color: var(--color-text-secondary); cursor: pointer; }
+  .subtabs .st.active { background: var(--color-accent); color: var(--color-accent-contrast); }
+  .ltoolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .ltoolbar .spacer { flex: 1; }
+
+  /* Priority layout: floors of drops, left = the loot, right = priority list */
+  .ploot { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; }
+  .floorcard { background: var(--color-surface-card); border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-lg); overflow: hidden; }
+  .floorcard .fhead { display: flex; align-items: center; gap: 11px; padding: 12px 16px;
+    background: var(--color-surface-raised); border-bottom: 1px solid var(--color-border-default); }
+  .fhead .fno { font-family: var(--font-display); font-weight: 800; font-size: 12px; letter-spacing: .04em;
+    padding: 3px 9px; border-radius: var(--radius-sm); background: var(--color-surface-interactive); color: var(--color-text-secondary); }
+  .fhead .ftitle { font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+  .fhead .fmeta { color: var(--color-text-tertiary); font-size: 12px; }
+  .fhead .fright { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  /* drop rows inside a floor */
+  .drop { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--color-border-subtle); }
+  .drop:last-child { border-bottom: none; }
+  .drop .item { display: flex; align-items: center; gap: 11px; width: 230px; flex: 0 0 auto; }
+  .drop .itemico { width: 34px; height: 34px; border-radius: var(--radius); display: grid; place-items: center;
+    background: color-mix(in srgb, var(--color-gear-raid) 22%, #0a0a0f); color: var(--color-gear-raid); flex: 0 0 auto; }
+  .drop .itemico.tok { background: color-mix(in srgb, var(--color-gear-augmented) 24%, #0a0a0f); color: var(--color-gear-augmented); }
+  .drop .itemico.mat { background: color-mix(in srgb, var(--color-accent) 18%, #0a0a0f); color: var(--color-accent); }
+  .drop .iname { font-weight: 700; font-size: 13.5px; }
+  .drop .islot { font-size: 11.5px; color: var(--color-text-tertiary); }
+
+  /* priority queue: ordered list of eligible players */
+  .pq { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+  .pqchip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px 5px 6px; border-radius: var(--radius-pill);
+    background: var(--color-surface-interactive); border: 1px solid var(--color-border-subtle); flex: 0 0 auto; }
+  .pqchip.first { border-color: var(--color-accent); background: var(--color-accent-dim); }
+  .pqchip .av { width: 22px; height: 22px; font-size: 9px; }
+  .pqchip .pn { font-size: 12px; font-weight: 600; }
+  .pqchip .rank { font-size: 9.5px; font-weight: 800; font-family: var(--font-display);
+    color: var(--color-text-muted); margin-left: 2px; }
+  .pqchip.first .rank { color: var(--color-accent); }
+  .pq .more { font-size: 11.5px; color: var(--color-text-tertiary); flex: 0 0 auto; }
+  .drop .act { flex: 0 0 auto; display: flex; gap: 8px; }
+
+  .why { font-size: 11px; color: var(--color-text-muted); margin-left: 6px; }
+
+  /* ===== Recipient picker overlay ===== */
+  .scrim { position: fixed; inset: 0; background: rgba(2,3,5,.62); display: grid; place-items: center; z-index: 50; }
+  .picker { width: 540px; max-width: 92vw; background: var(--color-surface-overlay);
+    border: 1px solid var(--color-border-highlight); border-radius: var(--radius-xl);
+    box-shadow: 0 24px 70px rgba(0,0,0,.55); overflow: hidden; }
+  .picker .phead { padding: 16px 18px; border-bottom: 1px solid var(--color-border-default); display: flex; align-items: center; gap: 12px; }
+  .picker .phead .itemico { width: 38px; height: 38px; border-radius: var(--radius); display: grid; place-items: center;
+    background: color-mix(in srgb, var(--color-gear-raid) 22%, #0a0a0f); color: var(--color-gear-raid); }
+  .picker .phead .t { font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+  .picker .phead .s { font-size: 12px; color: var(--color-text-tertiary); }
+  .picker .phead .x { margin-left: auto; color: var(--color-text-tertiary); cursor: pointer; font-size: 18px; }
+  .picker .psearch { margin: 14px 18px 6px; display: flex; align-items: center; gap: 9px; padding: 9px 12px;
+    background: var(--color-surface-interactive); border: 1px solid var(--color-border-default); border-radius: var(--radius); }
+  .picker .psearch input { background: transparent; border: none; outline: none; color: var(--color-text-primary);
+    font-size: 13px; width: 100%; font-family: var(--font-sans); }
+  .picker .plabel { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--color-text-tertiary); padding: 10px 18px 4px; }
+  .precip { display: flex; align-items: center; gap: 11px; padding: 9px 18px; cursor: pointer; }
+  .precip:hover { background: var(--color-hover-overlay); }
+  .precip.sel { background: var(--color-accent-dim); }
+  .precip .rk { width: 20px; font-family: var(--font-display); font-weight: 800; font-size: 12px;
+    color: var(--color-text-muted); text-align: center; flex: 0 0 auto; }
+  .precip.top .rk { color: var(--color-accent); }
+  .precip .grow { flex: 1; min-width: 0; }
+  .precip .pn { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 7px; }
+  .precip .reason { font-size: 11px; color: var(--color-text-tertiary); }
+  .precip .need { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: var(--radius-sm); flex: 0 0 auto; }
+  .need.bis { background: color-mix(in srgb, var(--color-status-success) 18%, transparent); color: var(--color-status-success); }
+  .need.minor { background: var(--color-surface-interactive); color: var(--color-text-tertiary); }
+  .precip .check { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--color-border-default); flex: 0 0 auto; }
+  .precip.sel .check { background: var(--color-accent); border-color: var(--color-accent); }
+  .picker .pfoot { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--color-border-default); }
+  .picker .pfoot .note { font-size: 11.5px; color: var(--color-text-tertiary); }
+  .picker .pfoot .spacer { flex: 1; }
+  .seg-mini { display: inline-flex; background: var(--color-surface-elevated); border: 1px solid var(--color-border-default);
+    border-radius: var(--radius); padding: 2px; gap: 2px; margin: 0 18px 4px; }
+  .seg-mini .o { padding: 4px 10px; border-radius: var(--radius-sm); font-size: 11.5px; font-weight: 600; color: var(--color-text-secondary); cursor: pointer; }
+  .seg-mini .o.active { background: var(--color-surface-interactive); color: var(--color-text-primary); }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail">
+    <div class="rail-logo">RP</div>
+    <div class="rail-item" title="Player Hub"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span></div>
+    <div class="rail-item" title="Static Finder"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13 13 8.5 15.5 11 11"/></svg></span></div>
+    <div class="rail-divider"></div>
+    <div class="rail-static" title="Crescent Static">CS</div>
+    <div class="rail-static alt" title="Late Pulls">LP</div>
+    <div class="rail-spacer"></div>
+    <div class="rail-item" title="Settings"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span></div>
+    <div class="rail-user" title="Dev Owner">DO</div>
+  </nav>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="ctx">
+        <span class="dropdown ctx-static">Crescent Static <span class="caret">▼</span></span>
+        <span class="ctx-sep">/</span>
+        <span class="dropdown muted">AAC Heavyweight (Savage) <span class="caret">▼</span></span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <span class="kbd">⌘K&nbsp; <span class="tertiary">Search or run a command</span></span>
+      <div class="icon-btn" title="Notifications"><span class="ic"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.5 21a1.8 1.8 0 0 0 3 0"/></svg></span><span class="badge-dot">2</span></div>
+      <div class="icon-btn" title="Settings"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span></div>
+      <div class="icon-btn" title="Theme"><span class="ic"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></span></div>
+    </header>
+
+    <nav class="nav">
+      <div class="nav-item">Home</div>
+      <div class="nav-item">Roster</div>
+      <div class="nav-item active">Loot</div>
+      <div class="nav-item">Schedule</div>
+      <div class="nav-spacer"></div>
+      <span class="tier-pill">M9S–M12S</span>
+      <span class="week-pill">WEEK 3</span>
+    </nav>
+
+    <main class="content">
+      <div class="content-wrap">
+        <div class="page-head">
+          <h1>Loot</h1>
+          <span class="sub">Who's up next, and the record of what's dropped · fairness rules: loot council + need</span>
+        </div>
+
+        <div class="ltoolbar">
+          <div class="subtabs">
+            <div class="st active">Priority</div>
+            <div class="st">History</div>
+          </div>
+          <span class="filterpill" style="display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--color-text-secondary);background:var(--color-surface-elevated);border:1px solid var(--color-border-default);border-radius:var(--radius);padding:7px 12px;cursor:pointer">This week (Week 3) <span class="caret" style="color:var(--color-text-tertiary);font-size:10px">▼</span></span>
+          <div class="spacer"></div>
+          <span class="btn btn-ghost"><span class="ic" style="display:inline-flex"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></span>Log a drop</span>
+          <span class="btn btn-primary"><span class="ic" style="display:inline-flex"><svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>Log this week's loot</span>
+        </div>
+
+        <div class="ploot">
+
+          <!-- FLOOR 4 (current target) -->
+          <div class="floorcard">
+            <div class="fhead">
+              <span class="fno">M12S</span>
+              <span class="ftitle">Floor 4</span>
+              <span class="fmeta">· in progress · drops: weapon, mount</span>
+              <div class="fright"><span class="chip">2 items pending</span></div>
+            </div>
+            <!-- a drop awaiting assignment -->
+            <div class="drop">
+              <div class="item"><div class="itemico"><span class="ic"><svg viewBox="0 0 24 24"><path d="M14.5 4l5.5 5.5-9 9L4 20l1.5-7z"/><path d="M14.5 4 20 9.5"/></svg></span></div><div><div class="iname">Heavyweight Weapon</div><div class="islot">Weapon · raid</div></div></div>
+              <div class="pq">
+                <span class="pqchip first"><span class="av" style="background:var(--color-role-caster)">C1</span><span class="pn">Caster One</span><span class="rank">#1</span></span>
+                <span class="pqchip"><span class="av" style="background:var(--color-role-melee)">M1</span><span class="pn">Melee One</span><span class="rank">#2</span></span>
+                <span class="pqchip"><span class="av" style="background:var(--color-role-ranged)">R1</span><span class="pn">Ranged One</span><span class="rank">#3</span></span>
+                <span class="more">+2 eligible</span>
+              </div>
+              <div class="act"><span class="btn btn-subtle btn-sm">Assign →</span></div>
+            </div>
+          </div>
+
+          <!-- FLOOR 3 -->
+          <div class="floorcard">
+            <div class="fhead">
+              <span class="fno">M11S</span>
+              <span class="ftitle">Floor 3</span>
+              <span class="fmeta">· cleared · drops: accessory, token</span>
+              <div class="fright"><span class="chip" style="color:var(--color-status-success)">1 logged</span></div>
+            </div>
+            <div class="drop">
+              <div class="item"><div class="itemico"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/></svg></span></div><div><div class="iname">Heavyweight Earring</div><div class="islot">Ears · raid</div></div></div>
+              <div class="pq">
+                <span class="pqchip first"><span class="av" style="background:var(--color-role-healer)">H1</span><span class="pn">Healer One</span><span class="rank">#1</span></span>
+                <span class="pqchip"><span class="av" style="background:var(--color-role-ranged)">R1</span><span class="pn">Ranged One</span><span class="rank">#2</span></span>
+                <span class="more">+3 eligible</span>
+              </div>
+              <div class="act"><span class="btn btn-subtle btn-sm">Assign →</span></div>
+            </div>
+            <div class="drop">
+              <div class="item"><div class="itemico tok"><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M8.5 9.5h5a1.8 1.8 0 0 1 0 3.6h-3a1.8 1.8 0 0 0 0 3.6h5"/></svg></span></div><div><div class="iname">Heavyweight Token</div><div class="islot">Upgrade token · accessory</div></div></div>
+              <div class="pq">
+                <span class="pqchip first"><span class="av" style="background:var(--color-role-tank)">T1</span><span class="pn">Tank One</span><span class="rank">#1</span></span>
+                <span class="pqchip"><span class="av" style="background:var(--color-role-melee)">M1</span><span class="pn">Melee One</span><span class="rank">#2</span></span>
+                <span class="more">+4 eligible</span>
+              </div>
+              <div class="act"><span class="btn btn-subtle btn-sm">Assign →</span></div>
+            </div>
+          </div>
+
+          <!-- FLOOR 1-2 collapsed summary -->
+          <div class="floorcard">
+            <div class="fhead">
+              <span class="fno">M9–10S</span>
+              <span class="ftitle">Floors 1–2</span>
+              <span class="fmeta">· cleared · all drops logged this week</span>
+              <div class="fright"><span class="chip" style="color:var(--color-status-success)">5 logged</span><span class="accent" style="font-size:12px;cursor:pointer">Show</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===== RECIPIENT PICKER (the unified component, open on the weapon drop) ===== -->
+  <div class="scrim">
+    <div class="picker">
+      <div class="phead">
+        <div class="itemico"><span class="ic"><svg viewBox="0 0 24 24"><path d="M14.5 4l5.5 5.5-9 9L4 20l1.5-7z"/><path d="M14.5 4 20 9.5"/></svg></span></div>
+        <div><div class="t">Assign · Heavyweight Weapon</div><div class="s">M12S Floor 4 · Weapon slot · raid drop</div></div>
+        <div class="x">✕</div>
+      </div>
+
+      <div class="seg-mini">
+        <div class="o active">By priority</div>
+        <div class="o">All members</div>
+        <div class="o">Off-spec / free</div>
+      </div>
+
+      <div class="psearch">
+        <span class="ic" style="color:var(--color-text-tertiary)"><svg viewBox="0 0 24 24" style="width:16px;height:16px"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></span>
+        <input placeholder="Search players…" />
+      </div>
+
+      <div class="plabel">Eligible · ranked by need + council rules</div>
+
+      <div class="precip top sel">
+        <div class="rk">1</div>
+        <div class="av" style="background:var(--color-role-caster);width:30px;height:30px">C1</div>
+        <div class="grow"><div class="pn">Caster One <span class="dot-role" style="background:var(--color-role-caster)"></span></div><div class="reason">Weapon is BiS · no raid weapon yet · 0 drops this tier</div></div>
+        <span class="need bis">BiS</span>
+        <div class="check"></div>
+      </div>
+      <div class="precip top">
+        <div class="rk">2</div>
+        <div class="av" style="background:var(--color-role-melee);width:30px;height:30px">M1</div>
+        <div class="grow"><div class="pn">Melee One <span class="dot-role" style="background:var(--color-role-melee)"></span></div><div class="reason">Weapon is BiS · 1 drop this tier</div></div>
+        <span class="need bis">BiS</span>
+        <div class="check"></div>
+      </div>
+      <div class="precip">
+        <div class="rk">3</div>
+        <div class="av" style="background:var(--color-role-ranged);width:30px;height:30px">R1</div>
+        <div class="grow"><div class="pn">Ranged One <span class="dot-role" style="background:var(--color-role-ranged)"></span></div><div class="reason">Minor upgrade · already has tome weapon</div></div>
+        <span class="need minor">minor</span>
+        <div class="check"></div>
+      </div>
+      <div class="precip">
+        <div class="rk">4</div>
+        <div class="av" style="background:var(--color-role-tank);width:30px;height:30px">T1</div>
+        <div class="grow"><div class="pn">Tank One <span class="dot-role" style="background:var(--color-role-tank)"></span></div><div class="reason">Already BiS in this slot · would be a sell/free</div></div>
+        <span class="need minor">free</span>
+        <div class="check"></div>
+      </div>
+
+      <div class="pfoot">
+        <span class="note">Logging marks the drop & updates priority + BiS instantly.</span>
+        <div class="spacer"></div>
+        <span class="btn btn-ghost btn-sm">Cancel</span>
+        <span class="btn btn-primary btn-sm">Assign to Caster One</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

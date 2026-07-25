@@ -235,6 +235,7 @@ export function SlideOutPanel({
   const panelAnimation = isAnimatingOut ? 'animate-slide-out-right' : 'animate-slide-in-right';
 
   return createPortal(
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- click-outside detection pattern; onMouseDown/Up track pointer position to distinguish text-selection drags from intentional dismiss clicks; keyboard dismiss is handled by a window-level Escape listener above
     <div
       ref={backdropRef}
       className={`fixed inset-0 z-50 flex justify-end bg-black/60 ${backdropAnimation}`}

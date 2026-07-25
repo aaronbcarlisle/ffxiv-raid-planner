@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link2 } from 'lucide-react';
 import type { LinkedCharacterSummary, RoleInStatic } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
@@ -65,7 +66,7 @@ export function LinkPlayerHubCharacterModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={`Link Player Hub character — ${playerName}`}
+      title={<span className="flex items-center gap-2"><Link2 className="w-5 h-5" />Link Character</span>}
       size="md"
       footer={
         <div className="flex justify-end gap-2">
@@ -85,6 +86,8 @@ export function LinkPlayerHubCharacterModal({
       }
     >
       <div className="space-y-4">
+        <p className="text-sm text-text-muted">for {playerName}</p>
+
         {error && (
           <p className="text-sm text-status-error bg-status-error/10 rounded-lg px-3 py-2">{error}</p>
         )}

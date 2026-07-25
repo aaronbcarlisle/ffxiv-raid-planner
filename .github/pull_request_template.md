@@ -23,6 +23,13 @@
   if: github.event.pull_request.head.repo.full_name == github.repository
   ```
 
+### Design System
+- [ ] This PR adds **no** new UI (skip below)
+- [ ] Uses design-system primitives (no raw `<button>/<input>/<select>/<label>/<textarea>`)
+- [ ] New navigational text is `LinkText`/`NavRow`; tab strips are `Tabs`; status pills are `Tag` with an explicit `variant`
+- [ ] Colors are semantic tokens (no inline hex/`rgb()`, no `bg-[#…]`); text ≥ `text-xs` (no new sub-12px sizes)
+- [ ] No **new** `design-system/*` lint warnings in changed files
+
 ### General
 - [ ] No AI attribution in commits or PR body
 - [ ] `git diff --check` passes (no whitespace errors)

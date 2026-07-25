@@ -1,8 +1,9 @@
+import { memo } from 'react';
 import { useDroppable, useDraggable } from '@dnd-kit/core';
 import type { DraggableAttributes } from '@dnd-kit/core';
 import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
 import { PlayerCard } from './PlayerCard';
-import type { DragState } from '../dnd/useDragAndDrop';
+import { useDragStore } from '../../stores/dragStore';
 import type { SnapshotPlayer, StaticSettings, ViewMode, ContentType, ResetMode, GearSlot, AssignPlayerRequest } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 
@@ -18,7 +19,6 @@ interface DroppablePlayerCardProps {
   viewMode: ViewMode;
   contentType: ContentType;
   clipboardPlayer: SnapshotPlayer | null;
-  dragState: DragState;
   canEdit: boolean;
   currentUserId?: string;
   isGroupOwner?: boolean;
@@ -60,13 +60,18 @@ interface DroppablePlayerCardProps {
   onNavigateToBooksPanel?: (playerId: string) => void;
 }
 
-export function DroppablePlayerCard({
+function DroppablePlayerCardImpl({
   player,
-  dragState,
   canEdit,
   contentType,
   ...props
 }: DroppablePlayerCardProps) {
+  // Subscribe to just this card's slice of the drag state, so only the dragged
+  // card and the current drop target re-render during a drag — not the grid.
+  const isBeingDragged = useDragStore((s) => s.activeId === player.id);
+  const dropTargetMode = useDragStore((s) =>
+    s.overId === player.id && s.activeId !== player.id ? s.dropMode : null,
+  );
   // Make this card a drop target
   const { setNodeRef: setDroppableRef } = useDroppable({
     id: player.id,
@@ -89,15 +94,10 @@ export function DroppablePlayerCard({
     setDraggableRef(node);
   };
 
-  // Determine visual state
-  const isBeingDragged = dragState.activeId === player.id;
-  const isDropTarget = dragState.overId === player.id && !isBeingDragged;
-  const dropMode = isDropTarget ? dragState.dropMode : null;
-
-  // Visual feedback classes
-  const showSwapHighlight = isDropTarget && dropMode === 'swap';
-  const showInsertBefore = isDropTarget && dropMode === 'insert-before';
-  const showInsertAfter = isDropTarget && dropMode === 'insert-after';
+  // Visual feedback classes (derived from this card's drag-store slice)
+  const showSwapHighlight = dropTargetMode === 'swap';
+  const showInsertBefore = dropTargetMode === 'insert-before';
+  const showInsertAfter = dropTargetMode === 'insert-after';
 
   return (
     <div
@@ -132,3 +132,9 @@ export function DroppablePlayerCard({
     </div>
   );
 }
+
+// Memoized so it bails when the grid re-renders for reasons unrelated to this
+// card. It still updates during a drag (it reads the dragState prop and the
+// @dnd-kit context), but unrelated grid re-renders no longer drag the whole
+// PlayerCard subtree along.
+export const DroppablePlayerCard = memo(DroppablePlayerCardImpl);

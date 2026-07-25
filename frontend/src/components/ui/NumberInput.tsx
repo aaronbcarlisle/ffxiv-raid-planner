@@ -105,9 +105,9 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       ? { height: 32, buttonWidth: 28, minCenterWidth: 40, fontSize: 13, buttonFontSize: 14 }
       : { height: 38, buttonWidth: 38, minCenterWidth: 50, fontSize: 14, buttonFontSize: 18 };
 
-    // App color palette
-    const accentColor = '#14b8a6'; // Primary accent
-    const accentHover = 'rgba(20, 184, 166, 0.08)'; // Hover background
+    // App color palette — theme-aware via the accent token (light #0c7d71 / dark #14b8a6)
+    const accentColor = 'var(--color-accent)'; // Primary accent
+    const accentHover = 'color-mix(in srgb, var(--color-accent) 8%, transparent)'; // Hover background
 
     // If not showing buttons, render simple input
     if (!showButtons) {
@@ -149,7 +149,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
             background: 'linear-gradient(180deg, var(--color-surface-card) 0%, var(--color-surface-raised) 100%)',
             borderRadius: 12,
             border: '1px solid var(--color-border-default)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
+            boxShadow: '0 2px 8px color-mix(in srgb, black 40%, transparent), inset 0 1px 0 color-mix(in srgb, white 3%, transparent)',
             overflow: 'hidden',
             height: dimensions.height,
             opacity: disabled ? 0.4 : 1,
@@ -194,10 +194,10 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: 'rgba(0, 0, 0, 0.25)',
+              background: 'color-mix(in srgb, black 25%, transparent)',
               borderLeft: '1px solid var(--color-border-subtle)',
               borderRight: '1px solid var(--color-border-subtle)',
-              boxShadow: 'inset 0 2px 6px rgba(0, 0, 0, 0.3)',
+              boxShadow: 'inset 0 2px 6px color-mix(in srgb, black 30%, transparent)',
               fontFamily: "var(--font-mono)",
               fontSize: dimensions.fontSize,
               fontWeight: 600,

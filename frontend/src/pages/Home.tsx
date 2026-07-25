@@ -5,7 +5,8 @@ import { useAuthStore, useAuthHydrated } from '../stores/authStore';
 import { useStaticGroupStore } from '../stores/staticGroupStore';
 import { useDevice } from '../hooks/useDevice';
 import { LoginButton } from '../components/auth';
-import { Input, Spinner } from '../components/ui';
+import { Input, Spinner, DiscordIcon } from '../components/ui';
+import { DISCORD_INVITE_URL } from '../config';
 import { Button, Tooltip } from '../components/primitives';
 import { BookOpen, Users, Calculator, Sparkles, Swords, BarChart3, Layers, Globe } from 'lucide-react';
 import { staggerContainer, staggerItem, instantVariants } from '../lib/motion';
@@ -155,7 +156,7 @@ export function Home() {
           ) : user ? (
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <Link
-                to="/dashboard"
+                to="/profile?tab=statics"
                 className="inline-block bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors"
               >
                 Go to My Statics
@@ -173,6 +174,19 @@ export function Home() {
               <LoginButton className="bg-accent text-accent-contrast px-8 py-4 text-lg rounded-lg font-medium hover:bg-accent-hover transition-colors" />
             </div>
           )}
+
+          {/* Secondary action: join the community Discord (ghost so it doesn't compete with login) */}
+          <div className="flex justify-center mt-4">
+            <a
+              href={DISCORD_INVITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium border border-border-default text-text-secondary hover:text-accent hover:border-accent/30 transition-colors"
+            >
+              <DiscordIcon className="w-5 h-5" />
+              Join our Discord
+            </a>
+          </div>
         </motion.div>
       </motion.div>
 
@@ -290,7 +304,7 @@ export function Home() {
           {groups.length > 3 && (
             <div className="mt-4 text-center">
               <Link
-                to="/dashboard"
+                to="/profile?tab=statics"
                 className="text-sm text-accent hover:text-accent-bright transition-colors"
               >
                 View all {groups.length} statics →

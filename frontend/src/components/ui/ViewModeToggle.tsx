@@ -18,7 +18,7 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
             <div>
               <div className="font-medium">Compact View</div>
               <div className="text-text-secondary text-xs mt-0.5">
-                Shows gear icons only. Press <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">V</kbd> to toggle.
+                Shows gear icons only. Press <kbd className="px-1 py-0.5 bg-surface-base rounded text-xs">V</kbd> to toggle.
               </div>
             </div>
           </div>
@@ -48,7 +48,7 @@ export function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeTogglePro
             <div>
               <div className="font-medium">Expanded View</div>
               <div className="text-text-secondary text-xs mt-0.5">
-                Shows full gear table. Press <kbd className="px-1 py-0.5 bg-surface-base rounded text-[10px]">V</kbd> to toggle.
+                Shows full gear table. Press <kbd className="px-1 py-0.5 bg-surface-base rounded text-xs">V</kbd> to toggle.
               </div>
             </div>
           </div>

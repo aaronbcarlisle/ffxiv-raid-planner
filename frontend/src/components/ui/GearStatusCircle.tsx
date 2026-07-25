@@ -11,8 +11,10 @@
  * - Tome: 3-state (missing → have → augmented → missing)
  */
 
+import type { ReactNode } from 'react';
+import { Tooltip } from '../primitives/Tooltip';
 import type { GearSource } from '../../types';
-import type { GearState } from '../../utils/calculations';
+import { getNextGearState, type GearState } from '../../utils/calculations';
 
 interface GearStatusCircleProps {
   /** Current state of the gear */
@@ -27,36 +29,12 @@ interface GearStatusCircleProps {
   disabled?: boolean;
   /** Size of the circle (default: 'md') */
   size?: 'sm' | 'md' | 'lg';
-}
-
-/**
- * Get the next state in the cycle based on current state and BiS source
- */
-function getNextState(
-  currentState: GearState,
-  bisSource: GearSource | null,
-  requiresAug: boolean
-): GearState {
-  // Unset BiS source - no state changes allowed
-  if (!bisSource) {
-    return currentState;
-  }
-
-  // Raid, Base Tome, and Crafted: 2-state cycle (missing → have → missing)
-  if (bisSource === 'raid' || bisSource === 'base_tome' || bisSource === 'crafted') {
-    return currentState === 'missing' ? 'have' : 'missing';
-  }
-
-  // Tome where base is BiS (no aug needed): 2-state cycle
-  if (bisSource === 'tome' && !requiresAug) {
-    return currentState === 'missing' ? 'have' : 'missing';
-  }
-
-  // Tome where augmentation is needed: 3-state cycle
-  // missing → have → augmented → missing
-  if (currentState === 'missing') return 'have';
-  if (currentState === 'have') return 'augmented';
-  return 'missing';
+  /**
+   * Optional hover tooltip explaining the toggle states. Only rendered for the
+   * interactive (non-null bisSource) states — callers gate this on edit
+   * permission so the hint appears only where the user can actually toggle.
+   */
+  tooltip?: ReactNode;
 }
 
 /**
@@ -103,12 +81,13 @@ export function GearStatusCircle({
   onChange,
   disabled = false,
   size = 'md',
+  tooltip,
 }: GearStatusCircleProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!disabled && bisSource) {
-      onChange(getNextState(state, bisSource, requiresAug));
+      onChange(getNextGearState(state, bisSource, requiresAug));
     }
   };
 
@@ -116,7 +95,7 @@ export function GearStatusCircle({
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       if (!disabled && bisSource) {
-        onChange(getNextState(state, bisSource, requiresAug));
+        onChange(getNextGearState(state, bisSource, requiresAug));
       }
     }
   };
@@ -159,9 +138,20 @@ export function GearStatusCircle({
     );
   }
 
+  // Wrap the interactive circle in the optional explanatory tooltip. The native
+  // <div> forwards the ref Radix's Trigger needs (a function component wouldn't).
+  const withTooltip = (element: ReactNode) =>
+    tooltip ? (
+      <Tooltip content={tooltip} side="left">
+        {element}
+      </Tooltip>
+    ) : (
+      element
+    );
+
   // Missing state: solid gray filled circle (no ring)
   if (isMissing) {
-    return (
+    return withTooltip(
       <div
         role="checkbox"
         aria-checked={false}
@@ -185,7 +175,7 @@ export function GearStatusCircle({
   }
 
   // Have or Complete state: colored ring with optional inner fill
-  return (
+  return withTooltip(
     <div
       role="checkbox"
       aria-checked={isComplete ? true : 'mixed'}

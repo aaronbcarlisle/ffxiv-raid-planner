@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit2, Trash2, Users, History } from 'lucide-react';
+import { Edit2, Trash2, Users, History, Trophy } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -59,7 +59,7 @@ export function RewardGoalDetailModal({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={goal.title}
+        title={<span className="flex items-center gap-2"><Trophy className="w-5 h-5" />{goal.title}</span>}
         size="lg"
       >
         <div className="flex flex-col gap-4">

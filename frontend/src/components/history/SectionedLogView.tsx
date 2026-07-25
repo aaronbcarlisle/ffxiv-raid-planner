@@ -1138,6 +1138,14 @@ export function SectionedLogView({
             />
           )}
 
+          {/* Loot fairness legend — sits directly under the grid table rather
+              than at the very bottom of the page. */}
+          {layoutMode === 'grid' && (
+            <div className="flex-shrink-0 mt-3">
+              <LootFairnessLegend />
+            </div>
+          )}
+
           {/* List Layout */}
           {layoutMode === 'split' && (
             <section className="bg-surface-card border border-border-default rounded-lg flex flex-col max-h-[calc(100vh-20rem)]">
@@ -1767,13 +1775,6 @@ export function SectionedLogView({
           </section>
         )}
       </div>
-
-      {/* Loot Fairness Legend - desktop only, rendered outside flex container so sidebar aligns with grid */}
-      {layoutMode === 'grid' && (
-        <div className="hidden md:block">
-          <LootFairnessLegend />
-        </div>
-      )}
 
       {/* Mobile Floating Layout Toggle (bottom left) */}
       <LogLayoutToggle

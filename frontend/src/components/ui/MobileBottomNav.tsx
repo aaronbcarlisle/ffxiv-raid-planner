@@ -71,7 +71,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
   return (
     <nav
         className="fixed bottom-0 left-0 right-0 z-40 bg-surface-raised border-t border-border-default touch-manipulation"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)', boxShadow: '0 -1px 0 rgba(20,184,166,0.06), 0 -8px 24px rgba(0,0,0,0.4)' }}
+        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0px)', boxShadow: '0 -1px 0 color-mix(in srgb, var(--color-accent) 6%, transparent), 0 -8px 24px color-mix(in srgb, black 40%, transparent)' }}
         aria-label="Main navigation"
         {...swipeHandlers}
       >
@@ -85,7 +85,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
             aria-label="Controls"
           >
             <SlidersHorizontal className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5 font-medium">Controls</span>
+            <span className="text-xs mt-0.5 font-medium">Controls</span>
           </button>
         )}
 
@@ -110,7 +110,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
                 {isActive && (
                   <span
                     className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                    style={{ background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.9), transparent)' }}
+                    style={{ background: 'linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-accent) 90%, transparent), transparent)' }}
                   />
                 )}
                 {(() => {
@@ -130,7 +130,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onControlsClick }: Mob
                   }
                   return null;
                 })()}
-                <span className={`text-[10px] mt-0.5 font-medium ${isActive ? 'font-semibold' : ''}`}>{tab.label}</span>
+                <span className={`text-xs mt-0.5 font-medium ${isActive ? 'font-semibold' : ''}`}>{tab.label}</span>
               </button>
             );
           })}

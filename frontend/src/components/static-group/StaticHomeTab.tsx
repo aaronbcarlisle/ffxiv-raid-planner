@@ -39,17 +39,24 @@ import { SafeAvatar } from '../ui/SafeAvatar';
 import { ReadinessBadge } from '../profile/ReadinessBadge';
 import { JoinRequestReviewModal } from './JoinRequestReviewModal';
 import { CreateCollectionGoalModal } from './CreateCollectionGoalModal';
+import { SuggestContentModal } from './SuggestContentModal';
 import type { JoinRequest, PageMode, SnapshotPlayer, SplitClearData, StaticGroup, TierSnapshot } from '../../types';
 import { normalizeApplicationSnapshot } from '../../utils/applicationSnapshot';
 import { getSplitClearReadiness } from '../../utils/splitClear';
+import { bisCompleteCount, rosterAvgIlv } from '../../utils/rosterReadiness';
+import { relativeTime, deriveActivityItems, type StaticActivityItem } from '../../utils/staticActivity';
 import { api } from '../../services/api';
 
 // ─── Prop types ───────────────────────────────────────────────────────────────
 
+/** Navigate to a primary tab, optionally targeting a sub-tab (e.g. 'farms'
+ *  under Goals & Farms). Threaded through every module that links elsewhere. */
+type NavigateFn = (tab: PageMode, subTab?: string) => void;
+
 interface StaticHomeTabProps {
   group: StaticGroup;
   tier: TierSnapshot | null;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
   canManage: boolean;
   /** Opens Settings → Requests tab. */
   onOpenRequests?: () => void;
@@ -58,19 +65,6 @@ interface StaticHomeTabProps {
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
-
-function rosterAvgIlv(players: SnapshotPlayer[]): number | null {
-  const active = players.filter((p) => p.configured && !p.isSubstitute);
-  if (!active.length) return null;
-  let total = 0, count = 0;
-  for (const p of active) {
-    const iLvs = p.gear
-      .map((s) => s.equippedItemLevel ?? s.itemLevel)
-      .filter((v): v is number => v != null);
-    if (iLvs.length) { total += iLvs.reduce((a, b) => a + b, 0) / iLvs.length; count++; }
-  }
-  return count > 0 ? Math.round(total / count) : null;
-}
 
 function playerIlv(p: SnapshotPlayer): number | null {
   const iLvs = p.gear
@@ -89,16 +83,6 @@ function playerGearReadiness(p: SnapshotPlayer): GearReadiness {
   if (pct >= 1) return 'ready';
   if (pct >= 0.5) return 'in_progress';
   return 'needs_gear';
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
 }
 
 function sessionCountdown(startIso: string): string {
@@ -121,182 +105,6 @@ interface ActivityLogItem {
   trialId: string | null;
   label: string;
   createdAt: string;
-}
-
-// ─── Activity privacy model ───────────────────────────────────────────────────
-//
-// Visibility rules for Static Overview:
-//   'static'  — safe to show to all static members
-//   'leaders' — only owner/lead should see (not currently shown in Overview)
-//   'private' — personal-only, must NOT appear in Static Overview
-//   'public'  — safe for anyone
-//
-// Actor display rules:
-//   'named'     — actor name is shown (explicit manual action)
-//   'anonymous' — plugin-sourced: show "A member" to prevent personal sync leakage
-//   'system'    — no actor (system/aggregate event)
-
-type ActivityVisibility = 'private' | 'leaders' | 'static' | 'public';
-type ActivityActorDisplay = 'named' | 'anonymous' | 'system';
-
-interface StaticActivityItem {
-  key: string;
-  actorUserId?: string | null;
-  actorDisplayName?: string | null;
-  actorDisplay: ActivityActorDisplay;
-  visibility: ActivityVisibility;
-  type: 'mount_progress' | 'plugin_sync';
-  icon: 'mount' | 'currency' | 'tracking' | 'plugin';
-  label: string;
-  createdAt: string;
-  time: string;
-}
-
-function deriveActivityItems(
-  data: MountFarmData,
-  currentUserId?: string | null,
-  activityDisplayMode?: 'named' | 'anonymous' | null,
-): StaticActivityItem[] {
-  interface FlatEntry {
-    key: string;
-    createdAt: string;
-    icon: StaticActivityItem['icon'];
-    label: string;
-    actorDisplay: ActivityActorDisplay;
-    visibility: ActivityVisibility;
-    type: StaticActivityItem['type'];
-    actorUserId?: string | null;
-    actorDisplayName?: string | null;
-  }
-
-  const flat: FlatEntry[] = [];
-  let pluginSyncAt: string | null = null;
-
-  for (const trial of data.trials) {
-    const trialInfo = getTrialById(trial.trialId);
-    const dutyName = trialInfo?.dutyName ?? trial.trialId;
-    const mountName = trialInfo?.mountName ?? 'mount';
-
-    for (const mp of trial.memberProgress) {
-      if (!mp.updatedAt) continue;
-
-      const ownerPlugin = mp.ownershipSource === 'plugin';
-      const totemPlugin = mp.totemSource === 'plugin';
-      const isPlugin = ownerPlugin || totemPlugin;
-
-      if (isPlugin) {
-        // Aggregate the latest plugin sync timestamp for the system row
-        if (mp.lastPluginSyncAt && (!pluginSyncAt || mp.lastPluginSyncAt > pluginSyncAt)) {
-          pluginSyncAt = mp.lastPluginSyncAt;
-        }
-        // Plugin-sourced individual rows: actor name is NOT shown (privacy rule).
-        // Personal plugin sync details must not leak onto Static Overview.
-        if (mp.hasMount && ownerPlugin) {
-          flat.push({
-            key: `${trial.trialId}-${mp.userId}-obtained`,
-            createdAt: mp.updatedAt,
-            icon: 'mount',
-            label: `A member obtained ${mountName}`,
-            actorDisplay: 'anonymous',
-            visibility: 'static',
-            type: 'mount_progress',
-            actorUserId: null,
-            actorDisplayName: null,
-          });
-        } else if (mp.totemCount > 0 && totemPlugin) {
-          flat.push({
-            key: `${trial.trialId}-${mp.userId}-currency`,
-            createdAt: mp.updatedAt,
-            icon: 'currency',
-            label: `A member updated collection progress`,
-            actorDisplay: 'anonymous',
-            visibility: 'static',
-            type: 'mount_progress',
-            actorUserId: null,
-            actorDisplayName: null,
-          });
-        }
-        continue;
-      }
-
-      // Manual sources: actor name is shown (explicit user action)
-      if (mp.hasMount) {
-        flat.push({
-          key: `${trial.trialId}-${mp.userId}-obtained`,
-          createdAt: mp.updatedAt,
-          icon: 'mount',
-          label: `${mp.displayName} obtained ${mountName}`,
-          actorDisplay: 'named',
-          visibility: 'static',
-          type: 'mount_progress',
-          actorUserId: mp.userId,
-          actorDisplayName: mp.displayName,
-        });
-      } else if (mp.totemCount > 0) {
-        flat.push({
-          key: `${trial.trialId}-${mp.userId}-currency`,
-          createdAt: mp.updatedAt,
-          icon: 'currency',
-          label: `${mp.displayName} updated ${dutyName} progress`,
-          actorDisplay: 'named',
-          visibility: 'static',
-          type: 'mount_progress',
-          actorUserId: mp.userId,
-          actorDisplayName: mp.displayName,
-        });
-      } else if (mp.wantsMount) {
-        flat.push({
-          key: `${trial.trialId}-${mp.userId}-tracking`,
-          createdAt: mp.updatedAt,
-          icon: 'tracking',
-          label: `${mp.displayName} started tracking ${dutyName}`,
-          actorDisplay: 'named',
-          visibility: 'static',
-          type: 'mount_progress',
-          actorUserId: mp.userId,
-          actorDisplayName: mp.displayName,
-        });
-      }
-    }
-  }
-
-  // System-level aggregate for plugin sync activity — no individual actor
-  if (pluginSyncAt) {
-    flat.push({
-      key: 'plugin-sync',
-      createdAt: pluginSyncAt,
-      icon: 'plugin',
-      label: 'Shared mount data updated',
-      actorDisplay: 'system',
-      visibility: 'static',
-      type: 'plugin_sync',
-    });
-  }
-
-  // Static Overview only shows 'static' and 'public' visibility items.
-  // 'private' (personal plugin sync details) and 'leaders' rows are excluded.
-  const visible = flat.filter((f) => f.visibility === 'static' || f.visibility === 'public');
-  visible.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-
-  return visible.slice(0, 5).map((f) => {
-    const shouldAnonymize =
-      activityDisplayMode === 'anonymous' &&
-      currentUserId &&
-      f.actorUserId === currentUserId &&
-      f.actorDisplay === 'named';
-    return {
-      key: f.key,
-      actorUserId: shouldAnonymize ? null : f.actorUserId,
-      actorDisplayName: shouldAnonymize ? null : f.actorDisplayName,
-      actorDisplay: shouldAnonymize ? ('anonymous' as ActivityActorDisplay) : f.actorDisplay,
-      visibility: f.visibility,
-      type: f.type,
-      icon: f.icon,
-      label: shouldAnonymize ? f.label.replace(f.actorDisplayName ?? '', 'A member') : f.label,
-      createdAt: f.createdAt,
-      time: relativeTime(f.createdAt),
-    };
-  });
 }
 
 // ─── Shared label ─────────────────────────────────────────────────────────────
@@ -342,7 +150,7 @@ function NotificationsModule({
   requests: JoinRequest[];
   nextSession: { startTime: string; contentName: string | null } | null;
   loading: boolean;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
   onOpenRequests?: () => void;
 }) {
   const items = useMemo(() => {
@@ -455,7 +263,7 @@ function NextRaidModule({
 }: {
   session: { title: string; startTime: string; endTime: string; contentName: string | null; rsvps: { status: string }[] } | null;
   loading: boolean;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }) {
   return (
     <div>
@@ -561,12 +369,7 @@ function WeeklyProgressModule({
 }) {
   const active = players.filter((p) => p.configured && !p.isSubstitute);
 
-  const bisCount = useMemo(() => {
-    return active.filter((p) => {
-      if (!p.gear.length) return false;
-      return p.gear.every((s) => s.hasItem);
-    }).length;
-  }, [active]);
+  const bisCount = useMemo(() => bisCompleteCount(active), [active]);
 
   const avgIlv = rosterAvgIlv(players);
 
@@ -673,7 +476,7 @@ function CommandBriefModule({
   canManage: boolean;
   onReviewRequest?: () => void;
   onOpenRequests?: () => void;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }) {
   const chips: { key: string; label: string; icon: React.ReactNode; accent: boolean; warn?: boolean; onClick: () => void }[] = [
     ...(canManage && pendingCount > 0
@@ -836,7 +639,7 @@ function CommandBriefModule({
         <button
           type="button"
           onClick={ctaAction}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent text-accent-contrast text-xs font-semibold hover:bg-accent-hover transition-colors"
         >
           {ctaLabel}
           <ChevronRight className="w-3.5 h-3.5" />
@@ -867,7 +670,7 @@ function GroupHeroPanel({
   group: StaticGroup;
   tier: TierSnapshot | null;
   players: SnapshotPlayer[];
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }) {
   const tierInfo = tier ? getTierById(tier.tierId) : null;
   const active = players.filter((p) => p.configured && !p.isSubstitute);
@@ -1025,7 +828,7 @@ function RosterPresenceModule({
   onNavigate,
 }: {
   players: SnapshotPlayer[];
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }) {
   const active = players.filter((p) => p.configured && !p.isSubstitute);
 
@@ -1128,7 +931,7 @@ function BestNextFarmModule({
 }: {
   recommendations: FarmScore[];
   loading: boolean;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
   onScheduleFarm?: (trial: MountFarmTrial) => void;
 }) {
   const top = recommendations[0] ?? null;
@@ -1192,7 +995,7 @@ function BestNextFarmModule({
                 if (onScheduleFarm) {
                   onScheduleFarm(trialInfo);
                 } else {
-                  onNavigate('goals');
+                  onNavigate('goals', 'farms');
                 }
               }}
               className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-accent border border-accent/30 rounded-lg hover:bg-accent/10 transition-colors"
@@ -1210,7 +1013,7 @@ function BestNextFarmModule({
             </p>
             <button
               type="button"
-              onClick={() => onNavigate('goals')}
+              onClick={() => onNavigate('goals', 'farms')}
               className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
             >
               Open Mount Farms
@@ -1311,6 +1114,7 @@ function GoalsFarmsModule({
   canManage,
   onCreateGoal,
   onDeleteGoal,
+  onSuggestContent,
 }: {
   objectives: StaticObjectiveGoal[];
   objectivesLoading: boolean;
@@ -1321,6 +1125,7 @@ function GoalsFarmsModule({
   canManage: boolean;
   onCreateGoal: () => void;
   onDeleteGoal: (id: string) => void;
+  onSuggestContent: () => void;
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -1574,7 +1379,7 @@ function GoalsFarmsModule({
               </p>
               <button
                 type="button"
-                onClick={openGoalsTab}
+                onClick={onSuggestContent}
                 className="text-[11px] text-accent hover:underline"
               >
                 Suggest content →
@@ -1595,7 +1400,7 @@ function GoalsFarmsModule({
               <div className="px-3 py-1.5 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={openGoalsTab}
+                  onClick={canManage ? openGoalsTab : onSuggestContent}
                   className="text-[11px] text-accent hover:underline"
                 >
                   {canManage ? 'Manage suggestions →' : 'Vote & suggest →'}
@@ -1644,7 +1449,7 @@ function RecentActivityModule({
 }: {
   farmData: MountFarmData | null;
   groupId: string;
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
   canManage: boolean;
 }) {
   const currentUser = useAuthStore((s) => s.user);
@@ -1731,7 +1536,7 @@ function RecentActivityModule({
             {canManage && (
               <button
                 type="button"
-                onClick={() => onNavigate('goals')}
+                onClick={() => onNavigate('goals', 'farms')}
                 className="text-xs text-accent hover:text-accent-hover underline underline-offset-2 transition-colors"
               >
                 Open Mount Farms
@@ -1761,7 +1566,7 @@ function RecentActivityModule({
             <div style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
               <button
                 type="button"
-                onClick={() => onNavigate('goals')}
+                onClick={() => onNavigate('goals', 'farms')}
                 className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-text-muted hover:text-accent transition-colors"
               >
                 View all activity
@@ -1780,7 +1585,7 @@ function RecentActivityModule({
 interface SplitClearReadinessCardProps {
   data: SplitClearData;
   players: SnapshotPlayer[];
-  onNavigate: (tab: PageMode) => void;
+  onNavigate: NavigateFn;
 }
 
 function SplitClearReadinessCard({ data, players, onNavigate }: SplitClearReadinessCardProps) {
@@ -1836,7 +1641,7 @@ export function StaticHomeTab({
   const { data: splitClearData, fetchData: fetchSplitClear } = useSplitClearStore();
   const { goals, isLoading: goalsLoading, fetchGoals, deleteGoal } = useCollectionGoalStore();
   const { objectives, loading: objectivesLoading, objectivesError, fetchObjectives } = useObjectiveGoalStore();
-  const { suggestions, fetchSuggestions } = useContentSuggestionStore();
+  const { suggestions, fetchSuggestions, createSuggestion } = useContentSuggestionStore();
 
   useEffect(() => {
     if (!group.id) return;
@@ -1876,6 +1681,7 @@ export function StaticHomeTab({
   const featuredRequest = pendingRequests[0] ?? null;
   const [reviewRequest, setReviewRequest] = useState<JoinRequest | null>(null);
   const [showCreateGoalModal, setShowCreateGoalModal] = useState(false);
+  const [showSuggestModal, setShowSuggestModal] = useState(false);
 
   const handleDeleteGoal = async (goalId: string) => {
     await deleteGoal(group.id, goalId);
@@ -1958,6 +1764,7 @@ export function StaticHomeTab({
             canManage={canManage}
             onCreateGoal={() => setShowCreateGoalModal(true)}
             onDeleteGoal={handleDeleteGoal}
+            onSuggestContent={() => setShowSuggestModal(true)}
           />
 
           {splitClearData?.enabled && (
@@ -1987,6 +1794,16 @@ export function StaticHomeTab({
           isOpen
           onClose={() => setShowCreateGoalModal(false)}
           groupId={group.id}
+        />
+      )}
+
+      {showSuggestModal && (
+        <SuggestContentModal
+          onSave={async (data) => {
+            await createSuggestion(group.id, data);
+            fetchSuggestions(group.id);
+          }}
+          onClose={() => setShowSuggestModal(false)}
         />
       )}
     </div>

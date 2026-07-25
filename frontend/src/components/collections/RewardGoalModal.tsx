@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Trophy } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Input } from '../ui/Input';
@@ -124,7 +125,7 @@ export function RewardGoalModal({ isOpen, onClose, groupId, editGoal }: RewardGo
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editGoal ? 'Edit Collection Goal' : 'New Collection Goal'}
+      title={<span className="flex items-center gap-2"><Trophy className="w-5 h-5" />{editGoal ? 'Edit Collection Goal' : 'New Collection Goal'}</span>}
     >
       <div className="flex flex-col gap-4">
         <div>

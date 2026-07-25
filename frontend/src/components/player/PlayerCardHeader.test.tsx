@@ -13,6 +13,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PlayerCardHeader } from './PlayerCardHeader';
+import { TooltipProvider } from '../primitives/Tooltip';
 import type { SnapshotPlayer } from '../../types';
 
 beforeEach(() => {
@@ -60,23 +61,25 @@ function renderHeader(extraProps: Record<string, unknown> = {}) {
 
   render(
     // The wrapper stands in for the card div that carries the drag listeners.
-    <div onKeyDown={parentKeyDown} data-testid="drag-wrapper">
-      <PlayerCardHeader
-        job={player.job}
-        name={player.name}
-        role={player.role}
-        position={null}
-        completedSlots={0}
-        totalSlots={0}
-        player={player}
-        tierId="t1"
-        userRole="owner"
-        onJobChange={vi.fn()}
-        onNameChange={onNameChange}
-        onPositionChange={vi.fn()}
-        {...extraProps}
-      />
-    </div>
+    <TooltipProvider>
+      <div onKeyDown={parentKeyDown} data-testid="drag-wrapper">
+        <PlayerCardHeader
+          job={player.job}
+          name={player.name}
+          role={player.role}
+          position={null}
+          completedSlots={0}
+          totalSlots={0}
+          player={player}
+          tierId="t1"
+          userRole="owner"
+          onJobChange={vi.fn()}
+          onNameChange={onNameChange}
+          onPositionChange={vi.fn()}
+          {...extraProps}
+        />
+      </div>
+    </TooltipProvider>
   );
 
   // Enter edit mode via the always-visible pencil button.

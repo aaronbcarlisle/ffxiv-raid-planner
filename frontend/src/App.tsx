@@ -2,10 +2,12 @@ import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import { ErrorBoundary } from 'react-error-boundary';
+import { TooltipProvider } from './components/primitives/Tooltip';
 import { Layout } from './components/layout/Layout';
-import { ToastContainer } from './components/ui/ToastContainer';
+import { ToastContainer } from './components/layout/ToastContainer';
 import { PageSkeleton } from './components/ui/Skeleton';
 import { initializeAuth } from './stores/authStore';
+import { useShellPreferenceSync } from './lib/shellPreference';
 import { analytics } from './services/analytics';
 import { errorReporter } from './services/errorReporter';
 import { attemptChunkReload, clearChunkReloadGuard, hasAttemptedChunkReload, isChunkLoadError } from './utils/chunkRecovery';
@@ -19,12 +21,13 @@ const AdminStatics = lazy(() => import('./pages/admin/AdminStatics').then(m => (
 const AdminUsage = lazy(() => import('./pages/admin/AdminUsage').then(m => ({ default: m.AdminUsage })));
 const AdminErrors = lazy(() => import('./pages/admin/AdminErrors').then(m => ({ default: m.AdminErrors })));
 const Discover = lazy(() => import('./pages/Discover').then(m => ({ default: m.Discover })));
-const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
+const GroupRoute = lazy(() => import('./pages/GroupRoute').then(m => ({ default: m.GroupRoute })));
 const Profile = lazy(() => import('./pages/Profile'));
 const PublicProfile = lazy(() => import('./pages/PublicProfile'));
 const AuthCallback = lazy(() => import('./pages/AuthCallback').then(m => ({ default: m.AuthCallback })));
 const InviteAccept = lazy(() => import('./pages/InviteAccept').then(m => ({ default: m.InviteAccept })));
 const PluginAuth = lazy(() => import('./pages/PluginAuth').then(m => ({ default: m.PluginAuth })));
+const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 // Documentation pages
 const DocsIndex = lazy(() => import('./pages/DocsIndex').then(m => ({ default: m.DocsIndex })));
@@ -67,7 +70,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
               attemptChunkReload();
               window.location.reload();
             }}
-            className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+            className="px-4 py-2 bg-accent text-accent-contrast rounded hover:bg-accent/80 transition-colors"
           >
             Reload app
           </button>
@@ -84,7 +87,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
 {/* design-system-ignore: error boundary uses inline button to minimize dependencies */}
         <button
           onClick={resetErrorBoundary}
-          className="px-4 py-2 bg-accent text-white rounded hover:bg-accent/80 transition-colors"
+          className="px-4 py-2 bg-accent text-accent-contrast rounded hover:bg-accent/80 transition-colors"
         >
           Try again
         </button>
@@ -103,6 +106,9 @@ function PageLoader() {
 
 function App() {
   const location = useLocation();
+
+  // Backend-wins hydration of the dual-shell preference (Phase R, Task 8).
+  useShellPreferenceSync();
 
   // Initialize auth on app load (check for existing session)
   useEffect(() => {
@@ -141,6 +147,10 @@ function App() {
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback} onReset={() => window.location.reload()}>
+      {/* Single app-root tooltip provider. Radix expects one provider near the
+          root; per-instance providers (one per <Tooltip>) multiplied roster
+          reconciliation cost ~50-70x per player card. */}
+      <TooltipProvider delayDuration={500} skipDelayDuration={100}>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -156,7 +166,7 @@ function App() {
               <Route path="usage" element={<AdminUsage />} />
               <Route path="errors" element={<AdminErrors />} />
             </Route>
-            <Route path="group/:shareCode" element={<GroupView />} />
+            <Route path="group/:shareCode" element={<GroupRoute />} />
             {/* Documentation routes */}
             <Route path="docs" element={<DocsIndex />} />
             <Route path="docs/quick-start" element={<QuickStartGuide />} />
@@ -178,6 +188,12 @@ function App() {
             <Route path="docs/privacy" element={<PrivacyDocs />} />
             {/* Legacy redirect for old /design-system URL */}
             <Route path="design-system" element={<DesignSystemPage />} />
+            {/* Catch-all 404 (A7) — MUST stay the LAST child inside the Layout
+                route so Header/nav chrome mounts around the not-found page.
+                Do NOT add a second top-level wildcard: route ranking already
+                lets /auth/callback, /invite/:inviteCode and /plugin-auth win
+                over "/" + "*", so this one splat catches every other URL. */}
+            <Route path="*" element={<NotFound />} />
           </Route>
           {/* Auth callback route (outside Layout for cleaner UX) */}
           <Route path="/auth/callback" element={<AuthCallback />} />
@@ -188,6 +204,7 @@ function App() {
         </Routes>
         <ToastContainer />
       </Suspense>
+      </TooltipProvider>
     </ErrorBoundary>
   );
 }

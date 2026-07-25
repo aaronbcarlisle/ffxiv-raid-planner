@@ -123,6 +123,8 @@ export const Events = {
   // Player events
   PLAYER_UPDATED: 'player:updated',
   PLAYER_GEAR_CHANGED: 'player:gear-changed',
+  // (PLAYER_ADDED removed in Task 8 — the add-player scroll/highlight signal now
+  // flows through the GroupActions context's `addedPlayer`, not the event bus.)
 
   // Loot events
   LOOT_LOGGED: 'loot:logged',

@@ -1,8 +1,8 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** v1.22.2 | **Next:** Solo Player Profile / Player Hub (in progress on `feature/solo-player-profile`), FFLogs integration
+**Status:** Undergoing a top-down UX/IA redesign — **read [docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md) first.** It is the canonical source of truth: what the app is, how everything nests (layers · weekly loop · Progress Engine · rings), what fits inside it, and the roadmap.
 
-A web tool for FFXIV static raid groups to track gear progress toward BiS and manage loot distribution.
+A progression tool and home base for FFXIV static raid groups: roster, schedule, loot, and gear progress for the content a static is working on.
 
 ## Contents
 
@@ -80,6 +80,23 @@ A web tool for FFXIV static raid groups to track gear progress toward BiS and ma
 | New job selector | Use existing `JobPicker` |
 | New modal | Use `Modal` with `useModal` |
 
+### Design Language (enforced)
+
+**The design system is the source of truth.** Raw HTML, hardcoded colors, and tiny text are lint-flagged (`warn` now, ratcheting to `error` per area). Appearance must match behavior — a clickable thing must *look and announce* clickable.
+
+| Need | Use | Never |
+|------|-----|-------|
+| Clickable action | `Button` / `IconButton` | raw `<button>`, `<div onClick>` |
+| Navigational text / row | `LinkText` / `NavRow` | plain text with `onClick` |
+| In-surface view switch | `Tabs` (no route API) | tabs that change the route |
+| Status / filter / nav pill | `Tag` with `variant="label"\|"filter"\|"nav"` | an ambiguous pill |
+| Have/missing/unknown | `TriStateToggle` | loose ✓/✗/? buttons |
+| Page/section header | `PageHeader` (icon + Title Case + actions) | a bespoke header |
+| Color | semantic token (`text-accent`, `var(--color-*)`, `color-mix(... var(--color-accent) ...)`) | inline hex/`rgb()`, `bg-[#…]` |
+| Text size | `text-xs`+ (12px floor) | `text-[7–11px]` for readable text |
+
+Type scale + tokens: [docs/DESIGN_SYSTEM_SUMMARY.md](./docs/DESIGN_SYSTEM_SUMMARY.md). Enforcement surface: [docs/audits/enforcement.md](./docs/audits/enforcement.md). Live reference: `/docs/design-system` → "Constrained Primitives". The `design-system-ignore: <reason>` comment is the escape hatch — always with a justification.
+
 ---
 
 ## Commands
@@ -153,11 +170,9 @@ cd scripts && npm test            # Scripts tests (Vitest)
 
 ---
 
-## Known Issues
+## Roadmap & Status
 
-See [OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md) for prioritized remaining work.
-
-**Audit Status:** Complete. R-002 (props drilling) deferred; hooks mitigate it.
+The roadmap is anchored in **[docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md)** (§6 current state, §7 core-anchored roadmap). The changelog lives in `frontend/src/data/releaseNotes.ts`. Superseded planning, audit, and session docs are in `docs/archive/`.
 
 ---
 
@@ -430,33 +445,35 @@ Custom slash commands for Claude Code (invoke with `/project:`):
 | `/project:audit-user-docs` | Audit user documentation against style guide, check for staleness, produce report |
 
 **Related docs for documentation work:**
-- `docs/DOCS_STYLE_GUIDE.md` - Tone, formatting, component usage for user docs
-- `docs/DOCS_IMPLEMENTATION_PLAN.md` - Phased restructure plan (if active)
+- `docs/DOCS_STYLE_GUIDE.md` - Tone, formatting, component usage for in-app user docs
 
 ---
 
 ## Additional Documentation
 
+See **[docs/README.md](./docs/README.md)** for the full doc map. Canonical set:
+
+### Source of truth
+- **[PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md)** - What the app is, the model, the roadmap **(READ FIRST)**
+- **[REDESIGN_SPEC.md](./docs/REDESIGN_SPEC.md)** - IA, visual language, flows + mockups *(in progress)*
+
 ### Design System
 - **[UI_COMPONENTS.md](./docs/UI_COMPONENTS.md)** - Component inventory **(READ BEFORE UI WORK)**
-- **[DESIGN_SYSTEM_SUMMARY.md](./docs/DESIGN_SYSTEM_SUMMARY.md)** - Design system integration quick reference
-- **[DESIGN_SYSTEM_ENFORCEMENT.md](./docs/DESIGN_SYSTEM_ENFORCEMENT.md)** - How design system is enforced
+- **[DESIGN_SYSTEM_SUMMARY.md](./docs/DESIGN_SYSTEM_SUMMARY.md)** - Integration quick reference
+- **[DESIGN_SYSTEM_ENFORCEMENT.md](./docs/DESIGN_SYSTEM_ENFORCEMENT.md)** - How it's enforced
 - **[/docs/design-system](http://localhost:5174/docs/design-system)** - Interactive visual reference (dev server)
 
-### Development
-- **[CODING_STANDARDS.md](./docs/CODING_STANDARDS.md)** - Code style and patterns
-- **[CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Version history, resolved issues
-- **[OUTSTANDING_WORK.md](./docs/OUTSTANDING_WORK.md)** - Remaining work, prioritized
-- **[SETUP_WIZARD_PLAN.md](./docs/SETUP_WIZARD_PLAN.md)** - Setup wizard implementation plan
-
 ### Reference
-- **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** - FFXIV gearing data
-- **[DOCS_STYLE_GUIDE.md](./docs/DOCS_STYLE_GUIDE.md)** - User documentation style guide
+- **[CODING_STANDARDS.md](./docs/CODING_STANDARDS.md)** - Code style and patterns
+- **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** + **[GEARING_MATH.md](./docs/GEARING_MATH.md)** - FFXIV gearing data
+- **[DOCS_STYLE_GUIDE.md](./docs/DOCS_STYLE_GUIDE.md)** - In-app user-docs style guide
+- **`frontend/src/data/releaseNotes.ts`** - Changelog (CI-enforced)
+- **[docs/archive/](./docs/archive/)** - Superseded planning, audit, and session docs
 
 ---
 
 ## Context Management
 
-**Low Context (~15-20% remaining):** Update OUTSTANDING_WORK.md with progress, list next steps, notify user.
+**Low Context (~15-20% remaining):** Summarize progress and next steps for the user; reference specific file paths.
 
-**Session Continuity:** Update OUTSTANDING_WORK.md with completed items and discoveries. Reference specific file paths.
+**Session Continuity:** Capture decisions and discoveries; keep `docs/PRODUCT_MODEL.md` current if the model evolves.

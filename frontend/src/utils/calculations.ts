@@ -2,7 +2,7 @@
  * Gear and Team Calculations
  */
 
-import type { SnapshotPlayer, GearSlotStatus, TomeWeaponStatus, TeamSummary } from '../types';
+import type { SnapshotPlayer, GearSlotStatus, TomeWeaponStatus, TeamSummary, GearSource } from '../types';
 
 // ==================== Gear State Types ====================
 
@@ -31,6 +31,30 @@ export function fromGearState(state: GearState): { hasItem: boolean; isAugmented
     hasItem: state !== 'missing',
     isAugmented: state === 'augmented',
   };
+}
+
+/**
+ * Next state in the gear cycle, keyed by BiS source (promoted verbatim from
+ * GearStatusCircle so the atom and the Roster Board share one state machine).
+ * - null bisSource: no change.
+ * - raid / base_tome / crafted, or tome-without-aug: 2-state missing <-> have.
+ * - tome-requiring-aug: 3-state missing -> have -> augmented -> missing.
+ */
+export function getNextGearState(
+  state: GearState,
+  bisSource: GearSource | null,
+  requiresAug: boolean,
+): GearState {
+  if (!bisSource) return state;
+  if (bisSource === 'raid' || bisSource === 'base_tome' || bisSource === 'crafted') {
+    return state === 'missing' ? 'have' : 'missing';
+  }
+  if (bisSource === 'tome' && !requiresAug) {
+    return state === 'missing' ? 'have' : 'missing';
+  }
+  if (state === 'missing') return 'have';
+  if (state === 'have') return 'augmented';
+  return 'missing';
 }
 import {
   BOOK_COSTS,
@@ -96,6 +120,50 @@ export function isSlotComplete(status: GearSlotStatus): boolean {
   // Tome BiS - check if augmentation is required
   if (!requiresAugmentation(status)) return true;
   return status.isAugmented;
+}
+
+/**
+ * Compute the SnapshotPlayer patch for changing one gear slot (promoted verbatim
+ * from PlayerCard.handleGearChange so the legacy card and the Roster Board share
+ * one gear-mutation path). Recalcs `currentSource` on a hasItem/isAugmented
+ * change (keeps iLv accurate) and, for the raid weapon, syncs the main-job
+ * weapon priority. Returns `{ gear }` or `{ gear, weaponPriorities }`.
+ */
+export function computeGearSlotUpdate(
+  player: SnapshotPlayer,
+  slot: string,
+  updates: Partial<GearSlotStatus>,
+): Partial<SnapshotPlayer> {
+  const newGear = player.gear.map((g) => {
+    if (g.slot !== slot) return g;
+    const merged = { ...g, ...updates };
+    if ('hasItem' in updates || 'isAugmented' in updates) {
+      if (merged.hasItem) {
+        merged.currentSource = merged.bisSource === 'raid' ? 'savage' : merged.isAugmented ? 'tome_up' : 'tome';
+      } else {
+        merged.currentSource = 'crafted';
+      }
+    }
+    return merged;
+  });
+
+  const isWeaponSlot = slot === 'weapon';
+  const updatingRaidWeapon = isWeaponSlot && player.gear.find((g) => g.slot === 'weapon' && g.bisSource === 'raid');
+  const hasItemChanged = 'hasItem' in updates && !!updatingRaidWeapon;
+
+  if (hasItemChanged && player.job) {
+    const mainJobPriority = player.weaponPriorities.find((wp) => wp.job === player.job);
+    if (mainJobPriority && mainJobPriority.received !== updates.hasItem) {
+      const updatedPriorities = player.weaponPriorities.map((wp) =>
+        wp.job === player.job
+          ? { ...wp, received: Boolean(updates.hasItem), receivedDate: updates.hasItem ? new Date().toISOString() : undefined }
+          : wp,
+      );
+      return { gear: newGear, weaponPriorities: updatedPriorities };
+    }
+  }
+
+  return { gear: newGear };
 }
 
 /**

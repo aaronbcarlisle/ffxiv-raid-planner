@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Check, ExternalLink, Link2, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { Check, ExternalLink, Link2, Plus, RefreshCw, Target, Trash2, X } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives/Button';
 import { Input } from '../ui/Input';
@@ -350,7 +350,7 @@ export function BiSTargetManagerModal({
       : 'Saved to roster — visible to group members';
 
   return (
-    <Modal isOpen onClose={onClose} title={`BiS Targets — ${jobDisplay}`} size="lg">
+    <Modal isOpen onClose={onClose} title={<span className="flex items-center gap-2"><Target className="w-5 h-5" />BiS Targets — {jobDisplay}</span>} size="lg">
       <div className="space-y-4">
         <p className="text-xs text-text-secondary">{contextLabel}</p>
 

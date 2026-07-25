@@ -1,12 +1,14 @@
 /**
  * PageContainer - Consistent container widths for different page types
  *
- * 5-Tier Container System:
- * - data:    2560px - Data-dense, grid content (GroupView, data tables)
- * - wide:    1920px - Documentation with sidebar (API Docs, Guides)
- * - focus:   1280px - Focused content, simple docs (ReleaseNotes)
- * - narrow:  1152px - Card grids, dashboards (Dashboard)
- * - compact:  896px - Marketing, landing pages (Home)
+ * 4-Tier Container System (rail-derived):
+ * - data:     2160px - Data-dense spine pages (Roster, Loot) on ultrawide
+ * - standard: 1760px - Home, Schedule (dashboards)
+ * - focus:    1100px - Player Hub, settings, forms
+ * - doc:       960px - Docs / reading
+ *
+ * Width ceilings cap the content column; the context rail lives outside them.
+ * Widths come from --container-{tier} tokens in tokens.generated.css.
  *
  * @example
  * <PageContainer variant="data">
@@ -16,32 +18,41 @@
 
 import type { ReactNode } from 'react';
 
-export type ContainerVariant = 'data' | 'wide' | 'focus' | 'narrow' | 'compact';
+export type ContainerVariant = 'data' | 'standard' | 'focus' | 'doc';
 
 interface PageContainerProps {
   /** Container width variant */
-  variant?: ContainerVariant;
+  variant?: ContainerVariant | 'wide' | 'narrow' | 'compact';
   /** Additional className */
   className?: string;
   /** Content */
   children: ReactNode;
 }
 
+// deprecated alias: maps old tier names to new rail-derived names
+const DEPRECATED_ALIASES: Record<string, ContainerVariant> = {
+  wide: 'standard',
+  narrow: 'focus',
+  compact: 'doc',
+};
+
 const CONTAINER_CLASSES: Record<ContainerVariant, string> = {
-  data: 'max-w-[160rem]',    // 2560px - GroupView, data grids
-  wide: 'max-w-[120rem]',    // 1920px - Docs with sidebar
-  focus: 'max-w-[80rem]',    // 1280px - Simple docs
-  narrow: 'max-w-6xl',       // 1152px - Dashboard
-  compact: 'max-w-4xl',      // 896px - Home page
+  data: 'max-w-data',       // 2160px — data-dense spine pages (Roster, Loot)
+  standard: 'max-w-standard', // 1760px — dashboards (Home, Schedule)
+  focus: 'max-w-focus',     // 1100px — Player Hub, settings, forms
+  doc: 'max-w-doc',         // 960px  — docs / reading
 };
 
 export function PageContainer({
-  variant = 'wide',
+  variant = 'standard',
   className = '',
   children,
 }: PageContainerProps) {
+  // Resolve deprecated aliases before lookup
+  const resolved: ContainerVariant =
+    DEPRECATED_ALIASES[variant as string] ?? (variant as ContainerVariant);
   return (
-    <div className={`mx-auto ${CONTAINER_CLASSES[variant]} ${className}`}>
+    <div className={`mx-auto ${CONTAINER_CLASSES[resolved]} ${className}`}>
       {children}
     </div>
   );

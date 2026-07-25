@@ -1,16 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { PageTransition } from './PageTransition';
-import { ReleaseBanner } from './ReleaseBanner';
+import { GlobalSettingsPanel } from './GlobalSettingsPanel';
+import { SettingsDockToggle } from './SettingsDockToggle';
+import { SettingsPanelController } from './SettingsPanelController';
 import { ViewAsBanner } from '../admin';
 import { KeyboardShortcutsHelp } from '../ui';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
 import { useAuthStore } from '../../stores/authStore';
+import { useResolvedShell } from '../../lib/shellPreference';
 
 export function Layout() {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.isAdmin ?? false;
+
+  // The v2 shell renders its own TopBar, so the app-wide Header (and the
+  // settings dock toggle) are suppressed ONLY when the group route resolves to
+  // the v2 shell. Legacy group routes render <Header/> exactly as before the
+  // flip; all non-group routes always render it. Same resolver as GroupRoute —
+  // precedence lives in ONE place (lib/shellPreference).
+  const location = useLocation();
+  const resolvedShell = useResolvedShell();
+  const isGroupV2Shell = location.pathname.startsWith('/group/') && resolvedShell === 'v2';
 
   // Global event listener for keyboard shortcuts modal
   // This allows the UserMenu to trigger shortcuts from any page
@@ -36,9 +49,8 @@ export function Layout() {
 
   return (
     <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
-      <Header />
+      {!isGroupV2Shell && <Header />}
       <ViewAsBanner />
-      <ReleaseBanner />
       {/* Content container - scrollable area below sticky header */}
       {/* scrollbar-gutter: stable prevents content shift when scrollbar appears/disappears.
           Applied here on <main> (not globally on <html>) because:
@@ -48,6 +60,21 @@ export function Layout() {
       <main className="w-full pt-1 pb-3 md:py-2 flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto overflow-x-hidden" style={{ scrollbarGutter: 'stable' }}>
         <PageTransition />
       </main>
+
+      {/* Bridges legacy settings window-events to the settings store. */}
+      <SettingsPanelController />
+
+      {/* Account-level settings panel for non-static routes (the in-static panel
+          is rendered by V2SettingsHost). Shows only the General tab. */}
+      <GlobalSettingsPanel />
+
+      {/* Desktop settings open/close toggle, docked to the right edge to mirror
+          the left rail's collapse chevron. (Mobile uses the header gear.)
+          Suppressed only when the group route resolves to the v2 shell — v2
+          mounts its own SettingsGear (via V2SettingsHost), so this toggle
+          would be a redundant duplicate there. Legacy group routes and all
+          non-group routes still render it. */}
+      {!isGroupV2Shell && <SettingsDockToggle />}
 
       {/* Global keyboard shortcuts modal */}
       <KeyboardShortcutsHelp

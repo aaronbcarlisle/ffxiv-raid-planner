@@ -10,7 +10,7 @@
  * Requests and Invitations each scroll independently.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   CheckCircle2, XCircle, Globe, MailOpen, Users, Plus,
 } from 'lucide-react';
@@ -18,11 +18,14 @@ import { DiscoveryTab } from './DiscoveryTab';
 import { InvitationsPanel } from '../static-group/InvitationsPanel';
 import { JoinRequestsPanel } from '../static-group/JoinRequestsPanel';
 import { Button } from '../primitives';
+import { SettingsSubNav } from './SettingsSubNav';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useInvitationStore } from '../../stores/invitationStore';
 import type { JoinRequest, StaticGroup } from '../../types';
 
-export type RecruitmentSection = 'overview' | 'listing' | 'requests' | 'invitations';
+const RECRUITMENT_SECTION_VALUES = ['overview', 'listing', 'requests', 'invitations'] as const;
+export type RecruitmentSection = (typeof RECRUITMENT_SECTION_VALUES)[number];
 
 interface RecruitmentTabProps {
   group: StaticGroup;
@@ -51,32 +54,15 @@ interface SubNavProps {
 
 function SubNav({ active, onChange, pendingCount }: SubNavProps) {
   return (
-    <div
-      className="flex gap-1 pb-3 mb-0 border-b border-border-subtle flex-shrink-0 overflow-x-auto scrollbar-none"
-      role="tablist"
-    >
-      {SECTIONS.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          role="tab"
-          aria-selected={active === s.id}
-          onClick={() => onChange(s.id)}
-          className={`flex items-center gap-1 flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-            active === s.id
-              ? 'bg-accent/15 text-accent'
-              : 'text-text-secondary hover:text-text-primary hover:bg-surface-interactive'
-          }`}
-        >
-          {s.label}
-          {s.id === 'requests' && pendingCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[15px] h-[15px] px-0.5 text-[9px] font-bold rounded-full bg-accent text-accent-contrast">
-              {pendingCount > 9 ? '9+' : pendingCount}
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
+    <SettingsSubNav
+      active={active}
+      onChange={onChange}
+      items={SECTIONS.map((s) => ({
+        id: s.id,
+        label: s.label,
+        badge: s.id === 'requests' ? pendingCount : undefined,
+      }))}
+    />
   );
 }
 
@@ -266,12 +252,23 @@ export function RecruitmentTab({
 }: RecruitmentTabProps) {
   const pendingCount = useJoinRequestStore((s) => s.pendingCount);
 
-  const resolveDefault = (): RecruitmentSection => {
-    if (initialSection) return initialSection;
-    return pendingCount > 0 ? 'requests' : 'overview';
-  };
+  // Section in the URL (?rcsub=overview|listing|requests|invitations). Its own
+  // settings sub-tab param (distinct from gsub/psub, and from the roster's rsub)
+  // so switching main tabs can't carry a stale section across. Pushes; closing
+  // the panel collapses its sub-history.
+  const [section, setSection] = useUrlTabState('rcsub', RECRUITMENT_SECTION_VALUES, 'overview');
 
-  const [section, setSection] = useState<RecruitmentSection>(resolveDefault);
+  // On mount, honor explicit routing (initialSection from a badge/link), else
+  // default to Requests when there are pending applications. 'overview' is the
+  // omitted default, so section === 'overview' here means no explicit section.
+  const didInitRef = useRef(false);
+  useEffect(() => {
+    if (didInitRef.current) return;
+    didInitRef.current = true;
+    if (initialSection) setSection(initialSection);
+    else if (section === 'overview' && pendingCount > 0) setSection('requests');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex flex-col flex-1 min-h-0">

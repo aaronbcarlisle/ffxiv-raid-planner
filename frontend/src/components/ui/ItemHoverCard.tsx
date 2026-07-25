@@ -168,7 +168,7 @@ export function ItemHoverCard({
       {hasBis && (
         <>
           {showBisLabel && (
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-text-muted mb-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-text-muted mb-1">
               BiS target
             </div>
           )}
@@ -274,7 +274,7 @@ export function ItemHoverCard({
                 <p className="text-xs text-text-secondary leading-tight truncate">{equippedItemName}</p>
               )}
               {(equippedItemLevel ?? 0) > 0 && (
-                <p className="text-[11px] text-text-muted mt-0.5">
+                <p className="text-xs text-text-muted mt-0.5">
                   iLv {equippedItemLevel}
                   {(itemLevel ?? 0) > 0 && equippedItemLevel !== itemLevel && (
                     <span className="ml-1 text-status-warning">

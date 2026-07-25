@@ -301,7 +301,8 @@ describe('RosterCharacterPanel', () => {
     storeState.registrationsByGroup = { [GROUP_ID]: {} };
     render(<RosterCharacterPanel groupId={GROUP_ID} players={[PLAYER]} canEdit={true} />);
     fireEvent.click(screen.getByRole('button', { name: /add manually/i }));
-    expect(screen.getByText(/add manual character — warrior main/i)).toBeTruthy();
+    expect(screen.getByText('Add Character')).toBeTruthy();
+    expect(screen.getByText(/for warrior main/i)).toBeTruthy();
   });
 
   it('opens the link modal when "Link Player Hub character" CTA is clicked', () => {
@@ -309,7 +310,7 @@ describe('RosterCharacterPanel', () => {
     storeState.availableForLinkingByGroup = { [GROUP_ID]: { p1: [makeAvailChar()] } };
     render(<RosterCharacterPanel groupId={GROUP_ID} players={[PLAYER]} canEdit={true} />);
     fireEvent.click(screen.getByText('Link Player Hub character'));
-    expect(screen.getByText(/link player hub character — warrior main/i)).toBeTruthy();
+    expect(screen.getByText('Link Character')).toBeTruthy();
     // Available character should appear in the modal
     expect(screen.getByText('Hub Character')).toBeTruthy();
   });

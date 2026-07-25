@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
 from app.models import User, MemberRole
-from tests.factories import create_user, create_static_group, create_tier_snapshot, create_membership
+from tests.factories import (
+    create_user,
+    create_static_group,
+    create_tier_snapshot,
+    create_membership,
+    create_snapshot_player,
+)
 
 
 class TestStartNextWeek:
@@ -291,3 +297,58 @@ class TestRevertWeek:
         )
 
         assert response.status_code == 403
+
+
+class TestGetCurrentWeek:
+    """Tests for the GET current-week endpoint's weekStartDate field"""
+
+    @pytest.mark.asyncio
+    async def test_current_week_week_start_date_lifecycle(
+        self,
+        client: AsyncClient,
+        session: AsyncSession,
+        test_user: User,
+    ):
+        """weekStartDate is None before any entry is logged, and a parseable
+        ISO datetime once the tier's first loot entry sets it."""
+        group = await create_static_group(session, test_user)
+        tier = await create_tier_snapshot(session, group)
+        player = await create_snapshot_player(session, tier)
+        await session.commit()
+
+        token = create_access_token(test_user.id)
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Before any entry is logged, weekStartDate is None.
+        response = await client.get(
+            f"/api/static-groups/{group.id}/tiers/{tier.tier_id}/current-week",
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "weekStartDate" in data
+        assert data["weekStartDate"] is None
+
+        # Logging one loot entry sets the tier's week_start_date.
+        response = await client.post(
+            f"/api/static-groups/{group.id}/tiers/{tier.tier_id}/loot-log",
+            json={
+                "weekNumber": 1,
+                "floor": "M9S",
+                "itemSlot": "head",
+                "recipientPlayerId": player.id,
+                "method": "drop",
+            },
+            headers=headers,
+        )
+        assert response.status_code == 201
+
+        response = await client.get(
+            f"/api/static-groups/{group.id}/tiers/{tier.tier_id}/current-week",
+            headers=headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["weekStartDate"] is not None
+        # Must be a parseable ISO datetime.
+        datetime.fromisoformat(data["weekStartDate"])

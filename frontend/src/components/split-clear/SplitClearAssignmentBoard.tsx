@@ -14,6 +14,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { getSplitClearWarnings } from '../../utils/splitClear';
 import { TONE_CHIP_CLASS } from '../../utils/splitClearHelpers';
 import { Checkbox, Input, Select } from '../ui';
+import { WorldSelect } from '../player/WorldSelect';
 import { JobIcon } from '../ui/JobIcon';
 import { CharacterSelector } from './CharacterSelector';
 
@@ -247,15 +248,14 @@ function PlayerRow({ player, assignment, candidates, warnings, canEdit, isOwnRow
                   className="w-28 text-xs"
                   aria-label={`Main character name for ${player.name}`}
                 />
-                <Input
-                  value={mainWorld}
-                  onChange={setMainWorld}
-                  onBlur={saveOnBlur('mainCharacterWorld')}
-                  placeholder="World"
-                  disabled={!canEdit}
-                  className="w-20 text-xs"
-                  aria-label={`Main character world for ${player.name}`}
-                />
+                <div className="w-28">
+                  <WorldSelect
+                    showDataCenter={false}
+                    world={mainWorld}
+                    onWorldChange={(w) => { setMainWorld(w); patch('mainCharacterWorld', w || null); }}
+                    disabled={!canEdit}
+                  />
+                </div>
               </div>
             </div>
             <div>
@@ -270,15 +270,14 @@ function PlayerRow({ player, assignment, candidates, warnings, canEdit, isOwnRow
                   className="w-28 text-xs"
                   aria-label={`Alt character name for ${player.name}`}
                 />
-                <Input
-                  value={altWorld}
-                  onChange={setAltWorld}
-                  onBlur={saveOnBlur('altCharacterWorld')}
-                  placeholder="Alt world"
-                  disabled={!canEdit}
-                  className="w-20 text-xs"
-                  aria-label={`Alt character world for ${player.name}`}
-                />
+                <div className="w-28">
+                  <WorldSelect
+                    showDataCenter={false}
+                    world={altWorld}
+                    onWorldChange={(w) => { setAltWorld(w); patch('altCharacterWorld', w || null); }}
+                    disabled={!canEdit}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -476,14 +475,11 @@ function MobileMemberCard({ player, assignment, candidates, warnings, canEdit, i
                 className="text-xs"
                 aria-label={`Main character name for ${player.name}`}
               />
-              <Input
-                value={mainWorld}
-                onChange={setMainWorld}
-                onBlur={saveOnBlur('mainCharacterWorld')}
-                placeholder="World"
+              <WorldSelect
+                showDataCenter={false}
+                world={mainWorld}
+                onWorldChange={(w) => { setMainWorld(w); patch('mainCharacterWorld', w || null); }}
                 disabled={!canEdit}
-                className="text-xs"
-                aria-label={`Main character world for ${player.name}`}
               />
             </div>
             <div className="space-y-1">
@@ -497,14 +493,11 @@ function MobileMemberCard({ player, assignment, candidates, warnings, canEdit, i
                 className="text-xs"
                 aria-label={`Alt character name for ${player.name}`}
               />
-              <Input
-                value={altWorld}
-                onChange={setAltWorld}
-                onBlur={saveOnBlur('altCharacterWorld')}
-                placeholder="Alt world"
+              <WorldSelect
+                showDataCenter={false}
+                world={altWorld}
+                onWorldChange={(w) => { setAltWorld(w); patch('altCharacterWorld', w || null); }}
                 disabled={!canEdit}
-                className="text-xs"
-                aria-label={`Alt character world for ${player.name}`}
               />
             </div>
           </div>

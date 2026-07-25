@@ -26,9 +26,11 @@ interface MembersPanelProps {
   groupId: string;
   currentUserRole?: MemberRole;
   isAdmin?: boolean;
+  /** View-only: disable role changes and member removal (e.g. a member viewing Members). */
+  readOnly?: boolean;
 }
 
-export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanelProps) {
+export function MembersPanel({ groupId, currentUserRole, isAdmin, readOnly = false }: MembersPanelProps) {
   const [members, setMembers] = useState<Membership[]>([]);
   const [linkedPlayers, setLinkedPlayers] = useState<LinkedPlayerInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +47,7 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin }: MembersPanel
   const [linkedPlayerToUnlink, setLinkedPlayerToUnlink] = useState<LinkedPlayerInfo | null>(null);
 
   const isOwner = currentUserRole === 'owner';
-  const canManage = currentUserRole === 'owner' || currentUserRole === 'lead' || isAdmin;
+  const canManage = (currentUserRole === 'owner' || currentUserRole === 'lead' || isAdmin) && !readOnly;
 
   const { rosterAlignment, fetchRosterAlignment } = useObjectiveGoalStore();
 

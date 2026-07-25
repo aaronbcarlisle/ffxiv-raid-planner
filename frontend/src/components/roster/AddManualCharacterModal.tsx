@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import { UserPlus } from 'lucide-react';
 import type { RoleInStatic, StaticCharacterRegistration, StaticCharacterRegistrationCreate } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
+import { JobIcon } from '../ui/JobIcon';
+import { WorldSelect } from '../player/WorldSelect';
+import { JobPicker } from '../player/JobPicker';
 import { Button } from '../primitives';
 
 interface AddManualCharacterModalProps {
@@ -35,6 +39,7 @@ export function AddManualCharacterModal({
   const [dc, setDc] = useState(editing?.manualDataCenter ?? editing?.resolvedDataCenter ?? '');
   const [role, setRole] = useState<RoleInStatic>(editing?.roleInStatic ?? 'alt');
   const [job, setJob] = useState(editing?.job ?? '');
+  const [showJobPicker, setShowJobPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,14 +84,12 @@ export function AddManualCharacterModal({
     onClose();
   }
 
-  const title = editing ? `Edit character — ${playerName}` : `Add manual character — ${playerName}`;
-
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={title}
-      size="sm"
+      title={<span className="flex items-center gap-2"><UserPlus className="w-5 h-5" />{editing ? 'Edit Character' : 'Add Character'}</span>}
+      size="md"
       footer={
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={handleClose} disabled={saving}>
@@ -105,6 +108,8 @@ export function AddManualCharacterModal({
       }
     >
       <div className="space-y-3">
+        <p className="text-sm text-text-muted">for {playerName}</p>
+
         {error && (
           <p className="text-sm text-status-error bg-status-error/10 rounded-lg px-3 py-2">{error}</p>
         )}
@@ -119,15 +124,9 @@ export function AddManualCharacterModal({
           />
         </div>
 
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <Label size="sm">World</Label>
-            <Input value={world} onChange={setWorld} placeholder="Tonberry" aria-label="World" />
-          </div>
-          <div className="flex-1">
-            <Label size="sm">Data center</Label>
-            <Input value={dc} onChange={setDc} placeholder="Elemental" aria-label="Data center" />
-          </div>
+        <div>
+          <Label size="sm">Data center &amp; world</Label>
+          <WorldSelect showDataCenter dataCenter={dc} onDataCenterChange={setDc} world={world} onWorldChange={setWorld} />
         </div>
 
         <div>
@@ -149,13 +148,33 @@ export function AddManualCharacterModal({
 
         <div>
           <Label size="sm">Job (optional)</Label>
-          <Input
-            value={job}
-            onChange={v => setJob(v.toUpperCase().slice(0, 5))}
-            placeholder="DRK"
-            className="w-24"
-            aria-label="Job abbreviation"
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowJobPicker(v => !v)}
+              aria-label="Select job"
+            >
+              {job
+                ? <span className="flex items-center gap-1.5"><JobIcon job={job} className="w-4 h-4" />{job}</span>
+                : 'Select job'}
+            </Button>
+            {job && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setJob('')}>
+                Clear
+              </Button>
+            )}
+          </div>
+          {showJobPicker && (
+            <div className="mt-2">
+              <JobPicker
+                selectedJob={job}
+                onJobSelect={(j) => { setJob(j); setShowJobPicker(false); }}
+                onRequestClose={() => setShowJobPicker(false)}
+              />
+            </div>
+          )}
         </div>
       </div>
     </Modal>

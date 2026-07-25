@@ -55,6 +55,7 @@ interface LootTrackingState {
   materialBalances: MaterialBalance[];
   currentWeek: number;
   maxWeek: number; // max(currentWeek, maxLoggedWeek) for week selector
+  weekStartDate: string | null;
   /** @deprecated Use loadingStates for granular loading. Kept for backward compatibility. */
   isLoading: boolean;
   /** Granular loading states per data type */
@@ -113,6 +114,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   materialBalances: [],
   currentWeek: 1,
   maxWeek: 1,
+  weekStartDate: null,
   isLoading: false,
   loadingStates: { ...INITIAL_LOADING_STATES },
   error: null,
@@ -295,12 +297,13 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       loadingStates: { ...state.loadingStates, currentWeek: true },
     }));
     try {
-      const response = await api.get<{ currentWeek: number; maxWeek: number }>(
+      const response = await api.get<{ currentWeek: number; maxWeek: number; weekStartDate?: string | null }>(
         `/api/static-groups/${groupId}/tiers/${tierId}/current-week`
       );
       set((state) => ({
         currentWeek: response.currentWeek,
         maxWeek: response.maxWeek,
+        weekStartDate: response.weekStartDate ?? null,
         loadingStates: { ...state.loadingStates, currentWeek: false },
       }));
     } catch (error) {
@@ -738,12 +741,12 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   startNextWeek: async (groupId, tierId) => {
     set({ error: null });
     try {
-      const response = await api.post<{ currentWeek: number; weekStartDate: string }>(
+      const response = await api.post<{ currentWeek: number; weekStartDate?: string | null }>(
         `/api/static-groups/${groupId}/tiers/${tierId}/start-next-week`
       );
       // Update current week immediately to ensure state reflects backend
       const newWeek = response.currentWeek;
-      set({ currentWeek: newWeek });
+      set({ currentWeek: newWeek, weekStartDate: response.weekStartDate ?? null });
 
       // Try to fetch fresh maxWeek, but don't fail if this secondary call fails
       try {
@@ -767,12 +770,12 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   revertWeek: async (groupId, tierId) => {
     set({ error: null });
     try {
-      const response = await api.post<{ currentWeek: number; weekStartDate: string }>(
+      const response = await api.post<{ currentWeek: number; weekStartDate?: string | null }>(
         `/api/static-groups/${groupId}/tiers/${tierId}/revert-week`
       );
       // Update current week immediately to ensure state reflects backend
       const newWeek = response.currentWeek;
-      set({ currentWeek: newWeek });
+      set({ currentWeek: newWeek, weekStartDate: response.weekStartDate ?? null });
 
       // Try to fetch fresh maxWeek, but don't fail if this secondary call fails
       try {
@@ -804,6 +807,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       materialBalances: [],
       currentWeek: 1,
       maxWeek: 1,
+      weekStartDate: null,
       isLoading: false,
       loadingStates: { ...INITIAL_LOADING_STATES },
       error: null,

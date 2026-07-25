@@ -107,4 +107,88 @@ describe('CreateSessionModal', () => {
     fireEvent.click(screen.getByText('Track availability'));
     expect(screen.getByText(/fixed sessions where attendance is expected/)).toBeInTheDocument();
   });
+
+  it('seeds the recurrence day from the chosen start date for a new session', () => {
+    renderModal();
+
+    fireEvent.change(screen.getByTestId('session-start-input'), {
+      target: { value: '2026-07-09T20:00' }, // Thursday
+    });
+    fireEvent.click(screen.getByText('Recurring weekly'));
+
+    expect(screen.getByRole('button', { name: 'Thu' }).className).toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Sat' }).className).not.toContain('bg-accent');
+  });
+
+  it('re-seeds the day when the start date changes while the picker is untouched', () => {
+    renderModal();
+    fireEvent.click(screen.getByText('Recurring weekly'));
+
+    const startInput = screen.getByTestId('session-start-input');
+    fireEvent.change(startInput, { target: { value: '2026-07-09T20:00' } }); // Thursday
+    expect(screen.getByRole('button', { name: 'Thu' }).className).toContain('bg-accent');
+
+    fireEvent.change(startInput, { target: { value: '2026-07-10T20:00' } }); // Friday
+    expect(screen.getByRole('button', { name: 'Fri' }).className).toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Thu' }).className).not.toContain('bg-accent');
+  });
+
+  it('stops re-seeding after the user manually toggles a day', () => {
+    renderModal();
+    fireEvent.click(screen.getByText('Recurring weekly'));
+
+    const startInput = screen.getByTestId('session-start-input');
+    fireEvent.change(startInput, { target: { value: '2026-07-09T20:00' } }); // Thursday → TH seeded
+    fireEvent.click(screen.getByRole('button', { name: 'Mon' })); // manual pick → picker is dirty
+
+    fireEvent.change(startInput, { target: { value: '2026-07-10T20:00' } }); // Friday — must NOT re-seed
+
+    expect(screen.getByRole('button', { name: 'Thu' }).className).toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Mon' }).className).toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Fri' }).className).not.toContain('bg-accent');
+  });
+
+  it('seeds from an initialDraft start date on open', () => {
+    const draft: ScheduleSessionCreate = {
+      title: 'Prog Night',
+      startTime: '2026-07-09T11:00:00Z', // Thu Jul 9 2026 8 PM JST
+      endTime: '2026-07-09T14:00:00Z',
+      timezone: 'Asia/Tokyo',
+      isRecurring: true,
+      recurrenceRule: null,
+    };
+    renderModal({ initialDraft: draft });
+
+    expect(screen.getByRole('button', { name: 'Thu' }).className).toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Sat' }).className).not.toContain('bg-accent');
+  });
+
+  it('keeps rule-derived days when editing, even after the start date changes', () => {
+    renderModal({ editSession: baseSession }); // BYDAY=SA,SU
+
+    fireEvent.change(screen.getByTestId('session-start-input'), {
+      target: { value: '2026-07-09T20:00' }, // Thursday
+    });
+
+    expect(screen.getByRole('button', { name: 'Sat' }).className).toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Sun' }).className).toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Thu' }).className).not.toContain('bg-accent');
+  });
+
+  it('seeds from the start date when editing a rule with no explicit BYDAY', () => {
+    // A bare FREQ=WEEKLY rule (legacy/API-created) recurs on DTSTART's weekday —
+    // the picker must seed that weekday, not the 'SA' literal, or saving the
+    // edit would silently convert the session's recurrence to Saturday.
+    renderModal({
+      editSession: {
+        ...baseSession,
+        startTime: '2026-07-09T11:00:00Z', // Thu Jul 9 2026 8 PM JST
+        endTime: '2026-07-09T14:00:00Z',
+        recurrenceRule: 'FREQ=WEEKLY', // no BYDAY
+      },
+    });
+
+    expect(screen.getByRole('button', { name: 'Thu' }).className).toContain('bg-accent');
+    expect(screen.getByRole('button', { name: 'Sat' }).className).not.toContain('bg-accent');
+  });
 });

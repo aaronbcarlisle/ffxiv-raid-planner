@@ -1,0 +1,433 @@
+/**
+ * Roster — v2 Roster · Cards screen assembly (F6c Roster · Cards).
+ *
+ * The ring-0 composition that Task 11 passes as GroupViewContent's `roster`
+ * slot (mirroring F6b `Home`'s prop contract). It owns the screen's view state
+ * and sources every context value the card grid needs directly from stores +
+ * hooks — the same derivations legacy `GroupViewContent` feeds `PlayerGrid`,
+ * re-expressed for the v2 `RosterCards`. Visual target:
+ * `mockups/02-roster-cards.html` `.page-head` + `.rtoolbar` + `.pcards`;
+ * behaviour: `design/redesign/specs/2026-07-01-f6c-roster-design.md` §5.8.
+ *
+ * Boundary discipline (ring0): composes `roster/` siblings (RosterToolbar /
+ * RosterCards / CharacterManageBridge) + shared `ui/` (ProgressBarLegend) + the
+ * shell `PageHeader`, and reads STORES/HOOKS directly (`useGroupViewState`,
+ * `usePlayerActions`, `authStore`, `viewAsStore`). It never imports a legacy
+ * body or a ring1/ring3 component.
+ *
+ * Deliberate decisions (documented to pre-empt review false-positives):
+ *   - `actionsForPlayer` is a **per-player factory** bound to each card's player
+ *     — `usePlayerActions` exposes playerId-FIRST handlers, whereas
+ *     `RosterCardActions` callbacks take no id (invoked bare in the card/hook).
+ *     So we bind `player.id` here, once per card, exactly like legacy
+ *     `PlayerGrid`'s per-player `useCallback` wrapping. `onReorder` is the one
+ *     GRID-level handler (→ `usePlayerActions.handleReorder`, `PlayerUpdate[]`).
+ *   - View/grouping state comes from the SAME `useGroupViewState` legacy uses
+ *     (`groupView`/`subsView`/`sortPreset`/`clipboardPlayer`). `subsHidden` is
+ *     GroupViewContent-LOCAL (localStorage `roster-hide-subs`), NOT part of the
+ *     hook — so it is replicated here as local state with the same key, byte-for
+ *     -byte. `reorderMode` is fresh local state (default off). Players are
+ *     role-sorted with `sortPlayersByRole`/`SORT_PRESETS` (identical to legacy)
+ *     so a custom drag order (sortPreset='custom') survives.
+ *   - `onNavigate` / `onOpenRequests` are part of the slot contract (Task 11,
+ *     mirroring `Home`) but the Cards slice has no navigation/recruit affordance
+ *     yet — they are reserved for the Board slice / Static Finder and are
+ *     intentionally not consumed here.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Users } from 'lucide-react';
+
+import { PageHeader } from '../layout/PageHeader';
+import { ProgressBarLegend, type LegendItem } from '../ui';
+import { RosterToolbar } from './RosterToolbar';
+import { RosterCards } from './RosterCards';
+import { GearBoard } from './GearBoard';
+import { CharacterManageBridge } from './CharacterManageBridge';
+
+import { useGroupViewState } from '../../hooks/useGroupViewState';
+import { usePlayerActions } from '../../hooks/usePlayerActions';
+import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { useGroupActions } from '../../pages/groupActionsContext';
+import { useAuthStore } from '../../stores/authStore';
+import { useViewAsStore } from '../../stores/viewAsStore';
+import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { toast } from '../../stores/toastStore';
+
+import { sortPlayersByRole, groupPlayersByLightParty } from '../../utils/calculations';
+import { SORT_PRESETS, DEFAULT_SETTINGS } from '../../utils/constants';
+import { computeNextUpgradePriorities } from '../../utils/nextUpgradePriority';
+import { rosterAvgIlv, bisSlotTotals } from '../../utils/rosterReadiness';
+import type { RosterCardActions } from '../../hooks/useRosterCardActions';
+import type { PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
+
+/** Stable empty fallback so a missing/empty tier doesn't churn memo deps. */
+const EMPTY_PLAYERS: SnapshotPlayer[] = [];
+
+/**
+ * Board gear-source legend — R/T/A/empty + the F6d next-upgrade swatch.
+ * The swatch color is mockup-faithful (`02-roster-board.html:553` uses
+ * role-ranged); the per-cell ● is colored by the player's OWN role.
+ */
+const BOARD_LEGEND_ITEMS: LegendItem[] = [
+  { label: 'raid (R)', token: 'var(--color-gear-raid)' },
+  { label: 'tome (T)', token: 'var(--color-gear-tome)' },
+  { label: 'augmented (A)', token: 'var(--color-gear-augmented)' },
+  { label: 'empty', token: 'transparent' },
+  { label: '● next upgrade', token: 'var(--color-role-ranged)' },
+];
+
+export interface RosterProps {
+  group: StaticGroup;
+  tier: TierSnapshot | null;
+  /** Gates Add / Reorder / assign affordances. */
+  canManage: boolean;
+  /** Navigate to a primary tab (slot contract; unused in the Cards slice). */
+  onNavigate: (tab: PageMode, extra?: Record<string, string>) => void;
+  /** Open Settings ▸ Recruitment ▸ Requests (slot contract; unused in Cards). */
+  onOpenRequests: () => void;
+}
+
+/** "8 raiders · 2 light parties + 1 substitute · avg 735 iLvl" — mockup page-head. */
+function buildSubtitle(players: SnapshotPlayer[], groupView: boolean, subsView: boolean): string {
+  const active = players.filter((p) => p.configured && !p.isSubstitute);
+  const subs = players.filter((p) => p.configured && p.isSubstitute);
+
+  const parts: string[] = [`${active.length} raider${active.length === 1 ? '' : 's'}`];
+
+  let grouping: string;
+  if (groupView) {
+    const grouped = groupPlayersByLightParty(players, subsView);
+    const partyCount = (grouped.group1.length > 0 ? 1 : 0) + (grouped.group2.length > 0 ? 1 : 0);
+    grouping = partyCount > 0
+      ? `${partyCount} light part${partyCount === 1 ? 'y' : 'ies'}`
+      : 'light party';
+  } else {
+    grouping = 'standard comp';
+  }
+  if (subs.length > 0) {
+    grouping += ` + ${subs.length} substitute${subs.length === 1 ? '' : 's'}`;
+  }
+  parts.push(grouping);
+
+  const avg = rosterAvgIlv(players);
+  if (avg != null) parts.push(`avg ${avg} iLvl`);
+
+  return parts.join(' · ');
+}
+
+export function Roster({ group, tier, canManage }: RosterProps) {
+  // ── View/grouping state (same hook legacy GroupViewContent owns) ──
+  const {
+    searchParams,
+    groupView,
+    setGroupView,
+    subsView,
+    sortPreset,
+    setSortPreset,
+    setEditingPlayerId,
+    clipboardPlayer,
+    setClipboardPlayer,
+  } = useGroupViewState();
+
+  // `subsHidden` is GroupViewContent-local (NOT in the hook) — replicate its
+  // localStorage-backed local state, same key, so the setting persists.
+  const [subsHidden, setSubsHidden] = useState<boolean>(() => {
+    try { return localStorage.getItem('roster-hide-subs') === 'true'; } catch { return false; }
+  });
+  const setSubsHiddenPersist = useCallback((hidden: boolean) => {
+    setSubsHidden(hidden);
+    try { localStorage.setItem('roster-hide-subs', String(hidden)); } catch { /* ignore */ }
+  }, []);
+
+  // Drag-to-reorder is a transient, screen-local mode (off by default).
+  const [reorderMode, setReorderMode] = useState(false);
+
+  // Cards ⇄ Board view — URL-backed (deep-link + reload-safe via `rview`).
+  const [rosterView, setRosterView] = useUrlTabState('rview', ['cards', 'board'] as const, 'cards');
+
+  // ── Shared context, sourced exactly as GroupViewContent does ──
+  const user = useAuthStore((s) => s.user);
+  const viewAsUser = useViewAsStore((s) => s.viewAsUser);
+
+  // Loot state — the Board's next-upgrade (●) highlight must AGREE with the Loot
+  // queue, so it reads the SAME loot log + REAL clock week the Loot screen uses.
+  const lootLog = useLootTrackingStore((s) => s.lootLog);
+  const clockWeek = useLootTrackingStore((s) => s.currentWeek);
+  const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
+  const fetchCurrentWeek = useLootTrackingStore((s) => s.fetchCurrentWeek);
+
+  const adminModeParam = searchParams.get('adminMode') === 'true';
+  const isAdmin = user?.isAdmin ?? false;
+  const isAdminAccess = !viewAsUser && isAdmin && adminModeParam;
+  // Ignore an admin-elevated role when not in admin mode (matches legacy).
+  const actualUserRole = (group.isAdminAccess && !adminModeParam) ? null : group.userRole;
+  const userRole = viewAsUser ? viewAsUser.role : actualUserRole;
+  const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
+
+  const players = tier?.players ?? EMPTY_PLAYERS;
+  const tierId = tier?.tierId;
+  const contentType = tier?.contentType ?? 'savage';
+
+  // Role-sort (identical to legacy `sortedPlayers`) — a custom drag order
+  // (sortPreset='custom' → sortOrder) survives here too.
+  const sortedPlayers = useMemo(() => {
+    const displayOrder = SORT_PRESETS[sortPreset]?.order ?? DEFAULT_SETTINGS.displayOrder;
+    return sortPlayersByRole(players, displayOrder, sortPreset);
+  }, [players, sortPreset]);
+
+  const mainRosterPlayers = useMemo(
+    () => sortedPlayers.filter((p) => p.configured && !p.isSubstitute),
+    [sortedPlayers],
+  );
+
+  // ── Board next-upgrade (●) highlight (F6d, spec §5.8) ──
+  // Merge settings exactly as Loot does so the priority gate matches.
+  const settings = useMemo(() => ({ ...DEFAULT_SETTINGS, ...group.settings }), [group.settings]);
+
+  // Mount fetch — the Board must not depend on the Loot tab having been visited
+  // (Loot.tsx:126-133 rationale). Unconditional refetch; state converges to the
+  // server response (Loot mount-fetch parity).
+  useEffect(() => {
+    if (group.id && tierId) {
+      // A10: both fetches re-throw after recording store error state, but this
+      // screen never renders lootTrackingStore.error — a bare catch would make
+      // failures fully silent, so surface ONE toast for the pair (Promise.all
+      // attaches handlers to every member, so nothing escapes unhandled).
+      void Promise.all([
+        fetchLootLog(group.id, tierId),
+        fetchCurrentWeek(group.id, tierId),
+      ]).catch(() => toast.error('Failed to load loot data'));
+    }
+  }, [group.id, tierId, fetchLootLog, fetchCurrentWeek]);
+
+  // Only compute for the Board view. MUST pass the REAL clock week (not a scoped
+  // view week) and the SAME main-roster set the Loot screen uses — else the
+  // Board's ● can silently disagree with the Loot queue #1.
+  const priorities = useMemo(
+    () => rosterView === 'board'
+      ? computeNextUpgradePriorities({ players: mainRosterPlayers, settings, lootLog, currentWeek: clockWeek })
+      : undefined,
+    [rosterView, mainRosterPlayers, settings, lootLog, clockWeek],
+  );
+
+  const hasSubstitutes = useMemo(() => sortedPlayers.some((p) => p.isSubstitute), [sortedPlayers]);
+
+  const userHasClaimedPlayer = useMemo(() => {
+    const checkUserId = viewAsUser ? viewAsUser.userId : user?.id;
+    if (!checkUserId) return false;
+    return players.some((p) => p.userId === checkUserId);
+  }, [viewAsUser, user?.id, players]);
+
+  const subtitle = useMemo(
+    () => buildSubtitle(sortedPlayers, groupView, subsView),
+    [sortedPlayers, groupView, subsView],
+  );
+
+  // Board subtitle names its own metric — total obtained BiS slots across roster.
+  const boardSubtitle = useMemo(() => {
+    const { obtained, total } = bisSlotTotals(sortedPlayers);
+    return `Board view · the gear matrix · ${obtained} / ${total} BiS slots obtained`;
+  }, [sortedPlayers]);
+
+  // ── Player actions (playerId-first handlers) ──
+  const setSortPresetWithTier = useCallback(
+    (preset: SortPreset) => setSortPreset(preset, tierId),
+    [setSortPreset, tierId],
+  );
+  const playerActions = usePlayerActions({
+    groupId: group.id,
+    tierId,
+    players,
+    setEditingPlayerId,
+    setSortPreset: setSortPresetWithTier,
+  });
+
+  // ── ?player= deep link (mirrors Schedule.tsx's ?sessionId= shape) ──────────
+  // `useGroupViewState`'s `searchParams` is fully mocked in this component's unit
+  // tests (a fixed, URL-independent snapshot), so — like `Schedule.tsx` — this
+  // effect reads the URL via its OWN `useSearchParams()` call, keeping it
+  // driveable by a `MemoryRouter` in tests regardless of that mock.
+  //
+  // `GroupViewContent.tsx:234-257` owns the tab-switch (`setPageMode('roster')`),
+  // the 100ms `getElementById('player-card-${id}')` scroll, and the 2500ms
+  // clear + URL-strip. That effect's own `highlightedPlayerId` state never
+  // reaches this slotted `Roster`, so Roster keeps its OWN local highlight and
+  // renders the SAME `player-card-${id}` id on every card (see `RosterCards`)
+  // so the shared effect's scroll still finds it here. Roster must NOT touch
+  // the URL — `GroupViewContent.tsx:248-255` already strips `player` at 2500ms.
+  const [playerLinkParams] = useSearchParams();
+  const playerHandledRef = useRef<string | null>(null);
+  const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const playerParam = playerLinkParams.get('player');
+    if (!playerParam) return;
+    if (!players.some((p) => p.id === playerParam)) return;
+    if (playerHandledRef.current === playerParam) return;
+    playerHandledRef.current = playerParam;
+    // Resolves a URL deep-link id against roster data that arrives asynchronously
+    // (the tier fetch); must run in an effect so it re-evaluates once `players`
+    // populates. `playerHandledRef` above guards it to one-shot.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deep-link highlight is set in response to the URL param; mirrors Schedule's resolving effect (no scroll side-effect here — the shared GroupViewContent effect owns scroll+strip)
+    setHighlightedPlayerId(playerParam);
+  }, [playerLinkParams, players]);
+
+  // Highlight clears 2500ms after it is set, via its OWN effect keyed on the
+  // highlight itself (F6e timer-ownership lesson — never in the resolving
+  // effect's cleanup, so unrelated `players`/`playerLinkParams` identity churn
+  // during the window can't kill the timer before it fires).
+  useEffect(() => {
+    if (!highlightedPlayerId) return;
+    const timer = window.setTimeout(() => setHighlightedPlayerId(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [highlightedPlayerId]);
+
+  // Copy a deep-link to a player card (replicates GroupViewContent.handleCopyUrl).
+  // A10 clipboard shape (Loot.tsx copyLink / SessionList.tsx precedent): success
+  // fires only after the write resolves; a rejected write gets an error toast,
+  // never a false "Link copied".
+  const handleCopyUrl = useCallback((playerId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'roster');
+    url.searchParams.set('player', playerId);
+    navigator.clipboard.writeText(url.toString()).then(
+      () => toast.success('Link copied to clipboard'),
+      () => toast.error("Couldn't copy the link"),
+    );
+  }, []);
+
+  // Paste = overwrite a card's config from the clipboard player (legacy parity).
+  // A10 mutation shape: handleUpdatePlayer chains to tierStore.updatePlayer,
+  // which re-throws after rollback — await + toast so a failed paste can't
+  // become an unhandled rejection.
+  const handlePastePlayer = useCallback(async (playerId: string, source: SnapshotPlayer) => {
+    try {
+      await playerActions.handleUpdatePlayer(playerId, {
+        job: source.job,
+        role: source.role,
+        gear: source.gear,
+        tomeWeapon: source.tomeWeapon,
+        isSubstitute: source.isSubstitute,
+        notes: source.notes,
+        bisLink: source.bisLink,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to paste player');
+    }
+  }, [playerActions]);
+
+  // Per-player action factory — bind `player.id` into each id-first handler so
+  // the card's bare callbacks act on that card's player (see file head).
+  const actionsForPlayer = useCallback(
+    (player: SnapshotPlayer): RosterCardActions => ({
+      onUpdate: (updates) => playerActions.handleUpdatePlayer(player.id, updates),
+      onCopy: () => setClipboardPlayer(player),
+      onCopyUrl: () => handleCopyUrl(player.id),
+      onDuplicate: () => playerActions.handleDuplicatePlayer(player),
+      onPaste: () => { if (clipboardPlayer) void handlePastePlayer(player.id, clipboardPlayer); },
+      // Whole-branch review Finding 2 — guard at the SOURCE (not per-consumer):
+      // handleRemovePlayer chains to tierStore.removePlayer, which re-throws
+      // after rollback. Every consumer of RosterCardActions.onRemove (open-seat
+      // Remove in OpenSeatCard.tsx, the kebab Remove confirm in
+      // useRosterCardActions.tsx) invokes it bare/fire-and-forget and none
+      // await it or depend on its rejection, so ONE guard here — not one per
+      // consumer — covers both without double-toasting.
+      onRemove: async () => {
+        try {
+          await playerActions.handleRemovePlayer(player.id);
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Failed to remove player');
+        }
+      },
+      onResetGear: (mode) => playerActions.handleResetGear(player.id, mode),
+      onClaimPlayer: () => playerActions.handleClaimPlayer(player.id),
+      onReleasePlayer: () => playerActions.handleReleasePlayer(player.id),
+      onAdminAssignPlayer: (req) => playerActions.handleAdminAssignPlayer(player.id, req),
+      onOwnerAssignPlayer: (req) => playerActions.handleOwnerAssignPlayer(player.id, req),
+    }),
+    [playerActions, setClipboardPlayer, handleCopyUrl, clipboardPlayer, handlePastePlayer],
+  );
+
+  // "Add player" → the SHARED AddPlayerModal flow (groupActionsContext) — the
+  // same modal legacy's toolbar and the v2 TopBar use. It creates AND
+  // configures the player atomically (name/job/position/tankRole), so no blank
+  // `configured: false` slot is ever left behind (Phase A A1). The raw
+  // blank-slot wrapper (`playerActions.handleAddPlayer`) is intentionally no
+  // longer called from any visible button; the store-level addPlayer primitive
+  // still backs the shared modal flow and duplicate-player. `<GroupActionModals>`
+  // is guaranteed to be an ancestor: NewShell.tsx:340 wraps the whole v2 tree.
+  const { onAddPlayer } = useGroupActions();
+
+  return (
+    <div data-testid="roster-screen">
+      <PageHeader
+        icon={<Users size={14} className="text-accent" />}
+        title="Roster"
+        subtitle={rosterView === 'board' ? boardSubtitle : subtitle}
+        actions={
+          <CharacterManageBridge
+            groupId={group.id}
+            players={mainRosterPlayers}
+            canEdit={canManage}
+          />
+        }
+      />
+
+      <div className="mb-5">
+        <RosterToolbar
+          rosterView={rosterView}
+          onRosterViewChange={setRosterView}
+          groupView={groupView}
+          onGroupViewChange={(v) => setGroupView(v, group.id)}
+          subsHidden={subsHidden}
+          onSubsHiddenChange={setSubsHiddenPersist}
+          hasSubstitutes={hasSubstitutes}
+          reorderMode={reorderMode}
+          onReorderModeChange={setReorderMode}
+          canManage={canManage}
+          onAddPlayer={onAddPlayer}
+        />
+      </div>
+
+      {rosterView === 'board' ? (
+        <GearBoard
+          players={sortedPlayers}
+          tierId={tierId}
+          userRole={userRole}
+          currentUserId={effectiveUserId ?? null}
+          isAdminAccess={isAdminAccess}
+          actionsForPlayer={actionsForPlayer}
+          priorities={priorities}
+        />
+      ) : (
+        <RosterCards
+          players={sortedPlayers}
+          groupView={groupView}
+          subsView={subsView}
+          subsHidden={subsHidden}
+          reorderMode={reorderMode}
+          canManage={canManage}
+          userRole={userRole}
+          currentUserId={effectiveUserId ?? null}
+          isAdminAccess={isAdminAccess}
+          clipboardPlayer={clipboardPlayer}
+          highlightedPlayerId={highlightedPlayerId}
+          groupId={group.id}
+          tierId={tierId}
+          contentType={contentType}
+          isAdmin={isAdmin}
+          userHasClaimedPlayer={userHasClaimedPlayer}
+          actionsForPlayer={actionsForPlayer}
+          onConfigurePlayer={playerActions.handleConfigurePlayer}
+          onReorder={playerActions.handleReorder}
+        />
+      )}
+
+      <div className="mt-6">
+        <ProgressBarLegend items={rosterView === 'board' ? BOARD_LEGEND_ITEMS : undefined} />
+      </div>
+    </div>
+  );
+}

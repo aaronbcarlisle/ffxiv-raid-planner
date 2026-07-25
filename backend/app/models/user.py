@@ -37,6 +37,18 @@ class User(Base):
     activity_display_mode: Mapped[str] = mapped_column(
         String(20), nullable=False, default="named"
     )
+    # User-level navigation preference (applies across all statics + devices).
+    # 'remember' = views reopen on your last tab; 'reset' = always open on the
+    # default tab. Replaces the earlier remember_sub_tabs/remember_static_tab pair.
+    tab_persistence: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="remember", server_default="remember"
+    )
+    # Dual-shell rollout preference (Phase R). 'legacy' = original chrome,
+    # 'v2' = redesign shell. Mirrors the localStorage preference in
+    # lib/shellPreference.ts for cross-device continuity once authed.
+    ui_shell: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="legacy", server_default="legacy"
+    )
 
     # Relationships
     memberships: Mapped[list["Membership"]] = relationship(

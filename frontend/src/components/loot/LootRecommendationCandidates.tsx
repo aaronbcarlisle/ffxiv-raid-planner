@@ -165,8 +165,9 @@ export function LootRecommendationCandidates({
         </p>
       ))}
 
-      {/* Candidate rows */}
-      <div className="space-y-0.5">
+      {/* Candidate rows — capped so a long expanded list scrolls inside the
+          panel and stays fully interactive rather than overflowing the modal. */}
+      <div className="space-y-0.5 max-h-[280px] overflow-y-auto">
         {shown.map((c, i) => (
           <CandidateRow
             key={c.rosterPlayerId}

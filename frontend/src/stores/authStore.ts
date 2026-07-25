@@ -202,7 +202,11 @@ interface AuthState {
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
   fetchUser: () => Promise<void>;
-  updatePreferences: (prefs: { activityDisplayMode?: 'named' | 'anonymous' }) => Promise<void>;
+  updatePreferences: (prefs: {
+    activityDisplayMode?: 'named' | 'anonymous';
+    tabPersistence?: 'remember' | 'reset';
+    uiShell?: 'legacy' | 'v2';
+  }) => Promise<void>;
   clearError: () => void;
 }
 
@@ -218,6 +222,15 @@ async function authRequest<T>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+
+  // Attach the CSRF token on state-changing requests (double-submit cookie
+  // pattern). Without this, mutating calls made through authRequest — e.g.
+  // updatePreferences — are rejected with 403 csrf_validation_failed.
+  const method = (options.method ?? 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+    const csrfToken = getCSRFToken();
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+  }
 
   const response = await fetch(url, {
     ...options,
@@ -426,7 +439,19 @@ export const useAuthStore = create<AuthState>()(
             });
 
             if (!response.ok) {
-              throw new Error('Refresh failed');
+              if (response.status === 401 || response.status === 403) {
+                // Real auth failure: the refresh token is expired/invalid.
+                // Cancel the proactive refresh and log the user out.
+                cancelScheduledRefresh();
+                set({
+                  user: null,
+                  isAuthenticated: false,
+                });
+              }
+              // Transient failure (429 rate limit, 5xx): leave the session and
+              // the scheduled proactive refresh intact — the un-cancelled timer
+              // plus the reactive 401 retry in services/api.ts will recover.
+              return false;
             }
 
             // Capture CSRF token from response header for cross-domain scenarios
@@ -440,12 +465,8 @@ export const useAuthStore = create<AuthState>()(
 
             return true;
           } catch {
-            // Refresh failed - cancel any scheduled refresh and log out user
-            cancelScheduledRefresh();
-            set({
-              user: null,
-              isAuthenticated: false,
-            });
+            // Network failure (fetch rejected): transient by definition —
+            // return false without touching state or the scheduled refresh
             return false;
           } finally {
             // Clear the promise so future refreshes can proceed
@@ -498,12 +519,12 @@ export const useAuthStore = create<AuthState>()(
               });
             }
           } else {
-            logger.error('fetchUser refresh failed, clearing auth state');
-            set({
-              user: null,
-              isAuthenticated: false,
-              isLoading: false,
-            });
+            // refreshAccessToken has already decided what happens to the
+            // session: it cleared user/isAuthenticated for a real auth failure
+            // (401/403) and left them intact for transient failures
+            // (429/5xx/network). Only settle the loading flag here.
+            logger.warn('fetchUser refresh failed; session state decided by refreshAccessToken');
+            set({ isLoading: false });
           }
         }
       },
