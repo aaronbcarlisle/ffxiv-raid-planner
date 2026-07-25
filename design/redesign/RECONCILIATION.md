@@ -89,6 +89,11 @@ Ordered user-facing / functional first. These are honestly-deferred or silently-
 - **Intent:** `REDESIGN_SPEC.md §3.4/§5.7` — ⌘K should do anything (log a drop, log the week, RSVP, who-needs-X).
 - **Code:** `CommandPalette.tsx:15` — "Actions … are DEFERRED — navigate-only is the scope." Only tab-nav + switch-static exist. (F6a release note honestly says "navigate-only.")
 
+### B9. `[PERF-DEBT · PRE-EXISTING]` Whole-roster re-render on every gear tick
+- **Symptom:** Toggling have/augmented on one player card re-renders **every** card in the roster, not just the one clicked. Felt as ~1s lag in the dev build; masked (but still present as wasted work) in prod. **Not a redesign regression** — identical on `main`, so it already ships in live V1.
+- **Cause:** `PlayerGrid.tsx:385` — the shared `renderCardProps` `useMemo` includes `allPlayers: players` and lists `players` in its deps (`:424`). Every optimistic update (`tierStore.ts:272` `.map`) makes a new `players` array → new props object → `memo` bypassed on all `PlayerCardRenderer`s.
+- **Fix (cheap, O(1)):** `allPlayers` is only consumed lazily inside `AssignUserModal` when it's open (`PlayerCard.tsx:853/870` → `AssignUserModal.tsx:110`); it is dead weight on the normal render path. Decouple it from the shared bundle (pass live players only where the modal needs it, or read from the store at the modal). **Shared code — main-targeted, not a v1-parity change; verify parity-neutral (SHARED-DRIFT lens) before touching.** May be mooted by the V2 roster rework — do not prioritize until then.
+
 ---
 
 ## Next moves (sequencing)

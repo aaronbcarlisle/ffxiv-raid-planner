@@ -7,7 +7,7 @@
 
 import { forwardRef } from 'react';
 import { Button } from '../primitives/Button';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { WizardStep } from './types';
 
 interface WizardNavigationProps {
@@ -79,6 +79,7 @@ export const WizardNavigation = forwardRef<HTMLButtonElement, WizardNavigationPr
           disabled={!canProceed}
         >
           Next
+          <ChevronRight className="w-4 h-4" />
         </Button>
       );
     };
