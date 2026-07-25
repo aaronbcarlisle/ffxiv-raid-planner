@@ -47,11 +47,11 @@ function LocationDisplay() {
   return <div data-testid="loc" data-path={loc.pathname + loc.search} />;
 }
 
-function renderAt(url: string) {
+function renderAt(url: string, props: { variant?: 'header' | 'rail' } = {}) {
   return render(
     <MemoryRouter initialEntries={[url]}>
       <TooltipProvider>
-        <UserMenu />
+        <UserMenu {...props} />
       </TooltipProvider>
       <LocationDisplay />
     </MemoryRouter>
@@ -112,6 +112,45 @@ describe('UserMenu — Switch to classic UI', () => {
     const path = screen.getByTestId('loc').getAttribute('data-path');
     expect(path).toBe('/group/ABC');
     expect(path).not.toContain('shell=');
+    track.mockRestore();
+  });
+});
+
+describe('UserMenu — Try the new UI (legacy→v2 entry, S1)', () => {
+  it('renders when on a group route resolved to legacy', async () => {
+    renderAt('/group/ABC');
+    openMenu();
+    expect(await screen.findByRole('menuitem', { name: /try the new ui/i })).toBeInTheDocument();
+  });
+
+  it('does not render on a group route resolved to v2', () => {
+    renderAt('/group/ABC?shell=v2');
+    openMenu();
+    expect(screen.queryByRole('menuitem', { name: /try the new ui/i })).toBeNull();
+  });
+
+  it('does not render off a group route, even when resolved to legacy', () => {
+    renderAt('/profile');
+    openMenu();
+    expect(screen.queryByRole('menuitem', { name: /try the new ui/i })).toBeNull();
+  });
+
+  it('is absent from the v2 rail (mutually exclusive with the return path)', () => {
+    // The rail only mounts when the shell is v2; the entry is gated to legacy,
+    // so it can never appear there (director checklist #5).
+    renderAt('/group/ABC?shell=v2', { variant: 'rail' });
+    openMenu();
+    expect(screen.queryByRole('menuitem', { name: /try the new ui/i })).toBeNull();
+  });
+
+  it('selecting it fires the to-v2 toggle: telemetry (legacy-user-menu surface) + preference', async () => {
+    const track = vi.spyOn(analytics, 'track').mockImplementation(() => {});
+    renderAt('/group/ABC');
+    openMenu();
+    fireEvent.click(await screen.findByRole('menuitem', { name: /try the new ui/i }));
+    expect(track).toHaveBeenCalledWith('navigation', 'ui_shell_toggle',
+      { direction: 'to-v2', surface: 'legacy-user-menu' });
+    expect(useShellPreferenceStore.getState().preference).toBe('v2');
     track.mockRestore();
   });
 });

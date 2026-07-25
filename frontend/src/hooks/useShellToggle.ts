@@ -10,7 +10,7 @@ import { useSearchParams } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 import { useShellPreferenceStore, type Shell } from '../lib/shellPreference';
 
-export function useShellToggle(surface: 'legacy-banner' | 'v2-user-menu' | 'v2-more-page') {
+export function useShellToggle(surface: 'legacy-banner' | 'legacy-user-menu' | 'v2-user-menu' | 'v2-more-page') {
   const [searchParams, setSearchParams] = useSearchParams();
   const setPreference = useShellPreferenceStore((s) => s.setPreference);
   return useCallback((target: Shell) => {
