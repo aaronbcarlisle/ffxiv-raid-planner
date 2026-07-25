@@ -4,11 +4,19 @@
  * shell + a persisted dismissal. The Header's group-route gate is still
  * required — off group routes the resolver defaults to legacy and the banner
  * would show.
+ *
+ * LAUNCH GATE: admin-only until the v2 nav-coverage Stage-1 criterion is met
+ * ("anything reachable from v2 stays in v2" — design/redesign/V2_COVERAGE_PLAN.md).
+ * The dual-shell code ships to main dark; admins dogfood v2 in production while
+ * regular users (and guests, who could previously see this banner on shared
+ * statics) never encounter it. `?shell=v2` remains a deliberate power-user
+ * escape hatch. To launch: remove the isAdmin condition and its tests' gate rows.
  */
 import { useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import { Button, IconButton } from '../primitives';
 import { analytics } from '../../services/analytics';
+import { useAuthStore } from '../../stores/authStore';
 import { useResolvedShell } from '../../lib/shellPreference';
 import { useShellToggle } from '../../hooks/useShellToggle';
 
@@ -19,11 +27,12 @@ function readDismissed(): boolean {
 }
 
 export function TryNewUiBanner({ className = '' }: { className?: string }) {
+  const isAdmin = useAuthStore((s) => s.user?.isAdmin ?? false);
   const resolvedShell = useResolvedShell();
   const toggle = useShellToggle('legacy-banner');
   const [dismissed, setDismissed] = useState(readDismissed);
 
-  if (resolvedShell !== 'legacy' || dismissed) return null;
+  if (!isAdmin || resolvedShell !== 'legacy' || dismissed) return null;
 
   return (
     <div className={`flex items-center gap-1.5 rounded-lg border border-accent/30 bg-accent/10 pl-2.5 pr-1 py-1 ${className}`.trim()}>

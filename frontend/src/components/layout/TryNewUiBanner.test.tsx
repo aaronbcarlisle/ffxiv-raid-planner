@@ -2,12 +2,16 @@
  * TryNewUiBanner — legacy→v2 opt-in entry point (Phase R §5).
  * Shown only on a legacy-resolved group route, dismissible with persistence,
  * and its CTA must fire telemetry + preference + strip ?shell=.
+ *
+ * Launch gate: admin-only until the v2 coverage Stage-1 launch criterion
+ * (V2_COVERAGE_PLAN.md) — non-admins and guests must never see the banner.
  */
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TryNewUiBanner } from './TryNewUiBanner';
 import { useShellPreferenceStore } from '../../lib/shellPreference';
+import { useAuthStore } from '../../stores/authStore';
 
 const track = vi.fn();
 vi.mock('../../services/analytics', () => ({ analytics: { track: (...a: unknown[]) => track(...a) } }));
@@ -20,6 +24,9 @@ beforeEach(() => {
   localStorage.clear();
   track.mockClear();
   useShellPreferenceStore.setState({ preference: null });
+  // Launch-gate default: an admin viewer, so the pre-gate rendering tests
+  // below keep exercising the banner's own behavior.
+  useAuthStore.setState({ user: { id: 'u1', isAdmin: true } as never });
 });
 
 describe('TryNewUiBanner', () => {
@@ -34,6 +41,16 @@ describe('TryNewUiBanner', () => {
   });
   it('does not render when previously dismissed', () => {
     localStorage.setItem('ui-shell-banner-dismissed', 'true');
+    renderAt();
+    expect(screen.queryByRole('button', { name: /try the new ui/i })).toBeNull();
+  });
+  it('does not render for a non-admin user (launch gate)', () => {
+    useAuthStore.setState({ user: { id: 'u2', isAdmin: false } as never });
+    renderAt();
+    expect(screen.queryByRole('button', { name: /try the new ui/i })).toBeNull();
+  });
+  it('does not render for guests (launch gate)', () => {
+    useAuthStore.setState({ user: null });
     renderAt();
     expect(screen.queryByRole('button', { name: /try the new ui/i })).toBeNull();
   });
