@@ -17,9 +17,13 @@ import { TooltipProvider } from '../primitives';
 import { useShellPreferenceStore } from '../../lib/shellPreference';
 import { analytics } from '../../services/analytics';
 
+// isAdmin is mutable so the S1 launch-gate rows (D7: admin-only until Stage 1)
+// can flip it per test; default true keeps the S1 rendering rows exercising the
+// item's own gates rather than the launch gate.
+const authMock = vi.hoisted(() => ({ isAdmin: true }));
 vi.mock('../../stores/authStore', () => {
   const authState = () => ({
-    user: { id: 'u1', discordId: '123456789', discordUsername: 'tester', displayName: 'Tester', isAdmin: false, activityDisplayMode: 'named' },
+    user: { id: 'u1', discordId: '123456789', discordUsername: 'tester', displayName: 'Tester', isAdmin: authMock.isAdmin, activityDisplayMode: 'named' },
     logout: vi.fn(), updatePreferences: vi.fn().mockResolvedValue(undefined),
   });
   const useAuthStoreMock = () => authState();
@@ -117,6 +121,15 @@ describe('UserMenu — Switch to classic UI', () => {
 });
 
 describe('UserMenu — Try the new UI (legacy→v2 entry, S1)', () => {
+  beforeEach(() => { authMock.isAdmin = true; });
+
+  it('does not render for a non-admin user (D7 launch gate)', () => {
+    authMock.isAdmin = false;
+    renderAt('/group/ABC');
+    openMenu();
+    expect(screen.queryByRole('menuitem', { name: /try the new ui/i })).toBeNull();
+  });
+
   it('renders when on a group route resolved to legacy', async () => {
     renderAt('/group/ABC');
     openMenu();

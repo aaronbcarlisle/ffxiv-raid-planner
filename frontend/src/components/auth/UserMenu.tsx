@@ -309,8 +309,10 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
             TryNewUiBanner (which self-hides permanently on dismiss). Only
             meaningful where a shell is being rendered (group routes) AND the
             legacy shell is active; mutually exclusive with the return path
-            below (resolvedShell can't be both), so it never shows in the v2 rail. */}
-        {isGroupRoute && resolvedShell === 'legacy' && (
+            below (resolvedShell can't be both), so it never shows in the v2 rail.
+            LAUNCH GATE (D7): admin-only until coverage-plan Stage 1 lands —
+            same gate as TryNewUiBanner; remove both together at un-gate. */}
+        {user.isAdmin && isGroupRoute && resolvedShell === 'legacy' && (
           <DropdownItem
             icon={<Sparkles className="w-4 h-4" />}
             onSelect={() => switchToNewUi('v2')}
