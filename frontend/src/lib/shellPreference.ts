@@ -21,6 +21,12 @@ export type Shell = 'legacy' | 'v2';
 
 export const SHELL_STORAGE_KEY = 'ui-shell';
 
+/** S2: per-browser-tab sticky override, written from an explicit `?shell=`
+ *  deep-link. sessionStorage (not localStorage) so it dies with the tab and is
+ *  never mirrored to the account — a deep-link is a session convenience, not a
+ *  durable preference. */
+export const SESSION_STORAGE_KEY = 'ui-shell-session';
+
 function readStoredPreference(): Shell | null {
   try {
     const v = localStorage.getItem(SHELL_STORAGE_KEY);
@@ -30,25 +36,53 @@ function readStoredPreference(): Shell | null {
   }
 }
 
+function readSessionOverride(): Shell | null {
+  try {
+    const v = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    return v === 'legacy' || v === 'v2' ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 interface ShellPreferenceState {
   /** null = user has never chosen; resolution falls through to the default. */
   preference: Shell | null;
+  /** S2: per-tab sticky override from an explicit `?shell=` deep-link. Resolves
+   *  ABOVE the persisted preference but BELOW a fresh `?shell=` param. Never
+   *  mirrored to the account. */
+  sessionOverride: Shell | null;
   setPreference: (shell: Shell) => void;
+  setSessionOverride: (shell: Shell) => void;
 }
 
 export const useShellPreferenceStore = create<ShellPreferenceState>((set) => ({
   preference: readStoredPreference(),
+  sessionOverride: readSessionOverride(),
   setPreference: (shell) => {
-    set({ preference: shell });
+    // An explicit preference choice supersedes any transient session override:
+    // clear it so a stale `?shell=` deep-link can't keep out-resolving the new
+    // choice on the next navigation (the URL param itself is stripped separately
+    // by useShellToggle). Both fields set atomically.
+    set({ preference: shell, sessionOverride: null });
     try {
       localStorage.setItem(SHELL_STORAGE_KEY, shell);
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
     } catch {
-      // Private-mode localStorage failures degrade to session-only preference.
+      // Private-mode storage failures degrade to session-only preference.
     }
     // Authed users mirror the preference server-side (cross-device). Fire and
     // forget: a failed PATCH must not block the local toggle.
     const { user, updatePreferences } = useAuthStore.getState();
     if (user) void updatePreferences({ uiShell: shell }).catch(() => {});
+  },
+  setSessionOverride: (shell) => {
+    set({ sessionOverride: shell });
+    try {
+      sessionStorage.setItem(SESSION_STORAGE_KEY, shell);
+    } catch {
+      // Private-mode sessionStorage failures degrade to in-memory-only stickiness.
+    }
   },
 }));
 
@@ -57,9 +91,32 @@ export const useShellPreferenceStore = create<ShellPreferenceState>((set) => ({
 export function useResolvedShell(): Shell {
   const [searchParams] = useSearchParams();
   const preference = useShellPreferenceStore((s) => s.preference);
+  const sessionOverride = useShellPreferenceStore((s) => s.sessionOverride);
   const param = searchParams.get('shell');
   if (param === 'legacy' || param === 'v2') return param;
+  // S2: a `?shell=` deep-link earlier this tab sticks until an explicit toggle
+  // clears it — sits above the persisted preference, below a fresh param.
+  if (sessionOverride === 'legacy' || sessionOverride === 'v2') return sessionOverride;
   return preference ?? 'legacy';
+}
+
+/** S2 companion write-effect — kept OUT of useResolvedShell so the resolver
+ *  stays a pure read (no render-phase writes; no StrictMode double-fire on the
+ *  V1 render path). When an explicit `?shell=` param is present, remember it as
+ *  the per-tab session override so subsequent param-less navigations keep the
+ *  chosen shell. No param ⇒ no write, so the (near-universal) no-param legacy
+ *  population is byte-for-byte unaffected. Mount once, high in the tree (Layout),
+ *  where it observes every route. */
+export function useShellParamPersistence(): void {
+  const [searchParams] = useSearchParams();
+  const param = searchParams.get('shell');
+  const setSessionOverride = useShellPreferenceStore((s) => s.setSessionOverride);
+  useEffect(() => {
+    if (param !== 'legacy' && param !== 'v2') return;
+    if (useShellPreferenceStore.getState().sessionOverride !== param) {
+      setSessionOverride(param);
+    }
+  }, [param, setSessionOverride]);
 }
 
 /** Backend-wins hydration (Phase R §4): when /me delivers a uiShell, adopt
