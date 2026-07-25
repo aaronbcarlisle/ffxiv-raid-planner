@@ -10,6 +10,11 @@ import { KeyboardShortcutsHelp } from '../ui';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
 import { useAuthStore } from '../../stores/authStore';
 import { useResolvedShell, useShellParamPersistence } from '../../lib/shellPreference';
+// Layout (shell) importing a pages-hosted chrome component is boundary-legal
+// and precedented (TopBar.tsx → pages/TierBreadcrumb); pages/ is the exempt
+// composition layer. Eager import — AppChrome joins the main bundle (stated in
+// the T3 PR; the group-route internals stay in the lazy NewShell chunk).
+import { AppChrome } from '../../pages/chrome/AppChrome';
 
 export function Layout() {
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
@@ -51,6 +56,46 @@ export function Layout() {
     disabled: showKeyboardHelp, // Disable when modal is open
     isAdmin,
   });
+
+  // Stage-1 T3: when the group route resolves to v2, the chrome host
+  // (AppChrome) wraps the main area — rail + top-bar/spine slots +
+  // #main-content — instead of NewShell composing its own chrome inside the
+  // padded <main> below. SAME route set as the Header/dock suppression above
+  // (no coverage change in this PR; the flip to all non-`/` v2 routes is T4).
+  const chromeActive = isGroupV2Shell;
+
+  if (chromeActive) {
+    return (
+      <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
+        {/* ViewAsBanner stays Layout-owned, above the chrome — matching the
+            legacy branch's stacking (banner above the main area). */}
+        <ViewAsBanner />
+        {/* Chrome OUTSIDE PageTransition (Stage-1 req 7): the rail/top bar
+            must not fade on route changes — only the routed content does. */}
+        <AppChrome>
+          <PageTransition />
+        </AppChrome>
+
+        {/* Bridges legacy settings window-events to the settings store. */}
+        <SettingsPanelController />
+
+        {/* Account-level settings panel for non-static routes (the in-static
+            panel is rendered by V2SettingsHost). Shows only the General tab. */}
+        <GlobalSettingsPanel />
+
+        {/* No Header and no SettingsDockToggle here — both were already
+            suppressed under this exact condition (v2 mounts its own
+            SettingsGear via V2SettingsHost). */}
+
+        {/* Global keyboard shortcuts modal */}
+        <KeyboardShortcutsHelp
+          isOpen={showKeyboardHelp}
+          onClose={() => setShowKeyboardHelp(false)}
+          isAdmin={isAdmin}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh h-dvh flex flex-col bg-surface-base overflow-hidden">
