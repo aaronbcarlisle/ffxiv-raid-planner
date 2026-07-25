@@ -18,7 +18,6 @@ vi.mock('../../stores/notificationStore', () => ({
 vi.mock('../../hooks/useTheme', () => ({
   useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),
 }));
-vi.mock('./NotificationCenter', () => ({ NotificationCenter: () => null }));
 
 beforeEach(() => {
   vi.stubGlobal(

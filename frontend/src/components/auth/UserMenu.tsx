@@ -12,7 +12,6 @@ import { useSyntheticUnreadCount } from '../../lib/syntheticNotifications';
 import { useResolvedShell } from '../../lib/shellPreference';
 import { useInV2Chrome } from '../../lib/chromeContext';
 import { useShellToggle } from '../../hooks/useShellToggle';
-import { NotificationCenter } from './NotificationCenter';
 import {
   Dropdown,
   DropdownContent,
@@ -72,8 +71,10 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
   const switchToNewUi = useShellToggle('legacy-user-menu');
   const { theme, setTheme } = useTheme();
   const apiKeysModal = useModal();
-  const notificationsModal = useModal();
-  const { unreadCount, fetchNotifications } = useNotificationStore();
+  // Stage-1 req 10: the NotificationCenter itself is mounted ONCE, app-level,
+  // by NotificationCenterHost (App.tsx) — this menu only writes the store's
+  // open-state. Same item, same panel, one mount, both shells.
+  const { unreadCount, fetchNotifications, openCenter } = useNotificationStore();
   // useSyntheticUnreadCount re-renders this badge when a release note is marked
   // read — getSyntheticUnreadCount() alone wouldn't, since marking the only
   // unread item read doesn't change the server-backed unreadCount.
@@ -263,7 +264,7 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
               )}
             </span>
           }
-          onSelect={() => notificationsModal.open()}
+          onSelect={() => openCenter()}
         >
           {totalBadge > 0 ? `${totalBadge} unread notifications` : 'Notifications'}
         </DropdownItem>
@@ -392,9 +393,6 @@ export function UserMenu({ className = '', variant = 'header', collapsed = false
     <Modal isOpen={apiKeysModal.isOpen} onClose={apiKeysModal.close} title={<span className="flex items-center gap-2"><Key className="w-5 h-5" />API Keys</span>} size="lg">
       <ApiKeyManager />
     </Modal>
-
-    {/* Notification Center */}
-    <NotificationCenter isOpen={notificationsModal.isOpen} onClose={notificationsModal.close} />
     </>
   );
 }

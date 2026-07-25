@@ -53,7 +53,6 @@ vi.mock('../../stores/notificationStore', () => ({
 vi.mock('../../hooks/useTheme', () => ({
   useTheme: () => ({ theme: 'dark', setTheme: vi.fn() }),
 }));
-vi.mock('./NotificationCenter', () => ({ NotificationCenter: () => null }));
 
 function openMenu() {
   fireEvent.keyDown(screen.getByRole('button', { name: /user menu/i }), { key: 'Enter' });

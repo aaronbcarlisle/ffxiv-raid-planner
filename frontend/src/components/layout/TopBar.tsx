@@ -36,7 +36,8 @@ import { SettingsGear } from './SettingsGear';
 interface TopBarProps {
   /** Open the command palette (Task 11 placeholder — bell, gear, and theme are wired). */
   onOpenPalette: () => void;
-  /** Open the notification center (hosted in NewShell, boundary-exempt). */
+  /** Open the notification center (single app-level mount — NewShell passes
+   *  notificationStore's openCenter; see NotificationCenterHost, Stage-1 req 10). */
   onOpenNotifications: () => void;
 }
 
