@@ -295,8 +295,9 @@ export function useGroupViewState(): UseGroupViewStateReturn {
   const setPageMode = useCallback((mode: PageMode, extraParams?: Record<string, string>) => {
     setPageModeState(mode);
     // Reset scroll position when switching tabs (prevents scroll bleed between tabs).
-    // Legacy v1 scrolls inside Layout's <main>; v2 scrolls inside NewShell's
-    // #main-content div — reset both so the correct container is always covered.
+    // Legacy v1 scrolls inside Layout's <main>; v2 scrolls inside AppChrome's
+    // <main id="main-content"> — reset both so the correct container is always
+    // covered (post-T3 both selectors resolve to the same element in v2).
     const mainEl = document.querySelector('main');
     if (mainEl) {
       mainEl.scrollTo(0, 0);

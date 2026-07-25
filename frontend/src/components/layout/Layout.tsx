@@ -12,8 +12,9 @@ import { useAuthStore } from '../../stores/authStore';
 import { useResolvedShell, useShellParamPersistence } from '../../lib/shellPreference';
 // Layout (shell) importing a pages-hosted chrome component is boundary-legal
 // and precedented (TopBar.tsx → pages/TierBreadcrumb); pages/ is the exempt
-// composition layer. Eager import — AppChrome joins the main bundle (stated in
-// the T3 PR; the group-route internals stay in the lazy NewShell chunk).
+// composition layer. Eager import — AppChrome/AppRail/chromeSlots join the
+// main bundle (the auth barrel was already eager via Header); the group-route
+// internals stay in the lazy NewShell chunk.
 import { AppChrome } from '../../pages/chrome/AppChrome';
 
 export function Layout() {
