@@ -433,6 +433,15 @@ async def dev_login(
     if user.tab_persistence != "remember":
         user.tab_persistence = "remember"
 
+    # Same defensive reset for the shell preference: the dev owner dogfoods v2,
+    # and /api/auth/me mirrors ui_shell into the frontend store — so a drifted
+    # account value would silently hand v2 chrome to legacy-assuming e2e specs
+    # (Stage-1 T4 puts v2 chrome on EVERY route, not just /group/*). Suites opt
+    # into v2 per browser tab via `?shell=` (helpers/auth.ts pinShell), which
+    # resolves above the account preference. Normalized every login.
+    if user.ui_shell != "legacy":
+        user.ui_shell = "legacy"
+
     # DevOwner is the admin dogfooding account: the "Try the new UI" opt-in is
     # admin-gated until v2 nav coverage lands (V2_COVERAGE_PLAN.md D7), so the
     # documented /api/dev-auth/login/0 loop must yield an admin or the banner

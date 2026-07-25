@@ -78,6 +78,26 @@ export async function loginAsMember(page: Page): Promise<void> {
 }
 
 /**
+ * Pin this browser tab to a shell for the rest of the run (Stage-1 T6).
+ *
+ * Why one navigation is enough: `useShellParamPersistence` records an explicit
+ * `?shell=` deep-link as a per-TAB sessionStorage override, and
+ * `useResolvedShell` resolves that override ABOVE the stored/account
+ * preference. Account hydration (`useShellPreferenceSync`) only ever writes the
+ * *preference* tier, so it can never out-resolve a pinned session — which is
+ * exactly the contamination vector this guards against: the dev owner dogfoods
+ * v2, `/api/auth/me` mirrors `ui_shell: 'v2'` into the store, and a
+ * legacy-assuming spec that navigated without a param would silently get v2
+ * chrome (see also the defensive `ui_shell` reset in `dev_auth.py`).
+ *
+ * Navigates to `/` because it is the cheapest route that mounts Layout (and is
+ * chrome-excluded in both shells, so nothing heavy renders).
+ */
+export async function pinShell(page: Page, shell: 'v2' | 'legacy'): Promise<void> {
+  await page.goto(`/?shell=${shell}`);
+}
+
+/**
  * Navigate to the test static group page and wait for the v2 shell to mount.
  *
  * After the shell root is visible, also waits for auth hydration to complete

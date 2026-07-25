@@ -99,8 +99,13 @@ class TestDevAuthDuplicateMerge:
         assert json.loads(merged_availability.slots) == ["03:00", "03:30"]
 
 
-class TestDevLoginTabPersistenceNormalization:
-    """dev_login must reset drifted tab_persistence so e2e suites start stable (A13)."""
+class TestDevLoginPreferenceNormalization:
+    """dev_login must reset drifted UI preferences so e2e suites start stable.
+
+    `tab_persistence` (A13) and `ui_shell` (Stage-1 T6) are normalized the same
+    way and for the same reason: the dev accounts are dogfooded by hand, and a
+    drifted value silently changes what the suites render.
+    """
 
     @pytest.fixture
     def dev_mode(self, monkeypatch):
@@ -170,3 +175,63 @@ class TestDevLoginTabPersistenceNormalization:
         # Deliberate: no 3-user sweep — each suite self-restores its own
         # login's preconditions (Phase A spec A13b).
         assert owner_row.tab_persistence == "reset"
+
+    async def test_dev_login_resets_drifted_ui_shell(
+        self,
+        session: AsyncSession,
+        dev_mode,
+    ):
+        """A dogfooded `ui_shell='v2'` must not leak v2 chrome into e2e runs."""
+        seeded = await create_user(
+            session,
+            discord_id=DEV_USERS[0]["discord_id"],
+            discord_username=DEV_USERS[0]["discord_username"],
+        )
+        seeded.ui_shell = "v2"
+        await session.flush()
+
+        result = await dev_login(user_index=0, response=Response(), session=session)
+
+        assert result["user_id"] == seeded.id
+        row = (
+            await session.execute(
+                select(User).where(User.discord_id == DEV_USERS[0]["discord_id"])
+            )
+        ).scalar_one()
+        assert row.ui_shell == "legacy"
+
+    async def test_dev_login_normalizes_ui_shell_only_for_the_logging_in_user(
+        self,
+        session: AsyncSession,
+        dev_mode,
+    ):
+        owner = await create_user(
+            session,
+            discord_id=DEV_USERS[0]["discord_id"],
+            discord_username=DEV_USERS[0]["discord_username"],
+        )
+        owner.ui_shell = "v2"
+        member = await create_user(
+            session,
+            discord_id=DEV_USERS[1]["discord_id"],
+            discord_username=DEV_USERS[1]["discord_username"],
+        )
+        member.ui_shell = "v2"
+        await session.flush()
+
+        await dev_login(user_index=1, response=Response(), session=session)
+
+        member_row = (
+            await session.execute(
+                select(User).where(User.discord_id == DEV_USERS[1]["discord_id"])
+            )
+        ).scalar_one()
+        owner_row = (
+            await session.execute(
+                select(User).where(User.discord_id == DEV_USERS[0]["discord_id"])
+            )
+        ).scalar_one()
+        assert member_row.ui_shell == "legacy"
+        # Same deliberate scope as tab_persistence above: one login normalizes
+        # exactly one user.
+        assert owner_row.ui_shell == "v2"
