@@ -8,7 +8,7 @@ Q3 (D-12) — CERTAIN: RosterCharacterPanel has NO live Lodestone search — onl
 
 Q4 (D-21) — CERTAIN: v2 zero-tier state EXISTS — ShellContentStates.tsx:192-203 renders "No Raid Tiers" EmptyState with "Create First Tier" CTA gated `canEdit`.
 
-Q5 (D-53) — CERTAIN: backtick/1-4 shortcuts FIRE under v2 (hook mounted in shared GroupViewContent.tsx:487-517; NewShell renders it with slots). Keys: `=overview, 1=schedule, 2=roster, 3=goals, 4=gear (useGroupViewKeyboardShortcuts.ts:93-97). Key 3 (goals) lands on the unslotted shared GoalsPage in both shells.
+Q5 (D-53) — CERTAIN: backtick/1-4 shortcuts FIRE under v2 (hook mounted in shared GroupViewContent.tsx:487-517; NewShell renders it with slots). Keys: `` ` ``=overview, 1=schedule, 2=roster, 3=goals, 4=gear (useGroupViewKeyboardShortcuts.ts:93-97). Key 3 (goals) lands on the unslotted shared GoalsPage in both shells.
 
 Q6 (§4.K) — CERTAIN: v2 Schedule "Edit week" modal mounts the FULL AvailabilityGrid (Schedule.tsx:484-501; no mode-lock prop exists — AvailabilityGrid.tsx:43-52). Typical-week toggle (grid :551-568) and QuickFillHelper (:618, this-week + canEditAvailability) both reachable inside the modal.
 
