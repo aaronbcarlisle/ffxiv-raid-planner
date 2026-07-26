@@ -5,7 +5,10 @@
  * as V2-LOCAL state per `phase-c-roster-plan.md` §2.1: `useGroupViewState` is
  * per-instance `useState`, so the shared hook's `viewMode`/`V` handler can
  * never reach this screen live — v2 owns its own density state and its own `V`
- * binding, with ZERO shared-file edits.
+ * binding, with no edits to the shared view-state/keyboard machinery
+ * (`useGroupViewState` / `useGroupViewKeyboardShortcuts` / `GroupViewContent`).
+ * The C1 PR's only shared-file hunks are elsewhere and enumerated in its body
+ * (`SegmentedToggle.onReselect`, the eslint lock).
  *
  * The density is a GLOBAL view toggle — every card follows it. Per-card
  * collapse was built in the first C1 cut and REMOVED at the user checkpoint
