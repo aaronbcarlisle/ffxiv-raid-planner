@@ -167,9 +167,17 @@ export function Roster({ group, tier, canManage }: RosterProps) {
 
   // Loot state — the Board's next-upgrade (●) highlight must AGREE with the Loot
   // queue, so it reads the SAME loot log + REAL clock week the Loot screen uses.
+  // The material log feeds the cards' tome-weapon material jump (C4, D-04).
+  // The legacy-chrome host (GroupViewContent.tsx:321-327) happens to fetch it
+  // for roster/gear pageModes today, but v2 surfaces own their data fetches —
+  // this batch's lootLog/currentWeek and Loot.tsx's mount batch already
+  // duplicate that same host effect deliberately — so the v2 tree survives
+  // the legacy chrome (and its effects) dissolving. The idempotent duplicate
+  // GET is the accepted, pre-C4 pattern.
   const lootLog = useLootTrackingStore((s) => s.lootLog);
   const clockWeek = useLootTrackingStore((s) => s.currentWeek);
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
+  const fetchMaterialLog = useLootTrackingStore((s) => s.fetchMaterialLog);
   const fetchCurrentWeek = useLootTrackingStore((s) => s.fetchCurrentWeek);
 
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -205,16 +213,18 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   // server response (Loot mount-fetch parity).
   useEffect(() => {
     if (group.id && tierId) {
-      // A10: both fetches re-throw after recording store error state, but this
-      // screen never renders lootTrackingStore.error — a bare catch would make
-      // failures fully silent, so surface ONE toast for the pair (Promise.all
-      // attaches handlers to every member, so nothing escapes unhandled).
+      // A10: the batch's fetches re-throw after recording store error state,
+      // but this screen never renders lootTrackingStore.error — a bare catch
+      // would make failures fully silent, so surface ONE toast for the batch
+      // (Promise.all attaches handlers to every member, so nothing escapes
+      // unhandled).
       void Promise.all([
         fetchLootLog(group.id, tierId),
+        fetchMaterialLog(group.id, tierId),
         fetchCurrentWeek(group.id, tierId),
       ]).catch(() => toast.error('Failed to load loot data'));
     }
-  }, [group.id, tierId, fetchLootLog, fetchCurrentWeek]);
+  }, [group.id, tierId, fetchLootLog, fetchMaterialLog, fetchCurrentWeek]);
 
   // Only compute for the Board view. MUST pass the REAL clock week (not a scoped
   // view week) and the SAME main-roster set the Loot screen uses — else the

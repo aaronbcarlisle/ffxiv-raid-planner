@@ -13,27 +13,27 @@
  * `editable` — the table itself stays presentational: the parent card decides
  * permission (`canEditGear`) and owns the mutation (`computeGearSlotUpdate` →
  * `actions.onUpdate`, one shared path with legacy and the Board).
- * Later slices continue here: BiS-source selector/Fix/banner (C3), the
- * tome-weapon sub-row (C4), ledger jumps (C7).
+ * C4 (D-04) restores the tome-weapon story on the weapon row: the shared
+ * `WeaponBiSSelector` in the BiS cell (R fixed + "+" interim-tome toggle) and,
+ * while pursuing, the sub-row with its OWN 3-state circle and the Alt+Click
+ * material-entry jump. Later slices continue here: ledger jumps (C7).
  */
 
-import type { ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
-import { BiSSourceSelector } from '../player/BiSSourceSelector';
+import { BiSSourceSelector, WeaponBiSSelector } from '../player/BiSSourceSelector';
 import { Button, LongPressTooltip, Tooltip } from '../primitives';
 import { getCorrectBisSource } from '../../utils/bisSourceDetection';
 import type { GearSlot, GearSlotStatus, GearSource, TomeWeaponStatus } from '../../types';
 import {
-  BIS_SOURCE_COLORS,
   BIS_SOURCE_FULL_NAMES,
-  BIS_SOURCE_NAMES,
   GEAR_SLOTS,
   GEAR_SLOT_ICONS,
   GEAR_SLOT_NAMES,
 } from '../../types';
-import { requiresAugmentation, toGearState, type GearState } from '../../utils/calculations';
+import { fromGearState, requiresAugmentation, toGearState, type GearState } from '../../utils/calculations';
 import { hasHoverData } from './gearHoverData';
 
 /**
@@ -50,6 +50,36 @@ function slotIconClass(status: GearSlotStatus, isItemIcon: boolean): string {
   }
   if (!status.hasItem) return 'opacity-50';
   return incomplete ? 'brightness-0 invert opacity-50' : 'brightness-0 invert opacity-90';
+}
+
+/**
+ * Whether the Alt key is currently held. Drives the jump icons' cursor (user
+ * ruling, PR #191): the hand cursor must appear ONLY while the modifier is
+ * down — a persistent pointer would advertise a plain click the Alt-gated
+ * jump won't honor. Global listeners (not pointermove): pressing a modifier
+ * over a stationary cursor fires no pointer event. Blur resets so Alt+Tab
+ * can't strand the held state.
+ */
+function useAltHeld(): boolean {
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setHeld(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setHeld(false);
+    };
+    const reset = () => setHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', reset);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', reset);
+    };
+  }, []);
+  return held;
 }
 
 /**
@@ -95,6 +125,18 @@ export interface RosterGearTableProps {
    * `bisSource` while PRESERVING progress and item metadata.
    */
   onSourceFix?: (slot: GearSlot, source: GearSource) => void;
+  /**
+   * C4 (D-04): tome-weapon updates from the weapon row — the "+" toggle sends
+   * `{ pursuing }`, the sub-row circle `{ hasItem, isAugmented }` (via the
+   * shared `fromGearState`, as legacy `WeaponSlotRow` does). The parent owns
+   * the mutation: the LEGACY `tomeWeapon` spread — tomeWeapon is its own
+   * player field, never a gear slot through `computeGearSlotUpdate`.
+   */
+  onTomeWeaponChange?: (updates: Partial<TomeWeaponStatus>) => void;
+  /** C4: whether this player has a tome-weapon material-log entry to jump to. */
+  hasTomeMaterialEntry?: boolean;
+  /** C4: the Alt+Click jump from the sub-row label to that material entry. */
+  onTomeMaterialJump?: () => void;
   /** Why editing is unavailable (shown by the disabled selector). */
   disabledReason?: string;
 }
@@ -106,6 +148,9 @@ export function RosterGearTable({
   onSlotChange,
   onSourceChange,
   onSourceFix,
+  onTomeWeaponChange,
+  hasTomeMaterialEntry = false,
+  onTomeMaterialJump,
   disabledReason,
 }: RosterGearTableProps) {
   const bySlot = new Map(gear.map((g) => [g.slot, g]));
@@ -114,6 +159,22 @@ export function RosterGearTable({
   const interactive = editable && !!onSlotChange;
   const sourceInteractive = editable && !!onSourceChange;
   const fixInteractive = editable && !!onSourceFix;
+  const tomeInteractive = editable && !!onTomeWeaponChange;
+  const altHeld = useAltHeld();
+  // Sub-row label tint tracks tome progress (legacy WeaponSlotRow treatment):
+  // muted → secondary (base obtained) → primary (augmented).
+  const tomeLabelClass = tomeWeapon.hasItem
+    ? tomeWeapon.isAugmented
+      ? 'text-text-primary'
+      : 'text-text-secondary'
+    : 'text-text-muted';
+  // The sub-row's weapon icon reuses the placeholder-glyph branch of
+  // slotIconClass, driven by tome state (tome always takes the augment step,
+  // so "complete" means augmented).
+  const tomeIconClass = slotIconClass(
+    { slot: 'weapon', bisSource: 'tome', hasItem: tomeWeapon.hasItem, isAugmented: tomeWeapon.isAugmented },
+    false
+  );
 
   return (
     // table-fixed: the header row's w-12/w-14 pin the BiS/Status columns and the
@@ -150,7 +211,7 @@ export function RosterGearTable({
           const isWeapon = slot === 'weapon';
           const iconUrl = status.itemIcon || GEAR_SLOT_ICONS[slot];
           // The weapon's main row is always the raid weapon (tome interim is
-          // the C4 sub-row): 2-state cycle, no augment step.
+          // the sub-row below): 2-state cycle, no augment step.
           const circleSource = isWeapon ? 'raid' : status.bisSource;
           const circleRequiresAug = isWeapon ? false : requiresAugmentation(status);
           const hasItemData = hasHoverData(status);
@@ -182,17 +243,23 @@ export function RosterGearTable({
             </div>
           );
 
-          return (
+          const mainRow = (
             <tr key={slot} className="border-t border-border-subtle">
               <th scope="row" aria-label={rowLabel} className="py-1.5 pr-2 text-left font-normal">
                 {hasItemData ? (
                   // Hover item card (D-02): the legacy detailed gear tooltip,
                   // via the SHARED ItemHoverCard leaf. Ledger-jump affordances
                   // (Alt+Click / context menu) are C7, not here.
+                  // bottom/start, NOT side="right": the trigger is the whole
+                  // (wide) slot cell, so a right-side popup lands at the
+                  // column's far edge — visually over the NEXT card, nowhere
+                  // near the cursor (user report on PR #191). Bottom + start
+                  // hugs the hovered row's icon instead.
                   <LongPressTooltip
                     delayDuration={200}
-                    side="right"
-                    sideOffset={8}
+                    side="bottom"
+                    align="start"
+                    sideOffset={4}
                     content={
                       <ItemHoverCard
                         itemName={status.itemName}
@@ -219,17 +286,18 @@ export function RosterGearTable({
               </th>
               <td className="py-1.5 text-center">
                 {isWeapon ? (
-                  // BiS weapon is ALWAYS raid; "+T" marks an interim tome
-                  // weapon being tracked (the sub-row itself is C4).
-                  <span className="text-xs font-bold">
-                    <span className={BIS_SOURCE_COLORS.raid}>{BIS_SOURCE_NAMES.raid}</span>
-                    {tomeWeapon.pursuing && (
-                      <>
-                        <span className="font-normal text-text-muted">+</span>
-                        <span className={BIS_SOURCE_COLORS.tome}>{BIS_SOURCE_NAMES.tome}</span>
-                      </>
-                    )}
-                  </span>
+                  // C4 (D-04): the SHARED weapon selector — BiS weapon is
+                  // ALWAYS raid (fixed R), the "+" toggles interim tome
+                  // tracking and reveals the sub-row below. Replaces C1's
+                  // static R/+T glyph: that placeholder was the pre-restore
+                  // rendering of this same cell, so this is the restore, not
+                  // a delta.
+                  <WeaponBiSSelector
+                    tomeWeapon={tomeWeapon}
+                    onTomeWeaponChange={(updates) => onTomeWeaponChange?.(updates)}
+                    disabled={!tomeInteractive}
+                    disabledReason={disabledReason}
+                  />
                 ) : (
                   // C3 (D-03): the shared R/T/C/BT selector popover (its
                   // reset-warning confirm lives inside the leaf) + the
@@ -291,6 +359,122 @@ export function RosterGearTable({
                 </div>
               </td>
             </tr>
+          );
+
+          // ── Tome-weapon sub-row (C4, D-04 restore; legacy R-094/R-095) ──
+          // Its OWN 3-state circle (tome + augment step) reporting through the
+          // same onTomeWeaponChange as the "+" toggle. The sub-row's weapon
+          // ICON carries the material jump ONLY when an entry exists — a
+          // navigation, not an edit, so it is deliberately NOT gated on
+          // `editable` (legacy parity: viewers can follow the record). Ruled
+          // on PR #191 as the C7/D-55 jump family's reference implementation:
+          // Alt+Click for mouse (a plain mouse click never navigates), Enter
+          // for keyboard, detail-0 synthetic clicks for AT browse-mode
+          // activation, and the cursor shows the hand only while Alt is held
+          // — see the handler comments below.
+          //
+          // The row list ALWAYS returns this Fragment (sub-row conditional
+          // INSIDE it): flipping `pursuing` must not change the element type
+          // at this array index, or React remounts the subtree and drops
+          // keyboard focus from the "+" toggle that caused the flip
+          // (director F1).
+          return (
+            <Fragment key={slot}>
+              {mainRow}
+              {isWeapon && tomeWeapon.pursuing && (
+              <tr className="border-t border-border-subtle/60 bg-surface-elevated/40">
+                <th
+                  scope="row"
+                  aria-label="Tome Weapon (interim)"
+                  className="py-1.5 pl-8 pr-2 text-left text-xs font-normal"
+                >
+                  <div className="flex items-center gap-2">
+                    <span aria-hidden="true" className="text-text-muted">
+                      └
+                    </span>
+                    {hasTomeMaterialEntry && onTomeMaterialJump ? (
+                      <Tooltip
+                        content={
+                          <span className="text-xs">
+                            <kbd className="rounded border border-border-default bg-surface-base px-1 py-0.5">
+                              Alt
+                            </kbd>
+                            +Click (or Enter) to jump to the material entry
+                          </span>
+                        }
+                      >
+                        {/* design-system-ignore: hand-rolled role=link on the slot icon — the ruled C7/D-55 jump family (Alt+Click mouse, Enter keyboard, detail-0 AT activation); no primitive carries an Alt-gated event */}
+                        <span
+                          role="link"
+                          tabIndex={0}
+                          aria-label="Tome Weapon — jump to its material entry"
+                          className={`inline-flex rounded focus-visible:ring-2 focus-visible:ring-accent ${altHeld ? 'cursor-pointer' : 'cursor-default'}`}
+                          onClick={(e) => {
+                            // Alt+Click = the ruled D-55 mouse shortcut; a
+                            // plain mouse click must never navigate (user
+                            // ruling, PR #191 — accidental icon clicks would
+                            // teleport with no explanation). detail === 0 =
+                            // AT browse-mode activation (synthetic clicks
+                            // carry no press count); Safari/VO is inconsistent
+                            // there — the durable AT route is C7's
+                            // context-menu jump.
+                            if (e.altKey || e.detail === 0) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onTomeMaterialJump();
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              onTomeMaterialJump();
+                            }
+                          }}
+                        >
+                          <img
+                            src={GEAR_SLOT_ICONS.weapon}
+                            alt=""
+                            width={20}
+                            height={20}
+                            className={`shrink-0 ${tomeIconClass}`}
+                          />
+                        </span>
+                      </Tooltip>
+                    ) : (
+                      <img
+                        src={GEAR_SLOT_ICONS.weapon}
+                        alt=""
+                        aria-hidden="true"
+                        width={20}
+                        height={20}
+                        className={`shrink-0 ${tomeIconClass}`}
+                      />
+                    )}
+                    <span className={tomeLabelClass}>Tome Weapon</span>
+                  </div>
+                </th>
+                <td className="py-1.5 text-center">
+                  <span
+                    className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold text-gear-tome ${tomeInteractive ? '' : 'opacity-50'}`}
+                  >
+                    T
+                  </span>
+                </td>
+                <td className="py-1.5">
+                  <div className="flex justify-center">
+                    <GearStatusCircle
+                      state={toGearState(tomeWeapon.hasItem, tomeWeapon.isAugmented)}
+                      bisSource="tome"
+                      requiresAugmentation
+                      disabled={!tomeInteractive}
+                      onChange={(next) => onTomeWeaponChange?.(fromGearState(next))}
+                      tooltip={tomeInteractive ? cycleHint('tome', true) : undefined}
+                    />
+                  </div>
+                </td>
+              </tr>
+              )}
+            </Fragment>
           );
         })}
       </tbody>

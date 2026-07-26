@@ -221,8 +221,9 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
     tooltip: editTip,
   });
   // Interim tome-weapon affordance (Phase A / A3): toggles `pursuing` ONLY.
-  // The tome weapon's have/augmented states stay legacy-only until Phase C
-  // restores the full GearTable in v2 — the dual shell covers them meanwhile.
+  // Have/augmented live on the expanded card's tome sub-row (C4, D-04); both
+  // affordances read the same `player.tomeWeapon` store field, so this item
+  // and the weapon row's "+" toggle stay in sync with no extra wiring.
   // `player.tomeWeapon` is required in production but read defensively (`?.`)
   // because test doubles may omit it.
   items.push({

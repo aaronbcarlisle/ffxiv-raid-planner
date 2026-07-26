@@ -255,13 +255,15 @@ describe('RosterGearTable — C2 editing', () => {
       expect(screen.queryByRole('button', { name: /^Fix BiS source/ })).not.toBeInTheDocument();
     });
 
-    it('the weapon row keeps its static raid glyph (the weapon selector is C4 scope)', () => {
+    it('the weapon row mounts the weapon selector (C4), never the R/T/C/BT source popover', () => {
       renderTable([slot({ slot: 'weapon', bisSource: 'raid', hasItem: false })], {
         editable: true,
         onSourceChange: vi.fn(),
+        onTomeWeaponChange: vi.fn(),
       });
       const weaponRow = screen.getByRole('rowheader', { name: /^Weapon/ }).closest('tr')!;
-      expect(within(weaponRow).queryByRole('button')).not.toBeInTheDocument();
+      expect(within(weaponRow).queryByRole('button', { name: /BiS source/ })).not.toBeInTheDocument();
+      expect(within(weaponRow).getByRole('button', { name: '+' })).toBeInTheDocument();
     });
   });
 
@@ -275,5 +277,217 @@ describe('RosterGearTable — C2 editing', () => {
     const bodyRow = screen.getByRole('rowheader', { name: /^Body/ });
     expect(headRow.querySelector('[data-state]')).not.toBeNull();
     expect(bodyRow.querySelector('[data-state]')).toBeNull();
+  });
+});
+
+// ── Tome-weapon sub-row (Phase C C4, D-04) ──
+describe('RosterGearTable — C4 tome-weapon sub-row', () => {
+  const weaponGear = [slot({ slot: 'weapon', bisSource: 'raid', hasItem: false })];
+  const pursuingTome: TomeWeaponStatus = { pursuing: true, hasItem: false, isAugmented: false };
+
+  function weaponRow() {
+    return screen.getByRole('rowheader', { name: /^Weapon/ }).closest('tr')!;
+  }
+
+  it('interactive: the weapon BiS cell mounts the shared selector; + reports pursuing', () => {
+    const onTomeWeaponChange = vi.fn();
+    renderTable(weaponGear, { editable: true, onTomeWeaponChange });
+
+    fireEvent.click(within(weaponRow()).getByRole('button', { name: '+' }));
+    expect(onTomeWeaponChange).toHaveBeenCalledWith({ pursuing: true });
+  });
+
+  it('the + toggle reports pursuing:false when already tracking', () => {
+    const onTomeWeaponChange = vi.fn();
+    renderTable(weaponGear, { editable: true, onTomeWeaponChange, tomeWeapon: pursuingTome });
+
+    fireEvent.click(within(weaponRow()).getByRole('button', { name: '+' }));
+    expect(onTomeWeaponChange).toHaveBeenCalledWith({ pursuing: false });
+  });
+
+  it('read-only: the + toggle renders disabled and reports nothing', () => {
+    const onTomeWeaponChange = vi.fn();
+    renderTable(weaponGear, { onTomeWeaponChange });
+
+    const plus = within(weaponRow()).getByRole('button', { name: '+' });
+    expect(plus).toBeDisabled();
+    fireEvent.click(plus);
+    expect(onTomeWeaponChange).not.toHaveBeenCalled();
+  });
+
+  it('editable without an onTomeWeaponChange handler renders the toggle inert', () => {
+    // Affordance-tracks-handler (C2/C3 rule): `editable` alone must not
+    // advertise a toggle that persists nothing.
+    renderTable(weaponGear, { editable: true, onSlotChange: vi.fn() });
+    expect(within(weaponRow()).getByRole('button', { name: '+' })).toBeDisabled();
+  });
+
+  it('the sub-row renders only while pursuing', () => {
+    const { unmount } = renderTable(weaponGear);
+    expect(screen.queryByRole('rowheader', { name: /Tome Weapon/ })).not.toBeInTheDocument();
+    unmount();
+
+    renderTable(weaponGear, { tomeWeapon: pursuingTome });
+    expect(screen.getByRole('rowheader', { name: /Tome Weapon/ })).toBeInTheDocument();
+  });
+
+  it('interactive: the sub-row circle runs the 3-state tome cycle and reports hasItem/isAugmented', () => {
+    const onTomeWeaponChange = vi.fn();
+    renderTable(weaponGear, {
+      editable: true,
+      onTomeWeaponChange,
+      tomeWeapon: { pursuing: true, hasItem: true, isAugmented: false },
+    });
+
+    // have → augmented (tome + requiresAugmentation = the 3-state machine).
+    fireEvent.click(circleIn(/Tome Weapon/));
+    expect(onTomeWeaponChange).toHaveBeenCalledWith({ hasItem: true, isAugmented: true });
+  });
+
+  it('the sub-row circle is keyboard-operable (Enter cycles)', () => {
+    const onTomeWeaponChange = vi.fn();
+    renderTable(weaponGear, { editable: true, onTomeWeaponChange, tomeWeapon: pursuingTome });
+
+    const circle = circleIn(/Tome Weapon/);
+    expect(circle).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(circle, { key: 'Enter' });
+    expect(onTomeWeaponChange).toHaveBeenCalledWith({ hasItem: true, isAugmented: false });
+  });
+
+  it('read-only: the sub-row circle is disabled and reports nothing', () => {
+    const onTomeWeaponChange = vi.fn();
+    renderTable(weaponGear, { onTomeWeaponChange, tomeWeapon: pursuingTome });
+
+    const circle = circleIn(/Tome Weapon/);
+    expect(circle).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(circle);
+    expect(onTomeWeaponChange).not.toHaveBeenCalled();
+  });
+
+  it('the jump lives on the sub-row icon: Alt+Click follows it, a plain mouse click never does', () => {
+    const onTomeMaterialJump = vi.fn();
+    const { unmount } = renderTable(weaponGear, {
+      tomeWeapon: pursuingTome,
+      hasTomeMaterialEntry: true,
+      onTomeMaterialJump,
+    });
+
+    const link = screen.getByRole('link', { name: /Tome Weapon/ });
+    // User ruling on PR #191 (the C7/D-55 jump family): a real mouse click
+    // (detail >= 1) without Alt must NOT navigate — an accidental icon click
+    // would teleport the user to the Loot tab with no explanation.
+    fireEvent.click(link, { detail: 1 });
+    expect(onTomeMaterialJump).not.toHaveBeenCalled();
+    fireEvent.click(link, { altKey: true, detail: 1 });
+    expect(onTomeMaterialJump).toHaveBeenCalledTimes(1);
+    unmount();
+
+    // No material entry → the icon stays, but with no link semantics.
+    onTomeMaterialJump.mockClear();
+    renderTable(weaponGear, { tomeWeapon: pursuingTome, onTomeMaterialJump });
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Tome Weapon'), { altKey: true, detail: 1 });
+    expect(onTomeMaterialJump).not.toHaveBeenCalled();
+  });
+
+  it('AT synthetic activation (a detail-0 click) follows the jump', () => {
+    // Screen-reader browse-mode activation dispatches a click with detail 0
+    // (no physical press count) — the Alt gate must not reject it (director
+    // F3, reconciled with the Alt-only mouse ruling via this discriminator).
+    const onTomeMaterialJump = vi.fn();
+    renderTable(weaponGear, {
+      tomeWeapon: pursuingTome,
+      hasTomeMaterialEntry: true,
+      onTomeMaterialJump,
+    });
+
+    fireEvent.click(screen.getByRole('link', { name: /Tome Weapon/ }), { detail: 0 });
+    expect(onTomeMaterialJump).toHaveBeenCalledTimes(1);
+  });
+
+  it('the jump icon invites a click only while Alt is held (cursor swap)', () => {
+    // User ruling on PR #191: a persistent hand cursor advertises a plain
+    // click the icon won't honor — the cursor must reflect the modifier
+    // (default arrow normally, pointer only while Alt is down).
+    renderTable(weaponGear, {
+      tomeWeapon: pursuingTome,
+      hasTomeMaterialEntry: true,
+      onTomeMaterialJump: vi.fn(),
+    });
+
+    const link = screen.getByRole('link', { name: /Tome Weapon/ });
+    expect(link.className).toContain('cursor-default');
+    fireEvent.keyDown(window, { key: 'Alt' });
+    expect(link.className).toContain('cursor-pointer');
+    fireEvent.keyUp(window, { key: 'Alt' });
+    expect(link.className).toContain('cursor-default');
+  });
+
+  it('the sub-row carries the indented weapon slot icon in both jump states', () => {
+    // User ruling on PR #191: the sub-row gets the weapon slot icon (indented
+    // under the main rows' icons) so the jump affordance has the same visual
+    // home as every other C7 slot jump.
+    function tomeRow() {
+      return screen.getByRole('rowheader', { name: /Tome Weapon/ }).closest('tr')!;
+    }
+    const { unmount } = renderTable(weaponGear, {
+      tomeWeapon: pursuingTome,
+      hasTomeMaterialEntry: true,
+      onTomeMaterialJump: vi.fn(),
+    });
+    expect(tomeRow().querySelector('img')).not.toBeNull();
+    unmount();
+
+    renderTable(weaponGear, { tomeWeapon: pursuingTome });
+    expect(tomeRow().querySelector('img')).not.toBeNull();
+  });
+
+  it('keeps focus on the + toggle across the pursuing flip (stable row structure)', () => {
+    // Director F1: flipping pursuing must not change the weapon row's element
+    // type (tr ↔ Fragment at the same index remounts the subtree and drops
+    // keyboard focus from the very button that caused the flip).
+    const { rerender } = render(
+      <TooltipProvider>
+        <RosterGearTable
+          gear={weaponGear}
+          tomeWeapon={emptyTome}
+          editable
+          onTomeWeaponChange={vi.fn()}
+        />
+      </TooltipProvider>
+    );
+    const plus = within(weaponRow()).getByRole('button', { name: '+' });
+    plus.focus();
+    expect(document.activeElement).toBe(plus);
+
+    rerender(
+      <TooltipProvider>
+        <RosterGearTable
+          gear={weaponGear}
+          tomeWeapon={pursuingTome}
+          editable
+          onTomeWeaponChange={vi.fn()}
+        />
+      </TooltipProvider>
+    );
+    expect(screen.getByRole('rowheader', { name: /Tome Weapon/ })).toBeInTheDocument();
+    expect(document.activeElement).toBe(within(weaponRow()).getByRole('button', { name: '+' }));
+  });
+
+  it('the jump label is announced and keyboard-operable (role link, Enter jumps)', () => {
+    // Design-system rule: appearance must match behavior — the label with a
+    // live jump announces itself (role=link) and Enter follows it, closing
+    // the keyboard gap legacy's mouse-only Alt+Click left open.
+    const onTomeMaterialJump = vi.fn();
+    renderTable(weaponGear, {
+      tomeWeapon: pursuingTome,
+      hasTomeMaterialEntry: true,
+      onTomeMaterialJump,
+    });
+
+    const link = screen.getByRole('link', { name: /Tome Weapon/ });
+    expect(link).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(link, { key: 'Enter' });
+    expect(onTomeMaterialJump).toHaveBeenCalledTimes(1);
   });
 });

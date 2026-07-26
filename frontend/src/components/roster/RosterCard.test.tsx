@@ -1,12 +1,26 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { RosterCard } from './RosterCard';
 import { TooltipProvider } from '../primitives';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
-import type { SnapshotPlayer } from '../../types';
+import type { MaterialLogEntry, SnapshotPlayer } from '../../types';
 import { useToastStore } from '../../stores/toastStore';
+import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { eventBus, Events } from '../../lib/eventBus';
 import { computeGearSlotUpdate, fromGearState } from '../../utils/calculations';
+
+// The card's C4 material jump writes same-route URL params — surface the live
+// search string in the DOM so tests can assert on it (MemoryRouter never
+// touches window.location).
+function LocationProbe() {
+  return <div data-testid="location-search">{useLocation().search}</div>;
+}
+
+/** The MemoryRouter search string the card's URL writes land in. */
+function currentSearch() {
+  return screen.getByTestId('location-search').textContent ?? '';
+}
 
 beforeEach(() => {
   // Radix Popper (BiSSourceSelector's popover) needs ResizeObserver, which
@@ -35,6 +49,8 @@ beforeEach(() => {
     }))
   );
   useToastStore.setState({ toasts: [] });
+  // C4 material-jump tests seed the material log; give every test a clean one.
+  useLootTrackingStore.setState({ materialLog: [] });
 });
 
 afterEach(() => {
@@ -84,23 +100,27 @@ function renderCard(
   player: SnapshotPlayer,
   extra: Partial<Parameters<typeof RosterCard>[0]> = {}
 ) {
+  // MemoryRouter: the card's C4 material jump calls useSearchParams.
   return render(
-    <TooltipProvider>
-      <RosterCard
-        player={player}
-        userRole="owner"
-        currentUserId="u1"
-        isAdminAccess={false}
-        canManage
-        clipboardPlayer={null}
-        reorderMode={false}
-        groupId="g1"
-        tierId="tier1"
-        contentType="savage"
-        actions={actions}
-        {...extra}
-      />
-    </TooltipProvider>
+    <MemoryRouter>
+      <TooltipProvider>
+        <RosterCard
+          player={player}
+          userRole="owner"
+          currentUserId="u1"
+          isAdminAccess={false}
+          canManage
+          clipboardPlayer={null}
+          reorderMode={false}
+          groupId="g1"
+          tierId="tier1"
+          contentType="savage"
+          actions={actions}
+          {...extra}
+        />
+        <LocationProbe />
+      </TooltipProvider>
+    </MemoryRouter>
   );
 }
 
@@ -131,23 +151,25 @@ describe('RosterCard', () => {
     const onModalOpen = vi.fn();
     const onModalClose = vi.fn();
     const { unmount } = render(
-      <TooltipProvider>
-        <RosterCard
-          player={makePlayer()}
-          userRole="owner"
-          currentUserId="u1"
-          isAdminAccess={false}
-          canManage
-          clipboardPlayer={null}
-          reorderMode={false}
-          groupId="g1"
-          tierId="tier1"
-          contentType="savage"
-          actions={actions}
-          onModalOpen={onModalOpen}
-          onModalClose={onModalClose}
-        />
-      </TooltipProvider>
+      <MemoryRouter>
+        <TooltipProvider>
+          <RosterCard
+            player={makePlayer()}
+            userRole="owner"
+            currentUserId="u1"
+            isAdminAccess={false}
+            canManage
+            clipboardPlayer={null}
+            reorderMode={false}
+            groupId="g1"
+            tierId="tier1"
+            contentType="savage"
+            actions={actions}
+            onModalOpen={onModalOpen}
+            onModalClose={onModalClose}
+          />
+        </TooltipProvider>
+      </MemoryRouter>
     );
 
     // Open an overlay (the job picker) → the balanced open fires, close does not.
@@ -167,21 +189,23 @@ describe('RosterCard', () => {
 describe("RosterCard — A10 void'd-promise fixes", () => {
   function renderWithActions(rejecting: RosterCardActions) {
     return render(
-      <TooltipProvider>
-        <RosterCard
-          player={makePlayer()}
-          userRole="owner"
-          currentUserId="u1"
-          isAdminAccess={false}
-          canManage
-          clipboardPlayer={null}
-          reorderMode={false}
-          groupId="g1"
-          tierId="tier1"
-          contentType="savage"
-          actions={rejecting}
-        />
-      </TooltipProvider>
+      <MemoryRouter>
+        <TooltipProvider>
+          <RosterCard
+            player={makePlayer()}
+            userRole="owner"
+            currentUserId="u1"
+            isAdminAccess={false}
+            canManage
+            clipboardPlayer={null}
+            reorderMode={false}
+            groupId="g1"
+            tierId="tier1"
+            contentType="savage"
+            actions={rejecting}
+          />
+        </TooltipProvider>
+      </MemoryRouter>
     );
   }
 
@@ -508,6 +532,160 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       // Expanded but everything correct → no banner.
       renderCard(makeGearedPlayer({ id: 'p8' }), { density: 'expanded' });
       expect(screen.queryByText(/need(s)? BiS source update/)).not.toBeInTheDocument();
+    });
+
+    // ── Tome-weapon sub-row (Phase C C4, D-04) ──
+    describe('tome weapon', () => {
+      /** A player with a real weapon slot + explicit tomeWeapon state. */
+      function makeTomePlayer(
+        tome: Partial<SnapshotPlayer['tomeWeapon']> = {},
+        overrides: Partial<SnapshotPlayer> = {}
+      ): SnapshotPlayer {
+        return makePlayer({
+          gear: [
+            { slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false },
+          ] as unknown as SnapshotPlayer['gear'],
+          tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false, ...tome },
+          ...overrides,
+        });
+      }
+
+      function weaponRow() {
+        return screen.getByRole('rowheader', { name: /^Weapon/ }).closest('tr')!;
+      }
+      function tomeRow() {
+        return screen.getByRole('rowheader', { name: /Tome Weapon/ }).closest('tr')!;
+      }
+
+      /** A material entry that marks p1's tome weapon (universal tomestone form). */
+      function tomeMaterialEntry(overrides: Partial<MaterialLogEntry> = {}): MaterialLogEntry {
+        return {
+          id: 42,
+          tierSnapshotId: 't1',
+          weekNumber: 3,
+          floor: 'floor3',
+          materialType: 'universal_tomestone',
+          recipientPlayerId: 'p1',
+          recipientPlayerName: 'Tank One',
+          method: 'priority',
+          slotAugmented: null,
+          createdAt: '',
+          createdByUserId: '',
+          createdByUsername: '',
+          ...overrides,
+        } as MaterialLogEntry;
+      }
+
+      it('the + toggle mutates through the LEGACY tomeWeapon shape (never the gear path)', async () => {
+        const onUpdate = vi.fn().mockResolvedValue(undefined);
+        renderCard(makeTomePlayer(), { density: 'expanded', actions: { ...actions, onUpdate } });
+
+        fireEvent.click(within(weaponRow()).getByRole('button', { name: '+' }));
+
+        await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+        // PlayerCard.handleTomeWeaponChange parity: a tomeWeapon spread, NOT a
+        // computeGearSlotUpdate gear array.
+        expect(onUpdate).toHaveBeenCalledWith({
+          tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+        });
+      });
+
+      it('the sub-row circle cycles hasItem/isAugmented through the same legacy shape', async () => {
+        const onUpdate = vi.fn().mockResolvedValue(undefined);
+        renderCard(makeTomePlayer({ pursuing: true, hasItem: true }), {
+          density: 'expanded',
+          actions: { ...actions, onUpdate },
+        });
+
+        fireEvent.click(within(tomeRow()).getByRole('checkbox'));
+
+        await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+        expect(onUpdate).toHaveBeenCalledWith({
+          tomeWeapon: { pursuing: true, hasItem: true, isAugmented: true },
+        });
+      });
+
+      it('tomeWeapon changes emit NO analytics event (the C2 ruling covers gear slots only)', async () => {
+        const received: unknown[] = [];
+        const unsub = eventBus.on(Events.PLAYER_GEAR_CHANGED, (d) => received.push(d));
+        try {
+          const onUpdate = vi.fn().mockResolvedValue(undefined);
+          renderCard(makeTomePlayer({ pursuing: true }), {
+            density: 'expanded',
+            actions: { ...actions, onUpdate },
+          });
+
+          fireEvent.click(within(weaponRow()).getByRole('button', { name: '+' }));
+          fireEvent.click(within(tomeRow()).getByRole('checkbox'));
+          await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+          // Flush the resolve chain so a would-be emit had every chance to fire.
+          await new Promise((r) => setTimeout(r, 0));
+          expect(received).toHaveLength(0);
+        } finally {
+          unsub();
+        }
+      });
+
+      it("member on someone ELSE's card: the + toggle and sub-row circle stay read-only", () => {
+        const onUpdate = vi.fn();
+        renderCard(makeTomePlayer({ pursuing: true }, { userId: 'u9' }), {
+          density: 'expanded',
+          userRole: 'member',
+          currentUserId: 'u1',
+          canManage: false,
+          actions: { ...actions, onUpdate },
+        });
+
+        const plus = within(weaponRow()).getByRole('button', { name: '+' });
+        expect(plus).toBeDisabled();
+        fireEvent.click(plus);
+        const circle = within(tomeRow()).getByRole('checkbox');
+        expect(circle).toHaveAttribute('aria-disabled', 'true');
+        fireEvent.click(circle);
+        expect(onUpdate).not.toHaveBeenCalled();
+      });
+
+      it('Alt+Click on the sub-row icon jumps via same-route URL params', () => {
+        useLootTrackingStore.setState({ materialLog: [tomeMaterialEntry()] });
+        renderCard(makeTomePlayer({ pursuing: true }), { density: 'expanded' });
+
+        fireEvent.click(screen.getByRole('link', { name: /Tome Weapon/ }), { altKey: true, detail: 1 });
+
+        // The jump = the Loot spine tab (PageMode 'gear') + History sub-view +
+        // the highlight params LootHistoryTable.tsx:69-103 consumes.
+        const params = new URLSearchParams(currentSearch());
+        expect(params.get('tab')).toBe('gear');
+        expect(params.get('lview')).toBe('history');
+        expect(params.get('entry')).toBe('42');
+        expect(params.get('entryType')).toBe('material');
+      });
+
+      it('a slotAugmented=tome_weapon entry lights the jump (second predicate branch)', () => {
+        // Director F6: the universal-tomestone branch is covered above; this
+        // fixture exercises the slotAugmented === 'tome_weapon' branch.
+        useLootTrackingStore.setState({
+          materialLog: [tomeMaterialEntry({ id: 77, materialType: 'twine', slotAugmented: 'tome_weapon' })],
+        });
+        renderCard(makeTomePlayer({ pursuing: true }), { density: 'expanded' });
+
+        fireEvent.click(screen.getByRole('link', { name: /Tome Weapon/ }), { altKey: true, detail: 1 });
+
+        const params = new URLSearchParams(currentSearch());
+        expect(params.get('entry')).toBe('77');
+        expect(params.get('entryType')).toBe('material');
+      });
+
+      it("another player's material entry does not light the jump (no link, Alt+Click is a no-op)", () => {
+        useLootTrackingStore.setState({
+          materialLog: [tomeMaterialEntry({ recipientPlayerId: 'p9', slotAugmented: 'tome_weapon' })],
+        });
+        renderCard(makeTomePlayer({ pursuing: true }), { density: 'expanded' });
+
+        expect(screen.queryByRole('link', { name: /Tome Weapon/ })).not.toBeInTheDocument();
+        const before = currentSearch();
+        fireEvent.click(within(tomeRow()).getByText('Tome Weapon'), { altKey: true, detail: 1 });
+        expect(currentSearch()).toBe(before);
+      });
     });
 
     it('compact pips with item data carry the hover item-card wiring (inspect, not edit)', () => {
