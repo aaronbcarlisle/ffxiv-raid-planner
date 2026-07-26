@@ -1,15 +1,15 @@
 # V1 → V2 Affordance-Parity Matrix (Phase B deliverable)
 
-**Status: RULED — Phase-B user checkpoint completed 2026-07-26 (guided walkthrough).** Per
+**Status: RULED — Phase B user checkpoint completed 2026-07-26 (guided walkthrough).** Per
 `ROLLOUT_ROADMAP.md` §5 step 4, the user ruled all 68 decision units in a section-by-section
 walkthrough: **66 ruled** (see the **Ruling** column) and **2 deferred** (D-67, D-68 — ⏸ blocked
-on the "two competing dashboards" flow-map mandate recorded in the §9 preamble). This marked
+on the "two competing dashboards" flow map mandate recorded in the §9 preamble). This marked
 matrix is now the **binding restoration backlog for Phases C and D**. Headline tallies:
 §1 Roster feeds Phase C (D-01…D-10 all RESTORE — the expanded gear-table card returns in full);
 §3 established the **History-vs-Logging split** (D-30: the weekly grid is a *logging* surface;
 D-31/D-72: History becomes a single find-it table); §10/D-52 **drops the More tab** and moves
 Plugin into documentation. Standing riders: ex-D-56 mobile-access rider (restored desktop
-controls must restore their phone-width access) and the §9 flow-map mandate (required Phase-D
+controls must restore their phone-width access) and the §9 flow map mandate (required Phase-D
 design input).
 
 ---
