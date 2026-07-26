@@ -660,6 +660,21 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
         expect(params.get('entryType')).toBe('material');
       });
 
+      it('a slotAugmented=tome_weapon entry lights the jump (second predicate branch)', () => {
+        // Director F6: the universal-tomestone branch is covered above; this
+        // fixture exercises the slotAugmented === 'tome_weapon' branch.
+        useLootTrackingStore.setState({
+          materialLog: [tomeMaterialEntry({ id: 77, materialType: 'twine', slotAugmented: 'tome_weapon' })],
+        });
+        renderCard(makeTomePlayer({ pursuing: true }), { density: 'expanded' });
+
+        fireEvent.click(screen.getByText('└ Tome Weapon'), { altKey: true });
+
+        const params = new URLSearchParams(currentSearch());
+        expect(params.get('entry')).toBe('77');
+        expect(params.get('entryType')).toBe('material');
+      });
+
       it("another player's material entry does not light the jump (Alt+Click is a no-op)", () => {
         useLootTrackingStore.setState({
           materialLog: [tomeMaterialEntry({ recipientPlayerId: 'p9', slotAugmented: 'tome_weapon' })],

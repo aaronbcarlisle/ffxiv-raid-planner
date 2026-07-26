@@ -168,8 +168,9 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   // Loot state — the Board's next-upgrade (●) highlight must AGREE with the Loot
   // queue, so it reads the SAME loot log + REAL clock week the Loot screen uses.
   // The material log feeds the cards' tome-weapon material jump (C4, D-04):
-  // without this fetch the jump affordance could never light up under a Roster
-  // that mounts before the Loot tab is ever visited.
+  // Home and Loot fetch it for their own surfaces, but Roster is the default
+  // landing tab — without its own fetch the jump could never light on a
+  // direct landing.
   const lootLog = useLootTrackingStore((s) => s.lootLog);
   const clockWeek = useLootTrackingStore((s) => s.currentWeek);
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);

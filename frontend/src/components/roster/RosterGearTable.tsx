@@ -317,21 +317,28 @@ export function RosterGearTable({
             </tr>
           );
 
-          if (!isWeapon || !tomeWeapon.pursuing) return mainRow;
-
           // ── Tome-weapon sub-row (C4, D-04 restore; legacy R-094/R-095) ──
           // Its OWN 3-state circle (tome + augment step) reporting through the
           // same onTomeWeaponChange as the "+" toggle. The label carries the
           // material jump ONLY when an entry exists — a navigation, not an
           // edit, so it is deliberately NOT gated on `editable` (legacy
-          // parity: viewers can follow the record). Alt+Click is the ruled
-          // D-55 superuser shortcut; unlike legacy's mouse-only span, the v2
-          // label announces itself (role=link) and Enter follows it — the
-          // design-system "appearance must match behavior" rule closes the
-          // keyboard gap in-slice.
+          // parity: viewers can follow the record). Unlike legacy's mouse-only
+          // Alt+Click span, the v2 label announces itself (role=link), Enter
+          // follows it, and plain click activates it — an announced link that
+          // rejects plain activation would be dead to AT browse-mode users,
+          // whose activation arrives as a synthetic plain click (director F3;
+          // recorded matrix delta with a ruling request). Alt+Click still
+          // works: it is a click.
+          //
+          // The row list ALWAYS returns this Fragment (sub-row conditional
+          // INSIDE it): flipping `pursuing` must not change the element type
+          // at this array index, or React remounts the subtree and drops
+          // keyboard focus from the "+" toggle that caused the flip
+          // (director F1).
           return (
             <Fragment key={slot}>
               {mainRow}
+              {isWeapon && tomeWeapon.pursuing && (
               <tr className="border-t border-border-subtle/60 bg-surface-elevated/40">
                 <th
                   scope="row"
@@ -342,24 +349,20 @@ export function RosterGearTable({
                     <Tooltip
                       content={
                         <span className="text-xs">
-                          <kbd className="rounded border border-border-default bg-surface-base px-1 py-0.5">
-                            Alt
-                          </kbd>
-                          +Click (or Enter) to jump to the material entry
+                          Click (or press Enter) to jump to the material entry
                         </span>
                       }
                     >
+                      {/* design-system-ignore: hand-rolled role=link — LinkText cannot serve here: its event-less onClick and hardcoded text-accent would erase the progress tint this label encodes (muted→secondary→primary); full keyboard + announcement provided inline */}
                       <span
                         role="link"
                         tabIndex={0}
                         aria-label="Tome Weapon — jump to its material entry"
                         className={`cursor-pointer transition-colors hover:text-accent focus-visible:text-accent ${tomeLabelClass}`}
                         onClick={(e) => {
-                          if (e.altKey) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onTomeMaterialJump();
-                          }
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onTomeMaterialJump();
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -395,6 +398,7 @@ export function RosterGearTable({
                   </div>
                 </td>
               </tr>
+              )}
             </Fragment>
           );
         })}

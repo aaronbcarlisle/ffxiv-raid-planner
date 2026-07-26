@@ -364,7 +364,7 @@ describe('RosterGearTable — C4 tome-weapon sub-row', () => {
     expect(onTomeWeaponChange).not.toHaveBeenCalled();
   });
 
-  it('Alt+Click on the label jumps to the material entry ONLY when one exists', () => {
+  it('clicking the label follows the jump ONLY when a material entry exists', () => {
     const onTomeMaterialJump = vi.fn();
     const { unmount } = renderTable(weaponGear, {
       tomeWeapon: pursuingTome,
@@ -373,11 +373,14 @@ describe('RosterGearTable — C4 tome-weapon sub-row', () => {
     });
 
     const label = screen.getByText('└ Tome Weapon');
-    // Plain click is NOT the jump (Alt is the ruled superuser shortcut).
+    // Director F3 ruling request: an announced link must activate on plain
+    // click — AT browse-mode activation dispatches a synthetic plain click,
+    // which an Alt-only gate would silently reject. Alt+Click (the legacy
+    // muscle-memory shortcut) still works because it IS a click.
     fireEvent.click(label);
-    expect(onTomeMaterialJump).not.toHaveBeenCalled();
-    fireEvent.click(label, { altKey: true });
     expect(onTomeMaterialJump).toHaveBeenCalledTimes(1);
+    fireEvent.click(label, { altKey: true });
+    expect(onTomeMaterialJump).toHaveBeenCalledTimes(2);
     unmount();
 
     // No material entry → the label carries no jump affordance at all.
@@ -386,6 +389,38 @@ describe('RosterGearTable — C4 tome-weapon sub-row', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('└ Tome Weapon'), { altKey: true });
     expect(onTomeMaterialJump).not.toHaveBeenCalled();
+  });
+
+  it('keeps focus on the + toggle across the pursuing flip (stable row structure)', () => {
+    // Director F1: flipping pursuing must not change the weapon row's element
+    // type (tr ↔ Fragment at the same index remounts the subtree and drops
+    // keyboard focus from the very button that caused the flip).
+    const { rerender } = render(
+      <TooltipProvider>
+        <RosterGearTable
+          gear={weaponGear}
+          tomeWeapon={emptyTome}
+          editable
+          onTomeWeaponChange={vi.fn()}
+        />
+      </TooltipProvider>
+    );
+    const plus = within(weaponRow()).getByRole('button', { name: '+' });
+    plus.focus();
+    expect(document.activeElement).toBe(plus);
+
+    rerender(
+      <TooltipProvider>
+        <RosterGearTable
+          gear={weaponGear}
+          tomeWeapon={pursuingTome}
+          editable
+          onTomeWeaponChange={vi.fn()}
+        />
+      </TooltipProvider>
+    );
+    expect(screen.getByRole('rowheader', { name: /Tome Weapon/ })).toBeInTheDocument();
+    expect(document.activeElement).toBe(within(weaponRow()).getByRole('button', { name: '+' }));
   });
 
   it('the jump label is announced and keyboard-operable (role link, Enter jumps)', () => {
