@@ -23,7 +23,8 @@
  *     modal lives in the hook; the user re-imports via the kebab after changing
  *     jobs. The RadioGroup offers the in-scope BiS choice (keep vs unlink).
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MoreVertical, Repeat } from 'lucide-react';
 import {
   CardShell,
@@ -47,6 +48,7 @@ import {
   type RosterCardActions,
 } from '../../hooks/useRosterCardActions';
 import { toast } from '../../stores/toastStore';
+import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import type { DragAttributes, DragListeners } from './dragTypes';
 import {
   calculateAverageItemLevel,
@@ -71,6 +73,7 @@ import type {
   GearSlotStatus,
   GearSource,
   SnapshotPlayer,
+  TomeWeaponStatus,
   ViewMode,
 } from '../../types';
 import { BiSSourceFixBanner } from '../player/BiSSourceFixBanner';
@@ -218,6 +221,54 @@ export function RosterCard({
     });
     return actions.onUpdate({ gear: newGear });
   };
+
+  // ── Tome-weapon sub-row (Phase C C4, D-04) ──
+  // Both weapon-row affordances (the "+" toggle, the sub-row circle) commit
+  // through the LEGACY tomeWeapon spread (PlayerCard.handleTomeWeaponChange
+  // parity) — tomeWeapon is its own player field, so computeGearSlotUpdate
+  // never touches it. NO analytics emit: the C2 player_gear_changed ruling
+  // covers the 11 gear-slot cycles only; legacy never emitted tome events.
+  // The kebab's Track/Stop item mutates the same store field, so the two
+  // affordances stay in sync with no extra wiring.
+  const handleTomeWeaponChange = async (updates: Partial<TomeWeaponStatus>) => {
+    try {
+      await actions.onUpdate({ tomeWeapon: { ...player.tomeWeapon, ...updates } });
+    } catch {
+      // Inherited V1: api layer toasts 403s; store rollback otherwise.
+    }
+  };
+
+  // The material entry marking this player's tome weapon (the legacy
+  // GroupViewContent detection predicate): slotAugmented === 'tome_weapon',
+  // or a universal tomestone with no slotAugmented.
+  const materialLog = useLootTrackingStore((s) => s.materialLog);
+  const tomeMaterialEntry = useMemo(
+    () =>
+      materialLog.find(
+        (e) =>
+          e.recipientPlayerId === player.id &&
+          (e.slotAugmented === 'tome_weapon' ||
+            (e.materialType === 'universal_tomestone' && !e.slotAugmented))
+      ),
+    [materialLog, player.id]
+  );
+
+  // Jump = same-route URL params (the v2 nav pattern; Loot.tsx copyLink
+  // precedent): the Loot spine tab (PageMode 'gear') + its History sub-view +
+  // the highlight params LootHistoryTable consumes (scroll, pulse,
+  // self-clearing after 2.5s).
+  const [, setSearchParams] = useSearchParams();
+  const handleTomeMaterialJump = useCallback(() => {
+    if (!tomeMaterialEntry) return;
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('tab', 'gear');
+      params.set('lview', 'history');
+      params.set('entry', String(tomeMaterialEntry.id));
+      params.set('entryType', 'material');
+      return params;
+    });
+  }, [tomeMaterialEntry, setSearchParams]);
 
   // ── Local UI state (name edit + job change) ──
   const [isEditingName, setIsEditingName] = useState(false);
@@ -536,6 +587,9 @@ export function RosterCard({
                 onSlotChange={handleSlotChange}
                 onSourceChange={handleSourceChange}
                 onSourceFix={handleSourceFix}
+                onTomeWeaponChange={handleTomeWeaponChange}
+                hasTomeMaterialEntry={!!tomeMaterialEntry}
+                onTomeMaterialJump={handleTomeMaterialJump}
                 disabledReason={gearPermission.reason}
               />
             </div>

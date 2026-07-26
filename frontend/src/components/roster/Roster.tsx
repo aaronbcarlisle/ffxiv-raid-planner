@@ -167,9 +167,13 @@ export function Roster({ group, tier, canManage }: RosterProps) {
 
   // Loot state — the Board's next-upgrade (●) highlight must AGREE with the Loot
   // queue, so it reads the SAME loot log + REAL clock week the Loot screen uses.
+  // The material log feeds the cards' tome-weapon material jump (C4, D-04):
+  // without this fetch the jump affordance could never light up under a Roster
+  // that mounts before the Loot tab is ever visited.
   const lootLog = useLootTrackingStore((s) => s.lootLog);
   const clockWeek = useLootTrackingStore((s) => s.currentWeek);
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
+  const fetchMaterialLog = useLootTrackingStore((s) => s.fetchMaterialLog);
   const fetchCurrentWeek = useLootTrackingStore((s) => s.fetchCurrentWeek);
 
   const adminModeParam = searchParams.get('adminMode') === 'true';
@@ -211,10 +215,11 @@ export function Roster({ group, tier, canManage }: RosterProps) {
       // attaches handlers to every member, so nothing escapes unhandled).
       void Promise.all([
         fetchLootLog(group.id, tierId),
+        fetchMaterialLog(group.id, tierId),
         fetchCurrentWeek(group.id, tierId),
       ]).catch(() => toast.error('Failed to load loot data'));
     }
-  }, [group.id, tierId, fetchLootLog, fetchCurrentWeek]);
+  }, [group.id, tierId, fetchLootLog, fetchMaterialLog, fetchCurrentWeek]);
 
   // Only compute for the Board view. MUST pass the REAL clock week (not a scoped
   // view week) and the SAME main-roster set the Loot screen uses — else the

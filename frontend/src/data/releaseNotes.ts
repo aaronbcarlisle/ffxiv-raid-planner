@@ -68,6 +68,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'feature',
+        title: 'New UI: tome-weapon sub-row returns to the roster card (Phase C, slice C4)',
+        description:
+          'The new-UI roster card’s weapon row regains the full tome-weapon story (D-04): the shared R/“+” weapon selector toggles interim tome tracking, and while tracking, a sub-row appears with its own three-state progress circle (missing → obtained → augmented). The card-menu Track/Stop item and the row toggle stay in sync automatically. When a logged material entry marks the tome weapon, the sub-row label becomes a jump straight to that entry in the Loot history — Alt+Click or press Enter. The roster now also loads the material log so that jump can light up without visiting the Loot tab first.',
+        pr: 190,
+        prTitle: 'feat(redesign): Phase C slice C4 — tome-weapon sub-row (D-04)',
+      },
+      {
+        internal: true,
+        category: 'feature',
         title: 'New UI: BiS-source tools return to the roster card (Phase C, slice C3)',
         description:
           'The new-UI roster card’s gear table regains per-slot BiS-source control (D-03): the R/T/C/BT selector popover (with the reset warning when changing a slot that has imported data), the per-slot Fix button for miscategorized imports (corrects the source while keeping progress and item data), and the “N slots need BiS source updates” banner that bulk-corrects in one save. All through the same shared selector, banner, and detection logic the classic card uses. The weapon row’s selector arrives with the tome-weapon sub-row in C4.',
