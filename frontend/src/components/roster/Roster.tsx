@@ -167,10 +167,13 @@ export function Roster({ group, tier, canManage }: RosterProps) {
 
   // Loot state — the Board's next-upgrade (●) highlight must AGREE with the Loot
   // queue, so it reads the SAME loot log + REAL clock week the Loot screen uses.
-  // The material log feeds the cards' tome-weapon material jump (C4, D-04):
-  // Home and Loot fetch it for their own surfaces, but Roster is the default
-  // landing tab — without its own fetch the jump could never light on a
-  // direct landing.
+  // The material log feeds the cards' tome-weapon material jump (C4, D-04).
+  // The legacy-chrome host (GroupViewContent.tsx:321-327) happens to fetch it
+  // for roster/gear pageModes today, but v2 surfaces own their data fetches —
+  // this batch's lootLog/currentWeek and Loot.tsx's mount batch already
+  // duplicate that same host effect deliberately — so the v2 tree survives
+  // the legacy chrome (and its effects) dissolving. The idempotent duplicate
+  // GET is the accepted, pre-C4 pattern.
   const lootLog = useLootTrackingStore((s) => s.lootLog);
   const clockWeek = useLootTrackingStore((s) => s.currentWeek);
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
