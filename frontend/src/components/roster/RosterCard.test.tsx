@@ -64,7 +64,10 @@ const actions: RosterCardActions = {
   onDuplicate: vi.fn(),
 };
 
-function renderCard(player: SnapshotPlayer) {
+function renderCard(
+  player: SnapshotPlayer,
+  extra: Partial<Parameters<typeof RosterCard>[0]> = {}
+) {
   return render(
     <TooltipProvider>
       <RosterCard
@@ -79,6 +82,7 @@ function renderCard(player: SnapshotPlayer) {
         tierId="tier1"
         contentType="savage"
         actions={actions}
+        {...extra}
       />
     </TooltipProvider>
   );
@@ -197,6 +201,57 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       expect(useToastStore.getState().toasts.some(
         (t) => t.type === 'error' && t.message === 'job change failed',
       )).toBe(true);
+    });
+  });
+
+  // ── Density axis (Phase C C1, D-01) ──
+  describe('density', () => {
+    it('renders the pip strip (no gear table) at the default compact density', () => {
+      renderCard(makePlayer());
+      expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    });
+
+    it('expanded density replaces the pips with the read-only gear table', () => {
+      renderCard(
+        makePlayer({
+          gear: [
+            {
+              slot: 'head',
+              bisSource: 'tome',
+              hasItem: true,
+              isAugmented: false,
+              itemName: 'Test Helm',
+              itemLevel: 730,
+            },
+          ] as unknown as SnapshotPlayer['gear'],
+        }),
+        { density: 'expanded' }
+      );
+      expect(screen.getByRole('table')).toBeInTheDocument();
+      // Row headers come from GEAR_SLOT_NAMES; item detail renders inline.
+      expect(screen.getByRole('rowheader', { name: 'Weapon' })).toBeInTheDocument();
+      expect(screen.getByText(/Test Helm/)).toBeInTheDocument();
+      expect(screen.getByText(/i730/)).toBeInTheDocument();
+    });
+
+    it('shows the per-card chevron only when the override callback is wired, and fires it', () => {
+      renderCard(makePlayer());
+      expect(screen.queryByRole('button', { name: /expand card/i })).not.toBeInTheDocument();
+
+      const onToggleDensity = vi.fn();
+      renderCard(makePlayer({ id: 'p2' }), { onToggleDensity });
+      const chevron = screen.getByRole('button', { name: /expand card/i });
+      expect(chevron).toHaveAttribute('aria-expanded', 'false');
+      fireEvent.click(chevron);
+      expect(onToggleDensity).toHaveBeenCalledTimes(1);
+    });
+
+    it('labels the chevron "Collapse card" while expanded', () => {
+      renderCard(makePlayer(), { density: 'expanded', onToggleDensity: vi.fn() });
+      expect(screen.getByRole('button', { name: /collapse card/i })).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
     });
   });
 });

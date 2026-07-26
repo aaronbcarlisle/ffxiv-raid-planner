@@ -34,4 +34,25 @@ describe('SegmentedToggle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cards' }));
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it('calls onReselect (not onChange) when the already-active option is clicked', () => {
+    const onChange = vi.fn();
+    const onReselect = vi.fn();
+    render(
+      <SegmentedToggle
+        options={OPTS as never}
+        value="cards"
+        onChange={onChange}
+        onReselect={onReselect}
+        ariaLabel="Roster view"
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Cards' }));
+    expect(onReselect).toHaveBeenCalledWith('cards');
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Board' }));
+    expect(onChange).toHaveBeenCalledWith('board');
+    expect(onReselect).toHaveBeenCalledTimes(1);
+  });
 });

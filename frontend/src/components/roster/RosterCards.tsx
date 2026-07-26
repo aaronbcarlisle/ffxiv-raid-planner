@@ -74,7 +74,7 @@ import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import { groupPlayersByLightParty } from '../../utils/calculations';
 import { bisSlotTotals } from '../../utils/rosterReadiness';
 import { getValidRole } from '../../gamedata';
-import type { ContentType, MemberRole, SnapshotPlayer } from '../../types';
+import type { ContentType, MemberRole, SnapshotPlayer, ViewMode } from '../../types';
 
 /** Mockup `.pcards`: `repeat(auto-fill, minmax(330px, 1fr))`, ~14px gap. */
 const PCARDS_GRID = 'grid grid-cols-[repeat(auto-fill,minmax(330px,1fr))] gap-3.5';
@@ -89,6 +89,14 @@ export interface RosterCardsProps {
   subsHidden: boolean;
   /** Drag-to-reorder mode. When on, cards become drag-to-reorder (see file head). */
   reorderMode: boolean;
+  /**
+   * Effective density per card (Phase C C1, D-01) — global density with the
+   * per-card override applied. Optional so the grid renders standalone
+   * (defaults every card to compact, the pre-C1 rendering).
+   */
+  cardDensity?: (playerId: string) => ViewMode;
+  /** Invert one card against the global density (the chevron's callback). */
+  onToggleCardDensity?: (playerId: string) => void;
   canManage: boolean;
   userRole: MemberRole | null | undefined;
   currentUserId: string | null;
@@ -253,6 +261,8 @@ export function RosterCards({
   subsView,
   subsHidden,
   reorderMode,
+  cardDensity,
+  onToggleCardDensity,
   canManage,
   userRole,
   currentUserId,
@@ -313,6 +323,8 @@ export function RosterCards({
         clipboardPlayer={clipboardPlayer}
         reorderMode={reorderMode}
         dragHandle={dragHandle}
+        density={cardDensity?.(player.id)}
+        onToggleDensity={onToggleCardDensity && (() => onToggleCardDensity(player.id))}
         actions={actionsForPlayer(player)}
         groupId={groupId}
         tierId={tierId}

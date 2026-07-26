@@ -22,7 +22,7 @@
  *     jobs. The RadioGroup offers the in-scope BiS choice (keep vs unlink).
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { MoreVertical, Repeat } from 'lucide-react';
+import { ChevronDown, ChevronUp, MoreVertical, Repeat } from 'lucide-react';
 import {
   CardShell,
   ContextMenu,
@@ -33,6 +33,7 @@ import {
   RadioGroup,
 } from '../ui';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
+import { RosterGearTable } from './RosterGearTable';
 import { Button, IconButton } from '../primitives';
 import { JobPicker } from '../player/JobPicker';
 import { PositionSelector } from '../player/PositionSelector';
@@ -57,7 +58,7 @@ import {
   getRoleForJob,
   getValidRole,
 } from '../../gamedata';
-import type { ContentType, SnapshotPlayer } from '../../types';
+import type { ContentType, SnapshotPlayer, ViewMode } from '../../types';
 
 const TOTAL_SLOTS = 11;
 
@@ -73,6 +74,13 @@ export interface RosterCardProps {
   reorderMode: boolean;
   /** Drag handle supplied by the grid (Task 7). */
   dragHandle?: { attributes?: DragAttributes; listeners?: DragListeners };
+  /**
+   * Effective card density (Phase C C1, D-01): compact = pip strip, expanded =
+   * the read-only gear-table shell. Defaults to compact (pre-C1 rendering).
+   */
+  density?: ViewMode;
+  /** Invert THIS card against the global density (the per-card override). */
+  onToggleDensity?: () => void;
   actions: RosterCardActions;
   // ── Forwarded straight to useRosterCardActions (sourced from tier/context by
   //    the grid/assembly — Tasks 6/10). Defaulted so the card renders standalone.
@@ -110,6 +118,8 @@ export function RosterCard({
   clipboardPlayer,
   reorderMode,
   dragHandle,
+  density = 'compact',
+  onToggleDensity,
   actions,
   groupId = '',
   tierId = '',
@@ -123,6 +133,7 @@ export function RosterCard({
   const role = getValidRole(player.role);
   const editPermission = canEditPlayer(userRole, player, currentUserId ?? undefined, isAdminAccess);
   const canEdit = editPermission.allowed;
+  const isExpanded = density === 'expanded';
 
   // ── Local UI state (name edit + job change) ──
   const [isEditingName, setIsEditingName] = useState(false);
@@ -390,6 +401,18 @@ export function RosterCard({
               </div>
               <div className="text-xs uppercase tracking-wide text-text-tertiary">iLvl</div>
             </div>
+            {onToggleDensity && (
+              <IconButton
+                aria-label={isExpanded ? 'Collapse card' : 'Expand card'}
+                aria-expanded={isExpanded}
+                variant="ghost"
+                size="sm"
+                icon={
+                  isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />
+                }
+                onClick={onToggleDensity}
+              />
+            )}
             <IconButton
               aria-label="Player actions"
               variant="ghost"
@@ -415,20 +438,29 @@ export function RosterCard({
           </span>
         </div>
 
-        {/* ── Gear pip strip (read-only / display-only) ── */}
-        <div className="mt-3 flex flex-wrap gap-1">
-          {player.gear.map((slot) => (
-            <GearStatusCircle
-              key={slot.slot}
-              state={toGearState(slot.hasItem, slot.isAugmented)}
-              bisSource={slot.bisSource}
-              requiresAugmentation={requiresAugmentation(slot)}
-              onChange={() => {}}
-              disabled
-              size="sm"
-            />
-          ))}
-        </div>
+        {/* ── Gear section: pip strip (compact) or gear-table shell (expanded, D-01).
+               Either/or, matching legacy PlayerCardGear — the table replaces the
+               pips, never stacks under them. Both are read-only in C1 (editing
+               is C2). ── */}
+        {isExpanded ? (
+          <div className="mt-3 border-t border-border-subtle pt-2">
+            <RosterGearTable gear={player.gear} tomeWeapon={player.tomeWeapon} />
+          </div>
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {player.gear.map((slot) => (
+              <GearStatusCircle
+                key={slot.slot}
+                state={toGearState(slot.hasItem, slot.isAugmented)}
+                bisSource={slot.bisSource}
+                requiresAugmentation={requiresAugmentation(slot)}
+                onChange={() => {}}
+                disabled
+                size="sm"
+              />
+            ))}
+          </div>
+        )}
 
         {/* ── Footer: character link/sync · status CTA ── */}
         <div className="mt-3 flex items-center gap-2 border-t border-border-subtle pt-3 text-xs text-text-tertiary">
