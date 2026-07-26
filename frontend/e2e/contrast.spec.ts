@@ -242,6 +242,12 @@ for (const theme of THEMES) {
     // Cards view, EXPANDED density (Phase C C1): the default density is compact,
     // so without this leg the gear-table surface (item detail lines, source
     // glyphs, headers) would sit outside every Axe run.
+    // KNOWN BLINDSPOT (C3, 2026-07-26): axe-core cannot resolve Tailwind-4
+    // oklab(...) ALPHA tints, so tinted-badge pairs (text-gear-X on
+    // bg-gear-X/20 — the shared BiSSourceSelector triggers) land in axe
+    // "incomplete", not violations: this leg stays green while the pair
+    // measures ~3.0-3.5:1 in light theme. Frozen shared-leaf debt — queued
+    // for a shared-leaf contrast slice (phase-c-roster-plan §2.1 C3 addendum).
     await page.getByRole('button', { name: 'Expanded' }).click()
     // Wait for the density flip to actually render (gear tables mount), then
     // settle the fixed-duration CSS transitions — those aren't observable via

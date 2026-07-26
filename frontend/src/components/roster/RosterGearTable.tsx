@@ -243,6 +243,11 @@ export function RosterGearTable({
                         {correctSource && (
                           <div className="absolute right-full mr-0.5">
                             <Tooltip content={`Fix: Set to ${BIS_SOURCE_FULL_NAMES[correctSource]}`}>
+                              {/* Button-not-IconButton is deliberate: IconButton has no
+                                  warning variant and forces a 44px mobile min-size.
+                                  Same warning tokens as legacy's raw button; geometry
+                                  differs (xs pill vs legacy's 24px square) — recorded
+                                  delta, matrix D-03. */}
                               <Button
                                 variant="warning"
                                 size="xs"
