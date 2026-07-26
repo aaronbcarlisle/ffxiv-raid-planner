@@ -24,10 +24,10 @@ The root cause of the "competing dashboards" confusion is that the app never sep
 | **Home** | Where you land. Orienting, shared, points you at what you came to do. | Everyone in the context | Low–medium |
 | **Dashboard** | An instrument for operating something. Status-heavy, action-dense. | Whoever operates the thing | High |
 
-User direction (2026-07-26, verbatim): *"It feels like we need to seperate the concept of a
-Dashboard from a Home page. The player hub feels like a Player's Dashboard. I think normally
-these are accessed via the user menu and not directly from the app which keeps it seperate from
-the main function of the app. Same with statics — a lot of the Home view inside a static view is
+User direction (2026-07-26, verbatim): *"It feels like we need to seperate* [sic] *the concept of
+a Dashboard from a Home page. The player hub feels like a Player's Dashboard. I think normally
+these are accessed via the user menu and not directly from the app which keeps it seperate* [sic]
+*from the main function of the app. Same with statics — a lot of the Home view inside a static view is
 more of a Dashboard for raid leads/owners… and a more home/overview tab/page … becomes more of an
 informational hub/convenience for everyone in the static as a whole."*
 

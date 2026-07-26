@@ -9,9 +9,9 @@ matrix is now the **binding restoration backlog for Phases C and D**. Headline t
 §1 Roster feeds Phase C (D-01…D-10 all RESTORE — the expanded gear-table card returns in full);
 §3 established the **History-vs-Logging split** (D-30: the weekly grid is a *logging* surface;
 D-31/D-72: History becomes a single find-it table); §10/D-52 **drops the More tab** and moves
-Plugin into documentation. Standing riders: ex-D-56 mobile-access rider (restored desktop
-controls must restore their phone-width access) and the §9 flow map mandate (required Phase-D
-design input).
+Plugin into documentation. Standing riders: the ex-D-56 mobile-access rider (restored desktop
+controls must restore their phone-width access), and the §9 flow map mandate — **satisfied** by
+the ruled `systems-flow-map.md`, which remains the binding Phase-D design input it produced.
 
 ---
 

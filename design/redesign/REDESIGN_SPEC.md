@@ -78,35 +78,31 @@ The current app has **four** competing nav systems (left rail, header context-sw
 |---|---|---|---|
 | **Context rail** (left, ~72px) | Person layer | *Where am I / who am I* — personal home, Player Hub, Static Finder, the statics you're in, you | Always present |
 | **Top bar** (inside a static) | Static context | *Which static / which track / which week* + ⌘K + notifications + settings + theme | Present inside a static |
-| **In-static spine** (horizontal tabs) | The jobs | *The weekly loop* — **Home · Roster · Loot · Schedule** | Present inside a static |
+| **In-static spine** (horizontal tabs) | The jobs | *The weekly loop* — **Home · Roster · Loot · Schedule · Progress** *(fifth tab per flow-map F-03, 2026-07-26)* | Present inside a static |
 
 There is **no fourth surface.** The "More" page is deleted; its contents are re-homed (§7). Settings is reachable one way (top-bar gear, role-scoped). Recruitment, plugin, history, split planner each get exactly one home.
 
-### 3.2 The spine: four tabs, not five
+### 3.2 The spine: five tabs *(amended 2026-07-26 — originally "four tabs, not five")*
 
-> **⚠ SUPERSEDED IN PART (2026-07-26)** by the ruled `specs/systems-flow-map.md` (delta R2,
-> user-ruled F-03/F-06): the spine is now **five tabs — Home · Roster · Loot · Schedule ·
-> Progress** (the tracks surface: goals/farms/future ultimates — matching PRODUCT_MODEL §3.2's
-> spine, which ends in Progress). The Loot tab's views are the ruled triad **Priority · Log ·
-> History** (D-30/D-31 History-vs-Logging split; "Log" *is* a view now, not just a verb). Home's
-> identity is the **shared informational hub** (delta R3). The section below is preserved for
-> the surviving rationale (Gear is still not a tab; the ≤2-level depth budget still holds —
-> Priority's Queues ⇄ Matrix switcher is an in-view control, not a nav level).
+> **Change record (2026-07-26):** amended per the ruled `specs/systems-flow-map.md` (delta R2,
+> user-ruled F-03/F-06/F-08). The original four-tab text is in git history; this section is
+> updated in place and is normative.
 
 ```
-   Home  ·  Roster  ·  Loot  ·  Schedule
+   Home  ·  Roster  ·  Loot  ·  Schedule  ·  Progress
 ```
 
-**"Gear" is not a tab.** It was a fourth view of data that already lives in Roster, Loot, and Home — the textbook "label with no scent / no unique home." Its content is re-homed into three purposeful places (§3.3). **"Log" is not a tab** either — it's a verb, expressed as action buttons inside Loot. Each remaining tab owns one job, with a verb you can say aloud:
+**"Gear" is not a tab.** It was a view of data that already lives in Roster, Loot, and Home — the textbook "label with no scent / no unique home." Its content is re-homed into three purposeful places (§3.3). **"Log" was originally not a tab either** — the 2026-07-26 History-vs-Logging ruling (parity matrix D-30/D-31) made it a **view inside Loot**: recording the week is a job of its own, distinct from deciding priority and from finding past entries. **"Progress"** joined as the fifth tab (flow-map F-03): the tracks surface for goals, farms, and future content tracks — matching `PRODUCT_MODEL.md` §3.2's spine, which ends in Progress. Each tab owns one job, with a verb you can say aloud:
 
 | Tab | Owns | Say it as | Default sub-view |
 |---|---|---|---|
-| **Home** | this week at a glance | "check what's up this week" | the weekly-loop dashboard |
+| **Home** | this week at a glance | "check what's up this week" | the shared informational hub (delta R3) |
 | **Roster** | the people + their gear toward BiS | "set up players / see who needs what" | **Cards** (toggle to **Board**) |
-| **Loot** | distributing drops: priority + logging + history | "see who's up next / record a drop" | **Priority** (tabs: Priority · History) |
+| **Loot** | distributing drops: priority + logging + history | "see who's up next / record a drop / find a past drop" | **Priority** (views: Priority · Log · History) |
 | **Schedule** | when you raid + availability | "find raid time / RSVP" | this week's session |
+| **Progress** | content tracks beyond the flagship tier (goals · farms · future ultimates) | "how far along are we" | the tracks surface (flow-map F-03) |
 
-Depth budget: **≤2 levels.** Tab → at most one sub-view (a toggle or a segmented control). Anything deeper is a design smell.
+Depth budget: **≤2 levels.** Tab → at most one sub-view (a toggle or a segmented control). Anything deeper is a design smell. (Priority's Queues ⇄ Matrix switcher is an in-view control, not a nav level — the form the user ruled in D-23.)
 
 ### 3.3 Where the old "Gear" content goes
 
