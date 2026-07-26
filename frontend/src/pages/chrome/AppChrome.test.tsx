@@ -6,8 +6,12 @@
  *     the buildStaticNavHref repoint, kept verbatim from the NewShell suite);
  *   • Person-layer entries navigate to real routes with REAL `isActive`
  *     (the host sees every route, unlike NewShell's hardcoded false);
- *   • the M1 logo link — authed → /profile ("Player Hub"), guest → /
- *     ("FFXIV Raid Planner — home") — accessible name matches the target;
+ *   • the M1 logo link — authed → /profile ("Player Hub — home"), guest → /
+ *     ("FFXIV Raid Planner — home") — accessible name matches the target and
+ *     is DISTINCT from the rail's "Player Hub" entry (PR-2 director nit: two
+ *     controls with the same accessible name in one nav);
+ *   • T4: non-group routes render the NonGroupTopBar (stubbed here — it has
+ *     its own suite) where group routes render the portal slot container;
  *   • the §1 host contract (RC8): `currentParams` is consulted ONLY when
  *     already on /group/* — pinned with `tabPersistence: 'reset'` because
  *     `buildStaticNavHref` only reads `currentParams` on the non-remember
@@ -54,6 +58,13 @@ vi.mock('../../stores/authStore', () => ({
 }));
 vi.mock('../../components/auth', () => ({
   UserMenu: () => <div data-testid="user-menu-stub" />,
+  LoginButton: () => <div data-testid="login-button-stub" />,
+}));
+// The off-group top bar has its own suite (NonGroupTopBar.test.tsx) and the
+// real one pulls in theme/notification/permission machinery irrelevant to the
+// host wiring under test here.
+vi.mock('./NonGroupTopBar', () => ({
+  NonGroupTopBar: () => <div data-testid="non-group-topbar-stub" />,
 }));
 
 import { AppChrome } from './AppChrome';
@@ -146,10 +157,17 @@ describe('AppChrome rail entries — real isActive per route', () => {
 });
 
 describe('AppChrome logo link (M1)', () => {
-  it('authed: logo links to /profile with the accessible name "Player Hub"', () => {
+  it('authed: logo links to /profile with the accessible name "Player Hub — home"', () => {
     renderChrome('/group/ABC');
-    const logo = screen.getByRole('link', { name: 'Player Hub' });
+    const logo = screen.getByRole('link', { name: 'Player Hub — home' });
     expect(logo).toHaveAttribute('href', '/profile');
+  });
+
+  it('the logo name does not collide with the rail\'s "Player Hub" entry', () => {
+    renderChrome('/group/ABC');
+    // Exactly one control answers to each name — the nav has no ambiguous pair.
+    expect(screen.getByRole('button', { name: 'Player Hub' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Player Hub' })).toBeNull();
   });
 
   it('guest: logo links to / with the accessible name "FFXIV Raid Planner — home"', () => {
@@ -251,13 +269,27 @@ describe('AppChrome portal slots', () => {
     expect(screen.getByTestId('chrome-spine-slot').childElementCount).toBe(0);
   });
 
-  it('the top-bar container carries the empty-placeholder sizing on group routes only', () => {
+  it('the top-bar container carries the empty-placeholder sizing on group routes', () => {
     renderChrome('/group/ABC');
     expect(screen.getByTestId('chrome-topbar-slot').className).toContain('empty:h-14');
   });
+});
 
-  it('non-group routes get no group placeholder bar', () => {
-    renderChrome('/profile');
-    expect(screen.getByTestId('chrome-topbar-slot').className).not.toContain('empty:h-14');
+describe('AppChrome top-bar occupancy per route class (T4)', () => {
+  it('group routes render the portal slot container and no NonGroupTopBar', () => {
+    renderChrome('/group/ABC');
+    expect(screen.getByTestId('chrome-topbar-slot')).toBeInTheDocument();
+    expect(screen.queryByTestId('non-group-topbar-stub')).toBeNull();
   });
+
+  it.each(['/profile', '/discover', '/docs/faq', '/dashboard', '/admin/statics', '/nope'])(
+    'renders NonGroupTopBar (and no slot containers) on %s',
+    (path) => {
+      renderChrome(path);
+      expect(screen.getByTestId('non-group-topbar-stub')).toBeInTheDocument();
+      expect(screen.queryByTestId('chrome-topbar-slot')).toBeNull();
+      // Nothing off-group supplies a spine, so no unfillable portal target.
+      expect(screen.queryByTestId('chrome-spine-slot')).toBeNull();
+    },
+  );
 });

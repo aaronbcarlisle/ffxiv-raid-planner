@@ -92,6 +92,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'improvement',
+        title: 'V2 chrome on every route behind the shell preference',
+        description:
+          'Users opted in to the new UI now keep the rail and top bar on every page (Player Hub, Static Finder, Docs, Dashboard, Admin and the 404) instead of only inside a static — with a slim top bar carrying page identity, community links, theme, notifications and account settings, plus a mobile row for phones. The classic UI is completely unchanged: without the opt-in every page renders exactly as before.',
+        pr: 181,
+        prTitle: 'feat(redesign): Stage-1 coverage flip — v2 chrome on all non-root routes (T4-T6)',
+      },
+      {
+        internal: true,
+        category: 'improvement',
         title: 'Stage-1 chrome host: v2 rail/top-bar hoisted into a single AppChrome',
         description:
           'The v2 chrome (rail, top-bar position, spine position, skip-link target) now lives in one host mounted by Layout, with NewShell portaling its group top bar and spine in — same routes as before; the groundwork that lets PR-3 extend v2 chrome to every route. Rail gains real active states and a Player Hub logo link.',

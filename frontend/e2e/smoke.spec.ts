@@ -19,6 +19,7 @@ import {
   loginAsOwner,
   loginAsMember,
   goToTestStatic,
+  pinShell,
   switchTab,
   setStaticPublic,
   DEV_SHARE_CODE,
@@ -674,7 +675,16 @@ test.describe('Lodestone Sync', () => {
 
     await cleanupLinkedMockCharacter(page);
 
-    await page.goto('/profile');
+    // Stage-1 T6: this is the v2 family suite, so pin the shell explicitly.
+    // Before the coverage flip `/profile` was legacy-chromed for everyone; now
+    // its chrome depends on the resolved shell, and a param-less navigation
+    // would inherit whatever the dev owner's account happens to mirror. The
+    // pin is tab-sticky (sessionStorage), so the `page.reload()` below keeps it.
+    await pinShell(page, 'v2', '/profile');
+    // The v2 chrome mounted: the AppRail is the sentinel (AppChrome renders it
+    // on every v2-chromed route). Its presence + the sidebar click below pin
+    // chrome AND flow together — P1 keeps ProfileSidebarNav inside v2 chrome.
+    await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: 'Sync & Gear' }).click();
 
     await page.getByTestId('character-identity-row').getByRole('button').click();

@@ -7,11 +7,12 @@
  * (see `chromeSlots.ts` for the portal mechanism and the RC1/RC2 rationale),
  * and the page's single `<main id="main-content">` (SkipLink target).
  *
- * Mounted ONLY by Layout's v2 branch — in this PR that branch is still keyed
- * on `isGroupV2Shell` (group routes only, same route set as before; the
- * coverage flip to all non-`/` v2 routes is T4). Route-scoped group internals
- * (CommandPalette, GroupActionModals, cold group/tier fetches, tab memory)
- * stay in NewShell, which portals its TopBar/Spine into the slot containers.
+ * Mounted ONLY by Layout's v2 branch — since T4 that branch covers EVERY
+ * v2-resolved route except `/`. On `/group/*` the route supplies the TopBar and
+ * Spine through the portal slots; everywhere else the host renders
+ * `NonGroupTopBar` itself. Route-scoped group internals (CommandPalette,
+ * GroupActionModals, cold group/tier fetches, tab memory) stay in NewShell,
+ * which portals its TopBar/Spine into the slot containers.
  *
  * Lives in `pages/` (boundary-exempt) because it composes shell (`AppRail`)
  * with person (`UserMenu`) — the same placement ruling that put
@@ -30,6 +31,7 @@ import { AppRail } from '../../components/layout/AppRail';
 import { UserMenu } from '../../components/auth';
 import { V2ChromeContext } from '../../lib/chromeContext';
 import { ChromeSlotNodesContext, type ChromeSlotNodes } from './chromeSlots';
+import { NonGroupTopBar } from './NonGroupTopBar';
 import { buildStaticNavHref, prefRememberTabs } from '../../lib/navPreferences';
 import { useAuthStore } from '../../stores/authStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
@@ -82,13 +84,22 @@ export function AppChrome({ children }: AppChromeProps) {
   // effect; NewShell previously skipped it because it only fetched the current
   // group. (Fix 2, PR #163; moved here from NewShell in Stage-1 T3.)
   //
-  // T4 scope note (plan §3, director E-table): once the coverage flip mounts
-  // AppChrome on every v2 route, this becomes a cold fetch on e.g. `/profile`
-  // too, and can race Profile's own `fetchGroups` (both guard on
-  // `groups.length === 0`, neither sees the other's in-flight request). The
-  // dedupe decision (in-flight guard in the store vs. accepting the double
-  // request) lands with T4 — on this PR's route set (group only) the race
-  // cannot occur.
+  // T4 scope decision (plan §3, director E-table): now that the coverage flip
+  // mounts AppChrome on every v2 route, this is also a cold fetch on e.g.
+  // `/profile`, where Profile.tsx fires its OWN unconditional `fetchGroups()`
+  // (Profile.tsx:198 — no length guard at all). RESOLVED AS "accept +
+  // document", the plan's second option: on a cold `/profile` a v2 user issues
+  // ONE extra idempotent GET /api/static-groups; every warm navigation issues
+  // none from here (the length guard holds). The rejected alternative — an
+  // in-flight guard inside `staticGroupStore.fetchGroups` — would change the
+  // behavior of a store the LEGACY shell also runs on, for a request-count win
+  // that no user can perceive; Stage 1's hard constraint is zero legacy impact.
+  //
+  // Same accepted class: non-group v2 routes mount TWO UserMenu instances
+  // (rail footer here + NonGroupTopBar's mobile row — only one is ever
+  // visible), so `fetchNotifications()` fires twice on mount. Legacy
+  // `/profile` already had exactly this doubling (Header avatar + Profile
+  // sidebar footer); the other route classes go 1→2, equally imperceptible.
   useEffect(() => {
     if (user && groups.length === 0) {
       fetchGroups();
@@ -155,11 +166,14 @@ export function AppChrome({ children }: AppChromeProps) {
     return entries;
   }, [user, groups, activeShareCode, onGroupRoute, location.pathname, navigate, rememberStaticTab, searchParams]);
 
-  // M1 logo link: authed → /profile ("Player Hub"), guest → / (home). The
-  // accessible name lives on the link and matches its target; the img is
-  // decorative (alt="") so the link name isn't polluted.
+  // M1 logo link: authed → /profile, guest → / (home). The accessible name
+  // lives on the link and matches its target; the img is decorative (alt="")
+  // so the link name isn't polluted. The authed name is "Player Hub — home",
+  // NOT bare "Player Hub" (PR-2 director nit): the rail's Player Hub entry
+  // already owns that name, and two same-named controls in one nav is an a11y
+  // ambiguity. The "— home" suffix parallels the guest form.
   const logoLink = user ? (
-    <Link to="/profile" aria-label="Player Hub" className={LOGO_LINK_CLASSES}>
+    <Link to="/profile" aria-label="Player Hub — home" className={LOGO_LINK_CLASSES}>
       <img src="/logo.svg" alt="" className="w-8 h-8" />
     </Link>
   ) : (
@@ -195,22 +209,28 @@ export function AppChrome({ children }: AppChromeProps) {
             footer={user ? <UserMenu variant="rail" collapsed /> : undefined}
           />
           <div className="flex min-w-0 flex-1 flex-col">
-            {/* TopBar slot. On group routes the container is an empty h-14
-                placeholder bar while NewShell's lazy chunk loads (no layout
-                shift, no wrong-affordance flash); the `empty:` styles drop the
-                moment the portal fills it. Non-group routes get the
-                NonGroupTopBar here in T4. */}
-            <div
-              ref={topBarSlotRef}
-              data-testid="chrome-topbar-slot"
-              className={
-                onGroupRoute
-                  ? 'shrink-0 empty:h-14 empty:border-b empty:border-border-default'
-                  : 'shrink-0'
-              }
-            />
-            {/* Spine slot — group routes only; empty (zero-height) elsewhere. */}
-            <div ref={spineSlotRef} data-testid="chrome-spine-slot" className="shrink-0" />
+            {/* Top bar. On `/group/*` this is the host-owned portal container
+                that NewShell fills — an empty h-14 placeholder bar while its
+                lazy chunk loads (no layout shift, no wrong-affordance flash;
+                the `empty:` styles drop the moment the portal fills it).
+                Everywhere else (T4) the host renders the NonGroupTopBar
+                directly: no route supplies one, so there is nothing to wait
+                for and no placeholder to hold. */}
+            {onGroupRoute ? (
+              <div
+                ref={topBarSlotRef}
+                data-testid="chrome-topbar-slot"
+                className="shrink-0 empty:h-14 empty:border-b empty:border-border-default"
+              />
+            ) : (
+              <NonGroupTopBar />
+            )}
+            {/* Spine slot — group routes only (nothing else supplies a spine,
+                and an always-mounted container would publish a portal target
+                that no route fills). */}
+            {onGroupRoute && (
+              <div ref={spineSlotRef} data-testid="chrome-spine-slot" className="shrink-0" />
+            )}
             {/* RC3: reproduces Layout's legacy <main> for the content area —
                 same padding + scrollbar-gutter + overflow behavior (see
                 Layout.tsx's legacy branch for the original rationale). This is
