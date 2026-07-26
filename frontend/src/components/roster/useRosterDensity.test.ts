@@ -56,42 +56,6 @@ describe('useRosterDensity', () => {
     });
   });
 
-  it('per-card override inverts one card against the global density and toggles back', () => {
-    const { result } = renderDensity();
-    expect(result.current.cardDensity('a')).toBe('compact');
-
-    act(() => result.current.toggleCardOverride('a'));
-    expect(result.current.cardDensity('a')).toBe('expanded');
-    expect(result.current.cardDensity('b')).toBe('compact');
-
-    act(() => result.current.toggleCardOverride('a'));
-    expect(result.current.cardDensity('a')).toBe('compact');
-  });
-
-  it('a global density change clears per-card overrides', () => {
-    const { result } = renderDensity();
-    act(() => result.current.toggleCardOverride('a'));
-    act(() => result.current.setDensity('expanded'));
-    // No stale inversion: 'a' follows the new global mode.
-    expect(result.current.cardDensity('a')).toBe('expanded');
-  });
-
-  it('re-click-expand-all: clears overrides when any exist, else collapses every card (R-023)', () => {
-    const { result } = renderDensity();
-    act(() => result.current.setDensity('expanded'));
-
-    // One collapsed card → re-click re-expands all.
-    act(() => result.current.toggleCardOverride('a'));
-    act(() => result.current.handleExpandedReselect(['a', 'b', 'c']));
-    expect(result.current.cardDensity('a')).toBe('expanded');
-    expect(result.current.cardDensity('b')).toBe('expanded');
-
-    // Everything expanded → re-click collapses all.
-    act(() => result.current.handleExpandedReselect(['a', 'b', 'c']));
-    expect(result.current.cardDensity('a')).toBe('compact');
-    expect(result.current.cardDensity('c')).toBe('compact');
-  });
-
   it('V toggles the density and swallows the event before bubble-phase listeners', () => {
     const bubbleListener = vi.fn();
     window.addEventListener('keydown', bubbleListener);

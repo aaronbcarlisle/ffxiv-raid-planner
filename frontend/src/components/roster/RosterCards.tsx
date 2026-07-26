@@ -99,13 +99,11 @@ export interface RosterCardsProps {
   /** Drag-to-reorder mode. When on, cards become drag-to-reorder (see file head). */
   reorderMode: boolean;
   /**
-   * Effective density per card (Phase C C1, D-01) — global density with the
-   * per-card override applied. Optional so the grid renders standalone
-   * (defaults every card to compact, the pre-C1 rendering).
+   * Global card density (Phase C C1, D-01) — a view toggle for ALL cards
+   * (per-card collapse was rejected at the C1 checkpoint). Optional so the
+   * grid renders standalone (defaults to compact, the pre-C1 rendering).
    */
-  cardDensity?: (playerId: string) => ViewMode;
-  /** Invert one card against the global density (the chevron's callback). */
-  onToggleCardDensity?: (playerId: string) => void;
+  density?: ViewMode;
   canManage: boolean;
   userRole: MemberRole | null | undefined;
   currentUserId: string | null;
@@ -281,8 +279,7 @@ export function RosterCards({
   subsView,
   subsHidden,
   reorderMode,
-  cardDensity,
-  onToggleCardDensity,
+  density,
   canManage,
   userRole,
   currentUserId,
@@ -343,8 +340,7 @@ export function RosterCards({
         clipboardPlayer={clipboardPlayer}
         reorderMode={reorderMode}
         dragHandle={dragHandle}
-        density={cardDensity?.(player.id)}
-        onToggleDensity={onToggleCardDensity && (() => onToggleCardDensity(player.id))}
+        density={density}
         actions={actionsForPlayer(player)}
         groupId={groupId}
         tierId={tierId}

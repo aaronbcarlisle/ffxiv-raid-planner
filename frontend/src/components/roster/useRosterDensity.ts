@@ -1,17 +1,23 @@
 /**
  * useRosterDensity — v2-scoped roster card density axis (Phase C slice C1, D-01).
  *
- * Restores the legacy expanded ⇄ compact card axis (R-014/R-023/R-065/R-066/
- * R-165) as V2-LOCAL state per `phase-c-roster-plan.md` §2.1: `useGroupViewState`
- * is per-instance `useState`, so the shared hook's `viewMode`/`V` handler can
+ * Restores the legacy expanded ⇄ compact card axis (R-014/R-065/R-066/R-165)
+ * as V2-LOCAL state per `phase-c-roster-plan.md` §2.1: `useGroupViewState` is
+ * per-instance `useState`, so the shared hook's `viewMode`/`V` handler can
  * never reach this screen live — v2 owns its own density state and its own `V`
  * binding, with ZERO shared-file edits.
+ *
+ * The density is a GLOBAL view toggle — every card follows it. Per-card
+ * collapse was built in the first C1 cut and REMOVED at the user checkpoint
+ * (ruling 2026-07-26): "Cards should never be able to manually be collapsed
+ * individually." The legacy re-click-Expanded behaviour (R-023) operates on
+ * the LIGHT-PARTY SECTIONS, not cards — it lands in C6 together with the
+ * section-collapse chevrons it needs.
  *
  * Persistence key is V2-SCOPED (`v2-roster-density`, plan §5 silent default):
  * reusing legacy's `party-view-mode` key would make a v2 toggle change what the
  * frozen legacy shell renders on its next visit — a V1-visible effect with zero
- * file diff. Per-card overrides are transient (legacy's persisted folds are the
- * per-SECTION chevrons, D-08 → slice C6; the per-card override is a v2 axis).
+ * file diff.
  *
  * The `V` key listener registers at CAPTURE phase and stops immediate
  * propagation: the frozen `useGroupViewKeyboardShortcuts` instance (mounted by
@@ -62,20 +68,10 @@ export interface UseRosterDensityOptions {
 }
 
 export interface UseRosterDensityReturn {
-  /** The global density every card follows unless individually overridden. */
+  /** The global density every card follows. */
   density: ViewMode;
-  /** Set the global density: persists, emits `view_mode_change`, clears overrides. */
+  /** Set the global density: persists and emits `view_mode_change`. */
   setDensity: (mode: ViewMode) => void;
-  /** Effective density for one card (global, inverted while overridden). */
-  cardDensity: (playerId: string) => ViewMode;
-  /** Invert one card against the global density (transient). */
-  toggleCardOverride: (playerId: string) => void;
-  /**
-   * Legacy R-023 re-click behaviour at card granularity: re-clicking the active
-   * "Expanded" control re-expands every overridden card if any is collapsed,
-   * else collapses them all.
-   */
-  handleExpandedReselect: (visibleIds: string[]) => void;
 }
 
 export function useRosterDensity({
@@ -83,40 +79,15 @@ export function useRosterDensity({
   active,
 }: UseRosterDensityOptions): UseRosterDensityReturn {
   const [density, setDensityState] = useState<ViewMode>(readStoredDensity);
-  const [overrides, setOverrides] = useState<ReadonlySet<string>>(() => new Set<string>());
 
   const setDensity = useCallback((mode: ViewMode) => {
     setDensityState(mode);
-    // A global density change resets per-card exceptions — an override is an
-    // inversion of the mode it was made under, meaningless once the mode flips.
-    setOverrides(new Set<string>());
     try {
       localStorage.setItem(ROSTER_DENSITY_KEY, mode);
     } catch {
       // Ignore localStorage errors (matches legacy setViewMode).
     }
     analytics.track('feature', 'view_mode_change', { mode, shell: 'v2' });
-  }, []);
-
-  const cardDensity = useCallback(
-    (playerId: string): ViewMode => {
-      if (!overrides.has(playerId)) return density;
-      return density === 'expanded' ? 'compact' : 'expanded';
-    },
-    [density, overrides],
-  );
-
-  const toggleCardOverride = useCallback((playerId: string) => {
-    setOverrides((prev) => {
-      const next = new Set(prev);
-      if (next.has(playerId)) next.delete(playerId);
-      else next.add(playerId);
-      return next;
-    });
-  }, []);
-
-  const handleExpandedReselect = useCallback((visibleIds: string[]) => {
-    setOverrides((prev) => (prev.size > 0 ? new Set<string>() : new Set(visibleIds)));
   }, []);
 
   // ── v2-side `V` binding (capture phase — see file head) ──
@@ -151,8 +122,5 @@ export function useRosterDensity({
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
   }, [shortcutsDisabled, active]);
 
-  return useMemo(
-    () => ({ density, setDensity, cardDensity, toggleCardOverride, handleExpandedReselect }),
-    [density, setDensity, cardDensity, toggleCardOverride, handleExpandedReselect],
-  );
+  return useMemo(() => ({ density, setDensity }), [density, setDensity]);
 }

@@ -22,7 +22,7 @@
  *     jobs. The RadioGroup offers the in-scope BiS choice (keep vs unlink).
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronUp, MoreVertical, Repeat } from 'lucide-react';
+import { MoreVertical, Repeat } from 'lucide-react';
 import {
   CardShell,
   ContextMenu,
@@ -50,7 +50,6 @@ import {
   requiresAugmentation,
   toGearState,
 } from '../../utils/calculations';
-import { calculatePlayerNeeds } from '../../utils/priority';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 import {
   getJobDisplayName,
@@ -75,12 +74,12 @@ export interface RosterCardProps {
   /** Drag handle supplied by the grid (Task 7). */
   dragHandle?: { attributes?: DragAttributes; listeners?: DragListeners };
   /**
-   * Effective card density (Phase C C1, D-01): compact = pip strip, expanded =
-   * the read-only gear-table shell. Defaults to compact (pre-C1 rendering).
+   * Global card density (Phase C C1, D-01): compact = pip strip, expanded =
+   * the read-only gear-table shell. A view toggle for ALL cards — per-card
+   * collapse was explicitly rejected at the C1 checkpoint (2026-07-26).
+   * Defaults to compact (pre-C1 rendering).
    */
   density?: ViewMode;
-  /** Invert THIS card against the global density (the per-card override). */
-  onToggleDensity?: () => void;
   actions: RosterCardActions;
   // ── Forwarded straight to useRosterCardActions (sourced from tier/context by
   //    the grid/assembly — Tasks 6/10). Defaulted so the card renders standalone.
@@ -119,7 +118,6 @@ export function RosterCard({
   reorderMode,
   dragHandle,
   density = 'compact',
-  onToggleDensity,
   actions,
   groupId = '',
   tierId = '',
@@ -285,35 +283,23 @@ export function RosterCard({
   const importAction = getMenuAction('Import BiS') ?? getMenuAction('Update BiS');
   const assignAction = getMenuAction('Assign User') ?? getMenuAction('Assign User (Admin)');
 
-  const renderStatus = (): ReactNode => {
-    if (!player.userId && canManage && assignAction) {
-      return (
-        <span className="flex items-center gap-2">
-          <span className="text-status-warning">Unclaimed</span>
-          <Button variant="ghost" size="xs" onClick={assignAction}>
+  // One axis per location (C1 checkpoint ruling, 2026-07-26): the footer's
+  // right side carries ONLY the claim/ownership state — every BiS concern
+  // (count, "No BiS", the Import action) lives on the progress line above.
+  // Actions render as bordered buttons, never bare accent text (a clickable
+  // thing must LOOK clickable).
+  const renderClaimStatus = (): ReactNode => {
+    if (player.userId) return null;
+    return (
+      <span className="flex items-center gap-2">
+        <span className="text-status-warning">Unclaimed</span>
+        {canManage && assignAction && (
+          <Button variant="secondary" size="xs" onClick={assignAction}>
             Assign
           </Button>
-        </span>
-      );
-    }
-    if (!hasBis) {
-      return (
-        <span className="flex items-center gap-2">
-          <span className="text-status-warning">No BiS</span>
-          {canEdit && importAction && (
-            <Button variant="ghost" size="xs" onClick={importAction}>
-              Import
-            </Button>
-          )}
-        </span>
-      );
-    }
-    if (completedSlots >= TOTAL_SLOTS) {
-      return <span className="font-medium text-accent">BiS set</span>;
-    }
-    const needs = calculatePlayerNeeds(player);
-    const needCount = needs.raidNeed + needs.tomeNeed + needs.upgrades;
-    return <span className="text-text-secondary">needs {needCount}</span>;
+        )}
+      </span>
+    );
   };
 
   const dragProps = reorderMode ? { ...dragHandle?.attributes, ...dragHandle?.listeners } : {};
@@ -404,18 +390,6 @@ export function RosterCard({
               </div>
               <div className="text-xs uppercase tracking-wide text-text-tertiary">iLvl</div>
             </div>
-            {onToggleDensity && (
-              <IconButton
-                aria-label={isExpanded ? 'Collapse card' : 'Expand card'}
-                aria-expanded={isExpanded}
-                variant="ghost"
-                size="sm"
-                icon={
-                  isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />
-                }
-                onClick={onToggleDensity}
-              />
-            )}
             <IconButton
               aria-label="Player actions"
               variant="ghost"
@@ -426,7 +400,9 @@ export function RosterCard({
           </div>
         </div>
 
-        {/* ── BiS progress line ── */}
+        {/* ── BiS progress line — owns the WHOLE BiS story (one axis per
+               location, C1 checkpoint ruling): count when linked, "No BiS" +
+               the Import action when not. ── */}
         <div className="mt-3 flex items-center gap-2">
           <ProgressBar
             value={hasBis ? ratio : 0}
@@ -439,6 +415,11 @@ export function RosterCard({
           >
             {hasBis ? `${completedSlots}/${TOTAL_SLOTS} BiS` : 'No BiS'}
           </span>
+          {!hasBis && canEdit && importAction && (
+            <Button variant="secondary" size="xs" onClick={importAction}>
+              Import BiS
+            </Button>
+          )}
         </div>
 
         {/* ── Gear section: pip strip (compact) or gear-table shell (expanded, D-01).
@@ -483,7 +464,7 @@ export function RosterCard({
             <span className="truncate">{syncLabel}</span>
           </span>
           <span className="flex-1" />
-          {renderStatus()}
+          {renderClaimStatus()}
         </div>
       </CardShell>
 

@@ -21,7 +21,6 @@ const baseProps = {
   onRosterViewChange: vi.fn(),
   density: 'compact' as const,
   onDensityChange: vi.fn(),
-  onDensityReselect: vi.fn(),
 };
 
 describe('RosterToolbar', () => {
@@ -126,22 +125,12 @@ describe('RosterToolbar', () => {
     expect(screen.queryByRole('group', { name: /card density/i })).not.toBeInTheDocument();
   });
 
-  it('changes density via the toggle and routes an active re-click to onDensityReselect', () => {
+  it('changes density via the toggle; an active re-click is a no-op (section expand-all is C6)', () => {
     const onDensityChange = vi.fn();
-    const onDensityReselect = vi.fn();
-    render(
-      <RosterToolbar
-        {...baseProps}
-        density="expanded"
-        onDensityChange={onDensityChange}
-        onDensityReselect={onDensityReselect}
-      />
-    );
+    render(<RosterToolbar {...baseProps} density="expanded" onDensityChange={onDensityChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'Compact' }));
     expect(onDensityChange).toHaveBeenCalledWith('compact');
-    // Re-click of the active Expanded option = legacy R-023 expand/collapse-all.
     fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
-    expect(onDensityReselect).toHaveBeenCalledWith('expanded');
     expect(onDensityChange).toHaveBeenCalledTimes(1);
   });
 });

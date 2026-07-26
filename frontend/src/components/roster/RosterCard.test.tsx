@@ -99,11 +99,13 @@ describe('RosterCard', () => {
 
   it('opens the kebab menu with the BiS import action', () => {
     // No BiS link → the audited kebab surfaces "Import BiS" (vs "Update BiS").
+    // The progress line carries its own "Import BiS" button in this state
+    // (one-axis split), so with the kebab open the label appears twice.
     renderCard(makePlayer({ bisLink: undefined }));
 
+    expect(screen.getAllByText('Import BiS')).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
-
-    expect(screen.getByText('Import BiS')).toBeInTheDocument();
+    expect(screen.getAllByText('Import BiS')).toHaveLength(2);
   });
 
   it('releases the grid modal counter on unmount while an overlay is open', () => {
@@ -234,24 +236,38 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       expect(screen.getByText(/i730/)).toBeInTheDocument();
     });
 
-    it('shows the per-card chevron only when the override callback is wired, and fires it', () => {
+    it('renders no per-card expand/collapse affordance (density is a global toggle)', () => {
+      // Checkpoint ruling 2026-07-26: cards must never collapse individually.
       renderCard(makePlayer());
       expect(screen.queryByRole('button', { name: /expand card/i })).not.toBeInTheDocument();
-
-      const onToggleDensity = vi.fn();
-      renderCard(makePlayer({ id: 'p2' }), { onToggleDensity });
-      const chevron = screen.getByRole('button', { name: /expand card/i });
-      expect(chevron).toHaveAttribute('aria-expanded', 'false');
-      fireEvent.click(chevron);
-      expect(onToggleDensity).toHaveBeenCalledTimes(1);
+      renderCard(makePlayer({ id: 'p2' }), { density: 'expanded' });
+      expect(screen.queryByRole('button', { name: /collapse card/i })).not.toBeInTheDocument();
     });
 
-    it('labels the chevron "Collapse card" while expanded', () => {
-      renderCard(makePlayer(), { density: 'expanded', onToggleDensity: vi.fn() });
-      expect(screen.getByRole('button', { name: /collapse card/i })).toHaveAttribute(
-        'aria-expanded',
-        'true'
-      );
+    it('one axis per location: the progress line owns the BiS story (No BiS + Import button)', () => {
+      renderCard(makePlayer({ id: 'p3', bisLink: undefined }));
+      // The Import action sits ON the progress line as a real button…
+      expect(screen.getByRole('button', { name: 'Import BiS' })).toBeInTheDocument();
+      expect(screen.getByText('No BiS')).toBeInTheDocument();
+    });
+
+    it('one axis per location: the footer owns the claim story only', () => {
+      // Unclaimed → footer shows Unclaimed + a bordered Assign button (the
+      // assign kebab entries need the assign callbacks wired, as the real
+      // actionsForPlayer factory always does).
+      renderCard(makePlayer({ id: 'p4', userId: undefined }), {
+        actions: {
+          ...actions,
+          onOwnerAssignPlayer: vi.fn(),
+          onAdminAssignPlayer: vi.fn(),
+        },
+      });
+      expect(screen.getByText('Unclaimed')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Assign' })).toBeInTheDocument();
+
+      // Claimed → the footer's right side is empty (no BiS text, no needs-N).
+      renderCard(makePlayer({ id: 'p5', bisLink: undefined }));
+      expect(screen.queryByText(/needs \d/)).not.toBeInTheDocument();
     });
   });
 });

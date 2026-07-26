@@ -51,11 +51,13 @@ export interface RosterToolbarProps {
   /** Active roster view — Cards (management) vs Board (gear matrix). */
   rosterView: 'cards' | 'board';
   onRosterViewChange: (v: 'cards' | 'board') => void;
-  /** Card density axis (D-01) — Cards view only. */
+  /**
+   * Card density axis (D-01) — Cards view only. A plain either/or switch: the
+   * legacy re-click-Expanded behaviour operates on the LIGHT-PARTY SECTIONS
+   * and lands in C6 with the section-collapse chevrons (checkpoint ruling).
+   */
   density: ViewMode;
   onDensityChange: (mode: ViewMode) => void;
-  /** Re-click of the active Expanded option (legacy R-023 expand/collapse-all). */
-  onDensityReselect: (mode: ViewMode) => void;
 }
 
 export function RosterToolbar({
@@ -72,7 +74,6 @@ export function RosterToolbar({
   onRosterViewChange,
   density,
   onDensityChange,
-  onDensityReselect,
 }: RosterToolbarProps) {
   const groupingLabel = groupView ? 'Light Party' : 'Standard comp';
 
@@ -91,7 +92,6 @@ export function RosterToolbar({
             options={DENSITY_OPTIONS}
             value={density}
             onChange={onDensityChange}
-            onReselect={onDensityReselect}
             ariaLabel="Card density"
           />
 
