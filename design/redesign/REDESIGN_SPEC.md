@@ -76,7 +76,7 @@ The current app has **four** competing nav systems (left rail, header context-sw
 
 | Surface | Altitude | Owns | Persistence |
 |---|---|---|---|
-| **Context rail** (left, ~72px) | Person layer | *Where am I / who am I* — personal home, Player Hub, Static Finder, the statics you're in, you | Always present |
+| **Context rail** (left, ~72px) | Person layer | *Where am I* — the statics you're in + Static Finder *(amended 2026-07-26 per flow-map F-01: the rail's personal-home/Player-Hub slot is removed; the Player Hub lives behind the user menu)* | Always present |
 | **Top bar** (inside a static) | Static context | *Which static / which track / which week* + ⌘K + notifications + settings + theme | Present inside a static |
 | **In-static spine** (horizontal tabs) | The jobs | *The weekly loop* — **Home · Roster · Loot · Schedule · Progress** *(fifth tab per flow-map F-03, 2026-07-26)* | Present inside a static |
 

@@ -203,7 +203,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 ### Also placed (cross-checked against `OUTSTANDING_WORK.md`)
 | Capability | Verdict |
 |---|---|
-| Static Overview / Command Brief / Raid-Prep rows | ♻️ this *is* the weekly-loop dashboard (the static home) — keep, make it the loop view |
+| Static Overview / Command Brief / Raid-Prep rows | ♻️ this *is* the static Home — the **shared informational hub** reading the weekly loop (relabelled 2026-07-26 per delta R3) — keep, make it the loop view |
 | Recent Activity feed + activity privacy model (visibility/actor) | ♻️ part of the static home ("what happened this week" — fairness/transparency, **not** a social feed); privacy is a Person/Static setting |
 | Notification model (join requests, sessions; read/unread) | ✅ platform/cross-cutting (Person), needs DB-backed read state |
 | Webhook delivery-status surfacing | ✅ Discord cross-cutting polish (Ring 1) |
