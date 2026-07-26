@@ -60,8 +60,8 @@ function cycleHint(bisSource: GearSource, requiresAug: boolean): ReactNode {
       <div className="font-medium">{BIS_SOURCE_FULL_NAMES[bisSource]} status</div>
       <div className="mt-1 text-xs text-text-secondary">
         {threeStep
-          ? 'Click or press Enter to cycle: empty → base obtained (ring) → augmented (filled).'
-          : 'Click or press Enter to toggle: empty ↔ obtained (filled).'}
+          ? 'Click or press Enter/Space to cycle: empty → base obtained (ring) → augmented (filled).'
+          : 'Click or press Enter/Space to toggle: empty ↔ obtained (filled).'}
       </div>
     </div>
   );
@@ -104,7 +104,7 @@ export function RosterGearTable({ gear, tomeWeapon, editable = false, onSlotChan
               // tooltip). RECORDED DELTA vs legacy (R-097 showed it to all
               // roles): shown only when the circles actually cycle — don't
               // teach an action the viewer can't perform. Matrix D-02 note.
-              <Tooltip content="Click or press Enter on a circle to cycle: missing → have → augmented (tome)">
+              <Tooltip content="Click or press Enter/Space on a circle to cycle: missing → have → augmented (tome)">
                 <span className="cursor-help">Status</span>
               </Tooltip>
             ) : (
