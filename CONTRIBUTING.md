@@ -18,16 +18,20 @@ idea to merged PR.
 
 Prerequisites: **Node.js 20.19+** with [pnpm](https://pnpm.io), **Python 3.11+**.
 
-The fastest path is the helper script, which starts both servers:
+Do the one-time setup first — create the backend venv, install backend and frontend
+dependencies, and configure `backend/.env` — following the step-by-step instructions
+in the [README](README.md#getting-started). The backend runs fine on SQLite locally —
+no PostgreSQL needed for development.
+
+After that, the helper script starts both servers in one command:
 
 ```bash
 ./dev.sh      # Linux / macOS / Git Bash
 ./dev.ps1     # Windows PowerShell
 ```
 
-Manual setup (and required `backend/.env` variables) is documented in the
-[README](README.md#getting-started). The backend runs fine on SQLite locally — no
-PostgreSQL needed for development.
+(The script only starts servers — it exits with an error if `backend/venv` doesn't
+exist, and it never installs dependencies.)
 
 ## Quality Gates
 
@@ -38,7 +42,7 @@ pushing:
 |-------|---------|
 | Build + types | `pnpm build` (from `frontend/`) |
 | Lint | `pnpm lint` (from `frontend/`) |
-| Design system | `pnpm check:design-system` (from `frontend/`) |
+| Design system | `pnpm check:design-system:strict` (from `frontend/`) |
 | Frontend tests | `pnpm test` (from `frontend/`) |
 | Backend tests | `pytest tests/ -q` (from `backend/`, venv active) |
 

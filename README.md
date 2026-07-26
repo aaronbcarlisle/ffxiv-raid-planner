@@ -81,10 +81,7 @@ A free, web-based raid planning tool for FFXIV static groups. Track gear progres
 git clone https://github.com/aaronbcarlisle/ffxiv-raid-planner.git
 cd ffxiv-raid-planner
 
-# One-command start for both servers:
-./dev.sh    # Linux/macOS/Git Bash (Windows PowerShell: ./dev.ps1)
-
-# Or manually — Backend setup
+# Backend setup (one-time)
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
@@ -100,6 +97,8 @@ pnpm dev
 
 **Backend:** http://localhost:8001
 **Frontend:** http://localhost:5174
+
+After this one-time setup, `./dev.sh` (Linux/macOS/Git Bash) or `./dev.ps1` (Windows PowerShell) starts both servers with a single command. The script only starts servers — it expects the venv, dependencies, and `.env` from the steps above to already exist.
 
 ### Environment Variables
 
@@ -162,7 +161,7 @@ Contributions welcome! Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** — it 
 
 1. Fork the repository and create a feature branch
 2. Make your changes
-3. Run `pnpm build`, `pnpm lint`, `pnpm check:design-system`, and `pnpm test` from `frontend/` (plus `pytest tests/ -q` from `backend/` if you touched the API)
+3. Run `pnpm build`, `pnpm lint`, `pnpm check:design-system:strict`, and `pnpm test` from `frontend/` (plus `pytest tests/ -q` from `backend/` if you touched the API)
 4. Open a Pull Request using the template
 
 Security issues: please report privately — see [SECURITY.md](SECURITY.md).
