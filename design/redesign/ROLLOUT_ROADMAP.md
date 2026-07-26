@@ -38,6 +38,8 @@ C  Roster rework (expanded/collapsed cards, gear icons, on-card editing)
 D  Loot/History QoL restoration (scope = Phase B decisions)
 E  Polish pass (holistic-review mechanical items + impeccable-assisted)
 F  Chrome-seam mitigation (user menu, docs light pass, rail-less UserMenu)
+P  Beta polish walkthrough (page-by-page UX/styling audit, stepped WITH the user)
+⚑  UN-GATE the v2 opt-in (D7) — deliberately the LAST step before H
 H  Feedback loop → flip default to v2 (3.0.0) → criteria sunset → delete legacy
 →  Rings 1–3 per PRODUCT_MODEL §7 (Person layer, tracks, More dissolution)
 ```
@@ -60,6 +62,16 @@ highest user-priority item after A.
 > Ring-0 blemishes). Consequently Phase H's sunset inputs ("v2 opt-in available ≥4
 > weeks", opt-in cohort telemetry) start their clock at **un-gate**, not at the G merge,
 > and G's release-note entry reads "limited preview" rather than "opt-in beta".
+>
+> **2026-07-25 (post-Stage-1) un-gate re-sequencing (user ruling):** Stage 1 landed and
+> the un-gate criterion above is **superseded** — the un-gate now moves to the **very
+> end** of the build sequence: after Phases B–F, coverage Stages 2–6, and a **new
+> Phase P — beta polish walkthrough**: a page-by-page UX/styling audit stepped through
+> one-by-one WITH the user, addressing any changes they want before real users can
+> opt in. Rationale (user's words): first-time users should get the best possible
+> initial experience. Until then v2 stays admin-gated; `?shell=v2` remains the
+> power-user escape hatch; admins keep dogfooding in prod. Phase H's opt-in clock now
+> starts at that final un-gate.
 
 ---
 
@@ -234,11 +246,27 @@ B–F land as normal PRs.
   UI_COMPONENTS.md, PRODUCT_MODEL §6, REDESIGN_SPEC §7 drop corrections, broken
   REDESIGN_SPEC link).
 
+## 7b. Phase P — Beta polish walkthrough (added 2026-07-25, user ruling)
+
+The last build phase, immediately before the un-gate. A **page-by-page UX/styling
+audit stepped through one-by-one WITH the user**: every v2 surface (in-static screens,
+non-group chromed routes, mobile variants, guest views) gets a live walkthrough; the
+user calls out any UX/styling change they want; each page's punch-list is fixed and
+re-demonstrated before moving to the next page. Essentially the initial beta polish —
+the bar is "a first-time user's first impression," not "passes the parity matrix."
+Process: same SDD gates (screenshots per change, director on anything touching shared
+code), but the *acceptance* on each page is the user saying "next." Exit = every page
+walked, every punch-list item fixed or explicitly deferred by the user → **then the
+D7 un-gate ships** (remove `isAdmin` from `TryNewUiBanner` + the S1 UserMenu item
+together).
+
 ## 8. Phase H — Default flip → sunset (criteria, proposed)
 
 - **Flip v2 to default (3.0.0)** when ALL of: parity matrix 100% resolved (every row
-  restore/drop/redesign executed) · Phases C+D+E shipped · v2 opt-in available ≥4 weeks ·
-  opt-in cohort shows no unresolved parity complaints · toggle telemetry healthy.
+  restore/drop/redesign executed) · Phases C+D+E shipped · **Phase P walkthrough
+  complete and the un-gate shipped** · v2 opt-in available ≥4 weeks (clock starts at
+  the post-P un-gate, per the §1 re-sequencing note) · opt-in cohort shows no
+  unresolved parity complaints · toggle telemetry healthy.
 - **Sunset (delete legacy again)** when: v2 default ≥4 weeks · trailing-2-week opt-out
   rate <10% (tune with real data) · zero open parity-tagged issues. Deletion re-runs the
   P3 checklist — this time WITH the §6 verification steps actually executed.
