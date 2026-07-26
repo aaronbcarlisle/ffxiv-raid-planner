@@ -19,6 +19,8 @@ const baseProps = {
   onAddPlayer: vi.fn(),
   rosterView: 'cards' as const,
   onRosterViewChange: vi.fn(),
+  density: 'compact' as const,
+  onDensityChange: vi.fn(),
 };
 
 describe('RosterToolbar', () => {
@@ -114,5 +116,21 @@ describe('RosterToolbar', () => {
     expect(screen.queryByRole('button', { name: /reorder/i })).not.toBeInTheDocument();
     expect(screen.queryByText('Show subs')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add player/i })).toBeInTheDocument();
+  });
+
+  it('renders the density toggle in Cards view only (the Board has no density axis)', () => {
+    const { rerender } = render(<RosterToolbar {...baseProps} />);
+    expect(screen.getByRole('group', { name: /card density/i })).toBeInTheDocument();
+    rerender(<RosterToolbar {...baseProps} rosterView="board" />);
+    expect(screen.queryByRole('group', { name: /card density/i })).not.toBeInTheDocument();
+  });
+
+  it('changes density via the toggle; an active re-click is a no-op (section expand-all is C6)', () => {
+    const onDensityChange = vi.fn();
+    render(<RosterToolbar {...baseProps} density="expanded" onDensityChange={onDensityChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Compact' }));
+    expect(onDensityChange).toHaveBeenCalledWith('compact');
+    fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
+    expect(onDensityChange).toHaveBeenCalledTimes(1);
   });
 });

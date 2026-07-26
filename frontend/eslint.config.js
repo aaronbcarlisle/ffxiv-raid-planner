@@ -207,6 +207,32 @@ export default defineConfig([
       ...jsxA11y.flatConfigs.recommended.rules,
     },
   },
+  // Phase C (C1): the v2 roster tree is held to error-level design-system rules.
+  // `check:design-system:strict` counts raw HTML + hardcoded colors only, and
+  // `no-tiny-text` is warn globally — this block is the real gate the roster
+  // restyle needs (phase-c-roster-plan.md §2.1). jsx-a11y stays at the global
+  // warn level here (pre-existing warn debt in the tree; C2 raises the bar as
+  // it makes the gear cells interactive).
+  {
+    files: ['src/components/roster/**/*.{ts,tsx}'],
+    ignores: [
+      '**/*.test.{ts,tsx}',
+      // Character-panel subtree: a DECLARED shared surface (systems-flow-map.md
+      // §2.2 — legacy mounts RosterCharacterPanel on its Characters sub-tab), so
+      // its existing tiny-text debt cannot be restyled without a V1-visible
+      // change. Carve-out dies when D-12/C8 re-homes the Characters flow.
+      'src/components/roster/Character*',
+      'src/components/roster/RosterCharacter*',
+      'src/components/roster/AddManualCharacterModal.tsx',
+      'src/components/roster/LinkPlayerHubCharacterModal.tsx',
+    ],
+    rules: {
+      'design-system/no-arbitrary-color': 'error',
+      'design-system/no-tiny-text': 'error',
+      'design-system/no-noninteractive-onclick': 'error',
+      'design-system/no-cursor-pointer-without-role': 'error',
+    },
+  },
   // Test files exercise raw elements and arbitrary values as fixtures; the
   // design-system rules target shipped UI, not test scaffolding. (Matches the
   // exclusion already in scripts/check-design-system.sh.)

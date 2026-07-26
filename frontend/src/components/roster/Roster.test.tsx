@@ -68,6 +68,9 @@ vi.mock('../../stores/viewAsStore', () => ({
 // already uses.
 const groupActionsOnAddPlayer = vi.fn();
 vi.mock('../../pages/groupActionsContext', () => ({
+  // C1: Roster also reads the chrome modal-open flag to gate the V shortcut
+  // (real hook returns false outside a provider; mirror that here).
+  useGroupActionModalOpen: () => false,
   useGroupActions: () => ({
     onTierChange: vi.fn(),
     onAddPlayer: groupActionsOnAddPlayer,

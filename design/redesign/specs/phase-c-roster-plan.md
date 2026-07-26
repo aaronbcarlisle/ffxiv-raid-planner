@@ -23,7 +23,7 @@ lost controls, in 8 reviewable slices.
 
 | Unit | What returns | Slice |
 |---|---|---|
-| D-01 | Expanded ⇄ compact card axis: both densities, per-card expand, re-click-expand-all, `V` shortcut (v2-side binding — §2.1), mobile density affordance, expanded-only "active BiS target" chip | C1 (+chip in C5) |
+| D-01 | Expanded ⇄ compact card axis: both densities, `V` shortcut (v2-side binding — §2.1), expanded-only "active BiS target" chip. **C1-checkpoint corrections (2026-07-26):** ~~per-card expand~~ REJECTED (density is a global view toggle; cards never collapse individually) · ~~re-click-expand-all~~ operates on the LIGHT-PARTY SECTIONS, not cards → moved to C6 with D-08's chevrons (cards stay at their set density while a group is folded) · ~~mobile density affordance~~ deferred to the end-phase mobile pass (rider superseded) | C1 (+chip in C5) |
 | D-02 | On-card gear editing: click-to-cycle per slot + hover item card + status tooltip | C2 |
 | D-03 | Per-slot BiS-source assignment: R/T/C/BT popover, per-slot "Fix", bulk-correct banner | C3 |
 | D-04 | Tome-weapon sub-row with its own 3-state circle + material-entry jump | C4 |
@@ -32,7 +32,7 @@ lost controls, in 8 reviewable slices.
 | D-07 | Visible "Separate Subs" toggle **+ a v2-side `S` binding** (the shared `S` handler mutates a hook instance v2's Roster doesn't read — §2.1) | C6 |
 | D-08 | Per-section collapse chevrons, persisted per static+tier | C6 |
 | D-09 | Card badge row: SUB, BiS-link, "You", linked-user avatar, "+N" weapon priorities | C5 |
-| D-10 | Progress ring + per-slot "Now vs BiS" hover breakdown | C5 |
+| D-10 | ~~Progress ring~~ **DROPPED (C1 checkpoint, 2026-07-26: the card's BiS progress bar serves in its place)** + per-slot "Now vs BiS" hover breakdown (still C5) | C5 |
 | D-15 | Job-change confirm regains "Change Job **and Update BiS**" → straight into import | C7 |
 | ~~D-20~~ | ~~Static/tier error modal~~ **ALREADY SHIPPED in v2** (`ShellContentStates.tsx:215-273`: details block, 2-s Copy confirm, Report Bug → Discord; v2-only mount `NewShell.tsx:128`) — matrix correction filed; the Phase-C closeout **verifies** it (incl. no double-modal) instead of building it | closeout |
 | D-55 *(roster half)* | R-062 Shift+Click copies the card deep link · R-076 the kebab hint tooltip that teaches the modifier-clicks — the ruled shortcuts/right-click pattern on the rebuilt card (Phase D closes D-55's loot half) | C7 |
@@ -47,14 +47,17 @@ lost controls, in 8 reviewable slices.
 
 ### Standing riders
 
-- **Ex-D-56 mobile rider:** every restored desktop control (D-01 axis, D-06 sort, D-07 subs)
-  ships with a phone-width equivalent in the same slice. Note: legacy's mobile FAB is suppressed
-  for v2 by a gate *inside shared* `GroupViewContent.tsx` (`:1231-1236`) — the v2 replacement
-  must be a v2-tree affordance, not a change to that gate.
+- ~~**Ex-D-56 mobile rider:** every restored desktop control ships with a phone-width equivalent
+  in the same slice.~~ **SUPERSEDED (user ruling at the C1 checkpoint, 2026-07-26): ALL mobile
+  work is deferred to ONE consolidated mobile pass at the end of the build phases** (before the
+  Phase-P walkthrough/un-gate) — per-slice phone affordances and the 390 px browser-pass leg are
+  dropped so mobile doesn't tax every step. The C1 mobile FAB was removed under this ruling.
+  Unchanged: legacy's mobile FAB stays suppressed for v2 by the gate *inside shared*
+  `GroupViewContent.tsx` (`:1231-1236`) — any future v2 affordance is a v2-tree one.
 - **Screenshots rule:** every slice PR embeds before/after screenshots (light + dark on any
   token-visible change).
 - **Browser validation:** every slice runs the live chrome-devtools pass (dev backend :8001 +
-  dev-auth → `/group/DEVTST?shell=v2`) before its PR opens — including a 390 px mobile pass.
+  dev-auth → `/group/DEVTST?shell=v2`) before its PR opens (desktop; mobile → end-phase pass).
 
 ### Explicitly OUT of Phase C
 
@@ -114,6 +117,14 @@ hardcoded colors only — it does **not** catch legacy's `text-[10px]`-class vio
 needs a real gate: **C1 adds `src/components/roster/**` to the eslint error-locked block**
 (v2-tree-only change), and each slice's director change-review runs a `git grep "text-\["`
 assert over the new files.
+*C1 addendum (2026-07-26, director change-review):* two limits of the shipped lock, so
+C2–C8 don't over-trust it — (1) `no-tiny-text` inspects JSX `className` attributes only;
+class strings hoisted to module consts escape it (e.g. `GearBoardCell.tsx`'s `text-[9px]`
+reports nothing inside the locked subtree) — the per-slice `git grep` assert remains the
+backstop; (2) the Characters-panel subtree (`Character*`, `RosterCharacter*`,
+`AddManualCharacterModal`, `LinkPlayerHubCharacterModal`) is carved out of the lock because
+it is the declared shared surface legacy mounts (flow map §2.2) — its tiny-text debt cannot
+be restyled without a V1-visible change; the carve-out dies with D-12/C8.
 
 ### 2.2 Gating
 
@@ -143,8 +154,8 @@ static-not-"group" vocabulary check on all new copy · screenshots in PR · rele
 | **C2** | On-card gear editing | Click-to-cycle per slot via the shared state machine, hover item card, Status-column tooltip, `canEditGear`/`canEditPlayer` gating; **keyboard-operable and announced** (cells focusable, Enter/Space cycles, state announced) — not mouse-only | D-02 | Analytics: `player_gear_changed` emit is **not wired without an explicit emit-site decision** (vet finding 8). If ruled yes: emit from the **v2 card component only**, never from the shared mutation path (a shared emit would make frozen V1 start POSTing analytics), with a shell discriminator |
 | **C3** | BiS-source tools | R/T/C/BT selector popover (+ reset-warning confirm), per-slot "Fix", "N slots need BiS source updates" banner; keyboard-operable + announced | D-03 | `BiSSourceSelector` exists (`components/player/BiSSourceSelector.tsx`) — shared-leaf remount + restyle |
 | **C4** | Tome-weapon sub-row | Weapon-row "+" toggle renders the sub-row with its own 3-state circle + material-entry jump; kebab toggle stays in sync | D-04 | Jump target verified live (`LootHistoryTable.tsx:69-103` handles `entryType=material`); jump must also set the Loot tab + `lview=history` |
-| **C5** | Metrics, badges, identity | Progress ring, per-slot Now-vs-BiS hover panel, badge row (SUB / BiS-link / You / avatar / +N), **R-072 sync-line detail** (character/server + job-mismatch — the D-12 rider, C8-independent), expanded-only active-BiS-target chip, D-11 selective identity (lean: portrait + title) | D-09, D-10, D-11, D-12 rider, D-01 chip | **Chip data reality (vet finding 7):** `useSharedBisStore` is populated only when BiSTargetManagerModal opens — no roster-level prefetch exists, and the endpoint is per-owner. **Slice-time choice:** inherit that latency (chip appears after the modal has run; demo scripted accordingly) or add a fetch — naming the cost (N per-player calls, or a new batched endpoint = backend scope). Default: inherit; no silent backend work |
-| **C6** | Toolbar restorations | `SortModeSelector` returns **+ v2-side `sort-preset-{tierId}` hydration** (follows tier switches), visible Separate-Subs toggle **+ v2-side `S` binding**, per-section collapse chevrons with persistence — each with its phone-width equivalent (rider). Decide: does the subs toggle inherit the `hasSubstitutes` gate (shared hook `:128`) or render disabled? Default: inherit the gate | D-06, D-07, D-08 | Kills the actual D-06 defect (corrected: v2 *ignores* the stored preset today) |
+| **C5** | Metrics, badges, identity | ~~Progress ring~~ (dropped — checkpoint ruling 2026-07-26, the BiS bar serves), per-slot Now-vs-BiS hover panel, badge row (SUB / BiS-link / You / avatar / +N), **R-072 sync-line detail → REDESIGN, not 1:1 restore** (checkpoint ruling: v1's sync block bloats the card — design a leaner v2 treatment; character/server + job-mismatch info preserved), expanded-only active-BiS-target chip, D-11 selective identity (lean: portrait + title) | D-09, D-10, D-11, D-12 rider, D-01 chip | **Chip data reality (vet finding 7):** `useSharedBisStore` is populated only when BiSTargetManagerModal opens — no roster-level prefetch exists, and the endpoint is per-owner. **Slice-time choice:** inherit that latency (chip appears after the modal has run; demo scripted accordingly) or add a fetch — naming the cost (N per-player calls, or a new batched endpoint = backend scope). Default: inherit; no silent backend work |
+| **C6** | Toolbar restorations | `SortModeSelector` returns **+ v2-side `sort-preset-{tierId}` hydration** (follows tier switches), visible Separate-Subs toggle **+ v2-side `S` binding**, per-section collapse chevrons with persistence. Decide: does the subs toggle inherit the `hasSubstitutes` gate (shared hook `:128`) or render disabled? Default: inherit the gate. **C1-checkpoint additions (2026-07-26):** (a) **sort-vs-grouping split** — C1's "Light Party / Standard comp" dropdown conflates the two; the dropdown becomes the SORT-PRESET selector (reorders cards *within* their groups; sorts the flat grid when ungrouped) and grouping on/off becomes a distinct G1/G2-style toggle, v1 parity; (b) **re-click-Expanded = SECTION expand/collapse-all** (moved from C1): with any group folded, re-click expands all groups; with everything open, re-click folds all — cards keep their set density while folded, so unfolding a group shows them at that density; (c) **Show Subs gates Separate Subs** — Separate Subs renders disabled until Show Subs is on (v2 behaviour rule; fixes the v1 defect where both toggle independently) | D-06, D-07, D-08 | Kills the actual D-06 defect (corrected: v2 *ignores* the stored preset today) |
 | **C7** | Flows + superuser affordances | Job-change → BiS-import hand-off (3rd option); gear→ledger jumps (Alt+Click / right-click / kebab) → today's History deep-links **+ tab & `lview=history` setting**; **"Edit Books" leg is new navigation work** (no book deep-link exists — param + anchor scroll + highlight, `Loot.tsx:44-46`); **D-55 roster half**: R-062 Shift+Click copy-URL + R-076 the teaching tooltip | D-15, D-05, D-55(roster) | D-20 struck (already shipped — closeout verifies). Superuser affordances follow the ruled D-55 pattern: shortcuts/right-click, not buttons |
 | **C8** | Lodestone re-home | `LodestoneSearchModal` gets its Characters-path entry (per D-12 redesign); **slice opens with the §2.2 shared-surface decision** (v2-only mount vs explicit user-approved V1 delta — `RosterCharacterPanel` renders in both shells); **V1 guard = `smoke-legacy` #14** (`e2e/smoke-legacy.spec.ts:670`, the Lodestone search→preview→sync pin) must stay green untouched | D-12 flow | Severable; may slide to Stage 3 (Player Hub) — decision at slice time |
 

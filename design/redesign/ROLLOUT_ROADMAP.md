@@ -266,6 +266,14 @@ walked, every punch-list item fixed or explicitly deferred by the user → **the
 D7 un-gate ships** (remove `isAdmin` from `TryNewUiBanner` + the S1 UserMenu item
 together).
 
+**Consolidated mobile pass (user ruling at the C1 checkpoint, 2026-07-26):** ALL v2
+mobile work is deferred out of the build slices into ONE dedicated pass here, before
+(or as the opening leg of) the Phase-P walkthrough — the app sees little mobile use
+and per-slice mobile affordances were taxing every step. Per-slice phone equivalents
+(the ex-D-56 rider) and 390 px browser-pass legs are dropped; the mobile pass designs
+the phone experience holistically (density affordance, toolbar reachability, the
+legacy MobileBottomNav still rendering under v2, breadcrumb overlap, etc.).
+
 ## 8. Phase H — Default flip → sunset (criteria, proposed)
 
 - **Flip v2 to default (3.0.0)** when ALL of: parity matrix 100% resolved (every row

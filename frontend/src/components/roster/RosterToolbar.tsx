@@ -14,15 +14,23 @@
  * reorderable — spec §5.4). "Add player" stays in both views.
  */
 
-import { LayoutGrid, List, Plus, Table2 } from 'lucide-react';
+import { LayoutGrid, List, Plus, Rows3, Table2 } from 'lucide-react';
 import { Button } from '../primitives/Button';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../primitives/Dropdown';
 import { SegmentedToggle } from '../ui/SegmentedToggle';
 import { Toggle } from '../ui/Toggle';
+import type { ViewMode } from '../../types';
 
 const VIEW_OPTIONS = [
   { value: 'cards' as const, label: 'Cards', icon: <LayoutGrid className="h-3.5 w-3.5" aria-hidden /> },
   { value: 'board' as const, label: 'Board', icon: <Table2 className="h-3.5 w-3.5" aria-hidden /> },
+];
+
+// Density axis (D-01): Compact = pip strip, Expanded = full gear table. Icons
+// mirror legacy's ViewModeToggle pairing (grid = compact, list = expanded).
+const DENSITY_OPTIONS = [
+  { value: 'compact' as const, label: 'Compact', icon: <Rows3 className="h-3.5 w-3.5" aria-hidden /> },
+  { value: 'expanded' as const, label: 'Expanded', icon: <List className="h-3.5 w-3.5" aria-hidden /> },
 ];
 
 export interface RosterToolbarProps {
@@ -43,6 +51,13 @@ export interface RosterToolbarProps {
   /** Active roster view — Cards (management) vs Board (gear matrix). */
   rosterView: 'cards' | 'board';
   onRosterViewChange: (v: 'cards' | 'board') => void;
+  /**
+   * Card density axis (D-01) — Cards view only. A plain either/or switch: the
+   * legacy re-click-Expanded behaviour operates on the LIGHT-PARTY SECTIONS
+   * and lands in C6 with the section-collapse chevrons (checkpoint ruling).
+   */
+  density: ViewMode;
+  onDensityChange: (mode: ViewMode) => void;
 }
 
 export function RosterToolbar({
@@ -57,6 +72,8 @@ export function RosterToolbar({
   onAddPlayer,
   rosterView,
   onRosterViewChange,
+  density,
+  onDensityChange,
 }: RosterToolbarProps) {
   const groupingLabel = groupView ? 'Light Party' : 'Standard comp';
 
@@ -71,6 +88,13 @@ export function RosterToolbar({
 
       {rosterView === 'cards' && (
         <>
+          <SegmentedToggle
+            options={DENSITY_OPTIONS}
+            value={density}
+            onChange={onDensityChange}
+            ariaLabel="Card density"
+          />
+
           <Dropdown>
             <DropdownTrigger asChild>
               <Button variant="secondary" size="sm" trailing="chevron">

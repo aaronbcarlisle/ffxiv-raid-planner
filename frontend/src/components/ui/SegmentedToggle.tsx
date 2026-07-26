@@ -20,6 +20,12 @@ export interface SegmentedToggleProps<T extends string> {
   options: SegmentedOption<T>[];
   value: T;
   onChange: (value: T) => void;
+  /**
+   * Fired when the ALREADY-ACTIVE option is clicked (`onChange` fires only on
+   * a change). Lets a consumer give re-click a meaning — e.g. the roster
+   * density control's legacy "re-click Expanded = expand/collapse all" (R-023).
+   */
+  onReselect?: (value: T) => void;
   /** Accessible label for the option group (meaning-bearing, not icon-only). */
   ariaLabel: string;
   size?: 'sm' | 'md';
@@ -29,6 +35,7 @@ export function SegmentedToggle<T extends string>({
   options,
   value,
   onChange,
+  onReselect,
   ariaLabel,
   size = 'sm',
 }: SegmentedToggleProps<T>) {
@@ -56,6 +63,7 @@ export function SegmentedToggle<T extends string>({
             leftIcon={opt.icon}
             onClick={() => {
               if (!active) onChange(opt.value);
+              else onReselect?.(opt.value);
             }}
           >
             {opt.label}

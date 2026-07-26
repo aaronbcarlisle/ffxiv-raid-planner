@@ -64,7 +64,10 @@ const actions: RosterCardActions = {
   onDuplicate: vi.fn(),
 };
 
-function renderCard(player: SnapshotPlayer) {
+function renderCard(
+  player: SnapshotPlayer,
+  extra: Partial<Parameters<typeof RosterCard>[0]> = {}
+) {
   return render(
     <TooltipProvider>
       <RosterCard
@@ -79,6 +82,7 @@ function renderCard(player: SnapshotPlayer) {
         tierId="tier1"
         contentType="savage"
         actions={actions}
+        {...extra}
       />
     </TooltipProvider>
   );
@@ -95,11 +99,13 @@ describe('RosterCard', () => {
 
   it('opens the kebab menu with the BiS import action', () => {
     // No BiS link → the audited kebab surfaces "Import BiS" (vs "Update BiS").
+    // The progress line carries its own "Import BiS" button in this state
+    // (one-axis split), so with the kebab open the label appears twice.
     renderCard(makePlayer({ bisLink: undefined }));
 
+    expect(screen.getAllByText('Import BiS')).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
-
-    expect(screen.getByText('Import BiS')).toBeInTheDocument();
+    expect(screen.getAllByText('Import BiS')).toHaveLength(2);
   });
 
   it('releases the grid modal counter on unmount while an overlay is open', () => {
@@ -197,6 +203,71 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       expect(useToastStore.getState().toasts.some(
         (t) => t.type === 'error' && t.message === 'job change failed',
       )).toBe(true);
+    });
+  });
+
+  // ── Density axis (Phase C C1, D-01) ──
+  describe('density', () => {
+    it('renders the pip strip (no gear table) at the default compact density', () => {
+      renderCard(makePlayer());
+      expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    });
+
+    it('expanded density replaces the pips with the read-only gear table', () => {
+      renderCard(
+        makePlayer({
+          gear: [
+            {
+              slot: 'head',
+              bisSource: 'tome',
+              hasItem: true,
+              isAugmented: false,
+              itemName: 'Test Helm',
+              itemLevel: 730,
+            },
+          ] as unknown as SnapshotPlayer['gear'],
+        }),
+        { density: 'expanded' }
+      );
+      expect(screen.getByRole('table')).toBeInTheDocument();
+      // Row headers come from GEAR_SLOT_NAMES; item detail renders inline.
+      expect(screen.getByRole('rowheader', { name: 'Weapon' })).toBeInTheDocument();
+      expect(screen.getByText(/Test Helm/)).toBeInTheDocument();
+      expect(screen.getByText(/i730/)).toBeInTheDocument();
+    });
+
+    it('renders no per-card expand/collapse affordance (density is a global toggle)', () => {
+      // Checkpoint ruling 2026-07-26: cards must never collapse individually.
+      renderCard(makePlayer());
+      expect(screen.queryByRole('button', { name: /expand card/i })).not.toBeInTheDocument();
+      renderCard(makePlayer({ id: 'p2' }), { density: 'expanded' });
+      expect(screen.queryByRole('button', { name: /collapse card/i })).not.toBeInTheDocument();
+    });
+
+    it('one axis per location: the progress line owns the BiS story (No BiS + Import button)', () => {
+      renderCard(makePlayer({ id: 'p3', bisLink: undefined }));
+      // The Import action sits ON the progress line as a real button…
+      expect(screen.getByRole('button', { name: 'Import BiS' })).toBeInTheDocument();
+      expect(screen.getByText('No BiS')).toBeInTheDocument();
+    });
+
+    it('one axis per location: the footer owns the claim story only', () => {
+      // Unclaimed → footer shows Unclaimed + a bordered Assign button (the
+      // assign kebab entries need the assign callbacks wired, as the real
+      // actionsForPlayer factory always does).
+      renderCard(makePlayer({ id: 'p4', userId: undefined }), {
+        actions: {
+          ...actions,
+          onOwnerAssignPlayer: vi.fn(),
+          onAdminAssignPlayer: vi.fn(),
+        },
+      });
+      expect(screen.getByText('Unclaimed')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Assign' })).toBeInTheDocument();
+
+      // Claimed → the footer's right side is empty (no BiS text, no needs-N).
+      renderCard(makePlayer({ id: 'p5', bisLink: undefined }));
+      expect(screen.queryByText(/needs \d/)).not.toBeInTheDocument();
     });
   });
 });

@@ -33,6 +33,7 @@ import {
   RadioGroup,
 } from '../ui';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
+import { RosterGearTable } from './RosterGearTable';
 import { Button, IconButton } from '../primitives';
 import { JobPicker } from '../player/JobPicker';
 import { PositionSelector } from '../player/PositionSelector';
@@ -49,7 +50,6 @@ import {
   requiresAugmentation,
   toGearState,
 } from '../../utils/calculations';
-import { calculatePlayerNeeds } from '../../utils/priority';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 import {
   getJobDisplayName,
@@ -57,7 +57,7 @@ import {
   getRoleForJob,
   getValidRole,
 } from '../../gamedata';
-import type { ContentType, SnapshotPlayer } from '../../types';
+import type { ContentType, SnapshotPlayer, ViewMode } from '../../types';
 
 const TOTAL_SLOTS = 11;
 
@@ -73,6 +73,13 @@ export interface RosterCardProps {
   reorderMode: boolean;
   /** Drag handle supplied by the grid (Task 7). */
   dragHandle?: { attributes?: DragAttributes; listeners?: DragListeners };
+  /**
+   * Global card density (Phase C C1, D-01): compact = pip strip, expanded =
+   * the read-only gear-table shell. A view toggle for ALL cards — per-card
+   * collapse was explicitly rejected at the C1 checkpoint (2026-07-26).
+   * Defaults to compact (pre-C1 rendering).
+   */
+  density?: ViewMode;
   actions: RosterCardActions;
   // ── Forwarded straight to useRosterCardActions (sourced from tier/context by
   //    the grid/assembly — Tasks 6/10). Defaulted so the card renders standalone.
@@ -110,6 +117,7 @@ export function RosterCard({
   clipboardPlayer,
   reorderMode,
   dragHandle,
+  density = 'compact',
   actions,
   groupId = '',
   tierId = '',
@@ -123,6 +131,7 @@ export function RosterCard({
   const role = getValidRole(player.role);
   const editPermission = canEditPlayer(userRole, player, currentUserId ?? undefined, isAdminAccess);
   const canEdit = editPermission.allowed;
+  const isExpanded = density === 'expanded';
 
   // ── Local UI state (name edit + job change) ──
   const [isEditingName, setIsEditingName] = useState(false);
@@ -274,42 +283,33 @@ export function RosterCard({
   const importAction = getMenuAction('Import BiS') ?? getMenuAction('Update BiS');
   const assignAction = getMenuAction('Assign User') ?? getMenuAction('Assign User (Admin)');
 
-  const renderStatus = (): ReactNode => {
-    if (!player.userId && canManage && assignAction) {
-      return (
-        <span className="flex items-center gap-2">
-          <span className="text-status-warning">Unclaimed</span>
-          <Button variant="ghost" size="xs" onClick={assignAction}>
+  // One axis per location (C1 checkpoint ruling, 2026-07-26): the footer's
+  // right side carries ONLY the claim/ownership state — every BiS concern
+  // (count, "No BiS", the Import action) lives on the progress line above.
+  // Actions render as bordered buttons, never bare accent text (a clickable
+  // thing must LOOK clickable).
+  const renderClaimStatus = (): ReactNode => {
+    if (player.userId) return null;
+    return (
+      <span className="flex items-center gap-2">
+        <span className="text-status-warning">Unclaimed</span>
+        {canManage && assignAction && (
+          <Button variant="secondary" size="xs" onClick={assignAction}>
             Assign
           </Button>
-        </span>
-      );
-    }
-    if (!hasBis) {
-      return (
-        <span className="flex items-center gap-2">
-          <span className="text-status-warning">No BiS</span>
-          {canEdit && importAction && (
-            <Button variant="ghost" size="xs" onClick={importAction}>
-              Import
-            </Button>
-          )}
-        </span>
-      );
-    }
-    if (completedSlots >= TOTAL_SLOTS) {
-      return <span className="font-medium text-accent">BiS set</span>;
-    }
-    const needs = calculatePlayerNeeds(player);
-    const needCount = needs.raidNeed + needs.tomeNeed + needs.upgrades;
-    return <span className="text-text-secondary">needs {needCount}</span>;
+        )}
+      </span>
+    );
   };
 
   const dragProps = reorderMode ? { ...dragHandle?.attributes, ...dragHandle?.listeners } : {};
 
   return (
-    <div className="relative" onContextMenu={openContextMenu} {...dragProps}>
-      <CardShell as="div" className="relative overflow-hidden">
+    // h-full + flex-col + interior flex-1 spacers (below) = legacy PlayerCard's
+    // equal-height discipline: every card fills its grid row track, headers at
+    // the top, gear + footer pinned to the bottom (C1 checkpoint feedback).
+    <div className="relative h-full" onContextMenu={openContextMenu} {...dragProps}>
+      <CardShell as="div" className="relative flex h-full flex-col overflow-hidden">
         {/* Role-colored accent edge (semantic role var → token-compliant). */}
         <span
           aria-hidden="true"
@@ -400,7 +400,9 @@ export function RosterCard({
           </div>
         </div>
 
-        {/* ── BiS progress line ── */}
+        {/* ── BiS progress line — owns the WHOLE BiS story (one axis per
+               location, C1 checkpoint ruling): count when linked, "No BiS" +
+               the Import action when not. ── */}
         <div className="mt-3 flex items-center gap-2">
           <ProgressBar
             value={hasBis ? ratio : 0}
@@ -411,24 +413,46 @@ export function RosterCard({
           <span
             className={`shrink-0 text-xs font-semibold ${hasBis ? 'text-text-secondary' : 'text-status-warning'}`}
           >
-            {hasBis ? `${completedSlots}/${TOTAL_SLOTS} BiS` : 'no BiS'}
+            {hasBis ? `${completedSlots}/${TOTAL_SLOTS} BiS` : 'No BiS'}
           </span>
+          {!hasBis && canEdit && importAction && (
+            <Button variant="secondary" size="xs" onClick={importAction}>
+              Import BiS
+            </Button>
+          )}
         </div>
 
-        {/* ── Gear pip strip (read-only / display-only) ── */}
-        <div className="mt-3 flex flex-wrap gap-1">
-          {player.gear.map((slot) => (
-            <GearStatusCircle
-              key={slot.slot}
-              state={toGearState(slot.hasItem, slot.isAugmented)}
-              bisSource={slot.bisSource}
-              requiresAugmentation={requiresAugmentation(slot)}
-              onChange={() => {}}
-              disabled
-              size="sm"
-            />
-          ))}
-        </div>
+        {/* ── Gear section: pip strip (compact) or gear-table shell (expanded, D-01).
+               Either/or, matching legacy PlayerCardGear — the table replaces the
+               pips, never stacks under them. Both are read-only in C1 (editing
+               is C2). Spacer placement mirrors legacy PlayerCard: compact pads
+               ABOVE the gear (pips + footer align at the bottom across cards),
+               expanded pads BELOW the table (footer still pinned). ── */}
+        {isExpanded ? (
+          <>
+            <div className="mt-3 border-t border-border-subtle pt-2">
+              <RosterGearTable gear={player.gear} tomeWeapon={player.tomeWeapon} />
+            </div>
+            <div className="flex-1" />
+          </>
+        ) : (
+          <>
+            <div className="flex-1" />
+            <div className="mt-3 flex flex-wrap gap-1">
+              {player.gear.map((slot) => (
+                <GearStatusCircle
+                  key={slot.slot}
+                  state={toGearState(slot.hasItem, slot.isAugmented)}
+                  bisSource={slot.bisSource}
+                  requiresAugmentation={requiresAugmentation(slot)}
+                  onChange={() => {}}
+                  disabled
+                  size="sm"
+                />
+              ))}
+            </div>
+          </>
+        )}
 
         {/* ── Footer: character link/sync · status CTA ── */}
         <div className="mt-3 flex items-center gap-2 border-t border-border-subtle pt-3 text-xs text-text-tertiary">
@@ -440,7 +464,7 @@ export function RosterCard({
             <span className="truncate">{syncLabel}</span>
           </span>
           <span className="flex-1" />
-          {renderStatus()}
+          {renderClaimStatus()}
         </div>
       </CardShell>
 
