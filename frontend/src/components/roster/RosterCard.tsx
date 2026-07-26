@@ -319,8 +319,11 @@ export function RosterCard({
   const dragProps = reorderMode ? { ...dragHandle?.attributes, ...dragHandle?.listeners } : {};
 
   return (
-    <div className="relative" onContextMenu={openContextMenu} {...dragProps}>
-      <CardShell as="div" className="relative overflow-hidden">
+    // h-full + flex-col + interior flex-1 spacers (below) = legacy PlayerCard's
+    // equal-height discipline: every card fills its grid row track, headers at
+    // the top, gear + footer pinned to the bottom (C1 checkpoint feedback).
+    <div className="relative h-full" onContextMenu={openContextMenu} {...dragProps}>
+      <CardShell as="div" className="relative flex h-full flex-col overflow-hidden">
         {/* Role-colored accent edge (semantic role var → token-compliant). */}
         <span
           aria-hidden="true"
@@ -441,25 +444,33 @@ export function RosterCard({
         {/* ── Gear section: pip strip (compact) or gear-table shell (expanded, D-01).
                Either/or, matching legacy PlayerCardGear — the table replaces the
                pips, never stacks under them. Both are read-only in C1 (editing
-               is C2). ── */}
+               is C2). Spacer placement mirrors legacy PlayerCard: compact pads
+               ABOVE the gear (pips + footer align at the bottom across cards),
+               expanded pads BELOW the table (footer still pinned). ── */}
         {isExpanded ? (
-          <div className="mt-3 border-t border-border-subtle pt-2">
-            <RosterGearTable gear={player.gear} tomeWeapon={player.tomeWeapon} />
-          </div>
+          <>
+            <div className="mt-3 border-t border-border-subtle pt-2">
+              <RosterGearTable gear={player.gear} tomeWeapon={player.tomeWeapon} />
+            </div>
+            <div className="flex-1" />
+          </>
         ) : (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {player.gear.map((slot) => (
-              <GearStatusCircle
-                key={slot.slot}
-                state={toGearState(slot.hasItem, slot.isAugmented)}
-                bisSource={slot.bisSource}
-                requiresAugmentation={requiresAugmentation(slot)}
-                onChange={() => {}}
-                disabled
-                size="sm"
-              />
-            ))}
-          </div>
+          <>
+            <div className="flex-1" />
+            <div className="mt-3 flex flex-wrap gap-1">
+              {player.gear.map((slot) => (
+                <GearStatusCircle
+                  key={slot.slot}
+                  state={toGearState(slot.hasItem, slot.isAugmented)}
+                  bisSource={slot.bisSource}
+                  requiresAugmentation={requiresAugmentation(slot)}
+                  onChange={() => {}}
+                  disabled
+                  size="sm"
+                />
+              ))}
+            </div>
+          </>
         )}
 
         {/* ── Footer: character link/sync · status CTA ── */}

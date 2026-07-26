@@ -76,8 +76,17 @@ import { bisSlotTotals } from '../../utils/rosterReadiness';
 import { getValidRole } from '../../gamedata';
 import type { ContentType, MemberRole, SnapshotPlayer, ViewMode } from '../../types';
 
-/** Mockup `.pcards`: `repeat(auto-fill, minmax(330px, 1fr))`, ~14px gap. */
-const PCARDS_GRID = 'grid grid-cols-[repeat(auto-fill,minmax(330px,1fr))] gap-3.5';
+/**
+ * Card grid — C1 checkpoint feedback (user, 2026-07-26): the mockup's
+ * `auto-fill minmax(330px,1fr)` left cards clustered left at fixed sizes on
+ * wide viewports. Restored to legacy PlayerGrid's discipline (its
+ * `grid-cols-1 sm:2 lg:3` + the `.grid-4xl` 4-column ultrawide utility from
+ * index.css) inside a 120rem cap (`CARDS_MAX_W`, v1's content width) so cards
+ * share each row evenly and stop growing on ultrawide. Fixed tracks + the
+ * cards' h-full/spacer interior (RosterCard) give equal heights per row.
+ */
+const PCARDS_GRID = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl gap-3.5';
+const CARDS_MAX_W = 'max-w-[120rem]';
 
 export interface RosterCardsProps {
   players: SnapshotPlayer[];
@@ -188,7 +197,7 @@ function DraggableRosterCard({ player, canManage, children }: DraggableRosterCar
       ref={setNodeRef}
       data-droppable-id={player.id}
       style={{ opacity: isBeingDragged ? 0.3 : 1 }}
-      className={`relative rounded-lg transition-all duration-150 ${
+      className={`relative h-full rounded-lg transition-all duration-150 ${
         showSwap ? 'ring-2 ring-accent shadow-lg shadow-accent/20' : ''
       }`}
     >
@@ -223,32 +232,43 @@ function RosterCardsDragOverlay({ players }: { players: SnapshotPlayer[] }) {
   );
 }
 
-/** Aggregate BiS ratio (obtained / total BiS slots) across a party's roster. */
-function partyBisRatio(partyPlayers: SnapshotPlayer[]): number {
-  const { obtained, total } = bisSlotTotals(partyPlayers);
-  return total > 0 ? obtained / total : 0;
-}
-
 interface PartyHeadProps {
   tag: string;
   label: string;
-  /** Omitted entirely for the Substitutes head — no bar, per spec §5.6. */
-  ratio?: number;
+  /**
+   * Players whose aggregate BiS the head reports. Omitted entirely for the
+   * Substitutes head — no bar, per spec §5.6.
+   */
+  barPlayers?: SnapshotPlayer[];
   tagClassName?: string;
 }
 
-/** Fresh v2 party-head row (G1/G2/SUB badge + name + aggregate BiS bar). */
-function PartyHead({ tag, label, ratio, tagClassName }: PartyHeadProps) {
+/**
+ * v2 party-head row (G1/G2/SUB badge + name + aggregate BiS bar). C1 checkpoint
+ * feedback (2026-07-26): the bar sits NEXT TO the label — right-justifying it
+ * left it floating in dead space on wide viewports — doubled in length, with
+ * the legacy obtained/total count so what it measures is legible at a glance.
+ */
+function PartyHead({ tag, label, barPlayers, tagClassName }: PartyHeadProps) {
+  const { obtained, total } = barPlayers ? bisSlotTotals(barPlayers) : { obtained: 0, total: 0 };
+  const ratio = total > 0 ? obtained / total : 0;
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex flex-wrap items-center gap-2.5">
       <Tag variant="label" tone="muted" className={tagClassName}>
         {tag}
       </Tag>
       <span className="text-xs font-bold uppercase tracking-wide text-text-tertiary">{label}</span>
-      {ratio != null && (
-        <div className="ml-auto flex items-center gap-2">
-          <ProgressBar value={ratio} ariaLabel={`${label} BiS progress`} className="w-28" />
-          <span className="text-xs text-text-tertiary">{Math.round(ratio * 100)}% BiS</span>
+      {barPlayers && (
+        <div className="ml-2 flex items-center gap-2">
+          {/* Width on a wrapper: ProgressBar's own root is w-full, and a width
+              utility passed via className can lose the stylesheet-order fight
+              against it (the old w-28 bar was collapsing to 0 exactly this way). */}
+          <div className="w-56">
+            <ProgressBar value={ratio} ariaLabel={`${label} BiS progress`} />
+          </div>
+          <span className="whitespace-nowrap text-xs text-text-tertiary">
+            {obtained}/{total} BiS · {Math.round(ratio * 100)}%
+          </span>
         </div>
       )}
     </div>
@@ -312,7 +332,7 @@ export function RosterCards({
     <div
       key={player.id}
       id={`player-card-${player.id}`}
-      className={player.id === highlightedPlayerId ? 'highlight-pulse rounded-lg' : undefined}
+      className={`h-full${player.id === highlightedPlayerId ? ' highlight-pulse rounded-lg' : ''}`}
     >
       <RosterCard
         player={player}
@@ -347,7 +367,7 @@ export function RosterCards({
       // spawn yet another blank slot elsewhere.
       const seatActions = actionsForPlayer(player);
       return (
-        <div key={player.id} id={`player-card-${player.id}`} className={`relative${highlightClass}`}>
+        <div key={player.id} id={`player-card-${player.id}`} className={`relative h-full${highlightClass}`}>
           <OpenSeatCard
             player={player}
             canManage={canManage}
@@ -376,17 +396,17 @@ export function RosterCards({
     const showSubs = subsView && !subsHidden && grouped.substitutes.length > 0;
 
     body = (
-      <div className="space-y-7">
+      <div className={`space-y-7 ${CARDS_MAX_W}`}>
         {grouped.group1.length > 0 && (
           <div>
-            <PartyHead tag="G1" label="Light Party 1" ratio={partyBisRatio(grouped.group1)} />
+            <PartyHead tag="G1" label="Light Party 1" barPlayers={grouped.group1} />
             <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.group1.map(renderPlayer)}</div>
           </div>
         )}
 
         {grouped.group2.length > 0 && (
           <div>
-            <PartyHead tag="G2" label="Light Party 2" ratio={partyBisRatio(grouped.group2)} />
+            <PartyHead tag="G2" label="Light Party 2" barPlayers={grouped.group2} />
             <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.group2.map(renderPlayer)}</div>
           </div>
         )}
@@ -415,7 +435,7 @@ export function RosterCards({
     const showSubs = subsView && !subsHidden && subs.length > 0;
 
     body = (
-      <div className="space-y-7">
+      <div className={`space-y-7 ${CARDS_MAX_W}`}>
         <div className={PCARDS_GRID}>{mainPlayers.map(renderPlayer)}</div>
         {showSubs && (
           <div>

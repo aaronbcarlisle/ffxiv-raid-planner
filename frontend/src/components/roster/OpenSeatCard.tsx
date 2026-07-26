@@ -77,7 +77,7 @@ export function OpenSeatCard({ player, canManage, onConfigure, onRemove }: OpenS
   };
 
   return (
-    <CardShell as="div" className="relative overflow-hidden border-dashed">
+    <CardShell as="div" className="relative h-full overflow-hidden border-dashed">
       {/* Neutral accent edge — open seats have no role color of their own. */}
       <span
         aria-hidden="true"
