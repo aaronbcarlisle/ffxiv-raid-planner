@@ -54,8 +54,8 @@ export function RosterGearTable({ gear, tomeWeapon }: RosterGearTableProps) {
       <thead>
         <tr className="text-xs text-text-muted">
           <th className="py-1 text-left font-medium">Slot</th>
-          <th className="w-12 py-1 text-center font-medium">BiS</th>
-          <th className="w-14 py-1 text-center font-medium">Status</th>
+          <th className="w-12 px-1.5 py-1 text-center font-medium">BiS</th>
+          <th className="w-14 px-1.5 py-1 text-center font-medium">Status</th>
         </tr>
       </thead>
       <tbody>

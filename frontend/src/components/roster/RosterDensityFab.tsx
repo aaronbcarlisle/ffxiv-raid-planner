@@ -20,7 +20,10 @@ export interface RosterDensityFabProps {
 
 export function RosterDensityFab({ density, onDensityChange }: RosterDensityFabProps) {
   return (
-    <div className="fixed bottom-4 left-4 z-30 flex gap-1 rounded-full border border-border-default bg-surface-raised/90 p-1 shadow-lg backdrop-blur-md md:hidden">
+    // bottom-[4.5rem]: clears the bottom mobile nav (the shared GroupViewContent
+    // still renders MobileBottomNav under v2 at phone widths — pre-existing,
+    // Stage-2 scope) — the same clearance legacy's own FAB used (R-015).
+    <div className="fixed bottom-[4.5rem] left-4 z-30 flex gap-1 rounded-full border border-border-default bg-surface-raised/90 p-1 shadow-lg backdrop-blur-md md:hidden">
       <IconButton
         aria-label="Compact cards"
         aria-pressed={density === 'compact'}
