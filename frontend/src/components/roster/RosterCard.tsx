@@ -437,7 +437,7 @@ export function RosterCard({
           <span
             className={`shrink-0 text-xs font-semibold ${hasBis ? 'text-text-secondary' : 'text-status-warning'}`}
           >
-            {hasBis ? `${completedSlots}/${TOTAL_SLOTS} BiS` : 'no BiS'}
+            {hasBis ? `${completedSlots}/${TOTAL_SLOTS} BiS` : 'No BiS'}
           </span>
         </div>
 
