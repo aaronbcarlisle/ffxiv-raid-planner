@@ -239,6 +239,22 @@ for (const theme of THEMES) {
     const cards = await cardsBuilder.withRules(['color-contrast']).analyze()
     expect(cards.violations, JSON.stringify(cards.violations, null, 2)).toEqual([])
 
+    // Cards view, EXPANDED density (Phase C C1): the default density is compact,
+    // so without this leg the gear-table surface (item detail lines, source
+    // glyphs, headers) would sit outside every Axe run.
+    await page.getByRole('button', { name: 'Expanded' }).click()
+    await page.waitForTimeout(300)
+    let expandedBuilder = new AxeBuilder({ page }).include('[data-testid="roster-screen"]')
+    for (const selector of LEGACY_ROLE_BADGE_SELECTORS) {
+      expandedBuilder = expandedBuilder.exclude(selector)
+    }
+    const expanded = await expandedBuilder.withRules(['color-contrast']).analyze()
+    expect(expanded.violations, JSON.stringify(expanded.violations, null, 2)).toEqual([])
+    // Restore the default so the Board leg below starts from the same state
+    // as before this leg existed.
+    await page.getByRole('button', { name: 'Compact' }).click()
+    await page.waitForTimeout(300)
+
     // Board view (GearBoard does not render PositionSelector/TankRoleSelector, so no exclude needed)
     await page.getByRole('button', { name: 'Board' }).click()
     await page.waitForLoadState('networkidle')

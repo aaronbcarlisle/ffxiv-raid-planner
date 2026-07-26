@@ -62,7 +62,7 @@ import { SORT_PRESETS, DEFAULT_SETTINGS } from '../../utils/constants';
 import { computeNextUpgradePriorities } from '../../utils/nextUpgradePriority';
 import { rosterAvgIlv, bisSlotTotals } from '../../utils/rosterReadiness';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
-import type { PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot } from '../../types';
+import type { PageMode, SnapshotPlayer, SortPreset, StaticGroup, TierSnapshot, ViewMode } from '../../types';
 
 /** Stable empty fallback so a missing/empty tier doesn't churn memo deps. */
 const EMPTY_PLAYERS: SnapshotPlayer[] = [];
@@ -231,13 +231,18 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   const hasSubstitutes = useMemo(() => sortedPlayers.some((p) => p.isSubstitute), [sortedPlayers]);
 
   // Re-click-expand-all targets (R-023 at card granularity): every configured
-  // card. Open seats have no gear body, so they carry no density override.
-  const configuredPlayerIds = useMemo(
-    () => sortedPlayers.filter((p) => p.configured).map((p) => p.id),
-    [sortedPlayers],
-  );
+  // card CURRENTLY RENDERED — hidden substitutes must not be stamped with
+  // overrides they'd reveal later in the wrong density (legacy's equivalent
+  // only touched rendered sections). Subs render in group view only when the
+  // subs section shows; in the flat view they sit inline unless hidden.
+  const configuredPlayerIds = useMemo(() => {
+    const subsVisible = groupView ? subsView && !subsHidden : !subsHidden;
+    return sortedPlayers
+      .filter((p) => p.configured && (!p.isSubstitute || subsVisible))
+      .map((p) => p.id);
+  }, [sortedPlayers, groupView, subsView, subsHidden]);
   const onDensityReselect = useCallback(
-    (mode: string) => {
+    (mode: ViewMode) => {
       if (mode === 'expanded') handleExpandedReselect(configuredPlayerIds);
     },
     [handleExpandedReselect, configuredPlayerIds],
@@ -492,7 +497,11 @@ export function Roster({ group, tier, canManage }: RosterProps) {
       {/* Phone-width density affordance (D-01 / ex-D-56 rider) — Cards only;
           the Board has no density axis. */}
       {rosterView === 'cards' && (
-        <RosterDensityFab density={density} onDensityChange={setDensity} />
+        <RosterDensityFab
+          density={density}
+          onDensityChange={setDensity}
+          onReselect={onDensityReselect}
+        />
       )}
     </div>
   );

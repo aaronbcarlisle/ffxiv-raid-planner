@@ -114,6 +114,14 @@ hardcoded colors only — it does **not** catch legacy's `text-[10px]`-class vio
 needs a real gate: **C1 adds `src/components/roster/**` to the eslint error-locked block**
 (v2-tree-only change), and each slice's director change-review runs a `git grep "text-\["`
 assert over the new files.
+*C1 addendum (2026-07-26, director change-review):* two limits of the shipped lock, so
+C2–C8 don't over-trust it — (1) `no-tiny-text` inspects JSX `className` attributes only;
+class strings hoisted to module consts escape it (e.g. `GearBoardCell.tsx`'s `text-[9px]`
+reports nothing inside the locked subtree) — the per-slice `git grep` assert remains the
+backstop; (2) the Characters-panel subtree (`Character*`, `RosterCharacter*`,
+`AddManualCharacterModal`, `LinkPlayerHubCharacterModal`) is carved out of the lock because
+it is the declared shared surface legacy mounts (flow map §2.2) — its tiny-text debt cannot
+be restyled without a V1-visible change; the carve-out dies with D-12/C8.
 
 ### 2.2 Gating
 

@@ -1,6 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useRosterDensity, ROSTER_DENSITY_KEY } from './useRosterDensity';
+import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { analytics } from '../../services/analytics';
 
 vi.mock('../../services/analytics', () => ({
@@ -28,6 +29,7 @@ function renderDensity(opts?: Partial<Parameters<typeof useRosterDensity>[0]>) {
 beforeEach(() => {
   localStorage.clear();
   trackMock.mockClear();
+  useSettingsPanelStore.setState({ isOpen: false });
 });
 
 describe('useRosterDensity', () => {
@@ -142,6 +144,24 @@ describe('useRosterDensity', () => {
     pressV();
     expect(result.current.density).toBe('compact');
     expect(bubbleListener).not.toHaveBeenCalled();
+    window.removeEventListener('keydown', bubbleListener);
+  });
+
+  it('is inert (swallowed, density unchanged) while the settings panel is open', () => {
+    // Density must not flip behind the panel — and the event still must not
+    // reach the frozen shared handler (it would write party-view-mode).
+    const bubbleListener = vi.fn();
+    window.addEventListener('keydown', bubbleListener);
+    const { result } = renderDensity();
+    act(() => useSettingsPanelStore.setState({ isOpen: true }));
+
+    pressV();
+    expect(result.current.density).toBe('compact');
+    expect(bubbleListener).not.toHaveBeenCalled();
+
+    act(() => useSettingsPanelStore.setState({ isOpen: false }));
+    pressV();
+    expect(result.current.density).toBe('expanded');
     window.removeEventListener('keydown', bubbleListener);
   });
 

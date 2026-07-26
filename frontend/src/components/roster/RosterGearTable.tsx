@@ -50,7 +50,10 @@ export function RosterGearTable({ gear, tomeWeapon }: RosterGearTableProps) {
   const bySlot = new Map(gear.map((g) => [g.slot, g]));
 
   return (
-    <table className="w-full text-sm">
+    // table-fixed: the header row's w-12/w-14 pin the BiS/Status columns and the
+    // slot column absorbs the rest, so a long nowrap item name truncates instead
+    // of inflating its column and clipping the headers off the card edge.
+    <table className="w-full table-fixed text-sm">
       <thead>
         <tr className="text-xs text-text-muted">
           <th className="py-1 text-left font-medium">Slot</th>
