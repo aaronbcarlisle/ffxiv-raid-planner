@@ -513,9 +513,9 @@ export function RosterCard({
                     <div className="inline-flex">{pip}</div>
                   </LongPressTooltip>
                 ) : (
-                  <span key={slot.slot} className="inline-flex">
+                  <div key={slot.slot} className="inline-flex">
                     {pip}
-                  </span>
+                  </div>
                 );
               })}
             </div>
