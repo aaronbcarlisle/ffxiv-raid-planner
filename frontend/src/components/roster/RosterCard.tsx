@@ -46,18 +46,22 @@ import { toast } from '../../stores/toastStore';
 import type { DragAttributes, DragListeners } from './dragTypes';
 import {
   calculateAverageItemLevel,
+  computeGearSlotUpdate,
+  fromGearState,
   isSlotComplete,
   requiresAugmentation,
   toGearState,
+  type GearState,
 } from '../../utils/calculations';
-import { canEditPlayer, type MemberRole } from '../../utils/permissions';
+import { canEditGear, canEditPlayer, type MemberRole } from '../../utils/permissions';
+import { eventBus, Events } from '../../lib/eventBus';
 import {
   getJobDisplayName,
   getRoleColor,
   getRoleForJob,
   getValidRole,
 } from '../../gamedata';
-import type { ContentType, SnapshotPlayer, ViewMode } from '../../types';
+import type { ContentType, GearSlot, SnapshotPlayer, ViewMode } from '../../types';
 
 const TOTAL_SLOTS = 11;
 
@@ -131,7 +135,25 @@ export function RosterCard({
   const role = getValidRole(player.role);
   const editPermission = canEditPlayer(userRole, player, currentUserId ?? undefined, isAdminAccess);
   const canEdit = editPermission.allowed;
+  // Gear cells gate on canEditGear (plan §2.2) — same rules, gear-specific
+  // messaging: owner/lead edit all, a member their own claimed card.
+  const canCycleGear = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess).allowed;
   const isExpanded = density === 'expanded';
+
+  // ── On-card gear editing (Phase C C2, D-02) ──
+  // The table's circle reports the cycled state; the mutation goes through the
+  // SHARED path (computeGearSlotUpdate — same as legacy PlayerCard and the
+  // Board). The analytics emit lives HERE, in the v2 card, with the shell
+  // discriminator — never inside the shared mutation path (plan §3 C2: a
+  // shared-path emit would make frozen V1 start POSTing analytics).
+  const handleSlotChange = async (slot: GearSlot, next: GearState) => {
+    try {
+      await actions.onUpdate(computeGearSlotUpdate(player, slot, fromGearState(next)));
+      eventBus.emit(Events.PLAYER_GEAR_CHANGED, { slot, state: next, shell: 'v2' });
+    } catch {
+      // Save errors already surface as a toast via the api layer.
+    }
+  };
 
   // ── Local UI state (name edit + job change) ──
   const [isEditingName, setIsEditingName] = useState(false);
@@ -431,7 +453,12 @@ export function RosterCard({
         {isExpanded ? (
           <>
             <div className="mt-3 border-t border-border-subtle pt-2">
-              <RosterGearTable gear={player.gear} tomeWeapon={player.tomeWeapon} />
+              <RosterGearTable
+                gear={player.gear}
+                tomeWeapon={player.tomeWeapon}
+                editable={canCycleGear}
+                onSlotChange={handleSlotChange}
+              />
             </div>
             <div className="flex-1" />
           </>

@@ -1,10 +1,12 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RosterCard } from './RosterCard';
 import { TooltipProvider } from '../primitives';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import type { SnapshotPlayer } from '../../types';
 import { useToastStore } from '../../stores/toastStore';
+import { eventBus, Events } from '../../lib/eventBus';
+import { computeGearSlotUpdate, fromGearState } from '../../utils/calculations';
 
 beforeEach(() => {
   // jsdom has no matchMedia; emulate a desktop/hover environment so useDevice
@@ -268,6 +270,120 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       // Claimed → the footer's right side is empty (no BiS text, no needs-N).
       renderCard(makePlayer({ id: 'p5', bisLink: undefined }));
       expect(screen.queryByText(/needs \d/)).not.toBeInTheDocument();
+    });
+  });
+
+  // ── On-card gear editing (Phase C C2, D-02) ──
+  describe('gear editing', () => {
+    /** A player whose gear uses REAL slot names so table rows bind to it. */
+    function makeGearedPlayer(overrides: Partial<SnapshotPlayer> = {}): SnapshotPlayer {
+      return makePlayer({
+        gear: [
+          { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+          { slot: 'legs', bisSource: 'tome', hasItem: true, isAugmented: false },
+        ] as unknown as SnapshotPlayer['gear'],
+        ...overrides,
+      });
+    }
+
+    function headCircle() {
+      return within(
+        screen.getByRole('rowheader', { name: /^Head/ }).closest('tr')!
+      ).getByRole('checkbox');
+    }
+
+    it('expanded + owner: clicking a circle mutates through the shared gear path', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      const player = makeGearedPlayer();
+      renderCard(player, { density: 'expanded', actions: { ...actions, onUpdate } });
+
+      fireEvent.click(headCircle());
+
+      // One shared mutation path (plan §2.1 / DoD 2): the card must send
+      // exactly what computeGearSlotUpdate produces for this cycle.
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      const expected = computeGearSlotUpdate(player, 'head', fromGearState('have'));
+      expect(onUpdate).toHaveBeenCalledWith(expected);
+      const sentGear = (onUpdate.mock.calls[0][0] as Partial<SnapshotPlayer>).gear!;
+      expect(sentGear.find((g) => g.slot === 'head')).toMatchObject({
+        hasItem: true,
+        currentSource: 'savage',
+      });
+    });
+
+    it('member editing their OWN claimed card: circles are live', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      renderCard(makeGearedPlayer({ userId: 'u1' }), {
+        density: 'expanded',
+        userRole: 'member',
+        currentUserId: 'u1',
+        canManage: false,
+        actions: { ...actions, onUpdate },
+      });
+
+      const circle = headCircle();
+      expect(circle).toHaveAttribute('aria-disabled', 'false');
+      fireEvent.click(circle);
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+    });
+
+    it("member on someone ELSE's card: circles stay read-only", () => {
+      const onUpdate = vi.fn();
+      renderCard(makeGearedPlayer({ userId: 'u9' }), {
+        density: 'expanded',
+        userRole: 'member',
+        currentUserId: 'u1',
+        canManage: false,
+        actions: { ...actions, onUpdate },
+      });
+
+      const circle = headCircle();
+      expect(circle).toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(circle);
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('emits player_gear_changed with the v2 shell field after the save resolves', async () => {
+      const received: unknown[] = [];
+      const unsub = eventBus.on(Events.PLAYER_GEAR_CHANGED, (data) => received.push(data));
+      try {
+        const onUpdate = vi.fn().mockResolvedValue(undefined);
+        renderCard(makeGearedPlayer(), { density: 'expanded', actions: { ...actions, onUpdate } });
+
+        fireEvent.click(headCircle());
+        await waitFor(() => expect(received).toHaveLength(1));
+        expect(received[0]).toEqual({ slot: 'head', state: 'have', shell: 'v2' });
+      } finally {
+        unsub();
+      }
+    });
+
+    it('does NOT emit when the save rejects', async () => {
+      const received: unknown[] = [];
+      const unsub = eventBus.on(Events.PLAYER_GEAR_CHANGED, (data) => received.push(data));
+      try {
+        const onUpdate = vi.fn().mockRejectedValue(new Error('save failed'));
+        renderCard(makeGearedPlayer(), { density: 'expanded', actions: { ...actions, onUpdate } });
+
+        fireEvent.click(headCircle());
+        await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(received).toHaveLength(0));
+      } finally {
+        unsub();
+      }
+    });
+
+    it('compact pips stay read-only even for an owner (editing lives in the table)', () => {
+      const onUpdate = vi.fn();
+      renderCard(makeGearedPlayer(), { actions: { ...actions, onUpdate } });
+
+      const pips = screen.getAllByRole('checkbox');
+      expect(pips.length).toBeGreaterThan(0);
+      for (const pip of pips) {
+        expect(pip).toHaveAttribute('aria-disabled', 'true');
+      }
+      fireEvent.click(pips[0]);
+      expect(onUpdate).not.toHaveBeenCalled();
     });
   });
 });
