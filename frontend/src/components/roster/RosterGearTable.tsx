@@ -72,12 +72,15 @@ export function RosterGearTable({ gear, tomeWeapon }: RosterGearTableProps) {
           const isWeapon = slot === 'weapon';
           const glyph = status.bisSource ? SOURCE_GLYPHS[status.bisSource] : null;
           const iconUrl = status.itemIcon || GEAR_SLOT_ICONS[slot];
+          // Accessible row name mirrors the full visible content (slot + item
+          // detail) — jsx-a11y's label traversal can't see the nested text.
+          const rowLabel = status.itemName
+            ? `${GEAR_SLOT_NAMES[slot]}, ${status.itemName}${status.itemLevel ? ` i${status.itemLevel}` : ''}`
+            : GEAR_SLOT_NAMES[slot];
 
           return (
             <tr key={slot} className="border-t border-border-subtle">
-              {/* aria-label: the rowheader's name is the slot; the visible
-                  item-name detail sits below jsx-a11y's traversal depth. */}
-              <th scope="row" aria-label={GEAR_SLOT_NAMES[slot]} className="py-1.5 pr-2 text-left font-normal">
+              <th scope="row" aria-label={rowLabel} className="py-1.5 pr-2 text-left font-normal">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <img
                     src={iconUrl}

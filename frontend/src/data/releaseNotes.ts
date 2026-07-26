@@ -70,7 +70,7 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'New UI: roster card density axis returns (Phase C, slice C1)',
         description:
-          'The new-UI roster cards regain the expanded ⇄ compact axis (D-01): a Compact/Expanded toolbar switch, per-card expand/collapse chevron, re-click-Expanded to expand/collapse all, the V shortcut, a phone-width floating toggle, and an expanded body showing the read-only gear table (item icons, item name + iLv, BiS-source glyphs, status circles). Read-only in this slice — on-card editing lands in C2. Density is stored under a v2-scoped key, so the classic UI’s saved view is untouched.',
+          'The new-UI roster cards regain the expanded ⇄ compact axis (D-01): a global Compact/Expanded toolbar switch (plus the V shortcut) swaps every card between the pip strip and a read-only gear table (item icons, item name + iLv, BiS-source glyphs, status circles). Cards also pick up v1’s responsive columns with equal heights per row and a one-axis status split (progress line owns the BiS story, footer owns the claim story). Read-only in this slice — on-card editing lands in C2. Density is stored under a v2-scoped key, so the classic UI’s saved view is untouched.',
         pr: 187,
         prTitle: 'feat(redesign): Phase C slice C1 — roster card chassis (density axis, D-01)',
       },

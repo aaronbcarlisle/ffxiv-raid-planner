@@ -86,7 +86,7 @@ import type { ContentType, MemberRole, SnapshotPlayer, ViewMode } from '../../ty
  * cards' h-full/spacer interior (RosterCard) give equal heights per row.
  */
 const PCARDS_GRID = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl gap-3.5';
-const CARDS_MAX_W = 'max-w-[120rem]';
+const CARDS_MAX_W = 'mx-auto max-w-[120rem]';
 
 export interface RosterCardsProps {
   players: SnapshotPlayer[];
