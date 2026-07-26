@@ -13,17 +13,15 @@
  */
 
 import { GearStatusCircle } from '../ui/GearStatusCircle';
-import type { GearSlotStatus, GearSource, TomeWeaponStatus } from '../../types';
-import { GEAR_SLOTS, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES } from '../../types';
+import type { GearSlotStatus, TomeWeaponStatus } from '../../types';
+import {
+  BIS_SOURCE_COLORS,
+  BIS_SOURCE_NAMES,
+  GEAR_SLOTS,
+  GEAR_SLOT_ICONS,
+  GEAR_SLOT_NAMES,
+} from '../../types';
 import { requiresAugmentation, toGearState } from '../../utils/calculations';
-
-/** Read-only BiS-source glyphs (C3 replaces these with the shared selector). */
-const SOURCE_GLYPHS: Record<GearSource, { label: string; className: string }> = {
-  raid: { label: 'R', className: 'text-gear-raid' },
-  tome: { label: 'T', className: 'text-gear-tome' },
-  base_tome: { label: 'BT', className: 'text-gear-base-tome' },
-  crafted: { label: 'C', className: 'text-gear-crafted' },
-};
 
 /**
  * Icon state treatment, condensed from legacy `GearTable` SlotIcon: real item
@@ -70,7 +68,6 @@ export function RosterGearTable({ gear, tomeWeapon }: RosterGearTableProps) {
             isAugmented: false,
           };
           const isWeapon = slot === 'weapon';
-          const glyph = status.bisSource ? SOURCE_GLYPHS[status.bisSource] : null;
           const iconUrl = status.itemIcon || GEAR_SLOT_ICONS[slot];
           // Accessible row name mirrors the full visible content (slot + item
           // detail) — jsx-a11y's label traversal can't see the nested text.
@@ -106,16 +103,18 @@ export function RosterGearTable({ gear, tomeWeapon }: RosterGearTableProps) {
                   // BiS weapon is ALWAYS raid; "+T" marks an interim tome
                   // weapon being tracked (the sub-row itself is C4).
                   <span className="text-xs font-bold">
-                    <span className="text-gear-raid">R</span>
+                    <span className={BIS_SOURCE_COLORS.raid}>{BIS_SOURCE_NAMES.raid}</span>
                     {tomeWeapon.pursuing && (
                       <>
                         <span className="font-normal text-text-muted">+</span>
-                        <span className="text-gear-tome">T</span>
+                        <span className={BIS_SOURCE_COLORS.tome}>{BIS_SOURCE_NAMES.tome}</span>
                       </>
                     )}
                   </span>
-                ) : glyph ? (
-                  <span className={`text-xs font-bold ${glyph.className}`}>{glyph.label}</span>
+                ) : status.bisSource ? (
+                  <span className={`text-xs font-bold ${BIS_SOURCE_COLORS[status.bisSource]}`}>
+                    {BIS_SOURCE_NAMES[status.bisSource]}
+                  </span>
                 ) : (
                   <span className="text-xs text-text-muted">—</span>
                 )}
