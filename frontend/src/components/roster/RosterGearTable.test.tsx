@@ -5,6 +5,16 @@ import { TooltipProvider } from '../primitives';
 import type { GearSlotStatus, TomeWeaponStatus } from '../../types';
 
 beforeEach(() => {
+  // Radix Popper (BiSSourceSelector's popover) needs ResizeObserver, which
+  // jsdom lacks.
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
   // jsdom has no matchMedia; emulate a desktop/hover environment so useDevice
   // (via Tooltip/LongPressTooltip) resolves without throwing.
   vi.stubGlobal(
@@ -143,6 +153,112 @@ describe('RosterGearTable — C2 editing', () => {
 
     renderTable([slot({ slot: 'feet', bisSource: 'raid', hasItem: false })]);
     expect(circleIn(/^Feet/)).not.toHaveAttribute('data-state');
+  });
+
+  // ── BiS-source tools (Phase C C3, D-03) ──
+  describe('BiS-source tools', () => {
+    function bisTrigger(rowName: RegExp) {
+      return within(screen.getByRole('rowheader', { name: rowName }).closest('tr')!).getByRole(
+        'button',
+        { name: /BiS source/ }
+      );
+    }
+
+    it('interactive: the BiS cell mounts the shared source selector and reports a selection', () => {
+      const onSourceChange = vi.fn();
+      renderTable([slot({ slot: 'head', bisSource: 'raid', hasItem: false })], {
+        editable: true,
+        onSourceChange,
+      });
+
+      fireEvent.click(bisTrigger(/^Head/));
+      // No item data on the slot → no reset-warning confirm, straight through.
+      fireEvent.click(screen.getByRole('button', { name: /^Tome:/ }));
+      expect(onSourceChange).toHaveBeenCalledWith('head', 'tome');
+    });
+
+    it('a slot with imported item data gets the reset-warning confirm before the change', () => {
+      const onSourceChange = vi.fn();
+      renderTable(
+        [
+          slot({
+            slot: 'head',
+            bisSource: 'raid',
+            hasItem: true,
+            itemName: 'Test Helm',
+            itemLevel: 730,
+          }),
+        ],
+        { editable: true, onSourceChange }
+      );
+
+      fireEvent.click(bisTrigger(/^Head/));
+      fireEvent.click(screen.getByRole('button', { name: /^Crafted:/ }));
+      // The shared leaf's ConfirmModal intercepts; nothing reported yet.
+      expect(onSourceChange).not.toHaveBeenCalled();
+      expect(screen.getByText(/will clear the current gear data/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+      expect(onSourceChange).toHaveBeenCalledWith('head', 'crafted');
+    });
+
+    it('read-only: the selector renders disabled and opens nothing', () => {
+      const onSourceChange = vi.fn();
+      renderTable([slot({ slot: 'head', bisSource: 'raid', hasItem: false })], { onSourceChange });
+
+      const trigger = bisTrigger(/^Head/);
+      expect(trigger).toBeDisabled();
+      fireEvent.click(trigger);
+      expect(screen.queryByRole('button', { name: /^Tome:/ })).not.toBeInTheDocument();
+      expect(onSourceChange).not.toHaveBeenCalled();
+    });
+
+    it('a miscategorized slot gets the per-slot Fix button; correct slots do not', () => {
+      const onSourceFix = vi.fn();
+      renderTable(
+        [
+          // Crafted-pattern name at crafted iLv but marked raid → fixable.
+          slot({
+            slot: 'head',
+            bisSource: 'raid',
+            hasItem: true,
+            itemName: 'Archeo Kingdom Coat of Fending',
+            itemLevel: 770,
+          }),
+          slot({ slot: 'body', bisSource: 'raid', hasItem: false }),
+        ],
+        { editable: true, onSourceChange: vi.fn(), onSourceFix }
+      );
+
+      const fix = screen.getByRole('button', { name: 'Fix BiS source to Crafted' });
+      fireEvent.click(fix);
+      expect(onSourceFix).toHaveBeenCalledWith('head', 'crafted');
+      expect(screen.getAllByRole('button', { name: /^Fix BiS source/ })).toHaveLength(1);
+    });
+
+    it('no Fix affordance when read-only', () => {
+      renderTable(
+        [
+          slot({
+            slot: 'head',
+            bisSource: 'raid',
+            hasItem: true,
+            itemName: 'Archeo Kingdom Coat of Fending',
+            itemLevel: 770,
+          }),
+        ],
+        { onSourceFix: vi.fn() }
+      );
+      expect(screen.queryByRole('button', { name: /^Fix BiS source/ })).not.toBeInTheDocument();
+    });
+
+    it('the weapon row keeps its static raid glyph (the weapon selector is C4 scope)', () => {
+      renderTable([slot({ slot: 'weapon', bisSource: 'raid', hasItem: false })], {
+        editable: true,
+        onSourceChange: vi.fn(),
+      });
+      const weaponRow = screen.getByRole('rowheader', { name: /^Weapon/ }).closest('tr')!;
+      expect(within(weaponRow).queryByRole('button')).not.toBeInTheDocument();
+    });
   });
 
   it('slots with item data get the hover item-card wiring; bare slots do not', () => {

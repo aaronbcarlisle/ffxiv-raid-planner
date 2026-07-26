@@ -9,6 +9,16 @@ import { eventBus, Events } from '../../lib/eventBus';
 import { computeGearSlotUpdate, fromGearState } from '../../utils/calculations';
 
 beforeEach(() => {
+  // Radix Popper (BiSSourceSelector's popover) needs ResizeObserver, which
+  // jsdom lacks.
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  );
   // jsdom has no matchMedia; emulate a desktop/hover environment so useDevice
   // (via the selectors' Tooltip) resolves without throwing.
   vi.stubGlobal(
@@ -389,6 +399,111 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       }
       fireEvent.click(pips[0]);
       expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    // ── BiS-source tools (Phase C C3, D-03) ──
+    it('a source selection flows through the shared path with the legacy reset shape', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      const player = makeGearedPlayer();
+      renderCard(player, { density: 'expanded', actions: { ...actions, onUpdate } });
+
+      const headRow = screen.getByRole('rowheader', { name: /^Head/ }).closest('tr')!;
+      fireEvent.click(within(headRow).getByRole('button', { name: /BiS source/ }));
+      // Bare slot (no item data) → no confirm, straight through.
+      fireEvent.click(screen.getByRole('button', { name: /^Tome:/ }));
+
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      // Changing source resets progress + item metadata (legacy
+      // GearTable.handleSourceChange shape) through computeGearSlotUpdate.
+      const expected = computeGearSlotUpdate(player, 'head', {
+        bisSource: 'tome',
+        hasItem: false,
+        isAugmented: false,
+        currentSource: undefined,
+        itemName: undefined,
+        itemLevel: undefined,
+        itemIcon: undefined,
+        itemStats: undefined,
+      });
+      expect(onUpdate).toHaveBeenCalledWith(expected);
+    });
+
+    it('re-selecting the current source sends a plain bisSource update (no reset)', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      const player = makeGearedPlayer();
+      renderCard(player, { density: 'expanded', actions: { ...actions, onUpdate } });
+
+      const headRow = screen.getByRole('rowheader', { name: /^Head/ }).closest('tr')!;
+      fireEvent.click(within(headRow).getByRole('button', { name: /BiS source/ }));
+      fireEvent.click(screen.getByRole('button', { name: /^Raid:/ }));
+
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      expect(onUpdate).toHaveBeenCalledWith(computeGearSlotUpdate(player, 'head', { bisSource: 'raid' }));
+    });
+
+    it('the per-slot Fix corrects bisSource while PRESERVING progress and metadata', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      const player = makePlayer({
+        gear: [
+          {
+            slot: 'head',
+            bisSource: 'raid',
+            hasItem: true,
+            isAugmented: false,
+            itemName: 'Archeo Kingdom Coat of Fending',
+            itemLevel: 770,
+          },
+        ] as unknown as SnapshotPlayer['gear'],
+      });
+      renderCard(player, { density: 'expanded', actions: { ...actions, onUpdate } });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Fix BiS source to Crafted' }));
+
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      expect(onUpdate).toHaveBeenCalledWith(computeGearSlotUpdate(player, 'head', { bisSource: 'crafted' }));
+      const sentGear = (onUpdate.mock.calls[0][0] as Partial<SnapshotPlayer>).gear!;
+      expect(sentGear.find((g) => g.slot === 'head')).toMatchObject({
+        bisSource: 'crafted',
+        hasItem: true,
+        itemName: 'Archeo Kingdom Coat of Fending',
+      });
+    });
+
+    it('the fix-all banner shows the count and bulk-corrects in ONE update', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      const player = makePlayer({
+        gear: [
+          { slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false, itemName: 'Archeo Kingdom Coat of Fending', itemLevel: 770 },
+          { slot: 'legs', bisSource: 'tome', hasItem: true, isAugmented: false, itemName: 'Bygone Brass Brais of Maiming', itemLevel: 780 },
+          { slot: 'body', bisSource: 'raid', hasItem: false, isAugmented: false },
+        ] as unknown as SnapshotPlayer['gear'],
+      });
+      renderCard(player, { density: 'expanded', actions: { ...actions, onUpdate } });
+
+      expect(screen.getByText('2 slots need BiS source updates')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Update BiS Source/ }));
+
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      const sent = (onUpdate.mock.calls[0][0] as Partial<SnapshotPlayer>).gear!;
+      expect(sent.find((g) => g.slot === 'head')).toMatchObject({ bisSource: 'crafted', hasItem: true });
+      expect(sent.find((g) => g.slot === 'legs')).toMatchObject({ bisSource: 'base_tome', hasItem: true });
+      expect(sent.find((g) => g.slot === 'body')).toMatchObject({ bisSource: 'raid' });
+    });
+
+    it('the banner is expanded-only and absent when nothing is miscategorized', () => {
+      const miscat = makePlayer({
+        id: 'p7',
+        gear: [
+          { slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false, itemName: 'Archeo Kingdom Coat of Fending', itemLevel: 770 },
+        ] as unknown as SnapshotPlayer['gear'],
+      });
+      // Compact density → no banner even with a fixable slot.
+      renderCard(miscat);
+      expect(screen.queryByText(/need(s)? BiS source update/)).not.toBeInTheDocument();
+
+      // Expanded but everything correct → no banner.
+      renderCard(makeGearedPlayer({ id: 'p8' }), { density: 'expanded' });
+      expect(screen.queryByText(/need(s)? BiS source update/)).not.toBeInTheDocument();
     });
 
     it('compact pips with item data carry the hover item-card wiring (inspect, not edit)', () => {
