@@ -65,7 +65,15 @@ import {
   getRoleForJob,
   getValidRole,
 } from '../../gamedata';
-import type { ContentType, GearSlot, SnapshotPlayer, ViewMode } from '../../types';
+import type {
+  ContentType,
+  GearSlot,
+  GearSlotStatus,
+  GearSource,
+  SnapshotPlayer,
+  ViewMode,
+} from '../../types';
+import { BiSSourceFixBanner } from '../player/BiSSourceFixBanner';
 
 const TOTAL_SLOTS = 11;
 
@@ -141,7 +149,8 @@ export function RosterCard({
   const canEdit = editPermission.allowed;
   // Gear cells gate on canEditGear (plan §2.2) — same rules, gear-specific
   // messaging: owner/lead edit all, a member their own claimed card.
-  const canCycleGear = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess).allowed;
+  const gearPermission = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess);
+  const canCycleGear = gearPermission.allowed;
   const isExpanded = density === 'expanded';
 
   // ── On-card gear editing (Phase C C2, D-02) ──
@@ -159,6 +168,55 @@ export function RosterCard({
       // toasts 403s only; other failures roll the circle back silently via
       // the tierStore rollback. Kept for parity — revisit with the store.
     }
+  };
+
+  // ── BiS-source tools (Phase C C3, D-03) ──
+  // A real source change (or clear) resets progress + item metadata so state
+  // stays consistent — the exact legacy GearTable.handleSourceChange shape,
+  // committed through the same shared computeGearSlotUpdate path. The
+  // reset-warning confirm lives inside the shared BiSSourceSelector leaf.
+  const handleSourceChange = async (slot: GearSlot, source: GearSource | null) => {
+    const current = player.gear.find((g) => g.slot === slot);
+    const changing = source !== (current?.bisSource ?? null);
+    const updates: Partial<GearSlotStatus> =
+      source === null || changing
+        ? {
+            bisSource: source,
+            hasItem: false,
+            isAugmented: false,
+            currentSource: undefined,
+            itemName: undefined,
+            itemLevel: undefined,
+            itemIcon: undefined,
+            itemStats: undefined,
+          }
+        : { bisSource: source };
+    try {
+      await actions.onUpdate(computeGearSlotUpdate(player, slot, updates));
+    } catch {
+      // Inherited V1: api layer toasts 403s; store rollback otherwise.
+    }
+  };
+
+  // Fix corrects a miscategorized bisSource while PRESERVING progress and
+  // item metadata (legacy handleBisSourceFix).
+  const handleSourceFix = async (slot: GearSlot, source: GearSource) => {
+    try {
+      await actions.onUpdate(computeGearSlotUpdate(player, slot, { bisSource: source }));
+    } catch {
+      // Inherited V1: api layer toasts 403s; store rollback otherwise.
+    }
+  };
+
+  // Bulk fix from the shared banner — ONE update over the mapped gear array
+  // (legacy PlayerCard.handleFixAllBisSources). No catch: the banner awaits
+  // this and owns both the success and the failure toast.
+  const handleFixAllSources = (fixes: Array<{ slot: string; bisSource: GearSource }>) => {
+    const newGear = player.gear.map((g) => {
+      const fix = fixes.find((f) => f.slot === g.slot);
+      return fix ? { ...g, bisSource: fix.bisSource } : g;
+    });
+    return actions.onUpdate({ gear: newGear });
   };
 
   // ── Local UI state (name edit + job change) ──
@@ -461,11 +519,24 @@ export function RosterCard({
         {isExpanded ? (
           <>
             <div className="mt-3 border-t border-border-subtle pt-2">
+              {/* C3 (D-03): shared fix-all banner — expanded-only, like
+                  legacy PlayerCard; permission gating lives inside the leaf. */}
+              <BiSSourceFixBanner
+                gear={player.gear}
+                player={player}
+                userRole={userRole}
+                currentUserId={currentUserId ?? null}
+                isAdminAccess={isAdminAccess}
+                onFixAllSources={handleFixAllSources}
+              />
               <RosterGearTable
                 gear={player.gear}
                 tomeWeapon={player.tomeWeapon}
                 editable={canCycleGear}
                 onSlotChange={handleSlotChange}
+                onSourceChange={handleSourceChange}
+                onSourceFix={handleSourceFix}
+                disabledReason={gearPermission.reason}
               />
             </div>
             <div className="flex-1" />

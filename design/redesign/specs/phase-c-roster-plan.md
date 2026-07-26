@@ -125,6 +125,14 @@ backstop; (2) the Characters-panel subtree (`Character*`, `RosterCharacter*`,
 `AddManualCharacterModal`, `LinkPlayerHubCharacterModal`) is carved out of the lock because
 it is the declared shared surface legacy mounts (flow map §2.2) — its tiny-text debt cannot
 be restyled without a V1-visible change; the carve-out dies with D-12/C8.
+*C3 addendum (2026-07-26, director change-review):* (3) a limit of the **contrast e2e pin**:
+axe-core cannot resolve Tailwind-4 `oklab(... / α)` alpha tints, so tinted-badge pairs
+(`text-gear-X` on `bg-gear-X/20` — the shared `BiSSourceSelector` trigger, same family as
+the legacy role badges) land in axe "incomplete", **silently unscanned** — the spec's
+`violations == []` assert stays green while the pair measures **~3.0–3.5:1 in light theme**
+(sub-AA at 12px bold). This is FROZEN SHARED-LEAF debt legacy has always shipped; fixing the
+classes is a V1-visible change → queued as a **shared-leaf contrast slice** (both shells
+benefit) at Phase-C closeout / polish, NOT fixed in C3. Recorded on matrix D-03.
 
 ### 2.2 Gating
 

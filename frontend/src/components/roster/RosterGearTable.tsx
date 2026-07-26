@@ -18,9 +18,12 @@
  */
 
 import type { ReactNode } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
-import { LongPressTooltip, Tooltip } from '../primitives';
+import { BiSSourceSelector } from '../player/BiSSourceSelector';
+import { Button, LongPressTooltip, Tooltip } from '../primitives';
+import { getCorrectBisSource } from '../../utils/bisSourceDetection';
 import type { GearSlot, GearSlotStatus, GearSource, TomeWeaponStatus } from '../../types';
 import {
   BIS_SOURCE_COLORS,
@@ -81,13 +84,36 @@ export interface RosterGearTableProps {
    * `getNextGearState` machine computes it). The parent owns the mutation.
    */
   onSlotChange?: (slot: GearSlot, next: GearState) => void;
+  /**
+   * C3 (D-03): a BiS-source selection from the shared selector popover (null =
+   * Clear Slot). The reset-warning confirm lives inside the shared leaf; the
+   * parent owns the reset-shaped mutation.
+   */
+  onSourceChange?: (slot: GearSlot, source: GearSource | null) => void;
+  /**
+   * C3 (D-03): the per-slot Fix button — corrects a miscategorized
+   * `bisSource` while PRESERVING progress and item metadata.
+   */
+  onSourceFix?: (slot: GearSlot, source: GearSource) => void;
+  /** Why editing is unavailable (shown by the disabled selector). */
+  disabledReason?: string;
 }
 
-export function RosterGearTable({ gear, tomeWeapon, editable = false, onSlotChange }: RosterGearTableProps) {
+export function RosterGearTable({
+  gear,
+  tomeWeapon,
+  editable = false,
+  onSlotChange,
+  onSourceChange,
+  onSourceFix,
+  disabledReason,
+}: RosterGearTableProps) {
   const bySlot = new Map(gear.map((g) => [g.slot, g]));
   // Affordances track ACTUAL interactivity: `editable` without a handler
-  // would advertise a cycle that persists nothing.
+  // would advertise an action that persists nothing (one flag per handler).
   const interactive = editable && !!onSlotChange;
+  const sourceInteractive = editable && !!onSourceChange;
+  const fixInteractive = editable && !!onSourceFix;
 
   return (
     // table-fixed: the header row's w-12/w-14 pin the BiS/Status columns and the
@@ -204,12 +230,52 @@ export function RosterGearTable({ gear, tomeWeapon, editable = false, onSlotChan
                       </>
                     )}
                   </span>
-                ) : status.bisSource ? (
-                  <span className={`text-xs font-bold ${BIS_SOURCE_COLORS[status.bisSource]}`}>
-                    {BIS_SOURCE_NAMES[status.bisSource]}
-                  </span>
                 ) : (
-                  <span className="text-xs text-text-muted">—</span>
+                  // C3 (D-03): the shared R/T/C/BT selector popover (its
+                  // reset-warning confirm lives inside the leaf) + the
+                  // per-slot Fix for miscategorized imports. Layout forked
+                  // from legacy GearTable's BiS cell: Fix hangs off the
+                  // selector's left so the selector's position never shifts.
+                  (() => {
+                    const correctSource = fixInteractive ? getCorrectBisSource(status) : null;
+                    return (
+                      <div className="relative flex items-center justify-center">
+                        {correctSource && (
+                          <div className="absolute right-full mr-0.5">
+                            <Tooltip content={`Fix: Set to ${BIS_SOURCE_FULL_NAMES[correctSource]}`}>
+                              {/* Button-not-IconButton is deliberate: IconButton has no
+                                  warning variant and forces a 44px mobile min-size.
+                                  Same warning tokens as legacy's raw button; geometry
+                                  differs (xs pill vs legacy's 24px square) — recorded
+                                  delta, matrix D-03. */}
+                              <Button
+                                variant="warning"
+                                size="xs"
+                                aria-label={`Fix BiS source to ${BIS_SOURCE_FULL_NAMES[correctSource]}`}
+                                onClick={() => onSourceFix?.(slot, correctSource)}
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" />
+                              </Button>
+                            </Tooltip>
+                          </div>
+                        )}
+                        <BiSSourceSelector
+                          bisSource={status.bisSource}
+                          onSelect={(source) => onSourceChange?.(slot, source)}
+                          disabled={!sourceInteractive}
+                          disabledReason={disabledReason}
+                          hasItemData={!!status.itemName}
+                          itemName={status.itemName}
+                          itemIcon={status.itemIcon}
+                          slotIcon={GEAR_SLOT_ICONS[slot]}
+                          itemLevel={status.itemLevel}
+                          itemStats={status.itemStats}
+                          hasItem={status.hasItem}
+                          isAugmented={status.isAugmented}
+                        />
+                      </div>
+                    );
+                  })()
                 )}
               </td>
               <td className="py-1.5">

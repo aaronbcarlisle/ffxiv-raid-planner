@@ -68,6 +68,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'feature',
+        title: 'New UI: BiS-source tools return to the roster card (Phase C, slice C3)',
+        description:
+          'The new-UI roster card’s gear table regains per-slot BiS-source control (D-03): the R/T/C/BT selector popover (with the reset warning when changing a slot that has imported data), the per-slot Fix button for miscategorized imports (corrects the source while keeping progress and item data), and the “N slots need BiS source updates” banner that bulk-corrects in one save. All through the same shared selector, banner, and detection logic the classic card uses. The weapon row’s selector arrives with the tome-weapon sub-row in C4.',
+        pr: 189,
+        prTitle: 'feat(redesign): Phase C slice C3 — BiS-source tools (D-03)',
+      },
+      {
+        internal: true,
+        category: 'feature',
         title: 'New UI: on-card gear editing returns (Phase C, slice C2)',
         description:
           'The new-UI roster cards’ expanded gear table is now editable (D-02) for anyone who can edit that card’s gear — owners and leads on every card, members on their own claimed card. Status circles click-to-cycle through the same shared state machine the classic card and the Board use (missing → have → augmented for tome slots), and they’re keyboard-operable (focusable, Enter/Space) with announced states. Slots with item data show the detailed hover item card, and editable circles carry cycle-hint tooltips. Compact pips stay read-only, matching the classic compact view.',
