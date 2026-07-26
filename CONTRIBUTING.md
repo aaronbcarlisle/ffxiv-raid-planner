@@ -18,10 +18,12 @@ idea to merged PR.
 
 Prerequisites: **Node.js 20.19+** with [pnpm](https://pnpm.io), **Python 3.11+**.
 
-Do the one-time setup first — create the backend venv, install backend and frontend
-dependencies, and configure `backend/.env` — following the step-by-step instructions
-in the [README](README.md#getting-started). The backend runs fine on SQLite locally —
-no PostgreSQL needed for development.
+Do the one-time setup first — create the backend venv, install dependencies, and
+configure `backend/.env` — following the step-by-step instructions in the
+[README](README.md#getting-started), with one contributor-specific difference:
+install backend dependencies with `pip install -r requirements-dev.txt` (it includes
+`requirements.txt` plus pytest and tooling, which the backend test gate below needs).
+The backend runs fine on SQLite locally — no PostgreSQL needed for development.
 
 After that, the helper script starts both servers in one command:
 
@@ -35,16 +37,25 @@ exist, and it never installs dependencies.)
 
 ## Quality Gates
 
-PRs to `main` must pass five required CI checks. Run the same things locally before
-pushing:
+PRs to `main` must pass five required CI jobs: **Frontend Checks**, **Backend Tests**,
+**Migration Graph Check**, **Migration Execution (PostgreSQL)**, and **Release Notes
+Required**. The commands below reproduce those gates locally:
 
 | Check | Command |
 |-------|---------|
 | Build + types | `pnpm build` (from `frontend/`) |
+| Type check (CI also runs this directly) | `pnpm tsc --noEmit` (from `frontend/`) |
+| Design tokens in sync | `pnpm tokens:check` (from `frontend/`) |
 | Lint | `pnpm lint` (from `frontend/`) |
 | Design system | `pnpm check:design-system:strict` (from `frontend/`) |
 | Frontend tests | `pnpm test` (from `frontend/`) |
+| Duplication | `pnpm dupes` (from `frontend/`) |
 | Backend tests | `pytest tests/ -q` (from `backend/`, venv active) |
+
+CI also runs **Scripts Tests** (`npm test` from `scripts/` — run it if you touch
+`scripts/`) and the migration jobs verify the Alembic chain has a single head and
+upgrades cleanly against PostgreSQL — if you add a migration, confirm
+`alembic upgrade head` works locally first.
 
 > ⚠️ `pnpm build` runs `tsc -b`, which is **stricter** than `tsc --noEmit`. Don't
 > substitute one for the other — a clean `tsc --noEmit` can still fail CI.

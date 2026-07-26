@@ -85,7 +85,7 @@ cd ffxiv-raid-planner
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt  # contributors: use requirements-dev.txt (adds pytest + tooling)
 cp .env.example .env  # Configure Discord OAuth credentials
 uvicorn app.main:app --reload --port 8001
 
