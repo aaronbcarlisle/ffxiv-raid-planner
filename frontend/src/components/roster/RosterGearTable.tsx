@@ -212,10 +212,16 @@ export function RosterGearTable({
                   // Hover item card (D-02): the legacy detailed gear tooltip,
                   // via the SHARED ItemHoverCard leaf. Ledger-jump affordances
                   // (Alt+Click / context menu) are C7, not here.
+                  // bottom/start, NOT side="right": the trigger is the whole
+                  // (wide) slot cell, so a right-side popup lands at the
+                  // column's far edge — visually over the NEXT card, nowhere
+                  // near the cursor (user report on PR #191). Bottom + start
+                  // hugs the hovered row's icon instead.
                   <LongPressTooltip
                     delayDuration={200}
-                    side="right"
-                    sideOffset={8}
+                    side="bottom"
+                    align="start"
+                    sideOffset={4}
                     content={
                       <ItemHoverCard
                         itemName={status.itemName}
