@@ -230,7 +230,13 @@ B–F land as normal PRs.
 
 - **D — Loot/History QoL:** scope = Phase B matrix decisions. Known candidates: AllWeeks
   spreadsheet view, weekly-grid density, Alt-shortcuts, TeamSummary books/materials
-  ledger (D-P3-3 gap), edit-flow affordances, materials summary.
+  ledger (D-P3-3 gap), edit-flow affordances, materials summary. **Received from the
+  Phase-C plan (2026-07-26):** D-18 Split Planner wiring (ruled RESTORE; entry point per
+  flow-map F-04, deferred into this phase's design), retargeting the D-05 gear→ledger
+  jumps from the History deep-links to Loot ▸ Log once the triad ships, and D-55's loot
+  half (grid-cell / table-row modifier-clicks).
+  **Stage-2 receiving note (same date):** the F-05(b) Team Gear-Sync dashboard moves from
+  PluginPage into the Roster area when Stage 2 dissolves the More/Plugin destinations.
 - **E — Polish:** the ~20 mechanical holistic items (a11y: GearBoardCell/palette
   arrow-keys/books table; RecipientPicker rank-chip contrast; copy pass [static vocab,
   TrackCard model-vocab leak, edit-mode picker copy]; memoization; tooltips; heatmap
