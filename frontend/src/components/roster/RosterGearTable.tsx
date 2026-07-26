@@ -85,6 +85,9 @@ export interface RosterGearTableProps {
 
 export function RosterGearTable({ gear, tomeWeapon, editable = false, onSlotChange }: RosterGearTableProps) {
   const bySlot = new Map(gear.map((g) => [g.slot, g]));
+  // Affordances track ACTUAL interactivity: `editable` without a handler
+  // would advertise a cycle that persists nothing.
+  const interactive = editable && !!onSlotChange;
 
   return (
     // table-fixed: the header row's w-12/w-14 pin the BiS/Status columns and the
@@ -96,7 +99,7 @@ export function RosterGearTable({ gear, tomeWeapon, editable = false, onSlotChan
           <th className="py-1 text-left font-medium">Slot</th>
           <th className="w-12 px-1.5 py-1 text-center font-medium">BiS</th>
           <th className="w-14 px-1.5 py-1 text-center font-medium">
-            {editable ? (
+            {interactive ? (
               // Column-level cycle hint (legacy GearTable's Status-header
               // tooltip). RECORDED DELTA vs legacy (R-097 showed it to all
               // roles): shown only when the circles actually cycle — don't
@@ -216,8 +219,8 @@ export function RosterGearTable({ gear, tomeWeapon, editable = false, onSlotChan
                     bisSource={circleSource}
                     requiresAugmentation={circleRequiresAug}
                     onChange={(next) => onSlotChange?.(slot, next)}
-                    disabled={!editable}
-                    tooltip={editable && circleSource ? cycleHint(circleSource, circleRequiresAug) : undefined}
+                    disabled={!interactive}
+                    tooltip={interactive && circleSource ? cycleHint(circleSource, circleRequiresAug) : undefined}
                   />
                 </div>
               </td>

@@ -110,6 +110,16 @@ describe('RosterGearTable — C2 editing', () => {
     expect(onSlotChange).toHaveBeenCalledWith('earring', 'have');
   });
 
+  it('editable without an onSlotChange handler renders inert (no hints, disabled circles)', () => {
+    // The editing affordances must track actual interactivity: `editable`
+    // with no handler would otherwise advertise a cycle that persists nothing.
+    renderTable([slot({ slot: 'feet', bisSource: 'raid', hasItem: false })], { editable: true });
+
+    const circle = circleIn(/^Feet/);
+    expect(circle).toHaveAttribute('aria-disabled', 'true');
+    expect(circle).not.toHaveAttribute('data-state');
+  });
+
   it('read-only (C1 default): circles are disabled and clicks report nothing', () => {
     const onSlotChange = vi.fn();
     renderTable([slot({ slot: 'head', bisSource: 'raid', hasItem: false })], { onSlotChange });
