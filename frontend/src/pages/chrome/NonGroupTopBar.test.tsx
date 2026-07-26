@@ -96,6 +96,7 @@ describe('NonGroupTopBar — page identity (H2/H3)', () => {
     ['/dashboard', 'Dashboard'],
     ['/docs', 'Docs'],
     ['/docs/faq', 'Docs'],
+    ['/design-system', 'Docs'],
     ['/admin', 'Admin'],
     ['/admin/statics', 'Admin'],
     ['/this-route-does-not-exist', 'FFXIV Raid Planner'],
@@ -221,5 +222,20 @@ describe('NonGroupTopBar — auth-loading skeleton (H13)', () => {
     renderBar();
     expect(screen.queryByTestId('auth-skeleton')).toBeNull();
     expect(desktop().getByRole('button', { name: /login with discord/i })).toBeInTheDocument();
+  });
+
+  it('mobile row renders NEITHER cluster pre-hydration — no guest-links flash for authed users (M8)', () => {
+    vi.spyOn(useAuthStore.persist, 'hasHydrated').mockReturnValue(false);
+    useAuthStore.setState({ user: null, isLoading: false });
+    renderBar();
+    const row = mobile();
+    // Not the guest cluster (would swap to bell/gear a beat later for an
+    // authed user — the wrong-affordance flash class H13 forbids)…
+    expect(row.queryByRole('link', { name: 'Join our Discord community' })).toBeNull();
+    expect(row.queryByRole('button', { name: 'Toggle theme' })).toBeNull();
+    // …and not the authed cluster either. Logo + skeleton only.
+    expect(row.queryByRole('button', { name: /^Notifications/ })).toBeNull();
+    expect(row.queryByRole('button', { name: 'Settings' })).toBeNull();
+    expect(row.getByTestId('auth-skeleton')).toBeInTheDocument();
   });
 });

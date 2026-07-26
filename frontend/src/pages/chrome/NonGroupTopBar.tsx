@@ -10,8 +10,9 @@
  *
  * Dispositions this bar implements (see
  * `design/redesign/specs/stage1-chrome-parity-matrix.md`):
- *   • H2/H3 — "Player Hub" / "Static Finder" are the page-identity words the
- *     matrix names for those routes; the rail carries the nav entries.
+ *   • H2/H3 — the matrix rows' destination is the RAIL entry (Player Hub /
+ *     Static Finder); the desktop page-identity words reuse those labels
+ *     additively — they are not themselves the H2/H3 disposition.
  *   • H8/H9 — Discord + GitHub KEPT on desktop; on mobile they are re-homed
  *     into the v2 `UserMenu` (M2, `sm:hidden` items) for authed users. A GUEST
  *     has no user menu, so the mobile guest row carries the links itself —
@@ -60,7 +61,9 @@ function pageIdentity(pathname: string): string {
   if (pathname.startsWith('/profile/')) return 'Player Profile';
   if (pathname === '/discover') return 'Static Finder';
   if (pathname === '/dashboard') return 'Dashboard';
-  if (pathname === '/docs' || pathname.startsWith('/docs/')) return 'Docs';
+  // /design-system is the interactive design-system reference — same doc
+  // family as /docs/design-system, so it shares the "Docs" identity.
+  if (pathname === '/docs' || pathname.startsWith('/docs/') || pathname === '/design-system') return 'Docs';
   if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'Admin';
   // The `*` catch-all (G3) and anything else: the app's own name.
   return 'FFXIV Raid Planner';
@@ -168,7 +171,11 @@ export function NonGroupTopBar() {
 
         <div className="flex-1" />
 
-        {user ? (
+        {/* Pre-hydration renders NEITHER branch (logo + skeleton only): the
+            guest cluster appearing for a beat and then swapping to bell/gear
+            would be a wrong-affordance flash for authed users — the same
+            failure class H13 forbids for the auth slot. */}
+        {authLoading ? null : user ? (
           <>
             <NotificationBell onOpen={openCenter} />
             <SettingsGear />

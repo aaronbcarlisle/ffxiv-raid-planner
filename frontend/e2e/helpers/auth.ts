@@ -90,11 +90,12 @@ export async function loginAsMember(page: Page): Promise<void> {
  * legacy-assuming spec that navigated without a param would silently get v2
  * chrome (see also the defensive `ui_shell` reset in `dev_auth.py`).
  *
- * Navigates to `/` because it is the cheapest route that mounts Layout (and is
- * chrome-excluded in both shells, so nothing heavy renders).
+ * Navigates to `path` (default `/` — the cheapest route that mounts Layout,
+ * and chrome-excluded in both shells, so nothing heavy renders). Pass the
+ * spec's actual first destination to pin and arrive in one navigation.
  */
-export async function pinShell(page: Page, shell: 'v2' | 'legacy'): Promise<void> {
-  await page.goto(`/?shell=${shell}`);
+export async function pinShell(page: Page, shell: 'v2' | 'legacy', path = '/'): Promise<void> {
+  await page.goto(`${path}?shell=${shell}`);
 }
 
 /**

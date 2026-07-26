@@ -87,13 +87,19 @@ export function AppChrome({ children }: AppChromeProps) {
   // T4 scope decision (plan §3, director E-table): now that the coverage flip
   // mounts AppChrome on every v2 route, this is also a cold fetch on e.g.
   // `/profile`, where Profile.tsx fires its OWN unconditional `fetchGroups()`
-  // (Profile.tsx:186 — no length guard at all). RESOLVED AS "accept +
+  // (Profile.tsx:198 — no length guard at all). RESOLVED AS "accept +
   // document", the plan's second option: on a cold `/profile` a v2 user issues
   // ONE extra idempotent GET /api/static-groups; every warm navigation issues
   // none from here (the length guard holds). The rejected alternative — an
   // in-flight guard inside `staticGroupStore.fetchGroups` — would change the
   // behavior of a store the LEGACY shell also runs on, for a request-count win
   // that no user can perceive; Stage 1's hard constraint is zero legacy impact.
+  //
+  // Same accepted class: non-group v2 routes mount TWO UserMenu instances
+  // (rail footer here + NonGroupTopBar's mobile row — only one is ever
+  // visible), so `fetchNotifications()` fires twice on mount. Legacy
+  // `/profile` already had exactly this doubling (Header avatar + Profile
+  // sidebar footer); the other route classes go 1→2, equally imperceptible.
   useEffect(() => {
     if (user && groups.length === 0) {
       fetchGroups();
