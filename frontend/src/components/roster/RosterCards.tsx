@@ -86,7 +86,11 @@ import type { ContentType, MemberRole, SnapshotPlayer, ViewMode } from '../../ty
  * cards' h-full/spacer interior (RosterCard) give equal heights per row.
  */
 const PCARDS_GRID = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 grid-4xl gap-3.5';
-const CARDS_MAX_W = 'mx-auto max-w-[120rem]';
+// LEFT-ALIGNED cap — deliberate, user ruling 2026-07-26: centering the cards
+// block on ultrawide reads uncomfortable; the roster hugs the content edge.
+// Do NOT pair with mx-auto (the codebase-wide 120rem+mx-auto convention was
+// tried in the C1 review round and explicitly reverted).
+const CARDS_MAX_W = 'max-w-[120rem]';
 
 export interface RosterCardsProps {
   players: SnapshotPlayer[];

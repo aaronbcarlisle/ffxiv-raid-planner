@@ -12,10 +12,12 @@
  *   - CardShell can't forward DOM handlers or a `style`, so the context-menu /
  *     drag wiring and the role-colored accent edge live on a thin wrapper around
  *     CardShell (CardShell stays the card *surface*, per the brief's intent).
- *   - The gear pip strip is READ-ONLY (display-only): gear editing is the Board's
- *     job (§2.2). We render `GearStatusCircle` `disabled` with a no-op `onChange`
- *     rather than mirroring `PlayerCard.handleGearChange` (that would duplicate a
- *     logic block → jscpd).
+ *   - The gear pip strip (compact density) is NON-EDITING, matching legacy's
+ *     compact view: circles render `disabled`, but pips with item data carry
+ *     the hover item card for inspection (C2, D-02). EDITING lives in the
+ *     expanded gear table (C2) and on the Board — both through the one shared
+ *     mutation path (`computeGearSlotUpdate`, mirrored from
+ *     `PlayerCard.handleGearChange`).
  *   - Job change opens a card-owned confirm (Modal + RadioGroup). The legacy
  *     "also import BiS on job change" convenience is OUT of scope — the BiS import
  *     modal lives in the hook; the user re-imports via the kebab after changing
@@ -33,8 +35,10 @@ import {
   RadioGroup,
 } from '../ui';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
+import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { RosterGearTable } from './RosterGearTable';
-import { Button, IconButton } from '../primitives';
+import { hasHoverData } from './gearHoverData';
+import { Button, IconButton, LongPressTooltip } from '../primitives';
 import { JobPicker } from '../player/JobPicker';
 import { PositionSelector } from '../player/PositionSelector';
 import { TankRoleSelector } from '../player/TankRoleSelector';
@@ -46,18 +50,22 @@ import { toast } from '../../stores/toastStore';
 import type { DragAttributes, DragListeners } from './dragTypes';
 import {
   calculateAverageItemLevel,
+  computeGearSlotUpdate,
+  fromGearState,
   isSlotComplete,
   requiresAugmentation,
   toGearState,
+  type GearState,
 } from '../../utils/calculations';
-import { canEditPlayer, type MemberRole } from '../../utils/permissions';
+import { canEditGear, canEditPlayer, type MemberRole } from '../../utils/permissions';
+import { eventBus, Events } from '../../lib/eventBus';
 import {
   getJobDisplayName,
   getRoleColor,
   getRoleForJob,
   getValidRole,
 } from '../../gamedata';
-import type { ContentType, SnapshotPlayer, ViewMode } from '../../types';
+import type { ContentType, GearSlot, SnapshotPlayer, ViewMode } from '../../types';
 
 const TOTAL_SLOTS = 11;
 
@@ -131,7 +139,27 @@ export function RosterCard({
   const role = getValidRole(player.role);
   const editPermission = canEditPlayer(userRole, player, currentUserId ?? undefined, isAdminAccess);
   const canEdit = editPermission.allowed;
+  // Gear cells gate on canEditGear (plan §2.2) — same rules, gear-specific
+  // messaging: owner/lead edit all, a member their own claimed card.
+  const canCycleGear = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess).allowed;
   const isExpanded = density === 'expanded';
+
+  // ── On-card gear editing (Phase C C2, D-02) ──
+  // The table's circle reports the cycled state; the mutation goes through the
+  // SHARED path (computeGearSlotUpdate — same as legacy PlayerCard and the
+  // Board). The analytics emit lives HERE, in the v2 card, with the shell
+  // discriminator — never inside the shared mutation path (plan §3 C2: a
+  // shared-path emit would make frozen V1 start POSTing analytics).
+  const handleSlotChange = async (slot: GearSlot, next: GearState) => {
+    try {
+      await actions.onUpdate(computeGearSlotUpdate(player, slot, fromGearState(next)));
+      eventBus.emit(Events.PLAYER_GEAR_CHANGED, { slot, state: next, shell: 'v2' });
+    } catch {
+      // Inherited V1 behavior (PlayerCard.handleGearChange): the api layer
+      // toasts 403s only; other failures roll the circle back silently via
+      // the tierStore rollback. Kept for parity — revisit with the store.
+    }
+  };
 
   // ── Local UI state (name edit + job change) ──
   const [isEditingName, setIsEditingName] = useState(false);
@@ -422,16 +450,23 @@ export function RosterCard({
           )}
         </div>
 
-        {/* ── Gear section: pip strip (compact) or gear-table shell (expanded, D-01).
+        {/* ── Gear section: pip strip (compact) or gear table (expanded).
                Either/or, matching legacy PlayerCardGear — the table replaces the
-               pips, never stacks under them. Both are read-only in C1 (editing
-               is C2). Spacer placement mirrors legacy PlayerCard: compact pads
-               ABOVE the gear (pips + footer align at the bottom across cards),
-               expanded pads BELOW the table (footer still pinned). ── */}
+               pips, never stacks under them. The table EDITS (C2, canEditGear-
+               gated); the pips inspect-only (hover item card, no cycling —
+               legacy compact parity). Spacer placement mirrors legacy
+               PlayerCard: compact pads ABOVE the gear (pips + footer align at
+               the bottom across cards), expanded pads BELOW the table (footer
+               still pinned). ── */}
         {isExpanded ? (
           <>
             <div className="mt-3 border-t border-border-subtle pt-2">
-              <RosterGearTable gear={player.gear} tomeWeapon={player.tomeWeapon} />
+              <RosterGearTable
+                gear={player.gear}
+                tomeWeapon={player.tomeWeapon}
+                editable={canCycleGear}
+                onSlotChange={handleSlotChange}
+              />
             </div>
             <div className="flex-1" />
           </>
@@ -439,17 +474,50 @@ export function RosterCard({
           <>
             <div className="flex-1" />
             <div className="mt-3 flex flex-wrap gap-1">
-              {player.gear.map((slot) => (
-                <GearStatusCircle
-                  key={slot.slot}
-                  state={toGearState(slot.hasItem, slot.isAugmented)}
-                  bisSource={slot.bisSource}
-                  requiresAugmentation={requiresAugmentation(slot)}
-                  onChange={() => {}}
-                  disabled
-                  size="sm"
-                />
-              ))}
+              {player.gear.map((slot) => {
+                const pip = (
+                  <GearStatusCircle
+                    state={toGearState(slot.hasItem, slot.isAugmented)}
+                    bisSource={slot.bisSource}
+                    requiresAugmentation={requiresAugmentation(slot)}
+                    onChange={() => {}}
+                    disabled
+                    size="sm"
+                  />
+                );
+                // Hover-inspect (C2, D-02 / legacy R-065): pips with item data
+                // show the shared item card. The div wrapper takes Radix's
+                // Trigger props (GearStatusCircle doesn't forward refs).
+                return hasHoverData(slot) ? (
+                  <LongPressTooltip
+                    key={slot.slot}
+                    delayDuration={200}
+                    content={
+                      <ItemHoverCard
+                        itemName={slot.itemName}
+                        itemLevel={slot.itemLevel}
+                        itemId={slot.itemId}
+                        itemIcon={slot.itemIcon}
+                        itemStats={slot.itemStats}
+                        bisSource={slot.bisSource}
+                        hasItem={slot.hasItem}
+                        isAugmented={slot.isAugmented}
+                        materia={slot.materia}
+                        equippedItemId={slot.equippedItemId}
+                        equippedItemName={slot.equippedItemName}
+                        equippedItemLevel={slot.equippedItemLevel}
+                        equippedItemIcon={slot.equippedItemIcon}
+                      />
+                    }
+                  >
+                    <div className="inline-flex">{pip}</div>
+                  </LongPressTooltip>
+                ) : (
+                  <div key={slot.slot} className="inline-flex">
+                    {pip}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}

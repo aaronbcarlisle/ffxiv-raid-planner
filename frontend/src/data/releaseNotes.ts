@@ -68,6 +68,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'feature',
+        title: 'New UI: on-card gear editing returns (Phase C, slice C2)',
+        description:
+          'The new-UI roster cards’ expanded gear table is now editable (D-02) for anyone who can edit that card’s gear — owners and leads on every card, members on their own claimed card. Status circles click-to-cycle through the same shared state machine the classic card and the Board use (missing → have → augmented for tome slots), and they’re keyboard-operable (focusable, Enter/Space) with announced states. Slots with item data show the detailed hover item card, and editable circles carry cycle-hint tooltips. Compact pips stay read-only, matching the classic compact view.',
+        pr: 188,
+        prTitle: 'feat(redesign): Phase C slice C2 — on-card gear editing (D-02)',
+      },
+      {
+        internal: true,
+        category: 'feature',
         title: 'New UI: roster card density axis returns (Phase C, slice C1)',
         description:
           'The new-UI roster cards regain the expanded ⇄ compact axis (D-01): a global Compact/Expanded toolbar switch (plus the V shortcut) swaps every card between the pip strip and a read-only gear table (item icons, item name + iLv, BiS-source glyphs, status circles). Cards also pick up v1’s responsive columns with equal heights per row and a one-axis status split (progress line owns the BiS story, footer owns the claim story). Read-only in this slice — on-card editing lands in C2. Density is stored under a v2-scoped key, so the classic UI’s saved view is untouched.',
