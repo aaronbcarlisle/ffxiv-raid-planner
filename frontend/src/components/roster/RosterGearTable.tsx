@@ -363,16 +363,15 @@ export function RosterGearTable({
 
           // ── Tome-weapon sub-row (C4, D-04 restore; legacy R-094/R-095) ──
           // Its OWN 3-state circle (tome + augment step) reporting through the
-          // same onTomeWeaponChange as the "+" toggle. The label carries the
-          // material jump ONLY when an entry exists — a navigation, not an
-          // edit, so it is deliberately NOT gated on `editable` (legacy
-          // parity: viewers can follow the record). Unlike legacy's mouse-only
-          // Alt+Click span, the v2 label announces itself (role=link), Enter
-          // follows it, and plain click activates it — an announced link that
-          // rejects plain activation would be dead to AT browse-mode users,
-          // whose activation arrives as a synthetic plain click (director F3;
-          // recorded matrix delta with a ruling request). Alt+Click still
-          // works: it is a click.
+          // same onTomeWeaponChange as the "+" toggle. The sub-row's weapon
+          // ICON carries the material jump ONLY when an entry exists — a
+          // navigation, not an edit, so it is deliberately NOT gated on
+          // `editable` (legacy parity: viewers can follow the record). Ruled
+          // on PR #191 as the C7/D-55 jump family's reference implementation:
+          // Alt+Click for mouse (a plain mouse click never navigates), Enter
+          // for keyboard, detail-0 synthetic clicks for AT browse-mode
+          // activation, and the cursor shows the hand only while Alt is held
+          // — see the handler comments below.
           //
           // The row list ALWAYS returns this Fragment (sub-row conditional
           // INSIDE it): flipping `pursuing` must not change the element type
