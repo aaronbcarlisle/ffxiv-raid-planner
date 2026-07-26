@@ -1,7 +1,7 @@
 # FFXIV Raid Planner — Product Core Model
 
 **Status:** Canonical source of truth for what this app *is*. Read this before adding any feature, page, or nav item.
-**Last updated:** 2026-06-27
+**Last updated:** 2026-07-26 *(deltas R1/R3 from the ruled `design/redesign/specs/systems-flow-map.md` written back into §5)*
 **Supersedes as the "why":** the scattered roadmap in `CONSOLIDATED_STATUS.md` (now an *inventory* that feeds this model) and the bottom-up A–M UI plans (which become *execution* against this model, not the vision itself).
 
 ---
@@ -172,7 +172,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 ### Person layer
 | Capability | Verdict |
 |---|---|
-| Player Hub (solo profile) + public profile | ♻️ becomes the **personal front door** (your statics + what needs you), not a parallel profile site |
+| Player Hub (solo profile) + public profile | ♻️ the **player's dashboard**, accessed via the **user menu** (not a rail/nav slot); its front-door role survives only as the landing surface for static-less users *(refined 2026-07-26 by the ruled `design/redesign/specs/systems-flow-map.md`, delta R1 — was "personal front door")* |
 | Discord OAuth, multi-static membership, player ownership linking | ✅ identity/binding |
 | Personal availability, characters & alts | ✅ Person inputs feeding statics |
 | Recruitment profile (what I'm looking for) | ✅ feeds matching |
@@ -194,7 +194,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 | Today | Problem | Fix under this model |
 |---|---|---|
 | **"More" page** (grid of nav cards + danger zone) | Junk drawer — admission the IA had no home for these | **Delete it.** Each item gets a real home (settings, a track, a Person-layer action). |
-| **"Overview" / Static Home** as a catch-all | Vague; overlaps Roster | Becomes the **weekly-loop dashboard**: next session, this week's loot status, what needs you. |
+| **"Overview" / Static Home** as a catch-all | Vague; overlaps Roster | Becomes the **shared informational hub** for the whole static (the weekly loop read-only: next session, this week's loot status, what needs you — lead signals as a role-adaptive section). *(Relabelled 2026-07-26 per flow-map delta R3 — "dashboard" is now reserved for operator instruments like the Player Hub.)* |
 | **"Tracking" tab** (mounts + goals) | Disconnected from the gear board it duplicates | Folds into the **Progress Engine tracks** surface. |
 | **Settings slide-out** with Priority/Goals/Members tabs | Parallel app that overlaps nav | **Role-scoped settings** that configure, never duplicate, the job pages. |
 | **3-deep tabs** (`tab→sub→subtab`, ~9 URL params) | "Who needs this drop" is 3 clicks deep | Flatten to **≤2 levels**; core actions first-class. |
@@ -203,7 +203,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 ### Also placed (cross-checked against `OUTSTANDING_WORK.md`)
 | Capability | Verdict |
 |---|---|
-| Static Overview / Command Brief / Raid-Prep rows | ♻️ this *is* the weekly-loop dashboard (the static home) — keep, make it the loop view |
+| Static Overview / Command Brief / Raid-Prep rows | ♻️ this *is* the static Home — the **shared informational hub** reading the weekly loop (relabelled 2026-07-26 per delta R3) — keep, make it the loop view |
 | Recent Activity feed + activity privacy model (visibility/actor) | ♻️ part of the static home ("what happened this week" — fairness/transparency, **not** a social feed); privacy is a Person/Static setting |
 | Notification model (join requests, sessions; read/unread) | ✅ platform/cross-cutting (Person), needs DB-backed read state |
 | Webhook delivery-status surfacing | ✅ Discord cross-cutting polish (Ring 1) |
