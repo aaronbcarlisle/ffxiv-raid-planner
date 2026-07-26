@@ -39,7 +39,9 @@ exist, and it never installs dependencies.)
 
 PRs to `main` must pass five required CI jobs: **Frontend Checks**, **Backend Tests**,
 **Migration Graph Check**, **Migration Execution (PostgreSQL)**, and **Release Notes
-Required**. The commands below reproduce those gates locally:
+Required**. The commands below cover the code checks from those jobs locally — the
+release-notes gate is a file requirement (see Project Conventions below) and the
+migration jobs are validated by CI itself:
 
 | Check | Command |
 |-------|---------|
