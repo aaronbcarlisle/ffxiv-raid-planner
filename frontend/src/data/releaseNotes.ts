@@ -71,7 +71,7 @@ export const RELEASES: Release[] = [
         title: 'New UI: tome-weapon sub-row returns to the roster card (Phase C, slice C4)',
         description:
           'The new-UI roster card’s weapon row regains the full tome-weapon story (D-04): the shared R/“+” weapon selector toggles interim tome tracking, and while tracking, a sub-row appears with its own three-state progress circle (missing → obtained → augmented). The card-menu Track/Stop item and the row toggle stay in sync automatically. When a logged material entry marks the tome weapon, the sub-row label becomes a jump straight to that entry in the Loot history — Alt+Click or press Enter. The roster now also loads the material log so that jump can light up without visiting the Loot tab first.',
-        pr: 190,
+        pr: 191,
         prTitle: 'feat(redesign): Phase C slice C4 — tome-weapon sub-row (D-04)',
       },
       {
