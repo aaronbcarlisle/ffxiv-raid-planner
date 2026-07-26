@@ -78,6 +78,17 @@ restyled with v2 tokens. What is *not* forked:
 The forked presentation duplicates markup for one release cycle by design; the legacy copy dies
 with Phase H. Fork boundary = anything that renders; share boundary = anything that computes.
 
+Two verified consequences of this boundary (inline vet, 2026-07-26):
+
+- **No shared-file edits for the shortcuts.** The `V` key already toggles `viewMode` under v2 —
+  the shared hook is mounted unconditionally and flips it whenever `pageMode === 'roster'`
+  (`useGroupViewKeyboardShortcuts.ts:100-103`); v2's single-density card simply never consumed
+  the state. C1 *consumes* it (same pattern as D-06's already-live sort machinery). Likewise `S`
+  (`:127-130`) and `G` (`:118-121`) already work.
+- **The fork is not a copy-paste.** Legacy markup carries design-system violations
+  (arbitrary text sizes, inline colors) that `check:design-system:strict` **blocks in CI** — the
+  token restyle is mandatory for the build to ship at all, not a polish nicety.
+
 ### 2.2 Gating
 
 Per-player edit gating uses the existing `canEditPlayer` shape (owner/lead edit-all, member
@@ -90,16 +101,16 @@ looser than the Board.
 ## 3. The slices (8 PRs, in order)
 
 Each slice: fresh implementation session · director change-review before PR · full local gate
-(`pnpm build` + lint + design-system strict + tests) · browser validation · screenshots in PR ·
-release-note entry (`internal: true` while v2 stays admin-gated dark — flip to public entries
-only at un-gate).
+(`pnpm build` + lint + design-system strict + tests) · browser validation · e2e/smoke pin
+updates wherever the slice changes a pinned flow · screenshots in PR · release-note entry
+(`internal: true` while v2 stays admin-gated dark — flip to public entries only at un-gate).
 
 | # | Slice | Contents | Restores | Notes |
 |---|---|---|---|---|
-| **C1** | Card chassis: the density axis | Expanded ⇄ compact state (persisted preference + per-card override), `V` shortcut rebind, re-click-expand-all, mobile density affordance (rider), expanded body mounts the **read-only** restyled gear table fork (real item icons, iLv detail, tome/BiS glyphs) | D-01 (most) | The riskiest slice visually — first look at the restyle; expect a screenshot checkpoint with the user before C2 proceeds |
+| **C1** | Card chassis: the density axis | Expanded ⇄ compact state (persisted preference + per-card override), consume the **already-live** `V`-shortcut `viewMode` state (§2.1 — no rebind), re-click-expand-all, mobile density affordance (rider), expanded body mounts the **read-only** restyled gear table fork (real item icons, iLv detail, tome/BiS glyphs) | D-01 (most) | The riskiest slice visually — first look at the restyle; expect a screenshot checkpoint with the user before C2 proceeds |
 | **C2** | On-card gear editing | Click-to-cycle per slot via the shared state machine, hover item card (stats/materia/equipped-vs-BiS), Status-column tooltip, `canEditPlayer` gating | D-02 | Optional (flagged for user): emit the dead `player_gear_changed` analytics event here — closes the "gear-edit frequency unanswerable" gap for good |
 | **C3** | BiS-source tools | R/T/C/BT selector popover (+ reset-warning confirm), per-slot "Fix", "N slots need BiS source updates" bulk banner | D-03 | `BiSSourceSelector` exists as a shared component — remount + restyle, not rebuild |
-| **C4** | Tome-weapon sub-row | Weapon-row "+" toggle renders the sub-row with its own 3-state circle + material-entry jump; kebab toggle stays in sync | D-04 | Jump target = today's material deep-link; retarget note as in §1 |
+| **C4** | Tome-weapon sub-row | Weapon-row "+" toggle renders the sub-row with its own 3-state circle + material-entry jump; kebab toggle stays in sync | D-04 | Jump target verified live: v2's History deep-link already handles `entryType=material` (`LootHistoryTable.tsx:70-79`) — no C7 dependency; retarget note as in §1 |
 | **C5** | Metrics, badges, identity | Progress ring, per-slot Now-vs-BiS hover panel, badge row (SUB / BiS-link / You / avatar / +N), expanded-only active-BiS-target chip, D-11 selective identity (lean: portrait + title on expanded card) | D-09, D-10, D-11, D-01 chip | D-11 per-element calls made here via PR screenshots — the user rules each element in review |
 | **C6** | Toolbar restorations | `SortModeSelector` returns (already-live machinery), visible Separate-Subs toggle (S stays), per-section collapse chevrons with persistence — each with its phone-width equivalent (rider) | D-06, D-07, D-08 | Kills the "invisible Healer-First preset" defect the matrix documented |
 | **C7** | Flows + safety | Job-change → BiS-import hand-off (3rd option), gear→ledger jumps (Alt+Click / right-click / Edit Books kebab → today's History/Books deep-links), static/tier error modal mounted under v2 | D-15, D-05, D-20 | D-05's superuser affordances follow the D-55 pattern (shortcuts/right-click, not buttons) |
