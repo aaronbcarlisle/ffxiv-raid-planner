@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RosterCard } from './RosterCard';
 import { TooltipProvider } from '../primitives';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
@@ -35,6 +35,10 @@ beforeEach(() => {
     }))
   );
   useToastStore.setState({ toasts: [] });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 /**

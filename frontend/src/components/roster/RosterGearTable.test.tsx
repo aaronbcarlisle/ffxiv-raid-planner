@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RosterGearTable } from './RosterGearTable';
 import { TooltipProvider } from '../primitives';
 import type { GearSlotStatus, TomeWeaponStatus } from '../../types';
@@ -30,6 +30,10 @@ beforeEach(() => {
       dispatchEvent: vi.fn(),
     }))
   );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 function slot(overrides: Partial<GearSlotStatus> & { slot: GearSlotStatus['slot'] }): GearSlotStatus {
