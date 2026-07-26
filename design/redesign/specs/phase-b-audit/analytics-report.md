@@ -9,10 +9,10 @@ Source: railway_prod_copy @ localhost:5433, 2026-07-12 snapshot. All numbers fro
 - Last 8wk: 5,972 events. error_reports: 517 rows / 78 users.
 - Category split: navigation 7,859 · player 518 · feature 329 · wizard 85 · loot 83 · admin 47
 
-## Tab usage (tab_switch, legacy shell, all-time; events / distinct users)
+## Tab usage (tab_switch = LEGACY ERA 1, the retired pre-#144 tab bar; all-time; events / distinct users)
 players 540/91 · loot 514/76 · history 366/70 · stats 212/59 · schedule 116/34 · home 49/16 · mount-farms 33/14
 
-## V2 tabs (sidebar_switch): overview 136/31 · roster 125/29 · gear 97/25 · schedule 96/24 · goals 69/22 · more 38/18 · (sidebar_plugin event 8/5)
+## ~~V2 tabs~~ LEGACY ERA 2 tabs (sidebar_switch = the post-#144 legacy SidebarNav, NOT v2 — see correction banner): overview 136/31 · roster 125/29 · gear 97/25 · schedule 96/24 · goals 69/22 · more 38/18 · (sidebar_plugin event 8/5)
 
 ## Roster view_mode_change: expanded 203 (71 users) vs compact 126 (51 users)
 
