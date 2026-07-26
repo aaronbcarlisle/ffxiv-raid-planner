@@ -4,8 +4,7 @@ A free, web-based raid planning tool for FFXIV static groups. Track gear progres
 
 ## Live Demo
 
-- **Frontend:** Vercel (vercel.com)
-- **Backend:** Railway (railway.app)
+**[www.xivraidplanner.app](https://www.xivraidplanner.app)** — frontend on Vercel, backend + PostgreSQL on Railway.
 
 ## Features
 
@@ -71,7 +70,7 @@ A free, web-based raid planning tool for FFXIV static groups. Track gear progres
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ and pnpm
+- Node.js 20.19+ and pnpm
 - Python 3.11+
 - PostgreSQL (or SQLite for development)
 
@@ -79,14 +78,14 @@ A free, web-based raid planning tool for FFXIV static groups. Track gear progres
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ffxiv-raid-planner.git
+git clone https://github.com/aaronbcarlisle/ffxiv-raid-planner.git
 cd ffxiv-raid-planner
 
-# Backend setup
+# Backend setup (one-time)
 cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt  # contributors: use requirements-dev.txt (adds pytest + tooling)
 cp .env.example .env  # Configure Discord OAuth credentials
 uvicorn app.main:app --reload --port 8001
 
@@ -98,6 +97,8 @@ pnpm dev
 
 **Backend:** http://localhost:8001
 **Frontend:** http://localhost:5174
+
+After this one-time setup, `./dev.sh` (Linux/macOS/Git Bash) or `./dev.ps1` (Windows PowerShell) starts both servers with a single command. The script only starts servers — it expects the venv, dependencies, and `.env` from the steps above to already exist.
 
 ### Environment Variables
 
@@ -130,7 +131,7 @@ ffxiv-raid-planner/
 │       ├── gamedata/        # FFXIV data (jobs, costs, tiers)
 │       └── types/           # TypeScript types
 ├── docs/                    # Documentation
-│   ├── CONSOLIDATED_STATUS.md  # Current status & roadmap
+│   ├── PRODUCT_MODEL.md        # Source of truth: product model & roadmap
 │   ├── GEARING_MATH.md         # FFXIV mechanics reference
 │   └── archive/                # Historical planning/audits
 └── CLAUDE.md                # Development guide
@@ -140,8 +141,8 @@ _See [CLAUDE.md](./CLAUDE.md) for detailed project structure and key files._
 
 ## Documentation
 
+- **[docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md)** - Source of truth: what the app is, the model, and the roadmap
 - **[CLAUDE.md](./CLAUDE.md)** - Comprehensive development guide
-- **[docs/CONSOLIDATED_STATUS.md](./docs/CONSOLIDATED_STATUS.md)** - Current status, roadmap, and technical debt
 - **[docs/GEARING_MATH.md](./docs/GEARING_MATH.md)** - FFXIV gearing mechanics reference
 
 **Archived Documentation:**
@@ -156,13 +157,14 @@ _See [CLAUDE.md](./CLAUDE.md) for detailed project structure and key files._
 
 ## Contributing
 
-Contributions welcome! Please read CLAUDE.md for development guidelines.
+Contributions welcome! Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** — it covers setup, the CI quality gates, and project conventions (design system, release notes, terminology).
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run `pnpm tsc --noEmit` and `pnpm lint`
-5. Open a Pull Request
+1. Fork the repository and create a feature branch
+2. Make your changes
+3. Run `pnpm build`, `pnpm lint`, `pnpm check:design-system:strict`, and `pnpm test` from `frontend/` (plus `pytest tests/ -q` from `backend/` if you touched the API)
+4. Open a Pull Request using the template
+
+Security issues: please report privately — see [SECURITY.md](SECURITY.md).
 
 ## License
 
