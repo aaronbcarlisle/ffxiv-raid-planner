@@ -29,6 +29,7 @@
 - [ ] New navigational text is `LinkText`/`NavRow`; tab strips are `Tabs`; status pills are `Tag` with an explicit `variant`
 - [ ] Colors are semantic tokens (no inline hex/`rgb()`, no `bg-[#…]`); text ≥ `text-xs` (no new sub-12px sizes)
 - [ ] No **new** `design-system/*` lint warnings in changed files
+- [ ] Before/after screenshots embedded for visible UI changes (light + dark if colors/tokens changed)
 
 ### General
 - [ ] No AI attribution in commits or PR body
