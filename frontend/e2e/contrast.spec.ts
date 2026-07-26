@@ -243,6 +243,10 @@ for (const theme of THEMES) {
     // so without this leg the gear-table surface (item detail lines, source
     // glyphs, headers) would sit outside every Axe run.
     await page.getByRole('button', { name: 'Expanded' }).click()
+    // Wait for the density flip to actually render (gear tables mount), then
+    // settle the fixed-duration CSS transitions — those aren't observable via
+    // DOM state, so the timeout stays but no longer races the re-render.
+    await page.locator('[data-testid="roster-screen"] table').first().waitFor()
     await page.waitForTimeout(300)
     let expandedBuilder = new AxeBuilder({ page }).include('[data-testid="roster-screen"]')
     for (const selector of LEGACY_ROLE_BADGE_SELECTORS) {
@@ -253,6 +257,7 @@ for (const theme of THEMES) {
     // Restore the default so the Board leg below starts from the same state
     // as before this leg existed.
     await page.getByRole('button', { name: 'Compact' }).click()
+    await page.locator('[data-testid="roster-screen"] table').first().waitFor({ state: 'hidden' })
     await page.waitForTimeout(300)
 
     // Board view (GearBoard does not render PositionSelector/TankRoleSelector, so no exclude needed)
