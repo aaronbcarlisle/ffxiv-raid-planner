@@ -1,12 +1,12 @@
 # Systems Flow Map (Phase-D design input)
 
-**Status: DRAFT — awaiting the flow-map user walkthrough.** Built to satisfy the mandate recorded
-in `v1-v2-parity-matrix.md` §9 (user checkpoint 2026-07-26): *"there's a lot of major systems
-competing for placement inside the app; I just want to make sure the flow between these systems
-are intuitive and have a clear flow map."* Decision points are marked **⏳ F-01…F-12** and get
-ruled the same way the parity matrix was — one by one, with the user. Once ruled, this document
-is a **binding Phase-D design input**: it unblocks parity units D-67/D-68 and fixes the homes of
-every system the rulings left "TBD."
+**Status: RULED — flow-map user walkthrough completed 2026-07-26.** Built to satisfy the mandate
+recorded in `v1-v2-parity-matrix.md` §9 (user checkpoint 2026-07-26): *"there's a lot of major
+systems competing for placement inside the app; I just want to make sure the flow between these
+systems are intuitive and have a clear flow map."* **11 of 12 decision points ruled; F-04 (Split
+Planner entry) deliberately deferred into Phase-D design** with candidates on record. This
+document is now a **binding Phase-D design input**: it closed parity units D-67/D-68, triggered
+delta R2 (Progress = 5th Spine tab), and fixed the homes of every system the rulings left "TBD."
 
 Grounded in: `docs/PRODUCT_MODEL.md` (layers §3.1 · spine §3.2 · Progress Engine §3.3 · rings
 §3.4 · the §4 triage questions), the ruled parity matrix (66 rulings + 2 deferred), and the
@@ -72,7 +72,7 @@ IN-STATIC SPINE (the weekly loop, ≤2 levels deep)
 ├── Roster      — Cards ⇄ Board (+ Characters modal)          [Phase C rebuilds the card]
 ├── Loot        — Priority (Queues ⇄ Matrix) · Log · History  (⏳ F-06 — the D-30 grid's home)
 ├── Schedule    — sessions + availability heatmap + best times
-└── Progress?   — the tracks surface (Goals/Farms/…)          (⏳ F-03 — triggers delta R2 if ruled)
+└── Progress    — the tracks surface (Goals/Farms/…)          (✅ F-03 ruled: 5th tab — delta R2 active)
 
 SETTINGS (gear icon, role-scoped slide-out) — configures, never duplicates, the job pages
 ```
@@ -116,17 +116,17 @@ parked entries below are therefore flagged, not hidden.)
 | **Static Home** | Static | Ring 0 readout | Woven (reads the loop) | Home tab | Spine · landing L-3 | Shared hub: hero/next session, this-week loot, readiness, objectives (D-66), member interest (D-70), activity (D-63 backend feed), role-adaptive attention section (⏳ F-09) |
 | **Roster** | Static | Ring 0 | Woven (spine) | Roster tab | Spine | Phase C: restored expanded⇄compact card (D-01…D-10) |
 | **Loot — Priority** | Static | Ring 0 | Woven (spine) | Loot ▸ Priority | Spine | Queues ⇄ Matrix is an **in-view control**, not a nav level (D-23 ruling); weapon priority placement per D-27 redesign |
-| **Loot — Log (weekly grid)** | Static | Ring 0 | Woven (spine) | Loot ▸ Log (⏳ F-06) | Spine | D-30 ruling: the grid is a *logging* surface — record the week |
+| **Loot — Log (weekly grid)** | Static | Ring 0 | Woven (spine) | **Loot ▸ Log (✅ F-06 ruled — the Priority · Log · History triad stands)** | Spine | D-30 ruling: the grid is a *logging* surface — record the week |
 | **Loot — History** | Static | Ring 0 | Woven (spine) | Loot ▸ History | Spine | D-31/D-72 ruling: ONE find-it table (v1 All-Weeks + search merged with v2 pills) |
-| **Books ledger** | Static | Ring 0 | Woven | ⏳ F-07 (lean: inside Loot ▸ Log) | via Loot | D-38 ruling: placement redesigned — books are forward-looking currency, not history |
-| **Team Summary** | Static | Ring 0 readout | Woven | ⏳ F-08 (lean: Home module) | Home | D-42 restore + D-43 lean; consolidates D-59/D-62/D-64 |
-| **Team Gear-Sync dashboard** (sync health, role coverage, stale members — KEPT rows P-2…P-7) | Static | Ring 0 readout | ⏳ (follows F-05) | ⏳ F-05 **must name its home** | today: PluginPage | **D-43's ruling assumes this survives** ("Sync → already safe"). A status line in Settings is *not* this dashboard |
+| **Books ledger** | Static | Ring 0 | Woven | **Loot ▸ Log (✅ F-07 ruled)** | via Loot | D-38 ruling closed: books live with the recording surface; balances also readable in Team Summary |
+| **Team Summary** | Static | Ring 0 readout | Woven | **Home module (✅ F-08 ruled)** | Home | D-42 restore; D-43 placement closed; consolidates D-59/D-62/D-64 |
+| **Team Gear-Sync dashboard** (sync health, role coverage, stale members — KEPT rows P-2…P-7) | Static | Ring 0 readout | Woven | **Roster area (✅ F-05 ruled)** | via Roster | D-43's safety net preserved — the dashboard moves from PluginPage into the Roster area |
 | **Schedule + availability** | Static (avail = Person input) | Ring 0 clock / Ring 1 depth | Woven (spine) | Schedule tab | Spine | Availability edits write Person data, aggregate to the static heatmap (§3.1 rule) |
 | **Past-sessions / attendance view** | Static | Ring 1 | Woven | Schedule (future view) | via Schedule | **New build**, not a re-home — v2 Schedule has no past-sessions path today (§5 Session-History row) |
-| **Goals & Farms (tracks)** | Static (ownership data = Person) | Ring 3 tracks on the Progress Engine | **Parked if F-03 rules a tab** — declared trade, delta R2 | Tracks surface (⏳ F-03) | ⏳ F-03 | PRODUCT_MODEL §5: "Tracking folds into the Progress Engine tracks surface". Scope note: the orphaned `components/mount-farms/**` tree (matrix §12-A9, incl. per-member bulk edit with no live equivalent) is resolved by this row — revive into the tracks surface or delete |
+| **Goals & Farms (tracks)** | Static (ownership data = Person) | Ring 3 tracks on the Progress Engine | **Parked — declared trade, delta R2 (✅ F-03 ruled)** | **Progress tab (5th Spine entry)** | Spine | PRODUCT_MODEL §5: "Tracking folds into the Progress Engine tracks surface". Scope note: the orphaned `components/mount-farms/**` tree (matrix §12-A9, incl. per-member bulk edit with no live equivalent) is resolved by this row — revive into the tracks surface or delete |
 | **Split Planner** | Static | Ring 3 (alts / funneling) | ⏳ F-04 | ⏳ F-04 | ⏳ F-04 | D-18 restored the surface; its "from More" entry died with D-52 |
 | **Settings panel** | Static (role-scoped) | — (configuration) | Woven (slide-out over any page) | Slide-out | Gear icon | Pure reuse both shells (**shared surface — §2.2**); Recruitment/Integrations/Members/Priority/Goals config live here |
-| **Dalamud Plugin (setup + guide)** | ⏳ F-05 (lean: Person) | Cross-cutting integration | Woven (setup lives in settings/docs) | ⏳ F-05 — one owning surface to be named | Docs link/banner; NOT a tab (D-52) | PRODUCT_MODEL §3.5: "it is **setup**, not a daily destination". F-05 must also home the Team Gear-Sync dashboard row above |
+| **Dalamud Plugin (setup + guide)** | **Person (✅ F-05 ruled)** | Cross-cutting integration | Woven (setup lives in Hub/docs) | **Player Hub ▸ Sync & Gear (setup) + Docs (guide)** | Docs link/banner; NOT a tab (D-52) | PRODUCT_MODEL §3.5: "it is **setup**, not a daily destination". Statics see sync status only; the team dashboard row above is homed separately (Roster area) |
 | **Docs & Help** (10 routes: quick-start, roadmap, release notes, design system, …) | Person/global | Platform | Parked (own routes — appropriate for reference content) | `/docs/**` pages | User-menu Docs submenu | Becomes the Plugin guide's owning surface if F-05 rules docs-homed |
 | **`/dashboard` "My Statics"** | Person | — | **Duplicate surface** | Player Hub ▸ My Statics | (today: standalone route) | Same `MyStaticsPanel` mounted twice — exactly the class this map closes. Proposal: `/dashboard` redirects to the Hub tab; record in F-01 |
 | **Root `/` landing + static creation** | Person | — | — | Landing dispatcher (§2.1) + wizard | `/` · rail "+" | `/` stops being a destination; Create-a-static keeps a first-class path (L-2 landing + rail) |
@@ -200,7 +200,7 @@ already demanded this ("Junk drawer — **Delete it.**"). Per-card disposition �
 | Activity Log *(Coming soon stub)* | Home activity "view all" (D-63 restored the backend feed) | Natural home — stub deletes |
 | Session History | Already exists **as a Schedule link** (the card just navigates there today). The promised *past-sessions/attendance view* is **new build**, tracked as its own registry row | Confirm in F-12 |
 | New UI switcher | User menu (item already exists on desktop v2). **Mobile precondition:** today the More card is the **only** mobile v2→legacy path (V2M-11; the rail is desktop-only) — a mobile-reachable switcher must ship before the card dies | Confirm in F-12 |
-| Danger Zone (Leave/Delete) | Settings ▸ Static (danger section) — **shared-surface exception §2.2**: this adds V1-visible controls to the settings panel; needs its own explicit call inside F-12. D-50 View-As suppression rides along | Gated on §2.2 decision |
+| Danger Zone (Leave/Delete) | Settings ▸ Static (danger section) — **shared-surface exception §2.2, ✅ user-approved as an explicit V1-visible delta (F-12)**: also fixes V1's dead Danger-Zone finding. D-50 View-As suppression rides along | ✅ Ruled |
 
 ---
 
@@ -208,18 +208,18 @@ already demanded this ("Junk drawer — **Delete it.**"). Per-card disposition �
 
 | ID | Question | Lean (rationale) |
 |---|---|---|
-| **F-01** | Player Hub moves behind the user menu; rail = statics + Finder only? (Includes: `/dashboard` redirects to Hub ▸ My Statics) | **Yes** — user direction; kills the two-Home-buttons confusion. Menu item already exists; the build is *removing* the rail icon (v2-only, §2.2) |
-| **F-02** | Landing rules L-1/L-2/L-3 + `/` as dispatcher + first-class Create-a-static path, as tabled in §2.1? | **Yes** — preserves the Hub's front-door role for static-less users only |
-| **F-03** | Does the tracks surface (Goals/Farms) get a Spine entry — **Progress** as the 5th tab (a **parked** surface; triggers delta R2) — or does **Settings ▸ Goals & Farms become the owning surface with the standalone GoalsPage dissolved**? | **Lean: 5th Spine tab "Progress"** — the model's spine literally ends in Progress (§3.2), it gives tracks their one home, and era-2 demand was real (goals 69/22). The alternative is a real option only in the Settings-owned form — "Home modules + ⌘K" alone would recreate the D-52 trap |
-| **F-04** | Split Planner's entry point? *(F-03-dependent)* | **Lean: inside the tracks/Progress surface** — split clears are alt-progression (Ring 3). **Fallback if F-03 rules Settings-owned:** Split Planner becomes a tool page reached from Settings ▸ Goals & Farms |
-| **F-05** | Plugin: static-level or player-level? **The ruling must name TWO homes: (a) the setup/guide, (b) the Team Gear-Sync dashboard (KEPT P-2…P-7) — D-43's ruling assumes (b) survives** | **Lean:** (a) player-level setup — Player Hub ▸ Sync & Gear + API keys are already Person — with the guide in Docs; (b) the team dashboard stays static-level (it's a Ring-0 readout of the whole roster's sync state — candidate homes: Roster ▸ Board area, or Settings ▸ Integrations as a full panel, not a status line) |
-| **F-06** | The weekly grid (Loot ▸ Log as a third view: Priority · Log · History)? | **Lean: yes** — decide / record / find is the cleanest expression of the D-30 split |
-| **F-07** | Books ledger placement? | **Lean: inside Loot ▸ Log** — recording books is part of recording the week; balances also readable in Team Summary |
-| **F-08** | Team Summary home? | **Lean: Home module** (user's D-43 lean) — it's shared informational, exactly what Home is for |
-| **F-09** | Lead signals = role-adaptive section inside Home (no separate Lead Dashboard page)? | **Yes for now** — revisit only if lead-only content outgrows the page |
-| **F-10** | D-67 (deferred): Active-Farms display on Home? *(F-03-dependent)* | **Lean: one evolved TrackCard linking to the tracks surface** — with F-03 giving farms a real home, Home needs a pointer, not a list. **If ruled `drop`:** the O-39 empty-state copy still needs its button-less form decided (matrix D-67 seam note). **Fallback if F-03 rules Settings-owned:** the card links there instead |
-| **F-11** | D-68 (deferred): Split-Clears readiness card on Home? | **Lean: fold into the role-adaptive attention section** (data-gated row), not a standalone card |
-| **F-12** | More-page dissolution table (§5) — confirm: Session-History row (link now, view later), the mobile-switcher precondition, and the **Danger-Zone shared-surface call** (§2.2: Leave/Delete land in the shared settings panel = V1-visible, or get a v2-only mount)? | **Lean: as tabled**, with Danger Zone as an explicit V1-visible delta the user approves (it also fixes V1's dead Danger-Zone finding from the holistic review) |
+| **F-01** | Player Hub moves behind the user menu; rail = statics + Finder only? (Includes: `/dashboard` redirects to Hub ▸ My Statics) | ✅ **RULED YES (2026-07-26).** User direction; kills the two-Home-buttons confusion. Menu item already exists; the build is *removing* the rail icon (v2-only, §2.2) |
+| **F-02** | Landing rules L-1/L-2/L-3 + `/` as dispatcher + first-class Create-a-static path, as tabled in §2.1? | ✅ **RULED YES (2026-07-26).** Preserves the Hub's front-door role for static-less users only |
+| **F-03** | Does the tracks surface (Goals/Farms) get a Spine entry — **Progress** as the 5th tab (a **parked** surface; triggers delta R2) — or does **Settings ▸ Goals & Farms become the owning surface with the standalone GoalsPage dissolved**? | ✅ **RULED: PROGRESS 5TH SPINE TAB (2026-07-26)** — delta R2 triggers; `REDESIGN_SPEC.md` §3.2 and RECONCILIATION B7 get amended in the §1.1 write-back. Rationale held: the model's spine literally ends in Progress (§3.2); tracks get their one home; era-2 demand was real (goals 69/22) |
+| **F-04** | Split Planner's entry point? *(F-03-dependent)* | ⏸ **DEFERRED (2026-07-26) to Phase-D design.** Candidates on record: inside the Progress tab (split clears are Ring-3 alt-progression — the F-03 ruling makes this available) or reached from Roster (it plans rosters for splits) |
+| **F-05** | Plugin: static-level or player-level? **The ruling must name TWO homes: (a) the setup/guide, (b) the Team Gear-Sync dashboard (KEPT P-2…P-7) — D-43's ruling assumes (b) survives** | ✅ **RULED (2026-07-26): (a) player-level setup** — Player Hub ▸ Sync & Gear + guide in Docs; statics see sync status only; **(b) the Team Gear-Sync dashboard lives in the Roster area** (roster-shaped Ring-0 readout) |
+| **F-06** | The weekly grid (Loot ▸ Log as a third view: Priority · Log · History)? | ✅ **RULED YES (2026-07-26).** Decide / record / find — the Loot triad is the structure |
+| **F-07** | Books ledger placement? | ✅ **RULED: INSIDE LOOT ▸ LOG (2026-07-26).** Recording books is part of recording the week; balances also readable in Team Summary |
+| **F-08** | Team Summary home? | ✅ **RULED: HOME MODULE (2026-07-26).** The shared per-player readout lands on static Home — closes D-43's placement (matrix D-43 lean confirmed) |
+| **F-09** | Lead signals = role-adaptive section inside Home (no separate Lead Dashboard page)? | ✅ **RULED YES (2026-07-26).** Revisit only if lead-only content demonstrably outgrows the page |
+| **F-10** | D-67 (deferred): Active-Farms display on Home? *(F-03-dependent)* | ✅ **RULED: ONE TRACKCARD POINTER (2026-07-26).** Home carries one evolved TrackCard linking into the Progress tab; the full farm list lives there. **Closes matrix D-67**; the O-39 empty-state copy returns button-less on the card's empty form |
+| **F-11** | D-68 (deferred): Split-Clears readiness card on Home? | ✅ **RULED: ATTENTION ROW (2026-07-26).** Data-gated row in the role-adaptive attention section, linking to the Split Planner wherever F-04's deferral lands it. **Closes matrix D-68** |
+| **F-12** | More-page dissolution table (§5) — confirm: Session-History row (link now, view later), the mobile-switcher precondition, and the **Danger-Zone shared-surface call** (§2.2: Leave/Delete land in the shared settings panel = V1-visible, or get a v2-only mount)? | ✅ **RULED: CONFIRM ALL (2026-07-26).** Dissolution as tabled; **Danger-Zone-in-Settings approved as an explicit V1-visible delta** (also fixes V1's dead Danger-Zone finding from the holistic review); mobile switcher remains hard-blocking for the More page's deletion |
 
 ---
 

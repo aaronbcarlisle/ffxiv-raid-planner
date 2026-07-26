@@ -84,6 +84,15 @@ There is **no fourth surface.** The "More" page is deleted; its contents are re-
 
 ### 3.2 The spine: four tabs, not five
 
+> **⚠ SUPERSEDED IN PART (2026-07-26)** by the ruled `specs/systems-flow-map.md` (delta R2,
+> user-ruled F-03/F-06): the spine is now **five tabs — Home · Roster · Loot · Schedule ·
+> Progress** (the tracks surface: goals/farms/future ultimates — matching PRODUCT_MODEL §3.2's
+> spine, which ends in Progress). The Loot tab's views are the ruled triad **Priority · Log ·
+> History** (D-30/D-31 History-vs-Logging split; "Log" *is* a view now, not just a verb). Home's
+> identity is the **shared informational hub** (delta R3). The section below is preserved for
+> the surviving rationale (Gear is still not a tab; the ≤2-level depth budget still holds —
+> Priority's Queues ⇄ Matrix switcher is an in-view control, not a nav level).
+
 ```
    Home  ·  Roster  ·  Loot  ·  Schedule
 ```
