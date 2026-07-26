@@ -1,4 +1,4 @@
-# V2 Shell Affordance Inventory (Phase B) — agent report, persisted verbatim
+# V2 Shell Affordance Inventory (Phase B) — audit output, preserved verbatim
 
 Mount path confirmed: `frontend/src/pages/NewShell.tsx` → `ShellContent()` builds `overview`/`roster`/`gear`/`schedule` slots (NewShell.tsx:60-117) and passes them into `<GroupViewContent slots={...}>` (NewShell.tsx:161-165); `GroupViewContent.tsx` renders `slots?.[mode] ?? <legacy body>` per tab (GroupViewContent.tsx:900,940,977,1087) — `goals`/`more`/`plugin` tabs and the mobile bottom nav have **no slot check** and render the same body/component in both shells (GroupViewContent.tsx:1140-1245).
 

@@ -1,4 +1,4 @@
-# Phase B Step 0 — Prod Analytics Mining Report (agent output, verbatim key content)
+# Phase B Step 0 — Prod Analytics Mining Report (audit output, preserved verbatim)
 
 > ⚠️ **ATTRIBUTION CORRECTION (director sweep 2026-07-26, verified via git archaeology):** the "V2 shell tabs (sidebar_switch)" section below is MISLABELED. `sidebar_switch`/`sidebar_plugin` are emitted ONLY by the LEGACY shell's SidebarNav (introduced by PR #144, 2026-06-26; mounted at GroupView.tsx:394). `tab_switch` keys (players/loot/history/stats/...) are the RETIRED pre-#144 legacy tab bar (TabNavigation.tsx, deleted in #144; `stats` was labeled "Summary — Team-wide gear statistics"). V2's Spine emits tab_switch with surface:'spine' and has ~ZERO events in this window (Spine landed 2026-06-30 admin-gated; snapshot ends 2026-07-12). So: tab_switch = legacy era 1 (~10.5 wks), sidebar_switch = legacy era 2 (~2.3 wks), v2 = no data. NEVER read the two event families as a legacy-vs-v2 comparison.
 
