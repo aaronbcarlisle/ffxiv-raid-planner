@@ -185,14 +185,16 @@ beforeEach(() => {
   mockClipboardPlayer = null;
   Object.assign(navigator, { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } });
   useToastStore.setState({ toasts: [] });
-  // Roster now subscribes to lootTrackingStore and fires two fetch actions on
-  // mount (fetchLootLog / fetchCurrentWeek). Stub them via setState so they never
+  // Roster now subscribes to lootTrackingStore and fires three fetch actions
+  // on mount (fetchLootLog / fetchMaterialLog / fetchCurrentWeek — the material
+  // log feeds the C4 tome-weapon jump). Stub them via setState so they never
   // fall through to the real api client — unstubbed they reject with
   // ECONNREFUSED in CI (no backend) as an unhandled rejection. Same pattern as
   // Loot.test.tsx.
   useLootTrackingStore.setState({
-    lootLog: [], currentWeek: 1,
+    lootLog: [], materialLog: [], currentWeek: 1,
     fetchLootLog: vi.fn().mockResolvedValue(undefined),
+    fetchMaterialLog: vi.fn().mockResolvedValue(undefined),
     fetchCurrentWeek: vi.fn().mockResolvedValue(undefined),
   });
 });
@@ -447,15 +449,20 @@ describe("Roster — A10 void'd-promise fixes", () => {
   });
 
   it('mount fetches: rejecting store fetches surface ONE error toast instead of unhandled rejections', async () => {
-    useLootTrackingStore.setState({
-      fetchLootLog: vi.fn().mockRejectedValue(new Error('boom')),
-      fetchCurrentWeek: vi.fn().mockRejectedValue(new Error('boom')),
-    });
+    const fetchLootLog = vi.fn().mockRejectedValue(new Error('boom'));
+    const fetchMaterialLog = vi.fn().mockRejectedValue(new Error('boom'));
+    const fetchCurrentWeek = vi.fn().mockRejectedValue(new Error('boom'));
+    useLootTrackingStore.setState({ fetchLootLog, fetchMaterialLog, fetchCurrentWeek });
     renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One' })]));
     await waitFor(() => {
       expect(useToastStore.getState().toasts.filter(
         (t) => t.type === 'error' && t.message === 'Failed to load loot data',
       )).toHaveLength(1);
     });
+    // The mount batch fires all three (the material log is what lights the C4
+    // tome-weapon jump on a direct roster landing).
+    expect(fetchLootLog).toHaveBeenCalledTimes(1);
+    expect(fetchMaterialLog).toHaveBeenCalledTimes(1);
+    expect(fetchCurrentWeek).toHaveBeenCalledTimes(1);
   });
 });
