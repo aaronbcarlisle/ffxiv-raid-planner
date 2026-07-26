@@ -645,11 +645,11 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
         expect(onUpdate).not.toHaveBeenCalled();
       });
 
-      it('Alt+Click on the sub-row label jumps via same-route URL params', () => {
+      it('Alt+Click on the sub-row icon jumps via same-route URL params', () => {
         useLootTrackingStore.setState({ materialLog: [tomeMaterialEntry()] });
         renderCard(makeTomePlayer({ pursuing: true }), { density: 'expanded' });
 
-        fireEvent.click(screen.getByText('└ Tome Weapon'), { altKey: true });
+        fireEvent.click(screen.getByRole('link', { name: /Tome Weapon/ }), { altKey: true, detail: 1 });
 
         // The jump = the Loot spine tab (PageMode 'gear') + History sub-view +
         // the highlight params LootHistoryTable.tsx:69-103 consumes.
@@ -668,21 +668,22 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
         });
         renderCard(makeTomePlayer({ pursuing: true }), { density: 'expanded' });
 
-        fireEvent.click(screen.getByText('└ Tome Weapon'), { altKey: true });
+        fireEvent.click(screen.getByRole('link', { name: /Tome Weapon/ }), { altKey: true, detail: 1 });
 
         const params = new URLSearchParams(currentSearch());
         expect(params.get('entry')).toBe('77');
         expect(params.get('entryType')).toBe('material');
       });
 
-      it("another player's material entry does not light the jump (Alt+Click is a no-op)", () => {
+      it("another player's material entry does not light the jump (no link, Alt+Click is a no-op)", () => {
         useLootTrackingStore.setState({
           materialLog: [tomeMaterialEntry({ recipientPlayerId: 'p9', slotAugmented: 'tome_weapon' })],
         });
         renderCard(makeTomePlayer({ pursuing: true }), { density: 'expanded' });
 
+        expect(screen.queryByRole('link', { name: /Tome Weapon/ })).not.toBeInTheDocument();
         const before = currentSearch();
-        fireEvent.click(screen.getByText('└ Tome Weapon'), { altKey: true });
+        fireEvent.click(within(tomeRow()).getByText('Tome Weapon'), { altKey: true, detail: 1 });
         expect(currentSearch()).toBe(before);
       });
     });

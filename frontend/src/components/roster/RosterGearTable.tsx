@@ -19,7 +19,7 @@
  * material-entry jump. Later slices continue here: ledger jumps (C7).
  */
 
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
@@ -50,6 +50,36 @@ function slotIconClass(status: GearSlotStatus, isItemIcon: boolean): string {
   }
   if (!status.hasItem) return 'opacity-50';
   return incomplete ? 'brightness-0 invert opacity-50' : 'brightness-0 invert opacity-90';
+}
+
+/**
+ * Whether the Alt key is currently held. Drives the jump icons' cursor (user
+ * ruling, PR #191): the hand cursor must appear ONLY while the modifier is
+ * down — a persistent pointer would advertise a plain click the Alt-gated
+ * jump won't honor. Global listeners (not pointermove): pressing a modifier
+ * over a stationary cursor fires no pointer event. Blur resets so Alt+Tab
+ * can't strand the held state.
+ */
+function useAltHeld(): boolean {
+  const [held, setHeld] = useState(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setHeld(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') setHeld(false);
+    };
+    const reset = () => setHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', reset);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+      window.removeEventListener('blur', reset);
+    };
+  }, []);
+  return held;
 }
 
 /**
@@ -130,6 +160,7 @@ export function RosterGearTable({
   const sourceInteractive = editable && !!onSourceChange;
   const fixInteractive = editable && !!onSourceFix;
   const tomeInteractive = editable && !!onTomeWeaponChange;
+  const altHeld = useAltHeld();
   // Sub-row label tint tracks tome progress (legacy WeaponSlotRow treatment):
   // muted → secondary (base obtained) → primary (augmented).
   const tomeLabelClass = tomeWeapon.hasItem
@@ -137,6 +168,13 @@ export function RosterGearTable({
       ? 'text-text-primary'
       : 'text-text-secondary'
     : 'text-text-muted';
+  // The sub-row's weapon icon reuses the placeholder-glyph branch of
+  // slotIconClass, driven by tome state (tome always takes the augment step,
+  // so "complete" means augmented).
+  const tomeIconClass = slotIconClass(
+    { slot: 'weapon', bisSource: 'tome', hasItem: tomeWeapon.hasItem, isAugmented: tomeWeapon.isAugmented },
+    false
+  );
 
   return (
     // table-fixed: the header row's w-12/w-14 pin the BiS/Status columns and the
@@ -351,38 +389,70 @@ export function RosterGearTable({
                   aria-label="Tome Weapon (interim)"
                   className="py-1.5 pl-8 pr-2 text-left text-xs font-normal"
                 >
-                  {hasTomeMaterialEntry && onTomeMaterialJump ? (
-                    <Tooltip
-                      content={
-                        <span className="text-xs">
-                          Click (or press Enter) to jump to the material entry
-                        </span>
-                      }
-                    >
-                      {/* design-system-ignore: hand-rolled role=link — LinkText cannot serve here: its event-less onClick and hardcoded text-accent would erase the progress tint this label encodes (muted→secondary→primary); full keyboard + announcement provided inline */}
-                      <span
-                        role="link"
-                        tabIndex={0}
-                        aria-label="Tome Weapon — jump to its material entry"
-                        className={`cursor-pointer transition-colors hover:text-accent focus-visible:text-accent ${tomeLabelClass}`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onTomeMaterialJump();
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            onTomeMaterialJump();
-                          }
-                        }}
+                  <div className="flex items-center gap-2">
+                    <span aria-hidden="true" className="text-text-muted">
+                      └
+                    </span>
+                    {hasTomeMaterialEntry && onTomeMaterialJump ? (
+                      <Tooltip
+                        content={
+                          <span className="text-xs">
+                            <kbd className="rounded border border-border-default bg-surface-base px-1 py-0.5">
+                              Alt
+                            </kbd>
+                            +Click (or Enter) to jump to the material entry
+                          </span>
+                        }
                       >
-                        └ Tome Weapon
-                      </span>
-                    </Tooltip>
-                  ) : (
-                    <span className={tomeLabelClass}>└ Tome Weapon</span>
-                  )}
+                        {/* design-system-ignore: hand-rolled role=link on the slot icon — the ruled C7/D-55 jump family (Alt+Click mouse, Enter keyboard, detail-0 AT activation); no primitive carries an Alt-gated event */}
+                        <span
+                          role="link"
+                          tabIndex={0}
+                          aria-label="Tome Weapon — jump to its material entry"
+                          className={`inline-flex rounded focus-visible:ring-2 focus-visible:ring-accent ${altHeld ? 'cursor-pointer' : 'cursor-default'}`}
+                          onClick={(e) => {
+                            // Alt+Click = the ruled D-55 mouse shortcut; a
+                            // plain mouse click must never navigate (user
+                            // ruling, PR #191 — accidental icon clicks would
+                            // teleport with no explanation). detail === 0 =
+                            // AT browse-mode activation (synthetic clicks
+                            // carry no press count); Safari/VO is inconsistent
+                            // there — the durable AT route is C7's
+                            // context-menu jump.
+                            if (e.altKey || e.detail === 0) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              onTomeMaterialJump();
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              onTomeMaterialJump();
+                            }
+                          }}
+                        >
+                          <img
+                            src={GEAR_SLOT_ICONS.weapon}
+                            alt=""
+                            width={20}
+                            height={20}
+                            className={`shrink-0 ${tomeIconClass}`}
+                          />
+                        </span>
+                      </Tooltip>
+                    ) : (
+                      <img
+                        src={GEAR_SLOT_ICONS.weapon}
+                        alt=""
+                        aria-hidden="true"
+                        width={20}
+                        height={20}
+                        className={`shrink-0 ${tomeIconClass}`}
+                      />
+                    )}
+                    <span className={tomeLabelClass}>Tome Weapon</span>
+                  </div>
                 </th>
                 <td className="py-1.5 text-center">
                   <span

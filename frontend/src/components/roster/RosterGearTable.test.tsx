@@ -364,7 +364,7 @@ describe('RosterGearTable — C4 tome-weapon sub-row', () => {
     expect(onTomeWeaponChange).not.toHaveBeenCalled();
   });
 
-  it('clicking the label follows the jump ONLY when a material entry exists', () => {
+  it('the jump lives on the sub-row icon: Alt+Click follows it, a plain mouse click never does', () => {
     const onTomeMaterialJump = vi.fn();
     const { unmount } = renderTable(weaponGear, {
       tomeWeapon: pursuingTome,
@@ -372,23 +372,74 @@ describe('RosterGearTable — C4 tome-weapon sub-row', () => {
       onTomeMaterialJump,
     });
 
-    const label = screen.getByText('└ Tome Weapon');
-    // Director F3 ruling request: an announced link must activate on plain
-    // click — AT browse-mode activation dispatches a synthetic plain click,
-    // which an Alt-only gate would silently reject. Alt+Click (the legacy
-    // muscle-memory shortcut) still works because it IS a click.
-    fireEvent.click(label);
+    const link = screen.getByRole('link', { name: /Tome Weapon/ });
+    // User ruling on PR #191 (the C7/D-55 jump family): a real mouse click
+    // (detail >= 1) without Alt must NOT navigate — an accidental icon click
+    // would teleport the user to the Loot tab with no explanation.
+    fireEvent.click(link, { detail: 1 });
+    expect(onTomeMaterialJump).not.toHaveBeenCalled();
+    fireEvent.click(link, { altKey: true, detail: 1 });
     expect(onTomeMaterialJump).toHaveBeenCalledTimes(1);
-    fireEvent.click(label, { altKey: true });
-    expect(onTomeMaterialJump).toHaveBeenCalledTimes(2);
     unmount();
 
-    // No material entry → the label carries no jump affordance at all.
+    // No material entry → the icon stays, but with no link semantics.
     onTomeMaterialJump.mockClear();
     renderTable(weaponGear, { tomeWeapon: pursuingTome, onTomeMaterialJump });
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('└ Tome Weapon'), { altKey: true });
+    fireEvent.click(screen.getByText('Tome Weapon'), { altKey: true, detail: 1 });
     expect(onTomeMaterialJump).not.toHaveBeenCalled();
+  });
+
+  it('AT synthetic activation (a detail-0 click) follows the jump', () => {
+    // Screen-reader browse-mode activation dispatches a click with detail 0
+    // (no physical press count) — the Alt gate must not reject it (director
+    // F3, reconciled with the Alt-only mouse ruling via this discriminator).
+    const onTomeMaterialJump = vi.fn();
+    renderTable(weaponGear, {
+      tomeWeapon: pursuingTome,
+      hasTomeMaterialEntry: true,
+      onTomeMaterialJump,
+    });
+
+    fireEvent.click(screen.getByRole('link', { name: /Tome Weapon/ }), { detail: 0 });
+    expect(onTomeMaterialJump).toHaveBeenCalledTimes(1);
+  });
+
+  it('the jump icon invites a click only while Alt is held (cursor swap)', () => {
+    // User ruling on PR #191: a persistent hand cursor advertises a plain
+    // click the icon won't honor — the cursor must reflect the modifier
+    // (default arrow normally, pointer only while Alt is down).
+    renderTable(weaponGear, {
+      tomeWeapon: pursuingTome,
+      hasTomeMaterialEntry: true,
+      onTomeMaterialJump: vi.fn(),
+    });
+
+    const link = screen.getByRole('link', { name: /Tome Weapon/ });
+    expect(link.className).toContain('cursor-default');
+    fireEvent.keyDown(window, { key: 'Alt' });
+    expect(link.className).toContain('cursor-pointer');
+    fireEvent.keyUp(window, { key: 'Alt' });
+    expect(link.className).toContain('cursor-default');
+  });
+
+  it('the sub-row carries the indented weapon slot icon in both jump states', () => {
+    // User ruling on PR #191: the sub-row gets the weapon slot icon (indented
+    // under the main rows' icons) so the jump affordance has the same visual
+    // home as every other C7 slot jump.
+    function tomeRow() {
+      return screen.getByRole('rowheader', { name: /Tome Weapon/ }).closest('tr')!;
+    }
+    const { unmount } = renderTable(weaponGear, {
+      tomeWeapon: pursuingTome,
+      hasTomeMaterialEntry: true,
+      onTomeMaterialJump: vi.fn(),
+    });
+    expect(tomeRow().querySelector('img')).not.toBeNull();
+    unmount();
+
+    renderTable(weaponGear, { tomeWeapon: pursuingTome });
+    expect(tomeRow().querySelector('img')).not.toBeNull();
   });
 
   it('keeps focus on the + toggle across the pursuing flip (stable row structure)', () => {
