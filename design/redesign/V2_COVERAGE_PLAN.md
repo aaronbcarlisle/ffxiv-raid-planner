@@ -2,6 +2,8 @@
 
 **Status: RATIFIED 2026-07-25 — user agreed to all recommendations (rulings recorded in §6). Per D1, Stage 0–1 implementation begins after Phase G (PR #161) merges; the Stage-1 parity matrix (D5) may be prepared beforehand (docs-only). No status cell in any other doc moves until stages are demonstrated in the running app.**
 
+**Execution status (2026-07-25): Stage 0 ✅ COMPLETE (PRs #176/#177 — D3 notif href, A3 void-fix, mobile TopBar overlap, doc-cite fixes). Stage 1 ✅ COMPLETE (four stacked PRs, all user-merged: #178 S1+S2 nav entry w/ D7 gate · #179 chrome-context/G2/M2 seams + NotificationCenter single-mount · #180 AppChrome host + portal slots + group hoist · #181 the coverage flip: NonGroupTopBar + route scope + Profile/AdminLayout seams + e2e pins). Acceptance: director row-by-row sweep of the signed parity matrix (all rows satisfied), plan-§5 live-validation checklist executed in the running app (three personas × both shells × both viewports, 0 console errors). The user's 100% chrome-coverage metric is met: nothing clickable in V2 lands in V1 chrome. The v2 opt-in remains DARK behind the D7 admin gate — un-gating is a separate user decision (§6 D7). Known cosmetic carry-forwards: /admin v2 spurious ~17px scrollbar (legacy ~9px, same class; Stage-5 admin fit) · M6 desktop pre-hydration skeleton sits in the top bar while the authed menu resolves to the rail footer.**
+
 Produced 2026-07-25 from a three-track audit (route/shell inventory · V2 exit-affordance sweep · sanctioned-plan docs review) plus an `xivrp-director` plan vet (verdict: **PARITY-GAP — approve with required changes**; every required change is folded in below and marked `[DIR]`).
 
 ---
