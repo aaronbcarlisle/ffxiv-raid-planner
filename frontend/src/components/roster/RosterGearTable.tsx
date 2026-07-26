@@ -31,6 +31,7 @@ import {
   GEAR_SLOT_NAMES,
 } from '../../types';
 import { requiresAugmentation, toGearState, type GearState } from '../../utils/calculations';
+import { hasHoverData } from './gearHoverData';
 
 /**
  * Icon state treatment, condensed from legacy `GearTable` SlotIcon: real item
@@ -97,7 +98,9 @@ export function RosterGearTable({ gear, tomeWeapon, editable = false, onSlotChan
           <th className="w-14 px-1.5 py-1 text-center font-medium">
             {editable ? (
               // Column-level cycle hint (legacy GearTable's Status-header
-              // tooltip), shown only when the circles actually cycle.
+              // tooltip). RECORDED DELTA vs legacy (R-097 showed it to all
+              // roles): shown only when the circles actually cycle — don't
+              // teach an action the viewer can't perform. Matrix D-02 note.
               <Tooltip content="Click a circle to cycle: missing → have → augmented (tome)">
                 <span className="cursor-help">Status</span>
               </Tooltip>
@@ -121,13 +124,7 @@ export function RosterGearTable({ gear, tomeWeapon, editable = false, onSlotChan
           // the C4 sub-row): 2-state cycle, no augment step.
           const circleSource = isWeapon ? 'raid' : status.bisSource;
           const circleRequiresAug = isWeapon ? false : requiresAugmentation(status);
-          // Legacy `SlotIcon.hasItemData`: BiS item detail or a synced
-          // equipped item — either gives the hover card something to show.
-          const hasItemData = Boolean(
-            (status.itemName && status.itemLevel) ||
-              status.equippedItemName ||
-              (status.equippedItemLevel ?? 0) > 0
-          );
+          const hasItemData = hasHoverData(status);
           // Accessible row name mirrors the full visible content (slot + item
           // detail) — jsx-a11y's label traversal can't see the nested text.
           const rowLabel = status.itemName

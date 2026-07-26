@@ -367,7 +367,12 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
 
         fireEvent.click(headCircle());
         await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
-        await waitFor(() => expect(received).toHaveLength(0));
+        // Flush the rejection's microtask chain so a would-be emit has had
+        // every chance to fire before we assert silence (a bare waitFor(0)
+        // passes on its first synchronous evaluation and proves nothing).
+        await new Promise((r) => setTimeout(r, 0));
+        await new Promise((r) => setTimeout(r, 0));
+        expect(received).toHaveLength(0);
       } finally {
         unsub();
       }
@@ -384,6 +389,26 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       }
       fireEvent.click(pips[0]);
       expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('compact pips with item data carry the hover item-card wiring (inspect, not edit)', () => {
+      // Legacy compact parity (R-065 hover leg): the pip strip supports
+      // INSPECTION via the hover item card while staying non-editing.
+      renderCard(
+        makePlayer({
+          id: 'p6',
+          gear: [
+            { slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false, itemName: 'Hover Helm', itemLevel: 730 },
+            { slot: 'body', bisSource: 'raid', hasItem: false, isAugmented: false },
+          ] as unknown as SnapshotPlayer['gear'],
+        })
+      );
+
+      const pips = screen.getAllByRole('checkbox');
+      // Radix stamps its Trigger wrapper with data-state when the hover card is
+      // wired; the bare slot gets no wrapper.
+      const wired = pips.filter((p) => p.closest('[data-state]'));
+      expect(wired).toHaveLength(1);
     });
   });
 });

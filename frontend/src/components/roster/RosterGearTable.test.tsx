@@ -99,6 +99,17 @@ describe('RosterGearTable — C2 editing', () => {
     expect(onSlotChange).toHaveBeenCalledWith('hands', 'missing');
   });
 
+  it('editable: Space on a focused circle cycles too', () => {
+    const onSlotChange = vi.fn();
+    renderTable([slot({ slot: 'earring', bisSource: 'raid', hasItem: false })], {
+      editable: true,
+      onSlotChange,
+    });
+
+    fireEvent.keyDown(circleIn(/^Ears/), { key: ' ' });
+    expect(onSlotChange).toHaveBeenCalledWith('earring', 'have');
+  });
+
   it('read-only (C1 default): circles are disabled and clicks report nothing', () => {
     const onSlotChange = vi.fn();
     renderTable([slot({ slot: 'head', bisSource: 'raid', hasItem: false })], { onSlotChange });
