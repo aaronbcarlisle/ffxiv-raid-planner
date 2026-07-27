@@ -746,6 +746,20 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
       expect(screen.queryByText('+1')).not.toBeInTheDocument();
     });
 
+    it('keeps the header tags legible without hover (PR review round 7)', () => {
+      // SUB and "+N" carry their meaning entirely in a tooltip, and Tooltip
+      // renders bare children on no-hover devices — the sr-only text is what
+      // survives there and for AT.
+      renderCard(
+        makePlayer({
+          isSubstitute: true,
+          weaponPriorities: [{ job: 'PLD' }, { job: 'DRK' }] as SnapshotPlayer['weaponPriorities'],
+        })
+      );
+      expect(screen.getByText(/Substitute — a backup/)).toBeInTheDocument();
+      expect(screen.getByText(/additional weapon priorit/)).toBeInTheDocument();
+    });
+
     it('renders the BiS link as a real external anchor on the progress line', () => {
       renderCard(makePlayer({ bisLink: 'https://xivgear.app/?page=sl|xyz' }));
 
@@ -1043,6 +1057,64 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
         })
       );
       expect(screen.queryByTestId('roster-sync-mismatch')).not.toBeInTheDocument();
+    });
+
+    it('opens the sync detail from the keyboard (PR review round 7)', async () => {
+      renderCard(
+        makePlayer({
+          lodestoneId: '123',
+          lodestoneName: 'Krile Baldesion',
+          lodestoneServer: 'Balmung',
+          lastSync: twoHoursAgo(),
+        })
+      );
+
+      const trigger = screen.getByLabelText('Sync details');
+      expect(trigger).toHaveAttribute('tabindex', '0');
+      fireEvent.focus(trigger);
+      // Radix renders the open content twice (portal + visually-hidden copy).
+      expect((await screen.findAllByText(/Balmung/)).length).toBeGreaterThan(0);
+    });
+
+    it('does not repeat the provenance when the detail header already names it (round 7)', async () => {
+      const openDetail = async () => {
+        fireEvent.focus(screen.getByLabelText('Sync details'));
+        // Radix renders the open content twice (portal + visually-hidden copy).
+        await screen.findAllByText(/Last synced 2h ago/);
+      };
+
+      // No Lodestone identity → the tooltip header names the source, so the
+      // detail line must not say it a second time.
+      const { unmount } = renderCard(
+        makePlayer({ lastSync: twoHoursAgo(), lastSyncSource: 'player_hub', lastSyncedJob: 'PLD' })
+      );
+      await openDetail();
+      expect(screen.getAllByText('Player Hub sync')).toHaveLength(2);
+      expect(screen.getAllByText('Last synced 2h ago · as PLD').length).toBeGreaterThan(0);
+      unmount();
+
+      // Scheduled sync with no identity: the header names the provider through
+      // the same labels rather than falling back to a generic string.
+      const second = renderCard(
+        makePlayer({ lastSync: twoHoursAgo(), lastSyncSource: 'auto_xivapi' })
+      );
+      await openDetail();
+      expect(screen.getAllByText('Scheduled Lodestone sync').length).toBeGreaterThan(0);
+      second.unmount();
+
+      // WITH identity the header names character • server, so the detail keeps
+      // carrying the provenance.
+      renderCard(
+        makePlayer({
+          lodestoneId: '123',
+          lodestoneName: 'Krile Baldesion',
+          lodestoneServer: 'Balmung',
+          lastSync: twoHoursAgo(),
+          lastSyncSource: 'tomestone',
+        })
+      );
+      await openDetail();
+      expect(screen.getAllByText('Last synced 2h ago · Lodestone sync').length).toBeGreaterThan(0);
     });
   });
 

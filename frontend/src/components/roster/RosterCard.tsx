@@ -443,10 +443,15 @@ export function RosterCard({
   );
   // Provenance renders through the shared formatSource labels — raw storage
   // identifiers like "player_hub" never reach copy (PR #193 review round 4).
+  // Without a Lodestone identity the tooltip's header has nothing to name but
+  // the source, so the detail line drops it there rather than saying it twice
+  // (round 7).
   const syncDetail = (() => {
     if (!syncAge) return 'Lodestone identity linked';
     const parts = [syncAge === 'just now' ? 'Synced just now' : `Last synced ${syncAge}`];
-    if (player.lastSyncSource) parts.push(formatSource(player.lastSyncSource));
+    if (player.lastSyncSource && hasLodestoneIdentity) {
+      parts.push(formatSource(player.lastSyncSource));
+    }
     if (player.lastSyncedJob) parts.push(`as ${player.lastSyncedJob}`);
     return parts.join(' · ');
   })();
@@ -614,17 +619,28 @@ export function RosterCard({
               </div>
             )}
 
+            {/* Both header tags follow the claim badges' treatment (review
+                rounds 4 + 7): LongPressTooltip for the touch path, plus
+                sr-only text so the meaning survives with no hover at all —
+                "+1" over a Swords glyph says nothing on its own. */}
             {player.isSubstitute && (
-              <Tooltip content="Substitute — a backup for the static's roster">
+              <LongPressTooltip
+                delayDuration={200}
+                content="Substitute — a backup for the static's roster"
+              >
                 <span className="inline-flex">
                   <Tag variant="label" tone="warning">
                     SUB
+                    <span className="sr-only">
+                      Substitute — a backup for the static&apos;s roster
+                    </span>
                   </Tag>
                 </span>
-              </Tooltip>
+              </LongPressTooltip>
             )}
             {showWeaponPriority && (
-              <Tooltip
+              <LongPressTooltip
+                delayDuration={200}
                 content={`+${weaponPriorityCount} additional weapon ${
                   weaponPriorityCount === 1 ? 'priority' : 'priorities'
                 }`}
@@ -636,9 +652,13 @@ export function RosterCard({
                     icon={<Swords className="h-3 w-3" aria-hidden="true" />}
                   >
                     +{weaponPriorityCount}
+                    <span className="sr-only">
+                      {' '}
+                      additional weapon {weaponPriorityCount === 1 ? 'priority' : 'priorities'}
+                    </span>
                   </Tag>
                 </span>
-              </Tooltip>
+              </LongPressTooltip>
             )}
 
             {role === 'tank' && (
@@ -706,11 +726,7 @@ export function RosterCard({
                     button — focusing only reveals information, activation would
                     be a lie. */}
                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger; focus is the keyboard path to the Radix panel */}
-                <div
-                  tabIndex={0}
-                  aria-label="Average item level breakdown"
-                  className="cursor-help text-right leading-none"
-                >
+                <div tabIndex={0} aria-label="Average item level breakdown" className="cursor-help text-right leading-none">
                   <div
                     className={`font-display text-lg font-bold ${
                       equippedAvgIlv > 0 ? 'text-accent' : 'text-text-primary'
@@ -925,7 +941,7 @@ export function RosterCard({
                   <div className="max-w-60 space-y-1">
                     <div className="font-medium">
                       {[player.lodestoneName, player.lodestoneServer].filter(Boolean).join(' • ') ||
-                        (player.lastSyncSource === 'player_hub' ? 'Player Hub sync' : 'Gear sync')}
+                        (player.lastSyncSource ? formatSource(player.lastSyncSource) : 'Gear sync')}
                     </div>
                     <div className="text-xs text-text-secondary">{syncDetail}</div>
                     {syncJobMismatch && (
@@ -937,7 +953,8 @@ export function RosterCard({
                   </div>
                 }
               >
-                <span className="flex min-w-0 cursor-help items-center gap-1">
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger; focus is the keyboard path to the Radix detail */}
+                <span tabIndex={0} aria-label="Sync details" className="flex min-w-0 cursor-help items-center gap-1">
                   <span className="truncate">{syncName}</span>
                   {syncAge && <span className="shrink-0">· synced {syncAge}</span>}
                   {syncJobMismatch && (
