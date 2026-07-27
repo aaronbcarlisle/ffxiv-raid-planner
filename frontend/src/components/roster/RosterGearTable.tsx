@@ -20,9 +20,10 @@
  */
 
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { FileSearch, RefreshCw } from 'lucide-react';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { BiSSourceSelector, WeaponBiSSelector } from '../player/BiSSourceSelector';
 import { Button, LongPressTooltip, Tooltip } from '../primitives';
 import { getCorrectBisSource } from '../../utils/bisSourceDetection';
@@ -35,6 +36,7 @@ import {
 } from '../../types';
 import { fromGearState, requiresAugmentation, toGearState, type GearState } from '../../utils/calculations';
 import { hasHoverData } from './gearHoverData';
+import type { JumpKind, SlotJumpTargets } from './rosterLedgerJumps';
 
 /**
  * Icon state treatment, condensed from legacy `GearTable` SlotIcon: real item
@@ -137,6 +139,13 @@ export interface RosterGearTableProps {
   hasTomeMaterialEntry?: boolean;
   /** C4: the Alt+Click jump from the sub-row label to that material entry. */
   onTomeMaterialJump?: () => void;
+  /**
+   * C7 (D-05): the ledger entries each slot can jump to (`buildSlotJumpTargets`).
+   * A slot missing from the map shows no jump affordance at all.
+   */
+  slotJumps?: SlotJumpTargets;
+  /** C7 (D-05): follow a slot's jump. The parent owns the navigation. */
+  onSlotJump?: (slot: GearSlot, kind: JumpKind) => void;
   /** Why editing is unavailable (shown by the disabled selector). */
   disabledReason?: string;
 }
@@ -151,6 +160,8 @@ export function RosterGearTable({
   onTomeWeaponChange,
   hasTomeMaterialEntry = false,
   onTomeMaterialJump,
+  slotJumps,
+  onSlotJump,
   disabledReason,
 }: RosterGearTableProps) {
   const bySlot = new Map(gear.map((g) => [g.slot, g]));
@@ -161,6 +172,10 @@ export function RosterGearTable({
   const fixInteractive = editable && !!onSourceFix;
   const tomeInteractive = editable && !!onTomeWeaponChange;
   const altHeld = useAltHeld();
+  // C7 (D-05): the right-click jump menu, anchored where the event came from.
+  // Slot-scoped local state — the CARD's own context menu is a separate menu
+  // the slot handler deliberately stops from opening (legacy GearTable parity).
+  const [slotMenu, setSlotMenu] = useState<{ slot: GearSlot; x: number; y: number } | null>(null);
   // Sub-row label tint tracks tome progress (legacy WeaponSlotRow treatment):
   // muted → secondary (base obtained) → primary (augmented).
   const tomeLabelClass = tomeWeapon.hasItem
@@ -177,9 +192,10 @@ export function RosterGearTable({
   );
 
   return (
-    // table-fixed: the header row's w-12/w-14 pin the BiS/Status columns and the
-    // slot column absorbs the rest, so a long nowrap item name truncates instead
-    // of inflating its column and clipping the headers off the card edge.
+    <>
+    {/* table-fixed: the header row's w-12/w-14 pin the BiS/Status columns and the
+        slot column absorbs the rest, so a long nowrap item name truncates instead
+        of inflating its column and clipping the headers off the card edge. */}
     <table className="w-full table-fixed text-sm">
       <thead>
         <tr className="text-xs text-text-muted">
@@ -221,16 +237,72 @@ export function RosterGearTable({
             ? `${GEAR_SLOT_NAMES[slot]}, ${status.itemName}${status.itemLevel ? ` i${status.itemLevel}` : ''}`
             : GEAR_SLOT_NAMES[slot];
 
+          // ── C7 (D-05): this slot's ledger jump ──
+          // The affordance exists only where an entry does, and the DEFAULT
+          // kind follows legacy's precedence (loot before material,
+          // GearTable.tsx:94-101) — the right-click menu reaches the other one.
+          const jump = onSlotJump ? slotJumps?.[slot] : undefined;
+          const defaultJumpKind: JumpKind | null =
+            jump?.loot != null ? 'loot' : jump?.material != null ? 'material' : null;
+          const jumpIcon = (
+            <img
+              src={iconUrl}
+              alt=""
+              aria-hidden="true"
+              width={24}
+              height={24}
+              className={`shrink-0 ${slotIconClass(status, !!status.itemIcon)}`}
+            />
+          );
+          const slotIcon =
+            defaultJumpKind && onSlotJump ? (
+              /* design-system-ignore: hand-rolled role=link on the slot icon — the ruled C7/D-55 jump family (Alt+Click mouse, Enter keyboard, detail-0 AT activation); no primitive carries an Alt-gated event */
+              <span
+                role="link"
+                tabIndex={0}
+                aria-label={`${GEAR_SLOT_NAMES[slot]} — jump to its ${defaultJumpKind} entry`}
+                className={`inline-flex rounded focus-visible:ring-2 focus-visible:ring-accent ${altHeld ? 'cursor-pointer' : 'cursor-default'}`}
+                onClick={(e) => {
+                  // The ruled family (PR #191): Alt gates the mouse so a plain
+                  // click never teleports; detail === 0 is AT browse-mode
+                  // activation, which carries no press count.
+                  if (e.altKey || e.detail === 0) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSlotJump(slot, defaultJumpKind);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    onSlotJump(slot, defaultJumpKind);
+                  }
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  // Legacy parity (GearTable.handleContextMenu): the slot menu
+                  // replaces the card's own right-click menu here, so the two
+                  // can never stack. A slot with no entry doesn't stop the
+                  // event at all — the card menu stays reachable everywhere
+                  // else on the row.
+                  e.stopPropagation();
+                  // Shift+F10 / the context-menu key dispatch with no cursor
+                  // position; anchor to the icon instead of the page corner.
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX || rect.left;
+                  const y = e.clientY || rect.bottom;
+                  setSlotMenu({ slot, x, y });
+                }}
+              >
+                {jumpIcon}
+              </span>
+            ) : (
+              jumpIcon
+            );
+
           const slotCell = (
             <div className="flex min-w-0 items-center gap-2.5">
-              <img
-                src={iconUrl}
-                alt=""
-                aria-hidden="true"
-                width={24}
-                height={24}
-                className={`shrink-0 ${slotIconClass(status, !!status.itemIcon)}`}
-              />
+              {slotIcon}
               <div className="min-w-0">
                 <div className="font-medium text-text-secondary">{GEAR_SLOT_NAMES[slot]}</div>
                 {status.itemName && (
@@ -248,8 +320,10 @@ export function RosterGearTable({
               <th scope="row" aria-label={rowLabel} className="py-1.5 pr-2 text-left font-normal">
                 {hasItemData ? (
                   // Hover item card (D-02): the legacy detailed gear tooltip,
-                  // via the SHARED ItemHoverCard leaf. Ledger-jump affordances
-                  // (Alt+Click / context menu) are C7, not here.
+                  // via the SHARED ItemHoverCard leaf. C7 (D-05) appends the
+                  // jump hint to this same panel rather than nesting a second
+                  // tooltip inside its trigger — exactly what legacy did
+                  // (`GearTable.tsx:184-205`).
                   // bottom/start, NOT side="right": the trigger is the whole
                   // (wide) slot cell, so a right-side popup lands at the
                   // column's far edge — visually over the NEXT card, nowhere
@@ -261,25 +335,50 @@ export function RosterGearTable({
                     align="start"
                     sideOffset={4}
                     content={
-                      <ItemHoverCard
-                        itemName={status.itemName}
-                        itemLevel={status.itemLevel}
-                        itemId={status.itemId}
-                        itemIcon={status.itemIcon}
-                        itemStats={status.itemStats}
-                        bisSource={status.bisSource}
-                        hasItem={status.hasItem}
-                        isAugmented={status.isAugmented}
-                        materia={status.materia}
-                        equippedItemId={status.equippedItemId}
-                        equippedItemName={status.equippedItemName}
-                        equippedItemLevel={status.equippedItemLevel}
-                        equippedItemIcon={status.equippedItemIcon}
-                      />
+                      <div>
+                        <ItemHoverCard
+                          itemName={status.itemName}
+                          itemLevel={status.itemLevel}
+                          itemId={status.itemId}
+                          itemIcon={status.itemIcon}
+                          itemStats={status.itemStats}
+                          bisSource={status.bisSource}
+                          hasItem={status.hasItem}
+                          isAugmented={status.isAugmented}
+                          materia={status.materia}
+                          equippedItemId={status.equippedItemId}
+                          equippedItemName={status.equippedItemName}
+                          equippedItemLevel={status.equippedItemLevel}
+                          equippedItemIcon={status.equippedItemIcon}
+                        />
+                        {defaultJumpKind && (
+                          <div className="mt-2 border-t border-border-subtle pt-2 text-xs text-text-muted">
+                            <kbd className="rounded border border-border-default bg-surface-base px-1 py-0.5">
+                              Alt
+                            </kbd>
+                            +Click (or Enter) to jump to the {defaultJumpKind} entry
+                          </div>
+                        )}
+                      </div>
                     }
                   >
                     {slotCell}
                   </LongPressTooltip>
+                ) : defaultJumpKind ? (
+                  // No item data to hover, but there IS a jump — the hint gets
+                  // its own tooltip (the C4 sub-row's treatment).
+                  <Tooltip
+                    content={
+                      <span className="text-xs">
+                        <kbd className="rounded border border-border-default bg-surface-base px-1 py-0.5">
+                          Alt
+                        </kbd>
+                        +Click (or Enter) to jump to the {defaultJumpKind} entry
+                      </span>
+                    }
+                  >
+                    {slotCell}
+                  </Tooltip>
                 ) : (
                   slotCell
                 )}
@@ -478,6 +577,44 @@ export function RosterGearTable({
           );
         })}
       </tbody>
-    </table>
+        </table>
+      {/* C7 (D-05): the slot's right-click jump menu — the AT/no-modifier route
+          to the same two destinations (legacy `GearTable` context items). It
+          portals, so rendering it beside the table keeps the <table> markup
+          valid. */}
+      {slotMenu && (
+        <ContextMenu
+          x={slotMenu.x}
+          y={slotMenu.y}
+          items={slotJumpMenuItems(slotMenu.slot, slotJumps?.[slotMenu.slot], onSlotJump)}
+          onClose={() => setSlotMenu(null)}
+        />
+      )}
+    </>
   );
+}
+
+/** The right-click jump items for one slot (legacy `GearTable`'s two entries). */
+function slotJumpMenuItems(
+  slot: GearSlot,
+  target: SlotJumpTargets[GearSlot],
+  onSlotJump?: (slot: GearSlot, kind: JumpKind) => void
+): ContextMenuItem[] {
+  const items: ContextMenuItem[] = [];
+  if (!onSlotJump || !target) return items;
+  if (target.loot != null) {
+    items.push({
+      label: 'Jump to Loot Entry',
+      icon: <FileSearch className="h-4 w-4" />,
+      onClick: () => onSlotJump(slot, 'loot'),
+    });
+  }
+  if (target.material != null) {
+    items.push({
+      label: 'Jump to Material Entry',
+      icon: <FileSearch className="h-4 w-4" />,
+      onClick: () => onSlotJump(slot, 'material'),
+    });
+  }
+  return items;
 }

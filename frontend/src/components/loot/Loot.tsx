@@ -41,9 +41,12 @@
  *     deep-link therefore always shows everything (filters default to all/all/all),
  *     so an `?entry=` deep-link can never be hidden by a filter on first mount;
  *     only a mid-session filter change can hide a row, which is acceptable.
- *   - The book-row highlight FLASH (legacy `highlightedBookPlayerId`) is dropped
- *     in v2 — BookLedgerCard anchors rows (`id="book-row-…"`) but no v2 navigation
- *     produces a book highlight yet.
+ *   - The book-row highlight (legacy `highlightedBookPlayerId`) is URL-backed in
+ *     v2: the roster kebab's "Edit Books" jump (C7, D-05) writes `?book={playerId}`
+ *     and `BookLedgerCard` owns the scroll + pulse + self-clear, exactly as
+ *     `LootHistoryTable` owns `?entry=`. Loot itself stays out of it — the two
+ *     highlights are mutually exclusive by construction (the roster card clears
+ *     the other param on every jump), so no coordination lives here.
  *   - Material delete + the Reset "loot"/"data" paths always revert gear
  *     (`{ revertGear: true }`), matching the legacy reset semantics
  *     (`SectionedLogView.tsx:450-511`); the History reset reproduces exactly the

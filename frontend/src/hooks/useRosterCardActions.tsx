@@ -44,6 +44,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
 import {
   BookMarked,
+  BookOpen,
   ClipboardPaste,
   Copy,
   CopyPlus,
@@ -97,6 +98,14 @@ export interface RosterCardActions {
   onReleasePlayer?: () => void;
   onAdminAssignPlayer?: (req: AssignPlayerRequest) => Promise<void> | void;
   onOwnerAssignPlayer?: (req: AssignPlayerRequest) => Promise<void> | void;
+  /**
+   * C7 (D-05): jump to this player's row in the Books ledger. NAVIGATION only
+   * — the books EDITING surface stays re-homed to `BookLedgerCard` (F6c audit,
+   * Loot §5.7); this restores what legacy's item actually did
+   * (`PlayerCard.tsx:388-398` → `handleNavigateToBooksPanel`). Absent handler
+   * = no item, so a host without the Loot screen never advertises the jump.
+   */
+  onEditBooks?: () => void;
 }
 
 export interface RosterCardActionParams {
@@ -220,6 +229,17 @@ function buildMenuItems(ctx: BuildMenuContext): ContextMenuItem[] {
     disabled: !editPermission.allowed,
     tooltip: editTip,
   });
+  // C7 (D-05): the books JUMP (not the books editor — see RosterCardActions).
+  // Shown, never disabled-with-a-tooltip: legacy's item was visibility-gated
+  // by the same expression `canEditPlayer` encodes (owner/lead/admin anywhere,
+  // a member on their own claimed card), and a viewer has no row to adjust.
+  if (actions.onEditBooks && editPermission.allowed) {
+    items.push({
+      label: 'Edit Books',
+      icon: <BookOpen className={ICON} />,
+      onClick: actions.onEditBooks,
+    });
+  }
   // Interim tome-weapon affordance (Phase A / A3): toggles `pursuing` ONLY.
   // Have/augmented live on the expanded card's tome sub-row (C4, D-04); both
   // affordances read the same `player.tomeWeapon` store field, so this item

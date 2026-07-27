@@ -68,6 +68,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'feature',
+        title: 'New UI: gear jumps into the ledgers, and the job change can update BiS (Phase C, slice C7)',
+        description:
+          'Opt-in new UI only (admin-gated preview). Three flows return to the new-UI roster card. Every gear slot that has a logged entry becomes a jump into the Loot history — Alt+Click it (a plain click never navigates), press Enter on it, or right-click for “Jump to Loot/Material Entry”; the hand cursor appears only while Alt is held, so an icon never advertises a click it won’t honor. The card menu’s “Edit Books” returns and now scrolls to and highlights that player’s row in the Books ledger. The job-change confirm regains its third option — “Change Job & Update BiS” — which switches the job and opens the BiS import for the new one. And the card itself picks up v1’s superuser shortcuts: Shift+Click copies its deep link, and the ⋮ button’s tooltip teaches both that and right-click.',
+        pr: 0,
+        prTitle: 'feat(redesign): Phase C slice C7 — flows + superuser affordances (D-05/D-15/D-55 roster half)',
+      },
+      {
+        internal: true,
+        category: 'feature',
         title: 'New UI: the roster toolbar regains sorting, grouping and section folding (Phase C, slice C6)',
         description:
           'Opt-in new UI only (admin-gated preview). The new-UI roster toolbar splits its controls one-per-axis: the old “Standard comp ⇄ Light Party” dropdown becomes the sort-preset selector (Standard / DPS First / Healer First / Custom), and Light Party grouping becomes its own toggle. A sort preset you saved before is now actually applied — the new UI had been ignoring it — and it follows you when you switch tiers. “Separate subs” returns as a visible toggle, enabled once “Show subs” is on, and the G and S keyboard shortcuts drive both. Every roster section — Light Party 1, Light Party 2, Unassigned and Substitutes — gains a fold chevron that remembers itself per static and tier, and re-clicking “Expanded” folds or unfolds all of them at once.',

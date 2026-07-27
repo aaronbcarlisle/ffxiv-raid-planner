@@ -106,8 +106,67 @@ describe('useRosterCardActions', () => {
     expect(labels).not.toContain('Re-sync Lodestone');
     expect(labels).not.toContain('Lodestone Sync');
     expect(labels).not.toContain('Adjust Priority');
+    // Books EDITING stayed re-homed (BookLedgerCard owns it); C7 adds only a
+    // NAVIGATION item, and only when the host supplies its handler.
     expect(labels).not.toContain('Edit Books');
     expect(labels).not.toContain('Loot Priority');
+  });
+
+  // ── C7 (D-05): the "Edit Books" jump ──
+  // F6c re-homed the books EDITING surface out of the kebab (BookLedgerCard is
+  // its home, Loot §5.7) — that stands. What legacy's item actually did was
+  // NAVIGATE to that home's row (`PlayerCard.tsx:388-398` →
+  // `handleNavigateToBooksPanel`), and D-05 (ruled 2026-07-26) restores the
+  // jump. Its gate is legacy's: owner/lead/admin on any card, a member on
+  // their own.
+  describe('Edit Books jump (C7, D-05)', () => {
+    const withJump = (extra: Partial<typeof base> = {}) => ({
+      ...base,
+      ...extra,
+      actions: { ...base.actions, onEditBooks: vi.fn() },
+    });
+
+    it('appears for an owner and calls the navigation handler', () => {
+      const params = withJump();
+      const { result } = renderHook(() => useRosterCardActions({ ...params, player: makePlayer() }));
+      const item = result.current.menuItems.find((i) => 'label' in i && i.label === 'Edit Books');
+
+      expect(item).toBeDefined();
+      act(() => {
+        (item as Extract<ContextMenuItem, { label: string }>).onClick?.();
+      });
+      expect(params.actions.onEditBooks).toHaveBeenCalledTimes(1);
+    });
+
+    it("stays hidden for a member on someone else's card", () => {
+      const { result } = renderHook(() =>
+        useRosterCardActions({
+          ...withJump({ userRole: 'member', currentUserId: 'u1' }),
+          player: makePlayer({ userId: 'u9' }),
+        }),
+      );
+      expect(result.current.menuItems.map(labelOrHeader)).not.toContain('Edit Books');
+    });
+
+    it('appears for a member on their OWN claimed card (legacy self-service parity)', () => {
+      const { result } = renderHook(() =>
+        useRosterCardActions({
+          ...withJump({ userRole: 'member', currentUserId: 'u1' }),
+          player: makePlayer({ userId: 'u1' }),
+        }),
+      );
+      expect(result.current.menuItems.map(labelOrHeader)).toContain('Edit Books');
+    });
+
+    it('stays hidden for a viewer', () => {
+      const { result } = renderHook(() =>
+        useRosterCardActions({
+          ...withJump({ userRole: 'viewer' }),
+          player: makePlayer(),
+        }),
+      );
+      expect(result.current.menuItems.map(labelOrHeader)).not.toContain('Edit Books');
+    });
   });
 
   it('orders sections BiS & Gear -> Player Management -> Clipboard (audited reorder)', () => {

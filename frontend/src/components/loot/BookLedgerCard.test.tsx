@@ -4,7 +4,8 @@
 // their onSubmit/onHistoryCleared callbacks do), not the modals' internal UI.
 // Mocked here, matching the Loot.test.tsx convention for reused leaf surfaces.
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import type { SnapshotPlayer, PageBalance, PageLedgerEntry } from '../../types';
 
 const { editModalCalls, ledgerModalCalls, markClearedCalls } = vi.hoisted(() => ({
@@ -64,6 +65,11 @@ vi.mock('../history/MarkFloorClearedModal', () => ({
 import { BookLedgerCard } from './BookLedgerCard';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 
+/** Surfaces the live search string so the param-clearing effect is assertable. */
+function LocationProbe() {
+  return <div data-testid="location-search">{useLocation().search}</div>;
+}
+
 function makePlayer(id: string, name: string, opts: { sub?: boolean; userId?: string } = {}): SnapshotPlayer {
   return {
     id, tierSnapshotId: 't1', name, job: 'PLD', role: 'tank',
@@ -118,7 +124,7 @@ function storeActions() {
 
 describe('BookLedgerCard', () => {
   it('renders a row per non-substitute player with all four book balances; the sub row is absent', () => {
-    render(<BookLedgerCard {...baseProps} />);
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
 
     const aliceRow = document.getElementById('book-row-p1');
     expect(aliceRow).toBeInTheDocument();
@@ -137,7 +143,7 @@ describe('BookLedgerCard', () => {
   });
 
   it('fetches all-time balances by default, then week-scoped balances after toggling scope', () => {
-    render(<BookLedgerCard {...baseProps} />);
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
 
     const { fetchPageBalances } = storeActions();
     expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', undefined);
@@ -156,7 +162,7 @@ describe('BookLedgerCard', () => {
     // this card still shows "This week". Every ledger mutation (reset, adjust,
     // mark-cleared) refetches `pageLedger` — simulating that reference change
     // directly must re-fire OUR scoped fetch, landing last and correcting it.
-    render(<BookLedgerCard {...baseProps} />);
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
     fireEvent.click(screen.getByRole('button', { name: 'This week' }));
 
     const { fetchPageBalances } = storeActions();
@@ -172,7 +178,7 @@ describe('BookLedgerCard', () => {
   });
 
   it('member (canEdit false) sees buttons only on their own row; other rows are plain text', () => {
-    render(<BookLedgerCard {...baseProps} canEdit={false} effectiveUserId="u-alice" />);
+    render(<BookLedgerCard {...baseProps} canEdit={false} effectiveUserId="u-alice" />, { wrapper: MemoryRouter });
 
     const aliceRow = document.getElementById('book-row-p1')!;
     const bobRow = document.getElementById('book-row-p2')!;
@@ -187,7 +193,7 @@ describe('BookLedgerCard', () => {
   });
 
   it('cell click opens EditBookBalanceModal with the right bookType/currentBalance; submit calls adjustBookBalance with the delta', async () => {
-    render(<BookLedgerCard {...baseProps} />);
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
 
     const aliceRow = document.getElementById('book-row-p1')!;
     // Book III cell for Alice shows "3".
@@ -208,7 +214,7 @@ describe('BookLedgerCard', () => {
   it('adjust-flow error: onSubmit rethrows to the modal handler (modal stays open) and skips the refetch', async () => {
     const { adjustBookBalance, fetchPageBalances } = storeActions();
     adjustBookBalance.mockRejectedValueOnce(new Error('server said no'));
-    render(<BookLedgerCard {...baseProps} />);
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
 
     const aliceRow = document.getElementById('book-row-p1')!;
     fireEvent.click(screen.getAllByText('3').find((el) => aliceRow.contains(el))!);
@@ -226,7 +232,7 @@ describe('BookLedgerCard', () => {
   });
 
   it('hides "Mark floor cleared" when canEdit is false; when shown, submit calls markFloorCleared and refetches', async () => {
-    const { rerender } = render(<BookLedgerCard {...baseProps} canEdit={false} />);
+    const { rerender } = render(<BookLedgerCard {...baseProps} canEdit={false} />, { wrapper: MemoryRouter });
     expect(screen.queryByRole('button', { name: 'Mark floor cleared' })).not.toBeInTheDocument();
 
     rerender(<BookLedgerCard {...baseProps} canEdit />);
@@ -246,5 +252,61 @@ describe('BookLedgerCard', () => {
       expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', undefined);
       expect(fetchPageLedger).toHaveBeenCalledWith('g1', 't1');
     });
+  });
+});
+
+// ── C7 (D-05): the Books deep-link highlight ──
+// The roster kebab's "Edit Books" jump writes `?book={playerId}` on this same
+// route; the card scrolls that row into view and pulses it, then clears the
+// param so a refresh (or a second jump to the same row) isn't a no-op. This is
+// the v2 replacement for legacy's `highlightedBookPlayerId` state, which the
+// F6d Loot screen deliberately left unbuilt until a navigation produced it.
+describe('BookLedgerCard — book deep-link highlight (C7, D-05)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function renderWithParams(search: string) {
+    return render(
+      <MemoryRouter initialEntries={[`/group/G1${search}`]}>
+        <BookLedgerCard {...baseProps} />
+        <LocationProbe />
+      </MemoryRouter>
+    );
+  }
+
+  it('pulses and scrolls the linked row', () => {
+    const scrollSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollSpy;
+
+    renderWithParams('?book=p1');
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(document.getElementById('book-row-p1')?.className).toContain('highlight-pulse');
+    expect(document.getElementById('book-row-p2')?.className).not.toContain('highlight-pulse');
+    expect(scrollSpy).toHaveBeenCalled();
+  });
+
+  it('clears the param once the pulse has run', () => {
+    renderWithParams('?book=p1');
+
+    act(() => {
+      vi.advanceTimersByTime(2600);
+    });
+    expect(screen.getByTestId('location-search').textContent).not.toContain('book=p1');
+  });
+
+  it('ignores a book param naming a player with no row', () => {
+    renderWithParams('?book=nobody');
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(document.querySelector('.highlight-pulse')).toBeNull();
   });
 });
