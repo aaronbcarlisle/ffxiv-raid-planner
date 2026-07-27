@@ -115,7 +115,9 @@ export function RosterToolbar({
     ? 'On — the roster splits into G1 / G2. Click to show one flat grid.'
     : 'Off — one flat grid. Click to split the roster into G1 / G2.';
   const separateHint = separateSubsDisabled
-    ? 'Turn "Show subs" on to separate substitutes again.'
+    ? // Subs ARE separated here — the section is just hidden, so the only thing
+      // this control could do is merge them back (PR #199 review).
+      'Substitutes are hidden. Turn "Show subs" on to change how they are grouped.'
     : subsView
       ? 'On — substitutes sit in their own section. Click to merge them into the roster.'
       : 'Off — substitutes are merged into the roster. Click to separate them.';
@@ -176,10 +178,14 @@ export function RosterToolbar({
                 size="sm"
               />
               {/* Show Subs gates this one (C1-checkpoint correction (c)) — but
-                  ONLY while a separate section is what's being hidden. Merged
-                  subs render inside the main grid whatever `subsHidden` says,
-                  so disabling the control there would strand the user with
-                  substitutes they had just switched off (director F6). */}
+                  ONLY while a separate section is what's being hidden. In the
+                  GROUPED view merged subs render inside G1/G2 whatever
+                  `subsHidden` says, so disabling the control there would
+                  strand the user with substitutes they had just switched off
+                  (director F6). The flat view filters them out instead — an
+                  inherited legacy inconsistency (`PlayerGrid.tsx:640` gates
+                  its main grid on `subsView || subsHidden` while the grouped
+                  branch does not), recorded on matrix D-07. */}
               <Tooltip content={<ShortcutHint keyLabel="S" text={separateHint} />}>
                 <span className="inline-flex">
                   <Toggle

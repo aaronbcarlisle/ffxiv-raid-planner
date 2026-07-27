@@ -37,7 +37,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { analytics } from '../../services/analytics';
-import { isRosterShortcut, isSettingsPanelOpen } from './rosterShortcutGuards';
+import { isRosterShortcut, isSettingsPanelOpen, ownsLetterKeys } from './rosterShortcutGuards';
 import type { ViewMode } from '../../types';
 
 /** v2-scoped persistence key (plan §5: strict freeze — never `party-view-mode`). */
@@ -101,6 +101,9 @@ export function useRosterDensity({
       // Own the key: exactly one handler acts on `V` while v2 Roster is mounted.
       e.preventDefault();
       e.stopImmediatePropagation();
+      // Sort dropdown owns letter keys — swallowed, not declined, so the frozen
+      // handler can't take `v` either (see `ownsLetterKeys`).
+      if (ownsLetterKeys(e.target)) return;
       // Settings panel open → swallowed but inert: density must not flip behind
       // the panel. Read imperatively — a subscription here would re-render the
       // roster on every panel toggle (settingsPanelStore.ts's ~500ms lesson).

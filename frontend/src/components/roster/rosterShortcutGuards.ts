@@ -10,11 +10,39 @@
 import { areShortcutsEnabled } from '../../hooks/useKeyboardShortcuts';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 
-/** Mirrors the (non-exported) input guard in `useKeyboardShortcuts`. */
+/**
+ * Mirrors the (non-exported) input guard in `useKeyboardShortcuts`. Declining
+ * here is safe precisely because the frozen hook declines the same targets —
+ * the key reaches the field and nothing else acts on it.
+ */
 export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
   return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
+}
+
+/**
+ * A listbox-style control that owns bare letter keys for typeahead. C6 puts a
+ * Radix `Select` in the toolbar (the sort preset), which renders a
+ * `role="combobox"` BUTTON over a `role="listbox"` — the tag check above misses
+ * it entirely, so `S` inside the open dropdown toggled Separate Subs behind the
+ * menu (PR #199 review).
+ *
+ * These targets are handled differently from a text field: the roster still
+ * SWALLOWS the key, it just declines to act on it. Merely declining would hand
+ * the key to the frozen `useGroupViewKeyboardShortcuts`, whose own guard does
+ * NOT recognise a combobox (`useKeyboardShortcuts.ts:69` checks tag names) and
+ * which does not check `defaultPrevented` — so it would flip ITS `subsView` and
+ * write `?subs=false`, invisible until a v2 remount read it back. Verified live:
+ * declining alone left the toolbar untouched but dirtied the URL.
+ *
+ * The cost is that typeahead for the three bound letters (`v`/`g`/`s`) does not
+ * work inside the dropdown; every other letter, and the arrow keys, still do.
+ * Protecting the user's stored view state beats typeahead on a four-item list.
+ */
+export function ownsLetterKeys(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(target.closest('[role="combobox"],[role="listbox"],[role="option"]'));
 }
 
 /**

@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { isRosterShortcut, isSettingsPanelOpen } from './rosterShortcutGuards';
+import { isRosterShortcut, isSettingsPanelOpen, ownsLetterKeys } from './rosterShortcutGuards';
 
 export interface UseRosterViewShortcutsOptions {
   /** Disables the actions (any roster-owned or chrome modal open). Keys stay owned. */
@@ -61,6 +61,11 @@ export function useRosterViewShortcuts({
       // and the frozen handler never fires its invisible branch.
       e.preventDefault();
       e.stopImmediatePropagation();
+
+      // Focus is in the sort dropdown, which owns letter keys. Swallowed above
+      // rather than declined, so the frozen handler can't take the key either
+      // (see `ownsLetterKeys`).
+      if (ownsLetterKeys(e.target)) return;
 
       if (isSettingsPanelOpen()) return;
       if (shortcutsDisabled || !active) return;

@@ -53,6 +53,43 @@ describe('useRosterViewShortcuts', () => {
     expect(onToggleGrouping).not.toHaveBeenCalled();
   });
 
+  it('leaves the sort dropdown its own letter keys (PR #199 review)', () => {
+    // The toolbar's sort control is a Radix Select: a `role="combobox"` BUTTON
+    // whose open list is a `role="listbox"`. Neither is an <input>, so the
+    // plain tag check let `S` through — killing Radix's typeahead ("S" →
+    // "Standard") at capture AND flipping Separate Subs behind the open menu.
+    const onToggleSubsView = vi.fn();
+    renderHook(() =>
+      useRosterViewShortcuts({ ...baseOptions, onToggleGrouping: vi.fn(), onToggleSubsView })
+    );
+
+    const combobox = document.createElement('button');
+    combobox.setAttribute('role', 'combobox');
+    document.body.appendChild(combobox);
+    const fromTrigger = new KeyboardEvent('keydown', { key: 's', bubbles: true, cancelable: true });
+    combobox.dispatchEvent(fromTrigger);
+
+    expect(onToggleSubsView).not.toHaveBeenCalled();
+    // Still SWALLOWED, though. Merely declining would hand the key to the
+    // frozen handler, whose own guard doesn't recognise a combobox — verified
+    // live: the toolbar stayed put but the URL gained `?subs=false`, which a
+    // later v2 remount would read back as "merge the substitutes".
+    expect(fromTrigger.defaultPrevented).toBe(true);
+
+    // Same for an option inside the open listbox.
+    const listbox = document.createElement('div');
+    listbox.setAttribute('role', 'listbox');
+    const option = document.createElement('div');
+    option.setAttribute('role', 'option');
+    listbox.appendChild(option);
+    document.body.appendChild(listbox);
+    option.dispatchEvent(new KeyboardEvent('keydown', { key: 's', bubbles: true, cancelable: true }));
+    expect(onToggleSubsView).not.toHaveBeenCalled();
+
+    combobox.remove();
+    listbox.remove();
+  });
+
   it('does nothing while typing in a field', () => {
     const onToggleGrouping = vi.fn();
     renderHook(() =>
