@@ -158,8 +158,15 @@ export function useRosterSections({
     if (rendered.length === 0) return;
     setCollapsed((prev) => {
       const everyExpanded = rendered.every((s) => !prev[s]);
-      const next: CollapsedState = {};
-      if (everyExpanded) rendered.forEach((s) => { next[s] = true; });
+      if (!everyExpanded) return {}; // expand-all: a full reset
+      // Fold-all keeps sections that are off screen exactly as the user left
+      // them. Legacy rebuilds from `{}` in BOTH branches (`PlayerGrid.tsx:512`),
+      // which silently expands a section the user had folded before hiding it —
+      // fold Substitutes, turn "Show subs" off, fold-all, turn it back on, and
+      // it returns expanded. Expand-all can still reset everything, since
+      // expanding something nobody can see has no visible effect (PR #199).
+      const next: CollapsedState = { ...prev };
+      rendered.forEach((s) => { next[s] = true; });
       return next;
     });
   }, [sectionKey]);

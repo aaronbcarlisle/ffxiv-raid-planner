@@ -107,6 +107,38 @@ describe('useRosterSections', () => {
       expect(result.current.isCollapsed('subs')).toBe(false);
     });
 
+    it('keeps an off-screen section FOLDED across a fold-all (PR #199 review)', () => {
+      // Fold Substitutes, hide the section, fold-all, bring it back: the user
+      // never expanded Substitutes, so it must still be folded. (The test above
+      // can't catch this — it checks a section that started expanded anyway.)
+      const { result, rerender } = render();
+
+      act(() => result.current.toggleSection('subs'));
+      expect(result.current.isCollapsed('subs')).toBe(true);
+
+      rerender({ groupId: 'g1', tierId: 't1', sections: ['g1', 'g2'] });
+      act(() => result.current.toggleAll());
+
+      expect(result.current.isCollapsed('g1')).toBe(true);
+      expect(result.current.isCollapsed('g2')).toBe(true);
+      expect(result.current.isCollapsed('subs')).toBe(true);
+    });
+
+    it('still clears every fold on expand-all, on-screen or not', () => {
+      // The other direction stays a full reset: expanding a section nobody can
+      // see has no visible effect, and it keeps "expand all" meaning all.
+      const { result, rerender } = render();
+
+      act(() => result.current.toggleSection('subs'));
+      act(() => result.current.toggleSection('g1'));
+
+      rerender({ groupId: 'g1', tierId: 't1', sections: ['g1', 'g2'] });
+      act(() => result.current.toggleAll());
+
+      expect(result.current.isCollapsed('g1')).toBe(false);
+      expect(result.current.isCollapsed('subs')).toBe(false);
+    });
+
     it('does nothing when no sections are rendered', () => {
       const { result } = render('g1', 't1', []);
       act(() => result.current.toggleAll());

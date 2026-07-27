@@ -248,7 +248,11 @@ interface PartyHeadProps {
   /** Section badge (G1/G2/SUB). Omitted for Unassigned, which legacy left bare. */
   tag?: string;
   label: string;
-  /** Fold state (C6, D-08). Omitted → no chevron at all. */
+  /**
+   * Fold state (C6, D-08). `onToggleCollapse` is what gates the chevron — pass
+   * it to make the section foldable, and pass `collapsed` alongside it or the
+   * chevron renders permanently in its expanded pose.
+   */
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   /**
