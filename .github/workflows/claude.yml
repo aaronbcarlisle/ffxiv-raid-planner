@@ -19,8 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
+      # MUST be write: @claude replies by posting a PR/issue comment. With `read`
+      # the job runs, does the work, then cannot post — the same silent failure
+      # 6e25295 caused in claude-code-review.yml (fixed in #194/#195).
+      pull-requests: write
+      issues: write
       id-token: write
       actions: read
     steps:
