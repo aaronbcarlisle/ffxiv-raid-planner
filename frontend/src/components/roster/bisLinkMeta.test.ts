@@ -11,6 +11,14 @@ describe('buildBisUrl', () => {
     expect(buildBisUrl('https://xivgear.app/?page=sl|xyz')).toBe('https://xivgear.app/?page=sl|xyz');
   });
 
+  it('only passes through real http(s) schemes (PR #193 review round 5)', () => {
+    expect(buildBisUrl('http://etro.gg/gearset/abc')).toBe('http://etro.gg/gearset/abc');
+    // A bare id that merely starts with "http" is an Etro gearset id, not a URL —
+    // passing it through would emit a same-origin relative href on an external link.
+    expect(buildBisUrl('httpfoo')).toBe('https://etro.gg/gearset/httpfoo');
+    expect(buildBisUrl('http:abc')).toBe('https://etro.gg/gearset/http:abc');
+  });
+
   it('builds a selectedIndex URL for 4-part GitHub presets (bis|job|tier|index)', () => {
     expect(buildBisUrl('bis|sge|current|2')).toBe(
       'https://xivgear.app/?page=bis|sge|current&selectedIndex=2'
@@ -64,5 +72,9 @@ describe('bisLinkTooltip', () => {
 
   it('falls back to Etro for bare gearset ids', () => {
     expect(bisLinkTooltip('abcd-1234')).toBe('Open in Etro');
+  });
+
+  it('treats an "http"-prefixed non-URL as a gearset id, matching buildBisUrl (round 5)', () => {
+    expect(bisLinkTooltip('httpfoo')).toBe('Open in Etro');
   });
 });

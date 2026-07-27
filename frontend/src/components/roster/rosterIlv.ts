@@ -12,6 +12,10 @@ import type { GearSlotStatus } from '../../types';
 
 export function equippedAverageIlv(gear: GearSlotStatus[]): number {
   const synced = gear.filter((g) => (g.equippedItemLevel ?? 0) > 0);
+  // No synced slots → no equipped average. Guarding on `synced` (not just the
+  // coverage threshold) keeps the helper total: an empty gear array clears the
+  // threshold trivially and would otherwise divide by zero (review round 5).
+  if (synced.length === 0) return 0;
   if (synced.length < Math.ceil(gear.length / 2)) return 0;
   return Math.round(
     synced.reduce((sum, g) => sum + (g.equippedItemLevel ?? 0), 0) / synced.length

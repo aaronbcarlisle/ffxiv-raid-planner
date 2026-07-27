@@ -96,6 +96,11 @@ describe('formatSource', () => {
     expect(formatSource('lodestone')).toBe('Lodestone sync');
   });
 
+  it('formats the roster-card sync provenances (C5, PR #193 review)', () => {
+    expect(formatSource('player_hub')).toBe('Player Hub sync');
+    expect(formatSource('auto_tomestone')).toBe('Scheduled Lodestone sync');
+  });
+
   it('formats manual source', () => {
     expect(formatSource('manual')).toBe('Manual entry');
   });

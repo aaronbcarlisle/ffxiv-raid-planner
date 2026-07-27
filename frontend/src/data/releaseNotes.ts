@@ -70,7 +70,7 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'New UI: badges, metrics and identity return to the roster card (Phase C, slice C5)',
         description:
-          'Opt-in new UI only (admin-gated preview). The legacy badge row returns dissolved into the card’s one-axis homes: SUB and the “+N” weapon-priority tag join the header, the external BiS-link rides the progress line, and “You”/linked-user complete the footer’s claim story. The iLvl readout goes equipped-first with a per-slot Now-vs-BiS hover breakdown, the expanded card gains the Lodestone portrait, roster title and active-BiS-target chip, and the footer sync line names the character with sync detail and a job-mismatch warning on hover.',
+          'Opt-in new UI only (admin-gated preview). The legacy badge row returns dissolved into the card’s one-axis homes: SUB and the “+N” weapon-priority tag join the header, the external BiS-link rides the progress line, and “You”/linked-user complete the footer’s claim story. The iLvl readout goes equipped-first with a per-slot Now-vs-BiS hover breakdown, the expanded card gains the Lodestone portrait, roster title and active-BiS-target chip, and the footer sync line names the character, flags a job mismatch with a warning glyph, and carries the full sync detail on hover.',
         pr: 193,
         prTitle: 'feat(redesign): Phase C slice C5 — badges, metrics and identity (D-09/D-10/D-11/D-12 rider/D-01 chip)',
       },

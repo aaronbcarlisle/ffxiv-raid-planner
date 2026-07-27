@@ -67,6 +67,7 @@ import {
   type GearState,
 } from '../../utils/calculations';
 import { canEditGear, canEditPlayer, type MemberRole } from '../../utils/permissions';
+import { formatSource } from '../profile/freshness';
 import { eventBus, Events } from '../../lib/eventBus';
 import {
   getJobDisplayName,
@@ -440,13 +441,14 @@ export function RosterCard({
       player.job &&
       player.lastSyncedJob.toUpperCase() !== player.job.toUpperCase()
   );
+  // Provenance renders through the shared formatSource labels — raw storage
+  // identifiers like "player_hub" never reach copy (PR #193 review round 4).
   const syncDetail = (() => {
     if (!syncAge) return 'Lodestone identity linked';
     const parts = [syncAge === 'just now' ? 'Synced just now' : `Last synced ${syncAge}`];
-    if (player.lastSyncSource && player.lastSyncSource !== 'xivapi')
-      parts.push(`via ${player.lastSyncSource}`);
+    if (player.lastSyncSource) parts.push(formatSource(player.lastSyncSource));
     if (player.lastSyncedJob) parts.push(`as ${player.lastSyncedJob}`);
-    return parts.join(' ');
+    return parts.join(' · ');
   })();
 
   // C5 (D-01 remainder): the active BiS target for this player+job. INHERIT
@@ -501,21 +503,28 @@ export function RosterCard({
     if (player.userId === currentUserId) {
       // The membership role rides the tooltip (director F2) — legacy conveyed
       // it by badge color; the D-09 delta names the tooltip as its new home.
+      // LongPressTooltip keeps a touch path, and the sr-only role text keeps
+      // AT informed with no hover at all (PR #193 review round 4).
       return (
-        <Tooltip content={`This card is claimed by you${userRole ? ` (${userRole})` : ''}`}>
+        <LongPressTooltip
+          delayDuration={200}
+          content={`This card is claimed by you${userRole ? ` (${userRole})` : ''}`}
+        >
           <span className="inline-flex">
             <Tag variant="label" tone="accent">
               You
+              {userRole && <span className="sr-only">({userRole})</span>}
             </Tag>
           </span>
-        </Tooltip>
+        </LongPressTooltip>
       );
     }
     if (player.linkedUser) {
       const linked = player.linkedUser;
       const label = linked.displayName || linked.discordUsername;
       return (
-        <Tooltip
+        <LongPressTooltip
+          delayDuration={200}
           content={`Claimed by ${label}${linked.membershipRole ? ` (${linked.membershipRole})` : ''}`}
         >
           <span className="inline-flex">
@@ -533,12 +542,23 @@ export function RosterCard({
               }
             >
               <span className="max-w-16 truncate">{label}</span>
+              {linked.membershipRole && (
+                <span className="sr-only">({linked.membershipRole})</span>
+              )}
             </Tag>
           </span>
-        </Tooltip>
+        </LongPressTooltip>
       );
     }
-    return null;
+    // Claimed, but `linked_user` didn't come down (it's optional in the API
+    // schema). The footer owns the entire claim story under the one-axis
+    // ruling, so it must not go blank on a claimed card — name the state even
+    // when we can't name the owner (PR #193 review round 5).
+    return (
+      <Tag variant="label" tone="muted">
+        Claimed
+      </Tag>
+    );
   };
 
   const dragProps = reorderMode ? { ...dragHandle?.attributes, ...dragHandle?.listeners } : {};
@@ -681,7 +701,16 @@ export function RosterCard({
                   />
                 }
               >
-                <div className="cursor-help text-right leading-none">
+                {/* Focusable trigger (PR #193 review round 4): Radix opens the
+                    panel on focus, so keyboard users reach the breakdown. Not a
+                    button — focusing only reveals information, activation would
+                    be a lie. */}
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger; focus is the keyboard path to the Radix panel */}
+                <div
+                  tabIndex={0}
+                  aria-label="Average item level breakdown"
+                  className="cursor-help text-right leading-none"
+                >
                   <div
                     className={`font-display text-lg font-bold ${
                       equippedAvgIlv > 0 ? 'text-accent' : 'text-text-primary'

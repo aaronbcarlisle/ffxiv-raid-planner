@@ -768,6 +768,28 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
       expect(screen.queryByText('Unclaimed')).not.toBeInTheDocument();
     });
 
+    it('exposes the membership role to AT without hover (PR review round 4)', () => {
+      // The role's only home is the tooltip, and Tooltip vanishes on no-hover
+      // devices — the badges carry sr-only role text so AT always hears it.
+      const { unmount } = renderCard(makePlayer({ userId: 'u1' }));
+      expect(screen.getByText('(owner)')).toBeInTheDocument();
+      unmount();
+
+      renderCard(
+        makePlayer({
+          userId: 'u2',
+          linkedUser: {
+            id: 'u2',
+            discordId: 'd2',
+            discordUsername: 'bram',
+            displayName: 'Bram',
+            membershipRole: 'lead',
+          },
+        })
+      );
+      expect(screen.getByText('(lead)')).toBeInTheDocument();
+    });
+
     it("footer claim story: the linked user's name when claimed by someone else", () => {
       renderCard(
         makePlayer({
@@ -782,6 +804,16 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
         })
       );
       expect(screen.getByText('Bram')).toBeInTheDocument();
+      expect(screen.queryByText('You')).not.toBeInTheDocument();
+    });
+
+    it('falls back to a generic Claimed tag when the linked user is not hydrated (round 5)', () => {
+      // `linked_user` is optional in the API schema, so a claimed card can
+      // arrive with only `userId`. The footer owns the whole claim story now —
+      // it must never go blank on a claimed card.
+      renderCard(makePlayer({ userId: 'u2', linkedUser: undefined }));
+      expect(screen.getByText('Claimed')).toBeInTheDocument();
+      expect(screen.queryByText('Unclaimed')).not.toBeInTheDocument();
       expect(screen.queryByText('You')).not.toBeInTheDocument();
     });
   });
@@ -818,6 +850,27 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
       // Radix stamps the Trigger wrapper with data-state when the hover panel
       // is wired (same probe as the C2 pip-hover test).
       expect(screen.getByText('730').closest('[data-state]')).not.toBeNull();
+    });
+
+    it('opens the breakdown from keyboard focus (PR review round 4)', async () => {
+      // The trigger must be focusable with an accessible name — Radix opens
+      // the panel on focus, giving keyboard users the breakdown.
+      renderCard(
+        makePlayer({
+          gear: Array.from({ length: 11 }, (_, i) => ({
+            slot: `s${i}`,
+            bisSource: 'raid',
+            hasItem: i < 6,
+            isAugmented: false,
+            equippedItemLevel: i < 6 ? 730 : undefined,
+          })) as unknown as SnapshotPlayer['gear'],
+        })
+      );
+      const trigger = screen.getByLabelText('Average item level breakdown');
+      expect(trigger).toHaveAttribute('tabindex', '0');
+      fireEvent.focus(trigger);
+      // Radix renders the open content twice (portal + visually-hidden copy).
+      expect((await screen.findAllByText('Average Item Level')).length).toBeGreaterThan(0);
     });
 
     it('marks an equipped-derived readout with the accent discriminator (director F3)', () => {

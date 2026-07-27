@@ -42,6 +42,10 @@ const SOURCE_LABELS: Record<string, string> = {
   lodestone: 'Lodestone sync',
   manual: 'Manual entry',
   unknown: 'Unknown source',
+  // C5 roster-card provenances (PR #193 review round 4): the card's sync
+  // detail renders these — raw storage identifiers must not reach copy.
+  player_hub: 'Player Hub sync',
+  auto_tomestone: 'Scheduled Lodestone sync',
 };
 
 export function formatSource(source: string): string {

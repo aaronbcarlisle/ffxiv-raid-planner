@@ -10,6 +10,14 @@
 
 const XIVGEAR_PAGE = 'https://xivgear.app/?page=';
 
+/**
+ * A stored link is only a URL when it carries a real http(s) scheme. Legacy
+ * tested `startsWith('http')`, which also matched gearset ids like "httpfoo"
+ * and emitted them as a same-origin relative href on an external link — the
+ * one deliberate divergence from the fork (PR #193 review round 5).
+ */
+const HTTP_SCHEME = /^https?:\/\//i;
+
 /** Trailing set index of a piped link; null when absent or non-numeric. */
 function parseSetIndex(part: string | undefined): number | null {
   const n = parseInt(part ?? '', 10);
@@ -23,7 +31,7 @@ function xivgearUrl(page: string, setIndex: number | null): string {
 }
 
 export function buildBisUrl(bisLink: string): string {
-  if (bisLink.startsWith('http')) return bisLink;
+  if (HTTP_SCHEME.test(bisLink)) return bisLink;
   if (!bisLink.includes('|')) return `https://etro.gg/gearset/${bisLink}`;
 
   const parts = bisLink.split('|');
@@ -48,7 +56,7 @@ const TIER_DISPLAY_NAMES: Record<string, string> = {
 };
 
 export function bisLinkTooltip(bisLink: string): string {
-  if (bisLink.startsWith('http')) {
+  if (HTTP_SCHEME.test(bisLink)) {
     if (bisLink.includes('etro.gg')) return 'Open in Etro';
     if (bisLink.includes('xivgear')) return 'Open in XIVGear';
     return 'Open BiS link';
