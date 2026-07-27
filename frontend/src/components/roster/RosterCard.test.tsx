@@ -7,6 +7,8 @@ import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import type { MaterialLogEntry, SnapshotPlayer } from '../../types';
 import { useToastStore } from '../../stores/toastStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useSharedBisStore } from '../../stores/sharedBisStore';
+import type { SharedBiSTargetSet } from '../../types';
 import { eventBus, Events } from '../../lib/eventBus';
 import { computeGearSlotUpdate, fromGearState } from '../../utils/calculations';
 
@@ -706,6 +708,279 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       // wired; the bare slot gets no wrapper.
       const wired = pips.filter((p) => p.closest('[data-state]'));
       expect(wired).toHaveLength(1);
+    });
+  });
+});
+
+describe('RosterCard — C5 metrics · badges · identity', () => {
+  beforeEach(() => {
+    useSharedBisStore.setState({ targets: {}, loading: {} });
+  });
+
+  describe('badges (D-09)', () => {
+    it('shows the SUB tag for substitutes only', () => {
+      const { unmount } = renderCard(makePlayer({ isSubstitute: true }));
+      expect(screen.getByText('SUB')).toBeInTheDocument();
+      unmount();
+
+      renderCard(makePlayer({ isSubstitute: false }));
+      expect(screen.queryByText('SUB')).not.toBeInTheDocument();
+    });
+
+    it('shows the +N weapon-priority tag only beyond the main job', () => {
+      // Legacy parity (R-081): the count excludes the main job, so two
+      // priorities render "+1" and a single priority renders nothing.
+      const { unmount } = renderCard(
+        makePlayer({
+          weaponPriorities: [{ job: 'PLD' }, { job: 'DRK' }] as SnapshotPlayer['weaponPriorities'],
+        })
+      );
+      expect(screen.getByText('+1')).toBeInTheDocument();
+      unmount();
+
+      renderCard(
+        makePlayer({
+          weaponPriorities: [{ job: 'PLD' }] as SnapshotPlayer['weaponPriorities'],
+        })
+      );
+      expect(screen.queryByText('+1')).not.toBeInTheDocument();
+    });
+
+    it('renders the BiS link as a real external anchor on the progress line', () => {
+      renderCard(makePlayer({ bisLink: 'https://xivgear.app/?page=sl|xyz' }));
+
+      const link = screen.getByRole('link', { name: 'Open in XIVGear' });
+      expect(link).toHaveAttribute('href', 'https://xivgear.app/?page=sl|xyz');
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+    });
+
+    it('omits the BiS link affordance when the player has no bisLink', () => {
+      renderCard(makePlayer({ bisLink: undefined }));
+      expect(
+        screen.queryByRole('link', { name: /Open (in|curated|BiS)/ })
+      ).not.toBeInTheDocument();
+    });
+
+    it("footer claim story: 'You' when the card is claimed by the current user", () => {
+      renderCard(makePlayer({ userId: 'u1' }));
+      expect(screen.getByText('You')).toBeInTheDocument();
+      expect(screen.queryByText('Unclaimed')).not.toBeInTheDocument();
+    });
+
+    it("footer claim story: the linked user's name when claimed by someone else", () => {
+      renderCard(
+        makePlayer({
+          userId: 'u2',
+          linkedUser: {
+            id: 'u2',
+            discordId: 'd2',
+            discordUsername: 'bram',
+            displayName: 'Bram',
+            membershipRole: 'lead',
+          },
+        })
+      );
+      expect(screen.getByText('Bram')).toBeInTheDocument();
+      expect(screen.queryByText('You')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('now-vs-BiS metrics (D-10)', () => {
+    it('prefers the equipped average when at least half the slots carry sync data', () => {
+      // 6 of 11 slots (>= ceil(11/2)) with equipped iLv 730 → readout says 730.
+      renderCard(
+        makePlayer({
+          gear: Array.from({ length: 11 }, (_, i) => ({
+            slot: `s${i}`,
+            bisSource: 'raid',
+            hasItem: i < 6,
+            isAugmented: false,
+            equippedItemLevel: i < 6 ? 730 : undefined,
+          })) as unknown as SnapshotPlayer['gear'],
+        })
+      );
+      expect(screen.getByText('730')).toBeInTheDocument();
+    });
+
+    it('wires the breakdown panel behind the iLvl readout', () => {
+      renderCard(
+        makePlayer({
+          gear: Array.from({ length: 11 }, (_, i) => ({
+            slot: `s${i}`,
+            bisSource: 'raid',
+            hasItem: i < 6,
+            isAugmented: false,
+            equippedItemLevel: i < 6 ? 730 : undefined,
+          })) as unknown as SnapshotPlayer['gear'],
+        })
+      );
+      // Radix stamps the Trigger wrapper with data-state when the hover panel
+      // is wired (same probe as the C2 pip-hover test).
+      expect(screen.getByText('730').closest('[data-state]')).not.toBeNull();
+    });
+
+    it('leaves the placeholder readout un-wired when there is no iLv to explain', () => {
+      renderCard(makePlayer());
+      expect(screen.getByText('—').closest('[data-state]')).toBeNull();
+    });
+  });
+
+  describe('identity (D-11, lean: portrait + title, expanded only)', () => {
+    const lodestone = {
+      lodestoneId: '123',
+      lodestoneName: 'Krile Baldesion',
+      lodestoneServer: 'Balmung',
+      lodestoneAvatarUrl: 'https://img2.finalfantasyxiv.com/f/abc.jpg',
+    };
+
+    it('shows the Lodestone portrait on the expanded card', () => {
+      renderCard(makePlayer(lodestone), { density: 'expanded' });
+      const img = screen.getByAltText('Tank One');
+      expect(img).toHaveAttribute('src', lodestone.lodestoneAvatarUrl);
+    });
+
+    it('keeps the compact card portrait-free (initials fallback)', () => {
+      renderCard(makePlayer(lodestone));
+      expect(screen.queryByAltText('Tank One')).not.toBeInTheDocument();
+    });
+
+    it('shows the roster title on the expanded card only', () => {
+      const { unmount } = renderCard(
+        makePlayer({ rosterTitle: 'Shield of the Static' }),
+        { density: 'expanded' }
+      );
+      expect(screen.getByText('Shield of the Static')).toBeInTheDocument();
+      unmount();
+
+      renderCard(makePlayer({ rosterTitle: 'Shield of the Static' }));
+      expect(screen.queryByText('Shield of the Static')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('sync line (D-12 rider, leaner R-072)', () => {
+    const twoHoursAgo = () => new Date(Date.now() - 2 * 3600_000).toISOString();
+
+    it('names the character on the footer sync line', () => {
+      renderCard(
+        makePlayer({
+          lodestoneId: '123',
+          lodestoneName: 'Krile Baldesion',
+          lodestoneServer: 'Balmung',
+          lastSync: twoHoursAgo(),
+        })
+      );
+      expect(screen.getByText('Krile Baldesion · synced 2h ago')).toBeInTheDocument();
+    });
+
+    it('wires the sync detail tooltip behind the linked line, not the unlinked one', () => {
+      const { unmount } = renderCard(
+        makePlayer({
+          lodestoneId: '123',
+          lodestoneName: 'Krile Baldesion',
+          lodestoneServer: 'Balmung',
+          lastSync: twoHoursAgo(),
+        })
+      );
+      expect(
+        screen.getByText('Krile Baldesion · synced 2h ago').closest('[data-state]')
+      ).not.toBeNull();
+      unmount();
+
+      renderCard(makePlayer());
+      expect(screen.getByText('Not synced').closest('[data-state]')).toBeNull();
+    });
+
+    it('flags a job mismatch between the last sync and the card job', () => {
+      const { unmount } = renderCard(
+        makePlayer({
+          lodestoneId: '123',
+          lodestoneName: 'Krile Baldesion',
+          lastSync: twoHoursAgo(),
+          lastSyncedJob: 'WAR',
+          job: 'PLD',
+        })
+      );
+      expect(screen.getByTestId('roster-sync-mismatch')).toBeInTheDocument();
+      unmount();
+
+      renderCard(
+        makePlayer({
+          lodestoneId: '123',
+          lodestoneName: 'Krile Baldesion',
+          lastSync: twoHoursAgo(),
+          lastSyncedJob: 'pld',
+          job: 'PLD',
+        })
+      );
+      expect(screen.queryByTestId('roster-sync-mismatch')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('active BiS target chip (D-01 remainder, expanded only)', () => {
+    const makeTarget = (overrides: Partial<SharedBiSTargetSet> = {}): SharedBiSTargetSet =>
+      ({
+        id: 'bt1',
+        ownerType: 'roster_member_job',
+        ownerId: 'p1',
+        job: 'PLD',
+        name: '7.2 Savage BiS',
+        purpose: 'savage',
+        sourceType: 'xivgear',
+        importStatus: 'imported',
+        isActive: true,
+        isPublic: false,
+        itemLevel: 735,
+        createdAt: '',
+        updatedAt: '',
+        ...overrides,
+      }) as SharedBiSTargetSet;
+
+    const seedStore = (targets: SharedBiSTargetSet[]) => {
+      useSharedBisStore.setState({ targets: { 'roster_member_job:p1': targets }, loading: {} });
+    };
+
+    it('shows the active target on the expanded card', () => {
+      seedStore([makeTarget()]);
+      renderCard(makePlayer(), { density: 'expanded' });
+      expect(
+        screen.getByRole('button', { name: /Target: 7\.2 Savage BiS · iLv 735/ })
+      ).toBeInTheDocument();
+    });
+
+    it('counts additional same-job targets', () => {
+      seedStore([makeTarget(), makeTarget({ id: 'bt2', name: 'Alt set', isActive: false })]);
+      renderCard(makePlayer(), { density: 'expanded' });
+      expect(screen.getByRole('button', { name: /\(\+1\)/ })).toBeInTheDocument();
+    });
+
+    it('stays off the compact card and off cards with no populated store', () => {
+      seedStore([makeTarget()]);
+      const { unmount } = renderCard(makePlayer());
+      expect(screen.queryByRole('button', { name: /Target:/ })).not.toBeInTheDocument();
+      unmount();
+
+      useSharedBisStore.setState({ targets: {}, loading: {} });
+      renderCard(makePlayer(), { density: 'expanded' });
+      expect(screen.queryByRole('button', { name: /Target:/ })).not.toBeInTheDocument();
+    });
+
+    it('opens the BiS Targets manager', async () => {
+      // The modal fetches on mount; give it a quiet network.
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
+      );
+      seedStore([makeTarget()]);
+      renderCard(makePlayer(), { density: 'expanded' });
+
+      fireEvent.click(screen.getByRole('button', { name: /Target: 7\.2 Savage BiS/ }));
+      expect(await screen.findByText(/BiS Targets —/)).toBeInTheDocument();
     });
   });
 });
