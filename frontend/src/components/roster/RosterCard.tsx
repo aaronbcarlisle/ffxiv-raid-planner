@@ -44,6 +44,7 @@ import { RosterGearTable } from './RosterGearTable';
 import { hasHoverData } from './gearHoverData';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
+import { equippedAverageIlv } from './rosterIlv';
 import { Button, IconButton, LongPressTooltip, Tooltip } from '../primitives';
 import { JobPicker } from '../player/JobPicker';
 import { PositionSelector } from '../player/PositionSelector';
@@ -402,16 +403,10 @@ export function RosterCard({
 
   // C5 (D-10): the readout prefers the equipped average from sync data when it
   // covers at least half the slots (legacy PlayerCardHeader parity); the
-  // NowVsBisPanel hover explains the number either way.
+  // NowVsBisPanel hover explains the number either way. The shared helper
+  // keeps this expression identical to the GearBoard subtitle (director F3).
   const bisAvgIlv = calculateAverageItemLevel(player.gear, tierId);
-  const equippedSlots = player.gear.filter((g) => (g.equippedItemLevel ?? 0) > 0);
-  const equippedAvgIlv =
-    equippedSlots.length >= Math.ceil(player.gear.length / 2)
-      ? Math.round(
-          equippedSlots.reduce((sum, g) => sum + (g.equippedItemLevel ?? 0), 0) /
-            equippedSlots.length
-        )
-      : 0;
+  const equippedAvgIlv = equippedAverageIlv(player.gear);
   const displayILv = equippedAvgIlv > 0 ? equippedAvgIlv : bisAvgIlv;
 
   // C5 (D-09): badge facts. The "+N" count excludes the main job (legacy
@@ -425,9 +420,9 @@ export function RosterCard({
   const syncAge = formatSyncAge(player.lastSync);
   // C5 (D-12 rider): the sync line carries the character's name; server and
   // sync provenance live in the hover detail (leaner than v1's sync block).
-  const syncLabel = hasLodestoneIdentity
-    ? `${player.lodestoneName ?? 'Linked'}${syncAge ? ` · synced ${syncAge}` : ''}`
-    : 'Not synced';
+  // Rendered as two segments so the NAME truncates and the age never does
+  // (director F5).
+  const syncName = player.lodestoneName ?? 'Linked';
   const syncJobMismatch = Boolean(
     hasLodestoneIdentity &&
       player.lastSyncedJob &&
@@ -493,8 +488,10 @@ export function RosterCard({
       );
     }
     if (player.userId === currentUserId) {
+      // The membership role rides the tooltip (director F2) — legacy conveyed
+      // it by badge color; the D-09 delta names the tooltip as its new home.
       return (
-        <Tooltip content="This card is claimed by you">
+        <Tooltip content={`This card is claimed by you${userRole ? ` (${userRole})` : ''}`}>
           <span className="inline-flex">
             <Tag variant="label" tone="accent">
               You
@@ -657,7 +654,10 @@ export function RosterCard({
 
           <div className="flex shrink-0 items-center gap-2">
             {/* C5 (D-10): the Now-vs-BiS breakdown panel explains the readout;
-                the placeholder "—" has nothing to explain and stays un-wired. */}
+                the placeholder "—" has nothing to explain and stays un-wired.
+                The accent color IS the discriminator (legacy parity, director
+                F3): accent = equipped average, default = BiS-target average.
+                No native title — the panel already says both (director F4). */}
             {displayILv > 0 ? (
               <LongPressTooltip
                 delayDuration={200}
@@ -670,15 +670,12 @@ export function RosterCard({
                   />
                 }
               >
-                <div
-                  className="cursor-help text-right leading-none"
-                  title={
-                    equippedAvgIlv > 0
-                      ? 'Current equipped avg iLv (hover for the BiS target)'
-                      : undefined
-                  }
-                >
-                  <div className="font-display text-lg font-bold text-text-primary">
+                <div className="cursor-help text-right leading-none">
+                  <div
+                    className={`font-display text-lg font-bold ${
+                      equippedAvgIlv > 0 ? 'text-accent' : 'text-text-primary'
+                    }`}
+                  >
                     {displayILv}
                   </div>
                   <div className="text-xs uppercase tracking-wide text-text-tertiary">iLvl</div>
@@ -751,24 +748,25 @@ export function RosterCard({
         </div>
 
         {/* C5 (D-01 remainder): expanded-only active BiS target, riding the
-            BiS block. Opens the same manager as the kebab's "BiS Targets". */}
+            BiS block. Opens the same manager as the kebab's "BiS Targets".
+            A nav Tag, not legacy's ghost button — the pill goes somewhere, so
+            it carries the chevron (director F7: a clickable thing must LOOK
+            clickable). */}
         {isExpanded && activeBisTarget && bisTargetsAction && (
           <div className="mt-1.5">
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={bisTargetsAction}
-              title="Open BiS Targets"
-              leftIcon={<Target className="h-3 w-3 text-accent" aria-hidden="true" />}
-              className="h-auto max-w-full justify-start py-0.5 text-left"
+            <Tag
+              variant="nav"
+              tone="accent"
+              onNavigate={bisTargetsAction}
+              icon={<Target className="h-3 w-3" aria-hidden="true" />}
+              className="max-w-full"
             >
-              <span className="truncate text-xs text-text-muted">
-                Target:{' '}
-                <span className="font-medium text-text-secondary">{activeBisTarget.name}</span>
+              <span className="truncate">
+                Target: <span className="font-medium">{activeBisTarget.name}</span>
                 {activeBisTarget.itemLevel ? ` · iLv ${activeBisTarget.itemLevel}` : ''}
                 {bisTargetCount > 1 ? ` (+${bisTargetCount - 1})` : ''}
               </span>
-            </Button>
+            </Tag>
           </div>
         )}
 
@@ -878,7 +876,11 @@ export function RosterCard({
               }`}
             />
             {hasLodestoneIdentity ? (
-              <Tooltip
+              /* LongPressTooltip, matching the iLvl panel twelve lines up —
+                 same slice, same detail-hover pattern, and it keeps a touch
+                 path (director F6). */
+              <LongPressTooltip
+                delayDuration={200}
                 content={
                   <div className="max-w-60 space-y-1">
                     <div className="font-medium">
@@ -895,7 +897,8 @@ export function RosterCard({
                 }
               >
                 <span className="flex min-w-0 cursor-help items-center gap-1">
-                  <span className="truncate">{syncLabel}</span>
+                  <span className="truncate">{syncName}</span>
+                  {syncAge && <span className="shrink-0">· synced {syncAge}</span>}
                   {syncJobMismatch && (
                     <AlertTriangle
                       data-testid="roster-sync-mismatch"
@@ -904,9 +907,9 @@ export function RosterCard({
                     />
                   )}
                 </span>
-              </Tooltip>
+              </LongPressTooltip>
             ) : (
-              <span className="truncate">{syncLabel}</span>
+              <span className="truncate">Not synced</span>
             )}
           </span>
           <span className="flex-1" />

@@ -820,6 +820,44 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
       expect(screen.getByText('730').closest('[data-state]')).not.toBeNull();
     });
 
+    it('marks an equipped-derived readout with the accent discriminator (director F3)', () => {
+      // Legacy PlayerCardHeader colored the number to say WHICH metric it is
+      // (accent = what the player has equipped). The hover alone is not a
+      // visible discriminator.
+      renderCard(
+        makePlayer({
+          gear: Array.from({ length: 11 }, (_, i) => ({
+            slot: `s${i}`,
+            bisSource: 'raid',
+            hasItem: i < 6,
+            isAugmented: false,
+            equippedItemLevel: i < 6 ? 730 : undefined,
+          })) as unknown as SnapshotPlayer['gear'],
+        })
+      );
+      expect(screen.getByText('730')).toHaveClass('text-accent');
+    });
+
+    it('falls back to the BiS-target metric below the sync-coverage threshold (director F10)', () => {
+      // 5 of 11 synced slots is under ceil(11/2): the equipped average must
+      // NOT win. (With the test tier the BiS-target average is 0 -> "—",
+      // styled as the non-equipped readout.)
+      renderCard(
+        makePlayer({
+          gear: Array.from({ length: 11 }, (_, i) => ({
+            slot: `s${i}`,
+            bisSource: 'raid',
+            hasItem: i < 6,
+            isAugmented: false,
+            equippedItemLevel: i < 5 ? 730 : undefined,
+          })) as unknown as SnapshotPlayer['gear'],
+        })
+      );
+      expect(screen.queryByText('730')).not.toBeInTheDocument();
+      const placeholder = screen.getByText('—');
+      expect(placeholder).not.toHaveClass('text-accent');
+    });
+
     it('leaves the placeholder readout un-wired when there is no iLv to explain', () => {
       renderCard(makePlayer());
       expect(screen.getByText('—').closest('[data-state]')).toBeNull();
@@ -861,7 +899,9 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
   describe('sync line (D-12 rider, leaner R-072)', () => {
     const twoHoursAgo = () => new Date(Date.now() - 2 * 3600_000).toISOString();
 
-    it('names the character on the footer sync line', () => {
+    it('names the character on the footer sync line, with the age as its own segment', () => {
+      // Two segments (director F5): the NAME truncates at narrow widths, the
+      // age never does — both facts survive a crowded footer.
       renderCard(
         makePlayer({
           lodestoneId: '123',
@@ -870,7 +910,8 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
           lastSync: twoHoursAgo(),
         })
       );
-      expect(screen.getByText('Krile Baldesion · synced 2h ago')).toBeInTheDocument();
+      expect(screen.getByText('Krile Baldesion')).toBeInTheDocument();
+      expect(screen.getByText(/synced 2h ago/)).toBeInTheDocument();
     });
 
     it('wires the sync detail tooltip behind the linked line, not the unlinked one', () => {
@@ -883,7 +924,7 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
         })
       );
       expect(
-        screen.getByText('Krile Baldesion · synced 2h ago').closest('[data-state]')
+        screen.getByText('Krile Baldesion').closest('[data-state]')
       ).not.toBeNull();
       unmount();
 

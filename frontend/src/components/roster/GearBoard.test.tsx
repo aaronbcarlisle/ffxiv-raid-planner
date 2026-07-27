@@ -36,6 +36,24 @@ describe('GearBoard', () => {
     expect(screen.getByText('7')).toBeInTheDocument();
   });
 
+  it('row subtitle iLvl goes equipped-first when sync data covers half the slots (C5)', () => {
+    // The Board must agree with the card headline: equipped average when
+    // Lodestone/Tomestone data covers >= ceil(11/2) slots, BiS-target avg
+    // otherwise. 6 slots at 730 -> "· 730" in the identity subtitle.
+    const synced = player({
+      id: 'a',
+      gear: SLOTS.map((slot, i) => ({
+        slot,
+        bisSource: 'raid',
+        hasItem: false,
+        isAugmented: false,
+        equippedItemLevel: i < 6 ? 730 : undefined,
+      })) as GearSlotStatus[],
+    });
+    render(<GearBoard players={[synced]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    expect(screen.getByText(/730/)).toBeInTheDocument();
+  });
+
   it('renders the "No BiS imported" row when a player has no BiS-target slots', () => {
     const noBis = player({ id: 'z', name: 'Caster One', gear: SLOTS.map((slot) => ({ slot, bisSource: null, hasItem: false, isAugmented: false })) as GearSlotStatus[] });
     render(<GearBoard players={[noBis]} {...OWNER_GATE} actionsForPlayer={noop} />);
