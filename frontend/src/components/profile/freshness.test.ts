@@ -101,6 +101,22 @@ describe('formatSource', () => {
     expect(formatSource('auto_tomestone')).toBe('Scheduled Lodestone sync');
   });
 
+  it('labels every sync source the backend can write (C5, PR #193 review round 6)', () => {
+    // `sync_source` is `f"{source_prefix}{raw_source}"` (gear_sync.py:128) with
+    // `source_prefix="auto_"` on the scheduled path (auto_sync.py:127), and
+    // `raw_source` is one of the four `__source` values the Lodestone router
+    // sets (lodestone.py:793, :1010, :1025) or the "xivapi" default. Every
+    // combination must resolve to copy — the raw string must never surface.
+    const rawSources = ['tomestone', 'tomestone_identity', 'xivapi', 'dev_mock'];
+    for (const raw of rawSources) {
+      for (const source of [raw, `auto_${raw}`]) {
+        expect(formatSource(source), `${source} leaked as a raw identifier`).not.toBe(source);
+      }
+    }
+    expect(formatSource('auto_xivapi')).toBe('Scheduled Lodestone sync');
+    expect(formatSource('tomestone_identity')).toBe('Lodestone identity sync');
+  });
+
   it('formats manual source', () => {
     expect(formatSource('manual')).toBe('Manual entry');
   });

@@ -42,10 +42,20 @@ const SOURCE_LABELS: Record<string, string> = {
   lodestone: 'Lodestone sync',
   manual: 'Manual entry',
   unknown: 'Unknown source',
-  // C5 roster-card provenances (PR #193 review round 4): the card's sync
+  // C5 roster-card provenances (PR #193 review rounds 4 + 6): the card's sync
   // detail renders these — raw storage identifiers must not reach copy.
+  // Enumerated from the backend rather than guessed: `sync_source` is
+  // `f"{source_prefix}{raw_source}"` (gear_sync.py:128), the scheduled task
+  // passes `source_prefix="auto_"` (auto_sync.py:127), and `raw_source` is one
+  // of the Lodestone router's `__source` values (lodestone.py:793, :1010,
+  // :1025) or the "xivapi" default — so every provider needs both forms.
   player_hub: 'Player Hub sync',
+  tomestone_identity: 'Lodestone identity sync',
+  dev_mock: 'Mock sync (dev)',
   auto_tomestone: 'Scheduled Lodestone sync',
+  auto_xivapi: 'Scheduled Lodestone sync',
+  auto_tomestone_identity: 'Scheduled Lodestone identity sync',
+  auto_dev_mock: 'Scheduled mock sync (dev)',
 };
 
 export function formatSource(source: string): string {

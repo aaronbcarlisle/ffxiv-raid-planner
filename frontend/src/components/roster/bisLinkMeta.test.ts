@@ -77,4 +77,11 @@ describe('bisLinkTooltip', () => {
   it('treats an "http"-prefixed non-URL as a gearset id, matching buildBisUrl (round 5)', () => {
     expect(bisLinkTooltip('httpfoo')).toBe('Open in Etro');
   });
+
+  it('names XIVGear for non-preset piped values, matching buildBisUrl (round 6)', () => {
+    // The tooltip doubles as the anchor's aria-label, so it must name the
+    // destination buildBisUrl actually opens — piped values go to XIVGear.
+    expect(bisLinkTooltip('weird|thing')).toBe('Open in XIVGear');
+    expect(buildBisUrl('weird|thing')).toBe('https://xivgear.app/?page=weird|thing');
+  });
 });

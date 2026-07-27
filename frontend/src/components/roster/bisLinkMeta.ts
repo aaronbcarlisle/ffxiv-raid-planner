@@ -67,5 +67,10 @@ export function bisLinkTooltip(bisLink: string): string {
     if (!tier) return 'Open curated BiS in XIVGear';
     return `Open ${TIER_DISPLAY_NAMES[tier] ?? `${tier.toUpperCase()} BiS`} in XIVGear`;
   }
+  // Mirror buildBisUrl's last two branches: any other piped value is an
+  // XIVGear page, and only a bare id is an Etro gearset. The tooltip doubles
+  // as the anchor's aria-label, so naming the wrong destination misleads
+  // sighted and AT users alike (PR #193 review round 6).
+  if (bisLink.includes('|')) return 'Open in XIVGear';
   return 'Open in Etro';
 }
