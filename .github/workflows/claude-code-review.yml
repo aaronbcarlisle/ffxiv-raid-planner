@@ -40,4 +40,10 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
+          # `--comment` is REQUIRED for the review to reach the PR. Step 7 of the
+          # plugin's command spec: without it the agent finishes the review, prints
+          # the findings to the terminal, and stops without posting anything —
+          # which looks identical to a clean review from the outside. It also
+          # posts an explicit "No issues found" comment when nothing is flagged,
+          # so a silent run now means something is broken, not that the PR is fine.
+          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment'
