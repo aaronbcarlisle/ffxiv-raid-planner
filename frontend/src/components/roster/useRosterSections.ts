@@ -36,9 +36,12 @@ export interface VisibleSectionsInput {
 }
 
 /**
- * The sections `RosterCards` is rendering right now, in render order. Both it
- * and `toggleAll` derive the list from this one expression, so fold-all can
- * never act on a section that isn't on screen.
+ * The sections `RosterCards` is rendering right now, in render order — the
+ * input `toggleAll` needs so fold-all can never act on an off-screen section.
+ *
+ * `RosterCards` derives its own sections from the same inputs while it renders
+ * (it already has the grouped players in hand); this mirrors those conditions
+ * rather than being consumed by them, so the two must be changed together.
  *
  * The flat view has no foldable main grid — only the substitutes section folds
  * there (legacy parity: `PlayerGrid`'s expand-all considers `g1`/`g2` only in
@@ -93,7 +96,12 @@ function writeCollapsedState(key: string, value: CollapsedState): void {
 
 export interface UseRosterSectionsOptions {
   groupId: string;
-  tierId: string;
+  /**
+   * Folds are scoped per static+tier. Undefined until the tier resolves — the
+   * hook then keeps state in memory and touches storage not at all, rather
+   * than writing a placeholder key (director F13).
+   */
+  tierId: string | undefined;
   /**
    * The sections actually on screen right now, in render order. `toggleAll`
    * acts on exactly these — folding a section the user cannot see would
@@ -114,8 +122,10 @@ export function useRosterSections({
   tierId,
   sections,
 }: UseRosterSectionsOptions): UseRosterSectionsReturn {
-  const key = rosterCollapseKey(groupId, tierId);
-  const [collapsed, setCollapsed] = useState<CollapsedState>(() => readCollapsedState(key));
+  const key = tierId ? rosterCollapseKey(groupId, tierId) : null;
+  const [collapsed, setCollapsed] = useState<CollapsedState>(() =>
+    key ? readCollapsedState(key) : {}
+  );
 
   // Re-read when the static/tier (and so the key) changes. The component stays
   // mounted across tier switches, so without this the previous tier's folds
@@ -124,11 +134,11 @@ export function useRosterSections({
   const [lastKey, setLastKey] = useState(key);
   if (key !== lastKey) {
     setLastKey(key);
-    setCollapsed(readCollapsedState(key));
+    setCollapsed(key ? readCollapsedState(key) : {});
   }
 
   useEffect(() => {
-    writeCollapsedState(key, collapsed);
+    if (key) writeCollapsedState(key, collapsed);
   }, [key, collapsed]);
 
   const isCollapsed = useCallback(

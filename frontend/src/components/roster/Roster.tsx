@@ -265,18 +265,16 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   const hasSubstitutes = useMemo(() => sortedPlayers.some((p) => p.isSubstitute), [sortedPlayers]);
 
   // ── Section folding (Phase C C6, D-08) ──
-  // `visibleRosterSections` is the single expression RosterCards' rendering and
-  // fold-all both follow, so fold-all can never act on an off-screen section.
+  // `visibleRosterSections` mirrors RosterCards' own render conditions so
+  // fold-all never acts on an off-screen section. They are separate
+  // expressions over the same inputs — change them together (director F8).
   const visibleSections = useMemo(
     () => visibleRosterSections({ players: sortedPlayers, groupView, subsView, subsHidden }),
     [sortedPlayers, groupView, subsView, subsHidden],
   );
   const { isCollapsed, toggleSection, toggleAll } = useRosterSections({
     groupId: group.id,
-    // Folds are keyed per static+tier; with no tier loaded there is nothing to
-    // scope them to, so they land under a stable placeholder rather than
-    // leaking across tiers.
-    tierId: tierId ?? 'none',
+    tierId,
     sections: visibleSections,
   });
 
@@ -287,7 +285,10 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     shortcutsDisabled: cardModalCount > 0 || isActionModalOpen,
     active: rosterView === 'cards',
     hasSubstitutes,
-    subsSeparable: !subsHidden,
+    // Matches the toolbar toggle's disabled rule exactly (director F6): a
+    // shortcut must not do what its disabled control cannot, and must stay
+    // available where the control does.
+    subsSeparable: !(subsHidden && subsView),
     onToggleGrouping: useCallback(
       () => setGroupView(!groupView, group.id),
       [setGroupView, groupView, group.id],
@@ -313,16 +314,18 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   }, [sortedPlayers]);
 
   // ── Player actions (playerId-first handlers) ──
-  const setSortPresetWithTier = useCallback(
-    (preset: SortPreset) => setSortPreset(preset, tierId),
-    [setSortPreset, tierId],
-  );
+  // The drag-reorder path calls `setSortPreset('custom', tierId)`
+  // (`usePlayerActions.ts:178-182`). That overload writes LEGACY's
+  // `sort-preset-{tierId}`, so a drag inside v2 changed what the frozen shell
+  // sorted by on its next visit — and the resulting 'custom' never reached the
+  // v2 key, so a later visit hydrated a stale preset over the user's own
+  // ordering. Route it through the same v2 wrapper the selector uses (C6).
   const playerActions = usePlayerActions({
     groupId: group.id,
     tierId,
     players,
     setEditingPlayerId,
-    setSortPreset: setSortPresetWithTier,
+    setSortPreset: handleSortPresetChange,
   });
 
   // ── ?player= deep link (mirrors Schedule.tsx's ?sessionId= shape) ──────────

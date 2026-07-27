@@ -16,6 +16,7 @@
 
 import { LayoutGrid, List, Plus, Rows3, Table2, Users } from 'lucide-react';
 import { Button } from '../primitives/Button';
+import { Tooltip } from '../primitives/Tooltip';
 import { SegmentedToggle } from '../ui/SegmentedToggle';
 import { SortModeSelector } from '../ui/SortModeSelector';
 import { Toggle } from '../ui/Toggle';
@@ -32,6 +33,26 @@ const DENSITY_OPTIONS = [
   { value: 'compact' as const, label: 'Compact', icon: <Rows3 className="h-3.5 w-3.5" aria-hidden /> },
   { value: 'expanded' as const, label: 'Expanded', icon: <List className="h-3.5 w-3.5" aria-hidden /> },
 ];
+
+/**
+ * Tooltip body that teaches the control's keyboard shortcut (legacy R-012 /
+ * `GroupViewToggle` parity — C6 makes `G` and `S` live in v2 for the first
+ * time, and shipping them with no on-surface hint would lose the affordance
+ * legacy had; director F2).
+ */
+function ShortcutHint({ keyLabel, text }: { keyLabel: string; text: string }) {
+  return (
+    <div className="max-w-60">
+      <div className="flex items-center gap-2 font-medium">
+        Shortcut
+        <kbd className="rounded border border-border-default bg-surface-base px-1.5 py-0.5 text-xs">
+          {keyLabel}
+        </kbd>
+      </div>
+      <div className="mt-0.5 text-xs text-text-secondary">{text}</div>
+    </div>
+  );
+}
 
 export interface RosterToolbarProps {
   /** Light-Party (G1/G2/Unassigned) grouping vs a single flat grid. */
@@ -88,6 +109,17 @@ export function RosterToolbar({
   onSortPresetChange,
   onExpandAllToggle,
 }: RosterToolbarProps) {
+  // Separating is only moot while the section it would create is hidden.
+  const separateSubsDisabled = subsHidden && subsView;
+  const groupingHint = groupView
+    ? 'On — the roster splits into G1 / G2. Click to show one flat grid.'
+    : 'Off — one flat grid. Click to split the roster into G1 / G2.';
+  const separateHint = separateSubsDisabled
+    ? 'Turn "Show subs" on to separate substitutes again.'
+    : subsView
+      ? 'On — substitutes sit in their own section. Click to merge them into the roster.'
+      : 'Off — substitutes are merged into the roster. Click to separate them.';
+
   return (
     <div className="flex items-center gap-2.5 flex-wrap">
       <SegmentedToggle
@@ -120,16 +152,20 @@ export function RosterToolbar({
 
           {/* Grouping is its own axis (C1-checkpoint correction (a)): sort
               reorders cards WITHIN their groups, this decides whether there
-              are groups at all. One control per axis. */}
-          <Button
-            variant="secondary"
-            size="sm"
-            leftIcon={<Users className="h-3.5 w-3.5" aria-hidden />}
-            aria-pressed={groupView}
-            onClick={() => onGroupViewChange(!groupView)}
-          >
-            Light Party
-          </Button>
+              are groups at all. One control per axis. The variant carries the
+              pressed state visually — `aria-pressed` alone leaves sighted
+              users with two identical-looking states (director F5). */}
+          <Tooltip content={<ShortcutHint keyLabel="G" text={groupingHint} />}>
+            <Button
+              variant={groupView ? 'primary' : 'secondary'}
+              size="sm"
+              leftIcon={<Users className="h-3.5 w-3.5" aria-hidden />}
+              aria-pressed={groupView}
+              onClick={() => onGroupViewChange(!groupView)}
+            >
+              Light Party
+            </Button>
+          </Tooltip>
 
           {hasSubstitutes && (
             <>
@@ -139,16 +175,22 @@ export function RosterToolbar({
                 label="Show subs"
                 size="sm"
               />
-              {/* Show Subs gates this one (C1-checkpoint correction (c)): in v1
-                  both toggle independently, so "separate" could apply to a
-                  section that isn't rendered at all. */}
-              <Toggle
-                checked={subsView}
-                onChange={onSubsViewChange}
-                label="Separate subs"
-                size="sm"
-                disabled={subsHidden}
-              />
+              {/* Show Subs gates this one (C1-checkpoint correction (c)) — but
+                  ONLY while a separate section is what's being hidden. Merged
+                  subs render inside the main grid whatever `subsHidden` says,
+                  so disabling the control there would strand the user with
+                  substitutes they had just switched off (director F6). */}
+              <Tooltip content={<ShortcutHint keyLabel="S" text={separateHint} />}>
+                <span className="inline-flex">
+                  <Toggle
+                    checked={subsView}
+                    onChange={onSubsViewChange}
+                    label="Separate subs"
+                    size="sm"
+                    disabled={separateSubsDisabled}
+                  />
+                </span>
+              </Tooltip>
             </>
           )}
         </>

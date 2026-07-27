@@ -51,8 +51,14 @@ const playerActions = {
   handleResetGear: vi.fn(),
   handleReorder: vi.fn(),
 };
+// Capture the options so a test can drive the callbacks Roster hands down —
+// notably `setSortPreset`, which the drag-reorder path calls with 'custom'.
+let playerActionOptions: { setSortPreset?: (p: string) => void } = {};
 vi.mock('../../hooks/usePlayerActions', () => ({
-  usePlayerActions: () => playerActions,
+  usePlayerActions: (opts: { setSortPreset?: (p: string) => void }) => {
+    playerActionOptions = opts;
+    return playerActions;
+  },
 }));
 
 vi.mock('../../stores/authStore', () => ({
@@ -109,9 +115,26 @@ vi.mock('./CharacterManageBridge', () => ({
 }));
 
 import { Roster } from './Roster';
+import { TooltipProvider } from '../primitives';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useToastStore } from '../../stores/toastStore';
 import type { GearSlotStatus } from '../../types';
+
+// jsdom has no matchMedia; `useDevice` (via the Tooltip primitive) calls it.
+// Stubbed locally rather than in the shared setup so no other suite's device
+// detection changes underneath it.
+if (!window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
 
 function makePlayer(overrides: Partial<SnapshotPlayer> & { id: string }): SnapshotPlayer {
   return {
@@ -155,9 +178,11 @@ const baseProps = {
 // can seed `?rview=board` via history.pushState before rendering.
 function renderRoster(tier: TierSnapshot | null) {
   return render(
-    <BrowserRouter>
-      <Roster {...baseProps} tier={tier} />
-    </BrowserRouter>,
+    <TooltipProvider>
+      <BrowserRouter>
+        <Roster {...baseProps} tier={tier} />
+      </BrowserRouter>
+    </TooltipProvider>,
   );
 }
 
@@ -174,10 +199,12 @@ function LocationProbe() {
 
 function renderRosterAtUrl(tier: TierSnapshot | null, initialEntries: string[]) {
   return render(
-    <MemoryRouter initialEntries={initialEntries}>
-      <Roster {...baseProps} tier={tier} />
-      <LocationProbe />
-    </MemoryRouter>,
+    <TooltipProvider>
+      <MemoryRouter initialEntries={initialEntries}>
+        <Roster {...baseProps} tier={tier} />
+        <LocationProbe />
+      </MemoryRouter>
+    </TooltipProvider>,
   );
 }
 
@@ -496,6 +523,19 @@ describe('Roster — C6 toolbar restorations', () => {
     localStorage.setItem('sort-preset-t1', 'dps-first');
     renderRoster(makeTier(players));
     expect(setSortPresetState).toHaveBeenCalledWith('dps-first');
+  });
+
+  it('persists a drag-reordered "custom" under the v2 key too, never legacy’s', () => {
+    // The drag path calls this with 'custom' (usePlayerActions.ts:178-182). It
+    // used to go through the tierId overload, which writes LEGACY's key — so a
+    // drag inside v2 changed what the frozen shell sorted by on its next visit.
+    localStorage.setItem('sort-preset-t1', 'standard');
+    renderRoster(makeTier(players));
+
+    act(() => playerActionOptions.setSortPreset?.('custom'));
+
+    expect(localStorage.getItem('v2-sort-preset-t1')).toBe('custom');
+    expect(localStorage.getItem('sort-preset-t1')).toBe('standard');
   });
 
   it('persists a preset chosen here under the v2 key, never legacy’s', () => {

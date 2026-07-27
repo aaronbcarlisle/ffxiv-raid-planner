@@ -3,9 +3,31 @@
 // files to add it) — every existing test in this codebase drives clicks via
 // `fireEvent` instead (see e.g. `components/layout/AppRail.test.tsx`), so we
 // follow that established convention here.
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { RosterToolbar } from './RosterToolbar';
+import { TooltipProvider } from '../primitives';
+
+// The toolbar's shortcut hints use the Tooltip primitive, which requires the
+// provider App.tsx mounts at the root (same wrapper UserMenu/NotificationCenter
+// tests use).
+// jsdom has no matchMedia; `useDevice` (via the Tooltip primitive) calls it.
+// Stubbed locally rather than in the shared setup so no other suite's device
+// detection changes underneath it.
+if (!window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+const render = (ui: React.ReactElement) => rtlRender(<TooltipProvider>{ui}</TooltipProvider>);
 
 const baseProps = {
   groupView: true,
@@ -115,7 +137,10 @@ describe('RosterToolbar', () => {
     expect(selector).toBeInTheDocument();
     expect(selector).toHaveTextContent(/standard/i);
 
-    // The Board has its own fixed ordering — no sort axis.
+    // Cards-only, matching every other view control here. (The Board's rows do
+    // still follow the preset — it receives the same sorted players — so this
+    // is a placement call, not a claim that the Board ignores sorting;
+    // recorded as a C6 delta on D-06.)
     rerender(<RosterToolbar {...baseProps} rosterView="board" />);
     expect(screen.queryByRole('combobox', { name: /sort/i })).not.toBeInTheDocument();
   });
@@ -132,12 +157,19 @@ describe('RosterToolbar', () => {
     expect(onSubsViewChange).toHaveBeenCalledWith(false);
   });
 
-  it('disables Separate Subs until Show Subs is on (v2 rule — fixes the v1 defect)', () => {
-    // v1 lets both toggle independently, so "separate" silently applies to a
-    // section that is hidden. In v2 the dependent control is inert until its
-    // parent is on.
-    render(<RosterToolbar {...baseProps} subsHidden />);
+  it('disables Separate Subs when the subs SECTION is hidden (v2 rule)', () => {
+    // Separating is moot while the section it would create is hidden.
+    render(<RosterToolbar {...baseProps} subsHidden subsView />);
     expect(screen.getByRole('switch', { name: /separate subs/i })).toBeDisabled();
+  });
+
+  it('keeps Separate Subs usable when subs are MERGED, even with Show Subs off', () => {
+    // Merged subs render inside the main grid regardless of `subsHidden`, so
+    // with the control disabled here the user would be stuck looking at
+    // substitutes they had just switched off, with no way back. The gate must
+    // only cover the case where separating genuinely does nothing.
+    render(<RosterToolbar {...baseProps} subsHidden subsView={false} />);
+    expect(screen.getByRole('switch', { name: /separate subs/i })).toBeEnabled();
   });
 
   it('hides both subs toggles when the roster has no substitutes', () => {

@@ -10,9 +10,9 @@ import type { SnapshotPlayer } from '../../types';
 
 const LEGACY_KEY = (g: string, t: string) => `roster-collapse-${g}-${t}`;
 
-const render = (groupId = 'g1', tierId = 't1', sections: readonly string[] = ['g1', 'g2', 'subs']) =>
+const render = (groupId = 'g1', tierId: string | undefined = 't1', sections: readonly string[] = ['g1', 'g2', 'subs']) =>
   renderHook(
-    (props: { groupId: string; tierId: string; sections: readonly string[] }) =>
+    (props: { groupId: string; tierId: string | undefined; sections: readonly string[] }) =>
       useRosterSections(props),
     { initialProps: { groupId, tierId, sections: [...sections] } }
   );

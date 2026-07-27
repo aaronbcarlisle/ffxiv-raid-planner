@@ -105,8 +105,8 @@ export interface RosterCardsProps {
   subsHidden: boolean;
   /**
    * Section fold state (C6, D-08). Optional so the grid still renders
-   * standalone — omitted, every section stays expanded and the chevrons are
-   * inert-but-present, matching the pre-C6 rendering.
+   * standalone — omitted, no chevron renders at all and every section stays
+   * expanded, exactly the pre-C6 rendering.
    */
   isSectionCollapsed?: (section: RosterSectionId) => boolean;
   onSectionToggle?: (section: RosterSectionId) => void;
@@ -301,7 +301,10 @@ function PartyHead({
           {tag}
         </Tag>
       )}
-      <span className="text-xs font-bold uppercase tracking-wide text-text-tertiary">{label}</span>
+      {/* A real heading: legacy renders the section labels as `<h3>`
+          (`PlayerGrid.tsx:579`), and routing Unassigned through this component
+          at C6 must not downgrade it to a bare span (director F10). */}
+      <h3 className="text-xs font-bold uppercase tracking-wide text-text-tertiary">{label}</h3>
       {barPlayers && (
         <div className="ml-2 flex items-center gap-2">
           {/* Width on a wrapper: ProgressBar's own root is w-full, and a width
