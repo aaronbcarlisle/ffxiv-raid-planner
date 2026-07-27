@@ -421,10 +421,21 @@ export function RosterCard({
   // C5 (D-12 rider): the sync line carries the character's name; server and
   // sync provenance live in the hover detail (leaner than v1's sync block).
   // Rendered as two segments so the NAME truncates and the age never does
-  // (director F5).
-  const syncName = player.lodestoneName ?? 'Linked';
+  // (director F5). Sync STATUS keys on lastSync itself, not Lodestone
+  // identity — a Player Hub claim auto-links sync data with no lodestone
+  // fields (tiers.py _auto_link_bis_from_hub), and the footer must never say
+  // "Not synced" while the headline shows the synced equipped average
+  // (PR #193 review).
+  const showsSync = hasLodestoneIdentity || Boolean(syncAge);
+  const syncName =
+    player.lodestoneName ??
+    (hasLodestoneIdentity
+      ? 'Linked'
+      : player.lastSyncSource === 'player_hub'
+        ? 'Player Hub'
+        : 'Synced');
   const syncJobMismatch = Boolean(
-    hasLodestoneIdentity &&
+    showsSync &&
       player.lastSyncedJob &&
       player.job &&
       player.lastSyncedJob.toUpperCase() !== player.job.toUpperCase()
@@ -868,14 +879,14 @@ export function RosterCard({
             <span
               aria-hidden="true"
               className={`h-2 w-2 shrink-0 rounded-full ${
-                hasLodestoneIdentity
+                showsSync
                   ? syncJobMismatch
                     ? 'bg-status-warning'
                     : 'bg-membership-linked'
                   : 'bg-text-muted'
               }`}
             />
-            {hasLodestoneIdentity ? (
+            {showsSync ? (
               /* LongPressTooltip, matching the iLvl panel twelve lines up —
                  same slice, same detail-hover pattern, and it keeps a touch
                  path (director F6). */
@@ -884,7 +895,8 @@ export function RosterCard({
                 content={
                   <div className="max-w-60 space-y-1">
                     <div className="font-medium">
-                      {[player.lodestoneName, player.lodestoneServer].filter(Boolean).join(' • ')}
+                      {[player.lodestoneName, player.lodestoneServer].filter(Boolean).join(' • ') ||
+                        (player.lastSyncSource === 'player_hub' ? 'Player Hub sync' : 'Gear sync')}
                     </div>
                     <div className="text-xs text-text-secondary">{syncDetail}</div>
                     {syncJobMismatch && (

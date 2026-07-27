@@ -932,6 +932,41 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
       expect(screen.getByText('Not synced').closest('[data-state]')).toBeNull();
     });
 
+    it('recognizes a Player Hub sync with no Lodestone identity (PR review)', () => {
+      // _auto_link_bis_from_hub populates lastSync/equipped gear WITHOUT
+      // lodestone fields — the footer must not say "Not synced" while the
+      // headline shows the synced equipped average.
+      renderCard(
+        makePlayer({
+          lastSync: twoHoursAgo(),
+          lastSyncSource: 'player_hub',
+          lastSyncedJob: 'PLD',
+          gear: Array.from({ length: 11 }, (_, i) => ({
+            slot: `s${i}`,
+            bisSource: 'raid',
+            hasItem: false,
+            isAugmented: false,
+            equippedItemLevel: i < 6 ? 730 : undefined,
+          })) as unknown as SnapshotPlayer['gear'],
+        })
+      );
+      expect(screen.queryByText('Not synced')).not.toBeInTheDocument();
+      expect(screen.getByText('Player Hub')).toBeInTheDocument();
+      expect(screen.getByText(/synced 2h ago/)).toBeInTheDocument();
+    });
+
+    it('flags a job mismatch on a Player Hub sync too (PR review)', () => {
+      renderCard(
+        makePlayer({
+          lastSync: twoHoursAgo(),
+          lastSyncSource: 'player_hub',
+          lastSyncedJob: 'WAR',
+          job: 'PLD',
+        })
+      );
+      expect(screen.getByTestId('roster-sync-mismatch')).toBeInTheDocument();
+    });
+
     it('flags a job mismatch between the last sync and the card job', () => {
       const { unmount } = renderCard(
         makePlayer({
