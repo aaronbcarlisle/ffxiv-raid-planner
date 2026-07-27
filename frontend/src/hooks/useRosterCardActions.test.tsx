@@ -91,7 +91,7 @@ function labelOrHeader(i: ContextMenuItem): string {
 }
 
 describe('useRosterCardActions', () => {
-  it('builds the audited menu (no Lodestone / Adjust Priority / Edit Books)', () => {
+  it('builds the audited menu (no Lodestone / Adjust Priority; no Edit Books without a host handler)', () => {
     const { result } = renderHook(() => useRosterCardActions({ ...base, player: makePlayer() }));
     const labels = result.current.menuItems.map(labelOrHeader);
 

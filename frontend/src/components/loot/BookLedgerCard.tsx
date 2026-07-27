@@ -115,12 +115,20 @@ export function BookLedgerCard({
   const highlightPlayerId = rows.some((b) => b.playerId === highlightParam) ? highlightParam : null;
 
   useEffect(() => {
-    if (!highlightPlayerId) return;
-    const scrollTimer = setTimeout(() => {
-      document
-        .getElementById(`book-row-${highlightPlayerId}`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 100);
+    if (!highlightParam) return;
+    // Scroll + pulse only when there IS a row — but clear the param either way.
+    // A jump can legitimately land on nothing: this card filters substitutes
+    // out (`rows`, above), and a player can be removed between the jump and the
+    // landing. An uncleared param would then survive in the address bar and
+    // ride into every deep link copied from this route afterwards (director
+    // C7 finding 1).
+    const scrollTimer = highlightPlayerId
+      ? setTimeout(() => {
+          document
+            .getElementById(`book-row-${highlightPlayerId}`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100)
+      : null;
     const clearTimer = setTimeout(() => {
       setSearchParams(
         (prev) => {
@@ -132,10 +140,10 @@ export function BookLedgerCard({
       );
     }, 2500);
     return () => {
-      clearTimeout(scrollTimer);
+      if (scrollTimer) clearTimeout(scrollTimer);
       clearTimeout(clearTimer);
     };
-  }, [highlightPlayerId, setSearchParams]);
+  }, [highlightParam, highlightPlayerId, setSearchParams]);
 
   return (
     <CardShell

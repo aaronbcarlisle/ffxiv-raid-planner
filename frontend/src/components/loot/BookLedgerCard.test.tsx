@@ -309,4 +309,17 @@ describe('BookLedgerCard — book deep-link highlight (C7, D-05)', () => {
 
     expect(document.querySelector('.highlight-pulse')).toBeNull();
   });
+
+  it('still clears a book param that matched no row', () => {
+    // Substitutes are filtered out of this card (and a player can be removed
+    // between the jump and the landing), so a jump CAN arrive with nothing to
+    // highlight. The param must not survive that: it would ride along in every
+    // later copied deep link from this route (director C7 finding 1).
+    renderWithParams('?book=s1');
+
+    act(() => {
+      vi.advanceTimersByTime(2600);
+    });
+    expect(screen.getByTestId('location-search').textContent).not.toContain('book=');
+  });
 });

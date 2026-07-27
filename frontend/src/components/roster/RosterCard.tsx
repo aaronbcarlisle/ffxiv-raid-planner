@@ -668,6 +668,7 @@ export function RosterCard({
        card as activatable and promise a plain-click action that must never
        exist; the kebab's "Copy URL" item is the announced, keyboard-reachable
        equivalent. Legacy did the same on `PlayerCard.tsx:544`. */
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- see the design-system-ignore above: a keyboard handler here would create the plain-activation path the D-55 ruling forbids; the kebab's "Copy URL" item is the keyboard route.
     <div
       className="relative h-full"
       onContextMenu={openContextMenu}
