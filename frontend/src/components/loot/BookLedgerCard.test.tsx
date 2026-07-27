@@ -262,11 +262,23 @@ describe('BookLedgerCard', () => {
 // the v2 replacement for legacy's `highlightedBookPlayerId` state, which the
 // F6d Loot screen deliberately left unbuilt until a navigation produced it.
 describe('BookLedgerCard — book deep-link highlight (C7, D-05)', () => {
+  // jsdom defines no scrollIntoView at all, so this suite installs one — and
+  // puts the prototype back afterwards (deleting it when there was none), so
+  // the stub can never leak into a later suite (PR #200 review).
+  let originalScrollIntoView: typeof Element.prototype.scrollIntoView | undefined;
+
   beforeEach(() => {
     vi.useFakeTimers();
+    originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = vi.fn();
   });
   afterEach(() => {
     vi.useRealTimers();
+    if (originalScrollIntoView) {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    } else {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
   });
 
   function renderWithParams(search: string) {
@@ -279,8 +291,7 @@ describe('BookLedgerCard — book deep-link highlight (C7, D-05)', () => {
   }
 
   it('pulses and scrolls the linked row', () => {
-    const scrollSpy = vi.fn();
-    Element.prototype.scrollIntoView = scrollSpy;
+    const scrollSpy = Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>;
 
     renderWithParams('?book=p1');
     act(() => {
@@ -308,6 +319,30 @@ describe('BookLedgerCard — book deep-link highlight (C7, D-05)', () => {
     });
 
     expect(document.querySelector('.highlight-pulse')).toBeNull();
+  });
+
+  it('waits for the balances to arrive before starting the clear clock', () => {
+    // The jump navigates Roster → Loot, which mounts this card with an EMPTY
+    // pageBalances — the fetch is what fills it. If the clear ran on that
+    // empty first render, a fetch slower than 2.5s would delete `book` before
+    // the row ever existed: right screen, no highlight, jump unrepeatable
+    // (PR #200 review).
+    useLootTrackingStore.setState({ pageBalances: [] });
+    renderWithParams('?book=p1');
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(screen.getByTestId('location-search').textContent).toContain('book=p1');
+
+    // Balances land late — the highlight still happens.
+    act(() => {
+      useLootTrackingStore.setState({ pageBalances: balances });
+    });
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(document.getElementById('book-row-p1')?.className).toContain('highlight-pulse');
   });
 
   it('still clears a book param that matched no row', () => {

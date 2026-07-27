@@ -116,6 +116,14 @@ export function BookLedgerCard({
 
   useEffect(() => {
     if (!highlightParam) return;
+    // Don't start the clock before the balances arrive. The jump navigates
+    // Roster → Loot, which mounts this card with an EMPTY `pageBalances` — the
+    // fetch above is what fills it. Clearing on that first render would delete
+    // `book` before the row ever existed whenever the fetch takes longer than
+    // the timeout: right screen, no highlight, and the jump unrepeatable
+    // without going back to the roster (PR #200 review). The effect re-runs
+    // when the rows land.
+    if (!highlightPlayerId && rows.length === 0) return;
     // Scroll + pulse only when there IS a row — but clear the param either way.
     // A jump can legitimately land on nothing: this card filters substitutes
     // out (`rows`, above), and a player can be removed between the jump and the
@@ -143,7 +151,7 @@ export function BookLedgerCard({
       if (scrollTimer) clearTimeout(scrollTimer);
       clearTimeout(clearTimer);
     };
-  }, [highlightParam, highlightPlayerId, setSearchParams]);
+  }, [highlightParam, highlightPlayerId, rows.length, setSearchParams]);
 
   return (
     <CardShell
