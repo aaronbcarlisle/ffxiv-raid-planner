@@ -67,7 +67,14 @@ jobs:
           # `gh pr comment` — its final message becomes the comment body.
           track_progress: true
           use_sticky_comment: true
+          # Opus for the review itself. The code-review plugin used to escalate its
+          # bug-hunting agents to Opus while running cheaper steps on Sonnet; that
+          # tiering was lost when #197 replaced the plugin with a single agent, and
+          # bug-finding is the part worth paying for. Measured: the plugin cost
+          # ~$4.10/run, the single-agent prompt ~$0.68 on Sonnet, so this stays well
+          # under the old cost even at Opus rates.
           claude_args: |
+            --model claude-opus-5
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Read,Grep,Glob"
           prompt: |
             REPO: ${{ github.repository }}
