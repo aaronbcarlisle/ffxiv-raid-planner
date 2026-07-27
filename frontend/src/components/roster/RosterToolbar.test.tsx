@@ -12,6 +12,8 @@ const baseProps = {
   onGroupViewChange: vi.fn(),
   subsHidden: false,
   onSubsHiddenChange: vi.fn(),
+  subsView: true,
+  onSubsViewChange: vi.fn(),
   hasSubstitutes: true,
   reorderMode: false,
   onReorderModeChange: vi.fn(),
@@ -21,10 +23,13 @@ const baseProps = {
   onRosterViewChange: vi.fn(),
   density: 'compact' as const,
   onDensityChange: vi.fn(),
+  sortPreset: 'standard' as const,
+  onSortPresetChange: vi.fn(),
+  onExpandAllToggle: vi.fn(),
 };
 
 describe('RosterToolbar', () => {
-  it('renders the grouping pill, subs toggle, reorder, and add-player controls', () => {
+  it('renders the grouping toggle, subs toggles, reorder, and add-player controls', () => {
     render(<RosterToolbar {...baseProps} />);
     expect(screen.getByRole('button', { name: /light party/i })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: /show subs/i })).toBeInTheDocument();
@@ -82,19 +87,63 @@ describe('RosterToolbar', () => {
     expect(screen.getByRole('button', { name: /reorder/i })).toBeDisabled();
   });
 
-  it('opens the grouping pill menu and switches to Standard comp', async () => {
+  // ── C6: the sort-vs-grouping split (C1-checkpoint correction (a)) ──
+  // The single "Standard comp ⇄ Light Party" dropdown conflated two axes. It is
+  // now a plain grouping toggle, and the dropdown slot belongs to sort.
+
+  it('toggles grouping directly, with its state announced', () => {
     const onGroupViewChange = vi.fn();
-    render(
-      <RosterToolbar {...baseProps} groupView onGroupViewChange={onGroupViewChange} />
-    );
-    // Radix's DropdownMenuTrigger opens on pointerdown (mouse) or Enter/Space
-    // (keyboard) — not a plain `click` — so open it the keyboard-accessible
-    // way, which `fireEvent` can drive without a jsdom PointerEvent polyfill.
-    fireEvent.keyDown(screen.getByRole('button', { name: /light party/i }), {
-      key: 'Enter',
-    });
-    fireEvent.click(await screen.findByRole('menuitem', { name: /standard comp/i }));
+    render(<RosterToolbar {...baseProps} groupView onGroupViewChange={onGroupViewChange} />);
+
+    const toggle = screen.getByRole('button', { name: /light party/i });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(toggle);
     expect(onGroupViewChange).toHaveBeenCalledWith(false);
+  });
+
+  it('shows grouping as off when the roster is a flat grid', () => {
+    render(<RosterToolbar {...baseProps} groupView={false} />);
+    expect(screen.getByRole('button', { name: /light party/i })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('renders the sort-preset selector, labelled, in Cards view only (D-06)', () => {
+    const { rerender } = render(<RosterToolbar {...baseProps} />);
+    const selector = screen.getByRole('combobox', { name: /sort/i });
+    expect(selector).toBeInTheDocument();
+    expect(selector).toHaveTextContent(/standard/i);
+
+    // The Board has its own fixed ordering — no sort axis.
+    rerender(<RosterToolbar {...baseProps} rosterView="board" />);
+    expect(screen.queryByRole('combobox', { name: /sort/i })).not.toBeInTheDocument();
+  });
+
+  // ── C6: Separate Subs (D-07) ──
+
+  it('renders the Separate Subs toggle and reports its state', () => {
+    const onSubsViewChange = vi.fn();
+    render(<RosterToolbar {...baseProps} subsView onSubsViewChange={onSubsViewChange} />);
+
+    const toggle = screen.getByRole('switch', { name: /separate subs/i });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(onSubsViewChange).toHaveBeenCalledWith(false);
+  });
+
+  it('disables Separate Subs until Show Subs is on (v2 rule — fixes the v1 defect)', () => {
+    // v1 lets both toggle independently, so "separate" silently applies to a
+    // section that is hidden. In v2 the dependent control is inert until its
+    // parent is on.
+    render(<RosterToolbar {...baseProps} subsHidden />);
+    expect(screen.getByRole('switch', { name: /separate subs/i })).toBeDisabled();
+  });
+
+  it('hides both subs toggles when the roster has no substitutes', () => {
+    render(<RosterToolbar {...baseProps} hasSubstitutes={false} />);
+    expect(screen.queryByRole('switch', { name: /show subs/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: /separate subs/i })).not.toBeInTheDocument();
   });
 
   it('renders the Cards/Board segmented toggle', () => {
@@ -125,12 +174,39 @@ describe('RosterToolbar', () => {
     expect(screen.queryByRole('group', { name: /card density/i })).not.toBeInTheDocument();
   });
 
-  it('changes density via the toggle; an active re-click is a no-op (section expand-all is C6)', () => {
+  it('changes density via the toggle', () => {
     const onDensityChange = vi.fn();
     render(<RosterToolbar {...baseProps} density="expanded" onDensityChange={onDensityChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'Compact' }));
     expect(onDensityChange).toHaveBeenCalledWith('compact');
+  });
+
+  it('re-clicking the active Expanded control toggles the sections, not the density (C6)', () => {
+    // The C1 checkpoint moved legacy's re-click-Expanded behaviour here: it
+    // operates on the light-party SECTIONS, so cards keep their density while
+    // a group is folded.
+    const onDensityChange = vi.fn();
+    const onExpandAllToggle = vi.fn();
+    render(
+      <RosterToolbar
+        {...baseProps}
+        density="expanded"
+        onDensityChange={onDensityChange}
+        onExpandAllToggle={onExpandAllToggle}
+      />
+    );
+
     fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
-    expect(onDensityChange).toHaveBeenCalledTimes(1);
+    expect(onExpandAllToggle).toHaveBeenCalledTimes(1);
+    expect(onDensityChange).not.toHaveBeenCalled();
+  });
+
+  it('re-clicking the active Compact control does nothing (legacy binds this to Expanded)', () => {
+    const onExpandAllToggle = vi.fn();
+    render(
+      <RosterToolbar {...baseProps} density="compact" onExpandAllToggle={onExpandAllToggle} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Compact' }));
+    expect(onExpandAllToggle).not.toHaveBeenCalled();
   });
 });

@@ -59,6 +59,117 @@ describe('RosterCards', () => {
     stubActions.onRemove.mockClear();
   });
 
+  // ── C6 / D-08: per-section collapse ──
+  describe('section collapse (D-08)', () => {
+    const players = [
+      makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
+      makePlayer({ id: 'p2', name: 'Tank Two', position: 'T2' }),
+      makePlayer({ id: 'p3', name: 'Sub One', isSubstitute: true }),
+    ];
+
+    const collapseProps = (collapsedSections: string[] = []) => ({
+      isSectionCollapsed: (s: string) => collapsedSections.includes(s),
+      onSectionToggle: vi.fn(),
+    });
+
+    it('gives every section a fold control naming what it folds', () => {
+      render(
+        <RosterCards
+          players={players}
+          groupView
+          subsView
+          subsHidden={false}
+          {...baseProps}
+          {...collapseProps()}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /light party 1/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /light party 2/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /substitutes/i })).toBeInTheDocument();
+    });
+
+    it('hides a folded section’s cards but keeps its header', () => {
+      render(
+        <RosterCards
+          players={players}
+          groupView
+          subsView
+          subsHidden={false}
+          {...baseProps}
+          {...collapseProps(['g1'])}
+        />
+      );
+
+      expect(screen.getByText('Light Party 1')).toBeInTheDocument();
+      expect(screen.queryByText('Tank One')).not.toBeInTheDocument();
+      // Other sections are unaffected.
+      expect(screen.getByText('Tank Two')).toBeInTheDocument();
+      expect(screen.getByText('Sub One')).toBeInTheDocument();
+    });
+
+    it('announces fold state and toggles the right section', () => {
+      const props = collapseProps(['g1']);
+      render(
+        <RosterCards
+          players={players}
+          groupView
+          subsView
+          subsHidden={false}
+          {...baseProps}
+          {...props}
+        />
+      );
+
+      const g1 = screen.getByRole('button', { name: /light party 1/i });
+      const g2 = screen.getByRole('button', { name: /light party 2/i });
+      expect(g1).toHaveAttribute('aria-expanded', 'false');
+      expect(g2).toHaveAttribute('aria-expanded', 'true');
+
+      fireEvent.click(g2);
+      expect(props.onSectionToggle).toHaveBeenCalledWith('g2');
+    });
+
+    it('folds the substitutes section in the flat view too', () => {
+      render(
+        <RosterCards
+          players={players}
+          groupView={false}
+          subsView
+          subsHidden={false}
+          {...baseProps}
+          {...collapseProps(['subs'])}
+        />
+      );
+
+      expect(screen.getByText('Substitutes')).toBeInTheDocument();
+      expect(screen.queryByText('Sub One')).not.toBeInTheDocument();
+      // The main grid is not a foldable section — its cards always render.
+      expect(screen.getByText('Tank One')).toBeInTheDocument();
+    });
+
+    it('folds the Unassigned section, which legacy could not', () => {
+      const withUnassigned = [
+        makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
+        makePlayer({ id: 'p9', name: 'Nobody', position: undefined }),
+      ];
+      render(
+        <RosterCards
+          players={withUnassigned}
+          groupView
+          subsView
+          subsHidden={false}
+          {...baseProps}
+          {...collapseProps(['unassigned'])}
+        />
+      );
+
+      expect(screen.getByText('Unassigned')).toBeInTheDocument();
+      expect(screen.queryByText('Nobody')).not.toBeInTheDocument();
+      expect(screen.getByText('Tank One')).toBeInTheDocument();
+    });
+  });
+
   it('renders G1 + Substitutes party headers and a card per configured player', () => {
     const players = [
       makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),

@@ -15,6 +15,9 @@ import type { SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
 const setGroupView = vi.fn();
 const setSubsView = vi.fn();
 const setSortPreset = vi.fn();
+// The raw state setter the C6 hydration applies its stored preset through
+// (the wrapper above would push a URL param, which hydration must not do).
+const setSortPresetState = vi.fn();
 const setEditingPlayerId = vi.fn();
 const setClipboardPlayer = vi.fn();
 let mockClipboardPlayer: SnapshotPlayer | null = null;
@@ -28,6 +31,7 @@ vi.mock('../../hooks/useGroupViewState', () => ({
     setSubsView,
     sortPreset: 'standard',
     setSortPreset,
+    setSortPresetState,
     setEditingPlayerId,
     clipboardPlayer: mockClipboardPlayer,
     setClipboardPlayer,
@@ -464,5 +468,84 @@ describe("Roster — A10 void'd-promise fixes", () => {
     expect(fetchLootLog).toHaveBeenCalledTimes(1);
     expect(fetchMaterialLog).toHaveBeenCalledTimes(1);
     expect(fetchCurrentWeek).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Phase C slice C6: toolbar restorations wired end-to-end ──
+describe('Roster — C6 toolbar restorations', () => {
+  const players = [
+    makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
+    makePlayer({ id: 'p2', name: 'Tank Two', position: 'T2' }),
+    makePlayer({ id: 'p3', name: 'Sub One', isSubstitute: true }),
+  ];
+
+  beforeEach(() => {
+    localStorage.clear();
+    setSortPresetState.mockClear();
+    setGroupView.mockClear();
+    setSubsView.mockClear();
+  });
+
+  it('applies the stored per-tier sort preset on mount (D-06 — the actual defect)', () => {
+    localStorage.setItem('v2-sort-preset-t1', 'healer-first');
+    renderRoster(makeTier(players));
+    expect(setSortPresetState).toHaveBeenCalledWith('healer-first');
+  });
+
+  it('carries a preset set in the legacy shell over to v2', () => {
+    localStorage.setItem('sort-preset-t1', 'dps-first');
+    renderRoster(makeTier(players));
+    expect(setSortPresetState).toHaveBeenCalledWith('dps-first');
+  });
+
+  it('persists a preset chosen here under the v2 key, never legacy’s', () => {
+    localStorage.setItem('sort-preset-t1', 'standard');
+    renderRoster(makeTier(players));
+
+    // Radix Select opens on pointerdown/keyboard, so drive it the keyboard way.
+    fireEvent.keyDown(screen.getByRole('combobox', { name: /sort/i }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: /healer first/i }));
+
+    expect(localStorage.getItem('v2-sort-preset-t1')).toBe('healer-first');
+    expect(localStorage.getItem('sort-preset-t1')).toBe('standard');
+  });
+
+  it('binds G to grouping and S to separate-subs on THIS instance (D-07)', () => {
+    renderRoster(makeTier(players));
+
+    fireEvent.keyDown(window, { key: 'g' });
+    expect(setGroupView).toHaveBeenCalledWith(false, 'g1');
+
+    fireEvent.keyDown(window, { key: 's' });
+    expect(setSubsView).toHaveBeenCalledWith(false);
+  });
+
+  it('folds every section when Expanded is re-clicked, and restores them (D-08)', () => {
+    renderRoster(makeTier(players));
+
+    // Enter Expanded first (a re-click is what carries the fold-all meaning).
+    fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
+    expect(screen.getByText('Tank One')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
+    expect(screen.queryByText('Tank One')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sub One')).not.toBeInTheDocument();
+    // Headers survive, so the folds can be undone.
+    expect(screen.getByText('Light Party 1')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
+    expect(screen.getByText('Tank One')).toBeInTheDocument();
+  });
+
+  it('folds one section from its chevron and persists it per static+tier', () => {
+    renderRoster(makeTier(players));
+
+    fireEvent.click(screen.getByRole('button', { name: /collapse light party 1/i }));
+
+    expect(screen.queryByText('Tank One')).not.toBeInTheDocument();
+    expect(screen.getByText('Tank Two')).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('v2-roster-collapse-g1-t1') ?? '{}')).toEqual({
+      g1: true,
+    });
   });
 });
