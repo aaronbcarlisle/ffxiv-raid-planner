@@ -18,7 +18,12 @@ build/
 # IDE
 .idea/
 .vscode/
-.claude/
+# NOTE: `**/.claude/*` ignores the CONTENTS of every .claude dir at any depth rather than the
+# dirs themselves — git cannot re-include anything whose parent directory is excluded, so
+# `.claude/` would make the negation below impossible.
+**/.claude/*
+# ...except shared project skills, which carry checked-in team conventions
+!/.claude/skills/
 .superpowers/
 docs/superpowers/
 *.swp
