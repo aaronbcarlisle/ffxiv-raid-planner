@@ -13,9 +13,13 @@ jobs:
     # secrets to fork PRs, so this job cannot authenticate and would fail. The
     # job-level `if` makes it report as "skipped" (which does not block required
     # checks) instead of failing on contributor fork PRs.
+    #
+    # Opt out for a whole PR by adding the `skip-claude-review` label; opt out
+    # for a single push with `[skip-review]` in the commit message (see below).
     if: >-
       github.event.pull_request.user.type != 'Bot' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-claude-review')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -28,22 +32,95 @@ jobs:
       id-token: write
 
     steps:
+      # Per-push opt-out. Read the message off the head commit via the API rather
+      # than from the checkout: `pull_request` checks out the merge commit, whose
+      # message is "Merge <sha> into <sha>", not the message the author wrote.
+      - name: Check for skip marker
+        id: skip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          msg=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA" --jq '.commit.message')
+          if printf '%s' "$msg" | grep -qiE '\[(skip[ -]?review|skip[ -]?claude|no[ -]?review)\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skip marker found in $HEAD_SHA — skipping Claude review."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout repository
+        if: steps.skip.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
       - name: Run Claude Code Review
         id: claude-review
+        if: steps.skip.outputs.skip != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          # `--comment` is REQUIRED for the review to reach the PR. Step 7 of the
-          # plugin's command spec: without it the agent finishes the review, prints
-          # the findings to the terminal, and stops without posting anything —
-          # which looks identical to a clean review from the outside. It also
-          # posts an explicit "No issues found" comment when nothing is flagged,
-          # so a silent run now means something is broken, not that the PR is fine.
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment'
+          # track_progress + use_sticky_comment deliver the review through ONE
+          # comment that is edited in place on every push, instead of appending a
+          # new comment per push. The prompt therefore tells Claude NOT to run
+          # `gh pr comment` — its final message becomes the comment body.
+          track_progress: true
+          use_sticky_comment: true
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh api:*),Read,Grep,Glob"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request. The PR branch is already checked out in the working directory.
+
+            ## Settled project decisions — never flag these
+
+            These are deliberate rulings, not oversights. Raising them again wastes review cycles. Read this section before you read anything else.
+
+            - **Roster cards are left-aligned on purpose.** The 120rem cap is intentionally not `mx-auto` centered. Do not suggest centering.
+            - **Mobile is deferred.** V2 slices are not expected to carry mobile affordances; a single consolidated mobile pass happens at the end of the redesign. Do not flag missing responsive handling in a slice.
+            - **Gear-slot jumps are Alt+Click only, by ruling.** Plain click must not navigate. The discoverability and keyboard trade-off was decided deliberately and has an Enter-key and accessible-tooltip fallback. Do not propose plain-click navigation or re-argue the trade-off.
+            - **The legacy V1 shell is frozen.** Do not propose refactors, cleanups, or modernization of legacy V1 code paths. Changes there are restricted to parity fixes.
+
+            If a change genuinely conflicts with one of these, describe the conflict rather than restating the settled preference as a defect.
+
+            ## Before reviewing
+
+            1. **Read the existing discussion.** Run `gh pr view ${{ github.event.pull_request.number }} --comments` and `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments`. Copilot, Bugbot, and human reviewers also comment here. Include resolved and outdated threads — a resolved thread still means the point was raised.
+            2. **Identify your own prior findings.** Comments authored by `claude[bot]` are yours from earlier runs. You have no memory of previous runs, so this list is the only record. Never re-raise a point that appears in it, and never re-raise a point another reviewer already made.
+            3. **Read the repo rules.** Read the root `CLAUDE.md`, plus any `CLAUDE.md` in directories containing changed files. Repo rules live there and override general convention.
+            4. **Read the PR title and body** for the author's intent before judging a change wrong.
+            5. **Scope yourself to the diff.** Run `gh pr diff ${{ github.event.pull_request.number }}` to get the changed lines. Review only those lines. Read surrounding files for context, but do not review them.
+
+            ## Flag only high-signal issues
+
+            Report something only if you are confident it is real:
+
+            - Unresolved references or broken imports that CI would not catch — dynamic imports, string-keyed lookups, runtime-only paths, config and asset references.
+            - Logic that produces wrong results regardless of input.
+            - Security problems in the changed code.
+            - Clear `CLAUDE.md` violations. Quote the exact rule you believe is broken, from `CLAUDE.md` itself rather than from this prompt. The most common violations are: design-system primitives instead of raw `<button>` / `<input>` / `<select>` / `<label>` / `<textarea>`; semantic color tokens instead of hardcoded hex/rgb; a 12px (`text-xs`) minimum for readable text; "static" not "group" in user-facing copy. Treat that list as a hint about where to look, not as the rule set — `CLAUDE.md` is the source of truth and may have changed.
+
+            If you are not certain an issue is real, say nothing. False positives erode trust faster than missed nitpicks.
+
+            ## Do not flag
+
+            - Style, formatting, naming, or general "code quality" opinions.
+            - Type errors, unused variables, and anything else the type-checker or linter already reports. CI covers these.
+            - A missing `frontend/src/data/releaseNotes.ts` entry. The "Release Notes Required" job is a required check and reports this in seconds — faster than you can.
+            - Pre-existing issues the PR did not introduce.
+            - Missing test coverage as a general concern. Only raise tests when the PR changes existing test behavior in a way that silently weakens it.
+            - Problems that depend on specific inputs or state you cannot demonstrate.
+            - Anything already silenced deliberately in code (lint-ignore or `design-system-ignore` with a stated reason).
+
+            ## Posting
+
+            - Post inline comments with `mcp__github_inline_comment__create_inline_comment` using `confirmed: true`, one per unique issue, at the precise line.
+            - **Budget: at most 8 inline comments.** If you have more than 8 real findings, post the highest-severity 8 and list the remainder briefly in the summary.
+            - Include a committable suggestion block only when committing it fully fixes the issue. For anything structural or spanning locations, describe the fix instead.
+            - **Do not post the top-level summary yourself.** Do not call `gh pr comment`. Your final message is delivered automatically as the PR comment and is updated in place on each push — so write your final message *as* the summary.
+            - Write that summary as the **current state of the PR** — a list of findings that still stand. Do not describe what changed since your last review.
+            - Group the summary as **Must fix** / **Consider**.
+            - If you found nothing, your final message must be exactly: `No blocking issues found. Reviewed for bugs and CLAUDE.md compliance.`
