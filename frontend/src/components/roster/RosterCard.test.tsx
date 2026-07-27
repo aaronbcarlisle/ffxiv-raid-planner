@@ -758,12 +758,19 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
       );
       expect(screen.getByText(/Substitute — a backup/)).toBeInTheDocument();
       expect(screen.getByText(/additional weapon priorit/)).toBeInTheDocument();
+      // …and the sr-only expansion needs a separator, or the name computes as
+      // "SUBSubstitute — …" (round 9).
+      expect(screen.getByText('SUB').closest('span')?.textContent).toMatch(
+        /^SUB Substitute — a backup/
+      );
     });
 
     it('renders the BiS link as a real external anchor on the progress line', () => {
       renderCard(makePlayer({ bisLink: 'https://xivgear.app/?page=sl|xyz' }));
 
-      const link = screen.getByRole('link', { name: 'Open in XIVGear' });
+      // WCAG 2.5.3 (Label in Name, round 9): the accessible name must contain
+      // the visible word, so voice control's "click BiS" matches.
+      const link = screen.getByRole('link', { name: 'BiS — Open in XIVGear' });
       expect(link).toHaveAttribute('href', 'https://xivgear.app/?page=sl|xyz');
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));

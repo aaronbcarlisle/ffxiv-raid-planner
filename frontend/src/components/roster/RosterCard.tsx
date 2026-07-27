@@ -626,12 +626,15 @@ export function RosterCard({
             {player.isSubstitute && (
               <LongPressTooltip
                 delayDuration={200}
-                content="Substitute — a backup for the static's roster"
+                content={
+                  <span aria-hidden="true">Substitute — a backup for the static&apos;s roster</span>
+                }
               >
                 <span className="inline-flex">
                   <Tag variant="label" tone="warning">
                     SUB
                     <span className="sr-only">
+                      {' '}
                       Substitute — a backup for the static&apos;s roster
                     </span>
                   </Tag>
@@ -641,9 +644,12 @@ export function RosterCard({
             {showWeaponPriority && (
               <LongPressTooltip
                 delayDuration={200}
-                content={`+${weaponPriorityCount} additional weapon ${
-                  weaponPriorityCount === 1 ? 'priority' : 'priorities'
-                }`}
+                content={
+                  <span aria-hidden="true">
+                    +{weaponPriorityCount} additional weapon{' '}
+                    {weaponPriorityCount === 1 ? 'priority' : 'priorities'}
+                  </span>
+                }
               >
                 <span className="inline-flex">
                   <Tag
@@ -785,12 +791,18 @@ export function RosterCard({
             {hasBis ? `${completedSlots}/${TOTAL_SLOTS} BiS` : 'No BiS'}
           </span>
           {hasBis && player.bisLink && (
-            <Tooltip content={bisLinkTooltip(player.bisLink)}>
+            /* The tooltip is the SIGHTED path only: its text is already the
+               link's accessible name, and Radix wires content as
+               aria-describedby, so leaving it announced repeats the name on
+               focus (review round 9). */
+            <Tooltip content={<span aria-hidden="true">{bisLinkTooltip(player.bisLink)}</span>}>
               <span className="inline-flex shrink-0">
                 <LinkText
                   href={buildBisUrl(player.bisLink)}
                   external
-                  aria-label={bisLinkTooltip(player.bisLink)}
+                  /* WCAG 2.5.3, Label in Name: the visible word leads the
+                     accessible name, so "click BiS" works in voice control. */
+                  aria-label={`BiS — ${bisLinkTooltip(player.bisLink)}`}
                   icon={<ExternalLink className="h-3 w-3" aria-hidden="true" />}
                   className="text-xs font-medium"
                 >
