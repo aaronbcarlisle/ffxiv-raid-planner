@@ -13,10 +13,19 @@ import { getEffectiveCurrentSource } from '../../utils/calculations';
 import { getItemLevelForCategory } from '../../gamedata/raid-tiers';
 
 /**
- * Per-slot BiS-target iLv, mirroring `calculateAverageItemLevel`'s slot logic:
- * un-augmented tome / base-tome / crafted pieces price at their category level,
- * owned imports use the imported itemLevel, everything else infers from the
- * effective current source.
+ * Per-slot BiS-target iLv, mirroring legacy `PlayerCardHeader.getSlotItemLevel`
+ * — the function this panel was forked from: un-augmented tome / base-tome /
+ * crafted pieces price at their category level, owned imports use the imported
+ * itemLevel, everything else infers from the effective current source.
+ *
+ * NOT identical to `calculateAverageItemLevel`, which supplies the footer's
+ * "BiS target avg": that one has no `crafted` case, so an owned crafted-BiS
+ * slot whose import differs from the tier's crafted level makes a row disagree
+ * with the average below it. That disagreement is v1's — legacy pairs the same
+ * two functions in the same panel (`PlayerCardHeader.tsx:30, :129, :473`), and
+ * its comment made the same claim this one used to. Kept deliberately so the
+ * restored panel prints what v1 printed; recorded on matrix D-10 with the rest
+ * of the inherited-semantics debt (review rounds 2 + 10).
  */
 function getSlotBisItemLevel(slot: GearSlotStatus, tierId: string): number {
   const isWeapon = slot.slot === 'weapon';

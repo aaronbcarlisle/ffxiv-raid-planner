@@ -794,6 +794,9 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
       // devices — the badges carry sr-only role text so AT always hears it.
       const { unmount } = renderCard(makePlayer({ userId: 'u1' }));
       expect(screen.getByText('(owner)')).toBeInTheDocument();
+      // …and the expansion needs its own separator, or the name computes as
+      // "You(owner)" (round 10).
+      expect(screen.getByText('You').closest('span')?.textContent).toBe('You (owner)');
       unmount();
 
       renderCard(
@@ -809,6 +812,9 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
         })
       );
       expect(screen.getByText('(lead)')).toBeInTheDocument();
+      expect(screen.getByText('Bram').closest('span')?.parentElement?.textContent).toBe(
+        'Bram (lead)'
+      );
     });
 
     it("footer claim story: the linked user's name when claimed by someone else", () => {

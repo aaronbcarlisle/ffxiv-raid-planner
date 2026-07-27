@@ -518,7 +518,7 @@ export function RosterCard({
           <span className="inline-flex">
             <Tag variant="label" tone="accent">
               You
-              {userRole && <span className="sr-only">({userRole})</span>}
+              {userRole && <span className="sr-only"> ({userRole})</span>}
             </Tag>
           </span>
         </LongPressTooltip>
@@ -548,7 +548,7 @@ export function RosterCard({
             >
               <span className="max-w-16 truncate">{label}</span>
               {linked.membershipRole && (
-                <span className="sr-only">({linked.membershipRole})</span>
+                <span className="sr-only"> ({linked.membershipRole})</span>
               )}
             </Tag>
           </span>

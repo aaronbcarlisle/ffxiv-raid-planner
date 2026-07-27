@@ -28,7 +28,10 @@ describe('NowVsBisPanel', () => {
     slot({ slot: 'body', bisSource: 'tome', hasItem: true, itemLevel: 790, equippedItemLevel: 780 }),
     // base_tome → base-tome price; no sync data → "—" in the Now column.
     slot({ slot: 'hands', bisSource: 'base_tome', hasItem: true, itemLevel: 790 }),
-    // crafted → crafted price.
+    // crafted → crafted price, ahead of the import. Legacy's per-slot function
+    // has this branch and `calculateAverageItemLevel` (the footer average) does
+    // not, so this row can disagree with the average below it — v1 behavior,
+    // kept deliberately and recorded on matrix D-10 (review round 10).
     slot({ slot: 'legs', bisSource: 'crafted', hasItem: true, itemLevel: 790, equippedItemLevel: 771 }),
     // UNOWNED with an imported level → the import is ignored and the slot
     // prices at currentSource (the inherited both-shells semantics recorded
