@@ -23,6 +23,7 @@
 import { Fragment } from 'react';
 import { PlayerIdentity } from '../ui/PlayerIdentity';
 import { GearBoardCell } from './GearBoardCell';
+import { equippedAverageIlv } from './rosterIlv';
 import {
   groupPlayersByLightParty,
   calculateAverageItemLevel,
@@ -148,7 +149,11 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                 // canEditGear pattern, adapted to one-row-per-player).
                 const editable = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess).allowed;
                 const { obtained, total } = playerBis(player);
-                const iLvl = calculateAverageItemLevel(player.gear, tierId ?? '');
+                // Equipped-first, same expression as the RosterCard headline
+                // (C5, director F3) — the two v2 roster views must print the
+                // same number for the same player.
+                const equippedIlv = equippedAverageIlv(player.gear);
+                const iLvl = equippedIlv > 0 ? equippedIlv : calculateAverageItemLevel(player.gear, tierId ?? '');
                 const subtitle = `${player.position ?? player.tankRole ?? role} · ${iLvl > 0 ? iLvl : '—'}`;
                 return (
                   <tr key={player.id} className="hover:bg-accent/5">

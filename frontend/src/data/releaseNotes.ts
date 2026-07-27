@@ -68,6 +68,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'feature',
+        title: 'New UI: badges, metrics and identity return to the roster card (Phase C, slice C5)',
+        description:
+          'Opt-in new UI only (admin-gated preview). The legacy badge row returns dissolved into the card’s one-axis homes: SUB and the “+N” weapon-priority tag join the header, the external BiS-link rides the progress line, and “You”/linked-user complete the footer’s claim story. The iLvl readout goes equipped-first with a per-slot Now-vs-BiS hover breakdown, the expanded card gains the Lodestone portrait, roster title and active-BiS-target chip, and the footer sync line names the character, flags a job mismatch with a warning glyph, and carries the full sync detail on hover.',
+        pr: 193,
+        prTitle: 'feat(redesign): Phase C slice C5 — badges, metrics and identity (D-09/D-10/D-11/D-12 rider/D-01 chip)',
+      },
+      {
+        internal: true,
+        category: 'feature',
         title: 'New UI: tome-weapon sub-row returns to the roster card (Phase C, slice C4)',
         description:
           'The new-UI roster card’s weapon row regains the full tome-weapon story (D-04): the shared R/“+” weapon selector toggles interim tome tracking, and while tracking, a sub-row appears with its own three-state progress circle (missing → obtained → augmented). The card-menu Track/Stop item and the row toggle stay in sync automatically. When a logged material entry marks the tome weapon, the sub-row’s weapon icon becomes a jump straight to that entry in the Loot history — Alt+Click it, or Tab to it and press Enter. The roster now loads the material log itself, keeping the new UI’s data self-sufficient.',

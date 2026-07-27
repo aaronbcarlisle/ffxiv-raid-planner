@@ -12,14 +12,15 @@ import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 
 type Destination =
-  | { href: string; onClick?: never }
-  | { href?: never; onClick: () => void };
+  | { href: string; external?: boolean; onClick?: never }
+  | { href?: never; external?: never; onClick: () => void };
 
 type LinkTextProps = {
   children: ReactNode;
   icon?: ReactNode;
   className?: string;
   'aria-expanded'?: boolean;
+  'aria-label'?: string;
 } & Destination;
 
 const LINK_CLASS =
@@ -30,11 +31,22 @@ export function LinkText({
   icon,
   className = '',
   'aria-expanded': ariaExpanded,
+  'aria-label': ariaLabel,
   ...dest
 }: LinkTextProps) {
   if ('href' in dest && dest.href !== undefined) {
+    // `external` opens a new tab; rel guards the opener (C5, roster BiS link).
+    const externalProps = dest.external
+      ? ({ target: '_blank', rel: 'noopener noreferrer' } as const)
+      : {};
     return (
-      <a href={dest.href} aria-expanded={ariaExpanded} className={`${LINK_CLASS} ${className}`}>
+      <a
+        href={dest.href}
+        {...externalProps}
+        aria-expanded={ariaExpanded}
+        aria-label={ariaLabel}
+        className={`${LINK_CLASS} ${className}`}
+      >
         {icon}
         {children}
       </a>
@@ -45,6 +57,7 @@ export function LinkText({
       type="button"
       onClick={dest.onClick}
       aria-expanded={ariaExpanded}
+      aria-label={ariaLabel}
       className={`${LINK_CLASS} ${className}`}
     >
       {icon}

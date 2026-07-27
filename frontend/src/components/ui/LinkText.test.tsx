@@ -17,6 +17,22 @@ describe('LinkText', () => {
     fireEvent.click(screen.getByRole('button', { name: /Sync now/ }));
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  it('opens external links in a new tab with rel protection (C5)', () => {
+    render(
+      <LinkText href="https://xivgear.app/?page=x" external aria-label="Open in XIVGear">
+        BiS
+      </LinkText>
+    );
+    const link = screen.getByRole('link', { name: 'Open in XIVGear' });
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('stays same-tab without the external flag', () => {
+    render(<LinkText href="/docs">Read more</LinkText>);
+    expect(screen.getByText('Read more').closest('a')).not.toHaveAttribute('target');
+  });
 });
 
 describe('NavRow', () => {

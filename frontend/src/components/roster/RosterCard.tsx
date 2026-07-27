@@ -25,21 +25,27 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { MoreVertical, Repeat } from 'lucide-react';
+import { AlertTriangle, ExternalLink, MoreVertical, Repeat, Swords, Target } from 'lucide-react';
 import {
   CardShell,
   ContextMenu,
   Input,
+  LinkText,
   Modal,
   PlayerIdentity,
   ProgressBar,
   RadioGroup,
+  Tag,
 } from '../ui';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
+import { SafeAvatar } from '../ui/SafeAvatar';
 import { RosterGearTable } from './RosterGearTable';
 import { hasHoverData } from './gearHoverData';
-import { Button, IconButton, LongPressTooltip } from '../primitives';
+import { NowVsBisPanel } from './NowVsBisPanel';
+import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
+import { equippedAverageIlv } from './rosterIlv';
+import { Button, IconButton, LongPressTooltip, Tooltip } from '../primitives';
 import { JobPicker } from '../player/JobPicker';
 import { PositionSelector } from '../player/PositionSelector';
 import { TankRoleSelector } from '../player/TankRoleSelector';
@@ -49,6 +55,7 @@ import {
 } from '../../hooks/useRosterCardActions';
 import { toast } from '../../stores/toastStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useSharedBisStore } from '../../stores/sharedBisStore';
 import type { DragAttributes, DragListeners } from './dragTypes';
 import {
   calculateAverageItemLevel,
@@ -60,6 +67,7 @@ import {
   type GearState,
 } from '../../utils/calculations';
 import { canEditGear, canEditPlayer, type MemberRole } from '../../utils/permissions';
+import { formatSource } from '../profile/freshness';
 import { eventBus, Events } from '../../lib/eventBus';
 import {
   getJobDisplayName,
@@ -393,17 +401,73 @@ export function RosterCard({
   const completedSlots = player.gear.filter(isSlotComplete).length;
   const ratio = completedSlots / TOTAL_SLOTS;
   const hasBis = !!player.bisLink;
-  const displayILv = calculateAverageItemLevel(player.gear, tierId);
+
+  // C5 (D-10): the readout prefers the equipped average from sync data when it
+  // covers at least half the slots (legacy PlayerCardHeader parity); the
+  // NowVsBisPanel hover explains the number either way. The shared helper
+  // keeps this expression identical to the GearBoard subtitle (director F3).
+  const bisAvgIlv = calculateAverageItemLevel(player.gear, tierId);
+  const equippedAvgIlv = equippedAverageIlv(player.gear);
+  const displayILv = equippedAvgIlv > 0 ? equippedAvgIlv : bisAvgIlv;
+
+  // C5 (D-09): badge facts. The "+N" count excludes the main job (legacy
+  // R-081); the claim story below owns "You"/linked-user.
+  const weaponPriorityCount = Math.max(0, (player.weaponPriorities?.length ?? 0) - 1);
+  const showWeaponPriority = (player.weaponPriorities?.length ?? 0) > 1;
 
   const hasLodestoneIdentity = Boolean(
     player.lodestoneId && (player.lodestoneName || player.lodestoneServer)
   );
   const syncAge = formatSyncAge(player.lastSync);
-  const syncLabel = hasLodestoneIdentity
-    ? syncAge
-      ? `Linked · synced ${syncAge}`
-      : 'Linked'
-    : 'Not synced';
+  // C5 (D-12 rider): the sync line carries the character's name; server and
+  // sync provenance live in the hover detail (leaner than v1's sync block).
+  // Rendered as two segments so the NAME truncates and the age never does
+  // (director F5). Sync STATUS keys on lastSync itself, not Lodestone
+  // identity — a Player Hub claim auto-links sync data with no lodestone
+  // fields (tiers.py _auto_link_bis_from_hub), and the footer must never say
+  // "Not synced" while the headline shows the synced equipped average
+  // (PR #193 review).
+  const showsSync = hasLodestoneIdentity || Boolean(syncAge);
+  const syncName =
+    player.lodestoneName ??
+    (hasLodestoneIdentity
+      ? 'Linked'
+      : player.lastSyncSource === 'player_hub'
+        ? 'Player Hub'
+        : 'Synced');
+  const syncJobMismatch = Boolean(
+    showsSync &&
+      player.lastSyncedJob &&
+      player.job &&
+      player.lastSyncedJob.toUpperCase() !== player.job.toUpperCase()
+  );
+  // Provenance renders through the shared formatSource labels — raw storage
+  // identifiers like "player_hub" never reach copy (PR #193 review round 4).
+  // Without a Lodestone identity the tooltip's header has nothing to name but
+  // the source, so the detail line drops it there rather than saying it twice
+  // (round 7).
+  const syncDetail = (() => {
+    if (!syncAge) return 'Lodestone identity linked';
+    const parts = [syncAge === 'just now' ? 'Synced just now' : `Last synced ${syncAge}`];
+    if (player.lastSyncSource && hasLodestoneIdentity) {
+      parts.push(formatSource(player.lastSyncSource));
+    }
+    if (player.lastSyncedJob) parts.push(`as ${player.lastSyncedJob}`);
+    return parts.join(' · ');
+  })();
+
+  // C5 (D-01 remainder): the active BiS target for this player+job. INHERIT
+  // ruling — the store is populated only once the BiS Targets modal has run
+  // (no roster-level prefetch, no backend work); until then the chip stays off.
+  const activeBisTarget = useSharedBisStore((s) =>
+    s.getActive('roster_member_job', player.id, player.job)
+  );
+  const bisTargetCount = useSharedBisStore(
+    (s) =>
+      s.getTargets('roster_member_job', player.id).filter(
+        (t) => t.job.toUpperCase() === player.job.toUpperCase()
+      ).length
+  );
 
   const identitySubtitle = [getJobDisplayName(player.job), player.lodestoneServer]
     .filter(Boolean)
@@ -419,23 +483,86 @@ export function RosterCard({
   };
   const importAction = getMenuAction('Import BiS') ?? getMenuAction('Update BiS');
   const assignAction = getMenuAction('Assign User') ?? getMenuAction('Assign User (Admin)');
+  const bisTargetsAction = getMenuAction('BiS Targets');
 
   // One axis per location (C1 checkpoint ruling, 2026-07-26): the footer's
   // right side carries ONLY the claim/ownership state — every BiS concern
   // (count, "No BiS", the Import action) lives on the progress line above.
   // Actions render as bordered buttons, never bare accent text (a clickable
-  // thing must LOOK clickable).
+  // thing must LOOK clickable). C5 (D-09) completes the claim story: a claimed
+  // card names its owner here — "You" for the current user, the linked user's
+  // avatar + name otherwise (membership role in the tooltip, not a color code).
   const renderClaimStatus = (): ReactNode => {
-    if (player.userId) return null;
+    if (!player.userId) {
+      return (
+        <span className="flex items-center gap-2">
+          <span className="text-status-warning">Unclaimed</span>
+          {canManage && assignAction && (
+            <Button variant="secondary" size="xs" onClick={assignAction}>
+              Assign
+            </Button>
+          )}
+        </span>
+      );
+    }
+    if (player.userId === currentUserId) {
+      // The membership role rides the tooltip (director F2) — legacy conveyed
+      // it by badge color; the D-09 delta names the tooltip as its new home.
+      // LongPressTooltip keeps a touch path, and the sr-only role text keeps
+      // AT informed with no hover at all (PR #193 review round 4).
+      return (
+        <LongPressTooltip
+          delayDuration={200}
+          content={`This card is claimed by you${userRole ? ` (${userRole})` : ''}`}
+        >
+          <span className="inline-flex">
+            <Tag variant="label" tone="accent">
+              You
+              {userRole && <span className="sr-only"> ({userRole})</span>}
+            </Tag>
+          </span>
+        </LongPressTooltip>
+      );
+    }
+    if (player.linkedUser) {
+      const linked = player.linkedUser;
+      const label = linked.displayName || linked.discordUsername;
+      return (
+        <LongPressTooltip
+          delayDuration={200}
+          content={`Claimed by ${label}${linked.membershipRole ? ` (${linked.membershipRole})` : ''}`}
+        >
+          <span className="inline-flex">
+            <Tag
+              variant="label"
+              tone="muted"
+              icon={
+                linked.avatarUrl ? (
+                  <SafeAvatar
+                    src={linked.avatarUrl}
+                    alt=""
+                    className="h-3 w-3 shrink-0 rounded-full"
+                  />
+                ) : undefined
+              }
+            >
+              <span className="max-w-16 truncate">{label}</span>
+              {linked.membershipRole && (
+                <span className="sr-only"> ({linked.membershipRole})</span>
+              )}
+            </Tag>
+          </span>
+        </LongPressTooltip>
+      );
+    }
+    // Claimed, but `linked_user` didn't come down (it's optional in the API
+    // schema). The footer owns the entire claim story under the one-axis
+    // ruling, so it must not go blank on a claimed card — name the state even
+    // when we can't name the owner (PR #193 review round 5).
     return (
-      <span className="flex items-center gap-2">
-        <span className="text-status-warning">Unclaimed</span>
-        {canManage && assignAction && (
-          <Button variant="secondary" size="xs" onClick={assignAction}>
-            Assign
-          </Button>
-        )}
-      </span>
+      <Tag variant="label" tone="muted">
+        Claimed
+      </Tag>
     );
   };
 
@@ -474,8 +601,70 @@ export function RosterCard({
                 onDoubleClick={beginNameEdit}
                 title={canEdit ? 'Double-click to rename' : undefined}
               >
-                <PlayerIdentity name={player.name} job={player.job} role={role} subtitle={identitySubtitle} />
+                {/* C5 (D-11, LEAN): the Lodestone portrait rides the expanded
+                    card's identity avatar (SafeAvatar allowlist + initials
+                    fallback are PlayerIdentity's own behavior); compact keeps
+                    the initials mark. */}
+                <PlayerIdentity
+                  name={player.name}
+                  job={player.job}
+                  role={role}
+                  subtitle={identitySubtitle}
+                  avatarUrl={
+                    isExpanded && hasLodestoneIdentity
+                      ? player.lodestoneAvatarUrl ?? undefined
+                      : undefined
+                  }
+                />
               </div>
+            )}
+
+            {/* Both header tags follow the claim badges' treatment (review
+                rounds 4 + 7): LongPressTooltip for the touch path, plus
+                sr-only text so the meaning survives with no hover at all —
+                "+1" over a Swords glyph says nothing on its own. */}
+            {player.isSubstitute && (
+              <LongPressTooltip
+                delayDuration={200}
+                content={
+                  <span aria-hidden="true">Substitute — a backup for the static&apos;s roster</span>
+                }
+              >
+                <span className="inline-flex">
+                  <Tag variant="label" tone="warning">
+                    SUB
+                    <span className="sr-only">
+                      {' '}
+                      Substitute — a backup for the static&apos;s roster
+                    </span>
+                  </Tag>
+                </span>
+              </LongPressTooltip>
+            )}
+            {showWeaponPriority && (
+              <LongPressTooltip
+                delayDuration={200}
+                content={
+                  <span aria-hidden="true">
+                    +{weaponPriorityCount} additional weapon{' '}
+                    {weaponPriorityCount === 1 ? 'priority' : 'priorities'}
+                  </span>
+                }
+              >
+                <span className="inline-flex">
+                  <Tag
+                    variant="label"
+                    tone="muted"
+                    icon={<Swords className="h-3 w-3" aria-hidden="true" />}
+                  >
+                    +{weaponPriorityCount}
+                    <span className="sr-only">
+                      {' '}
+                      additional weapon {weaponPriorityCount === 1 ? 'priority' : 'priorities'}
+                    </span>
+                  </Tag>
+                </span>
+              </LongPressTooltip>
             )}
 
             {role === 'tank' && (
@@ -521,12 +710,48 @@ export function RosterCard({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <div className="text-right leading-none">
-              <div className="font-display text-lg font-bold text-text-primary">
-                {displayILv > 0 ? displayILv : '—'}
+            {/* C5 (D-10): the Now-vs-BiS breakdown panel explains the readout;
+                the placeholder "—" has nothing to explain and stays un-wired.
+                The accent color IS the discriminator (legacy parity, director
+                F3): accent = equipped average, default = BiS-target average.
+                No native title — the panel already says both (director F4). */}
+            {displayILv > 0 ? (
+              <LongPressTooltip
+                delayDuration={200}
+                content={
+                  <NowVsBisPanel
+                    gear={player.gear}
+                    tierId={tierId}
+                    equippedAvgIlv={equippedAvgIlv}
+                    bisAvgIlv={bisAvgIlv}
+                  />
+                }
+              >
+                {/* Focusable trigger (PR #193 review round 4): Radix opens the
+                    panel on focus, so keyboard users reach the breakdown. Not a
+                    button — focusing only reveals information, activation would
+                    be a lie. */}
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger; focus is the keyboard path to the Radix panel */}
+                <div tabIndex={0} className="cursor-help text-right leading-none">
+                  <div
+                    className={`font-display text-lg font-bold ${
+                      equippedAvgIlv > 0 ? 'text-accent' : 'text-text-primary'
+                    }`}
+                  >
+                    {displayILv}
+                  </div>
+                  <div className="text-xs uppercase tracking-wide text-text-tertiary">iLvl</div>
+                  {/* Framing rides ALONGSIDE the number, never as an aria-label
+                      over it — the number is what AT must hear (round 8). */}
+                  <span className="sr-only"> — average item level breakdown</span>
+                </div>
+              </LongPressTooltip>
+            ) : (
+              <div className="text-right leading-none">
+                <div className="font-display text-lg font-bold text-text-primary">—</div>
+                <div className="text-xs uppercase tracking-wide text-text-tertiary">iLvl</div>
               </div>
-              <div className="text-xs uppercase tracking-wide text-text-tertiary">iLvl</div>
-            </div>
+            )}
             <IconButton
               aria-label="Player actions"
               variant="ghost"
@@ -537,9 +762,22 @@ export function RosterCard({
           </div>
         </div>
 
+        {/* C5 (D-11, LEAN): the roster title is the one personalization line
+            the expanded card carries (note + flex chips stay in the editor). */}
+        {isExpanded && player.rosterTitle && (
+          <p
+            className="mt-1 truncate text-xs font-medium text-accent/90"
+            data-testid="roster-card-title"
+          >
+            {player.rosterTitle}
+          </p>
+        )}
+
         {/* ── BiS progress line — owns the WHOLE BiS story (one axis per
                location, C1 checkpoint ruling): count when linked, "No BiS" +
-               the Import action when not. ── */}
+               the Import action when not. C5 (D-09) adds the external gearset
+               link, and C5 (D-01) extends the block with the expanded-only
+               active-target chip below — every BiS concern stays on this axis. ── */}
         <div className="mt-3 flex items-center gap-2">
           <ProgressBar
             value={hasBis ? ratio : 0}
@@ -552,12 +790,56 @@ export function RosterCard({
           >
             {hasBis ? `${completedSlots}/${TOTAL_SLOTS} BiS` : 'No BiS'}
           </span>
+          {hasBis && player.bisLink && (
+            /* The tooltip is the SIGHTED path only: its text is already the
+               link's accessible name, and Radix wires content as
+               aria-describedby, so leaving it announced repeats the name on
+               focus (review round 9). */
+            <Tooltip content={<span aria-hidden="true">{bisLinkTooltip(player.bisLink)}</span>}>
+              <span className="inline-flex shrink-0">
+                <LinkText
+                  href={buildBisUrl(player.bisLink)}
+                  external
+                  /* WCAG 2.5.3, Label in Name: the visible word leads the
+                     accessible name, so "click BiS" works in voice control. */
+                  aria-label={`BiS — ${bisLinkTooltip(player.bisLink)}`}
+                  icon={<ExternalLink className="h-3 w-3" aria-hidden="true" />}
+                  className="text-xs font-medium"
+                >
+                  BiS
+                </LinkText>
+              </span>
+            </Tooltip>
+          )}
           {!hasBis && canEdit && importAction && (
             <Button variant="secondary" size="xs" onClick={importAction}>
               Import BiS
             </Button>
           )}
         </div>
+
+        {/* C5 (D-01 remainder): expanded-only active BiS target, riding the
+            BiS block. Opens the same manager as the kebab's "BiS Targets".
+            A nav Tag, not legacy's ghost button — the pill goes somewhere, so
+            it carries the chevron (director F7: a clickable thing must LOOK
+            clickable). */}
+        {isExpanded && activeBisTarget && bisTargetsAction && (
+          <div className="mt-1.5">
+            <Tag
+              variant="nav"
+              tone="accent"
+              onNavigate={bisTargetsAction}
+              icon={<Target className="h-3 w-3" aria-hidden="true" />}
+              className="max-w-full"
+            >
+              <span className="truncate">
+                Target: <span className="font-medium">{activeBisTarget.name}</span>
+                {activeBisTarget.itemLevel ? ` · iLv ${activeBisTarget.itemLevel}` : ''}
+                {bisTargetCount > 1 ? ` (+${bisTargetCount - 1})` : ''}
+              </span>
+            </Tag>
+          </div>
+        )}
 
         {/* ── Gear section: pip strip (compact) or gear table (expanded).
                Either/or, matching legacy PlayerCardGear — the table replaces the
@@ -647,14 +929,64 @@ export function RosterCard({
           </>
         )}
 
-        {/* ── Footer: character link/sync · status CTA ── */}
+        {/* ── Footer: character link/sync · claim story ──
+               C5 (D-12 rider): the sync line names the character; server + sync
+               provenance + the job-mismatch explanation live in the hover
+               detail (leaner than v1's three-line sync block). A mismatch also
+               shows a warning glyph + dot so it never hides behind the hover. ── */}
         <div className="mt-3 flex items-center gap-2 border-t border-border-subtle pt-3 text-xs text-text-tertiary">
           <span className="flex min-w-0 items-center gap-1.5">
             <span
               aria-hidden="true"
-              className={`h-2 w-2 shrink-0 rounded-full ${hasLodestoneIdentity ? 'bg-membership-linked' : 'bg-text-muted'}`}
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                showsSync
+                  ? syncJobMismatch
+                    ? 'bg-status-warning'
+                    : 'bg-membership-linked'
+                  : 'bg-text-muted'
+              }`}
             />
-            <span className="truncate">{syncLabel}</span>
+            {showsSync ? (
+              /* LongPressTooltip, matching the iLvl panel twelve lines up —
+                 same slice, same detail-hover pattern, and it keeps a touch
+                 path (director F6). */
+              <LongPressTooltip
+                delayDuration={200}
+                content={
+                  <div className="max-w-60 space-y-1">
+                    <div className="font-medium">
+                      {[player.lodestoneName, player.lodestoneServer].filter(Boolean).join(' • ') ||
+                        (player.lastSyncSource ? formatSource(player.lastSyncSource) : 'Gear sync')}
+                    </div>
+                    <div className="text-xs text-text-secondary">{syncDetail}</div>
+                    {syncJobMismatch && (
+                      <div className="text-xs text-status-warning">
+                        Synced as {player.lastSyncedJob}, player set as {player.job}. The provider
+                        may be showing old gear.
+                      </div>
+                    )}
+                  </div>
+                }
+              >
+                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger; focus is the keyboard path to the Radix detail */}
+                <span tabIndex={0} className="flex min-w-0 cursor-help items-center gap-1">
+                  <span className="truncate">{syncName}</span>
+                  {syncAge && <span className="shrink-0">· synced {syncAge}</span>}
+                  {syncJobMismatch && (
+                    <AlertTriangle
+                      data-testid="roster-sync-mismatch"
+                      aria-label="Synced job differs from the card's job"
+                      className="h-3 w-3 shrink-0 text-status-warning"
+                    />
+                  )}
+                  {/* Framing alongside the name/age, not an aria-label over
+                      them (round 8). */}
+                  <span className="sr-only"> — sync details</span>
+                </span>
+              </LongPressTooltip>
+            ) : (
+              <span className="truncate">Not synced</span>
+            )}
           </span>
           <span className="flex-1" />
           {renderClaimStatus()}
