@@ -65,6 +65,7 @@ describe('useRosterViewShortcuts', () => {
 
     const combobox = document.createElement('button');
     combobox.setAttribute('role', 'combobox');
+    combobox.setAttribute('aria-expanded', 'true');
     document.body.appendChild(combobox);
     const fromTrigger = new KeyboardEvent('keydown', { key: 's', bubbles: true, cancelable: true });
     combobox.dispatchEvent(fromTrigger);
@@ -88,6 +89,30 @@ describe('useRosterViewShortcuts', () => {
 
     combobox.remove();
     listbox.remove();
+  });
+
+  it('stays alive on a CLOSED sort trigger — Radix parks focus there (round 3)', () => {
+    // Choosing a preset returns focus to the trigger, so treating any combobox
+    // as owning the letter left V/G/S dead until the user clicked elsewhere.
+    // A closed trigger isn't running typeahead; only an open list owns the key.
+    const onToggleSubsView = vi.fn();
+    const onToggleGrouping = vi.fn();
+    renderHook(() =>
+      useRosterViewShortcuts({ ...baseOptions, onToggleGrouping, onToggleSubsView })
+    );
+
+    const combobox = document.createElement('button');
+    combobox.setAttribute('role', 'combobox');
+    combobox.setAttribute('aria-expanded', 'false');
+    document.body.appendChild(combobox);
+
+    combobox.dispatchEvent(new KeyboardEvent('keydown', { key: 's', bubbles: true, cancelable: true }));
+    combobox.dispatchEvent(new KeyboardEvent('keydown', { key: 'g', bubbles: true, cancelable: true }));
+
+    expect(onToggleSubsView).toHaveBeenCalledTimes(1);
+    expect(onToggleGrouping).toHaveBeenCalledTimes(1);
+
+    combobox.remove();
   });
 
   it('does nothing while typing in a field', () => {

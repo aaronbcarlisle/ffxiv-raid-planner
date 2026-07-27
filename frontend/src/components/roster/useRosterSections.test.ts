@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useRosterSections, rosterCollapseKey, visibleRosterSections } from './useRosterSections';
+import type { RosterSectionId } from './useRosterSections';
 import type { SnapshotPlayer } from '../../types';
 
 // C6 / D-08. Legacy's PlayerGrid folds G1/G2/Subs and persists per static+tier
@@ -10,9 +11,9 @@ import type { SnapshotPlayer } from '../../types';
 
 const LEGACY_KEY = (g: string, t: string) => `roster-collapse-${g}-${t}`;
 
-const render = (groupId = 'g1', tierId: string | undefined = 't1', sections: readonly string[] = ['g1', 'g2', 'subs']) =>
+const render = (groupId = 'g1', tierId: string | undefined = 't1', sections: readonly RosterSectionId[] = ['g1', 'g2', 'subs']) =>
   renderHook(
-    (props: { groupId: string; tierId: string | undefined; sections: readonly string[] }) =>
+    (props: { groupId: string; tierId: string | undefined; sections: readonly RosterSectionId[] }) =>
       useRosterSections(props),
     { initialProps: { groupId, tierId, sections: [...sections] } }
   );

@@ -105,9 +105,10 @@ export interface UseRosterSectionsOptions {
   /**
    * The sections actually on screen right now, in render order. `toggleAll`
    * acts on exactly these — folding a section the user cannot see would
-   * surprise them the next time the view changes.
+   * surprise them the next time the view changes. Typed to the section union so
+   * an unknown id can't reach the persisted state (PR #199 review).
    */
-  sections: readonly string[];
+  sections: readonly RosterSectionId[];
 }
 
 export interface UseRosterSectionsReturn {

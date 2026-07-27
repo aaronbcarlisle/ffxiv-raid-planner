@@ -36,13 +36,21 @@ export function isTypingTarget(target: EventTarget | null): boolean {
  * write `?subs=false`, invisible until a v2 remount read it back. Verified live:
  * declining alone left the toolbar untouched but dirtied the URL.
  *
- * The cost is that typeahead for the three bound letters (`v`/`g`/`s`) does not
- * work inside the dropdown; every other letter, and the arrow keys, still do.
- * Protecting the user's stored view state beats typeahead on a four-item list.
+ * Scoped to an OPEN list. Radix parks focus back on the trigger when the Select
+ * closes, so treating any combobox as the owner left `V`/`G`/`S` silently dead
+ * after every use of the sort control, until the user clicked elsewhere —
+ * choosing a preset and then adjusting density is an ordinary sequence
+ * (PR #199 review round 3). A closed trigger isn't running typeahead.
+ *
+ * The remaining cost is typeahead for the three bound letters while the list is
+ * open; every other letter, and the arrow keys, still work.
  */
 export function ownsLetterKeys(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest('[role="combobox"],[role="listbox"],[role="option"]'));
+  const owner = target.closest('[role="combobox"],[role="listbox"],[role="option"]');
+  if (!owner) return false;
+  // A listbox/option only exists while open; a combobox has to say so.
+  return owner.getAttribute('role') !== 'combobox' || owner.getAttribute('aria-expanded') === 'true';
 }
 
 /**
