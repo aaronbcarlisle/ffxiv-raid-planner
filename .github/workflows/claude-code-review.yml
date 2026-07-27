@@ -19,7 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      # MUST be write: the review is delivered by posting a PR comment. With
+      # `read` the job still runs to completion and reports success, but every
+      # post is rejected, so the review silently goes nowhere. Downgrading this
+      # in 6e25295 is why claude[bot] stopped commenting after PR #73.
+      pull-requests: write
       issues: read
       id-token: write
 
