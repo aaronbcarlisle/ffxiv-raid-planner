@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSlotJumpTargets } from './rosterLedgerJumps';
+import { buildSlotJumpTargets, jumpMenuAnchor } from './rosterLedgerJumps';
 import type { LootLogEntry, MaterialLogEntry } from '../../types';
 
 function loot(overrides: Partial<LootLogEntry> & { id: number; itemSlot: string }): LootLogEntry {
@@ -110,5 +110,26 @@ describe('buildSlotJumpTargets (C7, D-05)', () => {
 
   it('returns no targets for an empty ledger', () => {
     expect(buildSlotJumpTargets([], [], 'p1')).toEqual({});
+  });
+});
+
+describe('jumpMenuAnchor (C7, D-05)', () => {
+  const rect = { left: 120, bottom: 80 };
+
+  it('uses the cursor position for a real right-click', () => {
+    expect(jumpMenuAnchor({ clientX: 40, clientY: 50 }, rect)).toEqual({ x: 40, y: 50 });
+  });
+
+  it('keeps a legitimate zero coordinate instead of falling back', () => {
+    // A right-click against the viewport's left edge reports clientX 0 — that
+    // is a real position, not the "no position" the keyboard case reports
+    // (PR #200 review: `e.clientX || rect.left` swallowed it).
+    expect(jumpMenuAnchor({ clientX: 0, clientY: 300 }, rect)).toEqual({ x: 0, y: 300 });
+    expect(jumpMenuAnchor({ clientX: 300, clientY: 0 }, rect)).toEqual({ x: 300, y: 0 });
+  });
+
+  it('anchors to the icon only when the event carries no position at all', () => {
+    // Shift+F10 / the context-menu key dispatch with both coordinates 0.
+    expect(jumpMenuAnchor({ clientX: 0, clientY: 0 }, rect)).toEqual({ x: 120, y: 80 });
   });
 });

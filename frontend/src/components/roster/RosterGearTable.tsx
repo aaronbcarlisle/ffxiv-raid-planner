@@ -36,6 +36,7 @@ import {
 } from '../../types';
 import { fromGearState, requiresAugmentation, toGearState, type GearState } from '../../utils/calculations';
 import { hasHoverData } from './gearHoverData';
+import { jumpMenuAnchor } from './rosterLedgerJumps';
 import type { JumpKind, SlotJumpTargets } from './rosterLedgerJumps';
 
 /**
@@ -287,10 +288,9 @@ export function RosterGearTable({
                   // else on the row.
                   e.stopPropagation();
                   // Shift+F10 / the context-menu key dispatch with no cursor
-                  // position; anchor to the icon instead of the page corner.
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX || rect.left;
-                  const y = e.clientY || rect.bottom;
+                  // position; anchor to the icon instead of the page corner —
+                  // but a real click at x=0 or y=0 keeps its own coordinates.
+                  const { x, y } = jumpMenuAnchor(e, e.currentTarget.getBoundingClientRect());
                   setSlotMenu({ slot, x, y });
                 }}
               >

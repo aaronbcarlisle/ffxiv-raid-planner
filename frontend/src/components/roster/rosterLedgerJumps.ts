@@ -64,6 +64,25 @@ function findMaterialEntry(
 }
 
 /**
+ * Where a slot's right-click jump menu opens.
+ *
+ * Keyboard-invoked context menus (Shift+F10, the menu key) dispatch with NO
+ * cursor position — both coordinates are 0 — and must anchor to the icon
+ * instead of the page corner. A mouse right-click against the viewport's left
+ * or top edge legitimately reports a single 0, which is a real position: only
+ * the both-zero case is "no position" (PR #200 review).
+ */
+export function jumpMenuAnchor(
+  event: { clientX: number; clientY: number },
+  iconRect: { left: number; bottom: number }
+): { x: number; y: number } {
+  if (event.clientX === 0 && event.clientY === 0) {
+    return { x: iconRect.left, y: iconRect.bottom };
+  }
+  return { x: event.clientX, y: event.clientY };
+}
+
+/**
  * Resolve every gear slot's ledger targets for one player. Slots with nothing
  * to jump to are absent from the result (never present-but-empty), so a caller
  * can test `targets[slot]` for "is there an affordance here at all".
