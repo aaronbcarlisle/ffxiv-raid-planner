@@ -37,8 +37,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { analytics } from '../../services/analytics';
-import { areShortcutsEnabled } from '../../hooks/useKeyboardShortcuts';
-import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
+import { isRosterShortcut, isSettingsPanelOpen, ownsLetterKeys } from './rosterShortcutGuards';
 import type { ViewMode } from '../../types';
 
 /** v2-scoped persistence key (plan §5: strict freeze — never `party-view-mode`). */
@@ -50,13 +49,6 @@ function readStoredDensity(): ViewMode {
   } catch {
     return 'compact';
   }
-}
-
-/** Mirrors the (non-exported) input guard in `useKeyboardShortcuts`. */
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName.toLowerCase();
-  return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
 }
 
 export interface UseRosterDensityOptions {
@@ -103,21 +95,22 @@ export function useRosterDensity({
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key.toLowerCase() !== 'v') return;
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-      // These two guards mirror the shared hook's own early-returns, so NOT
-      // swallowing here changes nothing — the legacy handler would no-op too.
-      if (!areShortcutsEnabled() || isTypingTarget(e.target)) return;
+      // Guards shared with the C6 `G`/`S` bindings (`rosterShortcutGuards`) so
+      // all three keys behave identically.
+      if (!isRosterShortcut(e, 'v')) return;
       // Own the key: exactly one handler acts on `V` while v2 Roster is mounted.
       e.preventDefault();
       e.stopImmediatePropagation();
+      // Sort dropdown owns letter keys — swallowed, not declined, so the frozen
+      // handler can't take `v` either (see `ownsLetterKeys`).
+      if (ownsLetterKeys(e.target)) return;
       // Settings panel open → swallowed but inert: density must not flip behind
       // the panel. Read imperatively — a subscription here would re-render the
       // roster on every panel toggle (settingsPanelStore.ts's ~500ms lesson).
       // Accepted v2 delta (director change-review, 2026-07-26): the Priority
       // tab's own `v` (ST-14/ST-15) doesn't fire while the panel covers the
       // ROSTER tab — under legacy both handlers fired at once.
-      if (useSettingsPanelStore.getState().isOpen) return;
+      if (isSettingsPanelOpen()) return;
       if (shortcutsDisabled || !active) return;
       toggleRef.current();
     }

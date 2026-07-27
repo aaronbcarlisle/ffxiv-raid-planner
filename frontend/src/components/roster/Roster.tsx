@@ -47,6 +47,9 @@ import { GearBoard } from './GearBoard';
 import { CharacterManageBridge } from './CharacterManageBridge';
 
 import { useRosterDensity } from './useRosterDensity';
+import { useRosterSortPreset } from './useRosterSortPreset';
+import { useRosterViewShortcuts } from './useRosterViewShortcuts';
+import { useRosterSections, visibleRosterSections } from './useRosterSections';
 import { useGroupViewState } from '../../hooks/useGroupViewState';
 import { usePlayerActions } from '../../hooks/usePlayerActions';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
@@ -125,8 +128,10 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     groupView,
     setGroupView,
     subsView,
+    setSubsView,
     sortPreset,
     setSortPreset,
+    setSortPresetState,
     setEditingPlayerId,
     clipboardPlayer,
     setClipboardPlayer,
@@ -192,6 +197,27 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   const tierId = tier?.tierId;
   const contentType = tier?.contentType ?? 'savage';
 
+  // ── Sort preset (Phase C C6, D-06) ──
+  // The apply machinery was never lost; the per-tier HYDRATION was. It lives in
+  // the legacy hosts only, against a hook instance this screen never reads — so
+  // v2 silently ignored a stored preset until now. `setSortPresetState` is the
+  // raw setter: hydration restores a preference, it must not push a URL param.
+  const { persistPreset } = useRosterSortPreset({
+    tierId,
+    urlSort: searchParams.get('sort'),
+    applyPreset: setSortPresetState,
+  });
+  const handleSortPresetChange = useCallback(
+    (preset: SortPreset) => {
+      // Deliberately no tierId argument: that overload writes LEGACY's
+      // `sort-preset-{tierId}` key. This keeps the URL in sync (deep links,
+      // reload) while persistence goes to the v2-scoped key.
+      setSortPreset(preset);
+      persistPreset(preset);
+    },
+    [setSortPreset, persistPreset],
+  );
+
   // Role-sort (identical to legacy `sortedPlayers`) — a custom drag order
   // (sortPreset='custom' → sortOrder) survives here too.
   const sortedPlayers = useMemo(() => {
@@ -238,6 +264,38 @@ export function Roster({ group, tier, canManage }: RosterProps) {
 
   const hasSubstitutes = useMemo(() => sortedPlayers.some((p) => p.isSubstitute), [sortedPlayers]);
 
+  // ── Section folding (Phase C C6, D-08) ──
+  // `visibleRosterSections` mirrors RosterCards' own render conditions so
+  // fold-all never acts on an off-screen section. They are separate
+  // expressions over the same inputs — change them together (director F8).
+  const visibleSections = useMemo(
+    () => visibleRosterSections({ players: sortedPlayers, groupView, subsView, subsHidden }),
+    [sortedPlayers, groupView, subsView, subsHidden],
+  );
+  const { isCollapsed, toggleSection, toggleAll } = useRosterSections({
+    groupId: group.id,
+    tierId,
+    sections: visibleSections,
+  });
+
+  // ── v2-side `G` / `S` bindings (Phase C C6, plan §2.1) ──
+  // Separate Subs is gated on the substitutes section being shown, matching its
+  // toolbar toggle (C1-checkpoint correction (c)).
+  useRosterViewShortcuts({
+    shortcutsDisabled: cardModalCount > 0 || isActionModalOpen,
+    active: rosterView === 'cards',
+    hasSubstitutes,
+    // Matches the toolbar toggle's disabled rule exactly (director F6): a
+    // shortcut must not do what its disabled control cannot, and must stay
+    // available where the control does.
+    subsSeparable: !(subsHidden && subsView),
+    onToggleGrouping: useCallback(
+      () => setGroupView(!groupView, group.id),
+      [setGroupView, groupView, group.id],
+    ),
+    onToggleSubsView: useCallback(() => setSubsView(!subsView), [setSubsView, subsView]),
+  });
+
   const userHasClaimedPlayer = useMemo(() => {
     const checkUserId = viewAsUser ? viewAsUser.userId : user?.id;
     if (!checkUserId) return false;
@@ -256,16 +314,18 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   }, [sortedPlayers]);
 
   // ── Player actions (playerId-first handlers) ──
-  const setSortPresetWithTier = useCallback(
-    (preset: SortPreset) => setSortPreset(preset, tierId),
-    [setSortPreset, tierId],
-  );
+  // The drag-reorder path calls `setSortPreset('custom', tierId)`
+  // (`usePlayerActions.ts:178-182`). That overload writes LEGACY's
+  // `sort-preset-{tierId}`, so a drag inside v2 changed what the frozen shell
+  // sorted by on its next visit — and the resulting 'custom' never reached the
+  // v2 key, so a later visit hydrated a stale preset over the user's own
+  // ordering. Route it through the same v2 wrapper the selector uses (C6).
   const playerActions = usePlayerActions({
     groupId: group.id,
     tierId,
     players,
     setEditingPlayerId,
-    setSortPreset: setSortPresetWithTier,
+    setSortPreset: handleSortPresetChange,
   });
 
   // ── ?player= deep link (mirrors Schedule.tsx's ?sessionId= shape) ──────────
@@ -429,10 +489,15 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           onRosterViewChange={setRosterView}
           density={density}
           onDensityChange={setDensity}
+          onExpandAllToggle={toggleAll}
+          sortPreset={sortPreset}
+          onSortPresetChange={handleSortPresetChange}
           groupView={groupView}
           onGroupViewChange={(v) => setGroupView(v, group.id)}
           subsHidden={subsHidden}
           onSubsHiddenChange={setSubsHiddenPersist}
+          subsView={subsView}
+          onSubsViewChange={setSubsView}
           hasSubstitutes={hasSubstitutes}
           reorderMode={reorderMode}
           onReorderModeChange={setReorderMode}
@@ -457,6 +522,8 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           groupView={groupView}
           subsView={subsView}
           subsHidden={subsHidden}
+          isSectionCollapsed={isCollapsed}
+          onSectionToggle={toggleSection}
           reorderMode={reorderMode}
           density={density}
           onModalOpen={handleCardModalOpen}

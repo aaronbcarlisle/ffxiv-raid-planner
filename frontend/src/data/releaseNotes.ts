@@ -68,6 +68,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'feature',
+        title: 'New UI: the roster toolbar regains sorting, grouping and section folding (Phase C, slice C6)',
+        description:
+          'Opt-in new UI only (admin-gated preview). The new-UI roster toolbar splits its controls one-per-axis: the old “Standard comp ⇄ Light Party” dropdown becomes the sort-preset selector (Standard / DPS First / Healer First / Custom), and Light Party grouping becomes its own toggle. A sort preset you saved before is now actually applied — the new UI had been ignoring it — and it follows you when you switch tiers. “Separate subs” returns as a visible toggle, enabled once “Show subs” is on, and the G and S keyboard shortcuts drive both. Every roster section — Light Party 1, Light Party 2, Unassigned and Substitutes — gains a fold chevron that remembers itself per static and tier, and re-clicking “Expanded” folds or unfolds all of them at once.',
+        pr: 199,
+        prTitle: 'feat(redesign): Phase C slice C6 — toolbar restorations (D-06/D-07/D-08)',
+      },
+      {
+        internal: true,
+        category: 'feature',
         title: 'New UI: badges, metrics and identity return to the roster card (Phase C, slice C5)',
         description:
           'Opt-in new UI only (admin-gated preview). The legacy badge row returns dissolved into the card’s one-axis homes: SUB and the “+N” weapon-priority tag join the header, the external BiS-link rides the progress line, and “You”/linked-user complete the footer’s claim story. The iLvl readout goes equipped-first with a per-slot Now-vs-BiS hover breakdown, the expanded card gains the Lodestone portrait, roster title and active-BiS-target chip, and the footer sync line names the character, flags a job mismatch with a warning glyph, and carries the full sync detail on hover.',

@@ -15,6 +15,9 @@ import type { SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
 const setGroupView = vi.fn();
 const setSubsView = vi.fn();
 const setSortPreset = vi.fn();
+// The raw state setter the C6 hydration applies its stored preset through
+// (the wrapper above would push a URL param, which hydration must not do).
+const setSortPresetState = vi.fn();
 const setEditingPlayerId = vi.fn();
 const setClipboardPlayer = vi.fn();
 let mockClipboardPlayer: SnapshotPlayer | null = null;
@@ -28,6 +31,7 @@ vi.mock('../../hooks/useGroupViewState', () => ({
     setSubsView,
     sortPreset: 'standard',
     setSortPreset,
+    setSortPresetState,
     setEditingPlayerId,
     clipboardPlayer: mockClipboardPlayer,
     setClipboardPlayer,
@@ -47,8 +51,14 @@ const playerActions = {
   handleResetGear: vi.fn(),
   handleReorder: vi.fn(),
 };
+// Capture the options so a test can drive the callbacks Roster hands down —
+// notably `setSortPreset`, which the drag-reorder path calls with 'custom'.
+let playerActionOptions: { setSortPreset?: (p: string) => void } = {};
 vi.mock('../../hooks/usePlayerActions', () => ({
-  usePlayerActions: () => playerActions,
+  usePlayerActions: (opts: { setSortPreset?: (p: string) => void }) => {
+    playerActionOptions = opts;
+    return playerActions;
+  },
 }));
 
 vi.mock('../../stores/authStore', () => ({
@@ -105,9 +115,26 @@ vi.mock('./CharacterManageBridge', () => ({
 }));
 
 import { Roster } from './Roster';
+import { TooltipProvider } from '../primitives';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useToastStore } from '../../stores/toastStore';
 import type { GearSlotStatus } from '../../types';
+
+// jsdom has no matchMedia; `useDevice` (via the Tooltip primitive) calls it.
+// Stubbed locally rather than in the shared setup so no other suite's device
+// detection changes underneath it.
+if (!window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
 
 function makePlayer(overrides: Partial<SnapshotPlayer> & { id: string }): SnapshotPlayer {
   return {
@@ -151,9 +178,11 @@ const baseProps = {
 // can seed `?rview=board` via history.pushState before rendering.
 function renderRoster(tier: TierSnapshot | null) {
   return render(
-    <BrowserRouter>
-      <Roster {...baseProps} tier={tier} />
-    </BrowserRouter>,
+    <TooltipProvider>
+      <BrowserRouter>
+        <Roster {...baseProps} tier={tier} />
+      </BrowserRouter>
+    </TooltipProvider>,
   );
 }
 
@@ -170,10 +199,12 @@ function LocationProbe() {
 
 function renderRosterAtUrl(tier: TierSnapshot | null, initialEntries: string[]) {
   return render(
-    <MemoryRouter initialEntries={initialEntries}>
-      <Roster {...baseProps} tier={tier} />
-      <LocationProbe />
-    </MemoryRouter>,
+    <TooltipProvider>
+      <MemoryRouter initialEntries={initialEntries}>
+        <Roster {...baseProps} tier={tier} />
+        <LocationProbe />
+      </MemoryRouter>
+    </TooltipProvider>,
   );
 }
 
@@ -464,5 +495,97 @@ describe("Roster — A10 void'd-promise fixes", () => {
     expect(fetchLootLog).toHaveBeenCalledTimes(1);
     expect(fetchMaterialLog).toHaveBeenCalledTimes(1);
     expect(fetchCurrentWeek).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Phase C slice C6: toolbar restorations wired end-to-end ──
+describe('Roster — C6 toolbar restorations', () => {
+  const players = [
+    makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
+    makePlayer({ id: 'p2', name: 'Tank Two', position: 'T2' }),
+    makePlayer({ id: 'p3', name: 'Sub One', isSubstitute: true }),
+  ];
+
+  beforeEach(() => {
+    localStorage.clear();
+    setSortPresetState.mockClear();
+    setGroupView.mockClear();
+    setSubsView.mockClear();
+  });
+
+  it('applies the stored per-tier sort preset on mount (D-06 — the actual defect)', () => {
+    localStorage.setItem('v2-sort-preset-t1', 'healer-first');
+    renderRoster(makeTier(players));
+    expect(setSortPresetState).toHaveBeenCalledWith('healer-first');
+  });
+
+  it('carries a preset set in the legacy shell over to v2', () => {
+    localStorage.setItem('sort-preset-t1', 'dps-first');
+    renderRoster(makeTier(players));
+    expect(setSortPresetState).toHaveBeenCalledWith('dps-first');
+  });
+
+  it('persists a drag-reordered "custom" under the v2 key too, never legacy’s', () => {
+    // The drag path calls this with 'custom' (usePlayerActions.ts:178-182). It
+    // used to go through the tierId overload, which writes LEGACY's key — so a
+    // drag inside v2 changed what the frozen shell sorted by on its next visit.
+    localStorage.setItem('sort-preset-t1', 'standard');
+    renderRoster(makeTier(players));
+
+    act(() => playerActionOptions.setSortPreset?.('custom'));
+
+    expect(localStorage.getItem('v2-sort-preset-t1')).toBe('custom');
+    expect(localStorage.getItem('sort-preset-t1')).toBe('standard');
+  });
+
+  it('persists a preset chosen here under the v2 key, never legacy’s', () => {
+    localStorage.setItem('sort-preset-t1', 'standard');
+    renderRoster(makeTier(players));
+
+    // Radix Select opens on pointerdown/keyboard, so drive it the keyboard way.
+    fireEvent.keyDown(screen.getByRole('combobox', { name: /sort/i }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: /healer first/i }));
+
+    expect(localStorage.getItem('v2-sort-preset-t1')).toBe('healer-first');
+    expect(localStorage.getItem('sort-preset-t1')).toBe('standard');
+  });
+
+  it('binds G to grouping and S to separate-subs on THIS instance (D-07)', () => {
+    renderRoster(makeTier(players));
+
+    fireEvent.keyDown(window, { key: 'g' });
+    expect(setGroupView).toHaveBeenCalledWith(false, 'g1');
+
+    fireEvent.keyDown(window, { key: 's' });
+    expect(setSubsView).toHaveBeenCalledWith(false);
+  });
+
+  it('folds every section when Expanded is re-clicked, and restores them (D-08)', () => {
+    renderRoster(makeTier(players));
+
+    // Enter Expanded first (a re-click is what carries the fold-all meaning).
+    fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
+    expect(screen.getByText('Tank One')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
+    expect(screen.queryByText('Tank One')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sub One')).not.toBeInTheDocument();
+    // Headers survive, so the folds can be undone.
+    expect(screen.getByText('Light Party 1')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
+    expect(screen.getByText('Tank One')).toBeInTheDocument();
+  });
+
+  it('folds one section from its chevron and persists it per static+tier', () => {
+    renderRoster(makeTier(players));
+
+    fireEvent.click(screen.getByRole('button', { name: /collapse light party 1/i }));
+
+    expect(screen.queryByText('Tank One')).not.toBeInTheDocument();
+    expect(screen.getByText('Tank Two')).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('v2-roster-collapse-g1-t1') ?? '{}')).toEqual({
+      g1: true,
+    });
   });
 });

@@ -64,7 +64,9 @@ import {
   useDraggable,
   useDroppable,
 } from '@dnd-kit/core';
+import { ChevronDown } from 'lucide-react';
 import { CardShell, PlayerIdentity, ProgressBar, Tag } from '../ui';
+import { IconButton } from '../primitives/IconButton';
 import { OpenSeatCard } from './OpenSeatCard';
 import { RosterCard } from './RosterCard';
 import type { DragAttributes, DragListeners } from './dragTypes';
@@ -72,6 +74,7 @@ import { useDragAndDrop, type PlayerUpdate } from '../dnd/useDragAndDrop';
 import { useDragStore } from '../../stores/dragStore';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import { groupPlayersByLightParty } from '../../utils/calculations';
+import type { RosterSectionId } from './useRosterSections';
 import { bisSlotTotals } from '../../utils/rosterReadiness';
 import { getValidRole } from '../../gamedata';
 import type { ContentType, MemberRole, SnapshotPlayer, ViewMode } from '../../types';
@@ -100,6 +103,13 @@ export interface RosterCardsProps {
   subsView: boolean;
   /** Hides the substitutes section entirely (roster toolbar setting). */
   subsHidden: boolean;
+  /**
+   * Section fold state (C6, D-08). Optional so the grid still renders
+   * standalone — omitted, no chevron renders at all and every section stays
+   * expanded, exactly the pre-C6 rendering.
+   */
+  isSectionCollapsed?: (section: RosterSectionId) => boolean;
+  onSectionToggle?: (section: RosterSectionId) => void;
   /** Drag-to-reorder mode. When on, cards become drag-to-reorder (see file head). */
   reorderMode: boolean;
   /**
@@ -235,8 +245,16 @@ function RosterCardsDragOverlay({ players }: { players: SnapshotPlayer[] }) {
 }
 
 interface PartyHeadProps {
-  tag: string;
+  /** Section badge (G1/G2/SUB). Omitted for Unassigned, which legacy left bare. */
+  tag?: string;
   label: string;
+  /**
+   * Fold state (C6, D-08). `onToggleCollapse` is what gates the chevron — pass
+   * it to make the section foldable, and pass `collapsed` alongside it or the
+   * chevron renders permanently in its expanded pose.
+   */
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
   /**
    * Players whose aggregate BiS the head reports. Omitted entirely for the
    * Substitutes head — no bar, per spec §5.6.
@@ -251,15 +269,46 @@ interface PartyHeadProps {
  * left it floating in dead space on wide viewports — doubled in length, with
  * the legacy obtained/total count so what it measures is legible at a glance.
  */
-function PartyHead({ tag, label, barPlayers, tagClassName }: PartyHeadProps) {
+function PartyHead({
+  tag,
+  label,
+  barPlayers,
+  tagClassName,
+  collapsed,
+  onToggleCollapse,
+}: PartyHeadProps) {
   const { obtained, total } = barPlayers ? bisSlotTotals(barPlayers) : { obtained: 0, total: 0 };
   const ratio = total > 0 ? obtained / total : 0;
   return (
     <div className="flex flex-wrap items-center gap-2.5">
-      <Tag variant="label" tone="muted" className={tagClassName}>
-        {tag}
-      </Tag>
-      <span className="text-xs font-bold uppercase tracking-wide text-text-tertiary">{label}</span>
+      {/* The chevron is its own control, not the whole header row: a button
+          wrapping the progress bar would announce the bar as part of its name
+          (C6, D-08 — legacy `SectionCollapseButton` draws the same line). */}
+      {onToggleCollapse && (
+        <IconButton
+          variant="ghost"
+          size="sm"
+          aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
+          aria-expanded={!collapsed}
+          onClick={onToggleCollapse}
+          icon={
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                collapsed ? '-rotate-90' : ''
+              }`}
+            />
+          }
+        />
+      )}
+      {tag && (
+        <Tag variant="label" tone="muted" className={tagClassName}>
+          {tag}
+        </Tag>
+      )}
+      {/* A real heading: legacy renders the section labels as `<h3>`
+          (`PlayerGrid.tsx:579`), and routing Unassigned through this component
+          at C6 must not downgrade it to a bare span (director F10). */}
+      <h3 className="text-xs font-bold uppercase tracking-wide text-text-tertiary">{label}</h3>
       {barPlayers && (
         <div className="ml-2 flex items-center gap-2">
           {/* Width on a wrapper: ProgressBar's own root is w-full, and a width
@@ -282,6 +331,8 @@ export function RosterCards({
   groupView,
   subsView,
   subsHidden,
+  isSectionCollapsed,
+  onSectionToggle,
   reorderMode,
   density,
   canManage,
@@ -390,6 +441,15 @@ export function RosterCards({
     return renderConfiguredCard(player);
   };
 
+  // Fold state (C6, D-08). Rendering a section is unconditional; only its GRID
+  // is dropped when folded, so the header — and the chevron that brings it
+  // back — always stays reachable.
+  const isFolded = (section: RosterSectionId) => Boolean(isSectionCollapsed?.(section));
+  const foldProps = (section: RosterSectionId) =>
+    onSectionToggle
+      ? { collapsed: isFolded(section), onToggleCollapse: () => onSectionToggle(section) }
+      : {};
+
   let body: ReactNode;
   if (groupView) {
     const grouped = groupPlayersByLightParty(players, subsView);
@@ -399,37 +459,62 @@ export function RosterCards({
       <div className={`space-y-7 ${CARDS_MAX_W}`}>
         {grouped.group1.length > 0 && (
           <div>
-            <PartyHead tag="G1" label="Light Party 1" barPlayers={grouped.group1} />
-            <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.group1.map(renderPlayer)}</div>
+            <PartyHead
+              tag="G1"
+              label="Light Party 1"
+              barPlayers={grouped.group1}
+              {...foldProps('g1')}
+            />
+            {!isFolded('g1') && (
+              <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.group1.map(renderPlayer)}</div>
+            )}
           </div>
         )}
 
         {grouped.group2.length > 0 && (
           <div>
-            <PartyHead tag="G2" label="Light Party 2" barPlayers={grouped.group2} />
-            <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.group2.map(renderPlayer)}</div>
+            <PartyHead
+              tag="G2"
+              label="Light Party 2"
+              barPlayers={grouped.group2}
+              {...foldProps('g2')}
+            />
+            {!isFolded('g2') && (
+              <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.group2.map(renderPlayer)}</div>
+            )}
           </div>
         )}
 
         {grouped.unassigned.length > 0 && (
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wide text-text-tertiary">
-              Unassigned
-            </h3>
-            <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.unassigned.map(renderPlayer)}</div>
+            {/* Unassigned folds too — legacy's CollapsedState had no slot for
+                it (recorded delta on matrix D-08). */}
+            <PartyHead label="Unassigned" {...foldProps('unassigned')} />
+            {!isFolded('unassigned') && (
+              <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.unassigned.map(renderPlayer)}</div>
+            )}
           </div>
         )}
 
         {showSubs && (
           <div>
-            <PartyHead tag="SUB" label="Substitutes" tagClassName="text-membership-linked" />
-            <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.substitutes.map(renderPlayer)}</div>
+            <PartyHead
+              tag="SUB"
+              label="Substitutes"
+              tagClassName="text-membership-linked"
+              {...foldProps('subs')}
+            />
+            {!isFolded('subs') && (
+              <div className={`mt-3 ${PCARDS_GRID}`}>{grouped.substitutes.map(renderPlayer)}</div>
+            )}
           </div>
         )}
       </div>
     );
   } else {
-    // Standard (flat) view — main grid, optional Substitutes section.
+    // Standard (flat) view — main grid, optional Substitutes section. The main
+    // grid is not a foldable section (legacy parity: expand-all considers
+    // G1/G2 only in grouped view).
     const mainPlayers = subsView || subsHidden ? players.filter((p) => !p.isSubstitute) : players;
     const subs = players.filter((p) => p.isSubstitute);
     const showSubs = subsView && !subsHidden && subs.length > 0;
@@ -439,8 +524,15 @@ export function RosterCards({
         <div className={PCARDS_GRID}>{mainPlayers.map(renderPlayer)}</div>
         {showSubs && (
           <div>
-            <PartyHead tag="SUB" label="Substitutes" tagClassName="text-membership-linked" />
-            <div className={`mt-3 ${PCARDS_GRID}`}>{subs.map(renderPlayer)}</div>
+            <PartyHead
+              tag="SUB"
+              label="Substitutes"
+              tagClassName="text-membership-linked"
+              {...foldProps('subs')}
+            />
+            {!isFolded('subs') && (
+              <div className={`mt-3 ${PCARDS_GRID}`}>{subs.map(renderPlayer)}</div>
+            )}
           </div>
         )}
       </div>

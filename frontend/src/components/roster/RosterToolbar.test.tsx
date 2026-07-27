@@ -3,15 +3,39 @@
 // files to add it) — every existing test in this codebase drives clicks via
 // `fireEvent` instead (see e.g. `components/layout/AppRail.test.tsx`), so we
 // follow that established convention here.
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { RosterToolbar } from './RosterToolbar';
+import { TooltipProvider } from '../primitives';
+
+// The toolbar's shortcut hints use the Tooltip primitive, which requires the
+// provider App.tsx mounts at the root (same wrapper UserMenu/NotificationCenter
+// tests use).
+// jsdom has no matchMedia; `useDevice` (via the Tooltip primitive) calls it.
+// Stubbed locally rather than in the shared setup so no other suite's device
+// detection changes underneath it.
+if (!window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+const render = (ui: React.ReactElement) => rtlRender(<TooltipProvider>{ui}</TooltipProvider>);
 
 const baseProps = {
   groupView: true,
   onGroupViewChange: vi.fn(),
   subsHidden: false,
   onSubsHiddenChange: vi.fn(),
+  subsView: true,
+  onSubsViewChange: vi.fn(),
   hasSubstitutes: true,
   reorderMode: false,
   onReorderModeChange: vi.fn(),
@@ -21,10 +45,13 @@ const baseProps = {
   onRosterViewChange: vi.fn(),
   density: 'compact' as const,
   onDensityChange: vi.fn(),
+  sortPreset: 'standard' as const,
+  onSortPresetChange: vi.fn(),
+  onExpandAllToggle: vi.fn(),
 };
 
 describe('RosterToolbar', () => {
-  it('renders the grouping pill, subs toggle, reorder, and add-player controls', () => {
+  it('renders the grouping toggle, subs toggles, reorder, and add-player controls', () => {
     render(<RosterToolbar {...baseProps} />);
     expect(screen.getByRole('button', { name: /light party/i })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: /show subs/i })).toBeInTheDocument();
@@ -82,19 +109,73 @@ describe('RosterToolbar', () => {
     expect(screen.getByRole('button', { name: /reorder/i })).toBeDisabled();
   });
 
-  it('opens the grouping pill menu and switches to Standard comp', async () => {
+  // ── C6: the sort-vs-grouping split (C1-checkpoint correction (a)) ──
+  // The single "Standard comp ⇄ Light Party" dropdown conflated two axes. It is
+  // now a plain grouping toggle, and the dropdown slot belongs to sort.
+
+  it('toggles grouping directly, with its state announced', () => {
     const onGroupViewChange = vi.fn();
-    render(
-      <RosterToolbar {...baseProps} groupView onGroupViewChange={onGroupViewChange} />
-    );
-    // Radix's DropdownMenuTrigger opens on pointerdown (mouse) or Enter/Space
-    // (keyboard) — not a plain `click` — so open it the keyboard-accessible
-    // way, which `fireEvent` can drive without a jsdom PointerEvent polyfill.
-    fireEvent.keyDown(screen.getByRole('button', { name: /light party/i }), {
-      key: 'Enter',
-    });
-    fireEvent.click(await screen.findByRole('menuitem', { name: /standard comp/i }));
+    render(<RosterToolbar {...baseProps} groupView onGroupViewChange={onGroupViewChange} />);
+
+    const toggle = screen.getByRole('button', { name: /light party/i });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(toggle);
     expect(onGroupViewChange).toHaveBeenCalledWith(false);
+  });
+
+  it('shows grouping as off when the roster is a flat grid', () => {
+    render(<RosterToolbar {...baseProps} groupView={false} />);
+    expect(screen.getByRole('button', { name: /light party/i })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+  });
+
+  it('renders the sort-preset selector, labelled, in Cards view only (D-06)', () => {
+    const { rerender } = render(<RosterToolbar {...baseProps} />);
+    const selector = screen.getByRole('combobox', { name: /sort/i });
+    expect(selector).toBeInTheDocument();
+    expect(selector).toHaveTextContent(/standard/i);
+
+    // Cards-only, matching every other view control here. (The Board's rows do
+    // still follow the preset — it receives the same sorted players — so this
+    // is a placement call, not a claim that the Board ignores sorting;
+    // recorded as a C6 delta on D-06.)
+    rerender(<RosterToolbar {...baseProps} rosterView="board" />);
+    expect(screen.queryByRole('combobox', { name: /sort/i })).not.toBeInTheDocument();
+  });
+
+  // ── C6: Separate Subs (D-07) ──
+
+  it('renders the Separate Subs toggle and reports its state', () => {
+    const onSubsViewChange = vi.fn();
+    render(<RosterToolbar {...baseProps} subsView onSubsViewChange={onSubsViewChange} />);
+
+    const toggle = screen.getByRole('switch', { name: /separate subs/i });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(onSubsViewChange).toHaveBeenCalledWith(false);
+  });
+
+  it('disables Separate Subs when the subs SECTION is hidden (v2 rule)', () => {
+    // Separating is moot while the section it would create is hidden.
+    render(<RosterToolbar {...baseProps} subsHidden subsView />);
+    expect(screen.getByRole('switch', { name: /separate subs/i })).toBeDisabled();
+  });
+
+  it('keeps Separate Subs usable when subs are MERGED, even with Show Subs off', () => {
+    // Merged subs render inside the main grid regardless of `subsHidden`, so
+    // with the control disabled here the user would be stuck looking at
+    // substitutes they had just switched off, with no way back. The gate must
+    // only cover the case where separating genuinely does nothing.
+    render(<RosterToolbar {...baseProps} subsHidden subsView={false} />);
+    expect(screen.getByRole('switch', { name: /separate subs/i })).toBeEnabled();
+  });
+
+  it('hides both subs toggles when the roster has no substitutes', () => {
+    render(<RosterToolbar {...baseProps} hasSubstitutes={false} />);
+    expect(screen.queryByRole('switch', { name: /show subs/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: /separate subs/i })).not.toBeInTheDocument();
   });
 
   it('renders the Cards/Board segmented toggle', () => {
@@ -125,12 +206,39 @@ describe('RosterToolbar', () => {
     expect(screen.queryByRole('group', { name: /card density/i })).not.toBeInTheDocument();
   });
 
-  it('changes density via the toggle; an active re-click is a no-op (section expand-all is C6)', () => {
+  it('changes density via the toggle', () => {
     const onDensityChange = vi.fn();
     render(<RosterToolbar {...baseProps} density="expanded" onDensityChange={onDensityChange} />);
     fireEvent.click(screen.getByRole('button', { name: 'Compact' }));
     expect(onDensityChange).toHaveBeenCalledWith('compact');
+  });
+
+  it('re-clicking the active Expanded control toggles the sections, not the density (C6)', () => {
+    // The C1 checkpoint moved legacy's re-click-Expanded behaviour here: it
+    // operates on the light-party SECTIONS, so cards keep their density while
+    // a group is folded.
+    const onDensityChange = vi.fn();
+    const onExpandAllToggle = vi.fn();
+    render(
+      <RosterToolbar
+        {...baseProps}
+        density="expanded"
+        onDensityChange={onDensityChange}
+        onExpandAllToggle={onExpandAllToggle}
+      />
+    );
+
     fireEvent.click(screen.getByRole('button', { name: 'Expanded' }));
-    expect(onDensityChange).toHaveBeenCalledTimes(1);
+    expect(onExpandAllToggle).toHaveBeenCalledTimes(1);
+    expect(onDensityChange).not.toHaveBeenCalled();
+  });
+
+  it('re-clicking the active Compact control does nothing (legacy binds this to Expanded)', () => {
+    const onExpandAllToggle = vi.fn();
+    render(
+      <RosterToolbar {...baseProps} density="compact" onExpandAllToggle={onExpandAllToggle} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Compact' }));
+    expect(onExpandAllToggle).not.toHaveBeenCalled();
   });
 });
