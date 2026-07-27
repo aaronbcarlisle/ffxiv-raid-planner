@@ -55,10 +55,24 @@ const TIER_DISPLAY_NAMES: Record<string, string> = {
   uwu: 'UWU BiS',
 };
 
+/** True when `url`'s host is `domain` or a subdomain of it. */
+function isHost(url: string, domain: string): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
 export function bisLinkTooltip(bisLink: string): string {
   if (HTTP_SCHEME.test(bisLink)) {
-    if (bisLink.includes('etro.gg')) return 'Open in Etro';
-    if (bisLink.includes('xivgear')) return 'Open in XIVGear';
+    // Match on the HOST, not a substring: this string is the link's accessible
+    // name, and legacy's `includes('xivgear')` would label
+    // `https://evil.example/?xivgear.app` as XIVGear (review round 8).
+    if (isHost(bisLink, 'etro.gg')) return 'Open in Etro';
+    if (isHost(bisLink, 'xivgear.app')) return 'Open in XIVGear';
     return 'Open BiS link';
   }
   if (bisLink.startsWith('sl|')) return 'Open curated BiS in XIVGear';

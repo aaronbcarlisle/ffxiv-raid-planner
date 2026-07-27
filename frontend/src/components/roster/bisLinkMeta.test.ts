@@ -59,6 +59,15 @@ describe('bisLinkTooltip', () => {
     expect(bisLinkTooltip('https://example.com/set')).toBe('Open BiS link');
   });
 
+  it('identifies the destination by hostname, not substring (round 8)', () => {
+    // The tooltip is the link's accessible name, so a URL that merely mentions
+    // a known host in its query must not be labelled as that host.
+    expect(bisLinkTooltip('https://evil.example/?xivgear.app')).toBe('Open BiS link');
+    expect(bisLinkTooltip('https://etro.gg.evil.example/set')).toBe('Open BiS link');
+    // Real hosts, including subdomains, still resolve.
+    expect(bisLinkTooltip('https://beta.xivgear.app/?page=x')).toBe('Open in XIVGear');
+  });
+
   it('labels shortlink presets as curated', () => {
     expect(bisLinkTooltip('sl|uuid-123')).toBe('Open curated BiS in XIVGear');
   });

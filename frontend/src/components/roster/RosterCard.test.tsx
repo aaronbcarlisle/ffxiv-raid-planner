@@ -880,8 +880,13 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
           })) as unknown as SnapshotPlayer['gear'],
         })
       );
-      const trigger = screen.getByLabelText('Average item level breakdown');
-      expect(trigger).toHaveAttribute('tabindex', '0');
+      // The trigger must not carry an aria-label: it would replace the number
+      // AT is meant to read. The framing is sr-only text alongside it (round 8).
+      const trigger = screen
+        .getByText(/average item level breakdown/i)
+        .closest('[tabindex="0"]') as HTMLElement;
+      expect(trigger).not.toBeNull();
+      expect(trigger).not.toHaveAttribute('aria-label');
       fireEvent.focus(trigger);
       // Radix renders the open content twice (portal + visually-hidden copy).
       expect((await screen.findAllByText('Average Item Level')).length).toBeGreaterThan(0);
@@ -1069,8 +1074,11 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
         })
       );
 
-      const trigger = screen.getByLabelText('Sync details');
-      expect(trigger).toHaveAttribute('tabindex', '0');
+      // No aria-label: the character name and sync age inside the trigger are
+      // the information AT should hear (round 8).
+      const trigger = screen.getByText(/sync details/i).closest('[tabindex="0"]') as HTMLElement;
+      expect(trigger).not.toBeNull();
+      expect(trigger).not.toHaveAttribute('aria-label');
       fireEvent.focus(trigger);
       // Radix renders the open content twice (portal + visually-hidden copy).
       expect((await screen.findAllByText(/Balmung/)).length).toBeGreaterThan(0);
@@ -1078,7 +1086,7 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
 
     it('does not repeat the provenance when the detail header already names it (round 7)', async () => {
       const openDetail = async () => {
-        fireEvent.focus(screen.getByLabelText('Sync details'));
+        fireEvent.focus(screen.getByText(/sync details/i).closest('[tabindex="0"]') as HTMLElement);
         // Radix renders the open content twice (portal + visually-hidden copy).
         await screen.findAllByText(/Last synced 2h ago/);
       };

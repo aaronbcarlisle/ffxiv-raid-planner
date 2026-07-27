@@ -726,7 +726,7 @@ export function RosterCard({
                     button — focusing only reveals information, activation would
                     be a lie. */}
                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger; focus is the keyboard path to the Radix panel */}
-                <div tabIndex={0} aria-label="Average item level breakdown" className="cursor-help text-right leading-none">
+                <div tabIndex={0} className="cursor-help text-right leading-none">
                   <div
                     className={`font-display text-lg font-bold ${
                       equippedAvgIlv > 0 ? 'text-accent' : 'text-text-primary'
@@ -735,6 +735,9 @@ export function RosterCard({
                     {displayILv}
                   </div>
                   <div className="text-xs uppercase tracking-wide text-text-tertiary">iLvl</div>
+                  {/* Framing rides ALONGSIDE the number, never as an aria-label
+                      over it — the number is what AT must hear (round 8). */}
+                  <span className="sr-only"> — average item level breakdown</span>
                 </div>
               </LongPressTooltip>
             ) : (
@@ -954,7 +957,7 @@ export function RosterCard({
                 }
               >
                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- tooltip trigger; focus is the keyboard path to the Radix detail */}
-                <span tabIndex={0} aria-label="Sync details" className="flex min-w-0 cursor-help items-center gap-1">
+                <span tabIndex={0} className="flex min-w-0 cursor-help items-center gap-1">
                   <span className="truncate">{syncName}</span>
                   {syncAge && <span className="shrink-0">· synced {syncAge}</span>}
                   {syncJobMismatch && (
@@ -964,6 +967,9 @@ export function RosterCard({
                       className="h-3 w-3 shrink-0 text-status-warning"
                     />
                   )}
+                  {/* Framing alongside the name/age, not an aria-label over
+                      them (round 8). */}
+                  <span className="sr-only"> — sync details</span>
                 </span>
               </LongPressTooltip>
             ) : (
