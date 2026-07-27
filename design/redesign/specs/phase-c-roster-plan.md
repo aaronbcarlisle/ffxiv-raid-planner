@@ -27,15 +27,15 @@ lost controls, in 8 reviewable slices.
 | D-02 | On-card gear editing: click-to-cycle per slot + hover item card + status tooltip | C2 |
 | D-03 | Per-slot BiS-source assignment: R/T/C/BT popover, per-slot "Fix", bulk-correct banner | C3 |
 | D-04 | Tome-weapon sub-row with its own 3-state circle + material-entry jump | C4 |
-| D-05 | Gear → ledger jumps: Alt+Click, right-click "Jump to entry", kebab "Edit Books" | C7 |
+| D-05 | Gear → ledger jumps: Alt+Click, right-click "Jump to entry", kebab "Edit Books" — ✅ **SHIPPED (C7, 2026-07-27)**; the Books leg was genuinely new navigation (`?book=` + anchor scroll + pulse in `BookLedgerCard`), the loot/material legs reuse the C4 machinery, and "Edit Books" returns as NAVIGATION only (F6c's re-home of books *editing* to `BookLedgerCard` stands) | C7 |
 | D-06 | Sort-preset selector in the v2 roster toolbar **+ v2-side per-tier preset hydration** (vet finding: the `sort-preset-{tierId}` hydration exists only in legacy hosts — v2 currently *ignores* the stored preset) | C6 |
 | D-07 | Visible "Separate Subs" toggle **+ a v2-side `S` binding** (the shared `S` handler mutates a hook instance v2's Roster doesn't read — §2.1) | C6 |
 | D-08 | Per-section collapse chevrons, persisted per static+tier | C6 |
 | D-09 | Card badge row: SUB, BiS-link, "You", linked-user avatar, "+N" weapon priorities | C5 |
 | D-10 | ~~Progress ring~~ **DROPPED (C1 checkpoint, 2026-07-26: the card's BiS progress bar serves in its place)** + per-slot "Now vs BiS" hover breakdown (still C5) | C5 |
-| D-15 | Job-change confirm regains "Change Job **and Update BiS**" → straight into import | C7 |
+| D-15 | Job-change confirm regains "Change Job **& Update BiS**" → straight into import — ✅ **SHIPPED (C7, 2026-07-27)**. Wording ruled 2026-07-27: legacy's exact `&` string, not the plan's prose "and"; expressed as a third radio mode whose commit button names the outcome | C7 |
 | ~~D-20~~ | ~~Static/tier error modal~~ **ALREADY SHIPPED in v2** (`ShellContentStates.tsx:215-273`: details block, 2-s Copy confirm, Report Bug → Discord; v2-only mount `NewShell.tsx:128`) — matrix correction filed; the Phase-C closeout **verifies** it (incl. no double-modal) instead of building it | closeout |
-| D-55 *(roster half)* | R-062 Shift+Click copies the card deep link · R-076 the kebab hint tooltip that teaches the modifier-clicks — the ruled shortcuts/right-click pattern on the rebuilt card (Phase D closes D-55's loot half) | C7 |
+| D-55 *(roster half)* | R-062 Shift+Click copies the card deep link · R-076 the kebab hint tooltip that teaches the modifier-clicks — the ruled shortcuts/right-click pattern on the rebuilt card (Phase D closes D-55's loot half) — ✅ **SHIPPED (C7, 2026-07-27)**. Ruled 2026-07-27: Shift+Click **joins** the kebab's "Copy URL" item rather than replacing it (the item is the keyboard/AT-reachable route; the ruling targets prominent dedicated buttons, not menu entries) | C7 |
 
 ### In scope — REDESIGN rulings
 

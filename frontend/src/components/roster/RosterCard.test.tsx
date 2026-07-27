@@ -4,13 +4,27 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { RosterCard } from './RosterCard';
 import { TooltipProvider } from '../primitives';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
-import type { MaterialLogEntry, SnapshotPlayer } from '../../types';
+import type { LootLogEntry, MaterialLogEntry, SnapshotPlayer } from '../../types';
 import { useToastStore } from '../../stores/toastStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useSharedBisStore } from '../../stores/sharedBisStore';
 import type { SharedBiSTargetSet } from '../../types';
 import { eventBus, Events } from '../../lib/eventBus';
 import { computeGearSlotUpdate, fromGearState } from '../../utils/calculations';
+
+// Partial mock so the ledger-scan call itself is observable (the compact-card
+// perf assertion below); everything else runs the real implementation.
+const { buildSpy } = vi.hoisted(() => ({ buildSpy: vi.fn() }));
+vi.mock('./rosterLedgerJumps', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./rosterLedgerJumps')>();
+  return {
+    ...actual,
+    buildSlotJumpTargets: (...args: Parameters<typeof actual.buildSlotJumpTargets>) => {
+      buildSpy(...args);
+      return actual.buildSlotJumpTargets(...args);
+    },
+  };
+});
 
 // The card's C4 material jump writes same-route URL params — surface the live
 // search string in the DOM so tests can assert on it (MemoryRouter never
@@ -51,8 +65,9 @@ beforeEach(() => {
     }))
   );
   useToastStore.setState({ toasts: [] });
-  // C4 material-jump tests seed the material log; give every test a clean one.
-  useLootTrackingStore.setState({ materialLog: [] });
+  // C4/C7 jump tests seed the ledgers; give every test clean ones (a leaked
+  // lootLog would silently outrank a material fixture — loot wins precedence).
+  useLootTrackingStore.setState({ materialLog: [], lootLog: [] });
 });
 
 afterEach(() => {
@@ -1204,5 +1219,324 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
       fireEvent.click(screen.getByRole('button', { name: /Target: 7\.2 Savage BiS/ }));
       expect(await screen.findByText(/BiS Targets —/)).toBeInTheDocument();
     });
+  });
+});
+
+// ── C7 (D-15): the job-change confirm's third option ──
+// Legacy's confirm offered three buttons — "Change Job & Update BiS",
+// "Change Job Only", Cancel (PlayerCard.tsx:800-840). v2 expresses the same
+// three outcomes as the radio's three modes; picking the import mode relabels
+// the commit button to legacy's exact string (user ruling 2026-07-27) and
+// hands off to the same BiS import modal the kebab opens.
+describe('RosterCard — job change → BiS import (C7, D-15)', () => {
+  function freshActions(): RosterCardActions {
+    return { onUpdate: vi.fn().mockResolvedValue(undefined), onCopy: vi.fn(), onDuplicate: vi.fn() };
+  }
+
+  /** Open the confirm by picking WAR over the player's PLD. */
+  function openJobChangeConfirm() {
+    fireEvent.click(screen.getByRole('button', { name: /change job/i }));
+    fireEvent.click(screen.getByText('WAR'));
+  }
+
+  it('commits the job change and opens the BiS import when the update-BiS mode is chosen', async () => {
+    const cardActions = freshActions();
+    renderCard(makePlayer({ bisLink: undefined }), { actions: cardActions });
+
+    openJobChangeConfirm();
+    fireEvent.click(screen.getByRole('radio', { name: /update bis for the new job/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change Job & Update BiS' }));
+
+    await waitFor(() => {
+      expect(cardActions.onUpdate).toHaveBeenCalledWith({ job: 'WAR', role: 'tank' });
+    });
+    // The hand-off: the same import modal the kebab's "Import BiS" opens.
+    expect(await screen.findByText('Import BiS for Tank One')).toBeInTheDocument();
+  });
+
+  it('leaves the BiS link untouched in the update-BiS mode (the import replaces it)', async () => {
+    const cardActions = freshActions();
+    renderCard(makePlayer({ bisLink: 'https://etro.gg/gearset/abc' }), { actions: cardActions });
+
+    openJobChangeConfirm();
+    fireEvent.click(screen.getByRole('radio', { name: /update bis for the new job/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change Job & Update BiS' }));
+
+    await waitFor(() => {
+      expect(cardActions.onUpdate).toHaveBeenCalledWith({ job: 'WAR', role: 'tank' });
+    });
+  });
+
+  it('keeps the plain "Change Job" label and opens no import in the keep mode', async () => {
+    const cardActions = freshActions();
+    renderCard(makePlayer({ bisLink: undefined }), { actions: cardActions });
+
+    openJobChangeConfirm();
+    expect(screen.getByRole('button', { name: 'Change Job' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Change Job' }));
+
+    await waitFor(() => {
+      expect(cardActions.onUpdate).toHaveBeenCalledWith({ job: 'WAR', role: 'tank' });
+    });
+    expect(screen.queryByText('Import BiS for Tank One')).not.toBeInTheDocument();
+  });
+});
+
+// ── C7 (D-05): gear slot → ledger jumps, wired at the card ──
+// The table renders the affordance; the CARD resolves which entry a slot
+// points at (from the loot/material logs) and writes the same-route URL params
+// the Loot screen's History view consumes — the C4 jump pattern, generalised.
+describe('RosterCard — slot ledger jumps (C7, D-05)', () => {
+  const gearWithHead = [
+    { slot: 'head' as const, bisSource: 'raid' as const, hasItem: true, isAugmented: false },
+  ];
+
+  function lootEntry(overrides: Partial<LootLogEntry> = {}): LootLogEntry {
+    return {
+      id: 51,
+      tierSnapshotId: 't1',
+      weekNumber: 2,
+      floor: 'floor1',
+      itemSlot: 'head',
+      recipientPlayerId: 'p1',
+      recipientPlayerName: 'Tank One',
+      method: 'drop',
+      isExtra: false,
+      createdAt: '2026-07-01T00:00:00Z',
+      createdByUserId: 'u1',
+      createdByUsername: 'owner',
+      ...overrides,
+    };
+  }
+
+  it('Alt+Click on a slot with a loot entry jumps to that entry in the History view', () => {
+    useLootTrackingStore.setState({ lootLog: [lootEntry()] });
+    renderCard(makePlayer({ gear: gearWithHead }), { density: 'expanded' });
+
+    fireEvent.click(screen.getByRole('link', { name: /Head/ }), { altKey: true, detail: 1 });
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('tab')).toBe('gear');
+    expect(params.get('lview')).toBe('history');
+    expect(params.get('entry')).toBe('51');
+    expect(params.get('entryType')).toBe('loot');
+  });
+
+  it("another player's loot entry never lights a slot jump", () => {
+    useLootTrackingStore.setState({ lootLog: [lootEntry({ recipientPlayerId: 'p9' })] });
+    renderCard(makePlayer({ gear: gearWithHead }), { density: 'expanded' });
+
+    expect(screen.queryByRole('link', { name: /Head/ })).not.toBeInTheDocument();
+  });
+
+  it('the right-click menu jumps to the material entry for an augmented slot', () => {
+    useLootTrackingStore.setState({
+      lootLog: [],
+      materialLog: [
+        {
+          id: 63,
+          tierSnapshotId: 't1',
+          weekNumber: 3,
+          floor: 'floor2',
+          materialType: 'twine',
+          recipientPlayerId: 'p1',
+          recipientPlayerName: 'Tank One',
+          method: 'drop',
+          slotAugmented: 'head',
+          createdAt: '2026-07-01T00:00:00Z',
+          createdByUserId: 'u1',
+          createdByUsername: 'owner',
+        } satisfies MaterialLogEntry,
+      ],
+    });
+    renderCard(makePlayer({ gear: gearWithHead }), { density: 'expanded' });
+
+    fireEvent.contextMenu(screen.getByRole('link', { name: /Head/ }), { clientX: 20, clientY: 30 });
+    fireEvent.click(screen.getByText('Jump to Material Entry'));
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('entry')).toBe('63');
+    expect(params.get('entryType')).toBe('material');
+  });
+
+  it('does not scan the ledgers at all while the card is compact', () => {
+    // The resolver walks both logs for 11 slots per card; a compact card never
+    // mounts the gear table, so that work has no consumer (PR #200 review).
+    useLootTrackingStore.setState({ lootLog: [lootEntry()] });
+    buildSpy.mockClear();
+    renderCard(makePlayer({ gear: gearWithHead }));
+    expect(buildSpy).not.toHaveBeenCalled();
+
+    buildSpy.mockClear();
+    renderCard(makePlayer({ gear: gearWithHead }), { density: 'expanded' });
+    expect(buildSpy).toHaveBeenCalled();
+  });
+
+  it('the compact card carries no slot jumps (the gear table is the jump surface)', () => {
+    useLootTrackingStore.setState({ lootLog: [lootEntry()] });
+    renderCard(makePlayer({ gear: gearWithHead }));
+
+    expect(screen.queryByRole('link', { name: /Head/ })).not.toBeInTheDocument();
+  });
+});
+
+// ── C7 (D-05): the kebab's "Edit Books" jump ──
+describe('RosterCard — Edit Books jump (C7, D-05)', () => {
+  it('navigates to this player\'s row in the Books ledger', () => {
+    renderCard(makePlayer());
+
+    fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+    fireEvent.click(screen.getByText('Edit Books'));
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('tab')).toBe('gear');
+    expect(params.get('lview')).toBe('history');
+    expect(params.get('book')).toBe('p1');
+  });
+
+  it('never carries a stale entry highlight into the Books jump', () => {
+    // The two jumps write the same route: a books jump arriving after a ledger
+    // jump must not leave `entry`/`entryType` behind to re-pulse a loot row.
+    useLootTrackingStore.setState({
+      materialLog: [
+        {
+          id: 63,
+          tierSnapshotId: 't1',
+          weekNumber: 3,
+          floor: 'floor2',
+          materialType: 'twine',
+          recipientPlayerId: 'p1',
+          recipientPlayerName: 'Tank One',
+          method: 'drop',
+          slotAugmented: 'head',
+          createdAt: '2026-07-01T00:00:00Z',
+          createdByUserId: 'u1',
+          createdByUsername: 'owner',
+        } satisfies MaterialLogEntry,
+      ],
+    });
+    renderCard(
+      makePlayer({
+        gear: [{ slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false }],
+      }),
+      { density: 'expanded' }
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: /Head/ }), { altKey: true, detail: 1 });
+    expect(new URLSearchParams(currentSearch()).get('entry')).toBe('63');
+
+    fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+    fireEvent.click(screen.getByText('Edit Books'));
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('book')).toBe('p1');
+    expect(params.get('entry')).toBeNull();
+    expect(params.get('entryType')).toBeNull();
+  });
+
+  it('never carries a stale book highlight into a ledger jump', () => {
+    // The mirror of the case above: one navigation, one highlight.
+    useLootTrackingStore.setState({
+      lootLog: [
+        {
+          id: 51,
+          tierSnapshotId: 't1',
+          weekNumber: 2,
+          floor: 'floor1',
+          itemSlot: 'head',
+          recipientPlayerId: 'p1',
+          recipientPlayerName: 'Tank One',
+          method: 'drop',
+          isExtra: false,
+          createdAt: '2026-07-01T00:00:00Z',
+          createdByUserId: 'u1',
+          createdByUsername: 'owner',
+        } satisfies LootLogEntry,
+      ],
+    });
+    renderCard(
+      makePlayer({
+        gear: [{ slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false }],
+      }),
+      { density: 'expanded' }
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+    fireEvent.click(screen.getByText('Edit Books'));
+    expect(new URLSearchParams(currentSearch()).get('book')).toBe('p1');
+
+    fireEvent.click(screen.getByRole('link', { name: /Head/ }), { altKey: true, detail: 1 });
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('entry')).toBe('51');
+    expect(params.get('book')).toBeNull();
+  });
+});
+
+// ── C7 (D-55 roster half): the modifier affordances ──
+// R-062 (Shift+Click the card copies its deep link) and R-076 (the kebab
+// tooltip that teaches the modifiers). Ruled 2026-07-26: these are superuser
+// affordances — shortcuts and right-click, discovered over time. The kebab's
+// "Copy URL" item STAYS (user ruling 2026-07-27): a menu item is not the
+// "dedicated button" the ruling de-emphasizes, and it is the only
+// keyboard-reachable route to the same link.
+describe('RosterCard — modifier affordances (C7, D-55)', () => {
+  it('Shift+Click on the card copies its deep link', () => {
+    const onCopyUrl = vi.fn();
+    renderCard(makePlayer(), { actions: { ...actions, onCopyUrl } });
+
+    fireEvent.click(screen.getByText('Tank One'), { shiftKey: true });
+    expect(onCopyUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('a plain click never copies', () => {
+    const onCopyUrl = vi.fn();
+    renderCard(makePlayer(), { actions: { ...actions, onCopyUrl } });
+
+    fireEvent.click(screen.getByText('Tank One'));
+    expect(onCopyUrl).not.toHaveBeenCalled();
+  });
+
+  it('keeps the kebab "Copy URL" item as the keyboard-reachable route', () => {
+    const onCopyUrl = vi.fn();
+    renderCard(makePlayer(), { actions: { ...actions, onCopyUrl } });
+
+    fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+    fireEvent.click(screen.getByText('Copy URL'));
+    expect(onCopyUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('a Shift+Click inside the card menu does not ALSO copy the link', async () => {
+    // React bubbles synthetic events through the REACT tree, so the portalled
+    // ContextMenu's clicks still reach the card's Shift handler: Shift+Click
+    // "Copy URL" would fire the item AND the card handler — two clipboard
+    // writes, two toasts, on exactly the item the D-55 ruling kept as the
+    // announced route to the link (PR #200 review).
+    const onCopyUrl = vi.fn();
+    renderCard(makePlayer(), { actions: { ...actions, onCopyUrl } });
+
+    fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+    fireEvent.click(screen.getByText('Copy URL'), { shiftKey: true });
+
+    expect(onCopyUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('teaches the modifiers on the kebab (R-076)', async () => {
+    renderCard(makePlayer(), { actions: { ...actions, onCopyUrl: vi.fn() } });
+
+    fireEvent.focus(screen.getByRole('button', { name: /player actions/i }));
+    // Radix renders tooltip content twice — the visible popup and the
+    // visually-hidden copy it wires as aria-describedby.
+    expect((await screen.findAllByText('Copy link')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Shift+Click').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('More options').length).toBeGreaterThan(0);
+  });
+
+  it('does not teach a copy shortcut the card cannot perform', () => {
+    // No onCopyUrl → no Shift+Click behaviour → the hint must not claim one.
+    renderCard(makePlayer());
+
+    fireEvent.focus(screen.getByRole('button', { name: /player actions/i }));
+    expect(screen.queryByText('Copy link')).not.toBeInTheDocument();
   });
 });

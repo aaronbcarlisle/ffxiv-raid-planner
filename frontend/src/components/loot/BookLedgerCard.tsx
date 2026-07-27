@@ -14,6 +14,7 @@
  * — every other row's cells render as plain text.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { History } from 'lucide-react';
 import { CardShell, SegmentedToggle } from '../ui';
 import { Button, IconButton } from '../primitives';
@@ -71,6 +72,7 @@ export function BookLedgerCard({
   // destructure above) so its identity is tracked as an explicit effect dep
   // below — see the fetch effect comment for why.
   const pageLedger = useLootTrackingStore((s) => s.pageLedger);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [scope, setScope] = useState<'week' | 'all'>('all');
   const [editState, setEditState] = useState<EditState | null>(null);
   const [ledgerState, setLedgerState] = useState<LedgerState | null>(null);
@@ -100,6 +102,56 @@ export function BookLedgerCard({
   const refetch = () => fetchPageBalances(groupId, tierId, scopedWeek);
 
   const rows = pageBalances.filter((b) => playersById.get(b.playerId)?.isSubstitute !== true);
+
+  // ── C7 (D-05): the roster's "Edit Books" jump lands here ──
+  // Mirrors `LootHistoryTable`'s deep-link effect (the sibling that owns
+  // `?entry=`): the param IS the highlight (nothing stored to desync), the row
+  // scrolls in once it exists, and the param clears itself after the pulse so
+  // the same jump can be repeated. Legacy drove this from
+  // `highlightedBookPlayerId` state (`SectionedLogView.tsx:1401`); the F6d
+  // Loot screen left it unbuilt until a v2 navigation produced it — C7 is that
+  // navigation. `null` when the param names a row this card doesn't render.
+  const highlightParam = searchParams.get('book');
+  const highlightPlayerId = rows.some((b) => b.playerId === highlightParam) ? highlightParam : null;
+
+  useEffect(() => {
+    if (!highlightParam) return;
+    // Don't start the clock before the balances arrive. The jump navigates
+    // Roster → Loot, which mounts this card with an EMPTY `pageBalances` — the
+    // fetch above is what fills it. Clearing on that first render would delete
+    // `book` before the row ever existed whenever the fetch takes longer than
+    // the timeout: right screen, no highlight, and the jump unrepeatable
+    // without going back to the roster (PR #200 review). The effect re-runs
+    // when the rows land.
+    if (!highlightPlayerId && rows.length === 0) return;
+    // Scroll + pulse only when there IS a row — but clear the param either way.
+    // A jump can legitimately land on nothing: this card filters substitutes
+    // out (`rows`, above), and a player can be removed between the jump and the
+    // landing. An uncleared param would then survive in the address bar and
+    // ride into every deep link copied from this route afterwards (director
+    // C7 finding 1).
+    const scrollTimer = highlightPlayerId
+      ? setTimeout(() => {
+          document
+            .getElementById(`book-row-${highlightPlayerId}`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100)
+      : null;
+    const clearTimer = setTimeout(() => {
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev);
+          params.delete('book');
+          return params;
+        },
+        { replace: true }
+      );
+    }, 2500);
+    return () => {
+      if (scrollTimer) clearTimeout(scrollTimer);
+      clearTimeout(clearTimer);
+    };
+  }, [highlightParam, highlightPlayerId, rows.length, setSearchParams]);
 
   return (
     <CardShell
@@ -146,7 +198,9 @@ export function BookLedgerCard({
               <tr
                 id={`book-row-${b.playerId}`}
                 key={b.playerId}
-                className="border-b border-border-default last:border-b-0"
+                className={`border-b border-border-default last:border-b-0${
+                  highlightPlayerId === b.playerId ? ' highlight-pulse' : ''
+                }`}
               >
                 <td className="px-3 py-2 text-text-primary">{b.playerName}</td>
                 {BOOK_KEYS.map(([label, key]) => (

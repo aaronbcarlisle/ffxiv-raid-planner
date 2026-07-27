@@ -491,3 +491,111 @@ describe('RosterGearTable — C4 tome-weapon sub-row', () => {
     expect(onTomeMaterialJump).toHaveBeenCalledTimes(1);
   });
 });
+
+// ── C7 (D-05): gear slot → ledger jumps ──
+// Legacy's SlotIcon carried an Alt+Click jump plus a right-click "Jump to
+// Loot/Material Entry" (`player/GearTable.tsx:80-120`). The restore rides the
+// ruled jump family: Alt+Click for mouse, Enter for keyboard, detail-0 for AT,
+// the pointer cursor only while Alt is held — same shape as the C4 sub-row.
+describe('RosterGearTable — C7 slot ledger jumps (D-05)', () => {
+  const headGear = [slot({ slot: 'head', hasItem: true })];
+
+  function renderWithJump(
+    extra: Partial<Parameters<typeof RosterGearTable>[0]> = {},
+    onContextMenu?: (e: React.MouseEvent) => void
+  ) {
+    return render(
+      <div onContextMenu={onContextMenu}>
+        <TooltipProvider>
+          <RosterGearTable gear={headGear} tomeWeapon={emptyTome} {...extra} />
+        </TooltipProvider>
+      </div>
+    );
+  }
+
+  it('Alt+Click on a slot with a loot entry jumps; a plain mouse click never does', () => {
+    const onSlotJump = vi.fn();
+    renderWithJump({ slotJumps: { head: { loot: 7 } }, onSlotJump });
+
+    const link = screen.getByRole('link', { name: /Head/ });
+    fireEvent.click(link, { detail: 1 });
+    expect(onSlotJump).not.toHaveBeenCalled();
+    fireEvent.click(link, { altKey: true, detail: 1 });
+    expect(onSlotJump).toHaveBeenCalledWith('head', 'loot');
+  });
+
+  it('a slot with no ledger entry renders no link at all', () => {
+    renderWithJump({ slotJumps: {}, onSlotJump: vi.fn() });
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('Enter follows the jump and a detail-0 (AT) click does too', () => {
+    const onSlotJump = vi.fn();
+    renderWithJump({ slotJumps: { head: { material: 11 } }, onSlotJump });
+
+    const link = screen.getByRole('link', { name: /Head/ });
+    fireEvent.keyDown(link, { key: 'Enter' });
+    expect(onSlotJump).toHaveBeenCalledWith('head', 'material');
+    fireEvent.click(link, { detail: 0 });
+    expect(onSlotJump).toHaveBeenCalledTimes(2);
+  });
+
+  it('the slot jump invites a click only while Alt is held (cursor swap)', () => {
+    renderWithJump({ slotJumps: { head: { loot: 7 } }, onSlotJump: vi.fn() });
+
+    const link = screen.getByRole('link', { name: /Head/ });
+    expect(link.className).toContain('cursor-default');
+    fireEvent.keyDown(window, { key: 'Alt' });
+    expect(link.className).toContain('cursor-pointer');
+    fireEvent.keyUp(window, { key: 'Alt' });
+    expect(link.className).toContain('cursor-default');
+  });
+
+  it('prefers the loot entry when a slot has both (legacy precedence)', () => {
+    const onSlotJump = vi.fn();
+    renderWithJump({ slotJumps: { head: { loot: 7, material: 11 } }, onSlotJump });
+
+    fireEvent.click(screen.getByRole('link', { name: /Head/ }), { altKey: true, detail: 1 });
+    expect(onSlotJump).toHaveBeenCalledWith('head', 'loot');
+  });
+
+  it('right-click opens the slot menu with both jumps, and does not reach the card menu', () => {
+    const onSlotJump = vi.fn();
+    const cardContextMenu = vi.fn();
+    renderWithJump({ slotJumps: { head: { loot: 7, material: 11 } }, onSlotJump }, cardContextMenu);
+
+    fireEvent.contextMenu(screen.getByRole('link', { name: /Head/ }), {
+      clientX: 40,
+      clientY: 50,
+    });
+    // The card's own right-click menu must not also open (legacy stopPropagation).
+    expect(cardContextMenu).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Jump to Material Entry'));
+    expect(onSlotJump).toHaveBeenCalledWith('head', 'material');
+  });
+
+  it('right-click on a slot with no entry falls through to the card menu', () => {
+    const cardContextMenu = vi.fn();
+    renderWithJump({ slotJumps: {}, onSlotJump: vi.fn() }, cardContextMenu);
+
+    fireEvent.contextMenu(screen.getByText('Head'), { clientX: 40, clientY: 50 });
+    expect(cardContextMenu).toHaveBeenCalled();
+    expect(screen.queryByText('Jump to Loot Entry')).not.toBeInTheDocument();
+  });
+
+  it('the keyboard context-menu key opens the slot menu anchored to the icon', () => {
+    // Shift+F10 / the menu key dispatch a contextmenu event with no cursor
+    // coordinates — anchoring at 0,0 would drop the menu in the page corner.
+    const onSlotJump = vi.fn();
+    renderWithJump({ slotJumps: { head: { loot: 7 } }, onSlotJump });
+
+    const link = screen.getByRole('link', { name: /Head/ });
+    link.getBoundingClientRect = () =>
+      ({ left: 120, bottom: 80, top: 60, right: 140, width: 20, height: 20, x: 120, y: 60 }) as DOMRect;
+    fireEvent.contextMenu(link, { clientX: 0, clientY: 0 });
+
+    fireEvent.click(screen.getByText('Jump to Loot Entry'));
+    expect(onSlotJump).toHaveBeenCalledWith('head', 'loot');
+  });
+});

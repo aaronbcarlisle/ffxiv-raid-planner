@@ -18,10 +18,12 @@
  *     expanded gear table (C2) and on the Board — both through the one shared
  *     mutation path (`computeGearSlotUpdate`, mirrored from
  *     `PlayerCard.handleGearChange`).
- *   - Job change opens a card-owned confirm (Modal + RadioGroup). The legacy
- *     "also import BiS on job change" convenience is OUT of scope — the BiS import
- *     modal lives in the hook; the user re-imports via the kebab after changing
- *     jobs. The RadioGroup offers the in-scope BiS choice (keep vs unlink).
+ *   - Job change opens a card-owned confirm (Modal + RadioGroup). C7 (D-15)
+ *     restored legacy's third outcome: the RadioGroup's modes are keep /
+ *     update (change the job, then hand off to the import) / unlink, and the
+ *     commit button names the chosen one. The import modal still lives in the
+ *     hook — the card reaches it through the kebab's own opener rather than
+ *     duplicating its state.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -41,6 +43,7 @@ import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { SafeAvatar } from '../ui/SafeAvatar';
 import { RosterGearTable } from './RosterGearTable';
+import { buildSlotJumpTargets, type JumpKind, type SlotJumpTargets } from './rosterLedgerJumps';
 import { hasHoverData } from './gearHoverData';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
@@ -133,7 +136,16 @@ function formatSyncAge(iso?: string): string | null {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-type JobChangeMode = 'keep' | 'unlink';
+/**
+ * The three outcomes legacy's job-change confirm offered as three buttons
+ * (`PlayerCard.tsx:800-840`): keep the BiS setup, update it (change job, then
+ * straight into the import — legacy `confirmJobChange(true)`), or unlink.
+ * v2 expresses them as the confirm's radio modes (C7, D-15).
+ */
+type JobChangeMode = 'keep' | 'import' | 'unlink';
+
+/** Stable empty map for the compact card, which resolves no slot jumps. */
+const EMPTY_SLOT_JUMPS: SlotJumpTargets = {};
 
 export function RosterCard({
   player,
@@ -266,17 +278,64 @@ export function RosterCard({
   // the highlight params LootHistoryTable consumes (scroll, pulse,
   // self-clearing after 2.5s).
   const [, setSearchParams] = useSearchParams();
-  const handleTomeMaterialJump = useCallback(() => {
-    if (!tomeMaterialEntry) return;
+  const jumpToEntry = useCallback(
+    (entryId: number, kind: 'loot' | 'material') => {
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('tab', 'gear');
+        params.set('lview', 'history');
+        params.set('entry', String(entryId));
+        params.set('entryType', kind);
+        // One navigation, one highlight: the History view and the Books card
+        // read different params on the same route, so a leftover `book` would
+        // pulse a second row the user never asked for.
+        params.delete('book');
+        return params;
+      });
+    },
+    [setSearchParams]
+  );
+  // C7 (D-05): the kebab's Books jump — the same route, the Books card's own
+  // highlight param (BookLedgerCard scrolls + pulses `book-row-{playerId}`).
+  const handleBooksJump = useCallback(() => {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('tab', 'gear');
       params.set('lview', 'history');
-      params.set('entry', String(tomeMaterialEntry.id));
-      params.set('entryType', 'material');
+      params.set('book', player.id);
+      params.delete('entry');
+      params.delete('entryType');
       return params;
     });
-  }, [tomeMaterialEntry, setSearchParams]);
+  }, [player.id, setSearchParams]);
+  const handleTomeMaterialJump = useCallback(() => {
+    if (!tomeMaterialEntry) return;
+    jumpToEntry(tomeMaterialEntry.id, 'material');
+  }, [tomeMaterialEntry, jumpToEntry]);
+
+  // ── Gear → ledger jumps (Phase C C7, D-05) ──
+  // Availability and destination come from ONE derivation (legacy split them
+  // across GroupViewContent's slot maps and useViewNavigation's finders), so a
+  // slot can never advertise a jump that resolves to nothing — which is also
+  // why no "No loot entry found" toast is needed here (legacy's finder could
+  // miss; this one cannot).
+  // Only the EXPANDED card mounts the gear table, and the resolver walks both
+  // logs across 11 slots per card — so a compact grid would pay that for
+  // nothing (PR #200 review). The tome sub-row's own jump is unaffected: it
+  // reads the single `tomeMaterialEntry` above, not this map.
+  const lootLog = useLootTrackingStore((s) => s.lootLog);
+  const slotJumps = useMemo(
+    () => (isExpanded ? buildSlotJumpTargets(lootLog, materialLog, player.id) : EMPTY_SLOT_JUMPS),
+    [isExpanded, lootLog, materialLog, player.id]
+  );
+  const handleSlotJump = useCallback(
+    (slot: GearSlot, kind: JumpKind) => {
+      const entryId = slotJumps[slot]?.[kind];
+      if (entryId == null) return;
+      jumpToEntry(entryId, kind);
+    },
+    [slotJumps, jumpToEntry]
+  );
 
   // ── Local UI state (name edit + job change) ──
   const [isEditingName, setIsEditingName] = useState(false);
@@ -287,6 +346,11 @@ export function RosterCard({
   const [pendingJob, setPendingJob] = useState<string | null>(null);
   const [jobChangeMode, setJobChangeMode] = useState<JobChangeMode>('keep');
   const [hookModalOpen, setHookModalOpen] = useState(false);
+
+  const booksAwareActions = useMemo(
+    () => ({ ...actions, onEditBooks: handleBooksJump }),
+    [actions, handleBooksJump]
+  );
 
   // ── Kebab + modals from the audited hook (Task 4) ──
   const { menuItems, modalsNode, contextMenu, openKebab, openContextMenu, closeKebab } =
@@ -303,7 +367,10 @@ export function RosterCard({
       allPlayers,
       isAdmin,
       onModalStateChange: setHookModalOpen,
-      actions,
+      // C7 (D-05): the Books jump is supplied HERE, not by the grid — all of
+      // the card's ledger navigation writes the same URL params from one place
+      // (the grid's `actionsForPlayer` stays a pure data/mutation contract).
+      actions: booksAwareActions,
     });
 
   // Any overlay (hook modal / job picker / job-change confirm) disables grid DnD.
@@ -388,10 +455,19 @@ export function RosterCard({
     const updates: Partial<SnapshotPlayer> = { job: pendingJob };
     if (nextRole) updates.role = nextRole;
     if (jobChangeMode === 'unlink') updates.bisLink = '';
+    const handOffToImport = jobChangeMode === 'import';
     setPendingJob(null);
     // A10 mutation shape — see commitName.
     try {
       await actions.onUpdate(updates);
+      // C7 (D-15): the restored third outcome — legacy's "Change Job & Update
+      // BiS" committed the change and then opened the import
+      // (PlayerCard.confirmJobChange(true), :233). v2 reaches the SAME modal
+      // through the kebab's own opener (the C5 getMenuAction pattern) rather
+      // than duplicating the import's state here. Hand off only after the
+      // mutation resolves: a failed job change must not drop the user into an
+      // import for a job the card never switched to.
+      if (handOffToImport) importAction?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to change job');
     }
@@ -568,11 +644,56 @@ export function RosterCard({
 
   const dragProps = reorderMode ? { ...dragHandle?.attributes, ...dragHandle?.listeners } : {};
 
+  // ── C7 (D-55, R-062): Shift+Click the card copies its deep link ──
+  // The ruled superuser affordance: a modifier-click, taught by the kebab's
+  // hint tooltip (R-076) rather than advertised by a control. The kebab's
+  // "Copy URL" item stays alongside it (user ruling 2026-07-27) — it is the
+  // keyboard-reachable route to the same link. Legacy parity down to the
+  // details (`PlayerCard.tsx:517-538`): mousedown is suppressed so the modifier
+  // click doesn't flash focus, the selection Shift+Click creates is cleared,
+  // and focus is dropped so no focus ring is left behind.
+  // dnd-kit's PointerSensor listens on pointerdown, so these never collide with
+  // reorder dragging.
+  const copyUrl = actions.onCopyUrl;
+  // Both handlers are scoped to the card SURFACE. The card's menus and modals
+  // portal out of the DOM but stay React children of this element, and React
+  // bubbles synthetic events through the REACT tree — so without this guard a
+  // Shift+Click on the kebab's "Copy URL" would fire the item AND this handler
+  // (two writes, two toasts, on exactly the item the D-55 ruling kept as the
+  // announced route), and a Shift+mousedown inside a modal would lose its
+  // text-selection extend to the preventDefault below (PR #200 review).
+  const fromOverlay = (e: React.MouseEvent) =>
+    !!(e.target as HTMLElement | null)?.closest?.('[role="menu"],[role="dialog"]');
+  const handleCardMouseDown = (e: React.MouseEvent) => {
+    if (e.shiftKey && copyUrl && !fromOverlay(e)) e.preventDefault();
+  };
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (!e.shiftKey || !copyUrl || fromOverlay(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.getSelection()?.removeAllRanges();
+    copyUrl();
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  };
+
   return (
     // h-full + flex-col + interior flex-1 spacers (below) = legacy PlayerCard's
     // equal-height discipline: every card fills its grid row track, headers at
     // the top, gear + footer pinned to the bottom (C1 checkpoint feedback).
-    <div className="relative h-full" onContextMenu={openContextMenu} {...dragProps}>
+    /* design-system-ignore: the card body is NOT a control — its only click
+       behaviour is the ruled Shift+Click deep-link copy (D-55), and a plain
+       click deliberately does nothing. A role here would announce the whole
+       card as activatable and promise a plain-click action that must never
+       exist; the kebab's "Copy URL" item is the announced, keyboard-reachable
+       equivalent. Legacy did the same on `PlayerCard.tsx:544`. */
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- see the design-system-ignore above: a keyboard handler here would create the plain-activation path the D-55 ruling forbids; the kebab's "Copy URL" item is the keyboard route.
+    <div
+      className="relative h-full"
+      onContextMenu={openContextMenu}
+      {...dragProps}
+      onMouseDown={handleCardMouseDown}
+      onClick={handleCardClick}
+    >
       <CardShell as="div" className="relative flex h-full flex-col overflow-hidden">
         {/* Role-colored accent edge (semantic role var → token-compliant). */}
         <span
@@ -752,13 +873,46 @@ export function RosterCard({
                 <div className="text-xs uppercase tracking-wide text-text-tertiary">iLvl</div>
               </div>
             )}
-            <IconButton
-              aria-label="Player actions"
-              variant="ghost"
-              size="sm"
-              icon={<MoreVertical className="h-5 w-5" />}
-              onClick={openKebab}
-            />
+            {/* C7 (D-55, R-076): the kebab teaches the card's modifier-clicks
+                — the discovery route for affordances the ruling keeps
+                deliberately unadvertised. The heading repeats the trigger's
+                accessible name, so it is hidden from the description Radix
+                wires up (aria-describedby would otherwise announce it twice);
+                the shortcut rows are the part worth hearing. The Shift row
+                appears only when the card can actually copy. */}
+            <Tooltip
+              content={
+                <div className="space-y-1.5">
+                  <div aria-hidden="true" className="font-medium">
+                    Player Options
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    {copyUrl && (
+                      <div className="flex items-center gap-2">
+                        <kbd className="rounded border border-border-default bg-surface-base px-1 py-0.5 font-mono text-xs">
+                          Shift+Click
+                        </kbd>
+                        <span className="text-text-secondary">Copy link</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <kbd className="rounded border border-border-default bg-surface-base px-1 py-0.5 font-mono text-xs">
+                        Right-click
+                      </kbd>
+                      <span className="text-text-secondary">More options</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            >
+              <IconButton
+                aria-label="Player actions"
+                variant="ghost"
+                size="sm"
+                icon={<MoreVertical className="h-5 w-5" />}
+                onClick={openKebab}
+              />
+            </Tooltip>
           </div>
         </div>
 
@@ -872,6 +1026,8 @@ export function RosterCard({
                 onTomeWeaponChange={handleTomeWeaponChange}
                 hasTomeMaterialEntry={!!tomeMaterialEntry}
                 onTomeMaterialJump={handleTomeMaterialJump}
+                slotJumps={slotJumps}
+                onSlotJump={handleSlotJump}
                 disabledReason={gearPermission.reason}
               />
             </div>
@@ -1024,21 +1180,26 @@ export function RosterCard({
                 description: 'Position, gear progress, and the BiS link are left unchanged.',
               },
               {
+                value: 'import',
+                label: 'Update BiS for the new job',
+                description: 'Changes the job, then opens the BiS import for the new set.',
+              },
+              {
                 value: 'unlink',
                 label: 'Unlink BiS on change',
                 description: 'Clears the BiS link (the new job needs its own set). Progress is kept.',
               },
             ]}
           />
-          <p className="mt-4 text-sm text-text-muted">
-            Re-import BiS from the card menu after switching jobs.
-          </p>
           <div className="mt-6 flex justify-end gap-3">
             <Button type="button" variant="secondary" onClick={() => setPendingJob(null)}>
               Cancel
             </Button>
+            {/* The commit button names the chosen outcome — in the import mode
+                that is legacy's exact button string (user ruling 2026-07-27),
+                so the flow reads the same as v1's three-button confirm. */}
             <Button type="button" variant="primary" onClick={commitJobChange}>
-              Change Job
+              {jobChangeMode === 'import' ? 'Change Job & Update BiS' : 'Change Job'}
             </Button>
           </div>
         </Modal>
