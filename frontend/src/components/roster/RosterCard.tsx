@@ -18,10 +18,12 @@
  *     expanded gear table (C2) and on the Board — both through the one shared
  *     mutation path (`computeGearSlotUpdate`, mirrored from
  *     `PlayerCard.handleGearChange`).
- *   - Job change opens a card-owned confirm (Modal + RadioGroup). The legacy
- *     "also import BiS on job change" convenience is OUT of scope — the BiS import
- *     modal lives in the hook; the user re-imports via the kebab after changing
- *     jobs. The RadioGroup offers the in-scope BiS choice (keep vs unlink).
+ *   - Job change opens a card-owned confirm (Modal + RadioGroup). C7 (D-15)
+ *     restored legacy's third outcome: the RadioGroup's modes are keep /
+ *     update (change the job, then hand off to the import) / unlink, and the
+ *     commit button names the chosen one. The import modal still lives in the
+ *     hook — the card reaches it through the kebab's own opener rather than
+ *     duplicating its state.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -41,7 +43,7 @@ import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { SafeAvatar } from '../ui/SafeAvatar';
 import { RosterGearTable } from './RosterGearTable';
-import { buildSlotJumpTargets, type JumpKind } from './rosterLedgerJumps';
+import { buildSlotJumpTargets, type JumpKind, type SlotJumpTargets } from './rosterLedgerJumps';
 import { hasHoverData } from './gearHoverData';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
@@ -141,6 +143,9 @@ function formatSyncAge(iso?: string): string | null {
  * v2 expresses them as the confirm's radio modes (C7, D-15).
  */
 type JobChangeMode = 'keep' | 'import' | 'unlink';
+
+/** Stable empty map for the compact card, which resolves no slot jumps. */
+const EMPTY_SLOT_JUMPS: SlotJumpTargets = {};
 
 export function RosterCard({
   player,
@@ -314,10 +319,14 @@ export function RosterCard({
   // slot can never advertise a jump that resolves to nothing — which is also
   // why no "No loot entry found" toast is needed here (legacy's finder could
   // miss; this one cannot).
+  // Only the EXPANDED card mounts the gear table, and the resolver walks both
+  // logs across 11 slots per card — so a compact grid would pay that for
+  // nothing (PR #200 review). The tome sub-row's own jump is unaffected: it
+  // reads the single `tomeMaterialEntry` above, not this map.
   const lootLog = useLootTrackingStore((s) => s.lootLog);
   const slotJumps = useMemo(
-    () => buildSlotJumpTargets(lootLog, materialLog, player.id),
-    [lootLog, materialLog, player.id]
+    () => (isExpanded ? buildSlotJumpTargets(lootLog, materialLog, player.id) : EMPTY_SLOT_JUMPS),
+    [isExpanded, lootLog, materialLog, player.id]
   );
   const handleSlotJump = useCallback(
     (slot: GearSlot, kind: JumpKind) => {
@@ -646,11 +655,20 @@ export function RosterCard({
   // dnd-kit's PointerSensor listens on pointerdown, so these never collide with
   // reorder dragging.
   const copyUrl = actions.onCopyUrl;
+  // Both handlers are scoped to the card SURFACE. The card's menus and modals
+  // portal out of the DOM but stay React children of this element, and React
+  // bubbles synthetic events through the REACT tree — so without this guard a
+  // Shift+Click on the kebab's "Copy URL" would fire the item AND this handler
+  // (two writes, two toasts, on exactly the item the D-55 ruling kept as the
+  // announced route), and a Shift+mousedown inside a modal would lose its
+  // text-selection extend to the preventDefault below (PR #200 review).
+  const fromOverlay = (e: React.MouseEvent) =>
+    !!(e.target as HTMLElement | null)?.closest?.('[role="menu"],[role="dialog"]');
   const handleCardMouseDown = (e: React.MouseEvent) => {
-    if (e.shiftKey && copyUrl) e.preventDefault();
+    if (e.shiftKey && copyUrl && !fromOverlay(e)) e.preventDefault();
   };
   const handleCardClick = (e: React.MouseEvent) => {
-    if (!e.shiftKey || !copyUrl) return;
+    if (!e.shiftKey || !copyUrl || fromOverlay(e)) return;
     e.preventDefault();
     e.stopPropagation();
     window.getSelection()?.removeAllRanges();

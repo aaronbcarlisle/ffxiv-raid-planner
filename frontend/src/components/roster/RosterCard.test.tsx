@@ -12,6 +12,20 @@ import type { SharedBiSTargetSet } from '../../types';
 import { eventBus, Events } from '../../lib/eventBus';
 import { computeGearSlotUpdate, fromGearState } from '../../utils/calculations';
 
+// Partial mock so the ledger-scan call itself is observable (the compact-card
+// perf assertion below); everything else runs the real implementation.
+const { buildSpy } = vi.hoisted(() => ({ buildSpy: vi.fn() }));
+vi.mock('./rosterLedgerJumps', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./rosterLedgerJumps')>();
+  return {
+    ...actual,
+    buildSlotJumpTargets: (...args: Parameters<typeof actual.buildSlotJumpTargets>) => {
+      buildSpy(...args);
+      return actual.buildSlotJumpTargets(...args);
+    },
+  };
+});
+
 // The card's C4 material jump writes same-route URL params — surface the live
 // search string in the DOM so tests can assert on it (MemoryRouter never
 // touches window.location).
@@ -1345,6 +1359,19 @@ describe('RosterCard — slot ledger jumps (C7, D-05)', () => {
     expect(params.get('entryType')).toBe('material');
   });
 
+  it('does not scan the ledgers at all while the card is compact', () => {
+    // The resolver walks both logs for 11 slots per card; a compact card never
+    // mounts the gear table, so that work has no consumer (PR #200 review).
+    useLootTrackingStore.setState({ lootLog: [lootEntry()] });
+    buildSpy.mockClear();
+    renderCard(makePlayer({ gear: gearWithHead }));
+    expect(buildSpy).not.toHaveBeenCalled();
+
+    buildSpy.mockClear();
+    renderCard(makePlayer({ gear: gearWithHead }), { density: 'expanded' });
+    expect(buildSpy).toHaveBeenCalled();
+  });
+
   it('the compact card carries no slot jumps (the gear table is the jump surface)', () => {
     useLootTrackingStore.setState({ lootLog: [lootEntry()] });
     renderCard(makePlayer({ gear: gearWithHead }));
@@ -1476,6 +1503,21 @@ describe('RosterCard — modifier affordances (C7, D-55)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
     fireEvent.click(screen.getByText('Copy URL'));
+    expect(onCopyUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('a Shift+Click inside the card menu does not ALSO copy the link', async () => {
+    // React bubbles synthetic events through the REACT tree, so the portalled
+    // ContextMenu's clicks still reach the card's Shift handler: Shift+Click
+    // "Copy URL" would fire the item AND the card handler — two clipboard
+    // writes, two toasts, on exactly the item the D-55 ruling kept as the
+    // announced route to the link (PR #200 review).
+    const onCopyUrl = vi.fn();
+    renderCard(makePlayer(), { actions: { ...actions, onCopyUrl } });
+
+    fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+    fireEvent.click(screen.getByText('Copy URL'), { shiftKey: true });
+
     expect(onCopyUrl).toHaveBeenCalledTimes(1);
   });
 
