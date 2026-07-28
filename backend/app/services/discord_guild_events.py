@@ -244,7 +244,9 @@ async def _fetch_banner_data_uri(banner_url: str) -> tuple[Optional[str], Option
         return f"data:{content_type};base64,{b64}", None
     except Exception as exc:
         logger.warning("discord_banner_fetch_failed", url=banner_url, error=str(exc))
-        return None, f"image fetch failed: {exc}"
+        # Full error is in the log above; keep raw exception text out of
+        # client-visible status strings.
+        return None, "image fetch failed (details in server logs)"
 
 
 def _banner_hash(banner_url: Optional[str]) -> Optional[str]:
