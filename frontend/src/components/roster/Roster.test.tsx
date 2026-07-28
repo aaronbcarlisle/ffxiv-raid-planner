@@ -61,9 +61,10 @@ vi.mock('../../hooks/usePlayerActions', () => ({
   },
 }));
 
+const authState = vi.hoisted(() => ({ user: { id: 'u1', isAdmin: false } }));
 vi.mock('../../stores/authStore', () => ({
   useAuthStore: (selector: (s: { user: { id: string; isAdmin: boolean } }) => unknown) =>
-    selector({ user: { id: 'u1', isAdmin: false } }),
+    selector(authState),
 }));
 
 vi.mock('../../stores/viewAsStore', () => ({
@@ -110,8 +111,12 @@ vi.mock('./RosterCard', () => ({
 }));
 
 // CharacterManageBridge pulls the character panel + its stores — stub it.
+const charBridgeProps = vi.fn();
 vi.mock('./CharacterManageBridge', () => ({
-  CharacterManageBridge: () => <div data-testid="char-bridge" />,
+  CharacterManageBridge: (props: Record<string, unknown>) => {
+    charBridgeProps(props);
+    return <div data-testid="char-bridge" />;
+  },
 }));
 
 import { Roster } from './Roster';
@@ -266,6 +271,57 @@ describe('Roster', () => {
 
     // Toolbar "Add player" control is present and enabled for a manager.
     expect(screen.getByRole('button', { name: /add player/i })).toBeEnabled();
+  });
+
+  // C8 / D-12: the Lodestone entry lives in the bridge and is gated per player
+  // (legacy R-041 = canEditPlayer), so the bridge needs the permission context
+  // and the tier the sync writes into — not just the roster-level canManage.
+  it('gives CharacterManageBridge the tier and the per-player permission context', () => {
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One' })]));
+
+    expect(charBridgeProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        groupId: group.id,
+        tierId: 't1',
+        userRole: 'owner',
+        currentUserId: 'u1',
+        isAdminAccess: false,
+      }),
+    );
+  });
+
+  // Substitutes get a full PlayerCard (and so the R-041 kebab item) in legacy,
+  // but they are filtered out of `mainRosterPlayers`, which the shared registry
+  // panel needs. The sync list is therefore its own, wider list.
+  it('gives the bridge a sync list that includes substitutes', () => {
+    renderRoster(makeTier([
+      makePlayer({ id: 'p1', name: 'Tank One' }),
+      makePlayer({ id: 'p2', name: 'Melee Two', isSubstitute: true }),
+    ]));
+
+    const props = charBridgeProps.mock.calls.at(-1)![0] as {
+      players: SnapshotPlayer[];
+      syncPlayers: SnapshotPlayer[];
+    };
+    expect(props.players.map(p => p.name)).toEqual(['Tank One']);
+    expect(props.syncPlayers.map(p => p.name)).toEqual(expect.arrayContaining(['Tank One', 'Melee Two']));
+  });
+
+  // Every other canEditPlayer caller passes isAdminAccess, not raw isAdmin, so
+  // "View As" and non-admin-mode browsing downgrade the admin
+  // (PlayerCard.tsx:319-320, useRosterCardActions.tsx:20-21).
+  it('hands the bridge admin ACCESS, not the raw admin flag', () => {
+    authState.user = { id: 'u1', isAdmin: true };
+    try {
+      // No ?adminMode=true in the URL, so isAdminAccess is false.
+      renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One' })]));
+
+      expect(charBridgeProps).toHaveBeenLastCalledWith(
+        expect.objectContaining({ isAdminAccess: false }),
+      );
+    } finally {
+      authState.user = { id: 'u1', isAdmin: false };
+    }
   });
 
   it('renders a singular "1 raider" subtitle and tolerates a null tier', () => {

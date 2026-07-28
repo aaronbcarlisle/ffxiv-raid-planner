@@ -230,6 +230,16 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     [sortedPlayers],
   );
 
+  // C8: legacy renders a full PlayerCard — kebab and all — for substitutes
+  // (`PlayerGrid.tsx:680-681`), and R-041 carries no isSubstitute condition, so
+  // a sub's Lodestone sync is reachable in V1. The character *registry* panel
+  // stays main-roster-only, matching legacy's own mount
+  // (`GroupViewContent.tsx:948`); only the sync list widens.
+  const syncEligiblePlayers = useMemo(
+    () => sortedPlayers.filter((p) => p.configured),
+    [sortedPlayers],
+  );
+
   // ── Board next-upgrade (●) highlight (F6d, spec §5.8) ──
   // Merge settings exactly as Loot does so the priority gate matches.
   const settings = useMemo(() => ({ ...DEFAULT_SETTINGS, ...group.settings }), [group.settings]);
@@ -478,7 +488,12 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           <CharacterManageBridge
             groupId={group.id}
             players={mainRosterPlayers}
+            syncPlayers={syncEligiblePlayers}
             canEdit={canManage}
+            tierId={tierId}
+            userRole={userRole}
+            currentUserId={effectiveUserId ?? null}
+            isAdminAccess={isAdminAccess}
           />
         }
       />

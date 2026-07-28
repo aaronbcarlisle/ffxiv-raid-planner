@@ -220,8 +220,18 @@ export default defineConfig([
       // Character-panel subtree: a DECLARED shared surface (systems-flow-map.md
       // §2.2 — legacy mounts RosterCharacterPanel on its Characters sub-tab), so
       // its existing tiny-text debt cannot be restyled without a V1-visible
-      // change. Carve-out dies when D-12/C8 re-homes the Characters flow.
-      'src/components/roster/Character*',
+      // change.
+      //
+      // C8 (2026-07-28) narrowed this: the carve-out was `Character*`, which also
+      // swept up `CharacterManageBridge.tsx` — a v2-ONLY wrapper that no legacy
+      // path renders. C8 put the re-homed Lodestone entry there, so it is now
+      // locked like the rest of `roster/**`. The remaining entries are the leaves
+      // legacy really does mount. The carve-out dies for good when the registry
+      // re-homes to Player Hub at Stage 3.
+      'src/components/roster/CharacterRegistrationRow.tsx',
+      'src/components/roster/CharacterRoleBadge.tsx',
+      'src/components/roster/CharacterSourceBadge.tsx',
+      'src/components/roster/CharacterSyncBadge.tsx',
       'src/components/roster/RosterCharacter*',
       'src/components/roster/AddManualCharacterModal.tsx',
       'src/components/roster/LinkPlayerHubCharacterModal.tsx',

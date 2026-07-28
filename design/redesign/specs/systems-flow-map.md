@@ -97,7 +97,7 @@ Three of this map's proposals land in components **both shells render**. Each ca
 | Proposal | Shared component | Legacy mount | Handling |
 |---|---|---|---|
 | Danger Zone → Settings ▸ Static (§5) | `StaticSettingsHost` (settings panel is pure reuse) | `GroupView.tsx:99-101` | Adding Leave/Delete to Settings is a **V1-visible change** — needs its own decision inside F-12 |
-| Lodestone flow → Characters path (D-12 redesign) | `RosterCharacterPanel` | `GroupViewContent.tsx:948` | Adding the search→sync flow there also surfaces in V1 — Phase-D design must pick a v2-only mount or declare the V1 delta |
+| Lodestone flow → Characters path (D-12 redesign) | `RosterCharacterPanel` | `GroupViewContent.tsx:948` | ✅ **RESOLVED (C8, 2026-07-28): v2-only mount, by structure.** The entry went into the **v2-owned** `CharacterManageBridge.tsx` (which wraps the shared panel) instead of the panel itself, so nothing in V1 changed and no shell gate was needed. User ruling 2026-07-27; the V1-delta option was rejected because legacy already reaches the flow from its card kebab. This exception is now closed — the panel stays untouched |
 | User-menu changes (F-01) | `UserMenu` (rendered by legacy `Header` on mobile) | `Header.tsx:70,412` | F-01's *addition* is nothing (the Player Hub item already exists in the menu); the change is **removing the v2 rail icon** — genuinely v2-only (`AppChrome.tsx:116-137`). Any menu restructuring beyond that touches V1 |
 
 ---
@@ -131,7 +131,7 @@ parked entries below are therefore flagged, not hidden.)
 | **`/dashboard` "My Statics"** | Person | — | **Duplicate surface** | Player Hub ▸ My Statics | (today: standalone route) | Same `MyStaticsPanel` mounted twice — exactly the class this map closes. Proposal: `/dashboard` redirects to the Hub tab; record in F-01 |
 | **Root `/` landing + static creation** | Person | — | — | Landing dispatcher (§2.1) + wizard | `/` · rail "+" | `/` stops being a destination; Create-a-static keeps a first-class path (L-2 landing + rail) |
 | **Public profile** (`/profile/:shareCode`) | Person | Ring 1 (recruitment adjacency) | Parked (public page — by nature) | Public profile page | Player Hub ▸ Share | The share target; no change proposed |
-| **Lodestone sync** | Person data feeding Static | Cross-cutting | Woven | Characters path | Characters modal / Player Hub (D-12 redesign) | **Shared surface — §2.2.** No card-kebab entry returns |
+| **Lodestone sync** | Person data feeding Static | Cross-cutting | Woven | Characters path | Characters modal / Player Hub (D-12 redesign) | **Shared surface — §2.2, ✅ resolved as a v2-only mount (C8, 2026-07-28).** No card-kebab entry returns; the per-player entry lives in the Characters modal's "Lodestone sync" section (v2-owned wrapper) and re-homes to Player Hub at Stage 3 |
 | **Notifications** | Person | Platform | Woven (bell) | Bell | Top bar | |
 | **⌘K palette** | Both | Platform (power layer) | Woven | — | Keyboard | Never the *only* path to anything (D-52 lesson) |
 | **Admin area** | Platform ops | Platform | Parked (deliberately separate) | /admin | Admin-only | Not part of the static product (model §5) |
