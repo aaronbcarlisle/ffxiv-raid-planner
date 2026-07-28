@@ -71,7 +71,7 @@ Before opening the PR, run the pr-checklist:
   - Yes + internal only → add internal: true entry, no CURRENT_VERSION bump
   - No → no release note needed
 - Use `pr` + `prTitle` fields in the release note, NOT `commits`
-- Run: pnpm build (uses tsc -b — stricter than tsc --noEmit), pnpm lint, pnpm test, pnpm check:design-system
+- Run: pnpm build (uses tsc -b — stricter than tsc --noEmit), pnpm lint, pnpm test, pnpm check:design-system:strict
 - If .github/workflows/ changed and the workflow writes to PRs → confirm fork guard exists:
     if: github.event.pull_request.head.repo.full_name == github.repository
 - Run git diff --check for whitespace errors

@@ -237,7 +237,7 @@ Use this workflow for every task to keep agent sessions focused and avoid costly
 ```
 1. Write a task spec (see template below)
 2. Open ONE coding agent session with the spec + embedded pr-checklist constraints
-3. Agent: implements, runs pnpm build + lint + test, updates releaseNotes.ts, pushes
+3. Agent: implements, runs pnpm build + lint + test, updates releaseNotes.ts if touching frontend/src/ or backend/app/, pushes
 4. Verify CI is green (pnpm build, pnpm lint, check:design-system:strict, pnpm test)
 5. Trigger ONE code review pass
 6. If review finds issues: one targeted agent fix session with review comments as input
@@ -265,7 +265,7 @@ Release note:
 - User-facing? [yes → public entry + CURRENT_VERSION bump | no → internal: true, no bump]
 
 Constraints:
-- Design system primitives only (no raw <button>, <input>, <select>)
+- Design system primitives only (no raw `<button>`, `<input>`, `<select>`)
 - Semantic color tokens only (no hardcoded hex)
 - [any other known constraints]
 
