@@ -1,0 +1,51 @@
+# Dependabot version updates — enabled 2026-07-28 as part of the dev-config
+# cleanup (DEV_CONFIG_CLEANUP_PLAN.md Phase 1). Monthly cadence, minor+patch
+# grouped into one PR per ecosystem so the update stream stays low-noise;
+# majors arrive as individual PRs and can be triaged or closed.
+#
+# Note: PRs authored by dependabot[bot] are skipped by claude-code-review
+# (bot-PR guard) — review them manually or with /review. Lockfile-only bumps
+# don't touch frontend/src or backend/app, so no release-notes entry is needed.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+    groups:
+      frontend-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: npm
+    directory: /scripts
+    schedule:
+      interval: monthly
+    groups:
+      scripts-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 2
+
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: monthly
+    groups:
+      backend-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - minor
+          - patch
+    open-pull-requests-limit: 2
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2

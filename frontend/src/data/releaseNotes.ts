@@ -60,6 +60,38 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.3',
+    date: '2026-07-28T23:00:00Z',
+    title: 'Security triage: dependency wave',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Dependency wave clears 58 of 60 Dependabot alerts',
+        description:
+          'Frontend: react-router-dom 7.18, vite 7.3, sharp 0.35, plus a full in-range transitive refresh (postcss, rollup, ws, js-yaml, undici, minimatch and friends). scripts/: npm update + audit fix to zero vulnerabilities. The two remaining alerts are documented dismissals: a react-router RSC-mode CSRF issue (this app is client-side only; the fix requires the v8 major) and a brace-expansion 1.x DoS with no patch for that major (dev-only lint chain, incompatible with a forced upgrade).',
+        pr: 206,
+        prTitle: 'chore(security): Phase 1 dependency wave — npm bumps, backend lockfile, dependabot.yml',
+      },
+      {
+        category: 'improvement',
+        title: 'Backend requirements compiled to a pinned lockfile',
+        description:
+          'requirements.in / requirements-dev.in are now the flexible sources; requirements.txt / requirements-dev.txt are uv-compiled universal lockfiles with exact pins and platform markers. GitHub previously reported every PyPI package as version=NONE, so Python dependencies were invisible to vulnerability scanning. All 1286 backend tests pass on the pinned set.',
+        pr: 206,
+        prTitle: 'chore(security): Phase 1 dependency wave — npm bumps, backend lockfile, dependabot.yml',
+      },
+      {
+        category: 'improvement',
+        title: 'Dependabot version updates enabled (monthly, grouped)',
+        description:
+          'New .github/dependabot.yml covers frontend npm, scripts npm, backend pip, and GitHub Actions. Minor and patch updates arrive grouped in one PR per ecosystem each month; majors arrive individually. This closes the gap where alerts accumulated with no remediation channel.',
+        pr: 206,
+        prTitle: 'chore(security): Phase 1 dependency wave — npm bumps, backend lockfile, dependabot.yml',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.2',
     date: '2026-07-28T21:00:00Z',
     title: 'Security triage: Lodestone URL validation, vitest upgrades, backup workflow removal',
