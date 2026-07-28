@@ -135,9 +135,33 @@ already carries role colour on its recipient chips.
 **Carried from the standing input, applies wherever a logged entry renders (Log + History too):** a
 logged **weapon** entry shows the **recipient's job icon**, so which weapon dropped is unambiguous.
 
+### R-9 · The Matrix **keeps** the floor-coloured names (refines R-8)
+
+Drawing R-8 exposed something the prose hadn't: the Matrix lists every slot at once, so its name
+column runs green → blue → purple → amber down its length, where a Queues card shows exactly one
+colour. **Kept anyway.** The colour answers "which floor drops this?" with no lookup — the planning
+question the Matrix exists for — and because the slots already sit in floor order it reads as bands
+rather than confetti.
+
+### R-10 · Default scope is **per view**; an explicit pick is **global** (refines R-2)
+
+Taken flat, "Queues opens on a floor, Matrix opens on All" would contradict R-2's one-scope-for-all-
+views. The reconciliation, which is the ruling:
+
+1. The pill row is **one shared scope**. There is no per-view pill memory.
+2. Until the user has stated a scope in this session, each view opens at **its own default** —
+   **Matrix → All** (the whole-tier read is its purpose), **Queues → the newest in-progress floor**
+   (one card, no scroll).
+3. **The first pill click ends that.** From then on the user's scope is global and switching segments
+   never moves it.
+
+*Why:* R-2 fixed *reaching* a floor but left Queues-on-All as four stacked cards — the exact scroll
+the standing input rejected. This gets the good default without the surprise of a control that
+changes under you once you've touched it.
+
 ---
 
-## 2. Priority — the shape after R-1…R-8
+## 2. Priority — the shape after R-1…R-10
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -171,6 +195,9 @@ Still open **inside** Priority — component detail, not structure:
   visible, and renaming the expandable "Details" section to "Options". The *contents* are already
   ruled by the matrix; what remains is placement inside the modal. R-6 already settles the
   reasons/warnings/confidence layer that shares the modal.
+- **❓ The Need column's denominator.** It reads `3/8` against a seven-player roster — v1's own
+  behaviour, counting the eighth seat of a full party. Deliberate, or a v1 quirk not worth
+  restoring? Raised by the mockup, unruled.
 
 ## 3. Open — the other surfaces
 

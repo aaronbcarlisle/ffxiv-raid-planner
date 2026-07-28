@@ -477,13 +477,18 @@
   </section>
 
   <section class="notes">
-    <div class="note flag">
-      <h3>⚑ Drawing it surfaced this</h3>
+    <div class="note">
+      <h3>Switch to Queues</h3>
       <p>
-        R-8 colours the gear name by floor. In the Queues view that's one colour per card — clean. In the
-        <strong>Matrix</strong>, which lists every slot at once, the name column becomes four colours down
-        its length. It <em>is</em> information (which floor drops this slot), but it's the loudest thing on
-        a planning screen. Worth a call: keep it, or let the Matrix drop the colour when scoped to All.
+        It opens on the newest in-progress floor, not All — R-10. One card, no scroll. Touch a pill and
+        your scope wins everywhere from then on, including back in the Matrix.
+      </p>
+    </div>
+    <div class="note flag">
+      <h3>⚑ Still open</h3>
+      <p>
+        The Need column reads <code>3/8</code> against a seven-player roster — v1's own denominator, which
+        counts the eighth seat. Deliberate (a full party is 8) or a v1 bug not worth restoring?
       </p>
     </div>
     <div class="note">
@@ -643,18 +648,16 @@
   buildMatrix();
   buildQueues();
 
-  // ── Switcher (R-1, R-3, R-5) ──
-  const segs = document.querySelectorAll('.segmented button');
-  segs.forEach(b => b.addEventListener('click', () => {
-    segs.forEach(o => o.setAttribute('aria-pressed', String(o === b)));
-    document.body.dataset.view = b.dataset.seg;
-  }));
-  document.body.dataset.view = 'matrix';
-
   // ── Floor pills (R-2, R-7) ──
   const pills = document.querySelectorAll('.pill');
   const action = document.getElementById('logAction');
   const DUTY = { 1: 'M9S', 2: 'M10S', 3: 'M11S', 4: 'M12S' };
+  const NEWEST_IN_PROGRESS = '4';
+
+  // R-10: the pill is ONE shared scope. Until the user states a scope, each view
+  // opens at its own sensible default — Matrix on All, Queues on the newest
+  // in-progress floor. The moment a pill is clicked, that choice wins everywhere.
+  let userScoped = false;
 
   function scope(floor) {
     document.querySelectorAll('#matrixBody tr[data-floor]').forEach(tr => {
@@ -667,8 +670,25 @@
     action.textContent = floor === 'all' ? "Log this week's loot" : '+ Log Floor ' + floor + ' (' + DUTY[floor] + ')';
   }
 
+  function setFloor(floor) {
+    pills.forEach(o => o.setAttribute('aria-pressed', String(o.dataset.floor === floor)));
+    scope(floor);
+  }
+
   pills.forEach(p => p.addEventListener('click', () => {
-    pills.forEach(o => o.setAttribute('aria-pressed', String(o === p)));
-    scope(p.dataset.floor);
+    userScoped = true;
+    setFloor(p.dataset.floor);
   }));
+
+  // ── Switcher (R-1, R-3, R-5, R-10) ──
+  const segs = document.querySelectorAll('.segmented button');
+  segs.forEach(b => b.addEventListener('click', () => {
+    segs.forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+    const view = b.dataset.seg;
+    document.body.dataset.view = view;
+    if (!userScoped && view !== 'weapons') {
+      setFloor(view === 'queues' ? NEWEST_IN_PROGRESS : 'all');
+    }
+  }));
+  document.body.dataset.view = 'matrix';
 </script>
