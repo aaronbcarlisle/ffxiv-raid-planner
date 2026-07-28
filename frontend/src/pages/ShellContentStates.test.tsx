@@ -170,6 +170,24 @@ describe('ShellContentStates', () => {
     expect(screen.queryByRole('button', { name: 'Create First Tier' })).not.toBeInTheDocument();
   });
 
+  // Phase-C closeout (D-20): a tier fetch that fails leaves BOTH an error and an
+  // empty tier list, and legacy shows the error modal over its no-tiers panel —
+  // the panel is inline in the same return as the modal (GroupView.tsx:354-362
+  // and :415-416). v2 returned early at the no-tiers branch, so the modal in
+  // branch 5 was never reached and the error was swallowed entirely. Proven live
+  // against a simulated 500 on both shells.
+  it('4d. no-tiers WITH an error still surfaces the error modal (legacy parity)', () => {
+    useStaticGroupStore.setState({ currentGroup: group });
+    useTierStore.setState({ tiers: [], isLoading: false, error: 'Failed to fetch tiers' });
+    renderStates();
+
+    expect(screen.getByTestId('shell-state-no-tiers')).toBeInTheDocument();
+    expect(screen.getByText('Failed to fetch tiers')).toBeInTheDocument();
+    // The Copy button's accessible name comes from its aria-label, not its
+    // visible text (same trap C5 hit): 'Copy error details', never 'Copy'.
+    expect(screen.getByRole('button', { name: 'Copy error details' })).toBeInTheDocument();
+  });
+
   it('4c. no-tiers suppressed while tiers are still loading', () => {
     useStaticGroupStore.setState({ currentGroup: group });
     useTierStore.setState({ tiers: [], isLoading: true });

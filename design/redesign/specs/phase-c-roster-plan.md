@@ -177,6 +177,15 @@ static-not-"group" vocabulary check on all new copy · screenshots in PR · rele
 
 ## 4. Definition of done (phase level)
 
+> ✅ **DISCHARGED 2026-07-28 — see [`phase-c-closeout.md`](./phase-c-closeout.md).**
+> All eight slices merged (C1 #187 → C8 #201). The closeout swept D-01…D-20 in the running
+> app, re-ran the V1-safety assert across C1…C8 as a set, and found **one defect** (D-20's
+> error modal was unreachable in the no-tiers branch — fixed, red-first test) and **one item
+> needing a ruling** (the `roster-hide-subs` key is shared with legacy; pre-dates Phase C).
+> Item 4 (390 px) is SUPERSEDED by the mobile-deferred ruling, not skipped. D-18 leaves the
+> phase undelivered by prior ruling (flow-map F-04 → Phase D).
+
+
 1. Every §1 in-scope unit demonstrably restored **in the running app** (director change-review
    per slice + a final Phase-C matrix sweep over D-01…D-20 — the sweep also *verifies* D-20's
    already-shipped modal, including that no second modal stacks).

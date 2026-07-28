@@ -67,6 +67,15 @@ export const RELEASES: Release[] = [
     items: [
       {
         internal: true,
+        category: 'fix',
+        title: 'New UI: an error while loading tiers is no longer silent (Phase C closeout)',
+        description:
+          'Opt-in new UI only (admin-gated preview). When loading a static’s tiers failed, the new UI showed a bare “No Raid Tiers” panel and said nothing about the failure — the error dialog it already had was only reachable once tiers had loaded. The classic UI showed both. The dialog now appears in that state too, with the message, the technical details, Copy, and Report Bug. Found by the Phase C closeout sweep, which drove the same simulated failure through both UIs.',
+        pr: 202,
+        prTitle: 'chore(redesign): Phase C closeout — D-01…D-20 sweep + D-20 no-tiers error fix',
+      },
+      {
+        internal: true,
         category: 'feature',
         title: 'New UI: Lodestone character sync is reachable again (Phase C, slice C8)',
         description:
