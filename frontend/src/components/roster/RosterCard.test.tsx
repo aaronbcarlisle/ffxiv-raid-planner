@@ -490,6 +490,64 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       );
     });
 
+    // PR #203 review: the weapon's main row is ALWAYS the raid weapon, so it
+    // takes the 2-state cycle the expanded table and legacy both hardcode.
+    // Harmless while the pip was display-only; load-bearing now that it writes.
+    it('the compact weapon pip cycles as raid even when the slot stores a tome source', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      const player = makePlayer({
+        gear: [{ slot: 'weapon', bisSource: 'tome', hasItem: true, isAugmented: false }] as unknown as SnapshotPlayer['gear'],
+      });
+      renderCard(player, { actions: { ...actions, onUpdate } });
+
+      const pip = within(screen.getAllByTestId('compact-gear-slot')[0]).getByRole('checkbox', { name: /Weapon/ });
+      // A tome slot with hasItem would read "needs augmentation"; the weapon
+      // must read Complete, i.e. no augment step exists for it.
+      expect(pip).toHaveAttribute('aria-label', 'Weapon — Complete');
+
+      fireEvent.click(pip);
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      // 2-state: Complete → Missing, never → augmented.
+      expect(onUpdate.mock.calls[0][0].gear[0]).toMatchObject({ hasItem: false, isAugmented: false });
+    });
+
+    // PR #203 review: un-disabling the pips made them tab stops, and the
+    // expanded table's row header (which names the slot) has no equivalent here.
+    it('every compact pip names its own slot, so eleven tab stops are distinguishable', () => {
+      renderCard(makePlayer({
+        gear: [
+          { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+          { slot: 'ring2', bisSource: 'raid', hasItem: false, isAugmented: false },
+        ] as unknown as SnapshotPlayer['gear'],
+      }));
+
+      expect(screen.getByRole('checkbox', { name: 'Head — Missing' })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'L. Ring — Missing' })).toBeInTheDocument();
+    });
+
+    it('the tome pip names itself, so the stacked pair is distinguishable', () => {
+      renderCard(makePlayer({
+        gear: [{ slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false }] as unknown as SnapshotPlayer['gear'],
+        tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+      }));
+
+      expect(screen.getByRole('checkbox', { name: 'Weapon — Missing' })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'Tome weapon — Missing' })).toBeInTheDocument();
+    });
+
+    // PR #203 review: a native title on the hover-card trigger stacks a browser
+    // tooltip over the Radix item card.
+    it('carries no native title on a column that already has the hover item card', () => {
+      renderCard(
+        makePlayer({
+          gear: [{ slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false, itemName: 'Hat', itemLevel: 790 }] as unknown as SnapshotPlayer['gear'],
+        }),
+        { userRole: 'viewer', currentUserId: 'nobody' }
+      );
+
+      expect(screen.getAllByTestId('compact-gear-slot')[0]).not.toHaveAttribute('title');
+    });
+
     // The interim tome weapon is a second state of the weapon slot, not a 12th
     // slot — so it stacks under the weapon's own pip. Compact echo of C4.
     it('renders no tome pip when the player is not pursuing one', () => {

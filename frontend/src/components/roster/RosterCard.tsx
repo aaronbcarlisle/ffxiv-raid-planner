@@ -82,6 +82,7 @@ import {
   getRoleForJob,
   getValidRole,
 } from '../../gamedata';
+import { GEAR_SLOT_NAMES } from '../../types';
 import type {
   ContentType,
   GearSlot,
@@ -1050,7 +1051,11 @@ export function RosterCard({
                   <div
                     data-testid="compact-gear-slot"
                     className="flex flex-col items-center gap-1"
-                    title={canCycleGear ? undefined : gearPermission.reason}
+                    /* No native `title` where the hover card owns the pointer:
+                       the two would stack, and the browser tooltip would cover
+                       the item detail. The reason still reaches AT through the
+                       pip's own aria-disabled + the expanded table. */
+                    title={!canCycleGear && !hasHoverData(slot) ? gearPermission.reason : undefined}
                   >
                     {/* Identity only. v1's compact row also carried a green/amber
                         corner dot, dropped here: the pip below states the same
@@ -1064,12 +1069,22 @@ export function RosterCard({
                       height={20}
                       className={`h-5 w-5 ${gearSlotIconClass(slot, isRealItemIcon(slot))}`}
                     />
+                    {/* The weapon's main row is always the RAID weapon (the
+                        tome interim is the pip below it), so it takes the
+                        2-state cycle with no augment step — the same hardcode
+                        the expanded table and legacy both carry
+                        (`RosterGearTable.tsx:216-218`,
+                        `player/GearTable.tsx` WeaponSlotRow). Harmless while
+                        this pip was display-only; load-bearing now that it
+                        writes, or the two densities could commit different
+                        states for the same slot. */}
                     <GearStatusCircle
                       state={toGearState(slot.hasItem, slot.isAugmented)}
-                      bisSource={slot.bisSource}
-                      requiresAugmentation={requiresAugmentation(slot)}
+                      bisSource={slot.slot === 'weapon' ? 'raid' : slot.bisSource}
+                      requiresAugmentation={slot.slot === 'weapon' ? false : requiresAugmentation(slot)}
                       onChange={(next) => void handleSlotChange(slot.slot, next)}
                       disabled={!canCycleGear}
+                      label={GEAR_SLOT_NAMES[slot.slot]}
                       size="sm"
                     />
                     {/* The interim tome weapon is a second state of the weapon
@@ -1085,6 +1100,7 @@ export function RosterCard({
                           requiresAugmentation
                           onChange={(next) => void handleTomeWeaponChange(fromGearState(next))}
                           disabled={!canCycleGear}
+                          label="Tome weapon"
                           size="sm"
                         />
                       </div>
