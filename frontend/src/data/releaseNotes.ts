@@ -60,6 +60,38 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.2',
+    date: '2026-07-28T21:00:00Z',
+    title: 'Security triage: Lodestone URL validation, vitest upgrades, backup workflow removal',
+    items: [
+      {
+        category: 'fix',
+        title: 'Lodestone URL validation no longer accepts look-alike domains',
+        description:
+          'parseLodestoneCharacterId validated hostnames with a suffix check (endsWith), which accepted look-alike domains such as evilfinalfantasyxiv.com. Validation now requires finalfantasyxiv.com exactly or a real subdomain of it, with regression tests covering the bypass cases. Flagged by CodeQL.',
+        pr: 205,
+        prTitle: 'chore(security): Phase 0 triage — Lodestone URL validation, vitest bumps, drop db-backup workflow',
+      },
+      {
+        category: 'improvement',
+        title: 'vitest upgraded to 4.1.10 in frontend and scripts',
+        description:
+          'Clears the only two critical-severity Dependabot alerts (arbitrary file read/execution when the vitest UI server is listening). scripts/ jumped from vitest 2.x to 4.x; all 139 script tests and 2344 frontend tests pass.',
+        pr: 205,
+        prTitle: 'chore(security): Phase 0 triage — Lodestone URL validation, vitest bumps, drop db-backup workflow',
+      },
+      {
+        category: 'improvement',
+        title: 'Manual DB-backup workflow and DATABASE_URL secret removed',
+        description:
+          'db-backup.yml parked full production database dumps as GitHub workflow artifacts and required the production connection string to live in repo secrets. Railway platform backups are the backup mechanism of record; the workflow and the DATABASE_URL secret are gone.',
+        pr: 205,
+        prTitle: 'chore(security): Phase 0 triage — Lodestone URL validation, vitest bumps, drop db-backup workflow',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.1',
     date: '2026-07-25T09:00:00Z',
     title: 'Notification links + quieter failures',

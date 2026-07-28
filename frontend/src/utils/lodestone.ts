@@ -44,7 +44,8 @@ export function parseLodestoneCharacterId(input: string): number | null {
 
   try {
     const url = new URL(trimmed);
-    if (!url.hostname.endsWith('finalfantasyxiv.com')) {
+    const hostname = url.hostname.toLowerCase();
+    if (hostname !== 'finalfantasyxiv.com' && !hostname.endsWith('.finalfantasyxiv.com')) {
       return null;
     }
 
