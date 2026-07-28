@@ -38,22 +38,7 @@ import { fromGearState, requiresAugmentation, toGearState, type GearState } from
 import { hasHoverData } from './gearHoverData';
 import { jumpMenuAnchor } from './rosterLedgerJumps';
 import type { JumpKind, SlotJumpTargets } from './rosterLedgerJumps';
-
-/**
- * Icon state treatment, condensed from legacy `GearTable` SlotIcon: real item
- * icons dim/desaturate by progress; placeholder glyphs invert to read on the
- * dark surface and dim the same way.
- */
-function slotIconClass(status: GearSlotStatus, isItemIcon: boolean): string {
-  const incomplete =
-    !status.hasItem || (status.bisSource === 'tome' && requiresAugmentation(status) && !status.isAugmented);
-  if (isItemIcon) {
-    if (!status.hasItem) return 'rounded opacity-50 grayscale';
-    return incomplete ? 'rounded opacity-75' : 'rounded';
-  }
-  if (!status.hasItem) return 'opacity-50';
-  return incomplete ? 'brightness-0 invert opacity-50' : 'brightness-0 invert opacity-90';
-}
+import { gearSlotIconClass, gearSlotIconUrl, isRealItemIcon } from './gearSlotIcon';
 
 /**
  * Whether the Alt key is currently held. Drives the jump icons' cursor (user
@@ -185,9 +170,9 @@ export function RosterGearTable({
       : 'text-text-secondary'
     : 'text-text-muted';
   // The sub-row's weapon icon reuses the placeholder-glyph branch of
-  // slotIconClass, driven by tome state (tome always takes the augment step,
+  // gearSlotIconClass, driven by tome state (tome always takes the augment step,
   // so "complete" means augmented).
-  const tomeIconClass = slotIconClass(
+  const tomeIconClass = gearSlotIconClass(
     { slot: 'weapon', bisSource: 'tome', hasItem: tomeWeapon.hasItem, isAugmented: tomeWeapon.isAugmented },
     false
   );
@@ -226,7 +211,7 @@ export function RosterGearTable({
             isAugmented: false,
           };
           const isWeapon = slot === 'weapon';
-          const iconUrl = status.itemIcon || GEAR_SLOT_ICONS[slot];
+          const iconUrl = gearSlotIconUrl(slot, status);
           // The weapon's main row is always the raid weapon (tome interim is
           // the sub-row below): 2-state cycle, no augment step.
           const circleSource = isWeapon ? 'raid' : status.bisSource;
@@ -252,7 +237,7 @@ export function RosterGearTable({
               aria-hidden="true"
               width={24}
               height={24}
-              className={`shrink-0 ${slotIconClass(status, !!status.itemIcon)}`}
+              className={`shrink-0 ${gearSlotIconClass(status, isRealItemIcon(status))}`}
             />
           );
           const slotIcon =
