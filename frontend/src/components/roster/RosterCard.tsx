@@ -12,12 +12,15 @@
  *   - CardShell can't forward DOM handlers or a `style`, so the context-menu /
  *     drag wiring and the role-colored accent edge live on a thin wrapper around
  *     CardShell (CardShell stays the card *surface*, per the brief's intent).
- *   - The gear pip strip (compact density) is NON-EDITING, matching legacy's
- *     compact view: circles render `disabled`, but pips with item data carry
- *     the hover item card for inspection (C2, D-02). EDITING lives in the
- *     expanded gear table (C2) and on the Board — both through the one shared
- *     mutation path (`computeGearSlotUpdate`, mirrored from
- *     `PlayerCard.handleGearChange`).
+ *   - The compact gear strip is ONE COLUMN PER SLOT: the item icon (or the slot
+ *     placeholder) above its status pip, both centered, columns evenly spaced.
+ *     The icon is decoration — identity plus the hover item card; the PIP is the
+ *     only control. Editing is available at BOTH densities as of 2026-07-28, so
+ *     density is a detail axis and no longer a capability gate. Every edit still
+ *     runs the one shared mutation path (`computeGearSlotUpdate`, mirrored from
+ *     `PlayerCard.handleGearChange`) that the expanded table and the Board use.
+ *     This is a deliberate v2 DELTA: legacy's compact row is icons-only and
+ *     inspect-only, and stays that way.
  *   - Job change opens a card-owned confirm (Modal + RadioGroup). C7 (D-15)
  *     restored legacy's third outcome: the RadioGroup's modes are keep /
  *     update (change the job, then hand off to the import) / unlink, and the
@@ -25,7 +28,7 @@
  *     hook — the card reaches it through the kebab's own opener rather than
  *     duplicating its state.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ExternalLink, MoreVertical, Repeat, Swords, Target } from 'lucide-react';
 import {
@@ -45,6 +48,7 @@ import { SafeAvatar } from '../ui/SafeAvatar';
 import { RosterGearTable } from './RosterGearTable';
 import { buildSlotJumpTargets, type JumpKind, type SlotJumpTargets } from './rosterLedgerJumps';
 import { hasHoverData } from './gearHoverData';
+import { gearSlotIconClass, gearSlotIconUrl, isRealItemIcon } from './gearSlotIcon';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
 import { equippedAverageIlv } from './rosterIlv';
@@ -1036,21 +1040,59 @@ export function RosterCard({
         ) : (
           <>
             <div className="flex-1" />
-            <div className="mt-3 flex flex-wrap gap-1">
+            <div
+              data-testid="compact-gear-strip"
+              className="mt-3 grid gap-x-1"
+              style={{ gridTemplateColumns: `repeat(${player.gear.length}, minmax(0, 1fr))` }}
+            >
               {player.gear.map((slot) => {
-                const pip = (
-                  <GearStatusCircle
-                    state={toGearState(slot.hasItem, slot.isAugmented)}
-                    bisSource={slot.bisSource}
-                    requiresAugmentation={requiresAugmentation(slot)}
-                    onChange={() => {}}
-                    disabled
-                    size="sm"
-                  />
+                const column = (
+                  <div
+                    data-testid="compact-gear-slot"
+                    className="flex flex-col items-center gap-1"
+                    title={canCycleGear ? undefined : gearPermission.reason}
+                  >
+                    {/* Identity only. v1's compact row also carried a green/amber
+                        corner dot, dropped here: the pip below states the same
+                        thing, and saying it twice per slot is what makes a dense
+                        row hard to read. */}
+                    <img
+                      src={gearSlotIconUrl(slot.slot, slot)}
+                      alt=""
+                      aria-hidden="true"
+                      width={20}
+                      height={20}
+                      className={`h-5 w-5 ${gearSlotIconClass(slot, isRealItemIcon(slot))}`}
+                    />
+                    <GearStatusCircle
+                      state={toGearState(slot.hasItem, slot.isAugmented)}
+                      bisSource={slot.bisSource}
+                      requiresAugmentation={requiresAugmentation(slot)}
+                      onChange={(next) => void handleSlotChange(slot.slot, next)}
+                      disabled={!canCycleGear}
+                      size="sm"
+                    />
+                    {/* The interim tome weapon is a second state of the weapon
+                        slot, not a 12th slot — so it stacks under the weapon's
+                        own pip rather than taking a column that would sit empty
+                        for everyone not pursuing one. Compact echo of C4's
+                        indented sub-row; same tomeWeapon field, no analytics. */}
+                    {slot.slot === 'weapon' && player.tomeWeapon?.pursuing && (
+                      <div data-testid="compact-tome-pip" className="-mt-0.5 scale-75">
+                        <GearStatusCircle
+                          state={toGearState(player.tomeWeapon.hasItem, player.tomeWeapon.isAugmented)}
+                          bisSource="tome"
+                          requiresAugmentation
+                          onChange={(next) => void handleTomeWeaponChange(fromGearState(next))}
+                          disabled={!canCycleGear}
+                          size="sm"
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
-                // Hover-inspect (C2, D-02 / legacy R-065): pips with item data
-                // show the shared item card. The div wrapper takes Radix's
-                // Trigger props (GearStatusCircle doesn't forward refs).
+                // Hover-inspect (C2, D-02 / legacy R-065) wraps the whole
+                // column, so the icon and the pip both open the item card.
                 return hasHoverData(slot) ? (
                   <LongPressTooltip
                     key={slot.slot}
@@ -1073,12 +1115,10 @@ export function RosterCard({
                       />
                     }
                   >
-                    <div className="inline-flex">{pip}</div>
+                    {column}
                   </LongPressTooltip>
                 ) : (
-                  <div key={slot.slot} className="inline-flex">
-                    {pip}
-                  </div>
+                  <Fragment key={slot.slot}>{column}</Fragment>
                 );
               })}
             </div>

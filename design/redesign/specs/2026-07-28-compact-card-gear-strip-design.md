@@ -1,6 +1,6 @@
 # Compact card: gear icons + editable status pips
 
-**Status: DESIGN — awaiting user review.** Authored 2026-07-28, off `main` after the Phase-C
+**Status: ✅ SHIPPED (PR #203).** User-approved 2026-07-28, implemented the same day. Authored 2026-07-28, off `main` after the Phase-C
 closeout (PR #202). Post-Phase-C polish on the roster card; not part of any C-slice.
 
 ---
