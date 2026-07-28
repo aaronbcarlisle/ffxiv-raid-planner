@@ -69,7 +69,7 @@ export const RELEASES: Release[] = [
         title: 'External-service errors no longer echo raw exception text to clients',
         description:
           'BiS imports (XIVGear, GitHub, Etro) and Discord schedule sync returned raw exception messages in API responses, which can leak internal hosts or config. Clients now get a generic message; the full error goes to the server log. Clears both CodeQL stack-trace-exposure alerts.',
-        pr: 207,
+        pr: 213,
         prTitle: 'chore(security): Phase 2 CI hardening — workflow permissions, SHA pins, error sanitization',
       },
       {
@@ -77,7 +77,7 @@ export const RELEASES: Release[] = [
         title: 'GitHub Actions hardened: explicit permissions, SHA-pinned third-party actions',
         description:
           'ci.yml, discord-changelog.yml, and changelog-author-backfill.yml now declare least-privilege permissions (clears 7 CodeQL alerts). pnpm/action-setup and anthropics/claude-code-action are pinned to commit SHAs against tag-rewriting supply-chain attacks. The redundant tsc --noEmit CI step is gone (build runs the stricter tsc -b). Fork PRs can no longer bypass the Release Notes required check via job-skip.',
-        pr: 207,
+        pr: 213,
         prTitle: 'chore(security): Phase 2 CI hardening — workflow permissions, SHA pins, error sanitization',
       },
     ],
