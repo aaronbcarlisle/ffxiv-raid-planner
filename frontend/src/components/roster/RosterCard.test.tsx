@@ -597,8 +597,10 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       expect(screen.getAllByTestId('compact-gear-slot')[0]).not.toHaveAttribute('title');
     });
 
-    // The interim tome weapon is a second state of the weapon slot, not a 12th
-    // slot — so it stacks under the weapon's own pip. Compact echo of C4.
+    // The interim tome weapon is a second state of the weapon slot, and it took
+    // a stacked second pip at first — but that cost a whole row for one control,
+    // so it became a 12th COLUMN beside the weapon (2026-07-28), present only
+    // while pursuing. Compact echo of C4's sub-row.
     it('renders no tome pip when the player is not pursuing one', () => {
       renderCard(makePlayer({ tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false } }));
       expect(screen.queryAllByTestId('compact-gear-slot').filter((c) => c.getAttribute('data-column') === 'tome')).toHaveLength(0);

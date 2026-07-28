@@ -1058,9 +1058,10 @@ export function RosterCard({
 
         {/* ── Gear section: pip strip (compact) or gear table (expanded).
                Either/or, matching legacy PlayerCardGear — the table replaces the
-               pips, never stacks under them. The table EDITS (C2, canEditGear-
-               gated); the pips inspect-only (hover item card, no cycling —
-               legacy compact parity). Spacer placement mirrors legacy
+               pips, never stacks under them. BOTH densities EDIT, through the
+               one shared path under the same canEditGear gate (2026-07-28) —
+               the table by row, the strip by column; density is a detail axis,
+               not a capability gate. Spacer placement mirrors legacy
                PlayerCard: compact pads ABOVE the gear (pips + footer align at
                the bottom across cards), expanded pads BELOW the table (footer
                still pinned). ── */}
