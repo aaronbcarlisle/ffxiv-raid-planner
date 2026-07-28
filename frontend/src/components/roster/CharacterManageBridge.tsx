@@ -61,12 +61,13 @@ export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
   // back into Characters rather than being left with both dialogs shut.
   const charactersOpen = isOpen || (syncPlayerId !== null && syncPlayer === null);
 
-  // Deliberately one modal at a time. With both open, each Modal registers its
-  // Escape handler on `window` and the first one registered wins the
-  // `stopImmediatePropagation` (`Modal.tsx:61-66`) — so Escape would close the
-  // *background* Characters modal and leave the sync flow floating over nothing.
-  // Both also keep a Tab focus trap on `window`. Hand off instead: opening the
-  // sync flow closes Characters, and closing it returns the user there.
+  // Deliberately one modal at a time. Each Modal registers its Escape handler on
+  // `window`, and the first one registered wins the `stopImmediatePropagation`
+  // (`Modal.tsx:61-66`). With both open that is Characters, so Escape would close
+  // the modal *behind* the one the user is in and the sync modal — the topmost —
+  // would never see the key at all. The two Tab focus traps compete on `window`
+  // for the same reason. Hand off instead: opening the sync flow closes
+  // Characters, and closing it returns the user there.
   function openSync(playerId: string) {
     setSyncPlayerId(playerId);
     setIsOpen(false);

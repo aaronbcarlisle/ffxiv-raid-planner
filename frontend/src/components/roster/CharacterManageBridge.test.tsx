@@ -19,14 +19,25 @@ vi.mock('./RosterCharacterPanel', () => ({
 }));
 
 // The real modal talks to /api/lodestone on mount. We only care that the bridge
-// hands it the right target, so record the props instead.
+// hands it the right target, so record the props instead. Typed to the contract
+// the bridge actually passes, so `isOpen`/`onClose` stay real types rather than
+// `unknown` needing a cast at every use.
+interface MockLodestoneProps {
+  isOpen: boolean;
+  onClose: () => void;
+  groupId: string;
+  playerId: string;
+  playerName: string;
+  tierId?: string;
+  currentLodestoneId?: string | null;
+}
 const lodestoneProps = vi.fn();
 vi.mock('../player/LodestoneSearchModal', () => ({
-  LodestoneSearchModal: (props: Record<string, unknown>) => {
+  LodestoneSearchModal: (props: MockLodestoneProps) => {
     lodestoneProps(props);
     return props.isOpen ? (
       <div data-testid="lodestone-modal">
-        <button type="button" onClick={props.onClose as () => void}>close lodestone</button>
+        <button type="button" onClick={props.onClose}>close lodestone</button>
       </div>
     ) : null;
   },
@@ -141,9 +152,10 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
 
   // Stacking is unsafe here: each Modal registers its Escape handler on
   // `window` and the FIRST registered wins the `stopImmediatePropagation`
-  // (`Modal.tsx:61-66`) — so Escape would close the background Characters modal
-  // and leave the sync flow over nothing. Both also trap Tab on `window`.
-  // (Only one closes, not both — the first draft of this comment said otherwise.)
+  // (`Modal.tsx:61-66`). With both open that is Characters, so Escape would shut
+  // the modal BEHIND the user and the topmost sync modal would never see the
+  // key; the two Tab traps compete for the same reason. (Only one closes, not
+  // both — the first draft of this comment said otherwise.)
   it('hands off from Characters to Lodestone rather than stacking the two', () => {
     render(
       <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdminAccess={false} />,
