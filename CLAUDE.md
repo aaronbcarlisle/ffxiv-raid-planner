@@ -228,6 +228,66 @@ PRs to main run: `build` (`tsc -b && vite build`), `lint`, `check:design-system:
 
 ---
 
+## Coding Agent Workflow
+
+Use this workflow for every task to keep agent sessions focused and avoid costly restart loops.
+
+### 7-Step Loop
+
+```
+1. Write a task spec (see template below)
+2. Open ONE coding agent session with the spec + embedded pr-checklist constraints
+3. Agent: implements, runs pnpm build + lint + test, updates releaseNotes.ts, pushes
+4. Verify CI is green (pnpm build, pnpm lint, check:design-system:strict, pnpm test)
+5. Trigger ONE code review pass
+6. If review finds issues: one targeted agent fix session with review comments as input
+7. Merge
+```
+
+If you find yourself opening a second agent session on the same branch within an hour, **stop and fill in what was missing from the spec** before continuing.
+
+### Task Spec Template
+
+Write this before starting any agent session:
+
+```
+Task: [one sentence describing the change]
+
+Files likely touched:
+- [list expected files/directories]
+
+Done when:
+- [specific behavior or UI state]
+- CI passes: pnpm build, pnpm lint, check:design-system:strict, pnpm test
+
+Release note:
+- Touches frontend/src/ or backend/app/? [yes/no]
+- User-facing? [yes → public entry + CURRENT_VERSION bump | no → internal: true, no bump]
+
+Constraints:
+- Design system primitives only (no raw <button>, <input>, <select>)
+- Semantic color tokens only (no hardcoded hex)
+- [any other known constraints]
+
+Before opening the PR, run the pr-checklist skill (.claude/skills/pr-checklist/SKILL.md).
+```
+
+### Session Targets by Task Type
+
+| Task type | Release note | CURRENT_VERSION |
+|-----------|-------------|-----------------|
+| Bug fix | Public entry | Bump (e.g. `1.26.0` → `1.26.1`) |
+| Feature | Public entry | Bump |
+| Refactor / CI / internal | `internal: true` | No bump |
+
+### CI as Session Boundary
+
+- **After agent pushes:** wait for CI before triggering code review
+- **If CI fails:** re-engage the *same* session with the failure log — don't start fresh
+- **Code review** is a signal, not a loop: trigger once when CI is green, fix once if needed
+
+---
+
 ## Additional Documentation
 
 See **[docs/README.md](./docs/README.md)** for the full doc map. Canonical set:

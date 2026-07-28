@@ -59,3 +59,20 @@ git diff --name-only | Select-String ".github/workflows"
 1. If `frontend/src/` or `backend/app/` changed and `releaseNotes.ts` did **not** change → stop and add the release note entry.
 2. If `.github/workflows/` changed and the workflow writes to PRs → confirm the fork guard exists.
 3. Run `git diff --check` to catch whitespace errors.
+
+## Agent Prompt Template
+
+Paste this block at the **end** of any coding agent task prompt to embed the checklist as a blocking requirement:
+
+```
+Before opening the PR, run the pr-checklist:
+- Does this touch frontend/src/ or backend/app/?
+  - Yes + user-facing → add public releaseNotes.ts entry, bump CURRENT_VERSION
+  - Yes + internal only → add internal: true entry, no CURRENT_VERSION bump
+  - No → no release note needed
+- Use `pr` + `prTitle` fields in the release note, NOT `commits`
+- Run: pnpm build (uses tsc -b — stricter than tsc --noEmit), pnpm lint, pnpm test, pnpm check:design-system
+- If .github/workflows/ changed and the workflow writes to PRs → confirm fork guard exists:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+- Run git diff --check for whitespace errors
+```
