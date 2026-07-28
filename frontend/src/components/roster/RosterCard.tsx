@@ -219,11 +219,20 @@ export function RosterCard({
         hasItem: player.tomeWeapon.hasItem,
         isAugmented: player.tomeWeapon.isAugmented,
         // The tome weapon has no item metadata of its own — the hover card
-        // belongs to the raid weapon in the column beside it.
+        // belongs to the raid weapon in the column beside it, so NOTHING here
+        // may satisfy `hasHoverData`. That predicate also keys off the EQUIPPED
+        // fields (`gearHoverData.ts`), which the spread above would otherwise
+        // carry over from the raid weapon (PR #203 review).
         itemName: undefined,
         itemIcon: undefined,
         itemLevel: undefined,
         itemStats: undefined,
+        itemId: undefined,
+        materia: undefined,
+        equippedItemId: undefined,
+        equippedItemName: undefined,
+        equippedItemLevel: undefined,
+        equippedItemIcon: undefined,
       } as GearSlotStatus,
       label: 'Tome weapon',
     });
@@ -1183,12 +1192,25 @@ export function RosterCard({
                         column carries, so compact can retarget a slot too. The
                         tome column's source is fixed (it IS the tome weapon),
                         matching the expanded sub-row's static T. */}
-                    {isTome ? (
+                    {isTome || slot.slot === 'weapon' ? (
+                      /* Both of these are FIXED, not selectable. The BiS weapon
+                         is always raid and the interim tome weapon is always
+                         tome — `CLAUDE.md` states it twice, and the expanded
+                         table enforces it by branching to `WeaponBiSSelector`
+                         before the generic popover ever renders. Handing the
+                         weapon column the 4-way selector would have been the
+                         first path in v2 able to CREATE the non-raid weapon
+                         source `raidNormalizedWeapon` exists to absorb, and it
+                         would wipe the weapon's imported item metadata on the
+                         way (PR #203 review). Tome tracking stays on the
+                         kebab's Track/Stop, as the rest of this strip already
+                         assumes. */
                       <span
-                        data-testid="compact-tome-source"
-                        className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold text-gear-tome ${canCycleGear ? '' : 'opacity-50'}`}
+                        data-testid={isTome ? 'compact-tome-source' : 'compact-weapon-source'}
+                        className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold ${isTome ? 'text-gear-tome' : 'text-gear-raid'} ${canCycleGear ? '' : 'opacity-50'}`}
+                        aria-label={isTome ? 'Tome weapon — BiS source is always Tome' : 'Weapon — BiS source is always Raid'}
                       >
-                        T
+                        {isTome ? 'T' : 'R'}
                       </span>
                     ) : (
                       <BiSSourceSelector

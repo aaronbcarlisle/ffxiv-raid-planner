@@ -490,6 +490,59 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       );
     });
 
+    // PR #203 review: giving the weapon column the generic 4-way selector would
+    // be the first path in v2 able to CREATE a non-raid weapon source — the very
+    // state raidNormalizedWeapon exists to absorb — and it would wipe the
+    // weapon's imported item metadata on the way. CLAUDE.md states the rule
+    // twice; the expanded table enforces it by branching before the popover.
+    it('the weapon column carries a FIXED R badge, never the source selector', () => {
+      renderCard(makePlayer({
+        gear: [
+          { slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false },
+          { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+        ] as unknown as SnapshotPlayer['gear'],
+      }));
+
+      const weaponCol = screen.getAllByTestId('compact-gear-slot')[0];
+      expect(within(weaponCol).getByTestId('compact-weapon-source')).toHaveTextContent('R');
+      // no popover trigger in that column at all
+      expect(within(weaponCol).queryByRole('button', { name: /BiS source/ })).not.toBeInTheDocument();
+    });
+
+    it('every non-weapon column still gets the selector', () => {
+      renderCard(makePlayer({
+        gear: [
+          { slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false },
+          { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+        ] as unknown as SnapshotPlayer['gear'],
+      }));
+
+      const head = screen.getAllByTestId('compact-gear-slot')[1];
+      expect(within(head).getByRole('button', { name: /BiS source/ })).toBeInTheDocument();
+    });
+
+    // PR #203 review: hasHoverData also keys off the EQUIPPED fields, which the
+    // spread carried over from the raid weapon — so the tome column used to open
+    // a hover card describing the weapon beside it.
+    it('the tome column never opens a hover card, even when the weapon is synced', () => {
+      renderCard(
+        makePlayer({
+          gear: [{
+            slot: 'weapon', bisSource: 'raid', hasItem: true, isAugmented: false,
+            itemName: 'Axe', itemLevel: 795,
+            equippedItemName: 'Synced Axe', equippedItemLevel: 790, equippedItemId: 42,
+          }] as unknown as SnapshotPlayer['gear'],
+          tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+        })
+      );
+
+      const cols = screen.getAllByTestId('compact-gear-slot');
+      const tomeCol = cols.find((c) => c.getAttribute('data-column') === 'tome')!;
+      // the raid weapon's icon IS a hover trigger; the tome column's is not
+      expect(cols[0].querySelector('img')!.closest('[data-state]')).not.toBeNull();
+      expect(tomeCol.querySelector('img')!.closest('[data-state]')).toBeNull();
+    });
+
     // PR #203 review: the weapon's main row is ALWAYS the raid weapon, so it
     // takes the 2-state cycle the expanded table and legacy both hardcode.
     // Harmless while the pip was display-only; load-bearing now that it writes.
