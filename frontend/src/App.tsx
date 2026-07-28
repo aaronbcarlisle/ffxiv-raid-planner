@@ -44,7 +44,7 @@ const UnderstandingPriority = lazy(() => import('./pages/UnderstandingPriority')
 const GearMathDocs = lazy(() => import('./pages/GearMathDocs'));
 const FAQDocs = lazy(() => import('./pages/FAQDocs'));
 
-export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+export function ErrorFallback({ error, resetErrorBoundary }: { error: unknown; resetErrorBoundary: () => void }) {
   const isStaleChunk = isChunkLoadError(error);
   const alreadyTriedReload = isStaleChunk && hasAttemptedChunkReload();
 
@@ -84,7 +84,7 @@ export function ErrorFallback({ error, resetErrorBoundary }: { error: Error; res
     <div className="min-h-screen bg-surface-base flex items-center justify-center p-4">
       <div className="bg-surface-card border border-border-default rounded-lg p-6 max-w-md text-center">
         <h2 className="text-xl font-display text-status-error mb-2">Something went wrong</h2>
-        <p className="text-text-secondary text-sm mb-4">{error.message}</p>
+        <p className="text-text-secondary text-sm mb-4">{error instanceof Error ? error.message : String(error)}</p>
 {/* design-system-ignore: error boundary uses inline button to minimize dependencies */}
         <button
           onClick={resetErrorBoundary}

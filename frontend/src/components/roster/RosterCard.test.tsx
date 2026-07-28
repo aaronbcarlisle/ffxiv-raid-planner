@@ -1125,8 +1125,14 @@ describe('RosterCard — C5 metrics · badges · identity', () => {
         makePlayer({ lastSync: twoHoursAgo(), lastSyncSource: 'player_hub', lastSyncedJob: 'PLD' })
       );
       await openDetail();
-      expect(screen.getAllByText('Player Hub sync')).toHaveLength(2);
-      expect(screen.getAllByText('Last synced 2h ago · as PLD').length).toBeGreaterThan(0);
+      // The header names the source once per rendered copy of the detail
+      // content (Radix may render one or two copies depending on version).
+      // If the detail line repeated the provenance, the header text would
+      // appear twice per copy — i.e. more often than the detail line itself.
+      const headerCount = screen.getAllByText('Player Hub sync').length;
+      const detailCount = screen.getAllByText('Last synced 2h ago · as PLD').length;
+      expect(detailCount).toBeGreaterThan(0);
+      expect(headerCount).toBe(detailCount);
       unmount();
 
       // Scheduled sync with no identity: the header names the provider through
