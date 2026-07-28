@@ -1,0 +1,674 @@
+<title>Loot ▸ Priority — Phase D design</title>
+
+<style>
+  :root {
+    /* Product tokens, verbatim from tokens.generated.css */
+    --base: #050508;
+    --raised: #0a0a0f;
+    --card: #0e0e14;
+    --elevated: #121218;
+    --interactive: #1e1e26;
+    --line: #1f1f28;
+    --line-soft: #14141c;
+    --ink: #f0f0f5;
+    --ink-2: #a1a1aa;
+    --ink-3: #7d7d87;
+    --accent: #14b8a6;
+    --accent-bright: #2dd4bf;
+    --accent-dim: rgba(20, 184, 166, 0.15);
+
+    /* FLOOR_COLORS, gamedata/loot-tables.ts */
+    --f1: #22c55e;
+    --f2: #3b82f6;
+    --f3: #a855f7;
+    --f4: #f59e0b;
+
+    /* Role colours */
+    --tank: #5a9fd4;
+    --healer: #5ad490;
+    --melee: #d45a5a;
+    --ranged: #d4a05a;
+    --caster: #b45ad4;
+
+    --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--base);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 78rem;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  /* ── Document header ───────────────────────────────────────── */
+  .doc-head { display: flex; flex-direction: column; gap: 0.75rem; }
+  .doc-eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .doc-head h1 {
+    margin: 0;
+    font-size: clamp(1.6rem, 3.4vw, 2.15rem);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+    font-weight: 650;
+  }
+  .doc-head p {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--ink-2);
+  }
+  .rulings { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.25rem; }
+  .ruling {
+    font-size: 0.75rem;
+    font-family: var(--mono);
+    color: var(--ink-2);
+    background: var(--elevated);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+  }
+  .ruling b { color: var(--accent-bright); font-weight: 600; }
+
+  /* ── The mock application frame ────────────────────────────── */
+  .app {
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .app-body { padding: 1.25rem 1.5rem 1.75rem; display: flex; flex-direction: column; gap: 1.1rem; }
+
+  .page-title { display: flex; flex-direction: column; gap: 0.15rem; }
+  .page-title h2 {
+    margin: 0; font-size: 1.4rem; font-weight: 650; letter-spacing: -0.015em;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .page-title h2 svg { color: var(--accent); }
+  .page-title span { color: var(--ink-3); font-size: 0.875rem; }
+
+  /* Triad: Priority · Log · History */
+  .triad { display: flex; gap: 1.5rem; border-bottom: 1px solid var(--line); }
+  .triad button {
+    appearance: none; background: none; border: 0; cursor: default;
+    font: inherit; font-size: 0.9375rem; color: var(--ink-3);
+    padding: 0 0 0.7rem; border-bottom: 2px solid transparent;
+    display: flex; align-items: center; gap: 0.4rem;
+  }
+  .triad button[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+  .triad .soon { font-size: 0.6875rem; color: var(--ink-3); border: 1px solid var(--line);
+                 border-radius: 999px; padding: 0 0.4rem; }
+
+  /* Controls row: switcher + pills + action */
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; }
+
+  .segmented { display: inline-flex; background: var(--elevated); border: 1px solid var(--line);
+               border-radius: 8px; padding: 3px; gap: 3px; }
+  .segmented button {
+    appearance: none; border: 0; background: none; font: inherit; font-size: 0.8125rem;
+    color: var(--ink-2); padding: 0.3rem 0.85rem; border-radius: 6px; cursor: pointer;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .segmented button:hover { color: var(--ink); }
+  .segmented button[aria-pressed="true"] { background: var(--accent-dim); color: var(--accent-bright); }
+  .segmented button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .floorbar { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+  .floorbar .lbl { font-size: 0.75rem; color: var(--ink-3); letter-spacing: 0.04em; text-transform: uppercase; }
+  .pill {
+    appearance: none; font: inherit; font-size: 0.8125rem; cursor: pointer;
+    background: var(--elevated); border: 1px solid var(--line); color: var(--ink-2);
+    border-radius: 999px; padding: 0.22rem 0.7rem;
+    transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+  }
+  .pill:hover { color: var(--ink); }
+  .pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .pill[aria-pressed="true"] { color: var(--ink); background: var(--interactive); }
+  .pill[data-floor="1"][aria-pressed="true"] { border-color: var(--f1); color: var(--f1); }
+  .pill[data-floor="2"][aria-pressed="true"] { border-color: var(--f2); color: var(--f2); }
+  .pill[data-floor="3"][aria-pressed="true"] { border-color: var(--f3); color: var(--f3); }
+  .pill[data-floor="4"][aria-pressed="true"] { border-color: var(--f4); color: var(--f4); }
+  .pill[data-floor="all"][aria-pressed="true"] { border-color: var(--accent); color: var(--accent-bright); }
+
+  /* R-5: the pill row becomes a static label in Weapons */
+  .floor-static {
+    display: none; align-items: center; gap: 0.5rem;
+    font-size: 0.8125rem; color: var(--f4);
+  }
+  .floor-static .chip {
+    border: 1px solid color-mix(in oklab, var(--f4) 35%, transparent);
+    background: color-mix(in oklab, var(--f4) 10%, transparent);
+    border-radius: 6px; padding: 0.12rem 0.5rem; font-weight: 600;
+  }
+  .floor-static .why { color: var(--ink-3); }
+  body[data-view="weapons"] .floorbar { display: none; }
+  body[data-view="weapons"] .floor-static { display: flex; }
+
+  .spacer { flex: 1 1 auto; }
+
+  .btn {
+    appearance: none; font: inherit; font-size: 0.8125rem; cursor: pointer;
+    border-radius: 7px; padding: 0.35rem 0.8rem; display: inline-flex; align-items: center; gap: 0.4rem;
+    background: var(--accent); color: #04201d; border: 1px solid var(--accent); font-weight: 600;
+  }
+  .btn:hover { background: var(--accent-bright); border-color: var(--accent-bright); }
+  .btn:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+  .btn--ghost { background: transparent; color: var(--ink-2); border-color: var(--line); font-weight: 500; }
+  .btn--ghost:hover { background: var(--interactive); color: var(--ink); border-color: var(--line); }
+
+  /* ── Panels ────────────────────────────────────────────────── */
+  .panel { display: none; }
+  body[data-view="matrix"]  .panel--matrix  { display: block; }
+  body[data-view="queues"]  .panel--queues  { display: flex; }
+  body[data-view="weapons"] .panel--weapons { display: flex; }
+
+  .surface {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  }
+  .scroll-x { overflow-x: auto; }
+
+  /* Matrix */
+  table { border-collapse: collapse; width: 100%; min-width: 46rem; }
+  thead th {
+    font-size: 0.75rem; font-weight: 600; color: var(--ink-3); text-align: center;
+    padding: 0.7rem 0.4rem; border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  thead th.slot-col { text-align: left; padding-left: 1rem; }
+  thead th .pos { display: block; color: var(--ink); font-size: 0.8125rem; }
+  thead th.r-tank   .pos { color: var(--tank); }
+  thead th.r-healer .pos { color: var(--healer); }
+  thead th.r-melee  .pos { color: var(--melee); }
+  thead th.r-ranged .pos { color: var(--ranged); }
+  thead th.r-caster .pos { color: var(--caster); }
+
+  tbody td { padding: 0.42rem 0.4rem; text-align: center; border-bottom: 1px solid var(--line-soft); }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: rgba(255, 255, 255, 0.018); }
+
+  .slot-cell { text-align: left; padding-left: 1rem; }
+  .slot-name { display: inline-flex; align-items: center; gap: 0.55rem; font-size: 0.875rem; }
+  /* R-8: the icon is neutral, the NAME carries the floor colour */
+  .slot-name svg { color: var(--ink-3); flex: none; }
+  .slot-name[data-floor="1"] .t { color: var(--f1); }
+  .slot-name[data-floor="2"] .t { color: var(--f2); }
+  .slot-name[data-floor="3"] .t { color: var(--f3); }
+  .slot-name[data-floor="4"] .t { color: var(--f4); }
+
+  .dot {
+    width: 17px; height: 17px; border-radius: 999px; display: inline-block;
+    border: 2px solid #2a2a33; background: transparent; vertical-align: middle;
+  }
+  .dot--need { position: relative; cursor: pointer; }
+  .dot--need::after {
+    content: ""; position: absolute; inset: 3px; border-radius: 999px; background: currentColor;
+  }
+  .dot--need.tank   { border-color: var(--tank);   color: var(--tank); }
+  .dot--need.healer { border-color: var(--healer); color: var(--healer); }
+  .dot--need.melee  { border-color: var(--melee);  color: var(--melee); }
+  .dot--need.ranged { border-color: var(--ranged); color: var(--ranged); }
+  .dot--need.caster { border-color: var(--caster); color: var(--caster); }
+  .dot--mat {
+    position: relative; font-size: 0.625rem; font-weight: 700; line-height: 13px;
+    text-align: center; cursor: pointer;
+  }
+  button.cell {
+    appearance: none; background: none; border: 0; padding: 0.15rem; cursor: pointer; line-height: 0;
+    border-radius: 999px;
+  }
+  button.cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .need-col { font-variant-numeric: tabular-nums; font-size: 0.8125rem; color: var(--ink-2); padding-right: 1rem; text-align: right; }
+  .need-col.hot { color: var(--ranged); }
+  .free {
+    font-size: 0.625rem; font-weight: 700; letter-spacing: 0.06em; color: var(--accent-bright);
+    border: 1px solid color-mix(in oklab, var(--accent) 40%, transparent);
+    background: var(--accent-dim); border-radius: 4px; padding: 0.05rem 0.35rem;
+  }
+  .section-row td {
+    font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3);
+    padding: 0.85rem 1rem 0.35rem; text-align: left; background: rgba(255,255,255,0.012);
+  }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 1.1rem; padding: 0.75rem 1rem;
+    border-top: 1px solid var(--line); font-size: 0.75rem; color: var(--ink-3);
+    align-items: center;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+  /* Queues */
+  .panel--queues, .panel--weapons { flex-direction: column; gap: 0.9rem; }
+  .floor-card { border-left: 3px solid var(--line); }
+  .floor-card[data-floor="1"] { border-left-color: var(--f1); }
+  .floor-card[data-floor="2"] { border-left-color: var(--f2); }
+  .floor-card[data-floor="3"] { border-left-color: var(--f3); }
+  .floor-card[data-floor="4"] { border-left-color: var(--f4); }
+  .floor-head {
+    display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--line); font-size: 0.8125rem; color: var(--ink-3);
+  }
+  .floor-head .duty {
+    font-family: var(--mono); font-size: 0.6875rem; color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 4px; padding: 0.05rem 0.35rem;
+  }
+  .floor-head .fname { color: var(--ink); font-weight: 600; font-size: 0.875rem; }
+  .floor-card[data-floor="1"] .fname { color: var(--f1); }
+  .floor-card[data-floor="2"] .fname { color: var(--f2); }
+  .floor-card[data-floor="3"] .fname { color: var(--f3); }
+  .floor-card[data-floor="4"] .fname { color: var(--f4); }
+
+  .drop-row {
+    display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .drop-row:last-child { border-bottom: 0; }
+  .drop-row:hover { background: rgba(255,255,255,0.018); }
+  .drop-name { min-width: 9rem; display: flex; flex-direction: column; }
+  .drop-name .sub { font-size: 0.6875rem; color: var(--ink-3); }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; flex: 1 1 auto; }
+  .chip-p {
+    display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem;
+    border: 1px solid var(--line); border-radius: 999px; padding: 0.15rem 0.5rem 0.15rem 0.2rem;
+    background: var(--elevated); color: var(--ink);
+  }
+  .chip-p .av {
+    width: 18px; height: 18px; border-radius: 999px; display: grid; place-items: center;
+    font-size: 0.5625rem; font-weight: 700; color: #06060a;
+  }
+  .chip-p .rk { color: var(--ink-3); font-size: 0.6875rem; font-variant-numeric: tabular-nums; }
+  .chip-p.tank   { border-color: color-mix(in oklab, var(--tank) 45%, transparent); }
+  .chip-p.tank   .av { background: var(--tank); }
+  .chip-p.healer { border-color: color-mix(in oklab, var(--healer) 45%, transparent); }
+  .chip-p.healer .av { background: var(--healer); }
+  .chip-p.melee  { border-color: color-mix(in oklab, var(--melee) 45%, transparent); }
+  .chip-p.melee  .av { background: var(--melee); }
+  .chip-p.ranged { border-color: color-mix(in oklab, var(--ranged) 45%, transparent); }
+  .chip-p.ranged .av { background: var(--ranged); }
+  .chip-p.caster { border-color: color-mix(in oklab, var(--caster) 45%, transparent); }
+  .chip-p.caster .av { background: var(--caster); }
+  .why {
+    font-size: 0.6875rem; color: var(--ink-3); border-bottom: 1px dotted var(--line);
+    cursor: help;
+  }
+
+  /* Weapons */
+  .role-sec { padding: 0.75rem 1rem; border-bottom: 1px solid var(--line-soft); }
+  .role-sec:last-child { border-bottom: 0; }
+  .role-sec h4 {
+    margin: 0 0 0.5rem; font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .role-sec.tank h4 { color: var(--tank); }
+  .role-sec.healer h4 { color: var(--healer); }
+  .role-sec.dps h4 { color: var(--melee); }
+  .wrow { display: flex; align-items: center; gap: 0.6rem; padding: 0.3rem 0; font-size: 0.8125rem; }
+  .wrow .rank { font-variant-numeric: tabular-nums; color: var(--ink-3); width: 1.5rem; }
+  .wrow .nm { color: var(--ink); }
+  .wrow .job { font-size: 0.6875rem; color: var(--ink-3); }
+  .wrow .tie {
+    font-size: 0.625rem; color: var(--f4); border: 1px solid color-mix(in oklab, var(--f4) 35%, transparent);
+    border-radius: 4px; padding: 0 0.3rem;
+  }
+
+  /* ── Notes ─────────────────────────────────────────────────── */
+  .notes { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+  .note {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.1rem;
+    display: flex; flex-direction: column; gap: 0.4rem;
+  }
+  .note.flag { border-color: color-mix(in oklab, var(--f4) 40%, var(--line)); }
+  .note h3 {
+    margin: 0; font-size: 0.8125rem; letter-spacing: 0.02em; color: var(--ink);
+    display: flex; align-items: center; gap: 0.45rem;
+  }
+  .note.flag h3 { color: var(--f4); }
+  .note p { margin: 0; font-size: 0.8125rem; color: var(--ink-2); }
+  .note code { font-family: var(--mono); font-size: 0.75rem; color: var(--accent-bright); }
+
+  .foot { font-size: 0.75rem; color: var(--ink-3); border-top: 1px solid var(--line); padding-top: 1rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="doc-head">
+    <span class="doc-eyebrow">Phase D · co-design</span>
+    <h1>Loot ▸ Priority, as ruled</h1>
+    <p>
+      The Priority surface after rulings R-1 through R-8. The switcher and the floor pills are live —
+      click them. Everything else is a still: real data shapes from the dev static, no wiring.
+    </p>
+    <div class="rulings">
+      <span class="ruling"><b>R-1</b> lands on Matrix</span>
+      <span class="ruling"><b>R-2</b> floor pills scope the view</span>
+      <span class="ruling"><b>R-3</b> Weapons is a segment</span>
+      <span class="ruling"><b>R-4</b> cell → picker</span>
+      <span class="ruling"><b>R-5</b> static label in Weapons</span>
+      <span class="ruling"><b>R-7</b> + Log Floor follows the pill</span>
+      <span class="ruling"><b>R-8</b> name carries the floor</span>
+    </div>
+  </header>
+
+  <section class="app">
+    <div class="app-body">
+
+      <div class="page-title">
+        <h2>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Loot
+        </h2>
+        <span>Who's up next, and the record of what's dropped</span>
+      </div>
+
+      <nav class="triad" aria-label="Loot views">
+        <button type="button" aria-current="page">Priority</button>
+        <button type="button">Log <span class="soon">Phase D</span></button>
+        <button type="button">History</button>
+      </nav>
+
+      <div class="controls">
+        <div class="segmented" role="group" aria-label="Priority view">
+          <button type="button" data-seg="queues"  aria-pressed="false">Queues</button>
+          <button type="button" data-seg="matrix"  aria-pressed="true">Matrix</button>
+          <button type="button" data-seg="weapons" aria-pressed="false">Weapons</button>
+        </div>
+
+        <div class="floorbar" role="group" aria-label="Floor">
+          <span class="lbl">Floor</span>
+          <button type="button" class="pill" data-floor="all" aria-pressed="true">All</button>
+          <button type="button" class="pill" data-floor="1" aria-pressed="false">M9S</button>
+          <button type="button" class="pill" data-floor="2" aria-pressed="false">M10S</button>
+          <button type="button" class="pill" data-floor="3" aria-pressed="false">M11S</button>
+          <button type="button" class="pill" data-floor="4" aria-pressed="false">M12S</button>
+        </div>
+
+        <div class="floor-static" aria-live="polite">
+          <span class="chip">M12S · Floor 4</span>
+          <span class="why">weapons drop here</span>
+        </div>
+
+        <span class="spacer"></span>
+
+        <button type="button" class="btn" id="logAction">Log this week's loot</button>
+      </div>
+
+      <!-- ── MATRIX ─────────────────────────────────────────── -->
+      <div class="panel panel--matrix">
+        <div class="surface">
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th class="slot-col">Slot</th>
+                  <th class="r-tank"><span class="pos">T1</span>Tank</th>
+                  <th class="r-tank"><span class="pos">T2</span>Tank</th>
+                  <th class="r-healer"><span class="pos">H1</span>Healer</th>
+                  <th class="r-healer"><span class="pos">H2</span>Healer</th>
+                  <th class="r-melee"><span class="pos">M1</span>Melee</th>
+                  <th class="r-ranged"><span class="pos">R1</span>Ranged</th>
+                  <th class="r-caster"><span class="pos">R2</span>Caster</th>
+                  <th class="need-col">Need</th>
+                </tr>
+              </thead>
+              <tbody id="matrixBody"></tbody>
+            </table>
+          </div>
+          <div class="legend">
+            <span><i class="dot dot--need tank" style="width:14px;height:14px"></i> Needs this slot</span>
+            <span><i class="dot" style="width:14px;height:14px"></i> Has it, or not in their BiS</span>
+            <span><i class="dot dot--need healer dot--mat" style="width:14px;height:14px"></i> Material — number is how many</span>
+            <span><i class="free">FREE</i> No one needs it</span>
+            <span style="color:var(--ink-3)">Click any dot to log it →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── QUEUES ─────────────────────────────────────────── -->
+      <div class="panel panel--queues" id="queuesPanel"></div>
+
+      <!-- ── WEAPONS ────────────────────────────────────────── -->
+      <div class="panel panel--weapons">
+        <div class="surface floor-card" data-floor="4">
+          <div class="floor-head">
+            <span class="duty">M12S</span>
+            <span class="fname">Floor 4</span>
+            <span>· weapon coffer · per-job funnelling, ties &amp; rolls</span>
+          </div>
+          <div class="role-sec tank">
+            <h4>Tanks</h4>
+            <div class="wrow"><span class="rank">#1</span><span class="nm">Tank One</span><span class="job">Paladin · main</span><span class="why" title="Role priority + no weapon yet + 2-week drought">why this rank</span></div>
+            <div class="wrow"><span class="rank">#2</span><span class="nm">Tank Two</span><span class="job">Warrior · main</span></div>
+          </div>
+          <div class="role-sec healer">
+            <h4>Healers</h4>
+            <div class="wrow"><span class="rank">#1</span><span class="nm">Healer Two</span><span class="job">Scholar · main</span><span class="tie">tie · roll</span></div>
+            <div class="wrow"><span class="rank">#1</span><span class="nm">Healer One</span><span class="job">White Mage · main</span><span class="tie">tie · roll</span></div>
+          </div>
+          <div class="role-sec dps">
+            <h4>DPS</h4>
+            <div class="wrow"><span class="rank">#1</span><span class="nm">Caster One</span><span class="job">Black Mage · main</span></div>
+            <div class="wrow"><span class="rank">#2</span><span class="nm">Melee One</span><span class="job">Dragoon · main</span></div>
+            <div class="wrow"><span class="rank">#3</span><span class="nm">Ranged One</span><span class="job">Bard · main</span><span class="why" title="Received a weapon in week 1">why this rank</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="notes">
+    <div class="note flag">
+      <h3>⚑ Drawing it surfaced this</h3>
+      <p>
+        R-8 colours the gear name by floor. In the Queues view that's one colour per card — clean. In the
+        <strong>Matrix</strong>, which lists every slot at once, the name column becomes four colours down
+        its length. It <em>is</em> information (which floor drops this slot), but it's the loudest thing on
+        a planning screen. Worth a call: keep it, or let the Matrix drop the colour when scoped to All.
+      </p>
+    </div>
+    <div class="note">
+      <h3>Try the pills</h3>
+      <p>
+        Selecting a floor scopes both Matrix and Queues, and swaps the action to
+        <code>+ Log Floor</code> — R-7. On <strong>All</strong> it reads
+        <code>Log this week's loot</code>, the wizard that already exists.
+      </p>
+    </div>
+    <div class="note">
+      <h3>Try Weapons</h3>
+      <p>
+        The pill row is replaced in place by <code>M12S · Floor 4</code> — R-5. Nothing shifts, and the
+        scope is stated rather than implied by a control that couldn't do anything.
+      </p>
+    </div>
+    <div class="note">
+      <h3>Not drawn yet</h3>
+      <p>
+        The RecipientPicker a cell click opens (D-28), and the shared "why this rank" explanation from R-6 —
+        shown here only as the dotted <span class="why">why this rank</span> affordance.
+      </p>
+    </div>
+  </section>
+
+  <p class="foot">
+    Colours are the product's own tokens; floor hues come from <code style="font-family:var(--mono)">FLOOR_COLORS</code>.
+    Type is a system stack — the real Exo&nbsp;2 / Inter can't load here, and a stated substitute beats a silent one.
+    Committed to the dark theme on purpose: this is a mockup of a dark surface.
+  </p>
+</div>
+
+<script>
+  // Slot icons: neutral silhouettes, per R-8 — the icon says "which slot", never "which floor".
+  const ICONS = {
+    weapon: '<path d="M4 20l5-5M14 4l6 6-9 9H6v-5z"/>',
+    head:   '<path d="M4 14a8 8 0 0116 0v3H4z"/>',
+    body:   '<path d="M8 4l4 2 4-2 3 3-2 3v10H7V10L5 7z"/>',
+    hands:  '<path d="M7 11V6a1.5 1.5 0 013 0v5m0-4a1.5 1.5 0 013 0v4m0-3a1.5 1.5 0 013 0v7a6 6 0 01-6 6H9l-4-5"/>',
+    legs:   '<path d="M7 3h10l-1 18h-4l-1-9-1 9H6z"/>',
+    feet:   '<path d="M5 4h5v9l6 3v4H5z"/>',
+    ears:   '<path d="M12 3a4 4 0 014 4c0 3-4 4-4 7"/><circle cx="12" cy="19" r="2"/>',
+    neck:   '<path d="M5 4a7 7 0 0014 0"/><circle cx="12" cy="16" r="3"/>',
+    wrists: '<ellipse cx="12" cy="12" rx="7" ry="5"/>',
+    ring:   '<circle cx="12" cy="14" r="6"/><path d="M9 6h6l-1.5 3h-3z"/>',
+    mat:    '<path d="M9 3h6M10 3v6l-4 8a3 3 0 003 4h6a3 3 0 003-4l-4-8V3"/>'
+  };
+  const icon = (k) =>
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[k] + '</svg>';
+
+  const ROLES = ['tank', 'tank', 'healer', 'healer', 'melee', 'ranged', 'caster'];
+  const NAMES = ['Tank One', 'Tank Two', 'Healer One', 'Healer Two', 'Melee One', 'Ranged One', 'Caster One'];
+
+  // needs[] indexes the seven columns; null = has it / not in BiS
+  const SLOTS = [
+    { key: 'weapon', label: 'Weapon',  floor: 4, needs: [1, 0, 0, 1, 0, 0, 1] },
+    { key: 'head',   label: 'Head',    floor: 2, needs: [0, 0, 0, 1, 0, 0, 0] },
+    { key: 'body',   label: 'Body',    floor: 3, needs: [0, 0, 0, 0, 1, 1, 0] },
+    { key: 'hands',  label: 'Hands',   floor: 2, needs: [0, 0, 0, 1, 0, 1, 0] },
+    { key: 'legs',   label: 'Legs',    floor: 3, needs: [0, 0, 1, 1, 0, 0, 1] },
+    { key: 'feet',   label: 'Feet',    floor: 2, needs: [0, 1, 0, 1, 1, 0, 1] },
+    { key: 'ears',   label: 'Ears',    floor: 1, needs: [1, 0, 0, 1, 0, 0, 0] },
+    { key: 'neck',   label: 'Neck',    floor: 1, needs: [0, 1, 0, 1, 0, 1, 1] },
+    { key: 'wrists', label: 'Wrists',  floor: 1, needs: [0, 1, 0, 0, 1, 0, 1] },
+    { key: 'ring',   label: 'Ring',    floor: 1, needs: [1, 1, 0, 0, 1, 1, 1] }
+  ];
+  const MATS = [
+    { label: 'Twine',              floor: 3, counts: [2, 0, 0, 0, 0, 0, 0] },
+    { label: 'Glaze',              floor: 2, counts: [0, 0, 1, 0, 0, 0, 0] },
+    { label: 'Solvent',            floor: 3, counts: [0, 0, 0, 0, 1, 0, 0] },
+    { label: 'Universal Tomestone', floor: 2, counts: [0, 0, 0, 0, 0, 0, 0] }
+  ];
+
+  const slotName = (floor, key, label) =>
+    '<span class="slot-name" data-floor="' + floor + '">' + icon(key) + '<span class="t">' + label + '</span></span>';
+
+  function buildMatrix() {
+    const body = document.getElementById('matrixBody');
+    let html = '';
+
+    for (const s of SLOTS) {
+      const count = s.needs.reduce((a, b) => a + b, 0);
+      html += '<tr data-floor="' + s.floor + '"><td class="slot-cell">' + slotName(s.floor, s.key, s.label) + '</td>';
+      s.needs.forEach((n, i) => {
+        html += '<td>' + (n
+          ? '<button type="button" class="cell" title="' + NAMES[i] + ' needs ' + s.label + ' — click to log">' +
+            '<span class="dot dot--need ' + ROLES[i] + '"></span></button>'
+          : '<span class="dot"></span>') + '</td>';
+      });
+      html += '<td class="need-col' + (count >= 4 ? ' hot' : '') + '">' + count + '/8</td></tr>';
+    }
+
+    html += '<tr class="section-row"><td colspan="9">Materials</td></tr>';
+
+    for (const m of MATS) {
+      const total = m.counts.reduce((a, b) => a + b, 0);
+      html += '<tr data-floor="' + m.floor + '"><td class="slot-cell">' + slotName(m.floor, 'mat', m.label) + '</td>';
+      m.counts.forEach((c, i) => {
+        html += '<td>' + (c
+          ? '<button type="button" class="cell" title="' + NAMES[i] + ' needs ' + c + ' — click to log">' +
+            '<span class="dot dot--need dot--mat ' + ROLES[i] + '">' + c + '</span></button>'
+          : '<span class="dot"></span>') + '</td>';
+      });
+      html += '<td class="need-col">' + (total ? total : '<span class="free">FREE</span>') + '</td></tr>';
+    }
+
+    body.innerHTML = html;
+  }
+
+  const QUEUES = [
+    { floor: 4, duty: 'M12S', drops: [
+      { key: 'weapon', label: 'Weapon', sub: 'Weapon · raid', picks: [[0, 'tank'], [3, 'healer'], [6, 'caster']] }
+    ]},
+    { floor: 3, duty: 'M11S', drops: [
+      { key: 'body',  label: 'Body',    sub: 'Body · raid',        picks: [[4, 'melee'], [5, 'ranged']] },
+      { key: 'legs',  label: 'Legs',    sub: 'Legs · raid',        picks: [[6, 'caster'], [3, 'healer'], [2, 'healer']] },
+      { key: 'mat',   label: 'Twine',   sub: 'Upgrade material',   picks: [[0, 'tank']] },
+      { key: 'mat',   label: 'Solvent', sub: 'Upgrade material',   picks: [[4, 'melee']] }
+    ]},
+    { floor: 2, duty: 'M10S', drops: [
+      { key: 'head',  label: 'Head',    sub: 'Head · raid',        picks: [[3, 'healer']] },
+      { key: 'hands', label: 'Hands',   sub: 'Hands · raid',       picks: [[5, 'ranged'], [3, 'healer']] },
+      { key: 'feet',  label: 'Feet',    sub: 'Feet · raid',        picks: [[4, 'melee'], [6, 'caster'], [3, 'healer']] },
+      { key: 'mat',   label: 'Glaze',   sub: 'Upgrade material',   picks: [[2, 'healer']] }
+    ]},
+    { floor: 1, duty: 'M9S', drops: [
+      { key: 'ears',   label: 'Ears',   sub: 'Ears · raid',        picks: [[3, 'healer'], [0, 'tank']] },
+      { key: 'neck',   label: 'Neck',   sub: 'Neck · raid',        picks: [[6, 'caster'], [5, 'ranged'], [3, 'healer']] },
+      { key: 'wrists', label: 'Wrists', sub: 'Wrists · raid',      picks: [[4, 'melee'], [6, 'caster'], [1, 'tank']] }
+    ]}
+  ];
+
+  const initials = (n) => n.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+
+  function buildQueues() {
+    const host = document.getElementById('queuesPanel');
+    host.innerHTML = QUEUES.map(f =>
+      '<div class="surface floor-card" data-floor="' + f.floor + '">' +
+        '<div class="floor-head"><span class="duty">' + f.duty + '</span>' +
+        '<span class="fname">Floor ' + f.floor + '</span><span>· in progress</span></div>' +
+        f.drops.map(d =>
+          '<div class="drop-row">' +
+            '<span class="drop-name">' + slotName(f.floor, d.key, d.label) +
+              '<span class="sub">' + d.sub + '</span></span>' +
+            '<span class="chips">' + d.picks.map(([i, role], n) =>
+              '<span class="chip-p ' + role + '"><span class="av">' + initials(NAMES[i]) + '</span>' +
+              NAMES[i] + '<span class="rk">#' + (n + 1) + '</span></span>').join('') +
+              (d.picks.length ? '<span class="why" title="Role priority + need + drought">why</span>' : '') +
+            '</span>' +
+            '<button type="button" class="btn btn--ghost">Assign</button>' +
+          '</div>').join('') +
+      '</div>').join('');
+  }
+
+  buildMatrix();
+  buildQueues();
+
+  // ── Switcher (R-1, R-3, R-5) ──
+  const segs = document.querySelectorAll('.segmented button');
+  segs.forEach(b => b.addEventListener('click', () => {
+    segs.forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+    document.body.dataset.view = b.dataset.seg;
+  }));
+  document.body.dataset.view = 'matrix';
+
+  // ── Floor pills (R-2, R-7) ──
+  const pills = document.querySelectorAll('.pill');
+  const action = document.getElementById('logAction');
+  const DUTY = { 1: 'M9S', 2: 'M10S', 3: 'M11S', 4: 'M12S' };
+
+  function scope(floor) {
+    document.querySelectorAll('#matrixBody tr[data-floor]').forEach(tr => {
+      tr.style.display = (floor === 'all' || tr.dataset.floor === floor) ? '' : 'none';
+    });
+    document.querySelectorAll('#queuesPanel .floor-card').forEach(c => {
+      c.style.display = (floor === 'all' || c.dataset.floor === floor) ? '' : 'none';
+    });
+    // R-7: the action follows the pill
+    action.textContent = floor === 'all' ? "Log this week's loot" : '+ Log Floor ' + floor + ' (' + DUTY[floor] + ')';
+  }
+
+  pills.forEach(p => p.addEventListener('click', () => {
+    pills.forEach(o => o.setAttribute('aria-pressed', String(o === p)));
+    scope(p.dataset.floor);
+  }));
+</script>

@@ -160,6 +160,11 @@ logged **weapon** entry shows the **recipient's job icon**, so which weapon drop
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
+**Mockup:** `design/redesign/mockups/03-loot-priority-phase-d.html` — the switcher and the floor
+pills are live in it (scoping, the R-7 button swap, the R-5 label swap); everything else is a still.
+Also published for viewing at
+<https://claude.ai/code/artifact/6ed22323-c071-4cfc-b60d-ec317909b5bf>.
+
 Still open **inside** Priority — component detail, not structure:
 
 - **D-28 RecipientPicker additions.** The "This will:" action preview, making the acquired state
