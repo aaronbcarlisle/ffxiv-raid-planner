@@ -70,7 +70,7 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'New UI: Lodestone character sync is reachable again (Phase C, slice C8)',
         description:
-          'Opt-in new UI only (admin-gated preview). The Lodestone search → preview → sync flow had no way in from the new UI — the old card menu was its only entry point anywhere in the app. It now lives in the Roster’s “Manage characters” dialog, as a “Lodestone sync” row per player showing the linked character and world, with “Lodestone Sync” or “Re-sync Lodestone” alongside. The flow itself is unchanged; only the way in is new. Members can sync their own claimed card without needing to manage the roster, exactly as before. Opening the sync flow sets the Characters dialog aside and returns you to it when you close.',
+          'Opt-in new UI only (admin-gated preview). The Lodestone search → preview → sync flow had no way in from the new UI — the old card menu was its only entry point anywhere in the app. It now lives in the Roster’s “Manage characters” dialog, as a “Lodestone sync” row for every player on the roster, substitutes included, showing the linked character and world with “Lodestone Sync” or “Re-sync Lodestone” alongside. The flow itself is unchanged; only the way in is new. Who may use it is unchanged too: members can sync their own claimed card without managing the roster, and a row you can’t use now says why instead of staying silently greyed out. Opening the sync flow sets the Characters dialog aside and returns you to it when you close.',
         pr: 201,
         prTitle: 'feat(redesign): Phase C slice C8 — Lodestone re-home (D-12 flow)',
       },

@@ -188,6 +188,74 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
     expect(screen.getByRole('button', { name: /Lodestone Sync for Sage Main/i })).toBeDisabled();
   });
 
+  // Legacy renders a full PlayerCard — kebab and all — for substitutes
+  // (`PlayerGrid.tsx:680-681`), and R-041 carries no isSubstitute condition. The
+  // shared registry panel below keeps legacy's main-roster-only list.
+  it('offers the entry to substitutes, who have no other v2 path to the flow', () => {
+    const sub = makePlayer({ id: 'p3', name: 'Melee Two', isSubstitute: true });
+
+    render(
+      <CharacterManageBridge
+        groupId="g1"
+        players={players}
+        syncPlayers={[...players, sub]}
+        canEdit
+        userRole="owner"
+        currentUserId="u1"
+        isAdmin={false}
+      />,
+    );
+    openCharacters();
+
+    expect(screen.getByRole('button', { name: /Lodestone Sync for Melee Two/i })).toBeEnabled();
+    expect(screen.getByText('1/3 linked')).toBeInTheDocument();
+  });
+
+  // A disabled Button is `pointer-events-none`, so a native `title` can never
+  // fire — the reason has to be rendered, not attached.
+  it('shows why an entry is unavailable instead of only attaching a title', () => {
+    render(
+      <CharacterManageBridge groupId="g1" players={players} canEdit={false} userRole="viewer" currentUserId="u1" isAdmin={false} />,
+    );
+    openCharacters();
+
+    expect(screen.getAllByText(/Viewers cannot edit players/i).length).toBeGreaterThan(0);
+  });
+
+  it('falls back to the same placeholder in the accessible name as on screen', () => {
+    render(
+      <CharacterManageBridge
+        groupId="g1"
+        players={[makePlayer({ id: 'p9', name: '' })]}
+        canEdit
+        userRole="owner"
+        currentUserId="u1"
+        isAdmin={false}
+      />,
+    );
+    openCharacters();
+
+    expect(screen.getByRole('button', { name: 'Lodestone Sync for —' })).toBeInTheDocument();
+  });
+
+  it('drops the sync target when that player leaves the roster mid-flow', () => {
+    const { rerender } = render(
+      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdmin={false} />,
+    );
+    openCharacters();
+    fireEvent.click(screen.getByRole('button', { name: /Lodestone Sync for Warrior Main/i }));
+    expect(screen.getByTestId('lodestone-modal')).toBeInTheDocument();
+
+    // The player is removed while the flow is open (a poll or a roster edit).
+    rerender(
+      <CharacterManageBridge groupId="g1" players={[players[1]]} canEdit userRole="owner" currentUserId="u1" isAdmin={false} />,
+    );
+
+    // Not stranded between two shut dialogs — back in Characters.
+    expect(screen.queryByTestId('lodestone-modal')).not.toBeInTheDocument();
+    expect(screen.getByTestId('char-panel')).toBeInTheDocument();
+  });
+
   it('disables every entry for a viewer', () => {
     render(
       <CharacterManageBridge groupId="g1" players={players} canEdit={false} userRole="viewer" currentUserId="u1" isAdmin={false} />,
