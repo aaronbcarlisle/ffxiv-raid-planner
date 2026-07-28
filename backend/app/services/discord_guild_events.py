@@ -793,7 +793,9 @@ async def sync_group_sessions_for_discord_link(
                 session_id=session.id,
                 error=str(exc),
             )
-            actions.append(f"{session.title}: failed: {exc}")
+            # Full error is in the log above; the client-visible action string
+            # must not carry raw exception text (CodeQL py/stack-trace-exposure).
+            actions.append(f"{session.title}: failed: Discord sync error (details in server logs)")
 
     if not actions:
         actions.append("skipped: no sessions to sync")
