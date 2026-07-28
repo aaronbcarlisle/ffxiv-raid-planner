@@ -184,35 +184,15 @@ export function ShellContentStates({
     );
   }
 
-  // ── 4. No tiers ──
-  // The `!isLoading` guard mirrors legacy (GroupView.tsx:271,382): on a static
-  // switch, `fetchGroupByShareCode` sets the group store's isLoading:true
-  // WITHOUT nulling the stale currentGroup, so without this guard a still-
-  // populated static would flash "No Raid Tiers" for the roundtrip.
-  if (tiers.length === 0 && !tiersLoading && !isLoading) {
-    return (
-      <>
-        {banners}
-        <div data-testid="shell-state-no-tiers" className="mx-auto w-full max-w-2xl p-6">
-          <EmptyState
-            icon={<Layers className="w-6 h-6" />}
-            heading="No Raid Tiers"
-            description="Create your first tier snapshot to start tracking gear progress."
-            action={canEdit ? { label: 'Create First Tier', onClick: () => onNewTier() } : undefined}
-          />
-        </div>
-      </>
-    );
-  }
-
-  // ── 5. Otherwise: content, plus an error Modal overlay when a group is loaded
-  //    but an error surfaced. Rendered conditionally (not just isOpen-gated) so
-  //    the happy path never mounts the Modal. ──
-  return (
-    <>
-      {banners}
-      {children}
-      {error && currentGroup && (
+  // The error overlay belongs to EVERY `currentGroup`-truthy branch, not just
+  // the content path — legacy renders it past all of its branches, in the same
+  // return as its own no-tiers panel (`GroupView.tsx:354-362` + `:415-416`).
+  // Phase-C closeout finding: a failing tier fetch sets an error AND leaves the
+  // list empty, so branch 4's early return used to swallow the error outright —
+  // v2 showed a bare "No Raid Tiers" where legacy showed the modal. Proven live
+  // on both shells against a simulated 500. Still conditional (not merely
+  // `isOpen`-gated) so the happy path never mounts a Modal.
+  const errorOverlay = error && currentGroup && (
         <Modal
           isOpen
           onClose={handleDismissError}
@@ -270,7 +250,36 @@ export function ShellContentStates({
             </div>
           </div>
         </Modal>
-      )}
+  );
+
+  // ── 4. No tiers ──
+  // The `!isLoading` guard mirrors legacy (GroupView.tsx:271,382): on a static
+  // switch, `fetchGroupByShareCode` sets the group store's isLoading:true
+  // WITHOUT nulling the stale currentGroup, so without this guard a still-
+  // populated static would flash "No Raid Tiers" for the roundtrip.
+  if (tiers.length === 0 && !tiersLoading && !isLoading) {
+    return (
+      <>
+        {banners}
+        <div data-testid="shell-state-no-tiers" className="mx-auto w-full max-w-2xl p-6">
+          <EmptyState
+            icon={<Layers className="w-6 h-6" />}
+            heading="No Raid Tiers"
+            description="Create your first tier snapshot to start tracking gear progress."
+            action={canEdit ? { label: 'Create First Tier', onClick: () => onNewTier() } : undefined}
+          />
+        </div>
+        {errorOverlay}
+      </>
+    );
+  }
+
+  // ── 5. Otherwise: content, plus the error overlay. ──
+  return (
+    <>
+      {banners}
+      {children}
+      {errorOverlay}
     </>
   );
 }
