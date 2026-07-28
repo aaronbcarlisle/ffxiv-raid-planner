@@ -48,7 +48,7 @@ import { SafeAvatar } from '../ui/SafeAvatar';
 import { RosterGearTable } from './RosterGearTable';
 import { buildSlotJumpTargets, type JumpKind, type SlotJumpTargets } from './rosterLedgerJumps';
 import { hasHoverData } from './gearHoverData';
-import { gearSlotIconClass, gearSlotIconUrl, isRealItemIcon } from './gearSlotIcon';
+import { gearSlotIconClass, gearSlotIconUrl, isRealItemIcon, raidNormalizedWeapon } from './gearSlotIcon';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
 import { equippedAverageIlv } from './rosterIlv';
@@ -1067,7 +1067,7 @@ export function RosterCard({
                       aria-hidden="true"
                       width={20}
                       height={20}
-                      className={`h-5 w-5 ${gearSlotIconClass(slot, isRealItemIcon(slot))}`}
+                      className={`h-5 w-5 ${gearSlotIconClass(raidNormalizedWeapon(slot.slot, slot), isRealItemIcon(slot))}`}
                     />
                     {/* The weapon's main row is always the RAID weapon (the
                         tome interim is the pip below it), so it takes the

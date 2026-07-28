@@ -38,7 +38,7 @@ import { fromGearState, requiresAugmentation, toGearState, type GearState } from
 import { hasHoverData } from './gearHoverData';
 import { jumpMenuAnchor } from './rosterLedgerJumps';
 import type { JumpKind, SlotJumpTargets } from './rosterLedgerJumps';
-import { gearSlotIconClass, gearSlotIconUrl, isRealItemIcon } from './gearSlotIcon';
+import { gearSlotIconClass, gearSlotIconUrl, isRealItemIcon, raidNormalizedWeapon } from './gearSlotIcon';
 
 /**
  * Whether the Alt key is currently held. Drives the jump icons' cursor (user
@@ -237,7 +237,7 @@ export function RosterGearTable({
               aria-hidden="true"
               width={24}
               height={24}
-              className={`shrink-0 ${gearSlotIconClass(status, isRealItemIcon(status))}`}
+              className={`shrink-0 ${gearSlotIconClass(raidNormalizedWeapon(slot, status), isRealItemIcon(status))}`}
             />
           );
           const slotIcon =

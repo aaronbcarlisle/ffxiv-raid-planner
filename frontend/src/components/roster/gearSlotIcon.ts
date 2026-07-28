@@ -35,3 +35,18 @@ export function gearSlotIconClass(status: GearSlotStatus, isItemIcon: boolean): 
   if (!status.hasItem) return 'opacity-50';
   return incomplete ? 'brightness-0 invert opacity-50' : 'brightness-0 invert opacity-90';
 }
+
+/**
+ * The weapon's main row is ALWAYS the raid weapon — the tome interim is its own
+ * sub-row (expanded) or second pip (compact) — so both shells hardcode the
+ * weapon's CIRCLE to a raid, 2-state cycle. The ICON was left reading the raw
+ * stored source, so a weapon storing `bisSource: 'tome'` with `hasItem: true`
+ * dimmed as "incomplete" while the circle beside it announced "Complete".
+ *
+ * Latent in the expanded table, visible the moment the compact strip stacked
+ * the two in one column (PR #203 review). Normalizing here keeps the icon and
+ * the circle telling the same story at both densities.
+ */
+export function raidNormalizedWeapon(slot: GearSlot, status: GearSlotStatus): GearSlotStatus {
+  return slot === 'weapon' ? { ...status, bisSource: 'raid' } : status;
+}

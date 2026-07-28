@@ -7,7 +7,7 @@
  * table drifting apart.
  */
 import { describe, it, expect } from 'vitest';
-import { gearSlotIconUrl, gearSlotIconClass, isRealItemIcon } from './gearSlotIcon';
+import { gearSlotIconUrl, gearSlotIconClass, isRealItemIcon, raidNormalizedWeapon } from './gearSlotIcon';
 import { GEAR_SLOT_ICONS, type GearSlotStatus } from '../../types';
 
 const base = (o: Partial<GearSlotStatus> = {}): GearSlotStatus =>
@@ -49,5 +49,22 @@ describe('isRealItemIcon', () => {
   it('is true only when the slot carries an item icon', () => {
     expect(isRealItemIcon(base({ itemIcon: '/i/1.png' }))).toBe(true);
     expect(isRealItemIcon(base())).toBe(false);
+  });
+});
+
+describe('raidNormalizedWeapon', () => {
+  it('treats the weapon as raid, so its icon agrees with its 2-state circle', () => {
+    const tomeWeapon = base({ slot: 'weapon', bisSource: 'tome', hasItem: true, isAugmented: false });
+    // Raw: the icon would dim as "incomplete" while the circle says Complete.
+    expect(gearSlotIconClass(tomeWeapon, false)).toBe('brightness-0 invert opacity-50');
+    // Normalized: both agree.
+    expect(gearSlotIconClass(raidNormalizedWeapon('weapon', tomeWeapon), false)).toBe(
+      'brightness-0 invert opacity-90',
+    );
+  });
+
+  it('leaves every other slot alone', () => {
+    const tomeLegs = base({ slot: 'legs', bisSource: 'tome', hasItem: true, isAugmented: false });
+    expect(raidNormalizedWeapon('legs', tomeLegs)).toBe(tomeLegs);
   });
 });
