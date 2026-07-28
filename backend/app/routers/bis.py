@@ -262,7 +262,10 @@ async def fetch_bis_from_xivgear_url(url_or_uuid: str) -> dict:
         except httpx.TimeoutException:
             raise HTTPException(status_code=504, detail="XIVGear API timeout")
         except httpx.RequestError as e:
-            raise HTTPException(status_code=502, detail=f"Failed to reach XIVGear: {e}")
+            # Log the real error; the client message must not carry raw
+            # exception text (may leak internal hosts/config).
+            logger.warning("xivgear_request_error", error=str(e))
+            raise HTTPException(status_code=502, detail="Failed to reach XIVGear")
 
     if 300 <= response.status_code < 400:
         logger.warning("xivgear_basedata_unexpected_redirect", status=response.status_code)
@@ -737,7 +740,10 @@ async def fetch_bis_from_github(job: str, tier: str) -> dict:
         except httpx.TimeoutException:
             raise HTTPException(status_code=504, detail="GitHub timeout")
         except httpx.RequestError as e:
-            raise HTTPException(status_code=502, detail=f"Failed to reach GitHub: {e}")
+            # Log the real error; the client message must not carry raw
+            # exception text (may leak internal hosts/config).
+            logger.warning("github_request_error", error=str(e))
+            raise HTTPException(status_code=502, detail="Failed to reach GitHub")
 
     # Reject redirects to prevent SSRF
     if 300 <= response.status_code < 400:
@@ -769,7 +775,10 @@ async def fetch_bis_from_shortlink(uuid: str) -> dict:
         except httpx.TimeoutException:
             raise HTTPException(status_code=504, detail="XIVGear API timeout")
         except httpx.RequestError as e:
-            raise HTTPException(status_code=502, detail=f"Failed to reach XIVGear: {e}")
+            # Log the real error; the client message must not carry raw
+            # exception text (may leak internal hosts/config).
+            logger.warning("xivgear_request_error", error=str(e))
+            raise HTTPException(status_code=502, detail="Failed to reach XIVGear")
 
     # Reject redirects to prevent SSRF
     if 300 <= response.status_code < 400:
@@ -824,7 +833,10 @@ async def fetch_bis_from_etro(uuid: str) -> dict:
         except httpx.TimeoutException:
             raise HTTPException(status_code=504, detail="Etro API timeout")
         except httpx.RequestError as e:
-            raise HTTPException(status_code=502, detail=f"Failed to reach Etro: {e}")
+            # Log the real error; the client message must not carry raw
+            # exception text (may leak internal hosts/config).
+            logger.warning("etro_request_error", error=str(e))
+            raise HTTPException(status_code=502, detail="Failed to reach Etro")
 
     # Reject redirects to prevent SSRF
     if 300 <= response.status_code < 400:
