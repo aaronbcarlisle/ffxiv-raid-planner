@@ -490,35 +490,31 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       );
     });
 
-    // PR #203 review: giving the weapon column the generic 4-way selector would
-    // be the first path in v2 able to CREATE a non-raid weapon source — the very
-    // state raidNormalizedWeapon exists to absorb — and it would wipe the
-    // weapon's imported item metadata on the way. CLAUDE.md states the rule
-    // twice; the expanded table enforces it by branching before the popover.
-    it('the weapon column carries a FIXED R badge, never the source selector', () => {
+    // REVERSED 2026-07-28 (user ruling, after live use): the strip carried a
+    // third row of BiS-source badges for one revision and it read as noise at
+    // card size. Compact is TWO ROWS — icon, pip — and retargeting is the
+    // expanded table's job again. This also subsumes the PR #203 finding that
+    // the weapon column must never get the generic 4-way selector (which would
+    // have been the first path in v2 able to CREATE a non-raid weapon source):
+    // no column has one now, the weapon's least of all.
+    it('carries NO BiS-source row — not a badge, not a selector, in any column', () => {
       renderCard(makePlayer({
         gear: [
           { slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false },
           { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
         ] as unknown as SnapshotPlayer['gear'],
+        tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
       }));
 
-      const weaponCol = screen.getAllByTestId('compact-gear-slot')[0];
-      expect(within(weaponCol).getByTestId('compact-weapon-source')).toHaveTextContent('R');
-      // no popover trigger in that column at all
-      expect(within(weaponCol).queryByRole('button', { name: /BiS source/ })).not.toBeInTheDocument();
-    });
-
-    it('every non-weapon column still gets the selector', () => {
-      renderCard(makePlayer({
-        gear: [
-          { slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false },
-          { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
-        ] as unknown as SnapshotPlayer['gear'],
-      }));
-
-      const head = screen.getAllByTestId('compact-gear-slot')[1];
-      expect(within(head).getByRole('button', { name: /BiS source/ })).toBeInTheDocument();
+      const strip = screen.getByTestId('compact-gear-strip');
+      expect(within(strip).queryByTestId('compact-weapon-source')).not.toBeInTheDocument();
+      expect(within(strip).queryByTestId('compact-tome-source')).not.toBeInTheDocument();
+      expect(within(strip).queryByRole('button', { name: /BiS source/ })).not.toBeInTheDocument();
+      // and every column is exactly icon + pip
+      for (const col of within(strip).getAllByTestId('compact-gear-slot')) {
+        expect(col.querySelectorAll('img')).toHaveLength(1);
+        expect(within(col).getAllByRole('checkbox')).toHaveLength(1);
+      }
     });
 
     // PR #203 review: hasHoverData also keys off the EQUIPPED fields, which the
@@ -605,8 +601,8 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
     // slot — so it stacks under the weapon's own pip. Compact echo of C4.
     it('renders no tome pip when the player is not pursuing one', () => {
       renderCard(makePlayer({ tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false } }));
-      expect(screen.queryByTestId('compact-tome-source')).not.toBeInTheDocument();
       expect(screen.queryAllByTestId('compact-gear-slot').filter((c) => c.getAttribute('data-column') === 'tome')).toHaveLength(0);
+      expect(screen.queryByRole('checkbox', { name: /Tome weapon/ })).not.toBeInTheDocument();
     });
 
     it('gives the tome weapon its own column, immediately after the weapon', () => {
@@ -623,7 +619,6 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       const columns = screen.getAllByTestId('compact-gear-slot');
       // weapon, tome, head — the tome column sits beside the weapon it belongs to
       expect(columns.map((c) => c.getAttribute('data-column'))).toEqual(['slot', 'tome', 'slot']);
-      expect(within(columns[1]).getByTestId('compact-tome-source')).toHaveTextContent('T');
       expect(within(columns[1]).getByRole('checkbox', { name: /Tome weapon/ })).toBeInTheDocument();
     });
 

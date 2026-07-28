@@ -14,6 +14,8 @@
  *     CardShell (CardShell stays the card *surface*, per the brief's intent).
  *   - The compact gear strip is ONE COLUMN PER SLOT: the item icon (or the slot
  *     placeholder) above its status pip, both centered, columns evenly spaced.
+ *     Two rows only — the BiS-source badge row was tried and pulled the same day
+ *     (see the strip's own comment for the ruling and the accepted trade).
  *     The icon is decoration — identity plus the hover item card; the PIP is the
  *     only control. Editing is available at BOTH densities as of 2026-07-28, so
  *     density is a detail axis and no longer a capability gate. Every edit still
@@ -50,7 +52,6 @@ import { buildSlotJumpTargets, type JumpKind, type SlotJumpTargets } from './ros
 import { hasHoverData } from './gearHoverData';
 import { gearSlotIconClass, gearSlotIconUrl, isRealItemIcon, raidNormalizedWeapon } from './gearSlotIcon';
 import { cycleHint } from './gearCycleHint';
-import { BiSSourceSelector } from '../player/BiSSourceSelector';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
 import { equippedAverageIlv } from './rosterIlv';
@@ -84,7 +85,7 @@ import {
   getRoleForJob,
   getValidRole,
 } from '../../gamedata';
-import { GEAR_SLOT_ICONS, GEAR_SLOT_NAMES } from '../../types';
+import { GEAR_SLOT_NAMES } from '../../types';
 import type {
   ContentType,
   GearSlot,
@@ -188,10 +189,6 @@ export function RosterCard({
   // messaging: owner/lead edit all, a member their own claimed card.
   const gearPermission = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess);
   const canCycleGear = gearPermission.allowed;
-  // The source selector follows the same gate as the cycle — C3 put retargeting
-  // in the expanded table only; compact gained it 2026-07-28 when the card
-  // became "the expanded card rotated 90 degrees".
-  const canEditSource = gearPermission.allowed;
 
   /**
    * Compact strip columns: the eleven gear slots, plus the interim tome weapon
@@ -1101,12 +1098,23 @@ export function RosterCard({
           <>
             <div className="flex-1" />
             {/* Compact = the expanded card rotated 90°: one column per slot,
-                icon → status pip → BiS-source badge, and the interim tome
-                weapon takes a column of its own (user ruling 2026-07-28 —
-                a whole row for one pip wasted the space). The tome column is
-                toggled from the kebab's existing Track/Stop item, which writes
-                the same store field (C4), so the strip needs no `+` of its own:
-                two controls would not fit a ~36px column. */}
+                icon → status pip, and the interim tome weapon takes a column of
+                its own (user ruling 2026-07-28 — a whole row for one pip wasted
+                the space). The tome column is toggled from the kebab's existing
+                Track/Stop item, which writes the same store field (C4), so the
+                strip needs no `+` of its own: two controls would not fit a
+                ~36px column.
+
+                NO BiS-source row. A third row of R/T/BT/C badges shipped here
+                for one revision and was pulled the same day (user ruling
+                2026-07-28, after live use): eleven badges under eleven pips
+                read as noise at card size. The trade is deliberate and known —
+                `GearStatusCircle` only tints by source in the have/complete
+                states, so an early-tier card of missing slots now reads as
+                sourceless in compact. That is the density axis doing its job:
+                compact answers "how far along is everyone", expanded answers
+                "what is each piece and where does it come from". Retargeting
+                lives in the expanded table (C3), which is where it started. */}
             <div
               data-testid="compact-gear-strip"
               className="mt-3 grid gap-x-1"
@@ -1131,7 +1139,9 @@ export function RosterCard({
                     key={col.key}
                     data-testid="compact-gear-slot"
                     data-column={col.kind}
-                    className="flex flex-col items-center gap-1"
+                    /* gap-2, not gap-1: with the source badge gone the column is
+                       two rows, and 4px read as the pip touching the icon. */
+                    className="flex flex-col items-center gap-2"
                   >
                     {/* Only the ICON opens the item card — the pip has its own
                         cycle hint, and stacking both on one trigger meant a
@@ -1187,47 +1197,6 @@ export function RosterCard({
                       }
                       size="sm"
                     />
-
-                    {/* Source badge — the same control the expanded table's BiS
-                        column carries, so compact can retarget a slot too. The
-                        tome column's source is fixed (it IS the tome weapon),
-                        matching the expanded sub-row's static T. */}
-                    {isTome || slot.slot === 'weapon' ? (
-                      /* Both of these are FIXED, not selectable. The BiS weapon
-                         is always raid and the interim tome weapon is always
-                         tome — `CLAUDE.md` states it twice, and the expanded
-                         table enforces it by branching to `WeaponBiSSelector`
-                         before the generic popover ever renders. Handing the
-                         weapon column the 4-way selector would have been the
-                         first path in v2 able to CREATE the non-raid weapon
-                         source `raidNormalizedWeapon` exists to absorb, and it
-                         would wipe the weapon's imported item metadata on the
-                         way (PR #203 review). Tome tracking stays on the
-                         kebab's Track/Stop, as the rest of this strip already
-                         assumes. */
-                      <span
-                        data-testid={isTome ? 'compact-tome-source' : 'compact-weapon-source'}
-                        className={`inline-flex w-7 items-center justify-center rounded py-0.5 text-xs font-bold ${isTome ? 'text-gear-tome' : 'text-gear-raid'} ${canCycleGear ? '' : 'opacity-50'}`}
-                        aria-label={isTome ? 'Tome weapon — BiS source is always Tome' : 'Weapon — BiS source is always Raid'}
-                      >
-                        {isTome ? 'T' : 'R'}
-                      </span>
-                    ) : (
-                      <BiSSourceSelector
-                        bisSource={slot.bisSource}
-                        onSelect={(source: GearSource | null) => void handleSourceChange(slot.slot, source)}
-                        disabled={!canEditSource}
-                        disabledReason={gearPermission.reason}
-                        hasItemData={!!slot.itemName}
-                        itemName={slot.itemName}
-                        itemIcon={slot.itemIcon}
-                        slotIcon={GEAR_SLOT_ICONS[slot.slot]}
-                        itemLevel={slot.itemLevel}
-                        itemStats={slot.itemStats}
-                        hasItem={slot.hasItem}
-                        isAugmented={slot.isAugmented}
-                      />
-                    )}
                   </div>
                 );
               })}

@@ -1,8 +1,9 @@
 # Compact card: gear icons + editable status pips
 
 **Status: ✅ SHIPPED (PR #203).** User-approved 2026-07-28, implemented the same day, then
-**REVISED the same day after live use** — see §6. Authored 2026-07-28, off `main` after the Phase-C
-closeout (PR #202). Post-Phase-C polish on the roster card; not part of any C-slice.
+**REVISED TWICE the same day after live use** — §6 (badges added), then **§7, which reverses §6.2 and
+is the state that ships**. Authored 2026-07-28, off `main` after the Phase-C closeout (PR #202).
+Post-Phase-C polish on the roster card; not part of any C-slice.
 
 ---
 
@@ -149,7 +150,8 @@ screenshots.
 - **The expanded table** — untouched.
 - **Legacy's compact row** — untouched, and its icon treatment is the reference, not a target for
   edits.
-- ~~**BiS-source editing in compact**~~ — **REVERSED in §6.** Compact now edits target state too.
+- **BiS-source editing in compact** — briefly reversed in §6.2, then **re-instated by §7**. Out of
+  scope, as originally written. Compact edits *progress*; the expanded table owns the *target*.
 
 ---
 
@@ -165,7 +167,7 @@ the control. Now the **icon** owns the item card and the **pip** owns the cycle 
 one copy). The tome pip's hint is specialized — "Tome weapon status … empty → base obtained (ring)
 → augmented (filled)" — so the augment step is stated rather than inferred.
 
-### 6.2 The source was invisible, and the fix is a third row
+### 6.2 The source was invisible, and the fix is a third row — ⚠️ REVERSED, see §7
 
 Diagnosis first: the pip *does* tint by source, but only in the have/complete states —
 `GearStatusCircle`'s missing state is a flat gray circle with no source tint
@@ -189,3 +191,49 @@ and removes the column, writing the same store field (C4 proved the two stay in 
 
 **Measured, not assumed:** at the 4-up breakpoint the strip is 436px → 36px per column with twelve,
 against a 28px badge. No overflow at any card width the responsive grid produces.
+
+---
+
+## 7. Second revision — the badge row is pulled (this is what ships)
+
+**User ruling 2026-07-28, looking at §6 live across a full seven-card roster:** *"I think we should
+hide the BiS type row (R, T, C, A) for now, it's just way too busy currently."*
+
+§6.2 fit — the measurement was right, nothing overflowed — but fitting was the wrong test. Eleven
+bold glyphs under eleven pips under eleven icons made the strip the loudest thing on a card whose
+whole job is to be scanned in a row of seven. **The compact column is two rows again: icon, pip.**
+
+Also **`gap-1` → `gap-2`** between them. At 4px the pip read as attached to the icon; the third row
+had been supplying the visual separation, and removing it exposed that.
+
+### 7.1 What the reversal costs, stated plainly
+
+§6.2's diagnosis stands: `GearStatusCircle` tints by source only in the have/complete states
+(`GearStatusCircle.tsx:164-166`), so an early-tier card — mostly missing slots — reads as sourceless
+in compact. That cost is **accepted, not overlooked**. It is the density axis working as designed:
+
+| Density | Question it answers |
+|---------|---------------------|
+| Compact | *How far along is everyone?* — progress across seven cards at a glance |
+| Expanded | *What is each piece and where does it come from?* — the full table, sources included |
+
+Retargeting a slot therefore lives in the expanded table again (where C3 put it), and §5's
+"BiS-source editing in compact — out of scope" line is back **in force**.
+
+### 7.2 What §6 keeps
+
+Not a revert of the commit — only of its third row. Still shipping:
+
+- **§6.1** the pip's own cycle-hint tooltip, and `gearCycleHint.tsx` shared by both densities.
+- **§6.3** the tome weapon as its own column. Without its static `T` it is identified by its icon,
+  its pip's `aria-label` ("Tome weapon — …") and its cycle hint — enough, and it costs no glyph.
+- The **`base-tome` light-mode token darkening** that §6 dragged in (`#2563eb` → `#1d4ed8`,
+  3.89:1 → 4.88:1 on its own 20% tint). That was a real WCAG 2 AA failure, it had been failing
+  unnoticed in **both** shells since C3, and the expanded table still renders the pair — so the fix
+  outlives the badge row that exposed it. Coverage note: the roster contrast e2e runs at **compact**
+  density, so with the badges gone it stops reaching that pair again — the fix stands, its automated
+  guard does not. Back to the C3-era shared-leaf blindspot, and it rides the same queued slice.
+
+**"For now."** The user's phrasing leaves the door open. §6.2 stays on the page as the record of why
+it was tried and what it solved, so bringing it back is a cherry-pick of one JSX block plus its
+three tests — not a re-derivation.
