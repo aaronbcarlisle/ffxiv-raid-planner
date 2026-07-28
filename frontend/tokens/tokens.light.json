@@ -61,7 +61,7 @@
       "gear-source": {
         "raid": { "$type": "color", "$value": "#dc2626" },
         "tome": { "$type": "color", "$value": "#0c7d71", "$description": "F3 AA fix: darkened from #0f9688 (~3.4:1 on light surfaces, fails WCAG AA) to #0c7d71 (~4.61:1 on #f5f5f8, ~5.02:1 on #ffffff — passes AA at normal weight). Gear-source tome label shown as text on light card/base surfaces." },
-        "base-tome": { "$type": "color", "$value": "#2563eb" },
+        "base-tome": { "$type": "color", "$value": "#1d4ed8", "$description": "AA fix (2026-07-28): darkened from #2563eb. The BiS-source badge renders the token as text on its own 20% tint (#2563eb on #d3e0fb = 3.89:1, fails AA); #1d4ed8 on the resulting #d1dcf7 = 4.88:1. Caught when the compact card gained source badges and the roster contrast e2e — which runs on the compact density — finally reached the badge; the same pair had been failing unnoticed in BOTH shells since C3, because only the expanded table showed it. User-approved V1-visible delta: legacy gets the accessibility fix too." },
         "augmented": { "$type": "color", "$value": "#b45309" },
         "crafted": { "$type": "color", "$value": "#ea580c" }
       },

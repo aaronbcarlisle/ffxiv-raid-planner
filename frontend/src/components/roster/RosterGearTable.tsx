@@ -19,7 +19,7 @@
  * material-entry jump. Later slices continue here: ledger jumps (C7).
  */
 
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { FileSearch, RefreshCw } from 'lucide-react';
 import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
@@ -39,6 +39,7 @@ import { hasHoverData } from './gearHoverData';
 import { jumpMenuAnchor } from './rosterLedgerJumps';
 import type { JumpKind, SlotJumpTargets } from './rosterLedgerJumps';
 import { gearSlotIconClass, gearSlotIconUrl, isRealItemIcon, raidNormalizedWeapon } from './gearSlotIcon';
+import { cycleHint } from './gearCycleHint';
 
 /**
  * Whether the Alt key is currently held. Drives the jump icons' cursor (user
@@ -74,20 +75,6 @@ function useAltHeld(): boolean {
  * Cycle-hint tooltip for an editable status circle (v2 wording of the legacy
  * GearTable hint; shown only where the user can actually toggle).
  */
-function cycleHint(bisSource: GearSource, requiresAug: boolean): ReactNode {
-  const threeStep = bisSource === 'tome' && requiresAug;
-  return (
-    <div className="max-w-[15rem]">
-      <div className="font-medium">{BIS_SOURCE_FULL_NAMES[bisSource]} status</div>
-      <div className="mt-1 text-xs text-text-secondary">
-        {threeStep
-          ? 'Click or press Enter/Space to cycle: empty → base obtained (ring) → augmented (filled).'
-          : 'Click or press Enter/Space to toggle: empty ↔ obtained (filled).'}
-      </div>
-    </div>
-  );
-}
-
 export interface RosterGearTableProps {
   gear: GearSlotStatus[];
   tomeWeapon: TomeWeaponStatus;

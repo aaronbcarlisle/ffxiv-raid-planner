@@ -1,6 +1,7 @@
 # Compact card: gear icons + editable status pips
 
-**Status: ✅ SHIPPED (PR #203).** User-approved 2026-07-28, implemented the same day. Authored 2026-07-28, off `main` after the Phase-C
+**Status: ✅ SHIPPED (PR #203).** User-approved 2026-07-28, implemented the same day, then
+**REVISED the same day after live use** — see §6. Authored 2026-07-28, off `main` after the Phase-C
 closeout (PR #202). Post-Phase-C polish on the roster card; not part of any C-slice.
 
 ---
@@ -148,5 +149,43 @@ screenshots.
 - **The expanded table** — untouched.
 - **Legacy's compact row** — untouched, and its icon treatment is the reference, not a target for
   edits.
-- **BiS-source editing in compact** — the source selector stays expanded-only (C3). Compact edits
-  *obtained* state, not *target* state.
+- ~~**BiS-source editing in compact**~~ — **REVERSED in §6.** Compact now edits target state too.
+
+---
+
+## 6. Revision (same day, after live use)
+
+Three things surfaced once the strip was in the browser. All three are user-ruled.
+
+### 6.1 The pip needed its own tooltip
+
+The hover card wrapped the whole **column**, so hovering the pip explained the *item* rather than
+the control. Now the **icon** owns the item card and the **pip** owns the cycle hint
+(`cycleHint()`, extracted from the expanded table into `gearCycleHint.tsx` so both densities share
+one copy). The tome pip's hint is specialized — "Tome weapon status … empty → base obtained (ring)
+→ augmented (filled)" — so the augment step is stated rather than inferred.
+
+### 6.2 The source was invisible, and the fix is a third row
+
+Diagnosis first: the pip *does* tint by source, but only in the have/complete states —
+`GearStatusCircle`'s missing state is a flat gray circle with no source tint
+(`GearStatusCircle.tsx:164-166`). Early in a tier most slots are missing, so compact read as
+sourceless.
+
+Each column gains a **third row: the BiS-source badge**, and it is the same `BiSSourceSelector` the
+expanded table's BiS column uses — so compact can **retarget** a slot, not just record progress.
+This reverses §5's out-of-scope line, deliberately.
+
+### 6.3 The tome weapon became a column, not a stacked pip
+
+§2.5's second pip cost a whole row for one control. It is now a **twelfth column** immediately
+after the weapon, with its own icon, pip and a static `T` badge — the expanded card's sub-row,
+rotated. The user's framing: *"the behavior of the compacted card functions exactly like the
+expanded cards, just horizontally instead."*
+
+**No `+` on the strip.** The expanded row has horizontal room for one; a ~36px column does not —
+two controls there would be ~17px each. The kebab's existing **Track/Stop tome weapon** item adds
+and removes the column, writing the same store field (C4 proved the two stay in sync).
+
+**Measured, not assumed:** at the 4-up breakpoint the strip is 436px → 36px per column with twelve,
+against a 28px badge. No overflow at any card width the responsive grid produces.

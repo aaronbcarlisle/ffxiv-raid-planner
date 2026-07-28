@@ -552,10 +552,11 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
     // slot — so it stacks under the weapon's own pip. Compact echo of C4.
     it('renders no tome pip when the player is not pursuing one', () => {
       renderCard(makePlayer({ tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false } }));
-      expect(screen.queryByTestId('compact-tome-pip')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('compact-tome-source')).not.toBeInTheDocument();
+      expect(screen.queryAllByTestId('compact-gear-slot').filter((c) => c.getAttribute('data-column') === 'tome')).toHaveLength(0);
     });
 
-    it('stacks the tome pip under the weapon column while pursuing', () => {
+    it('gives the tome weapon its own column, immediately after the weapon', () => {
       renderCard(
         makePlayer({
           gear: [
@@ -567,8 +568,10 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       );
 
       const columns = screen.getAllByTestId('compact-gear-slot');
-      expect(within(columns[0]).getByTestId('compact-tome-pip')).toBeInTheDocument();
-      expect(within(columns[1]).queryByTestId('compact-tome-pip')).not.toBeInTheDocument();
+      // weapon, tome, head — the tome column sits beside the weapon it belongs to
+      expect(columns.map((c) => c.getAttribute('data-column'))).toEqual(['slot', 'tome', 'slot']);
+      expect(within(columns[1]).getByTestId('compact-tome-source')).toHaveTextContent('T');
+      expect(within(columns[1]).getByRole('checkbox', { name: /Tome weapon/ })).toBeInTheDocument();
     });
 
     it('the compact tome pip emits NO analytics (the C2 ruling covers gear slots only)', async () => {
@@ -584,7 +587,7 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
           { actions: { ...actions, onUpdate } }
         );
 
-        fireEvent.click(within(screen.getByTestId('compact-tome-pip')).getByRole('checkbox'));
+        fireEvent.click(screen.getByRole('checkbox', { name: /^Tome weapon/ }));
         await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
         // Flush the resolve chain so a would-be emit had every chance to fire.
         await new Promise((r) => setTimeout(r, 0));
@@ -604,7 +607,7 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
         { actions: { ...actions, onUpdate } }
       );
 
-      fireEvent.click(within(screen.getByTestId('compact-tome-pip')).getByRole('checkbox'));
+      fireEvent.click(screen.getByRole('checkbox', { name: /^Tome weapon/ }));
 
       await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
       expect(onUpdate.mock.calls[0][0]).toEqual({
@@ -909,9 +912,10 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       });
     });
 
-    it('compact pips with item data carry the hover item-card wiring (inspect, not edit)', () => {
-      // Legacy compact parity (R-065 hover leg): the pip strip supports
-      // INSPECTION via the hover item card while staying non-editing.
+    it('the compact ICON carries the hover item card, and the pip does not', () => {
+      // The hover card moved off the column and onto the icon (2026-07-28): the
+      // pip now has its own cycle-hint tooltip, and one trigger for both meant
+      // hovering the control explained the item instead.
       renderCard(
         makePlayer({
           id: 'p6',
@@ -922,11 +926,17 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
         })
       );
 
-      const pips = screen.getAllByRole('checkbox');
       // Radix stamps its Trigger wrapper with data-state when the hover card is
       // wired; the bare slot gets no wrapper.
-      const wired = pips.filter((p) => p.closest('[data-state]'));
-      expect(wired).toHaveLength(1);
+      const icons = [...screen.getByTestId('compact-gear-strip').querySelectorAll('img')];
+      expect(icons.filter((i) => i.closest('[data-state]'))).toHaveLength(1);
+      // The pip has a trigger of its OWN (the cycle hint) rather than sharing
+      // the icon's — that separation is the whole fix.
+      const pip = within(screen.getAllByTestId('compact-gear-slot')[0]).getByRole('checkbox');
+      const pipTrigger = pip.closest('[data-state]');
+      const iconTrigger = icons[0].closest('[data-state]');
+      expect(pipTrigger).not.toBeNull();
+      expect(pipTrigger).not.toBe(iconTrigger);
     });
   });
 });

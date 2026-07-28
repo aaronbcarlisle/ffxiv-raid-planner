@@ -70,7 +70,7 @@ export const RELEASES: Release[] = [
         category: 'feature',
         title: 'New UI: compact cards show gear icons, and gear is editable without expanding',
         description:
-          'Opt-in new UI only (admin-gated preview). The compact roster card now gives every gear slot its own column — the item icon on top, its status dot centred underneath — so you can see what each piece actually is at a glance, which the compact card had lost. The dots are now live: click or press Enter to mark a slot obtained or augmented without expanding the card first, under exactly the same permissions as the expanded table. An interim tome weapon appears as a second, smaller dot under the weapon column while you’re chasing one. Both views can now do the same things — expanding just shows more detail.',
+          'Opt-in new UI only (admin-gated preview). The compact roster card now gives every gear slot its own column: the item icon on top, its status dot beneath, and the raid/tome/crafted badge under that — so you can see what each piece is and where it comes from at a glance, both of which the compact card had lost. The dots and the badges are live: click or press Enter to mark a slot obtained or augmented, or to retarget it, without expanding the card first — under exactly the same permissions as the expanded table. An interim tome weapon takes its own column beside the weapon while you’re chasing one, added and removed from the card menu as before. Hovering an icon still shows the item; hovering a dot now explains what clicking it will do.',
         pr: 203,
         prTitle: 'feat(roster): compact card gear icons + editable pips',
       },
