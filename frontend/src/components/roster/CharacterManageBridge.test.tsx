@@ -98,7 +98,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
 
   it('offers a Lodestone entry per player', () => {
     render(
-      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdmin={false} />,
+      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdminAccess={false} />,
     );
     openCharacters();
 
@@ -108,7 +108,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
 
   it('names the linked character on a synced player', () => {
     render(
-      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdmin={false} />,
+      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdminAccess={false} />,
     );
     openCharacters();
 
@@ -118,7 +118,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
 
   it('opens the Lodestone modal on the player whose entry was clicked', () => {
     render(
-      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdmin={false} tierId="t1" />,
+      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdminAccess={false} tierId="t1" />,
     );
     openCharacters();
 
@@ -139,11 +139,14 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
     );
   });
 
-  // Both Modals render at z-50 and both listen for Escape on `window`, so
-  // stacking them would close both at once. The flow hands off instead.
+  // Stacking is unsafe here: each Modal registers its Escape handler on
+  // `window` and the FIRST registered wins the `stopImmediatePropagation`
+  // (`Modal.tsx:61-66`) — so Escape would close the background Characters modal
+  // and leave the sync flow over nothing. Both also trap Tab on `window`.
+  // (Only one closes, not both — the first draft of this comment said otherwise.)
   it('hands off from Characters to Lodestone rather than stacking the two', () => {
     render(
-      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdmin={false} />,
+      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdminAccess={false} />,
     );
     openCharacters();
 
@@ -155,7 +158,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
 
   it('returns to Characters when the Lodestone flow closes', () => {
     render(
-      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdmin={false} />,
+      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdminAccess={false} />,
     );
     openCharacters();
     fireEvent.click(screen.getByRole('button', { name: /Lodestone Sync for Warrior Main/i }));
@@ -179,7 +182,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
         canEdit={false}
         userRole="member"
         currentUserId="u1"
-        isAdmin={false}
+        isAdminAccess={false}
       />,
     );
     openCharacters();
@@ -202,7 +205,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
         canEdit
         userRole="owner"
         currentUserId="u1"
-        isAdmin={false}
+        isAdminAccess={false}
       />,
     );
     openCharacters();
@@ -215,7 +218,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
   // fire — the reason has to be rendered, not attached.
   it('shows why an entry is unavailable instead of only attaching a title', () => {
     render(
-      <CharacterManageBridge groupId="g1" players={players} canEdit={false} userRole="viewer" currentUserId="u1" isAdmin={false} />,
+      <CharacterManageBridge groupId="g1" players={players} canEdit={false} userRole="viewer" currentUserId="u1" isAdminAccess={false} />,
     );
     openCharacters();
 
@@ -230,7 +233,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
         canEdit
         userRole="owner"
         currentUserId="u1"
-        isAdmin={false}
+        isAdminAccess={false}
       />,
     );
     openCharacters();
@@ -240,7 +243,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
 
   it('drops the sync target when that player leaves the roster mid-flow', () => {
     const { rerender } = render(
-      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdmin={false} />,
+      <CharacterManageBridge groupId="g1" players={players} canEdit userRole="owner" currentUserId="u1" isAdminAccess={false} />,
     );
     openCharacters();
     fireEvent.click(screen.getByRole('button', { name: /Lodestone Sync for Warrior Main/i }));
@@ -248,7 +251,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
 
     // The player is removed while the flow is open (a poll or a roster edit).
     rerender(
-      <CharacterManageBridge groupId="g1" players={[players[1]]} canEdit userRole="owner" currentUserId="u1" isAdmin={false} />,
+      <CharacterManageBridge groupId="g1" players={[players[1]]} canEdit userRole="owner" currentUserId="u1" isAdminAccess={false} />,
     );
 
     // Not stranded between two shut dialogs — back in Characters.
@@ -258,7 +261,7 @@ describe('CharacterManageBridge — Lodestone sync (C8 / D-12)', () => {
 
   it('disables every entry for a viewer', () => {
     render(
-      <CharacterManageBridge groupId="g1" players={players} canEdit={false} userRole="viewer" currentUserId="u1" isAdmin={false} />,
+      <CharacterManageBridge groupId="g1" players={players} canEdit={false} userRole="viewer" currentUserId="u1" isAdminAccess={false} />,
     );
     openCharacters();
 

@@ -30,8 +30,13 @@ interface CharacterManageBridgeProps {
   tierId?: string;
   userRole?: MemberRole | null;
   currentUserId?: string | null;
-  /** Admin ACCESS (`isAdminAccess`), not the raw flag — View As must downgrade. */
-  isAdmin?: boolean;
+  /**
+   * Admin ACCESS, not the raw `user.isAdmin` flag — View As must downgrade the
+   * row exactly as it downgrades a card. Named for the value, not for
+   * `canEditPlayer`'s parameter, so a caller can't pass the wrong one by
+   * matching names (PR #201 review).
+   */
+  isAdminAccess?: boolean;
 }
 
 export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
@@ -42,7 +47,7 @@ export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
   tierId,
   userRole,
   currentUserId,
-  isAdmin,
+  isAdminAccess,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [syncPlayerId, setSyncPlayerId] = useState<string | null>(null);
@@ -100,7 +105,7 @@ export const CharacterManageBridge: React.FC<CharacterManageBridgeProps> = ({
               {syncRoster.map(player => {
                 // Gated per player, exactly as legacy gated R-041: a member can
                 // sync their own claimed card without roster-level manage rights.
-                const permission = canEditPlayer(userRole, player, currentUserId ?? undefined, isAdmin);
+                const permission = canEditPlayer(userRole, player, currentUserId ?? undefined, isAdminAccess);
                 const label = player.lodestoneId ? 'Re-sync Lodestone' : 'Lodestone Sync';
                 const displayName = player.name || '—';
                 const identity = player.lodestoneId

@@ -285,7 +285,7 @@ describe('Roster', () => {
         tierId: 't1',
         userRole: 'owner',
         currentUserId: 'u1',
-        isAdmin: false,
+        isAdminAccess: false,
       }),
     );
   });
@@ -317,7 +317,7 @@ describe('Roster', () => {
       renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One' })]));
 
       expect(charBridgeProps).toHaveBeenLastCalledWith(
-        expect.objectContaining({ isAdmin: false }),
+        expect.objectContaining({ isAdminAccess: false }),
       );
     } finally {
       authState.user = { id: 'u1', isAdmin: false };

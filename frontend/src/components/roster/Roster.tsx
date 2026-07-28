@@ -493,7 +493,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
             tierId={tierId}
             userRole={userRole}
             currentUserId={effectiveUserId ?? null}
-            isAdmin={isAdminAccess}
+            isAdminAccess={isAdminAccess}
           />
         }
       />
