@@ -18,6 +18,10 @@ updates:
     # — remove this ignore when that lands (context: PRs #206/#210).
     ignore:
       - dependency-name: eslint-plugin-react-hooks
+      # 0.5.x makes react-refresh/only-export-components stricter (2 new
+      # errors at current call sites) — same deal: adopt deliberately, then
+      # remove this line (context: PR #216).
+      - dependency-name: eslint-plugin-react-refresh
     groups:
       frontend-minor-patch:
         applies-to: version-updates
