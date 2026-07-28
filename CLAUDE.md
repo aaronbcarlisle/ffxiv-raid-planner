@@ -230,15 +230,15 @@ PRs to main run: `build` (`tsc -b && vite build`), `lint`, `check:design-system:
 
 ## Coding Agent Workflow
 
-Use this workflow for every task to keep agent sessions focused and avoid costly restart loops.
+Use this workflow for implementation tasks intended for a pull request to keep agent sessions focused and avoid costly restart loops.
 
 ### 7-Step Loop
 
 ```
 1. Write a task spec (see template below)
 2. Open ONE coding agent session with the spec + embedded pr-checklist constraints
-3. Agent: implements, runs pnpm build + lint + test, updates releaseNotes.ts if touching frontend/src/ or backend/app/, pushes
-4. Verify CI is green (pnpm build, pnpm lint, check:design-system:strict, pnpm test)
+3. Agent: implements, runs pnpm build + lint + test, and updates releaseNotes.ts if touching frontend/src/ or backend/app/
+4. When explicitly instructed, push the changes and verify CI is green (pnpm build, pnpm lint, check:design-system:strict, pnpm test)
 5. Trigger ONE code review pass
 6. If review finds issues: one targeted agent fix session with review comments as input
 7. Merge
@@ -274,6 +274,8 @@ Before opening the PR, run the pr-checklist skill (.claude/skills/pr-checklist/S
 
 ### Session Targets by Task Type
 
+Release notes are required only when the task touches `frontend/src/` or `backend/app/`.
+
 | Task type | Release note | CURRENT_VERSION |
 |-----------|-------------|-----------------|
 | Bug fix | Public entry | Bump (e.g. `1.26.0` → `1.26.1`) |
@@ -282,7 +284,7 @@ Before opening the PR, run the pr-checklist skill (.claude/skills/pr-checklist/S
 
 ### CI as Session Boundary
 
-- **After agent pushes:** wait for CI before triggering code review
+- **After an explicitly authorized push:** wait for CI before triggering code review
 - **If CI fails:** re-engage the *same* session with the failure log — don't start fresh
 - **Code review** is a signal, not a loop: trigger once when CI is green, fix once if needed
 
