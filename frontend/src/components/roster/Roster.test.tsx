@@ -110,8 +110,12 @@ vi.mock('./RosterCard', () => ({
 }));
 
 // CharacterManageBridge pulls the character panel + its stores — stub it.
+const charBridgeProps = vi.fn();
 vi.mock('./CharacterManageBridge', () => ({
-  CharacterManageBridge: () => <div data-testid="char-bridge" />,
+  CharacterManageBridge: (props: Record<string, unknown>) => {
+    charBridgeProps(props);
+    return <div data-testid="char-bridge" />;
+  },
 }));
 
 import { Roster } from './Roster';
@@ -266,6 +270,23 @@ describe('Roster', () => {
 
     // Toolbar "Add player" control is present and enabled for a manager.
     expect(screen.getByRole('button', { name: /add player/i })).toBeEnabled();
+  });
+
+  // C8 / D-12: the Lodestone entry lives in the bridge and is gated per player
+  // (legacy R-041 = canEditPlayer), so the bridge needs the permission context
+  // and the tier the sync writes into — not just the roster-level canManage.
+  it('gives CharacterManageBridge the tier and the per-player permission context', () => {
+    renderRoster(makeTier([makePlayer({ id: 'p1', name: 'Tank One' })]));
+
+    expect(charBridgeProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        groupId: group.id,
+        tierId: 't1',
+        userRole: 'owner',
+        currentUserId: 'u1',
+        isAdmin: false,
+      }),
+    );
   });
 
   it('renders a singular "1 raider" subtitle and tolerates a null tier', () => {

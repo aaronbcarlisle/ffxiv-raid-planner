@@ -479,6 +479,10 @@ export function Roster({ group, tier, canManage }: RosterProps) {
             groupId={group.id}
             players={mainRosterPlayers}
             canEdit={canManage}
+            tierId={tierId}
+            userRole={userRole}
+            currentUserId={effectiveUserId ?? null}
+            isAdmin={isAdmin}
           />
         }
       />

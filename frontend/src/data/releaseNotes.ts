@@ -68,6 +68,15 @@ export const RELEASES: Release[] = [
       {
         internal: true,
         category: 'feature',
+        title: 'New UI: Lodestone character sync is reachable again (Phase C, slice C8)',
+        description:
+          'Opt-in new UI only (admin-gated preview). The Lodestone search → preview → sync flow had no way in from the new UI — the old card menu was its only entry point anywhere in the app. It now lives in the Roster’s “Manage characters” dialog, as a “Lodestone sync” row per player showing the linked character and world, with “Lodestone Sync” or “Re-sync Lodestone” alongside. The flow itself is unchanged; only the way in is new. Members can sync their own claimed card without needing to manage the roster, exactly as before. Opening the sync flow sets the Characters dialog aside and returns you to it when you close.',
+        pr: 201,
+        prTitle: 'feat(redesign): Phase C slice C8 — Lodestone re-home (D-12 flow)',
+      },
+      {
+        internal: true,
+        category: 'feature',
         title: 'New UI: gear jumps into the ledgers, and the job change can update BiS (Phase C, slice C7)',
         description:
           'Opt-in new UI only (admin-gated preview). Three flows return to the new-UI roster card. Every gear slot that has a logged entry becomes a jump into the Loot history — Alt+Click it (a plain click never navigates), press Enter on it, or right-click for “Jump to Loot/Material Entry”; the hand cursor appears only while Alt is held, so an icon never advertises a click it won’t honor. The card menu’s “Edit Books” returns and now scrolls to and highlights that player’s row in the Books ledger. The job-change confirm regains its third option — “Change Job & Update BiS” — which switches the job and opens the BiS import for the new one. And the card itself picks up v1’s superuser shortcuts: Shift+Click copies its deep link, and the ⋮ button’s tooltip teaches both that and right-click.',
