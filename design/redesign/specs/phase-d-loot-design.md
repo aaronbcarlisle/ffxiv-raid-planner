@@ -2,9 +2,11 @@
 
 **Status: ✅ DESIGN COMPLETE 2026-07-28** (started the same day). This document is the running record of
 the Phase-D design conversation, written ruling-by-ruling as the user made each call. All four surfaces
-are ruled — Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 · Elsewhere R-40…R-42 — and the Log
-and History sections were validated by `xivrp-director` before landing. **Implementation is not planned
-yet** (§8).
+are ruled — Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 · Elsewhere R-40…R-42 ·
+shared-layer R-43…R-47. Three `xivrp-director` passes ran: two per-surface (§4, §6 — against a
+reconstructed charter, so no shared-layer, design-system or vocabulary lens) and one **whole-record**
+pass against the real charter on 2026-07-29, which returned **SHARED-DRIFT** and produced §7a.
+**Implementation is not planned yet** (§8).
 
 **Process (binding).** Phase D is **co-designed step by step with the user, not sliced
 autonomously** — the standing ruling from 2026-07-26: *"a lot of work went into v1 based on user
@@ -15,8 +17,7 @@ surface it belongs to is fully designed and the user says to build.
 
 ## 0. What Phase D covers
 
-22 ruled matrix units plus two deferrals. Structure is already settled by the flow map and is **not**
-in scope to re-open:
+Structure is already settled by the flow map and is **not** in scope to re-open:
 
 - **F-06** — Loot is a triad: **Priority · Log · History** (decide / record / find).
 - **F-07** — the books ledger lives **inside Log**; balances stay readable from Team Summary.
@@ -26,7 +27,11 @@ in scope to re-open:
 | **Priority** | D-22 Who Needs It matrix · D-23 view axis · D-24 floor scoping · D-25 score transparency · D-26 "+ Log Floor" · D-27 weapon priority placement · D-28 RecipientPicker additions · D-29 candidate reasons/warnings/confidence |
 | **Log** *(does not exist in v2)* | D-30 weekly grid · D-35 free-form material entry · D-37 material edit · D-38 books placement · D-39 per-floor + per-player book resets · D-40 week stepping · D-41 revert data-summary |
 | **History** | D-31 cross-week table as the model · D-72 structured search · D-32 fold · D-33 layout axis dissolved · D-34 kebab + "Jump to {player}" |
-| **Elsewhere** | D-42 Team Summary restore · D-43 its home (user leans Home/Overview) · F-04 Split Planner entry · D-44 mobile *(deferred to the Phase-P pass)* |
+| **Elsewhere** | D-42 Team Summary restore · D-43 its home (closed by F-08 → static Home) · F-04 Split Planner entry · D-44 mobile *(deferred to the Phase-P pass)* |
+| **Cross-cutting** | D-36 picker additions incl. the "no one needs this" hint · D-54 the loot/history shortcut set · D-05/D-55 the jump affordances' loot half |
+
+*(This table listed 22 units and omitted the cross-cutting row until 2026-07-29; the phase rules those
+too, so a completeness claim measured against the old table would have under-counted.)*
 
 Standing design inputs from the user, carried into every surface here:
 
@@ -114,9 +119,9 @@ the **high/medium/low confidence** header.
 problem — `computeGearSlotUpdate`, `rosterIlv`, `gearCycleHint` — and it means the number a user
 sees in the queue can never disagree with the reasoning shown in the modal that logs it.
 
-### R-7 · **One Priority-level "+ Log Floor"** that follows the pill (D-26)
+### R-7 · **One Priority-level "Log floor"** that follows the pill (D-26)
 
-A single button beside the pill row, scoped to whichever floor is selected, behaving identically in
+A single **Log floor** button beside the pill row, scoped to whichever floor is selected, behaving identically in
 all three views. When **All** is selected it steps aside for the toolbar's existing
 **"Log this week's loot"** — the whole-week wizard already owns that case.
 
@@ -195,6 +200,12 @@ delivered that. v1's quick-log modal showed both (matrix D-28), so this is a res
 
 R-6 already settles the reasons/warnings/confidence layer that shares this modal.
 
+**D-36's "no one needs this item!" hint lands here too.** The matrix ruled it `KEEP V2 + HINT`, it
+exists only in legacy (`AddLootEntryModal.tsx:564`, `LogMaterialModal.tsx:694`) and `RecipientPicker`
+has no equivalent — yet R-4 routes a matrix cell into this modal precisely for the empty-queue case,
+and R-12/R-24 rebuild its body. It is the assign-mode complement of "This will:", so it belongs in the
+same block; without this clause D-36 would be orphaned between two closed phases.
+
 ---
 
 ## 2. Priority — the shape after R-1…R-12
@@ -208,7 +219,7 @@ R-6 already settles the reasons/warnings/confidence layer that shares this modal
 │  ┌────────────────────────────────┐                                    │
 │  │ Queues │ Matrix │ Weapons      │    R-3 · lands on Matrix (R-1)     │
 │  └────────────────────────────────┘                                    │
-│  Floor: [All] [M9S] [M10S] [M11S] [M12S]         [+ Log Floor]         │
+│  Floor: [All] [M9S] [M10S] [M11S] [M12S]         [Log floor]           │
 │         └ R-2, scopes all three views            └ R-7, follows pill   │
 │         └ in Weapons this row reads "M12S · Floor 4" (R-5)             │
 ├────────────────────────────────────────────────────────────────────────┤
@@ -265,6 +276,13 @@ its shape there.
 
 **Consequences:** the roster kebab's `?book=` jump (C7/D-05) must retarget `lview=log`; History loses
 its books card.
+
+**Dropped by this redesign, named so they are decisions rather than omissions:** the sidebar's
+**persisted collapse toggle** (`SectionedLogView.tsx:1358-1370`) — a full-width card has nothing to
+collapse into — and the **mobile Loot ⇄ Books panel-tab axis**, which D-44 defers to the Phase-P pass.
+Everything else in that sidebar is accounted for and already present in `BookLedgerCard`: scope
+toggle, cell-click edit, per-row ledger, mark-floor-cleared, the member-own-row exception and the
+`book-row-{playerId}` anchor.
 
 ### R-15 · **Log owns the week; Priority is always now**
 
@@ -380,6 +398,13 @@ reconciliation.
 Revert. Revert runs the pre-check and shows a **data-summary modal** listing the loot, materials and
 books that will move.
 
+**Revert and Start-next-week stay bound to the *clock*, never the displayed week.** They read
+`clock.currentWeek`/`maxWeek`, the data summary summarises the clock's newest week, and when the
+displayed week differs the control **says which week it will act on**. Today the two cannot diverge
+(`WeekScopeControl.tsx:50,69-75` calls `clock.revertWeek()`), but R-15 gives Log a freely-steppable
+displayed week, and V1's summary modal filters strictly by the week it is handed
+(`RevertWeekConfirmModal.tsx:37-49`). A user reading week 2 who hits Revert must not revert week 2.
+
 **Correction to the D-40 row's reading:** the pill's *label* is only `This week (Week N)`
 (`WeekScopeControl.tsx:52-53`); the date range and the loot/books/mats dots are on the dropdown
 **items** (`:90-113`) and already exist.
@@ -476,14 +501,29 @@ jump, so the loot half is unbuilt.
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Director verdict (2026-07-28): PARITY-GAP — approve with required changes.** All thirteen required
-changes are folded in above; the four that were design forks rather than corrections were ruled by the
-user as R-24 (method + notes), R-25 (floor kebab), R-26 (one material component) and R-27 (grid details).
+**One model, not one button.** Loot ends this phase with five logging entry points — R-7's floor
+button, R-4's matrix cell, R-20's two toolbar actions and R-25's floor kebab — plus the queue-row
+assign. That is deliberate and is *not* the "16 ways to log loot" regression `PRODUCT_MODEL.md:222`
+names: the consolidation target is **one model** (picker for loot, material modal for materials, wizard
+for the week), which is what `:142` asks for, reached from wherever the user already is.
 
-**Write-backs owed when this ships**, per the Phase-C precedent that rulings and matrix rows land in
-the same PR: **D-35** (its `Alt+M` is wrong — the binding is `Alt+U`) · **D-38** (books' placement =
-R-14) · **D-39** (reset entry points = R-16) · **D-40** (the pill already carries the dots) · **D-43**
-(closed by F-08, not open) — alongside D-23/D-27 already owed from R-3.
+**Director verdict (2026-07-28): PARITY-GAP — approve with required changes.** All thirteen required
+changes are folded in; the four that were design forks rather than corrections were ruled by the user
+as R-24 (method + notes), R-25 (floor kebab), R-26 (one material component) and R-27 (grid details).
+⚠ **Scope of that pass:** it ran against a charter *reconstructed from prose*, because this branch was
+cut before the real `xivrp-director` definition merged to main. It therefore had **no shared-layer,
+design-system or vocabulary lens**. §7a is the pass that supplied them.
+
+**Write-back policy** (stated because this phase split them, where Phase C did not):
+
+- **Factual corrections land now** — a row that misstates today's code misleads whoever reads it next,
+  regardless of whether any code ships. ✅ **Already applied on this branch:** D-35's `Alt+M`→`Alt+U`
+  (*both* the What and Ruling cells) · D-31's "stats footer"→header · §0 standing input 3's job-icon
+  correction (R-38, inline at §0) · F-04 and the stale `⏳` markers in the flow map (R-41).
+- **Ruling-driven row rewrites land with the build**, per the Phase-C precedent that rulings and matrix
+  rows arrive in the same PR: **D-38** (books' placement = R-14) · **D-39** (reset entry points = R-16)
+  · **D-40** (the pill already carries the dots) · **D-43** (closed by F-08) · **D-54** (see R-42) —
+  alongside D-23/D-27 already owed from R-3.
 
 ---
 
@@ -541,12 +581,13 @@ filter surfaces ANDed together give a user two places to look when the table com
 the pill's token into the box means the pills are a **teaching surface** for a syntax that is otherwise
 undiscoverable — the power-user feature and the beginner affordance become the same control.
 
-**The round-trip is not free.** The parser (`AllWeeksView.tsx:214-268`) needs four corrections before
-the pills can bind to it losslessly:
+**The round-trip is not free.** v2 ships **its own** parser, modelled on `AllWeeksView.tsx:214-268` —
+that function lives inside frozen `history/` and must not be edited (R-43). The v2 reimplementation
+carries four fixes the original lacks:
 
 | Defect | Evidence | Resolution |
 |---|---|---|
-| `type:gear` matches **nothing** | `:234` compares against `r.type ∈ {'loot','material'}` (`:161`, `:181`), so `'loot'.includes('gear')` is false. The v1 toggle's *label* is "Gear"; its *value* is `loot` (`:466`, `:476`). `type:materials` fails the same way | The tokens are **`type:loot` / `type:material`**; the pills may still read "Gear"/"Materials" |
+| `type:gear` matches **nothing** | `:234` compares against `r.type ∈ {'loot','material'}` (`:161`, `:181`), so `'loot'.includes('gear')` is false. The v1 toggle's *label* is "Gear"; its *value* is `loot` (`:466`, `:476`). `type:materials` fails the same way | v2's parser **accepts aliases** — see R-47 |
 | No token expresses v2's **Tome** pill | `historyItems.ts:60` — `tome` means `method === 'tome' \|\| method === 'purchase'` | The `source:` key, per R-36 |
 | Multi-floor selection unexpressible | v1's `activeFloors` is a multi-select `Set` with a min-1 guard (`:100`, `:299-309`); AND-ed tokens make `floor:m9s floor:m10s` empty | Comma alternation, per R-36 |
 | A player name with a space cannot round-trip | The tokenizer splits on `/\s+/` with no quoting (`:215`), so `player:Tank One` parses as `player:tank` + a free `one`. FFXIV names are always two words | **Quoting**: `player:"Tank One"` |
@@ -572,6 +613,18 @@ tokens can express.
 *Why:* one parser change closes both losses D-31 would otherwise take — the multi-select floor chips it
 names in the restore, and v2's Tome pill. Comma was chosen over "repeated keys OR" because the latter
 silently redefines queries that already work.
+
+### R-47 · `type:` accepts **aliases**, so the pill teaches a token that works
+
+v2's parser maps `gear|loot → loot` and `materials|material → material`. The pills keep reading
+**Gear** and **Materials**; `type:extra` and `type:bis`, which the original parser already honours
+(`AllWeeksView.tsx:234`), survive and match the Type column's own vocabulary.
+
+*Why:* R-30 justifies the pills as a **teaching surface** for an undiscoverable syntax. A pill labelled
+"Gear" that inserts `type:loot` teaches a token the user could not have derived from the label, which
+defeats the rationale and breaks label-matches-outcome. Aliasing keeps the better word — everything on
+this tab is loot, so *gear vs materials* is the real distinction — while making the obvious typed
+token work.
 
 ### R-37 · The filter query is **session-local**, and `copyLink` strips it
 
@@ -742,14 +795,14 @@ never appear in the `Shift+?` help.
 ```
 
 **Director verdict (2026-07-28): PARITY-GAP — approve with required changes.** All twenty-one required
-changes are folded in above; the four that were design forks rather than corrections were ruled by the
-user as R-36 (comma alternation + `source:`), R-37 (session-local query), R-38 (the weapon's job icon)
-and R-39 (the generic slot icon).
+changes are folded in; the four that were design forks rather than corrections were ruled by the user
+as R-36 (comma alternation + `source:`), R-37 (session-local query), R-38 (the weapon's job icon) and
+R-39 (the generic slot icon). ⚠ **Same scope caveat as §4** — reconstructed charter, no shared-layer,
+design-system or vocabulary lens; §7a supplied them.
 
-**Write-backs owed when this ships**, added to the list in §4: **D-31** (its "stats **footer**" renders
-in the header, `AllWeeksView.tsx:505-511`) · **D-72** (the clear button, named in the row and now in
-R-30) · **§0 standing input 3** (the weapon job-icon correction, R-38) · **D-37** (material edit reaches
-History too, R-32).
+**Write-backs**, per §4's policy: **D-31**'s "stats footer"→header ✅ *applied* · **D-72** (the clear
+button, named in the row and now in R-30) and **D-37** (material edit reaches History too, R-32) are
+ruling-driven and land with the build.
 
 ## 7. Elsewhere — rulings
 
@@ -781,7 +834,16 @@ objective; putting an occasional Ring-3 action on a weekly Ring-0 tab is the mis
 deferred to avoid. One home, one entry, plus the attention row that already exists.
 
 **This closes the flow map's last open decision point** — F-01…F-12 are now all ruled. ✅ Written back
-to `systems-flow-map.md` (F-04, the Split Planner rows, and the header count) on 2026-07-28.
+to `systems-flow-map.md` (F-04, the Split Planner rows, the header count, and a sweep of the stale
+`⏳` markers the header change would otherwise have contradicted) on 2026-07-28.
+
+⚠ **The home does not exist yet.** v2's spine is Home/Roster/Loot/Schedule (`NewShell.tsx:38,72,88,106`)
+— F-03's Progress tab is unbuilt. Split Clears is live in V1 (`GroupViewContent.tsx:43`) and **already
+unreachable in v2** (`MorePage.tsx:172-186` renders for the legacy shell only), so R-41 causes no
+regression, but it is not a re-homing the parity ledger can mark done until Progress ships. F-12's
+More-page deletion inherits the same dependency.
+
+---
 
 ### R-42 · The D-54 shortcut set is restored **wherever its surface survived**
 
@@ -810,10 +872,83 @@ not return as such.
 
 ---
 
+## 7a. Shared-layer discipline — rulings
+
+Phase D was designed one surface at a time, which made it easy to miss that several rulings mutate
+code the **legacy shell renders**. V1 is the default shell and is frozen; these three rulings decide
+what that means here.
+
+### R-43 · Which Phase-D rulings reach V1, and what each must do
+
+| Ruling | Component | Reaches V1? | Requirement |
+|---|---|---|---|
+| **R-26** | `QuickLogMaterialModal` | **YES** — `LootPriorityPanel.tsx:28,770` ← `GroupViewContent.tsx:38,1017` (legacy body) | Every new input is **optional and off by default**, so the legacy call site (fixed `floor`/`material` from `LootPriorityPanel.tsx:764-767`) renders byte-identically. Phase-C two-part assert: v2 renders the new form, V1's render is unchanged |
+| **R-16** | `ui/ResetConfirmModal` | **YES** — `LootLogModals.tsx:20,254` | Fix `getResetDescription`; see R-44 |
+| **R-29** | `admin/SortableHeader` | **YES** — `AllWeeksView.tsx:13,520-526` (7 headers) + ~20 admin headers | Do **not** touch it; see R-46 |
+| **R-30/R-36** | the search parser | **YES** if edited in place — it lives at `AllWeeksView.tsx:214-268`, inside frozen `history/` | v2 ships **its own** parser modelled on that one. `type:` values, comma alternation and `source:` change what a query returns, so editing V1's would silently change legacy search |
+| **R-12 / R-24** | `RecipientPicker` | No — sole importer `Loot.tsx:64`, mounted only by `NewShell.tsx:13`. V1 uses `history/AddLootEntryModal` | — |
+| **R-18 / R-28** | `RosterGearTable` | No — reached only via `RosterCard`→`RosterCards`→`Roster`→`NewShell.tsx:12`. V1's gear table is `player/GearTable.tsx` | — |
+| **R-15** | `scopedWeekOverride` | No — declared inside the v2 screen (`Loot.tsx:170`) | — |
+| **R-20** | `LogWeekWizard` | Shared, but already takes a week (`LogWeekWizard/index.tsx:48-57`) | Call-site prop only — change no default |
+
+**Ownership, stated once:** v2's Log **builds its own** grid, count bar and revert modal.
+`history/WeeklyLootGrid.tsx`, `history/LootCountBar.tsx` and `history/RevertWeekConfirmModal.tsx` are
+**read-only reference**. The project's invariant is *don't edit* `history/`, not *don't import* it —
+`BookLedgerCard.tsx:21-23` already imports three legacy modals unmodified, which is fine. **R-26's
+rationale is corrected accordingly:** the argument for growing `QuickLogMaterialModal` is
+`PRODUCT_MODEL.md:201` (one owned component per task), not a false claim that importing legacy is
+forbidden.
+
+### R-44 · `getResetDescription`'s week bug is fixed — an approved **V1-visible delta**
+
+`ResetConfirmModal.tsx:48-50` returns `` `${playerName}'s book entries for Week ${week}` `` with no
+guard, and the floor branch (`:56-61`) does the same. V1 already emits week-less configs for exactly
+the all-time cases D-39 restores (`SectionedLogView.tsx:410-423`, `:433-441`), so **a V1 user typing
+RESET today reads "for Week undefined"** — and the floor/all-time case falls through to "ALL book
+balances for this tier" (`:66-68`), which *mis-states the blast radius of a destructive action*.
+
+*Why this is worth a delta:* the freeze protects V1's behaviour from redesign churn, not from
+correctness fixes. The precedent is Danger-Zone-in-Settings (F-12), approved as an explicit V1-visible
+delta because it fixed a real V1 defect. Recorded here so the change is *expected* in V1's copy rather
+than discovered as drift.
+
+### R-45 · Floor colour becomes **semantic tokens** (`--color-floor-1…4`)
+
+Every floor-coloured element in this phase — R-2's pills, R-8's names, R-9, R-19's header accent,
+R-33's Floor chip — reads `var(--color-floor-N)`. `FLOOR_COLORS[n].hex` is **never** used.
+
+*Why:* the phase makes floor colour pervasive, and the existing source doesn't survive that scale.
+`loot-tables.ts:69-74` exposes `hex: '#22c55e'` / `'#3b82f6'` — literal entries in the design-system
+checker's violation table, so a build following R-8 the way v1 built its chip fails CI. Its
+`bg`/`text`/`border` fields are raw Tailwind palette utilities (`text-green-400`, `bg-blue-500/10`),
+not semantic tokens, so calling them "class tokens" overstated them. And R-8 puts floor colour on
+**gear names** — body text at scale — on a project that has already recorded an oklab contrast
+blindspot; tokens mean the contrast is measured once, centrally, instead of per call site.
+
+**Additive and freeze-safe:** V1 keeps using `FLOOR_COLORS` exactly as it does today. New tokens in
+`index.css`, consumed by v2 only.
+
+### R-46 · v2 owns its **sortable header**; `admin/SortableHeader` is untouched
+
+A new keyboard-first `ui/SortableHeader` (a real `<button>` inside the `<th>`, `aria-sort`, key
+handling) serves v2's History. `components/admin/SortableHeader.tsx` keeps its current behaviour.
+
+*Why:* R-29 makes sorting absorb both the chronological axis (D-32) and the layout axis (D-33), so it
+must be keyboard-operable — but the existing component is rendered by **V1's** All Weeks table
+(`AllWeeksView.tsx:13,520-526`), and adding tabbable elements changes V1's tab order and focus rings
+on a frozen shell. Two components until admin chooses to migrate is the cheaper trade. This also
+retires R-29's suggestion of *relocating* `admin/SortableHeader`, which would have forced an edit to
+the frozen `AllWeeksView.tsx:13` import — the thing the freeze exists to prevent.
+
 ## 8. Open — what is left
 
 **Phase D's design is complete.** Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 ·
-Elsewhere R-40…R-42.
+Elsewhere R-40…R-42 · cross-cutting R-47 · shared-layer R-43…R-46.
+
+**Reviewed, with the scope of each pass on record.** Two per-surface director passes (§4, §6) ran
+against a reconstructed charter and could not see the shared layer, the design system or the
+vocabulary; the whole-record pass on 2026-07-29 supplied those and returned **SHARED-DRIFT**, which
+§7a resolves. "Design complete" means the rulings are made — not that anything is demonstrated.
 
 - **Mobile** (D-44) stays deferred to the Phase-P pass, per the standing ruling that mobile gets one
   consolidated walkthrough rather than per-slice affordances.

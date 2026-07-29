@@ -1,5 +1,21 @@
 <title>Loot ▸ Priority — Phase D design</title>
 
+<!--
+  ⚠ TWO THINGS IN HERE ARE ILLUSTRATIVE, NOT SPECIFICATION:
+
+  1. TYPE SCALE. This mockup uses 0.6875rem (11px) and one 0.5625rem (9px) on real
+     content — .floor-head .duty, .drop-name .sub, .chip-p .rk. The product floor is
+     text-xs / 12px (CLAUDE.md, enforced by check:design-system). The BUILD FLOORS AT
+     12px; do not copy these sizes.
+
+  2. THE "Phase D" PILL on the Log triad segment (.triad .soon) is an annotation for
+     readers of this mockup. It must NOT ship — a "coming soon" stub on a spine surface
+     is exactly what the IA discipline bans (RECONCILIATION, prime directive 4).
+
+  Colour: floor colour ships as the semantic --color-floor-1…4 tokens (R-45), not as
+  the literal hex values inlined below.
+-->
+
 <style>
   :root {
     /* Product tokens, verbatim from tokens.generated.css */
