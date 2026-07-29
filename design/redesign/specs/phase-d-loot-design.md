@@ -2,7 +2,7 @@
 
 **Status: ✅ DESIGN COMPLETE 2026-07-28** (started the same day). This document is the running record of
 the Phase-D design conversation, written ruling-by-ruling as the user made each call. All four surfaces
-are ruled — Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 · Elsewhere R-40…R-41 — and the Log
+are ruled — Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 · Elsewhere R-40…R-42 — and the Log
 and History sections were validated by `xivrp-director` before landing. **Implementation is not planned
 yet** (§8).
 
@@ -34,7 +34,11 @@ Standing design inputs from the user, carried into every surface here:
 2. **Who Needs It is a headline feature**, not an afterthought — it earned real user feedback.
 3. **Entry icon/colour polish:** floor-derived colours; colourise the gear *name* on entries;
    generic gear-slot icons instead of coloured letter squares; **exception** — a logged *weapon*
-   entry shows the recipient's **job icon**, so which weapon dropped is unambiguous.
+   entry shows a **job icon**, so which weapon dropped is unambiguous.
+   ⚠ **Corrected 2026-07-28 by R-38.** As given, this input said the *recipient's* job icon, which
+   defeats its own stated purpose: `weaponJob` is stored per entry (`types/index.ts:1249`) precisely
+   because it can differ from the recipient's job. It is the **weapon's** job icon; the recipient's
+   already rides on the recipient chip.
 4. **Reverse jump** (log entry → player card with the slot row highlighted) is D-55's loot half and
    lands in this phase. Legacy mechanism: `useViewNavigation.ts:117-136`
    (`gear-row-{playerId}-{slot}` + highlight). v2 today has card-level `?player=` only.
@@ -380,9 +384,8 @@ books that will move.
 (`WeekScopeControl.tsx:52-53`); the date range and the loot/books/mats dots are on the dropdown
 **items** (`:90-113`) and already exist.
 
-**Explicitly dropped:** legacy's `Alt+←` / `Alt+→` week stepping and `Alt+B` (mark floor cleared)
-(`useGroupViewKeyboardShortcuts.ts:166-175`, `:192-198`). The chevrons are ordinary buttons, so the
-keyboard route to week stepping is Tab-reachable; the shortcuts are not restored.
+**`Alt+←` / `Alt+→` and `Alt+B` are restored** (`useGroupViewKeyboardShortcuts.ts:166-175`, `:192-198`),
+rebound to Log — see R-42.
 
 ### R-23 · The week's count bar **and its legend**
 
@@ -701,9 +704,9 @@ The search focus shortcut is restored. Legacy's `Alt+1/2/3` is **dropped**.
 *Why:* those keys are overloaded onto the old four-sub-tab axis — they call
 `setGearSubTab('priority'|'history'|'stats')` *and* dispatch an entry-type change
 (`useGroupViewKeyboardShortcuts.ts:144-163`). D-33 and D-43 dissolved that axis, so the binding has no
-coherent meaning left. Consistent with R-22's drop of `Alt+←/→` and `Alt+B`. Note the drop costs
-current users nothing: those bindings are registered only under `legacyLootSurface` (`:139`), so they
-are **not live in v2 today**.
+coherent meaning left — and unlike `Alt+←/→` and `Alt+B` (R-42), there is no surviving action to rebind
+them to. Note the drop costs current users nothing either way: these bindings are registered only under
+`legacyLootSurface` (`:139`), so they are **not live in v2 today**.
 
 **Implementation note, not a ruling:** `Ctrl+Shift+F` cannot be restored the way v1 implements it — a
 bare component-local `document` listener with no guard (`AllWeeksView.tsx:111-120`), on a screen that
@@ -777,15 +780,40 @@ planner does arrange people — but Roster is a Ring-0 weekly surface and a spli
 objective; putting an occasional Ring-3 action on a weekly Ring-0 tab is the mismatch F-04 was
 deferred to avoid. One home, one entry, plus the attention row that already exists.
 
-**This closes the flow map's last open decision point** — F-01…F-12 are now all ruled. Write-back owed
-to `systems-flow-map.md` rows F-04 (`:214`), the Split Planner row (`:127`, `:195`) and D-18.
+**This closes the flow map's last open decision point** — F-01…F-12 are now all ruled. ✅ Written back
+to `systems-flow-map.md` (F-04, the Split Planner rows, and the header count) on 2026-07-28.
+
+### R-42 · The D-54 shortcut set is restored **wherever its surface survived**
+
+D-54 rules the whole loot/history shortcut set `RESTORE (IN PHASE D)`. The rule for how far that
+reaches:
+
+| Binding | Ruling | Reason |
+|---|---|---|
+| `Alt+L` log a drop · `Alt+U` log material | **Restored** (R-20) | The action exists; `Alt+M` was never the material binding — see R-20 |
+| `Ctrl+Shift+F` focus search | **Restored** (R-35) | With a modal/focus guard and a registry entry |
+| `Alt+←` / `Alt+→` week stepping | **Restored**, rebound to Log | The action survives as R-22's chevrons |
+| `Alt+B` mark floor cleared | **Restored**, rebound to Log's books card | The action survives as R-14's card button |
+| `Alt+P` Settings ▸ Priority | Already live in v2 | No work |
+| `Alt+1/2/3` sub-tab + entry type | **Dropped** (R-35) | The four-sub-tab axis is dissolved (D-33/D-43) |
+| `v` expand-all · `g` grid/list | **Dropped** | List view and the layout axis no longer exist (D-32/D-33) |
+
+*Why this is the rule and not a case-by-case list:* D-54's own wording allows that "bindings may shift
+where surfaces changed", which is latitude to **rebind** — not licence to drop a shortcut whose action
+is still there. Splitting on "did the surface survive?" makes every row above fall out of one test, and
+makes the three drops defensible as *impossible* rather than merely unbuilt.
+
+**Write-back owed to D-54:** its restore is satisfied for five bindings, narrowed for three, and the
+narrowing is surface-death in every case. The nine `log:*` event listeners it also names are an
+implementation detail of the legacy event bus — the v2 surfaces own their state directly, so they do
+not return as such.
 
 ---
 
 ## 8. Open — what is left
 
 **Phase D's design is complete.** Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 ·
-Elsewhere R-40…R-41.
+Elsewhere R-40…R-42.
 
 - **Mobile** (D-44) stays deferred to the Phase-P pass, per the standing ruling that mobile gets one
   consolidated walkthrough rather than per-slice affordances.
