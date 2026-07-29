@@ -3,9 +3,10 @@
 **Status: RULED — flow-map user walkthrough completed 2026-07-26.** Built to satisfy the mandate
 recorded in `v1-v2-parity-matrix.md` §9 (user checkpoint 2026-07-26): *"there's a lot of major
 systems competing for placement inside the app; I just want to make sure the flow between these
-systems are intuitive and have a clear flow map."* **All 12 decision points are ruled** — F-01…F-03 and
-F-05…F-12 on 2026-07-26, and **F-04 (Split Planner entry) on 2026-07-28**, where it had been
-deliberately deferred into Phase-D design and was closed there as R-41 (Progress tab). This
+systems are intuitive and have a clear flow map."* The walkthrough itself ran on **2026-07-26** and
+ruled F-01…F-03 and F-05…F-12 that day, deliberately deferring **F-04 (Split Planner entry)** into
+Phase-D design; F-04 was closed there on **2026-07-28** as R-41 (Progress tab), so **all 12 decision
+points are now ruled**. This
 document is now a **binding Phase-D design input**: it closed parity units D-67/D-68, triggered
 delta R2 (Progress = 5th Spine tab), and fixed the homes of every system the rulings left "TBD."
 

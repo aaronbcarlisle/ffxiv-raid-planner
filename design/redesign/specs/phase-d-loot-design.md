@@ -3,7 +3,7 @@
 **Status: ✅ DESIGN COMPLETE 2026-07-28** (started the same day). This document is the running record of
 the Phase-D design conversation, written ruling-by-ruling as the user made each call. All four surfaces
 are ruled — Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 · Elsewhere R-40…R-42 ·
-cross-cutting R-47 · shared-layer R-43…R-46. Three `xivrp-director` passes ran: two per-surface (§4, §6 — against a
+cross-cutting R-47 · shared-layer R-43…R-46, R-48. Three `xivrp-director` passes ran: two per-surface (§4, §6 — against a
 reconstructed charter, so no shared-layer, design-system or vocabulary lens) and one **whole-record**
 pass against the real charter on 2026-07-29, which returned **SHARED-DRIFT** and produced §7a.
 **Implementation is not planned yet** (§8).
@@ -178,7 +178,7 @@ changes under you once you've touched it.
 
 `3/8` on a seven-player static is v1's own behaviour — `WhoNeedsItMatrix.tsx:419` and `:547` print a
 **literal 8** while `count` comes from the players actually rendered. v2 prints the roster size:
-`3/7` for seven players, `3/8` once the eighth seat is filled.
+`3/7` for seven players, `3/8` once the eighth seat is filled. **Scope: v2 only — see R-48.**
 
 *Why:* the denominator is only useful if it can be verified by counting the columns above it. The
 literal 8 also disagreed with the material rows in the same table (`:507`, `:614`), which print a
@@ -894,6 +894,22 @@ what that means here.
 | **R-18 / R-28** | `RosterGearTable` | No — reached only via `RosterCard`→`RosterCards`→`Roster`→`NewShell.tsx:12`. V1's gear table is `player/GearTable.tsx` | — |
 | **R-15** | `scopedWeekOverride` | No — declared inside the v2 screen (`Loot.tsx:170`) | — |
 | **R-20** | `LogWeekWizard` | Shared, but already takes a week (`LogWeekWizard/index.tsx:48-57`) | Call-site prop only — change no default |
+| **R-8 / R-9 / R-11** | `WhoNeedsItMatrix` | **YES, and V1-*only* today** — `LootPriorityPanel.tsx:29,715` ← `GroupViewContent.tsx:38,1017`. v2's `Loot.tsx` renders `FloorCard` (`:62,432`) and **no matrix at all** | See R-48 |
+
+### R-48 · v2's Matrix is **its own component**; legacy's keeps its literal 8
+
+R-1 makes the Matrix v2's landing view, but the component that exists — `WhoNeedsItMatrix` — is
+reached only through the **legacy** shell. So R-8, R-9 and R-11 describe **v2's** matrix, which is
+net-new. `WhoNeedsItMatrix` stays frozen: legacy keeps `{count}/8`.
+
+*Why:* this is §7a's Log ruling applied one component further. R-11 as written would otherwise have
+been a **V1-only** visible change — `3/7` where a legacy user reads `3/8` — in a file v2 never renders,
+which is the inverse of what it was for. It also doesn't earn R-44's delta treatment: `3/8` is
+defensible (a full party *is* eight), so unlike the "Week undefined" string there is no V1 defect to
+fix. And gating the denominator on a shell flag inside the frozen file is the shell-aware branching
+the freeze exists to prevent.
+
+**R-11's ruling is unchanged** — v2 prints the roster size — it is only scoped here.
 
 **Ownership, stated once:** v2's Log **builds its own** grid, count bar and revert modal.
 `history/WeeklyLootGrid.tsx`, `history/LootCountBar.tsx` and `history/RevertWeekConfirmModal.tsx` are
@@ -947,7 +963,7 @@ the frozen `AllWeeksView.tsx:13` import — the thing the freeze exists to preve
 ## 8. Open — what is left
 
 **Phase D's design is complete.** Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 ·
-Elsewhere R-40…R-42 · cross-cutting R-47 · shared-layer R-43…R-46.
+Elsewhere R-40…R-42 · cross-cutting R-47 · shared-layer R-43…R-46, R-48.
 
 **Reviewed, with the scope of each pass on record.** Two per-surface director passes (§4, §6) ran
 against a reconstructed charter and could not see the shared layer, the design system or the
