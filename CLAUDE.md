@@ -67,6 +67,7 @@ A progression tool and home base for FFXIV static raid groups: roster, schedule,
 | Status / filter / nav pill | `Tag` | `ui/Tag.tsx` |
 | In-surface view switch | `Tabs` | `ui/Tabs.tsx` |
 | Navigational text | `LinkText` | `ui/LinkText.tsx` |
+| Navigational row | `NavRow` | `ui/LinkText.tsx` |
 | Have/missing/unknown | `TriStateToggle` | `ui/TriStateToggle.tsx` |
 | Page/section header | `PageHeader` | `layout/PageHeader.tsx` |
 | Static creation wizard | `SetupWizard` | `wizard/SetupWizard.tsx` |
@@ -92,7 +93,7 @@ A progression tool and home base for FFXIV static raid groups: roster, schedule,
 | Need | Use | Never |
 |------|-----|-------|
 | Clickable action | `Button` / `IconButton` | raw `<button>`, `<div onClick>` |
-| Navigational text / row | `LinkText` (`NavRow` is a designed-but-unbuilt F3 contract — until it lands, use `LinkText` or the `SidebarNav` row patterns) | plain text with `onClick` |
+| Navigational text / row | `LinkText` / `NavRow` (both in `ui/LinkText.tsx`) | plain text with `onClick` |
 | In-surface view switch | `Tabs` (no route API) | tabs that change the route |
 | Status / filter / nav pill | `Tag` with `variant="label"\|"filter"\|"nav"` | an ambiguous pill |
 | Have/missing/unknown | `TriStateToggle` | loose ✓/✗/? buttons |
@@ -237,7 +238,7 @@ Target **under ~1,500 changed lines** per PR. History shows why: 27% of past PRs
 
 ### A green review check is not a review
 
-`claude-review` posted nothing for ~4.5 months while its check stayed green (fixed in #194/#195), and it silently skips any PR that modifies `claude-code-review.yml` (the action's anti-tamper validation) plus all bot-authored PRs. Before treating a PR as reviewed, confirm an actual review comment exists from `claude[bot]` or Copilot — never trust the check mark alone.
+`claude-review` posted nothing for ~4.5 months while its check stayed green (fixed in #194/#195), and it still reports green while skipping in five cases: bot-authored PRs, **fork PRs** (no secrets/OIDC — an outside contributor's PR always shows a green skipped check and never gets a Claude review), the `skip-claude-review` label, a `[skip-review]`/`[skip-claude]`/`[no-review]` marker in the head commit message, and any PR that modifies `claude-code-review.yml` itself (the action's anti-tamper validation). Before treating a PR as reviewed, confirm an actual review comment exists from `claude[bot]` or Copilot — never trust the check mark alone.
 
 ---
 

@@ -40,6 +40,7 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Status / filter / nav pill | `Tag` (explicit `variant`) | `components/ui/Tag.tsx` |
 | In-surface view switch | `Tabs` (no route API) | `components/ui/Tabs.tsx` |
 | Navigational text | `LinkText` | `components/ui/LinkText.tsx` |
+| Navigational row (icon + label + chevron) | `NavRow` | `components/ui/LinkText.tsx` |
 | Have/missing/unknown | `TriStateToggle` | `components/ui/TriStateToggle.tsx` |
 | Page/section header | `PageHeader` | `components/layout/PageHeader.tsx` |
 | Segmented control | `SegmentedToggle` | `components/ui/SegmentedToggle.tsx` |
@@ -47,13 +48,16 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 
 ### Constrained primitives (design language — enforced)
 
-These carry the redesign's "illegal UI is unrepresentable" rules and are
-lint-enforced (see `frontend/eslint-design-system-plugin.js` and
-[DESIGN_SYSTEM_SUMMARY.md](./DESIGN_SYSTEM_SUMMARY.md)):
+These carry the redesign's "illegal UI is unrepresentable" rules. They are
+**type-enforced** — their prop types make the illegal state unrepresentable,
+caught by `pnpm build` (`tsc -b`). The ESLint plugin
+(`frontend/eslint-design-system-plugin.js`, rules like
+`no-noninteractive-onclick` and `no-cursor-pointer-without-role`) is what
+steers raw HTML toward them:
 
-- **`Tag`** — every pill declares `variant="label" | "filter" | "nav"`; an ambiguous pill is a lint error.
+- **`Tag`** — every pill declares `variant="label" | "filter" | "nav"`; the discriminated union makes an ambiguous pill a **type error** (`onClick`/`href` are `never` on `variant="label"`).
 - **`Tabs`** — in-surface view switching only; it has no `href`/route API by construction, so a tab can never masquerade as navigation.
-- **`LinkText`** — navigational text/rows (`href` xor `onClick` by type). *`NavRow` appears in design docs and lint messages as the row-level contract from F3 — that component is designed but **not yet built**; use `LinkText` or the `SidebarNav` row patterns until it lands.*
+- **`LinkText`** / **`NavRow`** — navigational text and row-level navigation (icon + label + description + chevron); both live in `LinkText.tsx` and take `href` xor `onClick` by type.
 - **`TriStateToggle`** — have/missing/unknown state; replaces loose ✓/✗/? buttons.
 - **`PageHeader`** — icon + Title Case + actions; lives in `layout/`, not `ui/`.
 
