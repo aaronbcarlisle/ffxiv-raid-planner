@@ -1,5 +1,9 @@
 name: CI
 
+# All jobs only read the repo; none write to PRs, issues, or contents.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main, 'redesign/**']
@@ -34,7 +38,7 @@ jobs:
       # fragile `pnpm store path` step, which returned an empty path under the
       # `frontend` working-directory default and broke fork-PR runs.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 9
 
@@ -48,8 +52,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Type check
-        run: pnpm tsc --noEmit
+      # No separate `tsc --noEmit` step: the Build step runs `tsc -b`
+      # (project-build mode), which is the stricter superset check.
 
       - name: Token source/output sync
         run: pnpm tokens:check

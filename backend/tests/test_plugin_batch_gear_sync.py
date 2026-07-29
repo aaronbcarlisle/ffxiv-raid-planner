@@ -10,6 +10,7 @@ Verifies:
 - Old single-job endpoint still works alongside this one.
 """
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 
@@ -129,6 +130,10 @@ class TestPluginBatchGearsetSync:
         snap = result.scalar_one()
         first_synced_at = snap.synced_at
         first_seen = snap.last_plugin_seen_at
+
+        # Windows datetime resolution is ~15.6ms; cross a clock tick so the
+        # changed-payload sync provably gets a later timestamp (flake guard).
+        await asyncio.sleep(0.02)
 
         r2 = await client.post(
             "/api/plugin/player/batch-gear-sync",

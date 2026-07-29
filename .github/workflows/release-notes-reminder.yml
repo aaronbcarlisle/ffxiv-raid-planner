@@ -7,7 +7,11 @@ on:
 jobs:
   check:
     name: Release Notes Required
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # No same-repo `if` guard here: a skipped job SATISFIES a required status
+    # check, so skipping fork PRs let them bypass this gate entirely. The
+    # check logic below is read-only and runs fine with a fork's read token;
+    # only the helpful-comment writes are same-repo guarded (fork PRs get the
+    # failure status without the comment).
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -18,6 +22,12 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            // Fork PRs run with a read-only token: never attempt PR-comment
+            // writes for them (the status check result itself still applies).
+            const isSameRepo =
+              context.payload.pull_request.head.repo.full_name ===
+              `${context.repo.owner}/${context.repo.repo}`;
+
             // Use pagination to handle PRs with >30 files
             const files = await github.paginate(github.rest.pulls.listFiles, {
               owner: context.repo.owner,
@@ -144,11 +154,11 @@ jobs:
                   console.log(`Latest release: ${items.length} items, ${refs.length} PR/commit refs, ${descriptions.length} descriptions`);
 
                   if (items.length > 0 && refs.length < items.length) {
-                    const { data: comments } = await github.rest.issues.listComments({
+                    const comments = isSameRepo ? (await github.rest.issues.listComments({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
                       issue_number: context.issue.number
-                    });
+                    })).data : [];
 
                     const commitBotComment = comments.find(c =>
                       (c.user.type === 'Bot' || c.user.login === 'github-actions[bot]') &&
@@ -156,7 +166,7 @@ jobs:
                       c.body.includes('<!-- release-notes-commits-check -->')
                     );
 
-                    if (!commitBotComment) {
+                    if (isSameRepo && !commitBotComment) {
                       const commentBody = [
                         '<!-- release-notes-commits-check -->',
                         '**Release notes items missing a PR/commit reference**',
@@ -205,12 +215,12 @@ jobs:
 
             // If code changes but no release notes, fail
             if (!hasReleaseNotes) {
-              // Post a helpful comment if we haven't already
-              const { data: comments } = await github.rest.issues.listComments({
+              // Post a helpful comment if we haven't already (same-repo only)
+              const comments = isSameRepo ? (await github.rest.issues.listComments({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number
-              });
+              })).data : [];
 
               const botComment = comments.find(c =>
                 (c.user.type === 'Bot' || c.user.login === 'github-actions[bot]') &&
@@ -218,7 +228,7 @@ jobs:
                 c.body.includes('<!-- release-notes-check-bot -->')
               );
 
-              if (!botComment) {
+              if (isSameRepo && !botComment) {
                 const commentBody = [
                   '<!-- release-notes-check-bot -->',
                   '**Release notes required**',

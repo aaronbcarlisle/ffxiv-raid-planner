@@ -1,5 +1,10 @@
 name: Changelog Author Backfill
 
+# GITHUB_TOKEN is only used for read-only commit/user lookups by the
+# changelog scripts; Discord writes use the bot token secret.
+permissions:
+  contents: read
+
 # One-off / on-demand maintenance: re-attributes existing Discord changelog
 # embeds to their real commit authors (editing the bot's own messages in place).
 # Run a dry run first, review the logs, then run again with dry_run = false.
