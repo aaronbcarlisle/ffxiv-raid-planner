@@ -24,6 +24,12 @@ build/
 **/.claude/*
 # ...except shared project skills, which carry checked-in team conventions
 !/.claude/skills/
+# ...and the shared project config: settings (permissions + hooks), the hook
+# scripts themselves, and the project agents. settings.local.json stays
+# ignored (machine-local overrides).
+!/.claude/settings.json
+!/.claude/hooks/
+!/.claude/agents/
 .superpowers/
 docs/superpowers/
 *.swp
