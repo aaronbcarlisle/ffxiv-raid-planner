@@ -43,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/pre_bash_guard.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre_bash_guard.py\"",
             "timeout": 300
           }
         ]
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/post_edit_lint.py",
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_edit_lint.py\"",
             "timeout": 120
           }
         ]
