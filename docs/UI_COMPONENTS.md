@@ -37,6 +37,29 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Static creation | `SetupWizard` | `components/wizard/SetupWizard.tsx` |
 | Player setup prompts | `PlayerSetupBanner` | `components/player/PlayerSetupBanner.tsx` |
 | User assignment | `AssignUserModal` | `components/player/AssignUserModal.tsx` |
+| Status / filter / nav pill | `Tag` (explicit `variant`) | `components/ui/Tag.tsx` |
+| In-surface view switch | `Tabs` (no route API) | `components/ui/Tabs.tsx` |
+| Navigational text | `LinkText` | `components/ui/LinkText.tsx` |
+| Navigational row (icon + label + chevron) | `NavRow` | `components/ui/LinkText.tsx` |
+| Have/missing/unknown | `TriStateToggle` | `components/ui/TriStateToggle.tsx` |
+| Page/section header | `PageHeader` | `components/layout/PageHeader.tsx` |
+| Segmented control | `SegmentedToggle` | `components/ui/SegmentedToggle.tsx` |
+| Three-state checkbox | `ThreeStateCheckbox` | `components/ui/ThreeStateCheckbox.tsx` |
+
+### Constrained primitives (design language — enforced)
+
+These carry the redesign's "illegal UI is unrepresentable" rules. They are
+**type-enforced** — their prop types make the illegal state unrepresentable,
+caught by `pnpm build` (`tsc -b`). The ESLint plugin
+(`frontend/eslint-design-system-plugin.js`, rules like
+`no-noninteractive-onclick` and `no-cursor-pointer-without-role`) is what
+steers raw HTML toward them:
+
+- **`Tag`** — every pill declares `variant="label" | "filter" | "nav"`; the discriminated union makes an ambiguous pill a **type error** (`onClick`/`href` are `never` on `variant="label"`).
+- **`Tabs`** — in-surface view switching only; it has no `href`/route API by construction, so a tab can never masquerade as navigation.
+- **`LinkText`** / **`NavRow`** — navigational text and row-level navigation (icon + label + description + chevron); both live in `LinkText.tsx` and take `href` xor `onClick` by type.
+- **`TriStateToggle`** — have/missing/unknown state; replaces loose ✓/✗/? buttons.
+- **`PageHeader`** — icon + Title Case + actions; lives in `layout/`, not `ui/`.
 
 ---
 
