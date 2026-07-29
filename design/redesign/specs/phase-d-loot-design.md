@@ -479,18 +479,284 @@ the same PR: **D-35** (its `Alt+M` is wrong — the binding is `Alt+U`) · **D-3
 R-14) · **D-39** (reset entry points = R-16) · **D-40** (the pill already carries the dots) · **D-43**
 (closed by F-08, not open) — alongside D-23/D-27 already owed from R-3.
 
-## 5. Open — the other surfaces
+---
 
-- **History**: the cross-week table as the model, structured search merged with v2's filter pills,
-  the kebab's "Jump to {player}". Net change from Phase D so far: History **loses** the books card
-  (R-14) and the reset menu (R-16), and keeps its per-entry kebab.
-- **Elsewhere**: `FairnessSummary`'s home (R-23 — Team Summary's is closed by F-08), the Split
-  Planner's entry (F-04).
+## 5. History — rulings
+
+Structure is already ruled and not re-opened here: **D-31** makes v1's cross-week flat table the
+History model, **D-72** merges the structured search into it, **D-32/D-33** dissolve the List view and
+the layout axis, **D-34** keeps v2's kebab and returns "Jump to {player}". History's identity is
+*find*, and after §3 it is the only loot surface that does not author the week.
+
+Two components meet here: v1's `AllWeeksView.tsx` (655 lines — flat sortable table, structured search,
+`Ctrl+Shift+F`, All/Gear/Materials toggle, floor chips, stats count, sticky header, row-click edit,
+modifier clicks, right-click menu) and v2's `LootHistoryTable.tsx` (week-grouped cards + `LootEntryRow`,
+and the owner of the `?entry=`/`?entryType=` highlight effect at `:81-103`).
+
+### R-29 · Week grouping survives as **separator rows**, only while sorted by week
+
+The table is flat and sortable. While the sort is **Week** — the default — a thin separator carries
+v2's week header content: `Week 3 · Jul 22–29 · 4 entries`, **including its current-week marker**.
+Sort by any other column and the separators disappear.
+
+Within a week the secondary sort is **`createdAt` descending**.
+
+*Why:* v2's `WeekGroupHeader` earned its keep (the date range answers "which lockout was that?" without
+arithmetic), but a week separator under a Player sort would be a lie — the rows either side of it are
+no longer a week. Making the separators a property *of the week sort* keeps the information and drops
+it exactly when it stops being true.
+
+*Why the tiebreaker is a ruling and not a detail:* v1 sorts on `a.weekNumber - b.weekNumber` alone
+(`AllWeeksView.tsx:279`) over a `[...lootRows, ...materialRows]` concatenation (`:199`), so a stable
+sort leaves every week as "all loot in log order, then all materials" — and `sortDir` never touches
+the tie. v2 today already sorts `createdAt` desc within a week (`historyItems.ts:47-51`), so restoring
+v1's comparator verbatim would be a **regression against what ships now**.
+
+**Implementation notes, not rulings:**
+
+1. The current-week marker is `WeekGroupHeader.tsx:34-36`; carry its token choice with it — `:30-33`
+   documents `text-accent-hover` rather than `text-accent` as a *measured* AA-contrast decision.
+2. **`SortableHeader` is not keyboard-operable and must be fixed before Log/History adopt it.**
+   `admin/SortableHeader.tsx:35-39` is a raw `<th onClick>` — no `tabIndex`, no `role`, no key handler
+   (it does set `aria-sort`, `:38`). R-29 makes sorting the mechanism that absorbs D-32's chronological
+   axis *and* D-33's layout axis, so shipping it mouse-only would strand a keyboard user with neither.
+   It also wants promoting out of `components/admin/` if a ring-0 loot surface imports it.
+3. **Sort and filter state are session-local**, matching v1 (`AllWeeksView.tsx:97-102`, which persists
+   nothing). If that is ever revisited, the key must be distinct — `v2-sort-preset-{tierId}` is already
+   taken by the roster (`useRosterSortPreset.ts:43`).
+
+### R-30 · **One filter state** — the pills write into the search box (D-72)
+
+Clicking a pill inserts its token — `player:alice`, `floor:m12s`, `type:loot` — and clicking it again
+removes it. The box stays freely typable, keeps its clear button, and `Ctrl+Shift+F` still focuses it.
+
+*Why:* D-72 asked for "the best of the structured search + v2's filter pills", and two independent
+filter surfaces ANDed together give a user two places to look when the table comes back empty. Writing
+the pill's token into the box means the pills are a **teaching surface** for a syntax that is otherwise
+undiscoverable — the power-user feature and the beginner affordance become the same control.
+
+**The round-trip is not free.** The parser (`AllWeeksView.tsx:214-268`) needs four corrections before
+the pills can bind to it losslessly:
+
+| Defect | Evidence | Resolution |
+|---|---|---|
+| `type:gear` matches **nothing** | `:234` compares against `r.type ∈ {'loot','material'}` (`:161`, `:181`), so `'loot'.includes('gear')` is false. The v1 toggle's *label* is "Gear"; its *value* is `loot` (`:466`, `:476`). `type:materials` fails the same way | The tokens are **`type:loot` / `type:material`**; the pills may still read "Gear"/"Materials" |
+| No token expresses v2's **Tome** pill | `historyItems.ts:60` — `tome` means `method === 'tome' \|\| method === 'purchase'` | The `source:` key, per R-36 |
+| Multi-floor selection unexpressible | v1's `activeFloors` is a multi-select `Set` with a min-1 guard (`:100`, `:299-309`); AND-ed tokens make `floor:m9s floor:m10s` empty | Comma alternation, per R-36 |
+| A player name with a space cannot round-trip | The tokenizer splits on `/\s+/` with no quoting (`:215`), so `player:Tank One` parses as `player:tank` + a free `one`. FFXIV names are always two words | **Quoting**: `player:"Tank One"` |
+
+Two behaviours the reverse read must state, because the parser is silent on both today:
+
+- A pill renders active **only on exact token equality**. A freely typed `player:ali` filters the table
+  (`:233` is a substring match) but lights no pill — the pills reflect what they wrote, not what matches.
+- **A trailing-colon token is neutral, and an unknown key is surfaced.** `player:` alone fails the
+  `colonIdx < token.length - 1` guard (`:221`) and falls through to free text, so the table *empties
+  while the user is still typing the word*. An unknown key silently no-ops (`default: return true`,
+  `:239`), which reads as "filter applied" when nothing was. Neither is acceptable on a find surface.
+
+v2's own pill state (`HistoryFilters.tsx`, `DEFAULT_HISTORY_FILTERS`) dissolves into the query string.
+
+### R-36 · The query gains **comma alternation** and a `source:` key
+
+A comma-separated value means OR: `floor:m9s,m10s`. Repeated keys keep their current AND meaning, so
+no existing query changes behaviour. `source:` is added, mapping to v2's `matchesSource`
+(`historyItems.ts:54-64`) — `source:tome` is tome-or-purchase, which no combination of `method:`
+tokens can express.
+
+*Why:* one parser change closes both losses D-31 would otherwise take — the multi-select floor chips it
+names in the restore, and v2's Tome pill. Comma was chosen over "repeated keys OR" because the latter
+silently redefines queries that already work.
+
+### R-37 · The filter query is **session-local**, and `copyLink` strips it
+
+The query is not URL-backed. `copyLink` strips it from the link it builds, exactly as it already
+strips `shell` (`Loot.tsx:252`).
+
+*Why:* `Loot.tsx:39-43` documents the invariant being protected, in the code, as a deliberate decision:
+filters are session-local *so that an `?entry=` deep-link can never be hidden by a filter on first
+mount*. Making the query shareable would break it in a way that fails silently — `LootHistoryTable`
+resolves the highlight against the **unfiltered** logs (`:72-77`) but renders only filtered rows
+(`:107-108`), so a filtered-out target scrolls to nothing and then clears its own params 2.5 s later
+(`:90-97`). The user sees the right screen and no highlight, with nothing to indicate why. A
+non-shareable filter is the cheaper loss.
+
+### R-31 · A plain row click **opens the entry for editing**
+
+Same contract as a Log grid cell: click authors, `Shift+Click` copies the link, `Alt+Click` jumps to
+the player with the slot row highlighted, and a plain click **never navigates**.
+
+*Why:* v1 did this (`AllWeeksView.tsx:311-333`) and R-18 just set the same rule one tab over. One
+mental model across both surfaces beats a per-tab exception.
+
+Three qualifications, none of them optional:
+
+1. **The cursor tells the truth.** v1 sets `cursor-pointer` and `tabIndex={0}` unconditionally
+   (`:551-552`) while gating the click on `canEdit` (`:326`) — so a viewer's rows advertise an
+   activation that will never fire. Pointer only when `canEdit`, plus R-18's Alt-held swap. This is
+   D-55's C7 refinement verbatim: an element must never advertise a plain click it won't honour.
+2. **Text stays selectable.** v1 sets `select-none` on every row (`:551`) — on the one tab whose whole
+   identity is reading back what happened. Selection survives on the text cells (Player, Slot, Method,
+   Date); v1's `window.getSelection()?.removeAllRanges()` guard (`:315`) stays, so `Shift+Click` still
+   doesn't leave a selection artifact behind.
+3. **The modifiers work from the keyboard** — `:555-559` casts the `KeyboardEvent` through to the same
+   handler, and `altKey`/`shiftKey` exist on it, so `Alt+Enter` and `Shift+Enter` carry. Stated because
+   it currently reads as accidental rather than designed.
+
+**Implementation note, not a ruling:** a `tabIndex={0}` `<tr>` with an `aria-label` (`:553`) and no
+`role` needs one — the row *is* a control here, unlike C7's `RosterCard` body, which took a justified
+`design-system-ignore` precisely because a plain click there does nothing.
+
+### R-32 · The row kebab, and what "view this week" now means
+
+Kebab items, with right-click opening the same menu (the kebab is the keyboard and AT route):
+**Edit · Copy link · Jump to {player} · View week N in Log · Delete**.
+
+*Why the rename:* v1's menu offered "View Week N in **Grid**" and "in **List**"
+(`AllWeeksView.tsx:378-391`). D-33 dissolved the layout axis and D-30 re-homed the grid, so "Grid" is
+now simply **the Log tab** and "List" no longer exists. The item survives as a cross-tab jump —
+History finds the entry, Log shows its week in context.
+
+**A material row's Edit opens R-21's material modal.** This is net-new: v2 cannot edit a material at
+all — `LootHistoryTable.tsx:26` types `onEdit` as `(entry: LootLogEntry)`, `LootEntryRow.tsx:148`
+gates the item on `kind === 'loot'`, and `Loot.tsx:238-240` only ever opens the picker. v1's table
+*can* (`:329-330`, `:353-359`), so leaving this unsaid would drop a live v1 affordance while D-37
+explicitly restores it.
+
+**Implementation notes, not rulings:**
+
+1. **The table needs an eighth column for the kebab.** v1 has no kebab at all — only `onContextMenu`
+   (`:561`), so "the kebab is the AT route" is a v2 addition, not a restore.
+2. Right-click anchors at raw `clientX/clientY` (`:337`), which puts the menu in the page corner when
+   the context menu is invoked from the keyboard (both coordinates zero). Reuse the owned
+   `jumpMenuAnchor` helper (`rosterLedgerJumps.ts:75-83`) — the same fix PR #200 already made.
+
+### R-33 · Floor colour lives in the **Floor column**, and only there
+
+The Floor cell keeps v1's floor-coloured chip (`AllWeeksView.tsx:569-579`). The Slot name stays
+neutral; material rows keep their material dot (`:584-589`).
+
+*Why:* this is R-8 applied to a table rather than a card. R-8 colours the gear *name* because a Queues
+card has no floor column to carry it; History has one on every row, so colouring the name too would
+state the floor twice. Same principle as R-9 and R-19 — say it once, in the element that exists for it.
+
+**Implementation note, not a ruling:** restore the chip's *treatment*, not its code.
+`:570-578` builds it from inline `style` with `floorColors.hex` and `` `${hex}15` `` — hardcoded colour,
+a design-system violation — while the floor *filter* chip on the same screen already uses the class
+tokens (`:493-497`; `loot-tables.ts:69-73` exposes `bg`/`text`/`border` alongside `hex`). Use the tokens.
+
+### R-38 · A weapon row shows the **weapon's** job icon (amends R-8's standing input)
+
+The Slot cell carries `weaponJob`; the recipient's own job icon stays where it belongs, on the
+recipient chip.
+
+*Why — this corrects the standing input, which was self-defeating as written.* The 2026-07-26 input
+said a logged weapon entry shows *the recipient's* job icon "so which weapon dropped is unambiguous",
+but those two clauses contradict each other: `weaponJob` is stored per entry (`types/index.ts:1249` —
+"DRG, WHM, etc. for weapon slots") **precisely because it can differ from the recipient's job**. When
+a WHM picks up a Dragoon weapon for an alt job, only `weaponJob` answers the question the input was
+asking. v1 already renders the right one (`:590`); the recipient's is separately at `:606`.
+
+**Write-back owed:** the standing input in §0 item 3, and any matrix row quoting it.
+
+### R-39 · History rows carry **R-8's generic slot icon**
+
+A monochrome generic slot glyph leads the Slot cell, alongside the material dot for material rows and
+`weaponJob` for weapons.
+
+*Why:* R-8 mandates the icon "wherever a logged entry renders (Log + History too)", and v1's Slot cell
+has none (`:582-593`), so without this ruling the icon rule would silently become Log-only. On a long
+table it also makes the column scannable by shape rather than by reading.
+
+### R-34 · What History keeps, loses, and still owns
+
+| | |
+|---|---|
+| **Loses** | The books card (R-14) and the bulk reset menu (R-16) — both move to Log |
+| **Keeps** | Per-entry edit/delete (materials included, per R-32), the `?entry=`/`?entryType=` deep-link highlight (`LootHistoryTable.tsx:81-103`), and v2's `aug {slotAugmented}` readout (`LootEntryRow.tsx:128-132`) — see below |
+| **Restores** | The stats count and the **filtered-vs-empty** distinction — "No entries match your filters" vs "No loot or materials logged this tier" (`AllWeeksView.tsx:530-537`); v2 has one message for both (`LootHistoryTable.tsx:110-116`) |
+| **Receives** | Past-week gear-slot jumps, per R-28's split |
+
+**The material's augmented slot must survive the flattening.** v2 shows it as a tag
+(`LootEntryRow.tsx:128-132`, falling back to `tome wpn`); v1's table renders nothing for materials in
+the Type column (`:626` gates on `row.type === 'loot'`), leaving `slotAugmented` alive only as an
+`Alt+Click` target (`:322`). Restoring v1's table verbatim would make *"which slot did that twine go
+into?"* unanswerable in History — it lands in the Type column, which is otherwise empty on those rows.
+
+**The stats breakdown needs a new condition.** v1 shows the `(X gear, Y material)` split only when
+`entryType === 'all'` (`:508`) — a state R-30 deletes. It shows whenever both kinds are present in the
+filtered set.
+
+**`FairnessSummary` is provisional, and its fallback is named now:** it stays until the Elsewhere
+question rules its home, and **if Elsewhere homes it, History renders no fairness block at all.**
+R-23 already moved the per-week fairness read to Log, so History is otherwise carrying a second,
+whole-tier one on the tab whose identity is *find* — its own header calls it "the 4-stat-card fairness
+strip atop the History view" (`FairnessSummary.tsx:2`), and `Loot.tsx:397` is its only mount.
+
+### R-35 · Shortcuts: `Ctrl+Shift+F` stays, `Alt+1/2/3` does not
+
+The search focus shortcut is restored. Legacy's `Alt+1/2/3` is **dropped**.
+
+*Why:* those keys are overloaded onto the old four-sub-tab axis — they call
+`setGearSubTab('priority'|'history'|'stats')` *and* dispatch an entry-type change
+(`useGroupViewKeyboardShortcuts.ts:144-163`). D-33 and D-43 dissolved that axis, so the binding has no
+coherent meaning left. Consistent with R-22's drop of `Alt+←/→` and `Alt+B`. Note the drop costs
+current users nothing: those bindings are registered only under `legacyLootSurface` (`:139`), so they
+are **not live in v2 today**.
+
+**Implementation note, not a ruling:** `Ctrl+Shift+F` cannot be restored the way v1 implements it — a
+bare component-local `document` listener with no guard (`AllWeeksView.tsx:111-120`), on a screen that
+mounts `RecipientPicker` and `LogWeekWizard` above it. It needs a focus/modal guard, and it needs
+registering in `ui/keyboardShortcutGroups.ts` (which lists only `Ctrl+Shift+S` today, `:28`) or it will
+never appear in the `Shift+?` help.
+
+---
+
+## 6. History — the shape after R-29…R-39
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Loot                                                Adjustments · Rules │
+│  ┌──────────────────────────┐                                            │
+│  │ Priority │ Log │ History │                                            │
+│  └──────────────────────────┘                                            │
+│  ⌕ player:alice floor:m9s,m10s source:tome                    ✕  (^⇧F)   │
+│  [All][Gear][Mats]  Floor:[▪M9S][▪M10S][M11S][M12S]   └ R-36 alternation │
+│  Player:[▪Alice][Bob][Cara]…              R-30 · pills write tokens ↑    │
+│                                                    12 entries (9 gear)   │
+├──────────────────────────────────────────────────────────────────────────┤
+│ Week ▾│ Floor │ Slot        │ Player     │ Method │ Date    │ Type │  ⋮  │
+│ ──── Week 3 · Jul 22–29 · 4 entries · current ───────── R-29 ─────────── │
+│  W3   │ M12S  │ ⚔DRG Weapon │ ◆Erin      │ Drop   │ Jul 24  │ BiS  │  ⋮  │
+│  W3   │ M11S  │ ▭   Chest   │ ◆Dan       │ Drop   │ Jul 24  │ Extra│  ⋮  │
+│ ──── Week 2 · Jul 15–22 · 6 entries ─────────────────────────────────────│
+│  W2   │ M10S  │ ◇   Hands   │ ◆Cara      │ Book   │ Jul 17  │ BiS  │  ⋮  │
+│  W2   │ M10S  │ ●   Glaze   │ ◆Dan       │ Drop   │ Jul 17  │ aug legs│⋮ │
+│       └ R-33   └ R-39 slot icon        R-38 weapon's job ↑    └ R-34     │
+│  click: edit · Shift: link · Alt: jump · ⋮ / right-click: all of it      │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+**Director verdict (2026-07-28): PARITY-GAP — approve with required changes.** All twenty-one required
+changes are folded in above; the four that were design forks rather than corrections were ruled by the
+user as R-36 (comma alternation + `source:`), R-37 (session-local query), R-38 (the weapon's job icon)
+and R-39 (the generic slot icon).
+
+**Write-backs owed when this ships**, added to the list in §4: **D-31** (its "stats **footer**" renders
+in the header, `AllWeeksView.tsx:505-511`) · **D-72** (the clear button, named in the row and now in
+R-30) · **§0 standing input 3** (the weapon job-icon correction, R-38) · **D-37** (material edit reaches
+History too, R-32).
+
+## 7. Open — what is left
+
+The triad is designed: **Priority** R-1…R-12, **Log** R-13…R-28, **History** R-29…R-35.
+
+- **Elsewhere**: `FairnessSummary`'s home (R-23 — Team Summary's is closed by F-08, onto static Home),
+  and the Split Planner's entry (F-04, deferred into this phase by the flow map).
 - **Mobile** (D-44) stays deferred to the Phase-P pass.
 
 ---
 
-## 6. Carried in from the Phase-C closeout
+## 8. Carried in from the Phase-C closeout
 
 **`roster-hide-subs` — RULED 2026-07-28: namespace it v2-side.** The key is currently shared by both
 shells (`Roster.tsx:143,147` / `GroupViewContent.tsx:534,538`), so "Show subs" bleeds between v1 and
