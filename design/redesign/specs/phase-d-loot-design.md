@@ -159,9 +159,38 @@ views. The reconciliation, which is the ruling:
 the standing input rejected. This gets the good default without the surprise of a control that
 changes under you once you've touched it.
 
+### R-11 · The Need column counts **the roster**, not a full party
+
+`3/8` on a seven-player static is v1's own behaviour — `WhoNeedsItMatrix.tsx:419` and `:547` print a
+**literal 8** while `count` comes from the players actually rendered. v2 prints the roster size:
+`3/7` for seven players, `3/8` once the eighth seat is filled.
+
+*Why:* the denominator is only useful if it can be verified by counting the columns above it. The
+literal 8 also disagreed with the material rows in the same table (`:507`, `:614`), which print a
+bare total with no denominator at all — so the fix makes the Need column internally consistent as
+well. `sortedPlayers.length` is already in scope at both call sites.
+
+### R-12 · The picker states its consequences **without a disclosure click** (D-28)
+
+Three changes, all inside `RecipientPicker`:
+
+| Change | Placement |
+|---|---|
+| **"This will:"** action preview | Replaces the static footer line (`RecipientPicker.tsx:381-383`), and is **live** — it names the recipient, the week, and each side effect the current toggles will actually cause |
+| **Acquired visibility** | The `Mark {slot} as acquired` checkbox is **promoted out of the disclosure into the modal body**, so it renders in assign mode |
+| **Rename** | The expandable **`Details` → `Options`** |
+
+*Why:* `showDetails` initialises to `mode !== 'assign'` (`:119`), so on the R-4 path — a matrix cell
+click — the acquired checkbox was collapsed and the only consequence text was a static line that
+said the same thing regardless of the toggles. R-4 justified routing the cell click through the
+picker *because it shows its work before writing*; a preview behind a disclosure would not have
+delivered that. v1's quick-log modal showed both (matrix D-28), so this is a restore.
+
+R-6 already settles the reasons/warnings/confidence layer that shares this modal.
+
 ---
 
-## 2. Priority — the shape after R-1…R-10
+## 2. Priority — the shape after R-1…R-12
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -189,17 +218,10 @@ pills are live in it (scoping, the R-7 button swap, the R-5 label swap); everyth
 Also published for viewing at
 <https://claude.ai/code/artifact/6ed22323-c071-4cfc-b60d-ec317909b5bf>.
 
-Still open **inside** Priority — component detail, not structure:
+**Priority is fully designed** — R-1…R-12 leave nothing open on this surface. The two items the
+mockup raised are ruled: the Need denominator (R-11) and the picker's placement details (R-12).
 
-- **D-28 RecipientPicker additions.** The "This will:" action preview, making the acquired state
-  visible, and renaming the expandable "Details" section to "Options". The *contents* are already
-  ruled by the matrix; what remains is placement inside the modal. R-6 already settles the
-  reasons/warnings/confidence layer that shares the modal.
-- **❓ The Need column's denominator.** It reads `3/8` against a seven-player roster — v1's own
-  behaviour, counting the eighth seat of a full party. Deliberate, or a v1 quirk not worth
-  restoring? Raised by the mockup, unruled.
-
-## 3. Open — the other surfaces
+## 3. Open — the other surfaces (Priority is closed)
 
 - **Log** (does not exist in v2): the weekly grid's shape, books' placement inside it, free-form
   material entry, material editing, week stepping, revert data-summary.
