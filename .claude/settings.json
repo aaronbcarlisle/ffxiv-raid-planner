@@ -1,0 +1,65 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(pnpm *)",
+      "Bash(node *)",
+      "Bash(npx *)",
+      "Bash(ls *)",
+      "Bash(python *)",
+      "Bash(cd backend && venv/Scripts/python.exe *)",
+      "Bash(./venv/Scripts/python.exe *)",
+      "Bash(echo *)",
+      "PowerShell(git *)",
+      "PowerShell(gh *)",
+      "PowerShell(pnpm *)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(Invoke-RestMethod http://localhost:*)",
+      "PowerShell(Invoke-WebRequest http://localhost:*)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(git tag -d*)",
+      "Bash(git tag --delete*)",
+      "Bash(git push * --delete*)",
+      "Bash(git push * :*)",
+      "Bash(git worktree remove*)",
+      "Bash(gh repo delete*)",
+      "PowerShell(git push --force*)",
+      "PowerShell(git push -f*)",
+      "PowerShell(git reset --hard*)",
+      "PowerShell(git tag -d*)",
+      "PowerShell(git push * --delete*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/pre_bash_guard.py",
+            "timeout": 300
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/post_edit_lint.py",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
