@@ -613,7 +613,9 @@ async def _sync_discord_mirror_best_effort(
             reason=reason,
             error=str(exc),
         )
-        return [f"failed: {exc}"]
+        # Full error is in the log above; the client-visible action string must
+        # not carry raw exception text (CodeQL py/stack-trace-exposure).
+        return ["failed: Discord sync error (details in server logs)"]
 
 
 async def _delete_discord_mirrors_best_effort(
@@ -655,7 +657,9 @@ async def _delete_discord_mirrors_best_effort(
             reason=reason,
             error=str(exc),
         )
-        return [f"failed: {exc}"]
+        # Full error is in the log above; the client-visible action string must
+        # not carry raw exception text (CodeQL py/stack-trace-exposure).
+        return ["failed: Discord sync error (details in server logs)"]
 
 
 def _escape_ical_text(value: str | None) -> str:

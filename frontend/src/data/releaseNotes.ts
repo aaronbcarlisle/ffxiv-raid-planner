@@ -60,6 +60,30 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.4',
+    date: '2026-07-29T01:00:00Z',
+    title: 'Security triage: CI hardening + error sanitization',
+    items: [
+      {
+        category: 'improvement',
+        title: 'External-service errors no longer echo raw exception text to clients',
+        description:
+          'BiS imports (XIVGear, GitHub, Etro) and Discord schedule sync returned raw exception messages in API responses, which can leak internal hosts or config. Clients now get a generic message; the full error goes to the server log. Clears both CodeQL stack-trace-exposure alerts.',
+        pr: 213,
+        prTitle: 'chore(security): Phase 2 CI hardening — workflow permissions, SHA pins, error sanitization',
+      },
+      {
+        category: 'improvement',
+        title: 'GitHub Actions hardened: explicit permissions, SHA-pinned third-party actions',
+        description:
+          'ci.yml, discord-changelog.yml, and changelog-author-backfill.yml now declare least-privilege permissions (clears 7 CodeQL alerts). pnpm/action-setup and anthropics/claude-code-action are pinned to commit SHAs against tag-rewriting supply-chain attacks. The redundant tsc --noEmit CI step is gone (build runs the stricter tsc -b). Fork PRs can no longer bypass the Release Notes required check via job-skip.',
+        pr: 213,
+        prTitle: 'chore(security): Phase 2 CI hardening — workflow permissions, SHA pins, error sanitization',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.3',
     date: '2026-07-28T23:00:00Z',
     title: 'Security triage: dependency wave',

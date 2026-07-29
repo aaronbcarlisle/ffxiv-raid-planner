@@ -1,5 +1,10 @@
 name: Discord Changelog
 
+# GITHUB_TOKEN is only used for read-only commit/user lookups by the
+# changelog scripts; Discord writes use the bot token secret.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]

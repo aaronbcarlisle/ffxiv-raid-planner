@@ -12,6 +12,16 @@ updates:
     directory: /frontend
     schedule:
       interval: monthly
+    # eslint-plugin-react-hooks is pinned to 7.0.1 on purpose: 7.1.x ships the
+    # React-Compiler rules (preserve-manual-memoization et al.), which flag 71
+    # existing call sites. Adopting those rules is a deliberate standalone task
+    # — remove this ignore when that lands (context: PRs #206/#210).
+    ignore:
+      - dependency-name: eslint-plugin-react-hooks
+      # 0.5.x makes react-refresh/only-export-components stricter (2 new
+      # errors at current call sites) — same deal: adopt deliberately, then
+      # remove this line (context: PR #216).
+      - dependency-name: eslint-plugin-react-refresh
     groups:
       frontend-minor-patch:
         applies-to: version-updates

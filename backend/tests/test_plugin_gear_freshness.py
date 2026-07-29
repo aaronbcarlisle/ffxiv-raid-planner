@@ -1,6 +1,7 @@
 """Tests for plugin gear sync freshness: synced_at must only update when
 gear actually changes; last_plugin_seen_at always updates."""
 
+import asyncio
 import uuid
 from datetime import datetime, timezone
 
@@ -119,6 +120,11 @@ class TestPluginGearFreshness:
         assert r1.status_code == 200
         first_synced_at = r1.json()["syncedAt"]
 
+        # Windows datetime resolution is ~15.6ms; without crossing a clock tick
+        # two back-to-back syncs can get identical timestamps and the
+        # "changed payload updates syncedAt" assertion flakes.
+        await asyncio.sleep(0.02)
+
         r2 = await client.post(
             "/api/plugin/player/gear-sync",
             headers=auth_headers,
@@ -195,6 +201,10 @@ class TestPluginGearFreshness:
             json=_gear_payload(item_name="Old Bow"),
         )
         first_synced_at = r1.json()["syncedAt"]
+
+        # Cross a Windows clock tick (~15.6ms resolution) — see
+        # test_changed_payload_updates_synced_at.
+        await asyncio.sleep(0.02)
 
         r2 = await client.post(
             "/api/plugin/player/gear-sync",
