@@ -1,7 +1,10 @@
 # Phase D — Loot rework (co-design record)
 
-**Status: 🔴 IN CO-DESIGN, started 2026-07-28.** This document is the running record of the Phase-D
-design conversation, written ruling-by-ruling as the user makes each call.
+**Status: ✅ DESIGN COMPLETE 2026-07-28** (started the same day). This document is the running record of
+the Phase-D design conversation, written ruling-by-ruling as the user made each call. All four surfaces
+are ruled — Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 · Elsewhere R-40…R-41 — and the Log
+and History sections were validated by `xivrp-director` before landing. **Implementation is not planned
+yet** (§8).
 
 **Process (binding).** Phase D is **co-designed step by step with the user, not sliced
 autonomously** — the standing ruling from 2026-07-26: *"a lot of work went into v1 based on user
@@ -686,11 +689,10 @@ into?"* unanswerable in History — it lands in the Type column, which is otherw
 `entryType === 'all'` (`:508`) — a state R-30 deletes. It shows whenever both kinds are present in the
 filtered set.
 
-**`FairnessSummary` is provisional, and its fallback is named now:** it stays until the Elsewhere
-question rules its home, and **if Elsewhere homes it, History renders no fairness block at all.**
-R-23 already moved the per-week fairness read to Log, so History is otherwise carrying a second,
-whole-tier one on the tab whose identity is *find* — its own header calls it "the 4-stat-card fairness
-strip atop the History view" (`FairnessSummary.tsx:2`), and `Loot.tsx:397` is its only mount.
+**History renders no fairness block.** R-40 homes `FairnessSummary` on static Home, so the provisional
+wording this row carried is resolved: R-23 put the per-week read in Log, R-40 puts the whole-tier read
+on Home, and History — whose identity is *find* — carries neither. `Loot.tsx:397` is its only mount
+today and that mount goes away.
 
 ### R-35 · Shortcuts: `Ctrl+Shift+F` stays, `Alt+1/2/3` does not
 
@@ -746,17 +748,54 @@ in the header, `AllWeeksView.tsx:505-511`) · **D-72** (the clear button, named 
 R-30) · **§0 standing input 3** (the weapon job-icon correction, R-38) · **D-37** (material edit reaches
 History too, R-32).
 
-## 7. Open — what is left
+## 7. Elsewhere — rulings
 
-The triad is designed: **Priority** R-1…R-12, **Log** R-13…R-28, **History** R-29…R-35.
+The two units the flow map and the matrix left homed nowhere.
 
-- **Elsewhere**: `FairnessSummary`'s home (R-23 — Team Summary's is closed by F-08, onto static Home),
-  and the Split Planner's entry (F-04, deferred into this phase by the flow map).
-- **Mobile** (D-44) stays deferred to the Phase-P pass.
+### R-40 · The tier-wide fairness read moves to **static Home**, beside Team Summary (D-42/D-43)
+
+`FairnessSummary` leaves History and lands on Home as its own module, next to the Team Summary that
+F-08 already put there.
+
+*Why:* fairness is a whole-tier "how is this static doing" question, which is the scope Home exists to
+answer and precisely the scope F-08 assigned it. That gives one fairness read per scope and no
+duplication — **the week** is answered by Log's count bar and legend (R-23), **the tier** by this
+module, and **a specific entry** by History's table, which now carries no aggregate at all.
+
+Note this is a *move*, not a restore: `FairnessSummary` is a v2-era artifact (`FairnessSummary.tsx:2`,
+F6d spec §5.5) with no v1 ancestor — D-42's row calls it "a *different, much smaller* artifact" than
+the Team Summary being restored. Its rollup (`computeTierFairness`) is unchanged by the move.
+
+### R-41 · The Split Planner is reached from the **Progress tab** — closes F-04
+
+Split Clears become a Progress-tab surface alongside Goals, Farms and Collections. Home's F-11
+attention row links to it there; Roster gets no second entry.
+
+*Why:* split clears are Ring-3 alt progression, which is the class of thing F-03 made Progress the
+owner of when it ruled Progress a 5th Spine tab. The Roster candidate on record reads well — the
+planner does arrange people — but Roster is a Ring-0 weekly surface and a split is an occasional
+objective; putting an occasional Ring-3 action on a weekly Ring-0 tab is the mismatch F-04 was
+deferred to avoid. One home, one entry, plus the attention row that already exists.
+
+**This closes the flow map's last open decision point** — F-01…F-12 are now all ruled. Write-back owed
+to `systems-flow-map.md` rows F-04 (`:214`), the Split Planner row (`:127`, `:195`) and D-18.
 
 ---
 
-## 8. Carried in from the Phase-C closeout
+## 8. Open — what is left
+
+**Phase D's design is complete.** Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 ·
+Elsewhere R-40…R-41.
+
+- **Mobile** (D-44) stays deferred to the Phase-P pass, per the standing ruling that mobile gets one
+  consolidated walkthrough rather than per-slice affordances.
+- **Implementation** is unplanned. Much of this phase is net-new rather than re-homed — Log does not
+  exist at all, and R-16, R-21, R-26, R-28 and R-32 each name work rather than a move — so the build
+  wants its own slicing pass against the ~1,500-line PR budget.
+
+---
+
+## 9. Carried in from the Phase-C closeout
 
 **`roster-hide-subs` — RULED 2026-07-28: namespace it v2-side.** The key is currently shared by both
 shells (`Roster.tsx:143,147` / `GroupViewContent.tsx:534,538`), so "Show subs" bleeds between v1 and
