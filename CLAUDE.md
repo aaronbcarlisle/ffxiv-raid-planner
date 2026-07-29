@@ -1,6 +1,6 @@
 # FFXIV Raid Planner - Project Guide
 
-**Status:** Undergoing a top-down UX/IA redesign — **read [docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md) first.** It is the canonical source of truth: what the app is, how everything nests (layers · weekly loop · Progress Engine · rings), what fits inside it, and the roadmap.
+**Status:** Undergoing a top-down UX/IA redesign (dual-shell: legacy V1 default + admin-gated V2 preview; Phases A–C shipped, Phase D loot co-design underway) — **read [docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md) first.** It is the canonical source of truth: what the app is, how everything nests (layers · weekly loop · Progress Engine · rings), what fits inside it, and the roadmap.
 
 A progression tool and home base for FFXIV static raid groups: roster, schedule, loot, and gear progress for the content a static is working on.
 
@@ -64,6 +64,11 @@ A progression tool and home base for FFXIV static raid groups: roster, schedule,
 | Loading state | `Skeleton` | `ui/Skeleton.tsx` |
 | Job icon | `JobIcon` | `ui/JobIcon.tsx` |
 | Toggle switch | `Toggle` | `ui/Toggle.tsx` |
+| Status / filter / nav pill | `Tag` | `ui/Tag.tsx` |
+| In-surface view switch | `Tabs` | `ui/Tabs.tsx` |
+| Navigational text | `LinkText` | `ui/LinkText.tsx` |
+| Have/missing/unknown | `TriStateToggle` | `ui/TriStateToggle.tsx` |
+| Page/section header | `PageHeader` | `layout/PageHeader.tsx` |
 | Static creation wizard | `SetupWizard` | `wizard/SetupWizard.tsx` |
 | Player setup prompts | `PlayerSetupBanner` | `player/PlayerSetupBanner.tsx` |
 | User assignment | `AssignUserModal` | `player/AssignUserModal.tsx` |
@@ -87,7 +92,7 @@ A progression tool and home base for FFXIV static raid groups: roster, schedule,
 | Need | Use | Never |
 |------|-----|-------|
 | Clickable action | `Button` / `IconButton` | raw `<button>`, `<div onClick>` |
-| Navigational text / row | `LinkText` / `NavRow` | plain text with `onClick` |
+| Navigational text / row | `LinkText` (`NavRow` is a designed-but-unbuilt F3 contract — until it lands, use `LinkText` or the `SidebarNav` row patterns) | plain text with `onClick` |
 | In-surface view switch | `Tabs` (no route API) | tabs that change the route |
 | Status / filter / nav pill | `Tag` with `variant="label"\|"filter"\|"nav"` | an ambiguous pill |
 | Have/missing/unknown | `TriStateToggle` | loose ✓/✗/? buttons |
@@ -226,6 +231,14 @@ PRs to main run: `build` (`tsc -b && vite build`), `lint`, `check:design-system:
 
 **Before opening or finalizing any PR, invoke the `pr-checklist` skill** (`.claude/skills/pr-checklist/SKILL.md`). It carries the CI-enforced rules that used to live here: the `releaseNotes.ts` entry requirement (internal vs public, `CURRENT_VERSION`, `pr`/`prTitle` over `commits`), the GitHub Actions fork-PR guard, and the pre-PR audit checklist.
 
+### PR size budget
+
+Target **under ~1,500 changed lines** per PR. History shows why: 27% of past PRs exceeded 5,000 lines, which defeats bot review (Copilot caps at 300 files; this repo's only reviewers are bots + self) and every mega-merge (#161, #174) was followed within 24h by a dedicated remediation PR. Anything bigger gets sliced, or gets an explicit mega-PR protocol: staged review, planned post-merge soak, and a stated reason it can't be split.
+
+### A green review check is not a review
+
+`claude-review` posted nothing for ~4.5 months while its check stayed green (fixed in #194/#195), and it silently skips any PR that modifies `claude-code-review.yml` (the action's anti-tamper validation) plus all bot-authored PRs. Before treating a PR as reviewed, confirm an actual review comment exists from `claude[bot]` or Copilot — never trust the check mark alone.
+
 ---
 
 ## Additional Documentation
@@ -234,7 +247,7 @@ See **[docs/README.md](./docs/README.md)** for the full doc map. Canonical set:
 
 ### Source of truth
 - **[PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md)** - What the app is, the model, the roadmap **(READ FIRST)**
-- **[REDESIGN_SPEC.md](./design/redesign/REDESIGN_SPEC.md)** - IA, visual language, flows + mockups *(in progress)*
+- **[REDESIGN_SPEC.md](./design/redesign/REDESIGN_SPEC.md)** - IA, visual language, flows + mockups *(historical reference — where it conflicts with PRODUCT_MODEL.md or the code, defer to those)*
 
 ### Design System
 - **[UI_COMPONENTS.md](./docs/UI_COMPONENTS.md)** - Component inventory **(READ BEFORE UI WORK)**

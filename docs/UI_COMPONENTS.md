@@ -37,6 +37,25 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Static creation | `SetupWizard` | `components/wizard/SetupWizard.tsx` |
 | Player setup prompts | `PlayerSetupBanner` | `components/player/PlayerSetupBanner.tsx` |
 | User assignment | `AssignUserModal` | `components/player/AssignUserModal.tsx` |
+| Status / filter / nav pill | `Tag` (explicit `variant`) | `components/ui/Tag.tsx` |
+| In-surface view switch | `Tabs` (no route API) | `components/ui/Tabs.tsx` |
+| Navigational text | `LinkText` | `components/ui/LinkText.tsx` |
+| Have/missing/unknown | `TriStateToggle` | `components/ui/TriStateToggle.tsx` |
+| Page/section header | `PageHeader` | `components/layout/PageHeader.tsx` |
+| Segmented control | `SegmentedToggle` | `components/ui/SegmentedToggle.tsx` |
+| Three-state checkbox | `ThreeStateCheckbox` | `components/ui/ThreeStateCheckbox.tsx` |
+
+### Constrained primitives (design language — enforced)
+
+These carry the redesign's "illegal UI is unrepresentable" rules and are
+lint-enforced (see `frontend/eslint-design-system-plugin.js` and
+[DESIGN_SYSTEM_SUMMARY.md](./DESIGN_SYSTEM_SUMMARY.md)):
+
+- **`Tag`** — every pill declares `variant="label" | "filter" | "nav"`; an ambiguous pill is a lint error.
+- **`Tabs`** — in-surface view switching only; it has no `href`/route API by construction, so a tab can never masquerade as navigation.
+- **`LinkText`** — navigational text/rows (`href` xor `onClick` by type). *`NavRow` appears in design docs and lint messages as the row-level contract from F3 — that component is designed but **not yet built**; use `LinkText` or the `SidebarNav` row patterns until it lands.*
+- **`TriStateToggle`** — have/missing/unknown state; replaces loose ✓/✗/? buttons.
+- **`PageHeader`** — icon + Title Case + actions; lives in `layout/`, not `ui/`.
 
 ---
 
