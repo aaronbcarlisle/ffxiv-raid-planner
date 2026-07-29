@@ -3,7 +3,7 @@
 **Status: ✅ DESIGN COMPLETE 2026-07-28** (started the same day). This document is the running record of
 the Phase-D design conversation, written ruling-by-ruling as the user made each call. All four surfaces
 are ruled — Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 · Elsewhere R-40…R-42 ·
-shared-layer R-43…R-47. Three `xivrp-director` passes ran: two per-surface (§4, §6 — against a
+cross-cutting R-47 · shared-layer R-43…R-46. Three `xivrp-director` passes ran: two per-surface (§4, §6 — against a
 reconstructed charter, so no shared-layer, design-system or vocabulary lens) and one **whole-record**
 pass against the real charter on 2026-07-29, which returned **SHARED-DRIFT** and produced §7a.
 **Implementation is not planned yet** (§8).
@@ -145,7 +145,10 @@ each element says one thing. Repeating the floor colour per row was rejected bec
 already carries role colour on its recipient chips.
 
 **Carried from the standing input, applies wherever a logged entry renders (Log + History too):** a
-logged **weapon** entry shows the **recipient's job icon**, so which weapon dropped is unambiguous.
+logged **weapon** entry shows the **weapon's job icon** (`weaponJob`), so which weapon dropped is
+unambiguous. ⚠ *This clause read "the recipient's job icon" as given; **R-38** corrects it — the
+recipient's job can differ from the weapon's, and only the weapon's answers the question. R-39 cites
+this paragraph as its mandate, so the correction has to live here, not only in §0.*
 
 ### R-9 · The Matrix **keeps** the floor-coloured names (refines R-8)
 
@@ -421,8 +424,9 @@ below it** (`WeeklyLootGrid.tsx:859-877`, rendered at `SectionedLogView.tsx:1143
 and D-30 lists it in the restore. It does not collide with R-19 — it explains the count bar, not cell
 colour.
 
-**Still open, and only this:** `FairnessSummary`'s own home. **Team Summary's home is *closed*** —
-F-08 ruled it onto the static Home module (`systems-flow-map.md:218`, `:122`), which also closes D-43.
+**Both homes are now closed.** `FairnessSummary` moves to static Home beside Team Summary (**R-40**),
+and Team Summary's own home was already ruled there by F-08 (`systems-flow-map.md:218`, `:122`), which
+also closes D-43. *(This paragraph read "still open, and only this" until R-40 ruled it.)*
 
 ### R-24 · Assign mode gains **Method and Notes** (extends R-12)
 
