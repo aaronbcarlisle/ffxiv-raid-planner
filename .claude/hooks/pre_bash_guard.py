@@ -16,10 +16,12 @@ import re
 import subprocess
 import sys
 
-# Hooks run with cwd = the project directory; the payload's `cwd` field is the
-# session working dir. Prefer the payload, fall back to our own cwd — no
-# hardcoded machine paths so this file can be checked in.
-ROOT = os.getcwd()
+# Hooks do NOT run with cwd = the project directory — they inherit the session
+# shell's cwd, which moves whenever a Bash call cd's somewhere. Anchor on
+# `$CLAUDE_PROJECT_DIR` so repo-relative commands below resolve from the project
+# root regardless of where the session shell happens to be (same fix as PR #222).
+# No hardcoded machine paths so this file can be checked in.
+ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 TAIL = 3000  # max chars of tool output to feed back
 
 
@@ -33,7 +35,7 @@ def main():
         data = json.load(sys.stdin)
     except Exception:
         return 0
-    ROOT = data.get("cwd") or ROOT
+    ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or ROOT
     tool_input = data.get("tool_input") or {}
     cmd = tool_input.get("command", "")
     if not cmd:

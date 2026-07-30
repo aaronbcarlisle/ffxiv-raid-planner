@@ -47,13 +47,26 @@ interface ResetConfirmModalProps {
 function getResetDescription(config: ResetConfig): string {
   const { scope, target, week, floor, playerName } = config;
 
-  // Player-specific book reset
+  // Player-specific book reset. `week` is absent for the all-time case — V1's
+  // books row menu emits `{ scope: 'all', target: 'books', playerId, playerName }`
+  // (SectionedLogView.tsx:433-441) — which used to render "for Week undefined".
+  // Phase-D R-44 approves this as an explicit V1-visible delta.
   if (playerName) {
+    if (week === undefined) {
+      return `ALL of ${playerName}'s book entries for this tier (every week)`;
+    }
     return `${playerName}'s book entries for Week ${week}`;
   }
 
-  // Floor-specific reset
+  // Floor-specific reset. Same missing-week case from V1's books column menu
+  // (SectionedLogView.tsx:404-423). The week-less form must state that it spans
+  // every week rather than leaving the blast radius implied (R-44).
   if (scope === 'floor' && floor) {
+    if (week === undefined) {
+      if (target === 'loot') return `ALL loot entries for Floor ${floor} (every week)`;
+      if (target === 'books') return `ALL book entries for Floor ${floor} (every week)`;
+      return `ALL data for Floor ${floor} (every week)`;
+    }
     if (target === 'loot') return `loot entries for Floor ${floor} in Week ${week}`;
     if (target === 'books') return `book entries for Floor ${floor} in Week ${week}`;
     return `all data for Floor ${floor} in Week ${week}`;

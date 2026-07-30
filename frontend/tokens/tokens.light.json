@@ -80,6 +80,13 @@
         "glaze":     { "$type": "color", "$value": "#7c3aed" },
         "solvent":   { "$type": "color", "$value": "#ca8a04" },
         "tomestone": { "$type": "color", "$value": "#ea580c" }
+      },
+
+      "floor": {
+        "1": { "$type": "color", "$value": "#166534", "$description": "Phase-D R-45. The dark value #4ade80 is 2.28:1 on white — unusable as light-mode text. Hue preserved, lightness only. 7.13:1 on surface-card #ffffff, 6.11:1 on surface-raised #ededf2. green-700 (#15803d) was rejected at 4.30:1 on #ededf2." },
+        "2": { "$type": "color", "$value": "#1d4ed8", "$description": "Phase-D R-45. 6.70:1 on #ffffff, 5.74:1 on #ededf2. blue-600 (#2563eb) was rejected at 4.43:1 on #ededf2." },
+        "3": { "$type": "color", "$value": "#7e22ce", "$description": "Phase-D R-45. 6.98:1 on #ffffff, 5.98:1 on #ededf2." },
+        "4": { "$type": "color", "$value": "#92400e", "$description": "Phase-D R-45. 7.09:1 on #ffffff, 6.08:1 on #ededf2. amber-700 (#b45309) was rejected at 4.30:1 on #ededf2." }
       }
     },
 

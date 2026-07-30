@@ -91,6 +91,10 @@
   --color-material-glaze: #a855f7;
   --color-material-solvent: #eab308;
   --color-material-tomestone: #f97316;
+  --color-floor-1: #4ade80;
+  --color-floor-2: #60a5fa;
+  --color-floor-3: #c084fc;
+  --color-floor-4: #fbbf24;
   --header-height: 56px;
   --bottom-nav-height: 56px;
   --breakpoint-3xl: 1400px;
@@ -181,6 +185,10 @@
   --color-material-glaze: #7c3aed;
   --color-material-solvent: #ca8a04;
   --color-material-tomestone: #ea580c;
+  --color-floor-1: #166534;
+  --color-floor-2: #1d4ed8;
+  --color-floor-3: #7e22ce;
+  --color-floor-4: #92400e;
   --color-gear-raid-text: #b91c1c;
   --color-gear-crafted-text: #9a3412;
   --color-gear-augmented-text: #92400e;
