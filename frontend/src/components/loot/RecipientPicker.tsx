@@ -122,10 +122,11 @@ export function RecipientPicker({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [week, setWeek] = useState(currentWeek);
-  // Widened to LootMethod (from 'drop' | 'book') so edit mode can round-trip a
-  // 'purchase'/'tome' entry's method verbatim — an untouched non-drop/book entry
-  // must NOT diff its method (legacy AddLootEntryModal.tsx:382 parity). The
-  // RadioGroup still only offers drop/book; create-path behaviour is unchanged.
+  // Typed LootMethod (drop/book/tome/purchase) — originally widened from
+  // 'drop' | 'book' so edit mode could round-trip a 'purchase'/'tome' entry's
+  // method verbatim without diffing it (legacy AddLootEntryModal.tsx:382
+  // parity). As of R-24 the RadioGroup offers all four methods everywhere,
+  // including assign/log create paths — not just edit round-tripping.
   const [method, setMethod] = useState<LootMethod>('drop');
   const [updateGear, setUpdateGear] = useState(true);
   const [isExtra, setIsExtra] = useState(false);
@@ -357,9 +358,14 @@ export function RecipientPicker({
           method,
           weaponJob,
           isExtra: effectiveExtra,
+          // Log mode: plain user note, no auto-note (unchanged). Assign/edit-create
+          // mode: R-24 exposed the notes field there too, so a typed note must
+          // reach the payload — user note wins; the weapon auto-note is only a
+          // FALLBACK for an untouched field (preserves the legacy auto-note
+          // behavior when nobody typed anything).
           notes: mode === 'log'
             ? (notes || undefined)
-            : (isWeapon && weaponJob ? `${weaponJob} weapon${effectiveExtra ? ' (extra)' : ''}` : undefined),
+            : (notes || (isWeapon && weaponJob ? `${weaponJob} weapon${effectiveExtra ? ' (extra)' : ''}` : undefined)),
           recipientCharacterRegistrationId: characterRegId ?? undefined,
           recipientCharacterName: charName,
         },

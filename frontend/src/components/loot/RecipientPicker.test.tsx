@@ -262,6 +262,45 @@ describe('RecipientPicker — R-24 method + notes in assign mode', () => {
     expect(acquiredCheckbox('Earring')).toHaveAttribute('aria-disabled', 'false');
     expect(screen.queryByText('Gear sync applies to drops and books.')).not.toBeInTheDocument();
   });
+
+  // Review fix round 1, Finding 1: assign mode exposes the notes field (R-24)
+  // but the submit payload was still computing `notes` as if it didn't exist,
+  // so a typed note was silently discarded. Ruling: user note wins; the
+  // weapon auto-note is only a fallback for an untouched field.
+  it('assign mode: a typed note reaches the payload (non-weapon slot, no auto-note to compete with)', async () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    fireEvent.click(screen.getByText('Options'));
+    fireEvent.change(screen.getByPlaceholderText('Optional notes…'), { target: { value: 'traded for prio' } });
+    fireEvent.click(screen.getByRole('button', { name: /Assign to/ }));
+    await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(logLootAndUpdateGear).mock.calls[0][2].notes).toBe('traded for prio');
+  });
+
+  it('weapon assign, no typed note: payload falls back to the legacy auto-note', async () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Assign to/ }));
+    await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalledTimes(1));
+    // default pinned pick = Caster One (BLM) — legacy auto-note parity.
+    expect(vi.mocked(logLootAndUpdateGear).mock.calls[0][2].notes).toBe('BLM weapon');
+  });
+
+  it('weapon assign, typed note: user note wins over the auto-note', async () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    fireEvent.click(screen.getByText('Options'));
+    fireEvent.change(screen.getByPlaceholderText('Optional notes…'), { target: { value: 'won on tiebreaker' } });
+    fireEvent.click(screen.getByRole('button', { name: /Assign to/ }));
+    await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(logLootAndUpdateGear).mock.calls[0][2].notes).toBe('won on tiebreaker');
+  });
 });
 
 describe('RecipientPicker — R-12 checkbox promotion + Options rename', () => {
