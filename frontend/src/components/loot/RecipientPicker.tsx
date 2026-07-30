@@ -13,6 +13,15 @@
  * v1↔v2 note. Row interactivity uses the GearBoardCell radio pattern
  * (role="radio" + aria-checked + keyboard) so it passes check:design-system:strict
  * with no raw <input>/<label> and no suppressions.
+ *
+ * Phase D (D2, R-24/R-12): the method choice (drop/book/tome/purchase) and notes
+ * field are available in every mode, including assign — a NEW capability, not a
+ * restore (no legacy modal ever offered tome/purchase). The acquired checkbox is
+ * promoted out of the disclosure into the modal body so gear-sync state is always
+ * visible; the disclosure itself is relabelled `Options`/`Hide options`. Submit
+ * payloads are unchanged — `lootCoordination.ts` already gates gear/weapon-priority
+ * sync on method === 'drop' | 'book', so the checkbox mirrors that gate via
+ * `gearSyncEligible` instead of duplicating it at submit time.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Package } from 'lucide-react';
@@ -62,6 +71,13 @@ const SCOPE_OPTIONS: { value: PickerScope; label: string }[] = [
   { value: 'priority', label: 'By priority' },
   { value: 'all', label: 'All members' },
   { value: 'offspec', label: 'Off-spec / free' },
+];
+
+const METHOD_OPTIONS: { value: LootMethod; label: string }[] = [
+  { value: 'drop', label: 'Drop' },
+  { value: 'book', label: 'Book' },
+  { value: 'tome', label: 'Tome' },
+  { value: 'purchase', label: 'Purchase' },
 ];
 
 const TAG_TONE: Record<NeedTag, 'success' | 'muted'> = {
@@ -181,6 +197,11 @@ export function RecipientPicker({
   // Forced-extra under off-spec: single source of truth used by the payload,
   // the weapon auto-note, AND the (disabled) checkbox state.
   const effectiveExtra = scope === 'offspec' ? true : isExtra;
+
+  // Gear/weapon-priority sync applies only to drop/book — mirrors the
+  // coordination gates (lootCoordination.ts:78,:124) so the checkbox can't
+  // promise a write the util refuses.
+  const gearSyncEligible = method === 'drop' || method === 'book';
 
   // Initialise state ONLY on the open transition (closed → open) — mirrors
   // QuickLogDropModal.tsx:97-115. Keying off a ref (not raw isOpen) means a
@@ -515,9 +536,27 @@ export function RecipientPicker({
           )}
         </div>
 
-        {/* Details disclosure */}
+        {/* Acquired checkbox — promoted out of the disclosure (R-12): gear-sync
+            state should be visible without opening Options. Only drop/book
+            can actually sync (lootCoordination.ts:78,:124); in edit mode the
+            checkbox stays enabled regardless of method — the util gates on
+            the ORIGINAL entry's method (:186), so this is pre-existing v2
+            behaviour, not something the picker needs to re-derive. */}
+        <div>
+          <Checkbox
+            checked={mode === 'edit' ? updateGear : (gearSyncEligible && updateGear)}
+            onChange={setUpdateGear}
+            disabled={mode !== 'edit' && !gearSyncEligible}
+            label={`Mark ${label} as acquired`}
+          />
+          {mode !== 'edit' && !gearSyncEligible && (
+            <p className="mt-1 text-xs text-text-muted">Gear sync applies to drops and books.</p>
+          )}
+        </div>
+
+        {/* Options disclosure */}
         <LinkText onClick={() => setShowDetails((v) => !v)} aria-expanded={showDetails}>
-          {showDetails ? 'Hide details' : 'Details'}
+          {showDetails ? 'Hide options' : 'Options'}
         </LinkText>
 
         {showDetails && (
@@ -533,24 +572,13 @@ export function RecipientPicker({
               />
             </div>
 
-            {mode !== 'assign' && (
-              <RadioGroup
-                name="loot-method"
-                label="Method"
-                orientation="horizontal"
-                value={method}
-                onChange={(v) => setMethod(v as 'drop' | 'book')}
-                options={[
-                  { value: 'drop', label: 'Drop' },
-                  { value: 'book', label: 'Book' },
-                ]}
-              />
-            )}
-
-            <Checkbox
-              checked={updateGear}
-              onChange={setUpdateGear}
-              label={`Mark ${label} as acquired`}
+            <RadioGroup
+              name="loot-method"
+              label="Method"
+              orientation="horizontal"
+              value={method}
+              onChange={(v) => setMethod(v as LootMethod)}
+              options={METHOD_OPTIONS}
             />
 
             {isWeapon && mode === 'assign' && (
@@ -581,12 +609,10 @@ export function RecipientPicker({
               </div>
             )}
 
-            {mode !== 'assign' && (
-              <div>
-                <span className="mb-1 block text-sm text-text-secondary">Notes</span>
-                <TextArea value={notes} onChange={setNotes} placeholder="Optional notes…" rows={2} />
-              </div>
-            )}
+            <div>
+              <span className="mb-1 block text-sm text-text-secondary">Notes</span>
+              <TextArea value={notes} onChange={setNotes} placeholder="Optional notes…" rows={2} />
+            </div>
           </div>
         )}
       </div>

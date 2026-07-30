@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { RecipientPicker } from './RecipientPicker';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
@@ -42,6 +42,17 @@ function makePlayer(id: string, name: string, job: string, opts: { hasWeapon?: b
     ],
     tomeWeapon: {}, weaponPriorities: [{ job, priority: 1, received: false }],
   } as unknown as SnapshotPlayer;
+}
+
+// The acquired checkbox (ui/Checkbox) is a `<label>` wrapping a `div
+// role="checkbox"` — the div itself carries no accessible name (no
+// aria-label is passed from RecipientPicker), so `getByRole('checkbox',
+// { name })` can't find it. Scope to the label whose visible text matches
+// instead, then grab the checkbox inside it.
+function acquiredCheckbox(itemLabel: string): HTMLElement {
+  const labelEl = screen.getByText(`Mark ${itemLabel} as acquired`).closest('label');
+  if (!labelEl) throw new Error(`acquired checkbox label not found for "${itemLabel}"`);
+  return within(labelEl).getByRole('checkbox');
 }
 
 const caster = makePlayer('c1', 'Caster One', 'BLM');
@@ -137,15 +148,15 @@ describe('RecipientPicker (assign mode)', () => {
     expect(screen.getByText('Melee One')).toBeInTheDocument();
   });
 
-  it('announces the Details disclosure state via aria-expanded', () => {
+  it('announces the Options disclosure state via aria-expanded', () => {
     render(
       <RecipientPicker {...baseProps} mode="assign"
         item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
     );
-    const toggle = screen.getByRole('button', { name: 'Details' });
+    const toggle = screen.getByRole('button', { name: 'Options' });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(toggle);
-    expect(screen.getByRole('button', { name: 'Hide details' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Hide options' })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('disables submit when the search filter hides the pinned selection, and re-enables when cleared', () => {
@@ -207,6 +218,78 @@ describe('RecipientPicker (assign mode)', () => {
   });
 });
 
+describe('RecipientPicker — R-24 method + notes in assign mode', () => {
+  beforeEach(() => vi.mocked(logLootAndUpdateGear).mockClear());
+
+  it('assign mode offers all four methods and the notes field inside Options', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    // disclosure starts closed in assign mode
+    fireEvent.click(screen.getByText('Options'));
+    for (const m of ['Drop', 'Book', 'Tome', 'Purchase']) {
+      expect(screen.getByRole('radio', { name: m })).toBeInTheDocument();
+    }
+    expect(screen.getByPlaceholderText('Optional notes…')).toBeInTheDocument();
+  });
+
+  it('choosing Tome disables the acquired checkbox with the caption, and submit still logs method=tome', async () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    fireEvent.click(screen.getByText('Options'));
+    fireEvent.click(screen.getByRole('radio', { name: 'Tome' }));
+    expect(acquiredCheckbox('Earring')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText('Gear sync applies to drops and books.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Assign to/ }));
+    await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(logLootAndUpdateGear).mock.calls[0][2]).toMatchObject({ method: 'tome' });
+  });
+
+  it('choosing a gear-sync-eligible method (Book) re-enables the checkbox and clears the caption', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    fireEvent.click(screen.getByText('Options'));
+    fireEvent.click(screen.getByRole('radio', { name: 'Purchase' }));
+    expect(acquiredCheckbox('Earring')).toHaveAttribute('aria-disabled', 'true');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Book' }));
+    expect(acquiredCheckbox('Earring')).toHaveAttribute('aria-disabled', 'false');
+    expect(screen.queryByText('Gear sync applies to drops and books.')).not.toBeInTheDocument();
+  });
+});
+
+describe('RecipientPicker — R-12 checkbox promotion + Options rename', () => {
+  it('assign mode shows the acquired checkbox without opening the disclosure', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(acquiredCheckbox('Earring')).toBeInTheDocument();
+    expect(screen.getByText('Options')).toBeInTheDocument();
+    expect(screen.queryByText('Details')).not.toBeInTheDocument();
+  });
+
+  it('log mode also shows the checkbox promoted above the (already-open) disclosure', () => {
+    render(<RecipientPicker {...baseProps} mode="log" />);
+    // log mode's default placeholder slot is earring, labelled "Ears" (GEAR_SLOT_NAMES).
+    expect(acquiredCheckbox('Ears')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide options' })).toBeInTheDocument();
+  });
+
+  it('edit mode keeps the acquired checkbox enabled regardless of the entry method (gear-sync refusal is the coordination util\'s job)', () => {
+    const entry = makeEntry({ method: 'tome', itemSlot: 'body', recipientPlayerId: 'c1', notes: '' });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+    expect(acquiredCheckbox('Body')).toHaveAttribute('aria-disabled', 'false');
+    expect(screen.queryByText('Gear sync applies to drops and books.')).not.toBeInTheDocument();
+  });
+});
+
 describe('RecipientPicker (log mode)', () => {
   beforeEach(() => vi.mocked(logLootAndUpdateGear).mockClear());
 
@@ -264,7 +347,7 @@ describe('RecipientPicker (edit mode)', () => {
     vi.mocked(updateLootAndSyncGear).mockClear();
   });
 
-  it('prefills week, method, notes, recipient, and pre-expands details from the entry', () => {
+  it('prefills week, method, notes, recipient, and pre-expands options from the entry', () => {
     const entry = makeEntry({ weekNumber: 2, floor: 'M11S', itemSlot: 'body', method: 'book', notes: 'hi', recipientPlayerId: 'c1' });
     render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
     expect(screen.getByText(/Edit · Body/)).toBeInTheDocument();
@@ -273,8 +356,8 @@ describe('RecipientPicker (edit mode)', () => {
     expect(screen.getByPlaceholderText('Optional notes…')).toHaveValue('hi');
     const casterRow = screen.getByText('Caster One').closest('[role="radio"]');
     expect(casterRow).toHaveAttribute('aria-checked', 'true');
-    // details pre-expanded in edit mode
-    expect(screen.getByRole('button', { name: 'Hide details' })).toBeInTheDocument();
+    // options pre-expanded in edit mode
+    expect(screen.getByRole('button', { name: 'Hide options' })).toBeInTheDocument();
   });
 
   it('diffs only the changed recipient — one-key updates via updateLootAndSyncGear', async () => {
@@ -416,8 +499,8 @@ describe('RecipientPicker (character payload — PR-1 obligation)', () => {
       <RecipientPicker {...baseProps} mode="assign"
         item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
     );
-    // Assign mode starts with details collapsed — expand to reach the Character select.
-    fireEvent.click(screen.getByRole('button', { name: 'Details' }));
+    // Assign mode starts with Options collapsed — expand to reach the Character select.
+    fireEvent.click(screen.getByRole('button', { name: 'Options' }));
     // Caster One (c1) is the pinned default recipient and has a registration.
     expect(screen.getByRole('combobox', { name: 'Character' })).toBeInTheDocument();
   });
