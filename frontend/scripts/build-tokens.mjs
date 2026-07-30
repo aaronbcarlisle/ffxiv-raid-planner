@@ -166,6 +166,13 @@ export const ID_TO_CSS_VAR = {
   'semantic.color.material.solvent':   '--color-material-solvent',
   'semantic.color.material.tomestone': '--color-material-tomestone',
 
+  // Floor (semantic.color.floor.* → --color-floor-*; Phase-D R-45)
+  // v2-only consumers. V1 keeps gamedata FLOOR_COLORS untouched.
+  'semantic.color.floor.1': '--color-floor-1',
+  'semantic.color.floor.2': '--color-floor-2',
+  'semantic.color.floor.3': '--color-floor-3',
+  'semantic.color.floor.4': '--color-floor-4',
+
   // Badge text (semantic.color.text.on-gear-* → --color-gear-*-text; light-only)
   'semantic.color.text.on-gear-raid':      '--color-gear-raid-text',
   'semantic.color.text.on-gear-crafted':   '--color-gear-crafted-text',

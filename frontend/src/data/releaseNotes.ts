@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.1';
+export const CURRENT_VERSION = '2.1.5';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,19 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.5',
+    date: '2026-07-30T14:00:00Z',
+    title: 'Reset confirmations state the right scope',
+    items: [
+      {
+        category: 'fix',
+        title: 'Reset dialogs no longer say "Week undefined"',
+        description:
+          'Clearing all of a player\'s books, or all of a floor\'s books, from the loot log\'s "All time" view asked you to confirm wiping data "for Week undefined" — the dialog had no week to name because those actions deliberately span every week. Both now say so plainly, e.g. "ALL book entries for Floor 2 (every week)", so the confirmation states what will actually be deleted before you type RESET.',
+      },
+    ],
+  },
   {
     version: '2.1.4',
     date: '2026-07-29T01:00:00Z',
