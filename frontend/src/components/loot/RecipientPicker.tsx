@@ -19,9 +19,17 @@
  * restore (no legacy modal ever offered tome/purchase). The acquired checkbox is
  * promoted out of the disclosure into the modal body so gear-sync state is always
  * visible; the disclosure itself is relabelled `Options`/`Hide options`. Submit
- * payloads are unchanged — `lootCoordination.ts` already gates gear/weapon-priority
+ * payloads are unchanged except the R-24 notes ternary (user note wins, weapon
+ * auto-note fallback) — `lootCoordination.ts` already gates gear/weapon-priority
  * sync on method === 'drop' | 'book', so the checkbox mirrors that gate via
  * `gearSyncEligible` instead of duplicating it at submit time.
+ *
+ * D2 (R-12/D-36): the static footer copy is replaced by a live "This will:"
+ * consequence list — each line mirrors the exact predicate of the write it
+ * names (lootCoordination.ts:78,:93-111,:124,:186-187) so the preview never
+ * promises a side effect the coordination util would refuse. Edit mode's
+ * diff is hoisted into `computeEditUpdates` — a single derivation shared by
+ * the preview and `handleSubmit` so they cannot drift.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Package } from 'lucide-react';
@@ -102,6 +110,39 @@ function firstSlotForFloor(floorNumber: FloorNumber): GearSlot | 'ring' {
   return first === 'ring1' ? 'ring' : first;
 }
 
+// The ONE edit-diff derivation — handleSubmit submits exactly this object and
+// the "This will:" preview renders exactly this object, so they cannot drift.
+function computeEditUpdates(args: {
+  editEntry: LootLogEntry;
+  slot: GearSlot | 'ring';
+  floorName: string;
+  week: number;
+  method: LootMethod;
+  notes: string;
+  recipientPlayerId: string;
+  recipientJob: string | undefined;
+}): LootLogEntryUpdate {
+  const { editEntry, slot, floorName, week, method, notes, recipientPlayerId, recipientJob } = args;
+  // Ring round-trip: an untouched ring slot keeps the entry's concrete
+  // ring1/ring2 (the picker vocabulary collapses to 'ring' which would
+  // otherwise rewrite ring2 → ring1). Only an actual change yields 'ring1'.
+  const itemSlot = slot === 'ring'
+    ? (editEntry.itemSlot === 'ring2' ? 'ring2' : 'ring1')
+    : slot;
+  const updates: LootLogEntryUpdate = {};
+  if (week !== editEntry.weekNumber) updates.weekNumber = week;
+  if (floorName !== editEntry.floor) updates.floor = floorName;
+  if (itemSlot !== editEntry.itemSlot) updates.itemSlot = itemSlot;
+  if (recipientPlayerId !== editEntry.recipientPlayerId) updates.recipientPlayerId = recipientPlayerId;
+  if (method !== editEntry.method) updates.method = method;
+  if (notes !== (editEntry.notes ?? '')) updates.notes = notes || undefined;
+  // Backfill weaponJob for weapon entries created without it.
+  if (itemSlot === 'weapon' && !editEntry.weaponJob && recipientJob) {
+    updates.weaponJob = recipientJob;
+  }
+  return updates;
+}
+
 export function RecipientPicker({
   isOpen,
   onClose,
@@ -163,6 +204,13 @@ export function RecipientPicker({
   const entries = useMemo(
     () => buildRecipientEntries({ players, slot, scope, settings, lootLog, currentWeek, enhancedActive }),
     [players, slot, scope, settings, lootLog, currentWeek, enhancedActive],
+  );
+
+  // Needers for the CURRENT slot regardless of the scope toggle — D-36's hint
+  // reads the priority pool even while the user is browsing All members.
+  const needers = useMemo(
+    () => buildRecipientEntries({ players, slot, scope: 'priority', settings, lootLog, currentWeek, enhancedActive }),
+    [players, slot, settings, lootLog, currentWeek, enhancedActive],
   );
 
   const filtered = useMemo(() => {
@@ -289,36 +337,77 @@ export function RecipientPicker({
 
   const recipientRegistrations = recipientId ? (registrationsByPlayer[recipientId] ?? []) : [];
 
+  // Live consequences — each line mirrors the exact predicate of the write it
+  // names (lootCoordination.ts:78,:93-111,:124,:186-187); stating a side effect
+  // the util would refuse is the bug R-12 exists to prevent.
+  const consequences = useMemo<string[]>(() => {
+    if (!selected) return [];
+    const name = selected.player.name;
+    if (mode === 'edit') {
+      const updates = computeEditUpdates({
+        editEntry, slot, floorName, week, method, notes,
+        recipientPlayerId: selected.player.id, recipientJob: selected.player.job,
+      });
+      const out: string[] = [];
+      if (updates.weekNumber !== undefined) out.push(`Move it to Week ${updates.weekNumber}`);
+      if (updates.floor !== undefined || updates.itemSlot !== undefined) out.push(`Change the item to ${floorName} · ${label}`);
+      if (updates.recipientPlayerId !== undefined) out.push(`Reassign it to ${name}`);
+      if (updates.method !== undefined) out.push(`Set the method to ${method}`);
+      // `updates.notes` carries `undefined` as a *cleared* value (see
+      // computeEditUpdates: `updates.notes = notes || undefined`) — a
+      // cleared-to-empty note still has the `notes` key set but with an
+      // undefined value, so check the key's presence via the raw diff too.
+      if (updates.notes !== undefined || (notes === '' && (editEntry.notes ?? '') !== '')) out.push('Update the notes');
+      if (updates.weaponJob !== undefined) out.push(`Record it as a ${updates.weaponJob} weapon`);
+      // Mirrors lootCoordination.ts:186-187,:194-195 — the picker never diffs
+      // isExtra, so the extra-transition clause reduces to !editEntry.isExtra.
+      const syncFires = updateGear
+        && (editEntry.method === 'drop' || editEntry.method === 'book')
+        && !editEntry.isExtra
+        && (updates.recipientPlayerId !== undefined || updates.itemSlot !== undefined);
+      if (syncFires) out.push('Sync gear to match');
+      return out;
+    }
+    const out = [`Log ${label} (${method}) for ${name} in Week ${week}`];
+    // Mirrors lootCoordination.ts:78,:93-111 — the ring refinement (needs
+    // ring1 or ring2) vs. the plain-slot bisSource check.
+    const gearWillMark = slot === 'ring'
+      ? selected.player.gear.some((g) =>
+          (g.slot === 'ring1' || g.slot === 'ring2') && g.bisSource === 'raid' && !g.hasItem)
+      : selected.player.gear.find((g) => g.slot === slot)?.bisSource === 'raid';
+    if (updateGear && gearSyncEligible && !effectiveExtra && gearWillMark) {
+      out.push(`Mark ${label} as acquired on ${name}'s gear`);
+    }
+    // Mirrors lootCoordination.ts:124 — weapon-priority sync requires a
+    // priority row for the recipient's own job (targetJob resolves to
+    // recipient.job here since the picker submits weaponJob = recipient?.job).
+    if (isWeapon && gearSyncEligible
+        && (selected.player.weaponPriorities ?? []).some((w) => w.job === selected.player.job)) {
+      out.push(`Update ${name}'s weapon priority`);
+    }
+    if (effectiveExtra) out.push('Count it as extra loot (outside BiS priority)');
+    return out;
+  }, [selected, mode, editEntry, slot, week, floorName, label, method, notes, updateGear, gearSyncEligible, isWeapon, effectiveExtra]);
+
   const handleSubmit = async () => {
     if (!selected || !selectionVisible) return;
     const recipientPlayerId = selected.player.id;
 
-    // Edit mode: diff EXACTLY like the legacy editor (AddLootEntryModal.tsx:375-393)
-    // — updates contains ONLY changed fields among
-    // weekNumber/floor/itemSlot/recipientPlayerId/method/notes, plus the weaponJob
-    // backfill. isExtra and recipientCharacter* are NEVER diffed (legacy parity).
+    // Edit mode: diff via the shared `computeEditUpdates` derivation — the
+    // SAME function the "This will:" preview renders, so submit can never
+    // promise something the preview didn't (or vice versa). updates contains
+    // ONLY changed fields among weekNumber/floor/itemSlot/recipientPlayerId/
+    // method/notes, plus the weaponJob backfill. isExtra and
+    // recipientCharacter* are NEVER diffed (legacy parity —
+    // AddLootEntryModal.tsx:375-393).
     if (mode === 'edit') {
       setIsSaving(true);
       try {
         const recipient = players.find((p) => p.id === recipientPlayerId);
-        // Ring round-trip: an untouched ring slot keeps the entry's concrete
-        // ring1/ring2 (the picker vocabulary collapses to 'ring' which would
-        // otherwise rewrite ring2 → ring1). Only an actual change yields 'ring1'.
-        const itemSlot = slot === 'ring'
-          ? (editEntry.itemSlot === 'ring2' ? 'ring2' : 'ring1')
-          : slot;
-
-        const updates: LootLogEntryUpdate = {};
-        if (week !== editEntry.weekNumber) updates.weekNumber = week;
-        if (floorName !== editEntry.floor) updates.floor = floorName;
-        if (itemSlot !== editEntry.itemSlot) updates.itemSlot = itemSlot;
-        if (recipientPlayerId !== editEntry.recipientPlayerId) updates.recipientPlayerId = recipientPlayerId;
-        if (method !== editEntry.method) updates.method = method;
-        if (notes !== (editEntry.notes ?? '')) updates.notes = notes || undefined;
-        // Backfill weaponJob for weapon entries created without it.
-        if (itemSlot === 'weapon' && !editEntry.weaponJob && recipient?.job) {
-          updates.weaponJob = recipient.job;
-        }
+        const updates = computeEditUpdates({
+          editEntry, slot, floorName, week, method, notes,
+          recipientPlayerId, recipientJob: recipient?.job,
+        });
 
         if (Object.keys(updates).length > 0) {
           await updateLootAndSyncGear(groupId, tierId, editEntry.id, editEntry, updates, { syncGear: updateGear });
@@ -358,8 +447,8 @@ export function RecipientPicker({
           method,
           weaponJob,
           isExtra: effectiveExtra,
-          // Log mode: plain user note, no auto-note (unchanged). Assign/edit-create
-          // mode: R-24 exposed the notes field there too, so a typed note must
+          // Log mode: plain user note, no auto-note (unchanged). Assign mode:
+          // R-24 exposed the notes field there too, so a typed note must
           // reach the payload — user note wins; the weapon auto-note is only a
           // FALLBACK for an untouched field (preserves the legacy auto-note
           // behavior when nobody typed anything).
@@ -405,9 +494,27 @@ export function RecipientPicker({
 
   const footer = (
     <div className="space-y-3">
-      <p className="text-xs text-text-tertiary">
-        Logging marks the drop &amp; updates priority + BiS instantly.
-      </p>
+      {/* D-36: nobody in the priority pool needs this slot — reassure the
+          user the assignment is still fine, just off the BiS path. Create
+          modes only; edit mode is reassigning an existing drop, not rolling
+          a fresh one. */}
+      {mode !== 'edit' && needers.length === 0 && (
+        <p className="text-xs text-status-success">
+          No one needs this item for BiS — assigning it counts as a free roll.
+        </p>
+      )}
+      {selected && (
+        <div className="text-xs text-text-tertiary">
+          <span className="font-semibold text-text-secondary">This will:</span>
+          {mode === 'edit' && consequences.length === 0 ? (
+            <span className="ml-1">No changes yet.</span>
+          ) : (
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {consequences.map((c) => <li key={c}>{c}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
       <div className="flex justify-end gap-3">
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancel

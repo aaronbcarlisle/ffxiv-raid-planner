@@ -44,15 +44,19 @@ function makePlayer(id: string, name: string, job: string, opts: { hasWeapon?: b
   } as unknown as SnapshotPlayer;
 }
 
-// The acquired checkbox (ui/Checkbox) is a `<label>` wrapping a `div
-// role="checkbox"` — the div itself carries no accessible name (no
-// aria-label is passed from RecipientPicker), so `getByRole('checkbox',
-// { name })` can't find it. Scope to the label whose visible text matches
-// instead, then grab the checkbox inside it.
-function acquiredCheckbox(itemLabel: string): HTMLElement {
-  const labelEl = screen.getByText(`Mark ${itemLabel} as acquired`).closest('label');
-  if (!labelEl) throw new Error(`acquired checkbox label not found for "${itemLabel}"`);
+// Checkboxes (ui/Checkbox) are a `<label>` wrapping a `div role="checkbox"`
+// — the div itself carries no accessible name (no aria-label is passed by
+// RecipientPicker), so `getByRole('checkbox', { name })` can't find it.
+// Scope to the label whose visible text matches instead, then grab the
+// checkbox inside it.
+function checkboxByLabelText(text: string): HTMLElement {
+  const labelEl = screen.getByText(text).closest('label');
+  if (!labelEl) throw new Error(`checkbox label not found for "${text}"`);
   return within(labelEl).getByRole('checkbox');
+}
+
+function acquiredCheckbox(itemLabel: string): HTMLElement {
+  return checkboxByLabelText(`Mark ${itemLabel} as acquired`);
 }
 
 const caster = makePlayer('c1', 'Caster One', 'BLM');
@@ -550,5 +554,113 @@ describe('RecipientPicker (character payload — PR-1 obligation)', () => {
     // Caster One (c1) has a registration (see beforeEach), so if the block were
     // rendered unconditionally it would appear here too.
     expect(screen.queryByRole('combobox', { name: 'Character' })).not.toBeInTheDocument();
+  });
+});
+
+describe('RecipientPicker — R-12 "This will:" live preview', () => {
+  it('names the recipient, week and gear side effect, and tracks toggles live', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.getByText('This will:')).toBeInTheDocument();
+    // default pinned pick = top-ranked entry = Caster One; currentWeek = 3
+    expect(screen.getByText(/Log Earring \(drop\) for Caster One in Week 3/)).toBeInTheDocument();
+    expect(screen.getByText(/Mark Earring as acquired on Caster One's gear/)).toBeInTheDocument();
+
+    fireEvent.click(acquiredCheckbox('Earring'));
+    expect(screen.queryByText(/Mark Earring as acquired on/)).not.toBeInTheDocument();
+  });
+
+  it('does not promise a gear write for an extra-loot weapon or a tome method', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    // Before any toggle: default drop method + non-extra promises the gear write.
+    expect(screen.getByText(/Mark Weapon as acquired on Caster One's gear/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Options'));
+    fireEvent.click(checkboxByLabelText('Extra loot (not BiS priority)'));
+    // The acquired checkbox itself is still present (not disabled by isExtra)…
+    expect(acquiredCheckbox('Weapon')).toBeInTheDocument();
+    // …but the preview no longer promises the write the util would refuse.
+    expect(screen.queryByText(/Mark Weapon as acquired on/)).not.toBeInTheDocument();
+
+    // Un-extra, then switch to a non-sync-eligible method (Tome) — same result.
+    fireEvent.click(checkboxByLabelText('Extra loot (not BiS priority)'));
+    fireEvent.click(screen.getByRole('radio', { name: 'Tome' }));
+    expect(screen.queryByText(/Mark Weapon as acquired on/)).not.toBeInTheDocument();
+  });
+
+  it('promises the weapon-priority update only for drop/book methods', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    // default pick (Caster One, BLM) has a weapon-priority row for their job.
+    expect(screen.getByText(/weapon priority/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Options'));
+    fireEvent.click(screen.getByRole('radio', { name: 'Tome' }));
+    expect(screen.queryByText(/weapon priority/)).not.toBeInTheDocument();
+  });
+
+  it('edit mode lists pending changes and says so when there are none', () => {
+    // Non-weapon slot — the weaponJob backfill can't fire, so an untouched
+    // entry has truly zero derived updates.
+    const entry = makeEntry({ weekNumber: 2, floor: 'M11S', itemSlot: 'body', method: 'book', notes: 'hi', recipientPlayerId: 'c1' });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+    expect(screen.getByText('No changes yet.')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('Optional notes…'), { target: { value: 'changed' } });
+    expect(screen.getByText(/Update the notes/)).toBeInTheDocument();
+    expect(screen.queryByText('No changes yet.')).not.toBeInTheDocument();
+  });
+
+  it('edit mode surfaces the weaponJob backfill it will write', () => {
+    const warrior = makePlayer('w1', 'Warrior One', 'WAR');
+    const entry = makeEntry({
+      floor: 'M12S', itemSlot: 'weapon', weaponJob: undefined,
+      recipientPlayerId: 'w1', method: 'drop', notes: '',
+    });
+    render(<RecipientPicker {...baseProps} players={[warrior]} mode="edit" editEntry={entry} />);
+    expect(screen.getByText(/Record it as a WAR weapon/)).toBeInTheDocument();
+    expect(screen.queryByText('No changes yet.')).not.toBeInTheDocument();
+  });
+});
+
+describe('RecipientPicker — D-36 no-one-needs-this hint', () => {
+  it('shows the hint when the slot has no needers', () => {
+    const gearedCaster = makePlayer('c1', 'Caster One', 'BLM');
+    gearedCaster.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    const gearedMelee = makePlayer('m1', 'Melee One', 'SAM');
+    gearedMelee.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    render(
+      <RecipientPicker {...baseProps} players={[gearedCaster, gearedMelee]} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.getByText(/No one needs this item for BiS/)).toBeInTheDocument();
+  });
+
+  it('does not show the hint when someone needs the slot', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.queryByText(/No one needs this item/)).not.toBeInTheDocument();
+  });
+
+  it('does not show the hint in edit mode even with no needers', () => {
+    const gearedCaster = makePlayer('c1', 'Caster One', 'BLM');
+    gearedCaster.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    const entry = makeEntry({ floor: 'M9S', itemSlot: 'earring', recipientPlayerId: 'c1', method: 'drop', notes: '' });
+    render(<RecipientPicker {...baseProps} players={[gearedCaster]} mode="edit" editEntry={entry} />);
+    expect(screen.queryByText(/No one needs this item/)).not.toBeInTheDocument();
   });
 });
