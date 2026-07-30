@@ -22,7 +22,11 @@
  * payloads are unchanged except the R-24 notes ternary (user note wins, weapon
  * auto-note fallback) — `lootCoordination.ts` already gates gear/weapon-priority
  * sync on method === 'drop' | 'book', so the checkbox mirrors that gate via
- * `gearSyncEligible` instead of duplicating it at submit time.
+ * `gearSyncEligible` instead of duplicating it at submit time. PR #225 review:
+ * in edit mode `gearSyncEligible` reads the ORIGINAL entry's method AND isExtra
+ * (lootCoordination.ts:186 gates sync on both) rather than the picker's live
+ * method field — the checkbox is uniform across all three modes now, with a
+ * caption naming whichever original-entry property actually blocks the sync.
  *
  * D2 (R-12/D-36): the static footer copy is replaced by a live "This will:"
  * consequence list — each line mirrors the exact predicate of the write it
@@ -312,8 +316,14 @@ export function RecipientPicker({
 
   // Gear/weapon-priority sync applies only to drop/book — mirrors the
   // coordination gates (lootCoordination.ts:78,:124) so the checkbox can't
-  // promise a write the util refuses.
-  const gearSyncEligible = method === 'drop' || method === 'book';
+  // promise a write the util refuses. In EDIT mode the util gates sync on
+  // the ORIGINAL entry's method AND isExtra (lootCoordination.ts:186 —
+  // `originalEntry.method === 'drop' || 'book'` AND `!originalEntry.isExtra`),
+  // not the picker's live (possibly still-being-changed) method field, so a
+  // refused sync must read `editEntry` here rather than `method`/`effectiveExtra`.
+  const gearSyncEligible = mode === 'edit'
+    ? (editEntry.method === 'drop' || editEntry.method === 'book') && !editEntry.isExtra
+    : method === 'drop' || method === 'book';
 
   // Initialise state ONLY on the open transition (closed → open) — mirrors
   // QuickLogDropModal.tsx:97-115. Keying off a ref (not raw isOpen) means a
@@ -436,9 +446,9 @@ export function RecipientPicker({
       if (updates.weaponJob !== undefined) out.push(`Record it as a ${updates.weaponJob} weapon`);
       // Mirrors lootCoordination.ts:186-187,:194-195 — the picker never diffs
       // isExtra, so the extra-transition clause reduces to !editEntry.isExtra.
-      const syncFires = updateGear
-        && (editEntry.method === 'drop' || editEntry.method === 'book')
-        && !editEntry.isExtra
+      // `gearSyncEligible` already encodes exactly that original-entry check
+      // (see its definition) — reused here so the two can't drift apart.
+      const syncFires = updateGear && gearSyncEligible
         && (updates.recipientPlayerId !== undefined || updates.itemSlot !== undefined);
       if (syncFires) out.push('Sync gear to match');
       return out;
@@ -736,19 +746,26 @@ export function RecipientPicker({
 
         {/* Acquired checkbox — promoted out of the disclosure (R-12): gear-sync
             state should be visible without opening Options. Only drop/book
-            can actually sync (lootCoordination.ts:78,:124); in edit mode the
-            checkbox stays enabled regardless of method — the util gates on
-            the ORIGINAL entry's method (:186), so this is pre-existing v2
-            behaviour, not something the picker needs to re-derive. */}
+            can actually sync (lootCoordination.ts:78,:124); uniform across
+            all three modes via `gearSyncEligible`, which in edit mode reads
+            the ORIGINAL entry's method + isExtra (:186) rather than the
+            picker's live fields — see its definition. The caption names
+            whichever original-entry property is the true blocker: isExtra
+            takes precedence when both apply, since it's the more specific
+            reason (an extra-loot drop is still method-eligible). */}
         <div>
           <Checkbox
-            checked={mode === 'edit' ? updateGear : (gearSyncEligible && updateGear)}
+            checked={gearSyncEligible && updateGear}
             onChange={setUpdateGear}
-            disabled={mode !== 'edit' && !gearSyncEligible}
+            disabled={!gearSyncEligible}
             label={`Mark ${label} as acquired`}
           />
-          {mode !== 'edit' && !gearSyncEligible && (
-            <p className="mt-1 text-xs text-text-muted">Gear sync applies to drops and books.</p>
+          {!gearSyncEligible && (
+            <p className="mt-1 text-xs text-text-muted">
+              {mode === 'edit' && editEntry.isExtra
+                ? 'Extra loot never syncs gear.'
+                : 'Gear sync applies to drops and books.'}
+            </p>
           )}
         </div>
 

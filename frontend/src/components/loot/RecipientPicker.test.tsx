@@ -325,11 +325,39 @@ describe('RecipientPicker — R-12 checkbox promotion + Options rename', () => {
     expect(screen.getByRole('button', { name: 'Hide options' })).toBeInTheDocument();
   });
 
-  it('edit mode keeps the acquired checkbox enabled regardless of the entry method (gear-sync refusal is the coordination util\'s job)', () => {
+  // PR #225 review, Finding 2: the promoted checkbox previously rendered
+  // enabled+checked unconditionally in edit mode, even though
+  // updateLootAndSyncGear (lootCoordination.ts:186) gates the sync on the
+  // ORIGINAL entry's method AND isExtra — not the picker's live fields. The
+  // checkbox is now uniform (`gearSyncEligible`) across all three modes.
+  it('edit mode disables the acquired checkbox for a non-sync-eligible original method (tome/purchase), with the method caption', () => {
     const entry = makeEntry({ method: 'tome', itemSlot: 'body', recipientPlayerId: 'c1', notes: '' });
     render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
-    expect(acquiredCheckbox('Body')).toHaveAttribute('aria-disabled', 'false');
+    const checkbox = acquiredCheckbox('Body');
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText('Gear sync applies to drops and books.')).toBeInTheDocument();
+    expect(screen.queryByText('Extra loot never syncs gear.')).not.toBeInTheDocument();
+  });
+
+  it('edit mode disables the acquired checkbox for an extra-loot original entry, with the extra-specific caption', () => {
+    const entry = makeEntry({ method: 'drop', itemSlot: 'body', recipientPlayerId: 'c1', notes: '', isExtra: true });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+    const checkbox = acquiredCheckbox('Body');
+    expect(checkbox).toHaveAttribute('aria-disabled', 'true');
+    expect(checkbox).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText('Extra loot never syncs gear.')).toBeInTheDocument();
     expect(screen.queryByText('Gear sync applies to drops and books.')).not.toBeInTheDocument();
+  });
+
+  it('edit mode enables the acquired checkbox for a normal (non-extra) drop/book original entry, with no caption', () => {
+    const entry = makeEntry({ method: 'drop', itemSlot: 'body', recipientPlayerId: 'c1', notes: '', isExtra: false });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+    const checkbox = acquiredCheckbox('Body');
+    expect(checkbox).toHaveAttribute('aria-disabled', 'false');
+    expect(checkbox).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByText('Gear sync applies to drops and books.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Extra loot never syncs gear.')).not.toBeInTheDocument();
   });
 });
 

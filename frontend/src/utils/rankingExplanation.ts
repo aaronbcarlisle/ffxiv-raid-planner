@@ -30,13 +30,25 @@
  * validation confirmed a mirrored "not on the list" warning fired on nearly
  * every weapon row, sinking the confidence header to Medium tier-wide. Only
  * `wp.received` — an actual receipt record — still warns.
- * The `warnings.length > 1` → low branch is a contract guard: with only two
- * warning kinds left (already-received, wp.received), BOTH are forcing —
- * either one alone already short-circuits to low via the wouldAdvanceBis
- * check one line earlier (reachable today: a weapon logged as received AND
- * marked received in the priority list). This branch exists for a future
- * non-forcing warning kind that could stack a second warning onto a forcing
- * one.
+ * Two-raid-ring refinement (same correction class as the weapon-list removal
+ * above — PR #225 review): a ring receipt does NOT force `wouldAdvanceBis`
+ * false when the candidate still has a second unfilled raid ring. A player
+ * who's received ONE ring but still needs the other stays in the needers
+ * pool by construction (recipientRanking.ts's getPriorityForRing keeps them
+ * while needsRing1||needsRing2), so a rank-1 case among them genuinely still
+ * advances BiS — v1's coarse "received this bucket" check forced false even
+ * then. The warning line still fires (the receipt is real and
+ * fairness-relevant); only `wouldAdvanceBis` is refined by checking whether
+ * a raid-BiS, not-yet-held ring slot remains.
+ * The `warnings.length > 1` → low branch is a contract guard. The only
+ * reachable two-warning combo today is the weapon double-warning (logged as
+ * received AND separately marked received in the priority list) — both
+ * forcing, so wouldAdvanceBis already went false via the check one line
+ * earlier. The ring refinement above means "Already received" is not
+ * ALWAYS forcing on its own, but that non-forcing case can never reach two
+ * warnings (a ring row never carries a second warning kind). This branch
+ * exists for a future non-forcing warning kind that could stack a second
+ * warning onto a forcing one.
  *
  * Weapon log matching is job-strict — the read matches what the picker
  * writes (weaponJob = recipient's job at submit), so read and write agree.
@@ -85,7 +97,13 @@ export function explainCandidate(
   if (received.length > 0) {
     const earliest = received.reduce((a, b) => (a.weekNumber < b.weekNumber ? a : b));
     warnings.push(`Already received ${label} in Week ${earliest.weekNumber}`);
-    wouldAdvanceBis = false;
+    // Two-raid-ring refinement: don't force wouldAdvanceBis=false when the
+    // candidate still has a second unfilled raid ring — they received ONE
+    // ring but the other assign is still genuinely BiS-advancing.
+    const stillNeedsRing = slot === 'ring' && entry.player.gear.some(
+      (g) => (g.slot === 'ring1' || g.slot === 'ring2') && g.bisSource === 'raid' && !g.hasItem,
+    );
+    if (!stillNeedsRing) wouldAdvanceBis = false;
   }
 
   if (slot === 'weapon') {

@@ -57,14 +57,50 @@ describe('explainCandidate', () => {
     expect(ex.warnings).toEqual([]);
   });
 
-  it('ring matches ring, ring1 and ring2 itemSlots', () => {
+  // Default `player({})` has `gear: []` — no tracked raid ring at all, so
+  // `stillNeedsRing` is false and this exercises the "normal" (non-refined)
+  // path: both rings already accounted for (none raid-BiS-and-missing) means
+  // the receipt genuinely forces wouldAdvanceBis=false. Pinned explicitly so
+  // this test stays meaningful under the ring refinement below, rather than
+  // accidentally relying on the empty-gear fixture's degenerate case.
+  it('ring matches ring, ring1 and ring2 itemSlots (fully-accounted-for candidate stays forced false)', () => {
+    const bothRingsFilled = player({
+      gear: [
+        { slot: 'ring1', bisSource: 'raid', hasItem: true, isAugmented: true },
+        { slot: 'ring2', bisSource: 'raid', hasItem: true, isAugmented: true },
+      ] as SnapshotPlayer['gear'],
+    });
     for (const itemSlot of ['ring', 'ring1', 'ring2'] as const) {
       const ex = explainCandidate(
-        entry(player({})), 'ring',
+        entry(bothRingsFilled), 'ring',
         { lootLog: [logEntry({ itemSlot, weekNumber: 4 })] },
       );
       expect(ex.warnings).toEqual(['Already received Ring in Week 4']);
+      expect(ex.wouldAdvanceBis).toBe(false);
     }
+  });
+
+  // PR #225 review, Finding 1: a candidate with a raid-BiS ring already
+  // received but a SECOND unfilled raid ring still genuinely advances BiS —
+  // getPriorityForRing keeps them in the needers pool for exactly this
+  // reason (needsRing1||needsRing2), so a rank-1 case among them must not
+  // sink the confidence header via a falsely-forced wouldAdvanceBis.
+  it('a two-raid-ring candidate with one ring already received still advances BiS via the other (ring refinement)', () => {
+    const oneRingLeft = player({
+      gear: [
+        { slot: 'ring1', bisSource: 'raid', hasItem: true, isAugmented: true },
+        { slot: 'ring2', bisSource: 'raid', hasItem: false, isAugmented: false },
+      ] as SnapshotPlayer['gear'],
+    });
+    const ex = explainCandidate(
+      entry(oneRingLeft), 'ring',
+      { lootLog: [logEntry({ itemSlot: 'ring1', weekNumber: 2 })] },
+    );
+    // The warning still fires — the receipt is real and fairness-relevant.
+    expect(ex.warnings).toEqual(['Already received Ring in Week 2']);
+    // But it does not falsely sink wouldAdvanceBis — the second ring is a
+    // genuine BiS-advancing assign.
+    expect(ex.wouldAdvanceBis).toBe(true);
   });
 
   it('weapon log match is job-strict (read agrees with the picker write)', () => {
