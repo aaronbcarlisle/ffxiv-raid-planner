@@ -77,16 +77,31 @@ describe('explainCandidate', () => {
     expect(other.warnings).toEqual(expect.not.arrayContaining(['Already received Weapon in Week 1']));
   });
 
-  it('flags a received weapon-priority row and a missing one', () => {
+  it('flags a received weapon-priority row', () => {
     const received = explainCandidate(
       entry(player({ job: 'WAR', weaponPriorities: [{ job: 'WAR', received: true }] })),
       'weapon', { lootLog: [] },
     );
     expect(received.warnings).toContain('Weapon already marked received in the priority list');
     expect(received.wouldAdvanceBis).toBe(false);
+  });
 
-    const missing = explainCandidate(entry(player({ job: 'WAR', weaponPriorities: [] })), 'weapon', { lootLog: [] });
-    expect(missing.warnings).toContain('Not on the weapon priority list');
+  // Live browser validation finding: every player's main job is an implicit
+  // default weapon priority (WeaponPriorityList.tsx:1020-1027's `allJobs`
+  // derivation) — explicit weaponPriorities rows are sparse addition/receipt
+  // records, so a MISSING row for the candidate's own job carries no signal
+  // and must not warn (the mirrored v1 "not on the list" warning fired on
+  // nearly every weapon row in the running app and sank confidence tier-wide).
+  it('does not warn when there is no weapon-priority row for the candidate\'s job (main job is the default)', () => {
+    const noRow = explainCandidate(entry(player({ job: 'WAR', weaponPriorities: [] })), 'weapon', { lootLog: [] });
+    expect(noRow.warnings).toEqual([]);
+    expect(noRow.wouldAdvanceBis).toBe(true);
+
+    const otherJobOnly = explainCandidate(
+      entry(player({ job: 'WAR', weaponPriorities: [{ job: 'DRG', received: true }] })),
+      'weapon', { lootLog: [] },
+    );
+    expect(otherJobOnly.warnings).toEqual([]);
   });
 
   it('a non-needer never claims to advance BiS', () => {

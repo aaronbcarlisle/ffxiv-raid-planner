@@ -19,12 +19,24 @@
  * all-player_fallback → low (:417; this ranking reads no character
  * registrations) and weapon-coffer priorityRank 1 → high (:424; v2's weapon
  * ranking comes from getPriorityForItem, not the weapon-priority list).
- * The `warnings.length > 1` → low branch is a contract guard: any two-warning
- * set necessarily includes at least one FORCING warning (already-received or
- * wp.received) — not that both kinds force — which already short-circuits to
- * low via the wouldAdvanceBis check one line earlier. This branch exists for
- * future warning kinds that stack to two without themselves forcing
- * wouldAdvanceBis=false.
+ * A missing weapon-priority row is likewise NOT warned: WeaponPriorityList.tsx's
+ * `allJobs` derivation (:1020-1027, "Every player's main job is a default
+ * weapon priority") treats a player's main job as an implicit priority row —
+ * explicit `weaponPriorities` rows are additions/receipt records, sparse by
+ * design — so row absence carries no signal in v2. v1's `weapon_coffer`
+ * scorer assumed a ranking DERIVED FROM the wp list, where absence meant
+ * something; that premise doesn't transfer here (v2's weapon ranking comes
+ * from getPriorityForItem, per the :424 note above), and live browser
+ * validation confirmed a mirrored "not on the list" warning fired on nearly
+ * every weapon row, sinking the confidence header to Medium tier-wide. Only
+ * `wp.received` — an actual receipt record — still warns.
+ * The `warnings.length > 1` → low branch is a contract guard: with only two
+ * warning kinds left (already-received, wp.received), BOTH are forcing —
+ * either one alone already short-circuits to low via the wouldAdvanceBis
+ * check one line earlier (reachable today: a weapon logged as received AND
+ * marked received in the priority list). This branch exists for a future
+ * non-forcing warning kind that could stack a second warning onto a forcing
+ * one.
  *
  * Weapon log matching is job-strict — the read matches what the picker
  * writes (weaponJob = recipient's job at submit), so read and write agree.
@@ -77,12 +89,14 @@ export function explainCandidate(
   }
 
   if (slot === 'weapon') {
+    // A missing row is NOT warned — every player's main job is an implicit
+    // default weapon priority (WeaponPriorityList.tsx:1020-1027's `allJobs`
+    // derivation); explicit rows are sparse addition/receipt records, so
+    // absence carries no signal. Only an actual receipt (`wp.received`) does.
     const wp = (entry.player.weaponPriorities ?? []).find((w) => w.job === entry.player.job);
     if (wp?.received) {
       warnings.push('Weapon already marked received in the priority list');
       wouldAdvanceBis = false;
-    } else if (!wp) {
-      warnings.push('Not on the weapon priority list');
     }
   }
 

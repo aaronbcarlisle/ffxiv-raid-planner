@@ -688,9 +688,8 @@ describe('RecipientPicker — R-12 "This will:" live preview', () => {
     );
     expect(screen.getByText(/Log Weapon \(drop\) for Caster One in Week 3/)).toBeInTheDocument();
     // Scoped to the preview's own phrasing ("Update <name>'s weapon priority")
-    // rather than a bare /weapon priority/ match — R-6 now legitimately shows
-    // a ROW warning ("Not on the weapon priority list") for this same fixture,
-    // which would otherwise collide with a broader regex.
+    // rather than a bare /weapon priority/ match, to stay resilient to any
+    // other "weapon priority" text that might appear elsewhere on the page.
     expect(screen.queryByText(/Update .*weapon priority/)).not.toBeInTheDocument();
   });
 });
