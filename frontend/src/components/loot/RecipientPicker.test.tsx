@@ -729,6 +729,39 @@ describe('RecipientPicker — D-36 no-one-needs-this hint', () => {
     render(<RecipientPicker {...baseProps} players={[gearedCaster]} mode="edit" editEntry={entry} />);
     expect(screen.queryByText(/No one needs this item/)).not.toBeInTheDocument();
   });
+
+  // Director change-review Finding 4: `needers` is priority scope, which
+  // excludes substitutes (recipientRanking.ts's mainRoster filter). When the
+  // main roster is fully geared but a substitute still needs the slot, the
+  // A11 fallback opens the picker on All members — where that substitute
+  // renders "…is BiS" at rank #1 — so the hint must NOT also claim nobody
+  // needs it.
+  it('does not show the hint when only a substitute needs the slot (main roster fully geared, opens on All members)', () => {
+    const gearedMain1 = makePlayer('c1', 'Caster One', 'BLM');
+    gearedMain1.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    const gearedMain2 = makePlayer('m1', 'Melee One', 'SAM');
+    gearedMain2.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    const needySub = makePlayer('s1', 'Sub One', 'WHM', { sub: true });
+    needySub.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: false, isAugmented: false },
+    ] as SnapshotPlayer['gear'];
+    render(
+      <RecipientPicker {...baseProps} players={[gearedMain1, gearedMain2, needySub]} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    // A11 fallback: the priority pool (main roster only) is empty, so the
+    // picker opens on All members.
+    expect(screen.getByRole('button', { name: 'All members' })).toHaveAttribute('aria-pressed', 'true');
+    // The substitute is visible, ranked, and claims need ("Ears" — the gear
+    // slot's short label, GEAR_SLOT_NAMES['earring'])…
+    expect(screen.getByText(/Ears is BiS/)).toBeInTheDocument();
+    // …so the footer must not contradict that row.
+    expect(screen.queryByText(/No one needs this item/)).not.toBeInTheDocument();
+  });
 });
 
 describe('RecipientPicker — R-4 initialRecipientId prefill', () => {

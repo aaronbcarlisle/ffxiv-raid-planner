@@ -244,6 +244,15 @@ export function RecipientPicker({
     [players, slot, settings, lootLog, currentWeek, enhancedActive],
   );
 
+  // D-36 hint gate: `needers` is priority scope, which excludes substitutes
+  // (recipientRanking.ts's mainRoster filter) — so when ONLY a substitute
+  // needs the slot, `needers` is empty even though the All-members fallback
+  // (A11, below) lands the picker on a scope where that sub renders "…is
+  // BiS" at rank #1. Require BOTH the priority pool being empty AND no
+  // currently-VISIBLE row (`entries`, which follows the active scope)
+  // claiming need, so the footer can never contradict a row on screen.
+  const noOneNeeds = needers.length === 0 && !entries.some((e) => e.needsItem);
+
   // In edit mode the log contains the entry being edited — explaining a
   // ranking against it would warn about the very receipt under edit and sink
   // the confidence header on every routine edit. Cross-check the record
@@ -563,8 +572,10 @@ export function RecipientPicker({
       {/* D-36: nobody in the priority pool needs this slot — reassure the
           user the assignment is still fine, just off the BiS path. Create
           modes only; edit mode is reassigning an existing drop, not rolling
-          a fresh one. */}
-      {mode !== 'edit' && needers.length === 0 && (
+          a fresh one. noOneNeeds also requires no VISIBLE row claiming need
+          (see its definition) so the hint can't contradict a sub-needer the
+          All-members fallback just surfaced at rank #1. */}
+      {mode !== 'edit' && noOneNeeds && (
         <p className="text-xs text-status-success">
           No one needs this item for BiS — assigning it counts as a free roll.
         </p>
