@@ -234,6 +234,21 @@ describe('Loot', () => {
     cards.forEach((c) => expect(c.getAttribute('data-scoped')).toBe('3'));
   });
 
+  it('disables auto-collapse only for a solo-scoped card (R-49)', () => {
+    renderLoot({ tier: makeTier(players) });
+    // Default single-card scope → the card must not auto-collapse.
+    expect(floorCardCalls[floorCardCalls.length - 1].autoCollapse).toBe(false);
+
+    // All → the four-card stack keeps the collapse behaviour.
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    const latestFour = floorCardCalls.slice(-4);
+    latestFour.forEach((p) => expect(p.autoCollapse).toBe(true));
+
+    // Back to an explicit single floor → collapse disabled again.
+    fireEvent.click(screen.getByRole('button', { name: 'M12S' }));
+    expect(floorCardCalls[floorCardCalls.length - 1].autoCollapse).toBe(false);
+  });
+
   it('keeps FloorCard currentWeek pinned to the clock while scoping to another week', () => {
     // Discriminator for the currentWeek/scopedWeek split at the assembly level:
     // scoping the view to week 1 re-renders the cards with scopedWeek=1, but the

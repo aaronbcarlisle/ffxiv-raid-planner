@@ -556,6 +556,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               scopedWeek={scopedWeek}
               currentWeek={clock.currentWeek}
               canEdit={canEdit}
+              // R-49: a solo-scoped card never auto-collapses — with one card
+              // there is nothing for a cleared floor to get out of the way of,
+              // and collapsing it lands the user on a nearly-empty screen.
+              autoCollapse={floorScope === 'all'}
               onAssignGear={(item: { slot: GearSlot | 'ring'; label: string }) =>
                 setPickerState({
                   mode: 'assign',

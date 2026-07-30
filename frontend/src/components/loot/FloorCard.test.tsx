@@ -178,6 +178,22 @@ describe('FloorCard', () => {
     enhanceCalls.forEach((ctx) => expect(ctx.currentWeek).toBe(2));
   });
 
+  it('never auto-collapses when autoCollapse is false — the solo-scoped card (R-49)', () => {
+    // Same fully-logged fixture that collapses above; with autoCollapse=false
+    // the rows must stay rendered and no "Show" affordance appears.
+    const players = [makePlayer('a', 'Alice', { earringHas: false })];
+    const lootLog: LootLogEntry[] = [
+      {
+        id: 1, tierSnapshotId: 't1', weekNumber: 3, floor: 'M9S', itemSlot: 'earring',
+        recipientPlayerId: 'a', recipientPlayerName: 'Alice', method: 'drop', isExtra: false,
+        createdAt: '', createdByUserId: 'u1', createdByUsername: 'u',
+      },
+    ];
+    render(<FloorCard {...baseProps} players={players} lootLog={lootLog} autoCollapse={false} />);
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+    expect(screen.queryByText('Show')).not.toBeInTheDocument();
+  });
+
   it('carries its floor identity once — accent stripe on the card, floor colour on the header name (R-8/R-45)', () => {
     const players = [makePlayer('a', 'Alice')];
     const { container } = render(<FloorCard {...baseProps} players={players} />);

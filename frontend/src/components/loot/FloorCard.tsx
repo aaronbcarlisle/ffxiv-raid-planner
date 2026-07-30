@@ -42,6 +42,15 @@ export interface FloorCardProps {
    */
   currentWeek?: number;
   canEdit: boolean;
+  /**
+   * Whether a fully-logged week may collapse the card (default true — the
+   * four-card All stack, where a cleared floor gets out of the way). R-49:
+   * when the card is the ONLY one scoped (R-10's single-floor default or an
+   * explicit floor pill), there is nothing to get out of the way OF, and
+   * auto-collapse would land the user on a nearly-empty screen — so the
+   * scoped view passes false and the card always renders its rows.
+   */
+  autoCollapse?: boolean;
   onAssignGear: (item: { slot: GearSlot | 'ring'; label: string }) => void;
   onAssignMaterial: (material: MaterialType, suggested: SnapshotPlayer) => void;
 }
@@ -54,7 +63,7 @@ function toRowEntries(entries: { player: SnapshotPlayer }[]): PriorityRowEntry[]
 
 export function FloorCard({
   floorNumber, floorName, players, settings, lootLog, materialLog, pageLedger,
-  scopedWeek, currentWeek, canEdit, onAssignGear, onAssignMaterial,
+  scopedWeek, currentWeek, canEdit, autoCollapse = true, onAssignGear, onAssignMaterial,
 }: FloorCardProps) {
   // Enhanced-scoring drought is measured against the real current week; the
   // scoped view week only governs which week's log the status chip reflects.
@@ -101,7 +110,7 @@ export function FloorCard({
 
   const dropLabels = [...gearItems.map((i) => i.label), ...materialRows.map((m) => m.label)];
 
-  const collapsed = !expanded && status.pendingCount === 0 && status.loggedCount > 0;
+  const collapsed = autoCollapse && !expanded && status.pendingCount === 0 && status.loggedCount > 0;
 
   return (
     <div className={`overflow-hidden rounded-lg border border-border-default ${FLOOR_ACCENT_CLASS[floorNumber]} bg-surface-card`}>
