@@ -58,7 +58,10 @@ export function WeaponPriorityBridge({
   return (
     <div className={`overflow-hidden rounded-lg border border-border-default ${FLOOR_ACCENT_CLASS[4]} bg-surface-card`}>
       <div className="flex items-center gap-3 border-b border-border-default bg-surface-base px-4 py-3">
-        <Tag variant="label" tone="muted">{floors[3] ?? 'Floor 4'}</Tag>
+        {/* Duty chip only when gamedata names the floor — a "Floor 4" chip
+            beside the "Floor 4" heading is the same redundancy Copilot
+            flagged on the R-5 label (PR #224). */}
+        {floors[3] !== undefined && <Tag variant="label" tone="muted">{floors[3]}</Tag>}
         <span className={`font-display text-sm font-bold ${FLOOR_TEXT_CLASS[4]}`}>Floor 4</span>
         <span className="text-xs text-text-tertiary">
           · weapon coffer · per-job funneling, ties &amp; rolls

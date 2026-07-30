@@ -59,10 +59,11 @@ describe('WeaponPriorityBridge', () => {
     expect(mockWeaponPriorityListProps).toMatchObject({ showLogButtons: false });
   });
 
-  it('falls back to "Floor 4" when tier gamedata has no floor names', () => {
+  it('drops the duty chip (not doubling "Floor 4") when tier gamedata has no floor names', () => {
     render(<WeaponPriorityBridge {...baseProps} floors={[]} />);
-    // Header duty chip falls back; the list still renders.
-    expect(screen.getAllByText('Floor 4').length).toBeGreaterThan(0);
+    // Exactly ONE "Floor 4" — a "Floor 4" chip beside the "Floor 4" heading
+    // is the redundancy Copilot flagged on the R-5 label (PR #224).
+    expect(screen.getAllByText('Floor 4')).toHaveLength(1);
     expect(screen.getByTestId('wpl')).toBeInTheDocument();
   });
 });
