@@ -61,11 +61,16 @@ describe('ResetConfirmModal — reset description', () => {
       expect(screen.getByText(/ALL book entries for Floor 2 \(every week\)/i)).toBeTruthy();
     });
 
-    it('does not mis-state a floor-scoped loot reset as tier-wide', () => {
+    it('warns TIER-wide for a week-less floor loot config — no handler implements a floor-scoped all-weeks loot delete', () => {
+      // Both reset handlers ignore `floor` without a `week` and delete the
+      // ENTIRE tier's loot (SectionedLogView.tsx:471-479 falls through to the
+      // full log; Loot.tsx's week-or-all filter likewise). The dialog must
+      // state that real blast radius, not a floor scope nothing honours
+      // (PR #223 review finding). No emitter produces this config today.
       renderWith({ scope: 'floor', target: 'loot', floor: 3 });
 
-      expect(screen.queryByText(/for this tier/i)).toBeNull();
-      expect(screen.getByText(/ALL loot entries for Floor 3 \(every week\)/i)).toBeTruthy();
+      expect(screen.queryByText(/Floor 3/)).toBeNull();
+      expect(screen.getByText(/ALL loot entries for this tier/i)).toBeTruthy();
     });
   });
 

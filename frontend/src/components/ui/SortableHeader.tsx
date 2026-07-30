@@ -56,6 +56,11 @@ export function SortableHeader<T extends string>({
       aria-sort={isActive ? (currentDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
       className={`group px-4 py-3 ${thClassName}`}
     >
+      {/* design-system-ignore: the APG sortable-table pattern needs a bare
+          button inside the <th>; the Button primitive's rounded-lg /
+          font-semibold / variant background / 44px min-height can't be
+          overridden down to a column-header control. Same call as
+          GroupViewToggle.tsx and MobileBottomNav.tsx. */}
       <button
         type="button"
         onClick={() => onSort(field)}

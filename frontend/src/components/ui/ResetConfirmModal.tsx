@@ -58,18 +58,25 @@ function getResetDescription(config: ResetConfig): string {
     return `${playerName}'s book entries for Week ${week}`;
   }
 
-  // Floor-specific reset. Same missing-week case from V1's books column menu
-  // (SectionedLogView.tsx:404-423). The week-less form must state that it spans
-  // every week rather than leaving the blast radius implied (R-44).
+  // Floor-specific reset. The week-less case comes from V1's books column menu
+  // (SectionedLogView.tsx:404-423) and must state that it spans every week
+  // rather than leaving the blast radius implied (R-44).
+  //
+  // ONLY `books` gets a floor-scoped week-less string: it is the one target
+  // with a floor-scoped all-weeks delete (`clearAllFloorPageLedger`). Both
+  // reset handlers ignore `floor` when `week` is absent for loot/data
+  // (SectionedLogView.tsx:471-479 falls through to the FULL loot log; v2's
+  // Loot.tsx week-or-all filter likewise) — so a week-less floor loot/data
+  // config falls through to the tier-wide strings below, which are the
+  // truthful blast radius. Claiming floor scope here would be the exact
+  // mis-statement R-44 exists to prevent (PR #223 review finding).
   if (scope === 'floor' && floor) {
-    if (week === undefined) {
-      if (target === 'loot') return `ALL loot entries for Floor ${floor} (every week)`;
-      if (target === 'books') return `ALL book entries for Floor ${floor} (every week)`;
-      return `ALL data for Floor ${floor} (every week)`;
+    if (week !== undefined) {
+      if (target === 'loot') return `loot entries for Floor ${floor} in Week ${week}`;
+      if (target === 'books') return `book entries for Floor ${floor} in Week ${week}`;
+      return `all data for Floor ${floor} in Week ${week}`;
     }
-    if (target === 'loot') return `loot entries for Floor ${floor} in Week ${week}`;
-    if (target === 'books') return `book entries for Floor ${floor} in Week ${week}`;
-    return `all data for Floor ${floor} in Week ${week}`;
+    if (target === 'books') return `ALL book entries for Floor ${floor} (every week)`;
   }
 
   // Week-specific reset
