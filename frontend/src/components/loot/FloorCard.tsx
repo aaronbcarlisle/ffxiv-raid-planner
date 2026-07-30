@@ -1,16 +1,22 @@
 /**
- * FloorCard — one floor's loot-priority surface (F6d, spec §5.2).
- * Header: floor name + number + drops meta + pending/logged chip.
+ * FloorCard — one floor's loot-priority surface (F6d, spec §5.2; Phase-D R-8).
+ * Header: floor name + number + drops meta + pending/logged chip. The card
+ * carries its floor's identity ONCE — the R-45 accent stripe on the left edge
+ * and the floor-coloured "Floor N" in the header (R-8: stated once per group,
+ * not repeated on every row).
  * Body: gear rows then material rows, each with a ranked PriorityRow queue via
  * FloorDropRow. Auto-collapses when the week is fully logged (nothing pending)
  * to keep a cleared floor out of the way; `Show` (LinkText) re-expands it.
  * Queues use the SAME derivation as the legacy LootPriorityPanel
  * (getPriorityForItem/Ring/UpgradeMaterial/UniversalTomestone →
  * enhancePriorityEntries with the legacy enhanced-scoring gate expression).
+ * (The weapon-priority footer left with R-3 — Weapons is a peer switcher
+ * segment now, not a Floor-4 appendix.)
  */
 import { useMemo, useState } from 'react';
 import { Tag, LinkText, type PriorityRowEntry } from '../ui';
 import { FloorDropRow } from './FloorDropRow';
+import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { deriveFloorWeekStatus } from '../../utils/lootFairness';
 import { enhancePriorityEntries } from '../../utils/priorityEntries';
 import { calculateAverageDrops } from '../../utils/lootCoordination';
@@ -38,7 +44,6 @@ export interface FloorCardProps {
   canEdit: boolean;
   onAssignGear: (item: { slot: GearSlot | 'ring'; label: string }) => void;
   onAssignMaterial: (material: MaterialType, suggested: SnapshotPlayer) => void;
-  footer?: React.ReactNode;
 }
 
 function toRowEntries(entries: { player: SnapshotPlayer }[]): PriorityRowEntry[] {
@@ -49,7 +54,7 @@ function toRowEntries(entries: { player: SnapshotPlayer }[]): PriorityRowEntry[]
 
 export function FloorCard({
   floorNumber, floorName, players, settings, lootLog, materialLog, pageLedger,
-  scopedWeek, currentWeek, canEdit, onAssignGear, onAssignMaterial, footer,
+  scopedWeek, currentWeek, canEdit, onAssignGear, onAssignMaterial,
 }: FloorCardProps) {
   // Enhanced-scoring drought is measured against the real current week; the
   // scoped view week only governs which week's log the status chip reflects.
@@ -99,10 +104,10 @@ export function FloorCard({
   const collapsed = !expanded && status.pendingCount === 0 && status.loggedCount > 0;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border-default bg-surface-card">
+    <div className={`overflow-hidden rounded-lg border border-border-default ${FLOOR_ACCENT_CLASS[floorNumber]} bg-surface-card`}>
       <div className="flex items-center gap-3 border-b border-border-default bg-surface-base px-4 py-3">
         <Tag variant="label" tone="muted">{floorName}</Tag>
-        <span className="font-display text-sm font-bold">Floor {floorNumber}</span>
+        <span className={`font-display text-sm font-bold ${FLOOR_TEXT_CLASS[floorNumber]}`}>Floor {floorNumber}</span>
         <span className="text-xs text-text-tertiary">
           · {status.cleared ? 'cleared' : 'in progress'} · drops: {dropLabels.join(', ')}
         </span>
@@ -123,6 +128,7 @@ export function FloorCard({
               kind="gear"
               label={row.label}
               subLabel={`${row.label} · raid`}
+              floorNumber={floorNumber}
               slot={row.slot}
               entries={row.entries}
               canEdit={canEdit}
@@ -135,6 +141,7 @@ export function FloorCard({
               kind="material"
               label={row.label}
               subLabel="Upgrade material"
+              floorNumber={floorNumber}
               material={row.material}
               entries={row.entries}
               canEdit={canEdit}
@@ -149,9 +156,6 @@ export function FloorCard({
           ))}
         </div>
       )}
-      {/* Footer stays visible even while collapsed — weapon priorities are
-          tier-level (not week-scoped), so a cleared week shouldn't hide them. */}
-      {footer}
     </div>
   );
 }

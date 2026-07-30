@@ -178,24 +178,41 @@ describe('FloorCard', () => {
     enhanceCalls.forEach((ctx) => expect(ctx.currentWeek).toBe(2));
   });
 
-  it('keeps the footer visible while the card is collapsed (tier-level, not week-scoped)', () => {
-    // Reuse the fully-logged collapse fixture: body collapsed, footer still shown.
-    const players = [makePlayer('a', 'Alice', { earringHas: false })];
-    const lootLog: LootLogEntry[] = [
-      {
-        id: 1, tierSnapshotId: 't1', weekNumber: 3, floor: 'M9S', itemSlot: 'earring',
-        recipientPlayerId: 'a', recipientPlayerName: 'Alice', method: 'drop', isExtra: false,
-        createdAt: '', createdByUserId: 'u1', createdByUsername: 'u',
-      },
-    ];
-    render(
-      <FloorCard {...baseProps} players={players} lootLog={lootLog} footer={<div data-testid="floor-footer" />} />
-    );
-    // Collapsed: body rows gone, "Show" present…
-    expect(screen.queryByText('Alice')).not.toBeInTheDocument();
-    expect(screen.getByText('Show')).toBeInTheDocument();
-    // …but the footer still renders.
-    expect(screen.getByTestId('floor-footer')).toBeInTheDocument();
+  it('carries its floor identity once — accent stripe on the card, floor colour on the header name (R-8/R-45)', () => {
+    const players = [makePlayer('a', 'Alice')];
+    const { container } = render(<FloorCard {...baseProps} players={players} />);
+    // The card wrapper carries the R-45 left accent for its floor…
+    expect(container.firstElementChild?.className).toContain('border-l-floor-1');
+    // …and the header floor name takes the floor text token.
+    expect(screen.getByText('Floor 1').className).toContain('text-floor-1');
+  });
+
+  it('gear rows lead with the neutral slot glyph and a floor-coloured name; material rows keep material tokens (R-8/R-19)', () => {
+    // Floor 2: gear drops include Head; materials include Glaze.
+    const player: SnapshotPlayer = {
+      id: 'a', tierSnapshotId: 't1', name: 'Alice', job: 'PLD', role: 'tank',
+      configured: true, sortOrder: 0, isSubstitute: false,
+      gear: [
+        { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+        { slot: 'earring', bisSource: 'tome', hasItem: true, isAugmented: false },
+      ],
+      tomeWeapon: {}, weaponPriorities: [],
+    } as unknown as SnapshotPlayer;
+    render(<FloorCard {...baseProps} floorNumber={2} floorName="M10S" players={[player]} />);
+
+    // Gear name carries the floor colour; no coloured letter square before it.
+    const headName = screen.getByText('Head');
+    expect(headName.className).toContain('text-floor-2');
+    const headRow = headName.closest('div.border-b') as HTMLElement;
+    // The leading glyph is the masked GearSlotIcon (bg-current), not a letter.
+    expect(headRow.querySelector('.bg-current')).not.toBeNull();
+    expect(within(headRow).queryByText('H')).not.toBeInTheDocument();
+
+    // Material rows keep the tokened letter square and a neutral name.
+    const glazeName = screen.getByText('Glaze');
+    expect(glazeName.className).toContain('text-text-primary');
+    const glazeRow = glazeName.closest('div.border-b') as HTMLElement;
+    expect(within(glazeRow).getByText('G')).toBeInTheDocument();
   });
 
   it("a material row's Assign calls onAssignMaterial with the top-priority player", () => {

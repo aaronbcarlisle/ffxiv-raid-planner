@@ -1,22 +1,33 @@
 /**
- * FloorDropRow — one droppable item inside a FloorCard (F6d, spec §5.2).
- * Mockup 03-loot-priority.html `.drop`: item icon + name/slot line +
- * PriorityRow queue + an "Assign" button (canEdit; NO trailing arrow, DS §4.1).
+ * FloorDropRow — one droppable item inside a FloorCard (F6d §5.2; Phase-D R-8).
+ *
+ * R-8 split what the old coloured letter square conflated (slot + status +
+ * floor in one 16px element) so each element says one thing:
+ *   - gear rows lead with the generic monochrome `GearSlotIcon` — it reads as
+ *     an icon, not a status — and the gear NAME carries the floor colour;
+ *   - material rows keep the material-token letter square (their identity
+ *     language is the material tokens, not the floor — R-19's rule).
+ * Both keep the same 34px leading well so names align down the card.
  */
 import { Button } from '../primitives';
 import { PriorityRow, type PriorityRowEntry } from '../ui';
+import { GearSlotIcon } from '../ui/GearSlotIcon';
+import { FLOOR_TEXT_CLASS } from './floorClasses';
+import type { FloorNumber } from '../../gamedata/loot-tables';
 import type { MaterialType, GearSlot } from '../../types';
 
 export interface FloorDropRowProps {
   kind: 'gear' | 'material';
   label: string;                       // "Weapon" / "Ring" / "Twine"
   subLabel: string;                    // "Weapon · raid" / "Upgrade material"
+  /** Which floor drops this — colours the gear name (R-8). */
+  floorNumber: FloorNumber;
   slot?: GearSlot | 'ring';
   material?: MaterialType;
   entries: PriorityRowEntry[];
   canEdit: boolean;
   onAssign: () => void;
-  /** Disable the Assign button (e.g. a material row with zero needers → no-op). */
+  /** Disable the Assign button (e.g. an empty roster → nobody to assign to). */
   disableAssign?: boolean;
 }
 
@@ -27,23 +38,35 @@ const MATERIAL_TOKEN: Record<string, string> = {
   universal_tomestone: 'var(--color-material-tomestone)',
 };
 
-export function FloorDropRow({ kind, label, subLabel, material, entries, canEdit, onAssign, disableAssign = false }: FloorDropRowProps) {
-  const tone = kind === 'gear' ? 'var(--color-gear-raid)' : MATERIAL_TOKEN[material ?? ''] ?? 'var(--color-accent)';
+export function FloorDropRow({
+  kind, label, subLabel, floorNumber, slot, material, entries, canEdit, onAssign, disableAssign = false,
+}: FloorDropRowProps) {
+  const materialTone = MATERIAL_TOKEN[material ?? ''] ?? 'var(--color-accent)';
   return (
     <div className="flex items-center gap-3.5 border-b border-border-subtle px-4 py-3 last:border-b-0">
       <div className="flex w-[230px] flex-none items-center gap-2.5">
-        <span
-          aria-hidden
-          className="grid h-[34px] w-[34px] flex-none place-items-center rounded-lg font-display text-xs font-extrabold"
-          style={{
-            backgroundColor: `color-mix(in srgb, ${tone} 22%, transparent)`,
-            color: tone,
-          }}
-        >
-          {label.slice(0, 1)}
-        </span>
+        {kind === 'gear' && slot ? (
+          <span className="grid h-[34px] w-[34px] flex-none place-items-center text-text-secondary">
+            <GearSlotIcon slot={slot} size={22} />
+          </span>
+        ) : (
+          <span
+            aria-hidden
+            className="grid h-[34px] w-[34px] flex-none place-items-center rounded-lg font-display text-xs font-extrabold"
+            style={{
+              backgroundColor: `color-mix(in srgb, ${materialTone} 22%, transparent)`,
+              color: materialTone,
+            }}
+          >
+            {label.slice(0, 1)}
+          </span>
+        )}
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-text-primary">{label}</div>
+          <div
+            className={`truncate text-sm font-bold ${kind === 'gear' ? FLOOR_TEXT_CLASS[floorNumber] : 'text-text-primary'}`}
+          >
+            {label}
+          </div>
           <div className="truncate text-xs text-text-tertiary">{subLabel}</div>
         </div>
       </div>

@@ -41,6 +41,10 @@
  *     deep-link therefore always shows everything (filters default to all/all/all),
  *     so an `?entry=` deep-link can never be hidden by a filter on first mount;
  *     only a mid-session filter change can hide a row, which is acceptable.
+ *   - The Priority sub-view (Queues⇄Weapons; Matrix lands in D3) persists per
+ *     user under `v2-loot-priority-view` (R-1) — NOT URL-backed. The floor
+ *     scope (R-2/R-10) is session-only state: per-view default until the first
+ *     explicit pill click, global after it.
  *   - The book-row highlight (legacy `highlightedBookPlayerId`) is URL-backed in
  *     v2: the roster kebab's "Edit Books" jump (C7, D-05) writes `?book={playerId}`
  *     and `BookLedgerCard` owns the scroll + pulse + self-clear, exactly as
@@ -54,7 +58,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Shield } from 'lucide-react';
+import { ListChecks, Shield } from 'lucide-react';
 
 import { PageHeader } from '../layout/PageHeader';
 import { LootToolbar } from './LootToolbar';
@@ -73,6 +77,9 @@ import { HistoryFilters } from './HistoryFilters';
 import type { HistoryItem } from './LootEntryRow';
 
 import { SegmentedToggle } from '../ui/SegmentedToggle';
+import { Tag } from '../ui/Tag';
+import { Button } from '../primitives/Button';
+import { newestInProgressFloor, type FloorScope } from './priorityScope';
 import { DeleteLootConfirmModal } from '../history/DeleteLootConfirmModal';
 import { ResetConfirmModal, type ResetConfig } from '../ui/ResetConfirmModal';
 import { ConfirmModal } from '../ui/ConfirmModal';
@@ -102,6 +109,21 @@ const logger = baseLogger.scope('loot');
 
 /** Stable empty fallback so a missing/empty tier doesn't churn memo deps. */
 const EMPTY_PLAYERS: SnapshotPlayer[] = [];
+
+// ── Priority sub-view (R-1/R-3) ──
+// 'matrix' joins in D3 and becomes the landing view (R-1); until then a stored
+// 'matrix' value falls back to 'queues' rather than rendering a dead segment.
+type PriorityView = 'queues' | 'weapons';
+
+// R-1: the choice "persists per user" → localStorage. Fresh v2 key, no legacy
+// fallback read (plan §2.3 — legacy's `loot-priority-subtab` values don't map).
+const PRIORITY_VIEW_KEY = 'v2-loot-priority-view';
+
+function readStoredPriorityView(): PriorityView {
+  return localStorage.getItem(PRIORITY_VIEW_KEY) === 'weapons' ? 'weapons' : 'queues';
+}
+
+const FLOOR_NUMBERS: FloorNumber[] = [1, 2, 3, 4];
 
 /** Fairness-rules label shown in the subtitle, keyed by effective priority mode. */
 const MODE_LABELS: Record<ReturnType<typeof getEffectivePriorityMode>, string> = {
@@ -174,9 +196,32 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const [lview, setLview] = useUrlTabState('lview', ['priority', 'history'] as const, 'priority');
   const [filters, setFilters] = useState(DEFAULT_HISTORY_FILTERS);
 
+  // ── Priority sub-view (persisted, R-1) + floor scope (session, R-2/R-10) ──
+  const [priorityView, setPriorityView] = useState<PriorityView>(readStoredPriorityView);
+  const changePriorityView = useCallback((v: PriorityView) => {
+    setPriorityView(v);
+    localStorage.setItem(PRIORITY_VIEW_KEY, v);
+  }, []);
+  // R-10: null = the user hasn't stated a scope this session. Until they do,
+  // Queues opens at the newest in-progress floor (one card, no scroll). The
+  // first pill click ends that — the pick is global and switching segments
+  // never moves it.
+  const [pickedScope, setPickedScope] = useState<FloorScope | null>(null);
+  const defaultQueuesScope = useMemo(
+    () => newestInProgressFloor({ lootLog, materialLog, pageLedger, floors }),
+    [lootLog, materialLog, pageLedger, floors],
+  );
+  const floorScope: FloorScope = pickedScope ?? defaultQueuesScope;
+  // R-7: the floor the "Log floor" button acts on. Weapons is pinned to the
+  // final floor (R-5 states it); on All the button steps aside for the
+  // toolbar's whole-week wizard.
+  const logFloorTarget: FloorNumber | null =
+    priorityView === 'weapons' ? 4 : floorScope !== 'all' ? floorScope : null;
+
   // ── Modal state (each surface owns an independent slot) ──
   const [pickerState, setPickerState] = useState<PickerState>(null);
-  const [wizardOpen, setWizardOpen] = useState(false);
+  // `floor: null` = the whole-week wizard; a FloorNumber = R-7's single-floor run.
+  const [wizardState, setWizardState] = useState<{ floor: FloorNumber | null } | null>(null);
   const [materialState, setMaterialState] = useState<MaterialState>(null);
   const [adjustmentsOpen, setAdjustmentsOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<HistoryItem | null>(null);
@@ -386,11 +431,66 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           }
           canEdit={canEdit}
           onLogDrop={() => setPickerState({ mode: 'log' })}
-          onLogWeek={() => setWizardOpen(true)}
+          onLogWeek={() => setWizardState({ floor: null })}
           onOpenAdjustments={() => setAdjustmentsOpen(true)}
           onOpenRules={openRules}
         />
       </div>
+
+      {lview === 'priority' && (
+        <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <SegmentedToggle
+            size="sm"
+            ariaLabel="Priority view"
+            value={priorityView}
+            onChange={changePriorityView}
+            options={[
+              { value: 'queues', label: 'Queues' },
+              { value: 'weapons', label: 'Weapons' },
+            ]}
+          />
+          {priorityView === 'weapons' ? (
+            // R-5: in Weapons the pill row becomes a static floor label, in
+            // place — the scope is STATED rather than implied by a control
+            // that could do nothing (weapons only drop from the final floor).
+            <div className="flex items-center gap-2" aria-live="polite">
+              <Tag variant="label" tone="floor-4">{`${floors[3] ?? 'Floor 4'} · Floor 4`}</Tag>
+              <span className="text-xs text-text-tertiary">weapons drop here</span>
+            </div>
+          ) : (
+            // R-2: one pill row scopes the whole Priority view.
+            <div role="group" aria-label="Floor scope" className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs uppercase tracking-wide text-text-tertiary">Floor</span>
+              <Tag variant="filter" tone="accent" pressed={floorScope === 'all'} onClick={() => setPickedScope('all')}>
+                All
+              </Tag>
+              {FLOOR_NUMBERS.map((n) => (
+                <Tag
+                  key={n}
+                  variant="filter"
+                  tone={`floor-${n}`}
+                  pressed={floorScope === n}
+                  onClick={() => setPickedScope(n)}
+                >
+                  {floors[n - 1] ?? `Floor ${n}`}
+                </Tag>
+              ))}
+            </div>
+          )}
+          <div className="flex-1" />
+          {canEdit && logFloorTarget !== null && (
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<ListChecks className="h-3.5 w-3.5" aria-hidden />}
+              aria-label={`Log floor — ${floors[logFloorTarget - 1] ?? `Floor ${logFloorTarget}`}`}
+              onClick={() => setWizardState({ floor: logFloorTarget })}
+            >
+              Log floor
+            </Button>
+          )}
+        </div>
+      )}
 
       {lview === 'history' ? (
         <div className="grid gap-3.5">
@@ -426,9 +526,24 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             onDelete={requestDelete}
           />
         </div>
+      ) : priorityView === 'weapons' ? (
+        // R-3: Weapons is a peer switcher segment — the bridge IS the view body
+        // now, not a Floor-4 card footer.
+        <WeaponPriorityBridge
+          players={mainRosterPlayers}
+          settings={settings}
+          groupId={group.id}
+          tierId={tier.tierId}
+          floors={floors}
+          maxWeek={clock.maxWeek}
+          canEdit={canEdit}
+          onLogSuccess={refresh}
+        />
       ) : (
         <div className="grid gap-3.5">
-          {([4, 3, 2, 1] as FloorNumber[]).map((n) => (
+          {([4, 3, 2, 1] as FloorNumber[])
+            .filter((n) => floorScope === 'all' || n === floorScope)
+            .map((n) => (
             <FloorCard
               key={n}
               floorNumber={n}
@@ -449,20 +564,6 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               }
               onAssignMaterial={(material, suggested) =>
                 setMaterialState({ material, floorName: floors[n - 1] ?? `Floor ${n}`, suggested })
-              }
-              footer={
-                n === 4 ? (
-                  <WeaponPriorityBridge
-                    players={mainRosterPlayers}
-                    settings={settings}
-                    groupId={group.id}
-                    tierId={tier.tierId}
-                    floors={floors}
-                    maxWeek={clock.maxWeek}
-                    canEdit={canEdit}
-                    onLogSuccess={refresh}
-                  />
-                ) : undefined
               }
             />
           ))}
@@ -494,9 +595,13 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         />
       )}
 
+      {/* One wizard, two doors (R-7): the toolbar's whole-week run, and the
+          controls row's "Log floor" single-floor run. The wizard re-reads
+          singleFloorMode/initialFloor on its open transition, so the always-
+          mounted pattern is safe. */}
       <LogWeekWizard
-        isOpen={wizardOpen}
-        onClose={() => setWizardOpen(false)}
+        isOpen={wizardState !== null}
+        onClose={() => setWizardState(null)}
         groupId={group.id}
         tierId={tier.tierId}
         players={mainRosterPlayers}
@@ -506,6 +611,8 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         maxWeek={clock.maxWeek}
         lootLog={lootLog}
         materialLog={materialLog}
+        singleFloorMode={wizardState?.floor != null}
+        initialFloor={wizardState?.floor ?? 1}
         onSuccess={(w) => { refresh(); setScopedWeekOverride(w); }}
       />
 

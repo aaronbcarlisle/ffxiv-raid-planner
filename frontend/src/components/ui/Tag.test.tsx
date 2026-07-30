@@ -33,4 +33,11 @@ describe('Tag', () => {
     fireEvent.click(screen.getByRole('button', { name: /Go/ }));
     expect(onNavigate).toHaveBeenCalledTimes(1);
   });
+
+  it('floor tones map to the R-45 floor tokens (Phase-D; additive — legacy passes none of these)', () => {
+    render(<Tag variant="filter" tone="floor-2" pressed onClick={() => {}}>M10S</Tag>);
+    const btn = screen.getByRole('button', { name: /M10S/ });
+    expect(btn.className).toContain('text-floor-2');
+    expect(btn.className).toContain('border-floor-2/30');
+  });
 });

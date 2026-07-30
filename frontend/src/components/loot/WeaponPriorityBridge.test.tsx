@@ -1,5 +1,11 @@
+// Phase-D R-3: the bridge is the Weapons switcher segment's body — the old
+// collapse/expand disclosure is GONE (weapon priority stopped being a
+// collapsible text link in the Floor-4 card's footer). This suite pins the new
+// contract: list always rendered inside the floor-4-identified card, canEdit
+// forwarded, and the shared `WeaponPriorityList` mounted verbatim (it is V1's
+// component too — LootPriorityPanel.tsx:25 — and must not be edited).
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { WeaponPriorityBridge } from './WeaponPriorityBridge';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import type { SnapshotPlayer } from '../../types';
@@ -32,30 +38,31 @@ const baseProps = {
 };
 
 describe('WeaponPriorityBridge', () => {
-  it('is collapsed by default: shows the "Weapon priorities" LinkText, not the list', () => {
+  it('renders WeaponPriorityList immediately — no disclosure to click through (R-3)', () => {
     render(<WeaponPriorityBridge {...baseProps} />);
-    expect(screen.getByText('Weapon priorities')).toBeInTheDocument();
-    expect(screen.queryByTestId('wpl')).not.toBeInTheDocument();
+    expect(screen.getByTestId('wpl')).toBeInTheDocument();
+    expect(screen.queryByText('Weapon priorities')).not.toBeInTheDocument();
   });
 
-  it('expands to render WeaponPriorityList on click', () => {
-    render(<WeaponPriorityBridge {...baseProps} />);
-    fireEvent.click(screen.getByText('Weapon priorities'));
-    expect(screen.getByTestId('wpl')).toBeInTheDocument();
+  it('states the fixed floor-4 scope in its card header', () => {
+    const { container } = render(<WeaponPriorityBridge {...baseProps} />);
+    // Duty chip + floor-coloured floor name (mockup .duty/.fname treatment).
+    expect(screen.getByText('M12S')).toBeInTheDocument();
+    expect(screen.getByText('Floor 4').className).toContain('text-floor-4');
+    // The card carries the floor-4 accent stripe (R-45).
+    expect(container.firstElementChild?.className).toContain('border-l-floor-4');
   });
 
   it('forwards canEdit as showLogButtons to WeaponPriorityList', () => {
     mockWeaponPriorityListProps = null;
     render(<WeaponPriorityBridge {...baseProps} canEdit={false} />);
-    fireEvent.click(screen.getByText('Weapon priorities'));
     expect(mockWeaponPriorityListProps).toMatchObject({ showLogButtons: false });
   });
 
-  it('announces expanded state on the toggle via aria-expanded', () => {
-    render(<WeaponPriorityBridge {...baseProps} />);
-    const toggle = screen.getByText('Weapon priorities');
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  it('falls back to "Floor 4" when tier gamedata has no floor names', () => {
+    render(<WeaponPriorityBridge {...baseProps} floors={[]} />);
+    // Header duty chip falls back; the list still renders.
+    expect(screen.getAllByText('Floor 4').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('wpl')).toBeInTheDocument();
   });
 });
