@@ -627,6 +627,68 @@ describe('RecipientPicker — R-12 "This will:" live preview', () => {
     expect(screen.getByText(/Record it as a WAR weapon/)).toBeInTheDocument();
     expect(screen.queryByText('No changes yet.')).not.toBeInTheDocument();
   });
+
+  // Review fix round 1, Finding 1: the notes-clearing branch of the preview
+  // (`'notes' in updates`) was dead code under the suite — nothing exercised
+  // clearing a non-empty note to ''. `computeEditUpdates` sets the `notes`
+  // key to the literal value `undefined` in that case (key PRESENT, value
+  // undefined), so this pins both the preview line AND that the submitted
+  // payload actually carries the key — `toEqual` would silently pass on a
+  // payload missing the key entirely (it ignores undefined-valued props),
+  // so the assertion uses `toHaveProperty`/`Object.keys` instead.
+  it('edit mode: clearing a note to empty still surfaces the change and submits the notes key', async () => {
+    const entry = makeEntry({ weekNumber: 2, floor: 'M11S', itemSlot: 'body', method: 'book', notes: 'hi', recipientPlayerId: 'c1' });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+
+    fireEvent.change(screen.getByPlaceholderText('Optional notes…'), { target: { value: '' } });
+    expect(screen.getByText(/Update the notes/)).toBeInTheDocument();
+    expect(screen.queryByText('No changes yet.')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updateLootAndSyncGear).toHaveBeenCalledTimes(1));
+    const updates = vi.mocked(updateLootAndSyncGear).mock.calls[0][4];
+    expect(updates).toHaveProperty('notes');
+    expect(Object.keys(updates)).toEqual(['notes']);
+  });
+
+  // Review fix round 1, Finding 3(a): pins the ring-vs-plain-slot refinement
+  // — a slot whose gear is tome-sourced (not raid) never promises the gear
+  // write, even with updateGear checked and method='drop' (both otherwise
+  // eligible). Mirrors lootCoordination.ts:111's `bisSource === 'raid'` gate.
+  it('assign mode: tome-sourced slot gear never promises the gear write (refinement pin)', () => {
+    const tomeCaster = makePlayer('c1', 'Caster One', 'BLM');
+    tomeCaster.gear = [
+      { slot: 'earring', bisSource: 'tome', hasItem: false, isAugmented: false },
+    ] as SnapshotPlayer['gear'];
+    const tomeMelee = makePlayer('m1', 'Melee One', 'SAM');
+    tomeMelee.gear = [
+      { slot: 'earring', bisSource: 'tome', hasItem: false, isAugmented: false },
+    ] as SnapshotPlayer['gear'];
+    render(
+      <RecipientPicker {...baseProps} players={[tomeCaster, tomeMelee]} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    // updateGear defaults checked, method defaults 'drop' — only the
+    // bisSource refinement blocks the line.
+    expect(acquiredCheckbox('Earring')).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText(/Log Earring \(drop\) for Caster One in Week 3/)).toBeInTheDocument();
+    expect(screen.queryByText(/Mark Earring as acquired on/)).not.toBeInTheDocument();
+  });
+
+  // Review fix round 1, Finding 3(b): pins the weapon-priority refinement —
+  // a recipient with no weapon-priority row for their own job never
+  // promises the weapon-priority write, even for an otherwise-eligible
+  // drop. Mirrors lootCoordination.ts:129-137's `targetJob` match.
+  it('weapon assign mode: no weapon-priority row for the recipient means no promise (refinement pin)', () => {
+    const casterNoWP = makePlayer('c1', 'Caster One', 'BLM');
+    casterNoWP.weaponPriorities = [];
+    render(
+      <RecipientPicker {...baseProps} players={[casterNoWP, melee]} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    expect(screen.getByText(/Log Weapon \(drop\) for Caster One in Week 3/)).toBeInTheDocument();
+    expect(screen.queryByText(/weapon priority/)).not.toBeInTheDocument();
+  });
 });
 
 describe('RecipientPicker — D-36 no-one-needs-this hint', () => {

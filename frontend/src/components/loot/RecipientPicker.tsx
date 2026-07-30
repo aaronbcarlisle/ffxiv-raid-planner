@@ -356,8 +356,9 @@ export function RecipientPicker({
       // `updates.notes` carries `undefined` as a *cleared* value (see
       // computeEditUpdates: `updates.notes = notes || undefined`) — a
       // cleared-to-empty note still has the `notes` key set but with an
-      // undefined value, so check the key's presence via the raw diff too.
-      if (updates.notes !== undefined || (notes === '' && (editEntry.notes ?? '') !== '')) out.push('Update the notes');
+      // undefined value, so check key PRESENCE, not the value, or a clear
+      // silently reports "No changes yet." while submit still writes it.
+      if ('notes' in updates) out.push('Update the notes');
       if (updates.weaponJob !== undefined) out.push(`Record it as a ${updates.weaponJob} weapon`);
       // Mirrors lootCoordination.ts:186-187,:194-195 — the picker never diffs
       // isExtra, so the extra-transition clause reduces to !editEntry.isExtra.
