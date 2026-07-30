@@ -10,9 +10,13 @@ import os
 import subprocess
 import sys
 
-# No hardcoded machine paths (checked-in hook): hooks run with cwd = project
-# dir; the payload `cwd` is authoritative when present.
-ROOT = os.getcwd()
+# Hooks do NOT run with cwd = the project directory — they inherit the session
+# shell's cwd, which moves whenever a Bash call cd's somewhere. `$CLAUDE_PROJECT_DIR`
+# is the only cwd-independent anchor (same fix as PR #222, which corrected the
+# hook *script* paths in settings.json; this is the *target* path, one layer in).
+# Without it, `pnpm -C frontend` below resolved to frontend/frontend after any
+# `cd frontend`. No hardcoded machine paths, so this file stays checked in.
+ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 TAIL = 2500
 
 
@@ -22,7 +26,7 @@ def main():
         data = json.load(sys.stdin)
     except Exception:
         return 0
-    ROOT = data.get("cwd") or ROOT
+    ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or ROOT
     fp = (data.get("tool_input") or {}).get("file_path", "").replace("\\", "/")
     if "/frontend/src/" not in fp or not fp.endswith((".ts", ".tsx")):
         return 0
