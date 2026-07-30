@@ -61,7 +61,7 @@ export function WeaponPriorityBridge({
         <Tag variant="label" tone="muted">{floors[3] ?? 'Floor 4'}</Tag>
         <span className={`font-display text-sm font-bold ${FLOOR_TEXT_CLASS[4]}`}>Floor 4</span>
         <span className="text-xs text-text-tertiary">
-          · weapon coffer · per-job funnelling, ties &amp; rolls
+          · weapon coffer · per-job funneling, ties &amp; rolls
         </span>
       </div>
       <div className="px-4 py-3">

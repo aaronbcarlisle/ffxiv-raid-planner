@@ -246,6 +246,37 @@ describe('Loot', () => {
     expect(cards[0].getAttribute('data-floor')).toBe('3');
   });
 
+  it('a stale landing-latch chain from a previous tier is ignored (PR #224 race guard)', async () => {
+    // Loot mounts un-keyed, so a tier switch re-runs the mount effect on a live
+    // component. Hold tier A's chain open, switch to tier B (whose chain
+    // settles immediately), then release A's — the stale .then must NOT
+    // overwrite B's latch through A's `floors` closure.
+    let releaseTierA: () => void = () => {};
+    const gate = new Promise<void>((res) => { releaseTierA = res; });
+    // First call (tier A) blocks on the gate; later calls resolve immediately.
+    useLootTrackingStore.setState({
+      fetchLootLog: vi.fn().mockImplementationOnce(() => gate).mockResolvedValue(undefined),
+      // Evidence on M6S — cruiserweight floor 2 → tier B's landing is floor 3.
+      // Through tier A's (heavyweight) floors closure this matches NOTHING, so
+      // a stale latch would compute floor 1.
+      lootLog: [makeLootEntry({ floor: 'M6S' })],
+    });
+
+    const { rerender } = renderLoot({
+      tier: { tierId: 'aac-heavyweight', contentType: 'savage', players } as unknown as TierSnapshot,
+    });
+    rerender(
+      <MemoryRouter>
+        <Loot {...baseProps} tier={{ tierId: 'aac-cruiserweight', contentType: 'savage', players } as unknown as TierSnapshot} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('floor-card').getAttribute('data-floor')).toBe('3'));
+
+    // Tier A's chain finally resolves — the guard must discard its latch.
+    await act(async () => { releaseTierA(); await gate; });
+    expect(screen.getByTestId('floor-card').getAttribute('data-floor')).toBe('3');
+  });
+
   it('"Log floor" follows the pill — a non-default pick reaches the wizard (R-7)', () => {
     renderLoot({ tier: makeTier(players) });
     fireEvent.click(screen.getByRole('button', { name: 'M11S' }));

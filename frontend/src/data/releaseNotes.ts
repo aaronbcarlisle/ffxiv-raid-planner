@@ -69,6 +69,8 @@ export const RELEASES: Release[] = [
         title: 'v2 Loot Priority: Queues ⇄ Weapons switcher, floor pills, Log floor',
         description:
           'The admin-gated v2 preview\'s Loot tab gains its Phase-D Priority chrome: a persisted Queues ⇄ Weapons sub-view switcher (R-1/R-3 — Matrix lands in D3), the All + F1–F4 floor pill row scoping the whole view (R-2) with per-view defaults that go global on the first explicit pick (R-10), a floor-scoped "Log floor" wizard run (R-7), the R-5 static label in Weapons, and the R-8 entry visual language on queue rows (neutral slot glyph, floor-coloured gear names, one accent stripe per card). Legacy V1 is untouched.',
+        pr: 224,
+        prTitle: 'feat(loot): Phase D slice D1 — Priority chrome, floor pills, entry visuals',
       },
     ],
     internal: true,

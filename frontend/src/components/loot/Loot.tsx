@@ -280,6 +280,13 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // batch instead of letting a failure become an unhandled rejection.
     // fetchWeekDataTypes never re-throws (store catches internally) — left bare.
     setLandingScope(null); // a new tier derives its own landing default
+    // Stale-response guard (PR #224 review): Loot mounts un-keyed
+    // (NewShell.tsx:93), so a tier switch re-runs this effect on a live
+    // component while the previous tier's chain may still be in flight. If the
+    // old chain resolved last, its .then would read the NEW tier's store data
+    // through the OLD tier's `floors` closure — no floor name matches, and it
+    // would overwrite the correct latch with a lower floor.
+    let cancelled = false;
     void Promise.all([
       fetchLootLog(groupId, tierId),
       fetchMaterialLog(groupId, tierId),
@@ -290,6 +297,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       // R-10 landing latch — runs on success AND failure (a failed fetch still
       // latches from whatever the store holds, so the scope never moves later).
       .then(() => {
+        if (cancelled) return;
         const s = useLootTrackingStore.getState();
         setLandingScope(
           newestInProgressFloor({
@@ -298,6 +306,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         );
       });
     void fetchWeekDataTypes(groupId, tierId);
+    return () => { cancelled = true; };
   }, [groupId, tierId, floors, fetchLootLog, fetchMaterialLog, fetchPageLedger, fetchCurrentWeek, fetchWeekDataTypes]);
 
   // Also refetches the week clock — the FIRST-ever loot entry for a tier can
