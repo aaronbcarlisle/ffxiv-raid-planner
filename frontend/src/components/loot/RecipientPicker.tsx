@@ -72,9 +72,20 @@ interface RecipientPickerBaseProps {
 // site (PR review finding: an optional `item` under 'assign' invited
 // call sites that fixed a drop context implicitly to nothing/`weapon`).
 export type RecipientPickerProps = RecipientPickerBaseProps & (
-  | { mode: 'assign'; item: DropItemContext; editEntry?: never }
-  | { mode: 'log'; item?: DropItemContext; editEntry?: never }
-  | { mode: 'edit'; editEntry: LootLogEntry; item?: never }
+  | {
+      mode: 'assign';
+      item: DropItemContext;
+      editEntry?: never;
+      /**
+       * R-4 (D-22): pre-select this player on open — a matrix-cell click is a
+       * shortcut into the normal flow, not a second flow. The ranked list
+       * still renders and stays switchable. Unknown/unconfigured ids are
+       * ignored.
+       */
+      initialRecipientId?: string;
+    }
+  | { mode: 'log'; item?: DropItemContext; editEntry?: never; initialRecipientId?: never }
+  | { mode: 'edit'; editEntry: LootLogEntry; item?: never; initialRecipientId?: never }
 );
 
 const SCOPE_OPTIONS: { value: PickerScope; label: string }[] = [
@@ -164,6 +175,7 @@ export function RecipientPicker({
   floors,
   item,
   editEntry,
+  initialRecipientId,
   lootLog,
   currentWeek,
   maxWeek,
@@ -325,8 +337,19 @@ export function RecipientPicker({
           : buildRecipientEntries({
               players, slot: initialSlot, scope: 'all', settings, lootLog, currentWeek, enhancedActive,
             });
-        setScope(initialScope);
-        setSelectedId(initialEntries[0]?.player.id ?? null);
+        const prefill = initialRecipientId
+          ? players.find((p) => p.id === initialRecipientId && p.configured)
+          : undefined;
+        if (prefill) {
+          // Visibility guarantee (mirrors the edit branch above): a prefilled
+          // player outside the priority pool is only selectable under 'all'.
+          const inPriority = priorityEntries.some((e) => e.player.id === prefill.id);
+          setScope(inPriority ? 'priority' : 'all');
+          setSelectedId(prefill.id);
+        } else {
+          setScope(initialScope);
+          setSelectedId(initialEntries[0]?.player.id ?? null);
+        }
         setWeek(currentWeek);
         setMethod('drop');
         setUpdateGear(true);
@@ -343,7 +366,7 @@ export function RecipientPicker({
     } else if (!isOpen) {
       wasOpenRef.current = false;
     }
-  }, [isOpen, currentWeek, mode, floors, item, editEntry, players, settings, lootLog, enhancedActive]);
+  }, [isOpen, currentWeek, mode, floors, item, editEntry, initialRecipientId, players, settings, lootLog, enhancedActive]);
 
   // Auto-select the recipient's primary character registration on recipient
   // change (mirrors QuickLogDropModal.tsx:117-121).

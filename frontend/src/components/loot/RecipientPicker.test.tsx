@@ -731,6 +731,57 @@ describe('RecipientPicker — D-36 no-one-needs-this hint', () => {
   });
 });
 
+describe('RecipientPicker — R-4 initialRecipientId prefill', () => {
+  // Tank One/Tank Two both default-need the earring (makePlayer's default
+  // gear leaves it hasItem: false, bisSource 'raid') — equal scores tie-break
+  // alphabetically (utils/priority.ts), so Tank One ranks #1, Tank Two #2.
+  // Player Nine already holds the earring, so she is a configured non-needer
+  // — visible only under 'all' scope (recipientRanking.ts's needers-then-rest list).
+  const tankOne = makePlayer('p1', 'Tank One', 'PLD');
+  const tankTwo = makePlayer('p2', 'Tank Two', 'WAR');
+  const playerNine = makePlayer('p9', 'Player Nine', 'SGE');
+  playerNine.gear = [
+    { slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false },
+    { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+  ] as SnapshotPlayer['gear'];
+  const r4Players = [tankOne, tankTwo, playerNine];
+
+  function renderPicker(opts: { initialRecipientId?: string } = {}) {
+    return render(
+      <RecipientPicker
+        {...baseProps}
+        players={r4Players}
+        mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }}
+        initialRecipientId={opts.initialRecipientId}
+      />
+    );
+  }
+
+  it('pre-selects a prefilled needer inside the priority ranking', () => {
+    renderPicker({ initialRecipientId: 'p2' }); // p2 ranked #2
+    expect(screen.getByRole('radio', { name: /Tank Two/ })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: /Tank One/ })).toBeInTheDocument(); // list still renders
+  });
+
+  it('falls back to All members when the prefilled player is not a needer', () => {
+    renderPicker({ initialRecipientId: 'p9' }); // p9 does not need the slot
+    expect(screen.getByRole('radio', { name: /Player Nine/ })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('button', { name: 'All members' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('stays freely switchable after prefill', () => {
+    renderPicker({ initialRecipientId: 'p2' });
+    fireEvent.click(screen.getByRole('radio', { name: /Tank One/ }));
+    expect(screen.getByRole('radio', { name: /Tank One/ })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('an unknown id falls back to the default top-ranked selection', () => {
+    renderPicker({ initialRecipientId: 'nope' });
+    expect(screen.getByRole('radio', { name: /Tank One/ })).toHaveAttribute('aria-checked', 'true');
+  });
+});
+
 describe('RecipientPicker — R-6 explanation + confidence in the picker', () => {
   it('a row with log history shows the received warning', () => {
     // Sole needer for the Head slot so the row is unambiguous; the log entry
