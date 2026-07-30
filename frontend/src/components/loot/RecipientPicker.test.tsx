@@ -820,4 +820,36 @@ describe('RecipientPicker — R-6 explanation + confidence in the picker', () =>
     fireEvent.click(screen.getByRole('button', { name: 'All members' }));
     expect(screen.queryByText(/confidence/)).not.toBeInTheDocument();
   });
+
+  // Final review fix: edit mode's `lootLog` prop CONTAINS the entry being
+  // edited, so cross-checking the full log against the entry's own recipient
+  // warned about the very receipt under edit. Two-part pin: (1) with the log
+  // containing ONLY the edited entry, the row must show NO warning at all;
+  // (2) once a genuinely separate receipt for the same player+slot is added,
+  // the warning DOES appear — proving the fix filters out only the edited
+  // entry, not the whole log.
+  it('edit mode: the entry under edit does not warn about itself, but a separate entry for the same player+slot still does', () => {
+    const headNeeder = makePlayer('c1', 'Caster One', 'BLM');
+    headNeeder.gear = [
+      { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+    ] as SnapshotPlayer['gear'];
+    const editedEntry = makeEntry({
+      id: 99, weekNumber: 2, floor: 'M9S', itemSlot: 'head', recipientPlayerId: 'c1', method: 'drop', notes: '',
+    });
+
+    const { rerender } = render(
+      <RecipientPicker {...baseProps} players={[headNeeder]} lootLog={[editedEntry]}
+        mode="edit" editEntry={editedEntry} />
+    );
+    expect(screen.queryByText(/Already received Head in Week/)).not.toBeInTheDocument();
+
+    const otherHeadDrop = makeEntry({
+      id: 50, weekNumber: 1, floor: 'M9S', itemSlot: 'head', recipientPlayerId: 'c1', method: 'drop', notes: '',
+    });
+    rerender(
+      <RecipientPicker {...baseProps} players={[headNeeder]} lootLog={[editedEntry, otherHeadDrop]}
+        mode="edit" editEntry={editedEntry} />
+    );
+    expect(screen.getByText('Already received Head in Week 1')).toBeInTheDocument();
+  });
 });

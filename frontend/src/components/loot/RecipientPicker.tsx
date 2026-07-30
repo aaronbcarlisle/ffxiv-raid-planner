@@ -30,6 +30,15 @@
  * promises a side effect the coordination util would refuse. Edit mode's
  * diff is hoisted into `computeEditUpdates` — a single derivation shared by
  * the preview and `handleSubmit` so they cannot drift.
+ *
+ * Tasks 5-6 (R-6/R-4): every visible row renders `explainCandidate`'s reasons
+ * + warnings (record cross-checks — already-received, weapon-priority
+ * conflicts) via `RankingExplanation`, and the priority-scope list header
+ * shows the derived confidence tag. Edit mode cross-checks the record
+ * against `explanationLog` — the loot log MINUS the entry under edit — so a
+ * row never warns about the very receipt it's editing. Assign mode also
+ * accepts `initialRecipientId` (R-4): a matrix-cell click prefills the
+ * recipient without bypassing the ranked list or its explanations.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Package } from 'lucide-react';
@@ -235,18 +244,27 @@ export function RecipientPicker({
     [players, slot, settings, lootLog, currentWeek, enhancedActive],
   );
 
+  // In edit mode the log contains the entry being edited — explaining a
+  // ranking against it would warn about the very receipt under edit and sink
+  // the confidence header on every routine edit. Cross-check the record
+  // MINUS the entry being edited.
+  const explanationLog = useMemo(
+    () => (mode === 'edit' ? lootLog.filter((e) => e.id !== editEntry.id) : lootLog),
+    [mode, lootLog, editEntry],
+  );
+
   // R-6: one explanation per visible row (reasons + record-cross-check
   // warnings), plus the priority-ranking confidence read derived from the
   // NEEDERS pool (not `entries`/`filtered` — confidence answers "how sure is
   // the ranking", which is a priority-scope question regardless of which
   // scope the user is currently browsing).
   const explanations = useMemo(
-    () => new Map(entries.map((e) => [e.player.id, explainCandidate(e, slot, { lootLog })])),
-    [entries, slot, lootLog],
+    () => new Map(entries.map((e) => [e.player.id, explainCandidate(e, slot, { lootLog: explanationLog })])),
+    [entries, slot, explanationLog],
   );
   const confidence = useMemo(
-    () => deriveRankingConfidence(needers.map((e) => explainCandidate(e, slot, { lootLog }))),
-    [needers, slot, lootLog],
+    () => deriveRankingConfidence(needers.map((e) => explainCandidate(e, slot, { lootLog: explanationLog }))),
+    [needers, slot, explanationLog],
   );
 
   const filtered = useMemo(() => {

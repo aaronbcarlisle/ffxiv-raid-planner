@@ -19,8 +19,12 @@
  * all-player_fallback → low (:417; this ranking reads no character
  * registrations) and weapon-coffer priorityRank 1 → high (:424; v2's weapon
  * ranking comes from getPriorityForItem, not the weapon-priority list).
- * The `warnings.length > 1` → low branch is a contract guard: today's two
- * warning kinds that could co-occur both force wouldAdvanceBis=false first.
+ * The `warnings.length > 1` → low branch is a contract guard: any two-warning
+ * set necessarily includes at least one FORCING warning (already-received or
+ * wp.received) — not that both kinds force — which already short-circuits to
+ * low via the wouldAdvanceBis check one line earlier. This branch exists for
+ * future warning kinds that stack to two without themselves forcing
+ * wouldAdvanceBis=false.
  *
  * Weapon log matching is job-strict — the read matches what the picker
  * writes (weaponJob = recipient's job at submit), so read and write agree.
@@ -85,6 +89,12 @@ export function explainCandidate(
   return { reasons: [entry.reason], warnings, wouldAdvanceBis };
 }
 
+/**
+ * Precondition: `explained` must be the priority-scope (needers-only) list,
+ * already in rank order — index 0 is treated as the top-ranked candidate and
+ * the rest as its rivals. A mixed pool (e.g. "all members") or an unordered
+ * list yields meaningless results.
+ */
 export function deriveRankingConfidence(explained: CandidateExplanation[]): RankingConfidence {
   if (explained.length === 0) return 'low';
   const top = explained[0];
