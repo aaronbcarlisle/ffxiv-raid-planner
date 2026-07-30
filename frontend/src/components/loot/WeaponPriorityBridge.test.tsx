@@ -62,7 +62,7 @@ describe('WeaponPriorityBridge', () => {
   it('drops the duty chip (not doubling "Floor 4") when tier gamedata has no floor names', () => {
     render(<WeaponPriorityBridge {...baseProps} floors={[]} />);
     // Exactly ONE "Floor 4" — a "Floor 4" chip beside the "Floor 4" heading
-    // is the redundancy Copilot flagged on the R-5 label (PR #224).
+    // is the same redundancy the PR #224 review caught on the R-5 label.
     expect(screen.getAllByText('Floor 4')).toHaveLength(1);
     expect(screen.getByTestId('wpl')).toBeInTheDocument();
   });

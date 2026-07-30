@@ -543,7 +543,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             {priorityView === 'weapons' && (
               <>
                 {/* No duty name (missing tier gamedata) → just "Floor 4", not
-                    the redundant "Floor 4 · Floor 4" (Copilot, PR #224). */}
+                    the redundant "Floor 4 · Floor 4" (PR #224 review). */}
                 <Tag variant="label" tone="floor-4">{floors[3] ? `${floors[3]} · Floor 4` : 'Floor 4'}</Tag>
                 <span className="text-xs text-text-tertiary">weapons drop here</span>
               </>

@@ -178,6 +178,15 @@ describe('FloorCard', () => {
     enhanceCalls.forEach((ctx) => expect(ctx.currentWeek).toBe(2));
   });
 
+  it('drops the duty chip (not doubling "Floor N") when floorName is the fallback', () => {
+    // With no tier gamedata the caller passes floorName="Floor 1"; the header
+    // must render exactly one "Floor 1", not a chip + heading pair — the
+    // duplication the PR #224 review caught at the other two header sites.
+    const players = [makePlayer('a', 'Alice')];
+    render(<FloorCard {...baseProps} floorName="Floor 1" players={players} />);
+    expect(screen.getAllByText('Floor 1')).toHaveLength(1);
+  });
+
   it('never auto-collapses when autoCollapse is false — the solo-scoped card (R-49)', () => {
     // Same fully-logged fixture that collapses above; with autoCollapse=false
     // the rows must stay rendered and no "Show" affordance appears.
