@@ -450,6 +450,11 @@ The picker's assign body gains the method choice (drop / book / tome / purchase)
 legacy's empty-cell click opened `AddLootEntryModal` with the full choice (`SectionedLogView.tsx:889-894`).
 R-17 removes the legacy modal, so the picker has to carry what it carried.
 
+⚠ *Corrected at D2 build (director plan-vet): this paragraph's "legacy's empty-cell click
+opened `AddLootEntryModal` with the full choice" is a mechanism error — that modal offers only
+Drop/Book (`AddLootEntryModal.tsx:472-475`), and no legacy modal ever offered tome or purchase.
+R-24's four-method list stands on its own text: it is a **new capability**, not a restore.*
+
 ### R-25 · **"Log floor"** lives on the floor-header kebab
 
 Not a standing button. The kebab already carries that floor's resets (R-16), so one control per floor
