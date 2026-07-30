@@ -1,13 +1,19 @@
 // BRIDGE: the legacy job-grouped weapon-priority view (per-job cards, tie rolls,
-// received footer) survives verbatim inside the F4 card — zero rebuild, same
-// precedent as the F6c `CharacterManageBridge`. Final visual form (polish or
-// retirement) is a holistic-review decision — see spec §2.8.
+// received footer) survives verbatim inside a v2 card — zero rebuild, same
+// precedent as the F6c `CharacterManageBridge`. `WeaponPriorityList` itself is
+// SHARED with V1 (`LootPriorityPanel.tsx:25`) and is never edited here.
+//
+// Phase-D R-3: this is now the body of the Weapons switcher segment — weapon
+// priority stopped being a collapsible text link in the Floor-4 card's footer,
+// so the disclosure this bridge used to own is gone. The card header states the
+// fixed scope (weapons always drop from the final floor) with the R-45 floor-4
+// identity, mirroring FloorCard's header line.
 
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
-import { LinkText } from '../ui';
+import { Tag } from '../ui';
 import { WeaponPriorityList } from './WeaponPriorityList';
 import { QuickLogWeaponModal } from './QuickLogWeaponModal';
+import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import type { SnapshotPlayer, StaticSettings } from '../../types';
 
 export interface WeaponPriorityBridgeProps {
@@ -31,7 +37,6 @@ export function WeaponPriorityBridge({
   canEdit,
   onLogSuccess,
 }: WeaponPriorityBridgeProps) {
-  const [expanded, setExpanded] = useState(false);
   const [weaponModalState, setWeaponModalState] = useState<{
     isOpen: boolean;
     weaponJob: string;
@@ -51,46 +56,40 @@ export function WeaponPriorityBridge({
   };
 
   return (
-    <div>
-      <div className="flex items-center gap-2">
-        <LinkText
-          onClick={() => setExpanded((prev) => !prev)}
-          aria-expanded={expanded}
-          icon={
-            <ChevronRight
-              className={`w-4 h-4 transition-transform ${expanded ? 'rotate-90' : ''}`}
-            />
-          }
-        >
-          Weapon priorities
-        </LinkText>
-        <span className="text-xs text-text-tertiary">per-job funneling, ties &amp; rolls</span>
+    <div className={`overflow-hidden rounded-lg border border-border-default ${FLOOR_ACCENT_CLASS[4]} bg-surface-card`}>
+      <div className="flex items-center gap-3 border-b border-border-default bg-surface-base px-4 py-3">
+        {/* Duty chip only when gamedata names the floor — a "Floor 4" chip
+            beside the "Floor 4" heading is the same redundancy the PR #224
+            review caught on the R-5 label. */}
+        {floors[3] !== undefined && <Tag variant="label" tone="muted">{floors[3]}</Tag>}
+        <span className={`font-display text-sm font-bold ${FLOOR_TEXT_CLASS[4]}`}>Floor 4</span>
+        <span className="text-xs text-text-tertiary">
+          · weapon coffer · per-job funneling, ties &amp; rolls
+        </span>
       </div>
-      {expanded && (
-        <>
-          <WeaponPriorityList
-            players={players}
-            settings={settings}
-            showLogButtons={canEdit}
-            onLogClick={handleWeaponLogClick}
-            groupId={groupId}
-          />
-          {canEdit && weaponModalState.player && (
-            <QuickLogWeaponModal
-              isOpen={weaponModalState.isOpen}
-              onClose={handleWeaponModalClose}
-              groupId={groupId}
-              tierId={tierId}
-              floor={floors[3] || 'Floor 4'} // Weapons always drop from floor 4
-              weaponJob={weaponModalState.weaponJob}
-              maxWeek={maxWeek}
-              suggestedPlayer={weaponModalState.player}
-              allPlayers={players}
-              settings={settings}
-              onSuccess={onLogSuccess}
-            />
-          )}
-        </>
+      <div className="px-4 py-3">
+        <WeaponPriorityList
+          players={players}
+          settings={settings}
+          showLogButtons={canEdit}
+          onLogClick={handleWeaponLogClick}
+          groupId={groupId}
+        />
+      </div>
+      {canEdit && weaponModalState.player && (
+        <QuickLogWeaponModal
+          isOpen={weaponModalState.isOpen}
+          onClose={handleWeaponModalClose}
+          groupId={groupId}
+          tierId={tierId}
+          floor={floors[3] || 'Floor 4'} // Weapons always drop from floor 4
+          weaponJob={weaponModalState.weaponJob}
+          maxWeek={maxWeek}
+          suggestedPlayer={weaponModalState.player}
+          allPlayers={players}
+          settings={settings}
+          onSuccess={onLogSuccess}
+        />
       )}
     </div>
   );

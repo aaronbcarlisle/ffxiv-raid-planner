@@ -2,7 +2,7 @@
 
 **Status: ✅ DESIGN COMPLETE 2026-07-28** (started the same day). This document is the running record of
 the Phase-D design conversation, written ruling-by-ruling as the user made each call. All four surfaces
-are ruled — Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 · Elsewhere R-40…R-42 ·
+are ruled — Priority R-1…R-12 + R-49 (D1 build-time) · Log R-13…R-28 · History R-29…R-39 · Elsewhere R-40…R-42 ·
 cross-cutting R-47 · shared-layer R-43…R-46, R-48. Three `xivrp-director` passes ran: two per-surface (§4, §6 — against a
 reconstructed charter, so no shared-layer, design-system or vocabulary lens) and one **whole-record**
 pass against the real charter on 2026-07-29, which returned **SHARED-DRIFT** and produced §7a.
@@ -208,6 +208,19 @@ exists only in legacy (`AddLootEntryModal.tsx:564`, `LogMaterialModal.tsx:694`) 
 has no equivalent — yet R-4 routes a matrix cell into this modal precisely for the empty-queue case,
 and R-12/R-24 rebuild its body. It is the assign-mode complement of "This will:", so it belongs in the
 same block; without this clause D-36 would be orphaned between two closed phases.
+
+### R-49 · A solo-scoped floor card never auto-collapses (refines R-10; ruled at D1 build, 2026-07-30)
+
+FloorCard's auto-collapse (a fully-logged week folds the card behind a `Show` link) applies **only
+in the All stack**. When one card is the whole view — R-10's single-floor default or an explicit
+floor pill — the card always renders its rows.
+
+*Why:* two ruled behaviours composed badly. R-10 lands Queues on the newest in-progress floor; for
+a static whose newest floor is fully logged, the auto-collapse (built for the four-card stack, where
+a cleared floor gets out of the way of the others) left the landing view a nearly-empty screen. With
+one card there is nothing to get out of the way *of*. Surfaced by the D1 browser-validation
+screenshot; user-ruled in session, implemented as FloorCard's `autoCollapse` prop (default true —
+the All stack keeps today's behaviour).
 
 ---
 
@@ -962,7 +975,7 @@ the frozen `AllWeeksView.tsx:13` import — the thing the freeze exists to preve
 
 ## 8. Open — what is left
 
-**Phase D's design is complete.** Priority R-1…R-12 · Log R-13…R-28 · History R-29…R-39 ·
+**Phase D's design is complete.** Priority R-1…R-12 + R-49 (D1 build-time) · Log R-13…R-28 · History R-29…R-39 ·
 Elsewhere R-40…R-42 · cross-cutting R-47 · shared-layer R-43…R-46, R-48.
 
 **Reviewed, with the scope of each pass on record.** Two per-surface director passes (§4, §6) ran

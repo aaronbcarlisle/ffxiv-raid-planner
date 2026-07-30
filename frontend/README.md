@@ -41,7 +41,7 @@ pnpm test
 src/
 ├── components/
 │   ├── player/        # PlayerCard, PlayerGrid, GearTable, JobPicker
-│   ├── loot/          # LootPriorityPanel, FloorSelector, QuickLogDropModal
+│   ├── loot/          # LootPriorityPanel, FloorCard, QuickLogDropModal
 │   ├── priority/      # Priority tab panels
 │   ├── history/       # WeeklyLootGrid, SectionedLogView, All Weeks view
 │   ├── schedule/      # ScheduleTab, AvailabilityGrid, CreateSessionModal

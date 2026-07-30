@@ -12,7 +12,9 @@
 import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 
-export type Tone = 'accent' | 'success' | 'warning' | 'error' | 'muted' | 'info';
+export type Tone =
+  | 'accent' | 'success' | 'warning' | 'error' | 'muted' | 'info'
+  | 'floor-1' | 'floor-2' | 'floor-3' | 'floor-4';
 
 const TONE_CLASS: Record<Tone, string> = {
   accent: 'bg-accent/15 text-accent-hover border-accent/30',
@@ -21,6 +23,12 @@ const TONE_CLASS: Record<Tone, string> = {
   error: 'bg-status-error/10 text-status-error border-status-error/30',
   muted: 'bg-surface-elevated text-text-secondary border-border-default',
   info: 'bg-status-info/10 text-status-info border-status-info/30',
+  // Phase-D R-45 floor tones (`--color-floor-1…4`, D0). Additive: only v2 loot
+  // surfaces pass these — no legacy call site does, so V1 renders unchanged.
+  'floor-1': 'bg-floor-1/10 text-floor-1 border-floor-1/30',
+  'floor-2': 'bg-floor-2/10 text-floor-2 border-floor-2/30',
+  'floor-3': 'bg-floor-3/10 text-floor-3 border-floor-3/30',
+  'floor-4': 'bg-floor-4/10 text-floor-4 border-floor-4/30',
 };
 
 interface TagBase {

@@ -15,10 +15,11 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 import type { StaticGroup, TierSnapshot, SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 
 // Capture buckets shared with the hoisted mocks.
-const { floorCardCalls, pickerCalls, weekScopeCalls, deleteLootMock, deleteMaterialMock } = vi.hoisted(() => ({
+const { floorCardCalls, pickerCalls, weekScopeCalls, wizardCalls, deleteLootMock, deleteMaterialMock } = vi.hoisted(() => ({
   floorCardCalls: [] as Array<Record<string, unknown>>,
   pickerCalls: [] as Array<Record<string, unknown>>,
   weekScopeCalls: [] as Array<Record<string, unknown>>,
+  wizardCalls: [] as Array<Record<string, unknown>>,
   deleteLootMock: vi.fn().mockResolvedValue(undefined),
   deleteMaterialMock: vi.fn().mockResolvedValue(undefined),
 }));
@@ -44,7 +45,16 @@ vi.mock('./RecipientPicker', () => ({
 }));
 
 vi.mock('./LogWeekWizard', () => ({
-  LogWeekWizard: (props: { isOpen: boolean }) => (props.isOpen ? <div data-testid="log-week-wizard" /> : null),
+  LogWeekWizard: (props: Record<string, unknown>) => {
+    wizardCalls.push(props);
+    return props.isOpen ? (
+      <div
+        data-testid="log-week-wizard"
+        data-single={String(props.singleFloorMode)}
+        data-floor={String(props.initialFloor)}
+      />
+    ) : null;
+  },
 }));
 
 vi.mock('./QuickLogMaterialModal', () => ({
@@ -140,8 +150,14 @@ beforeEach(() => {
   floorCardCalls.length = 0;
   pickerCalls.length = 0;
   weekScopeCalls.length = 0;
+  wizardCalls.length = 0;
   deleteLootMock.mockClear();
   deleteMaterialMock.mockClear();
+  // The Priority sub-view persists under `v2-loot-priority-view` (R-1) and the
+  // floor pick under sessionStorage `v2-loot-floor-scope` (R-10) — clear both
+  // so one test's choice can't leak into the next.
+  localStorage.clear();
+  sessionStorage.clear();
   useToastStore.getState().clearAll();
   // Reset the real (unmocked) location to a clean baseline before each test —
   // the copy-link handler reads `window.location.href` directly (not the
@@ -192,13 +208,124 @@ describe('Loot', () => {
     expect(fetchWeekDataTypes).toHaveBeenCalledWith('g1', 'aac-heavyweight');
   });
 
-  it('renders four FloorCards in F4→F1 order at the scoped (current) week', () => {
+  it('defaults Queues to ONE card — the newest in-progress floor (R-10; fresh tier → Floor 1)', () => {
+    // Empty logs/ledger (beforeEach fixture) = a fresh tier → Floor 1.
     renderLoot({ tier: makeTier(players) });
+    const cards = screen.getAllByTestId('floor-card');
+    expect(cards).toHaveLength(1);
+    expect(cards[0].getAttribute('data-floor')).toBe('1');
+    // scopedWeek defaults to the clock's current week (3).
+    expect(cards[0].getAttribute('data-scoped')).toBe('3');
+  });
+
+  it('defaults Queues to one past the highest floor with recorded activity (R-10)', () => {
+    // Loot on M10S (floor 2) → the static is prog'ing floor 3.
+    useLootTrackingStore.setState({ lootLog: [makeLootEntry({ floor: 'M10S' })] });
+    renderLoot({ tier: makeTier(players) });
+    const cards = screen.getAllByTestId('floor-card');
+    expect(cards).toHaveLength(1);
+    expect(cards[0].getAttribute('data-floor')).toBe('3');
+  });
+
+  it('the R-10 default is a LANDING default — logging a drop must not move the scope (director F1)', async () => {
+    // Prog'ing floor 3 (evidence on M10S). The landing latches at fetch settle.
+    useLootTrackingStore.setState({ lootLog: [makeLootEntry({ floor: 'M10S' })] });
+    renderLoot({ tier: makeTier(players) });
+    await waitFor(() => expect(screen.getByTestId('floor-card').getAttribute('data-floor')).toBe('3'));
+
+    // The user logs their first M11S drop from the card they are looking at.
+    // A live derivation would now say "newest in progress = 4" and swap the
+    // card under them; the latched landing must hold floor 3.
+    act(() => {
+      useLootTrackingStore.setState({
+        lootLog: [makeLootEntry({ floor: 'M10S' }), makeLootEntry({ id: 2, floor: 'M11S' })],
+      });
+    });
+    const cards = screen.getAllByTestId('floor-card');
+    expect(cards).toHaveLength(1);
+    expect(cards[0].getAttribute('data-floor')).toBe('3');
+  });
+
+  it('a stale landing-latch chain from a previous tier is ignored (PR #224 race guard)', async () => {
+    // Loot mounts un-keyed, so a tier switch re-runs the mount effect on a live
+    // component. Hold tier A's chain open, switch to tier B (whose chain
+    // settles immediately), then release A's — the stale .then must NOT
+    // overwrite B's latch through A's `floors` closure.
+    let releaseTierA: () => void = () => {};
+    const gate = new Promise<void>((res) => { releaseTierA = res; });
+    // First call (tier A) blocks on the gate; later calls resolve immediately.
+    useLootTrackingStore.setState({
+      fetchLootLog: vi.fn().mockImplementationOnce(() => gate).mockResolvedValue(undefined),
+      // Evidence on M6S — cruiserweight floor 2 → tier B's landing is floor 3.
+      // Through tier A's (heavyweight) floors closure this matches NOTHING, so
+      // a stale latch would compute floor 1.
+      lootLog: [makeLootEntry({ floor: 'M6S' })],
+    });
+
+    const { rerender } = renderLoot({
+      tier: { tierId: 'aac-heavyweight', contentType: 'savage', players } as unknown as TierSnapshot,
+    });
+    rerender(
+      <MemoryRouter>
+        <Loot {...baseProps} tier={{ tierId: 'aac-cruiserweight', contentType: 'savage', players } as unknown as TierSnapshot} />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByTestId('floor-card').getAttribute('data-floor')).toBe('3'));
+
+    // Tier A's chain finally resolves — the guard must discard its latch.
+    await act(async () => { releaseTierA(); await gate; });
+    expect(screen.getByTestId('floor-card').getAttribute('data-floor')).toBe('3');
+  });
+
+  it('"Log floor" follows the pill — a non-default pick reaches the wizard (R-7)', () => {
+    renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'M11S' }));
+    // The visible label names the target floor (mockup parity).
+    fireEvent.click(screen.getByRole('button', { name: 'Log floor — M11S' }));
+    const wizard = screen.getByTestId('log-week-wizard');
+    expect(wizard.getAttribute('data-single')).toBe('true');
+    expect(wizard.getAttribute('data-floor')).toBe('3');
+  });
+
+  it('an explicit floor pick survives a remount within the session (R-10 sessionStorage)', () => {
+    const { unmount } = renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'M10S' }));
+    unmount();
+
+    renderLoot({ tier: makeTier(players) });
+    const cards = screen.getAllByTestId('floor-card');
+    expect(cards.map((c) => c.getAttribute('data-floor'))).toEqual(['2']);
+  });
+
+  it('falls back to Queues when the stored sub-view is the not-yet-built "matrix" (D3 fallback)', () => {
+    localStorage.setItem('v2-loot-priority-view', 'matrix');
+    renderLoot({ tier: makeTier(players) });
+    expect(screen.getByTestId('floor-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('weapon-bridge')).not.toBeInTheDocument();
+  });
+
+  it('renders four FloorCards in F4→F1 order when the All pill is picked (R-2)', () => {
+    renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
     const cards = screen.getAllByTestId('floor-card');
     expect(cards).toHaveLength(4);
     expect(cards.map((c) => c.getAttribute('data-floor'))).toEqual(['4', '3', '2', '1']);
-    // scopedWeek defaults to the clock's current week (3).
     cards.forEach((c) => expect(c.getAttribute('data-scoped')).toBe('3'));
+  });
+
+  it('disables auto-collapse only for a solo-scoped card (R-49)', () => {
+    renderLoot({ tier: makeTier(players) });
+    // Default single-card scope → the card must not auto-collapse.
+    expect(floorCardCalls[floorCardCalls.length - 1].autoCollapse).toBe(false);
+
+    // All → the four-card stack keeps the collapse behaviour.
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    const latestFour = floorCardCalls.slice(-4);
+    latestFour.forEach((p) => expect(p.autoCollapse).toBe(true));
+
+    // Back to an explicit single floor → collapse disabled again.
+    fireEvent.click(screen.getByRole('button', { name: 'M12S' }));
+    expect(floorCardCalls[floorCardCalls.length - 1].autoCollapse).toBe(false);
   });
 
   it('keeps FloorCard currentWeek pinned to the clock while scoping to another week', () => {
@@ -207,6 +334,7 @@ describe('Loot', () => {
     // FloorCard `currentWeek` prop must STAY the clock's real week (3). Deleting
     // `currentWeek={clock.currentWeek}` in Loot.tsx must fail this test.
     renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
     const scopeProps = weekScopeCalls[weekScopeCalls.length - 1];
     expect(scopeProps.scopedWeek).toBe(3);
     act(() => {
@@ -280,7 +408,8 @@ describe('Loot', () => {
 
   it('opens the picker in assign mode with item context when a floor row assigns gear', () => {
     renderLoot({ tier: makeTier(players) });
-    // F4 is the first captured card; invoke its onAssignGear with a slot+label.
+    // Scope to All so the F4 card renders, then invoke its onAssignGear.
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
     const f4 = floorCardCalls.find((c) => c.floorNumber === 4)!;
     act(() => {
       (f4.onAssignGear as (i: { slot: string; label: string }) => void)({ slot: 'weapon', label: 'Weapon' });
@@ -292,12 +421,84 @@ describe('Loot', () => {
     expect(last.item).toMatchObject({ slot: 'weapon', label: 'Weapon', floorName: 'M12S', floorNumber: 4 });
   });
 
-  it('passes a footer (weapon bridge) to the F4 card only', () => {
+  it('renders the weapon bridge as the Weapons segment body, not a card footer (R-3)', () => {
     renderLoot({ tier: makeTier(players) });
-    const f4 = floorCardCalls.find((c) => c.floorNumber === 4)!;
-    const f3 = floorCardCalls.find((c) => c.floorNumber === 3)!;
-    expect(f4.footer).toBeTruthy();
-    expect(f3.footer).toBeUndefined();
+    // Queues: no bridge anywhere (the F4-footer mount is gone).
+    expect(screen.queryByTestId('weapon-bridge')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Weapons' }));
+    expect(screen.getByTestId('weapon-bridge')).toBeInTheDocument();
+    // No floor cards in the Weapons view.
+    expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
+  });
+
+  it('replaces the pills with a static floor label in Weapons, in place (R-5)', () => {
+    renderLoot({ tier: makeTier(players) });
+    expect(screen.getByRole('group', { name: 'Floor scope' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Weapons' }));
+    expect(screen.queryByRole('group', { name: 'Floor scope' })).not.toBeInTheDocument();
+    // aac-heavyweight floors: M9S…M12S — the label states the fixed scope.
+    expect(screen.getByText('M12S · Floor 4')).toBeInTheDocument();
+  });
+
+  it('persists the Priority sub-view per user under v2-loot-priority-view (R-1)', () => {
+    const { unmount } = renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'Weapons' }));
+    expect(localStorage.getItem('v2-loot-priority-view')).toBe('weapons');
+    unmount();
+
+    // A fresh mount reads the stored choice.
+    renderLoot({ tier: makeTier(players) });
+    expect(screen.getByTestId('weapon-bridge')).toBeInTheDocument();
+  });
+
+  it('makes the first pill click a GLOBAL scope — view switches never move it (R-10)', () => {
+    renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'M10S' }));
+    let cards = screen.getAllByTestId('floor-card');
+    expect(cards.map((c) => c.getAttribute('data-floor'))).toEqual(['2']);
+
+    // Round-trip through Weapons and back: the explicit pick survives — the
+    // per-view default (floor 1 on this fixture) must NOT reassert itself.
+    fireEvent.click(screen.getByRole('button', { name: 'Weapons' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Queues' }));
+    cards = screen.getAllByTestId('floor-card');
+    expect(cards.map((c) => c.getAttribute('data-floor'))).toEqual(['2']);
+  });
+
+  it('shows "Log floor" only when a floor is scoped, and runs the wizard in single-floor mode (R-7)', () => {
+    renderLoot({ tier: makeTier(players) });
+    // Default fresh-tier scope is floor 1 — the button is present and targets it.
+    fireEvent.click(screen.getByRole('button', { name: /log floor/i }));
+    let wizard = screen.getByTestId('log-week-wizard');
+    expect(wizard.getAttribute('data-single')).toBe('true');
+    expect(wizard.getAttribute('data-floor')).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    // The wizard closes on scope change? No — it closes only via onClose; close it here.
+    act(() => { (wizardCalls[wizardCalls.length - 1].onClose as () => void)(); });
+
+    // On All the button steps aside for the toolbar's whole-week wizard (R-7).
+    expect(screen.queryByRole('button', { name: /log floor/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /log this week's loot/i }));
+    wizard = screen.getByTestId('log-week-wizard');
+    expect(wizard.getAttribute('data-single')).toBe('false');
+  });
+
+  it('pins "Log floor" to Floor 4 in the Weapons view (R-5/R-7)', () => {
+    renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'Weapons' }));
+    fireEvent.click(screen.getByRole('button', { name: /log floor/i }));
+    const wizard = screen.getByTestId('log-week-wizard');
+    expect(wizard.getAttribute('data-single')).toBe('true');
+    expect(wizard.getAttribute('data-floor')).toBe('4');
+  });
+
+  it('hides the Priority controls row in the History view', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    expect(screen.queryByRole('button', { name: 'Queues' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Floor scope' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /log floor/i })).not.toBeInTheDocument();
   });
 
   it('refetches the week clock (in addition to the tier) when a child onSuccess fires', () => {
@@ -327,8 +528,8 @@ describe('Loot', () => {
 
   it('defaults to the Priority view and swaps to History via the toggle (updating lview)', () => {
     renderLoot({ tier: makeTier(players) });
-    // Priority is the default: floor cards present, History body absent.
-    expect(screen.getAllByTestId('floor-card')).toHaveLength(4);
+    // Priority is the default: floor cards present (one — the R-10 default), History body absent.
+    expect(screen.getAllByTestId('floor-card')).toHaveLength(1);
     expect(screen.queryByText('Drops this tier')).not.toBeInTheDocument();
     // The view toggle is present.
     expect(screen.getByRole('button', { name: 'History' })).toBeInTheDocument();
