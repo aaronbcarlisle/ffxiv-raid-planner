@@ -687,7 +687,11 @@ describe('RecipientPicker — R-12 "This will:" live preview', () => {
         item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
     );
     expect(screen.getByText(/Log Weapon \(drop\) for Caster One in Week 3/)).toBeInTheDocument();
-    expect(screen.queryByText(/weapon priority/)).not.toBeInTheDocument();
+    // Scoped to the preview's own phrasing ("Update <name>'s weapon priority")
+    // rather than a bare /weapon priority/ match — R-6 now legitimately shows
+    // a ROW warning ("Not on the weapon priority list") for this same fixture,
+    // which would otherwise collide with a broader regex.
+    expect(screen.queryByText(/Update .*weapon priority/)).not.toBeInTheDocument();
   });
 });
 
@@ -724,5 +728,45 @@ describe('RecipientPicker — D-36 no-one-needs-this hint', () => {
     const entry = makeEntry({ floor: 'M9S', itemSlot: 'earring', recipientPlayerId: 'c1', method: 'drop', notes: '' });
     render(<RecipientPicker {...baseProps} players={[gearedCaster]} mode="edit" editEntry={entry} />);
     expect(screen.queryByText(/No one needs this item/)).not.toBeInTheDocument();
+  });
+});
+
+describe('RecipientPicker — R-6 explanation + confidence in the picker', () => {
+  it('a row with log history shows the received warning', () => {
+    // Sole needer for the Head slot so the row is unambiguous; the log entry
+    // matches the same player + slot the picker is showing.
+    const headNeeder = makePlayer('c1', 'Caster One', 'BLM');
+    headNeeder.gear = [
+      { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+    ] as SnapshotPlayer['gear'];
+    const headDropForP1Week2 = makeEntry({
+      id: 99, weekNumber: 2, floor: 'M9S', itemSlot: 'head', recipientPlayerId: 'c1', method: 'drop', notes: '',
+    });
+    render(
+      <RecipientPicker {...baseProps} players={[headNeeder]} lootLog={[headDropForP1Week2]} mode="assign"
+        item={{ slot: 'head', floorName: 'M9S', floorNumber: 1, label: 'Head' }} />
+    );
+    expect(screen.getByText('Already received Head in Week 2')).toBeInTheDocument();
+  });
+
+  it('priority scope shows the confidence header', () => {
+    // Sole clean needer (no rivals, no warnings) — deriveRankingConfidence's
+    // "high" cutoff. The shared two-player default fixture yields Medium
+    // (two clean needers, neither warned), so this test needs its own pool.
+    const soleNeeder = makePlayer('c1', 'Caster One', 'BLM');
+    render(
+      <RecipientPicker {...baseProps} players={[soleNeeder]} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    expect(screen.getByText('High confidence')).toBeInTheDocument();
+  });
+
+  it('All-members scope hides the confidence header', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'All members' }));
+    expect(screen.queryByText(/confidence/)).not.toBeInTheDocument();
   });
 });

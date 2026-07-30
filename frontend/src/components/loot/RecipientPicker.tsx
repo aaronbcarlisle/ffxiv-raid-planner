@@ -41,6 +41,8 @@ import { logLootAndUpdateGear, updateLootAndSyncGear } from '../../utils/lootCoo
 import { toast } from '../../stores/toastStore';
 import { isPriorityDisabled } from '../../utils/priority';
 import { buildRecipientEntries, type PickerScope, type NeedTag } from '../../utils/recipientRanking';
+import { explainCandidate, deriveRankingConfidence, type RankingConfidence } from '../../utils/rankingExplanation';
+import { RankingExplanation } from './RankingExplanation';
 import { FLOOR_LOOT_TABLES, type FloorNumber } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
 import type { SnapshotPlayer, StaticSettings, LootLogEntry, LootLogEntryUpdate, LootMethod, GearSlot } from '../../types';
@@ -94,6 +96,14 @@ const TAG_TONE: Record<NeedTag, 'success' | 'muted'> = {
   free: 'muted',
 };
 const TAG_LABEL: Record<NeedTag, string> = { bis: 'BiS', minor: 'minor', free: 'free' };
+
+// R-6: the frozen v1 leaf's high/medium/low tone mapping carries over via Tag.
+const CONFIDENCE_TONE: Record<RankingConfidence, 'success' | 'accent' | 'warning'> = {
+  high: 'success', medium: 'accent', low: 'warning',
+};
+const CONFIDENCE_LABEL: Record<RankingConfidence, string> = {
+  high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence',
+};
 
 function slotToLabel(slot: GearSlot | 'ring'): string {
   return slot === 'ring' ? 'Ring' : GEAR_SLOT_NAMES[slot];
@@ -211,6 +221,20 @@ export function RecipientPicker({
   const needers = useMemo(
     () => buildRecipientEntries({ players, slot, scope: 'priority', settings, lootLog, currentWeek, enhancedActive }),
     [players, slot, settings, lootLog, currentWeek, enhancedActive],
+  );
+
+  // R-6: one explanation per visible row (reasons + record-cross-check
+  // warnings), plus the priority-ranking confidence read derived from the
+  // NEEDERS pool (not `entries`/`filtered` — confidence answers "how sure is
+  // the ranking", which is a priority-scope question regardless of which
+  // scope the user is currently browsing).
+  const explanations = useMemo(
+    () => new Map(entries.map((e) => [e.player.id, explainCandidate(e, slot, { lootLog })])),
+    [entries, slot, lootLog],
+  );
+  const confidence = useMemo(
+    () => deriveRankingConfidence(needers.map((e) => explainCandidate(e, slot, { lootLog }))),
+    [needers, slot, lootLog],
   );
 
   const filtered = useMemo(() => {
@@ -577,7 +601,12 @@ export function RecipientPicker({
         />
 
         {/* List */}
-        <div className="text-xs font-bold uppercase tracking-wider text-text-tertiary">{listLabel}</div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-text-tertiary">{listLabel}</span>
+          {scope === 'priority' && (
+            <Tag variant="label" tone={CONFIDENCE_TONE[confidence]}>{CONFIDENCE_LABEL[confidence]}</Tag>
+          )}
+        </div>
         <div role="radiogroup" aria-label="Recipient" className="space-y-1">
           {filtered.length === 0 ? (
             <p className="text-sm text-text-muted">No players match.</p>
@@ -635,7 +664,10 @@ export function RecipientPicker({
                         style={{ backgroundColor: `var(--color-role-${role}, var(--color-text-muted))` }}
                       />
                     </span>
-                    <span className="block truncate text-xs text-text-tertiary">{entry.reason}</span>
+                    <RankingExplanation
+                      showWarnings
+                      explanation={explanations.get(entry.player.id) ?? { reasons: [entry.reason], warnings: [], wouldAdvanceBis: entry.needsItem }}
+                    />
                   </span>
                   <Tag variant="label" tone={TAG_TONE[entry.needTag]}>{TAG_LABEL[entry.needTag]}</Tag>
                   <span
