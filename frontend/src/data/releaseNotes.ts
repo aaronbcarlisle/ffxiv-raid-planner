@@ -69,6 +69,9 @@ export const RELEASES: Release[] = [
         title: 'Reset dialogs no longer say "Week undefined"',
         description:
           'Clearing all of a player\'s books, or all of a floor\'s books, from the loot log\'s "All time" view asked you to confirm wiping data "for Week undefined" — the dialog had no week to name because those actions deliberately span every week. Both now say so plainly, e.g. "ALL book entries for Floor 2 (every week)", so the confirmation states what will actually be deleted before you type RESET.',
+        pr: 223,
+        prTitle:
+          'feat(loot): Phase D slice D0 — floor tokens, sortable header, slot icon, reset copy',
       },
     ],
   },
