@@ -118,9 +118,39 @@ type PriorityView = 'queues' | 'weapons';
 // R-1: the choice "persists per user" → localStorage. Fresh v2 key, no legacy
 // fallback read (plan §2.3 — legacy's `loot-priority-subtab` values don't map).
 const PRIORITY_VIEW_KEY = 'v2-loot-priority-view';
+// R-10: the explicit floor pick lives for "this session" → sessionStorage
+// (plan §2.3 assigns it a fresh v2 key). Global, not per-tier: R-10.3 makes the
+// user's pick global, and F1–F4 mean the same thing in every tier.
+const FLOOR_SCOPE_KEY = 'v2-loot-floor-scope';
 
+// Storage access is guarded: Safari private mode and blocked-storage embeds
+// throw from the accessor itself, and a useState initializer that throws takes
+// the whole screen down (review finding). Degrade to the default instead.
 function readStoredPriorityView(): PriorityView {
-  return localStorage.getItem(PRIORITY_VIEW_KEY) === 'weapons' ? 'weapons' : 'queues';
+  try {
+    return localStorage.getItem(PRIORITY_VIEW_KEY) === 'weapons' ? 'weapons' : 'queues';
+  } catch {
+    return 'queues';
+  }
+}
+
+function readStoredFloorScope(): FloorScope | null {
+  try {
+    const v = sessionStorage.getItem(FLOOR_SCOPE_KEY);
+    if (v === 'all') return 'all';
+    const n = Number(v);
+    return n === 1 || n === 2 || n === 3 || n === 4 ? (n as FloorNumber) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(storage: 'local' | 'session', key: string, value: string): void {
+  try {
+    (storage === 'local' ? localStorage : sessionStorage).setItem(key, value);
+  } catch {
+    // Best-effort: an unwritable store just means the choice doesn't persist.
+  }
 }
 
 const FLOOR_NUMBERS: FloorNumber[] = [1, 2, 3, 4];
@@ -200,18 +230,31 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const [priorityView, setPriorityView] = useState<PriorityView>(readStoredPriorityView);
   const changePriorityView = useCallback((v: PriorityView) => {
     setPriorityView(v);
-    localStorage.setItem(PRIORITY_VIEW_KEY, v);
+    writeStored('local', PRIORITY_VIEW_KEY, v);
   }, []);
-  // R-10: null = the user hasn't stated a scope this session. Until they do,
-  // Queues opens at the newest in-progress floor (one card, no scroll). The
-  // first pill click ends that — the pick is global and switching segments
-  // never moves it.
-  const [pickedScope, setPickedScope] = useState<FloorScope | null>(null);
-  const defaultQueuesScope = useMemo(
+  // R-10: null = the user hasn't stated a scope this session (sessionStorage,
+  // so the pick survives tab-hopping within the tab — "this session", R-10.3).
+  // Until they do, Queues opens at the newest in-progress floor (one card, no
+  // scroll). The first pill click ends that — the pick is global and switching
+  // segments never moves it.
+  const [pickedScope, setPickedScope] = useState<FloorScope | null>(readStoredFloorScope);
+  const pickScope = useCallback((v: FloorScope) => {
+    setPickedScope(v);
+    writeStored('session', FLOOR_SCOPE_KEY, String(v));
+  }, []);
+  // The R-10 default is a LANDING default, not a live derivation (director
+  // change-review F1): it is latched once per tier visit, when the mount fetch
+  // settles. Deriving it live would let the user's first log on a floor move
+  // the scope under them — logging the newest floor's drop re-derives "newest
+  // in-progress" one floor up.
+  const [landingScope, setLandingScope] = useState<FloorNumber | null>(null);
+  // Pre-settle fallback only: renders the same value the latch will compute
+  // whenever the store already holds this tier's data (the common warm path).
+  const preSettleScope = useMemo(
     () => newestInProgressFloor({ lootLog, materialLog, pageLedger, floors }),
     [lootLog, materialLog, pageLedger, floors],
   );
-  const floorScope: FloorScope = pickedScope ?? defaultQueuesScope;
+  const floorScope: FloorScope = pickedScope ?? landingScope ?? preSettleScope;
   // R-7: the floor the "Log floor" button acts on. Weapons is pinned to the
   // final floor (R-5 states it); on All the button steps aside for the
   // toolbar's whole-week wizard.
@@ -236,14 +279,26 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // screen never renders lootTrackingStore.error — surface ONE toast for the
     // batch instead of letting a failure become an unhandled rejection.
     // fetchWeekDataTypes never re-throws (store catches internally) — left bare.
+    setLandingScope(null); // a new tier derives its own landing default
     void Promise.all([
       fetchLootLog(groupId, tierId),
       fetchMaterialLog(groupId, tierId),
       fetchPageLedger(groupId, tierId),
       fetchCurrentWeek(groupId, tierId),
-    ]).catch(() => toast.error('Failed to load loot data'));
+    ])
+      .catch(() => toast.error('Failed to load loot data'))
+      // R-10 landing latch — runs on success AND failure (a failed fetch still
+      // latches from whatever the store holds, so the scope never moves later).
+      .then(() => {
+        const s = useLootTrackingStore.getState();
+        setLandingScope(
+          newestInProgressFloor({
+            lootLog: s.lootLog, materialLog: s.materialLog, pageLedger: s.pageLedger, floors,
+          }),
+        );
+      });
     void fetchWeekDataTypes(groupId, tierId);
-  }, [groupId, tierId, fetchLootLog, fetchMaterialLog, fetchPageLedger, fetchCurrentWeek, fetchWeekDataTypes]);
+  }, [groupId, tierId, floors, fetchLootLog, fetchMaterialLog, fetchPageLedger, fetchCurrentWeek, fetchWeekDataTypes]);
 
   // Also refetches the week clock — the FIRST-ever loot entry for a tier can
   // set its `week_start_date` anchor server-side, which would otherwise leave
@@ -449,19 +504,11 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               { value: 'weapons', label: 'Weapons' },
             ]}
           />
-          {priorityView === 'weapons' ? (
-            // R-5: in Weapons the pill row becomes a static floor label, in
-            // place — the scope is STATED rather than implied by a control
-            // that could do nothing (weapons only drop from the final floor).
-            <div className="flex items-center gap-2" aria-live="polite">
-              <Tag variant="label" tone="floor-4">{`${floors[3] ?? 'Floor 4'} · Floor 4`}</Tag>
-              <span className="text-xs text-text-tertiary">weapons drop here</span>
-            </div>
-          ) : (
+          {priorityView !== 'weapons' && (
             // R-2: one pill row scopes the whole Priority view.
             <div role="group" aria-label="Floor scope" className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs uppercase tracking-wide text-text-tertiary">Floor</span>
-              <Tag variant="filter" tone="accent" pressed={floorScope === 'all'} onClick={() => setPickedScope('all')}>
+              <Tag variant="filter" tone="accent" pressed={floorScope === 'all'} onClick={() => pickScope('all')}>
                 All
               </Tag>
               {FLOOR_NUMBERS.map((n) => (
@@ -470,23 +517,38 @@ export function Loot({ group, tier, canEdit }: LootProps) {
                   variant="filter"
                   tone={`floor-${n}`}
                   pressed={floorScope === n}
-                  onClick={() => setPickedScope(n)}
+                  onClick={() => pickScope(n)}
                 >
                   {floors[n - 1] ?? `Floor ${n}`}
                 </Tag>
               ))}
             </div>
           )}
+          {/* R-5: in Weapons the pill row is replaced in place by a static
+              floor label — the scope is STATED, not implied by a control that
+              could do nothing. The region itself is ALWAYS mounted (role=status
+              ⇒ polite live region): a live region inserted pre-populated is not
+              reliably announced, so the swap must be an insertion INTO an
+              existing tracked region (a11y change-review finding). */}
+          <div role="status" className="flex items-center gap-2">
+            {priorityView === 'weapons' && (
+              <>
+                <Tag variant="label" tone="floor-4">{`${floors[3] ?? 'Floor 4'} · Floor 4`}</Tag>
+                <span className="text-xs text-text-tertiary">weapons drop here</span>
+              </>
+            )}
+          </div>
           <div className="flex-1" />
           {canEdit && logFloorTarget !== null && (
+            // The visible label names the target floor (mockup parity — the
+            // aria-label-only floor left sighted users guessing).
             <Button
               variant="secondary"
               size="sm"
               leftIcon={<ListChecks className="h-3.5 w-3.5" aria-hidden />}
-              aria-label={`Log floor — ${floors[logFloorTarget - 1] ?? `Floor ${logFloorTarget}`}`}
               onClick={() => setWizardState({ floor: logFloorTarget })}
             >
-              Log floor
+              {`Log floor — ${floors[logFloorTarget - 1] ?? `Floor ${logFloorTarget}`}`}
             </Button>
           )}
         </div>

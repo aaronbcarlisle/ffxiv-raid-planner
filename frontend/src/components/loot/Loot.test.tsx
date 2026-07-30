@@ -153,9 +153,11 @@ beforeEach(() => {
   wizardCalls.length = 0;
   deleteLootMock.mockClear();
   deleteMaterialMock.mockClear();
-  // The Priority sub-view persists under `v2-loot-priority-view` (R-1) — clear
-  // it so a test that switched to Weapons can't leak into the next test.
+  // The Priority sub-view persists under `v2-loot-priority-view` (R-1) and the
+  // floor pick under sessionStorage `v2-loot-floor-scope` (R-10) — clear both
+  // so one test's choice can't leak into the next.
   localStorage.clear();
+  sessionStorage.clear();
   useToastStore.getState().clearAll();
   // Reset the real (unmocked) location to a clean baseline before each test —
   // the copy-link handler reads `window.location.href` directly (not the
@@ -223,6 +225,52 @@ describe('Loot', () => {
     const cards = screen.getAllByTestId('floor-card');
     expect(cards).toHaveLength(1);
     expect(cards[0].getAttribute('data-floor')).toBe('3');
+  });
+
+  it('the R-10 default is a LANDING default — logging a drop must not move the scope (director F1)', async () => {
+    // Prog'ing floor 3 (evidence on M10S). The landing latches at fetch settle.
+    useLootTrackingStore.setState({ lootLog: [makeLootEntry({ floor: 'M10S' })] });
+    renderLoot({ tier: makeTier(players) });
+    await waitFor(() => expect(screen.getByTestId('floor-card').getAttribute('data-floor')).toBe('3'));
+
+    // The user logs their first M11S drop from the card they are looking at.
+    // A live derivation would now say "newest in progress = 4" and swap the
+    // card under them; the latched landing must hold floor 3.
+    act(() => {
+      useLootTrackingStore.setState({
+        lootLog: [makeLootEntry({ floor: 'M10S' }), makeLootEntry({ id: 2, floor: 'M11S' })],
+      });
+    });
+    const cards = screen.getAllByTestId('floor-card');
+    expect(cards).toHaveLength(1);
+    expect(cards[0].getAttribute('data-floor')).toBe('3');
+  });
+
+  it('"Log floor" follows the pill — a non-default pick reaches the wizard (R-7)', () => {
+    renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'M11S' }));
+    // The visible label names the target floor (mockup parity).
+    fireEvent.click(screen.getByRole('button', { name: 'Log floor — M11S' }));
+    const wizard = screen.getByTestId('log-week-wizard');
+    expect(wizard.getAttribute('data-single')).toBe('true');
+    expect(wizard.getAttribute('data-floor')).toBe('3');
+  });
+
+  it('an explicit floor pick survives a remount within the session (R-10 sessionStorage)', () => {
+    const { unmount } = renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'M10S' }));
+    unmount();
+
+    renderLoot({ tier: makeTier(players) });
+    const cards = screen.getAllByTestId('floor-card');
+    expect(cards.map((c) => c.getAttribute('data-floor'))).toEqual(['2']);
+  });
+
+  it('falls back to Queues when the stored sub-view is the not-yet-built "matrix" (D3 fallback)', () => {
+    localStorage.setItem('v2-loot-priority-view', 'matrix');
+    renderLoot({ tier: makeTier(players) });
+    expect(screen.getByTestId('floor-card')).toBeInTheDocument();
+    expect(screen.queryByTestId('weapon-bridge')).not.toBeInTheDocument();
   });
 
   it('renders four FloorCards in F4→F1 order when the All pill is picked (R-2)', () => {
