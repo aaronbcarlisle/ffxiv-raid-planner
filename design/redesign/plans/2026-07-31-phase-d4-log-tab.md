@@ -205,8 +205,19 @@ the shared `hooks/` tree.
       effect keyed on `groupId`/`tierId`, guarded by a ref holding the last-resolved key so the
       mount pass and the effect don't double-resolve.
 - [ ] **Persistence + URL, one rule:** any target equal to `clock.currentWeek` **clears** the
-      override, removes the v2 storage key and deletes `?week=`; any other target writes all three.
-      `followClock()` is therefore `setWeek(clock.currentWeek)`. *Deliberate delta from legacy,*
+      override, writes the **`'current'` sentinel** to the v2 storage key and deletes `?week=`; any
+      other target writes the number to all three.
+      `followClock()` is therefore `setWeek(clock.currentWeek)`.
+- [ ] ⚠ **The sentinel is load-bearing — user-ruled 2026-07-31 at Task 1 review.** REV 2 said
+      go-to-current *removes* the v2 key. That composes with the legacy fallback read into a loop
+      that defeats R-22's headline affordance: legacy `HistoryView.tsx:122` writes
+      `history-week-{groupId}-{tierId}` **unconditionally** on every week change, so every migrated
+      V1 user has one. Remove the v2 key and the next mount falls straight through to the stale
+      legacy week and resurrects it — forever, since v2 never writes that key. Storing `'current'`
+      makes resolution stop at the v2 key without ever touching legacy's. Resolution therefore
+      reads: `?week=` → v2 key (`'current'` ⇒ follow the clock, a number ⇒ use it) → legacy key →
+      `null`. **The legacy key is still never written.**
+      *Deliberate delta from legacy,*
       which writes localStorage unconditionally (`HistoryView.tsx:122`) while deleting the URL param
       when equal (`:131-132`): storing "follow the clock" as `null` means a returning user whose
       clock advanced lands on the new current week instead of a stale number. Note it in the doc
