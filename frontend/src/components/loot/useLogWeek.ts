@@ -1,0 +1,218 @@
+/**
+ * useLogWeek — the Log tab's week model (Phase D slice D4, R-15).
+ *
+ * R-15 makes the week the *Log tab's* property, not Loot's: Priority always
+ * ranks against the shared `WeekClock`'s current week, and the old
+ * `scopedWeekOverride` local state in `Loot.tsx` goes away entirely once this
+ * hook is wired in (Task 4). This hook is the whole model for "which week is
+ * the Log looking at" — resolution, stepping, and persistence all live here.
+ *
+ * Co-located with its screen (`components/loot/`), not the shared `hooks/`
+ * tree — same call as `roster/useRosterSortPreset.ts` and for the same
+ * reason: this is a v2-Loot-only concern, not a cross-surface primitive.
+ *
+ * ── The override, not the number ──
+ * Internal state is `override: number | null`. `null` means "follow the
+ * clock" — `week` derives as `override ?? clock.currentWeek`. That single
+ * `null` state is what makes `followClock()` a one-line state clear instead
+ * of having to know what "current" currently resolves to, and what keeps a
+ * freshly-mounted Log correct while `fetchCurrentWeek` is still in flight
+ * (see the resolution note below).
+ *
+ * ── Resolution order (mount + every groupId/tierId change) ──
+ * `?week=` → `v2-history-week-{groupId}-{tierId}` → legacy
+ * `history-week-{groupId}-{tierId}` → `null` (follow the clock). Legacy's key
+ * is read as a fallback and *never* written — the `useRosterSortPreset`
+ * shape: continuity flows legacy → v2, never back, so the frozen V1 shell
+ * never sees a v2-originated value on its next visit.
+ *
+ * Resolution deliberately does NOT clamp against `clock.maxWeek` — this was
+ * REV 1's bug (director B2). `lootTrackingStore` initialises
+ * `currentWeek: 1, maxWeek: 1` and only corrects them from an async
+ * `fetchCurrentWeek` effect in `Loot.tsx`, so at the moment resolution runs
+ * the upper bound is provisionally 1. Clamping here would silently discard
+ * every `?week=N` (N > 1) on a cold load — breaking the exact deep-link
+ * substrate this slice exists to lay — and the ref guard below means it
+ * would never get a chance to re-resolve once the store settles. Any
+ * integer >= 1 is accepted, matching legacy's own (deliberately unclamped)
+ * rule (`HistoryView.tsx:105-109`). `NaN`, non-integers, and values <= 0
+ * fall through to `null`.
+ *
+ * Clamping lives on `setWeek` only, against `1 … Math.max(clock.maxWeek,
+ * clock.currentWeek)`. Once the clock settles this derives correctly;
+ * before that, a resolved week outside the provisional range is simply a
+ * week the user can step back from.
+ *
+ * ── Tier re-resolve ──
+ * v2's `Loot` mounts un-keyed (`NewShell.tsx`), so a tier switch re-runs
+ * effects on a live component rather than remounting it — a `useState`
+ * lazy initializer would never fire again. Resolution therefore runs
+ * entirely inside a `useEffect` keyed on `[groupId, tierId]`, guarded by a
+ * ref holding the last-resolved key so the effect only ever resolves once
+ * per distinct group/tier pair.
+ *
+ * ── Persistence + URL, one rule ──
+ * Any target equal to `clock.currentWeek` *clears* the override, deletes
+ * the v2 storage key, and removes `?week=`; any other target writes all
+ * three. `followClock()` is therefore just `setWeek(clock.currentWeek)`.
+ *
+ * This is a deliberate delta from legacy, which writes localStorage
+ * unconditionally (`HistoryView.tsx:122`) while only deleting the URL param
+ * when the target equals the current week (`:131-132`). Storing "follow the
+ * clock" as `null` instead of a concrete number means a returning user
+ * whose clock has since advanced lands on the *new* current week rather
+ * than a now-stale stored one.
+ *
+ * ── Storage guard ──
+ * Safari private mode / blocked-storage embeds throw from the accessor
+ * itself, so every read and write is wrapped in try/catch and degrades to
+ * "not persisted" — the `Loot.tsx:130-161` pattern.
+ *
+ * When `groupId`/`tierId` is undefined there is no tier context to key
+ * storage on, so the hook doesn't touch storage at all — it just follows
+ * the clock (resolution short-circuits to `null`).
+ *
+ * URL writes go through `useSearchParams`'s functional updater with
+ * `{ replace: true }` so sibling params (`?tier=`, `?lview=`, …) survive —
+ * legacy's `HistoryView.tsx:129-137` pattern. This hook uses raw
+ * `useSearchParams`, not `useUrlTabState`: registering `week` there would
+ * add it to `clearRegisteredTabParams`'s seed, which `setPageMode`
+ * (`useGroupViewState.ts:320`) calls on every primary-tab switch in BOTH
+ * shells — that would make a V1 primary-tab switch start wiping the
+ * legacy History view's own `?week=`.
+ */
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import type { WeekClock } from '../../hooks/useWeekClock';
+
+export interface LogWeek {
+  week: number;
+  isCurrent: boolean;
+  canPrev: boolean;
+  canNext: boolean;
+  setWeek(w: number): void;
+  prev(): void;
+  next(): void;
+  followClock(): void;
+}
+
+/** v2-scoped write key (never legacy's `history-week-{groupId}-{tierId}`). */
+export function logWeekKey(groupId: string, tierId: string): string {
+  return `v2-history-week-${groupId}-${tierId}`;
+}
+
+/** Legacy's per-tier key. Read-only here: continuity in, nothing out. */
+function legacyLogWeekKey(groupId: string, tierId: string): string {
+  return `history-week-${groupId}-${tierId}`;
+}
+
+/**
+ * Parses a week value from a URL param or storage string. Any integer >= 1
+ * is accepted — deliberately unclamped (see the doc header's B2 note).
+ * `NaN`, non-integers, and values <= 0 fall through to `null`.
+ */
+function parseWeek(raw: string | null): number | null {
+  if (raw == null || !/^-?\d+$/.test(raw)) return null;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 ? n : null;
+}
+
+function readStoredWeek(groupId: string, tierId: string): number | null {
+  try {
+    const v2 = parseWeek(localStorage.getItem(logWeekKey(groupId, tierId)));
+    if (v2 !== null) return v2;
+    const legacy = parseWeek(localStorage.getItem(legacyLogWeekKey(groupId, tierId)));
+    if (legacy !== null) return legacy;
+  } catch {
+    // Ignore localStorage errors (private mode / disabled / quota).
+  }
+  return null;
+}
+
+/** `?week=` → v2 storage → legacy storage → `null` (follow the clock). */
+function resolveOverride(
+  groupId: string | undefined,
+  tierId: string | undefined,
+  urlWeek: string | null,
+): number | null {
+  const fromUrl = parseWeek(urlWeek);
+  if (fromUrl !== null) return fromUrl;
+  // No tier context: don't touch storage at all, just follow the clock.
+  if (!groupId || !tierId) return null;
+  return readStoredWeek(groupId, tierId);
+}
+
+export function useLogWeek(
+  groupId: string | undefined,
+  tierId: string | undefined,
+  clock: WeekClock,
+): LogWeek {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [override, setOverride] = useState<number | null>(null);
+
+  // Re-resolve on mount and on every groupId/tierId change. Ref-held key
+  // guards against the effect resolving more than once for the same pair
+  // (e.g. a dev double-invoke) — see the doc header's "Tier re-resolve" note.
+  const lastKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${groupId ?? ''}::${tierId ?? ''}`;
+    if (lastKeyRef.current === key) return;
+    lastKeyRef.current = key;
+    setOverride(resolveOverride(groupId, tierId, searchParams.get('week')));
+    // Intentionally re-resolves only on groupId/tierId changes, not on every
+    // searchParams identity change — see the doc header's resolution-order note.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId, tierId]);
+
+  const week = override ?? clock.currentWeek;
+  const max = Math.max(clock.maxWeek, clock.currentWeek);
+  const isCurrent = clock.isCurrent(week);
+  const canPrev = week > 1;
+  const canNext = week < max;
+
+  const setWeek = useCallback(
+    (w: number) => {
+      const clamped = Math.min(Math.max(w, 1), Math.max(clock.maxWeek, clock.currentWeek));
+      const clearing = clamped === clock.currentWeek;
+
+      setOverride(clearing ? null : clamped);
+
+      if (groupId && tierId) {
+        try {
+          if (clearing) localStorage.removeItem(logWeekKey(groupId, tierId));
+          else localStorage.setItem(logWeekKey(groupId, tierId), String(clamped));
+        } catch {
+          // Ignore localStorage errors (private mode / disabled / quota).
+        }
+      }
+
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev);
+          if (clearing) params.delete('week');
+          else params.set('week', String(clamped));
+          return params;
+        },
+        { replace: true },
+      );
+    },
+    [clock.maxWeek, clock.currentWeek, groupId, tierId, setSearchParams],
+  );
+
+  const prev = useCallback(() => {
+    if (!canPrev) return;
+    setWeek(week - 1);
+  }, [canPrev, setWeek, week]);
+
+  const next = useCallback(() => {
+    if (!canNext) return;
+    setWeek(week + 1);
+  }, [canNext, setWeek, week]);
+
+  const followClock = useCallback(() => {
+    setWeek(clock.currentWeek);
+  }, [setWeek, clock.currentWeek]);
+
+  return { week, isCurrent, canPrev, canNext, setWeek, prev, next, followClock };
+}
