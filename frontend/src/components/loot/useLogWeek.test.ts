@@ -4,11 +4,11 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createElement, type ReactNode } from 'react';
 import { renderHook, act } from '@testing-library/react';
-import { MemoryRouter, useSearchParams } from 'react-router-dom';
-import { useLogWeek, logWeekKey } from './useLogWeek';
+import { MemoryRouter, useSearchParams, useNavigationType } from 'react-router-dom';
+import { useLogWeek, logWeekKey, CURRENT_WEEK_SENTINEL } from './useLogWeek';
 import type { WeekClock } from '../../hooks/useWeekClock';
 
 const LEGACY_KEY = (groupId: string, tierId: string) => `history-week-${groupId}-${tierId}`;
@@ -41,8 +41,9 @@ function setup(initialPath: string, initialProps: Props) {
   return renderHook(
     (props: Props) => {
       const [searchParams] = useSearchParams();
+      const navigationType = useNavigationType();
       const logWeek = useLogWeek(props.groupId, props.tierId, props.clock);
-      return { ...logWeek, search: searchParams.toString() };
+      return { ...logWeek, search: searchParams.toString(), navigationType };
     },
     { wrapper, initialProps },
   );
@@ -51,6 +52,13 @@ function setup(initialPath: string, initialProps: Props) {
 describe('useLogWeek', () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    // Storage-guard tests spy on Storage.prototype and restore inline, but
+    // restoring only on the happy path leaks a throwing spy into every later
+    // test on an assertion failure. Belt-and-suspenders cleanup.
+    vi.restoreAllMocks();
   });
 
   describe('resolution precedence', () => {
@@ -115,12 +123,37 @@ describe('useLogWeek', () => {
       expect(result.current.week).toBe(3);
     });
 
+    it('a malformed v2 key value (neither "current" nor a valid integer) falls through to legacy', () => {
+      localStorage.setItem(logWeekKey('g1', 't1'), 'not-a-number');
+      localStorage.setItem(LEGACY_KEY('g1', 't1'), '1');
+      const { result } = setup('/', { groupId: 'g1', tierId: 't1', clock: makeClock({ currentWeek: 3 }) });
+      expect(result.current.week).toBe(1);
+    });
+
+    it(
+      'a v2 key of "current" resolves to the clock even when a stale legacy key exists ' +
+        '(the sentinel STOPS resolution — it never falls through to legacy)',
+      () => {
+        localStorage.setItem(logWeekKey('g1', 't1'), CURRENT_WEEK_SENTINEL);
+        localStorage.setItem(LEGACY_KEY('g1', 't1'), '1'); // stale V1 leftover
+        const { result } = setup('/', { groupId: 'g1', tierId: 't1', clock: makeClock({ currentWeek: 3 }) });
+        expect(result.current.week).toBe(3);
+        expect(result.current.isCurrent).toBe(true);
+      },
+    );
+
+    it('a v2 key holding a number still wins over a legacy key', () => {
+      localStorage.setItem(logWeekKey('g1', 't1'), '2');
+      localStorage.setItem(LEGACY_KEY('g1', 't1'), '1');
+      const { result } = setup('/', { groupId: 'g1', tierId: 't1', clock: makeClock({ currentWeek: 3 }) });
+      expect(result.current.week).toBe(2);
+    });
+
     it('does not touch storage when groupId/tierId are undefined — just follows the clock', () => {
       const getItem = vi.spyOn(Storage.prototype, 'getItem');
       const { result } = setup('/', { groupId: undefined, tierId: undefined, clock: makeClock({ currentWeek: 3 }) });
       expect(result.current.week).toBe(3);
       expect(getItem).not.toHaveBeenCalled();
-      getItem.mockRestore();
     });
   });
 
@@ -146,7 +179,7 @@ describe('useLogWeek', () => {
       expect(result.current.search).toContain('week=2');
     });
 
-    it('a week equal to current clears the override, the v2 key, and the URL param', () => {
+    it('a week equal to current clears the override, writes the "current" sentinel to the v2 key, and removes the URL param', () => {
       localStorage.setItem(logWeekKey('g1', 't1'), '2');
       const { result } = setup('/?week=2', {
         groupId: 'g1',
@@ -159,7 +192,7 @@ describe('useLogWeek', () => {
 
       expect(result.current.week).toBe(3);
       expect(result.current.isCurrent).toBe(true);
-      expect(localStorage.getItem(logWeekKey('g1', 't1'))).toBeNull();
+      expect(localStorage.getItem(logWeekKey('g1', 't1'))).toBe(CURRENT_WEEK_SENTINEL);
       expect(result.current.search).not.toContain('week=');
     });
 
@@ -169,6 +202,30 @@ describe('useLogWeek', () => {
       act(() => result.current.setWeek(2));
       expect(localStorage.getItem(LEGACY_KEY('g1', 't1'))).toBe('1');
       expect(localStorage.getItem(logWeekKey('g1', 't1'))).toBe('2');
+    });
+
+    it('never writes the legacy key even when clearing to the "current" sentinel', () => {
+      localStorage.setItem(LEGACY_KEY('g1', 't1'), '1');
+      const { result } = setup('/', { groupId: 'g1', tierId: 't1', clock: makeClock({ currentWeek: 3, maxWeek: 4 }) });
+      act(() => result.current.setWeek(2));
+      act(() => result.current.setWeek(3)); // back to current -> sentinel path
+      expect(localStorage.getItem(LEGACY_KEY('g1', 't1'))).toBe('1');
+      expect(localStorage.getItem(logWeekKey('g1', 't1'))).toBe(CURRENT_WEEK_SENTINEL);
+    });
+
+    it('preserves sibling URL params (e.g. ?tier=, ?lview=) and uses a REPLACE navigation', () => {
+      const { result } = setup('/?tier=abc&lview=log', {
+        groupId: 'g1',
+        tierId: 't1',
+        clock: makeClock({ currentWeek: 3, maxWeek: 4 }),
+      });
+
+      act(() => result.current.setWeek(2));
+
+      expect(result.current.search).toContain('tier=abc');
+      expect(result.current.search).toContain('lview=log');
+      expect(result.current.search).toContain('week=2');
+      expect(result.current.navigationType).toBe('REPLACE');
     });
   });
 
@@ -192,7 +249,7 @@ describe('useLogWeek', () => {
   });
 
   describe('followClock', () => {
-    it('clears the override, the v2 storage key, and the URL param', () => {
+    it('clears the override, writes the "current" sentinel to the v2 key, and removes the URL param', () => {
       const { result } = setup('/', { groupId: 'g1', tierId: 't1', clock: makeClock({ currentWeek: 3, maxWeek: 4 }) });
       act(() => result.current.setWeek(2));
       expect(result.current.week).toBe(2);
@@ -201,9 +258,47 @@ describe('useLogWeek', () => {
 
       expect(result.current.week).toBe(3);
       expect(result.current.isCurrent).toBe(true);
-      expect(localStorage.getItem(logWeekKey('g1', 't1'))).toBeNull();
+      expect(localStorage.getItem(logWeekKey('g1', 't1'))).toBe(CURRENT_WEEK_SENTINEL);
       expect(result.current.search).not.toContain('week=');
     });
+
+    it('does not touch the legacy key', () => {
+      localStorage.setItem(LEGACY_KEY('g1', 't1'), '1');
+      const { result } = setup('/', { groupId: 'g1', tierId: 't1', clock: makeClock({ currentWeek: 3, maxWeek: 4 }) });
+      act(() => result.current.setWeek(2));
+
+      act(() => result.current.followClock());
+
+      expect(localStorage.getItem(LEGACY_KEY('g1', 't1'))).toBe('1');
+    });
+
+    it(
+      'a stale legacy key does not resurrect after followClock — the "current" sentinel STOPS ' +
+        'resolution instead of falling through (the V1-migration loop this fix closes)',
+      () => {
+        // Regression guard: before this fix, followClock() REMOVED the v2 key,
+        // so a mount/tier round-trip after "go to current" fell through past
+        // the (now-absent) v2 key straight to legacy's unconditionally-written
+        // stale week and resurrected it — R-22's go-to-current silently
+        // reverted. Writing 'current' instead, and having read STOP on it,
+        // closes the loop.
+        localStorage.setItem(LEGACY_KEY('g1', 't1'), '1');
+        const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+        const { result, rerender } = setup('/', { groupId: 'g1', tierId: 't1', clock });
+        act(() => result.current.setWeek(2));
+
+        act(() => result.current.followClock());
+        expect(result.current.week).toBe(3);
+
+        // Simulate the "mount/tier round-trip" by forcing a re-resolve on the
+        // same key (tierId round-trips off and back on).
+        rerender({ groupId: 'g1', tierId: 't2', clock });
+        rerender({ groupId: 'g1', tierId: 't1', clock });
+
+        expect(result.current.week).toBe(3); // NOT 1 (the stale legacy value)
+        expect(result.current.isCurrent).toBe(true);
+      },
+    );
   });
 
   describe('tier / group changes', () => {
@@ -232,13 +327,16 @@ describe('useLogWeek', () => {
 
   describe('storage guard', () => {
     it('survives a throwing localStorage on both read and write', () => {
-      const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      // Spies are restored by the top-level afterEach (vi.restoreAllMocks()),
+      // not inline here — an inline-only restore leaks a throwing spy into
+      // every later test if an assertion above it fails first.
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
         throw new Error('denied');
       });
-      const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
         throw new Error('denied');
       });
-      const removeItem = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
         throw new Error('denied');
       });
 
@@ -248,10 +346,6 @@ describe('useLogWeek', () => {
       expect(result.current.week).toBe(2);
       expect(() => act(() => result.current.followClock())).not.toThrow();
       expect(result.current.week).toBe(3);
-
-      getItem.mockRestore();
-      setItem.mockRestore();
-      removeItem.mockRestore();
     });
   });
 });

@@ -26,6 +26,26 @@
  * shape: continuity flows legacy → v2, never back, so the frozen V1 shell
  * never sees a v2-originated value on its next visit.
  *
+ * ── The `'current'` sentinel (fix round 1, director-ruled) ──
+ * Legacy's `HistoryView.tsx:122` writes `history-week-{groupId}-{tierId}`
+ * *unconditionally* on every week change, so any V1 user who ever changed
+ * the week in History has that key sitting in storage forever — legacy never
+ * clears it even when the selection lands back on the current week. If this
+ * hook's "clear on current" simply *removed* the v2 key (as it did before
+ * this fix), the next mount or tier round-trip would fall through past the
+ * (now-absent) v2 key straight to that stale legacy key and resurrect it —
+ * `followClock()`/R-22's go-to-current would appear to work and then
+ * silently revert. Since the legacy key is never written *or removed* here,
+ * removing the v2 key can never outrun it.
+ *
+ * The fix: the v2 key holds either a week number *or the literal string
+ * `'current'`*. A current-week target writes `'current'` instead of
+ * removing the key. On read, `'current'` resolves to `null` and STOPS —
+ * it never falls through to legacy, which is what breaks the loop above.
+ * A v2 key holding a valid integer still wins over legacy, and a malformed
+ * v2 value (neither `'current'` nor a valid integer) falls through to
+ * legacy exactly as before.
+ *
  * Resolution deliberately does NOT clamp against `clock.maxWeek` — this was
  * REV 1's bug (director B2). `lootTrackingStore` initialises
  * `currentWeek: 1, maxWeek: 1` and only corrects them from an async
@@ -52,16 +72,17 @@
  * per distinct group/tier pair.
  *
  * ── Persistence + URL, one rule ──
- * Any target equal to `clock.currentWeek` *clears* the override, deletes
- * the v2 storage key, and removes `?week=`; any other target writes all
- * three. `followClock()` is therefore just `setWeek(clock.currentWeek)`.
+ * Any target equal to `clock.currentWeek` *clears* the in-memory override,
+ * writes the `'current'` sentinel to the v2 storage key (see above — NOT a
+ * removal), and removes `?week=`; any other target writes the concrete week
+ * to all three. `followClock()` is therefore just `setWeek(clock.currentWeek)`.
  *
  * This is a deliberate delta from legacy, which writes localStorage
  * unconditionally (`HistoryView.tsx:122`) while only deleting the URL param
  * when the target equals the current week (`:131-132`). Storing "follow the
- * clock" as `null` instead of a concrete number means a returning user
- * whose clock has since advanced lands on the *new* current week rather
- * than a now-stale stored one.
+ * clock" as the `'current'` sentinel instead of a concrete number means a
+ * returning user whose clock has since advanced lands on the *new* current
+ * week rather than a now-stale stored one.
  *
  * ── Storage guard ──
  * Safari private mode / blocked-storage embeds throw from the accessor
@@ -108,6 +129,14 @@ function legacyLogWeekKey(groupId: string, tierId: string): string {
 }
 
 /**
+ * The v2 key's "follow the clock" sentinel — see the doc header's
+ * "'current' sentinel" note. Deliberately NOT a removal: legacy writes its
+ * own key unconditionally, so removing ours would fall through to a stale
+ * legacy value forever.
+ */
+export const CURRENT_WEEK_SENTINEL = 'current';
+
+/**
  * Parses a week value from a URL param or storage string. Any integer >= 1
  * is accepted — deliberately unclamped (see the doc header's B2 note).
  * `NaN`, non-integers, and values <= 0 fall through to `null`.
@@ -118,19 +147,37 @@ function parseWeek(raw: string | null): number | null {
   return Number.isInteger(n) && n >= 1 ? n : null;
 }
 
-function readStoredWeek(groupId: string, tierId: string): number | null {
+type V2Read =
+  | { kind: 'current' }
+  | { kind: 'week'; week: number }
+  | { kind: 'absent' };
+
+/** Reads the v2 key only, distinguishing the sentinel from a real week from
+ *  "nothing usable here" — the caller decides what "absent" falls through to. */
+function readV2Week(groupId: string, tierId: string): V2Read {
   try {
-    const v2 = parseWeek(localStorage.getItem(logWeekKey(groupId, tierId)));
-    if (v2 !== null) return v2;
-    const legacy = parseWeek(localStorage.getItem(legacyLogWeekKey(groupId, tierId)));
-    if (legacy !== null) return legacy;
+    const raw = localStorage.getItem(logWeekKey(groupId, tierId));
+    if (raw === CURRENT_WEEK_SENTINEL) return { kind: 'current' };
+    const parsed = parseWeek(raw);
+    if (parsed !== null) return { kind: 'week', week: parsed };
   } catch {
     // Ignore localStorage errors (private mode / disabled / quota).
   }
-  return null;
+  return { kind: 'absent' };
 }
 
-/** `?week=` → v2 storage → legacy storage → `null` (follow the clock). */
+function readLegacyWeek(groupId: string, tierId: string): number | null {
+  try {
+    return parseWeek(localStorage.getItem(legacyLogWeekKey(groupId, tierId)));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `?week=` → v2 storage (`'current'` STOPS here, resolving to `null` without
+ * ever consulting legacy) → legacy storage → `null` (follow the clock).
+ */
 function resolveOverride(
   groupId: string | undefined,
   tierId: string | undefined,
@@ -140,7 +187,11 @@ function resolveOverride(
   if (fromUrl !== null) return fromUrl;
   // No tier context: don't touch storage at all, just follow the clock.
   if (!groupId || !tierId) return null;
-  return readStoredWeek(groupId, tierId);
+
+  const v2 = readV2Week(groupId, tierId);
+  if (v2.kind === 'current') return null; // sentinel: stop, never fall through to legacy
+  if (v2.kind === 'week') return v2.week;
+  return readLegacyWeek(groupId, tierId);
 }
 
 export function useLogWeek(
@@ -180,8 +231,10 @@ export function useLogWeek(
 
       if (groupId && tierId) {
         try {
-          if (clearing) localStorage.removeItem(logWeekKey(groupId, tierId));
-          else localStorage.setItem(logWeekKey(groupId, tierId), String(clamped));
+          localStorage.setItem(
+            logWeekKey(groupId, tierId),
+            clearing ? CURRENT_WEEK_SENTINEL : String(clamped),
+          );
         } catch {
           // Ignore localStorage errors (private mode / disabled / quota).
         }
