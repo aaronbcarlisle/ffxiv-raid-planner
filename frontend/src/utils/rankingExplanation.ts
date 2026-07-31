@@ -40,15 +40,25 @@
  * then. The warning line still fires (the receipt is real and
  * fairness-relevant); only `wouldAdvanceBis` is refined by checking whether
  * a raid-BiS, not-yet-held ring slot remains.
+ * Non-syncing-receipt refinement (same correction class, PR #225 round 2): a
+ * receipt only carries BiS signal when it could have marked gear. A
+ * tome/purchase-method or isExtra receipt never syncs gear
+ * (lootCoordination.ts:78 gates the mark on `method === 'drop' || 'book'`
+ * and `!isExtra`), so the player REMAINS a needer despite the log entry —
+ * R-24 made tome/purchase reachable from create mode, so this is now a live
+ * case, not a hypothetical. The warning line still fires for ANY matching
+ * receipt (still real, still fairness-relevant); `wouldAdvanceBis` is only
+ * cleared when at least one matching receipt was actually gear-syncing.
  * The `warnings.length > 1` → low branch is a contract guard. The only
  * reachable two-warning combo today is the weapon double-warning (logged as
  * received AND separately marked received in the priority list) — both
  * forcing, so wouldAdvanceBis already went false via the check one line
- * earlier. The ring refinement above means "Already received" is not
- * ALWAYS forcing on its own, but that non-forcing case can never reach two
- * warnings (a ring row never carries a second warning kind). This branch
- * exists for a future non-forcing warning kind that could stack a second
- * warning onto a forcing one.
+ * earlier. The ring and non-syncing refinements above mean "Already
+ * received" is not ALWAYS forcing on its own, but neither non-forcing case
+ * can reach two warnings (a ring row never carries a second warning kind,
+ * and a non-syncing receipt is still just the one "Already received" line).
+ * This branch exists for a future non-forcing warning kind that could stack
+ * a second warning onto a forcing one.
  *
  * Weapon log matching is job-strict — the read matches what the picker
  * writes (weaponJob = recipient's job at submit), so read and write agree.
@@ -103,7 +113,13 @@ export function explainCandidate(
     const stillNeedsRing = slot === 'ring' && entry.player.gear.some(
       (g) => (g.slot === 'ring1' || g.slot === 'ring2') && g.bisSource === 'raid' && !g.hasItem,
     );
-    if (!stillNeedsRing) wouldAdvanceBis = false;
+    // Non-syncing-receipt refinement: a receipt only carries BiS signal when
+    // it could have marked gear — tome/purchase and isExtra receipts never
+    // sync (lootCoordination.ts:78), so the player REMAINS a needer despite
+    // the log entry. Only a receipt that was actually gear-syncing forces
+    // the flag, and only once the ring refinement above doesn't apply.
+    const anySyncing = received.some((e) => (e.method === 'drop' || e.method === 'book') && !e.isExtra);
+    if (anySyncing && !stillNeedsRing) wouldAdvanceBis = false;
   }
 
   if (slot === 'weapon') {

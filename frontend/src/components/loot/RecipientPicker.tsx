@@ -159,7 +159,12 @@ function computeEditUpdates(args: {
   const { editEntry, slot, floorName, week, method, notes, recipientPlayerId, recipientJob } = args;
   // Ring round-trip: an untouched ring slot keeps the entry's concrete
   // ring1/ring2 (the picker vocabulary collapses to 'ring' which would
-  // otherwise rewrite ring2 → ring1). Only an actual change yields 'ring1'.
+  // otherwise rewrite ring2 → ring1). This does NOT fully round-trip a
+  // legacy `itemSlot: 'ring'` entry (LootSlot includes 'ring' alongside
+  // ring1/ring2) — the ternary below normalizes it to 'ring1' even when
+  // untouched, so `itemSlot !== editEntry.itemSlot` reads as a change and
+  // emits `updates.itemSlot`. Known phantom-diff case, disclosed in the D2
+  // PR body — not fixed here.
   const itemSlot = slot === 'ring'
     ? (editEntry.itemSlot === 'ring2' ? 'ring2' : 'ring1')
     : slot;
@@ -463,9 +468,15 @@ export function RecipientPicker({
     if (updateGear && gearSyncEligible && !effectiveExtra && gearWillMark) {
       out.push(`Mark ${label} as acquired on ${name}'s gear`);
     }
-    // Mirrors lootCoordination.ts:124 — weapon-priority sync requires a
-    // priority row for the recipient's own job (targetJob resolves to
-    // recipient.job here since the picker submits weaponJob = recipient?.job).
+    // lootCoordination.ts:123-145: the util fires (and PUTs) whenever the
+    // recipient HAS a weaponPriorities array at all, matching row or not —
+    // with no matching row for the target job, the call still goes out but
+    // .map leaves every row unchanged, so nothing effectively changes. Our
+    // `.some(w => w.job === ...)` gate is deliberately STRICTER than the
+    // util's own guard: the preview promises effects, not API calls, so it
+    // only claims the write when a row for the recipient's job actually
+    // exists to be marked (targetJob resolves to recipient.job here since
+    // the picker submits weaponJob = recipient?.job).
     if (isWeapon && gearSyncEligible
         && (selected.player.weaponPriorities ?? []).some((w) => w.job === selected.player.job)) {
       out.push(`Update ${name}'s weapon priority`);

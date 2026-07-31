@@ -103,6 +103,42 @@ describe('explainCandidate', () => {
     expect(ex.wouldAdvanceBis).toBe(true);
   });
 
+  // PR #225 review round 2, Finding 1: a receipt only carries BiS signal
+  // when it could have marked gear (lootCoordination.ts:78 gates the mark
+  // on `method === 'drop' || 'book'` AND `!isExtra`). R-24 made tome/
+  // purchase create-reachable, so a needer can now genuinely hold a
+  // tome/purchase receipt for the same slot while STILL needing the
+  // raid-BiS piece — the warning must stay, but wouldAdvanceBis must not
+  // be falsely forced.
+  it('a tome-method receipt still warns but does not force wouldAdvanceBis false (non-syncing refinement)', () => {
+    const ex = explainCandidate(
+      entry(player({})), 'head',
+      { lootLog: [logEntry({ itemSlot: 'head', method: 'tome', weekNumber: 2 })] },
+    );
+    expect(ex.warnings).toEqual(['Already received Head in Week 2']);
+    expect(ex.wouldAdvanceBis).toBe(true);
+  });
+
+  it('an isExtra drop receipt still warns but does not force wouldAdvanceBis false (non-syncing refinement)', () => {
+    const ex = explainCandidate(
+      entry(player({})), 'head',
+      { lootLog: [logEntry({ itemSlot: 'head', method: 'drop', isExtra: true, weekNumber: 2 })] },
+    );
+    expect(ex.warnings).toEqual(['Already received Head in Week 2']);
+    expect(ex.wouldAdvanceBis).toBe(true);
+  });
+
+  // Contrast case: a genuinely gear-syncing receipt (method drop, not extra
+  // — the logEntry() factory default) still forces false, same as the
+  // pre-refinement tests above (line 41 et al.) all implicitly rely on.
+  it('a syncing drop receipt still forces wouldAdvanceBis false', () => {
+    const ex = explainCandidate(
+      entry(player({})), 'head',
+      { lootLog: [logEntry({ itemSlot: 'head', weekNumber: 2 })] },
+    );
+    expect(ex.wouldAdvanceBis).toBe(false);
+  });
+
   it('weapon log match is job-strict (read agrees with the picker write)', () => {
     const p = player({ job: 'WAR' });
     const mine = explainCandidate(entry(p), 'weapon',
