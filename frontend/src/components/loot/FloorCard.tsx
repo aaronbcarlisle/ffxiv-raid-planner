@@ -7,25 +7,29 @@
  * Body: gear rows then material rows, each with a ranked PriorityRow queue via
  * FloorDropRow. Auto-collapses when the week is fully logged (nothing pending)
  * to keep a cleared floor out of the way; `Show` (LinkText) re-expands it.
- * Queues use the SAME derivation as the legacy LootPriorityPanel
- * (getPriorityForItem/Ring/UpgradeMaterial/UniversalTomestone →
- * enhancePriorityEntries with the legacy enhanced-scoring gate expression).
+ * Gear queues use the PICKER's own derivation (`buildRecipientEntries`, R-6
+ * D3) — the chips, the QueueWhy popover, and the RecipientPicker modal can
+ * never disagree. Material queues keep the legacy derivation
+ * (getPriorityForUpgradeMaterial/UniversalTomestone → enhancePriorityEntries
+ * with the legacy enhanced-scoring gate expression) — RecipientPicker doesn't
+ * cover materials, so there's no shared leaf to converge on there.
  * (The weapon-priority footer left with R-3 — Weapons is a peer switcher
  * segment now, not a Floor-4 appendix.)
  */
 import { useMemo, useState } from 'react';
 import { Tag, LinkText, type PriorityRowEntry } from '../ui';
 import { FloorDropRow } from './FloorDropRow';
+import { QueueWhy } from './QueueWhy';
 import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { deriveFloorWeekStatus } from '../../utils/lootFairness';
 import { enhancePriorityEntries } from '../../utils/priorityEntries';
 import { calculateAverageDrops } from '../../utils/lootCoordination';
 import {
-  getPriorityForItem, getPriorityForRing,
   getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone,
   isPriorityDisabled,
   type PriorityEntry,
 } from '../../utils/priority';
+import { buildRecipientEntries } from '../../utils/recipientRanking';
 import { FLOOR_LOOT_TABLES, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial, type FloorNumber } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
 import type { SnapshotPlayer, StaticSettings, LootLogEntry, MaterialLogEntry, PageLedgerEntry, GearSlot, MaterialType } from '../../types';
@@ -55,9 +59,9 @@ export interface FloorCardProps {
   onAssignMaterial: (material: MaterialType, suggested: SnapshotPlayer) => void;
 }
 
-function toRowEntries(entries: { player: SnapshotPlayer }[]): PriorityRowEntry[] {
+function toRowEntries(entries: Array<{ player: SnapshotPlayer; rank?: number | null }>): PriorityRowEntry[] {
   return entries.map((e, i) => ({
-    playerId: e.player.id, name: e.player.name, role: e.player.role, rank: i + 1,
+    playerId: e.player.id, name: e.player.name, role: e.player.role, rank: e.rank ?? i + 1,
   }));
 }
 
@@ -93,12 +97,19 @@ export function FloorCard({
     slot === 'ring1' ? { slot: 'ring' as const, label: 'Ring' } : { slot, label: GEAR_SLOT_NAMES[slot] },
   );
 
-  const gearRows = gearItems.map((item) => {
-    const baseEntries = item.slot === 'ring'
-      ? getPriorityForRing(players, settings)
-      : getPriorityForItem(players, item.slot, settings);
-    return { ...item, entries: toRowEntries(enhance(baseEntries)) };
-  });
+  // R-6 (D3): gear queues use the PICKER's own derivation, so the chips, the
+  // why popover and the modal can never disagree. Equivalence proven in
+  // recipientRanking.test.ts's order-identity case: same pools, same enhanced
+  // gate (enhancedActive already folds in lootLog.length > 0), same week
+  // (enhanceWeek), and mainRosterPlayers is a fixed point of its
+  // configured/!isSubstitute filter.
+  const gearRows = gearItems.map((item) => ({
+    ...item,
+    entries: buildRecipientEntries({
+      players, slot: item.slot, scope: 'priority', settings, lootLog,
+      currentWeek: enhanceWeek, enhancedActive,
+    }),
+  }));
 
   const materialRows = table.upgradeMaterials.map((material) => {
     const baseEntries = isSlotAugmentationMaterial(material)
@@ -143,9 +154,12 @@ export function FloorCard({
               subLabel={`${row.label} · raid`}
               floorNumber={floorNumber}
               slot={row.slot}
-              entries={row.entries}
+              entries={toRowEntries(row.entries)}
               canEdit={canEdit}
               onAssign={() => onAssignGear({ slot: row.slot, label: row.label })}
+              why={row.entries.length > 0
+                ? <QueueWhy entries={row.entries} slot={row.slot} lootLog={lootLog} enhancedActive={enhancedActive} />
+                : undefined}
             />
           ))}
           {materialRows.map((row) => (
