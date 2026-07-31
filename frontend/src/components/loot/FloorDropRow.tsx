@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- MATERIAL_TOKEN is exported alongside the component so the v2 NeedMatrix (Phase-D D3, director M-6) can reuse the same material→color map instead of a fourth copy. */
 /**
  * FloorDropRow — one droppable item inside a FloorCard (F6d §5.2; Phase-D R-8).
  *
@@ -31,7 +32,7 @@ export interface FloorDropRowProps {
   disableAssign?: boolean;
 }
 
-const MATERIAL_TOKEN: Record<string, string> = {
+export const MATERIAL_TOKEN: Record<string, string> = {
   twine: 'var(--color-material-twine)',
   glaze: 'var(--color-material-glaze)',
   solvent: 'var(--color-material-solvent)',
