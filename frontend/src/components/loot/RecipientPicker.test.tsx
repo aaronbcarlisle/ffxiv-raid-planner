@@ -610,15 +610,61 @@ describe('RecipientPicker — R-12 "This will:" live preview', () => {
 
     fireEvent.click(screen.getByText('Options'));
     fireEvent.click(checkboxByLabelText('Extra loot (not BiS priority)'));
-    // The acquired checkbox itself is still present (not disabled by isExtra)…
-    expect(acquiredCheckbox('Weapon')).toBeInTheDocument();
-    // …but the preview no longer promises the write the util would refuse.
+    // PR #225 round 3: extra loot now disables the acquired checkbox itself
+    // (it previously stayed enabled+checkable, disagreeing with the preview
+    // below and with logLootAndUpdateGear, which refuses the mark for extra
+    // loot — lootCoordination.ts:78's `!data.isExtra`).
+    expect(acquiredCheckbox('Weapon')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText('Extra loot never syncs gear.')).toBeInTheDocument();
+    // …and the preview no longer promises the write the util would refuse.
     expect(screen.queryByText(/Mark Weapon as acquired on/)).not.toBeInTheDocument();
 
-    // Un-extra, then switch to a non-sync-eligible method (Tome) — same result.
+    // Un-extra re-enables the checkbox…
     fireEvent.click(checkboxByLabelText('Extra loot (not BiS priority)'));
+    expect(acquiredCheckbox('Weapon')).toHaveAttribute('aria-disabled', 'false');
+    expect(screen.queryByText('Extra loot never syncs gear.')).not.toBeInTheDocument();
+
+    // …then switching to a non-sync-eligible method (Tome) disables it again,
+    // with the method caption this time (not the extra-loot one).
     fireEvent.click(screen.getByRole('radio', { name: 'Tome' }));
+    expect(acquiredCheckbox('Weapon')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText('Gear sync applies to drops and books.')).toBeInTheDocument();
     expect(screen.queryByText(/Mark Weapon as acquired on/)).not.toBeInTheDocument();
+  });
+
+  // PR #225 round 3, Finding: off-spec scope forces `effectiveExtra` for ANY
+  // slot (not just weapon), and the checkbox must reflect that regardless of
+  // which slot is being assigned.
+  it('off-spec scope disables the acquired checkbox for any slot, with the extra-loot caption', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(acquiredCheckbox('Earring')).toHaveAttribute('aria-disabled', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Off-spec / free' }));
+    expect(acquiredCheckbox('Earring')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByText('Extra loot never syncs gear.')).toBeInTheDocument();
+    expect(screen.queryByText('Gear sync applies to drops and books.')).not.toBeInTheDocument();
+  });
+
+  // PR #225 round 3, Finding: the reviewer's prescribed trap — the fix must
+  // NOT fold `!effectiveExtra` into `gearSyncEligible` itself, because the
+  // weapon-priority preview line reads that same flag and
+  // lootCoordination.ts:124's weapon-priority write does NOT check isExtra
+  // (it still fires for extra loot). Pin that the line survives extra loot
+  // as long as the method stays drop/book.
+  it('the weapon-priority preview line still renders for extra loot when the method stays drop/book (gearSyncEligible not narrowed)', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    fireEvent.click(screen.getByText('Options'));
+    fireEvent.click(checkboxByLabelText('Extra loot (not BiS priority)'));
+    // The gear-mark line is correctly suppressed…
+    expect(screen.queryByText(/Mark Weapon as acquired on/)).not.toBeInTheDocument();
+    // …but the weapon-priority line is NOT — it has its own gate (a WP row
+    // for the recipient's job) that extra loot doesn't touch.
+    expect(screen.getByText(/Update .*weapon priority/)).toBeInTheDocument();
   });
 
   it('promises the weapon-priority update only for drop/book methods', () => {

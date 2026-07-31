@@ -330,6 +330,20 @@ export function RecipientPicker({
     ? (editEntry.method === 'drop' || editEntry.method === 'book') && !editEntry.isExtra
     : method === 'drop' || method === 'book';
 
+  // The acquired CHECKBOX additionally needs `!effectiveExtra` in create
+  // modes (logLootAndUpdateGear refuses the mark for extra loot —
+  // lootCoordination.ts:78's `!data.isExtra`) — off-spec scope forces
+  // `effectiveExtra` for ANY slot, and the weapon "Extra loot" checkbox sets
+  // it directly, so the checkbox must reflect it or it promises a write the
+  // util refuses. This does NOT fold into `gearSyncEligible` itself: the
+  // weapon-priority preview line below also reads `gearSyncEligible`, and
+  // lootCoordination.ts:124's weapon-priority write deliberately does NOT
+  // check isExtra (it still fires for extra loot) — narrowing the shared
+  // flag would wrongly suppress that line too. Edit mode's isExtra check is
+  // already baked into `gearSyncEligible` above (from the ORIGINAL entry),
+  // so `gearMarkEligible` just passes it through unchanged there.
+  const gearMarkEligible = mode === 'edit' ? gearSyncEligible : gearSyncEligible && !effectiveExtra;
+
   // Initialise state ONLY on the open transition (closed → open) — mirrors
   // QuickLogDropModal.tsx:97-115. Keying off a ref (not raw isOpen) means a
   // mid-interaction store churn (e.g. the 30s roster poll) can't re-run this and
@@ -465,7 +479,10 @@ export function RecipientPicker({
       ? selected.player.gear.some((g) =>
           (g.slot === 'ring1' || g.slot === 'ring2') && g.bisSource === 'raid' && !g.hasItem)
       : selected.player.gear.find((g) => g.slot === slot)?.bisSource === 'raid';
-    if (updateGear && gearSyncEligible && !effectiveExtra && gearWillMark) {
+    // `gearMarkEligible` already folds in `!effectiveExtra` for create modes
+    // (see its definition) — reused here so the preview and the checkbox
+    // can't drift apart on when a mark is actually promised.
+    if (updateGear && gearMarkEligible && gearWillMark) {
       out.push(`Mark ${label} as acquired on ${name}'s gear`);
     }
     // lootCoordination.ts:123-145: the util fires (and PUTs) whenever the
@@ -483,7 +500,7 @@ export function RecipientPicker({
     }
     if (effectiveExtra) out.push('Count it as extra loot (outside BiS priority)');
     return out;
-  }, [selected, mode, editEntry, slot, week, floorName, label, method, notes, updateGear, gearSyncEligible, isWeapon, effectiveExtra]);
+  }, [selected, mode, editEntry, slot, week, floorName, label, method, notes, updateGear, gearSyncEligible, gearMarkEligible, isWeapon, effectiveExtra]);
 
   const handleSubmit = async () => {
     if (!selected || !selectionVisible) return;
@@ -757,23 +774,27 @@ export function RecipientPicker({
 
         {/* Acquired checkbox — promoted out of the disclosure (R-12): gear-sync
             state should be visible without opening Options. Only drop/book
-            can actually sync (lootCoordination.ts:78,:124); uniform across
-            all three modes via `gearSyncEligible`, which in edit mode reads
-            the ORIGINAL entry's method + isExtra (:186) rather than the
-            picker's live fields — see its definition. The caption names
-            whichever original-entry property is the true blocker: isExtra
-            takes precedence when both apply, since it's the more specific
-            reason (an extra-loot drop is still method-eligible). */}
+            can actually MARK gear (lootCoordination.ts:78,:186); uniform
+            across all three modes via `gearMarkEligible` (NOT the plain
+            `gearSyncEligible` — that flag is also read by the
+            weapon-priority preview line, which must stay eligible for extra
+            loot; see `gearMarkEligible`'s definition for why the two are
+            kept separate). In edit mode `gearMarkEligible` reads the
+            ORIGINAL entry's method + isExtra rather than the picker's live
+            fields. The caption names whichever property is the true
+            blocker: isExtra takes precedence when both apply, since it's
+            the more specific reason (an extra-loot drop is still
+            method-eligible). */}
         <div>
           <Checkbox
-            checked={gearSyncEligible && updateGear}
+            checked={gearMarkEligible && updateGear}
             onChange={setUpdateGear}
-            disabled={!gearSyncEligible}
+            disabled={!gearMarkEligible}
             label={`Mark ${label} as acquired`}
           />
-          {!gearSyncEligible && (
+          {!gearMarkEligible && (
             <p className="mt-1 text-xs text-text-muted">
-              {mode === 'edit' && editEntry.isExtra
+              {(mode === 'edit' ? editEntry.isExtra : effectiveExtra)
                 ? 'Extra loot never syncs gear.'
                 : 'Gear sync applies to drops and books.'}
             </p>
