@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.7',
+    date: '2026-07-30T22:00:00Z',
+    title: 'Phase D slice D2 — picker consequences + ranking explanations (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'RecipientPicker states its consequences up front, gains assign-mode method + notes, and explains its rankings',
+        description:
+          'The admin-gated v2 preview\'s loot picker gains its Phase-D consequence and explanation chrome: a live "This will:" preview mirroring the real write-path predicates, the acquired checkbox promoted into the modal body (disabled with "Gear sync applies to drops and books." under tome/purchase), and the expandable "Details" section renamed to "Options" (R-12 / D-28). Assign mode gains the full method choice (drop/book/tome/purchase) and a notes field, where a user note wins over the weapon auto-note — the method choice is un-gated across all three modes, so log and edit pick up drop/book/tome/purchase too, and editing a tome/purchase entry now displays its method correctly (R-24). The "No one needs this item for BiS — assigning it counts as a free roll." hint returns in create modes when a slot has no needers (D-36). Picker rows also gain a shared ranking explanation and a High/Medium/Low confidence header (R-6\'s picker half — queue and matrix consumption lands in D3). A recipient-prefill capability lands unconsumed, ready for D3\'s matrix cells (R-4). Legacy V1 is untouched.',
+        pr: 225,
+        prTitle: 'feat(loot): Phase D slice D2 — picker consequences + ranking explanations',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.6',
     date: '2026-07-30T20:00:00Z',
     title: 'Phase D slice D1 — Priority chrome (v2 preview)',

@@ -13,6 +13,36 @@
  * v1↔v2 note. Row interactivity uses the GearBoardCell radio pattern
  * (role="radio" + aria-checked + keyboard) so it passes check:design-system:strict
  * with no raw <input>/<label> and no suppressions.
+ *
+ * Phase D (D2, R-24/R-12): the method choice (drop/book/tome/purchase) and notes
+ * field are available in every mode, including assign — a NEW capability, not a
+ * restore (no legacy modal ever offered tome/purchase). The acquired checkbox is
+ * promoted out of the disclosure into the modal body so gear-sync state is always
+ * visible; the disclosure itself is relabelled `Options`/`Hide options`. Submit
+ * payloads are unchanged except the R-24 notes ternary (user note wins, weapon
+ * auto-note fallback) — `lootCoordination.ts` already gates gear/weapon-priority
+ * sync on method === 'drop' | 'book', so the checkbox mirrors that gate via
+ * `gearSyncEligible` instead of duplicating it at submit time. PR #225 review:
+ * in edit mode `gearSyncEligible` reads the ORIGINAL entry's method AND isExtra
+ * (lootCoordination.ts:186 gates sync on both) rather than the picker's live
+ * method field — the checkbox is uniform across all three modes now, with a
+ * caption naming whichever original-entry property actually blocks the sync.
+ *
+ * D2 (R-12/D-36): the static footer copy is replaced by a live "This will:"
+ * consequence list — each line mirrors the exact predicate of the write it
+ * names (lootCoordination.ts:78,:93-111,:124,:186-187) so the preview never
+ * promises a side effect the coordination util would refuse. Edit mode's
+ * diff is hoisted into `computeEditUpdates` — a single derivation shared by
+ * the preview and `handleSubmit` so they cannot drift.
+ *
+ * Tasks 5-6 (R-6/R-4): every visible row renders `explainCandidate`'s reasons
+ * + warnings (record cross-checks — already-received, weapon-priority
+ * conflicts) via `RankingExplanation`, and the priority-scope list header
+ * shows the derived confidence tag. Edit mode cross-checks the record
+ * against `explanationLog` — the loot log MINUS the entry under edit — so a
+ * row never warns about the very receipt it's editing. Assign mode also
+ * accepts `initialRecipientId` (R-4): a matrix-cell click prefills the
+ * recipient without bypassing the ranked list or its explanations.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Package } from 'lucide-react';
@@ -24,6 +54,8 @@ import { logLootAndUpdateGear, updateLootAndSyncGear } from '../../utils/lootCoo
 import { toast } from '../../stores/toastStore';
 import { isPriorityDisabled } from '../../utils/priority';
 import { buildRecipientEntries, type PickerScope, type NeedTag } from '../../utils/recipientRanking';
+import { explainCandidate, deriveRankingConfidence, type RankingConfidence } from '../../utils/rankingExplanation';
+import { RankingExplanation } from './RankingExplanation';
 import { FLOOR_LOOT_TABLES, type FloorNumber } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
 import type { SnapshotPlayer, StaticSettings, LootLogEntry, LootLogEntryUpdate, LootMethod, GearSlot } from '../../types';
@@ -53,9 +85,20 @@ interface RecipientPickerBaseProps {
 // site (PR review finding: an optional `item` under 'assign' invited
 // call sites that fixed a drop context implicitly to nothing/`weapon`).
 export type RecipientPickerProps = RecipientPickerBaseProps & (
-  | { mode: 'assign'; item: DropItemContext; editEntry?: never }
-  | { mode: 'log'; item?: DropItemContext; editEntry?: never }
-  | { mode: 'edit'; editEntry: LootLogEntry; item?: never }
+  | {
+      mode: 'assign';
+      item: DropItemContext;
+      editEntry?: never;
+      /**
+       * R-4 (D-22): pre-select this player on open — a matrix-cell click is a
+       * shortcut into the normal flow, not a second flow. The ranked list
+       * still renders and stays switchable. Unknown/unconfigured ids are
+       * ignored.
+       */
+      initialRecipientId?: string;
+    }
+  | { mode: 'log'; item?: DropItemContext; editEntry?: never; initialRecipientId?: never }
+  | { mode: 'edit'; editEntry: LootLogEntry; item?: never; initialRecipientId?: never }
 );
 
 const SCOPE_OPTIONS: { value: PickerScope; label: string }[] = [
@@ -64,12 +107,27 @@ const SCOPE_OPTIONS: { value: PickerScope; label: string }[] = [
   { value: 'offspec', label: 'Off-spec / free' },
 ];
 
+const METHOD_OPTIONS: { value: LootMethod; label: string }[] = [
+  { value: 'drop', label: 'Drop' },
+  { value: 'book', label: 'Book' },
+  { value: 'tome', label: 'Tome' },
+  { value: 'purchase', label: 'Purchase' },
+];
+
 const TAG_TONE: Record<NeedTag, 'success' | 'muted'> = {
   bis: 'success',
   minor: 'muted',
   free: 'muted',
 };
 const TAG_LABEL: Record<NeedTag, string> = { bis: 'BiS', minor: 'minor', free: 'free' };
+
+// R-6: the frozen v1 leaf's high/medium/low tone mapping carries over via Tag.
+const CONFIDENCE_TONE: Record<RankingConfidence, 'success' | 'accent' | 'warning'> = {
+  high: 'success', medium: 'accent', low: 'warning',
+};
+const CONFIDENCE_LABEL: Record<RankingConfidence, string> = {
+  high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence',
+};
 
 function slotToLabel(slot: GearSlot | 'ring'): string {
   return slot === 'ring' ? 'Ring' : GEAR_SLOT_NAMES[slot];
@@ -86,6 +144,44 @@ function firstSlotForFloor(floorNumber: FloorNumber): GearSlot | 'ring' {
   return first === 'ring1' ? 'ring' : first;
 }
 
+// The ONE edit-diff derivation — handleSubmit submits exactly this object and
+// the "This will:" preview renders exactly this object, so they cannot drift.
+function computeEditUpdates(args: {
+  editEntry: LootLogEntry;
+  slot: GearSlot | 'ring';
+  floorName: string;
+  week: number;
+  method: LootMethod;
+  notes: string;
+  recipientPlayerId: string;
+  recipientJob: string | undefined;
+}): LootLogEntryUpdate {
+  const { editEntry, slot, floorName, week, method, notes, recipientPlayerId, recipientJob } = args;
+  // Ring round-trip: an untouched ring slot keeps the entry's concrete
+  // ring1/ring2 (the picker vocabulary collapses to 'ring' which would
+  // otherwise rewrite ring2 → ring1). This does NOT fully round-trip a
+  // legacy `itemSlot: 'ring'` entry (LootSlot includes 'ring' alongside
+  // ring1/ring2) — the ternary below normalizes it to 'ring1' even when
+  // untouched, so `itemSlot !== editEntry.itemSlot` reads as a change and
+  // emits `updates.itemSlot`. Known phantom-diff case, disclosed in the D2
+  // PR body — not fixed here.
+  const itemSlot = slot === 'ring'
+    ? (editEntry.itemSlot === 'ring2' ? 'ring2' : 'ring1')
+    : slot;
+  const updates: LootLogEntryUpdate = {};
+  if (week !== editEntry.weekNumber) updates.weekNumber = week;
+  if (floorName !== editEntry.floor) updates.floor = floorName;
+  if (itemSlot !== editEntry.itemSlot) updates.itemSlot = itemSlot;
+  if (recipientPlayerId !== editEntry.recipientPlayerId) updates.recipientPlayerId = recipientPlayerId;
+  if (method !== editEntry.method) updates.method = method;
+  if (notes !== (editEntry.notes ?? '')) updates.notes = notes || undefined;
+  // Backfill weaponJob for weapon entries created without it.
+  if (itemSlot === 'weapon' && !editEntry.weaponJob && recipientJob) {
+    updates.weaponJob = recipientJob;
+  }
+  return updates;
+}
+
 export function RecipientPicker({
   isOpen,
   onClose,
@@ -97,6 +193,7 @@ export function RecipientPicker({
   floors,
   item,
   editEntry,
+  initialRecipientId,
   lootLog,
   currentWeek,
   maxWeek,
@@ -106,10 +203,11 @@ export function RecipientPicker({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [week, setWeek] = useState(currentWeek);
-  // Widened to LootMethod (from 'drop' | 'book') so edit mode can round-trip a
-  // 'purchase'/'tome' entry's method verbatim — an untouched non-drop/book entry
-  // must NOT diff its method (legacy AddLootEntryModal.tsx:382 parity). The
-  // RadioGroup still only offers drop/book; create-path behaviour is unchanged.
+  // Typed LootMethod (drop/book/tome/purchase) — originally widened from
+  // 'drop' | 'book' so edit mode could round-trip a 'purchase'/'tome' entry's
+  // method verbatim without diffing it (legacy AddLootEntryModal.tsx:382
+  // parity). As of R-24 the RadioGroup offers all four methods everywhere,
+  // including assign/log create paths — not just edit round-tripping.
   const [method, setMethod] = useState<LootMethod>('drop');
   const [updateGear, setUpdateGear] = useState(true);
   const [isExtra, setIsExtra] = useState(false);
@@ -148,6 +246,45 @@ export function RecipientPicker({
     [players, slot, scope, settings, lootLog, currentWeek, enhancedActive],
   );
 
+  // Needers for the CURRENT slot regardless of the scope toggle — D-36's hint
+  // reads the priority pool even while the user is browsing All members.
+  const needers = useMemo(
+    () => buildRecipientEntries({ players, slot, scope: 'priority', settings, lootLog, currentWeek, enhancedActive }),
+    [players, slot, settings, lootLog, currentWeek, enhancedActive],
+  );
+
+  // D-36 hint gate: `needers` is priority scope, which excludes substitutes
+  // (recipientRanking.ts's mainRoster filter) — so when ONLY a substitute
+  // needs the slot, `needers` is empty even though the All-members fallback
+  // (A11, below) lands the picker on a scope where that sub renders "…is
+  // BiS" at rank #1. Require BOTH the priority pool being empty AND no
+  // currently-VISIBLE row (`entries`, which follows the active scope)
+  // claiming need, so the footer can never contradict a row on screen.
+  const noOneNeeds = needers.length === 0 && !entries.some((e) => e.needsItem);
+
+  // In edit mode the log contains the entry being edited — explaining a
+  // ranking against it would warn about the very receipt under edit and sink
+  // the confidence header on every routine edit. Cross-check the record
+  // MINUS the entry being edited.
+  const explanationLog = useMemo(
+    () => (mode === 'edit' ? lootLog.filter((e) => e.id !== editEntry.id) : lootLog),
+    [mode, lootLog, editEntry],
+  );
+
+  // R-6: one explanation per visible row (reasons + record-cross-check
+  // warnings), plus the priority-ranking confidence read derived from the
+  // NEEDERS pool (not `entries`/`filtered` — confidence answers "how sure is
+  // the ranking", which is a priority-scope question regardless of which
+  // scope the user is currently browsing).
+  const explanations = useMemo(
+    () => new Map(entries.map((e) => [e.player.id, explainCandidate(e, slot, { lootLog: explanationLog })])),
+    [entries, slot, explanationLog],
+  );
+  const confidence = useMemo(
+    () => deriveRankingConfidence(needers.map((e) => explainCandidate(e, slot, { lootLog: explanationLog }))),
+    [needers, slot, explanationLog],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return q ? entries.filter((e) => e.player.name.toLowerCase().includes(q)) : entries;
@@ -181,6 +318,31 @@ export function RecipientPicker({
   // Forced-extra under off-spec: single source of truth used by the payload,
   // the weapon auto-note, AND the (disabled) checkbox state.
   const effectiveExtra = scope === 'offspec' ? true : isExtra;
+
+  // Gear/weapon-priority sync applies only to drop/book — mirrors the
+  // coordination gates (lootCoordination.ts:78,:124) so the checkbox can't
+  // promise a write the util refuses. In EDIT mode the util gates sync on
+  // the ORIGINAL entry's method AND isExtra (lootCoordination.ts:186 —
+  // `originalEntry.method === 'drop' || 'book'` AND `!originalEntry.isExtra`),
+  // not the picker's live (possibly still-being-changed) method field, so a
+  // refused sync must read `editEntry` here rather than `method`/`effectiveExtra`.
+  const gearSyncEligible = mode === 'edit'
+    ? (editEntry.method === 'drop' || editEntry.method === 'book') && !editEntry.isExtra
+    : method === 'drop' || method === 'book';
+
+  // The acquired CHECKBOX additionally needs `!effectiveExtra` in create
+  // modes (logLootAndUpdateGear refuses the mark for extra loot —
+  // lootCoordination.ts:78's `!data.isExtra`) — off-spec scope forces
+  // `effectiveExtra` for ANY slot, and the weapon "Extra loot" checkbox sets
+  // it directly, so the checkbox must reflect it or it promises a write the
+  // util refuses. This does NOT fold into `gearSyncEligible` itself: the
+  // weapon-priority preview line below also reads `gearSyncEligible`, and
+  // lootCoordination.ts:124's weapon-priority write deliberately does NOT
+  // check isExtra (it still fires for extra loot) — narrowing the shared
+  // flag would wrongly suppress that line too. Edit mode's isExtra check is
+  // already baked into `gearSyncEligible` above (from the ORIGINAL entry),
+  // so `gearMarkEligible` just passes it through unchanged there.
+  const gearMarkEligible = mode === 'edit' ? gearSyncEligible : gearSyncEligible && !effectiveExtra;
 
   // Initialise state ONLY on the open transition (closed → open) — mirrors
   // QuickLogDropModal.tsx:97-115. Keying off a ref (not raw isOpen) means a
@@ -231,8 +393,19 @@ export function RecipientPicker({
           : buildRecipientEntries({
               players, slot: initialSlot, scope: 'all', settings, lootLog, currentWeek, enhancedActive,
             });
-        setScope(initialScope);
-        setSelectedId(initialEntries[0]?.player.id ?? null);
+        const prefill = initialRecipientId
+          ? players.find((p) => p.id === initialRecipientId && p.configured)
+          : undefined;
+        if (prefill) {
+          // Visibility guarantee (mirrors the edit branch above): a prefilled
+          // player outside the priority pool is only selectable under 'all'.
+          const inPriority = priorityEntries.some((e) => e.player.id === prefill.id);
+          setScope(inPriority ? 'priority' : 'all');
+          setSelectedId(prefill.id);
+        } else {
+          setScope(initialScope);
+          setSelectedId(initialEntries[0]?.player.id ?? null);
+        }
         setWeek(currentWeek);
         setMethod('drop');
         setUpdateGear(true);
@@ -249,7 +422,7 @@ export function RecipientPicker({
     } else if (!isOpen) {
       wasOpenRef.current = false;
     }
-  }, [isOpen, currentWeek, mode, floors, item, editEntry, players, settings, lootLog, enhancedActive]);
+  }, [isOpen, currentWeek, mode, floors, item, editEntry, initialRecipientId, players, settings, lootLog, enhancedActive]);
 
   // Auto-select the recipient's primary character registration on recipient
   // change (mirrors QuickLogDropModal.tsx:117-121).
@@ -267,36 +440,87 @@ export function RecipientPicker({
 
   const recipientRegistrations = recipientId ? (registrationsByPlayer[recipientId] ?? []) : [];
 
+  // Live consequences — each line mirrors the exact predicate of the write it
+  // names (lootCoordination.ts:78,:93-111,:124,:186-187); stating a side effect
+  // the util would refuse is the bug R-12 exists to prevent.
+  const consequences = useMemo<string[]>(() => {
+    if (!selected) return [];
+    const name = selected.player.name;
+    if (mode === 'edit') {
+      const updates = computeEditUpdates({
+        editEntry, slot, floorName, week, method, notes,
+        recipientPlayerId: selected.player.id, recipientJob: selected.player.job,
+      });
+      const out: string[] = [];
+      if (updates.weekNumber !== undefined) out.push(`Move it to Week ${updates.weekNumber}`);
+      if (updates.floor !== undefined || updates.itemSlot !== undefined) out.push(`Change the item to ${floorName} · ${label}`);
+      if (updates.recipientPlayerId !== undefined) out.push(`Reassign it to ${name}`);
+      if (updates.method !== undefined) out.push(`Set the method to ${method}`);
+      // `updates.notes` carries `undefined` as a *cleared* value (see
+      // computeEditUpdates: `updates.notes = notes || undefined`) — a
+      // cleared-to-empty note still has the `notes` key set but with an
+      // undefined value, so check key PRESENCE, not the value, or a clear
+      // silently reports "No changes yet." while submit still writes it.
+      if ('notes' in updates) out.push('Update the notes');
+      if (updates.weaponJob !== undefined) out.push(`Record it as a ${updates.weaponJob} weapon`);
+      // Mirrors lootCoordination.ts:186-187,:194-195 — the picker never diffs
+      // isExtra, so the extra-transition clause reduces to !editEntry.isExtra.
+      // `gearSyncEligible` already encodes exactly that original-entry check
+      // (see its definition) — reused here so the two can't drift apart.
+      const syncFires = updateGear && gearSyncEligible
+        && (updates.recipientPlayerId !== undefined || updates.itemSlot !== undefined);
+      if (syncFires) out.push('Sync gear to match');
+      return out;
+    }
+    const out = [`Log ${label} (${method}) for ${name} in Week ${week}`];
+    // Mirrors lootCoordination.ts:78,:93-111 — the ring refinement (needs
+    // ring1 or ring2) vs. the plain-slot bisSource check.
+    const gearWillMark = slot === 'ring'
+      ? selected.player.gear.some((g) =>
+          (g.slot === 'ring1' || g.slot === 'ring2') && g.bisSource === 'raid' && !g.hasItem)
+      : selected.player.gear.find((g) => g.slot === slot)?.bisSource === 'raid';
+    // `gearMarkEligible` already folds in `!effectiveExtra` for create modes
+    // (see its definition) — reused here so the preview and the checkbox
+    // can't drift apart on when a mark is actually promised.
+    if (updateGear && gearMarkEligible && gearWillMark) {
+      out.push(`Mark ${label} as acquired on ${name}'s gear`);
+    }
+    // lootCoordination.ts:123-145: the util fires (and PUTs) whenever the
+    // recipient HAS a weaponPriorities array at all, matching row or not —
+    // with no matching row for the target job, the call still goes out but
+    // .map leaves every row unchanged, so nothing effectively changes. Our
+    // `.some(w => w.job === ...)` gate is deliberately STRICTER than the
+    // util's own guard: the preview promises effects, not API calls, so it
+    // only claims the write when a row for the recipient's job actually
+    // exists to be marked (targetJob resolves to recipient.job here since
+    // the picker submits weaponJob = recipient?.job).
+    if (isWeapon && gearSyncEligible
+        && (selected.player.weaponPriorities ?? []).some((w) => w.job === selected.player.job)) {
+      out.push(`Update ${name}'s weapon priority`);
+    }
+    if (effectiveExtra) out.push('Count it as extra loot (outside BiS priority)');
+    return out;
+  }, [selected, mode, editEntry, slot, week, floorName, label, method, notes, updateGear, gearSyncEligible, gearMarkEligible, isWeapon, effectiveExtra]);
+
   const handleSubmit = async () => {
     if (!selected || !selectionVisible) return;
     const recipientPlayerId = selected.player.id;
 
-    // Edit mode: diff EXACTLY like the legacy editor (AddLootEntryModal.tsx:375-393)
-    // — updates contains ONLY changed fields among
-    // weekNumber/floor/itemSlot/recipientPlayerId/method/notes, plus the weaponJob
-    // backfill. isExtra and recipientCharacter* are NEVER diffed (legacy parity).
+    // Edit mode: diff via the shared `computeEditUpdates` derivation — the
+    // SAME function the "This will:" preview renders, so submit can never
+    // promise something the preview didn't (or vice versa). updates contains
+    // ONLY changed fields among weekNumber/floor/itemSlot/recipientPlayerId/
+    // method/notes, plus the weaponJob backfill. isExtra and
+    // recipientCharacter* are NEVER diffed (legacy parity —
+    // AddLootEntryModal.tsx:375-393).
     if (mode === 'edit') {
       setIsSaving(true);
       try {
         const recipient = players.find((p) => p.id === recipientPlayerId);
-        // Ring round-trip: an untouched ring slot keeps the entry's concrete
-        // ring1/ring2 (the picker vocabulary collapses to 'ring' which would
-        // otherwise rewrite ring2 → ring1). Only an actual change yields 'ring1'.
-        const itemSlot = slot === 'ring'
-          ? (editEntry.itemSlot === 'ring2' ? 'ring2' : 'ring1')
-          : slot;
-
-        const updates: LootLogEntryUpdate = {};
-        if (week !== editEntry.weekNumber) updates.weekNumber = week;
-        if (floorName !== editEntry.floor) updates.floor = floorName;
-        if (itemSlot !== editEntry.itemSlot) updates.itemSlot = itemSlot;
-        if (recipientPlayerId !== editEntry.recipientPlayerId) updates.recipientPlayerId = recipientPlayerId;
-        if (method !== editEntry.method) updates.method = method;
-        if (notes !== (editEntry.notes ?? '')) updates.notes = notes || undefined;
-        // Backfill weaponJob for weapon entries created without it.
-        if (itemSlot === 'weapon' && !editEntry.weaponJob && recipient?.job) {
-          updates.weaponJob = recipient.job;
-        }
+        const updates = computeEditUpdates({
+          editEntry, slot, floorName, week, method, notes,
+          recipientPlayerId, recipientJob: recipient?.job,
+        });
 
         if (Object.keys(updates).length > 0) {
           await updateLootAndSyncGear(groupId, tierId, editEntry.id, editEntry, updates, { syncGear: updateGear });
@@ -336,9 +560,14 @@ export function RecipientPicker({
           method,
           weaponJob,
           isExtra: effectiveExtra,
+          // Log mode: plain user note, no auto-note (unchanged). Assign mode:
+          // R-24 exposed the notes field there too, so a typed note must
+          // reach the payload — user note wins; the weapon auto-note is only a
+          // FALLBACK for an untouched field (preserves the legacy auto-note
+          // behavior when nobody typed anything).
           notes: mode === 'log'
             ? (notes || undefined)
-            : (isWeapon && weaponJob ? `${weaponJob} weapon${effectiveExtra ? ' (extra)' : ''}` : undefined),
+            : (notes || (isWeapon && weaponJob ? `${weaponJob} weapon${effectiveExtra ? ' (extra)' : ''}` : undefined)),
           recipientCharacterRegistrationId: characterRegId ?? undefined,
           recipientCharacterName: charName,
         },
@@ -378,9 +607,29 @@ export function RecipientPicker({
 
   const footer = (
     <div className="space-y-3">
-      <p className="text-xs text-text-tertiary">
-        Logging marks the drop &amp; updates priority + BiS instantly.
-      </p>
+      {/* D-36: nobody in the priority pool needs this slot — reassure the
+          user the assignment is still fine, just off the BiS path. Create
+          modes only; edit mode is reassigning an existing drop, not rolling
+          a fresh one. noOneNeeds also requires no VISIBLE row claiming need
+          (see its definition) so the hint can't contradict a sub-needer the
+          All-members fallback just surfaced at rank #1. */}
+      {mode !== 'edit' && noOneNeeds && (
+        <p className="text-xs text-status-success">
+          No one needs this item for BiS — assigning it counts as a free roll.
+        </p>
+      )}
+      {selected && (
+        <div className="text-xs text-text-tertiary">
+          <span className="font-semibold text-text-secondary">This will:</span>
+          {mode === 'edit' && consequences.length === 0 ? (
+            <span className="ml-1">No changes yet.</span>
+          ) : (
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {consequences.map((c) => <li key={c}>{c}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
       <div className="flex justify-end gap-3">
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancel
@@ -442,7 +691,12 @@ export function RecipientPicker({
         />
 
         {/* List */}
-        <div className="text-xs font-bold uppercase tracking-wider text-text-tertiary">{listLabel}</div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-text-tertiary">{listLabel}</span>
+          {scope === 'priority' && (
+            <Tag variant="label" tone={CONFIDENCE_TONE[confidence]}>{CONFIDENCE_LABEL[confidence]}</Tag>
+          )}
+        </div>
         <div role="radiogroup" aria-label="Recipient" className="space-y-1">
           {filtered.length === 0 ? (
             <p className="text-sm text-text-muted">No players match.</p>
@@ -500,7 +754,10 @@ export function RecipientPicker({
                         style={{ backgroundColor: `var(--color-role-${role}, var(--color-text-muted))` }}
                       />
                     </span>
-                    <span className="block truncate text-xs text-text-tertiary">{entry.reason}</span>
+                    <RankingExplanation
+                      showWarnings
+                      explanation={explanations.get(entry.player.id) ?? { reasons: [entry.reason], warnings: [], wouldAdvanceBis: entry.needsItem }}
+                    />
                   </span>
                   <Tag variant="label" tone={TAG_TONE[entry.needTag]}>{TAG_LABEL[entry.needTag]}</Tag>
                   <span
@@ -515,9 +772,38 @@ export function RecipientPicker({
           )}
         </div>
 
-        {/* Details disclosure */}
+        {/* Acquired checkbox — promoted out of the disclosure (R-12): gear-sync
+            state should be visible without opening Options. Only drop/book
+            can actually MARK gear (lootCoordination.ts:78,:186); uniform
+            across all three modes via `gearMarkEligible` (NOT the plain
+            `gearSyncEligible` — that flag is also read by the
+            weapon-priority preview line, which must stay eligible for extra
+            loot; see `gearMarkEligible`'s definition for why the two are
+            kept separate). In edit mode `gearMarkEligible` reads the
+            ORIGINAL entry's method + isExtra rather than the picker's live
+            fields. The caption names whichever property is the true
+            blocker: isExtra takes precedence when both apply, since it's
+            the more specific reason (an extra-loot drop is still
+            method-eligible). */}
+        <div>
+          <Checkbox
+            checked={gearMarkEligible && updateGear}
+            onChange={setUpdateGear}
+            disabled={!gearMarkEligible}
+            label={`Mark ${label} as acquired`}
+          />
+          {!gearMarkEligible && (
+            <p className="mt-1 text-xs text-text-muted">
+              {(mode === 'edit' ? editEntry.isExtra : effectiveExtra)
+                ? 'Extra loot never syncs gear.'
+                : 'Gear sync applies to drops and books.'}
+            </p>
+          )}
+        </div>
+
+        {/* Options disclosure */}
         <LinkText onClick={() => setShowDetails((v) => !v)} aria-expanded={showDetails}>
-          {showDetails ? 'Hide details' : 'Details'}
+          {showDetails ? 'Hide options' : 'Options'}
         </LinkText>
 
         {showDetails && (
@@ -533,24 +819,13 @@ export function RecipientPicker({
               />
             </div>
 
-            {mode !== 'assign' && (
-              <RadioGroup
-                name="loot-method"
-                label="Method"
-                orientation="horizontal"
-                value={method}
-                onChange={(v) => setMethod(v as 'drop' | 'book')}
-                options={[
-                  { value: 'drop', label: 'Drop' },
-                  { value: 'book', label: 'Book' },
-                ]}
-              />
-            )}
-
-            <Checkbox
-              checked={updateGear}
-              onChange={setUpdateGear}
-              label={`Mark ${label} as acquired`}
+            <RadioGroup
+              name="loot-method"
+              label="Method"
+              orientation="horizontal"
+              value={method}
+              onChange={(v) => setMethod(v as LootMethod)}
+              options={METHOD_OPTIONS}
             />
 
             {isWeapon && mode === 'assign' && (
@@ -581,12 +856,10 @@ export function RecipientPicker({
               </div>
             )}
 
-            {mode !== 'assign' && (
-              <div>
-                <span className="mb-1 block text-sm text-text-secondary">Notes</span>
-                <TextArea value={notes} onChange={setNotes} placeholder="Optional notes…" rows={2} />
-              </div>
-            )}
+            <div>
+              <span className="mb-1 block text-sm text-text-secondary">Notes</span>
+              <TextArea value={notes} onChange={setNotes} placeholder="Optional notes…" rows={2} />
+            </div>
           </div>
         )}
       </div>
