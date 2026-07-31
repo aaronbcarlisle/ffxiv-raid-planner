@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.8',
+    date: '2026-07-30T23:30:00Z',
+    title: 'Phase D slice D3 — Need matrix + queue explanations (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'v2 Priority tab gains a Matrix landing view with roster-aware Need and queue "why" explanations',
+        description:
+          'The admin-gated v2 preview\'s Loot Priority tab gains its Phase-D Matrix landing view (R-1/R-48): every slot at once, floor-banded and floor-coloured (R-8/R-9), with a Need column that counts the roster actually rendered instead of a hardcoded 8 (R-11), and material cells carrying v1\'s segmented progress-pie treatment, re-expressed as a v2-owned component (slices show progress, the number is what\'s left). Clicking a matrix cell opens the RecipientPicker prefilled with that recipient (R-4). Queue rows gain a "why" popover (R-6) with the plain-language reasons, warnings, and a score breakdown headlined by the enhanced-final score (legacy displayScore parity), an Adjusted tag and "Loot history adjustments active" line when history-based adjustments are in play (D-25 restore), and the empty-pool hint now suppresses the confidence pill instead of stacking both. Legacy V1 is untouched.',
+        pr: 226,
+        prTitle: 'feat(loot): Phase D slice D3 — v2 Need matrix + queue explanations',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.7',
     date: '2026-07-30T22:00:00Z',
     title: 'Phase D slice D2 — picker consequences + ranking explanations (v2 preview)',

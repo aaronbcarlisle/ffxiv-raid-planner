@@ -158,6 +158,13 @@ colour. **Kept anyway.** The colour answers "which floor drops this?" with no lo
 question the Matrix exists for — and because the slots already sit in floor order it reads as bands
 rather than confetti.
 
+⚠ *This paragraph's premise was false: the slots did **not** already sit in floor order. Legacy's
+`WhoNeedsItMatrix.tsx:57` `GEAR_SLOT_ORDER` and the mockup's `SLOTS` array are **anatomical** order
+(weapon, head, body, hands, legs, feet, ears, neck, wrists, ring), which mixes floors freely. v2's
+matrix rows instead **band F4→F1** (Weapon first, matching the Queues stack's newest-first order) —
+**user-ruled 2026-07-30 at the D3 build.** The banding is what makes the kept colours actually read
+as bands rather than confetti; without it R-9's own justification would have been false too.*
+
 ### R-10 · Default scope is **per view**; an explicit pick is **global** (refines R-2)
 
 Taken flat, "Queues opens on a floor, Matrix opens on All" would contradict R-2's one-scope-for-all-
@@ -221,6 +228,51 @@ a cleared floor gets out of the way of the others) left the landing view a nearl
 one card there is nothing to get out of the way *of*. Surfaced by the D1 browser-validation
 screenshot; user-ruled in session, implemented as FloorCard's `autoCollapse` prop (default true —
 the All stack keeps today's behaviour).
+
+### R-50 · D3 build rulings (ruled at D3 build, 2026-07-30/31)
+
+Four decisions made in the course of building D3, recorded here so the design record matches the
+shipped code (the matrix's PR body and the parity-matrix write-backs carried them; they had not yet
+been folded into this record).
+
+**1. D-25 lands in both the queue why-popover and the picker's ranked rows.** The headline score is
+the **enhanced final** — `entry.enhancedScore ?? entry.score`, the exact sort key `priorityEntries.ts`
+uses — never the pre-adjustment base. Adjustments restore **both** halves: the "Loot history
+adjustments active" line (gated on enhanced scoring being on AND a non-empty loot log) and a per-row
+**Adjusted** tag on any nonzero `lootAdjustmentBonus` / `playerModifier`.
+
+*Why:* the base score would let a lower-ranked row display a higher "Priority score" than the row
+above it — `ScoreBreakdown`'s component lines only sum to the enhanced total, so anything else never
+reconciled with its own breakdown's arithmetic (legacy parity: `LootPriorityPanel.tsx:53`'s
+`displayScore` is exactly this ternary).
+
+**2. The why popover shows reasons AND warnings; matrix cells stay minimal.** `QueueWhy` renders
+`RankingExplanation` with `showWarnings` on, same as the picker. Matrix cells keep their plain
+"Log X for Y" tooltip — no explanation layer.
+
+*Why:* R-6 rules warnings as the picker's layered extra, but a queue row ranking the same candidates
+the picker would should be able to answer "why" with the same completeness — hiding warnings there
+would make the queue's ranking less trustworthy than the picker's, for no reason. The matrix is a grid
+of yes/no cells meant to be scanned at a glance; an explanation essay per dot would defeat that.
+
+**3. D-36's hint suppresses the confidence pill when the hint renders; edit mode keeps the pill.**
+`RecipientPicker`'s confidence `Tag` is hidden exactly when the empty-pool hint ("No one needs this
+item for BiS…") is showing, which is create-mode-only.
+
+*Why:* the two are both header-level, single-line statements about the SAME empty pool — stacking
+them said the same thing twice in two registers. Edit mode never shows the hint (reassigning an
+existing drop isn't rolling a fresh one), so its pill has nothing to compete with there.
+
+**4. Matrix material cells keep v1's progress-pie treatment, re-expressed v2-owned.** User-ruled
+2026-07-31, reversing the interim D3 count-dot: `MaterialProgressRing` (`NeedMatrix.tsx`) restores the
+segmented-ring visual — bright slices for what's still owed, dim slices for what's already applied —
+via a CSS conic-gradient built from per-segment degree stops, not `MaterialPieIndicator`'s SVG
+stroke-dasharray circles (a different mechanism, required by the jscpd gate against the frozen
+`WhoNeedsItMatrix`).
+
+*Why:* the plain number-in-a-ring dot D3 shipped first dropped the progress signal legacy's pie
+carried — a player needing 1 of 3 twine slots and a player needing 1 of 1 read identically. "How much
+is left of how much total" is exactly what a lead scans the matrix for.
 
 ---
 

@@ -51,6 +51,22 @@ const baseProps = {
 
 beforeEach(() => {
   enhanceCalls.length = 0;
+  // jsdom has no matchMedia; FloorDropRow's Why trigger wraps a Tooltip, and
+  // Tooltip -> useDevice depends on it (canHover=false here short-circuits
+  // Tooltip to a plain passthrough, so it never needs a TooltipProvider).
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  );
 });
 
 describe('FloorCard', () => {
@@ -269,5 +285,62 @@ describe('FloorCard', () => {
     const glazeRow = screen.getByText('Glaze').closest('div.border-b') as HTMLElement;
     fireEvent.click(within(glazeRow).getByRole('button', { name: 'Assign' }));
     expect(onAssignMaterial).toHaveBeenCalledWith('glaze', player);
+  });
+});
+
+// D3 Task 5: gear queues swap to buildRecipientEntries (the picker's own
+// derivation) and gain a QueueWhy "why this order" trigger. This file mocks
+// priorityEntries (see the top of the file), so the mocked enhancePriorityEntries
+// is a passthrough — the ORDER-IDENTITY proof that the swap matches the legacy
+// pipeline lives in recipientRanking.test.ts (Task 4); these tests only cover
+// the button's presence/absence and that chips still flow through the swap.
+describe('FloorCard — D3 queue-row QueueWhy trigger (R-6)', () => {
+  it('renders a "Why this order…" button for a gear row with a non-empty queue, not for an empty one', () => {
+    // Alice needs Ears only (necklace/bracelet/ring already held) — Floor 1
+    // has no materials, so the two gear rows alone prove the selectivity.
+    // (GEAR_SLOT_NAMES: earring -> "Ears", necklace -> "Neck".)
+    const players = [makePlayer('a', 'Alice', { earringHas: false })];
+    render(<FloorCard {...baseProps} players={players} />);
+
+    const earringRow = screen.getByText('Ears').closest('div.border-b') as HTMLElement;
+    expect(within(earringRow).getByRole('button', { name: 'Why this order for Ears' })).toBeInTheDocument();
+
+    const necklaceRow = screen.getByText('Neck').closest('div.border-b') as HTMLElement;
+    expect(within(necklaceRow).queryByRole('button', { name: /Why this order/ })).not.toBeInTheDocument();
+  });
+
+  it('never renders a Why button on a material row', () => {
+    // Floor 2: unaugmented tome earring needs Glaze; head/hands/feet are all
+    // raid+hasItem so this player isn't also a gear-row needer.
+    const player: SnapshotPlayer = {
+      id: 'a', tierSnapshotId: 't1', name: 'Alice', job: 'PLD', role: 'tank',
+      configured: true, sortOrder: 0, isSubstitute: false,
+      gear: [
+        { slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false },
+        { slot: 'hands', bisSource: 'raid', hasItem: true, isAugmented: false },
+        { slot: 'feet', bisSource: 'raid', hasItem: true, isAugmented: false },
+        { slot: 'earring', bisSource: 'tome', hasItem: true, isAugmented: false },
+      ],
+      tomeWeapon: {}, weaponPriorities: [],
+    } as unknown as SnapshotPlayer;
+    render(<FloorCard {...baseProps} floorNumber={2} floorName="M10S" players={[player]} />);
+    const glazeRow = screen.getByText('Glaze').closest('div.border-b') as HTMLElement;
+    expect(within(glazeRow).queryByRole('button', { name: /Why this order/ })).not.toBeInTheDocument();
+  });
+
+  it('canEdit=false still renders the why button (transparency, not mutation)', () => {
+    const players = [makePlayer('a', 'Alice', { earringHas: false })];
+    render(<FloorCard {...baseProps} players={players} canEdit={false} />);
+    const earringRow = screen.getByText('Ears').closest('div.border-b') as HTMLElement;
+    expect(within(earringRow).getByRole('button', { name: 'Why this order for Ears' })).toBeInTheDocument();
+    expect(within(earringRow).queryByRole('button', { name: 'Assign' })).not.toBeInTheDocument();
+  });
+
+  it('queue chips still render name + rank through the derivation swap (smoke)', () => {
+    const players = [makePlayer('a', 'Alice', { earringHas: false })];
+    render(<FloorCard {...baseProps} players={players} />);
+    const earringRow = screen.getByText('Ears').closest('div.border-b') as HTMLElement;
+    expect(within(earringRow).getByText('Alice')).toBeInTheDocument();
+    expect(earringRow.textContent).toContain('#1');
   });
 });

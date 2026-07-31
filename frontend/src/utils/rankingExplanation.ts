@@ -1,8 +1,8 @@
 /**
  * Ranking explanation — Phase D R-6's v2-owned derivation (D-29's
- * reasons/warnings/confidence layer; D-25's score breakdown is NOT carried
- * here — RecipientEntry has no breakdown, and where D-25 lands is an open
- * ruling).
+ * reasons/warnings/confidence layer; D-25's score breakdown lives in the
+ * sibling `ScoreBreakdown` leaf (D3) — this module stays reasons/warnings/
+ * confidence).
  *
  * One caution layer for every surface that shows a ranking (picker candidates
  * now; D3 wires queue rows + matrix cells). The ranking ORDER and per-row

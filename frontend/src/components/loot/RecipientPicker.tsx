@@ -48,6 +48,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Package } from 'lucide-react';
 import { Modal, Select, Checkbox, NumberInput, RadioGroup, TextArea, Input, SegmentedToggle, Tag, LinkText } from '../ui';
 import { Button } from '../primitives';
+import { Tooltip } from '../primitives/Tooltip';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { getPrimaryRegistration } from '../../utils/staticCharacterContextService';
 import { logLootAndUpdateGear, updateLootAndSyncGear } from '../../utils/lootCoordination';
@@ -56,6 +57,7 @@ import { isPriorityDisabled } from '../../utils/priority';
 import { buildRecipientEntries, type PickerScope, type NeedTag } from '../../utils/recipientRanking';
 import { explainCandidate, deriveRankingConfidence, type RankingConfidence } from '../../utils/rankingExplanation';
 import { RankingExplanation } from './RankingExplanation';
+import { ScoreBreakdown, hasAdjustments } from './ScoreBreakdown';
 import { FLOOR_LOOT_TABLES, type FloorNumber } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
 import type { SnapshotPlayer, StaticSettings, LootLogEntry, LootLogEntryUpdate, LootMethod, GearSlot } from '../../types';
@@ -239,7 +241,17 @@ export function RecipientPicker({
   const label = mode !== 'assign' ? slotToLabel(slot) : (item?.label ?? slotToLabel(slot));
   const isWeapon = slot === 'weapon';
 
-  const enhancedActive = settings.enableEnhancedScoring === true && !isPriorityDisabled(settings);
+  // Review fix round 1, Finding 1: fold in `lootLog.length > 0` here rather
+  // than leaving it to recipientRanking.ts:80's internal re-gate (`active:
+  // enhancedActive && lootLog.length > 0`) — every OTHER reader of this const
+  // only ever feeds it into buildRecipientEntries, which already re-gates
+  // identically (so this change is behavior-neutral there); the "Loot
+  // history adjustments active" line below reads this const DIRECTLY with no
+  // such re-gate, so without folding it in here, enhanced-ON + an empty log
+  // announced drought/balance shaping a ranking that was, in fact, pure base
+  // score (v1 parity: LootPriorityPanel.tsx:404-408's `isEnhancedScoringActive`
+  // requires a non-empty log too).
+  const enhancedActive = settings.enableEnhancedScoring === true && !isPriorityDisabled(settings) && lootLog.length > 0;
 
   const entries = useMemo(
     () => buildRecipientEntries({ players, slot, scope, settings, lootLog, currentWeek, enhancedActive }),
@@ -693,10 +705,19 @@ export function RecipientPicker({
         {/* List */}
         <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-bold uppercase tracking-wider text-text-tertiary">{listLabel}</span>
-          {scope === 'priority' && (
+          {/* D3 ruling: the D-36 hint owns the empty-pool message when it
+              renders; suppressing the pill only then (in edit mode the hint
+              is gated off, so the pill stays). */}
+          {scope === 'priority' && !(mode !== 'edit' && noOneNeeds) && (
             <Tag variant="label" tone={CONFIDENCE_TONE[confidence]}>{CONFIDENCE_LABEL[confidence]}</Tag>
           )}
         </div>
+        {/* M-1 restore-both: the v1 badge's semantics (LootPriorityPanel.tsx:588-591)
+            — announces that drought/balance loot-history adjustments are shaping
+            this ranking, not just individual row deltas. */}
+        {scope === 'priority' && enhancedActive && (
+          <span className="text-xs text-text-tertiary">Loot history adjustments active</span>
+        )}
         <div role="radiogroup" aria-label="Recipient" className="space-y-1">
           {filtered.length === 0 ? (
             <p className="text-sm text-text-muted">No players match.</p>
@@ -727,13 +748,37 @@ export function RecipientPicker({
                   }`}
                 >
                   {entry.rank !== null && (
-                    <span
-                      className={`w-6 flex-none text-center font-display text-sm font-extrabold ${
-                        entry.rank <= 2 ? 'text-accent' : 'text-text-muted'
-                      }`}
-                    >
-                      #{entry.rank}
-                    </span>
+                    entry.breakdown ? (
+                      // D-25 restore (D3): hover-only, like the legacy tooltip
+                      // (a11y-ledger item, disclosed) — the breakdown CONTENT
+                      // is exercised directly in ScoreBreakdown.test.tsx.
+                      <Tooltip
+                        content={
+                          <ScoreBreakdown
+                            breakdown={entry.breakdown}
+                            score={entry.score}
+                            droughtBonus={entry.droughtBonus}
+                            balancePenalty={entry.balancePenalty}
+                          />
+                        }
+                      >
+                        <span
+                          className={`w-6 flex-none text-center font-display text-sm font-extrabold ${
+                            entry.rank <= 2 ? 'text-accent' : 'text-text-muted'
+                          }`}
+                        >
+                          #{entry.rank}
+                        </span>
+                      </Tooltip>
+                    ) : (
+                      <span
+                        className={`w-6 flex-none text-center font-display text-sm font-extrabold ${
+                          entry.rank <= 2 ? 'text-accent' : 'text-text-muted'
+                        }`}
+                      >
+                        #{entry.rank}
+                      </span>
+                    )
                   )}
                   <span
                     aria-hidden
@@ -760,6 +805,9 @@ export function RecipientPicker({
                     />
                   </span>
                   <Tag variant="label" tone={TAG_TONE[entry.needTag]}>{TAG_LABEL[entry.needTag]}</Tag>
+                  {entry.breakdown && hasAdjustments(entry.breakdown) && (
+                    <Tag variant="label" tone="accent">Adjusted</Tag>
+                  )}
                   <span
                     aria-hidden
                     className={`h-4 w-4 flex-none rounded-full border-2 ${

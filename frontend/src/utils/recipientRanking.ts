@@ -9,7 +9,7 @@
  */
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry } from '../types';
 import { GEAR_SLOT_NAMES } from '../types';
-import { getPriorityForItem, getPriorityForRing } from './priority';
+import { getPriorityForItem, getPriorityForRing, type PriorityScoreBreakdown } from './priority'; // type-only import of a frozen file — allowed
 import { calculatePlayerLootStats, calculateAverageDrops } from './lootCoordination';
 import { enhancePriorityEntries } from './priorityEntries';
 
@@ -22,6 +22,11 @@ export interface RecipientEntry {
   needsItem: boolean;
   reason: string;
   needTag: NeedTag;
+  /** D-25 score transparency (D3 restore) — present on priority-ranked needers only. */
+  score?: number;
+  breakdown?: PriorityScoreBreakdown;
+  droughtBonus?: number;
+  balancePenalty?: number;
 }
 
 function slotLabel(slot: GearSlot | 'ring'): string {
@@ -83,6 +88,17 @@ export function buildRecipientEntries(args: {
   const needers: RecipientEntry[] = ranked.map((entry, i) => ({
     player: entry.player, rank: i + 1, needsItem: true, needTag: 'bis' as const,
     reason: `${label} is BiS · ${dropsPhrase(entry.player.id, lootLog, currentWeek)}`,
+    // Review fix round 1, Finding 2: the headline score must be the enhanced
+    // final (drought + balance folded in) — the exact sort key
+    // priorityEntries.ts:67-68 uses — not the pre-adjustment base. Legacy
+    // parity: LootPriorityPanel.tsx:53's displayScore is
+    // `hasEnhanced ? enhancedScore : score`. The base score would let a
+    // lower-ranked row display a higher "Priority score" than the row above
+    // it, and ScoreBreakdown's component lines only sum to the ENHANCED
+    // total (they include the drought/balance lines), so the base headline
+    // never reconciled with its own breakdown's arithmetic.
+    score: entry.enhancedScore ?? entry.score, breakdown: entry.breakdown,
+    droughtBonus: entry.droughtBonus, balancePenalty: entry.balancePenalty,
   }));
   if (scope === 'priority') return needers;
 

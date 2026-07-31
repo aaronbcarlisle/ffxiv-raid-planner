@@ -959,3 +959,99 @@ describe('RecipientPicker — R-6 explanation + confidence in the picker', () =>
     expect(screen.getByText('Already received Head in Week 1')).toBeInTheDocument();
   });
 });
+
+describe('RecipientPicker — D3 D-25 restore: pill suppression, Adjusted tag, adjustments-active line', () => {
+  function gearedPlayers(): SnapshotPlayer[] {
+    const gearedCaster = makePlayer('c1', 'Caster One', 'BLM');
+    gearedCaster.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    const gearedMelee = makePlayer('m1', 'Melee One', 'SAM');
+    gearedMelee.gear = [
+      { slot: 'earring', bisSource: 'raid', hasItem: true, isAugmented: true },
+    ] as SnapshotPlayer['gear'];
+    return [gearedCaster, gearedMelee];
+  }
+
+  // Kickoff ruling 3 (corrected by director m-1): suppress the confidence
+  // pill ONLY when the D-36 hint actually renders — the hint's own gate is
+  // `mode !== 'edit' && noOneNeeds` (RecipientPicker.tsx:616), so the two
+  // must mirror exactly. Both cases force scope to 'priority' (the A11
+  // fallback + edit mode's unconditional `setScope('all')` would otherwise
+  // hide the pill on its OWN scope gate, masking whether the suppression
+  // predicate is doing anything).
+  it('assign mode with empty needers: the hint renders and the confidence pill is suppressed', () => {
+    render(
+      <RecipientPicker {...baseProps} players={gearedPlayers()} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.getByText(/No one needs this item for BiS/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'By priority' }));
+    expect(screen.queryByText(/confidence/)).not.toBeInTheDocument();
+  });
+
+  it('edit mode with empty needers: the hint does not render (its own mode gate) and the confidence pill DOES render (Low)', () => {
+    const entry = makeEntry({ floor: 'M9S', itemSlot: 'earring', recipientPlayerId: 'c1', method: 'drop', notes: '' });
+    render(<RecipientPicker {...baseProps} players={gearedPlayers()} mode="edit" editEntry={entry} />);
+    expect(screen.queryByText(/No one needs this item/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'By priority' }));
+    expect(screen.getByText('Low confidence')).toBeInTheDocument();
+  });
+
+  it('needers present: the confidence pill renders (regression)', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.getByText(/confidence/)).toBeInTheDocument();
+  });
+
+  it('Adjusted tag renders for a needer with a nonzero priorityModifier, not for a clean player', () => {
+    const adjustedPlayer = makePlayer('c1', 'Caster One', 'BLM');
+    adjustedPlayer.priorityModifier = 20;
+    const cleanPlayer = makePlayer('m1', 'Melee One', 'SAM');
+    render(
+      <RecipientPicker {...baseProps} players={[adjustedPlayer, cleanPlayer]} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    const casterRow = screen.getByText('Caster One').closest('[role="radio"]') as HTMLElement;
+    expect(within(casterRow).getByText('Adjusted')).toBeInTheDocument();
+    const meleeRow = screen.getByText('Melee One').closest('[role="radio"]') as HTMLElement;
+    expect(within(meleeRow).queryByText('Adjusted')).not.toBeInTheDocument();
+  });
+
+  // M-1 restore-both: the v1 badge's semantics (LootPriorityPanel.tsx:588-591)
+  // carried over to the list header — announces drought/balance loot-history
+  // adjustments are shaping the ranking, gated on the same `enhancedActive`
+  // the ranking itself uses.
+  it('shows "Loot history adjustments active" when enhanced scoring is ON with a non-empty log; not when OFF', () => {
+    const entry = makeEntry({ recipientPlayerId: 'c1', itemSlot: 'earring', method: 'drop', weekNumber: 1 });
+    const enhancedSettings = { ...DEFAULT_SETTINGS, enableEnhancedScoring: true };
+    const { rerender } = render(
+      <RecipientPicker {...baseProps} settings={enhancedSettings} lootLog={[entry]} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.getByText('Loot history adjustments active')).toBeInTheDocument();
+
+    rerender(
+      <RecipientPicker {...baseProps} settings={{ ...DEFAULT_SETTINGS, enableEnhancedScoring: false }} lootLog={[entry]} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.queryByText('Loot history adjustments active')).not.toBeInTheDocument();
+  });
+
+  // Review fix round 1, Finding 1: enhanced scoring ON with an EMPTY loot log
+  // must not announce adjustments — RecipientPicker.tsx:244's `enhancedActive`
+  // now folds in `lootLog.length > 0` (the ranking itself already re-gated on
+  // this internally, recipientRanking.ts:85; this line hadn't). Without the
+  // fold, this was a reachable lie: the header claimed drought/balance were
+  // shaping a ranking that was, in fact, pure base score.
+  it('does not show "Loot history adjustments active" when enhanced scoring is ON but the loot log is empty', () => {
+    const enhancedSettings = { ...DEFAULT_SETTINGS, enableEnhancedScoring: true };
+    render(
+      <RecipientPicker {...baseProps} settings={enhancedSettings} lootLog={[]} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.queryByText('Loot history adjustments active')).not.toBeInTheDocument();
+  });
+});
