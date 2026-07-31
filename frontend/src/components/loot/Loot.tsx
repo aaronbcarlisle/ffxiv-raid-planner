@@ -41,10 +41,11 @@
  *     deep-link therefore always shows everything (filters default to all/all/all),
  *     so an `?entry=` deep-link can never be hidden by a filter on first mount;
  *     only a mid-session filter change can hide a row, which is acceptable.
- *   - The Priority sub-view (Queues⇄Weapons; Matrix lands in D3) persists per
- *     user under `v2-loot-priority-view` (R-1) — NOT URL-backed. The floor
- *     scope (R-2/R-10) is session-only state: per-view default until the first
- *     explicit pill click, global after it.
+ *   - The Priority sub-view (Queues⇄Matrix⇄Weapons) persists per user under
+ *     `v2-loot-priority-view` (R-1) — NOT URL-backed. Matrix is the landing
+ *     view (R-1); an unset/unrecognized stored value lands there too. The
+ *     floor scope (R-2/R-10) is session-only state: per-view default until
+ *     the first explicit pill click, global after it (R-10.2/R-10.3).
  *   - The book-row highlight (legacy `highlightedBookPlayerId`) is URL-backed in
  *     v2: the roster kebab's "Edit Books" jump (C7, D-05) writes `?book={playerId}`
  *     and `BookLedgerCard` owns the scroll + pulse + self-clear, exactly as
@@ -64,6 +65,7 @@ import { PageHeader } from '../layout/PageHeader';
 import { LootToolbar } from './LootToolbar';
 import { WeekScopeControl } from './WeekScopeControl';
 import { FloorCard } from './FloorCard';
+import { NeedMatrix } from './NeedMatrix';
 import { WeaponPriorityBridge } from './WeaponPriorityBridge';
 import { RecipientPicker, type DropItemContext } from './RecipientPicker';
 import { LootAdjustmentsModal, type AdjustmentUpdate } from './LootAdjustmentsModal';
@@ -100,7 +102,9 @@ import { getTierById } from '../../gamedata/raid-tiers';
 import { getEffectivePriorityMode } from '../../utils/priority';
 import { DEFAULT_HISTORY_FILTERS, historyWeeks, buildHistoryItems } from '../../utils/historyItems';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
-import { type FloorNumber, UPGRADE_MATERIAL_DISPLAY_NAMES } from '../../gamedata/loot-tables';
+import {
+  type FloorNumber, UPGRADE_MATERIAL_DISPLAY_NAMES, getFloorForUpgradeMaterial,
+} from '../../gamedata/loot-tables';
 import type {
   PageMode, SnapshotPlayer, StaticGroup, TierSnapshot, MaterialType, GearSlot, LootLogEntry,
 } from '../../types';
@@ -111,9 +115,9 @@ const logger = baseLogger.scope('loot');
 const EMPTY_PLAYERS: SnapshotPlayer[] = [];
 
 // ── Priority sub-view (R-1/R-3) ──
-// 'matrix' joins in D3 and becomes the landing view (R-1); until then a stored
-// 'matrix' value falls back to 'queues' rather than rendering a dead segment.
-type PriorityView = 'queues' | 'weapons';
+// Matrix is the landing view (R-1) — the whole-tier read is its purpose.
+// Queues/Weapons persist only once the user states an explicit choice.
+type PriorityView = 'queues' | 'matrix' | 'weapons';
 
 // R-1: the choice "persists per user" → localStorage. Fresh v2 key, no legacy
 // fallback read (plan §2.3 — legacy's `loot-priority-subtab` values don't map).
@@ -126,11 +130,14 @@ const FLOOR_SCOPE_KEY = 'v2-loot-floor-scope';
 // Storage access is guarded: Safari private mode and blocked-storage embeds
 // throw from the accessor itself, and a useState initializer that throws takes
 // the whole screen down (review finding). Degrade to the default instead.
+// R-1: Matrix is the landing view — unset/unknown lands there. 'queues' /
+// 'weapons' persist a user's explicit choice (D1 wrote only on user action).
 function readStoredPriorityView(): PriorityView {
   try {
-    return localStorage.getItem(PRIORITY_VIEW_KEY) === 'weapons' ? 'weapons' : 'queues';
+    const v = localStorage.getItem(PRIORITY_VIEW_KEY);
+    return v === 'weapons' || v === 'queues' ? v : 'matrix';
   } catch {
-    return 'queues';
+    return 'matrix';
   }
 }
 
@@ -179,7 +186,7 @@ export interface LootProps {
 // its `editEntry` — mirrors the RecipientPickerProps union (PR review finding:
 // assign-mode item required; edit-mode editEntry required).
 type PickerState =
-  | { mode: 'assign'; item: DropItemContext }
+  | { mode: 'assign'; item: DropItemContext; initialRecipientId?: string }
   | { mode: 'log' }
   | { mode: 'edit'; editEntry: LootLogEntry }
   | null;
@@ -254,7 +261,11 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     () => newestInProgressFloor({ lootLog, materialLog, pageLedger, floors }),
     [lootLog, materialLog, pageLedger, floors],
   );
-  const floorScope: FloorScope = pickedScope ?? landingScope ?? preSettleScope;
+  const queuesLanding = landingScope ?? preSettleScope;
+  // R-10.2: until the user states a scope, each view opens at its own default —
+  // Matrix → All (the whole-tier read is its purpose), Queues → the newest
+  // in-progress floor. The first pill click (pickedScope) is global — R-10.3.
+  const floorScope: FloorScope = pickedScope ?? (priorityView === 'matrix' ? 'all' : queuesLanding);
   // R-7: the floor the "Log floor" button acts on. Weapons is pinned to the
   // final floor (R-5 states it); on All the button steps aside for the
   // toolbar's whole-week wizard.
@@ -510,6 +521,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             onChange={changePriorityView}
             options={[
               { value: 'queues', label: 'Queues' },
+              { value: 'matrix', label: 'Matrix' },
               { value: 'weapons', label: 'Weapons' },
             ]}
           />
@@ -599,6 +611,26 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             onDelete={requestDelete}
           />
         </div>
+      ) : priorityView === 'matrix' ? (
+        <NeedMatrix
+          players={mainRosterPlayers}
+          floorScope={floorScope}
+          materialLog={materialLog}
+          settings={settings}
+          canEdit={canEdit}
+          onLogGear={(item, playerId) =>
+            setPickerState({
+              mode: 'assign',
+              item: { ...item, floorName: floors[item.floorNumber - 1] ?? `Floor ${item.floorNumber}` },
+              initialRecipientId: playerId,
+            })
+          }
+          onLogMaterial={(material, player) => {
+            // The matrix has no per-floor card context — derive the material's home floor.
+            const f = getFloorForUpgradeMaterial(material)[0];
+            setMaterialState({ material, floorName: floors[f - 1] ?? `Floor ${f}`, suggested: player });
+          }}
+        />
       ) : priorityView === 'weapons' ? (
         // R-3: Weapons is a peer switcher segment — the bridge IS the view body
         // now, not a Floor-4 card footer.
@@ -653,6 +685,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           onClose={() => setPickerState(null)}
           mode="assign"
           item={pickerState.item}
+          initialRecipientId={pickerState.initialRecipientId}
           {...pickerCommonProps}
         />
       ) : pickerState?.mode === 'edit' ? (

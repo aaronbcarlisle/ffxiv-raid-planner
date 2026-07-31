@@ -24,7 +24,6 @@ import type { SnapshotPlayer, StaticSettings, MaterialLogEntry, GearSlot } from 
 export interface NeedMatrixProps {
   /** Main roster (configured, non-substitute) — any order; sorted by position inside. */
   players: SnapshotPlayer[];
-  floors: string[];
   floorScope: FloorScope;
   materialLog: MaterialLogEntry[];
   settings: StaticSettings;

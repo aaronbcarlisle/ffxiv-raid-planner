@@ -22,7 +22,6 @@ beforeEach(() => {
   }));
 });
 
-const FLOORS = ['M9S', 'M10S', 'M11S', 'M12S'];
 const settings = { ...DEFAULT_SETTINGS };
 
 // T1 tank — needs Ring only.
@@ -78,7 +77,6 @@ function renderMatrix(overrides: Partial<React.ComponentProps<typeof NeedMatrix>
     <TooltipProvider>
       <NeedMatrix
         players={players}
-        floors={FLOORS}
         floorScope="all"
         materialLog={[]}
         settings={settings}
@@ -140,6 +138,12 @@ describe('NeedMatrix', () => {
     expect(screen.getByText('Universal Tomestone')).toBeInTheDocument();
     expect(screen.queryByText('Twine')).not.toBeInTheDocument();
     expect(screen.queryByText('Solvent')).not.toBeInTheDocument();
+  });
+
+  it('floorScope 1: no upgrade materials drop there, so the "Materials" separator header does not render', () => {
+    renderMatrix({ floorScope: 1 });
+    expect(screen.getByText('Ring')).toBeInTheDocument();
+    expect(screen.queryByText('Materials')).not.toBeInTheDocument();
   });
 
   it('"all" scope renders every gear row (all ten slots)', () => {
