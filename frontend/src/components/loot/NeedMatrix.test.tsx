@@ -55,7 +55,9 @@ const h1: SnapshotPlayer = {
   tomeWeapon: {}, weaponPriorities: [],
 } as unknown as SnapshotPlayer;
 
-// M1 melee — needs Ring + Weapon, and 2 twine via two unaugmented "Aug." tome slots.
+// M1 melee — needs Ring + Weapon, and progresses 2 of 3 twine slots (body +
+// legs unaugmented — still owed; feet already augmented — the "done" slice
+// that counts toward total but not needed).
 const m1: SnapshotPlayer = {
   id: 'm1-id', tierSnapshotId: 'ts1', name: 'Meleey', job: 'DRG', role: 'melee', position: 'M1',
   configured: true, sortOrder: 0, isSubstitute: false,
@@ -65,6 +67,7 @@ const m1: SnapshotPlayer = {
     { slot: 'ring2', bisSource: 'raid', hasItem: true, isAugmented: false },
     { slot: 'body', bisSource: 'tome', hasItem: true, isAugmented: false, itemName: 'Aug. Body Piece' },
     { slot: 'legs', bisSource: 'tome', hasItem: true, isAugmented: false, itemName: 'Aug. Legs Piece' },
+    { slot: 'feet', bisSource: 'tome', hasItem: true, isAugmented: true, itemName: 'Aug. Feet Piece' },
   ],
   tomeWeapon: {}, weaponPriorities: [],
 } as unknown as SnapshotPlayer;
@@ -152,7 +155,7 @@ describe('NeedMatrix', () => {
     labels.forEach((label) => expect(screen.getByText(label)).toBeInTheDocument());
   });
 
-  it('material cell shows the per-player count and fires onLogMaterial; Need cell shows the bare total', () => {
+  it('material cell shows the needed count (progress ring center), carries a "needs N of M" aria-label, and fires onLogMaterial; Need cell shows the bare total', () => {
     const onLogMaterial = vi.fn();
     renderMatrix({ canEdit: true, onLogMaterial });
     const twineRow = screen.getByText('Twine').closest('tr') as HTMLElement;
@@ -160,12 +163,33 @@ describe('NeedMatrix', () => {
     // Sorted order is T1, H1, M1 — M1's cell is the 3rd player column (index 2).
     const m1Cell = cells[2];
     const needCell = cells[cells.length - 1];
+    // M1 needs 2 of 3 twine slots (feet already augmented — the "done" slice).
     expect(within(m1Cell as HTMLElement).getByText('2')).toBeInTheDocument();
-    const btn = within(m1Cell as HTMLElement).getByRole('button', { name: `Log Twine for ${m1.name}` });
+    const btn = within(m1Cell as HTMLElement).getByRole(
+      'button', { name: `Log Twine for ${m1.name} — needs 2 of 3` },
+    );
     fireEvent.click(btn);
     expect(onLogMaterial).toHaveBeenCalledWith('twine', expect.objectContaining({ id: m1.id }));
-    // Bare total, no "/3" denominator (R-11's internal-consistency note).
+    // Bare total (sum of needed across players), no "/3" denominator (R-11's internal-consistency note).
     expect(needCell.textContent).toBe('2');
+  });
+
+  it('material cell aria-label carries "needs N of M" progress when total > 1, and omits "of" when total is 1', () => {
+    renderMatrix({ canEdit: false });
+    // m1 needs 2 of 3 twine slots — sr-only text carries the "of 3".
+    expect(screen.getByText(`${m1.name} needs 2 of 3 Twine`)).toBeInTheDocument();
+
+    // A solo fixture with total === 1 (pursuing a tome weapon, not yet acquired)
+    // exercises the "of" omission the shared fixture can't reach.
+    const solo: SnapshotPlayer = {
+      id: 'solo-id', tierSnapshotId: 'ts1', name: 'Solo', job: 'BLM', role: 'caster', position: 'R1',
+      configured: true, sortOrder: 0, isSubstitute: false,
+      gear: [],
+      tomeWeapon: { pursuing: true, hasItem: false }, weaponPriorities: [],
+    } as unknown as SnapshotPlayer;
+    renderMatrix({ players: [solo], canEdit: false });
+    expect(screen.getByText('Solo needs 1 Universal Tomestone')).toBeInTheDocument();
+    expect(screen.queryByText(/needs 1 of/)).not.toBeInTheDocument();
   });
 
   it('renders a no-players message and no table when the roster is empty', () => {

@@ -23,6 +23,12 @@
  *
  * Rows band by floor F4→F1 (Weapon first, matching the Queues stack's
  * newest-first order) — user-ruled 2026-07-30 at D3 build.
+ *
+ * materialNeedProgress() additionally exposes `total` (the actionable-slot
+ * count, augmentation-state-agnostic) alongside `needed`, so NeedMatrix can
+ * render v1's material progress-pie treatment (MaterialPieIndicator),
+ * re-expressed as v2-owned data — user-ruled 2026-07-31, reversing the
+ * interim D3 count-dot.
  */
 
 import {
@@ -102,12 +108,44 @@ export function materialNeedCount(
   return Math.max(0, need - received);
 }
 
+export interface MaterialNeedProgress {
+  total: number;
+  needed: number;
+}
+
+/**
+ * A player's progress toward one material: `needed` (pool-faithful, log-
+ * subtracted — the exact materialNeedCount value, reused not duplicated) and
+ * `total` (the actionable-slot count REGARDLESS of augmentation state — an
+ * augmented slot still counts, it's the "done" slice of the ring). Restores
+ * v1's material progress-pie treatment (WhoNeedsItMatrix's MaterialPieIndicator)
+ * re-expressed as v2-owned data — user-ruled 2026-07-31, reversing the interim
+ * D3 count-dot. Invariant, asserted in tests: needed ≤ total, and
+ * needed > 0 ⟹ total > 0.
+ */
+export function materialNeedProgress(
+  player: SnapshotPlayer, material: UpgradeMaterialType, materialLog: MaterialLogEntry[],
+): MaterialNeedProgress {
+  const needed = materialNeedCount(player, material, materialLog);
+  if (material === 'universal_tomestone') {
+    return { total: player.tomeWeapon?.pursuing ? 1 : 0, needed };
+  }
+  let total = player.gear.filter(
+    (g) => UPGRADE_MATERIAL_SLOTS[material].includes(g.slot)
+      && g.bisSource === 'tome' && g.hasItem && requiresAugmentation(g),
+  ).length;
+  if (material === 'solvent' && player.tomeWeapon?.pursuing && player.tomeWeapon?.hasItem) {
+    total++;
+  }
+  return { total, needed };
+}
+
 export interface MaterialMatrixRow {
   kind: 'material';
   material: UpgradeMaterialType;
   label: string;
   floorNumbers: FloorNumber[];
-  counts: Map<string, number>;
+  counts: Map<string, MaterialNeedProgress>;
   totalNeeded: number;
 }
 
@@ -115,10 +153,10 @@ export function buildMaterialMatrixRows(
   players: SnapshotPlayer[], materialLog: MaterialLogEntry[],
 ): MaterialMatrixRow[] {
   return MATERIAL_ORDER.map((material) => {
-    const counts = new Map<string, number>();
+    const counts = new Map<string, MaterialNeedProgress>();
     for (const p of players) {
-      const n = materialNeedCount(p, material, materialLog);
-      if (n > 0) counts.set(p.id, n);
+      const progress = materialNeedProgress(p, material, materialLog);
+      if (progress.needed > 0) counts.set(p.id, progress);
     }
     return {
       kind: 'material' as const,
@@ -126,7 +164,7 @@ export function buildMaterialMatrixRows(
       label: UPGRADE_MATERIAL_DISPLAY_NAMES[material],
       floorNumbers: getFloorForUpgradeMaterial(material),
       counts,
-      totalNeeded: [...counts.values()].reduce((a, b) => a + b, 0),
+      totalNeeded: [...counts.values()].reduce((a, b) => a + b.needed, 0),
     };
   });
 }

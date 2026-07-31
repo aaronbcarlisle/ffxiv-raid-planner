@@ -44,14 +44,38 @@ function NeedDot({ roleVar: color }: { roleVar: string }) {
   );
 }
 
-/** The material needer dot: same ring shape as NeedDot, but the center is a count instead of a filled circle. */
-function MaterialCountDot({ roleVar: color, count }: { roleVar: string; count: number }) {
+/**
+ * The material progress ring: `total` segments around a donut, the first
+ * `needed` bright (role colour, still owed) and the rest dim (same colour,
+ * low opacity — already applied). Restores v1's material progress-pie
+ * treatment (WhoNeedsItMatrix's MaterialPieIndicator), re-expressed with a
+ * DIFFERENT mechanism — a CSS conic-gradient built from per-segment degree
+ * stops, no SVG and no stroke-dasharray/stroke-dashoffset math (jscpd gate:
+ * same idea, no shared code). `total === 1` collapses to a single full-ring
+ * segment. The center count is a plain overlaid span, never SVG <text> or a
+ * colour fill behind it — the contrast rule: role colour is never a fill
+ * behind text.
+ */
+function MaterialProgressRing({ roleVar: color, total, needed }: { roleVar: string; total: number; needed: number }) {
+  const segments = Math.max(total, 1);
+  const segDeg = 360 / segments;
+  const gapDeg = segments > 1 ? 8 : 0;
+  const stops: string[] = [];
+  for (let i = 0; i < segments; i++) {
+    const bright = i < needed;
+    const segColor = bright ? color : `color-mix(in srgb, ${color} 28%, transparent)`;
+    const segStart = i * segDeg + gapDeg / 2;
+    const segEnd = (i + 1) * segDeg - gapDeg / 2;
+    stops.push(`transparent ${i * segDeg}deg ${segStart}deg`, `${segColor} ${segStart}deg ${segEnd}deg`, `transparent ${segEnd}deg ${(i + 1) * segDeg}deg`);
+  }
   return (
     <span
-      className="grid h-6 w-6 place-items-center rounded-full border-2 bg-surface-interactive text-xs font-bold text-text-primary"
-      style={{ borderColor: color }}
+      aria-hidden
+      className="relative grid h-6 w-6 place-items-center rounded-full"
+      style={{ background: `conic-gradient(${stops.join(', ')})` }}
     >
-      {count}
+      <span className="absolute inset-1 rounded-full bg-surface-interactive" />
+      <span className="relative text-xs font-bold text-text-primary">{needed}</span>
     </span>
   );
 }
@@ -193,25 +217,32 @@ export function NeedMatrix(props: NeedMatrixProps) {
                     </div>
                   </th>
                   {sorted.map((player) => {
-                    const count = row.counts.get(player.id) ?? 0;
+                    const progress = row.counts.get(player.id);
+                    if (!progress) {
+                      return (
+                        <td key={player.id} className="px-2 py-2 text-center">
+                          <EmptyDot />
+                        </td>
+                      );
+                    }
+                    const { needed, total } = progress;
+                    const progressSuffix = total > 1 ? ` of ${total}` : '';
                     return (
                       <td key={player.id} className="px-2 py-2 text-center">
-                        {count === 0 ? (
-                          <EmptyDot />
-                        ) : canEdit ? (
-                          <Tooltip content={`Log ${row.label} for ${player.name}`}>
+                        {canEdit ? (
+                          <Tooltip content={`Log ${row.label} for ${player.name} — needs ${needed}${progressSuffix}`}>
                             <IconButton
                               variant="ghost"
                               size="sm"
-                              aria-label={`Log ${row.label} for ${player.name}`}
-                              icon={<MaterialCountDot roleVar={roleVar(player)} count={count} />}
+                              aria-label={`Log ${row.label} for ${player.name} — needs ${needed}${progressSuffix}`}
+                              icon={<MaterialProgressRing roleVar={roleVar(player)} total={total} needed={needed} />}
                               onClick={() => onLogMaterial(row.material, player)}
                             />
                           </Tooltip>
                         ) : (
                           <>
-                            <MaterialCountDot roleVar={roleVar(player)} count={count} />
-                            <span className="sr-only">{player.name} needs {row.label}</span>
+                            <MaterialProgressRing roleVar={roleVar(player)} total={total} needed={needed} />
+                            <span className="sr-only">{player.name} needs {needed}{progressSuffix} {row.label}</span>
                           </>
                         )}
                       </td>
@@ -245,8 +276,8 @@ export function NeedMatrix(props: NeedMatrixProps) {
           Has it, or not in their BiS
         </span>
         <span className="flex items-center gap-1.5">
-          <MaterialCountDot roleVar="var(--color-role-tank)" count={2} />
-          Material — number is how many
+          <MaterialProgressRing roleVar="var(--color-role-tank)" total={3} needed={1} />
+          Material — slices show progress; the number is how many left
         </span>
         <span className="flex items-center gap-1.5">
           <Tag variant="label" tone="success">FREE</Tag>

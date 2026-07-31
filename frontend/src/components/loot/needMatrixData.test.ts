@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  sortByPosition, buildGearMatrixRows, buildMaterialMatrixRows, materialNeedCount,
+  sortByPosition, buildGearMatrixRows, buildMaterialMatrixRows, materialNeedCount, materialNeedProgress,
 } from './needMatrixData';
 import {
   getPriorityForItem, getPriorityForRing, getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone,
@@ -261,10 +261,10 @@ describe('buildMaterialMatrixRows', () => {
     expect(rows.map((r) => r.material)).toEqual(['twine', 'glaze', 'solvent', 'universal_tomestone']);
   });
 
-  it('counts map holds only >0 entries and totalNeeded is the sum', () => {
+  it('counts map holds only >0 entries (MaterialNeedProgress values) and totalNeeded is the sum of needed', () => {
     const rows = buildMaterialMatrixRows(players, []);
     const twineRow = rows.find((r) => r.material === 'twine')!;
-    expect([...twineRow.counts.entries()]).toEqual([['a', 1]]);
+    expect([...twineRow.counts.entries()]).toEqual([['a', { total: 1, needed: 1 }]]);
     expect(twineRow.totalNeeded).toBe(1);
 
     const solventRow = rows.find((r) => r.material === 'solvent')!;
@@ -276,6 +276,79 @@ describe('buildMaterialMatrixRows', () => {
     const rows = buildMaterialMatrixRows(players, []);
     for (const row of rows) {
       expect(row.floorNumbers).toEqual(getFloorForUpgradeMaterial(row.material));
+    }
+  });
+});
+
+describe('materialNeedProgress — total is augmentation-agnostic, needed is pool-faithful', () => {
+  it('twine: an augmented slot counts toward total but NOT needed (it is the "done" slice)', () => {
+    const p = makePlayer('p', 'P', {
+      gear: { body: { bisSource: 'tome', hasItem: true, isAugmented: true, itemName: 'Aug. Chest of X' } },
+    });
+    expect(materialNeedProgress(p, 'twine', [])).toEqual({ total: 1, needed: 0 });
+  });
+
+  it('twine: an unaugmented slot counts toward both total and needed', () => {
+    const p = makePlayer('p', 'P', {
+      gear: { body: { bisSource: 'tome', hasItem: true, isAugmented: false, itemName: 'Aug. Chest of X' } },
+    });
+    expect(materialNeedProgress(p, 'twine', [])).toEqual({ total: 1, needed: 1 });
+  });
+
+  it('solvent is additive: gear path (augmented) + tomeWeapon path (unaugmented) → total 2, needed reflects only the unaugmented side', () => {
+    const p = makePlayer('p', 'P', {
+      gear: { weapon: { bisSource: 'tome', hasItem: true, isAugmented: true, itemName: 'Aug. Weapon' } },
+      tomeWeapon: { pursuing: true, hasItem: true, isAugmented: false },
+    });
+    expect(materialNeedProgress(p, 'solvent', [])).toEqual({ total: 2, needed: 1 });
+  });
+
+  it('universal_tomestone: total is 1 whenever pursuing, regardless of hasItem (an acquired-but-tracked tome weapon is a "done" slice)', () => {
+    expect(materialNeedProgress(
+      makePlayer('p', 'P', { tomeWeapon: { pursuing: true, hasItem: false } }), 'universal_tomestone', [],
+    )).toEqual({ total: 1, needed: 1 });
+    expect(materialNeedProgress(
+      makePlayer('q', 'Q', { tomeWeapon: { pursuing: true, hasItem: true } }), 'universal_tomestone', [],
+    )).toEqual({ total: 1, needed: 0 });
+    expect(materialNeedProgress(
+      makePlayer('r', 'R', { tomeWeapon: { pursuing: false, hasItem: false } }), 'universal_tomestone', [],
+    )).toEqual({ total: 0, needed: 0 });
+  });
+
+  it('a slotless log receipt reduces needed but NOT total', () => {
+    const p = makePlayer('p', 'P', {
+      gear: { body: { bisSource: 'tome', hasItem: true, isAugmented: false, itemName: 'Aug. Chest of X' } },
+    });
+    const log = [makeMaterialEntry('twine', 'p', null)];
+    expect(materialNeedProgress(p, 'twine', log)).toEqual({ total: 1, needed: 0 });
+  });
+
+  it('invariant across a mixed fixture: needed ≤ total, and needed > 0 ⟹ total > 0', () => {
+    const players = [
+      makePlayer('a', 'Alice', {
+        gear: { body: { bisSource: 'tome', hasItem: true, isAugmented: false, itemName: 'Aug. Chest' } },
+      }),
+      makePlayer('b', 'Bob', {
+        gear: { earring: { bisSource: 'tome', hasItem: true, isAugmented: true, itemName: 'Aug. Earring' } },
+      }),
+      makePlayer('c', 'Cara', {
+        gear: { weapon: { bisSource: 'tome', hasItem: true, isAugmented: true, itemName: 'Aug. Weapon' } },
+        tomeWeapon: { pursuing: true, hasItem: true, isAugmented: false },
+      }),
+      makePlayer('d', 'Dana', { tomeWeapon: { pursuing: true, hasItem: false } }),
+      makePlayer('e', 'Eve'),
+    ];
+    const materials: ('twine' | 'glaze' | 'solvent' | 'universal_tomestone')[] = [
+      'twine', 'glaze', 'solvent', 'universal_tomestone',
+    ];
+    const log = [makeMaterialEntry('twine', 'a', null)];
+
+    for (const material of materials) {
+      for (const p of players) {
+        const { total, needed } = materialNeedProgress(p, material, log);
+        expect(needed).toBeLessThanOrEqual(total);
+        if (needed > 0) expect(total).toBeGreaterThan(0);
+      }
     }
   });
 });
