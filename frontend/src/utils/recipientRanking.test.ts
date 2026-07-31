@@ -54,9 +54,14 @@ describe('buildRecipientEntries', () => {
   });
 });
 
+// Deterministic default ids (PR review): random ids make fixtures
+// non-reproducible if anything ever keys on them. Explicit `id` overrides
+// in individual tests are unaffected.
+let nextLootEntryId = 90000;
+
 function makeLootEntry(overrides: Partial<LootLogEntry> = {}): LootLogEntry {
   return {
-    id: Math.floor(Math.random() * 100000),
+    id: nextLootEntryId++,
     tierSnapshotId: 't1',
     weekNumber: 1,
     floor: 'M9S',

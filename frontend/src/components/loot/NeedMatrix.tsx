@@ -163,7 +163,13 @@ export function NeedMatrix(props: NeedMatrixProps) {
                         </Tooltip>
                       ) : (
                         <>
-                          <NeedDot roleVar={roleVar(player)} />
+                          {/* mx-auto lives on this wrapper, not the dot component —
+                              the dot's grid root is block-level (td text-center can't
+                              centre it), and auto margins on the component itself
+                              would break the legend's flex rows (PR review). */}
+                          <span className="mx-auto block w-6">
+                            <NeedDot roleVar={roleVar(player)} />
+                          </span>
                           <span className="sr-only">{player.name} needs {row.label}</span>
                         </>
                       )}
@@ -241,7 +247,10 @@ export function NeedMatrix(props: NeedMatrixProps) {
                           </Tooltip>
                         ) : (
                           <>
-                            <MaterialProgressRing roleVar={roleVar(player)} total={total} needed={needed} />
+                            {/* Same centring wrapper as the read-only gear cell. */}
+                            <span className="mx-auto block w-6">
+                              <MaterialProgressRing roleVar={roleVar(player)} total={total} needed={needed} />
+                            </span>
                             <span className="sr-only">{player.name} needs {needed}{progressSuffix} {row.label}</span>
                           </>
                         )}
