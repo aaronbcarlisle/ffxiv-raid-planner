@@ -126,7 +126,8 @@ Every slice is `internal: true` with `CURRENT_VERSION` untouched (v2 is admin-ga
   both of which V1 renders. If §5's shell-aware default is taken the *V1-visible* change is nil and
   the entry may stay internal; **that is a slice-time determination, not an assumption.**
 
-`CURRENT_VERSION` is `2.1.1` today.
+`CURRENT_VERSION` tracks the latest public release (2.1.5 after D0); internal slices add entries
+without bumping it.
 
 ### 2.6 ⚠ R-45's mechanism — corrected
 

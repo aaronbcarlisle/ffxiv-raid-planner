@@ -158,6 +158,13 @@ colour. **Kept anyway.** The colour answers "which floor drops this?" with no lo
 question the Matrix exists for — and because the slots already sit in floor order it reads as bands
 rather than confetti.
 
+⚠ *This paragraph's premise was false: the slots did **not** already sit in floor order. Legacy's
+`WhoNeedsItMatrix.tsx:57` `GEAR_SLOT_ORDER` and the mockup's `SLOTS` array are **anatomical** order
+(weapon, head, body, hands, legs, feet, ears, neck, wrists, ring), which mixes floors freely. v2's
+matrix rows instead **band F4→F1** (Weapon first, matching the Queues stack's newest-first order) —
+**user-ruled 2026-07-30 at the D3 build.** The banding is what makes the kept colours actually read
+as bands rather than confetti; without it R-9's own justification would have been false too.*
+
 ### R-10 · Default scope is **per view**; an explicit pick is **global** (refines R-2)
 
 Taken flat, "Queues opens on a floor, Matrix opens on All" would contradict R-2's one-scope-for-all-
