@@ -159,4 +159,37 @@ describe('buildRecipientEntries — D-25 score transparency (D3 restore)', () =>
     // the enhancement logic at all.
     expect(out.map((e) => e.player.id)).not.toEqual(['n1', 'n2', 'n3']);
   });
+
+  // Review fix round 1, Finding 2: the headline `score` must be the ENHANCED
+  // final (drought + balance folded in — priorityEntries.ts:67-68's own sort
+  // key), not the pre-adjustment base (`breakdown.score`). Legacy parity:
+  // LootPriorityPanel.tsx:53's displayScore is
+  // `hasEnhanced ? enhancedScore : score`. Reuses the order-identity
+  // fixture's log, which already gives Nora a nonzero drought bonus AND a
+  // nonzero balance penalty (two recent drops → excess above the pool
+  // average), so `enhancedScore` provably differs from the base score.
+  it('score headline is the enhanced final, not the base breakdown.score, when drought/balance are nonzero', () => {
+    const n1 = makePlayer('n1', 'Nora');
+    const n2 = makePlayer('n2', 'Oscar');
+    const n3 = makePlayer('n3', 'Priya');
+    const orderPlayers = [n1, n2, n3];
+    const currentWeek = 3;
+    const lootLog: LootLogEntry[] = [
+      makeLootEntry({ id: 1, recipientPlayerId: 'n1', weekNumber: 1, itemSlot: 'body' }),
+      makeLootEntry({ id: 2, recipientPlayerId: 'n1', weekNumber: 2, itemSlot: 'head' }),
+    ];
+    const enhancedSettings = { ...DEFAULT_SETTINGS, enableEnhancedScoring: true };
+
+    const out = buildRecipientEntries({
+      players: orderPlayers, slot: 'earring', scope: 'priority',
+      settings: enhancedSettings, lootLog, currentWeek, enhancedActive: true,
+    });
+    const nora = out.find((e) => e.player.id === 'n1')!;
+    expect(nora.droughtBonus).toBeGreaterThan(0);
+    expect(nora.balancePenalty).toBeGreaterThan(0);
+    expect(nora.score).not.toBe(nora.breakdown!.score);
+    expect(nora.score).toBe(
+      Math.round(nora.breakdown!.score + (nora.droughtBonus ?? 0) - (nora.balancePenalty ?? 0)),
+    );
+  });
 });

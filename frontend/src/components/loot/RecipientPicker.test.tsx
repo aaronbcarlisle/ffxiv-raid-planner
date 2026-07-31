@@ -1039,4 +1039,19 @@ describe('RecipientPicker — D3 D-25 restore: pill suppression, Adjusted tag, a
     );
     expect(screen.queryByText('Loot history adjustments active')).not.toBeInTheDocument();
   });
+
+  // Review fix round 1, Finding 1: enhanced scoring ON with an EMPTY loot log
+  // must not announce adjustments — RecipientPicker.tsx:244's `enhancedActive`
+  // now folds in `lootLog.length > 0` (the ranking itself already re-gated on
+  // this internally, recipientRanking.ts:85; this line hadn't). Without the
+  // fold, this was a reachable lie: the header claimed drought/balance were
+  // shaping a ranking that was, in fact, pure base score.
+  it('does not show "Loot history adjustments active" when enhanced scoring is ON but the loot log is empty', () => {
+    const enhancedSettings = { ...DEFAULT_SETTINGS, enableEnhancedScoring: true };
+    render(
+      <RecipientPicker {...baseProps} settings={enhancedSettings} lootLog={[]} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    expect(screen.queryByText('Loot history adjustments active')).not.toBeInTheDocument();
+  });
 });

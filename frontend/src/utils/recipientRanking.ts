@@ -88,7 +88,16 @@ export function buildRecipientEntries(args: {
   const needers: RecipientEntry[] = ranked.map((entry, i) => ({
     player: entry.player, rank: i + 1, needsItem: true, needTag: 'bis' as const,
     reason: `${label} is BiS · ${dropsPhrase(entry.player.id, lootLog, currentWeek)}`,
-    score: entry.score, breakdown: entry.breakdown,
+    // Review fix round 1, Finding 2: the headline score must be the enhanced
+    // final (drought + balance folded in) — the exact sort key
+    // priorityEntries.ts:67-68 uses — not the pre-adjustment base. Legacy
+    // parity: LootPriorityPanel.tsx:53's displayScore is
+    // `hasEnhanced ? enhancedScore : score`. The base score would let a
+    // lower-ranked row display a higher "Priority score" than the row above
+    // it, and ScoreBreakdown's component lines only sum to the ENHANCED
+    // total (they include the drought/balance lines), so the base headline
+    // never reconciled with its own breakdown's arithmetic.
+    score: entry.enhancedScore ?? entry.score, breakdown: entry.breakdown,
     droughtBonus: entry.droughtBonus, balancePenalty: entry.balancePenalty,
   }));
   if (scope === 'priority') return needers;

@@ -241,7 +241,17 @@ export function RecipientPicker({
   const label = mode !== 'assign' ? slotToLabel(slot) : (item?.label ?? slotToLabel(slot));
   const isWeapon = slot === 'weapon';
 
-  const enhancedActive = settings.enableEnhancedScoring === true && !isPriorityDisabled(settings);
+  // Review fix round 1, Finding 1: fold in `lootLog.length > 0` here rather
+  // than leaving it to recipientRanking.ts:80's internal re-gate (`active:
+  // enhancedActive && lootLog.length > 0`) — every OTHER reader of this const
+  // only ever feeds it into buildRecipientEntries, which already re-gates
+  // identically (so this change is behavior-neutral there); the "Loot
+  // history adjustments active" line below reads this const DIRECTLY with no
+  // such re-gate, so without folding it in here, enhanced-ON + an empty log
+  // announced drought/balance shaping a ranking that was, in fact, pure base
+  // score (v1 parity: LootPriorityPanel.tsx:404-408's `isEnhancedScoringActive`
+  // requires a non-empty log too).
+  const enhancedActive = settings.enableEnhancedScoring === true && !isPriorityDisabled(settings) && lootLog.length > 0;
 
   const entries = useMemo(
     () => buildRecipientEntries({ players, slot, scope, settings, lootLog, currentWeek, enhancedActive }),
