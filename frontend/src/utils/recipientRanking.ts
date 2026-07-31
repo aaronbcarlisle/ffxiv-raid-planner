@@ -9,7 +9,7 @@
  */
 import type { SnapshotPlayer, StaticSettings, GearSlot, LootLogEntry } from '../types';
 import { GEAR_SLOT_NAMES } from '../types';
-import { getPriorityForItem, getPriorityForRing } from './priority';
+import { getPriorityForItem, getPriorityForRing, type PriorityScoreBreakdown } from './priority'; // type-only import of a frozen file — allowed
 import { calculatePlayerLootStats, calculateAverageDrops } from './lootCoordination';
 import { enhancePriorityEntries } from './priorityEntries';
 
@@ -22,6 +22,11 @@ export interface RecipientEntry {
   needsItem: boolean;
   reason: string;
   needTag: NeedTag;
+  /** D-25 score transparency (D3 restore) — present on priority-ranked needers only. */
+  score?: number;
+  breakdown?: PriorityScoreBreakdown;
+  droughtBonus?: number;
+  balancePenalty?: number;
 }
 
 function slotLabel(slot: GearSlot | 'ring'): string {
@@ -83,6 +88,8 @@ export function buildRecipientEntries(args: {
   const needers: RecipientEntry[] = ranked.map((entry, i) => ({
     player: entry.player, rank: i + 1, needsItem: true, needTag: 'bis' as const,
     reason: `${label} is BiS · ${dropsPhrase(entry.player.id, lootLog, currentWeek)}`,
+    score: entry.score, breakdown: entry.breakdown,
+    droughtBonus: entry.droughtBonus, balancePenalty: entry.balancePenalty,
   }));
   if (scope === 'priority') return needers;
 
