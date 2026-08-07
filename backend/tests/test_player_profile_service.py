@@ -101,6 +101,14 @@ class TestGetOrCreateProfile:
 
         The insert runs in a SAVEPOINT precisely so the outer transaction -- which
         may already hold writes worth keeping -- survives the unique violation.
+
+        Caveat on what this proves: the test database is in-memory SQLite
+        (conftest.py) and the engine carries no do_connect/do_begin savepoint
+        recipe, which SQLAlchemy documents as required for pysqlite to handle
+        SAVEPOINT correctly. So a green result here demonstrates the *caller-facing
+        contract* (the session is still usable, no duplicate row) rather than
+        independently proving SAVEPOINT isolation. That property holds on
+        PostgreSQL, which is where the production race actually occurs.
         """
         winner = PlayerProfile(
             id=str(uuid.uuid4()),

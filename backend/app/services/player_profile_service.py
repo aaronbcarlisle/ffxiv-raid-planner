@@ -63,6 +63,12 @@ async def get_or_create_profile(
 
     `options` are loader options (e.g. selectinload) applied to the returned
     profile, so callers needing eager-loaded relationships don't have to re-query.
+
+    Call this *before* accumulating unflushed writes in the session. The insert
+    below runs inside a SAVEPOINT and flushes, which also flushes whatever else
+    the session has pending; if this call then loses the race, that savepoint
+    rolls back and takes those statements with it. Every current caller resolves
+    the profile first and writes afterwards, which sidesteps this entirely.
     """
     profile = await _select_profile(session, user_id, options)
     if profile is not None:
