@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.9';
+export const CURRENT_VERSION = '2.1.10';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.10',
+    date: '2026-08-07T23:30:00Z',
+    title: 'Fixed an error when your profile was created for the first time',
+    items: [
+      {
+        category: 'fix',
+        title: 'First-time profile creation no longer errors',
+        description:
+          'The very first time you loaded a page that needed a player profile, the app could throw an error instead of creating it. Several parts of the page ask for your profile at once, and on a brand-new account they all tried to create it simultaneously — the first one won and the rest failed. Profile creation is now handled so that whichever request gets there first wins and the others quietly use it. This only ever affected accounts that had no profile yet, so if you have used the app before you would not have seen it.',
+        pr: 234,
+        prTitle: 'fix(profile): close the PlayerProfile get-or-create race + kill the Windows clock flake',
+      },
+    ],
+  },
   {
     version: '2.1.9',
     date: '2026-08-07T18:00:00Z',
