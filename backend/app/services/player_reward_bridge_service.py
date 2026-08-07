@@ -35,6 +35,7 @@ from ..models.collection_catalog_item import CollectionCatalogItem
 from ..models.player_collection_intent import PlayerCollectionIntent
 from ..models.player_collection_snapshot import PlayerCollectionSnapshot
 from ..models.player_profile import PlayerProfile
+from .player_profile_service import get_or_create_profile
 
 # Intents that represent an explicit opt-out — bridge must not overwrite them.
 _PASS_INTENTS = frozenset({"pass", "hidden"})
@@ -48,24 +49,7 @@ def _now() -> str:
 
 async def _get_or_create_profile(session: AsyncSession, user_id: str) -> str:
     """Return the profile id for user_id, auto-creating a minimal profile if absent."""
-    result = await session.execute(
-        select(PlayerProfile.id).where(PlayerProfile.user_id == user_id)
-    )
-    profile_id: str | None = result.scalar_one_or_none()
-    if profile_id is not None:
-        return profile_id
-
-    now = _now()
-    profile = PlayerProfile(
-        id=str(uuid.uuid4()),
-        user_id=user_id,
-        visibility="private",
-        share_enabled=False,
-        created_at=now,
-        updated_at=now,
-    )
-    session.add(profile)
-    await session.flush()  # populate id without committing the outer transaction
+    profile = await get_or_create_profile(session, user_id)
     return profile.id
 
 
@@ -136,21 +120,11 @@ async def write_through_bulk_from_mount_farm(
     profile_by_user: dict[str, str] = {row.user_id: row.id for row in profile_rows}
 
     missing_users = [uid for uid in unique_user_ids if uid not in profile_by_user]
-    if missing_users:
-        now = _now()
-        for uid in missing_users:
-            pid = str(uuid.uuid4())
-            profile = PlayerProfile(
-                id=pid,
-                user_id=uid,
-                visibility="private",
-                share_enabled=False,
-                created_at=now,
-                updated_at=now,
-            )
-            session.add(profile)
-            profile_by_user[uid] = pid
-        await session.flush()
+    for uid in missing_users:
+        # Same race as the single-profile path: a concurrent request may create
+        # this profile between the batch read above and the insert below.
+        profile = await get_or_create_profile(session, uid)
+        profile_by_user[uid] = profile.id
 
     # Batch 2: catalog items by trial_id
     catalog_rows = (await session.execute(
