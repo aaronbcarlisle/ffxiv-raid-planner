@@ -120,9 +120,15 @@ def downgrade() -> None:
     existing_tables = sa.inspect(op.get_bind()).get_table_names()
 
     if "player_collection_intents" in existing_tables:
-        op.drop_index("ix_player_collection_intents_profile_id")
+        op.drop_index(
+            "ix_player_collection_intents_profile_id",
+            table_name="player_collection_intents",
+        )
         op.drop_table("player_collection_intents")
 
     if "player_collection_snapshots" in existing_tables:
-        op.drop_index("ix_player_collection_snapshots_profile_id")
+        op.drop_index(
+            "ix_player_collection_snapshots_profile_id",
+            table_name="player_collection_snapshots",
+        )
         op.drop_table("player_collection_snapshots")

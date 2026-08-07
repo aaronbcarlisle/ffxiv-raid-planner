@@ -31,6 +31,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -68,6 +69,24 @@ async def _reflect() -> tuple[set[str], dict[str, set[str]]]:
 
 
 def main() -> int:
+    # Refuse to run without an explicit target. Falling back to the dev default
+    # would check the local SQLite database, which `create_all` built from these
+    # very models -- it passes by construction and proves nothing. A green
+    # result there would be actively misleading.
+    if not os.environ.get("DATABASE_URL"):
+        print("FAIL: DATABASE_URL is not set.")
+        print("")
+        print(
+            "This check is only meaningful against a database built by the\n"
+            "migration chain. Without DATABASE_URL it would fall back to the dev\n"
+            "SQLite database, which `create_all` builds straight from the models --\n"
+            "so it would pass no matter what was missing from the migrations.\n"
+            "\n"
+            "Run `alembic upgrade head` against a scratch database, then:\n"
+            "  DATABASE_URL=postgresql://... python scripts/check_model_tables.py"
+        )
+        return 1
+
     model_tables = set(Base.metadata.tables)
     db_tables, db_columns = asyncio.run(_reflect())
 
