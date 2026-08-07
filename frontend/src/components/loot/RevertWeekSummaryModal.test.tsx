@@ -137,6 +137,67 @@ describe('RevertWeekSummaryModal', () => {
     expect(screen.queryByText(/^Books/)).not.toBeInTheDocument();
   });
 
+  it('renders the Materials group when non-empty, pinning the display-name mapping', () => {
+    render(
+      <RevertWeekSummaryModal
+        {...baseProps()}
+        materialLog={[makeMaterial(1, 5, { materialType: 'universal_tomestone' })]}
+      />,
+    );
+    expect(screen.getByText('Materials (1)')).toBeInTheDocument();
+    // UPGRADE_MATERIAL_DISPLAY_NAMES mapping, not legacy's charAt(0).toUpperCase() ad-hoc cap.
+    expect(screen.getByText(/Universal Tomestone/)).toBeInTheDocument();
+    expect(screen.queryByText(/Universal_tomestone/)).not.toBeInTheDocument();
+  });
+
+  it('renders the Books group when non-empty, pinning the Unknown player fallback', () => {
+    render(
+      <RevertWeekSummaryModal
+        {...baseProps()}
+        pageLedger={[makeLedger(1, 5, { playerId: 'no-such-player' })]}
+      />,
+    );
+    expect(screen.getByText('Books (1)')).toBeInTheDocument();
+    expect(screen.getByText(/Unknown/)).toBeInTheDocument();
+  });
+
+  it('renders a spent book row as a negative magnitude and an earned row as a signed positive', () => {
+    render(
+      <RevertWeekSummaryModal
+        {...baseProps()}
+        pageLedger={[
+          makeLedger(1, 5, { bookType: 'I', transactionType: 'spent', quantity: 3 }),
+          makeLedger(2, 5, { bookType: 'II', transactionType: 'earned', quantity: 2 }),
+        ]}
+      />,
+    );
+    expect(screen.getByText(/Page I \(-3\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Page II \(\+2\)/)).toBeInTheDocument();
+  });
+
+  it('excludes entries from a different week — from the rows and from the counts line', () => {
+    render(
+      <RevertWeekSummaryModal
+        {...baseProps()}
+        lootLog={[makeLoot(1, 5), makeLoot(2, 6)]}
+        materialLog={[makeMaterial(1, 5), makeMaterial(2, 6)]}
+        pageLedger={[makeLedger(1, 5), makeLedger(2, 6)]}
+      />,
+    );
+    expect(screen.getByText('1 drop · 1 material · 1 book entry')).toBeInTheDocument();
+    expect(screen.getByText('Loot (1)')).toBeInTheDocument();
+    expect(screen.getByText('Materials (1)')).toBeInTheDocument();
+    expect(screen.getByText('Books (1)')).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('omits zero-count segments from the counts line instead of printing "0 materials"', () => {
+    render(<RevertWeekSummaryModal {...baseProps()} lootLog={[makeLoot(1, 5)]} />);
+    expect(screen.getByText('1 drop')).toBeInTheDocument();
+    expect(screen.queryByText(/material/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/book/)).not.toBeInTheDocument();
+  });
+
   it('renders every row of a long week with no truncation, inside the scroll container', () => {
     const longLoot = Array.from({ length: 23 }, (_, i) => makeLoot(i + 1, 5, { recipientPlayerName: `Player ${i}` }));
     render(<RevertWeekSummaryModal {...baseProps()} lootLog={longLoot} />);
@@ -180,5 +241,31 @@ describe('RevertWeekSummaryModal', () => {
     const confirmButton = screen.getByRole('button', { name: /Revert week/i });
     expect(confirmButton).toBeDisabled();
     expect(confirmButton.querySelector('[role="status"]')).not.toBeNull();
+  });
+
+  it('isReverting blocks Escape and the header close button from cancelling', () => {
+    const onCancel = vi.fn();
+    render(<RevertWeekSummaryModal {...baseProps()} isReverting onCancel={onCancel} />);
+
+    // Modal attaches its keydown handler to window.
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onCancel).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close modal' }));
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('Escape and the header close button still cancel when not reverting', () => {
+    const onCancel = vi.fn();
+    render(<RevertWeekSummaryModal {...baseProps()} onCancel={onCancel} />);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('the scroll container is keyboard-reachable with an accessible name', () => {
+    render(<RevertWeekSummaryModal {...baseProps()} lootLog={[makeLoot(1, 5)]} />);
+    const scrollContainer = screen.getByLabelText('Entries that will move');
+    expect(scrollContainer).toHaveAttribute('tabIndex', '0');
   });
 });
