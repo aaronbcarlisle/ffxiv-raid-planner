@@ -167,6 +167,13 @@ class TestPluginBatchGearsetSync:
         snap = result.scalar_one()
         first_synced_at = snap.synced_at
 
+        # Windows datetime resolution is ~15.6ms (time.get_clock_info('time')
+        # .resolution == 0.015625), so two POSTs completing inside one tick get
+        # byte-identical isoformat timestamps and the strict `>` below fails.
+        # Linux CI has microsecond resolution, which is why this only ever flaked
+        # locally. Cross a tick boundary, same as the sibling test above.
+        await asyncio.sleep(0.02)
+
         await client.post(
             "/api/plugin/player/batch-gear-sync",
             headers=auth_headers,
