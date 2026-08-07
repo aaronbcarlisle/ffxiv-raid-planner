@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.5';
+export const CURRENT_VERSION = '2.1.9';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.9',
+    date: '2026-08-07T18:00:00Z',
+    title: 'Collections Center fix — missing database tables restored',
+    items: [
+      {
+        category: 'fix',
+        title: 'Collections Center no longer errors out',
+        description:
+          'Collection ownership and "hunting/interested" intent data failed to load in production, erroring instead of showing your collection. The two database tables behind those features shipped with the Collections Center but were never created on the live database, so every read hit a missing-table error. Both tables are now created, and Collections reads work again. If you saw an error on the Collections Center or Suggested Farms, it should now load normally — no action needed on your end.',
+        pr: 233,
+        prTitle: 'fix(db): create the missing player_collection tables + guard against recurrence',
+      },
+    ],
+  },
   {
     version: '2.1.8',
     date: '2026-07-30T23:30:00Z',
