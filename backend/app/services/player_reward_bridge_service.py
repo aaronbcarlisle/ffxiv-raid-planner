@@ -103,7 +103,10 @@ async def write_through_bulk_from_mount_farm(
 ) -> None:
     """Batch mirror for bulk MountFarmProgress updates.
 
-    Reduces N×4 individual queries to 4 batch queries regardless of update count.
+    Reduces N×4 individual queries to 4 batch queries, plus one race-safe
+    get-or-create per user who has no profile yet. That extra work is bounded by
+    the number of *new* users in a single bulk update -- normally zero, since
+    profiles are created once per account and then reused.
     """
     if not updates:
         return
