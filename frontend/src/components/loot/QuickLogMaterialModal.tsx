@@ -24,19 +24,42 @@ import {
 import type { SnapshotPlayer, MaterialType, StaticSettings, GearSlot, LootMethod } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 
-interface QuickLogMaterialModalProps {
+interface QuickLogMaterialModalBaseProps {
   isOpen: boolean;
   onClose: () => void;
   groupId: string;
   tierId: string;
-  floor: string;
-  material: MaterialType;
-  maxWeek: number; // Max week available for selection (defaults week selector to this)
-  suggestedPlayer: SnapshotPlayer;
+  /** Upper bound for the week input. */
+  maxWeek: number;
   allPlayers: SnapshotPlayer[];
   settings?: StaticSettings;
   onSuccess?: () => void;
 }
+
+export type QuickLogMaterialModalProps = QuickLogMaterialModalBaseProps & (
+  | {
+      /** Pinned — V1's exact contract (LootPriorityPanel.tsx:770) and v2's matrix-cell door. */
+      floor: string;
+      material: MaterialType;
+      suggestedPlayer: SnapshotPlayer;
+      /** D8, v2-only: show the notes field. V1 never passes it → render unchanged. */
+      showNotes?: boolean;
+      /** D8, v2-only: initial week (R-20 coherence; D5's Log cells need it on this door).
+       *  Absent → maxWeek, exactly the pre-D8 default — V1 never passes it. */
+      initialWeek?: number;
+      floors?: never; editEntry?: never;
+    }
+  | {
+      /** Free-form — R-26/R-20: floor + material selectors; the Log toolbar's door. */
+      floors: string[];
+      /** R-20: the write targets the displayed week (Loot's `writeWeek`). Required — explicit. */
+      initialWeek: number;
+      floor?: never; material?: never; suggestedPlayer?: never; showNotes?: never; editEntry?: never;
+    }
+  // Task 6 appends the `edit` branch (no initialWeek — the week comes from the entry).
+);
+
+type ModalMode = 'pinned' | 'freeform'; // Task 6 widens with 'edit'
 
 /** One place that answers: given this player and material, what does the gear
  *  checkbox pre-select? (Was triplicated pre-D8; edit mode would have made four.) */
@@ -58,14 +81,25 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     groupId,
     tierId,
     maxWeek,
-    suggestedPlayer,
     allPlayers,
     settings = DEFAULT_SETTINGS,
     onSuccess,
   } = props;
-  const material = props.material;
-  const floorName = props.floor;
-  const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
+  // Pinned-only per the union (`suggestedPlayer` is `never` on the free-form branch) — every
+  // dereference below only happens where `mode === 'pinned'` guarantees it's set. Free-form's
+  // initial recipient instead comes from the auto-recipient effect (D8 3B step 3).
+  const suggestedPlayer = props.suggestedPlayer;
+
+  const mode: ModalMode = props.floor != null ? 'pinned' : 'freeform';
+  // `mode` classifies `props.floor`, but TS can't replay that discriminant check through the
+  // `mode` alias (it's a computed classification, not a direct alias of the discriminant), so
+  // `props.material`/`props.floor` stay widened to `T | undefined` here even though the union
+  // guarantees exactly one side is set per `mode`. The free-form side is a placeholder for now
+  // (`undefined` cast) — D8 3B step 3 wires it to `pickedMaterial`/`pickedFloorNumber` state;
+  // nothing mounts free-form yet, so this is unreachable today.
+  const material = (mode === 'pinned' ? props.material : undefined) as MaterialType;
+  const floorName = (mode === 'pinned' ? props.floor : undefined) as string;
+  const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer?.id ?? '');
   const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [method, setMethod] = useState<LootMethod>('drop');
   const [isSaving, setIsSaving] = useState(false);
@@ -73,12 +107,12 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   // Compute initial slot selection BEFORE first render using lazy initializer
   // Note: 'tome_weapon' selection is tracked via augmentTomeWeapon state, not selectedSlot
   const [selectedSlot, setSelectedSlot] = useState<GearSlot | null>(() => {
-    const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
+    const player = allPlayers.find((p) => p.id === recipientPlayerId) || suggestedPlayer;
     return initialGearSelection(player, material).slot;
   });
   // Compute initial augmentTomeWeapon BEFORE first render
   const [augmentTomeWeapon, setAugmentTomeWeapon] = useState(() => {
-    const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
+    const player = allPlayers.find((p) => p.id === recipientPlayerId) || suggestedPlayer;
     return initialGearSelection(player, material).augmentTome;
   });
   const { materialLog } = useLootTrackingStore();
@@ -121,15 +155,18 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     eligibleOptions.slots.length > 0;
 
   // Reset state when modal opens
+  // Non-null assertions: this body only runs where `mode === 'pinned'` guarantees
+  // `suggestedPlayer` is set (D8 3B step 3 adds the mode gate + a parallel free-form block —
+  // this stays untouched, verbatim, since nothing mounts free-form yet).
   useEffect(() => {
     if (isOpen) {
-      setRecipientPlayerId(suggestedPlayer.id);
+      setRecipientPlayerId(suggestedPlayer!.id);
       setSelectedWeek(maxWeek);
       setMethod('drop');
       setUpdateGear(true);
 
       // Use player from allPlayers for consistency with eligibleOptions memo
-      const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
+      const player = allPlayers.find((p) => p.id === suggestedPlayer!.id) || suggestedPlayer;
 
       // Compute initial slot selection based on player and material
       const { slot, augmentTome } = initialGearSelection(player, material);

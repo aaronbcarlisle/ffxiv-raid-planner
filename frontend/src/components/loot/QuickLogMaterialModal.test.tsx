@@ -79,7 +79,10 @@ function makePlayer(overrides: Partial<SnapshotPlayer> = {}): SnapshotPlayer {
   };
 }
 
-type ModalProps = React.ComponentProps<typeof QuickLogMaterialModal>;
+// Pinned-branch-only — this helper renders the V1 baseline shape (`floor`+`material`+
+// `suggestedPlayer`); `Extract` collapses the modal's pinned/free-form union to the single
+// object shape so `Partial<ModalProps>` below doesn't distribute over the union.
+type ModalProps = Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { floor: string }>;
 
 /** Renders with the brief's pinned baseline props (g1/t1/M11S/maxWeek=3), overridable. */
 function renderModal(overrides: Partial<ModalProps> & Pick<ModalProps, 'material' | 'suggestedPlayer' | 'allPlayers'>) {
