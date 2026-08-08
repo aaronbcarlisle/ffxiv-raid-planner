@@ -444,8 +444,10 @@ async def update_loot_log_entry(
         entry.recipient_player_id = data.recipient_player_id
     if data.method is not None:
         entry.method = data.method.value
-    if data.notes is not None:
-        entry.notes = data.notes
+    # Notes: explicit null (legacy V1's clear wire shape) or '' clears
+    # (normalized to NULL); an absent field leaves the stored value.
+    if "notes" in data.model_fields_set:
+        entry.notes = data.notes or None
     if data.weapon_job is not None:
         entry.weapon_job = data.weapon_job
     if data.is_extra is not None:
@@ -1504,14 +1506,17 @@ async def update_material_log_entry(
         entry.recipient_player_id = data.recipient_player_id
     if data.method is not None:
         entry.method = data.method.value
-    # Update slot_augmented: valid slots are set, empty string clears to None
-    if isinstance(data.slot_augmented, str):
+    # Update slot_augmented: valid slots are set; explicit null (legacy V1's
+    # clear wire shape) and '' (v2's sentinel) both clear; an absent field
+    # (model_fields_set) leaves the stored value; unknown strings stay ignored.
+    if "slot_augmented" in data.model_fields_set:
         if data.slot_augmented in VALID_AUGMENT_SLOTS:
             entry.slot_augmented = data.slot_augmented
-        elif data.slot_augmented == "":
+        elif data.slot_augmented in ("", None):
             entry.slot_augmented = None
-    if data.notes is not None:
-        entry.notes = data.notes
+    # Notes: explicit null or '' clears (normalized to NULL); absent leaves.
+    if "notes" in data.model_fields_set:
+        entry.notes = data.notes or None
 
     await db.commit()
     await db.refresh(entry, ["recipient_player", "created_by"])
