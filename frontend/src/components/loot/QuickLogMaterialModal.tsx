@@ -671,7 +671,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
             <div className="flex items-center justify-between text-sm">
               <Label htmlFor="material-week" className="mb-0">Week</Label>
               {/* `v ?? selectedWeek`: the row is shared with edit mode (no initialWeek there). */}
-              <NumberInput id="material-week" value={selectedWeek} onChange={(v) => setSelectedWeek(v ?? selectedWeek)}
+              <NumberInput id="material-week" value={selectedWeek} onChange={(v) => setSelectedWeek((prev) => v ?? prev)}
                            min={1} max={maxWeek} size="sm" />
             </div>
           </>
