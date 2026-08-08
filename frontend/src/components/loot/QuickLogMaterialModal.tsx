@@ -812,7 +812,12 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
             {mode === 'edit' && editEntry ? (
               <>
                 <li>
-                  ~ Update {UPGRADE_MATERIAL_DISPLAY_NAMES[material]} entry for {selectedPlayer?.name} (Week {selectedWeek})
+                  {/* The recipient may be injected by name only (out of the live pool) —
+                      fall back to the entry's recorded name, never an empty gap. */}
+                  ~ Update {UPGRADE_MATERIAL_DISPLAY_NAMES[material]} entry for{' '}
+                  {selectedPlayer?.name ??
+                    (recipientPlayerId === editEntry.recipientPlayerId ? editEntry.recipientPlayerName : 'player')}{' '}
+                  (Week {selectedWeek})
                 </li>
                 {editReconciliationLines(
                   editEntry,

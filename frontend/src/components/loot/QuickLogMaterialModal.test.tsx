@@ -900,6 +900,9 @@ describe('edit mode (R-21)', () => {
     renderEdit({ editEntry: entry }, [theo]); // 'sara'/'ghost' absent from allPlayers
 
     expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Ghost Player');
+    // PR #236 review (Copilot suppressed comment): the preview must fall back to the entry's
+    // recorded name for an out-of-pool recipient — never an empty gap.
+    expect(screen.getByText(/~ Update Twine entry for Ghost Player \(Week 2\)/)).toBeInTheDocument();
   });
 
   it('m4: when the parsed floor lacks the entry\'s material, falls back to the material\'s home floor (M9S + twine -> M11S/Twine pressed)', () => {
