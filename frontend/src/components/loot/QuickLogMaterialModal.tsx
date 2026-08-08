@@ -834,7 +834,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
               </>
             ) : (
               <>
-                <li>+ Add {UPGRADE_MATERIAL_DISPLAY_NAMES[material]} to Week {selectedWeek} log for {selectedPlayer?.name}</li>
+                <li>+ Add {UPGRADE_MATERIAL_DISPLAY_NAMES[material]} to Week {selectedWeek} log for {selectedPlayer?.name ?? 'player'}</li>
                 {updateGear && hasEligibleOptions && (
                   <li>
                     {material === 'universal_tomestone'
