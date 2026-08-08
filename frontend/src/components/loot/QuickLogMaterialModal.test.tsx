@@ -566,29 +566,33 @@ describe('free-form mode (R-26)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Glaze' }));
     expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
 
-    // Floor cascade (M11S carries neither Glaze nor Universal Tomestone, so this is a real
-    // material change to Twine): the recipient re-ranks BEFORE any manual pick below — this
-    // assertion fails if `pickFloor`'s cascade ever drops its `applyMaterialChange` call.
-    // Nobody in this fixture needs Twine, so the ranking falls back to alphabetical — Gina.
+    // Manually pick a DIFFERENT player (Uzo) while still on Glaze, then re-click the SAME
+    // (already-active) floor pill. Today's two floors never share a material, so the only
+    // reachable "floor-only change" is re-clicking the active floor — it must not clobber the
+    // manual pick.
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(uzo.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+    fireEvent.click(screen.getByRole('button', { name: 'M10S' })); // re-click floor 2 (active)
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+
+    // Floor cascade (M11S carries neither Glaze nor Universal Tomestone, so switching to it
+    // is a real material change to Twine, which nobody needs — the correct re-rank falls back
+    // to alphabetical: Gina, DIFFERENT from Uzo, the manual pick still in effect going in).
+    // This assertion is item 3's regression pin: it only passes if `pickFloor`'s cascade still
+    // calls `applyMaterialChange` (which resets `userPickedRecipient` so the auto-recipient
+    // effect can re-fire) — drop that call and this would incorrectly stay 'Uzo' (verified: see
+    // the fix-round report for the before/after repro of exactly this).
     fireEvent.click(screen.getByRole('button', { name: 'M11S' }));
     expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
 
-    // Manually pick a DIFFERENT player (Uzo), then re-click the SAME (already-active) floor
-    // pill. Today's two floors never share a material, so the only reachable "floor-only
-    // change" is re-clicking the active floor — it must not clobber the manual pick.
+    // Manually re-pick (Uzo again, different from the Gina re-rank), then re-click the SAME
+    // floor pill (M11S, active) — must not clobber. Covers "both directions" together with
+    // the M10S no-clobber assertion above.
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
     fireEvent.click(screen.getByRole('option', { name: new RegExp(uzo.name) }));
     expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
     fireEvent.click(screen.getByRole('button', { name: 'M11S' })); // re-click floor 3 (active)
-    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
-
-    // Same assertion on floor 2, so both floors are covered ("both directions").
-    fireEvent.click(screen.getByRole('button', { name: 'M10S' })); // switch to floor 2 (glaze) — a real material change; re-ranks to Gina
-    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
-    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
-    fireEvent.click(screen.getByRole('option', { name: new RegExp(uzo.name) })); // manual pick, different from the Gina auto-pick
-    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
-    fireEvent.click(screen.getByRole('button', { name: 'M10S' })); // re-click floor 2 (active)
     expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
   });
 
