@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { CommandPalette } from '../components/layout/CommandPalette';
@@ -227,9 +227,27 @@ export function NewShell() {
   // v2 dropped recent-statics tracking and per-static tab restore.
   useStaticNavMemory(shareCode);
 
+  // ⚠ Re-entry guard for the tier-selection effect below (PR #235 final
+  // review). Its dep array holds `searchParams` and `setSearchParams`, and
+  // `useSearchParams` memoizes the former on `location.search` while building
+  // the latter with `useCallback([navigate, searchParams])` — so BOTH
+  // identities change on EVERY url write of any kind, re-running a body that
+  // is a three-call network chain (`fetchTiers` → `fetchTier` →
+  // `fetchCurrentWeek`). The Log tab's `?week=` mirror made that one chevron
+  // click = three refetches. Rather than restructure the deps (the setter
+  // can't be memo-stabilised without a ref, and this file's lint rules
+  // correctly forbid writing refs in render), the effect now no-ops unless the
+  // group+tier it would resolve for has actually changed — the same
+  // `lastKeyRef` shape `useLogWeek` uses.
+  const lastTierRunRef = useRef<string | null>(null);
+
   // Fetch tiers and load a tier (from URL, localStorage, or active) sequentially.
   useEffect(() => {
     if (!currentGroup?.id) return;
+    const urlTierId = searchParams.get('tier');
+    const runKey = `${currentGroup.id}::${urlTierId ?? ''}`;
+    if (lastTierRunRef.current === runKey) return;
+    lastTierRunRef.current = runKey;
     let cancelled = false;
     const log = logger.scope('TierSelection');
     (async () => {
@@ -237,7 +255,6 @@ export function NewShell() {
       if (cancelled) return;
       const { tiers: freshTiers } = useTierStore.getState();
       if (freshTiers.length === 0) return;
-      const urlTierId = searchParams.get('tier');
       const urlTier = urlTierId ? freshTiers.find(t => t.tierId === urlTierId) : null;
       const savedTierId = localStorage.getItem(`selected-tier-${currentGroup.id}`);
       const savedTier = savedTierId ? freshTiers.find(t => t.tierId === savedTierId) : null;
@@ -249,6 +266,11 @@ export function NewShell() {
         // Fetch the current week so the TopBar "Week N" label is correct on cold
         // load, not stuck at the store default of Week 1. (Fix 6, PR #163)
         fetchCurrentWeek(currentGroup.id, activeTier.tierId);
+        // Re-stamp with the RESOLVED tier before writing `?tier=`: without it,
+        // the write below changes the URL, re-runs this effect with a run key
+        // that no longer matches, and repeats the whole chain a second time on
+        // every cold load (a pre-existing double-fetch this guard also closes).
+        if (!cancelled) lastTierRunRef.current = `${currentGroup.id}::${activeTier.tierId}`;
         setSearchParams(prev => {
           const params = new URLSearchParams(prev);
           params.set('tier', activeTier.tierId);

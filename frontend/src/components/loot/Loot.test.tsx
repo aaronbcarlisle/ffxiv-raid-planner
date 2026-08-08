@@ -13,7 +13,7 @@
 // every render is wrapped in a MemoryRouter.
 import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import type { StaticGroup, TierSnapshot, SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 
 // Capture buckets shared with the hoisted mocks.
@@ -115,8 +115,8 @@ function makePlayer(id: string, name: string, opts: { sub?: boolean } = {}): Sna
 
 const group = { id: 'g1', name: 'Test Static' } as unknown as StaticGroup;
 
-function makeTier(players: SnapshotPlayer[]): TierSnapshot {
-  return { tierId: 'aac-heavyweight', contentType: 'savage', players } as unknown as TierSnapshot;
+function makeTier(players: SnapshotPlayer[], tierId = 'aac-heavyweight'): TierSnapshot {
+  return { tierId, contentType: 'savage', players } as unknown as TierSnapshot;
 }
 
 function makeLootEntry(overrides: Partial<LootLogEntry> = {}): LootLogEntry {
@@ -145,6 +145,10 @@ function makeMaterialEntry(overrides: Partial<MaterialLogEntry> = {}): MaterialL
 }
 
 const baseProps = { group, canEdit: true, onNavigate: vi.fn() };
+
+// Set by the copy-link test, which has to redefine `navigator.clipboard`
+// (jsdom's is not writable). Undone after every test so the fake can't leak.
+let restoreClipboard: (() => void) | null = null;
 
 function LocationProbe() {
   const loc = useLocation();
@@ -212,6 +216,11 @@ beforeEach(() => {
     fetchCurrentWeek: vi.fn().mockResolvedValue(undefined),
     fetchWeekDataTypes: vi.fn().mockResolvedValue(undefined),
   });
+});
+
+afterEach(() => {
+  restoreClipboard?.();
+  restoreClipboard = null;
 });
 
 const players = [makePlayer('p1', 'Alice'), makePlayer('p2', 'Bob'), makePlayer('s1', 'Sub', { sub: true })];
@@ -838,6 +847,56 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     });
   }
 
+  // ── The `mirrorToUrl` gate at the call site (PR #235 final review) ──
+  // `useLogWeek`'s 4th argument is `lview === 'log'`. Hardcoding it to EITHER
+  // constant used to pass this whole suite, so both directions are pinned
+  // here through observable URL behaviour (the hook is real in this file).
+  // The gate only acts on a tier RE-resolve, so each test switches tier.
+  const LOG_WEEK_KEY = (tierId: string) => `v2-history-week-g1-${tierId}`;
+
+  /** Re-render the same tree pointed at a different tier — `Loot` mounts
+   *  un-keyed under `NewShell`, so this is what a tier switch really does. */
+  function switchTier(
+    rerender: (ui: React.ReactElement) => void,
+    tierId: string,
+  ) {
+    rerender(
+      <MemoryRouter>
+        <Loot {...baseProps} tier={makeTier(players, tierId)} />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+  }
+
+  it('mirrors the week to ?week= on a tier switch while the LOG view is showing', () => {
+    // Hardcoding the 4th argument to `false` fails here: the new tier's week
+    // would never reach the URL.
+    localStorage.setItem(LOG_WEEK_KEY('aac-heavyweight'), '2');
+    localStorage.setItem(LOG_WEEK_KEY('aac-light'), '4');
+    const { rerender } = renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    // A first resolve never mirrors — the week is displayed, not yet in the URL.
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(2);
+    expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+
+    switchTier(rerender, 'aac-light');
+
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(4);
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=4');
+  });
+
+  it('does NOT mirror — it clears — on a tier switch while Priority is showing', () => {
+    // Hardcoding the 4th argument to `true` fails here: a `?week=` would be
+    // planted on a view that renders no week control to clear it with.
+    localStorage.setItem(LOG_WEEK_KEY('aac-light'), '4');
+    const { rerender } = renderLoot({ tier: makeTier(players) }, ['/?lview=priority&week=2']);
+    // The mount deep link itself is never touched, whatever the view.
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+
+    switchTier(rerender, 'aac-light');
+
+    expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+  });
+
   it('lists Priority | Log | History in the view toggle, in that order', () => {
     renderLoot({ tier: makeTier(players) });
     const toggle = screen.getByRole('group', { name: 'Loot view' });
@@ -1040,6 +1099,13 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     // which reads the same shared param.
     window.history.pushState({}, '', '/group/g1?tier=xyz&week=4');
     const writeText = vi.fn().mockResolvedValue(undefined);
+    // Captured so the redefinition is undone — leaving a fake `navigator.
+    // clipboard` installed leaks into every test that runs after this one.
+    const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    restoreClipboard = () => {
+      if (originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard);
+      else Reflect.deleteProperty(navigator as unknown as Record<string, unknown>, 'clipboard');
+    };
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 21, weekNumber: 3 })] });
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);

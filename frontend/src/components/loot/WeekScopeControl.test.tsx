@@ -2,7 +2,7 @@
 // existing test in this codebase drives Radix dropdowns via `fireEvent`
 // (see `components/roster/RosterToolbar.test.tsx`), so we follow that
 // established convention here.
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WeekScopeControl, type WeekScopeControlProps } from './WeekScopeControl';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
@@ -475,6 +475,124 @@ describe('WeekScopeControl', () => {
         fireEvent.click(confirmButton);
 
         await waitFor(() => expect(clock.revertWeek).toHaveBeenCalledTimes(1));
+      });
+    });
+
+    describe('tier-identity guard — a static/tier switch mid-pre-check', () => {
+      /** A pre-check whose loot fetch parks until the returned `release` is
+       *  called — the in-flight window the tier switch has to land inside. */
+      function gatedPreCheck() {
+        let release!: () => void;
+        const gate = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+        const fetchLootLog = vi.fn().mockImplementation(async () => {
+          await gate;
+        });
+        useLootTrackingStore.setState({ fetchLootLog });
+        return { release: () => release(), fetchLootLog };
+      }
+
+      /** Drain the continuation's microtask chain (mock → Promise.all → the
+       *  code after the await) inside act, so React state settles. */
+      async function flush() {
+        await act(async () => {
+          await Promise.resolve();
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+      }
+
+      it('drops the continuation: no modal opens and revertWeek is never called', async () => {
+        // Seeded so that WITHOUT the guard the summary modal would open — the
+        // control below proves this harness really can produce one.
+        useLootTrackingStore.setState({ lootLog: [lootEntry({ weekNumber: 3 })] });
+        const { release } = gatedPreCheck();
+        const clock = makeClock({ currentWeek: 3 });
+        const { rerender } = render(
+          <WeekScopeControl {...makeProps({ clock, canEdit: true, groupId: 'g1', tierId: 't1' })} />
+        );
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+        await waitFor(() =>
+          expect(useLootTrackingStore.getState().fetchLootLog).toHaveBeenCalledWith('g1', 't1')
+        );
+
+        // The user reaches the TopBar tier selector while the fetches are
+        // still parked — nothing on screen blocks them.
+        rerender(
+          <WeekScopeControl {...makeProps({ clock, canEdit: true, groupId: 'g1', tierId: 't2' })} />
+        );
+        release();
+        await flush();
+
+        expect(screen.queryByText('Revert to Week 2?')).not.toBeInTheDocument();
+        expect(screen.queryByText(/Move the clock back to Week 2/)).not.toBeInTheDocument();
+        expect(clock.revertWeek).not.toHaveBeenCalled();
+      });
+
+      it('releases isReverting, so a Revert on the NEW tier still reaches the fetches', async () => {
+        const { release, fetchLootLog } = gatedPreCheck();
+        const clock = makeClock({ currentWeek: 3 });
+        const { rerender } = render(
+          <WeekScopeControl {...makeProps({ clock, canEdit: true, groupId: 'g1', tierId: 't1' })} />
+        );
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+        await waitFor(() => expect(fetchLootLog).toHaveBeenCalledTimes(1));
+
+        rerender(
+          <WeekScopeControl {...makeProps({ clock, canEdit: true, groupId: 'g1', tierId: 't2' })} />
+        );
+        release();
+        await flush();
+
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+
+        // A stuck guard would swallow this click entirely.
+        await waitFor(() => expect(fetchLootLog).toHaveBeenCalledTimes(2));
+        expect(fetchLootLog).toHaveBeenLastCalledWith('g1', 't2'); // the NEW tier
+      });
+
+      it('a groupId switch is caught too, not just tierId', async () => {
+        useLootTrackingStore.setState({ lootLog: [lootEntry({ weekNumber: 3 })] });
+        const { release } = gatedPreCheck();
+        const clock = makeClock({ currentWeek: 3 });
+        const { rerender } = render(
+          <WeekScopeControl {...makeProps({ clock, canEdit: true, groupId: 'g1', tierId: 't1' })} />
+        );
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+
+        rerender(
+          <WeekScopeControl {...makeProps({ clock, canEdit: true, groupId: 'g2', tierId: 't1' })} />
+        );
+        release();
+        await flush();
+
+        expect(screen.queryByText('Revert to Week 2?')).not.toBeInTheDocument();
+        expect(clock.revertWeek).not.toHaveBeenCalled();
+      });
+
+      it('CONTROL: the same harness with NO switch still opens the summary modal', async () => {
+        // Without this, the three tests above could be passing because the
+        // gated harness never produces a modal at all.
+        useLootTrackingStore.setState({ lootLog: [lootEntry({ weekNumber: 3 })] });
+        const { release } = gatedPreCheck();
+        const clock = makeClock({ currentWeek: 3 });
+        render(
+          <WeekScopeControl
+            {...makeProps({ clock, canEdit: true, groupId: 'g1', tierId: 't1', lootLog: [lootEntry({ weekNumber: 3 })] })}
+          />
+        );
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+
+        release();
+        await flush();
+
+        expect(await screen.findByText('Revert to Week 2?')).toBeInTheDocument();
       });
     });
 

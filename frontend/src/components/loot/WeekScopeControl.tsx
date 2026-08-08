@@ -33,8 +33,14 @@
  * with zero UI, since that path is where the divergence would otherwise go
  * unstated. `isReverting` also drives the actual mutation's in-flight state
  * and guards re-entrancy there too.
+ *
+ * The pre-check's awaits are also guarded on TIER IDENTITY (PR #235 final
+ * review): a static/tier switch mid-flight drops the continuation silently
+ * rather than opening a revert confirmation over — and then reverting — a tier
+ * the user never asked about. See `identityRef` for why it is assigned in
+ * render and what the guard does not cover.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, LocateFixed } from 'lucide-react';
 import { Button, IconButton } from '../primitives';
 import {
@@ -95,6 +101,28 @@ export function WeekScopeControl({
   pageLedger,
   players,
 }: WeekScopeControlProps) {
+  // ── Tier identity, for the revert pre-check's stale-continuation guard ──
+  // `Loot` mounts un-keyed (`NewShell.tsx`), so switching static or tier
+  // re-points this LIVE component instead of remounting it. The pre-check
+  // awaits three fetches while rendering no in-flight UI, and the week
+  // `Dropdown` is `modal={false}` and closes on select — so nothing stops the
+  // user reaching the TopBar tier selector mid-flight, and the continuation
+  // would then resume holding the OLD tier's closures on a component now
+  // pointed at the new one (a revert confirmation appearing unprompted over
+  // tier B, whose Confirm reverts tier B's clock). Same hazard and the same
+  // treatment as `Loot.tsx`'s `cancelled` flag (PR #224 review), except here
+  // it is the IDENTITY that must match, not merely "still mounted".
+  //
+  // Assigned during render rather than from an effect on purpose: the
+  // continuation resumes on a microtask, which can land before a passive
+  // effect has flushed, and an effect-updated ref would still be holding the
+  // OLD tier at exactly the moment the check runs. The write is idempotent and
+  // the ref is only ever read for an equality test, so even a render React
+  // discards can at worst make the guard fail CLOSED — dropping the
+  // continuation, never performing a revert.
+  const identityRef = useRef({ groupId, tierId });
+  identityRef.current = { groupId, tierId };
+
   const [showStartNextConfirm, setShowStartNextConfirm] = useState(false);
   const [showRevertSummary, setShowRevertSummary] = useState(false);
   const [showEmptyRevertConfirm, setShowEmptyRevertConfirm] = useState(false);
@@ -148,15 +176,38 @@ export function WeekScopeControl({
     if (isReverting) return;
     setIsReverting(true);
 
+    // The identity this pre-check belongs to. Everything past the awaits is
+    // conditional on the component still pointing at it (see identityRef).
+    const forGroupId = groupId;
+    const forTierId = tierId;
+    const isStale = () =>
+      identityRef.current.groupId !== forGroupId || identityRef.current.tierId !== forTierId;
+
     try {
       const store = useLootTrackingStore.getState();
       await Promise.all([
-        store.fetchLootLog(groupId, tierId),
-        store.fetchMaterialLog(groupId, tierId),
-        store.fetchPageLedger(groupId, tierId),
+        store.fetchLootLog(forGroupId, forTierId),
+        store.fetchMaterialLog(forGroupId, forTierId),
+        store.fetchPageLedger(forGroupId, forTierId),
       ]);
     } catch {
-      toast.error('Failed to check week data');
+      // A tier-A failure must not toast over tier B either — but the guard is
+      // released either way, so the next Revert click on the new tier works.
+      if (!isStale()) toast.error('Failed to check week data');
+      setIsReverting(false);
+      return;
+    }
+
+    if (isStale()) {
+      // Dropped silently: no modal, no revert, and — just as important — no
+      // `hasData` decision computed from another tier's rows.
+      //
+      // The other half of the hazard is the store: these fetches may have
+      // landed tier-A rows into the shared slices, which carry no tier
+      // identity, and the component cannot cancel an in-flight store fetch
+      // (the store API exposes no AbortController). That half self-heals on
+      // `Loot`'s own tier-change refetch, which reasons about the same race
+      // with its `cancelled` flag.
       setIsReverting(false);
       return;
     }

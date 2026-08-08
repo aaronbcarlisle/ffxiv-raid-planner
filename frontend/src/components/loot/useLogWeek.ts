@@ -129,7 +129,10 @@
  * ── Storage guard ──
  * Safari private mode / blocked-storage embeds throw from the accessor
  * itself, so every read and write is wrapped in try/catch and degrades to
- * "not persisted" — the `Loot.tsx:130-161` pattern.
+ * "not persisted" — the pattern `Loot.tsx`'s `readStoredPriorityView` /
+ * `readStoredFloorScope` / `writeStored` helpers already use (a symbol
+ * reference, not a line range: the old `Loot.tsx:130-161` citation had already
+ * drifted onto the import block).
  *
  * When `groupId`/`tierId` is undefined there is no tier context to key
  * storage on, so the hook doesn't touch storage at all — it just follows
