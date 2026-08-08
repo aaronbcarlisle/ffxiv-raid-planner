@@ -19,12 +19,25 @@
  * freshly-mounted Log correct while `fetchCurrentWeek` is still in flight
  * (see the resolution note below).
  *
- * ── Resolution order (mount + every groupId/tierId change) ──
- * `?week=` → `v2-history-week-{groupId}-{tierId}` → legacy
+ * ── Resolution order — `?week=` wins on MOUNT ONLY (fix round 2, user-ruled) ──
+ * FIRST resolve (fresh mount / deep link): `?week=` →
+ * `v2-history-week-{groupId}-{tierId}` → legacy
  * `history-week-{groupId}-{tierId}` → `null` (follow the clock). Legacy's key
  * is read as a fallback and *never* written — the `useRosterSortPreset`
  * shape: continuity flows legacy → v2, never back, so the frozen V1 shell
  * never sees a v2-originated value on its next visit.
+ *
+ * Every LATER resolve (a groupId/tierId change on a live component) SKIPS the
+ * `?week=` step and starts at the NEW tier's v2 key. `setWeek` mirrors the
+ * displayed week into `?week=`, so by the time the user switches tier the
+ * param normally holds this hook's own write for the PREVIOUS tier: reading
+ * it would carry that week across, shadow the new tier's stored preference
+ * entirely, and let the first chevron click overwrite it. Worse, a carried
+ * week above the new tier's range would never be corrected — resolution
+ * deliberately does not clamp (B2 below), and the ref guard means the pair
+ * never re-resolves. `lastKeyRef.current === null` is precisely "this is the
+ * first resolve", so the ref that guards re-entry also tells the two cases
+ * apart; deep links (D6/D11) keep working because they arrive on a mount.
  *
  * ── The `'current'` sentinel (fix round 1, director-ruled) ──
  * Legacy's `HistoryView.tsx:122` writes `history-week-{groupId}-{tierId}`
@@ -69,7 +82,16 @@
  * lazy initializer would never fire again. Resolution therefore runs
  * entirely inside a `useEffect` keyed on `[groupId, tierId]`, guarded by a
  * ref holding the last-resolved key so the effect only ever resolves once
- * per distinct group/tier pair.
+ * per distinct group/tier pair. That ref does double duty: a `null` value is
+ * what marks the first resolve, which is what gates the `?week=` step above.
+ *
+ * A re-resolve also re-points the `?week=` mirror at whatever the new tier
+ * resolved to — removing the param when the new tier follows the clock —
+ * through `writeWeekParam`, the same single writer `setWeek` uses. Without
+ * that the param would go on advertising the previous tier's week while the
+ * Log displays another (and a shell toggle would hand that stale week to
+ * legacy History). Storage is NOT touched on a re-resolve: nothing was
+ * chosen, so the `'current'` sentinel's meaning is left exactly as found.
  *
  * ── Persistence + URL, one rule ──
  * Any target equal to `clock.currentWeek` *clears* the in-memory override,
@@ -93,8 +115,9 @@
  * storage on, so the hook doesn't touch storage at all — it just follows
  * the clock (resolution short-circuits to `null`).
  *
- * URL writes go through `useSearchParams`'s functional updater with
- * `{ replace: true }` so sibling params (`?tier=`, `?lview=`, …) survive —
+ * URL writes all go through one function (`writeWeekParam`) — there is no
+ * second `?week=` writer in this hook — using `useSearchParams`'s functional
+ * updater with `{ replace: true }` so sibling params (`?tier=`, `?lview=`, …) survive —
  * legacy's `HistoryView.tsx:129-137` pattern. This hook uses raw
  * `useSearchParams`, not `useUrlTabState`: registering `week` there would
  * add it to `clearRegisteredTabParams`'s seed, which `setPageMode`
@@ -177,6 +200,10 @@ function readLegacyWeek(groupId: string, tierId: string): number | null {
 /**
  * `?week=` → v2 storage (`'current'` STOPS here, resolving to `null` without
  * ever consulting legacy) → legacy storage → `null` (follow the clock).
+ *
+ * `urlWeek` is the raw `?week=` value on a FIRST resolve and always `null` on
+ * a tier/group re-resolve — see the doc header's "mount only" rule. The two
+ * cases share this function precisely so the storage half stays identical.
  */
 function resolveOverride(
   groupId: string | undefined,
@@ -202,6 +229,27 @@ export function useLogWeek(
   const [searchParams, setSearchParams] = useSearchParams();
   const [override, setOverride] = useState<number | null>(null);
 
+  /**
+   * The hook's ONLY `?week=` writer. `null` removes the param, anything else
+   * sets it; sibling params survive via the functional updater, and the write
+   * is always a REPLACE. Both callers — `setWeek` and the re-resolve effect —
+   * go through here rather than each owning a `setSearchParams` call.
+   */
+  const writeWeekParam = useCallback(
+    (value: string | null) => {
+      setSearchParams(
+        (prev) => {
+          const params = new URLSearchParams(prev);
+          if (value === null) params.delete('week');
+          else params.set('week', value);
+          return params;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   // Re-resolve on mount and on every groupId/tierId change. Ref-held key
   // guards against the effect resolving more than once for the same pair
   // (e.g. a dev double-invoke) — see the doc header's "Tier re-resolve" note.
@@ -209,8 +257,22 @@ export function useLogWeek(
   useEffect(() => {
     const key = `${groupId ?? ''}::${tierId ?? ''}`;
     if (lastKeyRef.current === key) return;
+    const isFirstResolve = lastKeyRef.current === null;
     lastKeyRef.current = key;
-    setOverride(resolveOverride(groupId, tierId, searchParams.get('week')));
+
+    const urlWeek = searchParams.get('week');
+    // `?week=` participates on MOUNT ONLY (user-ruled). On a tier/group change
+    // the param usually holds this hook's own mirror of the PREVIOUS tier, so
+    // feeding it back in would shadow the new tier's stored week — see the
+    // doc header's resolution-order note.
+    const resolved = resolveOverride(groupId, tierId, isFirstResolve ? urlWeek : null);
+    setOverride(resolved);
+
+    if (isFirstResolve) return;
+    // Re-point the mirror at what the NEW tier resolved to (absent = following
+    // the clock) so the previous tier's week can't linger in the URL.
+    const mirrored = resolved === null ? null : String(resolved);
+    if (mirrored !== urlWeek) writeWeekParam(mirrored);
     // Intentionally re-resolves only on groupId/tierId changes, not on every
     // searchParams identity change — see the doc header's resolution-order note.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -240,17 +302,9 @@ export function useLogWeek(
         }
       }
 
-      setSearchParams(
-        (prev) => {
-          const params = new URLSearchParams(prev);
-          if (clearing) params.delete('week');
-          else params.set('week', String(clamped));
-          return params;
-        },
-        { replace: true },
-      );
+      writeWeekParam(clearing ? null : String(clamped));
     },
-    [clock.maxWeek, clock.currentWeek, groupId, tierId, setSearchParams],
+    [clock.maxWeek, clock.currentWeek, groupId, tierId, writeWeekParam],
   );
 
   const prev = useCallback(() => {

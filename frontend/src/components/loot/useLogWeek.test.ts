@@ -62,7 +62,12 @@ describe('useLogWeek', () => {
   });
 
   describe('resolution precedence', () => {
-    it('?week= wins over everything', () => {
+    it('?week= wins over everything on a fresh mount (the deep-link contract)', () => {
+      // Half one of the mount-only rule (fix round 2). D6/D11 deep links live
+      // or die on this: on a FIRST resolve the param outranks both storage
+      // keys. Half two — that a later tier change ignores the param — is
+      // pinned in the "tier / group changes" block below. Neither may be
+      // dropped without the other becoming meaningless.
       localStorage.setItem(logWeekKey('g1', 't1'), '2');
       localStorage.setItem(LEGACY_KEY('g1', 't1'), '1');
       const { result } = setup('/?week=4', { groupId: 'g1', tierId: 't1', clock: makeClock() });
@@ -322,6 +327,116 @@ describe('useLogWeek', () => {
 
       rerender({ groupId: 'g2', tierId: 't1', clock });
       expect(result.current.week).toBe(4);
+    });
+
+    // ── `?week=` wins on MOUNT ONLY (fix round 2, user-ruled) ──
+    // The two tests above mount at '/', with no `?week=` in play — which is
+    // exactly why they could never see the bug below. `setWeek` mirrors the
+    // displayed week into `?week=`, so on a real tier switch the param almost
+    // always holds this hook's own write for the PREVIOUS tier.
+
+    it(
+      'a tier switch resolves from the NEW tier\'s storage, not the ?week= this hook mirrored ' +
+        'for the previous tier — and the URL mirror follows the new week',
+      () => {
+        localStorage.setItem(logWeekKey('g1', 't1'), '2');
+        localStorage.setItem(logWeekKey('g1', 't2'), '4');
+        const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+        // Mount WITH ?week=2 — the state the hook itself leaves behind after a
+        // chevron step on t1.
+        const { result, rerender } = setup('/?week=2', { groupId: 'g1', tierId: 't1', clock });
+        expect(result.current.week).toBe(2);
+        expect(result.current.search).toContain('week=2');
+
+        rerender({ groupId: 'g1', tierId: 't2', clock });
+
+        // Before the fix this was 2 (the carried param), t2's saved 4 was never
+        // consulted, and the next chevron click overwrote t2's preference.
+        expect(result.current.week).toBe(4);
+        expect(result.current.search).toContain('week=4');
+        // A re-resolve chooses nothing, so it writes no storage — t1's key is
+        // left exactly as it was and t2's is not rewritten.
+        expect(localStorage.getItem(logWeekKey('g1', 't1'))).toBe('2');
+        expect(localStorage.getItem(logWeekKey('g1', 't2'))).toBe('4');
+      },
+    );
+
+    it('a group switch ignores the carried ?week= the same way', () => {
+      localStorage.setItem(logWeekKey('g1', 't1'), '2');
+      localStorage.setItem(logWeekKey('g2', 't1'), '4');
+      const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+      const { result, rerender } = setup('/?week=2', { groupId: 'g1', tierId: 't1', clock });
+      expect(result.current.week).toBe(2);
+
+      rerender({ groupId: 'g2', tierId: 't1', clock });
+
+      expect(result.current.week).toBe(4);
+      expect(result.current.search).toContain('week=4');
+    });
+
+    it(
+      'a carried ?week= above the new tier\'s range does not survive the switch (resolution is ' +
+        'deliberately unclamped, so nothing would correct it afterwards)',
+      () => {
+        // The sharp edge of the same bug: resolution never clamps (director
+        // B2) and the ref guard means the pair never re-resolves, so a carried
+        // out-of-range week would sit there for the rest of the session.
+        const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+        const { result, rerender } = setup('/?week=9', { groupId: 'g1', tierId: 't1', clock });
+        expect(result.current.week).toBe(9); // unclamped at resolve time, by design
+
+        rerender({ groupId: 'g1', tierId: 't2', clock }); // t2 has nothing stored
+
+        expect(result.current.week).toBe(3); // t2 follows the clock
+        expect(result.current.isCurrent).toBe(true);
+        expect(result.current.search).not.toContain('week=');
+      },
+    );
+
+    it('a tier switch still falls through v2 → legacy → clock for the NEW tier', () => {
+      // Skipping the URL step must skip ONLY the URL step: the rest of the
+      // chain (including the read-only legacy fallback) is unchanged.
+      localStorage.setItem(logWeekKey('g1', 't1'), '2');
+      localStorage.setItem(LEGACY_KEY('g1', 't2'), '1');
+      const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+      const { result, rerender } = setup('/?week=2', { groupId: 'g1', tierId: 't1', clock });
+
+      rerender({ groupId: 'g1', tierId: 't2', clock });
+
+      expect(result.current.week).toBe(1);
+      expect(result.current.search).toContain('week=1');
+      expect(localStorage.getItem(logWeekKey('g1', 't2'))).toBeNull(); // legacy read never migrates
+    });
+
+    it('a tier whose v2 key holds the "current" sentinel clears the carried ?week=', () => {
+      localStorage.setItem(logWeekKey('g1', 't1'), '2');
+      localStorage.setItem(logWeekKey('g1', 't2'), CURRENT_WEEK_SENTINEL);
+      localStorage.setItem(LEGACY_KEY('g1', 't2'), '1'); // stale V1 leftover — must stay ignored
+      const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+      const { result, rerender } = setup('/?week=2', { groupId: 'g1', tierId: 't1', clock });
+
+      rerender({ groupId: 'g1', tierId: 't2', clock });
+
+      expect(result.current.week).toBe(3);
+      expect(result.current.isCurrent).toBe(true);
+      expect(result.current.search).not.toContain('week=');
+    });
+
+    it('the re-resolve URL write preserves sibling params and stays a REPLACE', () => {
+      localStorage.setItem(logWeekKey('g1', 't2'), '4');
+      const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+      const { result, rerender } = setup('/?tier=abc&lview=log&week=2', {
+        groupId: 'g1',
+        tierId: 't1',
+        clock,
+      });
+
+      rerender({ groupId: 'g1', tierId: 't2', clock });
+
+      expect(result.current.search).toContain('tier=abc');
+      expect(result.current.search).toContain('lview=log');
+      expect(result.current.search).toContain('week=4');
+      expect(result.current.navigationType).toBe('REPLACE');
     });
   });
 
