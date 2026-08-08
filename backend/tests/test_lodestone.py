@@ -1457,9 +1457,10 @@ def test_tomestone_pld_shield_no_accessory_shift():
     assert gear["Bracelets"]["ID"] == 49648
     assert gear["Ring1"]["ID"] == 49730
     assert gear["Ring2"]["ID"] == 49653  # was dropped entirely before
-    # The shield (49679) must not occupy ANY slot in this PR (no off-hand slot yet)
-    assert all(slot["ID"] != 49679 for slot in gear.values())
-    assert len(gear) == 11
+    # The shield maps to the OffHand slot (D2) — exactly once, nowhere else.
+    assert gear["OffHand"]["ID"] == 49679
+    assert sum(1 for slot in gear.values() if slot["ID"] == 49679) == 1
+    assert len(gear) == 12
 
 
 def test_tomestone_pld_shield_full_payload_normalization():
@@ -1469,7 +1470,7 @@ def test_tomestone_pld_shield_full_payload_normalization():
     gear = payload["Character"]["GearSet"]["Gear"]
     assert gear["Earrings"]["ID"] == 49715
     assert gear["Ring2"]["ID"] == 49653
-    assert all(slot["ID"] != 49679 for slot in gear.values())
+    assert gear["OffHand"]["ID"] == 49679
 
 
 def test_tomestone_unknown_category_entries_are_skipped():
@@ -1505,14 +1506,16 @@ def test_tomestone_position_zero_with_known_category_is_not_mainhand():
     assert gear["Body"]["ID"] == 31002
 
 
-def test_tomestone_shield_at_position_zero_is_skipped():
-    """A shield at position 0 is skipped entirely, not stored as the main hand."""
+def test_tomestone_shield_at_position_zero_maps_to_offhand():
+    """A shield at position 0 maps to OffHand — a known category always wins
+    over the position-0 main-hand claim (it is neither MainHand nor skipped)."""
     gear_list = [
         {"item": {"id": 31003, "name": "Some Shield", "itemLevel": 700, "categoryName": "Shield", "categoryId": 11}},
         {"item": {"id": 31004, "name": "Some Helm", "itemLevel": 700, "categoryName": "Head", "categoryId": 34}},
     ]
     gear = _normalize_tomestone_gear_list(gear_list)
     assert "MainHand" not in gear
+    assert gear["OffHand"]["ID"] == 31003
     assert gear["Head"]["ID"] == 31004
 
 

@@ -423,6 +423,10 @@ async def _fetch_slots_etro(url: str) -> list[dict]:
                 "itemStats": item_info.get("stats") or None, "materia": materia_list,
             })
         else:
+            # No placeholder for an absent off-hand (would mint a phantom raid
+            # shield target for non-shield jobs) — mirrors bis.py's etro loop.
+            if our_slot == "offhand":
+                continue
             slots.append({"slot": our_slot, "source": "raid"})
     return slots
 

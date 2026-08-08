@@ -51,6 +51,7 @@ MOCK_RAIDER_AVATAR_URL = (
 MOCK_BROKEN_AVATAR_URL = "/images/lodestone/mock-avatar-missing.svg"
 LODESTONE_SLOT_MAP = {
     "MainHand": "weapon",
+    "OffHand": "offhand",
     "Head": "head",
     "Body": "body",
     "Hands": "hands",
@@ -415,7 +416,8 @@ def classify_current_source(item_name: str, item_level: int, slot: str) -> str:
         if pattern in name_lower and "champion" not in name_lower:
             return "normal"
 
-    if slot == "weapon":
+    # Shields track the weapon iLv ladder (795/790/785...), not armor's.
+    if slot in ("weapon", "offhand"):
         if item_level >= 795:
             return "savage"
         if item_level >= 790:

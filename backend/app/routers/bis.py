@@ -120,6 +120,7 @@ def load_local_presets() -> dict:
 # XIVGear slot names to our slot names
 XIVGEAR_SLOT_MAP = {
     "Weapon": "weapon",
+    "OffHand": "offhand",  # verified live 2026-08-08 (PLD curated set)
     "Head": "head",
     "Body": "body",
     "Hand": "hands",
@@ -135,6 +136,7 @@ XIVGEAR_SLOT_MAP = {
 # Etro slot names to our slot names
 ETRO_SLOT_MAP = {
     "weapon": "weapon",
+    "offHand": "offhand",  # verified vs etro API docs 2026-08-08
     "head": "head",
     "body": "body",
     "hands": "hands",
@@ -686,8 +688,8 @@ def determine_source(item_name: str, item_level: int, slot: str) -> str:
     if 765 <= item_level <= 770:
         return "crafted"
 
-    # For weapon, higher threshold
-    if slot == "weapon":
+    # For weapon (and off-hand — shields track the weapon iLv ladder), higher threshold
+    if slot in ("weapon", "offhand"):
         # 795 = savage, 790 = augmented tome (needs aug), 785 = base tome
         if item_level >= 795:
             return "raid"
@@ -895,6 +897,10 @@ async def build_xivgear_slots(items_data: dict) -> list[GearSlotData]:
                 materia=materia_list,
             ))
         else:
+            # No placeholder for an absent off-hand: a blanket "raid" entry
+            # would mint a phantom raid shield target for every non-shield job.
+            if our_slot == "offhand":
+                continue
             slots.append(GearSlotData(slot=our_slot, source="raid"))
 
     return slots
@@ -1160,6 +1166,10 @@ async def fetch_etro_bis(request: Request, uuid_or_url: str):
                 materia=materia_list,
             ))
         else:
+            # No placeholder for an absent off-hand: a blanket "raid" entry
+            # would mint a phantom raid shield target for every non-shield job.
+            if our_slot == "offhand":
+                continue
             # No item in this slot - default to raid
             slots.append(GearSlotData(
                 slot=our_slot,
