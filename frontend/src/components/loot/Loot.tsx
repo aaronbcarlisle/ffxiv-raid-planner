@@ -499,7 +499,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
                 clock={clock}
                 displayedWeek={scopedWeek}
                 onWeekChange={setScopedWeekOverride}
-                onFollowClock={() => setScopedWeekOverride(clock.currentWeek)}
+                onFollowClock={() => setScopedWeekOverride(null)}
                 canEdit={canEdit}
                 canPrev={scopedWeek > 1}
                 canNext={scopedWeek < clock.maxWeek}

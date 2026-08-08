@@ -16,7 +16,7 @@
  * caller (Task 3's `WeekScopeControl`) always passes `clock.currentWeek`;
  * this component never derives it.
  */
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { RotateCcw, AlertTriangle } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../primitives';
@@ -33,6 +33,13 @@ export interface RevertWeekSummaryModalProps {
   pageLedger: PageLedgerEntry[];
   players: SnapshotPlayer[];
   isReverting: boolean;
+  /**
+   * Optional caller-supplied notice rendered near the warning block (D4
+   * task-3 fix round 1, director-ruled) — e.g. R-22's divergence line when
+   * the caller's displayed week differs from `week`. Additive: omitting it
+   * reproduces the original Task 2 render exactly.
+   */
+  notice?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -58,6 +65,7 @@ export function RevertWeekSummaryModal({
   pageLedger,
   players,
   isReverting,
+  notice,
   onConfirm,
   onCancel,
 }: RevertWeekSummaryModalProps) {
@@ -105,6 +113,8 @@ export function RevertWeekSummaryModal({
             future-week entries once the clock reverts.
           </p>
         </div>
+
+        {notice && <p className="text-sm text-text-secondary">{notice}</p>}
 
         {hasData ? (
           <>

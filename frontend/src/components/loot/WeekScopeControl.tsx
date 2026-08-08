@@ -1,53 +1,38 @@
 /**
  * WeekScopeControl — the Log tab's week pill (spec §2.3/§5.4, R-22): a
  * chevron+dropdown stepper fed by the shared `WeekClock`, and the host for
- * the clock's mutations ("Start next week" / "Revert week"). R-15 retires
- * the old Priority-view "scope" concept (`scopedWeek`) — this component now
- * lives only in the Log tab and steps a `displayedWeek` that can diverge
- * from the clock's `currentWeek`; the clock stays the sole source of truth
- * for the mutations, which name the split when it exists (R-22).
+ * the clock's mutations ("Start next week" / "Revert week"). The mutations
+ * stay clock-bound (`clock.currentWeek`/`clock.maxWeek`), never
+ * `displayedWeek` — when the two diverge, both confirmation surfaces name
+ * the split so a user viewing a past week can't accidentally revert the
+ * clock's actual current week.
  *
- * Props beyond the brief's literal R-15 vocabulary list (`clock`,
- * `displayedWeek`, `onWeekChange`, `onFollowClock`, `canEdit`, `lootLog`,
- * `materialLog`, `pageLedger`, `players`) — both required to satisfy other,
- * more specific bullets in the same brief:
- *   - `canPrev`/`canNext`: "the caller owns the bounds" (task-3 resolution
- *     notes). `useLogWeek`'s `LogWeek.canPrev`/`canNext` already encode the
- *     true clamp range (`week > 1` / `week < max(clock.maxWeek,
- *     clock.currentWeek)`) — recomputing that here from `clock.maxWeek`
- *     alone would silently drift from the hook's actual formula. Task 4
- *     wires `canPrev={logWeek.canPrev}` / `canNext={logWeek.canNext}`.
- *   - `groupId`/`tierId`: D-41's pre-check (below) calls
+ * Props beyond the plain vocabulary (`clock`, `displayedWeek`,
+ * `onWeekChange`, `onFollowClock`, `canEdit`, `lootLog`, `materialLog`,
+ * `pageLedger`, `players`):
+ *   - `canPrev`/`canNext`: the caller owns the step bounds. `useLogWeek`'s
+ *     `LogWeek.canPrev`/`canNext` already encode the true clamp range
+ *     (`week > 1` / `week < max(clock.maxWeek, clock.currentWeek)`) —
+ *     recomputing that here from `clock.maxWeek` alone would drift from the
+ *     hook's actual formula.
+ *   - `groupId`/`tierId`: the revert pre-check (below) calls
  *     `fetchLootLog`/`fetchMaterialLog`/`fetchPageLedger` off
- *     `useLootTrackingStore.getState()`, and all three require `(groupId,
- *     tierId, week?)` — there is no path to those identifiers through
- *     `clock` (`useWeekClock.ts` closes over them internally but never
- *     exposes them) or any other listed prop. Every other Loot.tsx sibling
- *     that touches the store already takes these two as plain props
- *     (`RecipientPicker`, `LootResetMenu`, `QuickLogMaterialModal`, …), so
- *     this follows the established convention.
+ *     `useLootTrackingStore.getState()`, which require `(groupId, tierId,
+ *     week?)` — `clock` (`WeekClock`) closes over them internally but never
+ *     exposes them.
  *
- * D-41's revert pre-check (director B3, `v1-v2-parity-matrix.md:267`,
- * `phase-d-loot-design.md:466`): reverting is destructive-feeling, so
- * clicking "Revert week" no longer mutates on a single confirm. It re-fetches
- * the clock's current week fresh from the store and only then decides what
- * to show — mirroring `HistoryView.tsx:206-238`'s `handleRevertWeekClick`
- * (frozen, read-only reference):
- *   - the "Revert week" dropdown item opens a lightweight `ConfirmModal`
- *     (unchanged shape from before this task, now carrying the R-22
- *     divergence line when `displayedWeek !== clock.currentWeek`);
- *   - confirming it runs the pre-check: fetch loot/material/page-ledger
- *     fresh, then re-read the store for entries at `clock.currentWeek`;
- *   - a fetch failure toasts and aborts — no mutation, no further modal;
- *   - data found ⇒ the lightweight confirm hands off to Task 2's
- *     `RevertWeekSummaryModal` (the itemized "what's about to move" surface,
- *     `week` always `clock.currentWeek`, never `displayedWeek`) for the
- *     actual mutating confirm;
- *   - nothing found ⇒ reverts directly, exactly like `executeRevert` in the
- *     V1 reference — no second modal.
- * `isReverting` is owned here (brief bullet m6 — Task 2's modal consumes the
- * prop but doesn't produce it) and guards re-entrancy through both the
- * pre-check fetch and the actual mutation.
+ * Revert flow (D-41's pre-check, director B3 — one confirmation per path,
+ * ruled): the dropdown item fires the pre-check directly — re-entrancy
+ * guarded by `isReverting`, fetches loot/material/page-ledger fresh, then
+ * re-reads the store for entries at `clock.currentWeek`. A fetch failure
+ * toasts and aborts (no modal). Data found ⇒ Task 2's
+ * `RevertWeekSummaryModal` is the only confirmation (itemized, `week`
+ * always `clock.currentWeek`, carries the divergence line via its optional
+ * `notice` prop). Nothing found ⇒ a lightweight `ConfirmModal` is the only
+ * confirmation (also carries the divergence line) — reverting never happens
+ * with zero UI, since that path is where the divergence would otherwise go
+ * unstated. `isReverting` also drives the actual mutation's in-flight state
+ * and guards re-entrancy there too.
  */
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, LocateFixed } from 'lucide-react';
@@ -75,7 +60,7 @@ export interface WeekScopeControlProps {
   /** Bounds the caller owns — see file-header note. */
   canPrev: boolean;
   canNext: boolean;
-  /** Required by the D-41 pre-check's store fetches — see file-header note. */
+  /** Required by the revert pre-check's store fetches — see file-header note. */
   groupId: string;
   tierId: string;
   lootLog: LootLogEntry[];
@@ -95,8 +80,6 @@ function formatWeekDate(d: Date): string {
   return d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
 }
 
-type PendingMutation = 'start-next' | 'revert' | null;
-
 export function WeekScopeControl({
   clock,
   displayedWeek,
@@ -112,8 +95,9 @@ export function WeekScopeControl({
   pageLedger,
   players,
 }: WeekScopeControlProps) {
-  const [pendingMutation, setPendingMutation] = useState<PendingMutation>(null);
+  const [showStartNextConfirm, setShowStartNextConfirm] = useState(false);
   const [showRevertSummary, setShowRevertSummary] = useState(false);
+  const [showEmptyRevertConfirm, setShowEmptyRevertConfirm] = useState(false);
   const [isReverting, setIsReverting] = useState(false);
 
   const { currentWeek, maxWeek, weekDataTypes, rangeOfWeek, startNextWeek, revertWeek } = clock;
@@ -134,12 +118,12 @@ export function WeekScopeControl({
     } catch {
       toast.error('Failed to advance the week');
     } finally {
-      setPendingMutation(null);
+      setShowStartNextConfirm(false);
     }
   };
 
-  // Shared by the "no data at the clock's week" pre-check branch and Task 2's
-  // RevertWeekSummaryModal's own confirm — the actual mutation, exactly once.
+  // Shared by the empty-week ConfirmModal and Task 2's RevertWeekSummaryModal
+  // — the actual mutation, exactly once regardless of which path led here.
   const executeRevert = async () => {
     if (isReverting) return;
     setIsReverting(true);
@@ -148,6 +132,7 @@ export function WeekScopeControl({
       toast.success('Week reverted');
       onFollowClock();
       setShowRevertSummary(false);
+      setShowEmptyRevertConfirm(false);
     } catch {
       toast.error('Failed to revert the week');
     } finally {
@@ -155,11 +140,11 @@ export function WeekScopeControl({
     }
   };
 
-  // D-41's pre-check (director B3): fired by the lightweight ConfirmModal's
-  // confirm button, mirroring `HistoryView.tsx:206-238`'s
-  // `handleRevertWeekClick`. Re-entrancy guarded by `isReverting` — the same
-  // flag Task 2's modal uses for its own in-flight state.
-  const handleRevertPreCheck = async () => {
+  // Fired directly by the "Revert week" dropdown item (director B3, one
+  // confirmation per path): guard re-entrancy → fetch loot/material/ledger
+  // fresh → re-check the store for entries at the clock's current week →
+  // data opens the summary modal, nothing opens the lightweight confirm.
+  const handleRevertClick = async () => {
     if (isReverting) return;
     setIsReverting(true);
 
@@ -173,7 +158,6 @@ export function WeekScopeControl({
     } catch {
       toast.error('Failed to check week data');
       setIsReverting(false);
-      setPendingMutation(null);
       return;
     }
 
@@ -184,12 +168,11 @@ export function WeekScopeControl({
       fresh.pageLedger.some((e) => e.weekNumber === currentWeek);
 
     setIsReverting(false);
-    setPendingMutation(null);
 
     if (hasData) {
       setShowRevertSummary(true);
     } else {
-      await executeRevert();
+      setShowEmptyRevertConfirm(true);
     }
   };
 
@@ -240,13 +223,13 @@ export function WeekScopeControl({
             {canEdit && (
               <>
                 <DropdownSeparator />
-                <DropdownItem onSelect={() => setPendingMutation('start-next')}>
+                <DropdownItem onSelect={() => setShowStartNextConfirm(true)}>
                   Start next week
                 </DropdownItem>
                 <DropdownItem
                   // Guard: reverting from Week 1 would open a modal reading "Week 0".
                   disabled={currentWeek <= 1}
-                  onSelect={() => setPendingMutation('revert')}
+                  onSelect={() => void handleRevertClick()}
                 >
                   Revert week
                 </DropdownItem>
@@ -275,33 +258,33 @@ export function WeekScopeControl({
       </div>
 
       <ConfirmModal
-        isOpen={pendingMutation === 'start-next'}
+        isOpen={showStartNextConfirm}
         title="Start next week"
         message={
-          <>
+          <div className="space-y-2">
             <p>{`Advance the week clock to Week ${currentWeek + 1}? Logged data is never modified.`}</p>
             {isDiverged && <p>{divergenceLine}</p>}
-          </>
+          </div>
         }
         variant="default"
         confirmLabel="Start next week"
         onConfirm={handleStartNextWeek}
-        onCancel={() => setPendingMutation(null)}
+        onCancel={() => setShowStartNextConfirm(false)}
       />
 
       <ConfirmModal
-        isOpen={pendingMutation === 'revert'}
+        isOpen={showEmptyRevertConfirm}
         title="Revert week"
         message={
-          <>
+          <div className="space-y-2">
             <p>{`Move the clock back to Week ${currentWeek - 1}? Entries logged for Week ${currentWeek} will appear as future-week entries.`}</p>
             {isDiverged && <p>{divergenceLine}</p>}
-          </>
+          </div>
         }
         variant="warning"
         confirmLabel="Revert week"
-        onConfirm={handleRevertPreCheck}
-        onCancel={() => setPendingMutation(null)}
+        onConfirm={executeRevert}
+        onCancel={() => setShowEmptyRevertConfirm(false)}
       />
 
       <RevertWeekSummaryModal
@@ -312,6 +295,7 @@ export function WeekScopeControl({
         pageLedger={pageLedger}
         players={players}
         isReverting={isReverting}
+        notice={isDiverged ? divergenceLine : undefined}
         onConfirm={executeRevert}
         onCancel={() => setShowRevertSummary(false)}
       />

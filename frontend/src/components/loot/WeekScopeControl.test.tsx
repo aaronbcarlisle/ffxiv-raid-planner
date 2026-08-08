@@ -6,6 +6,7 @@ import { render, screen, fireEvent, within, waitFor } from '@testing-library/rea
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WeekScopeControl, type WeekScopeControlProps } from './WeekScopeControl';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { toast } from '../../stores/toastStore';
 import type { WeekClock } from '../../hooks/useWeekClock';
 import type { LootLogEntry } from '../../types';
 
@@ -170,15 +171,25 @@ describe('WeekScopeControl', () => {
   });
 
   describe('chevrons + go-to-current — wrapped as one tight group', () => {
-    it('wraps the prev chevron, trigger, next chevron and go-to-current in a shared parent', () => {
-      render(<WeekScopeControl {...makeProps()} />);
+    it('wraps the prev chevron, trigger, next chevron and go-to-current in a shared, non-bare-fragment flex parent', () => {
+      // Regression guard: `Dropdown` renders `DropdownMenuPrimitive.Root`,
+      // which emits NO DOM of its own, and `DropdownTrigger asChild` makes
+      // the trigger `Button` a direct sibling of the chevrons. Under the OLD
+      // bare-fragment render, all four controls were direct children of
+      // `container` too, so a shared-`parentElement` check alone can't tell
+      // the two apart — the `not.toBe(container)` + `flex` class assertions
+      // are what actually distinguish "wrapped" from "still a fragment".
+      const { container } = render(<WeekScopeControl {...makeProps()} />);
       const prev = screen.getByRole('button', { name: 'Previous week' });
       const next = screen.getByRole('button', { name: 'Next week' });
       const goToCurrent = screen.getByRole('button', { name: /Go to the current week/ });
       const trigger = screen.getByRole('button', { name: 'This week (Week 3)' });
+
       expect(prev.parentElement).toBe(next.parentElement);
       expect(prev.parentElement).toBe(goToCurrent.parentElement);
       expect(prev.parentElement).toBe(trigger.parentElement);
+      expect(prev.parentElement).not.toBe(container);
+      expect(prev.parentElement).toHaveClass('flex');
     });
 
     it('disables Previous week when canPrev is false, and fires onWeekChange(displayedWeek - 1) when enabled', () => {
@@ -280,7 +291,7 @@ describe('WeekScopeControl', () => {
     });
   });
 
-  describe('Revert week', () => {
+  describe('Revert week — one confirmation per path (director-ruled)', () => {
     it('disables the dropdown item when the current week is 1 (would read "Week 0")', async () => {
       render(
         <WeekScopeControl
@@ -292,119 +303,203 @@ describe('WeekScopeControl', () => {
       expect(revert).toHaveAttribute('data-disabled');
     });
 
-    it('shows the divergence line only when displayedWeek differs from the clock\'s current week', async () => {
+    it('fires the pre-check directly from the dropdown item — no intermediate confirm before the fetch', async () => {
       const clock = makeClock({ currentWeek: 3 });
-      const { rerender } = render(
-        <WeekScopeControl {...makeProps({ clock, displayedWeek: 3, canEdit: true })} />
-      );
+      render(<WeekScopeControl {...makeProps({ clock, canEdit: true, groupId: 'g1', tierId: 't1' })} />);
       openMenu();
       fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
-      expect(await screen.findByText(/Move the clock back to Week 2/)).toBeInTheDocument();
-      expect(screen.queryByText(/This acts on the clock/)).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-      rerender(<WeekScopeControl {...makeProps({ clock, displayedWeek: 1, canEdit: true })} />);
-      openMenu();
-      fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
-      expect(
-        await screen.findByText("You're viewing Week 1. This acts on the clock — Week 3.")
-      ).toBeInTheDocument();
-    });
-
-    it('cancels the lightweight confirm without fetching or reverting', async () => {
-      const clock = makeClock();
-      render(<WeekScopeControl {...makeProps({ clock, canEdit: true })} />);
-      openMenu();
-      fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
-      expect(await screen.findByText(/Move the clock back to Week 2/)).toBeInTheDocument();
-
-      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-
-      expect(useLootTrackingStore.getState().fetchLootLog).not.toHaveBeenCalled();
-      expect(clock.revertWeek).not.toHaveBeenCalled();
-      await waitFor(() =>
-        expect(screen.queryByText(/Move the clock back to Week 2/)).not.toBeInTheDocument()
-      );
-    });
-
-    it('the pre-check refetches and, on an empty week, reverts directly without opening the data-summary modal', async () => {
-      const onFollowClock = vi.fn();
-      const clock = makeClock({ currentWeek: 3 });
-      render(<WeekScopeControl {...makeProps({ clock, canEdit: true, onFollowClock, groupId: 'g1', tierId: 't1' })} />);
-      openMenu();
-      fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
-      fireEvent.click(await screen.findByRole('button', { name: 'Revert week' }));
 
       await waitFor(() => expect(useLootTrackingStore.getState().fetchLootLog).toHaveBeenCalledWith('g1', 't1'));
       expect(useLootTrackingStore.getState().fetchMaterialLog).toHaveBeenCalledWith('g1', 't1');
       expect(useLootTrackingStore.getState().fetchPageLedger).toHaveBeenCalledWith('g1', 't1');
-
-      await waitFor(() => expect(clock.revertWeek).toHaveBeenCalled());
-      await waitFor(() => expect(onFollowClock).toHaveBeenCalled());
-      // Task 2's itemized modal never appears for an empty week.
-      expect(screen.queryByText(/Revert to Week/)).not.toBeInTheDocument();
     });
 
-    it('the pre-check refetches and, on a non-empty week, opens the data-summary modal with the clock\'s week', async () => {
-      useLootTrackingStore.setState({
-        fetchLootLog: vi.fn().mockImplementation(async () => {
-          useLootTrackingStore.setState({ lootLog: [lootEntry({ weekNumber: 3 })] });
-        }),
+    describe('empty week — the lightweight ConfirmModal is the only confirmation', () => {
+      it('opens after the pre-check settles, and the itemized summary modal never appears', async () => {
+        const clock = makeClock({ currentWeek: 3 });
+        render(<WeekScopeControl {...makeProps({ clock, canEdit: true })} />);
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+
+        expect(await screen.findByText(/Move the clock back to Week 2/)).toBeInTheDocument();
+        expect(clock.revertWeek).not.toHaveBeenCalled();
+        expect(screen.queryByText(/Revert to Week/)).not.toBeInTheDocument();
       });
+
+      it('shows the divergence line only when displayedWeek differs from the clock\'s current week', async () => {
+        const clock = makeClock({ currentWeek: 3 });
+        render(<WeekScopeControl {...makeProps({ clock, displayedWeek: 3, canEdit: true })} />);
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+        expect(await screen.findByText(/Move the clock back to Week 2/)).toBeInTheDocument();
+        expect(screen.queryByText(/This acts on the clock/)).not.toBeInTheDocument();
+      });
+
+      it('shows the divergence line when displayedWeek diverges from the clock', async () => {
+        const clock = makeClock({ currentWeek: 3 });
+        render(<WeekScopeControl {...makeProps({ clock, displayedWeek: 1, canEdit: true })} />);
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+        expect(
+          await screen.findByText("You're viewing Week 1. This acts on the clock — Week 3.")
+        ).toBeInTheDocument();
+      });
+
+      it('cancels without reverting', async () => {
+        const clock = makeClock();
+        render(<WeekScopeControl {...makeProps({ clock, canEdit: true })} />);
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+        expect(await screen.findByText(/Move the clock back to Week 2/)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+        expect(clock.revertWeek).not.toHaveBeenCalled();
+        await waitFor(() =>
+          expect(screen.queryByText(/Move the clock back to Week 2/)).not.toBeInTheDocument()
+        );
+      });
+
+      it('confirming reverts and calls onFollowClock, not onWeekChange', async () => {
+        const onFollowClock = vi.fn();
+        const onWeekChange = vi.fn();
+        const clock = makeClock({ currentWeek: 3 });
+        render(
+          <WeekScopeControl {...makeProps({ clock, canEdit: true, onFollowClock, onWeekChange })} />
+        );
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Revert week' }));
+
+        await waitFor(() => expect(clock.revertWeek).toHaveBeenCalled());
+        await waitFor(() => expect(onFollowClock).toHaveBeenCalled());
+        expect(onWeekChange).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('non-empty week — the data-summary modal is the only confirmation', () => {
+      function seedNonEmptyWeek(entry: LootLogEntry) {
+        useLootTrackingStore.setState({
+          fetchLootLog: vi.fn().mockImplementation(async () => {
+            useLootTrackingStore.setState({ lootLog: [entry] });
+          }),
+        });
+      }
+
+      it('opens with the clock\'s week, and the lightweight confirm never appears', async () => {
+        seedNonEmptyWeek(lootEntry({ weekNumber: 3 }));
+        const clock = makeClock({ currentWeek: 3 });
+        render(<WeekScopeControl {...makeProps({ clock, canEdit: true })} />);
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+
+        expect(await screen.findByText('Revert to Week 2?')).toBeInTheDocument();
+        expect(clock.revertWeek).not.toHaveBeenCalled();
+        expect(screen.queryByText(/Move the clock back to Week 2/)).not.toBeInTheDocument();
+      });
+
+      it('forwards the seeded entry through props to the itemized list — not just the store (Important 4)', async () => {
+        // The pre-check refetches into the STORE, but the modal is fed the
+        // component's `lootLog` PROP — seed both, matching what Task 4's
+        // real wiring does (the store selector IS the prop at the call
+        // site), so this fails if the data props stop being forwarded to
+        // RevertWeekSummaryModal and it silently falls back to "Nothing
+        // logged for Week 3."
+        const seeded = lootEntry({ weekNumber: 3, recipientPlayerName: 'Alsbet' });
+        seedNonEmptyWeek(seeded);
+        const clock = makeClock({ currentWeek: 3 });
+        render(<WeekScopeControl {...makeProps({ clock, canEdit: true, lootLog: [seeded] })} />);
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+
+        expect(await screen.findByText('Revert to Week 2?')).toBeInTheDocument();
+        expect(screen.getByText('1 drop')).toBeInTheDocument();
+        expect(screen.getByText(/Alsbet/)).toBeInTheDocument();
+        expect(screen.queryByText(/Nothing logged/)).not.toBeInTheDocument();
+      });
+
+      it('carries the divergence line via the notice prop only when diverged', async () => {
+        seedNonEmptyWeek(lootEntry({ weekNumber: 3 }));
+        const clock = makeClock({ currentWeek: 3 });
+        render(<WeekScopeControl {...makeProps({ clock, displayedWeek: 1, canEdit: true })} />);
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+
+        expect(await screen.findByText('Revert to Week 2?')).toBeInTheDocument();
+        expect(
+          await screen.findByText("You're viewing Week 1. This acts on the clock — Week 3.")
+        ).toBeInTheDocument();
+      });
+
+      it('omits the notice when not diverged', async () => {
+        seedNonEmptyWeek(lootEntry({ weekNumber: 3 }));
+        const clock = makeClock({ currentWeek: 3 });
+        render(<WeekScopeControl {...makeProps({ clock, displayedWeek: 3, canEdit: true })} />);
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+
+        expect(await screen.findByText('Revert to Week 2?')).toBeInTheDocument();
+        expect(screen.queryByText(/This acts on the clock/)).not.toBeInTheDocument();
+      });
+
+      it('confirming reverts and calls onFollowClock, not onWeekChange', async () => {
+        seedNonEmptyWeek(lootEntry({ weekNumber: 3 }));
+        const onFollowClock = vi.fn();
+        const onWeekChange = vi.fn();
+        const clock = makeClock({ currentWeek: 3 });
+        render(
+          <WeekScopeControl {...makeProps({ clock, canEdit: true, onFollowClock, onWeekChange })} />
+        );
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+        expect(await screen.findByText('Revert to Week 2?')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Revert week' }));
+
+        await waitFor(() => expect(clock.revertWeek).toHaveBeenCalled());
+        await waitFor(() => expect(onFollowClock).toHaveBeenCalled());
+        expect(onWeekChange).not.toHaveBeenCalled();
+        await waitFor(() => expect(screen.queryByText('Revert to Week 2?')).not.toBeInTheDocument());
+      });
+
+      it('confirming twice only reverts once (m6 double-click guard)', async () => {
+        seedNonEmptyWeek(lootEntry({ weekNumber: 3 }));
+        const clock = makeClock({ currentWeek: 3 });
+        render(<WeekScopeControl {...makeProps({ clock, canEdit: true })} />);
+        openMenu();
+        fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
+        expect(await screen.findByText('Revert to Week 2?')).toBeInTheDocument();
+
+        const confirmButton = screen.getByRole('button', { name: 'Revert week' });
+        fireEvent.click(confirmButton);
+        fireEvent.click(confirmButton);
+
+        await waitFor(() => expect(clock.revertWeek).toHaveBeenCalledTimes(1));
+      });
+    });
+
+    it('a failed pre-check fetch toasts, aborts without mutating or opening any modal, and releases isReverting for the next attempt', async () => {
+      const fetchLootLog = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValue(undefined);
+      useLootTrackingStore.setState({ fetchLootLog });
+      const errorSpy = vi.spyOn(toast, 'error');
       const clock = makeClock({ currentWeek: 3 });
       render(<WeekScopeControl {...makeProps({ clock, canEdit: true })} />);
       openMenu();
       fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
-      fireEvent.click(await screen.findByRole('button', { name: 'Revert week' }));
 
-      expect(await screen.findByText('Revert to Week 2?')).toBeInTheDocument();
-      expect(clock.revertWeek).not.toHaveBeenCalled();
-
-      // Confirming Task 2's modal is what actually mutates.
-      fireEvent.click(screen.getByRole('button', { name: 'Revert week' }));
-      await waitFor(() => expect(clock.revertWeek).toHaveBeenCalled());
-    });
-
-    it('a failed pre-check fetch toasts and aborts without mutating or opening the data-summary modal', async () => {
-      useLootTrackingStore.setState({
-        fetchLootLog: vi.fn().mockRejectedValue(new Error('network down')),
-      });
-      const clock = makeClock({ currentWeek: 3 });
-      render(<WeekScopeControl {...makeProps({ clock, canEdit: true })} />);
-      openMenu();
-      fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
-      fireEvent.click(await screen.findByRole('button', { name: 'Revert week' }));
-
-      await waitFor(() =>
-        expect(screen.queryByText(/Move the clock back to Week 2/)).not.toBeInTheDocument()
-      );
+      await waitFor(() => expect(errorSpy).toHaveBeenCalledWith('Failed to check week data'));
+      expect(screen.queryByText(/Move the clock back to Week 2/)).not.toBeInTheDocument();
       expect(screen.queryByText(/Revert to Week/)).not.toBeInTheDocument();
       expect(clock.revertWeek).not.toHaveBeenCalled();
-    });
 
-    it('a successful revert (via the data-summary modal) calls onFollowClock, not onWeekChange', async () => {
-      useLootTrackingStore.setState({
-        fetchLootLog: vi.fn().mockImplementation(async () => {
-          useLootTrackingStore.setState({ lootLog: [lootEntry({ weekNumber: 3 })] });
-        }),
-      });
-      const onFollowClock = vi.fn();
-      const onWeekChange = vi.fn();
-      const clock = makeClock({ currentWeek: 3 });
-      render(
-        <WeekScopeControl {...makeProps({ clock, canEdit: true, onFollowClock, onWeekChange })} />
-      );
+      // isReverting must have been released — a second attempt still has to
+      // reach the fetch, not be swallowed by a stuck re-entrancy guard.
       openMenu();
       fireEvent.click(await screen.findByRole('menuitem', { name: /revert week/i }));
-      fireEvent.click(await screen.findByRole('button', { name: 'Revert week' }));
-      expect(await screen.findByText('Revert to Week 2?')).toBeInTheDocument();
-
-      fireEvent.click(screen.getByRole('button', { name: 'Revert week' }));
-
-      await waitFor(() => expect(clock.revertWeek).toHaveBeenCalled());
-      await waitFor(() => expect(onFollowClock).toHaveBeenCalled());
-      expect(onWeekChange).not.toHaveBeenCalled();
-      await waitFor(() => expect(screen.queryByText('Revert to Week 2?')).not.toBeInTheDocument());
+      await waitFor(() => expect(fetchLootLog).toHaveBeenCalledTimes(2));
     });
   });
 });
