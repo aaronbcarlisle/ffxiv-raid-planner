@@ -5,15 +5,20 @@
  * Pre-filled with material type, floor, and suggested player for one-click confirmation.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Gem } from 'lucide-react';
-import { Modal, Select, Label, Checkbox, NumberInput, RadioGroup } from '../ui';
+import { Modal, Select, Label, Checkbox, NumberInput, RadioGroup, Tag, type Tone } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
 import { getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone, type PriorityEntry } from '../../utils/priority';
-import { isSlotAugmentationMaterial, UPGRADE_MATERIAL_DISPLAY_NAMES } from '../../gamedata/loot-tables';
+import {
+  isSlotAugmentationMaterial,
+  UPGRADE_MATERIAL_DISPLAY_NAMES,
+  FLOOR_LOOT_TABLES,
+  type FloorNumber,
+} from '../../gamedata/loot-tables';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import {
   getEligibleSlotsForAugmentation,
@@ -74,6 +79,24 @@ function initialGearSelection(
   return { slot: null, augmentTome: false };
 }
 
+// R-26 free-form selectors: only the floors that actually drop an upgrade material.
+const MATERIAL_FLOORS = ([1, 2, 3, 4] as FloorNumber[])
+  .filter((n) => FLOOR_LOOT_TABLES[n].upgradeMaterials.length > 0); // [2, 3] today
+
+function materialsForFloorNumber(n: FloorNumber): MaterialType[] {
+  return FLOOR_LOOT_TABLES[n].upgradeMaterials as MaterialType[];
+}
+
+const MATERIAL_TONE = {
+  twine: 'material-twine', glaze: 'material-glaze',
+  solvent: 'material-solvent', universal_tomestone: 'material-tomestone',
+} as const satisfies Record<MaterialType, Tone>;
+
+// Free-form's default floor/material — computed once (module scope) so both the mount-time
+// lazy initializer and the reset-on-open effect agree without repeating the fallback chain.
+const DEFAULT_FREEFORM_FLOOR: FloorNumber = MATERIAL_FLOORS[0] ?? 2;
+const DEFAULT_FREEFORM_MATERIAL: MaterialType = materialsForFloorNumber(DEFAULT_FREEFORM_FLOOR)[0] ?? 'twine';
+
 export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const {
     isOpen,
@@ -91,19 +114,29 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const suggestedPlayer = props.suggestedPlayer;
 
   const mode: ModalMode = props.floor != null ? 'pinned' : 'freeform';
+  const [pickedFloorNumber, setPickedFloorNumber] = useState<FloorNumber>(DEFAULT_FREEFORM_FLOOR);
+  const [pickedMaterial, setPickedMaterial] = useState<MaterialType>(DEFAULT_FREEFORM_MATERIAL);
+  // `props.floors` is `string[] | undefined` in general (unnarrowed) union access; `?? []`
+  // resolves it to `string[]` without needing a cast (only meaningful when mode !== 'pinned').
+  const freeformFloors = props.floors ?? [];
   // `mode` classifies `props.floor`, but TS can't replay that discriminant check through the
   // `mode` alias (it's a computed classification, not a direct alias of the discriminant), so
   // `props.material`/`props.floor` stay widened to `T | undefined` here even though the union
-  // guarantees exactly one side is set per `mode`. The free-form side is a placeholder for now
-  // (`undefined` cast) — D8 3B step 3 wires it to `pickedMaterial`/`pickedFloorNumber` state;
-  // nothing mounts free-form yet, so this is unreachable today.
-  const material = (mode === 'pinned' ? props.material : undefined) as MaterialType;
-  const floorName = (mode === 'pinned' ? props.floor : undefined) as string;
+  // guarantees exactly one side is set per `mode` — the casts assert what that invariant
+  // already guarantees.
+  const material = mode === 'pinned' ? (props.material as MaterialType) : pickedMaterial;
+  const floorName = mode === 'pinned'
+    ? (props.floor as string)
+    : (freeformFloors[pickedFloorNumber - 1] ?? `Floor ${pickedFloorNumber}`);
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer?.id ?? '');
-  const [selectedWeek, setSelectedWeek] = useState(maxWeek);
+  const [selectedWeek, setSelectedWeek] = useState(props.initialWeek ?? maxWeek);
   const [method, setMethod] = useState<LootMethod>('drop');
   const [isSaving, setIsSaving] = useState(false);
   const [updateGear, setUpdateGear] = useState(true);
+  // R-a/D-37 subs widening: off by default, reset whenever the modal opens (below).
+  const [includeSubs, setIncludeSubs] = useState(false);
+  // Never clobbers a manual recipient pick; only a material change resets it (D8 3B).
+  const userPickedRecipient = useRef(false);
   // Compute initial slot selection BEFORE first render using lazy initializer
   // Note: 'tome_weapon' selection is tracked via augmentTomeWeapon state, not selectedSlot
   const [selectedSlot, setSelectedSlot] = useState<GearSlot | null>(() => {
@@ -154,29 +187,44 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     eligibleOptions.canAugmentTomeWeapon ||
     eligibleOptions.slots.length > 0;
 
-  // Reset state when modal opens
+  // Reset state when modal opens (pinned) — gated so free-form (below) has its own block.
   // Non-null assertions: this body only runs where `mode === 'pinned'` guarantees
-  // `suggestedPlayer` is set (D8 3B step 3 adds the mode gate + a parallel free-form block —
-  // this stays untouched, verbatim, since nothing mounts free-form yet).
+  // `suggestedPlayer` is set; body + original 5 deps otherwise untouched from pre-D8.
   useEffect(() => {
-    if (isOpen) {
-      setRecipientPlayerId(suggestedPlayer!.id);
-      setSelectedWeek(maxWeek);
-      setMethod('drop');
-      setUpdateGear(true);
+    if (mode !== 'pinned' || !isOpen) return;
+    setRecipientPlayerId(suggestedPlayer!.id);
+    setSelectedWeek(maxWeek);
+    setMethod('drop');
+    setUpdateGear(true);
 
-      // Use player from allPlayers for consistency with eligibleOptions memo
-      const player = allPlayers.find((p) => p.id === suggestedPlayer!.id) || suggestedPlayer;
+    // Use player from allPlayers for consistency with eligibleOptions memo
+    const player = allPlayers.find((p) => p.id === suggestedPlayer!.id) || suggestedPlayer;
 
-      // Compute initial slot selection based on player and material
-      const { slot, augmentTome } = initialGearSelection(player, material);
-      setSelectedSlot(slot);
-      setAugmentTomeWeapon(augmentTome);
-    }
-  }, [isOpen, suggestedPlayer, maxWeek, material, allPlayers]);
+    // Compute initial slot selection based on player and material
+    const { slot, augmentTome } = initialGearSelection(player, material);
+    setSelectedSlot(slot);
+    setAugmentTomeWeapon(augmentTome);
+  }, [mode, isOpen, suggestedPlayer, maxWeek, material, allPlayers]);
+
+  // Reset state when modal opens (free-form) — its own floor/material/week/recipient-ranking
+  // defaults; pinned's block above is untouched.
+  useEffect(() => {
+    if (mode !== 'freeform' || !isOpen) return;
+    setPickedFloorNumber(DEFAULT_FREEFORM_FLOOR);
+    setPickedMaterial(DEFAULT_FREEFORM_MATERIAL);
+    setSelectedWeek(props.initialWeek ?? maxWeek);
+    userPickedRecipient.current = false;
+  }, [mode, isOpen, maxWeek, props.initialWeek]);
+
+  // Subs widening (R-a/D-37) resets regardless of mode — harmless where the checkbox doesn't
+  // render (pinned).
+  useEffect(() => {
+    if (isOpen) setIncludeSubs(false);
+  }, [isOpen]);
 
   // Handle recipient change - update slot selection when user changes recipient
   const handleRecipientChange = (newPlayerId: string) => {
+    userPickedRecipient.current = true;
     setRecipientPlayerId(newPlayerId);
 
     // Compute and set slot for new recipient
@@ -185,6 +233,32 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     setSelectedSlot(slot);
     setAugmentTomeWeapon(augmentTome);
   };
+
+  // R-26/D-37: a material change (direct pick, or a floor pick whose new floor doesn't carry
+  // the current material) re-derives gear selection and lets the auto-recipient effect
+  // re-rank (userPickedRecipient reset). A floor-only change (today's two floors never share
+  // a material, so in practice: re-clicking the already-active floor pill) resets neither.
+  function applyMaterialChange(m: MaterialType, forPlayerId: string) {
+    userPickedRecipient.current = false;
+    const player = allPlayers.find((p) => p.id === forPlayerId);
+    const { slot, augmentTome } = initialGearSelection(player, m);
+    setSelectedSlot(slot);
+    setAugmentTomeWeapon(augmentTome);
+  }
+
+  function pickMaterial(m: MaterialType) {
+    setPickedMaterial(m);
+    applyMaterialChange(m, recipientPlayerId);
+  }
+
+  function pickFloor(n: FloorNumber) {
+    setPickedFloorNumber(n);
+    const materialsForNewFloor = materialsForFloorNumber(n);
+    if (materialsForNewFloor.includes(pickedMaterial)) return; // keeps the material — resets neither
+    const next = materialsForNewFloor[0];
+    setPickedMaterial(next);
+    applyMaterialChange(next, recipientPlayerId);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,10 +297,15 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     }
   };
 
-  // Filter to configured main roster players (subs can only be logged via Loot Log tab)
+  // Filter to configured players. Pinned keeps the original main-roster-only filter verbatim
+  // (subs can only be logged via Loot Log tab); non-pinned modes widen it (R-a/D-37) via the
+  // "Include substitutes" checkbox.
   const eligiblePlayers = useMemo(() =>
-    allPlayers.filter((p) => p.configured && !p.isSubstitute),
-    [allPlayers]
+    allPlayers.filter((p) => mode === 'pinned'
+      ? (p.configured && !p.isSubstitute)
+      : (p.configured && (includeSubs || !p.isSubstitute))
+    ),
+    [allPlayers, mode, includeSubs]
   );
   const selectedPlayer = allPlayers.find((p) => p.id === recipientPlayerId);
 
@@ -259,6 +338,14 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
       });
   }, [eligiblePlayers, material, settings, materialLog]);
 
+  // Auto-recipient (free-form only): picks the top-priority needer, but never clobbers a
+  // user's manual pick — re-ranks whenever `sortedRecipients` changes (e.g. a material
+  // change) as long as the user hasn't picked one themselves this time the modal is open.
+  useEffect(() => {
+    if (mode !== 'freeform' || !isOpen || userPickedRecipient.current) return;
+    setRecipientPlayerId(sortedRecipients[0]?.player.id ?? '');
+  }, [mode, isOpen, sortedRecipients]);
+
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsMaterial: boolean): string => {
     if (!needsMaterial) return '';
@@ -268,12 +355,16 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     return '';
   };
 
-  // Build recipient options with job icons
-  const recipientOptions = sortedRecipients.map(({ player, priority, needsMaterial }) => ({
-    value: player.id,
-    label: `${player.name}${getPriorityLabel(priority, needsMaterial)}`,
-    icon: <JobIcon job={player.job} size="sm" />,
-  }));
+  // Build recipient options with job icons. Non-pinned modes gain a leading placeholder
+  // while nothing is picked yet (pinned always starts from `suggestedPlayer`).
+  const recipientOptions = [
+    ...(mode !== 'pinned' && recipientPlayerId === '' ? [{ value: '', label: 'Select player…' }] : []),
+    ...sortedRecipients.map(({ player, priority, needsMaterial }) => ({
+      value: player.id,
+      label: `${player.name}${getPriorityLabel(priority, needsMaterial)}`,
+      icon: <JobIcon job={player.job} size="sm" />,
+    })),
+  ];
 
   return (
     <Modal
@@ -282,36 +373,72 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
       title={
         <span className="flex items-center gap-2">
           <Gem className="w-5 h-5" />
-          Log {UPGRADE_MATERIAL_DISPLAY_NAMES[material]}
+          {mode === 'pinned' ? <>Log {UPGRADE_MATERIAL_DISPLAY_NAMES[material]}</> : 'Log Material'}
         </span>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Pre-filled info */}
-        <div className="bg-surface-base rounded-lg p-3 space-y-2">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-text-secondary">Floor:</span>
-            <span className="text-text-primary font-medium">{floorName}</span>
+        {mode === 'pinned' ? (
+          /* Pre-filled info */
+          <div className="bg-surface-base rounded-lg p-3 space-y-2">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-text-secondary">Floor:</span>
+              <span className="text-text-primary font-medium">{floorName}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-text-secondary">Material:</span>
+              <span className="text-text-primary font-medium">{UPGRADE_MATERIAL_DISPLAY_NAMES[material]}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-text-secondary">Week:</span>
+              <NumberInput
+                value={selectedWeek}
+                onChange={(val) => setSelectedWeek(val ?? maxWeek)}
+                min={1}
+                max={maxWeek}
+                size="sm"
+              />
+            </div>
           </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-text-secondary">Material:</span>
-            <span className="text-text-primary font-medium">{UPGRADE_MATERIAL_DISPLAY_NAMES[material]}</span>
-          </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-text-secondary">Week:</span>
-            <NumberInput
-              value={selectedWeek}
-              onChange={(val) => setSelectedWeek(val ?? maxWeek)}
-              min={1}
-              max={maxWeek}
-              size="sm"
-            />
-          </div>
-        </div>
+        ) : (
+          <>
+            <div role="group" aria-label="Floor" className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs uppercase tracking-wide text-text-tertiary">Floor</span>
+              {MATERIAL_FLOORS.map((n) => (
+                <Tag key={n} variant="filter" tone={`floor-${n}` as Tone}
+                     pressed={pickedFloorNumber === n} onClick={() => pickFloor(n)}>
+                  {freeformFloors[n - 1] ?? `Floor ${n}`}
+                </Tag>
+              ))}
+            </div>
+            <div role="group" aria-label="Material" className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs uppercase tracking-wide text-text-tertiary">Material</span>
+              {materialsForFloorNumber(pickedFloorNumber).map((m) => (
+                <Tag key={m} variant="filter" tone={MATERIAL_TONE[m]}
+                     pressed={pickedMaterial === m} onClick={() => pickMaterial(m)}>
+                  {UPGRADE_MATERIAL_DISPLAY_NAMES[m]}
+                </Tag>
+              ))}
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <Label htmlFor="material-week" className="mb-0">Week</Label>
+              {/* `v ?? selectedWeek`: the row is shared with edit mode (no initialWeek there). */}
+              <NumberInput value={selectedWeek} onChange={(v) => setSelectedWeek(v ?? selectedWeek)}
+                           min={1} max={maxWeek} size="sm" />
+            </div>
+          </>
+        )}
 
         {/* Recipient selection */}
         <div>
-          <Label htmlFor="recipient">Recipient</Label>
+          {mode === 'pinned' ? (
+            <Label htmlFor="recipient">Recipient</Label>
+          ) : (
+            <div className="flex items-center justify-between">
+              <Label htmlFor="recipient">Recipient</Label>
+              <Checkbox checked={includeSubs} onChange={setIncludeSubs} label="Include substitutes" className="text-xs" />
+            </div>
+          )}
           <Select
             id="recipient"
             value={recipientPlayerId}

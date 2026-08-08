@@ -468,3 +468,182 @@ describe('V1 freeze baseline', () => {
     });
   });
 });
+
+// D8 Task 3B: the free-form door (the Log toolbar mounts it in a later task) — floor +
+// material selectors, auto-recipient, and the "Include substitutes" widening.
+describe('free-form mode (R-26)', () => {
+  const FLOORS = ['M9S', 'M10S', 'M11S', 'M12S'];
+
+  // Single-material fixture: each player needs exactly one of the four materials, so
+  // auto-recipient ranking per material is unambiguous.
+  function freeformPlayers(): { gina: SnapshotPlayer; uzo: SnapshotPlayer } {
+    const gina = makePlayer({
+      id: 'gina',
+      name: 'Gina',
+      gear: [
+        makeGear({ slot: 'weapon', bisSource: 'raid' }),
+        makeGear({ slot: 'head', bisSource: 'raid' }),
+        makeGear({ slot: 'body', bisSource: 'raid' }),
+        makeGear({ slot: 'hands', bisSource: 'raid' }),
+        makeGear({ slot: 'legs', bisSource: 'raid' }),
+        makeGear({ slot: 'feet', bisSource: 'raid' }),
+        makeGear({ slot: 'earring', bisSource: 'tome', hasItem: true, isAugmented: false }), // needs glaze
+        makeGear({ slot: 'necklace', bisSource: 'raid' }),
+        makeGear({ slot: 'bracelet', bisSource: 'raid' }),
+        makeGear({ slot: 'ring1', bisSource: 'raid' }),
+        makeGear({ slot: 'ring2', bisSource: 'raid' }),
+      ],
+    });
+    const uzo = makePlayer({
+      id: 'uzo',
+      name: 'Uzo',
+      tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false }, // needs universal tomestone
+    });
+    return { gina, uzo };
+  }
+
+  function renderFreeform(
+    overrides: Partial<Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { floors: string[] }>> = {},
+    allPlayers: SnapshotPlayer[] = [],
+  ) {
+    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { floors: string[] }> = {
+      isOpen: true,
+      onClose: vi.fn(),
+      groupId: 'g1',
+      tierId: 't1',
+      maxWeek: 5,
+      floors: FLOORS,
+      initialWeek: 2,
+      allPlayers,
+      ...overrides,
+    };
+    return render(<QuickLogMaterialModal {...props} />);
+  }
+
+  it('floor pills show the two material floors labeled via `floors`, defaulting to F2 with Glaze auto-picked; title reads "Log Material"', () => {
+    const { gina, uzo } = freeformPlayers();
+    renderFreeform({}, [gina, uzo]);
+
+    expect(screen.getByRole('heading', { name: 'Log Material' })).toBeInTheDocument();
+
+    const floorGroup = screen.getByRole('group', { name: 'Floor' });
+    expect(within(floorGroup).getByRole('button', { name: 'M10S' })).toHaveAttribute('aria-pressed', 'true'); // floor 2
+    expect(within(floorGroup).getByRole('button', { name: 'M11S' })).toHaveAttribute('aria-pressed', 'false'); // floor 3
+    expect(within(floorGroup).queryByRole('button', { name: 'M9S' })).not.toBeInTheDocument();
+    expect(within(floorGroup).queryByRole('button', { name: 'M12S' })).not.toBeInTheDocument();
+
+    const materialGroup = screen.getByRole('group', { name: 'Material' });
+    expect(within(materialGroup).getByRole('button', { name: 'Glaze' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(materialGroup).getByRole('button', { name: 'Universal Tomestone' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('picking Floor 3 swaps the material pills to Twine + Solvent, with Twine auto-picked', () => {
+    renderFreeform({}, []);
+    fireEvent.click(screen.getByRole('button', { name: 'M11S' }));
+
+    const materialGroup = screen.getByRole('group', { name: 'Material' });
+    expect(within(materialGroup).getByRole('button', { name: 'Twine' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(materialGroup).getByRole('button', { name: 'Solvent' })).toHaveAttribute('aria-pressed', 'false');
+    expect(within(materialGroup).queryByRole('button', { name: 'Glaze' })).not.toBeInTheDocument();
+  });
+
+  it('auto-recipient: top-priority needer per material, and a manual pick survives a same-floor re-click (both floors)', () => {
+    const { gina, uzo } = freeformPlayers();
+    renderFreeform({}, [gina, uzo]);
+
+    // A one-time Radix Select effect-ordering race — the same class of bug the pinned
+    // baseline's "V1 freeze baseline" describe block pins (a Select's controlled `value`
+    // changing in the same commit the underlying native option registry is still catching up
+    // resets it to placeholder) — clobbers the auto-recipient effect's very first post-mount
+    // pick (`''` -> a real id, fired from an effect rather than a user click). It self-heals
+    // on the next material change below, verified via a real interaction rather than the raw
+    // mount state. Pinned here as actual current behavior, not fixed (per this task's brief).
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Select player…');
+
+    // Material pill: Universal Tomestone -> only Uzo needs it. Past the mount race, the
+    // auto-recipient effect reliably ranks and picks the top-priority needer.
+    fireEvent.click(screen.getByRole('button', { name: 'Universal Tomestone' }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+
+    // Back to Glaze: re-ranks to Gina (the default material's top-priority needer).
+    fireEvent.click(screen.getByRole('button', { name: 'Glaze' }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
+
+    // Manually pick a DIFFERENT player (Uzo), then re-click the SAME (already-active) floor
+    // pill. Today's two floors never share a material, so the only reachable "floor-only
+    // change" is re-clicking the active floor — it must not clobber the manual pick.
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(uzo.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+    fireEvent.click(screen.getByRole('button', { name: 'M10S' })); // re-click floor 2 (active)
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+
+    // Same assertion on floor 3, so both floors are covered ("both directions").
+    fireEvent.click(screen.getByRole('button', { name: 'M11S' })); // switch to floor 3 (twine) — a real material change
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(uzo.name) })); // manual pick, guaranteed different from the Gina auto-pick (nobody needs twine)
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+    fireEvent.click(screen.getByRole('button', { name: 'M11S' })); // re-click floor 3 (active)
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+  });
+
+  it('week shows initialWeek', () => {
+    renderFreeform({ initialWeek: 4, maxWeek: 6 }, []);
+    expect(screen.getByRole('spinbutton')).toHaveValue(4);
+  });
+
+  it('Include substitutes: off by default (a needing sub is absent from the Select); checked reveals them and they can receive the submit payload', async () => {
+    const gina = makePlayer({
+      id: 'gina',
+      name: 'Gina', // doesn't need glaze — keeps the recipient list uncluttered
+    });
+    const sara = makePlayer({
+      id: 'sara',
+      name: 'Sara',
+      isSubstitute: true,
+      gear: [
+        makeGear({ slot: 'weapon', bisSource: 'raid' }),
+        makeGear({ slot: 'head', bisSource: 'raid' }),
+        makeGear({ slot: 'body', bisSource: 'raid' }),
+        makeGear({ slot: 'hands', bisSource: 'raid' }),
+        makeGear({ slot: 'legs', bisSource: 'raid' }),
+        makeGear({ slot: 'feet', bisSource: 'raid' }),
+        makeGear({ slot: 'earring', bisSource: 'tome', hasItem: true, isAugmented: false }), // needs glaze
+        makeGear({ slot: 'necklace', bisSource: 'raid' }),
+        makeGear({ slot: 'bracelet', bisSource: 'raid' }),
+        makeGear({ slot: 'ring1', bisSource: 'raid' }),
+        makeGear({ slot: 'ring2', bisSource: 'raid' }),
+      ],
+    });
+    renderFreeform({}, [gina, sara]);
+
+    expect(screen.getByText('Include substitutes')).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    expect(screen.queryByRole('option', { name: new RegExp(sara.name) })).not.toBeInTheDocument();
+    // Close by picking the only other option (Gina) — the well-tested close mechanism this
+    // file already relies on elsewhere; a keyboard Escape doesn't reliably close a Radix
+    // Select under fireEvent.
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(gina.name) }));
+
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(sara.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Sara');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'sara' }));
+  });
+
+  it('submit sends the picked floor name, material, and week', async () => {
+    const { gina, uzo } = freeformPlayers();
+    renderFreeform({ initialWeek: 3 }, [gina, uzo]);
+    fireEvent.click(screen.getByRole('button', { name: 'M11S' })); // floor 3 -> cascades to twine
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data).toEqual(expect.objectContaining({ floor: 'M11S', materialType: 'twine', weekNumber: 3 }));
+  });
+});
