@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.10';
+export const CURRENT_VERSION = '2.1.13';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.13',
+    date: '2026-08-08T13:30:00Z',
+    title: "Fixed Paladin gear sync putting the shield in the earring slot",
+    items: [
+      {
+        category: 'fix',
+        title: "Paladin accessories no longer shift by one slot on gear sync",
+        description:
+          "Syncing a Paladin's gear stored the shield as the earring and shifted every other accessory down one slot (and dropped the second ring entirely). Accessory slots now sync correctly for sword-and-shield jobs — a re-sync fixes any previously affected character. Shield tracking itself is coming in a follow-up.",
+        pr: 238,
+        prTitle: 'fix(sync): PLD off-hand no longer shifts accessory slots in Tomestone gear sync',
+      },
+    ],
+  },
   {
     version: '2.1.12',
     date: '2026-08-08T08:00:00Z',
