@@ -451,6 +451,22 @@ class TestUpdateClearSemantics:
         assert response.json()["notes"] is None
 
     @pytest.mark.asyncio
+    async def test_loot_update_empty_string_clears_notes(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """The '' sentinel clears loot-entry notes and normalizes to null."""
+        group, tier = group_and_tier
+        entry_id = await self._create_loot_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/loot-log/{entry_id}",
+            json={"notes": ""},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["notes"] is None
+
+    @pytest.mark.asyncio
     async def test_loot_update_absent_notes_left_unchanged(
         self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
     ):

@@ -380,7 +380,9 @@ export function AddLootEntryModal({
         if (itemSlot !== editEntry.itemSlot) updates.itemSlot = itemSlot;
         if (recipientPlayerId !== editEntry.recipientPlayerId) updates.recipientPlayerId = recipientPlayerId;
         if (method !== editEntry.method) updates.method = method;
-        if (notes !== (editEntry.notes || '')) updates.notes = notes || undefined;
+        // '' (not undefined) so an erased note actually clears server-side —
+        // undefined is dropped from the JSON body and the field never arrives.
+        if (notes !== (editEntry.notes || '')) updates.notes = notes;
 
         // For weapon entries, ensure weaponJob is set (backfill for entries created without it)
         if (itemSlot === 'weapon' && !editEntry.weaponJob && selectedPlayer?.job) {
@@ -412,9 +414,7 @@ export function AddLootEntryModal({
             recipientPlayerId,
             method,
             weaponJob,
-            // Edit mode sends '' (not undefined) so an erased note actually
-            // clears server-side — undefined is dropped from the JSON body.
-            notes: isEditMode ? notes : notes || undefined,
+            notes: notes || undefined,
             recipientCharacterRegistrationId: recipientCharacterRegId,
             recipientCharacterName: charName,
           },
@@ -606,6 +606,7 @@ export function AddLootEntryModal({
         <div>
           <Label htmlFor="notes">Notes (optional)</Label>
           <TextArea
+            id="notes"
             value={notes}
             onChange={setNotes}
             placeholder="e.g., Traded for tomestone piece"
