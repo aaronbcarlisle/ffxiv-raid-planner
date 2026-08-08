@@ -412,7 +412,9 @@ export function AddLootEntryModal({
             recipientPlayerId,
             method,
             weaponJob,
-            notes: notes || undefined,
+            // Edit mode sends '' (not undefined) so an erased note actually
+            // clears server-side — undefined is dropped from the JSON body.
+            notes: isEditMode ? notes : notes || undefined,
             recipientCharacterRegistrationId: recipientCharacterRegId,
             recipientCharacterName: charName,
           },

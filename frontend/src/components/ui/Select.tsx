@@ -144,6 +144,21 @@ export function Select({
     onOpenChange?.(isOpen);
   };
 
+  const handleValueChange = (next: string) => {
+    // Radix's hidden bubble-<select> emits a phantom "" change event when the
+    // options array swaps in the same commit as the controlled value: its
+    // value-sync useEffect assigns the new value against the STALE native
+    // option set (the swapped-in option registers via a separate
+    // useLayoutEffect whose state update hasn't re-rendered yet), the
+    // assignment no-ops, the native value falls back to '', and the
+    // dispatched change event clobbers the caller's just-set state (the
+    // effect-ordering race characterized in QuickLogMaterialModal.test.tsx).
+    // A real selection can never be '' — empty-value options are filtered
+    // into the placeholder above — so drop it instead of forwarding.
+    if (next === '') return;
+    onChange(next);
+  };
+
   // Prevent Radix scroll-lock from breaking sticky nav
   usePreventScrollLock(open);
 
@@ -160,7 +175,7 @@ export function Select({
     <SelectPrimitive.Root
       open={open}
       value={value}
-      onValueChange={onChange}
+      onValueChange={handleValueChange}
       disabled={disabled}
       onOpenChange={handleOpenChange}
     >

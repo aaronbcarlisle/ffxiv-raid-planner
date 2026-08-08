@@ -308,35 +308,22 @@ describe('V1 freeze baseline', () => {
       return { p1, p2 };
     }
 
-    it('a recipient change re-inits eligibility to the NEW recipient (:156-187) — but a real, unmocked Radix effect-ordering race resets the slot Select back to placeholder, and the submit payload reflects that', async () => {
-      // Ground truth (verified via a throwaway instrumented render, not
-      // guessed, and cross-checked against the solvent-dual fixture's
-      // committed snapshot — its hidden native <select> already lists BOTH
-      // options before that Select is ever opened, so "items only register
-      // once opened" is wrong): handleRecipientChange DOES call
-      // setSelectedSlot('body') for p2 in the same tick. The real mechanism
-      // is an effect-ordering race: switching recipient swaps this Select's
-      // `options` array (p1's 'head' item out, p2's 'body' item in) in the
-      // SAME commit as the controlled `value` changing to 'body'. Radix's
-      // hidden native-<select> "bubble input" (form/autofill semantics) syncs
-      // via a `useEffect` that assigns `select.value = 'body'` and dispatches
-      // a native "change" event whenever the value changes — but the native
-      // <option> for 'body' is (re)registered by a SEPARATE `useLayoutEffect`
+    it('a recipient change re-inits eligibility to the NEW recipient (:156-187), the slot Select survives the Radix bubble-input race, and the submit payload carries the new slot', async () => {
+      // Regression test for the (formerly pinned) effect-ordering race:
+      // switching recipient swaps this Select's `options` array (p1's 'head'
+      // item out, p2's 'body' item in) in the SAME commit as the controlled
+      // `value` changing to 'body'. Radix's hidden native-<select> "bubble
+      // input" syncs via a `useEffect` that assigns `select.value = 'body'`
+      // and dispatches a native "change" event — but the native <option> for
+      // 'body' is (re)registered by a SEPARATE `useLayoutEffect`
       // (`onNativeOptionAdd`) whose state update hasn't re-rendered the
-      // native option set yet when the bubble-input's sync effect runs, so
-      // `.value = 'body'` no-ops against the stale (pre-swap) option set and
-      // the native select's value falls back to `''`. The dispatched "change"
-      // event's `event.target.value` is therefore `''`; this component's
-      // onChange for the slot Select is unguarded
-      // (`(val) => setSelectedSlot(val as GearSlot)`), so that '' clobbers
-      // the just-computed 'body' back out. "Never opened" is NOT the trigger
-      // condition — a previously-opened dropdown hits the identical race
-      // whenever the new value wasn't already in the prior option set (e.g.
-      // the solvent-dual fixture's OWN Select would hit this too if a THIRD
-      // option were swapped in at the same instant its value changed to it).
-      // This is real React-effect-ordering + <select> semantics
-      // (reproducible in a real browser too, not a jsdom/fireEvent artifact)
-      // — pinned here as current V1 behavior, not fixed.
+      // native option set yet, so the assignment no-ops against the stale
+      // option set, the native value falls back to `''`, and the dispatched
+      // change event used to clobber the just-computed 'body' back out
+      // (slotToAugment: undefined on submit, gear augmentation silently
+      // skipped — live in V1). ui/Select now swallows that phantom '' (a real
+      // selection can never be '' — empty-value options are filtered into
+      // the placeholder), so the slot survives.
       const { p1, p2 } = twineFixturePlayers();
       renderModal({ material: 'twine', suggestedPlayer: p1, allPlayers: [p1, p2] });
 
@@ -349,9 +336,9 @@ describe('V1 freeze baseline', () => {
 
       // The recipient itself switched correctly...
       expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(p2.name);
-      // ...but the slot Select lands on the placeholder, not "Body", per the
-      // race described above.
-      expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Select...');
+      // ...and the slot Select holds the re-derived slot for p2 ('body'),
+      // no longer reset to the placeholder by the phantom '' event.
+      expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Body');
 
       fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
       await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
@@ -359,11 +346,11 @@ describe('V1 freeze baseline', () => {
       const [, , data, options] = logMaterialAndUpdateGearMock.mock.calls[0] as [
         string, string, MaterialLogEntryCreate, LogMaterialOptions,
       ];
-      // The recipient change DOES reach the submit payload...
+      // The recipient change reaches the submit payload...
       expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'p2' }));
-      // ...but slotToAugment is undefined (selectedSlot is '', a falsy value)
-      // — NOT 'body', because of the reset above.
-      expect(options).toEqual(expect.objectContaining({ slotToAugment: undefined }));
+      // ...and so does the re-derived slot — augmentation is no longer
+      // silently dropped.
+      expect(options).toEqual(expect.objectContaining({ slotToAugment: 'body' }));
     });
 
     it('submit (gear-update on): exact groupId/tierId/data args, no notes field, options carry updateGear+slotToAugment', async () => {
