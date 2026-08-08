@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.11',
+    date: '2026-08-08T01:30:00Z',
+    title: 'Phase D slice D4 — the Log tab + its week model (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'v2 Loot gains a real Log tab, and the week model moves off Priority onto it',
+        description:
+          'The admin-gated v2 preview\'s Loot tab gains its Phase-D Log destination: the view switcher is now a Priority ⇄ Log ⇄ History triad, and the week control Priority used to carry moves to Log, which owns it outright — Priority always ranks against the shared week clock\'s current week, with no week control of its own. Log\'s week gains prev/next chevrons and a "go to the current week" button alongside the existing dropdown pill, and "Start next week"/"Revert week" stay bound to the clock, naming the week they actually act on whenever the displayed week has been stepped away from it. Reverting now runs a pre-check and, if the clock\'s current week has anything logged, shows a data-summary modal itemising every drop, material and book entry about to move; an empty week reverts through a lightweight confirmation instead, so a revert never happens with zero confirmation. "Log a drop" and the whole-week wizard target the week you\'re looking at when run from Log, and the clock\'s current week everywhere else. Log\'s body is an honest placeholder for now — the weekly grid, the Books card and free-form material entry land in upcoming slices, once the pieces they depend on exist. Legacy V1 is untouched.',
+        pr: 235,
+        prTitle: 'feat(loot): Phase D slice D4 — the Log tab + its week model',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.10',
     date: '2026-08-07T23:30:00Z',
     title: 'Fixed an error when your profile was created for the first time',
