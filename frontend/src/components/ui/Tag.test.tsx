@@ -40,4 +40,14 @@ describe('Tag', () => {
     expect(btn.className).toContain('text-floor-2');
     expect(btn.className).toContain('border-floor-2/30');
   });
+
+  it.each([
+    ['material-twine', 'text-material-twine'],
+    ['material-glaze', 'text-material-glaze'],
+    ['material-solvent', 'text-material-solvent'],
+    ['material-tomestone', 'text-material-tomestone'],
+  ] as const)('renders the %s tone with its material token', (tone, cls) => {
+    render(<Tag variant="label" tone={tone}>x</Tag>);
+    expect(screen.getByText('x').className).toContain(cls);
+  });
 });

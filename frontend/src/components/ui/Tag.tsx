@@ -14,7 +14,8 @@ import { ChevronRight } from 'lucide-react';
 
 export type Tone =
   | 'accent' | 'success' | 'warning' | 'error' | 'muted' | 'info'
-  | 'floor-1' | 'floor-2' | 'floor-3' | 'floor-4';
+  | 'floor-1' | 'floor-2' | 'floor-3' | 'floor-4'
+  | 'material-twine' | 'material-glaze' | 'material-solvent' | 'material-tomestone';
 
 const TONE_CLASS: Record<Tone, string> = {
   accent: 'bg-accent/15 text-accent-hover border-accent/30',
@@ -29,6 +30,12 @@ const TONE_CLASS: Record<Tone, string> = {
   'floor-2': 'bg-floor-2/10 text-floor-2 border-floor-2/30',
   'floor-3': 'bg-floor-3/10 text-floor-3 border-floor-3/30',
   'floor-4': 'bg-floor-4/10 text-floor-4 border-floor-4/30',
+  // Phase-D R-26 material tones (semantic material tokens). Additive: only v2
+  // loot surfaces pass these — no legacy call site does, so V1 renders unchanged.
+  'material-twine': 'bg-material-twine/10 text-material-twine border-material-twine/30',
+  'material-glaze': 'bg-material-glaze/10 text-material-glaze border-material-glaze/30',
+  'material-solvent': 'bg-material-solvent/10 text-material-solvent border-material-solvent/30',
+  'material-tomestone': 'bg-material-tomestone/10 text-material-tomestone border-material-tomestone/30',
 };
 
 interface TagBase {
