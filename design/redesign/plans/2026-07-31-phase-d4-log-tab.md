@@ -90,6 +90,9 @@ Every task implicitly includes all of these. Violations are review-rejections.
 11. **Release notes:** a NEW entry `version: '2.1.9'`, `internal: true`, at the top of `RELEASES`,
     following 2.1.8's shape. `CURRENT_VERSION` stays **`2.1.5`** — it tracks the latest *public*
     release. **The entry must not claim R-13** (B4c) — D4 delivers R-13's scope half only.
+    *(Post-rebase: main took 2.1.9/2.1.10 as public releases while D4 was in flight, so the entry
+    shipped as **2.1.11** and `CURRENT_VERSION` is main's **2.1.10** — still untouched by this PR.
+    The constraint's rule is unchanged: internal entry on top, no `CURRENT_VERSION` bump.)*
 12. **V1 safety is asserted over files AND over the shared URL namespace.** Every file this slice
     touches is v2-only or net-new — director-verified on `main` at `dc3a7a6f`: `loot/Loot.tsx` (sole
     non-test importer `pages/NewShell.tsx:13`), `loot/WeekScopeControl.tsx` (sole non-test importer
@@ -161,7 +164,7 @@ Every task implicitly includes all of these. Violations are review-rejections.
 | `frontend/src/components/loot/LootToolbar.tsx` | modify | ⚠ Comment-only + one optional prop (m2/m3) — doc header describes a two-view axis that D4 falsifies |
 | `frontend/src/components/loot/FloorCard.tsx` | modify | Collapse `scopedWeek` + optional `currentWeek` → one `currentWeek` (R-15 makes them the same value) |
 | `frontend/src/components/loot/FloorCard.test.tsx` | modify | Prop rename **+ one deliberate test deletion** (M4) |
-| `frontend/src/data/releaseNotes.ts` | modify | New `2.1.9` internal entry; `CURRENT_VERSION` untouched |
+| `frontend/src/data/releaseNotes.ts` | modify | New `2.1.9` internal entry *(shipped as `2.1.11` post-rebase — Constraint 11)*; `CURRENT_VERSION` untouched |
 | `design/redesign/specs/v1-v2-parity-matrix.md` | modify | Task 5: `✅ BUILT` on **D-40** and **D-41**, scoped |
 | `design/redesign/specs/phase-d-loot-design.md` | modify | Task 5: record the two D4 build rulings against R-20 |
 | `design/redesign/specs/phase-d-loot-plan.md` | modify | Task 5: D4 row note (Log-material carry to D8) |
@@ -441,7 +444,8 @@ the shared `hooks/` tree.
 - [ ] **Release note:** new `version: '2.1.9'`, `internal: true`, top of `RELEASES`, 2.1.8's shape,
       `pr` backfilled after the PR opens. `CURRENT_VERSION` stays `2.1.5`. **Must not claim R-13**
       (Constraint 11) — describe the week model, the triad and the R-22 controls, not "the whole
-      week in one glance".
+      week in one glance". *(Post-rebase: shipped as `2.1.11`, `CURRENT_VERSION` is main's `2.1.10`
+      — Constraint 11.)*
 - [ ] ⚠ **Parity-matrix write-backs (director B4) — REV 1 omitted the file entirely.** The design
       record's own policy is *"Ruling-driven row rewrites land with the build"*
       (`phase-d-loot-design.md:597`), and D1 (`c8912706`), D2 (`5e0f714f`) and D3 (`dc3a7a6f`) each
@@ -499,5 +503,6 @@ identically post-D4, so the collapse is sound · `LogWeekWizard` works as a call
 component edit · `RevertWeekConfirmModal` filters strictly by the week it is handed, which is why
 clock-binding matters · R-22's label correction is honoured · a `2.1.9`/internal entry with no
 `CURRENT_VERSION` bump is correct and V1-invisible (`ReleaseNotes.tsx:90-91` filters internal
-entries at both levels) · hook placement follows `useRosterSortPreset` · nothing from D5–D8 or D14
+entries at both levels) *(post-rebase the number is `2.1.11` — Constraint 11; the reasoning is
+number-independent)* · hook placement follows `useRosterSortPreset` · nothing from D5–D8 or D14
 is pulled forward.
