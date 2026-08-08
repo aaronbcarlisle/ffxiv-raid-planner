@@ -1382,8 +1382,104 @@ def test_tomestone_soul_crystal_position_is_skipped():
     result = _normalize_tomestone_gear_list(gear_list)
     assert "MainHand" in result
     assert result["MainHand"]["ID"] == 44091
-    # No Soul Crystal key (position 11 not in TOMESTONE_GEAR_POSITION_SLOTS)
+    # No Soul Crystal key (Soul Crystal category is skipped)
     assert all("soul" not in k.lower() for k in result)
+
+
+# Real PLD payload shape (captured 2026-08-08, Lodestone 50121304): shield jobs
+# get a 13-entry list with the off-hand INSERTED at position 6. The old
+# fixed-position map shifted every accessory by one (shield stored as Earring,
+# Ring2 dropped). Non-shield jobs omit the off-hand entry entirely (12 entries).
+_TOMESTONE_PLD_SHIELD_GEAR_LIST = [
+    # 0 MainHand
+    {"item": {"id": 49658, "name": "Grand Champion's Falchion", "itemLevel": 795, "icon": "https://assets.tomestone.gg/i/030000/030700_hr1.png", "categoryName": "Gladiator's Arm", "categoryId": 2}},
+    # 1 Head
+    {"item": {"id": 49680, "name": "Grand Champion's Headgear of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/056000/056902_hr1.png", "categoryName": "Head", "categoryId": 34}},
+    # 2 Body
+    {"item": {"id": 49604, "name": "Augmented Bygone Brass Coat of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/057000/057337_hr1.png", "categoryName": "Body", "categoryId": 35}},
+    # 3 Hands
+    {"item": {"id": 49682, "name": "Grand Champion's Gloves of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/056000/056411_hr1.png", "categoryName": "Hands", "categoryId": 37}},
+    # 4 Legs
+    {"item": {"id": 49683, "name": "Grand Champion's Breeches of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/057000/057430_hr1.png", "categoryName": "Legs", "categoryId": 36}},
+    # 5 Feet
+    {"item": {"id": 49607, "name": "Augmented Bygone Brass Greaves of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/057000/057930_hr1.png", "categoryName": "Feet", "categoryId": 38}},
+    # 6 OFF-HAND — the entry the old position map didn't know about
+    {"item": {"id": 49679, "name": "Grand Champion's Kite Shield", "itemLevel": 795, "icon": "https://assets.tomestone.gg/i/030000/030289_hr1.png", "categoryName": "Shield", "categoryId": 11}},
+    # 7 Earrings
+    {"item": {"id": 49715, "name": "Grand Champion's Ear Cuff of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/055000/055564_hr1.png", "categoryName": "Earrings", "categoryId": 41}},
+    # 8 Necklace
+    {"item": {"id": 49643, "name": "Augmented Bygone Brass Choker of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/055000/055111_hr1.png", "categoryName": "Necklace", "categoryId": 40}},
+    # 9 Bracelets
+    {"item": {"id": 49648, "name": "Augmented Bygone Brass Bracelet of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/055000/055909_hr1.png", "categoryName": "Bracelets", "categoryId": 42}},
+    # 10 Ring1
+    {"item": {"id": 49730, "name": "Grand Champion's Ring of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/054000/054760_hr1.png", "categoryName": "Ring", "categoryId": 43}},
+    # 11 Ring2
+    {"item": {"id": 49653, "name": "Augmented Bygone Brass Ring of Fending", "itemLevel": 790, "icon": "https://assets.tomestone.gg/i/054000/054762_hr1.png", "categoryName": "Ring", "categoryId": 43}},
+    # 12 Soul Crystal — skipped
+    {"item": {"id": 4542, "name": "Soul of the Paladin", "itemLevel": 30, "icon": "https://assets.tomestone.gg/i/026000/026003_hr1.png", "categoryName": "Soul Crystal", "categoryId": 62}},
+]
+
+_TOMESTONE_PLD_SHIELD_PAYLOAD = {
+    "name": "Thea Titania",
+    "world": "Raiden",
+    "profile": {
+        "currentGearSetAndAttributes": {
+            "gearSet": {"gear": _TOMESTONE_PLD_SHIELD_GEAR_LIST}
+        }
+    },
+}
+
+
+def test_tomestone_pld_shield_no_accessory_shift():
+    """Shield jobs (13-entry list, off-hand at position 6) must not shift accessories.
+
+    Regression test for the live bug: shield stored as Earring, earring as
+    Necklace, necklace as Bracelets, bracelets as Ring1, Ring1 as Ring2, and
+    the real Ring2 dropped.
+    """
+    gear = _normalize_tomestone_gear_list(_TOMESTONE_PLD_SHIELD_GEAR_LIST)
+
+    assert gear["MainHand"]["ID"] == 49658
+    assert gear["Head"]["ID"] == 49680
+    assert gear["Body"]["ID"] == 49604
+    assert gear["Hands"]["ID"] == 49682
+    assert gear["Legs"]["ID"] == 49683
+    assert gear["Feet"]["ID"] == 49607
+    # The accessories the old position map corrupted:
+    assert gear["Earrings"]["ID"] == 49715
+    assert gear["Necklace"]["ID"] == 49643
+    assert gear["Bracelets"]["ID"] == 49648
+    assert gear["Ring1"]["ID"] == 49730
+    assert gear["Ring2"]["ID"] == 49653  # was dropped entirely before
+    # The shield (49679) must not occupy ANY slot in this PR (no off-hand slot yet)
+    assert all(slot["ID"] != 49679 for slot in gear.values())
+    assert len(gear) == 11
+
+
+def test_tomestone_pld_shield_full_payload_normalization():
+    """End-to-end: the full PLD payload converts with correct accessory slots."""
+    payload = tomestone_profile_to_xivapi_payload(_TOMESTONE_PLD_SHIELD_PAYLOAD, fallback_lodestone_id=50121304)
+    assert payload is not None
+    gear = payload["Character"]["GearSet"]["Gear"]
+    assert gear["Earrings"]["ID"] == 49715
+    assert gear["Ring2"]["ID"] == 49653
+    assert all(slot["ID"] != 49679 for slot in gear.values())
+
+
+def test_tomestone_unknown_category_entries_are_skipped():
+    """Entries with unrecognized categories (crafter tools, future slots) are skipped, not misfiled."""
+    gear_list = [
+        {"item": {"id": 30001, "name": "Some Saw", "itemLevel": 700, "categoryName": "Carpenter's Primary Tool", "categoryId": 12}},
+        {"item": {"id": 30002, "name": "Some Hammer", "itemLevel": 700, "categoryName": "Carpenter's Secondary Tool", "categoryId": 13}},
+        {"item": {"id": 30003, "name": "Some Hat", "itemLevel": 700, "categoryName": "Head", "categoryId": 34}},
+    ]
+    gear = _normalize_tomestone_gear_list(gear_list)
+    # Position 0 is always the main hand regardless of category
+    assert gear["MainHand"]["ID"] == 30001
+    # Secondary tool (unknown category, not position 0) is skipped
+    assert all(slot["ID"] != 30002 for slot in gear.values())
+    assert gear["Head"]["ID"] == 30003
+    assert len(gear) == 2
 
 
 def test_tomestone_img2_avatar_url_is_accepted():
