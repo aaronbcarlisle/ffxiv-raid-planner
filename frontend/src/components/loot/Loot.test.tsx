@@ -861,8 +861,9 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     // the URL assertion below does NOT catch that mutation; the render
     // assertions that follow do (the placeholder never mounts, the floor
     // cards stay) — that's what this test actually proves. The route itself
-    // landing on Log from a deep link is pinned separately, by the
-    // `?lview=log` mount test below (:864-869 in this describe block).
+    // landing on Log from a deep link is pinned separately, by
+    // 'mounts the Log tab directly from an ?lview=log deep-link' below in
+    // this describe block.
     expect(screen.getByTestId('log-empty-state')).toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
     expect(screen.getByTestId('week-scope')).toBeInTheDocument();
@@ -931,6 +932,32 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     seedQueuesView();
     // The clock is week 3; the Log is stepped back to week 1.
     renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    setLogWeek(1);
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(1);
+    // R-22: canPrev/canNext are the hook's real bounds, not hardcoded — week 1
+    // has nowhere to prev to. A `canPrev={true}` stub fails this.
+    expect(weekScopeCalls[weekScopeCalls.length - 1].canPrev).toBe(false);
+
+    // R-22 headline affordance, end-to-end: invoke the captured `onFollowClock`
+    // exactly as the real WeekScopeControl's go-to-current control would, and
+    // confirm the Log week actually returns to the clock's week (3) and
+    // `?week=` is cleared. A `onFollowClock={() => {}}` stub leaves
+    // `displayedWeek` at 1 and `week=1` in the URL, failing both assertions.
+    act(() => {
+      (weekScopeCalls[weekScopeCalls.length - 1].onFollowClock as () => void)();
+    });
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(3);
+    expect(weekScopeCalls[weekScopeCalls.length - 1].canPrev).toBe(true);
+    expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+
+    // R-22: canNext is likewise the hook's real bound — the seeded clock's
+    // maxWeek is 5, so week 5 has nowhere to next to. A `canNext={true}` stub
+    // fails this.
+    setLogWeek(5);
+    expect(weekScopeCalls[weekScopeCalls.length - 1].canNext).toBe(false);
+
+    // Re-diverge so the rest of this test (which targets week 1 from Log) is
+    // unaffected by the go-to-current/bounds probes above.
     setLogWeek(1);
     expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(1);
 

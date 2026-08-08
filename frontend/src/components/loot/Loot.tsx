@@ -36,10 +36,19 @@
  *     RecipientPicker's default week follows exactly the same rule.
  *   - ⚠ `?week=` is a SHARED URL param and v2 is now its second writer: legacy
  *     `history/HistoryView.tsx:105,132` reads and writes it too, so a v2 Log
- *     week that survives a shell toggle seeds legacy History's week. This is
- *     disclosed, not avoided — the design record pins `lview=log&week=N`, so
- *     the name is ruled. It is deliberately NOT registered with
- *     `useUrlTabState`: that hook's `SEEDED_TAB_PARAMS` feeds
+ *     week that survives a shell toggle CAN seed legacy History's week — but
+ *     only for a user who already has a `history-week-{groupId}-{tierId}`
+ *     localStorage entry (HistoryView's URL-param read at :104-116 wins, and
+ *     the next legacy week change persists it at :119-125). A user with NO
+ *     saved entry for that static+tier is unaffected: HistoryView's separate
+ *     first-mount effect (:146-156, "only on first load (when no saved
+ *     value)") finds nothing in storage and calls `setSelectedWeek(currentWeek)`
+ *     on the next render, which discards the URL-seeded week and deletes
+ *     `?week=` before any manual change — so a first-time visitor is scrubbed
+ *     clean, not seeded. Either way the reach is benign and self-correcting;
+ *     this is disclosed, not avoided — the design record pins
+ *     `lview=log&week=N`, so the name is ruled. It is deliberately NOT
+ *     registered with `useUrlTabState`: that hook's `SEEDED_TAB_PARAMS` feeds
  *     `clearRegisteredTabParams`, which `setPageMode`
  *     (`useGroupViewState.ts:320`) calls on every primary-tab switch in BOTH
  *     shells — registering `week` would make a V1 tab switch start wiping
