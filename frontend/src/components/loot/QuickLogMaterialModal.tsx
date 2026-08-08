@@ -233,7 +233,9 @@ function editReconciliationLines(
     }
   } else {
     if (newDisplay) lines.push(`+ Mark ${newDisplay.noun} as ${newDisplay.verb}`);
-    if (oldDisplay) lines.push(`· ${oldEntry.recipientPlayerName} keeps their ${oldDisplay.verb} ${oldDisplay.noun}`);
+    // "marked as {verb}" reads correctly for both effect families — "Head marked as
+    // augmented" and "tome weapon marked as obtained" (PR #236 review; closes §5's F-5(c)).
+    if (oldDisplay) lines.push(`· ${oldEntry.recipientPlayerName} keeps their ${oldDisplay.noun} marked as ${oldDisplay.verb}`);
   }
 
   return lines;

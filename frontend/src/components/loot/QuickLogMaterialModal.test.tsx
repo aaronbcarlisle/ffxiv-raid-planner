@@ -938,7 +938,7 @@ describe('edit mode (R-21)', () => {
     fireEvent.click(screen.getByRole('option', { name: new RegExp(theo.name) }));
 
     expect(screen.getByText('+ Mark Body as augmented')).toBeInTheDocument();
-    expect(screen.getByText('· Sara keeps their augmented Head')).toBeInTheDocument();
+    expect(screen.getByText('· Sara keeps their Head marked as augmented')).toBeInTheDocument();
   });
 
   it('submit calls updateMaterialAndReconcileGear with the old entry (by identity), the new data (notes trimmed, \'\' included when cleared), and typed options', async () => {
