@@ -2,9 +2,11 @@
 // interaction via `fireEvent` (the established convention). This suite mocks the
 // heavy leaf surfaces (FloorCard, RecipientPicker, LogWeekWizard,
 // QuickLogMaterialModal, WeaponPriorityBridge, WeekScopeControl) so we assert
-// only the Loot assembly's own contract: header + subtitle, four floor cards in
-// F4→F1 order at the scoped week, the editor toolbar, and the assign/log picker
-// wiring. `useWeekClock` is left REAL (reads the seeded loot store). The
+// only the Loot assembly's own contract: header + subtitle, the Priority ⇄ Log
+// ⇄ History triad, four floor cards in F4→F1 order at the clock's week, the
+// editor toolbar, and the assign/log picker wiring. `useWeekClock` and
+// `useLogWeek` are left REAL (the clock reads the seeded loot store; the Log
+// week reads the MemoryRouter URL + localStorage). The
 // History-view surfaces (FairnessSummary / BookLedgerCard / LootHistoryTable /
 // HistoryFilters / LootEntryRow) are left REAL — Task 9 asserts the assembly
 // wiring end-to-end. Loot now uses `useUrlTabState` (→ useSearchParams), so
@@ -28,7 +30,7 @@ const { floorCardCalls, pickerCalls, weekScopeCalls, wizardCalls, matrixCalls, d
 vi.mock('./FloorCard', () => ({
   FloorCard: (props: Record<string, unknown>) => {
     floorCardCalls.push(props);
-    return <div data-testid="floor-card" data-floor={String(props.floorNumber)} data-scoped={String(props.scopedWeek)} />;
+    return <div data-testid="floor-card" data-floor={String(props.floorNumber)} data-week={String(props.currentWeek)} />;
   },
 }));
 
@@ -241,8 +243,8 @@ describe('Loot', () => {
     const cards = screen.getAllByTestId('floor-card');
     expect(cards).toHaveLength(1);
     expect(cards[0].getAttribute('data-floor')).toBe('1');
-    // scopedWeek defaults to the clock's current week (3).
-    expect(cards[0].getAttribute('data-scoped')).toBe('3');
+    // R-15: Priority cards always speak for the clock's current week (3).
+    expect(cards[0].getAttribute('data-week')).toBe('3');
   });
 
   it('defaults Queues to one past the highest floor with recorded activity (R-10)', () => {
@@ -408,7 +410,7 @@ describe('Loot', () => {
     const cards = screen.getAllByTestId('floor-card');
     expect(cards).toHaveLength(4);
     expect(cards.map((c) => c.getAttribute('data-floor'))).toEqual(['4', '3', '2', '1']);
-    cards.forEach((c) => expect(c.getAttribute('data-scoped')).toBe('3'));
+    cards.forEach((c) => expect(c.getAttribute('data-week')).toBe('3'));
   });
 
   it('disables auto-collapse only for a solo-scoped card (R-49)', () => {
@@ -427,63 +429,12 @@ describe('Loot', () => {
     expect(floorCardCalls[floorCardCalls.length - 1].autoCollapse).toBe(false);
   });
 
-  it('keeps FloorCard currentWeek pinned to the clock while scoping to another week', () => {
-    // Discriminator for the currentWeek/scopedWeek split at the assembly level:
-    // scoping the view to week 1 re-renders the cards with scopedWeek=1, but the
-    // FloorCard `currentWeek` prop must STAY the clock's real week (3). Deleting
-    // `currentWeek={clock.currentWeek}` in Loot.tsx must fail this test.
-    seedQueuesView();
-    renderLoot({ tier: makeTier(players) });
-    fireEvent.click(screen.getByRole('button', { name: 'All' }));
-    const scopeProps = weekScopeCalls[weekScopeCalls.length - 1];
-    expect(scopeProps.scopedWeek).toBe(3);
-    act(() => {
-      (scopeProps.onScopedWeekChange as (w: number) => void)(1);
-    });
-
-    // Re-rendered cards: scoped to 1, currentWeek still the real clock week 3.
-    const cards = screen.getAllByTestId('floor-card');
-    cards.forEach((c) => expect(c.getAttribute('data-scoped')).toBe('1'));
-    const latestFour = floorCardCalls.slice(-4);
-    expect(latestFour).toHaveLength(4);
-    latestFour.forEach((p) => {
-      expect(p.scopedWeek).toBe(1);
-      expect(p.currentWeek).toBe(3);
-    });
-  });
-
-  it('defaults the picker to the scoped week in Priority view but the clock week in History view (PR review finding)', () => {
-    // Discriminator: a week-scope override set while viewing Priority must NOT
-    // leak into the History view's "Log a drop" default — the picker there
-    // must fall back to the clock's real currentWeek (3), not the stale
-    // Priority-view scope (1). Same component instance (no remount) so the
-    // override state genuinely persists across the view toggle.
-    renderLoot({ tier: makeTier(players) });
-    const scopeProps = weekScopeCalls[weekScopeCalls.length - 1];
-    act(() => {
-      (scopeProps.onScopedWeekChange as (w: number) => void)(1);
-    });
-
-    // Priority view: picker defaults to the scoped week (1) — unchanged behavior.
-    fireEvent.click(screen.getByRole('button', { name: /log a drop/i }));
-    const priorityPick = pickerCalls[pickerCalls.length - 1];
-    expect(priorityPick.currentWeek).toBe(1);
-
-    // Switch to History (same instance — the override persists as local state).
-    fireEvent.click(screen.getByRole('button', { name: 'History' }));
-    fireEvent.click(screen.getByRole('button', { name: /log a drop/i }));
-    const historyPick = pickerCalls[pickerCalls.length - 1];
-    expect(historyPick.currentWeek).toBe(3);
-  });
-
   it('shows the editor toolbar actions only when canEdit', () => {
     const { rerender } = renderLoot({ tier: makeTier(players) });
     expect(screen.getByRole('button', { name: /log a drop/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /log this week's loot/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /adjustments/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /rules/i })).toBeInTheDocument();
-    // WeekScopeControl is always present regardless of canEdit.
-    expect(screen.getByTestId('week-scope')).toBeInTheDocument();
 
     rerender(
       <MemoryRouter>
@@ -491,6 +442,17 @@ describe('Loot', () => {
       </MemoryRouter>,
     );
     expect(screen.queryByRole('button', { name: /log a drop/i })).not.toBeInTheDocument();
+  });
+
+  it('renders the week control on Log regardless of canEdit (R-22 is a read affordance too)', () => {
+    // The old "WeekScopeControl is always present" assertion lived in the
+    // canEdit test above; R-15 moved the control to Log, so its
+    // canEdit-independence is asserted here — where the control actually lives.
+    const editor = renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    expect(screen.getByTestId('week-scope')).toBeInTheDocument();
+    editor.unmount();
+
+    renderLoot({ canEdit: false, tier: makeTier(players) }, ['/?lview=log']);
     expect(screen.getByTestId('week-scope')).toBeInTheDocument();
   });
 
@@ -852,6 +814,188 @@ describe('Loot', () => {
     expect(deleteLootMock.mock.calls.map((c) => (c[3] as LootLogEntry).weekNumber).sort()).toEqual([1, 3]);
     expect(deleteMaterialMock.mock.calls.map((c) => (c[3] as MaterialLogEntry).weekNumber).sort()).toEqual([1, 3]);
     await waitFor(() => expect(clearAllPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
+  });
+});
+
+// ── D4: the triad, and the death of scopedWeek (R-13/R-15/R-20/R-22) ─────────
+// `useLogWeek` is REAL here — these tests drive the displayed week through the
+// mocked WeekScopeControl's captured `onWeekChange`, which is exactly the wire
+// the real control uses, and observe the result through the props Loot hands
+// back out (displayedWeek / picker / wizard) and the URL probe.
+describe('Loot — D4 triad + the Log tab week model', () => {
+  /** The toggle's own button (the toolbar also has "Log a drop"/"Log … loot"). */
+  function viewButton(name: string): HTMLElement {
+    return within(screen.getByRole('group', { name: 'Loot view' })).getByRole('button', { name });
+  }
+
+  /** Drive the Log week exactly as the real WeekScopeControl's chevrons do. */
+  function setLogWeek(week: number) {
+    const scopeProps = weekScopeCalls[weekScopeCalls.length - 1];
+    act(() => {
+      (scopeProps.onWeekChange as (w: number) => void)(week);
+    });
+  }
+
+  it('lists Priority | Log | History in the view toggle, in that order', () => {
+    renderLoot({ tier: makeTier(players) });
+    const toggle = screen.getByRole('group', { name: 'Loot view' });
+    expect(within(toggle).getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'Priority', 'Log', 'History',
+    ]);
+  });
+
+  it('switches to Log via the toggle — placeholder body, week control, lview in the URL', () => {
+    seedQueuesView();
+    renderLoot({ tier: makeTier(players) });
+    expect(screen.getAllByTestId('floor-card')).toHaveLength(1);
+    expect(screen.queryByTestId('log-empty-state')).not.toBeInTheDocument();
+
+    fireEvent.click(viewButton('Log'));
+
+    // Drop the 'log' route (from `lview`'s value list or the body branch) and
+    // `useUrlTabState` falls back to 'priority': the floor cards stay, the
+    // placeholder never mounts, and `?lview=log` never reaches the URL.
+    expect(screen.getByTestId('log-empty-state')).toBeInTheDocument();
+    expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
+    expect(screen.getByTestId('week-scope')).toBeInTheDocument();
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('lview=log');
+  });
+
+  it('mounts the Log tab directly from an ?lview=log deep-link', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    expect(screen.getByTestId('log-empty-state')).toBeInTheDocument();
+    expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('need-matrix')).not.toBeInTheDocument();
+  });
+
+  it('renders the Log subtitle on Log (not the fairness or History one)', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    expect(
+      screen.getByText("The week's record — every drop, book and material, floor by floor"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/fairness rules/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/transparent record/)).not.toBeInTheDocument();
+  });
+
+  it('gives Priority NO week control at all — the week belongs to Log (R-13/R-15)', () => {
+    // The discriminator for the death of scopedWeek: bring the pre-D4 model
+    // back (WeekScopeControl slotted for anything that isn't History) and the
+    // first assertion fails immediately.
+    const priority = renderLoot({ tier: makeTier(players) });
+    expect(screen.queryByTestId('week-scope')).not.toBeInTheDocument();
+    priority.unmount();
+
+    // History slots its own filter pills, not the week control…
+    const history = renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    expect(screen.queryByTestId('week-scope')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All weeks' })).toBeInTheDocument();
+    history.unmount();
+
+    // …and Log is the one place it lives.
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    expect(screen.getByTestId('week-scope')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'All weeks' })).not.toBeInTheDocument();
+  });
+
+  it('hands WeekScopeControl the RAW store slices the revert summary itemises', () => {
+    // ⚠ WeekScopeControl decides WHETHER to open the revert summary from freshly
+    // fetched store state, but the modal itemises from these props. Pass a
+    // week-filtered or otherwise derived list and the modal opens on a positive
+    // pre-check and renders "Nothing logged for Week N". Seed entries on a week
+    // OTHER than the displayed one: a filtered slice would drop them.
+    const loot = [makeLootEntry({ id: 1, weekNumber: 1 })];
+    const material = [makeMaterialEntry({ id: 2, weekNumber: 1 })];
+    useLootTrackingStore.setState({ lootLog: loot, materialLog: material, pageLedger: [] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+
+    const scopeProps = weekScopeCalls[weekScopeCalls.length - 1];
+    expect(scopeProps.lootLog).toBe(useLootTrackingStore.getState().lootLog);
+    expect(scopeProps.materialLog).toBe(useLootTrackingStore.getState().materialLog);
+    expect(scopeProps.pageLedger).toBe(useLootTrackingStore.getState().pageLedger);
+    // `players` is the full tier roster (subs included) — the summary names
+    // whoever actually received something, not just the main eight.
+    expect((scopeProps.players as SnapshotPlayer[]).map((p) => p.id)).toEqual(['p1', 'p2', 's1']);
+  });
+
+  it('targets the displayed week from Log and the clock week everywhere else (R-20 split)', () => {
+    // The clock is week 3; the Log is stepped back to week 1.
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    setLogWeek(1);
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(1);
+
+    // From Log both write paths target the displayed week…
+    fireEvent.click(screen.getByRole('button', { name: /log a drop/i }));
+    expect(pickerCalls[pickerCalls.length - 1].currentWeek).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Log Week 1 loot' }));
+    expect(wizardCalls[wizardCalls.length - 1].currentWeek).toBe(1);
+
+    // …and from Priority — same instance, so the Log week genuinely still
+    // holds 1 — both fall back to the clock's week 3. A `writeWeek` wired
+    // unconditionally to either side fails one half of this test.
+    fireEvent.click(viewButton('Priority'));
+    fireEvent.click(screen.getByRole('button', { name: /log a drop/i }));
+    expect(pickerCalls[pickerCalls.length - 1].currentWeek).toBe(3);
+    fireEvent.click(screen.getByRole('button', { name: "Log this week's loot" }));
+    expect(wizardCalls[wizardCalls.length - 1].currentWeek).toBe(3);
+  });
+
+  it("names the week on the wizard action when Log isn't showing the clock's week (R-22)", () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    // At the clock's own week the copy is unchanged…
+    expect(screen.getByRole('button', { name: "Log this week's loot" })).toBeInTheDocument();
+
+    setLogWeek(1);
+
+    // …and names the week once they diverge. Drop `logWeekLabel` and the button
+    // keeps claiming "this week" while writing to week 1.
+    expect(screen.getByRole('button', { name: 'Log Week 1 loot' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: "Log this week's loot" })).not.toBeInTheDocument();
+  });
+
+  it('re-points the Log week to the week a Log wizard run logged (R-20)', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(3);
+
+    fireEvent.click(screen.getByRole('button', { name: "Log this week's loot" }));
+    act(() => {
+      (wizardCalls[wizardCalls.length - 1].onSuccess as (w: number) => void)(2);
+    });
+
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(2);
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+  });
+
+  it('a wizard run from Priority moves no week (R-20: nothing is displayed to move)', () => {
+    // Drop the `lview === 'log'` guard on the wizard's onSuccess and a Priority
+    // run silently writes `?week=2` — which legacy History reads too.
+    renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: "Log this week's loot" }));
+    act(() => {
+      (wizardCalls[wizardCalls.length - 1].onSuccess as (w: number) => void)(2);
+    });
+
+    expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+    expect(localStorage.getItem('v2-history-week-g1-aac-heavyweight')).toBeNull();
+  });
+
+  it("strips ?week= from a copied History link so it can't ship the sender's Log week", async () => {
+    // copyLink builds from the REAL location, so seed a week there. Leaving it
+    // emergent would ship the sender's week — into legacy's History view too,
+    // which reads the same shared param.
+    window.history.pushState({}, '', '/group/g1?tier=xyz&week=4');
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 21, weekNumber: 3 })] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+
+    const row = document.getElementById('loot-entry-21')!;
+    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const copied = writeText.mock.calls[0][0];
+    expect(copied).toContain('tier=xyz');
+    expect(copied).not.toContain('week=');
   });
 });
 

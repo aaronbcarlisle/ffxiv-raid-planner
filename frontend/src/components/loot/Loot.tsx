@@ -1,46 +1,67 @@
 /**
- * Loot — v2 Loot screen assembly (F6d, spec §2 / §5.2 / §5.9).
+ * Loot — v2 Loot screen assembly (F6d, spec §2 / §5.2 / §5.9; Phase-D D4).
  *
  * The ring-0 composition Task 10 passes as GroupViewContent's `gear` slot
  * (mirroring F6b `Home` / F6c `Roster`'s prop contract). It owns the screen's
- * modal + week-scope state and the URL-backed Priority⇄History view axis, and
- * sources every context value both views need directly from stores + hooks —
- * the same derivations legacy `GroupViewContent` feeds, re-expressed for the v2
- * floor grid (Priority) and the transparent record (History).
+ * modal state and the URL-backed Priority ⇄ Log ⇄ History view axis, and
+ * sources every context value the three views need directly from stores +
+ * hooks — the same derivations legacy `GroupViewContent` feeds, re-expressed
+ * for the v2 floor grid (Priority), the week's record (Log) and the
+ * transparent record (History).
  *
  * Boundary discipline (ring0): composes `loot/` siblings (LootToolbar /
- * WeekScopeControl / FloorCard / RecipientPicker / WeaponPriorityBridge /
- * LootAdjustmentsModal / LogWeekWizard / QuickLogMaterialModal / LootResetMenu /
- * FairnessSummary / BookLedgerCard / LootHistoryTable / HistoryFilters) + shared
- * `ui/` (SegmentedToggle) + the reused legacy confirm modals (DeleteLootConfirmModal,
- * ResetConfirmModal, ConfirmModal — read-only reuse, never edited), and reads
- * STORES/HOOKS directly (useWeekClock, useUrlTabState, useLootTrackingStore,
+ * WeekScopeControl / FloorCard / LogEmptyState / RecipientPicker /
+ * WeaponPriorityBridge / LootAdjustmentsModal / LogWeekWizard /
+ * QuickLogMaterialModal / LootResetMenu / FairnessSummary / BookLedgerCard /
+ * LootHistoryTable / HistoryFilters) + shared `ui/` (SegmentedToggle) + the
+ * reused legacy confirm modals (DeleteLootConfirmModal, ResetConfirmModal,
+ * ConfirmModal — read-only reuse, never edited), and reads STORES/HOOKS
+ * directly (useWeekClock, useLogWeek, useUrlTabState, useLootTrackingStore,
  * useTierStore, useAuthStore, useViewAsStore, useSettingsPanelStore).
  *
  * Deliberate decisions (documented to pre-empt review false-positives):
- *   - `scopedWeek` is a LOCAL view override (null → follow the clock's current
- *     week). FloorCard status uses `scopedWeek`; its enhance context uses the
- *     REAL `clock.currentWeek` (drought is measured against "now", not the
- *     scoped view) — passed as FloorCard's `currentWeek` prop.
- *   - The RecipientPicker's default week (`currentWeek` prop) is the SCOPED week
- *     — logging a drop while viewing an older week should default to that week.
- *     This deliberately differs from FloorCard's enhance-context week; the
- *     picker's own ranking enhance uses this same scoped week (acceptable — the
- *     picker is an explicit, week-targeted action). This only applies in the
- *     Priority view, where `scopedWeek`/`WeekScopeControl` are actually visible —
- *     in the History view (no WeekScopeControl rendered) the picker instead
- *     defaults to the clock's real `currentWeek`, so a stale Priority-view scope
- *     override can never silently drive "Log a drop" from History (PR review).
+ *   - ── The week belongs to the LOG tab (D4, R-15) ──
+ *     There is no screen-level week scope any more; `scopedWeekOverride` is
+ *     gone. `useLogWeek` is the whole model: a nullable override over
+ *     `clock.currentWeek`, resolved `?week=` → `v2-history-week-{groupId}-
+ *     {tierId}` (a week number, or the `'current'` sentinel meaning "follow
+ *     the clock") → legacy `history-week-{groupId}-{tierId}` (read-only,
+ *     continuity in and nothing out) → follow the clock. ONLY the Log tab
+ *     renders a week control (`WeekScopeControl`): Priority is always the
+ *     clock's current week (R-13/R-15), and History keeps its own filter row.
+ *   - The wizard's week target is SPLIT (R-20): on Log it runs against the
+ *     displayed week and its `onSuccess(week)` re-points the Log week to
+ *     whatever week was logged; everywhere else it runs against the clock's
+ *     current week and success moves nothing (there is nothing to move). The
+ *     RecipientPicker's default week follows exactly the same rule.
+ *   - ⚠ `?week=` is a SHARED URL param and v2 is now its second writer: legacy
+ *     `history/HistoryView.tsx:105,132` reads and writes it too, so a v2 Log
+ *     week that survives a shell toggle seeds legacy History's week. This is
+ *     disclosed, not avoided — the design record pins `lview=log&week=N`, so
+ *     the name is ruled. It is deliberately NOT registered with
+ *     `useUrlTabState`: that hook's `SEEDED_TAB_PARAMS` feeds
+ *     `clearRegisteredTabParams`, which `setPageMode`
+ *     (`useGroupViewState.ts:320`) calls on every primary-tab switch in BOTH
+ *     shells — registering `week` would make a V1 tab switch start wiping
+ *     legacy History's own `?week=`. `useLogWeek` uses raw `useSearchParams`.
  *   - The mount fetch effect double-fetches loot/material that legacy's own
  *     effect also covers under `pageMode`; v2 must not depend on legacy chrome
  *     ordering, and the fetches are idempotent.
  *   - `onNavigate` is part of the slot contract (Task 10, mirroring Roster/Home)
- *     but neither view has a cross-tab affordance yet — reserved.
- *   - Only `lview` (Priority⇄History) is URL-backed; the History filters are
- *     session-local `useState` (matches legacy filter locality). A fresh
- *     deep-link therefore always shows everything (filters default to all/all/all),
- *     so an `?entry=` deep-link can never be hidden by a filter on first mount;
- *     only a mid-session filter change can hide a row, which is acceptable.
+ *     but no view has a cross-tab affordance yet — reserved.
+ *   - Only `lview` (Priority⇄Log⇄History) is URL-backed *through this hook*; the
+ *     History filters are session-local `useState` (matches legacy filter
+ *     locality). A fresh deep-link therefore always shows everything (filters
+ *     default to all/all/all), so an `?entry=` deep-link can never be hidden by
+ *     a filter on first mount; only a mid-session filter change can hide a row,
+ *     which is acceptable.
+ *   - D4 interims, so a reader doesn't mistake a stub for a gap: Log's body is
+ *     `LogEmptyState` (the weekly grid is D5); the Books card and a
+ *     displayed-week-bound reset menu are D7; "Log material" on Log is D8.
+ *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
+ *     mounted on History here, and `LootResetMenu` stays bound to
+ *     `clock.currentWeek`. Log has no `?entry=` highlight yet (D6/D11) — a
+ *     `week` param on Log positions the week and nothing more.
  *   - The Priority sub-view (Queues⇄Matrix⇄Weapons) persists per user under
  *     `v2-loot-priority-view` (R-1) — NOT URL-backed. Matrix is the landing
  *     view (R-1); an unset/unrecognized stored value lands there too. The
@@ -65,6 +86,7 @@ import { PageHeader } from '../layout/PageHeader';
 import { LootToolbar } from './LootToolbar';
 import { WeekScopeControl } from './WeekScopeControl';
 import { FloorCard } from './FloorCard';
+import { LogEmptyState } from './LogEmptyState';
 import { NeedMatrix } from './NeedMatrix';
 import { WeaponPriorityBridge } from './WeaponPriorityBridge';
 import { RecipientPicker, type DropItemContext } from './RecipientPicker';
@@ -87,6 +109,7 @@ import { ResetConfirmModal, type ResetConfig } from '../ui/ResetConfirmModal';
 import { ConfirmModal } from '../ui/ConfirmModal';
 
 import { useWeekClock } from '../../hooks/useWeekClock';
+import { useLogWeek } from './useLogWeek';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useTierStore } from '../../stores/tierStore';
@@ -193,6 +216,7 @@ type PickerState =
 type MaterialState = { material: MaterialType; floorName: string; suggested: SnapshotPlayer } | null;
 
 const HISTORY_SUBTITLE = 'Every drop, who received it, and why — the transparent record';
+const LOG_SUBTITLE = "The week's record — every drop, book and material, floor by floor";
 
 export function Loot({ group, tier, canEdit }: LootProps) {
   // ── Derivations (mirror GroupViewContent; safe with a null tier) ──
@@ -224,13 +248,15 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const viewAsUser = useViewAsStore((s) => s.viewAsUser);
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
-  // ── Shared week clock + local scope override ──
+  // ── Shared week clock + the LOG TAB's displayed week (R-15) ──
+  // The clock is screen-wide (Priority ranks against it, History reports it);
+  // `logWeek` is the Log tab's own override over it, and nothing else on this
+  // screen holds week state.
   const clock = useWeekClock(group.id, tier?.tierId);
-  const [scopedWeekOverride, setScopedWeekOverride] = useState<number | null>(null);
-  const scopedWeek = scopedWeekOverride ?? clock.currentWeek;
+  const logWeek = useLogWeek(group.id, tier?.tierId, clock);
 
-  // ── Priority ⇄ History view (URL-backed) + session-local History filters ──
-  const [lview, setLview] = useUrlTabState('lview', ['priority', 'history'] as const, 'priority');
+  // ── Priority ⇄ Log ⇄ History view (URL-backed) + session-local History filters ──
+  const [lview, setLview] = useUrlTabState('lview', ['priority', 'log', 'history'] as const, 'priority');
   const [filters, setFilters] = useState(DEFAULT_HISTORY_FILTERS);
 
   // ── Priority sub-view (persisted, R-1) + floor scope (session, R-2/R-10) ──
@@ -368,8 +394,13 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // D4): with the session-sticky ?shell= tier, a pinned value would lock the
     // recipient's whole tab into the sender's shell — links must respect the
     // recipient's own preference. `tab`/`lview` resolve in both shells.
+    // `week` is STRIPPED for the same class of reason: this is a HISTORY link,
+    // History has no week axis, and an emergent `week` would silently ship the
+    // sender's Log week — to legacy's History view too (it reads `?week=`).
+    // Log's own week-carrying deep links are D6/D11.
     const url = new URL(window.location.href);
     url.searchParams.delete('shell');
+    url.searchParams.delete('week');
     url.searchParams.set('tab', 'gear');
     url.searchParams.set('lview', 'history');
     url.searchParams.set('entry', String(item.entry.id));
@@ -439,11 +470,13 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // Empty-tier shell parity — legacy gates the loot region on a current tier.
   if (!tier) return <div data-testid="loot-screen" />;
 
-  // The picker's default week is the scoped override ONLY in the Priority view
-  // (where WeekScopeControl is visible and settable) — in the History view the
-  // scope override isn't shown, so "Log a drop" must default to the clock's
-  // real current week, not a stale Priority-view scope (PR review finding).
-  const pickerWeek = lview === 'history' ? clock.currentWeek : scopedWeek;
+  // R-15/R-20's week-target split, shared by the picker and the wizard: a write
+  // started from the LOG tab targets the week the user is looking at (the only
+  // place a week is displayed and settable); anywhere else it targets the
+  // clock's real current week, because that is the only week those views speak
+  // for. `logWeek.week` already equals `clock.currentWeek` whenever the Log
+  // isn't overridden, so this only diverges when the user has actually said so.
+  const writeWeek = lview === 'log' ? logWeek.week : clock.currentWeek;
 
   // Shared across both RecipientPicker render branches below (mode-specific
   // `item`/`isOpen` are supplied per-branch to satisfy the discriminated
@@ -455,7 +488,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     settings,
     floors,
     lootLog,
-    currentWeek: pickerWeek,
+    currentWeek: writeWeek,
     maxWeek: clock.maxWeek,
     onSuccess: refresh,
   };
@@ -465,7 +498,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       <PageHeader
         icon={<Shield size={14} className="text-accent" />}
         title="Loot"
-        subtitle={lview === 'history' ? HISTORY_SUBTITLE : subtitle}
+        subtitle={lview === 'history' ? HISTORY_SUBTITLE : lview === 'log' ? LOG_SUBTITLE : subtitle}
       />
 
       <div className="mb-5">
@@ -478,6 +511,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               onChange={setLview}
               options={[
                 { value: 'priority', label: 'Priority' },
+                { value: 'log', label: 'Log' },
                 { value: 'history', label: 'History' },
               ]}
             />
@@ -490,19 +524,22 @@ export function Loot({ group, tier, canEdit }: LootProps) {
                 weeks={historyWeeks(buildHistoryItems(lootLog, materialLog))}
                 players={players.filter((p) => p.configured)}
               />
-            ) : (
-              // D4 task-3 call-site shim (director-ruled): mechanical prop-name
-              // adaptation ONLY, keeping the pre-D4 scopedWeek model in place.
-              // Task 4 deletes scopedWeek entirely and re-wires this to
-              // useLogWeek — these lines are deliberate throwaway.
+            ) : lview === 'log' ? (
+              // R-13/R-15: the week control belongs to Log and ONLY to Log.
+              // ⚠ `lootLog`/`materialLog`/`pageLedger` must stay the RAW store
+              // slices: WeekScopeControl decides whether to show the revert
+              // summary from freshly-fetched store state, while the summary
+              // modal itemises from these props. A week-filtered or derived
+              // list here would let the modal open on a positive pre-check and
+              // then render "Nothing logged for Week N".
               <WeekScopeControl
                 clock={clock}
-                displayedWeek={scopedWeek}
-                onWeekChange={setScopedWeekOverride}
-                onFollowClock={() => setScopedWeekOverride(null)}
+                displayedWeek={logWeek.week}
+                onWeekChange={logWeek.setWeek}
+                onFollowClock={logWeek.followClock}
                 canEdit={canEdit}
-                canPrev={scopedWeek > 1}
-                canNext={scopedWeek < clock.maxWeek}
+                canPrev={logWeek.canPrev}
+                canNext={logWeek.canNext}
                 groupId={group.id}
                 tierId={tier.tierId}
                 lootLog={lootLog}
@@ -510,7 +547,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
                 pageLedger={pageLedger}
                 players={players}
               />
-            )
+            ) : null
           }
           resetMenu={
             lview === 'history' && canEdit ? (
@@ -520,6 +557,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           canEdit={canEdit}
           onLogDrop={() => setPickerState({ mode: 'log' })}
           onLogWeek={() => setWizardState({ floor: null })}
+          // The action names its week whenever it isn't "this week" — the same
+          // honesty R-22 requires of the clock's mutations. Only Log can
+          // diverge; everywhere else `writeWeek` IS the clock's current week.
+          logWeekLabel={writeWeek === clock.currentWeek ? undefined : `Log Week ${writeWeek} loot`}
           onOpenAdjustments={() => setAdjustmentsOpen(true)}
           onOpenRules={openRules}
         />
@@ -624,6 +665,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             onDelete={requestDelete}
           />
         </div>
+      ) : lview === 'log' ? (
+        // D4 interim: the tab is real (it owns the week and hosts the week
+        // control) but its body is a placeholder — the weekly grid is D5.
+        <LogEmptyState />
       ) : priorityView === 'matrix' ? (
         <NeedMatrix
           players={mainRosterPlayers}
@@ -671,7 +716,8 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               lootLog={lootLog}
               materialLog={materialLog}
               pageLedger={pageLedger}
-              scopedWeek={scopedWeek}
+              // R-15: Priority is always the clock's current week — one week
+              // prop, driving both the status chip and the enhance context.
               currentWeek={clock.currentWeek}
               canEdit={canEdit}
               // R-49: a solo-scoped card never auto-collapses — with one card
@@ -721,7 +767,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       {/* One wizard, two doors (R-7): the toolbar's whole-week run, and the
           controls row's "Log floor" single-floor run. The wizard re-reads
           singleFloorMode/initialFloor on its open transition, so the always-
-          mounted pattern is safe. */}
+          mounted pattern is safe. R-20: it targets `writeWeek` — the Log tab's
+          displayed week, or the clock elsewhere — and only a Log run re-points
+          the displayed week on success (elsewhere there is no week shown to
+          move, and moving one silently would be worse than moving none). */}
       <LogWeekWizard
         isOpen={wizardState !== null}
         onClose={() => setWizardState(null)}
@@ -730,13 +779,13 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         players={mainRosterPlayers}
         settings={settings}
         floors={floors}
-        currentWeek={scopedWeek}
+        currentWeek={writeWeek}
         maxWeek={clock.maxWeek}
         lootLog={lootLog}
         materialLog={materialLog}
         singleFloorMode={wizardState?.floor != null}
         initialFloor={wizardState?.floor ?? 1}
-        onSuccess={(w) => { refresh(); setScopedWeekOverride(w); }}
+        onSuccess={(w) => { refresh(); if (lview === 'log') logWeek.setWeek(w); }}
       />
 
       {materialState && (
