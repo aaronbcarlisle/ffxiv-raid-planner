@@ -330,7 +330,10 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const eligibleOptions = useMemo(() => {
     const player = allPlayers.find((p) => p.id === recipientPlayerId);
     const isOriginalRecipient = mode === 'edit' && editEntry!.recipientPlayerId === recipientPlayerId;
-    const originalSlot = isOriginalRecipient ? editEntry!.slotAugmented : undefined;
+    // The entry's slot is only offerable in its OWN material's domain — edit mode renders the
+    // material pills, and a twine slot must not leak into glaze's slot list (PR #236 review).
+    const originalSlot =
+      isOriginalRecipient && editEntry!.materialType === material ? editEntry!.slotAugmented : undefined;
     if (!player) return { slots: [] as GearSlot[], canMarkTomeWeaponHave: false, canAugmentTomeWeapon: false };
 
     if (material === 'universal_tomestone') {
@@ -369,7 +372,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const hasEligibleOptions = eligibleOptions.canMarkTomeWeaponHave ||
     eligibleOptions.canAugmentTomeWeapon ||
     eligibleOptions.slots.length > 0 ||
-    (mode === 'edit' && !!editEntry?.slotAugmented);
+    (mode === 'edit' && editEntry?.materialType === material && !!editEntry?.slotAugmented);
 
   // Reset state when modal opens (pinned) — gated so free-form (below) has its own block.
   // Non-null assertions: this body only runs where `mode === 'pinned'` guarantees
@@ -536,7 +539,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
       onSuccess?.();
       onClose();
     } catch {
-      toast.error('Failed to log material');
+      toast.error(mode === 'edit' ? 'Failed to update material entry' : 'Failed to log material');
     } finally {
       setIsSaving(false);
     }

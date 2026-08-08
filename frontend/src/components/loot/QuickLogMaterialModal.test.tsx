@@ -1007,6 +1007,66 @@ describe('edit mode (R-21)', () => {
     ];
     expect(options).toEqual(expect.objectContaining({ updateGear: false }));
   });
+
+  // PR #236 review (claude thread): the entry's slot must not leak into a DIFFERENT material's
+  // slot domain when the user switches material pills mid-edit — `originalSlot` and
+  // `hasEligibleOptions`'s edit clause are both gated on material identity.
+  describe('material-identity gates (PR #236 review)', () => {
+    it('switching a twine entry to glaze de-injects the twine slot: no "Head" option, no gear checkbox, submit sends updateGear: false', async () => {
+      const { sara, theo } = editFixturePlayers();
+      renderEdit({}, [sara, theo]);
+
+      // Cascade: M10S carries glaze/UT, so the twine pick can't survive the floor switch.
+      fireEvent.click(within(screen.getByRole('group', { name: 'Floor' })).getByRole('button', { name: 'M10S' }));
+      expect(within(screen.getByRole('group', { name: 'Material' })).getByRole('button', { name: 'Glaze' }))
+        .toHaveAttribute('aria-pressed', 'true');
+
+      // Sara has zero glaze-eligible accessories and the entry's 'head' is twine-domain:
+      // the gear section must vanish entirely rather than offer the wrong-domain slot.
+      expect(screen.getAllByRole('combobox')).toHaveLength(1); // Recipient only — no slot Select
+      expect(screen.queryByText(/Also mark gear as augmented/)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await waitFor(() => expect(updateMaterialAndReconcileGearMock).toHaveBeenCalledTimes(1));
+      const [, , , newData, options] = updateMaterialAndReconcileGearMock.mock.calls[0] as [
+        string, string, MaterialLogEntry, { materialType: string }, UpdateMaterialOptions,
+      ];
+      expect(newData.materialType).toBe('glaze');
+      expect(options).toEqual(expect.objectContaining({ updateGear: false, slotToAugment: undefined }));
+    });
+
+    it('switching a twine entry to universal tomestone renders no gear checkbox and no "+ Mark tome weapon as obtained" promise; submit sends updateGear: false', async () => {
+      const { sara, theo } = editFixturePlayers();
+      renderEdit({}, [sara, theo]);
+
+      fireEvent.click(within(screen.getByRole('group', { name: 'Floor' })).getByRole('button', { name: 'M10S' }));
+      fireEvent.click(within(screen.getByRole('group', { name: 'Material' })).getByRole('button', { name: 'Universal Tomestone' }));
+
+      // Sara doesn't need the tome item and the entry's recorded slot is twine-domain: the
+      // edit clause must not keep `shouldUpdateGear` alive to promise a no-op.
+      expect(screen.queryByText(/Also mark tome weapon as obtained/)).not.toBeInTheDocument();
+      expect(screen.queryByText('+ Mark tome weapon as obtained')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await waitFor(() => expect(updateMaterialAndReconcileGearMock).toHaveBeenCalledTimes(1));
+      const [, , , , options] = updateMaterialAndReconcileGearMock.mock.calls[0] as [
+        string, string, MaterialLogEntry, unknown, UpdateMaterialOptions,
+      ];
+      expect(options).toEqual(expect.objectContaining({ updateGear: false }));
+    });
+
+    it('a failed edit toasts "Failed to update material entry", not the create copy (PR #236 Copilot thread)', async () => {
+      const { toast } = await import('../../stores/toastStore');
+      const errorSpy = vi.spyOn(toast, 'error');
+      updateMaterialAndReconcileGearMock.mockRejectedValueOnce(new Error('nope'));
+      const { sara, theo } = editFixturePlayers();
+      renderEdit({}, [sara, theo]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await waitFor(() => expect(errorSpy).toHaveBeenCalledWith('Failed to update material entry'));
+      errorSpy.mockRestore();
+    });
+  });
 });
 
 // D8 Task 7 (review gap closed): 'notes (R-26)' above only pins that pinned + showNotes RENDERS
