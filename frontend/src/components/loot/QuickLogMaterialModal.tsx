@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Gem } from 'lucide-react';
+import { Gem, Pencil } from 'lucide-react';
 import { Modal, Select, Label, Checkbox, NumberInput, RadioGroup, Tag, TextArea, type Tone } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
@@ -17,6 +17,8 @@ import {
   isSlotAugmentationMaterial,
   UPGRADE_MATERIAL_DISPLAY_NAMES,
   FLOOR_LOOT_TABLES,
+  parseFloorName,
+  getFloorForUpgradeMaterial,
   type FloorNumber,
 } from '../../gamedata/loot-tables';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
@@ -24,7 +26,10 @@ import {
   getEligibleSlotsForAugmentation,
   needsTomeWeaponItem,
   needsTomeWeaponAugmentation,
+  hasTomeWeaponItem,
   logMaterialAndUpdateGear,
+  updateMaterialAndReconcileGear,
+  type UpdateMaterialOptions,
 } from '../../utils/materialCoordination';
 import type { SnapshotPlayer, MaterialType, StaticSettings, GearSlot, LootMethod, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
@@ -61,10 +66,16 @@ export type QuickLogMaterialModalProps = QuickLogMaterialModalBaseProps & (
       initialWeek: number;
       floor?: never; material?: never; suggestedPlayer?: never; showNotes?: never; editEntry?: never;
     }
-  // Task 6 appends the `edit` branch (no initialWeek — the week comes from the entry).
+  | {
+      /** Edit — R-21. Selectors + notes render; submit reconciles old-vs-new. */
+      floors: string[];
+      editEntry: MaterialLogEntry;
+      /** No initialWeek: the week comes from the entry. */
+      floor?: never; material?: never; suggestedPlayer?: never; showNotes?: never; initialWeek?: never;
+    }
 );
 
-type ModalMode = 'pinned' | 'freeform'; // Task 6 widens with 'edit'
+type ModalMode = 'pinned' | 'freeform' | 'edit';
 
 /** One place that answers: given this player and material, what does the gear
  *  checkbox pre-select? (Was triplicated pre-D8; edit mode would have made four.) */
@@ -128,6 +139,106 @@ function rankRecipients(
     });
 }
 
+// ==================== Edit mode (R-21) ====================
+
+/** Edit mode: the entry's own slot stays offered even though it is currently augmented. */
+function withOriginalSlot(slots: GearSlot[], original: MaterialLogEntry['slotAugmented']): GearSlot[] {
+  if (!original || original === 'tome_weapon' || slots.includes(original)) return slots;
+  return [original, ...slots];
+}
+
+/** Edit mode's gear-init (open-reset + mount lazy seed): mirrors the legacy edit precedent
+ *  (`LogMaterialModal.tsx:220-248`) for which checkbox/slot the entry pre-selects, but falls
+ *  back to this file's own `initialGearSelection` (slots-first order) rather than replaying
+ *  legacy's differently-ordered heuristic when the entry didn't record a slot. */
+function editGearSelection(
+  materialType: MaterialType,
+  slotAugmented: MaterialLogEntry['slotAugmented'],
+  recipient: SnapshotPlayer | undefined,
+): { slot: GearSlot | null; augmentTome: boolean; updateGear: boolean } {
+  if (slotAugmented === 'tome_weapon') {
+    return { slot: null, augmentTome: true, updateGear: true };
+  }
+  if (slotAugmented) {
+    return { slot: slotAugmented, augmentTome: false, updateGear: true };
+  }
+  if (materialType === 'universal_tomestone') {
+    return { slot: null, augmentTome: false, updateGear: recipient ? hasTomeWeaponItem(recipient) : false };
+  }
+  return { ...initialGearSelection(recipient, materialType), updateGear: false };
+}
+
+/** The gear consequence a preview line describes — a display-only mirror of
+ *  `materialCoordination.ts`'s (unexported) `GearEffect`; the actual revert/apply semantics
+ *  live there (Task 5), this just narrates them before submit. */
+type PreviewEffect = { kind: 'tome_item' } | { kind: 'tome_aug' } | { kind: 'slot'; slot: GearSlot } | null;
+
+function previewEffectFromEntry(entry: MaterialLogEntry): PreviewEffect {
+  if (entry.materialType === 'universal_tomestone') return { kind: 'tome_item' };
+  if (entry.slotAugmented === 'tome_weapon') return { kind: 'tome_aug' };
+  if (entry.slotAugmented) return { kind: 'slot', slot: entry.slotAugmented };
+  return null;
+}
+
+function previewEffectFromForm(
+  materialType: MaterialType,
+  shouldUpdateGear: boolean,
+  augmentTome: boolean,
+  slot: GearSlot | null,
+): PreviewEffect {
+  if (!shouldUpdateGear) return null;
+  if (materialType === 'universal_tomestone') return { kind: 'tome_item' };
+  if (materialType === 'solvent' && augmentTome) return { kind: 'tome_aug' };
+  if (slot) return { kind: 'slot', slot };
+  return null;
+}
+
+function previewEffectsEqual(a: PreviewEffect, b: PreviewEffect): boolean {
+  if (a === null || b === null) return a === b;
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'slot' && b.kind === 'slot') return a.slot === b.slot;
+  return true;
+}
+
+function previewEffectDisplay(effect: PreviewEffect): { noun: string; verb: string } | null {
+  if (!effect) return null;
+  if (effect.kind === 'tome_item') return { noun: 'tome weapon', verb: 'obtained' };
+  if (effect.kind === 'tome_aug') return { noun: 'tome weapon', verb: 'augmented' };
+  return { noun: GEAR_SLOT_NAMES[effect.slot], verb: 'augmented' };
+}
+
+/** Edit-mode preview lines: states the old-vs-new reconciliation `updateMaterialAndReconcileGear`
+ *  (Task 5) will perform on submit, including the non-move consequence of a recipient change
+ *  (the old recipient's gear is deliberately left untouched — legacy ruling
+ *  `LogMaterialModal.tsx:366-368` — so the preview says they keep it). */
+function editReconciliationLines(
+  oldEntry: MaterialLogEntry,
+  newMaterial: MaterialType,
+  newRecipientId: string,
+  shouldUpdateGear: boolean,
+  augmentTome: boolean,
+  slot: GearSlot | null,
+): string[] {
+  const oldEffect = previewEffectFromEntry(oldEntry);
+  const newEffect = previewEffectFromForm(newMaterial, shouldUpdateGear, augmentTome, slot);
+  const oldDisplay = previewEffectDisplay(oldEffect);
+  const newDisplay = previewEffectDisplay(newEffect);
+  const recipientChanged = newRecipientId !== oldEntry.recipientPlayerId;
+  const lines: string[] = [];
+
+  if (!recipientChanged) {
+    if (!previewEffectsEqual(oldEffect, newEffect)) {
+      if (oldDisplay) lines.push(`− Un-mark ${oldDisplay.noun} as ${oldDisplay.verb}`);
+      if (newDisplay) lines.push(`+ Mark ${newDisplay.noun} as ${newDisplay.verb}`);
+    }
+  } else {
+    if (newDisplay) lines.push(`+ Mark ${newDisplay.noun} as ${newDisplay.verb}`);
+    if (oldDisplay) lines.push(`· ${oldEntry.recipientPlayerName} keeps their ${oldDisplay.verb} ${oldDisplay.noun}`);
+  }
+
+  return lines;
+}
+
 export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const {
     isOpen,
@@ -144,8 +255,11 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   // initial recipient instead comes from `recipientPlayerId`'s own lazy seed below, with the
   // auto-recipient effect (further down) handling subsequent re-ranks.
   const suggestedPlayer = props.suggestedPlayer;
+  // Edit-only per the union (`never` on the pinned/free-form branches) — every dereference
+  // below only happens where `mode === 'edit'` guarantees it's set.
+  const editEntry = props.editEntry;
 
-  const mode: ModalMode = props.floor != null ? 'pinned' : 'freeform';
+  const mode: ModalMode = props.editEntry ? 'edit' : props.floor != null ? 'pinned' : 'freeform';
   const [pickedFloorNumber, setPickedFloorNumber] = useState<FloorNumber>(DEFAULT_FREEFORM_FLOOR);
   const [pickedMaterial, setPickedMaterial] = useState<MaterialType>(DEFAULT_FREEFORM_MATERIAL);
   // `props.floors` is `string[] | undefined` in general (unnarrowed) union access; `?? []`
@@ -165,6 +279,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const { materialLog } = useLootTrackingStore();
   const [recipientPlayerId, setRecipientPlayerId] = useState(() => {
     if (mode === 'pinned') return suggestedPlayer?.id ?? '';
+    if (mode === 'edit') return editEntry!.recipientPlayerId;
     // Fix round 1, item 4: seed free-form's recipient synchronously with the default
     // material's top-priority needer, computed with the SAME ranking the auto-recipient
     // effect below uses (`rankRecipients`) — subs widening always starts unchecked
@@ -191,51 +306,70 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   // Compute initial slot selection BEFORE first render using lazy initializer
   // Note: 'tome_weapon' selection is tracked via augmentTomeWeapon state, not selectedSlot
   const [selectedSlot, setSelectedSlot] = useState<GearSlot | null>(() => {
+    if (mode === 'edit') {
+      const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
+      return editGearSelection(editEntry!.materialType, editEntry!.slotAugmented, recipient).slot;
+    }
     const player = allPlayers.find((p) => p.id === recipientPlayerId) || suggestedPlayer;
     return initialGearSelection(player, material).slot;
   });
   // Compute initial augmentTomeWeapon BEFORE first render
   const [augmentTomeWeapon, setAugmentTomeWeapon] = useState(() => {
+    if (mode === 'edit') {
+      const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
+      return editGearSelection(editEntry!.materialType, editEntry!.slotAugmented, recipient).augmentTome;
+    }
     const player = allPlayers.find((p) => p.id === recipientPlayerId) || suggestedPlayer;
     return initialGearSelection(player, material).augmentTome;
   });
 
-  // Compute eligible options for gear update based on selected player and material
+  // Compute eligible options for gear update based on selected player and material. Edit mode
+  // (R-21): the entry's own effect stays offered even though current player state suggests it's
+  // already applied — `originalSlot` only applies when the recipient hasn't changed since the
+  // entry (`withOriginalSlot`/the UT+solvent-tome_weapon special cases below).
   const eligibleOptions = useMemo(() => {
     const player = allPlayers.find((p) => p.id === recipientPlayerId);
+    const isOriginalRecipient = mode === 'edit' && editEntry!.recipientPlayerId === recipientPlayerId;
+    const originalSlot = isOriginalRecipient ? editEntry!.slotAugmented : undefined;
     if (!player) return { slots: [] as GearSlot[], canMarkTomeWeaponHave: false, canAugmentTomeWeapon: false };
 
     if (material === 'universal_tomestone') {
-      // Universal tomestone grants the base tome weapon
+      // Universal tomestone grants the base tome weapon. Edit mode: the recipient already
+      // having the item (via this very entry) must not hide the checkbox — otherwise even a
+      // notes-only edit would silently revert it (no way to leave `updateGear` meaningfully
+      // true without a visible control) — legacy precedent `LogMaterialModal.tsx:134`.
+      const editOriginalUt = isOriginalRecipient && editEntry!.materialType === 'universal_tomestone';
       return {
         slots: [] as GearSlot[],
-        canMarkTomeWeaponHave: needsTomeWeaponItem(player),
+        canMarkTomeWeaponHave: needsTomeWeaponItem(player) || editOriginalUt,
         canAugmentTomeWeapon: false,
       };
     }
 
     if (material === 'solvent') {
       // Solvent can augment tome weapon OR weapon gear slot
-      const slots = getEligibleSlotsForAugmentation(player, material);
+      const slots = withOriginalSlot(getEligibleSlotsForAugmentation(player, material), originalSlot);
       return {
         slots,
         canMarkTomeWeaponHave: false,
-        canAugmentTomeWeapon: needsTomeWeaponAugmentation(player),
+        canAugmentTomeWeapon: needsTomeWeaponAugmentation(player) || originalSlot === 'tome_weapon',
       };
     }
 
     // Twine/Glaze: only gear slots
     return {
-      slots: getEligibleSlotsForAugmentation(player, material),
+      slots: withOriginalSlot(getEligibleSlotsForAugmentation(player, material), originalSlot),
       canMarkTomeWeaponHave: false,
       canAugmentTomeWeapon: false,
     };
-  }, [recipientPlayerId, material, allPlayers]);
+  }, [recipientPlayerId, material, allPlayers, mode, editEntry]);
 
-  // Determine if there are any eligible options
+  // Determine if there are any eligible options. Edit mode gains a clause for a recorded slot
+  // (or `'tome_weapon'`) even when the memo above found no player to derive `slots`/flags from.
   const hasEligibleOptions = eligibleOptions.canMarkTomeWeaponHave ||
     eligibleOptions.canAugmentTomeWeapon ||
-    eligibleOptions.slots.length > 0;
+    eligibleOptions.slots.length > 0 ||
+    (mode === 'edit' && !!editEntry?.slotAugmented);
 
   // Reset state when modal opens (pinned) — gated so free-form (below) has its own block.
   // Non-null assertions: this body only runs where `mode === 'pinned'` guarantees
@@ -276,6 +410,38 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   useEffect(() => {
     if (isOpen) setIncludeSubs(false);
   }, [isOpen]);
+
+  // Reset state when modal opens (edit, R-21) — declared AFTER the subs-widening reset above so
+  // its own `setIncludeSubs` call (sub recipient -> checked, legacy `:218`) wins the same commit.
+  useEffect(() => {
+    if (mode !== 'edit' || !isOpen) return;
+    const entry = editEntry!;
+
+    // Floor (director m4): parse the entry's floor name, but fall back to the material's own
+    // home floor when the parsed floor's table doesn't carry that material (parse fallback = 1;
+    // floors 1/4 never carry materials) — never leaves an empty pill row with nothing pressed.
+    const parsedFloorNum = parseFloorName(entry.floor);
+    const floorNum = FLOOR_LOOT_TABLES[parsedFloorNum].upgradeMaterials.includes(entry.materialType)
+      ? parsedFloorNum
+      : getFloorForUpgradeMaterial(entry.materialType)[0];
+    setPickedFloorNumber(floorNum);
+    setPickedMaterial(entry.materialType);
+    setRecipientPlayerId(entry.recipientPlayerId);
+    setSelectedWeek(entry.weekNumber);
+    setMethod(entry.method || 'drop');
+    setNotes(entry.notes ?? '');
+
+    const recipient = allPlayers.find((p) => p.id === entry.recipientPlayerId);
+    // A sub's entry still shows its (sub) recipient — legacy precedent `LogMaterialModal.tsx:218`.
+    setIncludeSubs(recipient?.isSubstitute ?? false);
+
+    const { slot, augmentTome, updateGear: shouldCheckUpdateGear } = editGearSelection(
+      entry.materialType, entry.slotAugmented, recipient
+    );
+    setSelectedSlot(slot);
+    setAugmentTomeWeapon(augmentTome);
+    setUpdateGear(shouldCheckUpdateGear);
+  }, [mode, isOpen, editEntry, allPlayers]);
 
   // Handle recipient change - update slot selection when user changes recipient
   const handleRecipientChange = (newPlayerId: string) => {
@@ -323,26 +489,49 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     try {
       const shouldUpdateGear = updateGear && hasEligibleOptions;
 
-      await logMaterialAndUpdateGear(
-        groupId,
-        tierId,
-        {
-          weekNumber: selectedWeek,
-          floor: floorName,
-          materialType: material,
-          recipientPlayerId,
-          method,
-          ...(notes.trim() ? { notes: notes.trim() } : {}),
-        },
-        {
+      if (mode === 'edit' && editEntry) {
+        const options: UpdateMaterialOptions = {
           updateGear: shouldUpdateGear,
           slotToAugment: shouldUpdateGear && selectedSlot ? selectedSlot as GearSlot : undefined,
           augmentTomeWeapon: shouldUpdateGear && augmentTomeWeapon,
-        }
-      );
+        };
+        await updateMaterialAndReconcileGear(
+          groupId,
+          tierId,
+          editEntry,
+          {
+            weekNumber: selectedWeek,
+            floor: floorName,
+            materialType: material,
+            recipientPlayerId,
+            method,
+            notes: notes.trim(),
+          },
+          options
+        );
+        toast.success('Material entry updated');
+      } else {
+        await logMaterialAndUpdateGear(
+          groupId,
+          tierId,
+          {
+            weekNumber: selectedWeek,
+            floor: floorName,
+            materialType: material,
+            recipientPlayerId,
+            method,
+            ...(notes.trim() ? { notes: notes.trim() } : {}),
+          },
+          {
+            updateGear: shouldUpdateGear,
+            slotToAugment: shouldUpdateGear && selectedSlot ? selectedSlot as GearSlot : undefined,
+            augmentTomeWeapon: shouldUpdateGear && augmentTomeWeapon,
+          }
+        );
 
-      const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
-      toast.success(`Logged ${UPGRADE_MATERIAL_DISPLAY_NAMES[material]} for ${recipient?.name || 'player'}`);
+        const recipient = allPlayers.find((p) => p.id === recipientPlayerId);
+        toast.success(`Logged ${UPGRADE_MATERIAL_DISPLAY_NAMES[material]} for ${recipient?.name || 'player'}`);
+      }
 
       onSuccess?.();
       onClose();
@@ -403,8 +592,13 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   };
 
   // Build recipient options with job icons. Non-pinned modes gain a leading placeholder
-  // while nothing is picked yet (pinned always starts from `suggestedPlayer`).
+  // while nothing is picked yet (pinned always starts from `suggestedPlayer`). Edit mode
+  // (R-21): the entry's recipient may no longer be in the pool (removed from the roster since
+  // logged) — inject them by name so the Select never shows a blank value for a real id.
   const recipientOptions = [
+    ...(mode === 'edit' && editEntry && !sortedRecipients.some((r) => r.player.id === editEntry.recipientPlayerId)
+      ? [{ value: editEntry.recipientPlayerId, label: editEntry.recipientPlayerName }]
+      : []),
     ...(mode !== 'pinned' && recipientPlayerId === '' ? [{ value: '', label: 'Select player…' }] : []),
     ...sortedRecipients.map(({ player, priority, needsMaterial }) => ({
       value: player.id,
@@ -419,8 +613,12 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
       onClose={onClose}
       title={
         <span className="flex items-center gap-2">
-          <Gem className="w-5 h-5" />
-          {mode === 'pinned' ? <>Log {UPGRADE_MATERIAL_DISPLAY_NAMES[material]}</> : 'Log Material'}
+          {mode === 'edit' ? <Pencil className="w-5 h-5" /> : <Gem className="w-5 h-5" />}
+          {mode === 'pinned'
+            ? <>Log {UPGRADE_MATERIAL_DISPLAY_NAMES[material]}</>
+            : mode === 'edit'
+              ? 'Edit Material Entry'
+              : 'Log Material'}
         </span>
       }
     >
@@ -608,16 +806,36 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm">
           <div className="text-accent font-medium mb-1">This will:</div>
           <ul className="text-text-secondary space-y-1">
-            <li>+ Add {UPGRADE_MATERIAL_DISPLAY_NAMES[material]} to Week {selectedWeek} log for {selectedPlayer?.name}</li>
-            {updateGear && hasEligibleOptions && (
-              <li>
-                {material === 'universal_tomestone'
-                  ? '+ Mark tome weapon as obtained'
-                  : augmentTomeWeapon
-                    ? '+ Mark tome weapon as augmented'
-                    : `+ Mark ${selectedSlot ? GEAR_SLOT_NAMES[selectedSlot as GearSlot] : 'slot'} as augmented`
-                }
-              </li>
+            {mode === 'edit' && editEntry ? (
+              <>
+                <li>
+                  ~ Update {UPGRADE_MATERIAL_DISPLAY_NAMES[material]} entry for {selectedPlayer?.name} (Week {selectedWeek})
+                </li>
+                {editReconciliationLines(
+                  editEntry,
+                  material,
+                  recipientPlayerId,
+                  updateGear && hasEligibleOptions,
+                  augmentTomeWeapon,
+                  selectedSlot
+                ).map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </>
+            ) : (
+              <>
+                <li>+ Add {UPGRADE_MATERIAL_DISPLAY_NAMES[material]} to Week {selectedWeek} log for {selectedPlayer?.name}</li>
+                {updateGear && hasEligibleOptions && (
+                  <li>
+                    {material === 'universal_tomestone'
+                      ? '+ Mark tome weapon as obtained'
+                      : augmentTomeWeapon
+                        ? '+ Mark tome weapon as augmented'
+                        : `+ Mark ${selectedSlot ? GEAR_SLOT_NAMES[selectedSlot as GearSlot] : 'slot'} as augmented`
+                    }
+                  </li>
+                )}
+              </>
             )}
           </ul>
         </div>
@@ -632,7 +850,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
             disabled={!recipientPlayerId}
             loading={isSaving}
           >
-            Log Material
+            {mode === 'edit' ? 'Save Changes' : 'Log Material'}
           </Button>
         </div>
       </form>

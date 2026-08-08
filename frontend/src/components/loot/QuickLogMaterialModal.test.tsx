@@ -14,25 +14,27 @@
 // alongside the JobIcon's alt text and any priority suffix).
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import type { SnapshotPlayer, GearSlotStatus, MaterialLogEntryCreate } from '../../types';
+import type { SnapshotPlayer, GearSlotStatus, MaterialLogEntryCreate, MaterialLogEntry } from '../../types';
 
-const { logMaterialAndUpdateGearMock } = vi.hoisted(() => ({
+const { logMaterialAndUpdateGearMock, updateMaterialAndReconcileGearMock } = vi.hoisted(() => ({
   logMaterialAndUpdateGearMock: vi.fn().mockResolvedValue(undefined),
+  updateMaterialAndReconcileGearMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Partial-mock: keep the pure helpers real (they decide which render branch
-// fires), replace only the network-touching coordinator.
+// fires), replace only the network-touching coordinators.
 vi.mock('../../utils/materialCoordination', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../utils/materialCoordination')>();
   return {
     ...actual,
     logMaterialAndUpdateGear: logMaterialAndUpdateGearMock,
+    updateMaterialAndReconcileGear: updateMaterialAndReconcileGearMock,
   };
 });
 
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
-import type { LogMaterialOptions } from '../../utils/materialCoordination';
+import type { LogMaterialOptions, UpdateMaterialOptions } from '../../utils/materialCoordination';
 
 // ── Fixture helpers (modeled on materialCoordination.test.ts:19-64) ─────────
 // Shared across this file's describe blocks, including ones later D8 tasks add.
@@ -132,6 +134,7 @@ beforeEach(() => {
   );
   useLootTrackingStore.setState({ materialLog: [] });
   logMaterialAndUpdateGearMock.mockClear();
+  updateMaterialAndReconcileGearMock.mockClear();
 });
 
 // The `V1 freeze baseline` describe block was written against the pre-D8
@@ -502,11 +505,14 @@ describe('free-form mode (R-26)', () => {
     return { gina, uzo };
   }
 
+  // Discriminates on required `initialWeek` (Task 6's `edit` branch also has required `floors`,
+  // so that alone no longer picks out free-form uniquely; `edit`'s `initialWeek?: never` is
+  // optional and so isn't extracted by a REQUIRED-`initialWeek` filter).
   function renderFreeform(
-    overrides: Partial<Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { floors: string[] }>> = {},
+    overrides: Partial<Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { initialWeek: number }>> = {},
     allPlayers: SnapshotPlayer[] = [],
   ) {
-    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { floors: string[] }> = {
+    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { initialWeek: number }> = {
       isOpen: true,
       onClose: vi.fn(),
       groupId: 'g1',
@@ -712,10 +718,10 @@ describe('pinned initialWeek (D5, R-20 coherence)', () => {
 // V1 (pinned WITHOUT showNotes) keeps the frozen no-textarea behavior pinned above.
 describe('notes (R-26)', () => {
   function renderFreeformWithPlayer(
-    overrides: Partial<Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { floors: string[] }>> = {},
+    overrides: Partial<Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { initialWeek: number }>> = {},
   ) {
     const player = makePlayer({ id: 'p1', name: 'Nora' });
-    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { floors: string[] }> = {
+    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { initialWeek: number }> = {
       isOpen: true,
       onClose: vi.fn(),
       groupId: 'g1',
@@ -766,5 +772,239 @@ describe('notes (R-26)', () => {
 
     const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
     expect(data).not.toHaveProperty('notes');
+  });
+});
+
+// D8 Task 6: edit mode (R-21) — the entry's old-vs-new reconciliation. `updateMaterialAndReconcileGear`
+// is mocked (partial-mock, same pattern as `logMaterialAndUpdateGear`); the pure eligibility
+// helpers stay real.
+describe('edit mode (R-21)', () => {
+  const EDIT_FLOORS = ['M9S', 'M10S', 'M11S', 'M12S'];
+
+  // sara: 'head' is the entry's own (already-augmented) slot; 'body' is newly eligible (not
+  // yet augmented) — exercises `withOriginalSlot` offering both at once.
+  // theo: 'body' is newly eligible — the recipient a "recipient change" test switches to.
+  function editFixturePlayers(): { sara: SnapshotPlayer; theo: SnapshotPlayer } {
+    const sara = makePlayer({
+      id: 'sara',
+      name: 'Sara',
+      isSubstitute: true,
+      gear: [
+        makeGear({ slot: 'weapon', bisSource: 'raid' }),
+        makeGear({ slot: 'head', bisSource: 'tome', hasItem: true, isAugmented: true }),
+        makeGear({ slot: 'body', bisSource: 'tome', hasItem: true, isAugmented: false }),
+        makeGear({ slot: 'hands', bisSource: 'raid' }),
+        makeGear({ slot: 'legs', bisSource: 'raid' }),
+        makeGear({ slot: 'feet', bisSource: 'raid' }),
+        makeGear({ slot: 'earring', bisSource: 'raid' }),
+        makeGear({ slot: 'necklace', bisSource: 'raid' }),
+        makeGear({ slot: 'bracelet', bisSource: 'raid' }),
+        makeGear({ slot: 'ring1', bisSource: 'raid' }),
+        makeGear({ slot: 'ring2', bisSource: 'raid' }),
+      ],
+    });
+    const theo = makePlayer({
+      id: 'theo',
+      name: 'Theo',
+      gear: [
+        makeGear({ slot: 'weapon', bisSource: 'raid' }),
+        makeGear({ slot: 'head', bisSource: 'raid' }),
+        makeGear({ slot: 'body', bisSource: 'tome', hasItem: true, isAugmented: false }),
+        makeGear({ slot: 'hands', bisSource: 'raid' }),
+        makeGear({ slot: 'legs', bisSource: 'raid' }),
+        makeGear({ slot: 'feet', bisSource: 'raid' }),
+        makeGear({ slot: 'earring', bisSource: 'raid' }),
+        makeGear({ slot: 'necklace', bisSource: 'raid' }),
+        makeGear({ slot: 'bracelet', bisSource: 'raid' }),
+        makeGear({ slot: 'ring1', bisSource: 'raid' }),
+        makeGear({ slot: 'ring2', bisSource: 'raid' }),
+      ],
+    });
+    return { sara, theo };
+  }
+
+  function editEntryFixture(overrides: Partial<MaterialLogEntry> = {}): MaterialLogEntry {
+    return {
+      id: 42,
+      tierSnapshotId: 't1',
+      weekNumber: 2,
+      floor: 'M11S',
+      materialType: 'twine',
+      recipientPlayerId: 'sara',
+      recipientPlayerName: 'Sara',
+      method: 'book',
+      slotAugmented: 'head',
+      notes: 'from static chest',
+      createdAt: '2026-01-09T00:00:00Z',
+      createdByUserId: 'u1',
+      createdByUsername: 'Lead',
+      ...overrides,
+    };
+  }
+
+  function renderEdit(
+    overrides: Partial<Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { editEntry: MaterialLogEntry }>> = {},
+    allPlayers: SnapshotPlayer[] = [],
+  ) {
+    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { editEntry: MaterialLogEntry }> = {
+      isOpen: true,
+      onClose: vi.fn(),
+      groupId: 'g1',
+      tierId: 't1',
+      maxWeek: 5,
+      floors: EDIT_FLOORS,
+      editEntry: editEntryFixture(),
+      allPlayers,
+      ...overrides,
+    };
+    return render(<QuickLogMaterialModal {...props} />);
+  }
+
+  it('prefills floor, material, recipient, week, method, gear checkbox, and notes from the entry; auto-checks Include substitutes for a sub recipient', () => {
+    const { sara, theo } = editFixturePlayers();
+    renderEdit({}, [sara, theo]);
+
+    expect(screen.getByRole('heading', { name: 'Edit Material Entry' })).toBeInTheDocument();
+
+    const floorGroup = screen.getByRole('group', { name: 'Floor' });
+    expect(within(floorGroup).getByRole('button', { name: 'M11S' })).toHaveAttribute('aria-pressed', 'true');
+
+    const materialGroup = screen.getByRole('group', { name: 'Material' });
+    expect(within(materialGroup).getByRole('button', { name: 'Twine' })).toHaveAttribute('aria-pressed', 'true');
+
+    expect(screen.getByRole('spinbutton')).toHaveValue(2);
+    expect(screen.getByRole('radio', { name: 'Book' })).toBeChecked();
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Sara');
+    expect(checkboxByLabelText('Include substitutes')).toBeChecked();
+    expect(checkboxByLabelText('Also mark gear as augmented for Sara')).toBeChecked();
+    expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Head');
+    expect(screen.getByLabelText('Notes (optional)')).toHaveValue('from static chest');
+  });
+
+  it('offers the entry\'s own (already-augmented) slot in the slot Select alongside a newly-eligible slot', () => {
+    const { sara, theo } = editFixturePlayers();
+    renderEdit({}, [sara, theo]);
+
+    const combos = screen.getAllByRole('combobox');
+    expect(combos).toHaveLength(2); // Recipient + slot
+    expect(combos[1]).toHaveTextContent('Head');
+
+    fireEvent.keyDown(combos[1], { key: 'Enter' });
+    expect(screen.getByRole('option', { name: 'Head' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Body' })).toBeInTheDocument();
+  });
+
+  it('injects the entry\'s recipient into the Select by name when they are missing from allPlayers', () => {
+    const { theo } = editFixturePlayers();
+    const entry = editEntryFixture({ recipientPlayerId: 'ghost', recipientPlayerName: 'Ghost Player' });
+    renderEdit({ editEntry: entry }, [theo]); // 'sara'/'ghost' absent from allPlayers
+
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Ghost Player');
+  });
+
+  it('m4: when the parsed floor lacks the entry\'s material, falls back to the material\'s home floor (M9S + twine -> M11S/Twine pressed)', () => {
+    const { sara, theo } = editFixturePlayers();
+    const entry = editEntryFixture({ floor: 'M9S', materialType: 'twine' });
+    renderEdit({ editEntry: entry }, [sara, theo]);
+
+    const floorGroup = screen.getByRole('group', { name: 'Floor' });
+    expect(within(floorGroup).getByRole('button', { name: 'M11S' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(floorGroup).getByRole('button', { name: 'M10S' })).toHaveAttribute('aria-pressed', 'false');
+
+    const materialGroup = screen.getByRole('group', { name: 'Material' });
+    expect(within(materialGroup).getByRole('button', { name: 'Twine' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('preview shows Un-mark/Mark lines when the slot changes for the same recipient (head -> body)', () => {
+    const { sara, theo } = editFixturePlayers();
+    renderEdit({}, [sara, theo]);
+
+    const combos = screen.getAllByRole('combobox');
+    fireEvent.keyDown(combos[1], { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: 'Body' }));
+
+    expect(screen.getByText('− Un-mark Head as augmented')).toBeInTheDocument();
+    expect(screen.getByText('+ Mark Body as augmented')).toBeInTheDocument();
+  });
+
+  it('preview adds a "keeps their augmented" line for the old recipient when the recipient changes', () => {
+    const { sara, theo } = editFixturePlayers();
+    renderEdit({}, [sara, theo]);
+
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(theo.name) }));
+
+    expect(screen.getByText('+ Mark Body as augmented')).toBeInTheDocument();
+    expect(screen.getByText('· Sara keeps their augmented Head')).toBeInTheDocument();
+  });
+
+  it('submit calls updateMaterialAndReconcileGear with the old entry (by identity), the new data (notes trimmed, \'\' included when cleared), and typed options', async () => {
+    const { sara, theo } = editFixturePlayers();
+    const entry = editEntryFixture();
+    renderEdit({ editEntry: entry }, [sara, theo]);
+
+    fireEvent.change(screen.getByLabelText('Notes (optional)'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await waitFor(() => expect(updateMaterialAndReconcileGearMock).toHaveBeenCalledTimes(1));
+
+    const call = updateMaterialAndReconcileGearMock.mock.calls[0] as [
+      string, string, MaterialLogEntry,
+      { weekNumber: number; floor: string; materialType: string; recipientPlayerId: string; method: string; notes: string },
+      UpdateMaterialOptions,
+    ];
+    const [groupId, tierId, oldEntry, newData, options] = call;
+    expect(groupId).toBe('g1');
+    expect(tierId).toBe('t1');
+    expect(oldEntry).toBe(entry); // identity, not a copy
+    expect(newData).toEqual({
+      weekNumber: 2,
+      floor: 'M11S',
+      materialType: 'twine',
+      recipientPlayerId: 'sara',
+      method: 'book',
+      notes: '', // cleared -> '' included, never absent (differs from the create path)
+    });
+    expect(options).toEqual({ updateGear: true, slotToAugment: 'head', augmentTomeWeapon: false });
+  });
+
+  it('toast reads "Material entry updated" on a successful edit', async () => {
+    const { toast } = await import('../../stores/toastStore');
+    const successSpy = vi.spyOn(toast, 'success');
+    const { sara, theo } = editFixturePlayers();
+    renderEdit({}, [sara, theo]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await waitFor(() => expect(updateMaterialAndReconcileGearMock).toHaveBeenCalledTimes(1));
+
+    expect(successSpy).toHaveBeenCalledWith('Material entry updated');
+    successSpy.mockRestore();
+  });
+
+  it('UT edit: the "mark tome weapon as obtained" checkbox is pre-checked (the recipient already has it via this entry); unchecking it sends updateGear: false', async () => {
+    const uzo = makePlayer({
+      id: 'uzo',
+      name: 'Uzo',
+      tomeWeapon: { pursuing: true, hasItem: true, isAugmented: false },
+    });
+    const entry = editEntryFixture({
+      materialType: 'universal_tomestone',
+      floor: 'M10S',
+      recipientPlayerId: 'uzo',
+      recipientPlayerName: 'Uzo',
+      slotAugmented: null,
+    });
+    renderEdit({ editEntry: entry }, [uzo]);
+
+    const checkbox = checkboxByLabelText('Also mark tome weapon as obtained for Uzo');
+    expect(checkbox).toBeChecked();
+
+    fireEvent.click(checkbox);
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await waitFor(() => expect(updateMaterialAndReconcileGearMock).toHaveBeenCalledTimes(1));
+
+    const [, , , , options] = updateMaterialAndReconcileGearMock.mock.calls[0] as [
+      string, string, MaterialLogEntry, unknown, UpdateMaterialOptions,
+    ];
+    expect(options).toEqual(expect.objectContaining({ updateGear: false }));
   });
 });
