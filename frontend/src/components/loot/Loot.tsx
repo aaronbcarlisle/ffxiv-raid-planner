@@ -491,11 +491,24 @@ export function Loot({ group, tier, canEdit }: LootProps) {
                 players={players.filter((p) => p.configured)}
               />
             ) : (
+              // D4 task-3 call-site shim (director-ruled): mechanical prop-name
+              // adaptation ONLY, keeping the pre-D4 scopedWeek model in place.
+              // Task 4 deletes scopedWeek entirely and re-wires this to
+              // useLogWeek — these lines are deliberate throwaway.
               <WeekScopeControl
                 clock={clock}
-                scopedWeek={scopedWeek}
-                onScopedWeekChange={setScopedWeekOverride}
+                displayedWeek={scopedWeek}
+                onWeekChange={setScopedWeekOverride}
+                onFollowClock={() => setScopedWeekOverride(clock.currentWeek)}
                 canEdit={canEdit}
+                canPrev={scopedWeek > 1}
+                canNext={scopedWeek < clock.maxWeek}
+                groupId={group.id}
+                tierId={tier.tierId}
+                lootLog={lootLog}
+                materialLog={materialLog}
+                pageLedger={pageLedger}
+                players={players}
               />
             )
           }
