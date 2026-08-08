@@ -33,6 +33,11 @@ interface Props {
   groupId?: string;
   tierId?: string;
   clock: WeekClock;
+  /** The hook's `?week=` mirror gate ("is the Log view showing"). Defaults to
+   *  true here so every test that predates the gate keeps its original
+   *  meaning — the Log-visible case. Pass `false` for the Priority/History
+   *  case. */
+  mirrorToUrl?: boolean;
 }
 
 function setup(initialPath: string, initialProps: Props) {
@@ -42,7 +47,7 @@ function setup(initialPath: string, initialProps: Props) {
     (props: Props) => {
       const [searchParams] = useSearchParams();
       const navigationType = useNavigationType();
-      const logWeek = useLogWeek(props.groupId, props.tierId, props.clock);
+      const logWeek = useLogWeek(props.groupId, props.tierId, props.clock, props.mirrorToUrl ?? true);
       return { ...logWeek, search: searchParams.toString(), navigationType };
     },
     { wrapper, initialProps },
@@ -437,6 +442,102 @@ describe('useLogWeek', () => {
       expect(result.current.search).toContain('lview=log');
       expect(result.current.search).toContain('week=4');
       expect(result.current.navigationType).toBe('REPLACE');
+    });
+
+    // ── The mirror is gated on the Log being visible (fix round 2) ──
+    // Every test above runs with the gate OPEN (`mirrorToUrl` defaults to true
+    // in the harness), which is the Log-visible half of the rule. These cover
+    // the closed half: the hook is mounted screen-wide by `Loot.tsx`, so a
+    // tier switch made from Priority/History must not plant a `?week=` that
+    // no on-screen control can clear.
+
+    it(
+      'a tier switch with the Log NOT showing DELETES ?week= — while still resolving the new ' +
+        "tier's stored week, so the Log is already right when it is opened",
+      () => {
+        localStorage.setItem(logWeekKey('g1', 't1'), '2');
+        localStorage.setItem(logWeekKey('g1', 't2'), '4');
+        const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+        const { result, rerender } = setup('/?lview=priority&week=2', {
+          groupId: 'g1',
+          tierId: 't1',
+          clock,
+          mirrorToUrl: false,
+        });
+
+        rerender({ groupId: 'g1', tierId: 't2', clock, mirrorToUrl: false });
+
+        // Resolution is UNCONDITIONAL — only the URL write is gated.
+        expect(result.current.week).toBe(4);
+        // …and the param is gone, not left holding t1's 2 (plain gating would
+        // leave the previous tier's week armed, which is strictly worse).
+        expect(result.current.search).not.toContain('week=');
+        expect(result.current.search).toContain('lview=priority'); // siblings survive
+      },
+    );
+
+    it('a tier switch with the Log NOT showing clears ?week= even when the new tier follows the clock', () => {
+      const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+      const { result, rerender } = setup('/?week=2', {
+        groupId: 'g1',
+        tierId: 't1',
+        clock,
+        mirrorToUrl: false,
+      });
+
+      rerender({ groupId: 'g1', tierId: 't2', clock, mirrorToUrl: false }); // nothing stored for t2
+
+      expect(result.current.week).toBe(3);
+      expect(result.current.search).not.toContain('week=');
+    });
+
+    it('a tier switch with the Log NOT showing and no ?week= present navigates not at all', () => {
+      // The `mirrored !== urlWeek` guard: deleting an absent param would still
+      // be a REPLACE navigation on every tier switch, for nothing.
+      localStorage.setItem(logWeekKey('g1', 't2'), '4');
+      const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+      const { result, rerender } = setup('/?lview=priority', {
+        groupId: 'g1',
+        tierId: 't1',
+        clock,
+        mirrorToUrl: false,
+      });
+      expect(result.current.navigationType).toBe('POP'); // the initial entry
+
+      rerender({ groupId: 'g1', tierId: 't2', clock, mirrorToUrl: false });
+
+      expect(result.current.week).toBe(4);
+      expect(result.current.navigationType).toBe('POP'); // never became a REPLACE
+    });
+
+    it('a MOUNT deep link is never cleared, even with the Log not showing', () => {
+      // Only tier/group re-resolves clear. A hand-built
+      // `?week=4&lview=priority` link is the author's own business, and the
+      // deep-link contract must survive the gate untouched.
+      const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+      const { result } = setup('/?lview=priority&week=4', {
+        groupId: 'g1',
+        tierId: 't1',
+        clock,
+        mirrorToUrl: false,
+      });
+
+      expect(result.current.week).toBe(4);
+      expect(result.current.search).toContain('week=4');
+      expect(result.current.navigationType).toBe('POP');
+    });
+
+    it('setWeek still mirrors to the URL regardless of the gate (the gate is re-resolve-only)', () => {
+      // `setWeek` only ever runs from a week control, which only the Log
+      // renders — gating it too would be dead weight, and a Log that could not
+      // write its own week. Pinned so the gate can't creep into setWeek.
+      const clock = makeClock({ currentWeek: 3, maxWeek: 4 });
+      const { result } = setup('/', { groupId: 'g1', tierId: 't1', clock, mirrorToUrl: false });
+
+      act(() => result.current.setWeek(2));
+
+      expect(result.current.search).toContain('week=2');
+      expect(localStorage.getItem(logWeekKey('g1', 't1'))).toBe('2');
     });
   });
 

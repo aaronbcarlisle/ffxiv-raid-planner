@@ -93,6 +93,26 @@
  * legacy History). Storage is NOT touched on a re-resolve: nothing was
  * chosen, so the `'current'` sentinel's meaning is left exactly as found.
  *
+ * ── The mirror is gated on the Log being VISIBLE (`mirrorToUrl`) ──
+ * `Loot.tsx` mounts this hook for the whole screen, not just the Log view, so
+ * without a gate a tier switch made from Priority or History would write
+ * `?week=N` into a URL with no week control on it: unclearable from where the
+ * user is standing (go-to-current lives on `WeekScopeControl`, which only Log
+ * slots), and the only path that arms the disclosed legacy-History seeding
+ * cohort without the user ever touching a week control. So a re-resolve
+ * writes the resolved week ONLY when `mirrorToUrl` is true, and otherwise
+ * **deletes** `?week=`.
+ *
+ * The delete is the point — plain gating (write nothing) would leave the
+ * PREVIOUS tier's value sitting in the URL, which is strictly worse: it
+ * re-arms that same cohort with a week belonging to a tier the user has left.
+ *
+ * Two things stay ungated on purpose. **Resolution** is unconditional, so the
+ * Log is already correct the instant it is opened — the gate is on the URL
+ * write alone. And the **first resolve** never clears: a hand-built
+ * `?week=4&lview=priority` link is the author's own business, and deep links
+ * must keep winning exactly as they do today. Only tier/group re-resolves clear.
+ *
  * ── Persistence + URL, one rule ──
  * Any target equal to `clock.currentWeek` *clears* the in-memory override,
  * writes the `'current'` sentinel to the v2 storage key (see above — NOT a
@@ -225,6 +245,14 @@ export function useLogWeek(
   groupId: string | undefined,
   tierId: string | undefined,
   clock: WeekClock,
+  /**
+   * Is the Log view currently on screen? Gates the tier-re-resolve `?week=`
+   * mirror ONLY — resolution, `setWeek` and the first resolve are unaffected.
+   * `false` makes a re-resolve delete the param instead of writing it (see the
+   * doc header's "gated on the Log being VISIBLE" note). Required, not
+   * defaulted: a caller that mounts this hook screen-wide has to say.
+   */
+  mirrorToUrl: boolean,
 ): LogWeek {
   const [searchParams, setSearchParams] = useSearchParams();
   const [override, setOverride] = useState<number | null>(null);
@@ -270,8 +298,12 @@ export function useLogWeek(
 
     if (isFirstResolve) return;
     // Re-point the mirror at what the NEW tier resolved to (absent = following
-    // the clock) so the previous tier's week can't linger in the URL.
-    const mirrored = resolved === null ? null : String(resolved);
+    // the clock) so the previous tier's week can't linger in the URL — but
+    // only while the Log is actually on screen. From Priority/History the
+    // param is DELETED instead of written: a `?week=` no week control can
+    // clear is worse than none, and leaving the previous tier's value would
+    // be worse still (doc header, "gated on the Log being VISIBLE").
+    const mirrored = mirrorToUrl && resolved !== null ? String(resolved) : null;
     if (mirrored !== urlWeek) writeWeekParam(mirrored);
     // Intentionally re-resolves only on groupId/tierId changes, not on every
     // searchParams identity change — see the doc header's resolution-order note.

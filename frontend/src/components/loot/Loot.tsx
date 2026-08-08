@@ -40,11 +40,16 @@
  *     than a shell toggle — any navigation that leaves `?week=` intact
  *     reaches the other shell's reader: a shell toggle, a v2 primary-tab
  *     switch (not registered with `useUrlTabState`, see below), or a
- *     bookmark/paste. The read direction runs both ways too: a
- *     legacy-written `?week=` seeds v2's Log on mount the same way
- *     (`useLogWeek.ts:263-268` resolves the raw param before ever touching
- *     v2/legacy storage — on the FIRST resolve only; tier/group re-resolves
- *     skip the URL by the hook's mount-only rule, PR #235 review).
+ *     bookmark/paste. **v2's write side is narrower than "the Log persists
+ *     it" implies:** the mirror is gated on the Log being the visible view
+ *     (`mirrorToUrl`, the hook's 4th argument), so a tier switch made from
+ *     Priority or History *deletes* `?week=` rather than writing one — v2
+ *     only ever arms the legacy cohort below from a screen that can also
+ *     disarm it (PR #235 review round 2). The read direction runs both ways
+ *     too: a legacy-written `?week=` seeds v2's Log on mount the same way
+ *     (`useLogWeek.ts`'s `resolveOverride` reads the raw param before ever
+ *     touching v2/legacy storage — on the FIRST resolve only; tier/group
+ *     re-resolves skip the URL by the hook's mount-only rule).
  *     For a v2-seeded `?week=` reaching legacy History, the outcome forks on
  *     whether that static+tier already has a `history-week-{groupId}-
  *     {tierId}` localStorage entry:
@@ -274,16 +279,23 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const viewAsUser = useViewAsStore((s) => s.viewAsUser);
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
+  // ── Priority ⇄ Log ⇄ History view (URL-backed) + session-local History filters ──
+  // Declared before `useLogWeek` because the hook's `?week=` mirror is gated on
+  // the Log being visible (below). `useUrlTabState` is pure URL derivation with
+  // no effects of its own, so the ordering is free.
+  const [lview, setLview] = useUrlTabState('lview', ['priority', 'log', 'history'] as const, 'priority');
+  const [filters, setFilters] = useState(DEFAULT_HISTORY_FILTERS);
+
   // ── Shared week clock + the LOG TAB's displayed week (R-15) ──
   // The clock is screen-wide (Priority ranks against it, History reports it);
   // `logWeek` is the Log tab's own override over it, and nothing else on this
-  // screen holds week state.
+  // screen holds week state. The 4th argument is the URL-mirror gate: this hook
+  // is mounted for the whole screen, but only the Log renders a week control, so
+  // only the Log may leave `?week=` in the URL (see the ⚠ note in this file's
+  // header and `useLogWeek.ts`'s "gated on the Log being VISIBLE"). Resolution
+  // itself stays unconditional — the Log is correct the moment it is opened.
   const clock = useWeekClock(group.id, tier?.tierId);
-  const logWeek = useLogWeek(group.id, tier?.tierId, clock);
-
-  // ── Priority ⇄ Log ⇄ History view (URL-backed) + session-local History filters ──
-  const [lview, setLview] = useUrlTabState('lview', ['priority', 'log', 'history'] as const, 'priority');
-  const [filters, setFilters] = useState(DEFAULT_HISTORY_FILTERS);
+  const logWeek = useLogWeek(group.id, tier?.tierId, clock, lview === 'log');
 
   // ── Priority sub-view (persisted, R-1) + floor scope (session, R-2/R-10) ──
   const [priorityView, setPriorityView] = useState<PriorityView>(readStoredPriorityView);
