@@ -69,8 +69,8 @@ export const RELEASES: Release[] = [
         title: "The material modal grows selectors, notes, subs widening, and edit mode; Log's toolbar gains \"Log material\"",
         description:
           "V2 preview: the material modal grows floor + material selectors, notes, subs widening, and edit mode (R-26/R-21/D-37); Log's toolbar gains \"Log material\" targeting the displayed week (R-20).",
-        pr: 0,
-        prTitle: 'feat(loot): Phase D slice D8 — material modal (selectors, notes, edit) + Log toolbar action',
+        pr: 236,
+        prTitle: 'feat(loot): Phase D slice D8 — the material modal (R-26/R-21) + Log material toolbar action',
       },
     ],
     internal: true,
