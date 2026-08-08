@@ -808,6 +808,23 @@ describe('pinned initialWeek (D5, R-20 coherence)', () => {
     const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
     expect(data).toEqual(expect.objectContaining({ weekNumber: 2 }));
   });
+
+  it('clearing the week input falls back to initialWeek, not maxWeek (round 15)', () => {
+    // The cell door names the week it writes to (Priority's writeWeek). Clearing the input
+    // emits null from NumberInput; the fallback chain must land on the door's initialWeek —
+    // snapping to maxWeek would silently retarget the write to a week the door explicitly
+    // did NOT name. V1-identical: V1 never passes initialWeek, so its chain still resolves
+    // to maxWeek (the frozen behavior).
+    const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+    renderModal({
+      material: 'twine', suggestedPlayer: p1, allPlayers: [p1],
+      initialWeek: 3, maxWeek: 5,
+    });
+
+    expect(screen.getByRole('spinbutton')).toHaveValue(3);
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '' } });
+    expect(screen.getByRole('spinbutton')).toHaveValue(3);
+  });
 });
 
 // D8 Task 4: the notes field — v2-only (pinned's `showNotes` cell door + free-form, always).

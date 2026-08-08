@@ -689,7 +689,10 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
               <span className="text-text-secondary">Week:</span>
               <NumberInput
                 value={selectedWeek}
-                onChange={(val) => setSelectedWeek(val ?? maxWeek)}
+                // Round 15: a cleared input falls back to the week the door was opened for
+                // (v2 cell door's initialWeek) before maxWeek. V1-identical — V1 never
+                // passes initialWeek, so its chain still resolves to maxWeek (frozen).
+                onChange={(val) => setSelectedWeek(val ?? props.initialWeek ?? maxWeek)}
                 min={1}
                 max={maxWeek}
                 size="sm"
