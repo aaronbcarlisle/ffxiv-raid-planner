@@ -38,19 +38,33 @@ interface QuickLogMaterialModalProps {
   onSuccess?: () => void;
 }
 
-export function QuickLogMaterialModal({
-  isOpen,
-  onClose,
-  groupId,
-  tierId,
-  floor,
-  material,
-  maxWeek,
-  suggestedPlayer,
-  allPlayers,
-  settings = DEFAULT_SETTINGS,
-  onSuccess,
-}: QuickLogMaterialModalProps) {
+/** One place that answers: given this player and material, what does the gear
+ *  checkbox pre-select? (Was triplicated pre-D8; edit mode would have made four.) */
+function initialGearSelection(
+  player: SnapshotPlayer | undefined,
+  material: MaterialType,
+): { slot: GearSlot | null; augmentTome: boolean } {
+  if (!player || material === 'universal_tomestone') return { slot: null, augmentTome: false };
+  const slots = getEligibleSlotsForAugmentation(player, material);
+  if (slots.length > 0) return { slot: slots[0], augmentTome: false };
+  if (material === 'solvent' && needsTomeWeaponAugmentation(player)) return { slot: null, augmentTome: true };
+  return { slot: null, augmentTome: false };
+}
+
+export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
+  const {
+    isOpen,
+    onClose,
+    groupId,
+    tierId,
+    maxWeek,
+    suggestedPlayer,
+    allPlayers,
+    settings = DEFAULT_SETTINGS,
+    onSuccess,
+  } = props;
+  const material = props.material;
+  const floorName = props.floor;
   const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer.id);
   const [selectedWeek, setSelectedWeek] = useState(maxWeek);
   const [method, setMethod] = useState<LootMethod>('drop');
@@ -60,22 +74,12 @@ export function QuickLogMaterialModal({
   // Note: 'tome_weapon' selection is tracked via augmentTomeWeapon state, not selectedSlot
   const [selectedSlot, setSelectedSlot] = useState<GearSlot | null>(() => {
     const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
-    if (material === 'universal_tomestone') return null;
-    if (material === 'solvent') {
-      const slots = getEligibleSlotsForAugmentation(player, material);
-      return slots.length > 0 ? slots[0] : null;
-    }
-    // Twine/Glaze
-    const slots = getEligibleSlotsForAugmentation(player, material);
-    return slots.length > 0 ? slots[0] : null;
+    return initialGearSelection(player, material).slot;
   });
   // Compute initial augmentTomeWeapon BEFORE first render
   const [augmentTomeWeapon, setAugmentTomeWeapon] = useState(() => {
-    if (material !== 'solvent') return false;
     const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
-    const slots = getEligibleSlotsForAugmentation(player, material);
-    // Only default to tome weapon if no gear slots available
-    return slots.length === 0 && needsTomeWeaponAugmentation(player);
+    return initialGearSelection(player, material).augmentTome;
   });
   const { materialLog } = useLootTrackingStore();
 
@@ -128,27 +132,9 @@ export function QuickLogMaterialModal({
       const player = allPlayers.find((p) => p.id === suggestedPlayer.id) || suggestedPlayer;
 
       // Compute initial slot selection based on player and material
-      if (material === 'universal_tomestone') {
-        setSelectedSlot(null);
-        setAugmentTomeWeapon(false);
-      } else if (material === 'solvent') {
-        const slots = getEligibleSlotsForAugmentation(player, material);
-        if (slots.length > 0) {
-          setSelectedSlot(slots[0]);
-          setAugmentTomeWeapon(false);
-        } else if (needsTomeWeaponAugmentation(player)) {
-          setSelectedSlot(null);
-          setAugmentTomeWeapon(true);
-        } else {
-          setSelectedSlot(null);
-          setAugmentTomeWeapon(false);
-        }
-      } else {
-        // Twine/Glaze
-        const slots = getEligibleSlotsForAugmentation(player, material);
-        setSelectedSlot(slots.length > 0 ? slots[0] : null);
-        setAugmentTomeWeapon(false);
-      }
+      const { slot, augmentTome } = initialGearSelection(player, material);
+      setSelectedSlot(slot);
+      setAugmentTomeWeapon(augmentTome);
     }
   }, [isOpen, suggestedPlayer, maxWeek, material, allPlayers]);
 
@@ -158,32 +144,9 @@ export function QuickLogMaterialModal({
 
     // Compute and set slot for new recipient
     const player = allPlayers.find((p) => p.id === newPlayerId);
-    if (!player) {
-      setSelectedSlot(null);
-      setAugmentTomeWeapon(false);
-      return;
-    }
-
-    if (material === 'universal_tomestone') {
-      setSelectedSlot(null);
-      setAugmentTomeWeapon(false);
-    } else if (material === 'solvent') {
-      const slots = getEligibleSlotsForAugmentation(player, material);
-      if (slots.length > 0) {
-        setSelectedSlot(slots[0]);
-        setAugmentTomeWeapon(false);
-      } else if (needsTomeWeaponAugmentation(player)) {
-        setSelectedSlot(null);
-        setAugmentTomeWeapon(true);
-      } else {
-        setSelectedSlot(null);
-        setAugmentTomeWeapon(false);
-      }
-    } else {
-      const slots = getEligibleSlotsForAugmentation(player, material);
-      setSelectedSlot(slots.length > 0 ? slots[0] : null);
-      setAugmentTomeWeapon(false);
-    }
+    const { slot, augmentTome } = initialGearSelection(player, material);
+    setSelectedSlot(slot);
+    setAugmentTomeWeapon(augmentTome);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -199,7 +162,7 @@ export function QuickLogMaterialModal({
         tierId,
         {
           weekNumber: selectedWeek,
-          floor,
+          floor: floorName,
           materialType: material,
           recipientPlayerId,
           method,
@@ -291,7 +254,7 @@ export function QuickLogMaterialModal({
         <div className="bg-surface-base rounded-lg p-3 space-y-2">
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Floor:</span>
-            <span className="text-text-primary font-medium">{floor}</span>
+            <span className="text-text-primary font-medium">{floorName}</span>
           </div>
           <div className="flex justify-between items-center text-sm">
             <span className="text-text-secondary">Material:</span>
