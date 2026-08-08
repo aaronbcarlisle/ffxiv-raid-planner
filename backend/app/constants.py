@@ -19,6 +19,7 @@ VALID_JOBS = frozenset({
 # Default gear slots for a new player
 DEFAULT_GEAR_SLOTS = [
     "weapon",
+    "offhand",
     "head",
     "body",
     "hands",
@@ -44,12 +45,48 @@ OPTIMAL_PARTY_COMP = [
 ]
 
 
+def _default_bis_source(slot: str) -> str | None:
+    """Default BiS source per slot.
+
+    The off-hand defaults to None (unset): only PLD uses it at endgame, and a
+    blanket "raid" default would give every other job a phantom raid shield
+    target. Display/math relevance-gate on data, so None keeps it invisible.
+    """
+    return None if slot == "offhand" else "raid"
+
+
 def create_default_gear() -> list[dict[str, Any]]:
     """Create default gear configuration for a new player."""
     return [
-        {"slot": slot, "bisSource": "raid", "hasItem": False, "isAugmented": False}
+        {"slot": slot, "bisSource": _default_bis_source(slot), "hasItem": False, "isAugmented": False}
         for slot in DEFAULT_GEAR_SLOTS
     ]
+
+
+def ensure_offhand_slot(gear: list) -> list:
+    """Lazily add the offhand entry to stored 11-slot gear (bisSource None).
+
+    Stored player gear predating the offhand slot never gains entries from
+    sync (sync iterates the STORED list) — normalize on every read-for-merge
+    and response path so all clients see 12 slots. Idempotent; inserts after
+    the weapon when possible, else appends. Non-list/malformed input is
+    returned unchanged.
+    """
+    if not isinstance(gear, list) or not gear:
+        return gear
+    if any(isinstance(g, dict) and g.get("slot") == "offhand" for g in gear):
+        return gear
+    entry = {"slot": "offhand", "bisSource": None, "hasItem": False, "isAugmented": False}
+    weapon_idx = next(
+        (i for i, g in enumerate(gear) if isinstance(g, dict) and g.get("slot") == "weapon"),
+        None,
+    )
+    result = list(gear)
+    if weapon_idx is None:
+        result.append(entry)
+    else:
+        result.insert(weapon_idx + 1, entry)
+    return result
 
 
 def create_default_gear_ring2_tome() -> list[dict[str, Any]]:

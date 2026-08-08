@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..cache import xivapi_item_cache
+from ..constants import ensure_offhand_slot
 from ..config import get_settings
 from ..database import get_session
 from ..dependencies import get_current_user
@@ -1153,10 +1154,10 @@ def _normalize_player_gear(raw_gear: Any) -> list[dict[str, Any]]:
             parsed = json.loads(raw_gear)
         except json.JSONDecodeError:
             return []
-        return parsed if isinstance(parsed, list) else []
+        return ensure_offhand_slot(parsed) if isinstance(parsed, list) else []
 
     if isinstance(raw_gear, list):
-        return raw_gear
+        return ensure_offhand_slot(raw_gear)
 
     return []
 
@@ -1656,6 +1657,11 @@ async def sync_player_gear(
         equipped = equipped_by_slot.get(slot_name)
 
         if not equipped:
+            # Off-hand: absent upstream is the NORMAL state for every job but
+            # PLD (providers omit the entry entirely) — leave it untouched
+            # rather than counting/clearing it as a missing slot.
+            if slot_name == "offhand":
+                continue
             gear_slot["currentSource"] = "unknown"
             gear_slot["hasItem"] = False
             gear_slot["isAugmented"] = False

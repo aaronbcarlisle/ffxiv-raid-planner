@@ -57,6 +57,7 @@ from ..constants import (
     OPTIMAL_PARTY_COMP,
     create_default_gear_ring2_tome,
     create_default_tome_weapon,
+    ensure_offhand_slot,
 )
 from ..schemas.tier_snapshot import GearSlotStatus, MateriaSlot, PlayerGearResponse, TomeWeaponStatus
 
@@ -167,7 +168,7 @@ def player_to_response(player: SnapshotPlayer, membership_role: str | None = Non
             equipped_item_name=g.get("equippedItemName"),
             equipped_item_icon=g.get("equippedItemIcon"),
         )
-        for g in (player.gear or [])
+        for g in ensure_offhand_slot(player.gear or [])
     ]
 
     tw = player.tome_weapon or {}
@@ -868,7 +869,7 @@ async def get_player_gear(
             equipped_item_name=g.get("equippedItemName"),
             equipped_item_icon=g.get("equippedItemIcon"),
         )
-        for g in (player.gear or [])
+        for g in ensure_offhand_slot(player.gear or [])
     ]
 
     tw = player.tome_weapon or {}
@@ -1112,7 +1113,7 @@ async def _auto_link_bis_from_hub(session: AsyncSession, player: SnapshotPlayer,
     if slots:
         bis_by_slot = {s["slot"]: s for s in slots}
         updated_gear = []
-        for existing in (player.gear or []):
+        for existing in ensure_offhand_slot(player.gear or []):
             slot_name = existing.get("slot")
             bis = bis_by_slot.get(slot_name)
             if bis and not existing.get("itemName"):
@@ -1141,7 +1142,7 @@ async def _auto_link_bis_from_hub(session: AsyncSession, player: SnapshotPlayer,
             equipped_by_slot = {g["slot"]: g for g in snap.gear if g.get("slot")}
             equipped_lookup = _stored_gear_to_equipped_lookup(snap.gear)
             final_gear = []
-            for slot in (player.gear or []):
+            for slot in ensure_offhand_slot(player.gear or []):
                 slot_name = slot.get("slot")
                 equipped = equipped_by_slot.get(slot_name, {})
                 eq_id = equipped.get("equippedItemId")

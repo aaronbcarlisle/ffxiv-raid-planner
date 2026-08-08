@@ -30,6 +30,9 @@ def _js_round(x: float) -> int:
 # Slot value weights for priority calculations (from costs.ts:104-116)
 SLOT_VALUE_WEIGHTS: dict[str, float] = {
     "weapon": 3.0,
+    # Bundled with weapon since 6.2 — no independent priority; the weighted-need
+    # loop also skips it explicitly (mirrors frontend priority.ts).
+    "offhand": 0.0,
     "body": 1.5,
     "legs": 1.5,
     "head": 1.0,
@@ -306,12 +309,12 @@ def calculate_priority_score(player: dict, settings: dict) -> int:
     )
     role_priority = 0 if role_index == -1 else (5 - role_index) * role_priority_multiplier
 
-    # Weighted need
+    # Weighted need — offhand never carries loot weight (bundled with weapon)
     gear = player.get("gear", [])
     weighted_need_raw = sum(
         SLOT_VALUE_WEIGHTS.get(g.get("slot", ""), 1)
         for g in gear
-        if not _is_slot_complete(g)
+        if g.get("slot") != "offhand" and not _is_slot_complete(g)
     )
     weighted_need = weighted_need_raw if advanced.get("useWeightedNeed", True) else 0
 

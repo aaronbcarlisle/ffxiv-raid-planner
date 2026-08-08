@@ -2,10 +2,14 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import json
+
 import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MemberRole
-from app.routers.lodestone import _apply_ring_slot_equivalence
+from app.routers.lodestone import _apply_ring_slot_equivalence, _normalize_player_gear
 from app.services.tomestone_provider import (
     TomestoneProvider,
     _is_likely_character_avatar_url,
@@ -782,8 +786,10 @@ async def test_successful_lodestone_sync_updates_equipped_state(client, session,
     assert payload["updatedSlots"] == 2
     assert payload["gear"][0]["hasItem"] is True
     assert payload["gear"][0]["currentSource"] == "savage"
-    assert payload["gear"][1]["hasItem"] is True
-    assert payload["gear"][1]["currentSource"] == "savage"
+    # gear[1] is the minted offhand (untouched by sync); head is gear[2]
+    assert payload["gear"][1]["slot"] == "offhand"
+    assert payload["gear"][2]["hasItem"] is True
+    assert payload["gear"][2]["currentSource"] == "savage"
 
     await session.refresh(player)
     assert player.lodestone_id == "999001"
@@ -792,7 +798,7 @@ async def test_successful_lodestone_sync_updates_equipped_state(client, session,
     assert player.lodestone_avatar_url == "https://example.test/character-avatar-mock-raider.png"
     assert player.last_sync is not None
     assert player.gear[0]["hasItem"] is True
-    assert player.gear[1]["currentSource"] == "savage"
+    assert player.gear[2]["currentSource"] == "savage"
 
 
 @pytest.mark.asyncio
@@ -1510,6 +1516,69 @@ def test_tomestone_shield_at_position_zero_is_skipped():
     assert gear["Head"]["ID"] == 31004
 
 
+# ---------------------------------------------------------------------------
+# Off-hand slot: lazy normalization + read projection (D2)
+# ---------------------------------------------------------------------------
+
+_LEGACY_ELEVEN_SLOT_GEAR = [
+    {"slot": s, "bisSource": "raid", "hasItem": False, "isAugmented": False}
+    for s in ["weapon", "head", "body", "hands", "legs", "feet",
+              "earring", "necklace", "bracelet", "ring1", "ring2"]
+]
+
+
+class TestOffhandNormalization:
+    def test_legacy_eleven_slot_gear_gains_offhand_after_weapon(self):
+        result = _normalize_player_gear([dict(g) for g in _LEGACY_ELEVEN_SLOT_GEAR])
+        assert len(result) == 12
+        assert result[1]["slot"] == "offhand"
+        assert result[1]["bisSource"] is None
+        assert result[1]["hasItem"] is False
+
+    def test_idempotent_on_twelve_slot_gear(self):
+        once = _normalize_player_gear([dict(g) for g in _LEGACY_ELEVEN_SLOT_GEAR])
+        twice = _normalize_player_gear([dict(g) for g in once])
+        assert twice == once
+        assert sum(1 for g in twice if g["slot"] == "offhand") == 1
+
+    def test_json_string_input_also_normalizes(self):
+        result = _normalize_player_gear(json.dumps(_LEGACY_ELEVEN_SLOT_GEAR))
+        assert len(result) == 12
+        assert result[1]["slot"] == "offhand"
+
+    def test_empty_and_malformed_inputs_unchanged(self):
+        assert _normalize_player_gear([]) == []
+        assert _normalize_player_gear("not json{") == []
+        assert _normalize_player_gear(None) == []
+
+    @pytest.mark.asyncio
+    async def test_gear_read_projects_offhand_without_db_write(
+        self, client: AsyncClient, auth_headers: dict, session: AsyncSession, test_user,
+    ):
+        """A stored legacy 11-entry player reads back with 12 slots (B-4)."""
+        from tests.factories import create_snapshot_player, create_static_group, create_tier_snapshot
+
+        group = await create_static_group(session, test_user)
+        tier = await create_tier_snapshot(session, group)
+        player = await create_snapshot_player(
+            session, tier, name="Legacy Pld", job="PLD",
+            gear=[dict(g) for g in _LEGACY_ELEVEN_SLOT_GEAR],
+        )
+
+        response = await client.get(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/players/{player.id}/gear",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        slots = [g["slot"] for g in response.json()["gear"]]
+        assert slots.count("offhand") == 1
+        assert slots.index("offhand") == slots.index("weapon") + 1
+
+        # Read-only projection: the stored row is untouched.
+        await session.refresh(player)
+        assert len(player.gear) == 11
+
+
 def test_tomestone_img2_avatar_url_is_accepted():
     """img2.finalfantasyxiv.com/f/ URLs must pass the avatar URL validator."""
     avatar_url = "https://img2.finalfantasyxiv.com/f/acabee91a9ab596d0a26a5932c752f79_7bb6b1e488f0e4f01c5314d010b60f31fc0_96x96.jpg"
@@ -2128,7 +2197,7 @@ async def test_bis_matched_count_reflects_only_matching_bis_slots(
     assert sync_response.status_code == 200
     payload = sync_response.json()
     assert payload["gear"][0]["hasItem"] is True   # weapon matches
-    assert payload["gear"][1]["hasItem"] is False  # head does not match
+    assert payload["gear"][2]["hasItem"] is False  # head does not match
     assert payload["bisMatchedCount"] == 1
 
 

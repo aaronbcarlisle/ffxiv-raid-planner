@@ -235,6 +235,11 @@ async def sync_player_gear_from_provider(
         equipped = equipped_by_slot.get(slot_name)
 
         if not equipped:
+            # Off-hand: absent upstream is the NORMAL state for every job but
+            # PLD (providers omit the entry entirely) — leave the stored entry
+            # untouched and keep it out of the missing-slot diagnostics.
+            if slot_name == "offhand":
+                continue
             # --- Safety gate 5: Missing slot protection ---
             # For auto-sync, never clear stored gear when upstream omits a slot.
             if is_auto:
