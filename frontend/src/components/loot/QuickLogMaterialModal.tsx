@@ -218,9 +218,16 @@ function editReconciliationLines(
   shouldUpdateGear: boolean,
   augmentTome: boolean,
   slot: GearSlot | null,
+  preserveRecordedEffect: boolean,
 ): string[] {
   const oldEffect = previewEffectFromEntry(oldEntry);
-  const newEffect = previewEffectFromForm(newMaterial, shouldUpdateGear, augmentTome, slot);
+  // Round 11: on the coordinator's preserve branch (no gear control rendered, same
+  // recipient, same material) submit neither clears nor reverts anything — the preview must
+  // not claim "− Un-mark …". Treating the new effect as the old one renders the truthful
+  // zero gear lines.
+  const newEffect = preserveRecordedEffect
+    ? oldEffect
+    : previewEffectFromForm(newMaterial, shouldUpdateGear, augmentTome, slot);
   const oldDisplay = previewEffectDisplay(oldEffect);
   const newDisplay = previewEffectDisplay(newEffect);
   const recipientChanged = newRecipientId !== oldEntry.recipientPlayerId;
@@ -379,6 +386,14 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const hasEligibleOptions = eligibleOptions.canMarkTomeWeaponHave ||
     eligibleOptions.canAugmentTomeWeapon ||
     eligibleOptions.slots.length > 0;
+
+  // Mirrors the coordinator's preserve predicate (round 11, `materialCoordination.ts`):
+  // no gear control rendered + same recipient + same material → submit is gear-neutral
+  // (the recorded slot survives, nothing reverts), so the preview must say so too.
+  const preserveRecordedEffect = mode === 'edit'
+    && !hasEligibleOptions
+    && recipientPlayerId === editEntry!.recipientPlayerId
+    && material === editEntry!.materialType;
 
   // Reset state when modal opens (pinned) — gated so free-form (below) has its own block.
   // Non-null assertions: this body only runs where `mode === 'pinned'` guarantees
@@ -847,7 +862,8 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
                   recipientPlayerId,
                   updateGear && hasEligibleOptions,
                   augmentTomeWeapon,
-                  selectedSlot
+                  selectedSlot,
+                  preserveRecordedEffect
                 ).map((line) => (
                   <li key={line}>{line}</li>
                 ))}

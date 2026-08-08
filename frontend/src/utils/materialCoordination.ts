@@ -47,10 +47,12 @@ export interface UpdateMaterialOptions {
   /** Update player's gear to reflect the (possibly new) material/slot */
   updateGear?: boolean;
   /** Whether the edit form actually RENDERED a gear control (default true). `false` +
-   *  unchanged recipient means the user had no way to express gear intent (recipient no
-   *  longer in the roster — R-21's injected Select entry), so the entry's recorded
-   *  `slotAugmented` is preserved on the PUT instead of being cleared by the `''` sentinel,
-   *  and reconciliation is skipped. Without this, a notes-only edit of an out-of-pool
+   *  unchanged recipient + unchanged material means the user had no way to express gear
+   *  intent (recipient no longer in the roster — R-21's injected Select entry), so the
+   *  entry's recorded `slotAugmented` is preserved on the PUT instead of being cleared by
+   *  the `''` sentinel, and reconciliation is skipped. A material change never preserves —
+   *  it owes the old effect's revert, and the old slot is invalid in the new material's
+   *  domain (round 11). Without this, a notes-only edit of an out-of-pool
    *  recipient's entry wipes the recorded slot, and a later `deleteMaterialAndRevertGear`
    *  falls off the precise `entry.slotAugmented` branch onto the legacy heuristic (PR #236
    *  round 10). Distinct from `updateGear: false` with a control rendered, which is the
@@ -570,11 +572,16 @@ export async function updateMaterialAndReconcileGear(
 
   const newEffect = effectFromOptions(newData.materialType, options);
   const recipientChanged = newData.recipientPlayerId !== oldEntry.recipientPlayerId;
-  // No gear control was rendered AND the recipient is unchanged: the null effect carries no
-  // user intent, so the recorded slot must survive the PUT (see `gearEditable`'s doc). A
-  // CHANGED recipient still clears — the entry's slot belonged to the old recipient and is
-  // meaningless on the new one.
-  const preserveRecordedEffect = !(options.gearEditable ?? true) && !recipientChanged;
+  // No gear control was rendered AND the recipient is unchanged AND the material is
+  // unchanged: the null effect carries no user intent, so the recorded slot must survive the
+  // PUT (see `gearEditable`'s doc). A CHANGED recipient still clears — the entry's slot
+  // belonged to the old recipient and is meaningless on the new one. A CHANGED material also
+  // clears (round 11): preserving across it would store a cross-material pair the create
+  // path rejects with 400 (e.g. `universal_tomestone` + `'head'` — the PUT stores
+  // unvalidated) AND skip the revert the material change owes, leaving the old slot
+  // augmented while the entry reads as the new material's effect.
+  const preserveRecordedEffect = !(options.gearEditable ?? true) && !recipientChanged &&
+    newData.materialType === oldEntry.materialType;
 
   // 1. Update the material entry (PUT first — data-integrity precedent).
   await lootStore.updateMaterialEntry(groupId, tierId, oldEntry.id, {

@@ -962,6 +962,9 @@ describe('edit mode (R-21)', () => {
     // the player either).
     expect(screen.queryByLabelText(/Also mark gear/)).not.toBeInTheDocument();
     expect(screen.getAllByRole('combobox')).toHaveLength(1); // Recipient only — no slot Select
+    // Round 11: the preview must agree with the coordinator's preserve branch — submit
+    // neither clears nor reverts anything here, so no "− Un-mark …" line may render.
+    expect(screen.queryByText(/Un-mark/)).not.toBeInTheDocument();
     // The payload-level pin: the old clause made `shouldUpdateGear` true, so submit sent
     // `updateGear: true, slotToAugment: 'head'` (the lazy seed keeps the entry's slot) for a
     // player the coordinator can't resolve. It must send a truthful `updateGear: false`.

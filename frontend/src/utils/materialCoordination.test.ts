@@ -664,6 +664,36 @@ describe('updateMaterialAndReconcileGear', () => {
     expect(updatePlayer).not.toHaveBeenCalled();
   });
 
+  it('gearEditable: false does NOT preserve across a material change: clears the slot and reverts (round 11)', async () => {
+    // Preserving across a material change would store a cross-material pair the create path
+    // rejects with 400 (universal_tomestone + 'head') AND skip the revert the change owes —
+    // the head would stay augmented while the entry reads as the new material's effect, so a
+    // later delete reverts the tome weapon and orphans the head.
+    currentTier.players = [
+      createPlayer({
+        id: 'player-1',
+        gear: [createGearSlot({ slot: 'head', bisSource: 'tome', hasItem: true, isAugmented: true })],
+      }),
+    ];
+    const oldEntry = createMaterialLogEntry({ materialType: 'twine', slotAugmented: 'head' });
+    const newData = createNewData({ materialType: 'universal_tomestone' }); // same recipient
+
+    await updateMaterialAndReconcileGear(groupId, tierId, oldEntry, newData, {
+      updateGear: false,
+      gearEditable: false,
+    });
+
+    expect(updateMaterialEntry).toHaveBeenCalledWith(
+      groupId,
+      tierId,
+      oldEntry.id,
+      expect.objectContaining({ materialType: 'universal_tomestone', slotAugmented: '' })
+    );
+    expect(updatePlayer).toHaveBeenCalledTimes(1);
+    const revertCall = updatePlayerCall(0);
+    expect((revertCall.data.gear ?? []).find((g) => g.slot === 'head')?.isAugmented).toBe(false);
+  });
+
   it('gearEditable: false + CHANGED recipient still clears the recorded slot (round 10)', async () => {
     // The entry's slot belonged to the OLD recipient; on a recipient change it is
     // meaningless for the new one, so the '' clear is the correct outcome even without a
