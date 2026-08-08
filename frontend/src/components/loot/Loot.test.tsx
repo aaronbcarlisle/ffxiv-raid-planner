@@ -192,7 +192,9 @@ beforeEach(() => {
   // MemoryRouter's virtual location), so tests that seed real URL params via
   // `window.history.pushState` must not leak into unrelated tests.
   window.history.pushState({}, '', '/');
-  // Seed the shared clock: scopedWeek defaults to currentWeek. Loot's mount
+  // Seed the shared clock at currentWeek 3 / maxWeek 5. `useLogWeek`'s override
+  // starts null (D4, R-15), so the Log tab's displayed week resolves to this
+  // currentWeek until a test steps it away via `setLogWeek`. Loot's mount
   // effect (Loot.tsx) fires five lootTrackingStore fetch actions unconditionally
   // — stub them here (zustand setState can override action fields on the real
   // store) so they never fall through to the real api client. Without this,
@@ -852,9 +854,15 @@ describe('Loot — D4 triad + the Log tab week model', () => {
 
     fireEvent.click(viewButton('Log'));
 
-    // Drop the 'log' route (from `lview`'s value list or the body branch) and
-    // `useUrlTabState` falls back to 'priority': the floor cards stay, the
-    // placeholder never mounts, and `?lview=log` never reaches the URL.
+    // Drop 'log' from `lview`'s value list and `useUrlTabState`'s READ
+    // (useUrlTabState.ts:81) falls back to 'priority' on the next render —
+    // even though `setValue` (:83-96) still WRITES `?lview=log` to the URL
+    // unconditionally, since the whitelist gates the read, not the write. So
+    // the URL assertion below does NOT catch that mutation; the render
+    // assertions that follow do (the placeholder never mounts, the floor
+    // cards stay) — that's what this test actually proves. The route itself
+    // landing on Log from a deep link is pinned separately, by the
+    // `?lview=log` mount test below (:864-869 in this describe block).
     expect(screen.getByTestId('log-empty-state')).toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
     expect(screen.getByTestId('week-scope')).toBeInTheDocument();
@@ -918,6 +926,9 @@ describe('Loot — D4 triad + the Log tab week model', () => {
   });
 
   it('targets the displayed week from Log and the clock week everywhere else (R-20 split)', () => {
+    // Queues (not Matrix) so switching back to Priority below renders floor
+    // cards — needed for the FloorCard invariant assertion further down.
+    seedQueuesView();
     // The clock is week 3; the Log is stepped back to week 1.
     renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
     setLogWeek(1);
@@ -933,6 +944,13 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     // holds 1 — both fall back to the clock's week 3. A `writeWeek` wired
     // unconditionally to either side fails one half of this test.
     fireEvent.click(viewButton('Priority'));
+    // The slice's central invariant (R-15): Priority's FloorCards are ALWAYS
+    // pinned to the clock's week (3), never the Log's displayed week (1),
+    // which is still in effect here. This is the one assertion in the suite
+    // that can tell `currentWeek={clock.currentWeek}` (Loot.tsx) apart from
+    // an accidental `currentWeek={logWeek.week}` — every other `data-week`
+    // check in this file runs while the two happen to be equal.
+    expect(screen.getAllByTestId('floor-card')[0].getAttribute('data-week')).toBe('3');
     fireEvent.click(screen.getByRole('button', { name: /log a drop/i }));
     expect(pickerCalls[pickerCalls.length - 1].currentWeek).toBe(3);
     fireEvent.click(screen.getByRole('button', { name: "Log this week's loot" }));

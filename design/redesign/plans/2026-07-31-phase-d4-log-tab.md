@@ -328,6 +328,28 @@ the shared `hooks/` tree.
       clock's week; a fetch failure aborts without mutating; a successful mutation calls
       `onFollowClock`; `canEdit={false}` still renders the week controls but no mutation items
       (existing assertion, preserved).
+- [ ] ⚠ **Task 3's Files block was widened by ruling (2026-08-07).** This plan scoped Task 3 to
+      `WeekScopeControl.*`, but the repo's commit guard (`.claude/hooks/pre_bash_guard.py`) runs a
+      whole-project `tsc -b` on any commit that stages frontend TS. Renaming `WeekScopeControl`'s
+      props to the R-15 vocabulary without also updating its one call site would have left
+      `Loot.tsx` — and the commit — red until Task 4 landed. Ruled: a minimal, mechanical `Loot.tsx`
+      call-site shim folds into Task 3's commit as deliberate throwaway (rename the props at the
+      call site to the new names; keep the pre-D4 `scopedWeek` local-override model underneath
+      unchanged), documented inline and in the task report. The hook was **not** bypassed. Task 4
+      deleted the shim exactly as planned, along with `scopedWeekOverride` itself.
+- [ ] ⚠ **The revert flow is ONE CONFIRM PER PATH — this task's own bullets contradicted each other,
+      resolved 2026-08-07.** "Both confirmations gain a divergence line" (above) implies two
+      confirmations exist on the non-empty path; "on an empty week, revert **without opening the
+      modal**" (above) implies zero on the other. Ruled at task review (fix round 1): the `Revert
+      week` dropdown item fires the pre-check directly, with no confirmation before the fetch. Data
+      found ⇒ `RevertWeekSummaryModal` is the ONLY confirmation, itemised, always naming
+      `clock.currentWeek`. Nothing found ⇒ a plain `ConfirmModal` is the ONLY confirmation. A revert
+      never happens with zero UI — exactly one confirmation on either path. The divergence line
+      (`displayedWeek !== clock.currentWeek`) stays conditional, and now appears on
+      `RevertWeekSummaryModal` too via a new **optional** `notice?: ReactNode` prop — additive, so
+      omitting it reproduces Task 2's original render byte-for-byte. `Start next week`'s confirmation
+      and its divergence line are unchanged. This resolves the contradiction; it is not to be
+      re-litigated.
 
 **Verify:** `cd frontend && pnpm vitest run src/components/loot/WeekScopeControl.test.tsx`
 
