@@ -1370,8 +1370,8 @@ def test_tomestone_real_shape_gear_normalization():
     assert len(gear) == 11
 
 
-def test_tomestone_soul_crystal_position_is_skipped():
-    """Position 11 (Soul Crystal) is excluded from normalized gear."""
+def test_tomestone_soul_crystal_entry_is_skipped():
+    """Soul Crystal entries are excluded from normalized gear (skipped by category)."""
     gear_list = [
         {"item": {"id": 44091, "name": "Sword", "itemLevel": 730, "categoryName": "Sword"}},
         *[{} for _ in range(9)],  # positions 1-9 empty
@@ -1474,12 +1474,40 @@ def test_tomestone_unknown_category_entries_are_skipped():
         {"item": {"id": 30003, "name": "Some Hat", "itemLevel": 700, "categoryName": "Head", "categoryId": 34}},
     ]
     gear = _normalize_tomestone_gear_list(gear_list)
-    # Position 0 is always the main hand regardless of category
+    # Position 0 with an unrecognized category is the main hand (weapon
+    # categories vary per job and are never in the slot maps)
     assert gear["MainHand"]["ID"] == 30001
     # Secondary tool (unknown category, not position 0) is skipped
     assert all(slot["ID"] != 30002 for slot in gear.values())
     assert gear["Head"]["ID"] == 30003
     assert len(gear) == 2
+
+
+def test_tomestone_position_zero_with_known_category_is_not_mainhand():
+    """A recognized armor category at position 0 maps to its own slot, not the weapon.
+
+    Tomestone omits absent entries rather than nulling them, so a payload whose
+    list head is not a weapon must not have that entry misfiled as MainHand.
+    """
+    gear_list = [
+        {"item": {"id": 31001, "name": "Some Helm", "itemLevel": 700, "categoryName": "Head", "categoryId": 34}},
+        {"item": {"id": 31002, "name": "Some Coat", "itemLevel": 700, "categoryName": "Body", "categoryId": 35}},
+    ]
+    gear = _normalize_tomestone_gear_list(gear_list)
+    assert "MainHand" not in gear
+    assert gear["Head"]["ID"] == 31001
+    assert gear["Body"]["ID"] == 31002
+
+
+def test_tomestone_shield_at_position_zero_is_skipped():
+    """A shield at position 0 is skipped entirely, not stored as the main hand."""
+    gear_list = [
+        {"item": {"id": 31003, "name": "Some Shield", "itemLevel": 700, "categoryName": "Shield", "categoryId": 11}},
+        {"item": {"id": 31004, "name": "Some Helm", "itemLevel": 700, "categoryName": "Head", "categoryId": 34}},
+    ]
+    gear = _normalize_tomestone_gear_list(gear_list)
+    assert "MainHand" not in gear
+    assert gear["Head"]["ID"] == 31004
 
 
 def test_tomestone_img2_avatar_url_is_accepted():

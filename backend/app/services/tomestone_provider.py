@@ -76,6 +76,8 @@ TOMESTONE_CATEGORY_SLOTS: dict[int, str] = {
     42: "Bracelets",
 }
 TOMESTONE_RING_CATEGORY_ID = 43
+# IDs are FFXIV ItemUICategory values as emitted by Tomestone — 11 IS Shield
+# (confirmed against both the live capture and XIVAPI's ItemUICategory sheet).
 TOMESTONE_SKIPPED_CATEGORY_IDS = {11, 62}  # Shield, Soul Crystal
 
 # Fallback when categoryId is absent — same slots, keyed by lowercased categoryName.
@@ -458,10 +460,22 @@ def _normalize_tomestone_gear_list(gear_list: list[Any]) -> dict[str, dict[str, 
         category_id = _coerce_int(item.get("categoryId"))
         category_name = (item.get("categoryName") or "").strip().lower()
 
-        if position == 0:
-            slot_name = "MainHand"
-        elif category_id in TOMESTONE_SKIPPED_CATEGORY_IDS or category_name in ("shield", "soul crystal"):
+        if category_id in TOMESTONE_SKIPPED_CATEGORY_IDS or category_name in ("shield", "soul crystal"):
             continue
+
+        # Position 0 is the main hand, but only when the entry isn't already a
+        # recognized armor/accessory category — Tomestone omits absent entries,
+        # so an unexpected list head must not be misfiled as the weapon.
+        # Weapon categories vary per job and appear in none of the maps, so
+        # real weapons always fall through to this claim.
+        is_known_gear_category = (
+            category_id in TOMESTONE_CATEGORY_SLOTS
+            or category_id == TOMESTONE_RING_CATEGORY_ID
+            or category_name in TOMESTONE_CATEGORY_NAME_SLOTS
+            or category_name == "ring"
+        )
+        if position == 0 and not is_known_gear_category:
+            slot_name = "MainHand"
         elif category_id == TOMESTONE_RING_CATEGORY_ID or category_name == "ring":
             ring_count += 1
             if ring_count > 2:
