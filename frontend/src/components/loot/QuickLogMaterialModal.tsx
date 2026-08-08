@@ -219,6 +219,7 @@ function editReconciliationLines(
   augmentTome: boolean,
   slot: GearSlot | null,
   preserveRecordedEffect: boolean,
+  recipientResolvable: boolean,
 ): string[] {
   const oldEffect = previewEffectFromEntry(oldEntry);
   // Round 11: on the coordinator's preserve branch (no gear control rendered, same
@@ -234,7 +235,13 @@ function editReconciliationLines(
   const lines: string[] = [];
 
   if (!recipientChanged) {
-    if (!previewEffectsEqual(oldEffect, newEffect)) {
+    // Round 13: when the entry's recipient can't be resolved in `allPlayers`, the
+    // coordinator's revert/apply both no-op (`if (!player) return`), so gear lines here
+    // would promise writes that never run. The PUT-side record clear still happens on a
+    // material change (`preserveRecordedEffect` deliberately stays false there so the
+    // now-cross-material slot clears) — but these lines only speak to GEAR state, so they
+    // stay silent for an unresolvable recipient.
+    if (recipientResolvable && !previewEffectsEqual(oldEffect, newEffect)) {
       if (oldDisplay) lines.push(`− Un-mark ${oldDisplay.noun} as ${oldDisplay.verb}`);
       if (newDisplay) lines.push(`+ Mark ${newDisplay.noun} as ${newDisplay.verb}`);
     }
@@ -863,7 +870,8 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
                   updateGear && hasEligibleOptions,
                   augmentTomeWeapon,
                   selectedSlot,
-                  preserveRecordedEffect
+                  preserveRecordedEffect,
+                  !!selectedPlayer
                 ).map((line) => (
                   <li key={line}>{line}</li>
                 ))}

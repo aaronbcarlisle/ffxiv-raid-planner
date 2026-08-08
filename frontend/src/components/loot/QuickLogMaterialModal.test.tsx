@@ -981,6 +981,20 @@ describe('edit mode (R-21)', () => {
     );
   });
 
+  it('out-of-pool recipient + material switch: no gear preview lines (the coordinator cannot touch a missing player) (round 13)', () => {
+    // Round 11's preserve fix covers the material-UNCHANGED ghost edit; this is the
+    // material-CHANGED variant. preserveRecordedEffect correctly stays false (the PUT must
+    // still clear the now-cross-material recorded slot), but the coordinator's revert
+    // no-ops on the missing player, so the "− Un-mark …" line would promise a gear write
+    // that never runs. The preview suppresses gear lines when the recipient is unresolvable.
+    const { theo } = editFixturePlayers();
+    const entry = editEntryFixture({ recipientPlayerId: 'ghost', recipientPlayerName: 'Ghost Player' });
+    renderEdit({ editEntry: entry }, [theo]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Solvent' })); // twine -> solvent, same floor
+    expect(screen.queryByText(/Un-mark/)).not.toBeInTheDocument();
+  });
+
   it('hides the gear section when the recipient is switched to a player with no eligible slots (fix round 8)', async () => {
     // The recorded-slot clause's other false-promise path: the entry's slot belongs to the
     // ORIGINAL recipient; after switching to a player with nothing eligible, the section must
