@@ -13,11 +13,11 @@ from ..logging_config import get_logger
 from ..models import Membership, MemberRole, StaticActivityLog, User
 from ..models.mount_farm_progress import MountFarmProgress
 from ..models.player_goal import PlayerGoal
-from ..models.player_profile import PlayerProfile
 from ..permissions import (
     require_membership,
     get_static_group,
 )
+from ..services.player_profile_service import get_or_create_profile
 from ..services.player_reward_bridge_service import (
     write_through_from_mount_farm,
     write_through_bulk_from_mount_farm,
@@ -700,20 +700,7 @@ async def _bridge_mount_farm_goals(
     Player Hub is the durable personal collection surface. Static Mount Farms
     mirror the same plugin snapshot for every static the user belongs to.
     """
-    profile_result = await db.execute(
-        select(PlayerProfile).where(PlayerProfile.user_id == user.id)
-    )
-    profile = profile_result.scalar_one_or_none()
-    if not profile:
-        profile = PlayerProfile(
-            id=str(uuid.uuid4()),
-            user_id=user.id,
-            visibility="private",
-            created_at=now,
-            updated_at=now,
-        )
-        db.add(profile)
-        await db.flush()
+    profile = await get_or_create_profile(db, user.id)
 
     for mount_item in data.mounts:
         catalog_entry = None

@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 
-// Capture the enhance CONTEXT (obligation-2 discriminator): FloorCard must feed
-// `enhancePriorityEntries` the REAL current week, never the scoped view week.
+// Capture the enhance CONTEXT: FloorCard must feed `enhancePriorityEntries` the
+// same week its status chip derives from — D4/R-15 collapsed the old
+// scopedWeek/currentWeek pair into one `currentWeek` prop.
 // The mock is a passthrough — with `active: false` the real implementation
 // returns the entries unchanged bar breakdowns, which `toRowEntries` ignores,
 // so every other test's row derivation is identical.
@@ -44,7 +45,7 @@ const baseProps = {
   floorNumber: 1 as const, floorName: 'M9S',
   settings,
   lootLog: [] as LootLogEntry[], materialLog: [] as MaterialLogEntry[], pageLedger: [] as PageLedgerEntry[],
-  scopedWeek: 3, canEdit: true,
+  currentWeek: 3, canEdit: true,
   onAssignGear: vi.fn(),
   onAssignMaterial: vi.fn(),
 };
@@ -161,13 +162,16 @@ describe('FloorCard', () => {
     expect(onAssignMaterial).not.toHaveBeenCalled();
   });
 
-  it('feeds the enhance context the REAL current week while status derives from the scoped week', () => {
-    // Discriminator for the currentWeek/scopedWeek split:
-    //  - status: everything for SCOPED week 2 is logged → the card collapses.
-    //    If status wrongly used currentWeek (5, nothing logged), it would show
-    //    pending instead of collapsing.
-    //  - enhance context: must receive currentWeek 5 (drought is vs "now").
-    //    If `enhanceWeek` wrongly reverted to scopedWeek, it would receive 2.
+  it('drives BOTH the status chip and the enhance context from the one currentWeek prop (R-15 collapse)', () => {
+    // D4/R-15 replaced the scopedWeek + optional currentWeek pair with a single
+    // required `currentWeek`. Discriminator for the collapse, using a week the
+    // baseProps default (3) can never satisfy:
+    //  - status: everything for week 2 is logged → the card collapses. If the
+    //    status derivation were fed anything other than the passed week (e.g.
+    //    a resurrected second week prop defaulting to 3, where nothing is
+    //    logged), the card would render a pending chip and no "Show".
+    //  - enhance context: must receive the same 2. If the enhance call were
+    //    re-pointed at a different week, this fails.
     const players = [makePlayer('a', 'Alice', { earringHas: false })];
     const lootLog: LootLogEntry[] = [
       {
@@ -176,22 +180,26 @@ describe('FloorCard', () => {
         createdAt: '', createdByUserId: 'u1', createdByUsername: 'u',
       },
     ];
-    render(<FloorCard {...baseProps} players={players} lootLog={lootLog} scopedWeek={2} currentWeek={5} />);
+    render(<FloorCard {...baseProps} players={players} lootLog={lootLog} currentWeek={2} />);
 
-    // Status reflects scoped week 2 (fully logged → collapsed).
+    // Status reflects week 2 (fully logged → collapsed).
     expect(screen.getByText(/logged/)).toBeInTheDocument();
     expect(screen.getByText('Show')).toBeInTheDocument();
 
-    // Enhance context received the REAL current week for every row.
-    expect(enhanceCalls.length).toBeGreaterThan(0);
-    enhanceCalls.forEach((ctx) => expect(ctx.currentWeek).toBe(5));
-  });
-
-  it('defaults the enhance-context week to scopedWeek when currentWeek is absent', () => {
-    const players = [makePlayer('a', 'Alice', { earringHas: false })];
-    render(<FloorCard {...baseProps} players={players} scopedWeek={2} />);
+    // The enhance context received the very same week for every row.
     expect(enhanceCalls.length).toBeGreaterThan(0);
     enhanceCalls.forEach((ctx) => expect(ctx.currentWeek).toBe(2));
+  });
+
+  it('feeds MATERIAL queues that same currentWeek too', () => {
+    // Floor 1 has no upgrade materials, so the test above only reaches the
+    // enhance context through the gear path (buildRecipientEntries). Floor 2
+    // has glaze + universal_tomestone, which run the card's own `enhance()`
+    // helper — the second call site, pinned here on the same single prop.
+    const players = [makePlayer('a', 'Alice', { earringHas: false })];
+    render(<FloorCard {...baseProps} floorNumber={2} floorName="M10S" players={players} currentWeek={4} />);
+    expect(enhanceCalls.length).toBeGreaterThan(0);
+    enhanceCalls.forEach((ctx) => expect(ctx.currentWeek).toBe(4));
   });
 
   it('drops the duty chip (not doubling "Floor N") when floorName is the fallback', () => {
