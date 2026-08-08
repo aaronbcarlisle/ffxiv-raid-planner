@@ -681,6 +681,59 @@ describe('free-form mode (R-26)', () => {
     expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'sara' }));
   });
 
+  it('a subs toggle does not clobber a manual slot pick when the auto-recipient does not move (fix round 7)', async () => {
+    // Round-7 review repro: "Include substitutes" re-creates `eligiblePlayers` (its memo
+    // depends on `includeSubs`), so `sortedRecipients` gets a new identity and the
+    // auto-recipient effect fires even though the ranking is unchanged. The recipient id is
+    // unchanged (`setRecipientPlayerId` bails out) — the gear re-derivation must bail out
+    // too, or a manually picked slot snaps back to the derived initial and submit augments
+    // the WRONG slot. Distinct from the subs test above: there the recipient is picked
+    // manually first, arming `userPickedRecipient` and disabling the effect entirely; here
+    // only the SLOT changes, so the guard stays unarmed.
+    const gina = makePlayer({
+      id: 'gina',
+      name: 'Gina',
+      gear: [
+        makeGear({ slot: 'weapon', bisSource: 'raid' }),
+        makeGear({ slot: 'head', bisSource: 'raid' }),
+        makeGear({ slot: 'body', bisSource: 'raid' }),
+        makeGear({ slot: 'hands', bisSource: 'raid' }),
+        makeGear({ slot: 'legs', bisSource: 'raid' }),
+        makeGear({ slot: 'feet', bisSource: 'raid' }),
+        makeGear({ slot: 'earring', bisSource: 'tome', hasItem: true, isAugmented: false }), // needs glaze
+        makeGear({ slot: 'necklace', bisSource: 'tome', hasItem: true, isAugmented: false }), // needs glaze
+        makeGear({ slot: 'bracelet', bisSource: 'raid' }),
+        makeGear({ slot: 'ring1', bisSource: 'raid' }),
+        makeGear({ slot: 'ring2', bisSource: 'raid' }),
+      ],
+    });
+    const sara = makePlayer({ id: 'sara', name: 'Sara', isSubstitute: true });
+    renderFreeform({}, [gina, sara]);
+
+    // Mount seed: Gina auto-picked (Glaze top needer), slot Select seeded to her first
+    // eligible slot.
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
+    expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Ears');
+
+    // Change ONLY the slot — the recipient Select is never touched.
+    fireEvent.keyDown(screen.getAllByRole('combobox')[1], { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: 'Neck' }));
+    expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Neck');
+
+    // Subs toggle: new `sortedRecipients` identity, same top pick (Sara isn't a needer).
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
+    expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Neck');
+
+    // And the submit payload keeps the manual pick.
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , , options] = logMaterialAndUpdateGearMock.mock.calls[0] as [
+      string, string, MaterialLogEntryCreate, LogMaterialOptions,
+    ];
+    expect(options).toEqual(expect.objectContaining({ updateGear: true, slotToAugment: 'necklace' }));
+  });
+
   it('submit sends the picked floor name, material, and week', async () => {
     const { gina, uzo } = freeformPlayers();
     renderFreeform({ initialWeek: 3 }, [gina, uzo]);

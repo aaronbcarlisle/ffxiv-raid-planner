@@ -580,12 +580,20 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   useEffect(() => {
     if (mode !== 'freeform' || !isOpen || userPickedRecipient.current) return;
     const nextId = sortedRecipients[0]?.player.id ?? '';
+    // Fix round 7: only re-derive when the auto-pick actually MOVES. A re-rank that lands on
+    // the same recipient (e.g. the "Include substitutes" toggle re-creating `eligiblePlayers`,
+    // and with it `sortedRecipients`' identity) must not clobber a manual slot / tome-weapon
+    // pick — `setRecipientPlayerId(nextId)` bails out on an unchanged id, but the gear setters
+    // below wouldn't. Material changes are safe to skip when the pick holds: they re-derive
+    // synchronously via `applyMaterialChange` before this effect runs, and a re-rank that DOES
+    // move the recipient (fix round 1, item 1) still takes the derivation below.
+    if (nextId === recipientPlayerId) return;
     setRecipientPlayerId(nextId);
     const player = allPlayers.find((p) => p.id === nextId);
     const { slot, augmentTome } = initialGearSelection(player, material);
     setSelectedSlot(slot);
     setAugmentTomeWeapon(augmentTome);
-  }, [mode, isOpen, sortedRecipients, allPlayers, material]);
+  }, [mode, isOpen, sortedRecipients, allPlayers, material, recipientPlayerId]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsMaterial: boolean): string => {
