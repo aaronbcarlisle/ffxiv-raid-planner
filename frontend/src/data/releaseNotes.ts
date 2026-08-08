@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.5';
+export const CURRENT_VERSION = '2.1.10';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,52 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.11',
+    date: '2026-08-08T01:30:00Z',
+    title: 'Phase D slice D4 — the Log tab + its week model (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'v2 Loot gains a real Log tab, and the week model moves off Priority onto it',
+        description:
+          'The admin-gated v2 preview\'s Loot tab gains its Phase-D Log destination: the view switcher is now a Priority ⇄ Log ⇄ History triad, and the week control Priority used to carry moves to Log, which owns it outright — Priority always ranks against the shared week clock\'s current week, with no week control of its own. Log\'s week gains prev/next chevrons and a "go to the current week" button alongside the existing dropdown pill, and "Start next week"/"Revert week" stay bound to the clock, naming the week they actually act on whenever the displayed week has been stepped away from it. Reverting now runs a pre-check and, if the clock\'s current week has anything logged, shows a data-summary modal itemising every drop, material and book entry about to move; an empty week reverts through a lightweight confirmation instead, so a revert never happens with zero confirmation. "Log a drop" and the whole-week wizard target the week you\'re looking at when run from Log, and the clock\'s current week everywhere else. Log\'s body is an honest placeholder for now — the weekly grid, the Books card and free-form material entry land in upcoming slices, once the pieces they depend on exist. Legacy V1 is untouched.',
+        pr: 235,
+        prTitle: 'feat(loot): Phase D slice D4 — the Log tab + its week model',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '2.1.10',
+    date: '2026-08-07T23:30:00Z',
+    title: 'Fixed an error when your profile was created for the first time',
+    items: [
+      {
+        category: 'fix',
+        title: 'First-time profile creation no longer errors',
+        description:
+          'The very first time you loaded a page that needed a player profile, the app could throw an error instead of creating it. Several parts of the page ask for your profile at once, and on a brand-new account they all tried to create it simultaneously — the first one won and the rest failed. Profile creation is now handled so that whichever request gets there first wins and the others quietly use it. This only ever affected accounts that had no profile yet, so if you have used the app before you would not have seen it.',
+        pr: 234,
+        prTitle: 'fix(profile): close the PlayerProfile get-or-create race + kill the Windows clock flake',
+      },
+    ],
+  },
+  {
+    version: '2.1.9',
+    date: '2026-08-07T18:00:00Z',
+    title: 'Collections Center fix — missing database tables restored',
+    items: [
+      {
+        category: 'fix',
+        title: 'Collections Center no longer errors out',
+        description:
+          'Collection ownership and "hunting/interested" intent data failed to load in production, erroring instead of showing your collection. The two database tables behind those features shipped with the Collections Center but were never created on the live database, so every read hit a missing-table error. Both tables are now created, and Collections reads work again. If you saw an error on the Collections Center or Suggested Farms, it should now load normally — no action needed on your end.',
+        pr: 233,
+        prTitle: 'fix(db): create the missing player_collection tables + guard against recurrence',
+      },
+    ],
+  },
   {
     version: '2.1.8',
     date: '2026-07-30T23:30:00Z',

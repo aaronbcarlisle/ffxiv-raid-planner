@@ -63,6 +63,7 @@ from ..schemas.schedule import (
     PersonalAvailabilityTemplateResponse,
     PersonalAvailabilityTemplateSubmit,
 )
+from ..services.player_profile_service import get_or_create_profile
 from ..services.share_code import generate_profile_share_code
 
 router = APIRouter(prefix="/api/player", tags=["player"])
@@ -81,39 +82,14 @@ async def _get_or_create_profile(
     session: AsyncSession, user: User,
 ) -> PlayerProfile:
     """Get the user's player profile, creating one if it doesn't exist."""
-    result = await session.execute(
-        select(PlayerProfile)
-        .options(
+    return await get_or_create_profile(
+        session,
+        user.id,
+        options=(
             selectinload(PlayerProfile.characters),
             selectinload(PlayerProfile.job_profiles).selectinload(PlayerJobProfile.bis_targets),
-        )
-        .where(PlayerProfile.user_id == user.id)
+        ),
     )
-    profile = result.scalar_one_or_none()
-
-    if profile is None:
-        now = datetime.now(timezone.utc).isoformat()
-        profile = PlayerProfile(
-            id=str(uuid.uuid4()),
-            user_id=user.id,
-            visibility="private",
-            created_at=now,
-            updated_at=now,
-        )
-        session.add(profile)
-        await session.flush()
-        # Re-fetch with relationships loaded
-        result = await session.execute(
-            select(PlayerProfile)
-            .options(
-                selectinload(PlayerProfile.characters),
-                selectinload(PlayerProfile.job_profiles).selectinload(PlayerJobProfile.bis_targets),
-            )
-            .where(PlayerProfile.id == profile.id)
-        )
-        profile = result.scalar_one()
-
-    return profile
 
 
 async def _get_own_character(
