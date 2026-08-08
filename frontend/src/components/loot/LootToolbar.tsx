@@ -6,7 +6,8 @@
  * WeekScopeControl or History's HistoryFilters — slotted by Loot; Priority
  * slots nothing, since R-15 moved the week to Log and Priority is always the
  * clock's current week), a spacer, and — for editors — the Loot actions (Reset
- * [history-only], Adjustments, Rules, Log a drop, and the week-logging wizard).
+ * [history-only], Adjustments, Rules, Log a drop, Log material [D8, R-20/R-26],
+ * and the week-logging wizard).
  *
  * The wizard button names its week: R-22 requires the clock's mutations to say
  * which week they act on, and the same honesty applies to a write action that
@@ -14,7 +15,7 @@
  * tab is showing a week other than the clock's; unset keeps the default copy.
  */
 import type { ReactNode } from 'react';
-import { CheckSquare, Gauge, Scan, SlidersHorizontal } from 'lucide-react';
+import { CheckSquare, Gauge, Gem, Scan, SlidersHorizontal } from 'lucide-react';
 import { Button } from '../primitives/Button';
 
 export interface LootToolbarProps {
@@ -26,6 +27,8 @@ export interface LootToolbarProps {
   resetMenu?: ReactNode;
   canEdit: boolean;
   onLogDrop: () => void;
+  /** D8, R-20/R-26: the free-form material door — the toolbar's own floor + material selectors. */
+  onLogMaterial: () => void;
   onLogWeek: () => void;
   /** Overrides the wizard button's copy so it can name a back-dated week (e.g. "Log Week 2 loot"). */
   logWeekLabel?: string;
@@ -39,6 +42,7 @@ export function LootToolbar({
   resetMenu,
   canEdit,
   onLogDrop,
+  onLogMaterial,
   onLogWeek,
   logWeekLabel,
   onOpenAdjustments,
@@ -75,6 +79,14 @@ export function LootToolbar({
             onClick={onLogDrop}
           >
             Log a drop
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Gem className="h-3.5 w-3.5" aria-hidden />}
+            onClick={onLogMaterial}
+          >
+            Log material
           </Button>
           <Button
             variant="primary"

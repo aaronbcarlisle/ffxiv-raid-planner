@@ -1008,3 +1008,22 @@ describe('edit mode (R-21)', () => {
     expect(options).toEqual(expect.objectContaining({ updateGear: false }));
   });
 });
+
+// D8 Task 7 (review gap closed): 'notes (R-26)' above only pins that pinned + showNotes RENDERS
+// the textarea — the submit path for that same door had no coverage. Closes the gap named in the
+// Task 4 review round.
+describe('pinned + showNotes submit (D8 Task 7)', () => {
+  it('a typed note reaches the create payload, trimmed', async () => {
+    const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+    renderModal({ material: 'twine', suggestedPlayer: p1, allPlayers: [p1], showNotes: true });
+
+    fireEvent.change(screen.getByLabelText('Notes (optional)'), {
+      target: { value: '  got it from FC chest  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data.notes).toBe('got it from FC chest');
+  });
+});

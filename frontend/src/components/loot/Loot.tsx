@@ -88,7 +88,8 @@
  *     which is acceptable.
  *   - D4 interims, so a reader doesn't mistake a stub for a gap: Log's body is
  *     `LogEmptyState` (the weekly grid is D5); the Books card and a
- *     displayed-week-bound reset menu are D7; "Log material" on Log is D8.
+ *     displayed-week-bound reset menu are D7. "Log material" on Log — D4's
+ *     other named gap — shipped in D8 (the toolbar's free-form door, below).
  *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
  *     mounted on History here, and `LootResetMenu` stays bound to
  *     `clock.currentWeek`. Log has no `?entry=` highlight yet (D6/D11) — a
@@ -244,7 +245,13 @@ type PickerState =
   | { mode: 'log' }
   | { mode: 'edit'; editEntry: LootLogEntry }
   | null;
-type MaterialState = { material: MaterialType; floorName: string; suggested: SnapshotPlayer } | null;
+// D8 Task 7: the free-form door joins the pinned cell door — both discriminated on `mode` so a
+// cell-derived open always carries its `material`/`floorName`/`suggested` and a free-form open
+// carries none of them (mirrors PickerState's discriminated-union precedent above).
+type MaterialState =
+  | { mode: 'cell'; material: MaterialType; floorName: string; suggested: SnapshotPlayer }
+  | { mode: 'freeform' }
+  | null;
 
 const HISTORY_SUBTITLE = 'Every drop, who received it, and why — the transparent record';
 const LOG_SUBTITLE = "The week's record — every drop, book and material, floor by floor";
@@ -594,6 +601,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           }
           canEdit={canEdit}
           onLogDrop={() => setPickerState({ mode: 'log' })}
+          // R-20/D8's carried "Log material": the free-form door targets `writeWeek` — the same
+          // displayed-week split the picker/wizard already honor (R-20). R-b (2026-08-08, ruled
+          // with R-a): both quick-log actions render on all three Loot views (this toolbar mounts
+          // once, unconditioned on `lview`, matching "Log a drop"'s D4 precedent) — they move
+          // together or not at all.
+          onLogMaterial={() => setMaterialState({ mode: 'freeform' })}
           onLogWeek={() => setWizardState({ floor: null })}
           // The action names its week whenever it isn't "this week" — the same
           // honesty R-22 requires of the clock's mutations. Only Log can
@@ -724,7 +737,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           onLogMaterial={(material, player) => {
             // The matrix has no per-floor card context — derive the material's home floor.
             const f = getFloorForUpgradeMaterial(material)[0];
-            setMaterialState({ material, floorName: floors[f - 1] ?? `Floor ${f}`, suggested: player });
+            setMaterialState({ mode: 'cell', material, floorName: floors[f - 1] ?? `Floor ${f}`, suggested: player });
           }}
         />
       ) : priorityView === 'weapons' ? (
@@ -769,7 +782,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
                 })
               }
               onAssignMaterial={(material, suggested) =>
-                setMaterialState({ material, floorName: floors[n - 1] ?? `Floor ${n}`, suggested })
+                setMaterialState({ mode: 'cell', material, floorName: floors[n - 1] ?? `Floor ${n}`, suggested })
               }
             />
           ))}
@@ -826,7 +839,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         onSuccess={(w) => { refresh(); if (lview === 'log') logWeek.setWeek(w); }}
       />
 
-      {materialState && (
+      {materialState?.mode === 'cell' && (
         <QuickLogMaterialModal
           isOpen
           onClose={() => setMaterialState(null)}
@@ -835,8 +848,27 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           floor={materialState.floorName}
           material={materialState.material}
           maxWeek={clock.maxWeek}
+          initialWeek={writeWeek}
+          /* M4: every v2 write targets writeWeek */
           suggestedPlayer={materialState.suggested}
           allPlayers={mainRosterPlayers}
+          settings={settings}
+          showNotes
+          /* R-26: v2's cell door gains notes; V1's door passes neither prop */
+          onSuccess={refresh}
+        />
+      )}
+      {materialState?.mode === 'freeform' && (
+        <QuickLogMaterialModal
+          isOpen
+          onClose={() => setMaterialState(null)}
+          groupId={group.id}
+          tierId={tier.tierId}
+          floors={floors}
+          initialWeek={writeWeek}
+          maxWeek={clock.maxWeek}
+          allPlayers={players}
+          /* R-a: full roster — the modal's includeSubs gate does the widening */
           settings={settings}
           onSuccess={refresh}
         />

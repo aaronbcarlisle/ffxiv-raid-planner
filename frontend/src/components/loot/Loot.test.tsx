@@ -17,12 +17,13 @@ import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import type { StaticGroup, TierSnapshot, SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 
 // Capture buckets shared with the hoisted mocks.
-const { floorCardCalls, pickerCalls, weekScopeCalls, wizardCalls, matrixCalls, deleteLootMock, deleteMaterialMock } = vi.hoisted(() => ({
+const { floorCardCalls, pickerCalls, weekScopeCalls, wizardCalls, matrixCalls, materialModalCalls, deleteLootMock, deleteMaterialMock } = vi.hoisted(() => ({
   floorCardCalls: [] as Array<Record<string, unknown>>,
   pickerCalls: [] as Array<Record<string, unknown>>,
   weekScopeCalls: [] as Array<Record<string, unknown>>,
   wizardCalls: [] as Array<Record<string, unknown>>,
   matrixCalls: [] as Array<Record<string, unknown>>,
+  materialModalCalls: [] as Array<Record<string, unknown>>,
   deleteLootMock: vi.fn().mockResolvedValue(undefined),
   deleteMaterialMock: vi.fn().mockResolvedValue(undefined),
 }));
@@ -77,8 +78,16 @@ vi.mock('./LogWeekWizard', () => ({
 }));
 
 vi.mock('./QuickLogMaterialModal', () => ({
-  QuickLogMaterialModal: (props: { isOpen: boolean; floor: string }) =>
-    props.isOpen ? <div data-testid="material-modal" data-floor={props.floor} /> : null,
+  QuickLogMaterialModal: (props: { isOpen: boolean; floor?: string }) => {
+    materialModalCalls.push(props);
+    return props.isOpen ? (
+      <div
+        data-testid="material-modal"
+        data-floor={props.floor ?? ''}
+        data-mode={props.floor != null ? 'pinned' : 'freeform'}
+      />
+    ) : null;
+  },
 }));
 
 vi.mock('./WeaponPriorityBridge', () => ({
@@ -183,6 +192,7 @@ beforeEach(() => {
   weekScopeCalls.length = 0;
   wizardCalls.length = 0;
   matrixCalls.length = 0;
+  materialModalCalls.length = 0;
   deleteLootMock.mockClear();
   deleteMaterialMock.mockClear();
   // The Priority sub-view persists under `v2-loot-priority-view` (R-1) and the
@@ -412,6 +422,12 @@ describe('Loot', () => {
     fireEvent.click(screen.getByRole('button', { name: 'mock-log-material' }));
     // Twine's home floor is 3 (loot-tables.ts) — floors[2] = 'M11S'.
     expect(screen.getByTestId('material-modal')).toHaveAttribute('data-floor', 'M11S');
+    expect(screen.getByTestId('material-modal')).toHaveAttribute('data-mode', 'pinned');
+    // D8 M4 coherence: the cell door now carries showNotes + initialWeek === writeWeek — on
+    // Priority (this test's view), writeWeek is the clock's current week (3).
+    const last = materialModalCalls[materialModalCalls.length - 1];
+    expect(last.showNotes).toBe(true);
+    expect(last.initialWeek).toBe(3);
   });
 
   it('renders four FloorCards in F4→F1 order when the All pill is picked (R-2)', () => {
@@ -443,6 +459,7 @@ describe('Loot', () => {
   it('shows the editor toolbar actions only when canEdit', () => {
     const { rerender } = renderLoot({ tier: makeTier(players) });
     expect(screen.getByRole('button', { name: /log a drop/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /log material/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /log this week's loot/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /adjustments/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /rules/i })).toBeInTheDocument();
@@ -453,6 +470,26 @@ describe('Loot', () => {
       </MemoryRouter>,
     );
     expect(screen.queryByRole('button', { name: /log a drop/i })).not.toBeInTheDocument();
+    // D8: "Log material" is gated the same as the rest of the editor cluster (R-b).
+    expect(screen.queryByRole('button', { name: /log material/i })).not.toBeInTheDocument();
+  });
+
+  it('D8/R-20/R-26: the toolbar\'s "Log material" opens the free-form door — full roster incl. subs (R-a), no pinned trio, initialWeek === writeWeek', () => {
+    renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: /log material/i }));
+
+    expect(screen.getByTestId('material-modal')).toHaveAttribute('data-mode', 'freeform');
+    const last = materialModalCalls[materialModalCalls.length - 1];
+    // aac-heavyweight floors: M9S…M12S.
+    expect(last.floors).toEqual(['M9S', 'M10S', 'M11S', 'M12S']);
+    // On Priority (this test's default view), writeWeek falls back to the clock's current week (3).
+    expect(last.initialWeek).toBe(3);
+    expect(last.floor).toBeUndefined();
+    expect(last.material).toBeUndefined();
+    expect(last.suggestedPlayer).toBeUndefined();
+    // R-a: the free-form door gets the FULL roster (incl. the sub), not mainRosterPlayers — the
+    // modal's own "Include substitutes" checkbox does the widening.
+    expect((last.allPlayers as SnapshotPlayer[]).map((p) => p.id)).toEqual(['p1', 'p2', 's1']);
   });
 
   it('renders the week control on Log regardless of canEdit (R-22 is a read affordance too)', () => {
@@ -983,6 +1020,16 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     // `players` is the full tier roster (subs included) — the summary names
     // whoever actually received something, not just the main eight.
     expect((scopeProps.players as SnapshotPlayer[]).map((p) => p.id)).toEqual(['p1', 'p2', 's1']);
+  });
+
+  it('D8: the free-form material door targets the Log tab\'s displayed week, not the clock\'s', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    setLogWeek(2);
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(2);
+
+    fireEvent.click(screen.getByRole('button', { name: /log material/i }));
+    const last = materialModalCalls[materialModalCalls.length - 1];
+    expect(last.initialWeek).toBe(2);
   });
 
   it('targets the displayed week from Log and the clock week everywhere else (R-20 split)', () => {

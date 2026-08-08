@@ -541,6 +541,22 @@ It grows floor + material selectors (free-form entry), a notes field, and edit m
 legacy modal would take a v2 dependency on a file v2 must not edit. What has to be built is exactly
 what legacy already proves out (`LogMaterialModal.tsx:84`, `:209-238`, `:306-310`).
 
+**Build note (D8, 2026-08-08) — R-a/R-b ruled at Task 7 build (the toolbar wiring).**
+
+- **R-a · subs widening.** The "Include substitutes" checkbox (D-37's restore) is real in
+  **non-pinned** modes only — free-form and edit. The pinned door keeps its original
+  `configured && !isSubstitute` filter verbatim, because V1 only ever mounts pinned
+  (`LootPriorityPanel.tsx:770`) and legacy material logging never offered subs at all — widening it
+  there would be a V1-visible behavior change, not a restore. The two v2 cell doors (matrix + grid)
+  also mount pinned, so they inherit the same main-roster-only filter; only the toolbar's free-form
+  door gets the full roster (`allPlayers={players}`, not `mainRosterPlayers`) for the checkbox to
+  widen from.
+- **R-b · both toolbar actions everywhere.** "Log a drop" (D4) and "Log material" (D8) render on
+  **all three** Loot views — Priority, Log, History — matching D4's already-shipped precedent: the
+  toolbar mounts once, unconditioned on `lview`, so there is no per-view gate to diverge. They **move
+  together or not at all**: a future slice that hides one from a view must hide the other too, or the
+  toolbar starts making an unstated claim about which entry points are "real" on that view.
+
 ### R-27 · The grid details that come back
 
 **Restored:** the per-cell modifier-teaching tooltip (`WeeklyLootGrid.tsx:653-680`, `:773-798`) — R-18
