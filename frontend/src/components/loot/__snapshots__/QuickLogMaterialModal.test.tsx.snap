@@ -1,9 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`V1 freeze baseline > render branches > renders no gear block at all when the recipient has zero eligible options (all-raid player) 1`] = `
-<body
-  style="pointer-events: auto;"
->
+<body>
   <div />
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
@@ -1018,9 +1016,7 @@ exports[`V1 freeze baseline > render branches > solvent: tome weapon AND weapon 
 `;
 
 exports[`V1 freeze baseline > render branches > solvent: tome weapon eligible but no gear slots renders the bare "Tome Weapon" text, no Select 1`] = `
-<body
-  style="pointer-events: auto;"
->
+<body>
   <div />
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"

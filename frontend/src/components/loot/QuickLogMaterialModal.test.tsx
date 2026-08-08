@@ -106,6 +106,14 @@ function checkboxByLabelText(text: string): HTMLElement {
 }
 
 beforeEach(() => {
+  // A dropdown left open at test-end (e.g. the solvent-dual fixture, which
+  // opens its Select AFTER taking its snapshot) leaks Radix's scroll-lock
+  // `style` attribute onto `<body>` past RTL's cleanup — it isn't
+  // per-render state, so it bleeds into the NEXT test's baseElement snapshot
+  // even though that test never touched a dropdown. Strip it before every
+  // test so a subset run (`vitest -t ...`) can't produce a false snapshot
+  // mismatch depending on what ran immediately before it.
+  document.body.removeAttribute('style');
   // jsdom has no scrollIntoView; Radix Select calls it when keyboard-opened
   // (Roster.test.tsx doesn't need this because it never yields to the event
   // loop after opening — this file's dropdown-opening tests do).
@@ -127,6 +135,7 @@ beforeEach(() => {
 // component and MUST NOT be edited in this slice — it is the two-part
 // assert's teeth. If a D8 task needs to change one of these tests, the task
 // is wrong.
+// Append new describe blocks AFTER this one — snapshots embed useId sequences.
 describe('V1 freeze baseline', () => {
   describe('render branches', () => {
     it('twine: an eligible slot renders the gear checkbox + slot Select, static Floor/Material rows, week = maxWeek, no textarea, no player-select placeholder', () => {
@@ -293,21 +302,35 @@ describe('V1 freeze baseline', () => {
       return { p1, p2 };
     }
 
-    it('a recipient change re-inits eligibility to the NEW recipient (:156-187) — but a real, unmocked Radix quirk resets the never-opened slot Select back to placeholder, and the submit payload reflects that', async () => {
+    it('a recipient change re-inits eligibility to the NEW recipient (:156-187) — but a real, unmocked Radix effect-ordering race resets the slot Select back to placeholder, and the submit payload reflects that', async () => {
       // Ground truth (verified via a throwaway instrumented render, not
-      // guessed): handleRecipientChange DOES call setSelectedSlot('body') for
-      // p2 in the same tick. But this slot Select's dropdown has never been
-      // opened, so Radix's hidden native-<select> "bubble input" (used for
-      // form/autofill semantics) has no <option value="body"> registered yet
-      // — its sync effect assigns the native select's `.value = 'body'`,
-      // silently no-ops per standard <select> semantics (no matching
-      // <option>), then dispatches a phantom native "change" event whose
-      // `event.target.value` is `''`. This component's onChange for the slot
-      // Select is unguarded (`(val) => setSelectedSlot(val as GearSlot)`), so
-      // that '' clobbers the just-computed 'body' back out. This is real
-      // <select> value-assignment behavior (reproducible in a real browser
-      // too, not a jsdom/fireEvent artifact) — pinned here as current V1
-      // behavior, not fixed.
+      // guessed, and cross-checked against the solvent-dual fixture's
+      // committed snapshot — its hidden native <select> already lists BOTH
+      // options before that Select is ever opened, so "items only register
+      // once opened" is wrong): handleRecipientChange DOES call
+      // setSelectedSlot('body') for p2 in the same tick. The real mechanism
+      // is an effect-ordering race: switching recipient swaps this Select's
+      // `options` array (p1's 'head' item out, p2's 'body' item in) in the
+      // SAME commit as the controlled `value` changing to 'body'. Radix's
+      // hidden native-<select> "bubble input" (form/autofill semantics) syncs
+      // via a `useEffect` that assigns `select.value = 'body'` and dispatches
+      // a native "change" event whenever the value changes — but the native
+      // <option> for 'body' is (re)registered by a SEPARATE `useLayoutEffect`
+      // (`onNativeOptionAdd`) whose state update hasn't re-rendered the
+      // native option set yet when the bubble-input's sync effect runs, so
+      // `.value = 'body'` no-ops against the stale (pre-swap) option set and
+      // the native select's value falls back to `''`. The dispatched "change"
+      // event's `event.target.value` is therefore `''`; this component's
+      // onChange for the slot Select is unguarded
+      // (`(val) => setSelectedSlot(val as GearSlot)`), so that '' clobbers
+      // the just-computed 'body' back out. "Never opened" is NOT the trigger
+      // condition — a previously-opened dropdown hits the identical race
+      // whenever the new value wasn't already in the prior option set (e.g.
+      // the solvent-dual fixture's OWN Select would hit this too if a THIRD
+      // option were swapped in at the same instant its value changed to it).
+      // This is real React-effect-ordering + <select> semantics
+      // (reproducible in a real browser too, not a jsdom/fireEvent artifact)
+      // — pinned here as current V1 behavior, not fixed.
       const { p1, p2 } = twineFixturePlayers();
       renderModal({ material: 'twine', suggestedPlayer: p1, allPlayers: [p1, p2] });
 
@@ -320,8 +343,8 @@ describe('V1 freeze baseline', () => {
 
       // The recipient itself switched correctly...
       expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(p2.name);
-      // ...but the slot Select — never manually opened — lands on the
-      // placeholder, not "Body", per the Radix quirk above.
+      // ...but the slot Select lands on the placeholder, not "Body", per the
+      // race described above.
       expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Select...');
 
       fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
@@ -373,6 +396,72 @@ describe('V1 freeze baseline', () => {
         string, string, MaterialLogEntryCreate, LogMaterialOptions,
       ];
       expect(options).toEqual(expect.objectContaining({ updateGear: false, slotToAugment: undefined }));
+    });
+  });
+
+  // The asymmetric solvent render (dual Select seeded to the SLOT, not "Tome
+  // Weapon" — see the render-branches fixture above) had no submit coverage:
+  // component :210's `augmentTomeWeapon` payload mapping was unpinned.
+  describe('interactions (solvent-dual fixture)', () => {
+    function solventDualFixturePlayer(): SnapshotPlayer {
+      return makePlayer({
+        id: 'p1',
+        name: 'Finn',
+        gear: [
+          makeGear({ slot: 'weapon', bisSource: 'tome', hasItem: true, isAugmented: false }),
+          makeGear({ slot: 'head', bisSource: 'raid' }),
+          makeGear({ slot: 'body', bisSource: 'raid' }),
+          makeGear({ slot: 'hands', bisSource: 'raid' }),
+          makeGear({ slot: 'legs', bisSource: 'raid' }),
+          makeGear({ slot: 'feet', bisSource: 'raid' }),
+          makeGear({ slot: 'earring', bisSource: 'raid' }),
+          makeGear({ slot: 'necklace', bisSource: 'raid' }),
+          makeGear({ slot: 'bracelet', bisSource: 'raid' }),
+          makeGear({ slot: 'ring1', bisSource: 'raid' }),
+          makeGear({ slot: 'ring2', bisSource: 'raid' }),
+        ],
+        tomeWeapon: { pursuing: true, hasItem: true, isAugmented: false },
+      });
+    }
+
+    it('submit as-rendered (dual Select defaults to the SLOT): options carry slotToAugment=\'weapon\', augmentTomeWeapon=false', async () => {
+      const p1 = solventDualFixturePlayer();
+      renderModal({ material: 'solvent', suggestedPlayer: p1, allPlayers: [p1] });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+      await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+
+      const [, , , options] = logMaterialAndUpdateGearMock.mock.calls[0] as [
+        string, string, MaterialLogEntryCreate, LogMaterialOptions,
+      ];
+      expect(options).toEqual(expect.objectContaining({
+        updateGear: true, slotToAugment: 'weapon', augmentTomeWeapon: false,
+      }));
+    });
+
+    it('switching the dual Select to "Tome Weapon" then submitting: options carry slotToAugment=undefined, augmentTomeWeapon=true', async () => {
+      const p1 = solventDualFixturePlayer();
+      renderModal({ material: 'solvent', suggestedPlayer: p1, allPlayers: [p1] });
+
+      // Both options are already registered on this Select from mount (the
+      // render-branches fixture's committed snapshot proves it), so picking
+      // a DIFFERENT already-known option here does not hit the effect-
+      // ordering race described in the recipient-change test above — that
+      // race is specific to a value changing in the same commit as its
+      // option being newly registered.
+      fireEvent.keyDown(screen.getAllByRole('combobox')[1], { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: 'Tome Weapon' }));
+      expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Tome Weapon');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+      await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+
+      const [, , , options] = logMaterialAndUpdateGearMock.mock.calls[0] as [
+        string, string, MaterialLogEntryCreate, LogMaterialOptions,
+      ];
+      expect(options).toEqual(expect.objectContaining({
+        updateGear: true, slotToAugment: undefined, augmentTomeWeapon: true,
+      }));
     });
   });
 });
