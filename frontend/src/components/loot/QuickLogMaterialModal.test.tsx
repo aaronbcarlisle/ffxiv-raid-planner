@@ -734,6 +734,49 @@ describe('free-form mode (R-26)', () => {
     expect(options).toEqual(expect.objectContaining({ updateGear: true, slotToAugment: 'necklace' }));
   });
 
+  it('re-clicking the ACTIVE material pill does not clobber a manual slot pick (fix round 14)', async () => {
+    // Sibling of round 7 on the synchronous path: `pickMaterial` had no same-value guard, so
+    // re-clicking the already-pressed pill (a filter Tag fires onClick either way) ran
+    // `applyMaterialChange` — resetting a manual slot / tome-weapon pick to the derived
+    // initial AND silently dropping the manual-recipient lock. `pickFloor` already
+    // short-circuits its equivalent (re-clicking the active floor pill).
+    const gina = makePlayer({
+      id: 'gina',
+      name: 'Gina',
+      gear: [
+        makeGear({ slot: 'weapon', bisSource: 'raid' }),
+        makeGear({ slot: 'head', bisSource: 'raid' }),
+        makeGear({ slot: 'body', bisSource: 'raid' }),
+        makeGear({ slot: 'hands', bisSource: 'raid' }),
+        makeGear({ slot: 'legs', bisSource: 'raid' }),
+        makeGear({ slot: 'feet', bisSource: 'raid' }),
+        makeGear({ slot: 'earring', bisSource: 'tome', hasItem: true, isAugmented: false }), // needs glaze
+        makeGear({ slot: 'necklace', bisSource: 'tome', hasItem: true, isAugmented: false }), // needs glaze
+        makeGear({ slot: 'bracelet', bisSource: 'raid' }),
+        makeGear({ slot: 'ring1', bisSource: 'raid' }),
+        makeGear({ slot: 'ring2', bisSource: 'raid' }),
+      ],
+    });
+    renderFreeform({}, [gina]);
+
+    expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Ears');
+    fireEvent.keyDown(screen.getAllByRole('combobox')[1], { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: 'Neck' }));
+    expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Neck');
+
+    // Glaze is the default (pressed) material on Floor 2 — re-click it.
+    expect(screen.getByRole('button', { name: 'Glaze' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Glaze' }));
+    expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Neck');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , , options] = logMaterialAndUpdateGearMock.mock.calls[0] as [
+      string, string, MaterialLogEntryCreate, LogMaterialOptions,
+    ];
+    expect(options).toEqual(expect.objectContaining({ updateGear: true, slotToAugment: 'necklace' }));
+  });
+
   it('submit sends the picked floor name, material, and week', async () => {
     const { gina, uzo } = freeformPlayers();
     renderFreeform({ initialWeek: 3 }, [gina, uzo]);

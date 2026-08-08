@@ -504,6 +504,10 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   }
 
   function pickMaterial(m: MaterialType) {
+    // Round 14: re-clicking the ACTIVE pill is not a material change — `applyMaterialChange`
+    // would re-derive gear from scratch (clobbering a manual slot / tome-weapon pick) and
+    // re-arm the auto-recipient effect, both for a no-op. Mirrors `pickFloor`'s early return.
+    if (m === pickedMaterial) return;
     setPickedMaterial(m);
     applyMaterialChange(m, recipientPlayerId);
   }
