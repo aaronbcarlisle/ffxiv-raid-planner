@@ -452,6 +452,21 @@ wizard stays reachable from both tabs: Priority's targets the current week, Log'
 guard, so it is live in v2 today. Legacy's material binding was always `Alt+U` (`:185-191`).
 **Matrix D-35's wording carries the same error and must be corrected in the same write-back.**
 
+**Build note (D4, 2026-07-31) — "Log material" ships in D8, not D4.** `QuickLogMaterialModal`'s
+props (`QuickLogMaterialModal.tsx:27-39`) are fixed `floor`/`material`, exactly what R-26 grows into
+real floor + material selectors; a toolbar button can't honestly log free-form material before that
+selector exists. User-ruled at D4 kickoff: D4 ships **"Log a drop"** (and the whole-week wizard) on
+Log's toolbar; **"Log material" carries to D8**, alongside R-26's selector work. This is a build note,
+not a ruling change — R-20's substance (both actions target the displayed week, restored, `Alt+U`
+binding) is untouched; only "Log material"'s arrival slice moves.
+
+**Build note (D4, 2026-07-31) — Log's D4 body is an honest placeholder.** The weekly grid (this
+ruling's home for logging cells) is **D5**; the Books card is **D7**. D4 ships the real toolbar, the
+real week model (`useLogWeek`), and an empty-state card (`LogEmptyState.tsx`) naming what lands next —
+no fake controls, no disabled buttons standing in for D5's cells. Per the phase dependency graph
+(`phase-d-loot-plan.md` §3), D8 lands before D5, so this placeholder outlives D4 by at least one more
+slice.
+
 ### R-21 · Material entries become **editable** (D-37)
 
 A filled material cell opens the material modal in edit mode with old-vs-new augmentation

@@ -43,6 +43,7 @@ from ..schemas.player_collection import (
     DossierHuntingEntry,
     StaticCollectionSuggestion,
 )
+from ..services.player_profile_service import get_or_create_profile
 from ..services.collection_suggestion_service import (
     compute_suggestions,
     dossier_farm_match,
@@ -435,20 +436,7 @@ async def _get_profile_or_none(session: AsyncSession, user: User) -> PlayerProfi
 
 async def _ensure_profile(session: AsyncSession, user: User) -> PlayerProfile:
     """Return the player's profile, auto-creating a minimal private one if absent."""
-    profile = await _get_profile_or_none(session, user)
-    if profile is None:
-        now = datetime.now(timezone.utc).isoformat()
-        profile = PlayerProfile(
-            id=str(uuid.uuid4()),
-            user_id=user.id,
-            visibility="private",
-            share_enabled=False,
-            created_at=now,
-            updated_at=now,
-        )
-        session.add(profile)
-        await session.flush()
-    return profile
+    return await get_or_create_profile(session, user.id)
 
 
 async def _require_profile(session: AsyncSession, user: User) -> PlayerProfile:
