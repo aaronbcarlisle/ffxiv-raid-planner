@@ -506,6 +506,9 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
       if (mode === 'edit' && editEntry) {
         const options: UpdateMaterialOptions = {
           updateGear: shouldUpdateGear,
+          // No gear control rendered → the coordinator must not read the null effect as a
+          // clear when the recipient is unchanged (out-of-pool recipient; round 10).
+          gearEditable: hasEligibleOptions,
           slotToAugment: shouldUpdateGear && selectedSlot ? selectedSlot as GearSlot : undefined,
           augmentTomeWeapon: shouldUpdateGear && augmentTomeWeapon,
         };

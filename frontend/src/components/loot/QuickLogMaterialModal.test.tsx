@@ -970,7 +970,12 @@ describe('edit mode (R-21)', () => {
     const [, , , , options] = updateMaterialAndReconcileGearMock.mock.calls[0] as [
       string, string, MaterialLogEntry, unknown, UpdateMaterialOptions,
     ];
-    expect(options).toEqual(expect.objectContaining({ updateGear: false, slotToAugment: undefined }));
+    // Round 10: with no gear control rendered, the coordinator must also be told the null
+    // effect carries no intent (`gearEditable: false`) so the PUT preserves the entry's
+    // recorded slot instead of clearing it via the '' sentinel.
+    expect(options).toEqual(
+      expect.objectContaining({ updateGear: false, gearEditable: false, slotToAugment: undefined })
+    );
   });
 
   it('hides the gear section when the recipient is switched to a player with no eligible slots (fix round 8)', async () => {
@@ -1001,7 +1006,7 @@ describe('edit mode (R-21)', () => {
     const [, , , , options] = updateMaterialAndReconcileGearMock.mock.calls[0] as [
       string, string, MaterialLogEntry, unknown, UpdateMaterialOptions,
     ];
-    expect(options).toEqual(expect.objectContaining({ updateGear: false }));
+    expect(options).toEqual(expect.objectContaining({ updateGear: false, gearEditable: false }));
   });
 
   it('m4: when the parsed floor lacks the entry\'s material, falls back to the material\'s home floor (M9S + twine -> M11S/Twine pressed)', () => {
@@ -1066,7 +1071,12 @@ describe('edit mode (R-21)', () => {
       method: 'book',
       notes: '', // cleared -> '' included, never absent (differs from the create path)
     });
-    expect(options).toEqual({ updateGear: true, slotToAugment: 'head', augmentTomeWeapon: false });
+    expect(options).toEqual({
+      updateGear: true,
+      gearEditable: true, // round 10: in-pool recipient -> a gear control was rendered
+      slotToAugment: 'head',
+      augmentTomeWeapon: false,
+    });
   });
 
   it('toast reads "Material entry updated" on a successful edit', async () => {

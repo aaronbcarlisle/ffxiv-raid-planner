@@ -639,6 +639,53 @@ describe('updateMaterialAndReconcileGear', () => {
     expect((revertCall.data.gear ?? []).find((g) => g.slot === 'head')?.isAugmented).toBe(false);
   });
 
+  it('gearEditable: false + unchanged recipient preserves the recorded slot on the PUT, zero gear calls (round 10)', async () => {
+    // Out-of-pool recipient: the edit form rendered no gear control, so the null effect
+    // carries no user intent — a notes/week-only edit must not wipe the entry's recorded
+    // slot. Pre-fix, the '' sentinel cleared it, and a later deleteMaterialAndRevertGear
+    // would fall off the precise entry.slotAugmented branch onto the legacy heuristic and
+    // could revert the wrong slot. Contrast with the updateGear:false test above, where a
+    // control WAS rendered (gearEditable defaults true) and clearing is the user's intent.
+    currentTier.players = []; // the recipient is gone from the roster
+    const oldEntry = createMaterialLogEntry({ materialType: 'twine', slotAugmented: 'head' });
+    const newData = createNewData({ materialType: 'twine' }); // same recipient, notes-only edit
+
+    await updateMaterialAndReconcileGear(groupId, tierId, oldEntry, newData, {
+      updateGear: false,
+      gearEditable: false,
+    });
+
+    expect(updateMaterialEntry).toHaveBeenCalledWith(
+      groupId,
+      tierId,
+      oldEntry.id,
+      expect.objectContaining({ slotAugmented: 'head' })
+    );
+    expect(updatePlayer).not.toHaveBeenCalled();
+  });
+
+  it('gearEditable: false + CHANGED recipient still clears the recorded slot (round 10)', async () => {
+    // The entry's slot belonged to the OLD recipient; on a recipient change it is
+    // meaningless for the new one, so the '' clear is the correct outcome even without a
+    // rendered gear control. Old recipient's gear stays untouched (legacy ruling), and the
+    // null new effect applies nothing.
+    const oldEntry = createMaterialLogEntry({ materialType: 'twine', slotAugmented: 'head' });
+    const newData = createNewData({ materialType: 'twine', recipientPlayerId: 'player-2' });
+
+    await updateMaterialAndReconcileGear(groupId, tierId, oldEntry, newData, {
+      updateGear: false,
+      gearEditable: false,
+    });
+
+    expect(updateMaterialEntry).toHaveBeenCalledWith(
+      groupId,
+      tierId,
+      oldEntry.id,
+      expect.objectContaining({ slotAugmented: '' })
+    );
+    expect(updatePlayer).not.toHaveBeenCalled();
+  });
+
   it('none -> slot: no prior effect, applies the new slot with no revert call', async () => {
     currentTier.players = [
       createPlayer({

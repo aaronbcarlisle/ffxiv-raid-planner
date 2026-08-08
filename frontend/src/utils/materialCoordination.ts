@@ -46,6 +46,16 @@ export interface DeleteMaterialOptions {
 export interface UpdateMaterialOptions {
   /** Update player's gear to reflect the (possibly new) material/slot */
   updateGear?: boolean;
+  /** Whether the edit form actually RENDERED a gear control (default true). `false` +
+   *  unchanged recipient means the user had no way to express gear intent (recipient no
+   *  longer in the roster — R-21's injected Select entry), so the entry's recorded
+   *  `slotAugmented` is preserved on the PUT instead of being cleared by the `''` sentinel,
+   *  and reconciliation is skipped. Without this, a notes-only edit of an out-of-pool
+   *  recipient's entry wipes the recorded slot, and a later `deleteMaterialAndRevertGear`
+   *  falls off the precise `entry.slotAugmented` branch onto the legacy heuristic (PR #236
+   *  round 10). Distinct from `updateGear: false` with a control rendered, which is the
+   *  user UNCHECKING it — a deliberate clear-and-revert. */
+  gearEditable?: boolean;
   /** Specific slot to mark as augmented (for twine/glaze, or solvent-on-gear) */
   slotToAugment?: GearSlot;
   /** For solvent: augment tome weapon instead of weapon gear slot */
@@ -528,7 +538,10 @@ async function applyGearEffect(
  *    an edit can move an entry across weeks, so `WeekScopeControl`'s dots
  *    must not go stale).
  * 3. If the recipient is unchanged and the gear effect is unchanged, stops
- *    here — week/notes-only edits are silent, zero gear calls.
+ *    here — week/notes-only edits are silent, zero gear calls. The same
+ *    applies when `options.gearEditable === false` with an unchanged
+ *    recipient: no control rendered means no intent, so the PUT preserves
+ *    the entry's recorded `slotAugmented` instead of clearing it.
  * 4. If the recipient is unchanged and the effect changed, reverts the old
  *    effect then applies the new one, re-reading store state between the
  *    two so the apply step sees the revert's result.
@@ -556,6 +569,12 @@ export async function updateMaterialAndReconcileGear(
   const lootStore = useLootTrackingStore.getState();
 
   const newEffect = effectFromOptions(newData.materialType, options);
+  const recipientChanged = newData.recipientPlayerId !== oldEntry.recipientPlayerId;
+  // No gear control was rendered AND the recipient is unchanged: the null effect carries no
+  // user intent, so the recorded slot must survive the PUT (see `gearEditable`'s doc). A
+  // CHANGED recipient still clears — the entry's slot belonged to the old recipient and is
+  // meaningless on the new one.
+  const preserveRecordedEffect = !(options.gearEditable ?? true) && !recipientChanged;
 
   // 1. Update the material entry (PUT first — data-integrity precedent).
   await lootStore.updateMaterialEntry(groupId, tierId, oldEntry.id, {
@@ -564,7 +583,7 @@ export async function updateMaterialAndReconcileGear(
     materialType: newData.materialType,
     recipientPlayerId: newData.recipientPlayerId,
     method: newData.method,
-    slotAugmented: effectToWireSlot(newEffect),
+    slotAugmented: preserveRecordedEffect ? (oldEntry.slotAugmented ?? '') : effectToWireSlot(newEffect),
     notes: newData.notes,
   });
 
@@ -572,10 +591,10 @@ export async function updateMaterialAndReconcileGear(
   await useLootTrackingStore.getState().fetchWeekDataTypes(groupId, tierId);
 
   const oldEffect = effectFromEntry(oldEntry.materialType, oldEntry.slotAugmented);
-  const recipientChanged = newData.recipientPlayerId !== oldEntry.recipientPlayerId;
 
-  // 3. Same recipient, effect unchanged: week/notes-only edit, silent.
-  if (!recipientChanged && effectsEqual(oldEffect, newEffect)) {
+  // 3. Same recipient, effect unchanged (or preserved as unchanged above): week/notes-only
+  // edit, silent — zero gear calls.
+  if (!recipientChanged && (preserveRecordedEffect || effectsEqual(oldEffect, newEffect))) {
     return;
   }
 
