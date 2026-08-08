@@ -207,7 +207,9 @@ export function calculatePriorityScore(
 
   // Weighted need - respect toggle (when off, gear need contributes 0)
   const weightedNeedRaw = player.gear
-    .filter((g) => !isSlotComplete(g))
+    // Off-hand never carries loot weight (bundled with the weapon since 6.2);
+    // the `|| 1` below would turn its 0 weight back into 1.
+    .filter((g) => g.slot !== 'offhand' && !isSlotComplete(g))
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
   const weightedNeed = advancedOptions.useWeightedNeed ? weightedNeedRaw : 0;
 
@@ -301,7 +303,9 @@ export function calculatePriorityScoreWithBreakdown(
 
   // Weighted need - respect toggle (when off, gear need contributes 0)
   const weightedNeedRaw = player.gear
-    .filter((g) => !isSlotComplete(g))
+    // Off-hand never carries loot weight (bundled with the weapon since 6.2);
+    // the `|| 1` below would turn its 0 weight back into 1.
+    .filter((g) => g.slot !== 'offhand' && !isSlotComplete(g))
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
   const weightedNeed = advancedOptions.useWeightedNeed ? weightedNeedRaw : 0;
 

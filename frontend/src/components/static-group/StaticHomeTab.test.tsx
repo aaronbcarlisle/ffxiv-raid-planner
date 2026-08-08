@@ -220,6 +220,7 @@ vi.mock('../../gamedata', () => ({
 
 vi.mock('../../gamedata/jobs', () => ({
   getJobDisplayName: (job: string) => job,
+  OFFHAND_JOBS: new Set(['PLD']),
 }));
 
 // framer-motion: render motion.div as a plain div so animation props don't

@@ -33,7 +33,8 @@ function getSlotItemLevel(
   slot: { slot: GearSlot; hasItem: boolean; bisSource: GearSource | null; isAugmented: boolean; itemLevel?: number; currentSource?: string },
   tierId: string
 ): number {
-  const isWeapon = slot.slot === 'weapon';
+  // Shields share the weapon iLv track — keep in sync with calculateAverageItemLevel.
+  const isWeapon = slot.slot === 'weapon' || slot.slot === 'offhand';
 
   // Special case: 'tome' BiS with item but NOT augmented
   if (slot.hasItem && slot.bisSource === 'tome' && !slot.isAugmented) {
@@ -126,7 +127,7 @@ export function PlayerCardHeader({
   onMenuClick,
 }: PlayerCardHeaderProps) {
   // BiS target average iLv (existing calculation based on hasItem / bisSource / currentSource)
-  const averageILv = calculateAverageItemLevel(player.gear, tierId);
+  const averageILv = calculateAverageItemLevel(player.gear, tierId, player.job);
 
   // Current equipped average iLv from Tomestone sync data.
   // Only computed when at least half the player's gear slots have been synced.

@@ -219,7 +219,7 @@ export function TeamSummaryEnhanced({
     return players
       .filter(p => p.configured)
       .map(player => {
-        const gearPercent = calculatePlayerCompletion(player.gear);
+        const gearPercent = calculatePlayerCompletion(player.gear, player.job);
         const booksNeededCalc = calculatePlayerBooks(player.gear);
         const matsNeededCalc = calculatePlayerMaterials(player.gear, player.tomeWeapon);
 

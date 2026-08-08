@@ -482,7 +482,7 @@ export function RosterCard({
   // covers at least half the slots (legacy PlayerCardHeader parity); the
   // NowVsBisPanel hover explains the number either way. The shared helper
   // keeps this expression identical to the GearBoard subtitle (director F3).
-  const bisAvgIlv = calculateAverageItemLevel(player.gear, tierId);
+  const bisAvgIlv = calculateAverageItemLevel(player.gear, tierId, player.job);
   const equippedAvgIlv = equippedAverageIlv(player.gear);
   const displayILv = equippedAvgIlv > 0 ? equippedAvgIlv : bisAvgIlv;
 

@@ -153,7 +153,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                 // (C5, director F3) — the two v2 roster views must print the
                 // same number for the same player.
                 const equippedIlv = equippedAverageIlv(player.gear);
-                const iLvl = equippedIlv > 0 ? equippedIlv : calculateAverageItemLevel(player.gear, tierId ?? '');
+                const iLvl = equippedIlv > 0 ? equippedIlv : calculateAverageItemLevel(player.gear, tierId ?? '', player.job);
                 const subtitle = `${player.position ?? player.tankRole ?? role} · ${iLvl > 0 ? iLvl : '—'}`;
                 return (
                   <tr key={player.id} className="hover:bg-accent/5">
