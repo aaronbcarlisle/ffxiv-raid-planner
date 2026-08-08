@@ -547,10 +547,10 @@ what legacy already proves out (`LogMaterialModal.tsx:84`, `:209-238`, `:306-310
   **non-pinned** modes only — free-form and edit. The pinned door keeps its original
   `configured && !isSubstitute` filter verbatim, because V1 only ever mounts pinned
   (`LootPriorityPanel.tsx:770`) and legacy material logging never offered subs at all — widening it
-  there would be a V1-visible behavior change, not a restore. The two v2 cell doors (matrix + grid)
-  also mount pinned, so they inherit the same main-roster-only filter; only the toolbar's free-form
-  door gets the full roster (`allPlayers={players}`, not `mainRosterPlayers`) for the checkbox to
-  widen from.
+  there would be a V1-visible behavior change, not a restore. The two v2 cell doors (matrix +
+  queues floor card) also mount pinned, so they inherit the same main-roster-only filter; only
+  the toolbar's free-form door gets the full roster (`allPlayers={players}`, not
+  `mainRosterPlayers`) for the checkbox to widen from.
 - **R-b · both toolbar actions everywhere.** "Log a drop" (D4) and "Log material" (D8) render on
   **all three** Loot views — Priority, Log, History — matching D4's already-shipped precedent: the
   toolbar mounts once, unconditioned on `lview`, so there is no per-view gate to diverge. They **move
