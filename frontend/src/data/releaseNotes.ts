@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.12',
+    date: '2026-08-08T08:00:00Z',
+    title: "Phase D slice D8 — the material modal grows up + Log's toolbar action (v2 preview)",
+    items: [
+      {
+        category: 'improvement',
+        title: "The material modal grows selectors, notes, subs widening, and edit mode; Log's toolbar gains \"Log material\"",
+        description:
+          "V2 preview: the material modal grows floor + material selectors, notes, subs widening, and edit mode (R-26/R-21/D-37); Log's toolbar gains \"Log material\" targeting the displayed week (R-20).",
+        pr: 236,
+        prTitle: 'feat(loot): Phase D slice D8 — the material modal (R-26/R-21) + Log material toolbar action',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.11',
     date: '2026-08-08T01:30:00Z',
     title: 'Phase D slice D4 — the Log tab + its week model (v2 preview)',

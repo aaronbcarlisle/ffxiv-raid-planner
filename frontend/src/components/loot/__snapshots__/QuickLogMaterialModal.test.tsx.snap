@@ -1,0 +1,2600 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`V1 freeze baseline > render branches > renders no gear block at all when the recipient has zero eligible options (all-raid player) 1`] = `
+<body>
+  <div />
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+  >
+    <div
+      aria-labelledby="_r_n_"
+      aria-modal="true"
+      class="bg-surface-card border border-border-default shadow-xl w-full flex flex-col focus:outline-none relative max-h-[90vh] rounded-lg max-w-md "
+      role="dialog"
+      tabindex="-1"
+    >
+      <div
+        class="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0"
+      >
+        <h2
+          class="font-display text-xl text-accent"
+          id="_r_n_"
+        >
+          <span
+            class="flex items-center gap-2"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-gem w-5 h-5"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10.5 3 8 9l4 13 4-13-2.5-6"
+              />
+              <path
+                d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z"
+              />
+              <path
+                d="M2 9h20"
+              />
+            </svg>
+            Log 
+            Twine
+          </span>
+        </h2>
+        <button
+          aria-label="Close modal"
+          class="
+          inline-flex items-center justify-center rounded-lg
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-transparent text-text-secondary hover:bg-surface-interactive hover:text-text-primary active:bg-surface-interactive
+          h-8 w-8 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-base
+          
+        "
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-x w-5 h-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M18 6 6 18"
+            />
+            <path
+              d="m6 6 12 12"
+            />
+          </svg>
+          <span
+            style="position: absolute; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; border: 0px;"
+          >
+            Close modal
+          </span>
+        </button>
+      </div>
+      <div
+        class="p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1"
+      >
+        <form
+          class="space-y-4"
+        >
+          <div
+            class="bg-surface-base rounded-lg p-3 space-y-2"
+          >
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Floor:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                M11S
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Material:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                Twine
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Week:
+              </span>
+              <div
+                class=""
+              >
+                <div
+                  style="display: inline-flex; align-items: center; background: linear-gradient(180deg, var(--color-surface-card) 0%, var(--color-surface-raised) 100%); border-radius: 12px; border: 1px solid var(--color-border-default); box-shadow: 0 2px 8px color-mix(in srgb, black 40%, transparent), inset 0 1px 0 color-mix(in srgb, white 3%, transparent); overflow: hidden; height: 32px; opacity: 1;"
+                >
+                  <button
+                    aria-label="Decrease value"
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-accent); font-size: 14px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    −
+                  </button>
+                  <div
+                    style="min-width: 40px; height: 100%; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, black 25%, transparent); border-left: 1px solid var(--color-border-subtle); border-right: 1px solid var(--color-border-subtle); box-shadow: inset 0 2px 6px color-mix(in srgb, black 30%, transparent); font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--color-text-primary); letter-spacing: 0.02em; padding: 0px 8px;"
+                  >
+                    <input
+                      class="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:outline-none"
+                      max="3"
+                      min="1"
+                      step="1"
+                      style="width: 100%; background: transparent; border: medium; outline: none; text-align: center; font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit; letter-spacing: inherit; appearance: textfield;"
+                      type="number"
+                      value="3"
+                    />
+                  </div>
+                  <button
+                    aria-label="Increase value"
+                    disabled=""
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-text-disabled); font-size: 14px; font-weight: 300; cursor: not-allowed; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+                for="recipient"
+              >
+                Recipient
+              </label>
+            </div>
+            <button
+              aria-autocomplete="none"
+              aria-expanded="false"
+              class="
+          inline-flex items-center justify-between w-full
+          min-h-[44px] sm:min-h-0
+          bg-surface-elevated border border-border-default rounded-lg
+          pl-4 pr-3 py-2
+          text-sm
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:border-accent
+          disabled:opacity-50 disabled:cursor-not-allowed
+          hover:border-border-subtle
+          transition-colors
+          data-[placeholder]:text-text-muted
+          
+        "
+              data-state="closed"
+              dir="ltr"
+              id="recipient"
+              role="combobox"
+              type="button"
+            >
+              <span
+                class="flex items-center gap-2 truncate"
+              >
+                <span
+                  class="flex-shrink-0"
+                >
+                  <img
+                    alt="DRG"
+                    class="w-5 h-5 "
+                    loading="lazy"
+                    src="https://xivapi.com/cj/1/dragoon.png"
+                  />
+                </span>
+                <span
+                  class="truncate "
+                >
+                  Eve
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                class="ml-auto pl-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="lucide lucide-chevron-down w-4 h-4 text-text-muted flex-shrink-0"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="m6 9 6 6 6-6"
+                  />
+                </svg>
+              </span>
+            </button>
+            <select
+              aria-hidden="true"
+              style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; word-wrap: normal;"
+              tabindex="-1"
+            >
+              <option
+                selected=""
+                value="p1"
+              >
+                Eve
+              </option>
+            </select>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+              >
+                Method
+              </label>
+            </div>
+            <fieldset
+              class=""
+            >
+              <div
+                class="
+        flex gap-3
+        flex-row flex-wrap
+      "
+              >
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_p_-drop"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        checked=""
+                        class="sr-only peer"
+                        id="_r_p_-drop"
+                        name="material-method"
+                        type="radio"
+                        value="drop"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-accent bg-accent
+                    
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      >
+                        <div
+                          class="absolute inset-0 flex items-center justify-center"
+                        >
+                          <div
+                            class="w-1.5 h-1.5 rounded-full bg-accent-contrast"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-primary font-medium"
+                    >
+                      Drop
+                    </span>
+                  </div>
+                </label>
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_p_-book"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        class="sr-only peer"
+                        id="_r_p_-book"
+                        name="material-method"
+                        type="radio"
+                        value="book"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-border-default bg-surface-elevated
+                    hover:border-accent/50
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      />
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-secondary"
+                    >
+                      Book
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+          <div
+            class="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm"
+          >
+            <div
+              class="text-accent font-medium mb-1"
+            >
+              This will:
+            </div>
+            <ul
+              class="text-text-secondary space-y-1"
+            >
+              <li>
+                + Add 
+                Twine
+                 to Week 
+                3
+                 log for 
+                Eve
+              </li>
+            </ul>
+          </div>
+          <div
+            class="flex justify-end gap-3 pt-4 border-t border-border-default"
+          >
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-surface-elevated border border-border-default text-text-secondary hover:border-accent/30 hover:text-text-primary active:bg-surface-interactive
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-accent text-accent-contrast hover:bg-accent-hover active:brightness-95
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="submit"
+            >
+              Log Material
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+`;
+
+exports[`V1 freeze baseline > render branches > solvent: tome weapon AND weapon slot both eligible renders the dual Select seeded to the SLOT — init-order asymmetry (slots[0] wins over the tome-augmentation check) 1`] = `
+<body>
+  <div />
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+  >
+    <div
+      aria-labelledby="_r_a_"
+      aria-modal="true"
+      class="bg-surface-card border border-border-default shadow-xl w-full flex flex-col focus:outline-none relative max-h-[90vh] rounded-lg max-w-md "
+      role="dialog"
+      tabindex="-1"
+    >
+      <div
+        class="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0"
+      >
+        <h2
+          class="font-display text-xl text-accent"
+          id="_r_a_"
+        >
+          <span
+            class="flex items-center gap-2"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-gem w-5 h-5"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10.5 3 8 9l4 13 4-13-2.5-6"
+              />
+              <path
+                d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z"
+              />
+              <path
+                d="M2 9h20"
+              />
+            </svg>
+            Log 
+            Solvent
+          </span>
+        </h2>
+        <button
+          aria-label="Close modal"
+          class="
+          inline-flex items-center justify-center rounded-lg
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-transparent text-text-secondary hover:bg-surface-interactive hover:text-text-primary active:bg-surface-interactive
+          h-8 w-8 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-base
+          
+        "
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-x w-5 h-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M18 6 6 18"
+            />
+            <path
+              d="m6 6 12 12"
+            />
+          </svg>
+          <span
+            style="position: absolute; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; border: 0px;"
+          >
+            Close modal
+          </span>
+        </button>
+      </div>
+      <div
+        class="p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1"
+      >
+        <form
+          class="space-y-4"
+        >
+          <div
+            class="bg-surface-base rounded-lg p-3 space-y-2"
+          >
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Floor:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                M11S
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Material:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                Solvent
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Week:
+              </span>
+              <div
+                class=""
+              >
+                <div
+                  style="display: inline-flex; align-items: center; background: linear-gradient(180deg, var(--color-surface-card) 0%, var(--color-surface-raised) 100%); border-radius: 12px; border: 1px solid var(--color-border-default); box-shadow: 0 2px 8px color-mix(in srgb, black 40%, transparent), inset 0 1px 0 color-mix(in srgb, white 3%, transparent); overflow: hidden; height: 32px; opacity: 1;"
+                >
+                  <button
+                    aria-label="Decrease value"
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-accent); font-size: 14px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    −
+                  </button>
+                  <div
+                    style="min-width: 40px; height: 100%; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, black 25%, transparent); border-left: 1px solid var(--color-border-subtle); border-right: 1px solid var(--color-border-subtle); box-shadow: inset 0 2px 6px color-mix(in srgb, black 30%, transparent); font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--color-text-primary); letter-spacing: 0.02em; padding: 0px 8px;"
+                  >
+                    <input
+                      class="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:outline-none"
+                      max="3"
+                      min="1"
+                      step="1"
+                      style="width: 100%; background: transparent; border: medium; outline: none; text-align: center; font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit; letter-spacing: inherit; appearance: textfield;"
+                      type="number"
+                      value="3"
+                    />
+                  </div>
+                  <button
+                    aria-label="Increase value"
+                    disabled=""
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-text-disabled); font-size: 14px; font-weight: 300; cursor: not-allowed; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+                for="recipient"
+              >
+                Recipient
+              </label>
+            </div>
+            <button
+              aria-autocomplete="none"
+              aria-expanded="false"
+              class="
+          inline-flex items-center justify-between w-full
+          min-h-[44px] sm:min-h-0
+          bg-surface-elevated border border-border-default rounded-lg
+          pl-4 pr-3 py-2
+          text-sm
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:border-accent
+          disabled:opacity-50 disabled:cursor-not-allowed
+          hover:border-border-subtle
+          transition-colors
+          data-[placeholder]:text-text-muted
+          
+        "
+              data-state="closed"
+              dir="ltr"
+              id="recipient"
+              role="combobox"
+              type="button"
+            >
+              <span
+                class="flex items-center gap-2 truncate"
+              >
+                <span
+                  class="flex-shrink-0"
+                >
+                  <img
+                    alt="DRG"
+                    class="w-5 h-5 "
+                    loading="lazy"
+                    src="https://xivapi.com/cj/1/dragoon.png"
+                  />
+                </span>
+                <span
+                  class="truncate "
+                >
+                  Cara - Top Priority
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                class="ml-auto pl-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="lucide lucide-chevron-down w-4 h-4 text-text-muted flex-shrink-0"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="m6 9 6 6 6-6"
+                  />
+                </svg>
+              </span>
+            </button>
+            <select
+              aria-hidden="true"
+              style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; word-wrap: normal;"
+              tabindex="-1"
+            >
+              <option
+                selected=""
+                value="p1"
+              >
+                Cara - Top Priority
+              </option>
+            </select>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+              >
+                Method
+              </label>
+            </div>
+            <fieldset
+              class=""
+            >
+              <div
+                class="
+        flex gap-3
+        flex-row flex-wrap
+      "
+              >
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_c_-drop"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        checked=""
+                        class="sr-only peer"
+                        id="_r_c_-drop"
+                        name="material-method"
+                        type="radio"
+                        value="drop"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-accent bg-accent
+                    
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      >
+                        <div
+                          class="absolute inset-0 flex items-center justify-center"
+                        >
+                          <div
+                            class="w-1.5 h-1.5 rounded-full bg-accent-contrast"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-primary font-medium"
+                    >
+                      Drop
+                    </span>
+                  </div>
+                </label>
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_c_-book"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        class="sr-only peer"
+                        id="_r_c_-book"
+                        name="material-method"
+                        type="radio"
+                        value="book"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-border-default bg-surface-elevated
+                    hover:border-accent/50
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      />
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-secondary"
+                    >
+                      Book
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+          <div
+            class="space-y-2"
+          >
+            <label
+              class="flex items-start gap-2 min-h-[44px] sm:min-h-0 cursor-pointer group "
+            >
+              <input
+                aria-hidden="true"
+                checked=""
+                class="sr-only"
+                tabindex="-1"
+                type="checkbox"
+              />
+              <div
+                aria-checked="true"
+                class="
+          relative flex items-center justify-center
+          min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0
+          rounded
+          cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30
+        "
+                role="checkbox"
+                tabindex="0"
+              >
+                <div
+                  class="
+            w-4 h-4 rounded flex items-center justify-center
+            border transition-colors
+            bg-accent border-accent
+            hover:border-accent/50
+          "
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-check w-3 h-3 text-accent-contrast"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="3"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M20 6 9 17l-5-5"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div
+                class="flex flex-col"
+              >
+                <span
+                  class="text-text-secondary text-sm"
+                >
+                  Also mark gear as augmented for Cara
+                </span>
+              </div>
+            </label>
+            <div>
+              <button
+                aria-autocomplete="none"
+                aria-expanded="false"
+                class="
+          inline-flex items-center justify-between w-full
+          min-h-[44px] sm:min-h-0
+          bg-surface-elevated border border-border-default rounded-lg
+          pl-4 pr-3 py-2
+          text-sm
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:border-accent
+          disabled:opacity-50 disabled:cursor-not-allowed
+          hover:border-border-subtle
+          transition-colors
+          data-[placeholder]:text-text-muted
+          
+        "
+                data-state="closed"
+                dir="ltr"
+                role="combobox"
+                type="button"
+              >
+                <span
+                  class="flex items-center gap-2 truncate"
+                >
+                  <span
+                    class="truncate "
+                  >
+                    Weapon
+                  </span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  class="ml-auto pl-2"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-chevron-down w-4 h-4 text-text-muted flex-shrink-0"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m6 9 6 6 6-6"
+                    />
+                  </svg>
+                </span>
+              </button>
+              <select
+                aria-hidden="true"
+                style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; word-wrap: normal;"
+                tabindex="-1"
+              >
+                <option
+                  value="tome_weapon"
+                >
+                  Tome Weapon
+                </option>
+                <option
+                  selected=""
+                  value="weapon"
+                >
+                  Weapon
+                </option>
+              </select>
+            </div>
+          </div>
+          <div
+            class="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm"
+          >
+            <div
+              class="text-accent font-medium mb-1"
+            >
+              This will:
+            </div>
+            <ul
+              class="text-text-secondary space-y-1"
+            >
+              <li>
+                + Add 
+                Solvent
+                 to Week 
+                3
+                 log for 
+                Cara
+              </li>
+              <li>
+                + Mark Weapon as augmented
+              </li>
+            </ul>
+          </div>
+          <div
+            class="flex justify-end gap-3 pt-4 border-t border-border-default"
+          >
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-surface-elevated border border-border-default text-text-secondary hover:border-accent/30 hover:text-text-primary active:bg-surface-interactive
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-accent text-accent-contrast hover:bg-accent-hover active:brightness-95
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="submit"
+            >
+              Log Material
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+`;
+
+exports[`V1 freeze baseline > render branches > solvent: tome weapon eligible but no gear slots renders the bare "Tome Weapon" text, no Select 1`] = `
+<body>
+  <div />
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+  >
+    <div
+      aria-labelledby="_r_j_"
+      aria-modal="true"
+      class="bg-surface-card border border-border-default shadow-xl w-full flex flex-col focus:outline-none relative max-h-[90vh] rounded-lg max-w-md "
+      role="dialog"
+      tabindex="-1"
+    >
+      <div
+        class="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0"
+      >
+        <h2
+          class="font-display text-xl text-accent"
+          id="_r_j_"
+        >
+          <span
+            class="flex items-center gap-2"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-gem w-5 h-5"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10.5 3 8 9l4 13 4-13-2.5-6"
+              />
+              <path
+                d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z"
+              />
+              <path
+                d="M2 9h20"
+              />
+            </svg>
+            Log 
+            Solvent
+          </span>
+        </h2>
+        <button
+          aria-label="Close modal"
+          class="
+          inline-flex items-center justify-center rounded-lg
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-transparent text-text-secondary hover:bg-surface-interactive hover:text-text-primary active:bg-surface-interactive
+          h-8 w-8 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-base
+          
+        "
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-x w-5 h-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M18 6 6 18"
+            />
+            <path
+              d="m6 6 12 12"
+            />
+          </svg>
+          <span
+            style="position: absolute; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; border: 0px;"
+          >
+            Close modal
+          </span>
+        </button>
+      </div>
+      <div
+        class="p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1"
+      >
+        <form
+          class="space-y-4"
+        >
+          <div
+            class="bg-surface-base rounded-lg p-3 space-y-2"
+          >
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Floor:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                M11S
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Material:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                Solvent
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Week:
+              </span>
+              <div
+                class=""
+              >
+                <div
+                  style="display: inline-flex; align-items: center; background: linear-gradient(180deg, var(--color-surface-card) 0%, var(--color-surface-raised) 100%); border-radius: 12px; border: 1px solid var(--color-border-default); box-shadow: 0 2px 8px color-mix(in srgb, black 40%, transparent), inset 0 1px 0 color-mix(in srgb, white 3%, transparent); overflow: hidden; height: 32px; opacity: 1;"
+                >
+                  <button
+                    aria-label="Decrease value"
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-accent); font-size: 14px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    −
+                  </button>
+                  <div
+                    style="min-width: 40px; height: 100%; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, black 25%, transparent); border-left: 1px solid var(--color-border-subtle); border-right: 1px solid var(--color-border-subtle); box-shadow: inset 0 2px 6px color-mix(in srgb, black 30%, transparent); font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--color-text-primary); letter-spacing: 0.02em; padding: 0px 8px;"
+                  >
+                    <input
+                      class="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:outline-none"
+                      max="3"
+                      min="1"
+                      step="1"
+                      style="width: 100%; background: transparent; border: medium; outline: none; text-align: center; font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit; letter-spacing: inherit; appearance: textfield;"
+                      type="number"
+                      value="3"
+                    />
+                  </div>
+                  <button
+                    aria-label="Increase value"
+                    disabled=""
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-text-disabled); font-size: 14px; font-weight: 300; cursor: not-allowed; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+                for="recipient"
+              >
+                Recipient
+              </label>
+            </div>
+            <button
+              aria-autocomplete="none"
+              aria-expanded="false"
+              class="
+          inline-flex items-center justify-between w-full
+          min-h-[44px] sm:min-h-0
+          bg-surface-elevated border border-border-default rounded-lg
+          pl-4 pr-3 py-2
+          text-sm
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:border-accent
+          disabled:opacity-50 disabled:cursor-not-allowed
+          hover:border-border-subtle
+          transition-colors
+          data-[placeholder]:text-text-muted
+          
+        "
+              data-state="closed"
+              dir="ltr"
+              id="recipient"
+              role="combobox"
+              type="button"
+            >
+              <span
+                class="flex items-center gap-2 truncate"
+              >
+                <span
+                  class="flex-shrink-0"
+                >
+                  <img
+                    alt="DRG"
+                    class="w-5 h-5 "
+                    loading="lazy"
+                    src="https://xivapi.com/cj/1/dragoon.png"
+                  />
+                </span>
+                <span
+                  class="truncate "
+                >
+                  Dana - Top Priority
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                class="ml-auto pl-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="lucide lucide-chevron-down w-4 h-4 text-text-muted flex-shrink-0"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="m6 9 6 6 6-6"
+                  />
+                </svg>
+              </span>
+            </button>
+            <select
+              aria-hidden="true"
+              style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; word-wrap: normal;"
+              tabindex="-1"
+            >
+              <option
+                selected=""
+                value="p1"
+              >
+                Dana - Top Priority
+              </option>
+            </select>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+              >
+                Method
+              </label>
+            </div>
+            <fieldset
+              class=""
+            >
+              <div
+                class="
+        flex gap-3
+        flex-row flex-wrap
+      "
+              >
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_l_-drop"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        checked=""
+                        class="sr-only peer"
+                        id="_r_l_-drop"
+                        name="material-method"
+                        type="radio"
+                        value="drop"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-accent bg-accent
+                    
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      >
+                        <div
+                          class="absolute inset-0 flex items-center justify-center"
+                        >
+                          <div
+                            class="w-1.5 h-1.5 rounded-full bg-accent-contrast"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-primary font-medium"
+                    >
+                      Drop
+                    </span>
+                  </div>
+                </label>
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_l_-book"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        class="sr-only peer"
+                        id="_r_l_-book"
+                        name="material-method"
+                        type="radio"
+                        value="book"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-border-default bg-surface-elevated
+                    hover:border-accent/50
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      />
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-secondary"
+                    >
+                      Book
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+          <div
+            class="space-y-2"
+          >
+            <label
+              class="flex items-start gap-2 min-h-[44px] sm:min-h-0 cursor-pointer group "
+            >
+              <input
+                aria-hidden="true"
+                checked=""
+                class="sr-only"
+                tabindex="-1"
+                type="checkbox"
+              />
+              <div
+                aria-checked="true"
+                class="
+          relative flex items-center justify-center
+          min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0
+          rounded
+          cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30
+        "
+                role="checkbox"
+                tabindex="0"
+              >
+                <div
+                  class="
+            w-4 h-4 rounded flex items-center justify-center
+            border transition-colors
+            bg-accent border-accent
+            hover:border-accent/50
+          "
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-check w-3 h-3 text-accent-contrast"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="3"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M20 6 9 17l-5-5"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div
+                class="flex flex-col"
+              >
+                <span
+                  class="text-text-secondary text-sm"
+                >
+                  Also mark gear as augmented for Dana
+                </span>
+              </div>
+            </label>
+            <div
+              class="text-sm text-text-muted ml-6"
+            >
+              Tome Weapon
+            </div>
+          </div>
+          <div
+            class="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm"
+          >
+            <div
+              class="text-accent font-medium mb-1"
+            >
+              This will:
+            </div>
+            <ul
+              class="text-text-secondary space-y-1"
+            >
+              <li>
+                + Add 
+                Solvent
+                 to Week 
+                3
+                 log for 
+                Dana
+              </li>
+              <li>
+                + Mark tome weapon as augmented
+              </li>
+            </ul>
+          </div>
+          <div
+            class="flex justify-end gap-3 pt-4 border-t border-border-default"
+          >
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-surface-elevated border border-border-default text-text-secondary hover:border-accent/30 hover:text-text-primary active:bg-surface-interactive
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-accent text-accent-contrast hover:bg-accent-hover active:brightness-95
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="submit"
+            >
+              Log Material
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+`;
+
+exports[`V1 freeze baseline > render branches > twine: an eligible slot renders the gear checkbox + slot Select, static Floor/Material rows, week = maxWeek, no textarea, no player-select placeholder 1`] = `
+<body>
+  <div />
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+  >
+    <div
+      aria-labelledby="_r_0_"
+      aria-modal="true"
+      class="bg-surface-card border border-border-default shadow-xl w-full flex flex-col focus:outline-none relative max-h-[90vh] rounded-lg max-w-md "
+      role="dialog"
+      tabindex="-1"
+    >
+      <div
+        class="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0"
+      >
+        <h2
+          class="font-display text-xl text-accent"
+          id="_r_0_"
+        >
+          <span
+            class="flex items-center gap-2"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-gem w-5 h-5"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10.5 3 8 9l4 13 4-13-2.5-6"
+              />
+              <path
+                d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z"
+              />
+              <path
+                d="M2 9h20"
+              />
+            </svg>
+            Log 
+            Twine
+          </span>
+        </h2>
+        <button
+          aria-label="Close modal"
+          class="
+          inline-flex items-center justify-center rounded-lg
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-transparent text-text-secondary hover:bg-surface-interactive hover:text-text-primary active:bg-surface-interactive
+          h-8 w-8 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-base
+          
+        "
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-x w-5 h-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M18 6 6 18"
+            />
+            <path
+              d="m6 6 12 12"
+            />
+          </svg>
+          <span
+            style="position: absolute; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; border: 0px;"
+          >
+            Close modal
+          </span>
+        </button>
+      </div>
+      <div
+        class="p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1"
+      >
+        <form
+          class="space-y-4"
+        >
+          <div
+            class="bg-surface-base rounded-lg p-3 space-y-2"
+          >
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Floor:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                M11S
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Material:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                Twine
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Week:
+              </span>
+              <div
+                class=""
+              >
+                <div
+                  style="display: inline-flex; align-items: center; background: linear-gradient(180deg, var(--color-surface-card) 0%, var(--color-surface-raised) 100%); border-radius: 12px; border: 1px solid var(--color-border-default); box-shadow: 0 2px 8px color-mix(in srgb, black 40%, transparent), inset 0 1px 0 color-mix(in srgb, white 3%, transparent); overflow: hidden; height: 32px; opacity: 1;"
+                >
+                  <button
+                    aria-label="Decrease value"
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-accent); font-size: 14px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    −
+                  </button>
+                  <div
+                    style="min-width: 40px; height: 100%; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, black 25%, transparent); border-left: 1px solid var(--color-border-subtle); border-right: 1px solid var(--color-border-subtle); box-shadow: inset 0 2px 6px color-mix(in srgb, black 30%, transparent); font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--color-text-primary); letter-spacing: 0.02em; padding: 0px 8px;"
+                  >
+                    <input
+                      class="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:outline-none"
+                      max="3"
+                      min="1"
+                      step="1"
+                      style="width: 100%; background: transparent; border: medium; outline: none; text-align: center; font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit; letter-spacing: inherit; appearance: textfield;"
+                      type="number"
+                      value="3"
+                    />
+                  </div>
+                  <button
+                    aria-label="Increase value"
+                    disabled=""
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-text-disabled); font-size: 14px; font-weight: 300; cursor: not-allowed; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+                for="recipient"
+              >
+                Recipient
+              </label>
+            </div>
+            <button
+              aria-autocomplete="none"
+              aria-expanded="false"
+              class="
+          inline-flex items-center justify-between w-full
+          min-h-[44px] sm:min-h-0
+          bg-surface-elevated border border-border-default rounded-lg
+          pl-4 pr-3 py-2
+          text-sm
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:border-accent
+          disabled:opacity-50 disabled:cursor-not-allowed
+          hover:border-border-subtle
+          transition-colors
+          data-[placeholder]:text-text-muted
+          
+        "
+              data-state="closed"
+              dir="ltr"
+              id="recipient"
+              role="combobox"
+              type="button"
+            >
+              <span
+                class="flex items-center gap-2 truncate"
+              >
+                <span
+                  class="flex-shrink-0"
+                >
+                  <img
+                    alt="DRG"
+                    class="w-5 h-5 "
+                    loading="lazy"
+                    src="https://xivapi.com/cj/1/dragoon.png"
+                  />
+                </span>
+                <span
+                  class="truncate "
+                >
+                  Alice - Top Priority
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                class="ml-auto pl-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="lucide lucide-chevron-down w-4 h-4 text-text-muted flex-shrink-0"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="m6 9 6 6 6-6"
+                  />
+                </svg>
+              </span>
+            </button>
+            <select
+              aria-hidden="true"
+              style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; word-wrap: normal;"
+              tabindex="-1"
+            >
+              <option
+                selected=""
+                value="p1"
+              >
+                Alice - Top Priority
+              </option>
+            </select>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+              >
+                Method
+              </label>
+            </div>
+            <fieldset
+              class=""
+            >
+              <div
+                class="
+        flex gap-3
+        flex-row flex-wrap
+      "
+              >
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_2_-drop"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        checked=""
+                        class="sr-only peer"
+                        id="_r_2_-drop"
+                        name="material-method"
+                        type="radio"
+                        value="drop"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-accent bg-accent
+                    
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      >
+                        <div
+                          class="absolute inset-0 flex items-center justify-center"
+                        >
+                          <div
+                            class="w-1.5 h-1.5 rounded-full bg-accent-contrast"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-primary font-medium"
+                    >
+                      Drop
+                    </span>
+                  </div>
+                </label>
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_2_-book"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        class="sr-only peer"
+                        id="_r_2_-book"
+                        name="material-method"
+                        type="radio"
+                        value="book"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-border-default bg-surface-elevated
+                    hover:border-accent/50
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      />
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-secondary"
+                    >
+                      Book
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+          <div
+            class="space-y-2"
+          >
+            <label
+              class="flex items-start gap-2 min-h-[44px] sm:min-h-0 cursor-pointer group "
+            >
+              <input
+                aria-hidden="true"
+                checked=""
+                class="sr-only"
+                tabindex="-1"
+                type="checkbox"
+              />
+              <div
+                aria-checked="true"
+                class="
+          relative flex items-center justify-center
+          min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0
+          rounded
+          cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30
+        "
+                role="checkbox"
+                tabindex="0"
+              >
+                <div
+                  class="
+            w-4 h-4 rounded flex items-center justify-center
+            border transition-colors
+            bg-accent border-accent
+            hover:border-accent/50
+          "
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-check w-3 h-3 text-accent-contrast"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="3"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M20 6 9 17l-5-5"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div
+                class="flex flex-col"
+              >
+                <span
+                  class="text-text-secondary text-sm"
+                >
+                  Also mark gear as augmented for Alice
+                </span>
+              </div>
+            </label>
+            <div>
+              <button
+                aria-autocomplete="none"
+                aria-expanded="false"
+                class="
+          inline-flex items-center justify-between w-full
+          min-h-[44px] sm:min-h-0
+          bg-surface-elevated border border-border-default rounded-lg
+          pl-4 pr-3 py-2
+          text-sm
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:border-accent
+          disabled:opacity-50 disabled:cursor-not-allowed
+          hover:border-border-subtle
+          transition-colors
+          data-[placeholder]:text-text-muted
+          
+        "
+                data-state="closed"
+                dir="ltr"
+                role="combobox"
+                type="button"
+              >
+                <span
+                  class="flex items-center gap-2 truncate"
+                >
+                  <span
+                    class="truncate "
+                  >
+                    Head
+                  </span>
+                </span>
+                <span
+                  aria-hidden="true"
+                  class="ml-auto pl-2"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-chevron-down w-4 h-4 text-text-muted flex-shrink-0"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m6 9 6 6 6-6"
+                    />
+                  </svg>
+                </span>
+              </button>
+              <select
+                aria-hidden="true"
+                style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; word-wrap: normal;"
+                tabindex="-1"
+              >
+                <option
+                  selected=""
+                  value="head"
+                >
+                  Head
+                </option>
+              </select>
+            </div>
+          </div>
+          <div
+            class="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm"
+          >
+            <div
+              class="text-accent font-medium mb-1"
+            >
+              This will:
+            </div>
+            <ul
+              class="text-text-secondary space-y-1"
+            >
+              <li>
+                + Add 
+                Twine
+                 to Week 
+                3
+                 log for 
+                Alice
+              </li>
+              <li>
+                + Mark Head as augmented
+              </li>
+            </ul>
+          </div>
+          <div
+            class="flex justify-end gap-3 pt-4 border-t border-border-default"
+          >
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-surface-elevated border border-border-default text-text-secondary hover:border-accent/30 hover:text-text-primary active:bg-surface-interactive
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-accent text-accent-contrast hover:bg-accent-hover active:brightness-95
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="submit"
+            >
+              Log Material
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+`;
+
+exports[`V1 freeze baseline > render branches > universal tomestone: a player pursuing the tome weapon without it renders the canMarkTomeWeaponHave checkbox, no slot Select 1`] = `
+<body>
+  <div />
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+  >
+    <div
+      aria-labelledby="_r_6_"
+      aria-modal="true"
+      class="bg-surface-card border border-border-default shadow-xl w-full flex flex-col focus:outline-none relative max-h-[90vh] rounded-lg max-w-md "
+      role="dialog"
+      tabindex="-1"
+    >
+      <div
+        class="flex items-center justify-between p-4 border-b border-border-default flex-shrink-0"
+      >
+        <h2
+          class="font-display text-xl text-accent"
+          id="_r_6_"
+        >
+          <span
+            class="flex items-center gap-2"
+          >
+            <svg
+              aria-hidden="true"
+              class="lucide lucide-gem w-5 h-5"
+              fill="none"
+              height="24"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M10.5 3 8 9l4 13 4-13-2.5-6"
+              />
+              <path
+                d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z"
+              />
+              <path
+                d="M2 9h20"
+              />
+            </svg>
+            Log 
+            Universal Tomestone
+          </span>
+        </h2>
+        <button
+          aria-label="Close modal"
+          class="
+          inline-flex items-center justify-center rounded-lg
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-transparent text-text-secondary hover:bg-surface-interactive hover:text-text-primary active:bg-surface-interactive
+          h-8 w-8 sm:min-h-0 sm:min-w-0 min-h-[44px] min-w-[44px] text-base
+          
+        "
+        >
+          <svg
+            aria-hidden="true"
+            class="lucide lucide-x w-5 h-5"
+            fill="none"
+            height="24"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M18 6 6 18"
+            />
+            <path
+              d="m6 6 12 12"
+            />
+          </svg>
+          <span
+            style="position: absolute; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; border: 0px;"
+          >
+            Close modal
+          </span>
+        </button>
+      </div>
+      <div
+        class="p-6 overflow-y-auto overflow-x-hidden overscroll-contain flex-1"
+      >
+        <form
+          class="space-y-4"
+        >
+          <div
+            class="bg-surface-base rounded-lg p-3 space-y-2"
+          >
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Floor:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                M11S
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Material:
+              </span>
+              <span
+                class="text-text-primary font-medium"
+              >
+                Universal Tomestone
+              </span>
+            </div>
+            <div
+              class="flex justify-between items-center text-sm"
+            >
+              <span
+                class="text-text-secondary"
+              >
+                Week:
+              </span>
+              <div
+                class=""
+              >
+                <div
+                  style="display: inline-flex; align-items: center; background: linear-gradient(180deg, var(--color-surface-card) 0%, var(--color-surface-raised) 100%); border-radius: 12px; border: 1px solid var(--color-border-default); box-shadow: 0 2px 8px color-mix(in srgb, black 40%, transparent), inset 0 1px 0 color-mix(in srgb, white 3%, transparent); overflow: hidden; height: 32px; opacity: 1;"
+                >
+                  <button
+                    aria-label="Decrease value"
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-accent); font-size: 14px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    −
+                  </button>
+                  <div
+                    style="min-width: 40px; height: 100%; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, black 25%, transparent); border-left: 1px solid var(--color-border-subtle); border-right: 1px solid var(--color-border-subtle); box-shadow: inset 0 2px 6px color-mix(in srgb, black 30%, transparent); font-family: var(--font-mono); font-size: 13px; font-weight: 600; color: var(--color-text-primary); letter-spacing: 0.02em; padding: 0px 8px;"
+                  >
+                    <input
+                      class="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:outline-none"
+                      max="3"
+                      min="1"
+                      step="1"
+                      style="width: 100%; background: transparent; border: medium; outline: none; text-align: center; font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit; letter-spacing: inherit; appearance: textfield;"
+                      type="number"
+                      value="3"
+                    />
+                  </div>
+                  <button
+                    aria-label="Increase value"
+                    disabled=""
+                    style="width: 28px; height: 100%; border: medium; background: transparent; color: var(--color-text-disabled); font-size: 14px; font-weight: 300; cursor: not-allowed; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; font-family: var(--font-mono);"
+                    type="button"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+                for="recipient"
+              >
+                Recipient
+              </label>
+            </div>
+            <button
+              aria-autocomplete="none"
+              aria-expanded="false"
+              class="
+          inline-flex items-center justify-between w-full
+          min-h-[44px] sm:min-h-0
+          bg-surface-elevated border border-border-default rounded-lg
+          pl-4 pr-3 py-2
+          text-sm
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:border-accent
+          disabled:opacity-50 disabled:cursor-not-allowed
+          hover:border-border-subtle
+          transition-colors
+          data-[placeholder]:text-text-muted
+          
+        "
+              data-state="closed"
+              dir="ltr"
+              id="recipient"
+              role="combobox"
+              type="button"
+            >
+              <span
+                class="flex items-center gap-2 truncate"
+              >
+                <span
+                  class="flex-shrink-0"
+                >
+                  <img
+                    alt="DRG"
+                    class="w-5 h-5 "
+                    loading="lazy"
+                    src="https://xivapi.com/cj/1/dragoon.png"
+                  />
+                </span>
+                <span
+                  class="truncate "
+                >
+                  Bob - Top Priority
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                class="ml-auto pl-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="lucide lucide-chevron-down w-4 h-4 text-text-muted flex-shrink-0"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="m6 9 6 6 6-6"
+                  />
+                </svg>
+              </span>
+            </button>
+            <select
+              aria-hidden="true"
+              style="position: absolute; border: 0px; width: 1px; height: 1px; padding: 0px; margin: -1px; overflow: hidden; clip: rect(0px, 0px, 0px, 0px); white-space: nowrap; word-wrap: normal;"
+              tabindex="-1"
+            >
+              <option
+                selected=""
+                value="p1"
+              >
+                Bob - Top Priority
+              </option>
+            </select>
+          </div>
+          <div>
+            <div
+              class="mb-1.5 "
+            >
+              <label
+                class="
+          block font-medium
+          text-sm
+          text-text-secondary
+        "
+              >
+                Method
+              </label>
+            </div>
+            <fieldset
+              class=""
+            >
+              <div
+                class="
+        flex gap-3
+        flex-row flex-wrap
+      "
+              >
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_8_-drop"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        checked=""
+                        class="sr-only peer"
+                        id="_r_8_-drop"
+                        name="material-method"
+                        type="radio"
+                        value="drop"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-accent bg-accent
+                    
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      >
+                        <div
+                          class="absolute inset-0 flex items-center justify-center"
+                        >
+                          <div
+                            class="w-1.5 h-1.5 rounded-full bg-accent-contrast"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-primary font-medium"
+                    >
+                      Drop
+                    </span>
+                  </div>
+                </label>
+                <label
+                  class="
+                flex items-start gap-3 cursor-pointer
+                
+              "
+                  for="_r_8_-book"
+                >
+                  <div
+                    class="flex items-center h-5"
+                  >
+                    <div
+                      class="relative flex items-center justify-center"
+                    >
+                      <input
+                        class="sr-only peer"
+                        id="_r_8_-book"
+                        name="material-method"
+                        type="radio"
+                        value="book"
+                      />
+                      <div
+                        class="
+                    w-4 h-4 rounded-full border-2 transition-all
+                    border-border-default bg-surface-elevated
+                    hover:border-accent/50
+                    peer-focus-visible:ring-2 peer-focus-visible:ring-accent/30 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface-base
+                  "
+                      />
+                    </div>
+                  </div>
+                  <div
+                    class="flex flex-col"
+                  >
+                    <span
+                      class="text-sm text-text-secondary"
+                    >
+                      Book
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+          <div
+            class="space-y-2"
+          >
+            <label
+              class="flex items-start gap-2 min-h-[44px] sm:min-h-0 cursor-pointer group "
+            >
+              <input
+                aria-hidden="true"
+                checked=""
+                class="sr-only"
+                tabindex="-1"
+                type="checkbox"
+              />
+              <div
+                aria-checked="true"
+                class="
+          relative flex items-center justify-center
+          min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0
+          rounded
+          cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30
+        "
+                role="checkbox"
+                tabindex="0"
+              >
+                <div
+                  class="
+            w-4 h-4 rounded flex items-center justify-center
+            border transition-colors
+            bg-accent border-accent
+            hover:border-accent/50
+          "
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-check w-3 h-3 text-accent-contrast"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="3"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M20 6 9 17l-5-5"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div
+                class="flex flex-col"
+              >
+                <span
+                  class="text-text-secondary text-sm"
+                >
+                  Also mark tome weapon as obtained for Bob
+                </span>
+              </div>
+            </label>
+          </div>
+          <div
+            class="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm"
+          >
+            <div
+              class="text-accent font-medium mb-1"
+            >
+              This will:
+            </div>
+            <ul
+              class="text-text-secondary space-y-1"
+            >
+              <li>
+                + Add 
+                Universal Tomestone
+                 to Week 
+                3
+                 log for 
+                Bob
+              </li>
+              <li>
+                + Mark tome weapon as obtained
+              </li>
+            </ul>
+          </div>
+          <div
+            class="flex justify-end gap-3 pt-4 border-t border-border-default"
+          >
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-surface-elevated border border-border-default text-text-secondary hover:border-accent/30 hover:text-text-primary active:bg-surface-interactive
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="button"
+            >
+              Cancel
+            </button>
+            <button
+              class="
+          inline-flex items-center justify-center rounded-lg font-semibold whitespace-nowrap
+          transition-all duration-fast
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface-base
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+          bg-accent text-accent-contrast hover:bg-accent-hover active:brightness-95
+          px-4 py-2 text-sm gap-2 min-h-[44px] sm:min-h-0
+          
+        "
+              type="submit"
+            >
+              Log Material
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+`;
