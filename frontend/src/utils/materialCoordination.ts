@@ -46,11 +46,11 @@ export interface DeleteMaterialOptions {
 export interface UpdateMaterialOptions {
   /** Update player's gear to reflect the (possibly new) material/slot */
   updateGear?: boolean;
-  /** Whether the edit form actually RENDERED a gear control (default true). `false` +
-   *  unchanged recipient + unchanged material means the user had no way to express gear
-   *  intent (recipient no longer in the roster — R-21's injected Select entry), so the
-   *  entry's recorded `slotAugmented` is preserved on the PUT instead of being cleared by
-   *  the `''` sentinel, and reconciliation is skipped. A material change never preserves —
+  /** Whether the edit form actually RENDERED a gear control (default true). When this is
+   *  `false` and both the recipient and the material are unchanged, the user had no way to
+   *  express gear intent (recipient no longer in the roster — R-21's injected Select entry),
+   *  so the entry's recorded `slotAugmented` is preserved on the PUT instead of being
+   *  cleared by the `''` sentinel, and reconciliation is skipped. A material change never preserves —
    *  it owes the old effect's revert, and the old slot is invalid in the new material's
    *  domain (round 11). Without this, a notes-only edit of an out-of-pool
    *  recipient's entry wipes the recorded slot, and a later `deleteMaterialAndRevertGear`
