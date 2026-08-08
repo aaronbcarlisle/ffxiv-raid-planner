@@ -547,26 +547,30 @@ describe('free-form mode (R-26)', () => {
     expect(within(materialGroup).queryByRole('button', { name: 'Glaze' })).not.toBeInTheDocument();
   });
 
-  it('auto-recipient: top-priority needer per material, and a manual pick survives a same-floor re-click (both floors)', () => {
+  it('auto-recipient: top-priority needer per material (incl. the mount-seeded default), re-ranks on a floor cascade, and a manual pick survives a same-floor re-click (both floors)', () => {
     const { gina, uzo } = freeformPlayers();
     renderFreeform({}, [gina, uzo]);
 
-    // A one-time Radix Select effect-ordering race — the same class of bug the pinned
-    // baseline's "V1 freeze baseline" describe block pins (a Select's controlled `value`
-    // changing in the same commit the underlying native option registry is still catching up
-    // resets it to placeholder) — clobbers the auto-recipient effect's very first post-mount
-    // pick (`''` -> a real id, fired from an effect rather than a user click). It self-heals
-    // on the next material change below, verified via a real interaction rather than the raw
-    // mount state. Pinned here as actual current behavior, not fixed (per this task's brief).
-    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Select player…');
+    // Fix round 1, item 4: `recipientPlayerId` is now seeded synchronously at mount (a lazy
+    // `useState` initializer computing the same ranking the auto-recipient effect below uses),
+    // so the very first render already carries the default material's (Glaze) top-priority
+    // needer — Gina — with no post-mount `'' -> id` transition left for the pinned Radix
+    // Select race (see QuickLogMaterialModal.tsx's auto-recipient effect comment) to clobber.
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
 
-    // Material pill: Universal Tomestone -> only Uzo needs it. Past the mount race, the
-    // auto-recipient effect reliably ranks and picks the top-priority needer.
+    // Material pill: Universal Tomestone -> only Uzo needs it.
     fireEvent.click(screen.getByRole('button', { name: 'Universal Tomestone' }));
     expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
 
     // Back to Glaze: re-ranks to Gina (the default material's top-priority needer).
     fireEvent.click(screen.getByRole('button', { name: 'Glaze' }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
+
+    // Floor cascade (M11S carries neither Glaze nor Universal Tomestone, so this is a real
+    // material change to Twine): the recipient re-ranks BEFORE any manual pick below — this
+    // assertion fails if `pickFloor`'s cascade ever drops its `applyMaterialChange` call.
+    // Nobody in this fixture needs Twine, so the ranking falls back to alphabetical — Gina.
+    fireEvent.click(screen.getByRole('button', { name: 'M11S' }));
     expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
 
     // Manually pick a DIFFERENT player (Uzo), then re-click the SAME (already-active) floor
@@ -575,16 +579,47 @@ describe('free-form mode (R-26)', () => {
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
     fireEvent.click(screen.getByRole('option', { name: new RegExp(uzo.name) }));
     expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
-    fireEvent.click(screen.getByRole('button', { name: 'M10S' })); // re-click floor 2 (active)
-    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
-
-    // Same assertion on floor 3, so both floors are covered ("both directions").
-    fireEvent.click(screen.getByRole('button', { name: 'M11S' })); // switch to floor 3 (twine) — a real material change
-    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
-    fireEvent.click(screen.getByRole('option', { name: new RegExp(uzo.name) })); // manual pick, guaranteed different from the Gina auto-pick (nobody needs twine)
-    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
     fireEvent.click(screen.getByRole('button', { name: 'M11S' })); // re-click floor 3 (active)
     expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+
+    // Same assertion on floor 2, so both floors are covered ("both directions").
+    fireEvent.click(screen.getByRole('button', { name: 'M10S' })); // switch to floor 2 (glaze) — a real material change; re-ranks to Gina
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(uzo.name) })); // manual pick, different from the Gina auto-pick
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+    fireEvent.click(screen.getByRole('button', { name: 'M10S' })); // re-click floor 2 (active)
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+  });
+
+  it('auto-recipient re-rank re-derives gear selection for the NEWLY picked recipient, not the pre-rank one (fix round 1, item 1)', async () => {
+    // Bug repro: pick Universal Tomestone (auto-picks Uzo, who has no glaze-eligible slot —
+    // irrelevant to UT anyway), then pick Glaze. `applyMaterialChange` derives gear for
+    // whoever was CURRENT (Uzo) before the auto-recipient effect re-ranks to Gina (the actual
+    // Glaze needer) — without item 1's fix, Gina's gear checkbox/slot Select would show empty
+    // (derived from Uzo, who has zero eligible Glaze slots) even though the UI's own
+    // `hasEligibleOptions`/Checkbox (driven by a separate, always-correct `eligibleOptions`
+    // memo) claims a slot IS being augmented, and submit would silently send
+    // `slotToAugment: undefined`.
+    const { gina, uzo } = freeformPlayers();
+    renderFreeform({}, [gina, uzo]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Universal Tomestone' }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Uzo');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Glaze' }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Gina');
+
+    expect(checkboxByLabelText('Also mark gear as augmented for Gina')).toBeInTheDocument();
+    const slotSelect = screen.getAllByRole('combobox')[1]; // Recipient + the gear-slot Select
+    expect(slotSelect).toHaveTextContent('Ears'); // GEAR_SLOT_NAMES['earring']
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , , options] = logMaterialAndUpdateGearMock.mock.calls[0] as [
+      string, string, MaterialLogEntryCreate, LogMaterialOptions,
+    ];
+    expect(options).toEqual(expect.objectContaining({ updateGear: true, slotToAugment: 'earring' }));
   });
 
   it('week shows initialWeek', () => {
@@ -645,5 +680,26 @@ describe('free-form mode (R-26)', () => {
     await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
     const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
     expect(data).toEqual(expect.objectContaining({ floor: 'M11S', materialType: 'twine', weekNumber: 3 }));
+  });
+});
+
+// Fix round 1, item 2: pinned's own `initialWeek` (D5's Log-cell door) — NOT part of the
+// frozen "V1 freeze baseline" block (V1 never passes this prop, so it's untested there), but
+// still a pinned-mode behavior, so it gets its own describe rather than living under
+// 'free-form mode (R-26)'.
+describe('pinned initialWeek (D5, R-20 coherence)', () => {
+  it('pinned + initialWeek renders that week and submits it, not maxWeek', async () => {
+    const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+    renderModal({
+      material: 'twine', suggestedPlayer: p1, allPlayers: [p1],
+      initialWeek: 2, maxWeek: 5,
+    });
+
+    expect(screen.getByRole('spinbutton')).toHaveValue(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data).toEqual(expect.objectContaining({ weekNumber: 2 }));
   });
 });

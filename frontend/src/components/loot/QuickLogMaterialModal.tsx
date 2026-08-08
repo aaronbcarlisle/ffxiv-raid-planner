@@ -26,7 +26,7 @@ import {
   needsTomeWeaponAugmentation,
   logMaterialAndUpdateGear,
 } from '../../utils/materialCoordination';
-import type { SnapshotPlayer, MaterialType, StaticSettings, GearSlot, LootMethod } from '../../types';
+import type { SnapshotPlayer, MaterialType, StaticSettings, GearSlot, LootMethod, MaterialLogEntry } from '../../types';
 import { GEAR_SLOT_NAMES } from '../../types';
 
 interface QuickLogMaterialModalBaseProps {
@@ -97,6 +97,37 @@ const MATERIAL_TONE = {
 const DEFAULT_FREEFORM_FLOOR: FloorNumber = MATERIAL_FLOORS[0] ?? 2;
 const DEFAULT_FREEFORM_MATERIAL: MaterialType = materialsForFloorNumber(DEFAULT_FREEFORM_FLOOR)[0] ?? 'twine';
 
+type RankedRecipient = { player: SnapshotPlayer; priority: number; needsMaterial: boolean };
+
+/** Ranks eligible players by priority for `material` (needer-first by rank, then
+ *  alphabetical). Shared by the mount-time lazy seed for `recipientPlayerId` (fix round 1,
+ *  item 4 — computing the initial pick synchronously so the very first render already
+ *  carries a real recipient, leaving the auto-recipient effect below nothing to *transition*
+ *  into on mount, which is what fed the pinned Radix Select race) and the `sortedRecipients`
+ *  memo it mirrors. */
+function rankRecipients(
+  eligiblePlayers: SnapshotPlayer[],
+  material: MaterialType,
+  settings: StaticSettings,
+  materialLog: MaterialLogEntry[] | undefined,
+): RankedRecipient[] {
+  const priorityEntries: PriorityEntry[] = isSlotAugmentationMaterial(material)
+    ? getPriorityForUpgradeMaterial(eligiblePlayers, material, settings, materialLog)
+    : getPriorityForUniversalTomestone(eligiblePlayers, settings, materialLog);
+  const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.score }]));
+  return eligiblePlayers
+    .map((player) => {
+      const priority = priorityMap.get(player.id);
+      return { player, priority: priority?.rank ?? 999, needsMaterial: !!priority };
+    })
+    .sort((a, b) => {
+      if (a.needsMaterial && !b.needsMaterial) return -1;
+      if (!a.needsMaterial && b.needsMaterial) return 1;
+      if (a.needsMaterial && b.needsMaterial) return a.priority - b.priority;
+      return a.player.name.localeCompare(b.player.name);
+    });
+}
+
 export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const {
     isOpen,
@@ -110,7 +141,8 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   } = props;
   // Pinned-only per the union (`suggestedPlayer` is `never` on the free-form branch) — every
   // dereference below only happens where `mode === 'pinned'` guarantees it's set. Free-form's
-  // initial recipient instead comes from the auto-recipient effect (D8 3B step 3).
+  // initial recipient instead comes from `recipientPlayerId`'s own lazy seed below, with the
+  // auto-recipient effect (further down) handling subsequent re-ranks.
   const suggestedPlayer = props.suggestedPlayer;
 
   const mode: ModalMode = props.floor != null ? 'pinned' : 'freeform';
@@ -128,7 +160,22 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const floorName = mode === 'pinned'
     ? (props.floor as string)
     : (freeformFloors[pickedFloorNumber - 1] ?? `Floor ${pickedFloorNumber}`);
-  const [recipientPlayerId, setRecipientPlayerId] = useState(suggestedPlayer?.id ?? '');
+  // Moved up (was declared after the gear-init lazy initializers) so the recipient seed below
+  // can use it synchronously at mount.
+  const { materialLog } = useLootTrackingStore();
+  const [recipientPlayerId, setRecipientPlayerId] = useState(() => {
+    if (mode === 'pinned') return suggestedPlayer?.id ?? '';
+    // Fix round 1, item 4: seed free-form's recipient synchronously with the default
+    // material's top-priority needer, computed with the SAME ranking the auto-recipient
+    // effect below uses (`rankRecipients`) — subs widening always starts unchecked
+    // (`includeSubs`'s own default), so its filter is inlined rather than read from state
+    // that hasn't been declared yet. This makes the very first render already carry a real
+    // recipient id, so there's no post-mount `'' -> id` transition left for the pinned Radix
+    // Select race (see the auto-recipient effect's comment) to clobber.
+    const initialEligible = allPlayers.filter((p) => p.configured && !p.isSubstitute);
+    const ranked = rankRecipients(initialEligible, DEFAULT_FREEFORM_MATERIAL, settings, materialLog);
+    return ranked[0]?.player.id ?? '';
+  });
   const [selectedWeek, setSelectedWeek] = useState(props.initialWeek ?? maxWeek);
   const [method, setMethod] = useState<LootMethod>('drop');
   const [isSaving, setIsSaving] = useState(false);
@@ -148,7 +195,6 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     const player = allPlayers.find((p) => p.id === recipientPlayerId) || suggestedPlayer;
     return initialGearSelection(player, material).augmentTome;
   });
-  const { materialLog } = useLootTrackingStore();
 
   // Compute eligible options for gear update based on selected player and material
   const eligibleOptions = useMemo(() => {
@@ -189,11 +235,14 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
 
   // Reset state when modal opens (pinned) — gated so free-form (below) has its own block.
   // Non-null assertions: this body only runs where `mode === 'pinned'` guarantees
-  // `suggestedPlayer` is set; body + original 5 deps otherwise untouched from pre-D8.
+  // `suggestedPlayer` is set. Fix round 1, item 2: `setSelectedWeek` now honors
+  // `props.initialWeek` (D5's Log-cell door) instead of clobbering it back to `maxWeek` on
+  // every open — value-identical for V1 (never passes `initialWeek`, so `?? maxWeek` still
+  // resolves to `maxWeek`); `props.initialWeek` added to the dep array to match.
   useEffect(() => {
     if (mode !== 'pinned' || !isOpen) return;
     setRecipientPlayerId(suggestedPlayer!.id);
-    setSelectedWeek(maxWeek);
+    setSelectedWeek(props.initialWeek ?? maxWeek);
     setMethod('drop');
     setUpdateGear(true);
 
@@ -204,7 +253,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     const { slot, augmentTome } = initialGearSelection(player, material);
     setSelectedSlot(slot);
     setAugmentTomeWeapon(augmentTome);
-  }, [mode, isOpen, suggestedPlayer, maxWeek, material, allPlayers]);
+  }, [mode, isOpen, suggestedPlayer, maxWeek, material, allPlayers, props.initialWeek]);
 
   // Reset state when modal opens (free-form) — its own floor/material/week/recipient-ranking
   // defaults; pinned's block above is untouched.
@@ -309,42 +358,33 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   );
   const selectedPlayer = allPlayers.find((p) => p.id === recipientPlayerId);
 
-  // Sort players by priority and add labels
-  const sortedRecipients = useMemo(() => {
-    // Get priority entries for this material (pass materialLog to account for received materials)
-    // Use different priority calculation for Universal Tomestone vs slot-based materials
-    const priorityEntries: PriorityEntry[] = isSlotAugmentationMaterial(material)
-      ? getPriorityForUpgradeMaterial(eligiblePlayers, material, settings, materialLog)
-      : getPriorityForUniversalTomestone(eligiblePlayers, settings, materialLog);
-
-    // Create a map of player ID to priority rank
-    const priorityMap = new Map(priorityEntries.map((e, i) => [e.player.id, { rank: i + 1, score: e.score }]));
-
-    // Sort all players: those with priority first (by rank), then others alphabetically
-    return eligiblePlayers
-      .map(player => {
-        const priority = priorityMap.get(player.id);
-        return {
-          player,
-          priority: priority?.rank ?? 999,
-          needsMaterial: !!priority,
-        };
-      })
-      .sort((a, b) => {
-        if (a.needsMaterial && !b.needsMaterial) return -1;
-        if (!a.needsMaterial && b.needsMaterial) return 1;
-        if (a.needsMaterial && b.needsMaterial) return a.priority - b.priority;
-        return a.player.name.localeCompare(b.player.name);
-      });
-  }, [eligiblePlayers, material, settings, materialLog]);
+  // Sort players by priority and add labels (pass materialLog to account for received
+  // materials; different priority calc for Universal Tomestone vs slot-based materials —
+  // both handled inside the shared `rankRecipients` helper, module scope).
+  const sortedRecipients = useMemo(
+    () => rankRecipients(eligiblePlayers, material, settings, materialLog),
+    [eligiblePlayers, material, settings, materialLog]
+  );
 
   // Auto-recipient (free-form only): picks the top-priority needer, but never clobbers a
   // user's manual pick — re-ranks whenever `sortedRecipients` changes (e.g. a material
   // change) as long as the user hasn't picked one themselves this time the modal is open.
+  // Fix round 1, item 1: a re-rank must re-derive gear selection for the NEWLY picked
+  // recipient, not leave whatever `applyMaterialChange` derived for the recipient who was
+  // current before this effect ran (that recipient may not even be the one who ends up
+  // picked — e.g. a rapid material-to-material pick where the old and new top-priority
+  // needers differ). Without this, the gear checkbox/preview can show a promise the submit
+  // payload doesn't keep (`slotToAugment: undefined` silently, or worse, a stale slot from a
+  // DIFFERENT player if only the id changed and eligibility wasn't re-checked downstream).
   useEffect(() => {
     if (mode !== 'freeform' || !isOpen || userPickedRecipient.current) return;
-    setRecipientPlayerId(sortedRecipients[0]?.player.id ?? '');
-  }, [mode, isOpen, sortedRecipients]);
+    const nextId = sortedRecipients[0]?.player.id ?? '';
+    setRecipientPlayerId(nextId);
+    const player = allPlayers.find((p) => p.id === nextId);
+    const { slot, augmentTome } = initialGearSelection(player, material);
+    setSelectedSlot(slot);
+    setAugmentTomeWeapon(augmentTome);
+  }, [mode, isOpen, sortedRecipients, allPlayers, material]);
 
   // Get priority label for a player
   const getPriorityLabel = (priority: number, needsMaterial: boolean): string => {
@@ -423,7 +463,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
             <div className="flex items-center justify-between text-sm">
               <Label htmlFor="material-week" className="mb-0">Week</Label>
               {/* `v ?? selectedWeek`: the row is shared with edit mode (no initialWeek there). */}
-              <NumberInput value={selectedWeek} onChange={(v) => setSelectedWeek(v ?? selectedWeek)}
+              <NumberInput id="material-week" value={selectedWeek} onChange={(v) => setSelectedWeek(v ?? selectedWeek)}
                            min={1} max={maxWeek} size="sm" />
             </div>
           </>
