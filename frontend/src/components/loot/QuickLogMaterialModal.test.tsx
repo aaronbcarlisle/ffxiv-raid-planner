@@ -947,7 +947,7 @@ describe('edit mode (R-21)', () => {
     expect(screen.getByRole('option', { name: 'Body' })).toBeInTheDocument();
   });
 
-  it('injects the entry\'s recipient into the Select by name when they are missing from allPlayers', () => {
+  it('injects the entry\'s recipient into the Select by name when they are missing from allPlayers', async () => {
     const { theo } = editFixturePlayers();
     const entry = editEntryFixture({ recipientPlayerId: 'ghost', recipientPlayerName: 'Ghost Player' });
     renderEdit({ editEntry: entry }, [theo]); // 'sara'/'ghost' absent from allPlayers
@@ -956,6 +956,52 @@ describe('edit mode (R-21)', () => {
     // PR #236 review (Copilot suppressed comment): the preview must fall back to the entry's
     // recorded name for an out-of-pool recipient — never an empty gap.
     expect(screen.getByText(/~ Update Twine entry for Ghost Player \(Week 2\)/)).toBeInTheDocument();
+    // Round 8 (Copilot): with the recipient gone from the roster, the gear section stays
+    // hidden — the old recorded-slot clause forced `hasEligibleOptions` true here and promised
+    // a reconciliation `updateMaterialAndReconcileGear` would silently no-op (it can't find
+    // the player either).
+    expect(screen.queryByLabelText(/Also mark gear/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('combobox')).toHaveLength(1); // Recipient only — no slot Select
+    // The payload-level pin: the old clause made `shouldUpdateGear` true, so submit sent
+    // `updateGear: true, slotToAugment: 'head'` (the lazy seed keeps the entry's slot) for a
+    // player the coordinator can't resolve. It must send a truthful `updateGear: false`.
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await waitFor(() => expect(updateMaterialAndReconcileGearMock).toHaveBeenCalledTimes(1));
+    const [, , , , options] = updateMaterialAndReconcileGearMock.mock.calls[0] as [
+      string, string, MaterialLogEntry, unknown, UpdateMaterialOptions,
+    ];
+    expect(options).toEqual(expect.objectContaining({ updateGear: false, slotToAugment: undefined }));
+  });
+
+  it('hides the gear section when the recipient is switched to a player with no eligible slots (fix round 8)', async () => {
+    // The recorded-slot clause's other false-promise path: the entry's slot belongs to the
+    // ORIGINAL recipient; after switching to a player with nothing eligible, the section must
+    // hide rather than promise an augmentation the coordinator has no slot to apply (the
+    // recipient-change rule leaves the old recipient's gear untouched, so the recorded slot is
+    // irrelevant to the new pick).
+    const { sara } = editFixturePlayers();
+    const nix = makePlayer({ id: 'nix', name: 'Nix' }); // no tome gear -> nothing twine-eligible
+    renderEdit({}, [sara, nix]);
+
+    // Original recipient (Sara, in-pool): the memo re-offers the entry's own slot.
+    expect(screen.getByLabelText(/Also mark gear as augmented for Sara/)).toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: /Nix/ }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent('Nix');
+
+    expect(screen.queryByLabelText(/Also mark gear/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('combobox')).toHaveLength(1); // Recipient only — no slot Select
+
+    // Payload-level pin: pre-fix, `shouldUpdateGear` stayed true (the clause fired off the
+    // ENTRY's recorded slot even though it belongs to the original recipient), sending a
+    // hollow `updateGear: true` with nothing to apply. It must send `updateGear: false`.
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await waitFor(() => expect(updateMaterialAndReconcileGearMock).toHaveBeenCalledTimes(1));
+    const [, , , , options] = updateMaterialAndReconcileGearMock.mock.calls[0] as [
+      string, string, MaterialLogEntry, unknown, UpdateMaterialOptions,
+    ];
+    expect(options).toEqual(expect.objectContaining({ updateGear: false }));
   });
 
   it('m4: when the parsed floor lacks the entry\'s material, falls back to the material\'s home floor (M9S + twine -> M11S/Twine pressed)', () => {

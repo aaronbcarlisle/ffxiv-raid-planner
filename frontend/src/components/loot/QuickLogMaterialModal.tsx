@@ -369,12 +369,16 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     };
   }, [recipientPlayerId, material, allPlayers, mode, editEntry]);
 
-  // Determine if there are any eligible options. Edit mode gains a clause for a recorded slot
-  // (or `'tome_weapon'`) even when the memo above found no player to derive `slots`/flags from.
+  // Determine if there are any eligible options. Edit mode needs no extra clause here: for the
+  // entry's own in-pool recipient the memo above already re-offers the recorded effect
+  // (`withOriginalSlot`, `editOriginalUt`, solvent's `originalSlot === 'tome_weapon'` arm), so
+  // a recorded-slot clause could only fire where the promise is unkeepable — recipient removed
+  // from the roster (R-21's injected Select entry; the memo's `!player` bail), or switched to a
+  // player with no eligible slots — and `updateMaterialAndReconcileGear` would silently no-op
+  // the gear step the preview claimed (PR #236 round 8, Copilot).
   const hasEligibleOptions = eligibleOptions.canMarkTomeWeaponHave ||
     eligibleOptions.canAugmentTomeWeapon ||
-    eligibleOptions.slots.length > 0 ||
-    (mode === 'edit' && editEntry?.materialType === material && !!editEntry?.slotAugmented);
+    eligibleOptions.slots.length > 0;
 
   // Reset state when modal opens (pinned) — gated so free-form (below) has its own block.
   // Non-null assertions: this body only runs where `mode === 'pinned'` guarantees
