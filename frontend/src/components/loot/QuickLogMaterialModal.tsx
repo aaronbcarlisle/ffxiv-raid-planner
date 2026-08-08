@@ -403,8 +403,13 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     setAugmentTomeWeapon(augmentTome);
   }, [mode, isOpen, suggestedPlayer, maxWeek, material, allPlayers, props.initialWeek]);
 
-  // Reset state when modal opens (free-form) — its own floor/material/week/recipient-ranking
-  // defaults; pinned's block above is untouched.
+  // Reset state when modal opens (free-form): floor/material/week/notes plus re-arming the
+  // auto-recipient guard (`userPickedRecipient`). It does NOT reset the recipient or its
+  // derived gear state — today's doors conditionally mount, so each open gets fresh lazy
+  // seeds, and the round-7 moved-pick guard means the auto-recipient effect won't re-derive
+  // on reopen either; a consumer that keeps the modal mounted across opens must reset those
+  // itself (phase-d-loot-plan.md §5, the D5/D11 mount-obligations row). Pinned's block above
+  // is untouched.
   useEffect(() => {
     if (mode !== 'freeform' || !isOpen) return;
     setPickedFloorNumber(DEFAULT_FREEFORM_FLOOR);
