@@ -707,3 +707,64 @@ describe('pinned initialWeek (D5, R-20 coherence)', () => {
     expect(data).toEqual(expect.objectContaining({ weekNumber: 2 }));
   });
 });
+
+// D8 Task 4: the notes field — v2-only (pinned's `showNotes` cell door + free-form, always).
+// V1 (pinned WITHOUT showNotes) keeps the frozen no-textarea behavior pinned above.
+describe('notes (R-26)', () => {
+  function renderFreeformWithPlayer(
+    overrides: Partial<Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { floors: string[] }>> = {},
+  ) {
+    const player = makePlayer({ id: 'p1', name: 'Nora' });
+    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { floors: string[] }> = {
+      isOpen: true,
+      onClose: vi.fn(),
+      groupId: 'g1',
+      tierId: 't1',
+      maxWeek: 5,
+      floors: ['M9S', 'M10S', 'M11S', 'M12S'],
+      initialWeek: 2,
+      allPlayers: [player],
+      ...overrides,
+    };
+    return render(<QuickLogMaterialModal {...props} />);
+  }
+
+  it('pinned + showNotes renders the notes textarea', () => {
+    const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+    renderModal({ material: 'twine', suggestedPlayer: p1, allPlayers: [p1], showNotes: true });
+
+    expect(screen.getByLabelText('Notes (optional)')).toBeInTheDocument();
+  });
+
+  it('free-form always renders the notes textarea', () => {
+    renderFreeformWithPlayer();
+
+    expect(screen.getByLabelText('Notes (optional)')).toBeInTheDocument();
+  });
+
+  it('a typed note reaches the create payload, trimmed', async () => {
+    renderFreeformWithPlayer();
+
+    fireEvent.change(screen.getByLabelText('Notes (optional)'), {
+      target: { value: '  got it from FC chest  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data.notes).toBe('got it from FC chest');
+  });
+
+  it('whitespace-only input leaves the notes key absent from the create payload', async () => {
+    renderFreeformWithPlayer();
+
+    fireEvent.change(screen.getByLabelText('Notes (optional)'), {
+      target: { value: '   ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data).not.toHaveProperty('notes');
+  });
+});

@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Gem } from 'lucide-react';
-import { Modal, Select, Label, Checkbox, NumberInput, RadioGroup, Tag, type Tone } from '../ui';
+import { Modal, Select, Label, Checkbox, NumberInput, RadioGroup, Tag, TextArea, type Tone } from '../ui';
 import { Button } from '../primitives';
 import { JobIcon } from '../ui/JobIcon';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
@@ -182,6 +182,10 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   const [updateGear, setUpdateGear] = useState(true);
   // R-a/D-37 subs widening: off by default, reset whenever the modal opens (below).
   const [includeSubs, setIncludeSubs] = useState(false);
+  // D8 Task 4, R-26: notes field — v2-only render (pinned's `showNotes` door + free-form,
+  // always). Reset on open in BOTH mode-specific effects below for state hygiene, even though
+  // pinned's reset is V1-invisible (V1 never renders the field).
+  const [notes, setNotes] = useState('');
   // Never clobbers a manual recipient pick; only a material change resets it (D8 3B).
   const userPickedRecipient = useRef(false);
   // Compute initial slot selection BEFORE first render using lazy initializer
@@ -245,6 +249,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     setSelectedWeek(props.initialWeek ?? maxWeek);
     setMethod('drop');
     setUpdateGear(true);
+    setNotes('');
 
     // Use player from allPlayers for consistency with eligibleOptions memo
     const player = allPlayers.find((p) => p.id === suggestedPlayer!.id) || suggestedPlayer;
@@ -262,6 +267,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     setPickedFloorNumber(DEFAULT_FREEFORM_FLOOR);
     setPickedMaterial(DEFAULT_FREEFORM_MATERIAL);
     setSelectedWeek(props.initialWeek ?? maxWeek);
+    setNotes('');
     userPickedRecipient.current = false;
   }, [mode, isOpen, maxWeek, props.initialWeek]);
 
@@ -326,6 +332,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
           materialType: material,
           recipientPlayerId,
           method,
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
         },
         {
           updateGear: shouldUpdateGear,
@@ -585,6 +592,15 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {/* Notes — D8 Task 4, R-26: v2-only (pinned's `showNotes` cell door + free-form,
+            always). V1 (pinned without showNotes) never renders this. */}
+        {(mode !== 'pinned' || props.showNotes) && (
+          <div>
+            <Label htmlFor="material-notes">Notes (optional)</Label>
+            <TextArea id="material-notes" value={notes} onChange={setNotes} rows={2} placeholder="Add a note…" />
           </div>
         )}
 
