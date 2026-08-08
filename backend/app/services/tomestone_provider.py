@@ -56,21 +56,40 @@ LODESTONE_SLOT_MAP = {
     "right_ring": "Ring2",
 }
 
-# Tomestone API returns gear as a positional list (FFXIV slot order).
-# Position 11 is Soul Crystal — has no item ID and must be skipped.
-TOMESTONE_GEAR_POSITION_SLOTS: dict[int, str] = {
-    0: "MainHand",
-    1: "Head",
-    2: "Body",
-    3: "Hands",
-    4: "Legs",
-    5: "Feet",
-    6: "Earrings",
-    7: "Necklace",
-    8: "Bracelets",
-    9: "Ring1",
-    10: "Ring2",
-    # 11: Soul Crystal — intentionally omitted (skip)
+# Tomestone gear entries carry the item's UI category (categoryId/categoryName).
+# Armor and accessory categories map 1:1 to slots. Weapon categories vary per
+# job ("Gladiator's Arm", "Machinist's Arm", ...) so the main hand is
+# recognized by list position 0 instead. Shield and Soul Crystal entries are
+# intentionally skipped — the planner has no off-hand slot yet (see
+# design/redesign/specs/2026-08-08-offhand-slot-design.md). Verified live
+# 2026-08-08: non-shield jobs omit the off-hand entry (12 entries); shield
+# jobs insert it at position 6 (13 entries), which is why position-based
+# mapping shifted every accessory.
+TOMESTONE_CATEGORY_SLOTS: dict[int, str] = {
+    34: "Head",
+    35: "Body",
+    37: "Hands",
+    36: "Legs",
+    38: "Feet",
+    41: "Earrings",
+    40: "Necklace",
+    42: "Bracelets",
+}
+TOMESTONE_RING_CATEGORY_ID = 43
+# IDs are FFXIV ItemUICategory values as emitted by Tomestone — 11 IS Shield
+# (confirmed against both the live capture and XIVAPI's ItemUICategory sheet).
+TOMESTONE_SKIPPED_CATEGORY_IDS = {11, 62}  # Shield, Soul Crystal
+
+# Fallback when categoryId is absent — same slots, keyed by lowercased categoryName.
+TOMESTONE_CATEGORY_NAME_SLOTS: dict[str, str] = {
+    "head": "Head",
+    "body": "Body",
+    "hands": "Hands",
+    "legs": "Legs",
+    "feet": "Feet",
+    "earrings": "Earrings",
+    "necklace": "Necklace",
+    "bracelets": "Bracelets",
 }
 
 
@@ -398,8 +417,8 @@ def _extract_tomestone_current_gear(profile: dict[str, Any]) -> list[Any] | None
     """Navigate Tomestone's deep gear path: profile.currentGearSetAndAttributes.gearSet.gear.
 
     Returns the positional gear list when found, or None when the path is absent.
-    Items in the list have no slot names — callers must use position-based slot
-    mapping via TOMESTONE_GEAR_POSITION_SLOTS.
+    Items in the list have no slot names — callers must classify entries by item
+    category via _normalize_tomestone_gear_list.
     """
     if not isinstance(profile, dict):
         return None
@@ -418,30 +437,56 @@ def _extract_tomestone_current_gear(profile: dict[str, Any]) -> list[Any] | None
 def _normalize_tomestone_gear_list(gear_list: list[Any]) -> dict[str, dict[str, Any]]:
     """Convert Tomestone's positional gear list into XIVAPI Gear dict shape.
 
-    Each slot entry in the list is at a fixed position (0-11). Position 11 is
-    Soul Crystal and is skipped. Items may be None/empty when the slot is empty.
+    Entries are classified by item category rather than list position: shield
+    jobs (PLD) get an off-hand entry inserted mid-list, which shifted every
+    accessory under the old fixed-position mapping. The main hand is always
+    the position-0 entry (weapon categories vary per job). Shield and Soul
+    Crystal entries are skipped. Unknown categories (crafter tools, future
+    slots) are skipped rather than misfiled.
     """
     normalized: dict[str, dict[str, Any]] = {}
-    for position, raw_slot in enumerate(gear_list):
-        slot_name = TOMESTONE_GEAR_POSITION_SLOTS.get(position)
-        if slot_name is None:
-            # Position 11 (Soul Crystal) and any unexpected extras — skip
-            continue
+    ring_count = 0
 
+    for position, raw_slot in enumerate(gear_list):
         if not isinstance(raw_slot, dict):
             continue
-
         item = raw_slot.get("item")
         if not isinstance(item, dict):
             continue
-
-        # Skip Soul Crystal by category even if position map has a slot for it
-        category_name = (item.get("categoryName") or "").lower()
-        if "soul crystal" in category_name:
-            continue
-
         item_id = _coerce_int(item.get("id") or item.get("itemId") or item.get("item_id"))
         if not item_id:
+            continue
+
+        category_id = _coerce_int(item.get("categoryId"))
+        category_name = (item.get("categoryName") or "").strip().lower()
+
+        if category_id in TOMESTONE_SKIPPED_CATEGORY_IDS or category_name in ("shield", "soul crystal"):
+            continue
+
+        # Position 0 is the main hand, but only when the entry isn't already a
+        # recognized armor/accessory category — Tomestone omits absent entries,
+        # so an unexpected list head must not be misfiled as the weapon.
+        # Weapon categories vary per job and appear in none of the maps, so
+        # real weapons always fall through to this claim.
+        is_known_gear_category = (
+            category_id in TOMESTONE_CATEGORY_SLOTS
+            or category_id == TOMESTONE_RING_CATEGORY_ID
+            or category_name in TOMESTONE_CATEGORY_NAME_SLOTS
+            or category_name == "ring"
+        )
+        if position == 0 and not is_known_gear_category:
+            slot_name = "MainHand"
+        elif category_id == TOMESTONE_RING_CATEGORY_ID or category_name == "ring":
+            ring_count += 1
+            if ring_count > 2:
+                continue
+            slot_name = "Ring1" if ring_count == 1 else "Ring2"
+        elif category_id in TOMESTONE_CATEGORY_SLOTS:
+            slot_name = TOMESTONE_CATEGORY_SLOTS[category_id]
+        elif category_name in TOMESTONE_CATEGORY_NAME_SLOTS:
+            slot_name = TOMESTONE_CATEGORY_NAME_SLOTS[category_name]
+        else:
+            # Unknown category (crafter secondary tools, facewear, future slots)
             continue
 
         icon = item.get("icon")
