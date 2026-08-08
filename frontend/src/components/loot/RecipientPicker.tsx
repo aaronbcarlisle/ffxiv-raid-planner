@@ -435,11 +435,10 @@ export function RecipientPicker({
       if (updates.floor !== undefined || updates.itemSlot !== undefined) out.push(`Change the item to ${floorName} · ${label}`);
       if (updates.recipientPlayerId !== undefined) out.push(`Reassign it to ${name}`);
       if (updates.method !== undefined) out.push(`Set the method to ${method}`);
-      // `updates.notes` carries `undefined` as a *cleared* value (see
-      // computeEditUpdates: `updates.notes = notes || undefined`) — a
-      // cleared-to-empty note still has the `notes` key set but with an
-      // undefined value, so check key PRESENCE, not the value, or a clear
-      // silently reports "No changes yet." while submit still writes it.
+      // `updates.notes` carries `''` as a *cleared* value (computeEditUpdates
+      // assigns `updates.notes = notes` — the '' sentinel the backend clears
+      // on), so check key PRESENCE, not truthiness, or a clear silently
+      // reports "No changes yet." while submit still writes it.
       if ('notes' in updates) out.push('Update the notes');
       if (updates.weaponJob !== undefined) out.push(`Record it as a ${updates.weaponJob} weapon`);
       // Mirrors lootCoordination.ts:186-187,:194-195 — the picker never diffs
