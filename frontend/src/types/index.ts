@@ -1330,7 +1330,12 @@ export interface MaterialLogEntryUpdate {
   materialType?: MaterialType;
   recipientPlayerId?: string;
   method?: LootMethod;
-  slotAugmented?: GearSlot | 'tome_weapon' | null;
+  /**
+   * Wire contract (backend loot_tracking.py:1496-1514): the PUT clears
+   * slot_augmented only on the literal '' — null is silently ignored, and
+   * notes clear on '' the same way. v2's edit path sends '' sentinels.
+   */
+  slotAugmented?: GearSlot | 'tome_weapon' | '' | null;
   notes?: string;
 }
 

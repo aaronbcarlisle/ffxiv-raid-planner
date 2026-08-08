@@ -20,6 +20,7 @@ import type {
   SnapshotPlayer,
   GearSlot,
   MaterialType,
+  LootMethod,
 } from '../types';
 
 // ==================== Types ====================
@@ -41,6 +42,30 @@ export interface DeleteMaterialOptions {
   /** For solvent: revert tome weapon instead of weapon gear slot */
   revertTomeWeapon?: boolean;
 }
+
+export interface UpdateMaterialOptions {
+  /** Update player's gear to reflect the (possibly new) material/slot */
+  updateGear?: boolean;
+  /** Specific slot to mark as augmented (for twine/glaze, or solvent-on-gear) */
+  slotToAugment?: GearSlot;
+  /** For solvent: augment tome weapon instead of weapon gear slot */
+  augmentTomeWeapon?: boolean;
+}
+
+/**
+ * The gear consequence a material log entry currently represents (or will
+ * represent after an edit). Used by `updateMaterialAndReconcileGear` to
+ * diff old-vs-new state instead of branching on material type directly —
+ * this is what lets a material-type change (e.g. universal_tomestone →
+ * twine) revert the old effect and apply the new one symmetrically, unlike
+ * the legacy edit modal whose UT branch never fell through to the generic
+ * slot handling (`LogMaterialModal.tsx:348`).
+ */
+type GearEffect =
+  | { kind: 'tome_item' }
+  | { kind: 'tome_aug' }
+  | { kind: 'slot'; slot: GearSlot }
+  | null;
 
 // ==================== Helper Functions ====================
 
@@ -377,5 +402,215 @@ export async function deleteMaterialAndRevertGear(
         });
       }
     }
+  }
+}
+
+// ==================== Update Reconciliation (R-21) ====================
+
+/** Derive the gear effect a logged entry represents, from its own fields. */
+function effectFromEntry(
+  materialType: MaterialType,
+  slotAugmented: GearSlot | 'tome_weapon' | '' | null | undefined
+): GearEffect {
+  if (materialType === 'universal_tomestone') return { kind: 'tome_item' };
+  if (slotAugmented === 'tome_weapon') return { kind: 'tome_aug' };
+  if (slotAugmented) return { kind: 'slot', slot: slotAugmented };
+  return null;
+}
+
+/**
+ * Derive the gear effect the *new* form state represents, mirroring the
+ * create-path mapping (`logMaterialAndUpdateGear:194-202`) plus the
+ * universal_tomestone → tome_item case (create never needs this — it grants
+ * the item unconditionally on updateGear — but the edit path's effect model
+ * must represent it to diff against the old entry).
+ */
+function effectFromOptions(materialType: MaterialType, options: UpdateMaterialOptions): GearEffect {
+  if (!options.updateGear) return null;
+  if (materialType === 'universal_tomestone') return { kind: 'tome_item' };
+  if (materialType === 'solvent' && options.augmentTomeWeapon) return { kind: 'tome_aug' };
+  if (options.slotToAugment) return { kind: 'slot', slot: options.slotToAugment };
+  return null;
+}
+
+/** The wire value to send for `slotAugmented` on the PUT. `''` clears — never `null`. */
+function effectToWireSlot(effect: GearEffect): GearSlot | 'tome_weapon' | '' {
+  if (!effect) return '';
+  if (effect.kind === 'tome_item') return '';
+  if (effect.kind === 'tome_aug') return 'tome_weapon';
+  return effect.slot;
+}
+
+function effectsEqual(a: GearEffect, b: GearEffect): boolean {
+  if (a === null || b === null) return a === b;
+  if (a.kind !== b.kind) return false;
+  if (a.kind === 'slot' && b.kind === 'slot') return a.slot === b.slot;
+  return true;
+}
+
+/**
+ * Revert a gear effect on `player`'s current state.
+ *
+ * Deliberately asymmetric with `deleteMaterialAndRevertGear`: a `tome_item`
+ * revert (universal_tomestone unchecked/replaced in the *edit* form) clears
+ * `hasItem` ONLY, never `isAugmented` — augmentation is solvent's concern,
+ * not the tome-item checkbox's (legacy precedent `LogMaterialModal.tsx:356-363`).
+ */
+async function revertGearEffect(
+  groupId: string,
+  tierId: string,
+  playerId: string,
+  effect: GearEffect,
+  player: SnapshotPlayer
+): Promise<void> {
+  if (!effect) return;
+  const tierStore = useTierStore.getState();
+
+  if (effect.kind === 'tome_item') {
+    if (hasTomeWeaponItem(player)) {
+      await tierStore.updatePlayer(groupId, tierId, playerId, {
+        tomeWeapon: { ...player.tomeWeapon, hasItem: false },
+      });
+    }
+  } else if (effect.kind === 'tome_aug') {
+    if (isTomeWeaponAugmented(player)) {
+      await tierStore.updatePlayer(groupId, tierId, playerId, {
+        tomeWeapon: { ...player.tomeWeapon, isAugmented: false },
+      });
+    }
+  } else {
+    const updatedGear = player.gear.map((g) =>
+      g.slot === effect.slot ? { ...g, isAugmented: false } : g
+    );
+    await tierStore.updatePlayer(groupId, tierId, playerId, { gear: updatedGear });
+  }
+}
+
+/** Apply a gear effect to `player`'s current state (guards mirror `logMaterialAndUpdateGear:225-260`). */
+async function applyGearEffect(
+  groupId: string,
+  tierId: string,
+  playerId: string,
+  effect: GearEffect,
+  player: SnapshotPlayer
+): Promise<void> {
+  if (!effect) return;
+  const tierStore = useTierStore.getState();
+
+  if (effect.kind === 'tome_item') {
+    if (needsTomeWeaponItem(player)) {
+      await tierStore.updatePlayer(groupId, tierId, playerId, {
+        tomeWeapon: { ...player.tomeWeapon, hasItem: true },
+      });
+    }
+  } else if (effect.kind === 'tome_aug') {
+    if (needsTomeWeaponAugmentation(player)) {
+      await tierStore.updatePlayer(groupId, tierId, playerId, {
+        tomeWeapon: { ...player.tomeWeapon, isAugmented: true },
+      });
+    }
+  } else {
+    const updatedGear = player.gear.map((g) =>
+      g.slot === effect.slot ? { ...g, isAugmented: true } : g
+    );
+    await tierStore.updatePlayer(groupId, tierId, playerId, { gear: updatedGear });
+  }
+}
+
+/**
+ * Edit a material log entry and reconcile gear against the old-vs-new
+ * effect diff (R-21).
+ *
+ * Coordinates multiple store actions:
+ * 1. PUTs the entry update first (data-integrity precedent
+ *    `materialCoordination.ts:179-182` — the entry is the durable record).
+ * 2. Refreshes week data (the same call the create/delete store paths run —
+ *    an edit can move an entry across weeks, so `WeekScopeControl`'s dots
+ *    must not go stale).
+ * 3. If the recipient is unchanged and the gear effect is unchanged, stops
+ *    here — week/notes-only edits are silent, zero gear calls.
+ * 4. If the recipient is unchanged and the effect changed, reverts the old
+ *    effect then applies the new one, re-reading store state between the
+ *    two so the apply step sees the revert's result.
+ * 5. If the recipient changed, the old recipient is left untouched (legacy
+ *    ruling `LogMaterialModal.tsx:366-368`) and the new effect is applied
+ *    only to the new recipient.
+ * 6. A missing player (old or new) is a no-op for the gear step — the PUT
+ *    and week refresh have already landed.
+ */
+export async function updateMaterialAndReconcileGear(
+  groupId: string,
+  tierId: string,
+  oldEntry: MaterialLogEntry,
+  newData: {
+    weekNumber: number;
+    floor: string;
+    materialType: MaterialType;
+    recipientPlayerId: string;
+    method: LootMethod;
+    /** Already trimmed. '' clears — backend applies any non-None string (loot_tracking.py:1513-1514). */
+    notes: string;
+  },
+  options: UpdateMaterialOptions = {}
+): Promise<void> {
+  const lootStore = useLootTrackingStore.getState();
+
+  const newEffect = effectFromOptions(newData.materialType, options);
+
+  // 1. Update the material entry (PUT first — data-integrity precedent).
+  await lootStore.updateMaterialEntry(groupId, tierId, oldEntry.id, {
+    weekNumber: newData.weekNumber,
+    floor: newData.floor,
+    materialType: newData.materialType,
+    recipientPlayerId: newData.recipientPlayerId,
+    method: newData.method,
+    slotAugmented: effectToWireSlot(newEffect),
+    notes: newData.notes,
+  });
+
+  // 2. Refresh week data (M5) — same call the create/delete store paths run.
+  await useLootTrackingStore.getState().fetchWeekDataTypes(groupId, tierId);
+
+  const oldEffect = effectFromEntry(oldEntry.materialType, oldEntry.slotAugmented);
+  const recipientChanged = newData.recipientPlayerId !== oldEntry.recipientPlayerId;
+
+  // 3. Same recipient, effect unchanged: week/notes-only edit, silent.
+  if (!recipientChanged && effectsEqual(oldEffect, newEffect)) {
+    return;
+  }
+
+  // Ensure tier is loaded before trying to find players.
+  const tierStore = useTierStore.getState();
+  if (!tierStore.currentTier?.players) {
+    await tierStore.fetchTier(groupId, tierId);
+  }
+
+  if (!recipientChanged) {
+    // 4. Same recipient, effect changed: revert old, then apply new.
+    const freshBeforeRevert = useTierStore.getState();
+    const player = freshBeforeRevert.currentTier?.players?.find(
+      (p) => p.id === oldEntry.recipientPlayerId
+    );
+    if (!player) return;
+
+    await revertGearEffect(groupId, tierId, oldEntry.recipientPlayerId, oldEffect, player);
+
+    // Re-read fresh state so apply sees the revert's result.
+    const freshAfterRevert = useTierStore.getState();
+    const freshPlayer = freshAfterRevert.currentTier?.players?.find(
+      (p) => p.id === newData.recipientPlayerId
+    );
+    if (!freshPlayer) return;
+
+    await applyGearEffect(groupId, tierId, newData.recipientPlayerId, newEffect, freshPlayer);
+  } else {
+    // 5. Recipient changed: old recipient untouched; apply new effect to the new recipient only.
+    const freshTierStore = useTierStore.getState();
+    const newPlayer = freshTierStore.currentTier?.players?.find(
+      (p) => p.id === newData.recipientPlayerId
+    );
+    if (!newPlayer) return;
+
+    await applyGearEffect(groupId, tierId, newData.recipientPlayerId, newEffect, newPlayer);
   }
 }
