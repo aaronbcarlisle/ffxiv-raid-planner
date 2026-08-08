@@ -12,12 +12,17 @@
  *   - CardShell can't forward DOM handlers or a `style`, so the context-menu /
  *     drag wiring and the role-colored accent edge live on a thin wrapper around
  *     CardShell (CardShell stays the card *surface*, per the brief's intent).
- *   - The gear pip strip (compact density) is NON-EDITING, matching legacy's
- *     compact view: circles render `disabled`, but pips with item data carry
- *     the hover item card for inspection (C2, D-02). EDITING lives in the
- *     expanded gear table (C2) and on the Board — both through the one shared
- *     mutation path (`computeGearSlotUpdate`, mirrored from
- *     `PlayerCard.handleGearChange`).
+ *   - The compact gear strip is ONE COLUMN PER SLOT: the item icon (or the slot
+ *     placeholder) above its status pip, both centered, columns evenly spaced.
+ *     Two rows only — the BiS-source badge row was tried and pulled the same day
+ *     (see the strip's own comment for the ruling and the accepted trade).
+ *     The icon is decoration — identity plus the hover item card; the PIP is the
+ *     only control. Editing is available at BOTH densities as of 2026-07-28, so
+ *     density is a detail axis and no longer a capability gate. Every edit still
+ *     runs the one shared mutation path (`computeGearSlotUpdate`, mirrored from
+ *     `PlayerCard.handleGearChange`) that the expanded table and the Board use.
+ *     This is a deliberate v2 DELTA: legacy's compact row is icons-only and
+ *     inspect-only, and stays that way.
  *   - Job change opens a card-owned confirm (Modal + RadioGroup). C7 (D-15)
  *     restored legacy's third outcome: the RadioGroup's modes are keep /
  *     update (change the job, then hand off to the import) / unlink, and the
@@ -45,6 +50,8 @@ import { SafeAvatar } from '../ui/SafeAvatar';
 import { RosterGearTable } from './RosterGearTable';
 import { buildSlotJumpTargets, type JumpKind, type SlotJumpTargets } from './rosterLedgerJumps';
 import { hasHoverData } from './gearHoverData';
+import { gearSlotIconClass, gearSlotIconUrl, isRealItemIcon, raidNormalizedWeapon } from './gearSlotIcon';
+import { cycleHint } from './gearCycleHint';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
 import { equippedAverageIlv } from './rosterIlv';
@@ -78,6 +85,7 @@ import {
   getRoleForJob,
   getValidRole,
 } from '../../gamedata';
+import { GEAR_SLOT_NAMES } from '../../types';
 import type {
   ContentType,
   GearSlot,
@@ -90,6 +98,13 @@ import type {
 import { BiSSourceFixBanner } from '../player/BiSSourceFixBanner';
 
 const TOTAL_SLOTS = 11;
+
+interface CompactColumn {
+  key: string;
+  kind: 'slot' | 'tome';
+  status: GearSlotStatus;
+  label: string;
+}
 
 export interface RosterCardProps {
   player: SnapshotPlayer;
@@ -174,6 +189,52 @@ export function RosterCard({
   // messaging: owner/lead edit all, a member their own claimed card.
   const gearPermission = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess);
   const canCycleGear = gearPermission.allowed;
+
+  /**
+   * Compact strip columns: the eleven gear slots, plus the interim tome weapon
+   * as a TWELFTH column immediately after the weapon while pursuing. It is a
+   * second state of the weapon slot, so it sits beside it rather than taking a
+   * row of its own; the kebab's Track/Stop item adds and removes the column.
+   */
+  const compactColumns = useMemo<CompactColumn[]>(() => {
+    const cols: CompactColumn[] = player.gear.map((status) => ({
+      key: status.slot as string,
+      kind: 'slot',
+      status,
+      label: GEAR_SLOT_NAMES[status.slot],
+    }));
+    if (!player.tomeWeapon?.pursuing) return cols;
+    const weaponAt = cols.findIndex((c) => c.status.slot === 'weapon');
+    if (weaponAt === -1) return cols;
+    const weapon = cols[weaponAt].status;
+    cols.splice(weaponAt + 1, 0, {
+      key: 'tome-weapon',
+      kind: 'tome',
+      status: {
+        ...weapon,
+        bisSource: 'tome',
+        hasItem: player.tomeWeapon.hasItem,
+        isAugmented: player.tomeWeapon.isAugmented,
+        // The tome weapon has no item metadata of its own — the hover card
+        // belongs to the raid weapon in the column beside it, so NOTHING here
+        // may satisfy `hasHoverData`. That predicate also keys off the EQUIPPED
+        // fields (`gearHoverData.ts`), which the spread above would otherwise
+        // carry over from the raid weapon (PR #203 review).
+        itemName: undefined,
+        itemIcon: undefined,
+        itemLevel: undefined,
+        itemStats: undefined,
+        itemId: undefined,
+        materia: undefined,
+        equippedItemId: undefined,
+        equippedItemName: undefined,
+        equippedItemLevel: undefined,
+        equippedItemIcon: undefined,
+      } as GearSlotStatus,
+      label: 'Tome weapon',
+    });
+    return cols;
+  }, [player.gear, player.tomeWeapon]);
   const isExpanded = density === 'expanded';
 
   // ── On-card gear editing (Phase C C2, D-02) ──
@@ -997,9 +1058,10 @@ export function RosterCard({
 
         {/* ── Gear section: pip strip (compact) or gear table (expanded).
                Either/or, matching legacy PlayerCardGear — the table replaces the
-               pips, never stacks under them. The table EDITS (C2, canEditGear-
-               gated); the pips inspect-only (hover item card, no cycling —
-               legacy compact parity). Spacer placement mirrors legacy
+               pips, never stacks under them. BOTH densities EDIT, through the
+               one shared path under the same canEditGear gate (2026-07-28) —
+               the table by row, the strip by column; density is a detail axis,
+               not a capability gate. Spacer placement mirrors legacy
                PlayerCard: compact pads ABOVE the gear (pips + footer align at
                the bottom across cards), expanded pads BELOW the table (footer
                still pinned). ── */}
@@ -1036,48 +1098,106 @@ export function RosterCard({
         ) : (
           <>
             <div className="flex-1" />
-            <div className="mt-3 flex flex-wrap gap-1">
-              {player.gear.map((slot) => {
-                const pip = (
-                  <GearStatusCircle
-                    state={toGearState(slot.hasItem, slot.isAugmented)}
-                    bisSource={slot.bisSource}
-                    requiresAugmentation={requiresAugmentation(slot)}
-                    onChange={() => {}}
-                    disabled
-                    size="sm"
+            {/* Compact = the expanded card rotated 90°: one column per slot,
+                icon → status pip, and the interim tome weapon takes a column of
+                its own (user ruling 2026-07-28 — a whole row for one pip wasted
+                the space). The tome column is toggled from the kebab's existing
+                Track/Stop item, which writes the same store field (C4), so the
+                strip needs no `+` of its own: two controls would not fit a
+                ~36px column.
+
+                NO BiS-source row. A third row of R/T/BT/C badges shipped here
+                for one revision and was pulled the same day (user ruling
+                2026-07-28, after live use): eleven badges under eleven pips
+                read as noise at card size. The trade is deliberate and known —
+                `GearStatusCircle` only tints by source in the have/complete
+                states, so an early-tier card of missing slots now reads as
+                sourceless in compact. That is the density axis doing its job:
+                compact answers "how far along is everyone", expanded answers
+                "what is each piece and where does it come from". Retargeting
+                lives in the expanded table (C3), which is where it started. */}
+            <div
+              data-testid="compact-gear-strip"
+              className="mt-3 grid gap-x-1"
+              style={{ gridTemplateColumns: `repeat(${compactColumns.length}, minmax(0, 1fr))` }}
+            >
+              {compactColumns.map((col) => {
+                const slot = col.status;
+                const isTome = col.kind === 'tome';
+                const iconStatus = isTome ? slot : raidNormalizedWeapon(slot.slot, slot);
+                const icon = (
+                  <img
+                    src={gearSlotIconUrl(slot.slot, slot)}
+                    alt=""
+                    aria-hidden="true"
+                    width={20}
+                    height={20}
+                    className={`h-5 w-5 ${gearSlotIconClass(iconStatus, isRealItemIcon(slot))}`}
                   />
                 );
-                // Hover-inspect (C2, D-02 / legacy R-065): pips with item data
-                // show the shared item card. The div wrapper takes Radix's
-                // Trigger props (GearStatusCircle doesn't forward refs).
-                return hasHoverData(slot) ? (
-                  <LongPressTooltip
-                    key={slot.slot}
-                    delayDuration={200}
-                    content={
-                      <ItemHoverCard
-                        itemName={slot.itemName}
-                        itemLevel={slot.itemLevel}
-                        itemId={slot.itemId}
-                        itemIcon={slot.itemIcon}
-                        itemStats={slot.itemStats}
-                        bisSource={slot.bisSource}
-                        hasItem={slot.hasItem}
-                        isAugmented={slot.isAugmented}
-                        materia={slot.materia}
-                        equippedItemId={slot.equippedItemId}
-                        equippedItemName={slot.equippedItemName}
-                        equippedItemLevel={slot.equippedItemLevel}
-                        equippedItemIcon={slot.equippedItemIcon}
-                      />
-                    }
+                return (
+                  <div
+                    key={col.key}
+                    data-testid="compact-gear-slot"
+                    data-column={col.kind}
+                    /* gap-2, not gap-1: with the source badge gone the column is
+                       two rows, and 4px read as the pip touching the icon. */
+                    className="flex flex-col items-center gap-2"
                   >
-                    <div className="inline-flex">{pip}</div>
-                  </LongPressTooltip>
-                ) : (
-                  <div key={slot.slot} className="inline-flex">
-                    {pip}
+                    {/* Only the ICON opens the item card — the pip has its own
+                        cycle hint, and stacking both on one trigger meant a
+                        hover anywhere in the column explained the item rather
+                        than the control (user report 2026-07-28). */}
+                    {hasHoverData(slot) ? (
+                      <LongPressTooltip
+                        delayDuration={200}
+                        content={
+                          <ItemHoverCard
+                            itemName={slot.itemName}
+                            itemLevel={slot.itemLevel}
+                            itemId={slot.itemId}
+                            itemIcon={slot.itemIcon}
+                            itemStats={slot.itemStats}
+                            bisSource={slot.bisSource}
+                            hasItem={slot.hasItem}
+                            isAugmented={slot.isAugmented}
+                            materia={slot.materia}
+                            equippedItemId={slot.equippedItemId}
+                            equippedItemName={slot.equippedItemName}
+                            equippedItemLevel={slot.equippedItemLevel}
+                            equippedItemIcon={slot.equippedItemIcon}
+                          />
+                        }
+                      >
+                        <div className="inline-flex">{icon}</div>
+                      </LongPressTooltip>
+                    ) : (
+                      icon
+                    )}
+
+                    <GearStatusCircle
+                      state={toGearState(slot.hasItem, slot.isAugmented)}
+                      bisSource={isTome ? 'tome' : slot.slot === 'weapon' ? 'raid' : slot.bisSource}
+                      requiresAugmentation={isTome ? true : slot.slot === 'weapon' ? false : requiresAugmentation(slot)}
+                      onChange={(next) =>
+                        isTome
+                          ? void handleTomeWeaponChange(fromGearState(next))
+                          : void handleSlotChange(slot.slot, next)
+                      }
+                      disabled={!canCycleGear}
+                      label={col.label}
+                      tooltip={
+                        canCycleGear
+                          ? isTome
+                            ? cycleHint('tome', true, 'Tome weapon status')
+                            : cycleHint(
+                                slot.slot === 'weapon' ? 'raid' : (slot.bisSource ?? 'raid'),
+                                slot.slot === 'weapon' ? false : requiresAugmentation(slot),
+                              )
+                          : undefined
+                      }
+                      size="sm"
+                    />
                   </div>
                 );
               })}

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { RosterCard } from './RosterCard';
 import { TooltipProvider } from '../primitives';
+import { GEAR_SLOT_ICONS } from '../../types';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
 import type { LootLogEntry, MaterialLogEntry, SnapshotPlayer } from '../../types';
 import { useToastStore } from '../../stores/toastStore';
@@ -270,6 +271,44 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       expect(screen.queryByRole('table')).not.toBeInTheDocument();
     });
 
+    // ── Compact gear strip (2026-07-28): one column per slot, icon above the
+    //    pip, both centered — v1 showed icons only, v2 showed pips only. ──
+    it('compact renders one column per gear slot, each with an icon above its pip', () => {
+      renderCard(makePlayer());
+
+      const strip = screen.getByTestId('compact-gear-strip');
+      const columns = within(strip).getAllByTestId('compact-gear-slot');
+      expect(columns).toHaveLength(11);
+      // alt="" makes these presentational, so query by tag, not by role —
+      // being unreachable to AT is the point (the pip carries the name).
+      expect(columns[0].querySelector('img')).toBeInTheDocument();
+      expect(within(columns[0]).getByRole('checkbox')).toBeInTheDocument();
+    });
+
+    it('compact shows the real item icon when the slot has one, the placeholder otherwise', () => {
+      renderCard(
+        makePlayer({
+          gear: [
+            { slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false, itemIcon: '/i/42.png' },
+            { slot: 'body', bisSource: 'raid', hasItem: false, isAugmented: false },
+          ] as unknown as SnapshotPlayer['gear'],
+        })
+      );
+
+      const imgs = screen.getByTestId('compact-gear-strip').querySelectorAll('img');
+      expect(imgs[0]).toHaveAttribute('src', '/i/42.png');
+      expect(imgs[1]).toHaveAttribute('src', GEAR_SLOT_ICONS.body);
+    });
+
+    it('compact icons are decoration, not a second control', () => {
+      renderCard(makePlayer());
+
+      const icon = screen.getByTestId('compact-gear-strip').querySelector('img')!;
+      expect(icon).toHaveAttribute('aria-hidden', 'true');
+      expect(icon).not.toHaveAttribute('tabindex');
+      expect(icon).not.toHaveAttribute('role', 'button');
+    });
+
     it('expanded density replaces the pips with the read-only gear table', () => {
       renderCard(
         makePlayer({
@@ -433,17 +472,235 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       }
     });
 
-    it('compact pips stay read-only even for an owner (editing lives in the table)', () => {
-      const onUpdate = vi.fn();
+    // INVERTED 2026-07-28: compact pips used to be read-only in both shells —
+    // "editing lives in the table". Density is now a DETAIL axis only, so the
+    // same edit is available at either density through the same shared path.
+    it('compact + owner: clicking a pip mutates through the shared gear path', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      const player = makeGearedPlayer();
+      renderCard(player, { actions: { ...actions, onUpdate } });
+
+      const pip = within(screen.getAllByTestId('compact-gear-slot')[0]).getByRole('checkbox');
+      expect(pip).not.toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(pip);
+
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      expect(onUpdate.mock.calls[0][0]).toEqual(
+        computeGearSlotUpdate(player, 'head', { hasItem: true, isAugmented: false }),
+      );
+    });
+
+    // REVERSED 2026-07-28 (user ruling, after live use): the strip carried a
+    // third row of BiS-source badges for one revision and it read as noise at
+    // card size. Compact is TWO ROWS — icon, pip — and retargeting is the
+    // expanded table's job again. This also subsumes the PR #203 finding that
+    // the weapon column must never get the generic 4-way selector (which would
+    // have been the first path in v2 able to CREATE a non-raid weapon source):
+    // no column has one now, the weapon's least of all.
+    it('carries NO BiS-source row — not a badge, not a selector, in any column', () => {
+      renderCard(makePlayer({
+        gear: [
+          { slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false },
+          { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+        ] as unknown as SnapshotPlayer['gear'],
+        tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+      }));
+
+      const strip = screen.getByTestId('compact-gear-strip');
+      expect(within(strip).queryByTestId('compact-weapon-source')).not.toBeInTheDocument();
+      expect(within(strip).queryByTestId('compact-tome-source')).not.toBeInTheDocument();
+      expect(within(strip).queryByRole('button', { name: /BiS source/ })).not.toBeInTheDocument();
+      // and every column is exactly icon + pip
+      for (const col of within(strip).getAllByTestId('compact-gear-slot')) {
+        expect(col.querySelectorAll('img')).toHaveLength(1);
+        expect(within(col).getAllByRole('checkbox')).toHaveLength(1);
+      }
+    });
+
+    // PR #203 review: hasHoverData also keys off the EQUIPPED fields, which the
+    // spread carried over from the raid weapon — so the tome column used to open
+    // a hover card describing the weapon beside it.
+    it('the tome column never opens a hover card, even when the weapon is synced', () => {
+      renderCard(
+        makePlayer({
+          gear: [{
+            slot: 'weapon', bisSource: 'raid', hasItem: true, isAugmented: false,
+            itemName: 'Axe', itemLevel: 795,
+            equippedItemName: 'Synced Axe', equippedItemLevel: 790, equippedItemId: 42,
+          }] as unknown as SnapshotPlayer['gear'],
+          tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+        })
+      );
+
+      const cols = screen.getAllByTestId('compact-gear-slot');
+      const tomeCol = cols.find((c) => c.getAttribute('data-column') === 'tome')!;
+      // the raid weapon's icon IS a hover trigger; the tome column's is not
+      expect(cols[0].querySelector('img')!.closest('[data-state]')).not.toBeNull();
+      expect(tomeCol.querySelector('img')!.closest('[data-state]')).toBeNull();
+    });
+
+    // PR #203 review: the weapon's main row is ALWAYS the raid weapon, so it
+    // takes the 2-state cycle the expanded table and legacy both hardcode.
+    // Harmless while the pip was display-only; load-bearing now that it writes.
+    it('the compact weapon pip cycles as raid even when the slot stores a tome source', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      const player = makePlayer({
+        gear: [{ slot: 'weapon', bisSource: 'tome', hasItem: true, isAugmented: false }] as unknown as SnapshotPlayer['gear'],
+      });
+      renderCard(player, { actions: { ...actions, onUpdate } });
+
+      const pip = within(screen.getAllByTestId('compact-gear-slot')[0]).getByRole('checkbox', { name: /Weapon/ });
+      // A tome slot with hasItem would read "needs augmentation"; the weapon
+      // must read Complete, i.e. no augment step exists for it.
+      expect(pip).toHaveAttribute('aria-label', 'Weapon — Complete');
+
+      fireEvent.click(pip);
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      // 2-state: Complete → Missing, never → augmented.
+      expect(onUpdate.mock.calls[0][0].gear[0]).toMatchObject({ hasItem: false, isAugmented: false });
+    });
+
+    // PR #203 review: un-disabling the pips made them tab stops, and the
+    // expanded table's row header (which names the slot) has no equivalent here.
+    it('every compact pip names its own slot, so eleven tab stops are distinguishable', () => {
+      renderCard(makePlayer({
+        gear: [
+          { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+          { slot: 'ring2', bisSource: 'raid', hasItem: false, isAugmented: false },
+        ] as unknown as SnapshotPlayer['gear'],
+      }));
+
+      expect(screen.getByRole('checkbox', { name: 'Head — Missing' })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'L. Ring — Missing' })).toBeInTheDocument();
+    });
+
+    it('the tome pip names itself, so the stacked pair is distinguishable', () => {
+      renderCard(makePlayer({
+        gear: [{ slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false }] as unknown as SnapshotPlayer['gear'],
+        tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+      }));
+
+      expect(screen.getByRole('checkbox', { name: 'Weapon — Missing' })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'Tome weapon — Missing' })).toBeInTheDocument();
+    });
+
+    // PR #203 review: a native title on the hover-card trigger stacks a browser
+    // tooltip over the Radix item card.
+    it('carries no native title on a column that already has the hover item card', () => {
+      renderCard(
+        makePlayer({
+          gear: [{ slot: 'head', bisSource: 'raid', hasItem: true, isAugmented: false, itemName: 'Hat', itemLevel: 790 }] as unknown as SnapshotPlayer['gear'],
+        }),
+        { userRole: 'viewer', currentUserId: 'nobody' }
+      );
+
+      expect(screen.getAllByTestId('compact-gear-slot')[0]).not.toHaveAttribute('title');
+    });
+
+    // The interim tome weapon is a second state of the weapon slot, and it took
+    // a stacked second pip at first — but that cost a whole row for one control,
+    // so it became a 12th COLUMN beside the weapon (2026-07-28), present only
+    // while pursuing. Compact echo of C4's sub-row.
+    it('renders no tome pip when the player is not pursuing one', () => {
+      renderCard(makePlayer({ tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false } }));
+      expect(screen.queryAllByTestId('compact-gear-slot').filter((c) => c.getAttribute('data-column') === 'tome')).toHaveLength(0);
+      expect(screen.queryByRole('checkbox', { name: /Tome weapon/ })).not.toBeInTheDocument();
+    });
+
+    it('gives the tome weapon its own column, immediately after the weapon', () => {
+      renderCard(
+        makePlayer({
+          gear: [
+            { slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false },
+            { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
+          ] as unknown as SnapshotPlayer['gear'],
+          tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+        })
+      );
+
+      const columns = screen.getAllByTestId('compact-gear-slot');
+      // weapon, tome, head — the tome column sits beside the weapon it belongs to
+      expect(columns.map((c) => c.getAttribute('data-column'))).toEqual(['slot', 'tome', 'slot']);
+      expect(within(columns[1]).getByRole('checkbox', { name: /Tome weapon/ })).toBeInTheDocument();
+    });
+
+    it('the compact tome pip emits NO analytics (the C2 ruling covers gear slots only)', async () => {
+      const received: unknown[] = [];
+      const unsub = eventBus.on(Events.PLAYER_GEAR_CHANGED, (d) => received.push(d));
+      try {
+        const onUpdate = vi.fn().mockResolvedValue(undefined);
+        renderCard(
+          makePlayer({
+            gear: [{ slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false }] as unknown as SnapshotPlayer['gear'],
+            tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+          }),
+          { actions: { ...actions, onUpdate } }
+        );
+
+        fireEvent.click(screen.getByRole('checkbox', { name: /^Tome weapon/ }));
+        await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+        // Flush the resolve chain so a would-be emit had every chance to fire.
+        await new Promise((r) => setTimeout(r, 0));
+        expect(received).toHaveLength(0);
+      } finally {
+        unsub();
+      }
+    });
+
+    it('the tome pip writes the tomeWeapon field, never a gear-slot payload', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      renderCard(
+        makePlayer({
+          gear: [{ slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false }] as unknown as SnapshotPlayer['gear'],
+          tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+        }),
+        { actions: { ...actions, onUpdate } }
+      );
+
+      fireEvent.click(screen.getByRole('checkbox', { name: /^Tome weapon/ }));
+
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      expect(onUpdate.mock.calls[0][0]).toEqual({
+        tomeWeapon: { pursuing: true, hasItem: true, isAugmented: false },
+      });
+      expect(onUpdate.mock.calls[0][0]).not.toHaveProperty('gear');
+    });
+
+    it('compact pips cycle from the keyboard (Enter and Space)', async () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
       renderCard(makeGearedPlayer(), { actions: { ...actions, onUpdate } });
 
-      const pips = screen.getAllByRole('checkbox');
-      expect(pips.length).toBeGreaterThan(0);
-      for (const pip of pips) {
-        expect(pip).toHaveAttribute('aria-disabled', 'true');
-      }
-      fireEvent.click(pips[0]);
+      const pip = within(screen.getAllByTestId('compact-gear-slot')[0]).getByRole('checkbox');
+      fireEvent.keyDown(pip, { key: 'Enter' });
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
+      fireEvent.keyDown(pip, { key: ' ' });
+      await waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(2));
+    });
+
+    it("compact + member on someone else's card: pips stay read-only", () => {
+      const onUpdate = vi.fn();
+      renderCard(makeGearedPlayer({ userId: 'someone-else' }), {
+        userRole: 'member',
+        currentUserId: 'u1',
+        actions: { ...actions, onUpdate },
+      });
+
+      const pip = within(screen.getAllByTestId('compact-gear-slot')[0]).getByRole('checkbox');
+      expect(pip).toHaveAttribute('aria-disabled', 'true');
+      fireEvent.click(pip);
       expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('compact + member on their OWN card: pips are live', () => {
+      const onUpdate = vi.fn().mockResolvedValue(undefined);
+      renderCard(makeGearedPlayer({ userId: 'u1' }), {
+        userRole: 'member',
+        currentUserId: 'u1',
+        actions: { ...actions, onUpdate },
+      });
+
+      fireEvent.click(within(screen.getAllByTestId('compact-gear-slot')[0]).getByRole('checkbox'));
+      return waitFor(() => expect(onUpdate).toHaveBeenCalledTimes(1));
     });
 
     // ── BiS-source tools (Phase C C3, D-03) ──
@@ -705,9 +962,10 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       });
     });
 
-    it('compact pips with item data carry the hover item-card wiring (inspect, not edit)', () => {
-      // Legacy compact parity (R-065 hover leg): the pip strip supports
-      // INSPECTION via the hover item card while staying non-editing.
+    it('the compact ICON carries the hover item card, and the pip does not', () => {
+      // The hover card moved off the column and onto the icon (2026-07-28): the
+      // pip now has its own cycle-hint tooltip, and one trigger for both meant
+      // hovering the control explained the item instead.
       renderCard(
         makePlayer({
           id: 'p6',
@@ -718,11 +976,17 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
         })
       );
 
-      const pips = screen.getAllByRole('checkbox');
       // Radix stamps its Trigger wrapper with data-state when the hover card is
       // wired; the bare slot gets no wrapper.
-      const wired = pips.filter((p) => p.closest('[data-state]'));
-      expect(wired).toHaveLength(1);
+      const icons = [...screen.getByTestId('compact-gear-strip').querySelectorAll('img')];
+      expect(icons.filter((i) => i.closest('[data-state]'))).toHaveLength(1);
+      // The pip has a trigger of its OWN (the cycle hint) rather than sharing
+      // the icon's — that separation is the whole fix.
+      const pip = within(screen.getAllByTestId('compact-gear-slot')[0]).getByRole('checkbox');
+      const pipTrigger = pip.closest('[data-state]');
+      const iconTrigger = icons[0].closest('[data-state]');
+      expect(pipTrigger).not.toBeNull();
+      expect(pipTrigger).not.toBe(iconTrigger);
     });
   });
 });

@@ -35,6 +35,16 @@ interface GearStatusCircleProps {
    * permission so the hint appears only where the user can actually toggle.
    */
   tooltip?: ReactNode;
+  /**
+   * Optional context prefix for the accessible name, e.g. "Head" → "Head —
+   * Missing". Additive (2026-07-28, compact strip): inside the expanded table
+   * each circle sits in a row with a `<th scope="row">` that names the slot,
+   * but the compact strip has no such context — eleven circles in a row would
+   * otherwise all announce as bare "Missing"/"Complete". Omitted → the name is
+   * byte-identical to before, so every existing caller (including legacy) is
+   * unaffected.
+   */
+  label?: string;
 }
 
 /**
@@ -81,6 +91,7 @@ export function GearStatusCircle({
   onChange,
   disabled = false,
   size = 'md',
+  label,
   tooltip,
 }: GearStatusCircleProps) {
   const handleClick = (e: React.MouseEvent) => {
@@ -116,6 +127,7 @@ export function GearStatusCircle({
   } else if (isPartial) {
     ariaLabel = 'Have (needs augmentation)';
   }
+  if (label) ariaLabel = `${label} — ${ariaLabel}`;
 
   // Null bisSource: Show placeholder state indicating no target set yet
   // This is intentionally different from disabled (which shows the actual state but non-interactive):
@@ -127,7 +139,7 @@ export function GearStatusCircle({
         role="checkbox"
         aria-checked={false}
         aria-disabled={true}
-        aria-label="BiS source not set"
+        aria-label={label ? `${label} — BiS source not set` : 'BiS source not set'}
         className={`
           ${sizeClasses.outer} rounded-full
           bg-text-muted/40
