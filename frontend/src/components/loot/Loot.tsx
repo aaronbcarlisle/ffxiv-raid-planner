@@ -42,8 +42,9 @@
  *     switch (not registered with `useUrlTabState`, see below), or a
  *     bookmark/paste. The read direction runs both ways too: a
  *     legacy-written `?week=` seeds v2's Log on mount the same way
- *     (`useLogWeek.ts:186-187` resolves the raw param before ever touching
- *     v2/legacy storage).
+ *     (`useLogWeek.ts:263-268` resolves the raw param before ever touching
+ *     v2/legacy storage — on the FIRST resolve only; tier/group re-resolves
+ *     skip the URL by the hook's mount-only rule, PR #235 review).
  *     For a v2-seeded `?week=` reaching legacy History, the outcome forks on
  *     whether that static+tier already has a `history-week-{groupId}-
  *     {tierId}` localStorage entry:
