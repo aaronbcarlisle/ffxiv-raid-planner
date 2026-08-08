@@ -607,6 +607,11 @@ describe('updateMaterialAndReconcileGear', () => {
     const applyCall = updatePlayerCall(1);
     expect(applyCall.playerId).toBe('player-1');
     expect((applyCall.data.gear ?? []).find((g) => g.slot === 'body')?.isAugmented).toBe(true);
+    // The apply step must read post-revert state: if it reused the stale
+    // pre-revert player, this wholesale gear-array replace would re-augment
+    // the just-reverted head slot. The stateful updatePlayer mock only
+    // catches that if something actually asserts on it here.
+    expect((applyCall.data.gear ?? []).find((g) => g.slot === 'head')?.isAugmented).toBe(false);
   });
 
   it('slot -> none (updateGear: false): payload slotAugmented is "" and the old slot is reverted', async () => {
@@ -719,6 +724,30 @@ describe('updateMaterialAndReconcileGear', () => {
 
     const applyCall = updatePlayerCall(0);
     expect((applyCall.data.gear ?? []).find((g) => g.slot === 'head')?.isAugmented).toBe(true);
+  });
+
+  it('recipient changed to a missing player: PUT and week refresh land, zero updatePlayer calls', async () => {
+    currentTier.players = [
+      createPlayer({
+        id: 'player-1',
+        gear: [createGearSlot({ slot: 'head', bisSource: 'tome', hasItem: true, isAugmented: true })],
+      }),
+      // 'player-2' deliberately absent - simulates picking a recipient no longer on the roster.
+    ];
+
+    const oldEntry = createMaterialLogEntry({
+      materialType: 'twine',
+      slotAugmented: 'head',
+      recipientPlayerId: 'player-1',
+    });
+    const newData = createNewData({ materialType: 'twine', recipientPlayerId: 'player-2' });
+    const options: UpdateMaterialOptions = { updateGear: true, slotToAugment: 'head' };
+
+    await updateMaterialAndReconcileGear(groupId, tierId, oldEntry, newData, options);
+
+    expect(updateMaterialEntry).toHaveBeenCalledTimes(1);
+    expect(fetchWeekDataTypes).toHaveBeenCalledTimes(1);
+    expect(updatePlayer).not.toHaveBeenCalled();
   });
 
   it('UT kept (idempotent): effect unchanged for the same recipient fires zero gear calls', async () => {
