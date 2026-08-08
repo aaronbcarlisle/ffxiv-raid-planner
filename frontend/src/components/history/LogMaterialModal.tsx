@@ -339,7 +339,9 @@ export function LogMaterialModal({
           recipientPlayerId: selectedPlayer,
           method,
           slotAugmented: newSlotAugmented,
-          notes: notes.trim() || undefined,
+          // '' (not undefined) so an erased note actually clears server-side —
+          // undefined is dropped from the JSON body and the field never arrives.
+          notes: notes.trim(),
         });
 
         // Handle gear updates
@@ -558,6 +560,44 @@ export function LogMaterialModal({
     }
   }, [selectedMaterial, visibleRecipients, editEntry]);
 
+  // Recipient changes in edit mode must re-derive the slot selection for the
+  // new recipient. The auto-select effect above deliberately skips edit mode,
+  // and the phantom Radix '' event that used to (accidentally) clear the stale
+  // slot is now swallowed by ui/Select — without this, the previous
+  // recipient's slot would ride invisibly into the update payload while the
+  // Select shows the placeholder.
+  const handleRecipientChange = (playerId: string) => {
+    setSelectedPlayer(playerId);
+    if (!isEditMode || !editEntry) return;
+
+    // Returning to the original recipient restores the entry's own effect.
+    if (playerId === editEntry.recipientPlayerId && editEntry.slotAugmented) {
+      if (editEntry.slotAugmented === 'tome_weapon') {
+        setSelectedSlot(null);
+        setAugmentTomeWeapon(true);
+      } else {
+        setSelectedSlot(editEntry.slotAugmented as GearSlot);
+        setAugmentTomeWeapon(false);
+      }
+      return;
+    }
+
+    const recipient = players.find((p) => p.id === playerId);
+    if (!recipient) {
+      setSelectedSlot(null);
+      setAugmentTomeWeapon(false);
+      return;
+    }
+    const slots = getEligibleSlotsForAugmentation(recipient, selectedMaterial);
+    if (selectedMaterial === 'solvent' && needsTomeWeaponAugmentation(recipient)) {
+      setSelectedSlot(null);
+      setAugmentTomeWeapon(true);
+    } else {
+      setSelectedSlot(slots.length > 0 ? slots[0] : null);
+      setAugmentTomeWeapon(false);
+    }
+  };
+
   // Get priority label for a player
   const getPriorityLabel = (rank: number, needsMaterial: boolean): string => {
     if (!needsMaterial) return '';
@@ -686,7 +726,7 @@ export function LogMaterialModal({
           <Select
             id="recipient"
             value={selectedPlayer}
-            onChange={setSelectedPlayer}
+            onChange={handleRecipientChange}
             options={recipientOptions}
           />
           {visibleRecipients.length === 0 && !showAllRecipients && (
@@ -804,6 +844,7 @@ export function LogMaterialModal({
         <div>
           <Label htmlFor="notes">Notes (optional)</Label>
           <TextArea
+            id="notes"
             value={notes}
             onChange={setNotes}
             placeholder="Add a note..."

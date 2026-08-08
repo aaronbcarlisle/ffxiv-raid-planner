@@ -277,3 +277,207 @@ class TestLootCharacterRegistrationValidation:
             headers=auth_headers,
         )
         assert response.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Test: update endpoints distinguish explicit null (clear) from absent (keep)
+# ---------------------------------------------------------------------------
+
+class TestUpdateClearSemantics:
+    """PUT clear semantics for slot_augmented and notes.
+
+    Legacy V1 edit modals send explicit null with intent to clear; v2 sends the
+    '' sentinel. Both must clear. An absent field must leave the stored value
+    unchanged, and an invalid slot string stays ignored.
+    """
+
+    async def _create_material_entry(self, client, auth_headers, group, tier, player):
+        response = await client.post(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log",
+            json={
+                "weekNumber": 1,
+                "floor": "M11S",
+                "materialType": "twine",
+                "recipientPlayerId": player.id,
+                "method": "drop",
+                "slotAugmented": "head",
+                "notes": "initial note",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["slotAugmented"] == "head"
+        assert data["notes"] == "initial note"
+        return data["id"]
+
+    async def _create_loot_entry(self, client, auth_headers, group, tier, player):
+        response = await client.post(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/loot-log",
+            json=_loot_payload(player, notes="initial note"),
+            headers=auth_headers,
+        )
+        assert response.status_code == 201
+        assert response.json()["notes"] == "initial note"
+        return response.json()["id"]
+
+    @pytest.mark.asyncio
+    async def test_material_update_null_clears_slot_augmented(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """Explicit null must clear slot_augmented (legacy V1's clear wire shape)."""
+        group, tier = group_and_tier
+        entry_id = await self._create_material_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log/{entry_id}",
+            json={"slotAugmented": None},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["slotAugmented"] is None
+
+    @pytest.mark.asyncio
+    async def test_material_update_empty_string_clears_slot_augmented(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """The '' sentinel keeps clearing slot_augmented (v2's clear wire shape)."""
+        group, tier = group_and_tier
+        entry_id = await self._create_material_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log/{entry_id}",
+            json={"slotAugmented": ""},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["slotAugmented"] is None
+
+    @pytest.mark.asyncio
+    async def test_material_update_absent_slot_augmented_left_unchanged(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """A payload that omits slotAugmented must not touch the stored value."""
+        group, tier = group_and_tier
+        entry_id = await self._create_material_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log/{entry_id}",
+            json={"weekNumber": 2},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["weekNumber"] == 2
+        assert response.json()["slotAugmented"] == "head"
+
+    @pytest.mark.asyncio
+    async def test_material_update_invalid_slot_still_ignored(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """An unknown slot string is ignored (long-standing behavior, must not clear)."""
+        group, tier = group_and_tier
+        entry_id = await self._create_material_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log/{entry_id}",
+            json={"slotAugmented": "garbage"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["slotAugmented"] == "head"
+
+    @pytest.mark.asyncio
+    async def test_material_update_null_clears_notes(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """Explicit null must clear notes."""
+        group, tier = group_and_tier
+        entry_id = await self._create_material_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log/{entry_id}",
+            json={"notes": None},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["notes"] is None
+
+    @pytest.mark.asyncio
+    async def test_material_update_empty_string_clears_notes(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """The '' sentinel clears notes and normalizes to null (not stored as '')."""
+        group, tier = group_and_tier
+        entry_id = await self._create_material_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log/{entry_id}",
+            json={"notes": ""},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["notes"] is None
+
+    @pytest.mark.asyncio
+    async def test_material_update_absent_notes_left_unchanged(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """A payload that omits notes must not touch the stored value."""
+        group, tier = group_and_tier
+        entry_id = await self._create_material_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log/{entry_id}",
+            json={"weekNumber": 3},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["notes"] == "initial note"
+
+    @pytest.mark.asyncio
+    async def test_loot_update_null_clears_notes(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """Explicit null must clear notes on loot-log entries too."""
+        group, tier = group_and_tier
+        entry_id = await self._create_loot_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/loot-log/{entry_id}",
+            json={"notes": None},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["notes"] is None
+
+    @pytest.mark.asyncio
+    async def test_loot_update_empty_string_clears_notes(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """The '' sentinel clears loot-entry notes and normalizes to null."""
+        group, tier = group_and_tier
+        entry_id = await self._create_loot_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/loot-log/{entry_id}",
+            json={"notes": ""},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["notes"] is None
+
+    @pytest.mark.asyncio
+    async def test_loot_update_absent_notes_left_unchanged(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """A loot-log payload that omits notes must not touch the stored value."""
+        group, tier = group_and_tier
+        entry_id = await self._create_loot_entry(client, auth_headers, group, tier, player)
+
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/loot-log/{entry_id}",
+            json={"weekNumber": 2},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["notes"] == "initial note"

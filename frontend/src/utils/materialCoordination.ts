@@ -563,7 +563,7 @@ export async function updateMaterialAndReconcileGear(
     materialType: MaterialType;
     recipientPlayerId: string;
     method: LootMethod;
-    /** Already trimmed. '' clears — backend applies any non-None string (loot_tracking.py:1513-1514). */
+    /** Already trimmed. '' clears (normalized to NULL server-side) — explicit null clears too (loot_tracking.py:1517-1519). */
     notes: string;
   },
   options: UpdateMaterialOptions = {}

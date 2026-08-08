@@ -60,7 +60,8 @@ import { RankingExplanation } from './RankingExplanation';
 import { ScoreBreakdown, hasAdjustments } from './ScoreBreakdown';
 import { FLOOR_LOOT_TABLES, type FloorNumber } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
-import type { SnapshotPlayer, StaticSettings, LootLogEntry, LootLogEntryUpdate, LootMethod, GearSlot } from '../../types';
+import type { SnapshotPlayer, StaticSettings, LootLogEntry, LootMethod, GearSlot } from '../../types';
+import { computeEditUpdates } from './recipientPickerEditUpdates';
 
 export interface DropItemContext {
   slot: GearSlot | 'ring';
@@ -146,43 +147,9 @@ function firstSlotForFloor(floorNumber: FloorNumber): GearSlot | 'ring' {
   return first === 'ring1' ? 'ring' : first;
 }
 
-// The ONE edit-diff derivation — handleSubmit submits exactly this object and
-// the "This will:" preview renders exactly this object, so they cannot drift.
-function computeEditUpdates(args: {
-  editEntry: LootLogEntry;
-  slot: GearSlot | 'ring';
-  floorName: string;
-  week: number;
-  method: LootMethod;
-  notes: string;
-  recipientPlayerId: string;
-  recipientJob: string | undefined;
-}): LootLogEntryUpdate {
-  const { editEntry, slot, floorName, week, method, notes, recipientPlayerId, recipientJob } = args;
-  // Ring round-trip: an untouched ring slot keeps the entry's concrete
-  // ring1/ring2 (the picker vocabulary collapses to 'ring' which would
-  // otherwise rewrite ring2 → ring1). This does NOT fully round-trip a
-  // legacy `itemSlot: 'ring'` entry (LootSlot includes 'ring' alongside
-  // ring1/ring2) — the ternary below normalizes it to 'ring1' even when
-  // untouched, so `itemSlot !== editEntry.itemSlot` reads as a change and
-  // emits `updates.itemSlot`. Known phantom-diff case, disclosed in the D2
-  // PR body — not fixed here.
-  const itemSlot = slot === 'ring'
-    ? (editEntry.itemSlot === 'ring2' ? 'ring2' : 'ring1')
-    : slot;
-  const updates: LootLogEntryUpdate = {};
-  if (week !== editEntry.weekNumber) updates.weekNumber = week;
-  if (floorName !== editEntry.floor) updates.floor = floorName;
-  if (itemSlot !== editEntry.itemSlot) updates.itemSlot = itemSlot;
-  if (recipientPlayerId !== editEntry.recipientPlayerId) updates.recipientPlayerId = recipientPlayerId;
-  if (method !== editEntry.method) updates.method = method;
-  if (notes !== (editEntry.notes ?? '')) updates.notes = notes || undefined;
-  // Backfill weaponJob for weapon entries created without it.
-  if (itemSlot === 'weapon' && !editEntry.weaponJob && recipientJob) {
-    updates.weaponJob = recipientJob;
-  }
-  return updates;
-}
+// The ONE edit-diff derivation lives in recipientPickerEditUpdates.ts —
+// handleSubmit submits exactly that object and the "This will:" preview
+// renders exactly that object, so they cannot drift.
 
 export function RecipientPicker({
   isOpen,
@@ -468,11 +435,10 @@ export function RecipientPicker({
       if (updates.floor !== undefined || updates.itemSlot !== undefined) out.push(`Change the item to ${floorName} · ${label}`);
       if (updates.recipientPlayerId !== undefined) out.push(`Reassign it to ${name}`);
       if (updates.method !== undefined) out.push(`Set the method to ${method}`);
-      // `updates.notes` carries `undefined` as a *cleared* value (see
-      // computeEditUpdates: `updates.notes = notes || undefined`) — a
-      // cleared-to-empty note still has the `notes` key set but with an
-      // undefined value, so check key PRESENCE, not the value, or a clear
-      // silently reports "No changes yet." while submit still writes it.
+      // `updates.notes` carries `''` as a *cleared* value (computeEditUpdates
+      // assigns `updates.notes = notes` — the '' sentinel the backend clears
+      // on), so check key PRESENCE, not truthiness, or a clear silently
+      // reports "No changes yet." while submit still writes it.
       if ('notes' in updates) out.push('Update the notes');
       if (updates.weaponJob !== undefined) out.push(`Record it as a ${updates.weaponJob} weapon`);
       // Mirrors lootCoordination.ts:186-187,:194-195 — the picker never diffs
