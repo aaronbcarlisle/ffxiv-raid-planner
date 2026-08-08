@@ -38,13 +38,15 @@ export interface FloorCardProps {
   floorNumber: FloorNumber; floorName: string;
   players: SnapshotPlayer[]; settings: StaticSettings;
   lootLog: LootLogEntry[]; materialLog: MaterialLogEntry[]; pageLedger: PageLedgerEntry[];
-  scopedWeek: number;
   /**
-   * The REAL current week, used ONLY for the enhanced-scoring context (drought /
-   * fair-share is computed against "now", not the scoped view week). Defaults to
-   * `scopedWeek` when absent. Status derivation always uses `scopedWeek`.
+   * The week this card speaks for — BOTH the week its status chip derives from
+   * and the week the enhanced-scoring context measures drought/fair-share
+   * against. D4/R-15 collapsed the old `scopedWeek` + optional `currentWeek`
+   * pair: Priority is always the clock's current week now (the week scope moved
+   * to the Log tab), so the two were the same value on every render and a prop
+   * whose only purpose was to *differ* from the other had no model left.
    */
-  currentWeek?: number;
+  currentWeek: number;
   canEdit: boolean;
   /**
    * Whether a fully-logged week may collapse the card (default true — the
@@ -67,17 +69,14 @@ function toRowEntries(entries: Array<{ player: SnapshotPlayer; rank?: number | n
 
 export function FloorCard({
   floorNumber, floorName, players, settings, lootLog, materialLog, pageLedger,
-  scopedWeek, currentWeek, canEdit, autoCollapse = true, onAssignGear, onAssignMaterial,
+  currentWeek, canEdit, autoCollapse = true, onAssignGear, onAssignMaterial,
 }: FloorCardProps) {
-  // Enhanced-scoring drought is measured against the real current week; the
-  // scoped view week only governs which week's log the status chip reflects.
-  const enhanceWeek = currentWeek ?? scopedWeek;
   const [expanded, setExpanded] = useState(false);
   const table = FLOOR_LOOT_TABLES[floorNumber];
 
   const status = useMemo(
-    () => deriveFloorWeekStatus({ floorNumber, floorName, week: scopedWeek, players, settings, lootLog, materialLog, pageLedger }),
-    [floorNumber, floorName, scopedWeek, players, settings, lootLog, materialLog, pageLedger],
+    () => deriveFloorWeekStatus({ floorNumber, floorName, week: currentWeek, players, settings, lootLog, materialLog, pageLedger }),
+    [floorNumber, floorName, currentWeek, players, settings, lootLog, materialLog, pageLedger],
   );
 
   // Legacy gate expression (LootPriorityPanel.tsx:404-408): enhanced scoring
@@ -91,7 +90,7 @@ export function FloorCard({
   );
 
   const enhance = (entries: PriorityEntry[]) =>
-    enhancePriorityEntries(entries, { settings, lootLog, currentWeek: enhanceWeek, averageDrops, active: enhancedActive });
+    enhancePriorityEntries(entries, { settings, lootLog, currentWeek, averageDrops, active: enhancedActive });
 
   const gearItems: Array<{ slot: GearSlot | 'ring'; label: string }> = table.gearDrops.map((slot) =>
     slot === 'ring1' ? { slot: 'ring' as const, label: 'Ring' } : { slot, label: GEAR_SLOT_NAMES[slot] },
@@ -101,13 +100,13 @@ export function FloorCard({
   // why popover and the modal can never disagree. Equivalence proven in
   // recipientRanking.test.ts's order-identity case: same pools, same enhanced
   // gate (enhancedActive already folds in lootLog.length > 0), same week
-  // (enhanceWeek), and mainRosterPlayers is a fixed point of its
+  // (currentWeek), and mainRosterPlayers is a fixed point of its
   // configured/!isSubstitute filter.
   const gearRows = gearItems.map((item) => ({
     ...item,
     entries: buildRecipientEntries({
       players, slot: item.slot, scope: 'priority', settings, lootLog,
-      currentWeek: enhanceWeek, enhancedActive,
+      currentWeek, enhancedActive,
     }),
   }));
 
