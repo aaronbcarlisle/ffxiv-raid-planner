@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.13';
+export const CURRENT_VERSION = '2.1.14';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,29 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.14',
+    date: '2026-08-08T20:45:00Z',
+    title: 'Loot editing fixes: gear augmentation no longer silently skipped, and clearing notes actually saves',
+    items: [
+      {
+        category: 'fix',
+        title: 'Changing the recipient while logging a material no longer silently skips the gear update',
+        description:
+          "A dropdown quirk could reset the augmentation slot behind the scenes when you switched recipients — the entry saved, but the recipient's gear was never marked augmented even though the preview said it would be. The slot now follows the new recipient reliably, in both the classic and preview shells.",
+        pr: 239,
+        prTitle: 'fix(loot): V1 loot-edit bugs — Radix Select phantom reset + null/empty clear semantics',
+      },
+      {
+        category: 'fix',
+        title: 'Erasing notes or unchecking the gear update when editing an entry now actually clears them',
+        description:
+          'Editing a loot or material entry to remove its note, or unchecking "mark gear as augmented", used to save successfully while quietly keeping the old value. Cleared fields now clear for real across all the edit dialogs.',
+        pr: 239,
+        prTitle: 'fix(loot): V1 loot-edit bugs — Radix Select phantom reset + null/empty clear semantics',
+      },
+    ],
+  },
   {
     version: '2.1.13',
     date: '2026-08-08T13:30:00Z',
