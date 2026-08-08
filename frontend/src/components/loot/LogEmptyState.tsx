@@ -9,22 +9,32 @@
  *
  * Its lifetime is longer than "until D5": the phase dependency graph puts D8
  * before D5, so this stub survives at least two more slices.
+ *
+ * Lays out its own body (icon chip, heading, description) instead of the
+ * shared `EmptyState` primitive: `EmptyState` hardcodes centered, narrow
+ * content for Dashboard/GroupView/History, and centering that on this card's
+ * full-width (120rem) layout reads as a small blob lost in a lot of empty
+ * space. Overriding `items-center`/`text-center` via className would be a
+ * Tailwind cascade-order fight (same specificity, order depends on the
+ * stylesheet, not the className string) rather than an honest override, so
+ * this reuses the same visual vocabulary directly, left-aligned instead.
  */
 import { CalendarRange } from 'lucide-react';
-
-import { EmptyState } from '../ui/EmptyState';
 
 export function LogEmptyState() {
   return (
     <div
       data-testid="log-empty-state"
-      className="rounded-lg border border-border-default bg-surface-card"
+      className="rounded-lg border border-border-default bg-surface-card flex flex-col items-start py-12 px-4"
     >
-      <EmptyState
-        icon={<CalendarRange size={24} aria-hidden />}
-        heading="The week's record lands here"
-        description="Next up: the weekly grid — four floor rows, one cell per slot — so a static can read a whole week at a glance. Until then, pick a week with the control above, and use History for the full record."
-      />
+      <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center mb-4 text-accent">
+        <CalendarRange size={24} aria-hidden />
+      </div>
+      <h3 className="font-display text-lg text-text-primary mb-2">The week&apos;s record lands here</h3>
+      <p className="text-text-secondary text-sm max-w-md">
+        Next up: the weekly grid — four floor rows, one cell per slot — so a static can read a whole
+        week at a glance. The week above sets where new drops are logged; History has the full record.
+      </p>
     </div>
   );
 }
