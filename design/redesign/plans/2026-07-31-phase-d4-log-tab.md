@@ -120,7 +120,7 @@ Every task implicitly includes all of these. Violations are review-rejections.
   displayed-week-bound reset menu are **D7** (user-ruled).
 - "Log material" on Log's toolbar is **D8** (user-ruled).
 - ⚠ **D4 deletes live v2 behaviour** — the phase's only such deletion (`phase-d-loot-plan.md:254-256`).
-  The PR body carries a **five-row affordance-parity block** mapping every affordance that moves:
+  The PR body carries a **six-row affordance-parity block** mapping every affordance that moves:
 
   | Affordance (v2 today) | Where it lives after D4 |
   |---|---|
@@ -129,6 +129,7 @@ Every task implicitly includes all of these. Violations are review-rejections.
   | `Revert week` | Log only, clock-bound, now with pre-check + data summary |
   | Priority's back-dated "Log a drop" default (`Loot.tsx:446`) | Gone by ruling — Priority logs to the clock's week (R-15) |
   | Wizard success re-scoping the view to the logged week (`Loot.tsx:726`) | Log only. **A Priority wizard run targeting another week now gives no visual feedback** — named consequence |
+  | Reading floor-by-floor completion for a **past** week — pre-D4 the dropdown's `scopedWeek` fed both `FloorCard`'s status chip and its auto-collapse via `deriveFloorWeekStatus` | **Gone until D5's grid.** Priority's `FloorCard`s are pinned to `currentWeek={clock.currentWeek}` (`Loot.tsx:730`) with no override, and Log's body is `LogEmptyState` — there is no v2 surface that can show a past week's floor-by-floor status today |
 
 - `FairnessSummary`, `BookLedgerCard` and `LootResetMenu` stay mounted on **History** in D4 (D7 / D14).
 - `RosterCard.tsx:286,304` and `GroupViewContent.tsx:1167` still write `lview=history`. D7 retargets
@@ -392,13 +393,18 @@ the shared `hooks/` tree.
       same name, and `loot/BookLedgerCard.tsx:82` has an unrelated local. **Schedule is explicitly
       out of scope.** The correct check is FloorCard's importers — director-verified as exactly one
       non-test importer, `loot/Loot.tsx:67`. Proceed; STOP only if that count has changed.
-- [ ] ⚠ **Two tests are DELETED, not renamed (director M4)** — both are deliberate regression guards
-      for the `??` fallback R-15 removes. Name them in the commit body:
+- [ ] ⚠ **Three tests are DELETED, not renamed (director M4; corrected under M3 — this row
+      originally said "Two")** — all three are deliberate regression guards for the model R-15
+      removes. Name them in the commit body:
       - `FloorCard.test.tsx:190-192` — "defaults the enhance-context week to scopedWeek when
         currentWeek is absent".
       - `Loot.test.tsx:430-452` — "keeps FloorCard currentWeek pinned to the clock while scoping to
         another week", whose own comment reads *"Deleting `currentWeek={clock.currentWeek}` in
         Loot.tsx must fail this test."* R-15 is precisely that deletion, made deliberate.
+      - `Loot.test.tsx` — "defaults the picker to the scoped week in Priority view but the clock
+        week in History view" — asserts exactly the back-dated Priority default the affordance-parity
+        block above declares gone by ruling; replaced by the strictly stronger R-20 split test
+        ("targets the displayed week from Log and the clock week everywhere else").
 - [ ] **Log's body** renders `<LogEmptyState />` — a single centred card, design-system primitives,
       naming what arrives next ("the weekly grid: four floor rows, one cell per slot"). No fake
       controls, no disabled buttons standing in for D5's cells.

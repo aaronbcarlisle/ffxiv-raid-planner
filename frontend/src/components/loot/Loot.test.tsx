@@ -937,6 +937,17 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     // R-22: canPrev/canNext are the hook's real bounds, not hardcoded — week 1
     // has nowhere to prev to. A `canPrev={true}` stub fails this.
     expect(weekScopeCalls[weekScopeCalls.length - 1].canPrev).toBe(false);
+    // canNext's OTHER bound: week 1 has somewhere to go next (maxWeek is 5).
+    // A hardcoded `canNext={false}` stub — permanently disabling the
+    // Next-week chevron for every user — fails this.
+    expect(weekScopeCalls[weekScopeCalls.length - 1].canNext).toBe(true);
+
+    // groupId/tierId must be the real static + tier, never swapped or
+    // aliased to each other — the revert pre-check fetches against these, so
+    // a swap targets a foreign static/tier's data and overwrites the store's
+    // logs with it.
+    expect(weekScopeCalls[weekScopeCalls.length - 1].groupId).toBe('g1');
+    expect(weekScopeCalls[weekScopeCalls.length - 1].tierId).toBe('aac-heavyweight');
 
     // R-22 headline affordance, end-to-end: invoke the captured `onFollowClock`
     // exactly as the real WeekScopeControl's go-to-current control would, and
