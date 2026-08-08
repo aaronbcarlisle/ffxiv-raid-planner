@@ -1,26 +1,34 @@
 /**
- * LootToolbar — the row above the Loot body (F6d, spec §2.3/§5.4).
+ * LootToolbar — the row above the Loot body (F6d, spec §2.3/§5.4; D4).
  *
- * A flat flex row (RosterToolbar pattern): the Priority⇄History view toggle
- * (leftmost, PR2), the left control cluster (WeekScopeControl in Priority or
- * HistoryFilters in History — slotted by Loot), a spacer, and — for editors —
- * the Loot actions (Reset [history-only], Adjustments, Rules, Log a drop, Log
- * this week's loot).
+ * A flat flex row (RosterToolbar pattern): the Priority ⇄ Log ⇄ History view
+ * toggle (leftmost, PR2), the left control cluster (the Log tab's
+ * WeekScopeControl or History's HistoryFilters — slotted by Loot; Priority
+ * slots nothing, since R-15 moved the week to Log and Priority is always the
+ * clock's current week), a spacer, and — for editors — the Loot actions (Reset
+ * [history-only], Adjustments, Rules, Log a drop, and the week-logging wizard).
+ *
+ * The wizard button names its week: R-22 requires the clock's mutations to say
+ * which week they act on, and the same honesty applies to a write action that
+ * can target a back-dated week. `logWeekLabel` carries that name when the Log
+ * tab is showing a week other than the clock's; unset keeps the default copy.
  */
 import type { ReactNode } from 'react';
 import { CheckSquare, Gauge, Scan, SlidersHorizontal } from 'lucide-react';
 import { Button } from '../primitives/Button';
 
 export interface LootToolbarProps {
-  /** Priority ⇄ History SegmentedToggle, slotted by Loot (leftmost). */
+  /** Priority ⇄ Log ⇄ History SegmentedToggle, slotted by Loot (leftmost). */
   viewToggle?: ReactNode;
-  /** Left control cluster — WeekScopeControl (priority) or HistoryFilters (history). */
+  /** Left control cluster — WeekScopeControl (log) or HistoryFilters (history); Priority slots nothing. */
   weekControl: ReactNode;
   /** History-only Reset dropdown (canEdit), rendered inside the action cluster. */
   resetMenu?: ReactNode;
   canEdit: boolean;
   onLogDrop: () => void;
   onLogWeek: () => void;
+  /** Overrides the wizard button's copy so it can name a back-dated week (e.g. "Log Week 2 loot"). */
+  logWeekLabel?: string;
   onOpenAdjustments: () => void;
   onOpenRules: () => void;
 }
@@ -32,6 +40,7 @@ export function LootToolbar({
   canEdit,
   onLogDrop,
   onLogWeek,
+  logWeekLabel,
   onOpenAdjustments,
   onOpenRules,
 }: LootToolbarProps) {
@@ -73,7 +82,7 @@ export function LootToolbar({
             leftIcon={<CheckSquare className="h-3.5 w-3.5" aria-hidden />}
             onClick={onLogWeek}
           >
-            Log this week's loot
+            {logWeekLabel ?? "Log this week's loot"}
           </Button>
         </>
       )}
