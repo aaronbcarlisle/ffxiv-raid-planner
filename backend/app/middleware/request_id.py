@@ -19,10 +19,17 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        # Accept request ID from upstream proxy if provided, otherwise generate
+        # Accept request ID from upstream proxy if provided, otherwise generate.
+        # Inbound value is client-controlled: cap it so it can't bloat logs,
+        # response headers, or fixed-width DB columns downstream.
         request_id = request.headers.get("X-Request-ID")
-        if not request_id:
+        if request_id:
+            request_id = request_id[:64]
+        else:
             request_id = str(uuid.uuid4())
+
+        # Expose to route handlers and exception handlers (error-report context)
+        request.state.request_id = request_id
 
         # Bind request ID to structlog context for all subsequent logs
         structlog.contextvars.clear_contextvars()

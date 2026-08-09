@@ -60,6 +60,20 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.16',
+    date: '2026-08-09T05:00:00Z',
+    title: 'Admin V2 slice AD1a — admin auth substrate (backend only)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Admin surface goes JWT-only and gains the audit-log substrate',
+        description:
+          'Backend plumbing for the Admin Dashboard V2 workstream: all admin endpoints now require browser sign-in (API keys are rejected — the sole carve-out is the plugin\'s verified-ID import), non-admins calling catalog admin routes get a clean 403 instead of a 500, and the site-wide audit_log table + same-session emit helper land ahead of the Logs surface. Request IDs now actually reach error reports.',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.15',
     date: '2026-08-09T01:30:00Z',
     title: "Paladins get their shield: the off-hand is now a real gear slot",

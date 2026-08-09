@@ -48,10 +48,11 @@ Prod calibration (railway_prod_copy, snapshot 2026-07-12; live ≈ 4 weeks ahead
 New package `backend/app/routers/admin/` (`users.py`, `statics.py`, `audit.py`, `metrics.py`, `search.py`, `ops.py`, `deps.py`), mounted under `/api/admin/*`. One shared dependency in `deps.py`:
 
 ```python
-async def require_admin(user = Depends(get_current_user_jwt_only), session = Depends(get_session)) -> User:
+async def require_admin(user: User = Depends(get_current_user_jwt_only)) -> User:
     # JWT-only: a leaked xrp_ plugin key must never reach the admin surface
     # (today every admin endpoint accepts API keys via get_current_user).
-    if not user.is_admin: raise PermissionDenied(...)
+    # No session dep: user.is_admin is on the row the validator just loaded.
+    if not user.is_admin: raise PermissionDenied("Admin access required")
     return user
 ```
 
@@ -91,7 +92,7 @@ Portable types only (dev = SQLite `create_all`, prod = PG alembic; both must pas
 | `impersonating_user_id` | String(36) nullable | X-View-As target if header present |
 | `admin_override` | Boolean default False | action rode the virtual-owner bypass (actor is admin AND not a real member) |
 | `action` | String(60), indexed | dot-namespaced: `static.deleted`, `loot.logged`, `user.banned`, `admin.view_as_started` |
-| `target_type` / `target_id` / `target_label` | String(30)/String(36)/String(200) | composite index (type, id) |
+| `target_type` / `target_id` / `target_label` | String(30)/String(64)/String(200) | composite index (type, id); target_id is 64 — error-review targets are SHA-256 fingerprints (`error_reports.fingerprint`) |
 | `static_group_id` | String(36) nullable, indexed | per-static scoping/filtering |
 | `old_values` / `new_values` | sa.JSON nullable | changed fields only on update; full state on create; **never secrets** (deny-list: bot tokens, webhook URLs, key hashes) |
 | `request_id` | String(36) nullable | from `request.state.request_id` (§3.2 fix) |

@@ -12,7 +12,7 @@ from sqlalchemy import distinct, func, literal_column, select, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_session
-from ..dependencies import get_current_user, get_current_user_optional
+from ..dependencies import get_current_user_optional
 from ..logging_config import get_logger
 from ..models import (
     AnalyticsEvent,
@@ -24,7 +24,8 @@ from ..models import (
     TierSnapshot,
     User,
 )
-from ..permissions import NotFound, PermissionDenied, is_user_admin
+from ..permissions import NotFound
+from .admin.deps import require_admin
 from ..rate_limit import limiter
 from ..schemas.analytics import (
     AnalyticsEventBatch,
@@ -47,15 +48,6 @@ from ..schemas.analytics import (
 
 router = APIRouter(tags=["analytics"])
 logger = get_logger(__name__)
-
-
-# --- Helpers ---
-
-
-async def require_admin(user: User, session: AsyncSession) -> None:
-    """Raise PermissionDenied if user is not an admin."""
-    if not await is_user_admin(session, user.id):
-        raise PermissionDenied("Only admins can access analytics")
 
 
 def _parse_range(range_str: str) -> datetime | None:
@@ -161,12 +153,10 @@ async def receive_error_report(
 
 @router.get("/api/admin/analytics/overview", response_model=OverviewResponse)
 async def get_overview(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> OverviewResponse:
     """Get KPI overview data for the admin analytics dashboard."""
-    await require_admin(user, session)
-
     now = datetime.now(timezone.utc)
     seven_days_ago = (now - timedelta(days=7)).isoformat()
     twenty_four_hours_ago = (now - timedelta(hours=24)).isoformat()
@@ -230,13 +220,11 @@ async def get_overview(
 
 @router.get("/api/admin/analytics/growth", response_model=GrowthResponse)
 async def get_growth(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
     time_range: str = Query("30d", alias="range", pattern="^(7d|30d|90d|all)$"),
 ) -> GrowthResponse:
     """Get time-series growth data for users and statics."""
-    await require_admin(user, session)
-
     cutoff = _parse_range(time_range)
 
     # Users by date
@@ -276,13 +264,11 @@ async def get_growth(
 
 @router.get("/api/admin/analytics/usage", response_model=UsageResponse)
 async def get_usage(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
     time_range: str = Query("30d", alias="range", pattern="^(7d|30d|90d|all)$"),
 ) -> UsageResponse:
     """Get feature usage statistics from analytics events."""
-    await require_admin(user, session)
-
     cutoff = _parse_range(time_range)
 
     query = select(
@@ -318,13 +304,11 @@ async def get_usage(
 
 @router.get("/api/admin/analytics/top-users")
 async def get_top_users(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
     limit: int = Query(10, ge=1, le=50),
 ) -> list[TopUserItem]:
     """Get top users by activity (statics created + joined)."""
-    await require_admin(user, session)
-
     # Count statics created (owned) and statics joined (memberships)
     owned_count = (
         select(
@@ -387,13 +371,11 @@ async def get_top_users(
 
 @router.get("/api/admin/analytics/top-statics")
 async def get_top_statics(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
     limit: int = Query(10, ge=1, le=50),
 ) -> list[TopStaticItem]:
     """Get most active statics by loot log entries."""
-    await require_admin(user, session)
-
     # Count loot log entries per static (via tier_snapshot)
     loot_count = (
         select(
@@ -451,7 +433,7 @@ async def get_top_statics(
     "/api/admin/analytics/errors", response_model=ErrorGroupListResponse
 )
 async def get_error_groups(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
     status: str = Query("unreviewed", pattern="^(unreviewed|reviewed|all)$"),
     page: int = Query(1, ge=1),
@@ -460,8 +442,6 @@ async def get_error_groups(
     severity: str = Query("", pattern="^(critical|error|warning|info|)$"),
 ) -> ErrorGroupListResponse:
     """Get error reports grouped by fingerprint with filtering and pagination."""
-    await require_admin(user, session)
-
     # Map severity to numeric order so max() picks the highest severity,
     # not the lexicographically largest string ("warning" > "error" > "critical").
     severity_rank = case(
@@ -570,12 +550,10 @@ async def get_error_groups(
 @router.post("/api/admin/analytics/errors/batch-review")
 async def batch_review_errors(
     body: BatchReviewRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Batch mark/unmark error groups as reviewed."""
-    await require_admin(user, session)
-
     is_reviewed = body.action == "review"
     result = await session.execute(
         update(ErrorReport)
@@ -604,12 +582,10 @@ async def batch_review_errors(
 )
 async def get_error_detail(
     fingerprint: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> ErrorGroupDetailResponse:
     """Get detailed view of a single error group with recent occurrences."""
-    await require_admin(user, session)
-
     # Get aggregate info
     agg_query = select(
         ErrorReport.fingerprint,
@@ -677,12 +653,10 @@ async def get_error_detail(
 @router.post("/api/admin/analytics/errors/{fingerprint}/review")
 async def mark_error_reviewed(
     fingerprint: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Mark all occurrences of an error group as reviewed."""
-    await require_admin(user, session)
-
     result = await session.execute(
         update(ErrorReport)
         .where(ErrorReport.fingerprint == fingerprint)
@@ -707,12 +681,10 @@ async def mark_error_reviewed(
 @router.post("/api/admin/analytics/errors/{fingerprint}/unreview")
 async def mark_error_unreviewed(
     fingerprint: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Mark all occurrences of an error group as unreviewed (re-open)."""
-    await require_admin(user, session)
-
     result = await session.execute(
         update(ErrorReport)
         .where(ErrorReport.fingerprint == fingerprint)
@@ -739,12 +711,10 @@ async def mark_error_unreviewed(
 @router.get("/api/admin/analytics/users/{user_id}/statics")
 async def get_user_statics(
     user_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ) -> UserStaticsResponse:
     """Get statics created and joined by a specific user."""
-    await require_admin(user, session)
-
     # Statics created (owned)
     # Need member count for each
     member_count_sq = (

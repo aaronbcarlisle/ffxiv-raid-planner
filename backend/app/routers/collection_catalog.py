@@ -9,6 +9,7 @@ from ..dependencies import get_current_user
 from ..logging_config import get_logger
 from ..models import User
 from ..models.collection_catalog_item import CollectionCatalogItem
+from ..permissions import PermissionDenied
 from ..schemas.collection_catalog import AuditEntry, CatalogAuditReport, CatalogItemResponse, CatalogSyncResult, DtAuditDetail, VerifiedIdImportResult, VerifiedIdMapping
 from ..services.catalog_audit_service import get_catalog_audit
 from ..services.catalog_id_import_service import import_verified_ids
@@ -17,6 +18,7 @@ from ..services.catalog_import_service import (
     seed_from_internal,
     sync_from_ffxiv_collect,
 )
+from .admin.deps import require_admin
 
 router = APIRouter(prefix="/api", tags=["collection-catalog"])
 logger = get_logger(__name__)
@@ -80,10 +82,13 @@ async def sync_catalog(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> CatalogSyncResult:
-    """Admin-only: pull latest data from FFXIV Collect API and update catalog."""
+    """Admin-only: pull latest data from FFXIV Collect API and update catalog.
+
+    Still xrp_-reachable: JWT-only lockdown is staged to AD9b, the slice that
+    gives sync/seed their Ops-tab buttons (spec §2.1).
+    """
     if not current_user.is_admin:
-        from ..permissions import Forbidden
-        raise Forbidden("Admin access required")
+        raise PermissionDenied("Admin access required")
 
     try:
         counts = await sync_from_ffxiv_collect(session)
@@ -97,13 +102,9 @@ async def sync_catalog(
 @router.get("/admin/collection-catalog/audit", response_model=CatalogAuditReport)
 async def catalog_audit(
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> CatalogAuditReport:
     """Admin-only: report plugin sync readiness for all catalog items."""
-    if not current_user.is_admin:
-        from ..permissions import Forbidden
-        raise Forbidden("Admin access required")
-
     report = await get_catalog_audit(session)
     return CatalogAuditReport(
         total=report["total"],
@@ -129,10 +130,14 @@ async def import_catalog_verified_ids(
 
     Only entries with confidence==\"exact\" are processed.
     game_mount_id and token_item_id are never overwritten if already set.
+
+    PERMANENT xrp_ carve-out (spec §2.1): the Dalamud plugin's /xrp resolve-ids
+    is a live caller (RaidPlannerClient.cs) — this is the sole admin endpoint
+    that keeps API-key-accepting auth. is_admin-gated, idempotent,
+    never-overwrites.
     """
     if not current_user.is_admin:
-        from ..permissions import Forbidden
-        raise Forbidden("Admin access required")
+        raise PermissionDenied("Admin access required")
 
     result = await import_verified_ids(session, mappings)
     logger.info(
@@ -150,10 +155,13 @@ async def seed_catalog(
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> CatalogSyncResult:
-    """Admin-only: (re-)seed catalog from internal curated data."""
+    """Admin-only: (re-)seed catalog from internal curated data.
+
+    Still xrp_-reachable: JWT-only lockdown is staged to AD9b, the slice that
+    gives sync/seed their Ops-tab buttons (spec §2.1).
+    """
     if not current_user.is_admin:
-        from ..permissions import Forbidden
-        raise Forbidden("Admin access required")
+        raise PermissionDenied("Admin access required")
 
     count = await seed_from_internal(session)
     logger.info("catalog_seeded_manually", count=count)
