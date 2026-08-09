@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { RosterCard } from './RosterCard';
@@ -264,6 +264,46 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
   });
 
   // ── Density axis (Phase C C1, D-01) ──
+  describe('off-hand slot (D2)', () => {
+    // Real slot vocabulary (the default fixture uses synthetic s0..s10 names).
+    const realGear = (withOffhand: boolean) => {
+      const base = ['weapon', 'head', 'body', 'hands', 'legs', 'feet', 'earring', 'necklace', 'bracelet', 'ring1', 'ring2']
+        .map((slot, i) => ({ slot, bisSource: 'raid', hasItem: i < 6, isAugmented: false }));
+      return withOffhand
+        ? [base[0], { slot: 'offhand', bisSource: null, hasItem: false, isAugmented: false }, ...base.slice(1)]
+        : base;
+    };
+
+    it('a PLD reads x/12 and renders 12 pips; a DRG with the same gear reads x/11 with 11 pips', () => {
+      const { container, unmount } = renderCard(
+        makePlayer({ gear: realGear(true) as never, job: 'PLD' })
+      );
+      expect(screen.getByText('6/12 BiS')).toBeInTheDocument();
+      expect(container.querySelectorAll('.mt-3.flex.flex-wrap.gap-1 > *')).toHaveLength(12);
+      unmount();
+
+      const { container: c2 } = renderCard(
+        makePlayer({ id: 'p2', gear: realGear(true) as never, job: 'DRG' })
+      );
+      expect(screen.getByText('6/11 BiS')).toBeInTheDocument();
+      expect(c2.querySelectorAll('.mt-3.flex.flex-wrap.gap-1 > *')).toHaveLength(11);
+    });
+
+    it('expanded PLD shows the Off Hand row as a plain slot (no tome-weapon "+" toggle); expanded DRG hides it', () => {
+      renderCard(makePlayer({ gear: realGear(true) as never, job: 'PLD' }), { density: 'expanded' });
+      const label = screen.getByText('Off Hand');
+      const row = label.closest('tr')!;
+      expect(row).not.toBeNull();
+      // WeaponBiSSelector's signature affordance is the "+" interim-tome toggle —
+      // the off-hand must render the plain BiSSourceSelector instead.
+      expect([...row.querySelectorAll('button')].some((b) => b.textContent === '+')).toBe(false);
+      cleanup();
+
+      renderCard(makePlayer({ id: 'p3', gear: realGear(true) as never, job: 'DRG' }), { density: 'expanded' });
+      expect(screen.queryByText('Off Hand')).not.toBeInTheDocument();
+    });
+  });
+
   describe('density', () => {
     it('renders the pip strip (no gear table) at the default compact density', () => {
       renderCard(makePlayer());

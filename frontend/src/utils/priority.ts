@@ -572,6 +572,9 @@ export function calculatePlayerNeeds(player: SnapshotPlayer): PlayerNeeds {
   let tomestoneCost = 0;
 
   player.gear.forEach((g) => {
+    // Off-hand rides the weapon bundle (6.2) — it is never an independent
+    // raid/tome need and never consumes a solvent of its own.
+    if (g.slot === 'offhand') return;
     if (g.bisSource === 'raid' && !g.hasItem) {
       raidNeed++;
     } else if (g.bisSource === 'tome') {

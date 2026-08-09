@@ -1659,10 +1659,13 @@ async def sync_player_gear(
         equipped = equipped_by_slot.get(slot_name)
 
         if not equipped:
-            # Off-hand: absent upstream is the NORMAL state for every job but
-            # PLD (providers omit the entry entirely) — leave it untouched
-            # rather than counting/clearing it as a missing slot.
-            if slot_name == "offhand":
+            # Off-hand: don't dirty a pristine minted entry (absent upstream is
+            # the normal state off-PLD); a STALE shield still clears like any
+            # other slot on this manual path.
+            if slot_name == "offhand" and not (
+                gear_slot.get("equippedItemId") or gear_slot.get("hasItem")
+                or gear_slot.get("isAugmented") or gear_slot.get("currentSource")
+            ):
                 continue
             gear_slot["currentSource"] = "unknown"
             gear_slot["hasItem"] = False

@@ -371,6 +371,43 @@ class TestUpdateClearSemantics:
         assert response.json()["slotAugmented"] == "head"
 
     @pytest.mark.asyncio
+    async def test_material_create_rejects_offhand_slot(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        """'offhand' is NOT a loot-domain slot (bundled with the weapon since
+        6.2) — creating a material entry against it is rejected exactly like
+        any invalid slot. Pins VALID_AUGMENT_SLOTS staying offhand-free."""
+        group, tier = group_and_tier
+        response = await client.post(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log",
+            json={
+                "weekNumber": 1,
+                "floor": "M11S",
+                "materialType": "twine",
+                "recipientPlayerId": player.id,
+                "method": "drop",
+                "slotAugmented": "offhand",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+        assert "slot_augmented" in response.json()["detail"]
+
+    @pytest.mark.asyncio
+    async def test_material_update_offhand_slot_ignored_like_any_invalid(
+        self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
+    ):
+        group, tier = group_and_tier
+        entry_id = await self._create_material_entry(client, auth_headers, group, tier, player)
+        response = await client.put(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/material-log/{entry_id}",
+            json={"slotAugmented": "offhand"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["slotAugmented"] == "head"
+
+    @pytest.mark.asyncio
     async def test_material_update_invalid_slot_still_ignored(
         self, client: AsyncClient, auth_headers: dict, group_and_tier, player,
     ):

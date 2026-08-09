@@ -1006,6 +1006,11 @@ async def sync_character_gear(
                 "itemLevel": equipped.get("item_level", 0),
             })
         else:
+            # No empty off-hand placeholder: Hub snapshot views render every
+            # entry ("N empty" badge, x/N denominator) — the slot joins a
+            # snapshot only when the character actually has one equipped.
+            if slot_name == "offhand":
+                continue
             gear.append({
                 "slot": slot_name,
                 "currentSource": "unknown",

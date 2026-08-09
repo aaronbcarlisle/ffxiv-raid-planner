@@ -1519,6 +1519,143 @@ def test_tomestone_shield_at_position_zero_maps_to_offhand():
     assert gear["Head"]["ID"] == 31004
 
 
+@pytest.mark.asyncio
+async def test_lodestone_offhand_syncs_on_weapon_ladder(client, session, test_user, auth_headers):
+    """An upstream OffHand item lands in the offhand slot and classifies on the
+    WEAPON iLv ladder (795 = savage) — pins LODESTONE_SLOT_MAP's OffHand key
+    and classify_current_source's offhand branch end-to-end."""
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    player = await create_snapshot_player(
+        session,
+        tier,
+        job="PLD",
+        gear=[
+            _gear_slot(slot="weapon", bis_source="raid", item_id=2001, item_level=795, item_name="Sword"),
+            _gear_slot(slot="offhand", bis_source="raid", item_id=2002, item_level=795, item_name="Shield"),
+        ],
+    )
+
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Mock Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {
+                    "Gear": {
+                        "MainHand": {"ID": 2001},
+                        "OffHand": {"ID": 2002},
+                    }
+                },
+            }
+        },
+    )
+
+    async def lookup(item_id: int):
+        if item_id == 2001:
+            return {"id": 2001, "name": "Sword", "level": 795, "icon": "w.png"}
+        return {"id": 2002, "name": "Shield", "level": 795, "icon": "s.png"}
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch("app.routers.lodestone.fetch_item_from_garland", new=AsyncMock(side_effect=lookup)),
+    ):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=999002",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    gear = sync_response.json()["gear"]
+    offhand = next(g for g in gear if g["slot"] == "offhand")
+    assert offhand["equippedItemId"] == 2002
+    # 795 on the WEAPON ladder = savage (the armor ladder would also say savage
+    # at 795 — the discriminating value is 785: weapon-ladder 'tome', armor
+    # 'tome'... so pin the ladder with hasItem too)
+    assert offhand["currentSource"] == "savage"
+    assert offhand["hasItem"] is True
+
+
+def test_classify_current_source_offhand_uses_weapon_ladder():
+    """The ladder DISCRIMINATOR is 775: 'relic' on the weapon ladder, but
+    'crafted' on the armor ladder — the offhand must ride the weapon ladder."""
+    from app.routers.lodestone import classify_current_source
+    assert classify_current_source("Phantom Kite Shield", 775, "offhand") == "relic"
+    assert classify_current_source("Phantom Sword", 775, "weapon") == "relic"
+    assert classify_current_source("Some Helm", 775, "head") == "crafted"
+
+
+@pytest.mark.asyncio
+async def test_manual_sync_clears_stale_offhand_but_not_pristine(client, session, test_user, auth_headers):
+    """Manual sync with no upstream off-hand CLEARS stale shield data (job
+    changed away from PLD) but never dirties a pristine minted entry."""
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    stale_offhand = {
+        "slot": "offhand", "bisSource": None, "hasItem": True, "isAugmented": False,
+        "equippedItemId": 49679, "equippedItemName": "Kite Shield", "equippedItemLevel": 795,
+        "currentSource": "savage",
+    }
+    player = await create_snapshot_player(
+        session,
+        tier,
+        job="WAR",
+        gear=[
+            _gear_slot(slot="weapon", bis_source="raid", item_id=3001, item_level=795, item_name="Axe"),
+            stale_offhand,
+            {"slot": "head", "bisSource": "raid", "hasItem": False, "isAugmented": False},
+        ],
+    )
+
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Mock Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {"Gear": {"MainHand": {"ID": 3001}}},
+            }
+        },
+    )
+
+    async def lookup(item_id: int):
+        return {"id": item_id, "name": "Axe", "level": 795, "icon": "a.png"}
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch("app.routers.lodestone.fetch_item_from_garland", new=AsyncMock(side_effect=lookup)),
+    ):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=999003",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    gear = sync_response.json()["gear"]
+    offhand = next(g for g in gear if g["slot"] == "offhand")
+    # Stale shield cleared like any other slot on manual sync
+    assert offhand.get("equippedItemId") is None
+    assert offhand["hasItem"] is False
+    assert offhand["currentSource"] == "unknown"
+
+    # Second sync: the now-pristine-ish entry must not be re-dirtied into the
+    # updated-slots count forever. (currentSource 'unknown' remains — the
+    # pristine guard keys on equipped/hasItem/isAugmented/currentSource, so a
+    # cleared entry stabilizes after this sync.)
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch("app.routers.lodestone.fetch_item_from_garland", new=AsyncMock(side_effect=lookup)),
+    ):
+        second = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=999003",
+            headers=auth_headers,
+        )
+    assert second.status_code == 200
+    offhand2 = next(g for g in second.json()["gear"] if g["slot"] == "offhand")
+    assert offhand2 == offhand
+
+
 # ---------------------------------------------------------------------------
 # Off-hand slot: lazy normalization + read projection (D2)
 # ---------------------------------------------------------------------------

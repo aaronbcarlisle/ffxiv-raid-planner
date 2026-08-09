@@ -93,6 +93,9 @@ export function buildSlotJumpTargets(
   playerId: string
 ): SlotJumpTargets {
   const targets: SlotJumpTargets = {};
+  // 'offhand' iterates here but can never populate: no loot entry carries
+  // itemSlot 'offhand' and no material entry carries slotAugmented 'offhand'
+  // (both validated against loot-domain sets the off-hand is excluded from).
   for (const slot of GEAR_SLOTS) {
     const lootEntry = findLootEntry(lootLog, playerId, slot);
     const materialEntry = findMaterialEntry(materialLog, playerId, slot);

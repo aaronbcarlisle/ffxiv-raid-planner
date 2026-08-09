@@ -443,9 +443,9 @@ def _normalize_tomestone_gear_list(gear_list: list[Any]) -> dict[str, dict[str, 
     Entries are classified by item category rather than list position: shield
     jobs (PLD) get an off-hand entry inserted mid-list, which shifted every
     accessory under the old fixed-position mapping. The main hand is always
-    the position-0 entry (weapon categories vary per job). Shield and Soul
-    Crystal entries are skipped. Unknown categories (crafter tools, future
-    slots) are skipped rather than misfiled.
+    the position-0 entry (weapon categories vary per job); shields (category
+    11) map to OffHand. Soul Crystal entries are skipped, and unknown
+    categories (crafter tools, future slots) are skipped rather than misfiled.
     """
     normalized: dict[str, dict[str, Any]] = {}
     ring_count = 0

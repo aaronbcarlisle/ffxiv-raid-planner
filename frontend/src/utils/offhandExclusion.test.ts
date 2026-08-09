@@ -13,7 +13,7 @@ import {
   calculatePlayerBooks,
   calculateAverageItemLevel,
 } from './calculations';
-import { calculatePriorityScore } from './priority';
+import { calculatePriorityScore, calculatePriorityScoreWithBreakdown } from './priority';
 import { DEFAULT_SETTINGS } from './constants';
 import type { GearSlotStatus, SnapshotPlayer, StaticSettings } from '../types';
 
@@ -61,30 +61,42 @@ function makePlayer(gear: GearSlotStatus[], job = 'DRG'): SnapshotPlayer {
 const withOffhand = () => [eleven()[0], mintedOffhand, ...eleven().slice(1)];
 
 describe('priority equality — offhand can never move loot priority (B-1)', () => {
-  const modes: Array<Partial<StaticSettings>> = [
-    {}, // default settings as configured
-  ];
+  // Role-based is the only priority mode whose score sums gear (the
+  // weighted-need loops this test pins); job-based and player-based never
+  // touch gear (priority.ts calculateJobBasedPriority / player order paths),
+  // so byte-equality under role-based is the complete proof for all modes —
+  // same reasoning as the backend twin (test_priority.py).
+  const settings = DEFAULT_SETTINGS as StaticSettings;
 
-  it('calculatePriorityScore is byte-identical with and without a minted offhand entry', () => {
-    for (const settingsOverride of modes) {
-      const settings = { ...DEFAULT_SETTINGS, ...settingsOverride } as StaticSettings;
-      const without = calculatePriorityScore(makePlayer(eleven()), settings);
-      const withOh = calculatePriorityScore(makePlayer(withOffhand()), settings);
-      expect(withOh).toBe(without);
-    }
+  function roster(withOffhandEntries: boolean): SnapshotPlayer[] {
+    const roles = ['melee', 'melee', 'tank', 'tank', 'healer', 'healer', 'ranged', 'caster'] as const;
+    return roles.map((role, i) => {
+      const gear = eleven().map((g, j) => ({ ...g, hasItem: (i + j) % 3 === 0 }));
+      const offhand: GearSlotStatus = i === 2
+        ? { slot: 'offhand', bisSource: 'raid', hasItem: true, isAugmented: false, itemId: 49679 }
+        : { ...mintedOffhand };
+      const full = withOffhandEntries ? [gear[0], offhand, ...gear.slice(1)] : gear;
+      const p = makePlayer(full, i === 2 ? 'PLD' : 'DRG');
+      return { ...p, id: `p${i}`, role };
+    });
+  }
+
+  it('an 8-player roster scores AND orders identically with and without offhand entries', () => {
+    const withoutScores = roster(false).map((p) => ({ id: p.id, s: calculatePriorityScore(p, settings) }));
+    const withScores = roster(true).map((p) => ({ id: p.id, s: calculatePriorityScore(p, settings) }));
+    expect(withScores).toEqual(withoutScores);
+    const order = (xs: Array<{ id: string; s: number }>) =>
+      [...xs].sort((a, b) => b.s - a.s || a.id.localeCompare(b.id)).map((x) => x.id);
+    expect(order(withScores)).toEqual(order(withoutScores));
   });
 
-  it('holds for a PLD with an OBTAINED shield too (no relative ordering shift)', () => {
-    const settings = DEFAULT_SETTINGS as StaticSettings;
-    const obtained: GearSlotStatus = {
-      slot: 'offhand', bisSource: 'raid', hasItem: true, isAugmented: false, itemId: 49679,
-    };
-    const without = calculatePriorityScore(makePlayer(eleven(), 'PLD'), settings);
-    const withObtained = calculatePriorityScore(
-      makePlayer([eleven()[0], obtained, ...eleven().slice(1)], 'PLD'),
+  it('calculatePriorityScoreWithBreakdown (the second weighted-need site) is identical too', () => {
+    const without = calculatePriorityScoreWithBreakdown(makePlayer(eleven(), 'PLD'), settings);
+    const withOh = calculatePriorityScoreWithBreakdown(
+      makePlayer([eleven()[0], { slot: 'offhand', bisSource: 'raid', hasItem: true, isAugmented: false }, ...eleven().slice(1)], 'PLD'),
       settings
     );
-    expect(withObtained).toBe(without);
+    expect(withOh).toEqual(without);
   });
 });
 

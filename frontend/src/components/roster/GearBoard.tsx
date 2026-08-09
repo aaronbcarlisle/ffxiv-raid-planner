@@ -85,7 +85,9 @@ function summaryColor(obtained: number, total: number): string {
 }
 
 export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAccess, actionsForPlayer, priorities }: GearBoardProps) {
-  const showOffhand = players.some((p) => isOffhandRelevant(p.job, p.gear));
+  // Only players that actually render rows drive the column set — an
+  // unconfigured PLD must not summon an all-empty OFFH column.
+  const showOffhand = players.some((p) => p.configured && isOffhandRelevant(p.job, p.gear));
   const slotOrder = showOffhand ? OFFHAND_SLOT_ORDER : BASE_SLOT_ORDER;
   const slotHeads = showOffhand ? OFFHAND_SLOT_HEADS : BASE_SLOT_HEADS;
   const totalCols = slotOrder.length;

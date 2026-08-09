@@ -174,6 +174,9 @@ beforeEach(() => {
   logMaterialAndUpdateGearMock.mockClear();
   updatePlayerMock.mockClear();
   document.body.removeAttribute('style');
+  // jsdom has no scrollIntoView; Radix Select calls it when keyboard-opened
+  // (same stub as QuickLogMaterialModal.test.tsx).
+  Element.prototype.scrollIntoView = vi.fn();
   // jsdom has no matchMedia; Modal -> useDevice needs it (same stub as
   // MorePage.test.tsx / WeekScopeControl.test.tsx).
   vi.stubGlobal(
@@ -265,5 +268,27 @@ describe('LogMaterialModal edit mode — notes clear wire shape', () => {
     expect(onUpdate.mock.calls[0][0]).toEqual(
       expect.objectContaining({ notes: 'old note' })
     );
+  });
+});
+
+describe('LogMaterialModal — off-hand never appears in the slot picker', () => {
+  it('a PLD recipient with a tome shield gets no "Off Hand" option (bundled with weapon)', async () => {
+    const { p1, p2 } = fixturePlayers();
+    const pld: SnapshotPlayer = {
+      ...p1,
+      job: 'PLD',
+      gear: [
+        ...p1.gear,
+        { slot: 'offhand', bisSource: 'tome', hasItem: true, isAugmented: false } as GearSlotStatus,
+      ],
+    };
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    renderEditModal({ players: [pld, p2], editEntry: makeEditEntry(), onUpdate });
+
+    const slotTrigger = slotSelectTrigger();
+    fireEvent.keyDown(slotTrigger, { key: 'Enter' });
+    const options = screen.getAllByRole('option').map((o) => o.textContent ?? '');
+    expect(options.length).toBeGreaterThan(0);
+    expect(options.some((t) => /off hand/i.test(t))).toBe(false);
   });
 });
