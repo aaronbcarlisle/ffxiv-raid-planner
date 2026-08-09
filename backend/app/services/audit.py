@@ -116,13 +116,18 @@ async def audit(
     if request is not None:
         credential = getattr(request.state, "auth_credential", None)
         request_id = getattr(request.state, "request_id", None)
-        impersonating_user_id = request.headers.get("X-View-As")
+        # Client-asserted header: only admins can legitimately impersonate
+        # (View As), so a non-admin's X-View-As is never recorded — otherwise
+        # any authenticated user could forge impersonation attribution into
+        # the forensic log once AD7 starts sending the header.
+        if actor.is_admin:
+            impersonating_user_id = request.headers.get("X-View-As")
 
     session.add(
         AuditLog(
             created_at=datetime.now(timezone.utc).isoformat(),
             actor_user_id=actor.id,
-            actor_label=(actor.display_name or actor.discord_username)[:100],
+            actor_label=actor.effective_name[:100],
             credential=credential or "system",
             # Client-controlled values: cap to column width before persisting
             impersonating_user_id=impersonating_user_id[:36] if impersonating_user_id else None,
@@ -134,6 +139,6 @@ async def audit(
             static_group_id=static_group_id,
             old_values=_strip_secrets(old),
             new_values=_strip_secrets(new),
-            request_id=request_id[:36] if request_id else None,
+            request_id=request_id[:64] if request_id else None,
         )
     )

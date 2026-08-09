@@ -96,10 +96,13 @@ class TestSecretDenyList:
 
 @pytest.mark.asyncio
 class TestAuditAtomicity:
-    async def _make_actor(self, session: AsyncSession) -> User:
+    async def _make_actor(self, session: AsyncSession, *, is_admin: bool = True) -> User:
         from tests.factories import create_user
 
-        return await create_user(session, discord_username="audit_actor")
+        actor = await create_user(session, discord_username="audit_actor")
+        actor.is_admin = is_admin
+        await session.commit()
+        return actor
 
     async def test_row_commits_atomically_with_mutation(self, session: AsyncSession):
         actor = await self._make_actor(session)
@@ -212,8 +215,31 @@ class TestAuditAtomicity:
 
         row = (await session.execute(select(AuditLog))).scalar_one()
         assert len(row.target_label) == 200
-        assert len(row.request_id) == 36
+        assert len(row.request_id) == 64
         assert len(row.impersonating_user_id) == 36
+
+    async def test_non_admin_actor_view_as_header_not_recorded(self, session: AsyncSession):
+        """X-View-As is client-asserted; a non-admin can't legitimately
+        impersonate, so their header must never reach the forensic log."""
+        actor = await self._make_actor(session, is_admin=False)
+
+        await audit(
+            session,
+            actor=actor,
+            action="loot.logged",
+            target_type="loot",
+            target_id="l1",
+            target_label="Loot Entry",
+            request=make_request(
+                headers={"X-View-As": "forged-target"},
+                state={"auth_credential": "cookie", "request_id": "req-x"},
+            ),
+        )
+        await session.commit()
+
+        row = (await session.execute(select(AuditLog))).scalar_one()
+        assert row.impersonating_user_id is None
+        assert row.request_id == "req-x"
 
     async def test_ordering_newest_first(self, session: AsyncSession):
         actor = await self._make_actor(session)
@@ -222,7 +248,7 @@ class TestAuditAtomicity:
             await audit(
                 session,
                 actor=actor,
-                action=f"static.updated",
+                action="static.updated",
                 target_type="static",
                 target_id=f"s{index}",
                 target_label=f"Static {index}",

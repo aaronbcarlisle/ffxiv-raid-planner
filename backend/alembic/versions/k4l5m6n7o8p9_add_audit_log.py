@@ -59,7 +59,7 @@ def upgrade() -> None:
             sa.Column("static_group_id", sa.String(36), nullable=True),
             sa.Column("old_values", sa.JSON(), nullable=True),
             sa.Column("new_values", sa.JSON(), nullable=True),
-            sa.Column("request_id", sa.String(36), nullable=True),
+            sa.Column("request_id", sa.String(64), nullable=True),
         )
         op.create_index("ix_audit_log_created_at", "audit_log", ["created_at"])
         op.create_index("ix_audit_log_actor_user_id", "audit_log", ["actor_user_id"])

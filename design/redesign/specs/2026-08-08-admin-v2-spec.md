@@ -95,7 +95,7 @@ Portable types only (dev = SQLite `create_all`, prod = PG alembic; both must pas
 | `target_type` / `target_id` / `target_label` | String(30)/String(64)/String(200) | composite index (type, id); target_id is 64 — error-review targets are SHA-256 fingerprints (`error_reports.fingerprint`) |
 | `static_group_id` | String(36) nullable, indexed | per-static scoping/filtering |
 | `old_values` / `new_values` | sa.JSON nullable | changed fields only on update; full state on create; **never secrets** (deny-list: bot tokens, webhook URLs, key hashes) |
-| `request_id` | String(36) nullable | from `request.state.request_id` (§3.2 fix) |
+| `request_id` | String(64) nullable | from `request.state.request_id` (§3.2 fix); 64 matches the middleware's inbound X-Request-ID cap so stored value ≡ header/log value |
 
 No IP/user-agent (R8). No FK to static_groups (rows must survive static deletion; id retained for filtering).
 

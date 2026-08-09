@@ -49,7 +49,10 @@ class AuditLog(Base):
     # Changed fields only on update; full state on create; never secrets
     old_values: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     new_values: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # String(64), matching the middleware's inbound X-Request-ID cap — the stored
+    # value must equal the response header / structlog / error-report value exactly
+    # or per-request correlation (this column's only purpose) silently breaks.
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     __table_args__ = (
         Index("ix_audit_log_target", "target_type", "target_id"),
