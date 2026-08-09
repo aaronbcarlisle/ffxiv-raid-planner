@@ -2,10 +2,14 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import json
+
 import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MemberRole
-from app.routers.lodestone import _apply_ring_slot_equivalence
+from app.routers.lodestone import _apply_ring_slot_equivalence, _normalize_player_gear
 from app.services.tomestone_provider import (
     TomestoneProvider,
     _is_likely_character_avatar_url,
@@ -782,8 +786,10 @@ async def test_successful_lodestone_sync_updates_equipped_state(client, session,
     assert payload["updatedSlots"] == 2
     assert payload["gear"][0]["hasItem"] is True
     assert payload["gear"][0]["currentSource"] == "savage"
-    assert payload["gear"][1]["hasItem"] is True
-    assert payload["gear"][1]["currentSource"] == "savage"
+    # gear[1] is the minted offhand (untouched by sync); head is gear[2]
+    assert payload["gear"][1]["slot"] == "offhand"
+    assert payload["gear"][2]["hasItem"] is True
+    assert payload["gear"][2]["currentSource"] == "savage"
 
     await session.refresh(player)
     assert player.lodestone_id == "999001"
@@ -792,7 +798,7 @@ async def test_successful_lodestone_sync_updates_equipped_state(client, session,
     assert player.lodestone_avatar_url == "https://example.test/character-avatar-mock-raider.png"
     assert player.last_sync is not None
     assert player.gear[0]["hasItem"] is True
-    assert player.gear[1]["currentSource"] == "savage"
+    assert player.gear[2]["currentSource"] == "savage"
 
 
 @pytest.mark.asyncio
@@ -1451,9 +1457,10 @@ def test_tomestone_pld_shield_no_accessory_shift():
     assert gear["Bracelets"]["ID"] == 49648
     assert gear["Ring1"]["ID"] == 49730
     assert gear["Ring2"]["ID"] == 49653  # was dropped entirely before
-    # The shield (49679) must not occupy ANY slot in this PR (no off-hand slot yet)
-    assert all(slot["ID"] != 49679 for slot in gear.values())
-    assert len(gear) == 11
+    # The shield maps to the OffHand slot (D2) — exactly once, nowhere else.
+    assert gear["OffHand"]["ID"] == 49679
+    assert sum(1 for slot in gear.values() if slot["ID"] == 49679) == 1
+    assert len(gear) == 12
 
 
 def test_tomestone_pld_shield_full_payload_normalization():
@@ -1463,7 +1470,7 @@ def test_tomestone_pld_shield_full_payload_normalization():
     gear = payload["Character"]["GearSet"]["Gear"]
     assert gear["Earrings"]["ID"] == 49715
     assert gear["Ring2"]["ID"] == 49653
-    assert all(slot["ID"] != 49679 for slot in gear.values())
+    assert gear["OffHand"]["ID"] == 49679
 
 
 def test_tomestone_unknown_category_entries_are_skipped():
@@ -1499,15 +1506,217 @@ def test_tomestone_position_zero_with_known_category_is_not_mainhand():
     assert gear["Body"]["ID"] == 31002
 
 
-def test_tomestone_shield_at_position_zero_is_skipped():
-    """A shield at position 0 is skipped entirely, not stored as the main hand."""
+def test_tomestone_shield_at_position_zero_maps_to_offhand():
+    """A shield at position 0 maps to OffHand — a known category always wins
+    over the position-0 main-hand claim (it is neither MainHand nor skipped)."""
     gear_list = [
         {"item": {"id": 31003, "name": "Some Shield", "itemLevel": 700, "categoryName": "Shield", "categoryId": 11}},
         {"item": {"id": 31004, "name": "Some Helm", "itemLevel": 700, "categoryName": "Head", "categoryId": 34}},
     ]
     gear = _normalize_tomestone_gear_list(gear_list)
     assert "MainHand" not in gear
+    assert gear["OffHand"]["ID"] == 31003
     assert gear["Head"]["ID"] == 31004
+
+
+@pytest.mark.asyncio
+async def test_lodestone_offhand_syncs_on_weapon_ladder(client, session, test_user, auth_headers):
+    """An upstream OffHand item lands in the offhand slot and classifies on the
+    WEAPON iLv ladder (795 = savage) — pins LODESTONE_SLOT_MAP's OffHand key
+    and classify_current_source's offhand branch end-to-end."""
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    player = await create_snapshot_player(
+        session,
+        tier,
+        job="PLD",
+        gear=[
+            _gear_slot(slot="weapon", bis_source="raid", item_id=2001, item_level=795, item_name="Sword"),
+            _gear_slot(slot="offhand", bis_source="raid", item_id=2002, item_level=795, item_name="Shield"),
+        ],
+    )
+
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Mock Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {
+                    "Gear": {
+                        "MainHand": {"ID": 2001},
+                        "OffHand": {"ID": 2002},
+                    }
+                },
+            }
+        },
+    )
+
+    async def lookup(item_id: int):
+        if item_id == 2001:
+            return {"id": 2001, "name": "Sword", "level": 795, "icon": "w.png"}
+        return {"id": 2002, "name": "Shield", "level": 795, "icon": "s.png"}
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch("app.routers.lodestone.fetch_item_from_garland", new=AsyncMock(side_effect=lookup)),
+    ):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=999002",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    gear = sync_response.json()["gear"]
+    offhand = next(g for g in gear if g["slot"] == "offhand")
+    assert offhand["equippedItemId"] == 2002
+    # 795 on the WEAPON ladder = savage (the armor ladder would also say savage
+    # at 795 — the discriminating value is 785: weapon-ladder 'tome', armor
+    # 'tome'... so pin the ladder with hasItem too)
+    assert offhand["currentSource"] == "savage"
+    assert offhand["hasItem"] is True
+
+
+def test_classify_current_source_offhand_uses_weapon_ladder():
+    """The ladder DISCRIMINATOR is 775: 'relic' on the weapon ladder, but
+    'crafted' on the armor ladder — the offhand must ride the weapon ladder."""
+    from app.routers.lodestone import classify_current_source
+    assert classify_current_source("Phantom Kite Shield", 775, "offhand") == "relic"
+    assert classify_current_source("Phantom Sword", 775, "weapon") == "relic"
+    assert classify_current_source("Some Helm", 775, "head") == "crafted"
+
+
+@pytest.mark.asyncio
+async def test_manual_sync_clears_stale_offhand_but_not_pristine(client, session, test_user, auth_headers):
+    """Manual sync with no upstream off-hand CLEARS stale shield data (job
+    changed away from PLD) but never dirties a pristine minted entry."""
+    group = await create_static_group(session, owner=test_user)
+    tier = await create_tier_snapshot(session, static_group=group)
+    stale_offhand = {
+        "slot": "offhand", "bisSource": None, "hasItem": True, "isAugmented": False,
+        "equippedItemId": 49679, "equippedItemName": "Kite Shield", "equippedItemLevel": 795,
+        "currentSource": "savage",
+    }
+    player = await create_snapshot_player(
+        session,
+        tier,
+        job="WAR",
+        gear=[
+            _gear_slot(slot="weapon", bis_source="raid", item_id=3001, item_level=795, item_name="Axe"),
+            stale_offhand,
+            {"slot": "head", "bisSource": "raid", "hasItem": False, "isAugmented": False},
+        ],
+    )
+
+    response = _mock_http_response(
+        200,
+        {
+            "Character": {
+                "Name": "Mock Raider",
+                "Server": "Gilgamesh",
+                "GearSet": {"Gear": {"MainHand": {"ID": 3001}}},
+            }
+        },
+    )
+
+    async def lookup(item_id: int):
+        return {"id": item_id, "name": "Axe", "level": 795, "icon": "a.png"}
+
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch("app.routers.lodestone.fetch_item_from_garland", new=AsyncMock(side_effect=lookup)),
+    ):
+        sync_response = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=999003",
+            headers=auth_headers,
+        )
+
+    assert sync_response.status_code == 200
+    gear = sync_response.json()["gear"]
+    offhand = next(g for g in gear if g["slot"] == "offhand")
+    # Stale shield cleared like any other slot on manual sync
+    assert offhand.get("equippedItemId") is None
+    assert offhand["hasItem"] is False
+    assert offhand["currentSource"] == "unknown"
+
+    # Second sync: the now-pristine-ish entry must not be re-dirtied into the
+    # updated-slots count forever. (currentSource 'unknown' remains — the
+    # pristine guard keys on equipped/hasItem/isAugmented/currentSource, so a
+    # cleared entry stabilizes after this sync.)
+    with (
+        patch("app.routers.lodestone.httpx.AsyncClient", return_value=_mock_http_client(response)),
+        patch("app.routers.lodestone.fetch_item_from_garland", new=AsyncMock(side_effect=lookup)),
+    ):
+        second = await client.post(
+            f"/api/lodestone/sync/{group.id}/{player.id}?lodestone_id=999003",
+            headers=auth_headers,
+        )
+    assert second.status_code == 200
+    offhand2 = next(g for g in second.json()["gear"] if g["slot"] == "offhand")
+    assert offhand2 == offhand
+
+
+# ---------------------------------------------------------------------------
+# Off-hand slot: lazy normalization + read projection (D2)
+# ---------------------------------------------------------------------------
+
+_LEGACY_ELEVEN_SLOT_GEAR = [
+    {"slot": s, "bisSource": "raid", "hasItem": False, "isAugmented": False}
+    for s in ["weapon", "head", "body", "hands", "legs", "feet",
+              "earring", "necklace", "bracelet", "ring1", "ring2"]
+]
+
+
+class TestOffhandNormalization:
+    def test_legacy_eleven_slot_gear_gains_offhand_after_weapon(self):
+        result = _normalize_player_gear([dict(g) for g in _LEGACY_ELEVEN_SLOT_GEAR])
+        assert len(result) == 12
+        assert result[1]["slot"] == "offhand"
+        assert result[1]["bisSource"] is None
+        assert result[1]["hasItem"] is False
+
+    def test_idempotent_on_twelve_slot_gear(self):
+        once = _normalize_player_gear([dict(g) for g in _LEGACY_ELEVEN_SLOT_GEAR])
+        twice = _normalize_player_gear([dict(g) for g in once])
+        assert twice == once
+        assert sum(1 for g in twice if g["slot"] == "offhand") == 1
+
+    def test_json_string_input_also_normalizes(self):
+        result = _normalize_player_gear(json.dumps(_LEGACY_ELEVEN_SLOT_GEAR))
+        assert len(result) == 12
+        assert result[1]["slot"] == "offhand"
+
+    def test_empty_and_malformed_inputs_unchanged(self):
+        assert _normalize_player_gear([]) == []
+        assert _normalize_player_gear("not json{") == []
+        assert _normalize_player_gear(None) == []
+
+    @pytest.mark.asyncio
+    async def test_gear_read_projects_offhand_without_db_write(
+        self, client: AsyncClient, auth_headers: dict, session: AsyncSession, test_user,
+    ):
+        """A stored legacy 11-entry player reads back with 12 slots (B-4)."""
+        from tests.factories import create_snapshot_player, create_static_group, create_tier_snapshot
+
+        group = await create_static_group(session, test_user)
+        tier = await create_tier_snapshot(session, group)
+        player = await create_snapshot_player(
+            session, tier, name="Legacy Pld", job="PLD",
+            gear=[dict(g) for g in _LEGACY_ELEVEN_SLOT_GEAR],
+        )
+
+        response = await client.get(
+            f"/api/static-groups/{group.id}/tiers/{tier.id}/players/{player.id}/gear",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        slots = [g["slot"] for g in response.json()["gear"]]
+        assert slots.count("offhand") == 1
+        assert slots.index("offhand") == slots.index("weapon") + 1
+
+        # Read-only projection: the stored row is untouched.
+        await session.refresh(player)
+        assert len(player.gear) == 11
 
 
 def test_tomestone_img2_avatar_url_is_accepted():
@@ -2128,7 +2337,7 @@ async def test_bis_matched_count_reflects_only_matching_bis_slots(
     assert sync_response.status_code == 200
     payload = sync_response.json()
     assert payload["gear"][0]["hasItem"] is True   # weapon matches
-    assert payload["gear"][1]["hasItem"] is False  # head does not match
+    assert payload["gear"][2]["hasItem"] is False  # head does not match
     assert payload["bisMatchedCount"] == 1
 
 

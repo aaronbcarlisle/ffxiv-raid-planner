@@ -12,6 +12,7 @@ import { formatGearActivity } from './jobGearUtils';
 
 const SLOT_LABELS: Record<string, string> = {
   weapon: 'Weapon',
+  offhand: 'Off Hand',
   head: 'Head',
   body: 'Body',
   hands: 'Hands',
@@ -54,8 +55,13 @@ function GearSlotRow({ slot }: { slot: GearSlotData }) {
 }
 
 function SnapshotCard({ snapshot }: { snapshot: GearSnapshot }) {
-  const equippedSlots = snapshot.gear.filter((s) => s.equippedItemId || s.equippedItemName);
-  const emptySlots = snapshot.gear.length - equippedSlots.length;
+  // An empty offhand entry (legacy snapshot shape) neither renders nor counts —
+  // the slot joins a snapshot only when a shield is actually equipped.
+  const visibleGear = snapshot.gear.filter(
+    (s) => s.slot !== 'offhand' || s.equippedItemId || s.equippedItemName
+  );
+  const equippedSlots = visibleGear.filter((s) => s.equippedItemId || s.equippedItemName);
+  const emptySlots = visibleGear.length - equippedSlots.length;
   const freshness = getFreshness(snapshot.syncedAt);
   const isStale = freshness === 'stale' || freshness === 'old';
 
@@ -75,12 +81,12 @@ function SnapshotCard({ snapshot }: { snapshot: GearSnapshot }) {
         {isStale && <Badge variant="warning" size="sm">Stale</Badge>}
       </div>
       <div className="flex items-center gap-3 mb-3 text-xs text-text-tertiary">
-        <span>{equippedSlots.length}/{snapshot.gear.length} slots equipped</span>
+        <span>{equippedSlots.length}/{visibleGear.length} slots equipped</span>
         {emptySlots > 0 && <span className="text-status-warning">{emptySlots} empty</span>}
       </div>
       {equippedSlots.length > 0 ? (
         <div className="divide-y divide-border-default">
-          {snapshot.gear.map((slot) => (
+          {visibleGear.map((slot) => (
             <GearSlotRow key={slot.slot} slot={slot} />
           ))}
         </div>

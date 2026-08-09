@@ -78,6 +78,45 @@ DEFAULT_SETTINGS = {
 # ==================== Unit Tests: Priority Calculator ====================
 
 
+class TestOffhandPriorityExclusion:
+    """The offhand slot can never move loot priority (bundled with weapon, 6.2).
+
+    Role-based is the only mode whose score sums gear (priority_calculator.py
+    weighted-need loop); job-based and player-based ignore gear entirely, so
+    the equality assertion below is the complete proof for all modes.
+    """
+
+    def _gear_eleven(self):
+        return [
+            _make_gear("weapon"),
+            _make_gear("head", has_item=True),
+            _make_gear("body"),
+            _make_gear("hands", bis_source="tome", has_item=True),
+            _make_gear("legs"),
+            _make_gear("feet"),
+            _make_gear("earring"),
+            _make_gear("necklace"),
+            _make_gear("bracelet"),
+            _make_gear("ring1"),
+            _make_gear("ring2"),
+        ]
+
+    def test_minted_empty_offhand_does_not_change_score(self):
+        gear = self._gear_eleven()
+        with_offhand = [gear[0], {"slot": "offhand", "bisSource": None, "hasItem": False, "isAugmented": False}, *gear[1:]]
+        base = calculate_priority_score(_make_player("p1", "A", "drg", "melee", gear=gear), DEFAULT_SETTINGS)
+        offh = calculate_priority_score(_make_player("p1", "A", "drg", "melee", gear=with_offhand), DEFAULT_SETTINGS)
+        assert offh == base
+
+    def test_pld_obtained_shield_does_not_change_score(self):
+        gear = self._gear_eleven()
+        shield = _make_gear("offhand", bis_source="raid", has_item=True)
+        with_shield = [gear[0], shield, *gear[1:]]
+        base = calculate_priority_score(_make_player("p1", "A", "pld", "tank", gear=gear), DEFAULT_SETTINGS)
+        offh = calculate_priority_score(_make_player("p1", "A", "pld", "tank", gear=with_shield), DEFAULT_SETTINGS)
+        assert offh == base
+
+
 class TestCalculatePriorityScore:
     def test_role_based_scoring(self):
         """Melee should have highest priority in default role order."""

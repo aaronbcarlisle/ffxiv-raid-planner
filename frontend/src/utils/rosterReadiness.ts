@@ -12,6 +12,7 @@
  */
 
 import type { SnapshotPlayer } from '../types';
+import { relevantGear } from './offhand';
 
 /**
  * Average item level across the active roster.
@@ -42,8 +43,9 @@ export function rosterAvgIlv(players: SnapshotPlayer[]): number | null {
 export function bisCompleteCount(players: SnapshotPlayer[]): number {
   const active = players.filter((p) => p.configured && !p.isSubstitute);
   return active.filter((p) => {
-    if (!p.gear.length) return false;
-    return p.gear.every((s) => s.hasItem);
+    const counted = relevantGear(p.job, p.gear);
+    if (!counted.length) return false;
+    return counted.every((s) => s.hasItem);
   }).length;
 }
 

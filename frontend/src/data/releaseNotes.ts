@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.14';
+export const CURRENT_VERSION = '2.1.15';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.15',
+    date: '2026-08-09T01:30:00Z',
+    title: "Paladins get their shield: the off-hand is now a real gear slot",
+    items: [
+      {
+        category: 'feature',
+        title: 'The off-hand slot is now tracked end-to-end for sword-and-shield jobs',
+        description:
+          "Paladin cards now show an Off Hand row right under the weapon — synced from Tomestone/Lodestone, imported from xivgear and etro BiS sets, and counted in item level and BiS progress (a Paladin reads x/12 where other jobs stay x/11). The row appears only where it's relevant: Paladins always, and any job whose off-hand actually has data. Loot priority, book counts, and tomestone budgets are untouched — the shield comes bundled with the weapon drop, so it never competes for loot.",
+        pr: 240,
+        prTitle: 'feat(gear): first-class off-hand slot — sync, BiS import, both shells (D2)',
+      },
+    ],
+  },
   {
     version: '2.1.14',
     date: '2026-08-08T20:45:00Z',

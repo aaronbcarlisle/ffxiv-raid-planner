@@ -76,7 +76,8 @@ Small, independent, urgent. No model changes.
 - **Excluded** from `FLOOR_GEAR_DROPS`, `SLOT_VALUE_WEIGHTS`, upgrade-material maps, and loot-log slot pickers (bundled with weapon since 6.2).
 - `hasItem`/`isAugmented` stay independent per slot — sync sets the shield's state. Auto-marking the shield when a PLD weapon drop is logged is a possible later nicety, explicitly out of scope.
 - Average iLv includes the off-hand once equipped data exists.
-- BiS-matched denominators change from hard-coded 11 to *count of slots with a BiS target configured* — PLD reads /12, all other jobs stay /11.
+- BiS-matched denominators become the **relevant-slot count**: `gear` entries excluding an irrelevant `offhand` (irrelevant = job not in `OFFHAND_JOBS` AND the slot has no data) — PLD reads /12, all other jobs stay /11.
+  *(Amended 2026-08-08, director-approved: the original "count of slots with a BiS target configured" wording was internally contradictory — configured-count would shrink existing `X/11` badges for partially-configured players, violating this same clause's "all other jobs stay /11". The amendment governs the two v2 constants (`RosterCard`, `GearBoard`) and V1's `gear.length` denominators; `LodestoneSearchModal`'s sync preview is already configured-count and already correct.)*
 
 ### Display (per ruling 1)
 - `OFFHAND_JOBS = ['PLD']` lives in `frontend/src/gamedata/jobs.ts` beside `HEALER_TYPES`.

@@ -20,6 +20,14 @@ export const HEALER_TYPES: Record<string, HealerType> = {
   SGE: 'barrier',
 };
 
+/**
+ * Jobs whose kit includes an off-hand item. At endgame that is exactly PLD
+ * (sword + shield — the shield is a full gear piece, bundled with the weapon
+ * drop since patch 6.2). Legacy one-handed casters can also equip shields;
+ * those surface data-driven via the offhand slot's has-data check instead.
+ */
+export const OFFHAND_JOBS: ReadonlySet<string> = new Set(['PLD']);
+
 export interface JobInfo {
   id: number;
   abbreviation: string;

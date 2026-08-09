@@ -25,6 +25,7 @@ interface JobProfileCardProps {
 
 const SLOT_LABELS: Record<string, string> = {
   weapon: 'Weapon',
+  offhand: 'Off Hand',
   head: 'Head',
   body: 'Body',
   hands: 'Hands',
@@ -213,7 +214,11 @@ export function JobProfileCard({ jobProfile, resolvedSnapshot, onEdit, onManageB
       {expanded && (
         <div className="mt-3 space-y-1.5" data-testid={`gear-slots-${jobProfile.job}`}>
           {snapshot?.gear?.length ? (
-            snapshot.gear.map((slot) => <GearSlotCompactRow key={slot.slot} slot={slot} />)
+            snapshot.gear
+              // An empty offhand entry (legacy snapshot shape) is hidden — the
+              // slot joins a snapshot only when a shield is actually equipped.
+              .filter((slot) => slot.slot !== 'offhand' || slot.equippedItemId || slot.equippedItemName)
+              .map((slot) => <GearSlotCompactRow key={slot.slot} slot={slot} />)
           ) : (
             <div className="rounded-md border border-border-subtle bg-surface-elevated/60 px-3 py-2 text-sm text-text-tertiary">
               No gear saved for {jobProfile.job}.

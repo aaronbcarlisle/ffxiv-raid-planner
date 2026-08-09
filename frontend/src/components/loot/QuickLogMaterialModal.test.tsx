@@ -457,6 +457,29 @@ describe('V1 freeze baseline', () => {
       }));
     });
   });
+
+  describe('off-hand exclusion (D2)', () => {
+    it('a PLD recipient with a tome shield gets no "Off Hand" slot option (bundled with weapon)', async () => {
+      const pld = makePlayer({
+        id: 'p1',
+        name: 'Pally',
+        job: 'PLD',
+        gear: [
+          makeGear({ slot: 'weapon', bisSource: 'raid' }),
+          { slot: 'offhand', bisSource: 'tome', hasItem: true, isAugmented: false },
+          makeGear({ slot: 'head', bisSource: 'tome', hasItem: true, isAugmented: false }),
+          makeGear({ slot: 'body', bisSource: 'tome', hasItem: true, isAugmented: false }),
+        ],
+      });
+      renderModal({ material: 'twine', suggestedPlayer: pld, allPlayers: [pld] });
+
+      const slotSelect = screen.getAllByRole('combobox')[1];
+      fireEvent.keyDown(slotSelect, { key: 'Enter' });
+      const options = screen.getAllByRole('option').map((o) => o.textContent ?? '');
+      expect(options.length).toBeGreaterThan(0);
+      expect(options.some((t) => /off hand/i.test(t))).toBe(false);
+    });
+  });
 });
 
 // D8 Task 3B: the free-form door (the Log toolbar mounts it in a later task) — floor +

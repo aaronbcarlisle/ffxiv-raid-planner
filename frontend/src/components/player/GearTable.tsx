@@ -19,6 +19,7 @@ import type { GearSlotStatus, GearSource, TomeWeaponStatus, GearSlot, SnapshotPl
 import { GEAR_SLOTS, GEAR_SLOT_NAMES, GEAR_SLOT_ICONS, GEAR_SOURCE_NAMES, GEAR_SOURCE_COLORS, BIS_SOURCE_FULL_NAMES } from '../../types';
 import { requiresAugmentation, toGearState, fromGearState, type GearState } from '../../utils/calculations';
 import { canEditGear, type MemberRole } from '../../utils/permissions';
+import { isOffhandRelevant } from '../../utils/offhand';
 import { toast } from '../../stores/toastStore';
 import { getCorrectBisSource } from '../../utils/bisSourceDetection';
 import { RefreshCw, FileSearch } from 'lucide-react';
@@ -535,9 +536,11 @@ export function GearTable({
   };
 
   if (compact) {
+    const showOffhand = isOffhandRelevant(player.job, player.gear);
     return (
-      <div className="grid grid-cols-11 gap-1.5 sm:gap-1 text-xs">
+      <div className={`grid ${showOffhand ? 'grid-cols-12' : 'grid-cols-11'} gap-1.5 sm:gap-1 text-xs`}>
         {GEAR_SLOTS.map((slot) => {
+          if (slot === 'offhand' && !showOffhand) return null;
           const status = getSlotStatus(slot);
           // Slot is complete if: has item AND (raid/base_tome/crafted OR (tome AND (augmented OR aug not required)))
           const needsAug = requiresAugmentation(status);
@@ -628,6 +631,8 @@ export function GearTable({
         </thead>
         <tbody>
           {GEAR_SLOTS.map((slot) => {
+            // Off-hand renders only when relevant (PLD, or the slot has data).
+            if (slot === 'offhand' && !isOffhandRelevant(player.job, player.gear)) return null;
             const status = getSlotStatus(slot);
             const isWeapon = slot === 'weapon';
 

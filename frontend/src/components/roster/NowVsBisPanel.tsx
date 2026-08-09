@@ -11,6 +11,7 @@ import { GEAR_SLOT_NAMES, GEAR_SLOTS } from '../../types';
 import type { GearSlotStatus } from '../../types';
 import { getEffectiveCurrentSource } from '../../utils/calculations';
 import { getItemLevelForCategory } from '../../gamedata/raid-tiers';
+import { isOffhandRelevant } from '../../utils/offhand';
 
 /**
  * Per-slot BiS-target iLv, mirroring legacy `PlayerCardHeader.getSlotItemLevel`
@@ -28,7 +29,8 @@ import { getItemLevelForCategory } from '../../gamedata/raid-tiers';
  * of the inherited-semantics debt (review rounds 2 + 10).
  */
 function getSlotBisItemLevel(slot: GearSlotStatus, tierId: string): number {
-  const isWeapon = slot.slot === 'weapon';
+  // Shields share the weapon iLv track — keep in sync with calculateAverageItemLevel.
+  const isWeapon = slot.slot === 'weapon' || slot.slot === 'offhand';
   if (slot.hasItem) {
     if (slot.bisSource === 'tome' && !slot.isAugmented) {
       return getItemLevelForCategory(tierId, 'tome', isWeapon);
@@ -44,13 +46,15 @@ function getSlotBisItemLevel(slot: GearSlotStatus, tierId: string): number {
 interface NowVsBisPanelProps {
   gear: GearSlotStatus[];
   tierId: string;
+  /** Player's job — gates the data-driven off-hand row. */
+  job?: string;
   /** Rounded equipped average; 0 when sync data covers under half the slots. */
   equippedAvgIlv: number;
   /** BiS-target average from `calculateAverageItemLevel`. */
   bisAvgIlv: number;
 }
 
-export function NowVsBisPanel({ gear, tierId, equippedAvgIlv, bisAvgIlv }: NowVsBisPanelProps) {
+export function NowVsBisPanel({ gear, tierId, job, equippedAvgIlv, bisAvgIlv }: NowVsBisPanelProps) {
   const hasNow = equippedAvgIlv > 0;
   return (
     <div className={hasNow ? 'min-w-[200px]' : 'min-w-[140px]'}>
@@ -64,6 +68,7 @@ export function NowVsBisPanel({ gear, tierId, equippedAvgIlv, bisAvgIlv }: NowVs
           </div>
         )}
         {GEAR_SLOTS.map((slotKey) => {
+          if (slotKey === 'offhand' && !isOffhandRelevant(job, gear)) return null;
           const slot = gear.find((g) => g.slot === slotKey);
           if (!slot) return null;
           const bis = getSlotBisItemLevel(slot, tierId);

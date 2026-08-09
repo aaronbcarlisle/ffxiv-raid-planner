@@ -14,6 +14,7 @@ import type { FloorNumber } from './loot-tables';
  */
 export const BOOK_COSTS: Record<GearSlot, number> = {
   weapon: 8,
+  offhand: 0, // bundled with weapon since 6.2 — no independent cost
   body: 6,
   legs: 6,
   head: 4,
@@ -31,6 +32,7 @@ export const BOOK_COSTS: Record<GearSlot, number> = {
  */
 export const BOOK_TYPE_FOR_SLOT: Record<GearSlot, FloorNumber> = {
   weapon: 4,
+  offhand: 4, // bundled with the weapon's floor; BOOK_COSTS is 0 so it never buys
   body: 3,
   legs: 3,
   head: 2,
@@ -58,6 +60,7 @@ export const UPGRADE_MATERIAL_BOOK_COSTS: Record<'twine' | 'glaze', { books: num
  */
 export const TOMESTONE_COSTS: Record<GearSlot, number> = {
   weapon: 500, // Also requires 7 weekly tokens from normal mode
+  offhand: 0, // bundled with weapon since 6.2 — no independent cost
   body: 825,
   legs: 825,
   head: 495,
@@ -103,6 +106,10 @@ export function calculateWeeksForBooks(slot: GearSlot): number {
  */
 export const SLOT_VALUE_WEIGHTS: Record<GearSlot, number> = {
   weapon: 3.0,
+  // Bundled with weapon since 6.2 — no independent priority. NOTE: the
+  // weighted-need loops in utils/priority.ts skip 'offhand' explicitly;
+  // this 0 alone is NOT sufficient there (`WEIGHTS[slot] || 1` → 1).
+  offhand: 0,
   body: 1.5,
   legs: 1.5,
   head: 1.0,

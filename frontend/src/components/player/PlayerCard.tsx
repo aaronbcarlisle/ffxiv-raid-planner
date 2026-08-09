@@ -26,6 +26,7 @@ import { getRoleColor, getRoleForJob, type Role } from '../../gamedata';
 import type { SnapshotPlayer, GearSlotStatus, StaticSettings, ViewMode, RaidPosition, TankRole, ContentType, ResetMode, GearSlot, AssignPlayerRequest } from '../../types';
 import { calculatePlayerNeeds } from '../../utils/priority';
 import { isSlotComplete, computeGearSlotUpdate } from '../../utils/calculations';
+import { relevantGear } from '../../utils/offhand';
 import {
   Copy,
   ClipboardPaste,
@@ -165,10 +166,11 @@ export const PlayerCard = memo(function PlayerCard({
   const displayRole = validRoles.includes(player.role as Role) ? player.role as Role : 'melee';
   const roleColor = getRoleColor(displayRole);
 
-  // Calculate completion count using shared isSlotComplete logic
-  // This properly handles all BiS sources and augmentation requirements
-  const completedSlots = player.gear.filter((g) => isSlotComplete(g)).length;
-  const totalSlots = player.gear.length;
+  // Calculate completion count using shared isSlotComplete logic over the
+  // relevant slots (an empty offhand off-PLD is excluded from the denominator)
+  const countedGear = relevantGear(player.job, player.gear);
+  const completedSlots = countedGear.filter((g) => isSlotComplete(g)).length;
+  const totalSlots = countedGear.length;
 
   // Calculate needs for footer
   const needs = calculatePlayerNeeds(player);

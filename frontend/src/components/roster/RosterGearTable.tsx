@@ -35,6 +35,7 @@ import {
   GEAR_SLOT_NAMES,
 } from '../../types';
 import { fromGearState, requiresAugmentation, toGearState, type GearState } from '../../utils/calculations';
+import { isOffhandRelevant } from '../../utils/offhand';
 import { hasHoverData } from './gearHoverData';
 import { jumpMenuAnchor } from './rosterLedgerJumps';
 import type { JumpKind, SlotJumpTargets } from './rosterLedgerJumps';
@@ -106,6 +107,8 @@ function cycleHint(bisSource: GearSource, requiresAug: boolean): ReactNode {
 export interface RosterGearTableProps {
   gear: GearSlotStatus[];
   tomeWeapon: TomeWeaponStatus;
+  /** Player's job — gates the data-driven off-hand row (OFFHAND_JOBS or slot data). */
+  job?: string;
   /**
    * C2 (D-02): when true the status circles cycle and the editing affordances
    * (cycle-hint tooltips) appear. The parent card gates this on `canEditGear`.
@@ -154,6 +157,7 @@ export interface RosterGearTableProps {
 export function RosterGearTable({
   gear,
   tomeWeapon,
+  job,
   editable = false,
   onSlotChange,
   onSourceChange,
@@ -219,9 +223,12 @@ export function RosterGearTable({
       </thead>
       <tbody>
         {GEAR_SLOTS.map((slot) => {
+          // Off-hand renders only when relevant (PLD, or the slot has data) —
+          // and its synthesized fallback must NOT invent a raid BiS target.
+          if (slot === 'offhand' && !isOffhandRelevant(job, gear)) return null;
           const status: GearSlotStatus = bySlot.get(slot) ?? {
             slot,
-            bisSource: 'raid',
+            bisSource: slot === 'offhand' ? null : 'raid',
             hasItem: false,
             isAugmented: false,
           };

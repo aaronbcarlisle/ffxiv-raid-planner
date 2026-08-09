@@ -235,9 +235,23 @@ async def sync_player_gear_from_provider(
         equipped = equipped_by_slot.get(slot_name)
 
         if not equipped:
+            # Off-hand: absent upstream is the NORMAL state for every job but
+            # PLD (providers omit the entry entirely) — keep it out of the
+            # missing-slot diagnostics, and never dirty a pristine minted
+            # entry. A stale shield (job changed after a shield sync) still
+            # clears on MANUAL sync like any other slot, or it would be
+            # uncorrectable forever.
+            if slot_name == "offhand":
+                if is_auto:
+                    continue
+                if not (
+                    gear_slot.get("equippedItemId") or gear_slot.get("hasItem")
+                    or gear_slot.get("isAugmented") or gear_slot.get("currentSource")
+                ):
+                    continue
             # --- Safety gate 5: Missing slot protection ---
             # For auto-sync, never clear stored gear when upstream omits a slot.
-            if is_auto:
+            elif is_auto:
                 missing_slot_count += 1
                 continue
 

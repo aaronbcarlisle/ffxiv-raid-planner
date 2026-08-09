@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..cache import xivapi_item_cache
+from ..constants import ensure_offhand_slot
 from ..config import get_settings
 from ..database import get_session
 from ..dependencies import get_current_user
@@ -50,6 +51,7 @@ MOCK_RAIDER_AVATAR_URL = (
 MOCK_BROKEN_AVATAR_URL = "/images/lodestone/mock-avatar-missing.svg"
 LODESTONE_SLOT_MAP = {
     "MainHand": "weapon",
+    "OffHand": "offhand",
     "Head": "head",
     "Body": "body",
     "Hands": "hands",
@@ -414,7 +416,8 @@ def classify_current_source(item_name: str, item_level: int, slot: str) -> str:
         if pattern in name_lower and "champion" not in name_lower:
             return "normal"
 
-    if slot == "weapon":
+    # Shields track the weapon iLv ladder (795/790/785...), not armor's.
+    if slot in ("weapon", "offhand"):
         if item_level >= 795:
             return "savage"
         if item_level >= 790:
@@ -1153,10 +1156,10 @@ def _normalize_player_gear(raw_gear: Any) -> list[dict[str, Any]]:
             parsed = json.loads(raw_gear)
         except json.JSONDecodeError:
             return []
-        return parsed if isinstance(parsed, list) else []
+        return ensure_offhand_slot(parsed) if isinstance(parsed, list) else []
 
     if isinstance(raw_gear, list):
-        return raw_gear
+        return ensure_offhand_slot(raw_gear)
 
     return []
 
@@ -1656,6 +1659,14 @@ async def sync_player_gear(
         equipped = equipped_by_slot.get(slot_name)
 
         if not equipped:
+            # Off-hand: don't dirty a pristine minted entry (absent upstream is
+            # the normal state off-PLD); a STALE shield still clears like any
+            # other slot on this manual path.
+            if slot_name == "offhand" and not (
+                gear_slot.get("equippedItemId") or gear_slot.get("hasItem")
+                or gear_slot.get("isAugmented") or gear_slot.get("currentSource")
+            ):
+                continue
             gear_slot["currentSource"] = "unknown"
             gear_slot["hasItem"] = False
             gear_slot["isAugmented"] = False

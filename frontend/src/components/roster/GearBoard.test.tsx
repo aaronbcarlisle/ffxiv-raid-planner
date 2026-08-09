@@ -54,6 +54,39 @@ describe('GearBoard', () => {
     expect(screen.getByText(/730/)).toBeInTheDocument();
   });
 
+  it('a PLD roster grows the OFFH column; a shield-free roster stays at 11 columns (D2)', () => {
+    // player() defaults to job PLD with 11-slot gear — offhand-relevant, so
+    // the OFFH column appears between WPN and HEAD.
+    const { unmount } = render(<GearBoard players={[player({ id: 'a' })]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    let heads = screen.getAllByRole('columnheader').map((h) => h.textContent);
+    expect(heads).toContain('OffH');
+    expect(heads.indexOf('OffH')).toBe(heads.indexOf('Wpn') + 1);
+    unmount();
+
+    render(<GearBoard players={[player({ id: 'a', job: 'DRG' })]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    heads = screen.getAllByRole('columnheader').map((h) => h.textContent);
+    expect(heads).not.toContain('OffH');
+    // 11 slot heads + Player + BiS
+    expect(heads).toHaveLength(13);
+  });
+
+  it('an unconfigured PLD does not summon the OFFH column (rows drive columns)', () => {
+    render(
+      <GearBoard
+        players={[player({ id: 'a', job: 'DRG' }), player({ id: 'b', job: 'PLD', configured: false })]}
+        {...OWNER_GATE}
+        actionsForPlayer={noop}
+      />
+    );
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).not.toContain('OffH');
+  });
+
+  it('the party-divider colSpan tracks the column count (12-column roster)', () => {
+    const { container } = render(<GearBoard players={[player({ id: 'a' })]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    // 12 slot columns + 2 (Player, BiS)
+    expect(container.querySelector('td[colspan="14"]')).not.toBeNull();
+  });
+
   it('renders the "No BiS imported" row when a player has no BiS-target slots', () => {
     const noBis = player({ id: 'z', name: 'Caster One', gear: SLOTS.map((slot) => ({ slot, bisSource: null, hasItem: false, isAugmented: false })) as GearSlotStatus[] });
     render(<GearBoard players={[noBis]} {...OWNER_GATE} actionsForPlayer={noop} />);

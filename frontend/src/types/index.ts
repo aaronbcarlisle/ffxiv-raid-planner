@@ -11,6 +11,7 @@ export type { Job, Role, JobInfo } from '../gamedata';
 // Gear slot identifiers
 export type GearSlot =
   | 'weapon'
+  | 'offhand'
   | 'head'
   | 'body'
   | 'hands'
@@ -469,6 +470,7 @@ export interface TeamSummary {
 // Gear slots in display order
 export const GEAR_SLOTS: GearSlot[] = [
   'weapon',
+  'offhand',
   'head',
   'body',
   'hands',
@@ -484,6 +486,7 @@ export const GEAR_SLOTS: GearSlot[] = [
 // Gear slot display names
 export const GEAR_SLOT_NAMES: Record<GearSlot, string> = {
   weapon: 'Weapon',
+  offhand: 'Off Hand',
   head: 'Head',
   body: 'Body',
   hands: 'Hands',
@@ -501,6 +504,7 @@ export const GEAR_SLOT_NAMES: Record<GearSlot, string> = {
 // Other variants available: gold, gold-vibrant, gold-bright, amber, yellow, teal, gray, black
 export const GEAR_SLOT_ICONS: Record<GearSlot, string> = {
   weapon: '/images/gear-slots/white/weapon.png',
+  offhand: '/images/gear-slots/white/offhand.png',
   head: '/images/gear-slots/white/head.png',
   body: '/images/gear-slots/white/body.png',
   hands: '/images/gear-slots/white/hands.png',
@@ -517,6 +521,7 @@ export const GEAR_SLOT_ICONS: Record<GearSlot, string> = {
 // Future use: Show actual BiS item icon when "Have" is checked (requires Etro/XIVGear integration)
 export const GEAR_SLOT_FILLED_ICONS: Record<GearSlot, string> = {
   weapon: 'https://xivapi.com/i/060000/060102.png', // Gladiator's Arm (generic sword)
+  offhand: 'https://xivapi.com/i/060000/060110.png', // Shield
   head: 'https://xivapi.com/i/060000/060124.png',
   body: 'https://xivapi.com/i/060000/060126.png',
   hands: 'https://xivapi.com/i/060000/060129.png',

@@ -53,7 +53,10 @@ interface WhoNeedsItMatrixProps {
 // Position order for sorting players
 const POSITION_ORDER: RaidPosition[] = ['T1', 'T2', 'H1', 'H2', 'M1', 'M2', 'R1', 'R2'];
 
-// Gear slot display order: Weapon first, then left side (head to feet), then accessories
+// Gear slot display order: Weapon first, then left side (head to feet), then accessories.
+// Deliberately hand-rolled (NOT GEAR_SLOTS): this list is what keeps 'offhand'
+// out of this loot surface AND out of reach of getFloorForSlot's throw — the
+// off-hand is bundled with the weapon drop (6.2) and never appears here.
 const GEAR_SLOT_ORDER: GearSlot[] = ['weapon', 'head', 'body', 'hands', 'legs', 'feet', 'earring', 'necklace', 'bracelet', 'ring1'];
 
 // Helper to determine which ring slot a player actually needs

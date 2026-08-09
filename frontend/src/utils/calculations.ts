@@ -3,6 +3,7 @@
  */
 
 import type { SnapshotPlayer, GearSlotStatus, TomeWeaponStatus, TeamSummary, GearSource } from '../types';
+import { relevantGear } from './offhand';
 
 // ==================== Gear State Types ====================
 
@@ -170,10 +171,12 @@ export function computeGearSlotUpdate(
  * Calculate completion percentage for a player
  *
  * @param gear - Player's gear array
+ * @param job - Player's job; gates whether an empty offhand entry counts
  */
-export function calculatePlayerCompletion(gear: GearSlotStatus[]): number {
-  const completed = gear.filter((slot) => isSlotComplete(slot)).length;
-  return gear.length > 0 ? Math.round((completed / gear.length) * 100) : 0;
+export function calculatePlayerCompletion(gear: GearSlotStatus[], job?: string): number {
+  const counted = relevantGear(job, gear);
+  const completed = counted.filter((slot) => isSlotComplete(slot)).length;
+  return counted.length > 0 ? Math.round((completed / counted.length) * 100) : 0;
 }
 
 /**
@@ -200,6 +203,9 @@ export function calculatePlayerMaterials(gear: GearSlotStatus[], tomeWeapon?: To
   const materials = { twine: 0, glaze: 0, solvent: 0 };
 
   gear.forEach((slot) => {
+    // Off-hand is bundled with the weapon (6.2) — no independent material,
+    // and getUpgradeMaterialForSlot would throw on it.
+    if (slot.slot === 'offhand') return;
     // Only 'tome' pieces need upgrade materials (not base_tome)
     if (slot.bisSource !== 'tome') return;
     // Skip if augmentation is not required (backward compat check)
@@ -229,6 +235,8 @@ export function calculatePlayerBooks(gear: GearSlotStatus[]): {
   const books = { floor1: 0, floor2: 0, floor3: 0, floor4: 0 };
 
   gear.forEach((slot) => {
+    // Off-hand is bundled with the weapon drop (6.2) — never bought with books.
+    if (slot.slot === 'offhand') return;
     // Only raid BiS pieces need books (as worst-case fallback)
     if (slot.bisSource !== 'raid') return;
     // Already have the item = no books needed
@@ -268,9 +276,10 @@ export function calculateTeamSummary(players: SnapshotPlayer[]): TeamSummary {
   const books = { floor1: 0, floor2: 0, floor3: 0, floor4: 0 };
 
   players.forEach((player) => {
-    // Completion
-    totalCompleted += player.gear.filter((slot) => isSlotComplete(slot)).length;
-    totalSlots += player.gear.length;
+    // Completion — over relevant slots only (empty offhand excluded off-PLD)
+    const counted = relevantGear(player.job, player.gear);
+    totalCompleted += counted.filter((slot) => isSlotComplete(slot)).length;
+    totalSlots += counted.length;
 
     // Materials
     const playerMaterials = calculatePlayerMaterials(player.gear, player.tomeWeapon);
@@ -450,18 +459,24 @@ export function getEffectiveCurrentSource(status: GearSlotStatus): GearSourceCat
  */
 export function calculateAverageItemLevel(
   gear: GearSlotStatus[],
-  tierId: string
+  tierId: string,
+  job?: string
 ): number {
-  if (gear.length === 0) return 0;
+  // An irrelevant (empty, non-offhand-job) offhand entry must not price as a
+  // phantom "crafted" 12th slot and drag the average.
+  const counted = relevantGear(job, gear);
+  if (counted.length === 0) return 0;
 
   let totalILv = 0;
   let validSlots = 0;
 
-  for (const slot of gear) {
+  for (const slot of counted) {
+    // Shields share the weapon iLv track (795/790/785), not armor's.
+    const isWeapon = slot.slot === 'weapon' || slot.slot === 'offhand';
+
     // Special case: 'tome' BiS with item but NOT augmented
     // itemLevel from BiS is augmented iLv, but player only has base tome
     if (slot.hasItem && slot.bisSource === 'tome' && !slot.isAugmented) {
-      const isWeapon = slot.slot === 'weapon';
       const iLv = getItemLevelForCategory(tierId, 'tome', isWeapon);
       if (iLv > 0) {
         totalILv += iLv;
@@ -472,7 +487,6 @@ export function calculateAverageItemLevel(
 
     // 'base_tome' BiS - use base tome iLv (not augmented)
     if (slot.hasItem && slot.bisSource === 'base_tome') {
-      const isWeapon = slot.slot === 'weapon';
       const iLv = getItemLevelForCategory(tierId, 'tome', isWeapon);
       if (iLv > 0) {
         totalILv += iLv;
@@ -491,7 +505,6 @@ export function calculateAverageItemLevel(
 
     // Calculate from currentSource for unacquired gear or when itemLevel unavailable
     const currentSource = getEffectiveCurrentSource(slot);
-    const isWeapon = slot.slot === 'weapon';
 
     // For 'unknown' slots, assume crafted gear as baseline (most common starting point)
     // This prevents inflated averages when only a few items are checked
@@ -520,7 +533,7 @@ export function calculateTeamAverageItemLevel(
   if (players.length === 0) return 0;
 
   const playerILvs = players
-    .map((p) => calculateAverageItemLevel(p.gear, tierId))
+    .map((p) => calculateAverageItemLevel(p.gear, tierId, p.job))
     .filter((iLv) => iLv > 0);
 
   if (playerILvs.length === 0) return 0;

@@ -33,6 +33,9 @@ LODESTONE_SLOT_MAP = {
     "mainhand": "MainHand",
     "main_hand": "MainHand",
     "weapon": "MainHand",
+    "offhand": "OffHand",
+    "off_hand": "OffHand",
+    "shield": "OffHand",
     "head": "Head",
     "body": "Body",
     "chest": "Body",
@@ -57,15 +60,16 @@ LODESTONE_SLOT_MAP = {
 }
 
 # Tomestone gear entries carry the item's UI category (categoryId/categoryName).
-# Armor and accessory categories map 1:1 to slots. Weapon categories vary per
-# job ("Gladiator's Arm", "Machinist's Arm", ...) so the main hand is
-# recognized by list position 0 instead. Shield and Soul Crystal entries are
-# intentionally skipped — the planner has no off-hand slot yet (see
-# design/redesign/specs/2026-08-08-offhand-slot-design.md). Verified live
-# 2026-08-08: non-shield jobs omit the off-hand entry (12 entries); shield
-# jobs insert it at position 6 (13 entries), which is why position-based
-# mapping shifted every accessory.
+# Armor, accessory, and shield categories map 1:1 to slots. Weapon categories
+# vary per job ("Gladiator's Arm", "Machinist's Arm", ...) so the main hand is
+# recognized by list position 0 instead. Soul Crystal entries are skipped.
+# Verified live 2026-08-08: non-shield jobs omit the off-hand entry (12
+# entries); shield jobs insert it at position 6 (13 entries), which is why
+# position-based mapping shifted every accessory before the category rewrite.
 TOMESTONE_CATEGORY_SLOTS: dict[int, str] = {
+    # 11 IS Shield in FFXIV's ItemUICategory (confirmed against both the live
+    # capture and XIVAPI's sheet) — maps to the planner's OffHand slot.
+    11: "OffHand",
     34: "Head",
     35: "Body",
     37: "Hands",
@@ -76,12 +80,11 @@ TOMESTONE_CATEGORY_SLOTS: dict[int, str] = {
     42: "Bracelets",
 }
 TOMESTONE_RING_CATEGORY_ID = 43
-# IDs are FFXIV ItemUICategory values as emitted by Tomestone — 11 IS Shield
-# (confirmed against both the live capture and XIVAPI's ItemUICategory sheet).
-TOMESTONE_SKIPPED_CATEGORY_IDS = {11, 62}  # Shield, Soul Crystal
+TOMESTONE_SKIPPED_CATEGORY_IDS = {62}  # Soul Crystal
 
 # Fallback when categoryId is absent — same slots, keyed by lowercased categoryName.
 TOMESTONE_CATEGORY_NAME_SLOTS: dict[str, str] = {
+    "shield": "OffHand",
     "head": "Head",
     "body": "Body",
     "hands": "Hands",
@@ -440,9 +443,9 @@ def _normalize_tomestone_gear_list(gear_list: list[Any]) -> dict[str, dict[str, 
     Entries are classified by item category rather than list position: shield
     jobs (PLD) get an off-hand entry inserted mid-list, which shifted every
     accessory under the old fixed-position mapping. The main hand is always
-    the position-0 entry (weapon categories vary per job). Shield and Soul
-    Crystal entries are skipped. Unknown categories (crafter tools, future
-    slots) are skipped rather than misfiled.
+    the position-0 entry (weapon categories vary per job); shields (category
+    11) map to OffHand. Soul Crystal entries are skipped, and unknown
+    categories (crafter tools, future slots) are skipped rather than misfiled.
     """
     normalized: dict[str, dict[str, Any]] = {}
     ring_count = 0
@@ -460,7 +463,7 @@ def _normalize_tomestone_gear_list(gear_list: list[Any]) -> dict[str, dict[str, 
         category_id = _coerce_int(item.get("categoryId"))
         category_name = (item.get("categoryName") or "").strip().lower()
 
-        if category_id in TOMESTONE_SKIPPED_CATEGORY_IDS or category_name in ("shield", "soul crystal"):
+        if category_id in TOMESTONE_SKIPPED_CATEGORY_IDS or category_name == "soul crystal":
             continue
 
         # Position 0 is the main hand, but only when the entry isn't already a

@@ -458,6 +458,7 @@ export default function GearMathDocs() {
 
   const weightedNeed = player.gear
     .filter((g) => !isSlotComplete(g))
+    .filter((g) => g.slot !== 'offhand')  // bundled with weapon — no loot weight
     .reduce((sum, g) => sum + (SLOT_VALUE_WEIGHTS[g.slot] || 1), 0);
 
   const jobModifier = settings.jobPriorityModifiers?.[player.job.toUpperCase()] ?? 0;
@@ -857,17 +858,23 @@ function fromGearState(state: GearState): { hasItem: boolean; isAugmented: boole
               title="utils/calculations.ts:372-428"
               code={`export function calculateAverageItemLevel(
   gear: GearSlotStatus[],
-  tierId: string
+  tierId: string,
+  job?: string
 ): number {
-  if (gear.length === 0) return 0;
+  // An irrelevant (empty, non-offhand-job) offhand entry must not price as a
+  // phantom "crafted" 12th slot and drag the average.
+  const counted = relevantGear(job, gear);
+  if (counted.length === 0) return 0;
 
   let totalILv = 0;
   let validSlots = 0;
 
-  for (const slot of gear) {
+  for (const slot of counted) {
+    // Shields share the weapon iLv track (795/790/785), not armor's.
+    const isWeapon = slot.slot === 'weapon' || slot.slot === 'offhand';
+
     // Special case: 'tome' BiS with item but NOT augmented
     if (slot.hasItem && slot.bisSource === 'tome' && !slot.isAugmented) {
-      const isWeapon = slot.slot === 'weapon';
       const iLv = getItemLevelForCategory(tierId, 'tome', isWeapon);
       if (iLv > 0) {
         totalILv += iLv;
@@ -885,7 +892,6 @@ function fromGearState(state: GearState): { hasItem: boolean; isAugmented: boole
 
     // Calculate from currentSource
     const currentSource = getEffectiveCurrentSource(slot);
-    const isWeapon = slot.slot === 'weapon';
     const effectiveSource = currentSource === 'unknown' ? 'crafted' : currentSource;
     const iLv = getItemLevelForCategory(tierId, effectiveSource, isWeapon);
     if (iLv > 0) {
@@ -1091,6 +1097,7 @@ function fromGearState(state: GearState): { hasItem: boolean; isAugmented: boole
               title="gamedata/costs.ts:59-76"
               code={`export const TOMESTONE_COSTS: Record<GearSlot, number> = {
   weapon: 500,   // Also requires 7 weekly tokens from normal mode
+  offhand: 0,    // bundled with weapon since 6.2
   body: 825,
   legs: 825,
   head: 495,
@@ -1374,6 +1381,7 @@ if (slot === 'ring1' || slot === 'ring2') {
                 title="SLOT_VALUE_WEIGHTS"
                 code={`export const SLOT_VALUE_WEIGHTS: Record<GearSlot, number> = {
   weapon: 3.0,
+  offhand: 0,   // bundled with weapon — never scores
   body: 1.5,
   legs: 1.5,
   head: 1.0,
@@ -1394,6 +1402,7 @@ if (slot === 'ring1' || slot === 'ring2') {
                 title="BOOK_COSTS"
                 code={`export const BOOK_COSTS: Record<GearSlot, number> = {
   weapon: 8,
+  offhand: 0,  // bundled with weapon — never bought
   body: 6,
   legs: 6,
   head: 4,
@@ -1414,6 +1423,7 @@ if (slot === 'ring1' || slot === 'ring2') {
                 title="TOMESTONE_COSTS"
                 code={`export const TOMESTONE_COSTS: Record<GearSlot, number> = {
   weapon: 500,  // + weapon token from normal raid
+  offhand: 0,   // bundled with weapon since 6.2
   body: 825,
   legs: 825,
   head: 495,

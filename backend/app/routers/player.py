@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ..constants import VALID_JOBS
+from ..constants import VALID_JOBS, ensure_offhand_slot
 from ..database import get_session
 from ..dependencies import get_current_user
 from ..logging_config import get_logger
@@ -269,7 +269,7 @@ async def _propagate_gear_to_rosters(
     equipped_lookup = _stored_gear_to_equipped_lookup(gear)
     for player in players:
         updated = []
-        for slot in (player.gear or []):
+        for slot in ensure_offhand_slot(player.gear or []):
             slot_name = slot.get("slot")
             equipped = equipped_by_slot.get(slot_name, {})
             eq_id = equipped.get("equippedItemId")
@@ -1006,6 +1006,11 @@ async def sync_character_gear(
                 "itemLevel": equipped.get("item_level", 0),
             })
         else:
+            # No empty off-hand placeholder: Hub snapshot views render every
+            # entry ("N empty" badge, x/N denominator) — the slot joins a
+            # snapshot only when the character actually has one equipped.
+            if slot_name == "offhand":
+                continue
             gear.append({
                 "slot": slot_name,
                 "currentSource": "unknown",
