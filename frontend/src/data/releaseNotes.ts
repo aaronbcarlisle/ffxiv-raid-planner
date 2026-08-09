@@ -69,6 +69,8 @@ export const RELEASES: Release[] = [
         title: 'Admin surface goes JWT-only and gains the audit-log substrate',
         description:
           'Backend plumbing for the Admin Dashboard V2 workstream: all admin endpoints now require browser sign-in (API keys are rejected — the sole carve-out is the plugin\'s verified-ID import), non-admins calling catalog admin routes get a clean 403 instead of a 500, and the site-wide audit_log table + same-session emit helper land ahead of the Logs surface. Request IDs now actually reach error reports.',
+        pr: 241,
+        prTitle: 'feat(admin): AD1a admin auth substrate — JWT-only lockdown, audit_log, request-id fix',
       },
     ],
     internal: true,
