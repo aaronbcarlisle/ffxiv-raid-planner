@@ -2,9 +2,29 @@
 // the data-driven gate, and the compact grid-cols branch are pinned here, not
 // just exercised in the browser pass.
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { GearTable } from './GearTable';
 import { TooltipProvider } from '../primitives';
+
+beforeEach(() => {
+  // jsdom has no matchMedia; Tooltip -> useDevice needs it (same stub as
+  // MorePage.test.tsx / LogMaterialModal.test.tsx). Without it the first
+  // concurrent render throws and CI fails on the recoverable-error report —
+  // locally it can pass by worker-ordering luck (useDevice memoizes its store).
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+  );
+});
 import { GEAR_SLOTS } from '../../types';
 import type { GearSlotStatus, SnapshotPlayer } from '../../types';
 
