@@ -69,6 +69,7 @@ import {
   toGearState,
   type GearState,
 } from '../../utils/calculations';
+import { relevantGear } from '../../utils/offhand';
 import { canEditGear, canEditPlayer, type MemberRole } from '../../utils/permissions';
 import { formatSource } from '../profile/freshness';
 import { eventBus, Events } from '../../lib/eventBus';
@@ -89,7 +90,6 @@ import type {
 } from '../../types';
 import { BiSSourceFixBanner } from '../player/BiSSourceFixBanner';
 
-const TOTAL_SLOTS = 11;
 
 export interface RosterCardProps {
   player: SnapshotPlayer;
@@ -474,8 +474,11 @@ export function RosterCard({
   };
 
   // ── Derived display ──
-  const completedSlots = player.gear.filter(isSlotComplete).length;
-  const ratio = completedSlots / TOTAL_SLOTS;
+  // Relevant slots only: an empty offhand off-PLD neither renders nor counts.
+  const countedGear = relevantGear(player.job, player.gear);
+  const totalSlots = countedGear.length || 11;
+  const completedSlots = countedGear.filter(isSlotComplete).length;
+  const ratio = completedSlots / totalSlots;
   const hasBis = !!player.bisLink;
 
   // C5 (D-10): the readout prefers the equipped average from sync data when it
@@ -843,6 +846,7 @@ export function RosterCard({
                   <NowVsBisPanel
                     gear={player.gear}
                     tierId={tierId}
+                    job={player.job}
                     equippedAvgIlv={equippedAvgIlv}
                     bisAvgIlv={bisAvgIlv}
                   />
@@ -942,7 +946,7 @@ export function RosterCard({
           <span
             className={`shrink-0 text-xs font-semibold ${hasBis ? 'text-text-secondary' : 'text-status-warning'}`}
           >
-            {hasBis ? `${completedSlots}/${TOTAL_SLOTS} BiS` : 'No BiS'}
+            {hasBis ? `${completedSlots}/${totalSlots} BiS` : 'No BiS'}
           </span>
           {hasBis && player.bisLink && (
             /* The tooltip is the SIGHTED path only: its text is already the
@@ -1019,6 +1023,7 @@ export function RosterCard({
               <RosterGearTable
                 gear={player.gear}
                 tomeWeapon={player.tomeWeapon}
+                job={player.job}
                 editable={canCycleGear}
                 onSlotChange={handleSlotChange}
                 onSourceChange={handleSourceChange}
@@ -1037,7 +1042,7 @@ export function RosterCard({
           <>
             <div className="flex-1" />
             <div className="mt-3 flex flex-wrap gap-1">
-              {player.gear.map((slot) => {
+              {countedGear.map((slot) => {
                 const pip = (
                   <GearStatusCircle
                     state={toGearState(slot.hasItem, slot.isAugmented)}

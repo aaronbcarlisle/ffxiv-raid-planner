@@ -25,6 +25,7 @@ interface JobProfileCardProps {
 
 const SLOT_LABELS: Record<string, string> = {
   weapon: 'Weapon',
+  offhand: 'Off Hand',
   head: 'Head',
   body: 'Body',
   hands: 'Hands',

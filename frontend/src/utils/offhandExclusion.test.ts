@@ -125,6 +125,23 @@ describe('materials/books — offhand contributes nothing and never throws', () 
   });
 });
 
+describe('loot surfaces — offhand can never appear (exclusion pins)', () => {
+  it('the Need matrix gear rows contain no offhand on any floor', async () => {
+    const { buildGearMatrixRows } = await import('../components/loot/needMatrixData');
+    const { DEFAULT_SETTINGS: settings } = await import('./constants');
+    const pld = makePlayer(withOffhand(), 'PLD');
+    const rows = buildGearMatrixRows([pld], settings as StaticSettings);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.slot !== ('offhand' as never))).toBe(true);
+  });
+
+  it('the roster ledger jump targets never populate offhand', async () => {
+    const { buildSlotJumpTargets } = await import('../components/roster/rosterLedgerJumps');
+    const targets = buildSlotJumpTargets([], [], 'p1');
+    expect(targets['offhand' as never]).toBeUndefined();
+  });
+});
+
 describe('average item level — relevance-gated, weapon ladder (B-2)', () => {
   it('a minted empty offhand contributes nothing to a non-PLD average', () => {
     // High-iLv gear so the phantom "crafted"-priced 12th slot would MOVE the

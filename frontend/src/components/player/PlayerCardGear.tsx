@@ -9,15 +9,15 @@ import { GearTable } from './GearTable';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { LongPressTooltip, TooltipProvider } from '../primitives';
 import type { GearSlotStatus, TomeWeaponStatus, SnapshotPlayer, GearSlot } from '../../types';
-import { GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, BIS_SOURCE_NAMES } from '../../types';
+import { GEAR_SLOTS, GEAR_SLOT_ICONS, GEAR_SLOT_NAMES, BIS_SOURCE_NAMES } from '../../types';
 import type { MemberRole } from '../../utils/permissions';
 import { requiresAugmentation } from '../../utils/calculations';
+import { isOffhandRelevant } from '../../utils/offhand';
 
-// Slot order for compact display
-const SLOT_ORDER: (keyof typeof GEAR_SLOT_ICONS)[] = [
-  'weapon', 'head', 'body', 'hands', 'legs', 'feet',
-  'earring', 'necklace', 'bracelet', 'ring1', 'ring2'
-];
+// Compact display follows the canonical slot order; the offhand icon only
+// renders when the slot entry exists AND is relevant (gated at the call site
+// via the entry's own data — see the loop below).
+const SLOT_ORDER = GEAR_SLOTS;
 
 interface PlayerCardGearProps {
   gear: GearSlotStatus[];
@@ -85,6 +85,7 @@ export function PlayerCardGear({
       <div className="px-3 py-2 sm:py-2 border-t border-border-default">
         <div className="flex items-center justify-between gap-1.5 sm:gap-1">
           {SLOT_ORDER.map((slotKey) => {
+            if (slotKey === 'offhand' && !isOffhandRelevant(player.job, gear)) return null;
             const slotData = gear.find((g) => g.slot === slotKey);
             if (!slotData) return null;
 

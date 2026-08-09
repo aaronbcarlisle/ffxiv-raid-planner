@@ -36,14 +36,19 @@ import {
 import { bisSlotTotals } from '../../utils/rosterReadiness';
 import { canEditGear } from '../../utils/permissions';
 import { getRoleColor, getValidRole } from '../../gamedata';
+import { isOffhandRelevant, relevantGear } from '../../utils/offhand';
 import type { GearSlot, MemberRole, SnapshotPlayer } from '../../types';
 
-const SLOT_ORDER: GearSlot[] = [
+// Base column set; the off-hand column joins only when ANY roster player is
+// offhand-relevant (PLD, or slot data) — the board's columns are global, so
+// the gate is roster-level rather than per-row.
+const BASE_SLOT_ORDER: GearSlot[] = [
   'weapon', 'head', 'body', 'hands', 'legs', 'feet',
   'earring', 'necklace', 'bracelet', 'ring1', 'ring2',
 ];
-const SLOT_HEADS = ['Wpn', 'Head', 'Body', 'Hand', 'Legs', 'Feet', 'Ear', 'Neck', 'Wrst', 'Rng', 'Rng'];
-const TOTAL = 11;
+const BASE_SLOT_HEADS = ['Wpn', 'Head', 'Body', 'Hand', 'Legs', 'Feet', 'Ear', 'Neck', 'Wrst', 'Rng', 'Rng'];
+const OFFHAND_SLOT_ORDER: GearSlot[] = ['weapon', 'offhand', ...BASE_SLOT_ORDER.slice(1)];
+const OFFHAND_SLOT_HEADS = ['Wpn', 'OffH', ...BASE_SLOT_HEADS.slice(1)];
 
 export interface GearBoardProps {
   players: SnapshotPlayer[];
@@ -80,6 +85,10 @@ function summaryColor(obtained: number, total: number): string {
 }
 
 export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAccess, actionsForPlayer, priorities }: GearBoardProps) {
+  const showOffhand = players.some((p) => isOffhandRelevant(p.job, p.gear));
+  const slotOrder = showOffhand ? OFFHAND_SLOT_ORDER : BASE_SLOT_ORDER;
+  const slotHeads = showOffhand ? OFFHAND_SLOT_HEADS : BASE_SLOT_HEADS;
+  const totalCols = slotOrder.length;
   const grouped = groupPlayersByLightParty(players.filter((p) => p.configured), true);
   const sections: Array<{ label: string; rows: SnapshotPlayer[] }> = [
     { label: 'Light Party 1', rows: grouped.group1 },
@@ -116,7 +125,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
             <th className="sticky top-0 w-52 bg-surface-raised px-4 py-2.5 text-left font-display text-[10px] font-bold uppercase tracking-wide text-text-tertiary">
               Player
             </th>
-            {SLOT_HEADS.map((h, i) => (
+            {slotHeads.map((h, i) => (
               <th
                 key={`${h}-${i}`}
                 // design-system-ignore: board micro-label — dense gearsheet column header (matches mockup 02-roster-board)
@@ -136,7 +145,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
             <Fragment key={section.label}>
               <tr>
                 <td
-                  colSpan={TOTAL + 2}
+                  colSpan={totalCols + 2}
                   // design-system-ignore: board micro-label — dense gearsheet party-divider label (matches mockup 02-roster-board)
                   className="border-b border-border-default bg-surface-raised px-4 py-1.5 text-left font-display text-[10px] font-bold uppercase tracking-wide text-text-tertiary"
                 >
@@ -164,11 +173,11 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                       <PlayerIdentity variant="board-cell" name={player.name} job={player.job} role={role} subtitle={subtitle} />
                     </td>
                     {total === 0 ? (
-                      <td colSpan={TOTAL} className="border-b border-border-subtle border-l border-border-subtle px-3 text-center text-xs font-semibold text-status-warning">
+                      <td colSpan={totalCols} className="border-b border-border-subtle border-l border-border-subtle px-3 text-center text-xs font-semibold text-status-warning">
                         No BiS imported — priority can't be calculated
                       </td>
                     ) : (
-                      SLOT_ORDER.map((slot) => {
+                      slotOrder.map((slot) => {
                         const g = player.gear.find((x) => x.slot === slot);
                         return (
                           <td key={slot} className="h-10 border-b border-l border-border-subtle">
@@ -190,7 +199,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                         <>
                           {obtained}
                           {/* design-system-ignore: board micro-label — dense gearsheet summary denominator (matches mockup 02-roster-board) */}
-                          <span className="font-sans text-[9.5px] font-semibold text-text-tertiary">/{TOTAL}</span>
+                          <span className="font-sans text-[9.5px] font-semibold text-text-tertiary">/{relevantGear(player.job, player.gear).length || 11}</span>
                         </>
                       )}
                     </td>

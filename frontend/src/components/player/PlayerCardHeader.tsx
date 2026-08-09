@@ -24,6 +24,7 @@ import type { RaidPosition, TankRole, SnapshotPlayer, GearSlot, GearSource } fro
 import { GEAR_SLOT_NAMES, GEAR_SLOTS } from '../../types';
 import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 import { calculateAverageItemLevel, getEffectiveCurrentSource } from '../../utils/calculations';
+import { isOffhandRelevant } from '../../utils/offhand';
 import { getItemLevelForCategory } from '../../gamedata/raid-tiers';
 
 /**
@@ -447,6 +448,7 @@ export function PlayerCardHeader({
                           <span className="w-8 text-right">BiS</span>
                         </div>
                         {GEAR_SLOTS.map((slotKey) => {
+                          if (slotKey === 'offhand' && !isOffhandRelevant(player.job, player.gear)) return null;
                           const gearSlot = player.gear.find((g) => g.slot === slotKey);
                           if (!gearSlot) return null;
                           const bisILv = getSlotItemLevel(gearSlot, tierId);
@@ -480,6 +482,7 @@ export function PlayerCardHeader({
                       // Single-column fallback when no sync data
                       <>
                         {GEAR_SLOTS.map((slotKey) => {
+                          if (slotKey === 'offhand' && !isOffhandRelevant(player.job, player.gear)) return null;
                           const gearSlot = player.gear.find((g) => g.slot === slotKey);
                           if (!gearSlot) return null;
                           const slotILv = getSlotItemLevel(gearSlot, tierId);
