@@ -66,9 +66,24 @@ def _is_secret_key(key: str) -> bool:
 
 
 def _strip_secrets(values: dict | None) -> dict | None:
+    """Strip secret-shaped keys recursively — old/new values are arbitrary
+    JSON, and a wave-1 emit diffing a settings blob could carry a secret
+    under a nested key (the Logs API exposes these columns verbatim)."""
     if values is None:
         return None
-    return {k: v for k, v in values.items() if not _is_secret_key(k)}
+    return _strip_secrets_value(values)
+
+
+def _strip_secrets_value(value):
+    if isinstance(value, dict):
+        return {
+            k: _strip_secrets_value(v)
+            for k, v in value.items()
+            if not _is_secret_key(k)
+        }
+    if isinstance(value, list):
+        return [_strip_secrets_value(item) for item in value]
+    return value
 
 
 def compute_changed_fields(

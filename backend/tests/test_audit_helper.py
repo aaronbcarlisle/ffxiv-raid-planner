@@ -8,7 +8,6 @@ request_id regression (exceptions.py context was always None before AD1a).
 
 import asyncio
 import hashlib
-import time
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import patch
@@ -89,6 +88,18 @@ class TestSecretDenyList:
         fields, not secrets — a bare 'token' substring rule would gut them."""
         values = {"token_name": "a", "token_cost": 1, "token_item_id": 2, "token_count": 3}
         assert _strip_secrets(values) == values
+
+    def test_nested_secrets_stripped(self):
+        """old/new are arbitrary JSON — secrets under nested keys (settings
+        blobs, lists of dicts) must be stripped too, not just top-level."""
+        values = {
+            "discord": {"discord_bot_token": "x", "channel": "kept"},
+            "mirrors": [{"webhook_url": "x", "name": "kept"}],
+        }
+        assert _strip_secrets(values) == {
+            "discord": {"channel": "kept"},
+            "mirrors": [{"name": "kept"}],
+        }
 
     def test_none_passes_through(self):
         assert _strip_secrets(None) is None
@@ -256,7 +267,7 @@ class TestAuditAtomicity:
             await session.commit()
             # Windows clock ticks at 15.6 ms — without this, both ISO
             # timestamps can be identical and the ordering assert flakes.
-            time.sleep(0.02)
+            await asyncio.sleep(0.02)
 
         rows = (
             (
