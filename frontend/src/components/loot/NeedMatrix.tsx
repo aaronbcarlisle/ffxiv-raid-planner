@@ -112,7 +112,16 @@ function MaterialProgressRing({ roleVar: color, total, needed }: { roleVar: stri
 
 /** The "not a needer" cell — same footprint as NeedDot, neutral instead of role-colored. */
 function EmptyDot() {
-  return <span aria-hidden className="mx-auto block h-6 w-6 rounded-full border border-border-subtle bg-surface-interactive" />;
+  // role="presentation" opts out of index.css's aria-hidden display-revert rule,
+  // which would otherwise collapse this span to an inline hairline (same fix as
+  // NeedDot / MaterialProgressRing / the material letter chip above).
+  return (
+    <span
+      aria-hidden
+      role="presentation"
+      className="mx-auto block h-6 w-6 rounded-full border border-border-subtle bg-surface-interactive"
+    />
+  );
 }
 
 /**

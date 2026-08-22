@@ -266,6 +266,9 @@ describe('NeedMatrix', () => {
     const emptyDot = cells[1].querySelector('span[aria-hidden]') as HTMLElement;
     expect(emptyDot.className).toContain('border-border-subtle');
     expect(emptyDot.getAttribute('style')).toBeFalsy();
+    // Pins the opt-out from index.css's aria-hidden display-revert rule — without
+    // it the empty circle collapses to an inline hairline in real browsers.
+    expect(emptyDot).toHaveAttribute('role', 'presentation');
   });
 
   it('read-only mode: needer cells still carry the role-colored dot but render no button (non-interactive)', () => {
