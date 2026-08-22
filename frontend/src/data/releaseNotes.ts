@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.15';
+export const CURRENT_VERSION = '2.1.17';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,61 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.17',
+    date: '2026-08-22T07:00:00Z',
+    title: 'Preview shell feedback pass — loot views, roster, and avatars',
+    items: [
+      {
+        category: 'improvement',
+        title: 'The preview Loot "Matrix" view is now "Who Needs It"',
+        description:
+          "The preview shell's loot priority sub-view now uses the same name the classic shell always had — Who Needs It — matching what the view actually answers.",
+        pr: 242,
+        prTitle: 'feat(v2): Phase D feedback-polish — loot parity, roster affordances, InitialsAvatar',
+      },
+      {
+        category: 'improvement',
+        title: 'Who Needs It cells wear the classic look again',
+        description:
+          "Gear cells in the preview's Who Needs It view regained the classic shell's role-colored treatment — tinted fill, ring, and a solid center dot at the same visual weight. (The center dot had also been collapsing to zero size in the browser; it now renders properly.)",
+        pr: 242,
+        prTitle: 'feat(v2): Phase D feedback-polish — loot parity, roster affordances, InitialsAvatar',
+      },
+      {
+        category: 'improvement',
+        title: 'Floor pills highlight instead of hiding',
+        description:
+          "Selecting a floor on Who Needs It no longer removes the other rows: every row stays visible, the selected floor's rows get a colored edge, and the rest dim with their log buttons disabled — the classic shell's behavior.",
+        pr: 242,
+        prTitle: 'feat(v2): Phase D feedback-polish — loot parity, roster affordances, InitialsAvatar',
+      },
+      {
+        category: 'improvement',
+        title: 'Reordering the roster explains itself',
+        description:
+          'The Reorder button now carries a tooltip describing the drag-to-reorder flow, shows a clear pressed state while the mode is active, and roster cards switch to a grab cursor so the interaction is discoverable.',
+        pr: 242,
+        prTitle: 'feat(v2): Phase D feedback-polish — loot parity, roster affordances, InitialsAvatar',
+      },
+      {
+        category: 'fix',
+        title: 'The job picker no longer gets clipped on roster cards',
+        description:
+          "Opening the job picker from a preview roster card used to cut it off at the card's boundary. It now floats above the card in full, with a single clean panel.",
+        pr: 242,
+        prTitle: 'feat(v2): Phase D feedback-polish — loot parity, roster affordances, InitialsAvatar',
+      },
+      {
+        category: 'fix',
+        title: 'Initials avatars sit centered in their circles again',
+        description:
+          "A global style quirk made the letters in circular initials avatars ride high against the top edge — most visibly in the left rail's static chips and loot queue recipient chips. All initials circles now share one component that centers them properly.",
+        pr: 242,
+        prTitle: 'feat(v2): Phase D feedback-polish — loot parity, roster affordances, InitialsAvatar',
+      },
+    ],
+  },
   {
     version: '2.1.16',
     date: '2026-08-09T05:00:00Z',
