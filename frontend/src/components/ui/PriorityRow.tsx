@@ -6,6 +6,8 @@
  * Consumed by Loot's FloorDropRow now; Home is a future consumer.
  */
 
+import { InitialsAvatar } from './InitialsAvatar';
+
 export interface PriorityRowEntry {
   playerId: string;
   name: string;
@@ -46,17 +48,15 @@ export function PriorityRow({ entries, maxVisible = 3, emptyLabel = 'no one need
               top ? 'border-accent bg-accent/5' : 'border-border-subtle bg-surface-interactive'
             }`}
           >
-            <span
-              aria-hidden
-              /* design-system-ignore: 10px initials inside a 22px avatar glyph — decorative, name is adjacent.
-                 Role color is a border ring (not a fill) so the white-on-pastel contrast failure that a
-                 filled circle would hit for several role colors (e.g. healer/ranged/caster) never applies —
-                 mirrors ui/PlayerIdentity's fallback-avatar treatment (role-colored ring + neutral fill/text). */
-              className="grid h-[22px] w-[22px] flex-none place-items-center rounded-full border-2 bg-surface-interactive text-[10px] font-bold text-text-secondary leading-none"
-              style={{ borderColor: `var(--color-role-${entry.role}, var(--color-text-muted))` }}
-            >
-              {initials(entry.name)}
-            </span>
+            <InitialsAvatar
+              initials={initials(entry.name)}
+              size={22}
+              className="bg-surface-interactive text-text-secondary"
+              borderColor={`var(--color-role-${entry.role}, var(--color-text-muted))`}
+              borderWidth={2}
+              fontWeight="bold"
+              textSize="2xs"
+            />
             <span className="truncate text-xs font-semibold text-text-primary">{entry.name}</span>
             <span className={`font-display text-xs font-extrabold ${top ? 'text-accent' : 'text-text-secondary'}`}>
               #{entry.rank}

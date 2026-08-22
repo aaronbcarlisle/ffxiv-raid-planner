@@ -114,6 +114,33 @@ export function RosterToolbar({
   const groupingHint = groupView
     ? 'On — the roster splits into G1 / G2. Click to show one flat grid.'
     : 'Off — one flat grid. Click to split the roster into G1 / G2.';
+  // Task 1 (feedback-polish): the transient enter→drag→exit reorder flow
+  // shipped with zero on-surface teaching. A plain Tooltip, not ShortcutHint
+  // — there's no reorder keyboard shortcut (`r` is Copy to New Tier). Wording
+  // tuned from SORT_PRESETS.custom.description ('Drag to reorder') for the
+  // fuller two-step flow, but read-only — that shared constants file is
+  // frozen (still-live V1 consumer).
+  const reorderHint = 'Drag cards to reorder or swap players. Click again to finish.';
+  // Pressed treatment swaps the VARIANT, not just className — a className
+  // addition can't reliably beat `ghost`'s own `bg-transparent` in the
+  // cascade (both are plain utility classes at equal specificity; Tailwind's
+  // generated order, not DOM/JSX order, decides the winner, and
+  // `bg-transparent` was winning), so `aria-pressed` was lying with zero
+  // visible change. `accent-subtle` (Button.tsx) is the existing semantic
+  // "on" look (MyStaticsPanel.tsx:356 precedent: same variant-swap approach,
+  // not a className race).
+  const reorderButton = (
+    <Button
+      variant={reorderMode ? 'accent-subtle' : 'ghost'}
+      size="sm"
+      leftIcon={<List className="w-3.5 h-3.5" aria-hidden />}
+      aria-pressed={reorderMode}
+      disabled={!canManage}
+      onClick={() => onReorderModeChange(!reorderMode)}
+    >
+      Reorder
+    </Button>
+  );
   const separateHint = separateSubsDisabled
     ? // Subs ARE separated here — the section is just hidden, so the only thing
       // this control could do is merge them back (PR #199 review).
@@ -205,16 +232,19 @@ export function RosterToolbar({
       <div className="flex-1" />
 
       {rosterView === 'cards' && (
-        <Button
-          variant="ghost"
-          size="sm"
-          leftIcon={<List className="w-3.5 h-3.5" aria-hidden />}
-          aria-pressed={reorderMode}
-          disabled={!canManage}
-          onClick={() => onReorderModeChange(!reorderMode)}
-        >
-          Reorder
-        </Button>
+        <Tooltip content={<div className="max-w-60">{reorderHint}</div>}>
+          {/* The trigger is the Button itself when enabled, so Radix hangs
+              aria-describedby off the element keyboard users actually focus.
+              Disabled buttons don't receive hover/focus events, so ONLY that
+              case wraps in an always-enabled span (precedent above, :189-199)
+              — the tooltip must still teach the flow to a non-manager, even
+              though they can't use it (PR #242 review). */}
+          {canManage ? (
+            reorderButton
+          ) : (
+            <span className="inline-flex">{reorderButton}</span>
+          )}
+        </Tooltip>
       )}
 
       <Button

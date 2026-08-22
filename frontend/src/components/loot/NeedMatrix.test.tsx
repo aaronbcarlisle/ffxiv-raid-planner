@@ -31,6 +31,9 @@ const t1: SnapshotPlayer = {
   gear: [
     { slot: 'ring1', bisSource: 'raid', hasItem: false, isAugmented: false },
     { slot: 'ring2', bisSource: 'raid', hasItem: true, isAugmented: false },
+    // Floor 2's own slot — gives the R-P3 enabled-side assertion a real
+    // needer to click on (no fixture otherwise needs a floor-2 gear drop).
+    { slot: 'head', bisSource: 'raid', hasItem: false, isAugmented: false },
   ],
   tomeWeapon: {}, weaponPriorities: [],
 } as unknown as SnapshotPlayer;
@@ -130,23 +133,47 @@ describe('NeedMatrix', () => {
     expect(screen.getByText(`${m1.name} needs Ring`)).toBeInTheDocument();
   });
 
-  it('scopes rows to the selected floor; "all" renders every gear row', () => {
-    renderMatrix({ floorScope: 2 });
-    expect(screen.getByText('Head')).toBeInTheDocument();
-    expect(screen.getByText('Hands')).toBeInTheDocument();
-    expect(screen.getByText('Feet')).toBeInTheDocument();
-    expect(screen.queryByText('Weapon')).not.toBeInTheDocument();
-    expect(screen.queryByText('Ring')).not.toBeInTheDocument();
-    expect(screen.getByText('Glaze')).toBeInTheDocument();
-    expect(screen.getByText('Universal Tomestone')).toBeInTheDocument();
-    expect(screen.queryByText('Twine')).not.toBeInTheDocument();
-    expect(screen.queryByText('Solvent')).not.toBeInTheDocument();
+  it('R-P3: floor scope highlights the selected floor\'s rows and dims + disables the rest — no row leaves the DOM', () => {
+    renderMatrix({ floorScope: 2, canEdit: true });
+    // Every gear + material row from every floor stays mounted — nothing is filtered out.
+    ['Ring', 'Weapon', 'Head', 'Hands', 'Feet', 'Glaze', 'Universal Tomestone', 'Twine', 'Solvent'].forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
+
+    // Floor 2's own row (Head) is relevant: not dimmed, carries the floor-accent edge,
+    // and (kills the `disabled={floorScope !== 'all'}` mutant) its log button is enabled.
+    const headRow = screen.getByText('Head').closest('tr') as HTMLElement;
+    const headHeader = screen.getByText('Head').closest('th') as HTMLElement;
+    expect(headRow.className).not.toContain('opacity-30');
+    expect(headHeader.className).toContain('border-l-floor-2');
+    expect(within(headRow).getByRole('button', { name: `Log Head for ${t1.name}` })).toBeEnabled();
+
+    // Off-floor rows dim AND their log buttons disable, even though someone needs them.
+    const weaponRow = screen.getByText('Weapon').closest('tr') as HTMLElement;
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    const ringHeader = screen.getByText('Ring').closest('th') as HTMLElement;
+    expect(weaponRow.className).toContain('opacity-30');
+    expect(ringRow.className).toContain('opacity-30');
+    // Dimmed rows never carry the floor-2 accent edge, even though `floorScope` is set.
+    expect(ringHeader.className).not.toContain('border-l-floor-2');
+    expect(within(weaponRow).getByRole('button', { name: `Log Weapon for ${m1.name}` })).toBeDisabled();
+    expect(within(ringRow).getByRole('button', { name: `Log Ring for ${t1.name}` })).toBeDisabled();
   });
 
-  it('floorScope 1: no upgrade materials drop there, so the "Materials" separator header does not render', () => {
-    renderMatrix({ floorScope: 1 });
+  it('floorScope 1: no upgrade materials drop there, so every material row dims — but the "Materials" separator still renders (rows stay mounted)', () => {
+    renderMatrix({ floorScope: 1, canEdit: true });
     expect(screen.getByText('Ring')).toBeInTheDocument();
-    expect(screen.queryByText('Materials')).not.toBeInTheDocument();
+    expect(screen.getByText('Materials')).toBeInTheDocument();
+
+    const twineRow = screen.getByText('Twine').closest('tr') as HTMLElement;
+    expect(twineRow.className).toContain('opacity-30');
+    expect(
+      within(twineRow).getByRole('button', { name: `Log Twine for ${m1.name} — needs 2 of 3` })
+    ).toBeDisabled();
+
+    // Ring is floor 1's own row — relevant, not dimmed.
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    expect(ringRow.className).not.toContain('opacity-30');
   });
 
   it('"all" scope renders every gear row (all ten slots)', () => {
@@ -196,6 +223,81 @@ describe('NeedMatrix', () => {
     renderMatrix({ players: [] });
     expect(screen.getByText(/no configured players/i)).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('V1-style gear cells: needer cells carry a role-colored ring (2px) + role-tint fill, per role — tank and melee', () => {
+    renderMatrix();
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    const cells = ringRow.querySelectorAll('td');
+    // Sorted order T1, H1, M1 — T1 (tank) and M1 (melee) both need Ring; H1 doesn't.
+    const tankDot = cells[0].querySelector('span[aria-hidden]') as HTMLElement;
+    const meleeDot = cells[2].querySelector('span[aria-hidden]') as HTMLElement;
+    expect(tankDot.className).toContain('border-2');
+    expect(tankDot.getAttribute('style')).toContain('--color-role-tank');
+    expect(tankDot.style.backgroundColor).toContain('color-mix');
+    expect(tankDot.style.backgroundColor).toContain('--color-role-tank');
+    expect(meleeDot.getAttribute('style')).toContain('--color-role-melee');
+    expect(meleeDot.style.backgroundColor).toContain('color-mix');
+    expect(meleeDot.style.backgroundColor).toContain('--color-role-melee');
+
+    // role="presentation" opts NeedDot's grid-centered outer span out of
+    // index.css's global aria-hidden centering override (otherwise the grid
+    // reverts to block and the inner dot renders corner-pinned, not centered).
+    expect(tankDot).toHaveAttribute('role', 'presentation');
+    expect(meleeDot).toHaveAttribute('role', 'presentation');
+
+    // The inner solid dot must be a block-level box — a bare inline <span>
+    // ignores width/height per CSS spec and renders 0x0 in a real browser
+    // even though it passes class-token assertions in jsdom (measured live:
+    // outer ring 24x24, inner dot 0x0 without this). Size is h-2.5/w-2.5
+    // (10px, ratio 0.42 of the 24px ring) — bumped from h-2/w-2 (0.33) to
+    // match V1's visual weight (ratio 0.43) per browser re-validation.
+    const tankInnerDot = tankDot.querySelector('span') as HTMLElement;
+    expect(tankInnerDot.className).toContain('block');
+    expect(tankInnerDot.className).toContain('h-2.5');
+    expect(tankInnerDot.className).toContain('w-2.5');
+  });
+
+  it('non-needer gear cells render the neutral empty treatment, not a role-colored dot', () => {
+    renderMatrix();
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    const cells = ringRow.querySelectorAll('td');
+    // H1 (index 1) has both rings — doesn't need Ring.
+    const emptyDot = cells[1].querySelector('span[aria-hidden]') as HTMLElement;
+    expect(emptyDot.className).toContain('border-border-subtle');
+    expect(emptyDot.getAttribute('style')).toBeFalsy();
+    // Pins the opt-out from index.css's aria-hidden display-revert rule — without
+    // it the empty circle collapses to an inline hairline in real browsers.
+    expect(emptyDot).toHaveAttribute('role', 'presentation');
+  });
+
+  it('read-only mode: needer cells still carry the role-colored dot but render no button (non-interactive)', () => {
+    renderMatrix({ canEdit: false });
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    const cells = ringRow.querySelectorAll('td');
+    const tankDot = cells[0].querySelector('span[aria-hidden]') as HTMLElement;
+    expect(tankDot.getAttribute('style')).toContain('--color-role-tank');
+    expect(within(cells[0] as HTMLElement).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('material cells unchanged: progress ring still renders as a conic-gradient, not the ring-cell treatment', () => {
+    renderMatrix({ canEdit: false });
+    const twineRow = screen.getByText('Twine').closest('tr') as HTMLElement;
+    const cells = twineRow.querySelectorAll('td');
+    const m1Cell = cells[2];
+    const ring = within(m1Cell as HTMLElement).getByText('2').closest('span[aria-hidden]') as HTMLElement;
+    expect(ring.getAttribute('style')).toContain('conic-gradient');
+    expect(ring.className).not.toContain('border-2');
+    // Same aria-hidden-centering opt-out as NeedDot (index.css override).
+    expect(ring).toHaveAttribute('role', 'presentation');
+  });
+
+  it('material row header icon opts out of the aria-hidden centering override (role="presentation")', () => {
+    renderMatrix();
+    const twineHeader = screen.getByText('Twine').closest('th') as HTMLElement;
+    const chip = twineHeader.querySelector('span[aria-hidden]') as HTMLElement;
+    expect(chip).toHaveAttribute('role', 'presentation');
+    expect(chip.textContent).toBe('T');
   });
 
   it('applies the warning tone once needers reach half the roster (ceil), and not below that', () => {

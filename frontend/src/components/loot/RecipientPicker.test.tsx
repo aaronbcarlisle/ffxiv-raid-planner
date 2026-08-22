@@ -80,6 +80,9 @@ describe('RecipientPicker (assign mode)', () => {
     // Task-10 regression pin: the fallback avatar uses the PlayerIdentity ring
     // pattern (role color as border, neutral fill) — not a filled role circle.
     expect(screen.getByText('CO')).toHaveClass('rounded-full', 'border-2', 'bg-surface-interactive');
+    // Task 6: renders through the shared InitialsAvatar primitive (role="presentation"
+    // is its centering-fix signature — see InitialsAvatar.tsx's docblock).
+    expect(screen.getByText('CO')).toHaveAttribute('role', 'presentation');
     fireEvent.click(screen.getByRole('button', { name: /Assign to/ }));
     await waitFor(() => expect(logLootAndUpdateGear).toHaveBeenCalledTimes(1));
     const [gid, tid, payload, options] = vi.mocked(logLootAndUpdateGear).mock.calls[0];

@@ -174,6 +174,16 @@ describe('AppRail', () => {
     expect(initialsSpan.className).toContain('leading-none');
   });
 
+  // Task 6: the avatar chip must render through the shared InitialsAvatar primitive
+  // (not a hand-rolled span) — role="presentation" is InitialsAvatar's signature (the
+  // centering fix), so its presence proves the primitive is actually mounted here.
+  it('avatar chip renders through the shared InitialsAvatar primitive', () => {
+    render(<AppRail entries={makeEntries()} />);
+    const initialsSpan = screen.getByText('MS');
+    expect(initialsSpan).toHaveAttribute('role', 'presentation');
+    expect(initialsSpan).toHaveAttribute('aria-hidden', 'true');
+  });
+
   // Task 6: below `sm`, the rail must be hidden (display:none) so MobileBottomNav serves
   // small viewports instead of a stacked 72px rail — mirrors legacy SidebarRail.tsx:42
   // (`hidden sm:flex`). Split on whitespace so a bare `flex` token (display:flex at ALL

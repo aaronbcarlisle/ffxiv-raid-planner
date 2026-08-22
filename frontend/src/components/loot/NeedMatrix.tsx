@@ -3,8 +3,11 @@
  * legacy WhoNeedsItMatrix is frozen and V1-only. Differences from legacy are
  * ruled, not accidental: R-8/R-9 floor-coloured names + neutral slot icons
  * (always, not only when scoped), R-11 roster-size Need denominator, rows
- * band by floor F4→F1 (user-ruled at D3 build), scoping FILTERS rows (the D1
- * pill row is the scope control — R-48 rules FilterBar out), cells route
+ * band by floor F4→F1 (user-ruled at D3 build), scoping HIGHLIGHTS rows (the
+ * D1 pill row is the scope control — R-48 rules FilterBar out): every row
+ * stays mounted, the selected floor's rows get the floor-accent edge, and
+ * every other row dims + disables its log affordances (R-P3/R-V4, matching
+ * V1's `WhoNeedsItMatrix.tsx` opacity/disabled treatment), cells route
  * through the picker (R-4) instead of writing directly, and the ring row
  * hands the picker slot 'ring' (it resolves ring1/ring2 itself).
  */
@@ -14,7 +17,7 @@ import { Tag } from '../ui';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
 import { JobIcon } from '../ui/JobIcon';
 import { getValidRole } from '../../gamedata';
-import { FLOOR_TEXT_CLASS } from './floorClasses';
+import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { MATERIAL_TOKEN } from './FloorDropRow';
 import { sortByPosition, buildGearMatrixRows, buildMaterialMatrixRows } from './needMatrixData';
 import type { FloorScope } from './priorityScope';
@@ -32,14 +35,40 @@ export interface NeedMatrixProps {
   onLogMaterial: (material: UpgradeMaterialType, player: SnapshotPlayer) => void;
 }
 
-/** Role-colored ring, never a fill — mirrors PriorityRow's contrast-safe avatar treatment. */
+/**
+ * Role-colored token: feeds the needer dot's ring + tint fill, the material
+ * progress ring, and the header row's position-label text color. (Not a
+ * "ring, never a fill" treatment — `NeedDot` below IS a role-tint fill, per
+ * V1 parity; the contrast-safe ring-only pattern this comment used to
+ * describe lives in `InitialsAvatar`'s `2xs` branch instead, inherited from
+ * the original `PriorityRow` it was extracted from.)
+ */
 const roleVar = (player: SnapshotPlayer) => `var(--color-role-${getValidRole(player.role)}, var(--color-text-muted))`;
 
-/** The needer dot: a role-colored ring around a role-colored center. File-local — one shape, two contexts (live cell + legend sample). */
+/**
+ * The needer dot: a role-colored ring + role-tint fill around a role-colored
+ * center — V1's cell treatment (`WhoNeedsItMatrix.tsx:392-405`: 2px solid
+ * ring, `color-mix(role 30%, transparent)` fill, solid role-colored inner
+ * dot), re-expressed v2-owned. File-local — one shape, two contexts (live
+ * cell + legend sample).
+ *
+ * `role="presentation"` alongside `aria-hidden` opts this grid-centered
+ * shape out of `index.css`'s global `[aria-hidden="true"]:not([role=
+ * "presentation"])... { display: revert !important }` rule (added to stop
+ * Radix from hiding dropdown siblings) — without it the outer span's `grid`
+ * display is reverted to block and the inner dot renders corner-pinned
+ * instead of centered. See `ui/InitialsAvatar.tsx` for the same fix and the
+ * full mechanism writeup.
+ */
 function NeedDot({ roleVar: color }: { roleVar: string }) {
   return (
-    <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full border-2 bg-surface-interactive" style={{ borderColor: color }}>
-      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+    <span
+      aria-hidden
+      role="presentation"
+      className="grid h-6 w-6 place-items-center rounded-full border-2"
+      style={{ borderColor: color, backgroundColor: `color-mix(in srgb, ${color} 30%, transparent)` }}
+    >
+      <span className="block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
     </span>
   );
 }
@@ -71,6 +100,7 @@ function MaterialProgressRing({ roleVar: color, total, needed }: { roleVar: stri
   return (
     <span
       aria-hidden
+      role="presentation"
       className="relative grid h-6 w-6 place-items-center rounded-full"
       style={{ background: `conic-gradient(${stops.join(', ')})` }}
     >
@@ -82,7 +112,28 @@ function MaterialProgressRing({ roleVar: color, total, needed }: { roleVar: stri
 
 /** The "not a needer" cell — same footprint as NeedDot, neutral instead of role-colored. */
 function EmptyDot() {
-  return <span aria-hidden className="mx-auto block h-6 w-6 rounded-full border border-border-subtle bg-surface-interactive" />;
+  // role="presentation" opts out of index.css's aria-hidden display-revert rule,
+  // which would otherwise collapse this span to an inline hairline (same fix as
+  // NeedDot / MaterialProgressRing / the material letter chip above).
+  return (
+    <span
+      aria-hidden
+      role="presentation"
+      className="mx-auto block h-6 w-6 rounded-full border border-border-subtle bg-surface-interactive"
+    />
+  );
+}
+
+/**
+ * R-P3/R-V4: is this row relevant to the selected floor? `'all'` makes every
+ * row relevant (today's unscoped render, unchanged). Irrelevant rows stay
+ * mounted — the caller dims them and disables their log affordances instead
+ * of unmounting them, matching V1's `WhoNeedsItMatrix.tsx` opacity-30 /
+ * disabled treatment (`:358,446` / `:391,480`).
+ */
+function isRowRelevant(rowFloors: FloorNumber | FloorNumber[], floorScope: FloorScope): boolean {
+  if (floorScope === 'all') return true;
+  return Array.isArray(rowFloors) ? rowFloors.includes(floorScope) : rowFloors === floorScope;
 }
 
 export function NeedMatrix(props: NeedMatrixProps) {
@@ -99,11 +150,6 @@ export function NeedMatrix(props: NeedMatrixProps) {
       </div>
     );
   }
-
-  const visibleGearRows = gearRows.filter((row) => floorScope === 'all' || row.floorNumber === floorScope);
-  const visibleMaterialRows = materialRows.filter(
-    (row) => floorScope === 'all' || row.floorNumbers.includes(floorScope)
-  );
 
   return (
     <div className="overflow-hidden rounded-lg border border-border-default bg-surface-card">
@@ -137,9 +183,18 @@ export function NeedMatrix(props: NeedMatrixProps) {
             </tr>
           </thead>
           <tbody>
-            {visibleGearRows.map((row) => (
-              <tr key={`${row.slot}-${row.floorNumber}`} className="border-t border-border-subtle">
-                <th scope="row" aria-label={row.label} className="px-3 py-2 text-left font-medium">
+            {gearRows.map((row) => {
+              const relevant = isRowRelevant(row.floorNumber, floorScope);
+              return (
+              <tr
+                key={`${row.slot}-${row.floorNumber}`}
+                className={`border-t border-border-subtle${relevant ? '' : ' opacity-30'}`}
+              >
+                <th
+                  scope="row"
+                  aria-label={row.label}
+                  className={`px-3 py-2 text-left font-medium ${floorScope !== 'all' && relevant ? FLOOR_ACCENT_CLASS[floorScope] : ''}`}
+                >
                   <div className="flex items-center gap-2">
                     <span className="text-text-secondary"><GearSlotIcon slot={row.slot} size={18} /></span>
                     <span className={`text-sm font-semibold ${FLOOR_TEXT_CLASS[row.floorNumber]}`}>{row.label}</span>
@@ -158,6 +213,7 @@ export function NeedMatrix(props: NeedMatrixProps) {
                             size="sm"
                             aria-label={`Log ${row.label} for ${player.name}`}
                             icon={<NeedDot roleVar={roleVar(player)} />}
+                            disabled={!relevant}
                             onClick={() => onLogGear({ slot: row.slot, label: row.label, floorNumber: row.floorNumber }, player.id)}
                           />
                         </Tooltip>
@@ -192,9 +248,10 @@ export function NeedMatrix(props: NeedMatrixProps) {
                   )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
 
-            {visibleMaterialRows.length > 0 && (
+            {materialRows.length > 0 && (
               <tr>
                 <th
                   colSpan={sorted.length + 2}
@@ -206,14 +263,23 @@ export function NeedMatrix(props: NeedMatrixProps) {
                 </th>
               </tr>
             )}
-            {visibleMaterialRows.map((row) => {
+            {materialRows.map((row) => {
               const token = MATERIAL_TOKEN[row.material];
+              const relevant = isRowRelevant(row.floorNumbers, floorScope);
               return (
-                <tr key={row.material} className="border-t border-border-subtle">
-                  <th scope="row" aria-label={row.label} className="px-3 py-2 text-left font-medium">
+                <tr
+                  key={row.material}
+                  className={`border-t border-border-subtle${relevant ? '' : ' opacity-30'}`}
+                >
+                  <th
+                    scope="row"
+                    aria-label={row.label}
+                    className={`px-3 py-2 text-left font-medium ${floorScope !== 'all' && relevant ? FLOOR_ACCENT_CLASS[floorScope] : ''}`}
+                  >
                     <div className="flex items-center gap-2">
                       <span
                         aria-hidden
+                        role="presentation"
                         className="grid h-6 w-6 place-items-center rounded font-display text-xs font-extrabold"
                         style={{ backgroundColor: `color-mix(in srgb, ${token} 22%, transparent)`, color: token }}
                       >
@@ -242,6 +308,7 @@ export function NeedMatrix(props: NeedMatrixProps) {
                               size="sm"
                               aria-label={`Log ${row.label} for ${player.name} — needs ${needed}${progressSuffix}`}
                               icon={<MaterialProgressRing roleVar={roleVar(player)} total={total} needed={needed} />}
+                              disabled={!relevant}
                               onClick={() => onLogMaterial(row.material, player)}
                             />
                           </Tooltip>

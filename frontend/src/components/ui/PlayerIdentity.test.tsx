@@ -32,6 +32,17 @@ describe('PlayerIdentity', () => {
     expect(screen.getByText('HT').className).toContain('leading-none');
   });
 
+  // Task 6: the fallback avatar must render through the shared InitialsAvatar
+  // primitive (not a hand-rolled span) — role="presentation" is InitialsAvatar's
+  // signature (the centering fix), so its presence proves the primitive is
+  // actually mounted here.
+  it('inline avatar fallback renders through the shared InitialsAvatar primitive', () => {
+    render(<PlayerIdentity name="Healer Two" job="WHM" />);
+    const chip = screen.getByText('HT');
+    expect(chip).toHaveAttribute('role', 'presentation');
+    expect(chip).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('renders job and position subtitle together', () => {
     render(<PlayerIdentity name="Melee One" job="DRG" position="M1" />);
     expect(screen.getByText(/DRG/)).toBeInTheDocument();
@@ -120,5 +131,12 @@ describe('PlayerIdentity rsvp-row variant', () => {
   it('rsvp-row avatar fallback initials carry leading-none (A12 centering)', () => {
     render(<PlayerIdentity name="Alice Ray" variant="rsvp-row" />);
     expect(screen.getByText('AR').className).toContain('leading-none');
+  });
+
+  it('rsvp-row avatar fallback renders through the shared InitialsAvatar primitive', () => {
+    render(<PlayerIdentity name="Alice Ray" variant="rsvp-row" />);
+    const chip = screen.getByText('AR');
+    expect(chip).toHaveAttribute('role', 'presentation');
+    expect(chip).toHaveAttribute('aria-hidden', 'true');
   });
 });

@@ -21,6 +21,7 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Categorized dropdown | `SearchableSelect` + `groupOrder` | `components/ui/SearchableSelect.tsx` |
 | Checkbox | `Checkbox` | `components/ui/Checkbox.tsx` |
 | Gear status indicator | `GearStatusCircle` | `components/ui/GearStatusCircle.tsx` |
+| Initials avatar (no image) | `InitialsAvatar` | `components/ui/InitialsAvatar.tsx` |
 | Modal dialog | `Modal` | `components/ui/Modal.tsx` |
 | Confirmation dialog | `ConfirmModal` | `components/ui/ConfirmModal.tsx` |
 | Dropdown menu | `Dropdown` | `components/primitives/Dropdown.tsx` |
@@ -707,6 +708,61 @@ import { toGearState, fromGearState } from '../utils/calculations';
 **When to use:** Gear slot status tracking in player cards and gear tables.
 
 **Never use:** For generic boolean toggles - use `Checkbox` instead. GearStatusCircle is specifically designed for FFXIV gear tracking with its unique state cycles.
+
+---
+
+### InitialsAvatar
+
+**Path:** `components/ui/InitialsAvatar.tsx`
+
+**Purpose:** The shared circular initials fallback for every avatar-shaped surface that has no image to show (rail chips, roster/loot identity rows, recipient pickers, the members list). Extracted (Phase D feedback-polish Task 6) from several independently hand-rolled copies — the `aria-hidden` ones all shared the same bug (initials text visibly off-center); the MembersPanel copies never had it (no `aria-hidden`, so the rule below never matched them) and were migrated purely as consolidation, under ruling R-V2. The root cause was NOT font metrics or line-height — it was a global CSS rule (`index.css`, `[aria-hidden="true"] { display: revert !important }`, added to stop Radix from hiding dropdown siblings) silently stripping `flex`/`grid` centering from any `aria-hidden` element. `InitialsAvatar` bakes in the fix (`role="presentation"` alongside `aria-hidden="true"` — the rule's own carve-out) so every consumer gets correctly centered initials for free.
+
+**Props:**
+```typescript
+interface InitialsAvatarProps {
+  initials: string;                 // pre-derived text; callers own the derivation
+  size: number | string;             // px number, or a CSS length/var() expression
+  background?: string;               // CSS color/token expr; omit to use className instead
+  borderColor?: string;              // CSS color/token expr (often per-role); omit for no border
+  borderWidth?: number;              // default 2; only applied when borderColor is set
+  fontWeight?: 'medium' | 'semibold' | 'bold'; // default 'semibold'
+  textSize?: 'sm' | 'xs' | '2xs';    // default 'xs' (12px floor); '2xs' (10px) carries a design-system-ignore
+  className?: string;                // escape hatch for Tailwind-expressible colors (e.g. opacity utilities)
+}
+```
+
+**Usage:**
+```tsx
+import { InitialsAvatar } from '../components/ui';
+
+// Static Tailwind color, no border (PlayerIdentity's fallback avatar)
+<InitialsAvatar initials="TO" size={32} className="bg-surface-interactive text-text-secondary" fontWeight="medium" />
+
+// Dynamic per-role border color (PriorityRow / RecipientPicker queue chips)
+<InitialsAvatar
+  initials="CO"
+  size={22}
+  className="bg-surface-interactive text-text-secondary"
+  borderColor={`var(--color-role-${role}, var(--color-text-muted))`}
+  borderWidth={2}
+  fontWeight="bold"
+  textSize="2xs"
+/>
+
+// Fully dynamic background + border (AppRail static-switcher chip)
+<InitialsAvatar
+  initials={entry.initials}
+  size="var(--nav-item-icon-size, 24px)"
+  background={entry.accent ?? 'var(--color-accent-dim)'}
+  className="text-text-primary"
+  borderColor={isActive ? 'var(--color-nav-item-active-indicator)' : 'var(--color-border-default)'}
+  borderWidth={isActive ? 2 : 1}
+/>
+```
+
+**When to use:** Any circular initials fallback for a player/user avatar that has no image (or as the `fallback` of `SafeAvatar`).
+
+**Never use:** For anything that isn't a circular initials glyph — it always renders `rounded-full` + centered text. `textSize="2xs"` (10px, below the 12px floor) only when the glyph is small enough (≤24px) that 12px would overflow AND the name renders directly adjacent.
 
 ---
 

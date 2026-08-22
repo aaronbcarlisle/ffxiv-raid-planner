@@ -48,7 +48,7 @@ import { hasHoverData } from './gearHoverData';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
 import { equippedAverageIlv } from './rosterIlv';
-import { Button, IconButton, LongPressTooltip, Tooltip } from '../primitives';
+import { Button, IconButton, LongPressTooltip, Popover, PopoverContent, PopoverTrigger, Tooltip } from '../primitives';
 import { JobPicker } from '../player/JobPicker';
 import { PositionSelector } from '../player/PositionSelector';
 import { TankRoleSelector } from '../player/TankRoleSelector';
@@ -691,7 +691,11 @@ export function RosterCard({
        equivalent. Legacy did the same on `PlayerCard.tsx:544`. */
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- see the design-system-ignore above: a keyboard handler here would create the plain-activation path the D-55 ruling forbids; the kebab's "Copy URL" item is the keyboard route.
     <div
-      className="relative h-full"
+      // Task 1 (feedback-polish): grab-cursor affordance while reorder mode
+      // is active (PlayerCard.tsx:885 precedent) — the only visual cue that
+      // the whole card is draggable, scoped to reorder mode so it never
+      // implies draggability outside it.
+      className={`relative h-full${reorderMode ? ' cursor-grab active:cursor-grabbing' : ''}`}
       onContextMenu={openContextMenu}
       {...dragProps}
       onMouseDown={handleCardMouseDown}
@@ -812,24 +816,38 @@ export function RosterCard({
             />
 
             {canEdit && (
-              <div className="relative">
-                <IconButton
-                  aria-label="Change job"
-                  variant="ghost"
-                  size="sm"
-                  icon={<Repeat className="h-4 w-4" />}
-                  onClick={() => setShowJobPicker((v) => !v)}
-                />
-                {showJobPicker && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-border-default bg-surface-raised p-2 shadow-lg">
-                    <JobPicker
-                      selectedJob={player.job}
-                      onJobSelect={onJobPicked}
-                      onRequestClose={() => setShowJobPicker(false)}
-                    />
-                  </div>
-                )}
-              </div>
+              // Task 2 (feedback-polish): the PositionSelector/TankRoleSelector
+              // Radix Popover Portal pattern — CardShell's overflow-hidden was
+              // clipping the un-portaled dropdown. JobPicker itself stays
+              // portal-free (it's mounted bare inside its OWN portal at the
+              // wizard's RosterSlot and AddPlayerModal); PopoverContent's own
+              // decoration is neutralized (!bg/!border/!shadow/!p-0) so
+              // JobPicker's own panel (already fully decorated for its
+              // non-templateRole "standalone" mode) is the ONLY visible box —
+              // no double-bordered nesting, and no more w-72/w-80 width clash
+              // now that the old fixed-width wrapper is gone.
+              <Popover open={showJobPicker} onOpenChange={setShowJobPicker}>
+                <PopoverTrigger asChild>
+                  <IconButton
+                    aria-label="Change job"
+                    variant="ghost"
+                    size="sm"
+                    icon={<Repeat className="h-4 w-4" />}
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  sideOffset={4}
+                  className="!border-0 !bg-transparent !p-0 !shadow-none"
+                >
+                  <JobPicker
+                    selectedJob={player.job}
+                    onJobSelect={onJobPicked}
+                    onRequestClose={() => setShowJobPicker(false)}
+                    hostControlsDismissal
+                  />
+                </PopoverContent>
+              </Popover>
             )}
           </div>
 

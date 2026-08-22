@@ -55,4 +55,16 @@ describe('PriorityRow', () => {
     const initialsSpan = screen.getByText('CO'); // initials('Caster One')
     expect(initialsSpan.className).toContain('leading-none');
   });
+
+  // Task 6: the "Queues" chip must render through the shared InitialsAvatar primitive
+  // (not a hand-rolled span) — role="presentation" is InitialsAvatar's signature (the
+  // centering fix), so its presence proves the primitive is actually mounted here.
+  it('avatar chip renders through the shared InitialsAvatar primitive', () => {
+    render(<PriorityRow entries={entries} />);
+    const initialsSpan = screen.getByText('CO');
+    expect(initialsSpan).toHaveAttribute('role', 'presentation');
+    expect(initialsSpan).toHaveAttribute('aria-hidden', 'true');
+    // carries the forwarded sub-floor ignore (10px) — unchanged from before extraction
+    expect(initialsSpan.className).toContain('text-[10px]');
+  });
 });

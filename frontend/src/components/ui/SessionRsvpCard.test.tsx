@@ -121,6 +121,11 @@ describe('SessionRsvpCard', () => {
     });
     render(<SessionRsvpCard session={session} />);
     expect(screen.getAllByTestId('rsvp-avatar')).toHaveLength(3);
+    // The stack wrapper opts out of index.css's global aria-hidden centering
+    // override (role="presentation" alongside aria-hidden="true") — without
+    // it the stack's flex row would blockify to a vertical pile in a real browser.
+    const stack = screen.getAllByTestId('rsvp-avatar')[0].parentElement as HTMLElement;
+    expect(stack).toHaveAttribute('role', 'presentation');
   });
 
   it('does not crash and buttons are inert when onRsvp is omitted', () => {
@@ -159,6 +164,9 @@ describe('SessionRsvpCard', () => {
     const avatar = screen.getByTestId('rsvp-avatar');
     // Ring border color resolves to the success status token (no hex literal).
     expect(within(avatar).getByTestId('rsvp-avatar-ring').style.borderColor).toContain('--color-status-success');
+    // The initials fallback renders through the shared InitialsAvatar (Task 7
+    // swap) — its hard-coded role="presentation" is the signature.
+    expect(within(avatar).getByText('A')).toHaveAttribute('role', 'presentation');
   });
 });
 

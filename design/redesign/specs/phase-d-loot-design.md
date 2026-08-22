@@ -61,6 +61,15 @@ lands on.**
 whole-tier "where does this static stand" read. The choice **persists per user**, so this decision
 governs the first visit; the queues stay one click away for when something actually drops.
 
+⚠ **Renamed 2026-08-21 by R-P1.** The switcher segment's label and its persisted value (previously
+`'matrix'`) are both renamed to **Who Needs It** / `'who-needs-it'` — no backwards-compat shim, since
+v2 is pre-release with zero users and the sub-view isn't URL-backed: a stale `'matrix'` value just
+falls through to this same landing default, like any other unrecognized string. Every bare "Matrix"
+below that names this view reads as **Who Needs It**; a short dated pointer sits at each ruling where
+that reading applies — not necessarily an exhaustive list, but currently R-2, R-3, R-4, R-6, R-7, R-9,
+R-10, R-12, R-17, R-26's R-a note, R-48, R-50.2 and R-50.4, plus §2's diagram and §4's "One model, not
+one button" summary.
+
 ### R-2 · Floor scoping is **v1's pill row: All + F1–F4** (D-24)
 
 One pill row scopes **the whole Priority view** — both Matrix and Queues answer to it. `All` stays
@@ -74,6 +83,17 @@ and the Queues can never disagree about which floor the user is looking at.
 **Implementation note, not a ruling:** `components/loot/FloorSelector.tsx` is an **orphan** —
 exported from `loot/index.ts`, imported by nothing, and it is a `Select` **dropdown**, not a pill
 row. It is a name squatter, not a reusable leaf. Delete or repurpose it when R-2 is built.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. Both bare "Matrix" mentions above read as
+**Who Needs It**.
+
+⚠ **Amended 2026-08-21 by R-P3.** "Scopes the whole Priority view" is refined for the Who Needs It
+view specifically: floor scoping there **highlights, it does not hide** — every row stays mounted,
+rows matching the selected floor get the floor-accent highlight, and every other row dims and has
+its log affordances **disabled**, matching v1's `WhoNeedsItMatrix.tsx:391,480`. Queues and Weapons
+are unchanged — Queues still narrows per this ruling; Weapons is governed by R-5, which replaces the
+pill row entirely rather than filtering against it.
+Controller ruling R-V4.
 
 ### R-3 · Weapon Priority becomes the **third switcher segment** (D-27)
 
@@ -89,6 +109,9 @@ In substance the result is v1's three-way axis (Who Needs It / Gear Priority / W
 re-expressed as one switcher instead of a sub-tab bar. **Write back to matrix D-23 and D-27 when
 this ships**, per the Phase-C precedent that rulings and matrix rows land in the same PR.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. The axis is now **Queues ⇄ Who Needs It ⇄
+Weapons**; nothing else about this ruling changes.
+
 ### R-4 · A Matrix cell opens the **RecipientPicker, pre-filled to that player + slot** (D-22)
 
 Clicking a dot keeps v1's log-from-here speed, but routes through v2's picker so there is **one
@@ -102,6 +125,10 @@ thing; it just shows its work first.
 a *slot or material*. Pre-selecting a **recipient** as well is new — the ranked list must still
 render, with that player selected and freely switchable, so the cell click is a shortcut into the
 normal flow rather than a second flow.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. This ruling's title ("A Matrix cell opens...")
+and its "the matrix is a dense dot grid" both read as **Who Needs It**; the mechanism — RecipientPicker,
+pre-filled to the clicked player + slot — is unchanged.
 
 ### R-5 · In the Weapons view the pill row becomes a **static floor label**
 
@@ -119,6 +146,9 @@ the **high/medium/low confidence** header.
 problem — `computeGearSlotUpdate`, `rosterIlv`, `gearCycleHint` — and it means the number a user
 sees in the queue can never disagree with the reasoning shown in the modal that logs it.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. The lowercase "matrix cell" in the "queue row,
+matrix cell, picker candidate" list reads as **Who Needs It**.
+
 ### R-7 · **One Priority-level "Log floor"** that follows the pill (D-26)
 
 A single **Log floor** button beside the pill row, scoped to whichever floor is selected, behaving identically in
@@ -129,6 +159,9 @@ all three views. When **All** is selected it steps aside for the toolbar's exist
 to the view, not to a card. One button and one rule; and the Matrix — the landing view under R-1 —
 can log a floor, which a card-header-only entry would have prevented. Resolves the D-26/D-30
 coupling without creating the two entry points that note warned about.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. "The Matrix — the landing view under R-1"
+reads as **Who Needs It**.
 
 ### R-8 · Entry visual language: **name carries the floor colour, icon stays neutral**
 
@@ -165,6 +198,10 @@ matrix rows instead **band F4→F1** (Weapon first, matching the Queues stack's 
 **user-ruled 2026-07-30 at the D3 build.** The banding is what makes the kept colours actually read
 as bands rather than confetti; without it R-9's own justification would have been false too.*
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. This ruling's title and every bare "Matrix"
+above, including the lowercase "v2's matrix rows" in the correction paragraph, read as **Who Needs
+It**.
+
 ### R-10 · Default scope is **per view**; an explicit pick is **global** (refines R-2)
 
 Taken flat, "Queues opens on a floor, Matrix opens on All" would contradict R-2's one-scope-for-all-
@@ -180,6 +217,9 @@ views. The reconciliation, which is the ruling:
 *Why:* R-2 fixed *reaching* a floor but left Queues-on-All as four stacked cards — the exact scroll
 the standing input rejected. This gets the good default without the surprise of a control that
 changes under you once you've touched it.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. The intro line's "Matrix opens on All" and
+item 2's **Matrix → All** both read as **Who Needs It → All**; the mechanic is unchanged.
 
 ### R-11 · The Need column counts **the roster**, not a full party
 
@@ -215,6 +255,9 @@ exists only in legacy (`AddLootEntryModal.tsx:564`, `LogMaterialModal.tsx:694`) 
 has no equivalent — yet R-4 routes a matrix cell into this modal precisely for the empty-queue case,
 and R-12/R-24 rebuild its body. It is the assign-mode complement of "This will:", so it belongs in the
 same block; without this clause D-36 would be orphaned between two closed phases.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. The two lowercase "matrix cell" mentions
+above (the R-4 path in the *Why:* paragraph, and D-36's routing note) read as **Who Needs It**.
 
 ### R-49 · A solo-scoped floor card never auto-collapses (refines R-10; ruled at D1 build, 2026-07-30)
 
@@ -255,6 +298,10 @@ the picker would should be able to answer "why" with the same completeness — h
 would make the queue's ranking less trustworthy than the picker's, for no reason. The matrix is a grid
 of yes/no cells meant to be scanned at a glance; an explanation essay per dot would defeat that.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. Item 2's "matrix cells stay minimal," "Matrix
+cells keep their plain… tooltip" and "the matrix is a grid of yes/no cells" all read as **Who Needs
+It**.
+
 **3. D-36's hint suppresses the confidence pill when the hint renders; edit mode keeps the pill.**
 `RecipientPicker`'s confidence `Tag` is hidden exactly when the empty-pool hint ("No one needs this
 item for BiS…") is showing, which is create-mode-only.
@@ -273,6 +320,10 @@ stroke-dasharray circles (a different mechanism, required by the jscpd gate agai
 *Why:* the plain number-in-a-ring dot D3 shipped first dropped the progress signal legacy's pie
 carried — a player needing 1 of 3 twine slots and a player needing 1 of 1 read identically. "How much
 is left of how much total" is exactly what a lead scans the matrix for.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. Item 4's title ("Matrix material cells keep
+v1's progress-pie treatment") and "a lead scans the matrix for" both read as **Who Needs It**; the
+ruling's substance — the segmented-ring visual, unchanged by R-P2 — stands as written.
 
 ---
 
@@ -298,6 +349,12 @@ is left of how much total" is exactly what a lead scans the matrix for.
 │    MATERIALS …                                                         │
 └────────────────────────────────────────────────────────────────────────┘
 ```
+
+⚠ **Renamed 2026-08-21 by R-P1.** The diagram predates the rename and is left unredrawn to avoid
+breaking its box-drawing alignment (`Matrix` → `Who Needs It` is six characters longer, which would
+force every line's border to be recut). Read every "Matrix" in it as **Who Needs It**: the switcher
+row's `Queues │ Matrix │ Weapons` segment and its `R-3 · lands on Matrix (R-1)` annotation, and the
+section header `MATRIX (landing)`.
 
 **Mockup:** `design/redesign/mockups/03-loot-priority-phase-d.html` — the switcher and the floor
 pills are live in it (scoping, the R-7 button swap, the R-5 label swap); everything else is a still.
@@ -401,6 +458,9 @@ in both create and edit.
 *Why:* R-4 applied to a different geometry — the grid and the matrix become the same flow. The
 material split is forced, not chosen: `DropItemContext.slot` is `GearSlot | 'ring'`
 (`RecipientPicker.tsx:31-36`), so the picker cannot represent a material at all.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. "The grid and the matrix become the same
+flow" reads as "the grid and **Who Needs It** become the same flow."
 
 ### R-18 · Cell affordances — plain click **never navigates**
 
@@ -564,6 +624,9 @@ what legacy already proves out (`LogMaterialModal.tsx:84`, `:209-238`, `:306-310
   together or not at all**: a future slice that hides one from a view must hide the other too, or the
   toolbar starts making an unstated claim about which entry points are "real" on that view.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. R-a's "the two v2 cell doors (matrix + queues
+floor card)" reads as "(**Who Needs It** + queues floor card)."
+
 ### R-27 · The grid details that come back
 
 **Restored:** the per-cell modifier-teaching tooltip (`WeeklyLootGrid.tsx:653-680`, `:773-798`) — R-18
@@ -618,6 +681,9 @@ button, R-4's matrix cell, R-20's two toolbar actions and R-25's floor kebab —
 assign. That is deliberate and is *not* the "16 ways to log loot" regression `PRODUCT_MODEL.md:222`
 names: the consolidation target is **one model** (picker for loot, material modal for materials, wizard
 for the week), which is what `:142` asks for, reached from wherever the user already is.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. "R-4's matrix cell" reads as "R-4's **Who
+Needs It** cell."
 
 **Director verdict (2026-07-28): PARITY-GAP — approve with required changes.** All thirteen required
 changes are folded in; the four that were design forks rather than corrections were ruled by the user
@@ -1026,6 +1092,21 @@ the freeze exists to prevent.
 rationale is corrected accordingly:** the argument for growing `QuickLogMaterialModal` is
 `PRODUCT_MODEL.md:201` (one owned component per task), not a false claim that importing legacy is
 forbidden.
+
+⚠ **Renamed 2026-08-21 by R-P1.** Every "Matrix" in this ruling, including its own title, is this
+ruling's shorthand for the view this phase built; the user-facing name is now **Who Needs It** (label
+and persisted value both — see R-1's amendment). The **component identifier is unchanged**: v2's file
+is still `NeedMatrix.tsx`, distinct from legacy's frozen `WhoNeedsItMatrix.tsx` — so "v2's Matrix is
+its own component" remains true of the code even though the UI no longer calls it that.
+
+⚠ **Amended 2026-08-21 by R-P2.** `NeedMatrix.tsx`'s gear cells now draw their visual treatment — the
+role-coloured ring, tint fill and inner dot — from **`WhoNeedsItMatrix.tsx:379-405`**, replacing the
+interim `NeedDot`/`EmptyDot` rendering. This is the same **reference-not-dependency** relationship
+this ruling already establishes for Log's `WeeklyLootGrid`/`LootCountBar`/`RevertWeekConfirmModal`:
+`WhoNeedsItMatrix` stays frozen and unimported; `NeedMatrix.tsx` re-expresses its look in v2-owned
+code. Controller ruling R-V1 is explicit that the rendering reference is V1's `WhoNeedsItMatrix`, not
+the `GearStatusCircle` component. **The material progress rings are unaffected** — R-50's fourth D3
+build ruling already governs those and stands as written.
 
 ### R-44 · `getResetDescription`'s week bug is fixed — an approved **V1-visible delta**
 

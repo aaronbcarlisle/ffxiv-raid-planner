@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { CardShell } from './CardShell';
+import { InitialsAvatar } from './InitialsAvatar';
 import { PlayerIdentity } from './PlayerIdentity';
 import { SafeAvatar } from './SafeAvatar';
 import { Tag } from './Tag';
@@ -213,9 +214,12 @@ function RsvpAvatar({ rsvp }: { rsvp: ScheduleRsvp }) {
           alt={name}
           className="w-full h-full rounded-full object-cover"
           fallback={
-            <span className="w-full h-full rounded-full bg-surface-interactive flex items-center justify-center text-xs font-medium text-text-secondary">
-              {initials}
-            </span>
+            <InitialsAvatar
+              initials={initials}
+              size="100%"
+              className="bg-surface-interactive text-text-secondary"
+              fontWeight="medium"
+            />
           }
         />
       </div>
@@ -400,7 +404,7 @@ export function SessionRsvpCard({
             ) : (
               <div className="flex items-center gap-3">
                 {session.rsvps.length > 0 && (
-                  <div className="flex items-center" aria-hidden="true">
+                  <div className="flex items-center" aria-hidden="true" role="presentation">
                     {session.rsvps.map((rsvp) => (
                       <RsvpAvatar key={rsvp.id} rsvp={rsvp} />
                     ))}

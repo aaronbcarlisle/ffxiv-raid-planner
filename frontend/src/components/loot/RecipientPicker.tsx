@@ -46,7 +46,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Package } from 'lucide-react';
-import { Modal, Select, Checkbox, NumberInput, RadioGroup, TextArea, Input, SegmentedToggle, Tag, LinkText } from '../ui';
+import { Modal, Select, Checkbox, NumberInput, RadioGroup, TextArea, Input, SegmentedToggle, Tag, LinkText, InitialsAvatar } from '../ui';
 import { Button } from '../primitives';
 import { Tooltip } from '../primitives/Tooltip';
 import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
@@ -746,16 +746,14 @@ export function RecipientPicker({
                       </span>
                     )
                   )}
-                  <span
-                    aria-hidden
-                    /* Role color is a border ring (not a fill) — mirrors ui/PlayerIdentity's fallback-avatar
-                       treatment. A filled circle + white text fails AA for several role colors
-                       (e.g. healer/ranged/caster); see PriorityRow.tsx's identical fix. */
-                    className="grid h-[30px] w-[30px] flex-none place-items-center rounded-full border-2 bg-surface-interactive text-xs font-bold text-text-secondary"
-                    style={{ borderColor: `var(--color-role-${role}, var(--color-text-muted))` }}
-                  >
-                    {initials(entry.player.name)}
-                  </span>
+                  <InitialsAvatar
+                    initials={initials(entry.player.name)}
+                    size={30}
+                    className="bg-surface-interactive text-text-secondary"
+                    borderColor={`var(--color-role-${role}, var(--color-text-muted))`}
+                    borderWidth={2}
+                    fontWeight="bold"
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="truncate text-sm font-semibold text-text-primary">{entry.player.name}</span>
