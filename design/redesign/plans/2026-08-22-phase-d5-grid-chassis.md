@@ -726,9 +726,12 @@ useEffect(() => { setSearchParamsRef.current = setSearchParams; });
    `searchParams.get('tier')`, writes via `setSearchParamsRef.current`, **guards the mirror**
    (director F-5) — `if (urlTierId !== activeTier.tierId) setSearchParamsRef.current(…)` — and
    its deps become `[currentGroup?.id, urlTierId, fetchTiers, fetchTier, fetchCurrentWeek]`.
-   Without the guard, a no-`?tier=` mount writes the param, flips `urlTierId` `null → id`, and
-   re-runs the whole chain once (`fetchTiers` ×2) before converging — the guard removes that
-   second run AND a redundant `replace` history write.
+   ⚠ *Corrected at build (Task 5, controller-ruled 2026-08-22):* the guard CANNOT remove the
+   no-`?tier=` mount's second run — the first (guarded, necessary) mirror write itself flips
+   `urlTierId` `null → id`, re-running the effect once, so that mount structurally settles at
+   `fetchTiers` ×2, identical to pre-fix cold behavior (no regression). The guard's real effect
+   is eliminating a redundant second `replace` history write and third-order churn. The binding
+   requirement is the storm fix: unrelated URL writes cause zero refetches.
 
 Tier switching stays correct on both paths: the breadcrumb's `onTierChange` calls `fetchTier`
 itself (`pages/groupActionsContext.tsx:129-145`) and its `?tier=` write re-runs the effect —
