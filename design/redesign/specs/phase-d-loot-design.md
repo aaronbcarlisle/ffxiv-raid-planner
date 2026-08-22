@@ -65,8 +65,8 @@ governs the first visit; the queues stay one click away for when something actua
 `'matrix'`) are both renamed to **Who Needs It** / `'who-needs-it'` — no backwards-compat shim, since
 v2 is pre-release with zero users and the sub-view isn't URL-backed: a stale `'matrix'` value just
 falls through to this same landing default, like any other unrecognized string. Read every bare
-"Matrix" in R-2, R-3, R-10's second point and R-48 below as this name. **Write-back owed:** those
-four spots.
+"Matrix" in R-2, R-3, R-4, R-10's second point, R-48 and §2's diagram below as this name.
+**Write-back owed:** those six spots.
 
 ### R-2 · Floor scoping is **v1's pill row: All + F1–F4** (D-24)
 
@@ -122,6 +122,10 @@ thing; it just shows its work first.
 a *slot or material*. Pre-selecting a **recipient** as well is new — the ranked list must still
 render, with that player selected and freely switchable, so the cell click is a shortcut into the
 normal flow rather than a second flow.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. This ruling's title ("A Matrix cell opens...")
+and its "the matrix is a dense dot grid" both read as **Who Needs It**; the mechanism — RecipientPicker,
+pre-filled to the clicked player + slot — is unchanged.
 
 ### R-5 · In the Weapons view the pill row becomes a **static floor label**
 
@@ -321,6 +325,12 @@ is left of how much total" is exactly what a lead scans the matrix for.
 │    MATERIALS …                                                         │
 └────────────────────────────────────────────────────────────────────────┘
 ```
+
+⚠ **Renamed 2026-08-21 by R-P1.** The diagram predates the rename and is left unredrawn to avoid
+breaking its box-drawing alignment (`Matrix` → `Who Needs It` is six characters longer, which would
+force every line's border to be recut). Read every "Matrix" in it as **Who Needs It**: the switcher
+row's `Queues │ Matrix │ Weapons` segment and its `R-3 · lands on Matrix (R-1)` annotation, and the
+section header `MATRIX (landing)`.
 
 **Mockup:** `design/redesign/mockups/03-loot-priority-phase-d.html` — the switcher and the floor
 pills are live in it (scoping, the R-7 button swap, the R-5 label swap); everything else is a still.
