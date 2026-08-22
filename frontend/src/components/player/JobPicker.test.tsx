@@ -20,7 +20,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { JobPicker } from './JobPicker';
 
-describe('JobPicker — hostControlsDismissal (default false, byte-for-byte unchanged)', () => {
+describe('JobPicker — hostControlsDismissal (default false, behaviorally unchanged)', () => {
   it('an outside mousedown closes the picker via onRequestClose (existing behavior)', () => {
     const onRequestClose = vi.fn();
     render(

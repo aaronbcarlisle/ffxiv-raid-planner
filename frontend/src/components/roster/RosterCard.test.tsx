@@ -1693,6 +1693,15 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
     // Flush Radix's deferred outside-pointerdown registration so the second
     // trigger click is evaluated the same way a real second click would be.
     await new Promise((r) => setTimeout(r, 0));
+    // Real browser event order: pointerdown, mousedown, THEN click. A plain
+    // fireEvent.click skips the mousedown a real second click always fires —
+    // JobPicker's own outside-click listener is mousedown-only
+    // (JobPicker.tsx:185), so a click-only test can never reproduce the race
+    // this covers (a non-suppressed JobPicker reads the trigger's mousedown
+    // as "outside," closing the popover itself; the trailing click then
+    // re-toggles Radix's now-closed state back open).
+    fireEvent.pointerDown(trigger);
+    fireEvent.mouseDown(trigger);
     fireEvent.click(trigger);
 
     expect(pickerOpen()).toBe(false);
@@ -1700,6 +1709,15 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
     // asserting it stayed shut (the exact race the brief calls out: the
     // trigger click reads as "outside" to a non-suppressed JobPicker).
     await new Promise((r) => setTimeout(r, 0));
+    expect(pickerOpen()).toBe(false);
+  });
+
+  it('an Escape from inside the search input closes the popover (end-to-end through the real Popover)', () => {
+    renderCard(makePlayer());
+    openJobPicker();
+    expect(pickerOpen()).toBe(true);
+
+    fireEvent.keyDown(screen.getByPlaceholderText('Search jobs...'), { key: 'Escape' });
     expect(pickerOpen()).toBe(false);
   });
 });
