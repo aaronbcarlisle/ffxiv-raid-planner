@@ -15,6 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
+from .admin.deps import require_admin
 from ..models import MemberRole, SnapshotPlayer, TierSnapshot, User, WeeklyAssignment
 from ..models.bis_target_set import BiSTargetSet
 from ..models.player_gear_snapshot import PlayerGearSnapshot
@@ -1431,13 +1432,9 @@ async def admin_assign_player(
     player_id: str,
     data: schemas.AssignPlayerRequest = Body(...),
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> SnapshotPlayerResponse:
     """Admin-only endpoint to assign any user to a player card, bypassing normal claim restrictions"""
-    # Check if current user is an admin
-    if not await is_user_admin(session, current_user.id):
-        raise PermissionDenied("Only admins can use this endpoint")
-
     group = await get_static_group(session, group_id)
 
     # Verify admin has view permission (should always pass for admins, but check anyway)

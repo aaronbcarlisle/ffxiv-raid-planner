@@ -14,6 +14,7 @@ from sqlalchemy.orm import selectinload
 
 from ..database import get_session
 from ..dependencies import get_current_user, get_current_user_optional
+from .admin.deps import require_admin
 from ..models import (
     AvailabilityTemplate,
     Membership,
@@ -350,7 +351,7 @@ async def list_all_static_groups_admin(
     limit: int = 50,
     offset: int = 0,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> AdminStaticGroupListResponse:
     """List all static groups (admin only).
 
@@ -364,10 +365,6 @@ async def list_all_static_groups_admin(
         limit: Maximum number of groups to return (default 50, max 100)
         offset: Number of groups to skip for pagination
     """
-    # Check admin permission
-    if not await is_user_admin(session, current_user.id):
-        raise PermissionDenied("Admin access required")
-
     # Clamp limit to prevent unbounded queries
     limit = min(max(1, limit), 100)
     offset = max(0, offset)
@@ -487,17 +484,13 @@ async def get_user_role_in_group_admin(
     group_id: str,
     user_id: str,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> dict:
     """Get a user's role in a specific group (admin only).
 
     Used for the "View As" feature to show the UI from another user's perspective.
     Returns the user's membership info including role, or indicates they're not a member.
     """
-    # Check admin permission
-    if not await is_user_admin(session, current_user.id):
-        raise PermissionDenied("Admin access required")
-
     # Verify group exists
     group = await get_static_group(session, group_id)
 
@@ -540,7 +533,7 @@ async def get_user_role_in_group_admin(
 async def list_all_users_admin(
     group_id: str | None = None,
     session: AsyncSession = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ) -> list[InteractedUserInfo]:
     """List ALL users in the database (admin only)
 
@@ -549,11 +542,6 @@ async def list_all_users_admin(
     Args:
         group_id: Optional group ID to check membership status for each user
     """
-    # Require admin permission
-    is_admin = await is_user_admin(session, current_user.id)
-    if not is_admin:
-        raise PermissionDenied("Only admins can view all users")
-
     # Fetch all users
     result = await session.execute(select(User).order_by(User.discord_username))
     users = result.scalars().all()

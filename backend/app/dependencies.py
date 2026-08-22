@@ -41,11 +41,12 @@ def _extract_access_token(
     return None
 
 
-async def _validate_api_key(token: str, session: AsyncSession) -> User:
+async def _validate_api_key(token: str, session: AsyncSession, request: Request) -> User:
     """Validate an API key (xrp_ prefixed token) and return the associated user.
 
     Looks up the key by SHA-256 hash, verifies it's active and not expired,
-    and updates last_used_at.
+    and updates last_used_at. Records the credential kind on request.state
+    for downstream consumers (audit log attribution).
     """
     from .models import ApiKey
 
@@ -123,14 +124,18 @@ async def _validate_api_key(token: str, session: AsyncSession) -> User:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    request.state.auth_credential = "api_key"
     return user
 
 
-async def _validate_jwt(token: str, session: AsyncSession) -> User:
+async def _validate_jwt(token: str, session: AsyncSession, request: Request) -> User:
     """Validate a JWT token and return the associated user.
 
     Shared logic for all JWT-based auth paths. Uses a generic error message
     for both invalid tokens and missing users to prevent user enumeration.
+    Records the credential kind on request.state for downstream consumers
+    (audit log attribution); "cookie" includes legacy Authorization-header
+    JWTs — the distinction drawn is plugin (api_key) vs web (cookie).
     """
     user_id = verify_token(token, token_type="access")
     if not user_id:
@@ -150,6 +155,7 @@ async def _validate_jwt(token: str, session: AsyncSession) -> User:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    request.state.auth_credential = "cookie"
     return user
 
 
@@ -174,9 +180,9 @@ async def get_current_user(
 
     # API key path: xrp_ prefix distinguishes API keys from JWTs
     if token.startswith("xrp_"):
-        return await _validate_api_key(token, session)
+        return await _validate_api_key(token, session, request)
 
-    return await _validate_jwt(token, session)
+    return await _validate_jwt(token, session, request)
 
 
 async def get_current_user_jwt_only(
@@ -204,7 +210,7 @@ async def get_current_user_jwt_only(
             detail="API keys cannot access this endpoint. Use browser authentication.",
         )
 
-    return await _validate_jwt(token, session)
+    return await _validate_jwt(token, session, request)
 
 
 async def get_current_user_optional(
@@ -226,12 +232,12 @@ async def get_current_user_optional(
     # API key path
     if token.startswith("xrp_"):
         try:
-            return await _validate_api_key(token, session)
+            return await _validate_api_key(token, session, request)
         except HTTPException:
             return None
 
     # JWT path
     try:
-        return await _validate_jwt(token, session)
+        return await _validate_jwt(token, session, request)
     except HTTPException:
         return None

@@ -2,6 +2,7 @@
 
 from .activity_log import StaticActivityLog
 from .analytics import AnalyticsDailyAggregate, AnalyticsEvent, ErrorReport
+from .audit_log import AuditLog
 from .notification import Notification
 from .api_key import ApiKey
 from .bis_target_set import BiSTargetSet, VALID_BIS_IMPORT_STATUSES, VALID_BIS_PURPOSES, VALID_BIS_SOURCE_TYPES, VALID_OWNER_TYPES
@@ -43,6 +44,7 @@ __all__ = [
     "AnalyticsDailyAggregate",
     "AnalyticsEvent",
     "ApiKey",
+    "AuditLog",
     "BiSTargetSet",
     "VALID_BIS_IMPORT_STATUSES",
     "VALID_BIS_PURPOSES",
