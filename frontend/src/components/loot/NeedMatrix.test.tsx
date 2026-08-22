@@ -231,6 +231,15 @@ describe('NeedMatrix', () => {
     expect(meleeDot.getAttribute('style')).toContain('--color-role-melee');
     expect(meleeDot.style.backgroundColor).toContain('color-mix');
     expect(meleeDot.style.backgroundColor).toContain('--color-role-melee');
+
+    // The inner solid dot must be a block-level box — a bare inline <span>
+    // ignores width/height per CSS spec and renders 0x0 in a real browser
+    // even though it passes class-token assertions in jsdom (measured live:
+    // outer ring 24x24, inner dot 0x0 without this).
+    const tankInnerDot = tankDot.querySelector('span') as HTMLElement;
+    expect(tankInnerDot.className).toContain('block');
+    expect(tankInnerDot.className).toContain('h-2');
+    expect(tankInnerDot.className).toContain('w-2');
   });
 
   it('non-needer gear cells render the neutral empty treatment, not a role-colored dot', () => {
