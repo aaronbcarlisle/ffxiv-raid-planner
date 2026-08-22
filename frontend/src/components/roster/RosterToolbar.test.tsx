@@ -3,7 +3,7 @@
 // files to add it) — every existing test in this codebase drives clicks via
 // `fireEvent` instead (see e.g. `components/layout/AppRail.test.tsx`), so we
 // follow that established convention here.
-import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { RosterToolbar } from './RosterToolbar';
 import { TooltipProvider } from '../primitives';
@@ -11,12 +11,26 @@ import { TooltipProvider } from '../primitives';
 // The toolbar's shortcut hints use the Tooltip primitive, which requires the
 // provider App.tsx mounts at the root (same wrapper UserMenu/NotificationCenter
 // tests use).
+// jsdom also lacks ResizeObserver, which Radix's Tooltip.Content needs once
+// it actually opens (useSize) — the reorder tooltip tests below are the
+// first in this file to open one for real rather than just checking
+// aria-pressed.
+if (!window.ResizeObserver) {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+}
+
 // jsdom has no matchMedia; `useDevice` (via the Tooltip primitive) calls it.
 // Stubbed locally rather than in the shared setup so no other suite's device
-// detection changes underneath it.
+// detection changes underneath it. `hover: hover` reports true so the
+// Tooltip primitive's `canHover` gate doesn't short-circuit it to
+// `<>{children}</>` — same reorder-tooltip need as above.
 if (!window.matchMedia) {
   window.matchMedia = ((query: string) => ({
-    matches: false,
+    matches: query.includes('hover: hover'),
     media: query,
     onchange: null,
     addListener: () => {},
@@ -240,5 +254,44 @@ describe('RosterToolbar', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Compact' }));
     expect(onExpandAllToggle).not.toHaveBeenCalled();
+  });
+
+  // ── Task 1: reorder teaching affordances — the transient enter→drag→exit
+  // flow shipped with zero on-surface hints. These three cover the tooltip,
+  // the disabled-tooltip precedent (span wrapper), and the pressed visual.
+
+  it('teaches the Reorder control with a plain tooltip (no shortcut — none exists)', async () => {
+    render(<RosterToolbar {...baseProps} />);
+    fireEvent.focus(screen.getByRole('button', { name: /reorder/i }));
+    expect(
+      await screen.findByText('Drag cards to reorder or swap players. Click again to finish.')
+    ).toBeInTheDocument();
+  });
+
+  it('still teaches Reorder via the tooltip when disabled (no manage permission)', async () => {
+    render(<RosterToolbar {...baseProps} canManage={false} />);
+    const button = screen.getByRole('button', { name: /reorder/i });
+    expect(button).toBeDisabled();
+    // A disabled button can't receive focus/hover itself — the wrapping span
+    // (RosterToolbar.tsx:189-199 precedent) is the actual Radix trigger.
+    const wrapper = button.closest('span.inline-flex') as HTMLElement;
+    expect(wrapper).toBeInTheDocument();
+    fireEvent.focus(wrapper);
+    expect(
+      await screen.findByText('Drag cards to reorder or swap players. Click again to finish.')
+    ).toBeInTheDocument();
+  });
+
+  it('gives the Reorder button a visibly "on" treatment while reorder mode is active', () => {
+    // Two separate `render()` calls, not `rerender` — the custom wrapper
+    // above re-wraps in TooltipProvider on every `render()`, but RTL's
+    // `rerender` swaps the tree in place and drops that wrapping, which
+    // crashes the toolbar's other always-on tooltips (grouping/subs).
+    render(<RosterToolbar {...baseProps} reorderMode={false} />);
+    expect(screen.getByRole('button', { name: /reorder/i })).not.toHaveClass('bg-accent/20');
+
+    cleanup();
+    render(<RosterToolbar {...baseProps} reorderMode />);
+    expect(screen.getByRole('button', { name: /reorder/i })).toHaveClass('bg-accent/20');
   });
 });

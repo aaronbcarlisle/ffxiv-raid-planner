@@ -114,6 +114,13 @@ export function RosterToolbar({
   const groupingHint = groupView
     ? 'On — the roster splits into G1 / G2. Click to show one flat grid.'
     : 'Off — one flat grid. Click to split the roster into G1 / G2.';
+  // Task 1 (feedback-polish): the transient enter→drag→exit reorder flow
+  // shipped with zero on-surface teaching. A plain Tooltip, not ShortcutHint
+  // — there's no reorder keyboard shortcut (`r` is Copy to New Tier). Wording
+  // tuned from SORT_PRESETS.custom.description ('Drag to reorder') for the
+  // fuller two-step flow, but read-only — that shared constants file is
+  // frozen (still-live V1 consumer).
+  const reorderHint = 'Drag cards to reorder or swap players. Click again to finish.';
   const separateHint = separateSubsDisabled
     ? // Subs ARE separated here — the section is just hidden, so the only thing
       // this control could do is merge them back (PR #199 review).
@@ -205,16 +212,25 @@ export function RosterToolbar({
       <div className="flex-1" />
 
       {rosterView === 'cards' && (
-        <Button
-          variant="ghost"
-          size="sm"
-          leftIcon={<List className="w-3.5 h-3.5" aria-hidden />}
-          aria-pressed={reorderMode}
-          disabled={!canManage}
-          onClick={() => onReorderModeChange(!reorderMode)}
-        >
-          Reorder
-        </Button>
+        <Tooltip content={<div className="max-w-60">{reorderHint}</div>}>
+          {/* Disabled buttons don't receive hover/focus events, so the
+              trigger sits on this always-enabled span (precedent above,
+              :189-199) — the tooltip must still teach the flow to a
+              non-manager, even though they can't use it. */}
+          <span className="inline-flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<List className="w-3.5 h-3.5" aria-hidden />}
+              aria-pressed={reorderMode}
+              disabled={!canManage}
+              onClick={() => onReorderModeChange(!reorderMode)}
+              className={reorderMode ? 'bg-accent/20 text-accent' : ''}
+            >
+              Reorder
+            </Button>
+          </span>
+        </Tooltip>
       )}
 
       <Button

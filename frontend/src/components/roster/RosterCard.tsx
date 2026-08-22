@@ -691,7 +691,11 @@ export function RosterCard({
        equivalent. Legacy did the same on `PlayerCard.tsx:544`. */
     // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- see the design-system-ignore above: a keyboard handler here would create the plain-activation path the D-55 ruling forbids; the kebab's "Copy URL" item is the keyboard route.
     <div
-      className="relative h-full"
+      // Task 1 (feedback-polish): grab-cursor affordance while reorder mode
+      // is active (PlayerCard.tsx:885 precedent) — the only visual cue that
+      // the whole card is draggable, scoped to reorder mode so it never
+      // implies dragability outside it.
+      className={`relative h-full ${reorderMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
       onContextMenu={openContextMenu}
       {...dragProps}
       onMouseDown={handleCardMouseDown}

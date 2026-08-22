@@ -150,6 +150,21 @@ describe('RosterCard', () => {
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
+  // ── Task 1: reorder teaching affordances — cursor signal ──
+  // A grab cursor over the whole card is the only visual cue that the card is
+  // draggable in reorder mode (PlayerCard.tsx:885 precedent). It must be
+  // scoped to reorder mode only — a stray grab cursor outside it would lie
+  // about what a click does.
+  it('shows a grab cursor on the card root while reorder mode is active', () => {
+    const { container } = renderCard(makePlayer(), { reorderMode: true });
+    expect(container.firstChild).toHaveClass('cursor-grab', 'active:cursor-grabbing');
+  });
+
+  it('carries no grab-cursor classes when reorder mode is off', () => {
+    const { container } = renderCard(makePlayer(), { reorderMode: false });
+    expect(container.firstChild).not.toHaveClass('cursor-grab');
+  });
+
   it('opens the kebab menu with the BiS import action', () => {
     // No BiS link → the audited kebab surfaces "Import BiS" (vs "Update BiS").
     // The progress line carries its own "Import BiS" button in this state
