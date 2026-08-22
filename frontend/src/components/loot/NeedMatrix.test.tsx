@@ -235,11 +235,13 @@ describe('NeedMatrix', () => {
     // The inner solid dot must be a block-level box — a bare inline <span>
     // ignores width/height per CSS spec and renders 0x0 in a real browser
     // even though it passes class-token assertions in jsdom (measured live:
-    // outer ring 24x24, inner dot 0x0 without this).
+    // outer ring 24x24, inner dot 0x0 without this). Size is h-2.5/w-2.5
+    // (10px, ratio 0.42 of the 24px ring) — bumped from h-2/w-2 (0.33) to
+    // match V1's visual weight (ratio 0.43) per browser re-validation.
     const tankInnerDot = tankDot.querySelector('span') as HTMLElement;
     expect(tankInnerDot.className).toContain('block');
-    expect(tankInnerDot.className).toContain('h-2');
-    expect(tankInnerDot.className).toContain('w-2');
+    expect(tankInnerDot.className).toContain('h-2.5');
+    expect(tankInnerDot.className).toContain('w-2.5');
   });
 
   it('non-needer gear cells render the neutral empty treatment, not a role-colored dot', () => {

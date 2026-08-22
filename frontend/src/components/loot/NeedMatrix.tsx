@@ -52,7 +52,7 @@ function NeedDot({ roleVar: color }: { roleVar: string }) {
       className="grid h-6 w-6 place-items-center rounded-full border-2"
       style={{ borderColor: color, backgroundColor: `color-mix(in srgb, ${color} 30%, transparent)` }}
     >
-      <span className="block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+      <span className="block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
     </span>
   );
 }
