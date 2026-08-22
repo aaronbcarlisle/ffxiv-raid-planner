@@ -223,6 +223,13 @@ vocabulary is now stale — the vet names R-1, R-2, R-3, R-10.2, R-11, R-48 (all
 style). Do NOT touch `releaseNotes.ts` historical entries. (`NeedMatrix.tsx:7`'s contract
 comment is Task 5's job.)
 
+> ⚠ **Amended 2026-08-22 by controller ruling R-T7b (execution):** R-P4 was deliberately
+> NOT written into the loot spec — it is not loot-spec vocabulary and maps to no ruling in
+> that file; its durable record is this plan's header, `docs/UI_COMPONENTS.md`'s
+> InitialsAvatar registration, and the PR body. R-11 was verified not-stale and left
+> unamended. The delivered amendments cover R-P1..R-P3 across every stale-vocabulary site
+> (the vet's six named rulings plus the additional sites found during the sweep).
+
 ## Post-task wave (controller-owned, after Task 7)
 
 - Release note via `pr-checklist` skill (public entry, `CURRENT_VERSION` bump rules).

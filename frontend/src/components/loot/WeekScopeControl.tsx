@@ -259,8 +259,10 @@ export function WeekScopeControl({
                     title={types.length ? types.join(', ') : undefined}
                   >
                     <span>{`Week ${w}${rangeText}`}</span>
+                    {/* role="presentation" opts out of index.css's aria-hidden
+                        display-revert rule, which would collapse these dots. */}
                     {types.length > 0 && (
-                      <span className="flex items-center gap-0.5" aria-hidden="true">
+                      <span className="flex items-center gap-0.5" aria-hidden="true" role="presentation">
                         {types.map((t) => (
                           <span key={t} className={`h-1.5 w-1.5 rounded-full ${DOT_COLOR[t]}`} />
                         ))}

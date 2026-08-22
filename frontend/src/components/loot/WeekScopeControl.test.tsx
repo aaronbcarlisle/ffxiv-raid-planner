@@ -146,6 +146,10 @@ describe('WeekScopeControl', () => {
     const week1Item = items.find((i) => /Week 1/.test(i.textContent ?? ''));
     expect(week3Item?.querySelector('[title="loot, books"]')).toBeTruthy();
     expect(week1Item?.querySelector('[title="mats"]')).toBeTruthy();
+    // Pins the opt-out from index.css's aria-hidden display-revert rule — without
+    // it the dots wrapper loses flex and the h-1.5/w-1.5 dots collapse invisible.
+    const dotsWrapper = week3Item?.querySelector('[aria-hidden="true"]') as HTMLElement;
+    expect(dotsWrapper).toHaveAttribute('role', 'presentation');
   });
 
   it('hides "Start next week" / "Revert week" when canEdit is false', async () => {
