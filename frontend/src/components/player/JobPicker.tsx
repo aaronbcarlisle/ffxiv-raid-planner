@@ -29,6 +29,23 @@ interface JobPickerProps {
   templateRole?: TemplateRole; // Optional - only for template cards
   onRequestClose?: () => void; // Optional - called when picker wants to close (click outside, escape)
   reverseLayout?: boolean; // Optional - render search at bottom (for dropdowns that open upward)
+  /**
+   * Optional — defaults to false, so every existing mount (legacy
+   * PlayerCardHeader, the wizard's RosterSlot portal, AddPlayerModal's
+   * portal, AddManualCharacterModal, OpenSeatCard) keeps its current
+   * behavior byte-for-byte.
+   *
+   * When true, the picker assumes a host (e.g. a Radix Popover) already owns
+   * outside-click and Escape dismissal, so it does NOT install its own
+   * document-level mousedown/keydown listeners, and its search input's own
+   * Escape handling is a no-op — the keydown is left to bubble to the host
+   * instead. Without this, a Radix-portaled JobPicker double-closes: its own
+   * "outside click" fires on the Popover's trigger (which lives outside the
+   * portal), racing Radix's own dismissal (RosterCard Task 2).
+   * `onRequestClose` on selection (`handleJobClick`) is unaffected — that is
+   * a deliberate commit-then-close, not an auto-dismiss path.
+   */
+  hostControlsDismissal?: boolean;
 }
 
 // Detailed category order for dropdown sections (splits healers into Pure/Barrier)
@@ -45,7 +62,14 @@ const CATEGORY_CONFIG: Record<JobCategory, { name: string; color: string }> = {
   'caster': { name: 'Magical Ranged', color: 'var(--color-role-caster)' },
 };
 
-export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClose, reverseLayout = false }: JobPickerProps) {
+export function JobPicker({
+  selectedJob,
+  onJobSelect,
+  templateRole,
+  onRequestClose,
+  reverseLayout = false,
+  hostControlsDismissal = false,
+}: JobPickerProps) {
   // For non-template cards, start with picker open; for template cards, start closed
   const [showFullPicker, setShowFullPicker] = useState(!templateRole);
   const [jobSearch, setJobSearch] = useState('');
@@ -144,8 +168,10 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
     }
   }, [jobSearch, filteredJobs, jobsByCategory]);
 
-  // Close picker on click outside
+  // Close picker on click outside. Skipped when a host (Radix Popover) owns
+  // dismissal — see `hostControlsDismissal` doc comment.
   useEffect(() => {
+    if (hostControlsDismissal) return;
     function handleClickOutside(event: MouseEvent) {
       if (pickerRef.current && !pickerRef.current.contains(event.target as Node)) {
         setShowFullPicker(false);
@@ -159,7 +185,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showFullPicker, onRequestClose]);
+  }, [showFullPicker, onRequestClose, hostControlsDismissal]);
 
   // Focus search when picker opens, and scroll to show tanks if upward layout
   useEffect(() => {
@@ -173,8 +199,10 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
     }
   }, [showFullPicker, reverseLayout]);
 
-  // Handle escape key
+  // Handle escape key. Skipped when a host (Radix Popover) owns dismissal —
+  // see `hostControlsDismissal` doc comment.
   useEffect(() => {
+    if (hostControlsDismissal) return;
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape' && showFullPicker) {
         setShowFullPicker(false);
@@ -185,7 +213,7 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showFullPicker, onRequestClose]);
+  }, [showFullPicker, onRequestClose, hostControlsDismissal]);
 
   // Reset highlight when search changes
   useEffect(() => {
@@ -226,6 +254,10 @@ export function JobPicker({ selectedJob, onJobSelect, templateRole, onRequestClo
   //   - First press initializes to index 0 (closest to search)
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
+      // Host-controlled dismissal (Radix Popover): don't close here — let the
+      // native keydown bubble to the host's own Escape handling instead of
+      // racing it (see `hostControlsDismissal` doc comment).
+      if (hostControlsDismissal) return;
       setShowFullPicker(false);
       setJobSearch('');
       setHighlightedIndex(-1);

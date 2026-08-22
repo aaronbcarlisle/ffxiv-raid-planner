@@ -1601,3 +1601,105 @@ describe('RosterCard — modifier affordances (C7, D-55)', () => {
     expect(screen.queryByText('Copy link')).not.toBeInTheDocument();
   });
 });
+
+// ── Task 2 (feedback-polish): JobPicker clipping fix — Radix Popover Portal ──
+// CardShell's `overflow-hidden` clipped the un-portaled dropdown
+// (RosterCard.tsx:704). The fix swaps the ad hoc absolute wrapper for the
+// same Popover/PopoverTrigger/PopoverContent pattern PositionSelector and
+// TankRoleSelector already use on this card — see JobPicker.test.tsx for the
+// dismissal-ownership unit coverage (hostControlsDismissal), and here for the
+// end-to-end behavior through the real Popover.
+describe('RosterCard — JobPicker portal (Task 2)', () => {
+  function openJobPicker() {
+    fireEvent.click(screen.getByRole('button', { name: /change job/i }));
+  }
+  function pickerOpen() {
+    return screen.queryByPlaceholderText('Search jobs...') !== null;
+  }
+
+  it('mounts the picker content OUTSIDE the clipped (overflow-hidden) card subtree', () => {
+    const { container } = renderCard(makePlayer());
+    openJobPicker();
+
+    // CardShell renders the clipping ancestor as `...overflow-hidden` (Task 2
+    // brief root cause: RosterCard.tsx:704).
+    const clipped = container.querySelector('.overflow-hidden');
+    expect(clipped).not.toBeNull();
+    const searchInput = screen.getByPlaceholderText('Search jobs...');
+    expect(clipped!.contains(searchInput)).toBe(false);
+    // ...while staying a React descendant of the card (Radix portals in the
+    // DOM tree only) — closing it must still work through the same card.
+    expect(pickerOpen()).toBe(true);
+  });
+
+  it('completes the job-selection round trip: pick WAR, confirm, and the player updates', async () => {
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    renderCard(makePlayer(), { actions: { ...actions, onUpdate } });
+
+    openJobPicker();
+    expect(pickerOpen()).toBe(true);
+    fireEvent.click(screen.getByText('WAR'));
+    // Selecting a different job closes the picker and opens the card-owned
+    // confirm (RosterCard.onJobPicked).
+    expect(pickerOpen()).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Change Job' }));
+
+    await waitFor(() => {
+      expect(onUpdate).toHaveBeenCalledWith({ job: 'WAR', role: 'tank' });
+    });
+  });
+
+  it('search input receives focus when the picker opens', () => {
+    renderCard(makePlayer());
+    openJobPicker();
+    expect(screen.getByPlaceholderText('Search jobs...')).toHaveFocus();
+  });
+
+  it('Escape closes the popover', () => {
+    renderCard(makePlayer());
+    openJobPicker();
+    expect(pickerOpen()).toBe(true);
+
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(pickerOpen()).toBe(false);
+  });
+
+  it('an outside click closes the popover', async () => {
+    renderCard(makePlayer());
+    openJobPicker();
+    expect(pickerOpen()).toBe(true);
+
+    // Radix's outside-pointerdown listener registers via a 0ms setTimeout
+    // after the content mounts (react-dismissable-layer) — flush it before
+    // firing the outside interaction, matching the microtask-flush pattern
+    // already used elsewhere in this file for post-resolve assertions. Radix
+    // also defers the actual dismiss until the pointerdown's matching click
+    // (to preserve text-selection drags), so a real outside interaction is
+    // pointerdown THEN click, same as a real mouse click sequence.
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.pointerDown(document.body);
+    fireEvent.click(document.body);
+
+    expect(pickerOpen()).toBe(false);
+  });
+
+  it('clicking the trigger while open closes it and does NOT reopen', async () => {
+    renderCard(makePlayer());
+    const trigger = screen.getByRole('button', { name: /change job/i });
+
+    fireEvent.click(trigger);
+    expect(pickerOpen()).toBe(true);
+
+    // Flush Radix's deferred outside-pointerdown registration so the second
+    // trigger click is evaluated the same way a real second click would be.
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.click(trigger);
+
+    expect(pickerOpen()).toBe(false);
+    // Give any stray close-then-reopen microtask a chance to fire before
+    // asserting it stayed shut (the exact race the brief calls out: the
+    // trigger click reads as "outside" to a non-suppressed JobPicker).
+    await new Promise((r) => setTimeout(r, 0));
+    expect(pickerOpen()).toBe(false);
+  });
+});
