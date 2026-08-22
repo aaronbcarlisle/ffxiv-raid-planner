@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { SafeAvatar } from './SafeAvatar';
 import { JobIcon } from './JobIcon';
+import { InitialsAvatar } from './InitialsAvatar';
 
 // Role type matching the shared game-data vocabulary
 type Role = 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
@@ -102,12 +103,12 @@ export function PlayerIdentity({
             alt={name}
             className="w-full h-full rounded-full object-cover"
             fallback={
-              <span
-                className="w-full h-full rounded-full bg-surface-interactive flex items-center justify-center text-xs font-medium text-text-secondary leading-none"
-                aria-hidden="true"
-              >
-                {getInitials(name)}
-              </span>
+              <InitialsAvatar
+                initials={getInitials(name)}
+                size="100%"
+                className="bg-surface-interactive text-text-secondary"
+                fontWeight="medium"
+              />
             }
           />
         </div>
@@ -157,12 +158,12 @@ export function PlayerIdentity({
           alt={name}
           className="w-full h-full rounded-full object-cover"
           fallback={
-            <span
-              className="w-full h-full rounded-full bg-surface-interactive flex items-center justify-center text-xs font-medium text-text-secondary leading-none"
-              aria-hidden="true"
-            >
-              {initials}
-            </span>
+            <InitialsAvatar
+              initials={initials}
+              size="100%"
+              className="bg-surface-interactive text-text-secondary"
+              fontWeight="medium"
+            />
           }
         />
         {job && (

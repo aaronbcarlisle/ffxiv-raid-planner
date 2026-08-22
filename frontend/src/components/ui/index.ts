@@ -7,6 +7,7 @@ export { GitHubIcon } from './GitHubIcon';
 export { GroupViewToggle } from './GroupViewToggle';
 export { Input, type InputProps } from './Input';
 export { InputGroup } from './InputGroup';
+export { InitialsAvatar, type InitialsAvatarProps, type InitialsAvatarFontWeight, type InitialsAvatarTextSize } from './InitialsAvatar';
 export { ItemHoverCard } from './ItemHoverCard';
 export { JobIcon } from './JobIcon';
 export { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';

@@ -10,6 +10,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { UserMinus, Link2Off } from 'lucide-react';
 import { authRequest } from '../../services/api';
 import { JobIcon } from '../ui/JobIcon';
+import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { Spinner } from '../ui/Spinner';
 import { ErrorBox } from '../ui/ErrorMessage';
 import { Select, type SelectOption } from '../ui/Select';
@@ -201,11 +202,13 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin, readOnly = fal
                       className="w-8 h-8 rounded-full"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
-                      <span className="text-accent text-sm font-medium">
-                        {(member.displayName || member.discordUsername || '?').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
+                    <InitialsAvatar
+                      initials={(member.displayName || member.discordUsername || '?').charAt(0).toUpperCase()}
+                      size={32}
+                      className="bg-accent/20 text-accent"
+                      fontWeight="medium"
+                      textSize="sm"
+                    />
                   )}
                   <div>
                     <div className="text-text-primary font-medium">
@@ -315,11 +318,13 @@ export function MembersPanel({ groupId, currentUserRole, isAdmin, readOnly = fal
                       className="w-8 h-8 rounded-full"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-membership-linked/20 flex items-center justify-center">
-                      <span className="text-membership-linked text-sm font-medium">
-                        {(linked.user.displayName || linked.user.discordUsername || '?').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
+                    <InitialsAvatar
+                      initials={(linked.user.displayName || linked.user.discordUsername || '?').charAt(0).toUpperCase()}
+                      size={32}
+                      className="bg-membership-linked/20 text-membership-linked"
+                      fontWeight="medium"
+                      textSize="sm"
+                    />
                   )}
                   <div>
                     <div className="text-text-primary font-medium">

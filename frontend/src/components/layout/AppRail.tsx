@@ -6,6 +6,7 @@
  */
 import type React from 'react';
 import { Tooltip } from '../primitives';
+import { InitialsAvatar } from '../ui/InitialsAvatar';
 import { SkipLink } from './SkipLink';
 import type { RailEntry, RailIconItem, RailAvatarItem } from './railTypes';
 
@@ -108,21 +109,17 @@ function RailAvatarItemButton({ entry }: RailAvatarItemProps) {
             }}
           />
         ) : (
-          <span
-            aria-hidden="true"
-            className="flex items-center justify-center rounded-full text-xs font-semibold leading-none"
-            style={{
-              width: 'var(--nav-item-icon-size, 24px)',
-              height: 'var(--nav-item-icon-size, 24px)',
-              background: entry.accent ?? 'var(--color-accent-dim)',
-              border: entry.isActive
-                ? '2px solid var(--color-nav-item-active-indicator, var(--color-accent))'
-                : '1px solid var(--color-border-default)',
-              color: 'var(--color-text-primary)',
-            }}
-          >
-            {entry.initials}
-          </span>
+          <InitialsAvatar
+            initials={entry.initials}
+            size="var(--nav-item-icon-size, 24px)"
+            background={entry.accent ?? 'var(--color-accent-dim)'}
+            className="text-text-primary"
+            borderColor={entry.isActive
+              ? 'var(--color-nav-item-active-indicator, var(--color-accent))'
+              : 'var(--color-border-default)'}
+            borderWidth={entry.isActive ? 2 : 1}
+            fontWeight="semibold"
+          />
         )}
         <span className="sr-only">{entry.label}</span>
       </button>
