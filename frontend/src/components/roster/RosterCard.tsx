@@ -695,7 +695,7 @@ export function RosterCard({
       // is active (PlayerCard.tsx:885 precedent) — the only visual cue that
       // the whole card is draggable, scoped to reorder mode so it never
       // implies dragability outside it.
-      className={`relative h-full ${reorderMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
+      className={`relative h-full${reorderMode ? ' cursor-grab active:cursor-grabbing' : ''}`}
       onContextMenu={openContextMenu}
       {...dragProps}
       onMouseDown={handleCardMouseDown}

@@ -218,14 +218,22 @@ export function RosterToolbar({
               :189-199) — the tooltip must still teach the flow to a
               non-manager, even though they can't use it. */}
           <span className="inline-flex">
+            {/* Pressed treatment swaps the VARIANT, not just className — a
+                className addition can't reliably beat `ghost`'s own
+                `bg-transparent` in the cascade (both are plain utility
+                classes at equal specificity; Tailwind's generated order, not
+                DOM/JSX order, decides the winner, and `bg-transparent` was
+                winning), so `aria-pressed` was lying with zero visible
+                change. `accent-subtle` (Button.tsx) is the existing
+                semantic "on" look (MyStaticsPanel.tsx:356 precedent: same
+                variant-swap approach, not a className race). */}
             <Button
-              variant="ghost"
+              variant={reorderMode ? 'accent-subtle' : 'ghost'}
               size="sm"
               leftIcon={<List className="w-3.5 h-3.5" aria-hidden />}
               aria-pressed={reorderMode}
               disabled={!canManage}
               onClick={() => onReorderModeChange(!reorderMode)}
-              className={reorderMode ? 'bg-accent/20 text-accent' : ''}
             >
               Reorder
             </Button>

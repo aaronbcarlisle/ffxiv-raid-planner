@@ -287,11 +287,25 @@ describe('RosterToolbar', () => {
     // above re-wraps in TooltipProvider on every `render()`, but RTL's
     // `rerender` swaps the tree in place and drops that wrapping, which
     // crashes the toolbar's other always-on tooltips (grouping/subs).
+    //
+    // Assert the VARIANT swap, not a className addition: a plain className
+    // string can't reliably beat `ghost`'s own `bg-transparent` in the
+    // cascade (both are equal-specificity utility classes; Tailwind's
+    // generated stylesheet order — not JSX/DOM order — decides the winner),
+    // so a `toHaveClass('bg-accent/20')`-only check can stay green with zero
+    // visible change on screen. `border-accent/30` only exists on the
+    // `accent-subtle` variant (Button.tsx) — its presence/absence is a real
+    // rendered difference, and `bg-transparent` flipping off proves `ghost`
+    // itself was actually swapped out, not just papered over.
     render(<RosterToolbar {...baseProps} reorderMode={false} />);
-    expect(screen.getByRole('button', { name: /reorder/i })).not.toHaveClass('bg-accent/20');
+    const offButton = screen.getByRole('button', { name: /reorder/i });
+    expect(offButton).toHaveClass('bg-transparent');
+    expect(offButton).not.toHaveClass('border-accent/30');
 
     cleanup();
     render(<RosterToolbar {...baseProps} reorderMode />);
-    expect(screen.getByRole('button', { name: /reorder/i })).toHaveClass('bg-accent/20');
+    const onButton = screen.getByRole('button', { name: /reorder/i });
+    expect(onButton).toHaveClass('border-accent/30', 'bg-accent/10');
+    expect(onButton).not.toHaveClass('bg-transparent');
   });
 });
