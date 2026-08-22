@@ -26,10 +26,14 @@ beforeEach(() => {
 
 // MembersPanel is a SHARED V1+V2 surface (static-group/MembersPanel.tsx) — Task 6
 // (Phase D feedback-polish) swapped its avatarless-member/linked-player fallback
-// over to the shared InitialsAvatar primitive under ruling R-V2 ("centering-only":
-// swap is eligible only if V1's rendered output changes in glyph centering and
-// nothing else). These tests pin that the visible text/color/size contract is
-// byte-for-byte unchanged — only the centering mechanism (role="presentation") is new.
+// over to the shared InitialsAvatar primitive under ruling R-V2. This site never
+// had the off-center-initials bug (its pre-swap markup carried no aria-hidden, so
+// index.css's centering override never matched it) — the swap is primitive
+// CONSOLIDATION, not a centering fix. Visible text/color/size are byte-for-byte
+// unchanged; what IS new: the initial letter is now aria-hidden + role="presentation"
+// (no longer announced to screen readers — it was before), and the old <div><span>
+// two-element wrapper collapses to InitialsAvatar's single <span>. These tests pin
+// that post-swap output.
 
 vi.mock('../../services/api', () => ({
   authRequest: vi.fn(),

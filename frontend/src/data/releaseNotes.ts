@@ -76,7 +76,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Who Needs It cells wear the classic look again',
         description:
-          "Gear cells in the preview's Who Needs It view regained the classic shell's role-colored treatment — tinted fill, ring, and a solid center dot at the same visual weight. (The center dot had also been collapsing to zero size in the browser; it now renders properly.)",
+          "Gear cells in the preview's Who Needs It view regained the classic shell's role-colored treatment — tinted fill, ring, and a solid center dot at the same visual weight. (A browser quirk had also collapsed the center dot to zero size and knocked it off-center; both are fixed.)",
         pr: 242,
         prTitle: 'feat(v2): Phase D feedback-polish — loot parity, roster affordances, InitialsAvatar',
       },
@@ -108,7 +108,7 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Initials avatars sit centered in their circles again',
         description:
-          "A global style quirk made the letters in circular initials avatars ride high against the top edge — most visibly in the left rail's static chips and loot queue recipient chips. All initials circles now share one component that centers them properly.",
+          "A global style quirk made the letters in circular initials avatars ride high against the top edge — most visibly in the left rail's static chips and loot queue recipient chips. The preview shell's initials circles now share one component that centers them properly.",
         pr: 242,
         prTitle: 'feat(v2): Phase D feedback-polish — loot parity, roster affordances, InitialsAvatar',
       },

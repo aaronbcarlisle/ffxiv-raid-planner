@@ -58,6 +58,7 @@ export function FloorDropRow({
         ) : (
           <span
             aria-hidden
+            role="presentation"
             className="grid h-[34px] w-[34px] flex-none place-items-center rounded-lg font-display text-xs font-extrabold"
             style={{
               backgroundColor: `color-mix(in srgb, ${materialTone} 22%, transparent)`,

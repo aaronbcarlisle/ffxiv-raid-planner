@@ -112,7 +112,11 @@ describe('NotificationBell', () => {
     mocks.syntheticUnread = 1;
     mocks.pendingCount = 3;
     const { container } = renderBell();
-    expect(container.querySelector('.bg-status-error')).toHaveTextContent('6');
+    const badge = container.querySelector('.bg-status-error');
+    expect(badge).toHaveTextContent('6');
+    // role="presentation" opts the badge's flex-centered count out of
+    // index.css's global aria-hidden centering override.
+    expect(badge).toHaveAttribute('role', 'presentation');
   });
 
   it('caps the badge at "99+" when total exceeds 99', () => {

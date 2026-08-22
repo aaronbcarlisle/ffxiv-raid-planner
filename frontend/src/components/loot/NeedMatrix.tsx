@@ -35,7 +35,14 @@ export interface NeedMatrixProps {
   onLogMaterial: (material: UpgradeMaterialType, player: SnapshotPlayer) => void;
 }
 
-/** Role-colored ring, never a fill — mirrors PriorityRow's contrast-safe avatar treatment. */
+/**
+ * Role-colored token: feeds the needer dot's ring + tint fill, the material
+ * progress ring, and the header row's position-label text color. (Not a
+ * "ring, never a fill" treatment — `NeedDot` below IS a role-tint fill, per
+ * V1 parity; the contrast-safe ring-only pattern this comment used to
+ * describe lives in `InitialsAvatar`'s `2xs` branch instead, inherited from
+ * the original `PriorityRow` it was extracted from.)
+ */
 const roleVar = (player: SnapshotPlayer) => `var(--color-role-${getValidRole(player.role)}, var(--color-text-muted))`;
 
 /**
@@ -44,11 +51,20 @@ const roleVar = (player: SnapshotPlayer) => `var(--color-role-${getValidRole(pla
  * ring, `color-mix(role 30%, transparent)` fill, solid role-colored inner
  * dot), re-expressed v2-owned. File-local — one shape, two contexts (live
  * cell + legend sample).
+ *
+ * `role="presentation"` alongside `aria-hidden` opts this grid-centered
+ * shape out of `index.css`'s global `[aria-hidden="true"]:not([role=
+ * "presentation"])... { display: revert !important }` rule (added to stop
+ * Radix from hiding dropdown siblings) — without it the outer span's `grid`
+ * display is reverted to block and the inner dot renders corner-pinned
+ * instead of centered. See `ui/InitialsAvatar.tsx` for the same fix and the
+ * full mechanism writeup.
  */
 function NeedDot({ roleVar: color }: { roleVar: string }) {
   return (
     <span
       aria-hidden
+      role="presentation"
       className="grid h-6 w-6 place-items-center rounded-full border-2"
       style={{ borderColor: color, backgroundColor: `color-mix(in srgb, ${color} 30%, transparent)` }}
     >
@@ -84,6 +100,7 @@ function MaterialProgressRing({ roleVar: color, total, needed }: { roleVar: stri
   return (
     <span
       aria-hidden
+      role="presentation"
       className="relative grid h-6 w-6 place-items-center rounded-full"
       style={{ background: `conic-gradient(${stops.join(', ')})` }}
     >
@@ -162,7 +179,7 @@ export function NeedMatrix(props: NeedMatrixProps) {
               return (
               <tr
                 key={`${row.slot}-${row.floorNumber}`}
-                className={`border-t border-border-subtle ${relevant ? '' : 'opacity-30'}`}
+                className={`border-t border-border-subtle${relevant ? '' : ' opacity-30'}`}
               >
                 <th
                   scope="row"
@@ -243,7 +260,7 @@ export function NeedMatrix(props: NeedMatrixProps) {
               return (
                 <tr
                   key={row.material}
-                  className={`border-t border-border-subtle ${relevant ? '' : 'opacity-30'}`}
+                  className={`border-t border-border-subtle${relevant ? '' : ' opacity-30'}`}
                 >
                   <th
                     scope="row"
@@ -253,6 +270,7 @@ export function NeedMatrix(props: NeedMatrixProps) {
                     <div className="flex items-center gap-2">
                       <span
                         aria-hidden
+                        role="presentation"
                         className="grid h-6 w-6 place-items-center rounded font-display text-xs font-extrabold"
                         style={{ backgroundColor: `color-mix(in srgb, ${token} 22%, transparent)`, color: token }}
                       >
