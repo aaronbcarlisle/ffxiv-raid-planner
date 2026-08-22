@@ -3,8 +3,11 @@
  * legacy WhoNeedsItMatrix is frozen and V1-only. Differences from legacy are
  * ruled, not accidental: R-8/R-9 floor-coloured names + neutral slot icons
  * (always, not only when scoped), R-11 roster-size Need denominator, rows
- * band by floor F4→F1 (user-ruled at D3 build), scoping FILTERS rows (the D1
- * pill row is the scope control — R-48 rules FilterBar out), cells route
+ * band by floor F4→F1 (user-ruled at D3 build), scoping HIGHLIGHTS rows (the
+ * D1 pill row is the scope control — R-48 rules FilterBar out): every row
+ * stays mounted, the selected floor's rows get the floor-accent edge, and
+ * every other row dims + disables its log affordances (R-P3/R-V4, matching
+ * V1's `WhoNeedsItMatrix.tsx` opacity/disabled treatment), cells route
  * through the picker (R-4) instead of writing directly, and the ring row
  * hands the picker slot 'ring' (it resolves ring1/ring2 itself).
  */
@@ -14,7 +17,7 @@ import { Tag } from '../ui';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
 import { JobIcon } from '../ui/JobIcon';
 import { getValidRole } from '../../gamedata';
-import { FLOOR_TEXT_CLASS } from './floorClasses';
+import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { MATERIAL_TOKEN } from './FloorDropRow';
 import { sortByPosition, buildGearMatrixRows, buildMaterialMatrixRows } from './needMatrixData';
 import type { FloorScope } from './priorityScope';
@@ -95,6 +98,18 @@ function EmptyDot() {
   return <span aria-hidden className="mx-auto block h-6 w-6 rounded-full border border-border-subtle bg-surface-interactive" />;
 }
 
+/**
+ * R-P3/R-V4: is this row relevant to the selected floor? `'all'` makes every
+ * row relevant (today's unscoped render, unchanged). Irrelevant rows stay
+ * mounted — the caller dims them and disables their log affordances instead
+ * of unmounting them, matching V1's `WhoNeedsItMatrix.tsx` opacity-30 /
+ * disabled treatment (`:358,446` / `:391,480`).
+ */
+function isRowRelevant(rowFloors: FloorNumber | FloorNumber[], floorScope: FloorScope): boolean {
+  if (floorScope === 'all') return true;
+  return Array.isArray(rowFloors) ? rowFloors.includes(floorScope) : rowFloors === floorScope;
+}
+
 export function NeedMatrix(props: NeedMatrixProps) {
   const { players, floorScope, materialLog, settings, canEdit, onLogGear, onLogMaterial } = props;
 
@@ -109,11 +124,6 @@ export function NeedMatrix(props: NeedMatrixProps) {
       </div>
     );
   }
-
-  const visibleGearRows = gearRows.filter((row) => floorScope === 'all' || row.floorNumber === floorScope);
-  const visibleMaterialRows = materialRows.filter(
-    (row) => floorScope === 'all' || row.floorNumbers.includes(floorScope)
-  );
 
   return (
     <div className="overflow-hidden rounded-lg border border-border-default bg-surface-card">
@@ -147,9 +157,18 @@ export function NeedMatrix(props: NeedMatrixProps) {
             </tr>
           </thead>
           <tbody>
-            {visibleGearRows.map((row) => (
-              <tr key={`${row.slot}-${row.floorNumber}`} className="border-t border-border-subtle">
-                <th scope="row" aria-label={row.label} className="px-3 py-2 text-left font-medium">
+            {gearRows.map((row) => {
+              const relevant = isRowRelevant(row.floorNumber, floorScope);
+              return (
+              <tr
+                key={`${row.slot}-${row.floorNumber}`}
+                className={`border-t border-border-subtle ${relevant ? '' : 'opacity-30'}`}
+              >
+                <th
+                  scope="row"
+                  aria-label={row.label}
+                  className={`px-3 py-2 text-left font-medium ${floorScope !== 'all' && relevant ? FLOOR_ACCENT_CLASS[floorScope] : ''}`}
+                >
                   <div className="flex items-center gap-2">
                     <span className="text-text-secondary"><GearSlotIcon slot={row.slot} size={18} /></span>
                     <span className={`text-sm font-semibold ${FLOOR_TEXT_CLASS[row.floorNumber]}`}>{row.label}</span>
@@ -168,6 +187,7 @@ export function NeedMatrix(props: NeedMatrixProps) {
                             size="sm"
                             aria-label={`Log ${row.label} for ${player.name}`}
                             icon={<NeedDot roleVar={roleVar(player)} />}
+                            disabled={!relevant}
                             onClick={() => onLogGear({ slot: row.slot, label: row.label, floorNumber: row.floorNumber }, player.id)}
                           />
                         </Tooltip>
@@ -202,9 +222,10 @@ export function NeedMatrix(props: NeedMatrixProps) {
                   )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
 
-            {visibleMaterialRows.length > 0 && (
+            {materialRows.length > 0 && (
               <tr>
                 <th
                   colSpan={sorted.length + 2}
@@ -216,11 +237,19 @@ export function NeedMatrix(props: NeedMatrixProps) {
                 </th>
               </tr>
             )}
-            {visibleMaterialRows.map((row) => {
+            {materialRows.map((row) => {
               const token = MATERIAL_TOKEN[row.material];
+              const relevant = isRowRelevant(row.floorNumbers, floorScope);
               return (
-                <tr key={row.material} className="border-t border-border-subtle">
-                  <th scope="row" aria-label={row.label} className="px-3 py-2 text-left font-medium">
+                <tr
+                  key={row.material}
+                  className={`border-t border-border-subtle ${relevant ? '' : 'opacity-30'}`}
+                >
+                  <th
+                    scope="row"
+                    aria-label={row.label}
+                    className={`px-3 py-2 text-left font-medium ${floorScope !== 'all' && relevant ? FLOOR_ACCENT_CLASS[floorScope] : ''}`}
+                  >
                     <div className="flex items-center gap-2">
                       <span
                         aria-hidden
@@ -252,6 +281,7 @@ export function NeedMatrix(props: NeedMatrixProps) {
                               size="sm"
                               aria-label={`Log ${row.label} for ${player.name} — needs ${needed}${progressSuffix}`}
                               icon={<MaterialProgressRing roleVar={roleVar(player)} total={total} needed={needed} />}
+                              disabled={!relevant}
                               onClick={() => onLogMaterial(row.material, player)}
                             />
                           </Tooltip>

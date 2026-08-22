@@ -130,23 +130,42 @@ describe('NeedMatrix', () => {
     expect(screen.getByText(`${m1.name} needs Ring`)).toBeInTheDocument();
   });
 
-  it('scopes rows to the selected floor; "all" renders every gear row', () => {
-    renderMatrix({ floorScope: 2 });
-    expect(screen.getByText('Head')).toBeInTheDocument();
-    expect(screen.getByText('Hands')).toBeInTheDocument();
-    expect(screen.getByText('Feet')).toBeInTheDocument();
-    expect(screen.queryByText('Weapon')).not.toBeInTheDocument();
-    expect(screen.queryByText('Ring')).not.toBeInTheDocument();
-    expect(screen.getByText('Glaze')).toBeInTheDocument();
-    expect(screen.getByText('Universal Tomestone')).toBeInTheDocument();
-    expect(screen.queryByText('Twine')).not.toBeInTheDocument();
-    expect(screen.queryByText('Solvent')).not.toBeInTheDocument();
+  it('R-P3: floor scope highlights the selected floor\'s rows and dims + disables the rest — no row leaves the DOM', () => {
+    renderMatrix({ floorScope: 2, canEdit: true });
+    // Every gear + material row from every floor stays mounted — nothing is filtered out.
+    ['Ring', 'Weapon', 'Head', 'Hands', 'Feet', 'Glaze', 'Universal Tomestone', 'Twine', 'Solvent'].forEach((label) => {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
+
+    // Floor 2's own row (Head) is relevant: not dimmed, carries the floor-accent edge.
+    const headRow = screen.getByText('Head').closest('tr') as HTMLElement;
+    const headHeader = screen.getByText('Head').closest('th') as HTMLElement;
+    expect(headRow.className).not.toContain('opacity-30');
+    expect(headHeader.className).toContain('border-l-floor-2');
+
+    // Off-floor rows dim AND their log buttons disable, even though someone needs them.
+    const weaponRow = screen.getByText('Weapon').closest('tr') as HTMLElement;
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    expect(weaponRow.className).toContain('opacity-30');
+    expect(ringRow.className).toContain('opacity-30');
+    expect(within(weaponRow).getByRole('button', { name: `Log Weapon for ${m1.name}` })).toBeDisabled();
+    expect(within(ringRow).getByRole('button', { name: `Log Ring for ${t1.name}` })).toBeDisabled();
   });
 
-  it('floorScope 1: no upgrade materials drop there, so the "Materials" separator header does not render', () => {
-    renderMatrix({ floorScope: 1 });
+  it('floorScope 1: no upgrade materials drop there, so every material row dims — but the "Materials" separator still renders (rows stay mounted)', () => {
+    renderMatrix({ floorScope: 1, canEdit: true });
     expect(screen.getByText('Ring')).toBeInTheDocument();
-    expect(screen.queryByText('Materials')).not.toBeInTheDocument();
+    expect(screen.getByText('Materials')).toBeInTheDocument();
+
+    const twineRow = screen.getByText('Twine').closest('tr') as HTMLElement;
+    expect(twineRow.className).toContain('opacity-30');
+    expect(
+      within(twineRow).getByRole('button', { name: `Log Twine for ${m1.name} — needs 2 of 3` })
+    ).toBeDisabled();
+
+    // Ring is floor 1's own row — relevant, not dimmed.
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    expect(ringRow.className).not.toContain('opacity-30');
   });
 
   it('"all" scope renders every gear row (all ten slots)', () => {
