@@ -61,6 +61,13 @@ lands on.**
 whole-tier "where does this static stand" read. The choice **persists per user**, so this decision
 governs the first visit; the queues stay one click away for when something actually drops.
 
+⚠ **Renamed 2026-08-21 by R-P1.** The switcher segment's label and its persisted value (previously
+`'matrix'`) are both renamed to **Who Needs It** / `'who-needs-it'` — no backwards-compat shim, since
+v2 is pre-release with zero users and the sub-view isn't URL-backed: a stale `'matrix'` value just
+falls through to this same landing default, like any other unrecognized string. Read every bare
+"Matrix" in R-2, R-3, R-10's second point and R-48 below as this name. **Write-back owed:** those
+four spots.
+
 ### R-2 · Floor scoping is **v1's pill row: All + F1–F4** (D-24)
 
 One pill row scopes **the whole Priority view** — both Matrix and Queues answer to it. `All` stays
@@ -75,6 +82,16 @@ and the Queues can never disagree about which floor the user is looking at.
 exported from `loot/index.ts`, imported by nothing, and it is a `Select` **dropdown**, not a pill
 row. It is a name squatter, not a reusable leaf. Delete or repurpose it when R-2 is built.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. Both bare "Matrix" mentions above read as
+**Who Needs It**.
+
+⚠ **Amended 2026-08-21 by R-P3.** "Scopes the whole Priority view" is refined for the Who Needs It
+view specifically: floor scoping there **highlights, it does not hide** — every row stays mounted,
+rows matching the selected floor get the floor-accent highlight, and every other row dims and has
+its log affordances **disabled**, matching v1's `WhoNeedsItMatrix.tsx:391,480`. Queues and Weapons
+are unchanged — a selected floor still narrows those views the way this ruling always described.
+Controller ruling R-V4.
+
 ### R-3 · Weapon Priority becomes the **third switcher segment** (D-27)
 
 The axis is **Queues ⇄ Matrix ⇄ Weapons**. Weapon priority stops being a collapsible text link in
@@ -88,6 +105,9 @@ feedback.
 In substance the result is v1's three-way axis (Who Needs It / Gear Priority / Weapon Priority)
 re-expressed as one switcher instead of a sub-tab bar. **Write back to matrix D-23 and D-27 when
 this ships**, per the Phase-C precedent that rulings and matrix rows land in the same PR.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. The axis is now **Queues ⇄ Who Needs It ⇄
+Weapons**; nothing else about this ruling changes.
 
 ### R-4 · A Matrix cell opens the **RecipientPicker, pre-filled to that player + slot** (D-22)
 
@@ -180,6 +200,9 @@ views. The reconciliation, which is the ruling:
 *Why:* R-2 fixed *reaching* a floor but left Queues-on-All as four stacked cards — the exact scroll
 the standing input rejected. This gets the good default without the surprise of a control that
 changes under you once you've touched it.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. The intro line's "Matrix opens on All" and
+item 2's **Matrix → All** both read as **Who Needs It → All**; the mechanic is unchanged.
 
 ### R-11 · The Need column counts **the roster**, not a full party
 
@@ -1026,6 +1049,21 @@ the freeze exists to prevent.
 rationale is corrected accordingly:** the argument for growing `QuickLogMaterialModal` is
 `PRODUCT_MODEL.md:201` (one owned component per task), not a false claim that importing legacy is
 forbidden.
+
+⚠ **Renamed 2026-08-21 by R-P1.** Every "Matrix" above, including this ruling's own title, is this
+ruling's shorthand for the view this phase built; the user-facing name is now **Who Needs It** (label
+and persisted value both — see R-1's amendment). The **component identifier is unchanged**: v2's file
+is still `NeedMatrix.tsx`, distinct from legacy's frozen `WhoNeedsItMatrix.tsx` — so "v2's Matrix is
+its own component" remains true of the code even though the UI no longer calls it that.
+
+⚠ **Amended 2026-08-21 by R-P2.** `NeedMatrix.tsx`'s gear cells now draw their visual treatment — the
+role-coloured ring, tint fill and inner dot — from **`WhoNeedsItMatrix.tsx:379-405`**, replacing the
+interim `NeedDot`/`EmptyDot` rendering. This is the same **reference-not-dependency** relationship
+this ruling already establishes for Log's `WeeklyLootGrid`/`LootCountBar`/`RevertWeekConfirmModal`:
+`WhoNeedsItMatrix` stays frozen and unimported; `NeedMatrix.tsx` re-expresses its look in v2-owned
+code. Controller ruling R-V1 is explicit that the rendering reference is V1's `WhoNeedsItMatrix`, not
+the `GearStatusCircle` component. **The material progress rings are unaffected** — R-50's fourth D3
+build ruling already governs those and stands as written.
 
 ### R-44 · `getResetDescription`'s week bug is fixed — an approved **V1-visible delta**
 
