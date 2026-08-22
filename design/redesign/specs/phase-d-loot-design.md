@@ -66,8 +66,9 @@ governs the first visit; the queues stay one click away for when something actua
 v2 is pre-release with zero users and the sub-view isn't URL-backed: a stale `'matrix'` value just
 falls through to this same landing default, like any other unrecognized string. Every bare "Matrix"
 below that names this view reads as **Who Needs It**; a short dated pointer sits at each ruling where
-that reading applies — not necessarily an exhaustive list, but currently R-2, R-3, R-4, R-7, R-9,
-R-10, R-12, R-48, R-50.2 and R-50.4, plus §2's diagram.
+that reading applies — not necessarily an exhaustive list, but currently R-2, R-3, R-4, R-6, R-7, R-9,
+R-10, R-12, R-17, R-26's R-a note, R-48, R-50.2 and R-50.4, plus §2's diagram and §4's "One model, not
+one button" summary.
 
 ### R-2 · Floor scoping is **v1's pill row: All + F1–F4** (D-24)
 
@@ -144,6 +145,9 @@ the **high/medium/low confidence** header.
 *Why:* this is the same shape the project has landed on repeatedly for exactly this class of
 problem — `computeGearSlotUpdate`, `rosterIlv`, `gearCycleHint` — and it means the number a user
 sees in the queue can never disagree with the reasoning shown in the modal that logs it.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. The lowercase "matrix cell" in the "queue row,
+matrix cell, picker candidate" list reads as **Who Needs It**.
 
 ### R-7 · **One Priority-level "Log floor"** that follows the pill (D-26)
 
@@ -455,6 +459,9 @@ in both create and edit.
 material split is forced, not chosen: `DropItemContext.slot` is `GearSlot | 'ring'`
 (`RecipientPicker.tsx:31-36`), so the picker cannot represent a material at all.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. "The grid and the matrix become the same
+flow" reads as "the grid and **Who Needs It** become the same flow."
+
 ### R-18 · Cell affordances — plain click **never navigates**
 
 | Input | Effect |
@@ -617,6 +624,9 @@ what legacy already proves out (`LogMaterialModal.tsx:84`, `:209-238`, `:306-310
   together or not at all**: a future slice that hides one from a view must hide the other too, or the
   toolbar starts making an unstated claim about which entry points are "real" on that view.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. R-a's "the two v2 cell doors (matrix + queues
+floor card)" reads as "(**Who Needs It** + queues floor card)."
+
 ### R-27 · The grid details that come back
 
 **Restored:** the per-cell modifier-teaching tooltip (`WeeklyLootGrid.tsx:653-680`, `:773-798`) — R-18
@@ -671,6 +681,9 @@ button, R-4's matrix cell, R-20's two toolbar actions and R-25's floor kebab —
 assign. That is deliberate and is *not* the "16 ways to log loot" regression `PRODUCT_MODEL.md:222`
 names: the consolidation target is **one model** (picker for loot, material modal for materials, wizard
 for the week), which is what `:142` asks for, reached from wherever the user already is.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. "R-4's matrix cell" reads as "R-4's **Who
+Needs It** cell."
 
 **Director verdict (2026-07-28): PARITY-GAP — approve with required changes.** All thirteen required
 changes are folded in; the four that were design forks rather than corrections were ruled by the user
