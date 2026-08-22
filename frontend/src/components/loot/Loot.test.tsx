@@ -17,13 +17,18 @@ import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import type { StaticGroup, TierSnapshot, SnapshotPlayer, LootLogEntry, MaterialLogEntry } from '../../types';
 
 // Capture buckets shared with the hoisted mocks.
-const { floorCardCalls, pickerCalls, weekScopeCalls, wizardCalls, matrixCalls, materialModalCalls, deleteLootMock, deleteMaterialMock } = vi.hoisted(() => ({
+const {
+  floorCardCalls, pickerCalls, weekScopeCalls, wizardCalls, matrixCalls, materialModalCalls,
+  gridCalls, suggestedMaterialRecipientMock, deleteLootMock, deleteMaterialMock,
+} = vi.hoisted(() => ({
   floorCardCalls: [] as Array<Record<string, unknown>>,
   pickerCalls: [] as Array<Record<string, unknown>>,
   weekScopeCalls: [] as Array<Record<string, unknown>>,
   wizardCalls: [] as Array<Record<string, unknown>>,
   matrixCalls: [] as Array<Record<string, unknown>>,
   materialModalCalls: [] as Array<Record<string, unknown>>,
+  gridCalls: [] as Array<Record<string, unknown>>,
+  suggestedMaterialRecipientMock: vi.fn(),
   deleteLootMock: vi.fn().mockResolvedValue(undefined),
   deleteMaterialMock: vi.fn().mockResolvedValue(undefined),
 }));
@@ -92,6 +97,17 @@ vi.mock('./QuickLogMaterialModal', () => ({
 
 vi.mock('./WeaponPriorityBridge', () => ({
   WeaponPriorityBridge: () => <div data-testid="weapon-bridge" />,
+}));
+
+vi.mock('./LogWeekGrid', () => ({
+  LogWeekGrid: (props: Record<string, unknown>) => {
+    gridCalls.push(props);
+    return <div data-testid="log-week-grid" data-week={String(props.week)} />;
+  },
+}));
+
+vi.mock('./materialSuggestion', () => ({
+  suggestedMaterialRecipient: (...args: unknown[]) => suggestedMaterialRecipientMock(...args),
 }));
 
 vi.mock('./WeekScopeControl', () => ({
@@ -194,6 +210,8 @@ beforeEach(() => {
   wizardCalls.length = 0;
   matrixCalls.length = 0;
   materialModalCalls.length = 0;
+  gridCalls.length = 0;
+  suggestedMaterialRecipientMock.mockReset();
   deleteLootMock.mockClear();
   deleteMaterialMock.mockClear();
   // The Priority sub-view persists under `v2-loot-priority-view` (R-1) and the
@@ -460,6 +478,30 @@ describe('Loot', () => {
     const last = materialModalCalls[materialModalCalls.length - 1];
     expect(last.showNotes).toBe(true);
     expect(last.initialWeek).toBe(3);
+    // R-a preserved (D5): the matrix cell door does NOT gain R-D5a's `allowSubs`
+    // rider — that's the GRID door's rider alone — and stays on mainRosterPlayers,
+    // pinned on IDENTITY (not just value) against the wizard's own `players` prop,
+    // which is also fed `mainRosterPlayers` (Loot.tsx :837), against a fixture that
+    // contains a substitute (so a silent widen to the full roster would still pass
+    // a same-VALUES check but fail this identity one).
+    expect(last.allowSubs).toBeUndefined();
+    expect(last.allPlayers).toBe(wizardCalls[wizardCalls.length - 1].players);
+  });
+
+  it('R-4/D5: a FloorCard material-cell click ALSO stays on mainRosterPlayers, no allowSubs (R-a preserved)', () => {
+    seedQueuesView();
+    renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    const f4 = floorCardCalls.find((c) => c.floorNumber === 4)!;
+    const suggested = makePlayer('p1', 'Alice');
+    act(() => {
+      (f4.onAssignMaterial as (m: string, p: SnapshotPlayer) => void)('universal_tomestone', suggested);
+    });
+    const last = materialModalCalls[materialModalCalls.length - 1];
+    expect(last.material).toBe('universal_tomestone');
+    expect(last.suggestedPlayer).toBe(suggested);
+    expect(last.allowSubs).toBeUndefined();
+    expect(last.allPlayers).toBe(wizardCalls[wizardCalls.length - 1].players);
   });
 
   it('renders four FloorCards in F4→F1 order when the All pill is picked (R-2)', () => {
@@ -974,11 +1016,11 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     ]);
   });
 
-  it('switches to Log via the toggle — placeholder body, week control, lview in the URL', () => {
+  it('switches to Log via the toggle — grid body, week control, lview in the URL', () => {
     seedQueuesView();
     renderLoot({ tier: makeTier(players) });
     expect(screen.getAllByTestId('floor-card')).toHaveLength(1);
-    expect(screen.queryByTestId('log-empty-state')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('log-week-grid')).not.toBeInTheDocument();
 
     fireEvent.click(viewButton('Log'));
 
@@ -987,12 +1029,12 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     // even though `setValue` (:83-96) still WRITES `?lview=log` to the URL
     // unconditionally, since the whitelist gates the read, not the write. So
     // the URL assertion below does NOT catch that mutation; the render
-    // assertions that follow do (the placeholder never mounts, the floor
-    // cards stay) — that's what this test actually proves. The route itself
+    // assertions that follow do (the grid never mounts, the floor cards
+    // stay) — that's what this test actually proves. The route itself
     // landing on Log from a deep link is pinned separately, by
     // 'mounts the Log tab directly from an ?lview=log deep-link' below in
     // this describe block.
-    expect(screen.getByTestId('log-empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId('log-week-grid')).toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
     expect(screen.getByTestId('week-scope')).toBeInTheDocument();
     expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('lview=log');
@@ -1000,7 +1042,7 @@ describe('Loot — D4 triad + the Log tab week model', () => {
 
   it('mounts the Log tab directly from an ?lview=log deep-link', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
-    expect(screen.getByTestId('log-empty-state')).toBeInTheDocument();
+    expect(screen.getByTestId('log-week-grid')).toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
     expect(screen.queryByTestId('need-matrix')).not.toBeInTheDocument();
   });
@@ -1197,6 +1239,120 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     const copied = writeText.mock.calls[0][0];
     expect(copied).toContain('tier=xyz');
     expect(copied).not.toContain('week=');
+  });
+});
+
+// ── D5: LogWeekGrid wired into the Log body + the R-21 material edit door ────
+// `LogWeekGrid` and `suggestedMaterialRecipient` are mocked (prop-capturing, the
+// D8 modal-mock precedent above) so this suite asserts only Loot's OWN wiring:
+// the grid mounts at the Log tab's DISPLAYED week (not the clock's), and its
+// four callbacks route to the right door with the right roster. The retired
+// placeholder's own absence pins live in the D4-triad describe above.
+describe('Loot — D5: LogWeekGrid + the material edit door', () => {
+  function lastGrid() {
+    return gridCalls[gridCalls.length - 1];
+  }
+
+  it('mounts LogWeekGrid on Log at the DISPLAYED week, not the clock week (vacuous-assert trap: drive them apart first)', () => {
+    // The clock is seeded at week 3 (beforeEach) — a `?week=` on mount is the
+    // Log tab's FIRST resolve, so it wins outright (useLogWeek.ts). Diverge
+    // from 3 here so `week={logWeek.week}` and an accidental
+    // `week={clock.currentWeek}` produce DIFFERENT numbers — see Step 5's
+    // deletion trace, which fails exactly this assertion.
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+    expect(screen.getByTestId('log-week-grid')).toBeInTheDocument();
+    const last = lastGrid();
+    expect(last.week).toBe(1);
+    expect(last.week).not.toBe(3);
+    expect(last.canEdit).toBe(true);
+    // mainRosterPlayers = [Alice, Bob] (Sub excluded) — non-empty.
+    expect(last.canAssignMaterial).toBe(true);
+  });
+
+  it('onAssignGear opens the picker in assign mode, floor name resolved from floorNumber, at the displayed week', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+    act(() => {
+      (lastGrid().onAssignGear as (i: { slot: string; label: string; floorNumber: number }) => void)({
+        slot: 'ring', label: 'Ring', floorNumber: 1,
+      });
+    });
+    const picker = screen.getByTestId('recipient-picker');
+    expect(picker).toHaveAttribute('data-mode', 'assign');
+    const last = pickerCalls[pickerCalls.length - 1];
+    expect(last.mode).toBe('assign');
+    // aac-heavyweight floors: M9S…M12S — floorNumber 1 resolves to floors[0].
+    expect(last.item).toMatchObject({ slot: 'ring', label: 'Ring', floorNumber: 1, floorName: 'M9S' });
+    expect(last.currentWeek).toBe(1);
+  });
+
+  it('onEditGear opens the picker in edit mode with that entry', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    const entry = makeLootEntry({ id: 42 });
+    act(() => {
+      (lastGrid().onEditGear as (e: LootLogEntry) => void)(entry);
+    });
+    const picker = screen.getByTestId('recipient-picker');
+    expect(picker).toHaveAttribute('data-mode', 'edit');
+    expect(picker).toHaveAttribute('data-edit-id', '42');
+  });
+
+  it('onAssignMaterial opens the pinned door with allowSubs + the FULL roster, and the CLOCK-week suggestion (R-D5c)', () => {
+    const suggested = makePlayer('p2', 'Bob');
+    suggestedMaterialRecipientMock.mockReturnValue(suggested);
+    // Displayed week (1) diverges from the clock week (3) — proves the
+    // suggestion runs against the clock, not the displayed week, while the
+    // WRITE (initialWeek) still targets the displayed week.
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+    act(() => {
+      (lastGrid().onAssignMaterial as (m: string, f: number) => void)('glaze', 2);
+    });
+
+    expect(suggestedMaterialRecipientMock).toHaveBeenCalledWith(
+      expect.objectContaining({ material: 'glaze', currentWeek: 3 }),
+    );
+
+    expect(screen.getByTestId('material-modal')).toBeInTheDocument();
+    const last = materialModalCalls[materialModalCalls.length - 1];
+    // floorNumber 2 resolves to floors[1] = 'M10S'.
+    expect(last.floor).toBe('M10S');
+    expect(last.material).toBe('glaze');
+    expect(last.initialWeek).toBe(1);
+    expect(last.showNotes).toBe(true);
+    // R-D5a: ONLY the grid's door widens — allowSubs true, allPlayers the FULL
+    // roster, pinned on identity against the same array RecipientPicker gets
+    // (a fixture containing a substitute, so a values-only check couldn't
+    // distinguish this from mainRosterPlayers coincidentally matching).
+    expect(last.allowSubs).toBe(true);
+    expect(last.suggestedPlayer).toBe(suggested);
+    expect(last.allPlayers).toBe(pickerCalls[pickerCalls.length - 1].players);
+  });
+
+  it('falls back to mainRosterPlayers[0] when suggestedMaterialRecipient returns undefined', () => {
+    suggestedMaterialRecipientMock.mockReturnValue(undefined);
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    act(() => {
+      (lastGrid().onAssignMaterial as (m: string, f: number) => void)('twine', 3);
+    });
+    const last = materialModalCalls[materialModalCalls.length - 1];
+    // mainRosterPlayers[0] is Alice (p1) — identity against the wizard's own
+    // `players` prop, which is also fed `mainRosterPlayers`.
+    expect(last.suggestedPlayer).toBe((wizardCalls[wizardCalls.length - 1].players as SnapshotPlayer[])[0]);
+  });
+
+  it('onEditMaterial opens the EDIT door with the FULL roster, not mainRosterPlayers (§5(a))', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    const entry = makeMaterialEntry({ id: 99 });
+    act(() => {
+      (lastGrid().onEditMaterial as (e: MaterialLogEntry) => void)(entry);
+    });
+    const last = materialModalCalls[materialModalCalls.length - 1];
+    expect(last.editEntry).toBe(entry);
+    expect(last.floors).toEqual(['M9S', 'M10S', 'M11S', 'M12S']);
+    // FULL roster — the entry's recipient may be a substitute — pinned on
+    // identity against the fixture containing one (RecipientPicker also gets
+    // the unfiltered `players`, so this is the same array reference).
+    expect(last.allPlayers).toBe(pickerCalls[pickerCalls.length - 1].players);
+    expect((last.allPlayers as SnapshotPlayer[]).map((p) => p.id)).toEqual(['p1', 'p2', 's1']);
   });
 });
 

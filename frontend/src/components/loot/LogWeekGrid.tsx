@@ -23,15 +23,18 @@
  * legacy `WeeklyLootGrid` is a div/flex layout with no header row at all;
  * this file is a re-expression, never a transcription — reference-only,
  * never imported from). Each floor's `<thead>` row leads with a visually
- * blank, unscoped `<th>` — a pure column-alignment filler so the `<tbody>`
- * row's leading `<th scope="row">Loot</th>` lines up under it; it describes
- * no column of data, so it takes no `scope` and is excluded from the "column
- * count" the per-floor gear+material `<th scope="col">` count is measured
- * against (F1 4 · F2 5 · F3 4 · F4 1, tested against the loot table shape,
- * not this filler). It carries an `sr-only` "Recipient" name — nothing to
- * show sighted users (there's no second axis label to give it), but
- * `jsx-a11y/control-has-associated-label` wants every header cell to
- * announce something to assistive tech.
+ * blank `<td>` — a pure column-alignment filler so the `<tbody>` row's
+ * leading `<th scope="row">Loot</th>` lines up under it; it describes no
+ * column of data, so it takes no `scope` (or any header semantics at all —
+ * it is deliberately a `<td>`, not a `<th>`, the conventional blank-corner
+ * pattern) and is excluded from the "column count" the per-floor
+ * gear+material `<th scope="col">` count is measured against (F1 4 · F2 5 ·
+ * F3 4 · F4 1, tested against the loot table shape, not this filler). An
+ * earlier draft carried a `<th>` with an sr-only "Recipient" name to satisfy
+ * `jsx-a11y/control-has-associated-label`; review caught that a header cell
+ * here gives AT no real column to describe, and browser heuristics resolve
+ * it against the `<tbody>` row's OWN header ("Loot") instead — a false
+ * label. The plain `<td>` needs no such name because it isn't a header.
  *
  * Column-header content: gear headers pair `GearSlotIcon` (decorative,
  * unlabeled — the header ALSO spells the slot name, so a `label` would
@@ -51,7 +54,7 @@
  * Cell body: `RecipientBadge` (file-local) — role-tinted per `roleVar`
  * (`NeedMatrix.tsx:46`'s pattern), `JobIcon` + name, `min-h-7` reserved on
  * its wrapper so empty↔filled never shifts row height (legacy's fixed-28px
- * rationale, `WeeklyLootGrid.tsx:374-376`, re-expressed as `h-7`). An unknown
+ * rationale, `WeeklyLootGrid.tsx:374-376`, re-expressed as `min-h-7`). An unknown
  * `recipientPlayerId` (player left the roster) falls back to
  * `entry.recipientPlayerName` in `var(--color-text-secondary)`, no job icon —
  * the record survives the player. A second+ entry adds a STATIC `×N` text
@@ -222,7 +225,7 @@ function FloorSection({
   return (
     <div className={isFirst ? '' : 'border-t border-border-default'}>
       <div
-        className={`flex items-center gap-2 border-b border-border-default bg-surface-base px-4 py-3 ${FLOOR_ACCENT_CLASS[floorNumber]}`}
+        className={`flex items-center gap-3 border-b border-border-default bg-surface-base px-4 py-3 ${FLOOR_ACCENT_CLASS[floorNumber]}`}
       >
         {hasDutyName && <Tag variant="label" tone="muted">{floorName}</Tag>}
         <span className={`font-display text-sm font-bold ${FLOOR_TEXT_CLASS[floorNumber]}`}>Floor {floorNumber}</span>
@@ -235,11 +238,12 @@ function FloorSection({
           </caption>
           <thead>
             <tr>
-              {/* Column-alignment filler above the "Loot" row header — see the file header
-                  note on the corner cell. Visually blank (nothing to label — the row below
-                  only ever reads "Loot"), but jsx-a11y/control-has-associated-label wants
-                  every header cell to announce something, so it carries an sr-only name. */}
-              <th className="px-3 py-2"><span className="sr-only">Recipient</span></th>
+              {/* Column-alignment filler above the "Loot" row header — a conventional
+                  blank corner cell (`<td>`, not `<th>`): a header cell here would give
+                  AT no real column to describe (browser heuristics resolve it against
+                  the ROW header below, "Loot" — a false label), so it stays a plain,
+                  unlabeled `<td>` instead of reaching for an sr-only name to satisfy it. */}
+              <td className="px-3 py-2" />
               {gearCells.map((cell) => (
                 <th key={cell.slot} scope="col" className="px-3 py-2 text-left text-xs font-medium text-text-muted">
                   <span className="inline-flex items-center gap-1">

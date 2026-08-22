@@ -10,7 +10,7 @@
  * transparent record (History).
  *
  * Boundary discipline (ring0): composes `loot/` siblings (LootToolbar /
- * WeekScopeControl / FloorCard / LogEmptyState / RecipientPicker /
+ * WeekScopeControl / FloorCard / LogWeekGrid / RecipientPicker /
  * WeaponPriorityBridge / LootAdjustmentsModal / LogWeekWizard /
  * QuickLogMaterialModal / LootResetMenu / FairnessSummary / BookLedgerCard /
  * LootHistoryTable / HistoryFilters) + shared `ui/` (SegmentedToggle) + the
@@ -86,14 +86,16 @@
  *     default to all/all/all), so an `?entry=` deep-link can never be hidden by
  *     a filter on first mount; only a mid-session filter change can hide a row,
  *     which is acceptable.
- *   - D4 interims, so a reader doesn't mistake a stub for a gap: Log's body is
- *     `LogEmptyState` (the weekly grid is D5); the Books card and a
- *     displayed-week-bound reset menu are D7. "Log material" on Log — D4's
- *     other named gap — shipped in D8 (the toolbar's free-form door, below).
+ *   - D4/D5 interims, so a reader doesn't mistake a stub for a gap: Log's body
+ *     is `LogWeekGrid` (D5) — four floor sections, one cell per gear/material
+ *     slot, wired below. Still open: the Books card and a displayed-week-bound
+ *     reset menu are D7; Log's `?entry=` highlight is D6/D11; a count bar/
+ *     legend above the grid is D6. "Log material" on Log — D4's other named
+ *     gap — shipped in D8 (the toolbar's free-form door, below).
  *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
  *     mounted on History here, and `LootResetMenu` stays bound to
- *     `clock.currentWeek`. Log has no `?entry=` highlight yet (D6/D11) — a
- *     `week` param on Log positions the week and nothing more.
+ *     `clock.currentWeek`. A `week` param on Log positions the displayed week
+ *     and nothing more (until D6/D11 land the highlight).
  *   - The Priority sub-view (Queues⇄Who Needs It⇄Weapons) persists per user
  *     under `v2-loot-priority-view` (R-1) — NOT URL-backed. Who Needs It is
  *     the landing view (R-1); an unset/unrecognized stored value (including a
@@ -120,7 +122,8 @@ import { PageHeader } from '../layout/PageHeader';
 import { LootToolbar } from './LootToolbar';
 import { WeekScopeControl } from './WeekScopeControl';
 import { FloorCard } from './FloorCard';
-import { LogEmptyState } from './LogEmptyState';
+import { LogWeekGrid } from './LogWeekGrid';
+import { suggestedMaterialRecipient } from './materialSuggestion';
 import { NeedMatrix } from './NeedMatrix';
 import { WeaponPriorityBridge } from './WeaponPriorityBridge';
 import { RecipientPicker, type DropItemContext } from './RecipientPicker';
@@ -164,6 +167,7 @@ import {
 } from '../../gamedata/loot-tables';
 import type {
   PageMode, SnapshotPlayer, StaticGroup, TierSnapshot, MaterialType, GearSlot, LootLogEntry,
+  MaterialLogEntry,
 } from '../../types';
 
 const logger = baseLogger.scope('loot');
@@ -254,10 +258,14 @@ type PickerState =
   | null;
 // D8 Task 7: the free-form door joins the pinned cell door — both discriminated on `mode` so a
 // cell-derived open always carries its `material`/`floorName`/`suggested` and a free-form open
-// carries none of them (mirrors PickerState's discriminated-union precedent above).
+// carries none of them (mirrors PickerState's discriminated-union precedent above). D5 adds the
+// `edit` arm (R-21) alongside `allowSubs?: boolean` on the cell arm (R-D5a) — ONLY the Log grid's
+// door sets it; the matrix/FloorCard cell doors below keep R-a's mainRosterPlayers inheritance by
+// simply never setting it (undefined, not false — the modal's own type treats it as an opt-in).
 type MaterialState =
-  | { mode: 'cell'; material: MaterialType; floorName: string; suggested: SnapshotPlayer }
+  | { mode: 'cell'; material: MaterialType; floorName: string; suggested: SnapshotPlayer; allowSubs?: boolean }
   | { mode: 'freeform' }
+  | { mode: 'edit'; editEntry: MaterialLogEntry }
   | null;
 
 const HISTORY_SUBTITLE = 'Every drop, who received it, and why — the transparent record';
@@ -724,9 +732,37 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           />
         </div>
       ) : lview === 'log' ? (
-        // D4 interim: the tab is real (it owns the week and hosts the week
-        // control) but its body is a placeholder — the weekly grid is D5.
-        <LogEmptyState />
+        <LogWeekGrid
+          floors={floors}
+          week={logWeek.week}
+          lootLog={lootLog}
+          materialLog={materialLog}
+          players={players}
+          canEdit={canEdit}
+          canAssignMaterial={mainRosterPlayers.length > 0}
+          onAssignGear={(item) =>
+            setPickerState({
+              mode: 'assign',
+              item: { ...item, floorName: floors[item.floorNumber - 1] ?? `Floor ${item.floorNumber}` },
+            })}
+          onEditGear={(entry) => setPickerState({ mode: 'edit', editEntry: entry })}
+          onAssignMaterial={(material, floorNumber) => {
+            // R-D5c (user-ruled): the suggestion is CLOCK-week priority — "who is
+            // up next now" — even when back-logging; the write itself targets the
+            // displayed week (initialWeek).
+            const suggested = suggestedMaterialRecipient({
+              material, players: mainRosterPlayers, settings, lootLog, materialLog,
+              currentWeek: clock.currentWeek,
+            }) ?? mainRosterPlayers[0];
+            if (!suggested) return; // unreachable behind canAssignMaterial — TS narrowing only
+            setMaterialState({
+              mode: 'cell', material,
+              floorName: floors[floorNumber - 1] ?? `Floor ${floorNumber}`, suggested,
+              allowSubs: true /* R-D5a: the grid door reaches subs */,
+            });
+          }}
+          onEditMaterial={(entry) => setMaterialState({ mode: 'edit', editEntry: entry })}
+        />
       ) : priorityView === 'who-needs-it' ? (
         <NeedMatrix
           players={mainRosterPlayers}
@@ -858,10 +894,32 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           initialWeek={writeWeek}
           /* M4: every v2 write targets writeWeek */
           suggestedPlayer={materialState.suggested}
-          allPlayers={mainRosterPlayers}
+          // R-D5a: the rider only ever reaches this door via the Log grid's
+          // `onAssignMaterial` above (allowSubs: true) — the matrix/FloorCard
+          // cell doors below never set it, so `allPlayers` stays on
+          // `mainRosterPlayers` for them (R-a preserved).
+          allowSubs={materialState.allowSubs}
+          allPlayers={materialState.allowSubs ? players : mainRosterPlayers}
           settings={settings}
           showNotes
           /* R-26: v2's cell door gains notes; V1's door passes neither prop */
+          onSuccess={refresh}
+        />
+      )}
+      {materialState?.mode === 'edit' && (
+        <QuickLogMaterialModal
+          isOpen
+          onClose={() => setMaterialState(null)}
+          groupId={group.id}
+          tierId={tier.tierId}
+          floors={floors}
+          editEntry={materialState.editEntry}
+          maxWeek={clock.maxWeek}
+          allPlayers={players}
+          /* §5(a): FULL roster — the entry's recipient may be a substitute, and
+             the "Include substitutes" checkbox widens from here. §5(b)'s
+             mid-edit identity churn is neutralized modal-side (Task 1). */
+          settings={settings}
           onSuccess={refresh}
         />
       )}
