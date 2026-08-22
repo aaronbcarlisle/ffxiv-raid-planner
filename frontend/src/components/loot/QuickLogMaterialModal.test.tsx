@@ -1286,3 +1286,194 @@ describe('pinned + showNotes submit (D8 Task 7)', () => {
     expect(data.notes).toBe('got it from FC chest');
   });
 });
+
+// D5 Task 1 (phase-d5-grid-chassis, §5 mount obligations + R-D5a): D5 is about to mount the
+// edit door on a Log-grid cell for the first time. Two mount-obligation defects had to be fixed
+// FIRST so that mount lands on a working modal:
+//   (d) lazy edit-mode initializers — the first render used to show free-form defaults (floor 2
+//       / glaze / week=maxWeek / method=drop), corrected only a tick later by the reset effect.
+//   (b) once-per-open rehydration — the old reset effect re-ran on ANY `allPlayers`/`editEntry`
+//       identity churn (e.g. a background fetchTier refresh), silently snapping an in-progress
+//       edit (typed note, changed week, picked slot) back to the entry's recorded values.
+// Plus R-D5a (user-ruled 2026-08-22): an `allowSubs` opt-in on the PINNED branch so D5's
+// Log-grid cell door can widen the recipient pool to substitutes the same way free-form/edit
+// already can — off by default, so V1's door and the matrix/queues cell doors are unaffected.
+//
+// (d)'s assertions need to observe the FIRST commit's props, before the rehydration effect has
+// had a chance to correct anything — RTL's `render()` is `act()`-wrapped and flushes passive
+// effects synchronously, so a post-render DOM assert only ever sees the corrected state
+// (director F-2). Props-recording passthrough mocks solve this: `NumberInput`/`Tag` are wrapped
+// via JSX (neither calls a DOM-id-generating hook, so this can't perturb any OTHER test's
+// rendered `id` attributes); `RadioGroup` is wrapped via a plain function CALL, not JSX —
+// `RadioGroup` calls `useId()` internally, and a JSX wrapper would insert an extra Fiber
+// between it and its caller, which could change the id React generates (embedded as literal
+// `id`/`htmlFor` DOM attributes the frozen 'V1 freeze baseline' snapshots pin). A plain call
+// keeps this mock's fiber the one React runs `RadioGroup`'s hooks against, so the id sequence —
+// and the DOM — stay byte-identical for every test in this file, including the ones above this
+// point. Every wrapper is a pure passthrough (renders the real component, unchanged), so no
+// existing snapshot's HTML changes; only these NEW tests read the recording arrays.
+const recordedWeekValues: (number | null)[] = [];
+const recordedPressedFloorTones: string[] = [];
+const recordedPressedMaterialTones: string[] = [];
+const recordedMethodValues: string[] = [];
+
+vi.mock('../ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../ui')>();
+  return {
+    ...actual,
+    NumberInput: (props: React.ComponentProps<typeof actual.NumberInput>) => {
+      recordedWeekValues.push(props.value);
+      return <actual.NumberInput {...props} />;
+    },
+    Tag: (props: React.ComponentProps<typeof actual.Tag>) => {
+      if (props.variant === 'filter' && props.pressed) {
+        const tone = String(props.tone ?? '');
+        if (tone.startsWith('floor-')) recordedPressedFloorTones.push(tone);
+        else if (tone.startsWith('material-')) recordedPressedMaterialTones.push(tone);
+      }
+      return <actual.Tag {...props} />;
+    },
+    RadioGroup: (props: React.ComponentProps<typeof actual.RadioGroup>) => {
+      recordedMethodValues.push(props.value);
+      return actual.RadioGroup(props);
+    },
+  };
+});
+
+describe('D5 §5 mount obligations — edit-door stability', () => {
+  const D5_FLOORS = ['M9S', 'M10S', 'M11S', 'M12S'];
+
+  function makeMaterialEntry(overrides: Partial<MaterialLogEntry> = {}): MaterialLogEntry {
+    return {
+      id: 1,
+      tierSnapshotId: 't1',
+      weekNumber: 2,
+      floor: 'M11S',
+      materialType: 'twine',
+      recipientPlayerId: 'p1',
+      recipientPlayerName: 'Test Player',
+      method: 'drop',
+      slotAugmented: null,
+      notes: '',
+      createdAt: '2026-01-09T00:00:00Z',
+      createdByUserId: 'u1',
+      createdByUsername: 'Lead',
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    recordedWeekValues.length = 0;
+    recordedPressedFloorTones.length = 0;
+    recordedPressedMaterialTones.length = 0;
+    recordedMethodValues.length = 0;
+  });
+
+  describe('(b) once-per-open rehydration', () => {
+    it('preserves an in-progress edit when allPlayers identity churns', async () => {
+      const entry = makeMaterialEntry({ id: 7, materialType: 'twine', weekNumber: 2, notes: '' });
+      const players = [makePlayer({ id: 'p1' }), makePlayer({ id: 'p2' })];
+      const { rerender } = render(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={players} />,
+      );
+      fireEvent.change(screen.getByLabelText(/notes/i), { target: { value: 'split with alt' } });
+      // background fetchTier: same content, NEW array + object identities.
+      rerender(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={{ ...entry }} maxWeek={4}
+          allPlayers={players.map((p) => ({ ...p }))} />,
+      );
+      expect(screen.getByLabelText(/notes/i)).toHaveValue('split with alt');
+    });
+
+    it('rehydrates when a DIFFERENT entry (new id) opens on a persistent mount', () => {
+      // Sibling of the test above: proves the guard is keyed on entry id, not "never re-seed
+      // after the first open" — a genuinely different entry opening on the same mount must
+      // still seed fresh from ITS OWN recorded values.
+      const entryA = makeMaterialEntry({ id: 10, weekNumber: 2, notes: 'first entry' });
+      const players = [makePlayer({ id: 'p1' })];
+      const { rerender } = render(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entryA} maxWeek={5} allPlayers={players} />,
+      );
+      expect(screen.getByLabelText(/notes/i)).toHaveValue('first entry');
+
+      const entryB = makeMaterialEntry({ id: 11, weekNumber: 3, notes: 'second entry' });
+      rerender(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entryB} maxWeek={5} allPlayers={players} />,
+      );
+      expect(screen.getByLabelText(/notes/i)).toHaveValue('second entry');
+      expect(screen.getByRole('spinbutton')).toHaveValue(3);
+    });
+
+    it('reseeds for the SAME entry after the modal is closed and reopened (discards an in-progress edit)', () => {
+      const entry = makeMaterialEntry({ id: 20, notes: 'original' });
+      const players = [makePlayer({ id: 'p1' })];
+      const { rerender } = render(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={players} />,
+      );
+      fireEvent.change(screen.getByLabelText(/notes/i), { target: { value: 'unsaved edit' } });
+
+      rerender(
+        <QuickLogMaterialModal isOpen={false} onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={players} />,
+      );
+      rerender(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={players} />,
+      );
+      expect(screen.getByLabelText(/notes/i)).toHaveValue('original');
+    });
+  });
+
+  describe('(d) first frame is entry-seeded, not free-form-default', () => {
+    it('seeds the week, floor pill, material pill, and method from the entry on the FIRST render, not via the effect', () => {
+      const entry = makeMaterialEntry({
+        id: 8, floor: 'M11S', materialType: 'solvent', weekNumber: 3, method: 'purchase',
+      });
+      render(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={[makePlayer({ id: 'p1' })]} />,
+      );
+
+      // pre-fix: 4 (maxWeek) on render #1, corrected to 3 only by the rehydration effect.
+      expect(recordedWeekValues[0]).toBe(3);
+      // pre-fix: 'floor-2' (DEFAULT_FREEFORM_FLOOR) on render #1 — M11S is floor 3.
+      expect(recordedPressedFloorTones[0]).toBe('floor-3');
+      // pre-fix: 'material-glaze' (DEFAULT_FREEFORM_MATERIAL) on render #1.
+      expect(recordedPressedMaterialTones[0]).toBe('material-solvent');
+      // pre-fix: 'drop' (hardcoded default) on render #1.
+      expect(recordedMethodValues[0]).toBe('purchase');
+    });
+  });
+
+  describe('(R-D5a) allowSubs on the pinned door', () => {
+    it('pinned + allowSubs renders "Include substitutes"; checking it widens the recipient Select to subs', () => {
+      const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+      const sub = makePlayer({ id: 'p9', name: 'Sam', isSubstitute: true });
+      renderModal({ material: 'glaze', suggestedPlayer: p1, allPlayers: [p1, sub], allowSubs: true });
+
+      expect(screen.getByText('Include substitutes')).toBeInTheDocument();
+
+      // Off by default (same as free-form/edit): the sub is absent until checked.
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      expect(screen.queryByRole('option', { name: new RegExp(sub.name) })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(p1.name) })); // close, p1 stays picked
+
+      fireEvent.click(checkboxByLabelText('Include substitutes'));
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(sub.name) }));
+      expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(sub.name);
+    });
+
+    it('pinned WITHOUT allowSubs renders no "Include substitutes" checkbox (R-a preserved)', () => {
+      const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+      renderModal({ material: 'glaze', suggestedPlayer: p1, allPlayers: [p1] });
+
+      expect(screen.queryByText('Include substitutes')).not.toBeInTheDocument();
+    });
+  });
+});

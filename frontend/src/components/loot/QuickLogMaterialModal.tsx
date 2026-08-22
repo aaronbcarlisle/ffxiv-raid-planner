@@ -57,6 +57,11 @@ export type QuickLogMaterialModalProps = QuickLogMaterialModalBaseProps & (
       /** D8, v2-only: initial week (R-20 coherence; D5's Log cells need it on this door).
        *  Absent → maxWeek, exactly the pre-D8 default — V1 never passes it. */
       initialWeek?: number;
+      /** R-D5a, v2-only: widen `eligiblePlayers` to include substitutes (behind the
+       *  "Include substitutes" checkbox, same as free-form/edit) on the pinned door. D5's
+       *  Log-grid cell door is its one consumer. Absent (undefined) → V1's door and the
+       *  matrix/queues cell doors keep the main-roster-only filter exactly as today (R-a). */
+      allowSubs?: boolean;
       floors?: never; editEntry?: never;
     }
   | {
@@ -65,6 +70,7 @@ export type QuickLogMaterialModalProps = QuickLogMaterialModalBaseProps & (
       /** R-20: the write targets the displayed week (Loot's `writeWeek`). Required — explicit. */
       initialWeek: number;
       floor?: never; material?: never; suggestedPlayer?: never; showNotes?: never; editEntry?: never;
+      allowSubs?: never;
     }
   | {
       /** Edit — R-21. Selectors + notes render; submit reconciles old-vs-new. */
@@ -72,6 +78,7 @@ export type QuickLogMaterialModalProps = QuickLogMaterialModalBaseProps & (
       editEntry: MaterialLogEntry;
       /** No initialWeek: the week comes from the entry. */
       floor?: never; material?: never; suggestedPlayer?: never; showNotes?: never; initialWeek?: never;
+      allowSubs?: never;
     }
 );
 
@@ -166,6 +173,25 @@ function editGearSelection(
     return { slot: null, augmentTome: false, updateGear: recipient ? hasTomeWeaponItem(recipient) : false };
   }
   return { ...initialGearSelection(recipient, materialType), updateGear: false };
+}
+
+/** Field seed for edit mode — single source for the mount-time lazy initializers AND the
+ *  reopen-rehydration effect below, so the two paths can't drift (D5 §5(d)). */
+function editEntrySeed(entry: MaterialLogEntry) {
+  // Floor fallback moved VERBATIM from the reset effect — the table-membership test, not a
+  // re-derivation (director F-9: getFloorForUpgradeMaterial only coincidentally agrees with
+  // FLOOR_LOOT_TABLES today; don't create a second source).
+  const parsedFloorNum = parseFloorName(entry.floor);
+  const floorNumber = FLOOR_LOOT_TABLES[parsedFloorNum].upgradeMaterials.includes(entry.materialType)
+    ? parsedFloorNum
+    : getFloorForUpgradeMaterial(entry.materialType)[0];
+  return {
+    floorNumber,
+    material: entry.materialType,
+    week: entry.weekNumber,
+    method: entry.method || 'drop',
+    notes: entry.notes ?? '',
+  } as const;
 }
 
 /** The gear consequence a preview line describes — a display-only mirror of
@@ -274,10 +300,20 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   // Edit-only per the union (`never` on the pinned/free-form branches) — every dereference
   // below only happens where `mode === 'edit'` guarantees it's set.
   const editEntry = props.editEntry;
+  // R-D5a, pinned-only per the union (`never` on free-form/edit) — widens the pinned
+  // `eligiblePlayers` filter and the "Include substitutes" checkbox render gate below.
+  // Undefined for V1's door and the matrix/queues cell doors, so both expressions stay
+  // value-identical to today wherever this isn't D5's Log-grid cell door.
+  const allowSubs = props.allowSubs;
 
   const mode: ModalMode = props.editEntry ? 'edit' : props.floor != null ? 'pinned' : 'freeform';
-  const [pickedFloorNumber, setPickedFloorNumber] = useState<FloorNumber>(DEFAULT_FREEFORM_FLOOR);
-  const [pickedMaterial, setPickedMaterial] = useState<MaterialType>(DEFAULT_FREEFORM_MATERIAL);
+  // D5 §5(d): lazy-branch on edit mode so the FIRST render already shows the entry's floor/
+  // material pill pressed, not the free-form defaults corrected only by the rehydration effect
+  // below — `editEntrySeed` is the single source both this initializer and that effect read.
+  const [pickedFloorNumber, setPickedFloorNumber] = useState<FloorNumber>(() =>
+    mode === 'edit' ? editEntrySeed(editEntry!).floorNumber : DEFAULT_FREEFORM_FLOOR);
+  const [pickedMaterial, setPickedMaterial] = useState<MaterialType>(() =>
+    mode === 'edit' ? editEntrySeed(editEntry!).material : DEFAULT_FREEFORM_MATERIAL);
   // `props.floors` is `string[] | undefined` in general (unnarrowed) union access; `?? []`
   // resolves it to `string[]` without needing a cast (only meaningful when mode !== 'pinned').
   const freeformFloors = props.floors ?? [];
@@ -307,16 +343,32 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     const ranked = rankRecipients(initialEligible, DEFAULT_FREEFORM_MATERIAL, settings, materialLog);
     return ranked[0]?.player.id ?? '';
   });
-  const [selectedWeek, setSelectedWeek] = useState(props.initialWeek ?? maxWeek);
-  const [method, setMethod] = useState<LootMethod>('drop');
+  // D5 §5(d): each lazy-branches on edit mode via `editEntrySeed`/`editGearSelection` — the
+  // non-edit arm is exactly today's value, so free-form/pinned first renders are unchanged.
+  const [selectedWeek, setSelectedWeek] = useState(() =>
+    mode === 'edit' ? editEntrySeed(editEntry!).week : (props.initialWeek ?? maxWeek));
+  const [method, setMethod] = useState<LootMethod>(() =>
+    mode === 'edit' ? editEntrySeed(editEntry!).method : 'drop');
   const [isSaving, setIsSaving] = useState(false);
-  const [updateGear, setUpdateGear] = useState(true);
-  // R-a/D-37 subs widening: off by default, reset whenever the modal opens (below).
-  const [includeSubs, setIncludeSubs] = useState(false);
+  const [updateGear, setUpdateGear] = useState(() =>
+    mode === 'edit'
+      ? editGearSelection(
+          editEntry!.materialType,
+          editEntry!.slotAugmented,
+          allPlayers.find((p) => p.id === editEntry!.recipientPlayerId)
+        ).updateGear
+      : true);
+  // R-a/D-37 subs widening: off by default (free-form/pinned), reset whenever the modal opens
+  // (below). Edit mode seeds it from the entry's recipient — legacy precedent
+  // `LogMaterialModal.tsx:218` — a sub's entry still shows its (sub) recipient on frame 1.
+  const [includeSubs, setIncludeSubs] = useState(() =>
+    mode === 'edit'
+      ? (allPlayers.find((p) => p.id === editEntry!.recipientPlayerId)?.isSubstitute ?? false)
+      : false);
   // D8 Task 4, R-26: notes field — v2-only render (pinned's `showNotes` door + free-form,
   // always). Reset on open in BOTH mode-specific effects below for state hygiene, even though
   // pinned's reset is V1-invisible (V1 never renders the field).
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(() => (mode === 'edit' ? editEntrySeed(editEntry!).notes : ''));
   // Never clobbers a manual recipient pick; only a material change resets it (D8 3B).
   const userPickedRecipient = useRef(false);
   // Compute initial slot selection BEFORE first render using lazy initializer
@@ -447,25 +499,27 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     if (isOpen) setIncludeSubs(false);
   }, [isOpen]);
 
-  // Reset state when modal opens (edit, R-21) — declared AFTER the subs-widening reset above so
-  // its own `setIncludeSubs` call (sub recipient -> checked, legacy `:218`) wins the same commit.
+  // D5 §5(b): rehydrate once per open (or when a DIFFERENT entry opens on a persistent mount —
+  // keyed by entry id) — NEVER on an `allPlayers`/`editEntry` identity churn mid-edit (e.g. a
+  // background `fetchTier` refresh), which used to re-apply the entry over the user's
+  // in-progress edits (typed note, changed week, picked slot — a silent snap-back). `allPlayers`
+  // stays in the dep array for the lint rule; the seed guard below makes it inert once seeded.
+  // Declared AFTER the subs-widening reset above so its own `setIncludeSubs` call (sub
+  // recipient -> checked, legacy `:218`) wins the same commit.
+  const seededForRef = useRef<number | null>(null);
   useEffect(() => {
-    if (mode !== 'edit' || !isOpen) return;
+    if (mode !== 'edit' || !isOpen) { seededForRef.current = null; return; }
+    if (seededForRef.current === editEntry!.id) return;
+    seededForRef.current = editEntry!.id;
     const entry = editEntry!;
+    const seed = editEntrySeed(entry);
 
-    // Floor (director m4): parse the entry's floor name, but fall back to the material's own
-    // home floor when the parsed floor's table doesn't carry that material (parse fallback = 1;
-    // floors 1/4 never carry materials) — never leaves an empty pill row with nothing pressed.
-    const parsedFloorNum = parseFloorName(entry.floor);
-    const floorNum = FLOOR_LOOT_TABLES[parsedFloorNum].upgradeMaterials.includes(entry.materialType)
-      ? parsedFloorNum
-      : getFloorForUpgradeMaterial(entry.materialType)[0];
-    setPickedFloorNumber(floorNum);
-    setPickedMaterial(entry.materialType);
+    setPickedFloorNumber(seed.floorNumber);
+    setPickedMaterial(seed.material);
     setRecipientPlayerId(entry.recipientPlayerId);
-    setSelectedWeek(entry.weekNumber);
-    setMethod(entry.method || 'drop');
-    setNotes(entry.notes ?? '');
+    setSelectedWeek(seed.week);
+    setMethod(seed.method);
+    setNotes(seed.notes);
 
     const recipient = allPlayers.find((p) => p.id === entry.recipientPlayerId);
     // A sub's entry still shows its (sub) recipient — legacy precedent `LogMaterialModal.tsx:218`.
@@ -586,14 +640,16 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   };
 
   // Filter to configured players. Pinned keeps the original main-roster-only filter verbatim
-  // (subs can only be logged via Loot Log tab); non-pinned modes widen it (R-a/D-37) via the
-  // "Include substitutes" checkbox.
+  // (subs can only be logged via Loot Log tab) UNLESS R-D5a's `allowSubs` opts it into the same
+  // "Include substitutes" widening non-pinned modes already have (D5's Log-grid cell door is
+  // its one consumer — `allowSubs` undefined everywhere else keeps this branch value-identical
+  // to before).
   const eligiblePlayers = useMemo(() =>
     allPlayers.filter((p) => mode === 'pinned'
-      ? (p.configured && !p.isSubstitute)
+      ? (p.configured && (allowSubs ? (includeSubs || !p.isSubstitute) : !p.isSubstitute))
       : (p.configured && (includeSubs || !p.isSubstitute))
     ),
-    [allPlayers, mode, includeSubs]
+    [allPlayers, mode, includeSubs, allowSubs]
   );
   const selectedPlayer = allPlayers.find((p) => p.id === recipientPlayerId);
 
@@ -730,13 +786,13 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
 
         {/* Recipient selection */}
         <div>
-          {mode === 'pinned' ? (
-            <Label htmlFor="recipient">Recipient</Label>
-          ) : (
+          {mode !== 'pinned' || allowSubs ? (
             <div className="flex items-center justify-between">
               <Label htmlFor="recipient">Recipient</Label>
               <Checkbox checked={includeSubs} onChange={setIncludeSubs} label="Include substitutes" className="text-xs" />
             </div>
+          ) : (
+            <Label htmlFor="recipient">Recipient</Label>
           )}
           <Select
             id="recipient"
