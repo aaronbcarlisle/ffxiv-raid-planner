@@ -198,6 +198,51 @@ describe('NeedMatrix', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 
+  it('V1-style gear cells: needer cells carry a role-colored ring (2px) + role-tint fill, per role — tank and melee', () => {
+    renderMatrix();
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    const cells = ringRow.querySelectorAll('td');
+    // Sorted order T1, H1, M1 — T1 (tank) and M1 (melee) both need Ring; H1 doesn't.
+    const tankDot = cells[0].querySelector('span[aria-hidden]') as HTMLElement;
+    const meleeDot = cells[2].querySelector('span[aria-hidden]') as HTMLElement;
+    expect(tankDot.className).toContain('border-2');
+    expect(tankDot.getAttribute('style')).toContain('--color-role-tank');
+    expect(tankDot.style.backgroundColor).toContain('color-mix');
+    expect(tankDot.style.backgroundColor).toContain('--color-role-tank');
+    expect(meleeDot.getAttribute('style')).toContain('--color-role-melee');
+    expect(meleeDot.style.backgroundColor).toContain('color-mix');
+    expect(meleeDot.style.backgroundColor).toContain('--color-role-melee');
+  });
+
+  it('non-needer gear cells render the neutral empty treatment, not a role-colored dot', () => {
+    renderMatrix();
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    const cells = ringRow.querySelectorAll('td');
+    // H1 (index 1) has both rings — doesn't need Ring.
+    const emptyDot = cells[1].querySelector('span[aria-hidden]') as HTMLElement;
+    expect(emptyDot.className).toContain('border-border-subtle');
+    expect(emptyDot.getAttribute('style')).toBeFalsy();
+  });
+
+  it('read-only mode: needer cells still carry the role-colored dot but render no button (non-interactive)', () => {
+    renderMatrix({ canEdit: false });
+    const ringRow = screen.getByText('Ring').closest('tr') as HTMLElement;
+    const cells = ringRow.querySelectorAll('td');
+    const tankDot = cells[0].querySelector('span[aria-hidden]') as HTMLElement;
+    expect(tankDot.getAttribute('style')).toContain('--color-role-tank');
+    expect(within(cells[0] as HTMLElement).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('material cells unchanged: progress ring still renders as a conic-gradient, not the ring-cell treatment', () => {
+    renderMatrix({ canEdit: false });
+    const twineRow = screen.getByText('Twine').closest('tr') as HTMLElement;
+    const cells = twineRow.querySelectorAll('td');
+    const m1Cell = cells[2];
+    const ring = within(m1Cell as HTMLElement).getByText('2').closest('span[aria-hidden]') as HTMLElement;
+    expect(ring.getAttribute('style')).toContain('conic-gradient');
+    expect(ring.className).not.toContain('border-2');
+  });
+
   it('applies the warning tone once needers reach half the roster (ceil), and not below that', () => {
     renderMatrix();
     // Ring: 2 of 3 needers — 2 >= ceil(3/2) = 2 → warning.

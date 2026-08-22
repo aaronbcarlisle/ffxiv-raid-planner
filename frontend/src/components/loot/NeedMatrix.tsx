@@ -35,10 +35,20 @@ export interface NeedMatrixProps {
 /** Role-colored ring, never a fill — mirrors PriorityRow's contrast-safe avatar treatment. */
 const roleVar = (player: SnapshotPlayer) => `var(--color-role-${getValidRole(player.role)}, var(--color-text-muted))`;
 
-/** The needer dot: a role-colored ring around a role-colored center. File-local — one shape, two contexts (live cell + legend sample). */
+/**
+ * The needer dot: a role-colored ring + role-tint fill around a role-colored
+ * center — V1's cell treatment (`WhoNeedsItMatrix.tsx:392-405`: 2px solid
+ * ring, `color-mix(role 30%, transparent)` fill, solid role-colored inner
+ * dot), re-expressed v2-owned. File-local — one shape, two contexts (live
+ * cell + legend sample).
+ */
 function NeedDot({ roleVar: color }: { roleVar: string }) {
   return (
-    <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full border-2 bg-surface-interactive" style={{ borderColor: color }}>
+    <span
+      aria-hidden
+      className="grid h-6 w-6 place-items-center rounded-full border-2"
+      style={{ borderColor: color, backgroundColor: `color-mix(in srgb, ${color} 30%, transparent)` }}
+    >
       <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
     </span>
   );
