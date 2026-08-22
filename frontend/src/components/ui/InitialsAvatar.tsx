@@ -22,7 +22,6 @@ const TEXT_SIZE_CLASS: Record<'sm' | 'xs', string> = {
 const BORDER_WIDTH_CLASS: Record<number, string> = {
   1: 'border',
   2: 'border-2',
-  4: 'border-4',
 };
 
 export interface InitialsAvatarProps {
@@ -39,9 +38,6 @@ export interface InitialsAvatarProps {
    * per-entry accent). Omit and use `className` (e.g. `bg-surface-interactive`)
    * for a static Tailwind-expressible background instead. */
   background?: string;
-  /** Text color — a CSS color/token expression. Omit and use `className`
-   * (e.g. `text-text-secondary`) for a static color instead. */
-  textColor?: string;
   /** Border color — a CSS color/token expression (often a per-role token).
    * Omit for no border. */
   borderColor?: string;
@@ -94,7 +90,6 @@ export function InitialsAvatar({
   initials,
   size,
   background,
-  textColor,
   borderColor,
   borderWidth = 2,
   fontWeight = 'semibold',
@@ -109,7 +104,6 @@ export function InitialsAvatar({
     height: dimension,
     fontWeight: FONT_WEIGHT[fontWeight],
     ...(background !== undefined ? { background } : {}),
-    ...(textColor !== undefined ? { color: textColor } : {}),
     ...(hasBorder
       ? {
           borderColor,

@@ -723,7 +723,6 @@ interface InitialsAvatarProps {
   initials: string;                 // pre-derived text; callers own the derivation
   size: number | string;             // px number, or a CSS length/var() expression
   background?: string;               // CSS color/token expr; omit to use className instead
-  textColor?: string;                // CSS color/token expr; omit to use className instead
   borderColor?: string;              // CSS color/token expr (often per-role); omit for no border
   borderWidth?: number;              // default 2; only applied when borderColor is set
   fontWeight?: 'medium' | 'semibold' | 'bold'; // default 'semibold'

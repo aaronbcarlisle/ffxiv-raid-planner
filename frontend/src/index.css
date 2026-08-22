@@ -231,7 +231,11 @@ body[data-scroll-locked][style] {
   pointer-events: auto !important;
 }
 
-/* Prevent Radix from visually hiding sibling elements when dropdowns open */
+/* Prevent Radix from visually hiding sibling elements when dropdowns open.
+   NOTE: components/ui/InitialsAvatar.tsx relies on the `:not([role="presentation"])`
+   carve-out below to keep its aria-hidden initials glyph flex-centered (this rule's
+   `display: revert !important` otherwise blockifies it and breaks centering
+   app-wide) — don't "simplify" this selector without checking that call site. */
 [data-aria-hidden="true"],
 [aria-hidden="true"]:not([role="presentation"]):not(.sr-only) {
   visibility: visible !important;

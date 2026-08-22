@@ -41,7 +41,7 @@ describe('InitialsAvatar', () => {
     expect(chip.style.height).toBe('var(--nav-item-icon-size, 24px)');
   });
 
-  it('applies background/textColor/border only when passed (leaves className to drive color otherwise)', () => {
+  it('applies background/border only when passed (leaves className to drive color otherwise)', () => {
     const { rerender } = render(<InitialsAvatar initials="X" size={24} />);
     let chip = screen.getByText('X');
     expect(chip.style.background).toBe('');
@@ -53,14 +53,12 @@ describe('InitialsAvatar', () => {
         initials="X"
         size={24}
         background="var(--color-accent-dim)"
-        textColor="var(--color-text-primary)"
         borderColor="var(--color-border-default)"
         borderWidth={1}
       />,
     );
     chip = screen.getByText('X');
     expect(chip.style.background).toBe('var(--color-accent-dim)');
-    expect(chip.style.color).toBe('var(--color-text-primary)');
     expect(chip.style.borderColor).toBe('var(--color-border-default)');
     expect(chip.style.borderStyle).toBe('solid');
     // width=1 maps to the Tailwind `border` class (not an inline borderWidth)
