@@ -64,9 +64,10 @@ governs the first visit; the queues stay one click away for when something actua
 ⚠ **Renamed 2026-08-21 by R-P1.** The switcher segment's label and its persisted value (previously
 `'matrix'`) are both renamed to **Who Needs It** / `'who-needs-it'` — no backwards-compat shim, since
 v2 is pre-release with zero users and the sub-view isn't URL-backed: a stale `'matrix'` value just
-falls through to this same landing default, like any other unrecognized string. Read every bare
-"Matrix" in R-2, R-3, R-4, R-10's second point, R-48 and §2's diagram below as this name.
-**Write-back owed:** those six spots.
+falls through to this same landing default, like any other unrecognized string. Every bare "Matrix"
+below that names this view reads as **Who Needs It**; a short dated pointer sits at each ruling where
+that reading applies — not necessarily an exhaustive list, but currently R-2, R-3, R-4, R-7, R-9,
+R-10, R-12, R-48, R-50.2 and R-50.4, plus §2's diagram.
 
 ### R-2 · Floor scoping is **v1's pill row: All + F1–F4** (D-24)
 
@@ -89,7 +90,8 @@ row. It is a name squatter, not a reusable leaf. Delete or repurpose it when R-2
 view specifically: floor scoping there **highlights, it does not hide** — every row stays mounted,
 rows matching the selected floor get the floor-accent highlight, and every other row dims and has
 its log affordances **disabled**, matching v1's `WhoNeedsItMatrix.tsx:391,480`. Queues and Weapons
-are unchanged — a selected floor still narrows those views the way this ruling always described.
+are unchanged — Queues still narrows per this ruling; Weapons is governed by R-5, which replaces the
+pill row entirely rather than filtering against it.
 Controller ruling R-V4.
 
 ### R-3 · Weapon Priority becomes the **third switcher segment** (D-27)
@@ -154,6 +156,9 @@ to the view, not to a card. One button and one rule; and the Matrix — the land
 can log a floor, which a card-header-only entry would have prevented. Resolves the D-26/D-30
 coupling without creating the two entry points that note warned about.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. "The Matrix — the landing view under R-1"
+reads as **Who Needs It**.
+
 ### R-8 · Entry visual language: **name carries the floor colour, icon stays neutral**
 
 Replacing today's coloured letter squares:
@@ -188,6 +193,10 @@ rather than confetti.
 matrix rows instead **band F4→F1** (Weapon first, matching the Queues stack's newest-first order) —
 **user-ruled 2026-07-30 at the D3 build.** The banding is what makes the kept colours actually read
 as bands rather than confetti; without it R-9's own justification would have been false too.*
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. This ruling's title and every bare "Matrix"
+above, including the lowercase "v2's matrix rows" in the correction paragraph, read as **Who Needs
+It**.
 
 ### R-10 · Default scope is **per view**; an explicit pick is **global** (refines R-2)
 
@@ -243,6 +252,9 @@ has no equivalent — yet R-4 routes a matrix cell into this modal precisely for
 and R-12/R-24 rebuild its body. It is the assign-mode complement of "This will:", so it belongs in the
 same block; without this clause D-36 would be orphaned between two closed phases.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. The two lowercase "matrix cell" mentions
+above (the R-4 path in the *Why:* paragraph, and D-36's routing note) read as **Who Needs It**.
+
 ### R-49 · A solo-scoped floor card never auto-collapses (refines R-10; ruled at D1 build, 2026-07-30)
 
 FloorCard's auto-collapse (a fully-logged week folds the card behind a `Show` link) applies **only
@@ -282,6 +294,10 @@ the picker would should be able to answer "why" with the same completeness — h
 would make the queue's ranking less trustworthy than the picker's, for no reason. The matrix is a grid
 of yes/no cells meant to be scanned at a glance; an explanation essay per dot would defeat that.
 
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. Item 2's "matrix cells stay minimal," "Matrix
+cells keep their plain… tooltip" and "the matrix is a grid of yes/no cells" all read as **Who Needs
+It**.
+
 **3. D-36's hint suppresses the confidence pill when the hint renders; edit mode keeps the pill.**
 `RecipientPicker`'s confidence `Tag` is hidden exactly when the empty-pool hint ("No one needs this
 item for BiS…") is showing, which is create-mode-only.
@@ -300,6 +316,10 @@ stroke-dasharray circles (a different mechanism, required by the jscpd gate agai
 *Why:* the plain number-in-a-ring dot D3 shipped first dropped the progress signal legacy's pie
 carried — a player needing 1 of 3 twine slots and a player needing 1 of 1 read identically. "How much
 is left of how much total" is exactly what a lead scans the matrix for.
+
+⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. Item 4's title ("Matrix material cells keep
+v1's progress-pie treatment") and "a lead scans the matrix for" both read as **Who Needs It**; the
+ruling's substance — the segmented-ring visual, unchanged by R-P2 — stands as written.
 
 ---
 
@@ -1060,7 +1080,7 @@ rationale is corrected accordingly:** the argument for growing `QuickLogMaterial
 `PRODUCT_MODEL.md:201` (one owned component per task), not a false claim that importing legacy is
 forbidden.
 
-⚠ **Renamed 2026-08-21 by R-P1.** Every "Matrix" above, including this ruling's own title, is this
+⚠ **Renamed 2026-08-21 by R-P1.** Every "Matrix" in this ruling, including its own title, is this
 ruling's shorthand for the view this phase built; the user-facing name is now **Who Needs It** (label
 and persisted value both — see R-1's amendment). The **component identifier is unchanged**: v2's file
 is still `NeedMatrix.tsx`, distinct from legacy's frozen `WhoNeedsItMatrix.tsx` — so "v2's Matrix is
