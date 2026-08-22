@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { CommandPalette } from '../components/layout/CommandPalette';
@@ -170,6 +170,17 @@ export function ShellContent() {
 export function NewShell() {
   const gv = useGroupViewState();
   const { searchParams, setSearchParams } = gv;
+  // D5 carry-forward fix: `searchParams` (and therefore `setSearchParams`,
+  // react-router 7.18's `setSearchParams` is `useCallback([navigate,
+  // searchParams])`) get a NEW object identity on EVERY URL write — an
+  // `lview` switch, a `?week=` mirror from useLogWeek, ANY unrelated param.
+  // Depending on either object directly in the tier-selection effect below
+  // (as it used to) means every such write re-runs the whole fetchTiers →
+  // fetchTier → fetchCurrentWeek chain for no reason — the refetch storm D5's
+  // grid multiplies. Reading just the `tier` param as a STRING here gives the
+  // effect a primitive to depend on instead: Object.is-stable across any URL
+  // write that doesn't touch `tier` itself.
+  const urlTierId = searchParams.get('tier');
   const { shareCode } = useParams<{ shareCode: string }>();
   const palette = useModal();
   // Stage-1 req 10: the NotificationCenter is mounted ONCE, app-level, by
@@ -227,6 +238,15 @@ export function NewShell() {
   // v2 dropped recent-statics tracking and per-static tab restore.
   useStaticNavMemory(shareCode);
 
+  // D5 carry-forward fix, leg 2: `setSearchParams` itself churns identity in
+  // lockstep with `searchParams` (see urlTierId comment above) — it can't be
+  // a dep either. Stash it in a ref, updated from its OWN effect every render
+  // (effect-phase write — `react-hooks/refs` bans writing refs during render,
+  // not during an effect) so the tier effect below can call the CURRENT
+  // setter without depending on its identity.
+  const setSearchParamsRef = useRef(setSearchParams);
+  useEffect(() => { setSearchParamsRef.current = setSearchParams; });
+
   // Fetch tiers and load a tier (from URL, localStorage, or active) sequentially.
   useEffect(() => {
     if (!currentGroup?.id) return;
@@ -237,7 +257,6 @@ export function NewShell() {
       if (cancelled) return;
       const { tiers: freshTiers } = useTierStore.getState();
       if (freshTiers.length === 0) return;
-      const urlTierId = searchParams.get('tier');
       const urlTier = urlTierId ? freshTiers.find(t => t.tierId === urlTierId) : null;
       const savedTierId = localStorage.getItem(`selected-tier-${currentGroup.id}`);
       const savedTier = savedTierId ? freshTiers.find(t => t.tierId === savedTierId) : null;
@@ -249,15 +268,24 @@ export function NewShell() {
         // Fetch the current week so the TopBar "Week N" label is correct on cold
         // load, not stuck at the store default of Week 1. (Fix 6, PR #163)
         fetchCurrentWeek(currentGroup.id, activeTier.tierId);
-        setSearchParams(prev => {
-          const params = new URLSearchParams(prev);
-          params.set('tier', activeTier.tierId);
-          return params;
-        }, { replace: true });
+        // D5 carry-forward fix, leg 3: guard the mirror. A cold mount that
+        // already carries the right `?tier=` (urlTierId === activeTier.tierId)
+        // has nothing to write — skipping it removes a redundant `replace`
+        // history entry. Without this, a no-`?tier=` mount would still write
+        // once (unavoidable — that IS the mirror), but a subsequent run
+        // re-observing its own already-correct write would write again for
+        // no reason.
+        if (urlTierId !== activeTier.tierId) {
+          setSearchParamsRef.current(prev => {
+            const params = new URLSearchParams(prev);
+            params.set('tier', activeTier.tierId);
+            return params;
+          }, { replace: true });
+        }
       }
     })();
     return () => { cancelled = true; };
-  }, [currentGroup?.id, fetchTiers, fetchTier, fetchCurrentWeek, searchParams, setSearchParams]);
+  }, [currentGroup?.id, urlTierId, fetchTiers, fetchTier, fetchCurrentWeek]);
 
   // ── v2-scoped mod-K binding ──────────────────────────────────────────────
   // Destructure open so the effect dep-array references the stable callback
