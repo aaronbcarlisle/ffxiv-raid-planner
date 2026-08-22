@@ -137,9 +137,10 @@ function makeLootEntry(overrides: Partial<LootLogEntry> = {}): LootLogEntry {
   };
 }
 
-// D3 landing flip (R-1): Matrix is now the default Priority sub-view. Tests
-// ABOUT Queues/FloorCard/scope behavior seed the pre-D3 view explicitly so
-// their assertions (unchanged) keep exercising the Queues body.
+// D3 landing flip (R-1): Who Needs It (formerly "Matrix") is now the default
+// Priority sub-view. Tests ABOUT Queues/FloorCard/scope behavior seed the
+// pre-D3 view explicitly so their assertions (unchanged) keep exercising the
+// Queues body.
 function seedQueuesView() {
   localStorage.setItem('v2-loot-priority-view', 'queues');
 }
@@ -351,14 +352,14 @@ describe('Loot', () => {
     expect(cards.map((c) => c.getAttribute('data-floor'))).toEqual(['2']);
   });
 
-  it('a stored "matrix" sub-view renders the matrix (R-1: Matrix is a real, persistable segment)', () => {
-    localStorage.setItem('v2-loot-priority-view', 'matrix');
+  it('a stored "who-needs-it" sub-view renders the matrix (R-1: Who Needs It is a real, persistable segment)', () => {
+    localStorage.setItem('v2-loot-priority-view', 'who-needs-it');
     renderLoot({ tier: makeTier(players) });
     expect(screen.getByTestId('need-matrix')).toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
   });
 
-  it('an unrecognized stored sub-view falls back to Matrix, the new landing default (R-1)', () => {
+  it('an unrecognized stored sub-view falls back to Who Needs It, the landing default (R-1)', () => {
     localStorage.setItem('v2-loot-priority-view', 'not-a-real-view');
     renderLoot({ tier: makeTier(players) });
     expect(screen.getByTestId('need-matrix')).toBeInTheDocument();
@@ -366,38 +367,69 @@ describe('Loot', () => {
     expect(screen.queryByTestId('weapon-bridge')).not.toBeInTheDocument();
   });
 
-  it('the Priority-view toggle lists Queues | Matrix | Weapons, in that order', () => {
+  // R-P1: no migration shim — the old 'matrix' value is now just another
+  // unrecognized string, so it self-heals to whatever the current default is.
+  // This assertion alone is vacuity-prone: a mutant that hardcoded
+  // readStoredPriorityView to ALWAYS return the default would also pass it
+  // ('matrix' being unrecognized already trivially agrees with "return the
+  // default" for any input). Its kill-switch is the 'persists the Priority
+  // sub-view ... (R-1)' test below, which clicks Weapons — a RECOGNIZED,
+  // non-default choice — and checks it round-trips to ITS OWN body. That pin
+  // fails under the always-default mutant (a fresh mount would wrongly show
+  // the matrix instead of the weapon bridge), so together the two tests kill
+  // it even though neither would alone.
+  it('a stale "matrix" stored value does not render Queues — it self-heals to the new default (R-P1)', () => {
+    localStorage.setItem('v2-loot-priority-view', 'matrix');
+    renderLoot({ tier: makeTier(players) });
+    expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
+    expect(screen.getByTestId('need-matrix')).toBeInTheDocument();
+  });
+
+  it('the Priority-view toggle lists Queues | Who Needs It | Weapons, in that order', () => {
     renderLoot({ tier: makeTier(players) });
     const toggle = screen.getByRole('group', { name: 'Priority view' });
     const buttons = within(toggle).getAllByRole('button');
-    expect(buttons.map((b) => b.textContent)).toEqual(['Queues', 'Matrix', 'Weapons']);
+    expect(buttons.map((b) => b.textContent)).toEqual(['Queues', 'Who Needs It', 'Weapons']);
   });
 
-  it('stored "queues" renders floor-cards, not the matrix (regression pin)', () => {
+  // Re-points the prior "stored queues renders floor-cards, not the matrix"
+  // regression pin: starts from the same seeded-queues/floor-card assertion,
+  // then extends it into a full round-trip (click → persisted value → fresh
+  // mount reads it back) proving the explicit choice of "who-needs-it"
+  // persists under its own name, not the retired 'matrix' string.
+  it('explicit choice persists as "who-needs-it" (round-trip: click, then a fresh mount reads it back)', () => {
     seedQueuesView();
-    renderLoot({ tier: makeTier(players) });
+    const { unmount } = renderLoot({ tier: makeTier(players) });
     expect(screen.getByTestId('floor-card')).toBeInTheDocument();
     expect(screen.queryByTestId('need-matrix')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Who Needs It' }));
+    expect(localStorage.getItem('v2-loot-priority-view')).toBe('who-needs-it');
+    unmount();
+
+    renderLoot({ tier: makeTier(players) });
+    expect(screen.getByTestId('need-matrix')).toBeInTheDocument();
+    expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
   });
 
-  it('R-10.2: each view opens at its own default — Matrix at All, Queues at the newest in-progress floor', () => {
+  it('R-10.2: each view opens at its own default — Who Needs It at All, Queues at the newest in-progress floor', () => {
     renderLoot({ tier: makeTier(players) });
-    // Matrix (default landing): floorScope 'all' — the whole-tier read is its purpose.
+    // Who Needs It (default landing): floorScope 'all' — the whole-tier read is its purpose.
     expect(matrixCalls[matrixCalls.length - 1].floorScope).toBe('all');
 
     // Switch to Queues — no pill click yet, so ITS OWN per-view default applies:
-    // the newest in-progress floor (fresh tier → Floor 1), not Matrix's 'all'.
+    // the newest in-progress floor (fresh tier → Floor 1), not Who Needs It's 'all'.
     fireEvent.click(screen.getByRole('button', { name: 'Queues' }));
     const cards = screen.getAllByTestId('floor-card');
     expect(cards).toHaveLength(1);
     expect(cards[0].getAttribute('data-floor')).toBe('1');
 
-    // Back to Matrix — its own default reasserts, unaffected by Queues' pick.
-    fireEvent.click(screen.getByRole('button', { name: 'Matrix' }));
+    // Back to Who Needs It — its own default reasserts, unaffected by Queues' pick.
+    fireEvent.click(screen.getByRole('button', { name: 'Who Needs It' }));
     expect(matrixCalls[matrixCalls.length - 1].floorScope).toBe('all');
   });
 
-  it('R-10.3: a pill click while on Matrix is a GLOBAL scope — it carries into Queues too', () => {
+  it('R-10.3: a pill click while on Who Needs It is a GLOBAL scope — it carries into Queues too', () => {
     renderLoot({ tier: makeTier(players) });
     fireEvent.click(screen.getByRole('button', { name: 'M10S' }));
     expect(matrixCalls[matrixCalls.length - 1].floorScope).toBe(2);
@@ -1033,7 +1065,7 @@ describe('Loot — D4 triad + the Log tab week model', () => {
   });
 
   it('targets the displayed week from Log and the clock week everywhere else (R-20 split)', () => {
-    // Queues (not Matrix) so switching back to Priority below renders floor
+    // Queues (not Who Needs It) so switching back to Priority below renders floor
     // cards — needed for the FloorCard invariant assertion further down.
     seedQueuesView();
     // The clock is week 3; the Log is stepped back to week 1.

@@ -94,9 +94,11 @@
  *     mounted on History here, and `LootResetMenu` stays bound to
  *     `clock.currentWeek`. Log has no `?entry=` highlight yet (D6/D11) — a
  *     `week` param on Log positions the week and nothing more.
- *   - The Priority sub-view (Queues⇄Matrix⇄Weapons) persists per user under
- *     `v2-loot-priority-view` (R-1) — NOT URL-backed. Matrix is the landing
- *     view (R-1); an unset/unrecognized stored value lands there too. The
+ *   - The Priority sub-view (Queues⇄Who Needs It⇄Weapons) persists per user
+ *     under `v2-loot-priority-view` (R-1) — NOT URL-backed. Who Needs It is
+ *     the landing view (R-1); an unset/unrecognized stored value (including a
+ *     stale 'matrix' — the view's former name, no migration shim per R-P1)
+ *     lands there too. The
  *     floor scope (R-2/R-10) is session-only state: per-view default until
  *     the first explicit pill click, global after it (R-10.2/R-10.3).
  *   - The book-row highlight (legacy `highlightedBookPlayerId`) is URL-backed in
@@ -170,9 +172,10 @@ const logger = baseLogger.scope('loot');
 const EMPTY_PLAYERS: SnapshotPlayer[] = [];
 
 // ── Priority sub-view (R-1/R-3) ──
-// Matrix is the landing view (R-1) — the whole-tier read is its purpose.
-// Queues/Weapons persist only once the user states an explicit choice.
-type PriorityView = 'queues' | 'matrix' | 'weapons';
+// Who Needs It (renamed from "Matrix") is the landing view (R-1) — the
+// whole-tier read is its purpose. Queues/Weapons persist only once the user
+// states an explicit choice.
+type PriorityView = 'queues' | 'who-needs-it' | 'weapons';
 
 // R-1: the choice "persists per user" → localStorage. Fresh v2 key, no legacy
 // fallback read (plan §2.3 — legacy's `loot-priority-subtab` values don't map).
@@ -185,14 +188,16 @@ const FLOOR_SCOPE_KEY = 'v2-loot-floor-scope';
 // Storage access is guarded: Safari private mode and blocked-storage embeds
 // throw from the accessor itself, and a useState initializer that throws takes
 // the whole screen down (review finding). Degrade to the default instead.
-// R-1: Matrix is the landing view — unset/unknown lands there. 'queues' /
+// R-1: Who Needs It is the landing view — unset/unknown lands there. 'queues' /
 // 'weapons' persist a user's explicit choice (D1 wrote only on user action).
+// R-P1: no migration shim — a stale 'matrix' value (the view's former name)
+// is just another unrecognized string, and self-heals to the default here.
 function readStoredPriorityView(): PriorityView {
   try {
     const v = localStorage.getItem(PRIORITY_VIEW_KEY);
-    return v === 'weapons' || v === 'queues' ? v : 'matrix';
+    return v === 'weapons' || v === 'queues' ? v : 'who-needs-it';
   } catch {
-    return 'matrix';
+    return 'who-needs-it';
   }
 }
 
@@ -334,9 +339,9 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   );
   const queuesLanding = landingScope ?? preSettleScope;
   // R-10.2: until the user states a scope, each view opens at its own default —
-  // Matrix → All (the whole-tier read is its purpose), Queues → the newest
-  // in-progress floor. The first pill click (pickedScope) is global — R-10.3.
-  const floorScope: FloorScope = pickedScope ?? (priorityView === 'matrix' ? 'all' : queuesLanding);
+  // Who Needs It → All (the whole-tier read is its purpose), Queues → the
+  // newest in-progress floor. The first pill click (pickedScope) is global — R-10.3.
+  const floorScope: FloorScope = pickedScope ?? (priorityView === 'who-needs-it' ? 'all' : queuesLanding);
   // R-7: the floor the "Log floor" button acts on. Weapons is pinned to the
   // final floor (R-5 states it); on All the button steps aside for the
   // toolbar's whole-week wizard.
@@ -626,7 +631,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             onChange={changePriorityView}
             options={[
               { value: 'queues', label: 'Queues' },
-              { value: 'matrix', label: 'Matrix' },
+              { value: 'who-needs-it', label: 'Who Needs It' },
               { value: 'weapons', label: 'Weapons' },
             ]}
           />
@@ -720,7 +725,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         // D4 interim: the tab is real (it owns the week and hosts the week
         // control) but its body is a placeholder — the weekly grid is D5.
         <LogEmptyState />
-      ) : priorityView === 'matrix' ? (
+      ) : priorityView === 'who-needs-it' ? (
         <NeedMatrix
           players={mainRosterPlayers}
           floorScope={floorScope}
