@@ -33,7 +33,9 @@
  * second `setSearchParams` call on run 2 (confirmed observable via the
  * `setSearchParamsCalls` spy below) — not reducing this run count, which a
  * local A/B (temporarily removing the `if` guard) confirmed stays ×2 either
- * way. See task-5-report.md for the full trace.
+ * way. See the plan doc's Task 5 section
+ * (`design/redesign/plans/2026-08-22-phase-d5-grid-chassis.md`, the ruled ×2
+ * premise as of commit f43dc84b) for the full trace.
  *
  * Real `react-router-dom` (`MemoryRouter`) drives every URL change here on
  * purpose — the bug and the fix both live in real `useSearchParams`/
@@ -73,6 +75,7 @@ const mocks = vi.hoisted(() => ({
   clearGroupError: vi.fn(),
   fetchCurrentWeek: vi.fn(),
   setSearchParamsCalls: 0,
+  setSearchParamsLastOptions: undefined as { replace?: boolean } | undefined,
 }));
 
 vi.mock('./GroupViewContent', () => ({
@@ -99,7 +102,9 @@ vi.mock('../components/layout/CommandPalette', () => ({ CommandPalette: () => nu
 // final URL value: a guarded vs. unguarded write can produce the SAME final
 // `?tier=` string while differing in how many times setSearchParams actually
 // fired — the "written exactly once" premise needs the call count, not just
-// the settled value, to mean anything.
+// the settled value, to mean anything. The wrapper also captures the call's
+// second argument (the navigate-options object) so a test can assert the
+// mirror write is a `{ replace: true }` history replace, not a push.
 vi.mock('../hooks/useGroupViewState', async () => {
   const { useSearchParams: realUseSearchParams } = await import('react-router-dom');
   const { makeGroupViewStateMock } = await import('./newShellTestScaffold');
@@ -108,6 +113,7 @@ vi.mock('../hooks/useGroupViewState', async () => {
       const [searchParams, realSetSearchParams] = realUseSearchParams();
       const setSearchParams: typeof realSetSearchParams = (...args) => {
         mocks.setSearchParamsCalls += 1;
+        mocks.setSearchParamsLastOptions = args[1];
         return realSetSearchParams(...args);
       };
       return makeGroupViewStateMock({ searchParams, setSearchParams, pageMode: 'overview' });
@@ -183,6 +189,7 @@ beforeEach(() => {
   mocks.clearGroupError.mockReset();
   mocks.fetchCurrentWeek.mockReset();
   mocks.setSearchParamsCalls = 0;
+  mocks.setSearchParamsLastOptions = undefined;
   mocks.fetchTiers.mockImplementation(async () => {
     mocks.tiers = [TIER_M5S, TIER_M6S];
   });
@@ -275,8 +282,10 @@ describe('NewShell tier-selection effect — stable tier identity', () => {
     expect(mocks.fetchCurrentWeek).toHaveBeenCalledTimes(1);
   });
 
-  // NOTE ON THE COUNT (verified empirically, see task-5-report.md "self-heal
-  // double-run" section): a cold mount with NO `?tier=` genuinely transitions
+  // NOTE ON THE COUNT (verified empirically, see the plan doc's Task 5
+  // section — design/redesign/plans/2026-08-22-phase-d5-grid-chassis.md,
+  // the "Corrected at build" note, ruled ×2 premise as of commit f43dc84b):
+  // a cold mount with NO `?tier=` genuinely transitions
   // `urlTierId` from `null` (render 1) to the resolved tierId (render 2) —
   // that IS the mirror write, and it's a real value change the effect's own
   // dep array must react to. So this settles at fetchTiers ×2 (run 1: no URL
@@ -348,7 +357,14 @@ describe('NewShell tier-selection effect — stable tier identity', () => {
     // write — setSearchParams reaches the router exactly once, not twice for
     // an identical value. (Verified this leg matters via a local A/B: pulling
     // the `if` guard out of NewShell.tsx while running just this test flips
-    // this assertion to 2 — see task-5-report.md.)
+    // this assertion to 2 — see the plan doc's Task 5 section,
+    // design/redesign/plans/2026-08-22-phase-d5-grid-chassis.md, the ruled
+    // ×2 premise as of commit f43dc84b.)
     expect(mocks.setSearchParamsCalls).toBe(1);
+    // The mode, not just the count: the mirror write must be a history
+    // `replace` (NewShell.tsx's `setSearchParamsRef.current(prev => …, {
+    // replace: true })`), never a push that would grow the back-stack for a
+    // value the user never navigated to.
+    expect(mocks.setSearchParamsLastOptions).toEqual({ replace: true });
   });
 });
