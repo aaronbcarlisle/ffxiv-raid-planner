@@ -121,6 +121,26 @@ export function RosterToolbar({
   // fuller two-step flow, but read-only — that shared constants file is
   // frozen (still-live V1 consumer).
   const reorderHint = 'Drag cards to reorder or swap players. Click again to finish.';
+  // Pressed treatment swaps the VARIANT, not just className — a className
+  // addition can't reliably beat `ghost`'s own `bg-transparent` in the
+  // cascade (both are plain utility classes at equal specificity; Tailwind's
+  // generated order, not DOM/JSX order, decides the winner, and
+  // `bg-transparent` was winning), so `aria-pressed` was lying with zero
+  // visible change. `accent-subtle` (Button.tsx) is the existing semantic
+  // "on" look (MyStaticsPanel.tsx:356 precedent: same variant-swap approach,
+  // not a className race).
+  const reorderButton = (
+    <Button
+      variant={reorderMode ? 'accent-subtle' : 'ghost'}
+      size="sm"
+      leftIcon={<List className="w-3.5 h-3.5" aria-hidden />}
+      aria-pressed={reorderMode}
+      disabled={!canManage}
+      onClick={() => onReorderModeChange(!reorderMode)}
+    >
+      Reorder
+    </Button>
+  );
   const separateHint = separateSubsDisabled
     ? // Subs ARE separated here — the section is just hidden, so the only thing
       // this control could do is merge them back (PR #199 review).
@@ -213,31 +233,17 @@ export function RosterToolbar({
 
       {rosterView === 'cards' && (
         <Tooltip content={<div className="max-w-60">{reorderHint}</div>}>
-          {/* Disabled buttons don't receive hover/focus events, so the
-              trigger sits on this always-enabled span (precedent above,
-              :189-199) — the tooltip must still teach the flow to a
-              non-manager, even though they can't use it. */}
-          <span className="inline-flex">
-            {/* Pressed treatment swaps the VARIANT, not just className — a
-                className addition can't reliably beat `ghost`'s own
-                `bg-transparent` in the cascade (both are plain utility
-                classes at equal specificity; Tailwind's generated order, not
-                DOM/JSX order, decides the winner, and `bg-transparent` was
-                winning), so `aria-pressed` was lying with zero visible
-                change. `accent-subtle` (Button.tsx) is the existing
-                semantic "on" look (MyStaticsPanel.tsx:356 precedent: same
-                variant-swap approach, not a className race). */}
-            <Button
-              variant={reorderMode ? 'accent-subtle' : 'ghost'}
-              size="sm"
-              leftIcon={<List className="w-3.5 h-3.5" aria-hidden />}
-              aria-pressed={reorderMode}
-              disabled={!canManage}
-              onClick={() => onReorderModeChange(!reorderMode)}
-            >
-              Reorder
-            </Button>
-          </span>
+          {/* The trigger is the Button itself when enabled, so Radix hangs
+              aria-describedby off the element keyboard users actually focus.
+              Disabled buttons don't receive hover/focus events, so ONLY that
+              case wraps in an always-enabled span (precedent above, :189-199)
+              — the tooltip must still teach the flow to a non-manager, even
+              though they can't use it (PR #242 review). */}
+          {canManage ? (
+            reorderButton
+          ) : (
+            <span className="inline-flex">{reorderButton}</span>
+          )}
         </Tooltip>
       )}
 

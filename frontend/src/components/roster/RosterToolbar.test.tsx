@@ -262,10 +262,15 @@ describe('RosterToolbar', () => {
 
   it('teaches the Reorder control with a plain tooltip (no shortcut — none exists)', async () => {
     render(<RosterToolbar {...baseProps} />);
-    fireEvent.focus(screen.getByRole('button', { name: /reorder/i }));
+    const button = screen.getByRole('button', { name: /reorder/i });
+    fireEvent.focus(button);
     expect(
       await screen.findByText('Drag cards to reorder or swap players. Click again to finish.')
     ).toBeInTheDocument();
+    // The BUTTON is the Radix trigger when enabled — aria-describedby must sit
+    // on the element keyboard users focus, not a wrapping span (PR #242
+    // review). Reverting to an unconditional span wrapper fails this.
+    expect(button).toHaveAttribute('aria-describedby');
   });
 
   it('still teaches Reorder via the tooltip when disabled (no manage permission)', async () => {

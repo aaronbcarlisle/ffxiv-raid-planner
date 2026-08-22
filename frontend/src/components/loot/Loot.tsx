@@ -188,14 +188,16 @@ const FLOOR_SCOPE_KEY = 'v2-loot-floor-scope';
 // Storage access is guarded: Safari private mode and blocked-storage embeds
 // throw from the accessor itself, and a useState initializer that throws takes
 // the whole screen down (review finding). Degrade to the default instead.
-// R-1: Who Needs It is the landing view — unset/unknown lands there. 'queues' /
-// 'weapons' persist a user's explicit choice (D1 wrote only on user action).
+// R-1: Who Needs It is the landing view — unset/unknown lands there. All three
+// view values are recognized as themselves ('who-needs-it' too, even though it
+// coincides with the fallback today — an explicit choice must survive any
+// future change of the landing default; PR #242 review).
 // R-P1: no migration shim — a stale 'matrix' value (the view's former name)
 // is just another unrecognized string, and self-heals to the default here.
 function readStoredPriorityView(): PriorityView {
   try {
     const v = localStorage.getItem(PRIORITY_VIEW_KEY);
-    return v === 'weapons' || v === 'queues' ? v : 'who-needs-it';
+    return v === 'weapons' || v === 'queues' || v === 'who-needs-it' ? v : 'who-needs-it';
   } catch {
     return 'who-needs-it';
   }
