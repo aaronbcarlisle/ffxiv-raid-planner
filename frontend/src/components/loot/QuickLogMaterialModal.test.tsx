@@ -1561,4 +1561,63 @@ describe('(PR #243) subs-toggle recipient re-derivation', () => {
     const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
     expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'gina' }));
   });
+
+  it('freeform: uncheck falls back to the RANKED top needer, not raw allPlayers[0] order (round-2 review)', async () => {
+    // `zed` sits FIRST in `allPlayers` but doesn't need glaze (all-raid gear, the `makePlayer`
+    // default) — a raw `nextPool[0]` fallback would wrongly land on him. `gina` sits SECOND but
+    // is the ranked top needer (an eligible tome slot). This makes the assert non-vacuous: a
+    // raw-order fallback and a ranked fallback disagree on who the recipient should be.
+    const zed = makePlayer({ id: 'zed', name: 'Zed' });
+    const gina = makePlayer({
+      id: 'gina',
+      name: 'Gina',
+      gear: [
+        makeGear({ slot: 'weapon', bisSource: 'raid' }),
+        makeGear({ slot: 'head', bisSource: 'raid' }),
+        makeGear({ slot: 'body', bisSource: 'raid' }),
+        makeGear({ slot: 'hands', bisSource: 'raid' }),
+        makeGear({ slot: 'legs', bisSource: 'raid' }),
+        makeGear({ slot: 'feet', bisSource: 'raid' }),
+        makeGear({ slot: 'earring', bisSource: 'tome', hasItem: true, isAugmented: false }), // needs glaze
+        makeGear({ slot: 'necklace', bisSource: 'raid' }),
+        makeGear({ slot: 'bracelet', bisSource: 'raid' }),
+        makeGear({ slot: 'ring1', bisSource: 'raid' }),
+        makeGear({ slot: 'ring2', bisSource: 'raid' }),
+      ],
+    });
+    const sam = makePlayer({ id: 'sam', name: 'Sam', isSubstitute: true });
+    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { initialWeek: number }> = {
+      isOpen: true,
+      onClose: vi.fn(),
+      groupId: 'g1',
+      tierId: 't1',
+      maxWeek: 5,
+      floors: ['M9S', 'M10S', 'M11S', 'M12S'],
+      initialWeek: 2,
+      allPlayers: [zed, gina, sam], // raw order: zed, gina, sam
+    };
+    render(<QuickLogMaterialModal {...props} />);
+
+    // Mount seed already ranks correctly (Gina is the material's only needer) — sanity check
+    // that the fixture's ranking disagrees with raw array order before the toggle dance below.
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(gina.name);
+
+    // Check subs, then MANUALLY pick the sub — a manual pick arms `userPickedRecipient`,
+    // disarming the auto-recipient effect, so nothing else can self-heal the fallback below.
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(sam.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(sam.name);
+
+    // Uncheck: Sam drops out. Pre-fix, the fallback was raw `nextPool[0]` = Zed (doesn't need
+    // glaze). Fixed, it's the ranked top needer = Gina.
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(gina.name);
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).not.toHaveTextContent(zed.name);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'gina' }));
+  });
 });

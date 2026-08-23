@@ -564,9 +564,18 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     );
     // D8 R7 discipline: a toggle must never clobber a still-valid pick.
     if (nextPool.some((p) => p.id === recipientPlayerId)) return;
+    // Round 2 review (claude[bot]): the free-form arm ranks the narrowed pool the same way the
+    // auto-recipient effect does (`rankRecipients`, below) rather than falling back to raw
+    // `allPlayers` array order — every other default-recipient path in this file (mount-time
+    // seed, auto-recipient effect) uses ranked order, so the toggle's fallback should land on
+    // the top-priority needer too. Edit mode keeps the plain `nextPool[0]` fallback: correcting
+    // a recorded entry has no "suggested recipient" concept the way a fresh log does, so there's
+    // no ranking to defer to there — the pinned arm above is untouched (suggested-first stands).
     const fallbackId = mode === 'pinned'
       ? (nextPool.some((p) => p.id === suggestedPlayer?.id) ? suggestedPlayer!.id : (nextPool[0]?.id ?? ''))
-      : (nextPool[0]?.id ?? '');
+      : mode === 'freeform'
+        ? (rankRecipients(nextPool, material, settings, materialLog)[0]?.player.id ?? '')
+        : (nextPool[0]?.id ?? '');
     // Route through the same recipient-change path a manual Select pick takes, so slot/
     // augment state re-derives consistently instead of drifting from the id it now names.
     handleRecipientChange(fallbackId);
