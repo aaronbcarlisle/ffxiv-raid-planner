@@ -254,3 +254,129 @@ describe('LogWeekGrid — unknown recipient', () => {
     expect(badge.style.color).toBe('var(--color-text-secondary)');
   });
 });
+
+describe('D6 modifier layer', () => {
+  const tankOne = makePlayer({
+    id: 'p1', name: 'Tank One', job: 'PLD', role: 'tank',
+  });
+  const ears = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+  });
+
+  // Accepts a substring regex the same way `cellButton(/Log Neck/)` does below —
+  // a bare string is wrapped so callers don't need the FULL dynamic aria-label
+  // ("Edit Ears for Tank One — Floor 1") just to find the "Ears" cell.
+  function cellButton(fragment: string | RegExp) {
+    const matcher = typeof fragment === 'string' ? new RegExp(fragment) : fragment;
+    return screen.getByRole('button', { name: matcher });
+  }
+
+  // Mouse-path tests PIN detail: 1 (director F-14) — fireEvent.click defaults to detail: 0,
+  // which is the AT path; the C4 precedent is RosterGearTable.test.tsx:381,523.
+  it('Shift+Click copies and does NOT open the edit door', () => {
+    const onEditGear = vi.fn(); const onCopyEntryLink = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], onEditGear, onCopyEntryLink,
+    })}
+    />);
+    fireEvent.click(cellButton('Ears'), { shiftKey: true, detail: 1 });
+    expect(onCopyEntryLink).toHaveBeenCalledWith({ kind: 'loot', entry: ears });
+    expect(onEditGear).not.toHaveBeenCalled();
+  });
+
+  it('Alt+Click jumps to the recipient and does NOT edit', () => {
+    const onEditGear = vi.fn(); const onJumpToPlayer = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], onEditGear, onJumpToPlayer,
+    })}
+    />);
+    fireEvent.click(cellButton('Ears'), { altKey: true, detail: 1 });
+    expect(onJumpToPlayer).toHaveBeenCalledWith(ears.recipientPlayerId);
+    expect(onEditGear).not.toHaveBeenCalled();
+  });
+
+  it('Alt+Click is a no-op when the recipient is not on the roster', () => {
+    const ghost = makeLootEntry({
+      itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'ghost', recipientPlayerName: 'Departed',
+    });
+    const onEditGear = vi.fn(); const onJumpToPlayer = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ghost], players: [tankOne], onEditGear, onJumpToPlayer,
+    })}
+    />);
+    fireEvent.click(cellButton('Ears'), { altKey: true, detail: 1 });
+    expect(onJumpToPlayer).not.toHaveBeenCalled();
+    expect(onEditGear).not.toHaveBeenCalled();
+  });
+
+  it('an unmodified synthetic click (detail: 0, no altKey) edits — the AT route never jumps (D6-c)', () => {
+    const onEditGear = vi.fn(); const onJumpToPlayer = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], onEditGear, onJumpToPlayer,
+    })}
+    />);
+    fireEvent.click(cellButton('Ears'), { detail: 0 });
+    expect(onEditGear).toHaveBeenCalledWith(ears);
+    expect(onJumpToPlayer).not.toHaveBeenCalled();
+  });
+
+  it('cursor-pointer appears only while Alt is held AND a jump target exists', () => {
+    const onJumpToPlayer = vi.fn();
+    const unresolvable = makeLootEntry({
+      itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'ghost', recipientPlayerName: 'Departed',
+    });
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears, unresolvable], players: [tankOne], onJumpToPlayer,
+    })}
+    />);
+    const earsButton = cellButton('Ears');
+    const neckButton = cellButton('Neck');
+    expect(earsButton.className).not.toContain('cursor-pointer');
+
+    fireEvent.keyDown(window, { key: 'Alt' });
+    expect(earsButton.className).toContain('cursor-pointer');
+    expect(neckButton.className).not.toContain('cursor-pointer');
+
+    fireEvent.keyUp(window, { key: 'Alt' });
+    expect(earsButton.className).not.toContain('cursor-pointer');
+  });
+
+  it('right-click opens the menu with Edit/Copy link/Jump/Delete and menu-key anchors to the cell', () => {
+    const onCopyEntryLink = vi.fn(); const onJumpToPlayer = vi.fn(); const onDeleteEntry = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], onCopyEntryLink, onJumpToPlayer, onDeleteEntry,
+    })}
+    />);
+    fireEvent.contextMenu(cellButton('Ears'));
+    expect(screen.getByRole('menuitem', { name: /Edit/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: `Jump to ${tankOne.name}` })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+  });
+
+  it('menu Delete calls onDeleteEntry with the newest ref', () => {
+    const onDeleteEntry = vi.fn();
+    render(<LogWeekGrid {...baseProps({ lootLog: [ears], players: [tankOne], onDeleteEntry })} />);
+    fireEvent.contextMenu(cellButton('Ears'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    expect(onDeleteEntry).toHaveBeenCalledWith({ kind: 'loot', entry: ears });
+  });
+
+  it('the Jump item is absent when the recipient is unresolvable', () => {
+    const ghost = makeLootEntry({
+      itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'ghost', recipientPlayerName: 'Departed',
+    });
+    const onJumpToPlayer = vi.fn();
+    render(<LogWeekGrid {...baseProps({ lootLog: [ghost], players: [tankOne], onJumpToPlayer })} />);
+    fireEvent.contextMenu(cellButton('Ears'));
+    expect(screen.queryByRole('menuitem', { name: /Jump to/ })).not.toBeInTheDocument();
+  });
+
+  it('Shift/Alt clicks on an EMPTY interactive cell are no-ops (D6-h)', () => {
+    const onAssignGear = vi.fn();
+    render(<LogWeekGrid {...baseProps({ lootLog: [ears], players: [tankOne], onAssignGear })} />);
+    fireEvent.click(cellButton(/Log Neck/), { shiftKey: true });
+    fireEvent.click(cellButton(/Log Neck/), { altKey: true });
+    expect(onAssignGear).not.toHaveBeenCalled();
+  });
+});

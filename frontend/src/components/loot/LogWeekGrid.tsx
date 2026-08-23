@@ -74,14 +74,17 @@
  * handler cannot act, `FloorCard.tsx:174-180` precedent); filled material
  * cells stay editable regardless (the edit door needs no suggestion pool).
  */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '../primitives';
 import { Tag } from '../ui';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
+import { useAltHeld } from '../../hooks/useAltHeld';
+import { jumpMenuAnchor } from '../roster/rosterLedgerJumps';
 import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { MATERIAL_TOKEN } from './FloorDropRow';
 import { RecipientBadge, resolveRecipient, type RecipientLike } from './RecipientBadge';
-import { buildLogWeekGrid, type LogGridFloor } from './logWeekGridData';
+import { buildLogWeekGrid, type LogGridFloor, type LogGridEntryRef } from './logWeekGridData';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import type {
   GearSlot, LootLogEntry, MaterialLogEntry, MaterialType, SnapshotPlayer,
@@ -101,6 +104,25 @@ export interface LogWeekGridProps {
   onEditGear: (entry: LootLogEntry) => void;
   onAssignMaterial: (material: MaterialType, floorNumber: FloorNumber) => void;
   onEditMaterial: (entry: MaterialLogEntry) => void;
+  /**
+   * D6 Task 3 — OPTIONAL here; Task 6 tightens all three to required (the
+   * same-PR green-commit compromise D4 used for the tome shim). Shift+Click
+   * on a filled cell (R-18). The context-menu "Copy link" item is gated on
+   * this prop's presence, not on `canEdit` — see `buildEntryMenuItems`.
+   */
+  onCopyEntryLink?: (ref: LogGridEntryRef) => void;
+  /** D6 Task 3: Alt+Click / context-menu "Jump to {name}" — the R-18 jump gate. */
+  onJumpToPlayer?: (playerId: string) => void;
+  /** D6 Task 3: context-menu "Delete" (danger, after a separator). */
+  onDeleteEntry?: (ref: LogGridEntryRef) => void;
+}
+
+/** The grid-root right-click menu's state — ONE mount, never per-cell (director F-15). */
+interface LogGridMenuState {
+  x: number;
+  y: number;
+  ref: LogGridEntryRef;
+  jumpPlayerId: string | null;
 }
 
 interface GridCellProps<E extends RecipientLike> {
@@ -109,13 +131,23 @@ interface GridCellProps<E extends RecipientLike> {
   floorName: string;
   interactive: boolean;
   playerMap: Map<string, SnapshotPlayer>;
+  /** Shared Alt-held state — ONE `useAltHeld()` call at the `LogWeekGrid` top level (D6 Task 3). */
+  altHeld: boolean;
+  /** Builds this cell's `LogGridEntryRef` — the caller knows its own kind ('loot'/'material'), so
+   *  `GridCell` never has to discriminate a generic `E` at runtime. */
+  buildRef: (entry: E) => LogGridEntryRef;
   onEmpty: () => void;
   onFilled: (entry: E) => void;
+  onCopyEntryLink?: (ref: LogGridEntryRef) => void;
+  onJumpToPlayer?: (playerId: string) => void;
+  /** Opens the grid-root context menu (the `LogWeekGrid`-level `setMenu`). */
+  onOpenMenu: (state: LogGridMenuState) => void;
 }
 
 /** One `<td>`'s body — shared by gear and material cells (both entry shapes satisfy `RecipientLike`). */
 function GridCell<E extends RecipientLike>({
-  entries, label, floorName, interactive, playerMap, onEmpty, onFilled,
+  entries, label, floorName, interactive, playerMap, altHeld, buildRef,
+  onEmpty, onFilled, onCopyEntryLink, onJumpToPlayer, onOpenMenu,
 }: GridCellProps<E>) {
   const newest = entries[0];
   const recipient = newest ? resolveRecipient(newest, playerMap) : undefined;
@@ -147,13 +179,52 @@ function GridCell<E extends RecipientLike>({
     ? `Edit ${label} for ${recipient.name} — ${floorName}`
     : `Log ${label} — ${floorName}`;
 
+  // D6 Task 3 (director F-15): the jump gate — one `playerMap` lookup, no
+  // re-resolution in `FloorSection`. This is what makes the "affordance
+  // exists only when the target does" claim true, matching `Roster.tsx:361`'s
+  // own `players.some(...)` guard on the consuming side.
+  const jump = newest && onJumpToPlayer && playerMap.has(newest.recipientPlayerId)
+    ? () => onJumpToPlayer(newest.recipientPlayerId)
+    : null;
+
+  const copyLink = () => {
+    if (!newest || !onCopyEntryLink) return;
+    onCopyEntryLink(buildRef(newest));
+  };
+
+  const requestMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!newest) return;
+    const { x, y } = jumpMenuAnchor(e, e.currentTarget.getBoundingClientRect());
+    onOpenMenu({
+      x,
+      y,
+      ref: buildRef(newest),
+      jumpPlayerId: jump ? newest.recipientPlayerId : null,
+    });
+  };
+
   return (
     <Button
       variant="ghost"
       size="sm"
-      className="w-full justify-start"
+      className={`w-full justify-start${altHeld && jump ? ' cursor-pointer' : ''}`}
       aria-label={ariaLabel}
-      onClick={() => (newest ? onFilled(newest) : onEmpty())}
+      onClick={(e) => {
+        if (!newest) {
+          if (e.shiftKey || e.altKey) return;              // D6-h: empty interactive cell modifiers are no-ops
+          onEmpty();
+          return;
+        }
+        if (e.shiftKey) { copyLink(); return; }             // R-18: Shift copies
+        if (e.altKey)   { if (jump) jump(); return; }       // R-18: Alt jumps; no target → no-op
+        onFilled(newest);                                   // plain + AT (detail===0): edit (D6-c)
+      }}
+      onContextMenu={(e) => {
+        if (!newest) return;                                // empty interactive cells: no custom menu
+        e.preventDefault();
+        e.stopPropagation();
+        requestMenu(e);
+      }}
     >
       {body}
     </Button>
@@ -166,16 +237,21 @@ interface FloorSectionProps {
   playerMap: Map<string, SnapshotPlayer>;
   canEdit: boolean;
   canAssignMaterial: boolean;
+  altHeld: boolean;
   onAssignGear: LogWeekGridProps['onAssignGear'];
   onEditGear: LogWeekGridProps['onEditGear'];
   onAssignMaterial: LogWeekGridProps['onAssignMaterial'];
   onEditMaterial: LogWeekGridProps['onEditMaterial'];
+  onCopyEntryLink: LogWeekGridProps['onCopyEntryLink'];
+  onJumpToPlayer: LogWeekGridProps['onJumpToPlayer'];
+  onOpenMenu: (state: LogGridMenuState) => void;
   isFirst: boolean;
 }
 
 function FloorSection({
-  floor, week, playerMap, canEdit, canAssignMaterial,
-  onAssignGear, onEditGear, onAssignMaterial, onEditMaterial, isFirst,
+  floor, week, playerMap, canEdit, canAssignMaterial, altHeld,
+  onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
+  onCopyEntryLink, onJumpToPlayer, onOpenMenu, isFirst,
 }: FloorSectionProps) {
   const {
     floorNumber, floorName, bookNumeral, gearCells, materialCells,
@@ -239,8 +315,13 @@ function FloorSection({
                     floorName={floorName}
                     interactive={canEdit}
                     playerMap={playerMap}
+                    altHeld={altHeld}
+                    buildRef={(entry) => ({ kind: 'loot', entry })}
                     onEmpty={() => onAssignGear({ slot: cell.slot, label: cell.label, floorNumber })}
                     onFilled={onEditGear}
+                    onCopyEntryLink={onCopyEntryLink}
+                    onJumpToPlayer={onJumpToPlayer}
+                    onOpenMenu={onOpenMenu}
                   />
                 </td>
               ))}
@@ -258,8 +339,13 @@ function FloorSection({
                       floorName={floorName}
                       interactive={interactive}
                       playerMap={playerMap}
+                      altHeld={altHeld}
+                      buildRef={(entry) => ({ kind: 'material', entry })}
                       onEmpty={() => onAssignMaterial(cell.material, floorNumber)}
                       onFilled={onEditMaterial}
+                      onCopyEntryLink={onCopyEntryLink}
+                      onJumpToPlayer={onJumpToPlayer}
+                      onOpenMenu={onOpenMenu}
                     />
                   </td>
                 );
@@ -272,10 +358,52 @@ function FloorSection({
   );
 }
 
+/**
+ * The grid-root right-click menu's items, in R-18 order: Edit (always) ·
+ * Copy link (only when `onCopyEntryLink` is passed) · Jump to {name} (only
+ * when the jump target resolved AND `onJumpToPlayer` is passed — the same
+ * gate `GridCell`'s `jump` closure already applied, recorded here as
+ * `jumpPlayerId`) · separator + Delete (danger, only when `onDeleteEntry` is
+ * passed). All cells reaching this menu are already `canEdit`-gated
+ * (interactive branch), so no per-item `canEdit` check is needed here.
+ */
+function buildEntryMenuItems(
+  menu: LogGridMenuState,
+  playerMap: Map<string, SnapshotPlayer>,
+  onEditGear: LogWeekGridProps['onEditGear'],
+  onEditMaterial: LogWeekGridProps['onEditMaterial'],
+  onCopyEntryLink: LogWeekGridProps['onCopyEntryLink'],
+  onJumpToPlayer: LogWeekGridProps['onJumpToPlayer'],
+  onDeleteEntry: LogWeekGridProps['onDeleteEntry'],
+): ContextMenuItem[] {
+  const { ref, jumpPlayerId } = menu;
+  const items: ContextMenuItem[] = [
+    {
+      label: 'Edit',
+      onClick: () => (ref.kind === 'loot' ? onEditGear(ref.entry) : onEditMaterial(ref.entry)),
+    },
+  ];
+  if (onCopyEntryLink) {
+    items.push({ label: 'Copy link', onClick: () => onCopyEntryLink(ref) });
+  }
+  if (jumpPlayerId && onJumpToPlayer) {
+    const player = playerMap.get(jumpPlayerId);
+    if (player) {
+      items.push({ label: `Jump to ${player.name}`, onClick: () => onJumpToPlayer(jumpPlayerId) });
+    }
+  }
+  if (onDeleteEntry) {
+    items.push({ separator: true });
+    items.push({ label: 'Delete', danger: true, onClick: () => onDeleteEntry(ref) });
+  }
+  return items;
+}
+
 export function LogWeekGrid(props: LogWeekGridProps) {
   const {
     floors, week, lootLog, materialLog, players, canEdit, canAssignMaterial,
     onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
+    onCopyEntryLink, onJumpToPlayer, onDeleteEntry,
   } = props;
 
   const grid = useMemo(
@@ -285,6 +413,12 @@ export function LogWeekGrid(props: LogWeekGridProps) {
     [floors, week, lootLog, materialLog],
   );
   const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
+  // D6 Task 3: ONE `useAltHeld()` call at the grid top level, passed down —
+  // never one hook instance per cell.
+  const altHeld = useAltHeld();
+  // D6 Task 3: ONE `ContextMenu` mount at the grid root — every floor's cells
+  // share this single state, never a per-floor or per-cell menu instance.
+  const [menu, setMenu] = useState<LogGridMenuState | null>(null);
 
   return (
     <div
@@ -299,13 +433,25 @@ export function LogWeekGrid(props: LogWeekGridProps) {
           playerMap={playerMap}
           canEdit={canEdit}
           canAssignMaterial={canAssignMaterial}
+          altHeld={altHeld}
           onAssignGear={onAssignGear}
           onEditGear={onEditGear}
           onAssignMaterial={onAssignMaterial}
           onEditMaterial={onEditMaterial}
+          onCopyEntryLink={onCopyEntryLink}
+          onJumpToPlayer={onJumpToPlayer}
+          onOpenMenu={setMenu}
           isFirst={idx === 0}
         />
       ))}
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={buildEntryMenuItems(menu, playerMap, onEditGear, onEditMaterial, onCopyEntryLink, onJumpToPlayer, onDeleteEntry)}
+          onClose={() => setMenu(null)}
+        />
+      )}
     </div>
   );
 }
