@@ -215,6 +215,9 @@ const EMPTY_PLAYERS: SnapshotPlayer[] = [];
 const buildEntryLink = (opts: { lview: 'log' | 'history'; week?: number; ref: HistoryItem }): string => {
   const url = new URL(window.location.href);
   url.searchParams.delete('shell');
+  // Entry links carry ONE navigation target — competing deep-link params are stripped.
+  url.searchParams.delete('player');
+  url.searchParams.delete('book');
   url.searchParams.set('tab', 'gear');
   url.searchParams.set('lview', opts.lview);
   if (opts.week != null) url.searchParams.set('week', String(opts.week));

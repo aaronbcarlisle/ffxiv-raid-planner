@@ -1456,6 +1456,27 @@ describe('Loot — D6a Task 6: Log grid affordance wiring', () => {
     );
   });
 
+  it('copy link strips competing player/book deep-link params so copied entry links carry ONE navigation target', async () => {
+    window.history.pushState({}, '', '/group/g1?tier=xyz&player=p1&book=p2');
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const entry = makeLootEntry({ id: 42, weekNumber: 2 });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2']);
+
+    act(() => {
+      (lastGrid().onCopyEntryLink as (ref: unknown) => void)({ kind: 'loot', entry });
+    });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const copiedUrl = writeText.mock.calls[0][0];
+    expect(copiedUrl).toBe(
+      'http://localhost:3000/group/g1?tier=xyz&tab=gear&lview=log&week=2&entry=42&entryType=loot',
+    );
+    expect(copiedUrl).not.toContain('player=');
+    expect(copiedUrl).not.toContain('book=');
+    expect(copiedUrl).toContain('tier=xyz');
+  });
+
   it('jump writes tab=roster&player={id} and deletes entry/entryType/book', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=log&entry=5&entryType=material&book=p9']);
     act(() => {
