@@ -8,11 +8,16 @@
  * FloorDropRow. Auto-collapses when the week is fully logged (nothing pending)
  * to keep a cleared floor out of the way; `Show` (LinkText) re-expands it.
  * Gear queues use the PICKER's own derivation (`buildRecipientEntries`, R-6
- * D3) — the chips, the QueueWhy popover, and the RecipientPicker modal can
- * never disagree. Material queues keep the legacy derivation
- * (getPriorityForUpgradeMaterial/UniversalTomestone → enhancePriorityEntries
- * with the legacy enhanced-scoring gate expression) — RecipientPicker doesn't
- * cover materials, so there's no shared leaf to converge on there.
+ * D3) — the chips, the QueueWhy popover, and the RecipientPicker modal draw
+ * from the same call, so they can't disagree on WHO'S next. Material queues
+ * use `materialPriorityEntries` (D5 Task 2) — the ONE derivation shared with
+ * the D5 weekly grid's cell suggestion (director F-13); RecipientPicker
+ * doesn't cover materials, so there's no shared leaf to converge on there.
+ * The enhanced-scoring GATE itself is mirrored, not shared: this file
+ * computes its own `enhancedActive` (below, `:~81`) and `materialSuggestion.ts`
+ * recomputes the identical expression independently (`:46`) rather than
+ * receiving it as an argument — byte-identical today, drift-checked by
+ * materialSuggestion.test.ts, but not structurally guaranteed to match.
  * (The weapon-priority footer left with R-3 — Weapons is a peer switcher
  * segment now, not a Floor-4 appendix.)
  */
@@ -22,15 +27,11 @@ import { FloorDropRow } from './FloorDropRow';
 import { QueueWhy } from './QueueWhy';
 import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { deriveFloorWeekStatus } from '../../utils/lootFairness';
-import { enhancePriorityEntries } from '../../utils/priorityEntries';
 import { calculateAverageDrops } from '../../utils/lootCoordination';
-import {
-  getPriorityForUpgradeMaterial, getPriorityForUniversalTomestone,
-  isPriorityDisabled,
-  type PriorityEntry,
-} from '../../utils/priority';
+import { isPriorityDisabled } from '../../utils/priority';
 import { buildRecipientEntries } from '../../utils/recipientRanking';
-import { FLOOR_LOOT_TABLES, UPGRADE_MATERIAL_DISPLAY_NAMES, isSlotAugmentationMaterial, type FloorNumber } from '../../gamedata/loot-tables';
+import { materialPriorityEntries } from './materialSuggestion';
+import { FLOOR_LOOT_TABLES, UPGRADE_MATERIAL_DISPLAY_NAMES, type FloorNumber } from '../../gamedata/loot-tables';
 import { GEAR_SLOT_NAMES } from '../../types';
 import type { SnapshotPlayer, StaticSettings, LootLogEntry, MaterialLogEntry, PageLedgerEntry, GearSlot, MaterialType } from '../../types';
 
@@ -89,9 +90,6 @@ export function FloorCard({
     [enhancedActive, players, lootLog],
   );
 
-  const enhance = (entries: PriorityEntry[]) =>
-    enhancePriorityEntries(entries, { settings, lootLog, currentWeek, averageDrops, active: enhancedActive });
-
   const gearItems: Array<{ slot: GearSlot | 'ring'; label: string }> = table.gearDrops.map((slot) =>
     slot === 'ring1' ? { slot: 'ring' as const, label: 'Ring' } : { slot, label: GEAR_SLOT_NAMES[slot] },
   );
@@ -110,11 +108,13 @@ export function FloorCard({
     }),
   }));
 
+  // D5 Task 2: ONE derivation shared with the weekly grid's cell suggestion
+  // (director F-13) — pass this card's own memoized averageDrops so the base
+  // + enhance pass never runs twice per row.
   const materialRows = table.upgradeMaterials.map((material) => {
-    const baseEntries = isSlotAugmentationMaterial(material)
-      ? getPriorityForUpgradeMaterial(players, material, settings, materialLog)
-      : getPriorityForUniversalTomestone(players, settings, materialLog);
-    const entries = enhance(baseEntries);
+    const entries = materialPriorityEntries({
+      material, players, settings, lootLog, materialLog, currentWeek, averageDrops,
+    });
     return { material, label: UPGRADE_MATERIAL_DISPLAY_NAMES[material], entries: toRowEntries(entries), top: entries[0]?.player };
   });
 

@@ -36,3 +36,9 @@ export const _edit = ({ ...base, floors: ['a'], editEntry: entry }) satisfies Pr
 export const _editWithPinnedFields = ({ ...base, floors: ['a'], editEntry: entry, floor: 'M11S', material: 'twine' }) satisfies Props;
 // @ts-expect-error — an edit's week comes from the entry
 export const _editWithInitialWeek = ({ ...base, floors: ['a'], editEntry: entry, initialWeek: 2 }) satisfies Props;
+// R-D5a: pinned + allowSubs (D5's Log-grid cell door) compiles.
+export const _pinnedWithAllowSubs = ({ ...base, floor: 'M11S', material: 'twine', suggestedPlayer: player, allowSubs: true }) satisfies Props;
+// @ts-expect-error — free-form cannot carry allowSubs (pinned-only per R-D5a)
+export const _freeformWithAllowSubs = ({ ...base, floors: ['a', 'b', 'c', 'd'], initialWeek: 2, allowSubs: true }) satisfies Props;
+// @ts-expect-error — edit cannot carry allowSubs (pinned-only per R-D5a)
+export const _editWithAllowSubs = ({ ...base, floors: ['a'], editEntry: entry, allowSubs: true }) satisfies Props;

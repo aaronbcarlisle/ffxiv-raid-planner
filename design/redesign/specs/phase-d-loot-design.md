@@ -462,6 +462,60 @@ material split is forced, not chosen: `DropItemContext.slot` is `GearSlot | 'rin
 ⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. "The grid and the matrix become the same
 flow" reads as "the grid and **Who Needs It** become the same flow."
 
+**Build note (D5, 2026-08-22) — three cell-door decision points ruled at plan-vet fold; four
+re-expression deltas disclosed at build.**
+
+- **R-D5a · subs reach the grid through an opt-in, not a default.** `QuickLogMaterialModal`'s
+  pinned branch gains an optional `allowSubs?: boolean` prop (`QuickLogMaterialModal.tsx:64`,
+  `:307`, `:649-652`) — `undefined` everywhere it isn't explicitly passed, so V1's pinned door,
+  the matrix cell door, and the queues floor-card door all stay value-identical to today and keep
+  R-a's main-roster-only inheritance (R-26's D8 build note, below). Only `Loot.tsx`'s grid
+  material-cell door passes `allowSubs: true` (`Loot.tsx:761`, `:901-902`), which both surfaces
+  the "Include substitutes" checkbox and swaps the full roster in for the main-roster-only list it
+  filters from. User-ruled 2026-08-22 during the D5 plan-vet fold, ahead of R-a's next natural
+  pinned-door decision point.
+- **R-D5b · the section header matches `FloorCard`'s shipped treatment, not R-19's literal text.**
+  R-19 below describes a "floor-coloured accent bar"; what shipped is FloorCard's header
+  treatment, plus R-19's `· Book {numeral}` metadata line in place of FloorCard's status
+  metadata — the `FLOOR_ACCENT_CLASS` stripe, the duty name as a muted
+  `Tag variant="label" tone="muted"` (only when the tier actually names the floor, the same
+  `floorName !== 'Floor N'` guard FloorCard uses), and the `Floor {n} · Book {numeral}` metadata
+  line (not part of FloorCard's own header, which carries `· {cleared|in progress} · drops: …`
+  metadata instead) — with **no tint band** (`FLOOR_TINT_CLASS` intentionally not added). One structural
+  difference from FloorCard: because one grid wrapper holds all four floors (not one card per
+  floor), the accent stripe scopes to each floor's header bar rather than the section as a whole
+  (`LogWeekGrid.tsx:1-20`). User-ruled 2026-08-22 — matching an already-shipped, already-reviewed
+  header beats inventing a second one for the grid.
+- **R-D5c · the suggested recipient answers "who's up next right now," not "who's up next for
+  this week's cell."** The material cell's suggestion runs `materialPriorityEntries` against the
+  shared clock's **current** week regardless of which week Log is displaying — the honest read of
+  "who should get this" is always about present standing. The **write** still targets the
+  **displayed** week (R-15/R-20 unchanged): stepping to a past week and logging a material there
+  logs it in that week, suggestion notwithstanding. User-ruled 2026-08-22.
+
+**Four re-expression deltas, disclosed, not rulings:**
+
+1. **A filled cell's click edits the newest entry — an accepted interim, not R-17's final shape.**
+   A cell holding more than one entry (the `×N` badge) opens the edit door on the newest one only;
+   there is no route yet from `×N` to the other entries it counts. D6's `EntryPopover` (R-18/R-27)
+   closes this — until then the badge is a count with no route to what it counts (F-14i).
+2. **Material cells bucket every matching entry per week, not just one.** The legacy grid's
+   `find()` surfaced a single material entry per cell, silently under-reporting a week where the
+   same material dropped twice (e.g. two Solvents). `logWeekGridData.ts` buckets materials the
+   same way it buckets loot — an array, newest-first — so a double-drop week shows its real `×2`
+   instead of hiding the second entry. Deliberate re-expression, not a legacy quirk reproduced.
+3. **Material column labels use the short forms, including "Tome."** `universal_tomestone`'s
+   column reads "Tome," matching both the §4 mockup's column label and legacy's own grid column;
+   the long `UPGRADE_MATERIAL_DISPLAY_NAMES` form ("Universal Tomestone") stays for the modal and
+   History, where there's room for it (F-14ii).
+4. **The floor-name fallback matches what v2 *writes*, not a parity claim against legacy's
+   lookup.** An entry lands in floor *n*'s bucket when its stored floor name matches
+   `floors[n-1]`, falling back to `` `Floor ${n}` `` when the tier has no name for that slot — the
+   same fallback v2's own writers already use (`Loot.tsx`). This is **not** a restore of legacy
+   behavior: legacy's `WeeklyLootGrid` lookup path has no such fallback at all (only its *display*
+   config falls back to `Floor N`), so an unnamed floor would have silently dropped legacy's
+   entries. Recorded as a correction, not a parity gap (F-8).
+
 ### R-18 · Cell affordances — plain click **never navigates**
 
 | Input | Effect |

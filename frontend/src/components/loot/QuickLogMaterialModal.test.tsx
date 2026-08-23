@@ -12,6 +12,11 @@
 // tests that need a specific player never assert on that label, only on the
 // player's own name (which the option's accessible name always contains
 // alongside the JobIcon's alt text and any priority suffix).
+//
+// Near EOF (~:1320) a hoisted, file-scoped `vi.mock('../ui')` wraps
+// NumberInput/Tag/RadioGroup with a passthrough recorder for EVERY test in
+// this file (not just the describe block it sits next to); `actual.RadioGroup(props)`
+// calls the real component as a plain function, assuming it isn't forwardRef/memo-wrapped.
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import type { SnapshotPlayer, GearSlotStatus, MaterialLogEntryCreate, MaterialLogEntry } from '../../types';
@@ -1284,5 +1289,335 @@ describe('pinned + showNotes submit (D8 Task 7)', () => {
 
     const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
     expect(data.notes).toBe('got it from FC chest');
+  });
+});
+
+// D5 Task 1 (phase-d5-grid-chassis, §5 mount obligations + R-D5a): D5 is about to mount the
+// edit door on a Log-grid cell for the first time. Two mount-obligation defects had to be fixed
+// FIRST so that mount lands on a working modal:
+//   (d) lazy edit-mode initializers — the first render used to show free-form defaults (floor 2
+//       / glaze / week=maxWeek / method=drop), corrected only a tick later by the reset effect.
+//   (b) once-per-open rehydration — the old reset effect re-ran on ANY `allPlayers`/`editEntry`
+//       identity churn (e.g. a background fetchTier refresh), silently snapping an in-progress
+//       edit (typed note, changed week, picked slot) back to the entry's recorded values.
+// Plus R-D5a (user-ruled 2026-08-22): an `allowSubs` opt-in on the PINNED branch so D5's
+// Log-grid cell door can widen the recipient pool to substitutes the same way free-form/edit
+// already can — off by default, so V1's door and the matrix/queues cell doors are unaffected.
+//
+// (d)'s assertions need to observe the FIRST commit's props, before the rehydration effect has
+// had a chance to correct anything — RTL's `render()` is `act()`-wrapped and flushes passive
+// effects synchronously, so a post-render DOM assert only ever sees the corrected state
+// (director F-2). Props-recording passthrough mocks solve this: `NumberInput`/`Tag` are wrapped
+// via JSX (neither calls a DOM-id-generating hook, so this can't perturb any OTHER test's
+// rendered `id` attributes); `RadioGroup` is wrapped via a plain function CALL, not JSX —
+// `RadioGroup` calls `useId()` internally, and a JSX wrapper would insert an extra Fiber
+// between it and its caller, which could change the id React generates (embedded as literal
+// `id`/`htmlFor` DOM attributes the frozen 'V1 freeze baseline' snapshots pin). A plain call
+// keeps this mock's fiber the one React runs `RadioGroup`'s hooks against, so the id sequence —
+// and the DOM — stay byte-identical for every test in this file, including the ones above this
+// point. Every wrapper is a pure passthrough (renders the real component, unchanged), so no
+// existing snapshot's HTML changes; only these NEW tests read the recording arrays.
+const recordedWeekValues: (number | null)[] = [];
+const recordedPressedFloorTones: string[] = [];
+const recordedPressedMaterialTones: string[] = [];
+const recordedMethodValues: string[] = [];
+
+vi.mock('../ui', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../ui')>();
+  return {
+    ...actual,
+    NumberInput: (props: React.ComponentProps<typeof actual.NumberInput>) => {
+      recordedWeekValues.push(props.value);
+      return <actual.NumberInput {...props} />;
+    },
+    Tag: (props: React.ComponentProps<typeof actual.Tag>) => {
+      if (props.variant === 'filter' && props.pressed) {
+        const tone = String(props.tone ?? '');
+        if (tone.startsWith('floor-')) recordedPressedFloorTones.push(tone);
+        else if (tone.startsWith('material-')) recordedPressedMaterialTones.push(tone);
+      }
+      return <actual.Tag {...props} />;
+    },
+    RadioGroup: (props: React.ComponentProps<typeof actual.RadioGroup>) => {
+      recordedMethodValues.push(props.value);
+      return actual.RadioGroup(props);
+    },
+  };
+});
+
+describe('D5 §5 mount obligations — edit-door stability', () => {
+  const D5_FLOORS = ['M9S', 'M10S', 'M11S', 'M12S'];
+
+  function makeMaterialEntry(overrides: Partial<MaterialLogEntry> = {}): MaterialLogEntry {
+    return {
+      id: 1,
+      tierSnapshotId: 't1',
+      weekNumber: 2,
+      floor: 'M11S',
+      materialType: 'twine',
+      recipientPlayerId: 'p1',
+      recipientPlayerName: 'Test Player',
+      method: 'drop',
+      slotAugmented: null,
+      notes: '',
+      createdAt: '2026-01-09T00:00:00Z',
+      createdByUserId: 'u1',
+      createdByUsername: 'Lead',
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    recordedWeekValues.length = 0;
+    recordedPressedFloorTones.length = 0;
+    recordedPressedMaterialTones.length = 0;
+    recordedMethodValues.length = 0;
+  });
+
+  describe('(b) once-per-open rehydration', () => {
+    it('preserves an in-progress edit when allPlayers identity churns', async () => {
+      const entry = makeMaterialEntry({ id: 7, materialType: 'twine', weekNumber: 2, notes: '' });
+      const players = [makePlayer({ id: 'p1' }), makePlayer({ id: 'p2' })];
+      const { rerender } = render(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={players} />,
+      );
+      fireEvent.change(screen.getByLabelText(/notes/i), { target: { value: 'split with alt' } });
+      // background fetchTier: same content, NEW array + object identities.
+      rerender(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={{ ...entry }} maxWeek={4}
+          allPlayers={players.map((p) => ({ ...p }))} />,
+      );
+      expect(screen.getByLabelText(/notes/i)).toHaveValue('split with alt');
+    });
+
+    it('rehydrates when a DIFFERENT entry (new id) opens on a persistent mount', () => {
+      // Sibling of the test above: proves the guard is keyed on entry id, not "never re-seed
+      // after the first open" — a genuinely different entry opening on the same mount must
+      // still seed fresh from ITS OWN recorded values.
+      const entryA = makeMaterialEntry({ id: 10, weekNumber: 2, notes: 'first entry' });
+      const players = [makePlayer({ id: 'p1' })];
+      const { rerender } = render(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entryA} maxWeek={5} allPlayers={players} />,
+      );
+      expect(screen.getByLabelText(/notes/i)).toHaveValue('first entry');
+
+      const entryB = makeMaterialEntry({ id: 11, weekNumber: 3, notes: 'second entry' });
+      rerender(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entryB} maxWeek={5} allPlayers={players} />,
+      );
+      expect(screen.getByLabelText(/notes/i)).toHaveValue('second entry');
+      expect(screen.getByRole('spinbutton')).toHaveValue(3);
+    });
+
+    it('reseeds for the SAME entry after the modal is closed and reopened (discards an in-progress edit)', () => {
+      const entry = makeMaterialEntry({ id: 20, notes: 'original' });
+      const players = [makePlayer({ id: 'p1' })];
+      const { rerender } = render(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={players} />,
+      );
+      fireEvent.change(screen.getByLabelText(/notes/i), { target: { value: 'unsaved edit' } });
+
+      rerender(
+        <QuickLogMaterialModal isOpen={false} onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={players} />,
+      );
+      rerender(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={players} />,
+      );
+      expect(screen.getByLabelText(/notes/i)).toHaveValue('original');
+    });
+  });
+
+  describe('(d) first frame is entry-seeded, not free-form-default', () => {
+    it('seeds the week, floor pill, material pill, and method from the entry on the FIRST render, not via the effect', () => {
+      const entry = makeMaterialEntry({
+        id: 8, floor: 'M11S', materialType: 'solvent', weekNumber: 3, method: 'purchase',
+      });
+      render(
+        <QuickLogMaterialModal isOpen onClose={vi.fn()} groupId="g" tierId="t"
+          floors={D5_FLOORS} editEntry={entry} maxWeek={4} allPlayers={[makePlayer({ id: 'p1' })]} />,
+      );
+
+      // pre-fix: 4 (maxWeek) on render #1, corrected to 3 only by the rehydration effect.
+      expect(recordedWeekValues[0]).toBe(3);
+      // pre-fix: 'floor-2' (DEFAULT_FREEFORM_FLOOR) on render #1 — M11S is floor 3.
+      expect(recordedPressedFloorTones[0]).toBe('floor-3');
+      // pre-fix: 'material-glaze' (DEFAULT_FREEFORM_MATERIAL) on render #1.
+      expect(recordedPressedMaterialTones[0]).toBe('material-solvent');
+      // pre-fix: 'drop' (hardcoded default) on render #1.
+      expect(recordedMethodValues[0]).toBe('purchase');
+    });
+  });
+
+  describe('(R-D5a) allowSubs on the pinned door', () => {
+    it('pinned + allowSubs renders "Include substitutes"; checking it widens the recipient Select to subs', () => {
+      const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+      const sub = makePlayer({ id: 'p9', name: 'Sam', isSubstitute: true });
+      renderModal({ material: 'glaze', suggestedPlayer: p1, allPlayers: [p1, sub], allowSubs: true });
+
+      expect(screen.getByText('Include substitutes')).toBeInTheDocument();
+
+      // Off by default (same as free-form/edit): the sub is absent until checked.
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      expect(screen.queryByRole('option', { name: new RegExp(sub.name) })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(p1.name) })); // close, p1 stays picked
+
+      fireEvent.click(checkboxByLabelText('Include substitutes'));
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(sub.name) }));
+      expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(sub.name);
+    });
+
+    it('pinned WITHOUT allowSubs renders no "Include substitutes" checkbox (R-a preserved)', () => {
+      const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+      renderModal({ material: 'glaze', suggestedPlayer: p1, allPlayers: [p1] });
+
+      expect(screen.queryByText('Include substitutes')).not.toBeInTheDocument();
+    });
+  });
+});
+
+// PR #243 review (claude[bot] on #243, R-D5a): check "Include substitutes" -> pick a sub ->
+// uncheck. `eligiblePlayers` drops the sub, so `recipientOptions` no longer contains that id
+// and the Radix Select trigger renders empty, but `recipientPlayerId` still held the departed
+// sub — `handleSubmit`'s `if (!recipientPlayerId) return` guard passed, so the door wrote a
+// recipient the UI wasn't showing. Fixed synchronously in the checkbox's own onChange
+// (`handleIncludeSubsChange`) — no new effect. Appended at EOF per the file's snapshot-freeze
+// rule; the `V1 freeze baseline` describe above stays untouched.
+describe('(PR #243) subs-toggle recipient re-derivation', () => {
+  it('pinned + allowSubs: check -> pick the sub -> uncheck re-derives the recipient to an eligible player (Select value AND submit payload)', async () => {
+    const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+    const sub = makePlayer({ id: 'p9', name: 'Sam', isSubstitute: true });
+    renderModal({ material: 'glaze', suggestedPlayer: p1, allPlayers: [p1, sub], allowSubs: true });
+
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(sub.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(sub.name);
+
+    // Uncheck: the sub drops out of `eligiblePlayers` — the Select must re-derive to an
+    // eligible player (here, back to the suggested player), not keep naming the departed sub.
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(p1.name);
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).not.toHaveTextContent(sub.name);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    // The truthful assert the finding calls out explicitly: what submit actually SENDS, not
+    // just what the trigger displays.
+    expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'p1' }));
+  });
+
+  it('toggling subs ON with a valid main-roster pick keeps the pick (a toggle must never clobber a valid pick — D8 R7 discipline)', () => {
+    const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+    const p2 = makePlayer({ id: 'p2', name: 'Bob' });
+    const sub = makePlayer({ id: 'p9', name: 'Sam', isSubstitute: true });
+    renderModal({ material: 'glaze', suggestedPlayer: p1, allPlayers: [p1, p2, sub], allowSubs: true });
+
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(p2.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(p2.name);
+
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(p2.name);
+  });
+
+  it('freeform door: check -> pick the sub -> uncheck re-derives the recipient (same handler serves both doors)', async () => {
+    const gina = makePlayer({ id: 'gina', name: 'Gina' });
+    const sam = makePlayer({ id: 'sam', name: 'Sam', isSubstitute: true });
+    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { initialWeek: number }> = {
+      isOpen: true,
+      onClose: vi.fn(),
+      groupId: 'g1',
+      tierId: 't1',
+      maxWeek: 5,
+      floors: ['M9S', 'M10S', 'M11S', 'M12S'],
+      initialWeek: 2,
+      allPlayers: [gina, sam],
+    };
+    render(<QuickLogMaterialModal {...props} />);
+
+    // Mount seed: Gina is the only main-roster player, so she's auto-picked.
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(gina.name);
+
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(sam.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(sam.name);
+
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(gina.name);
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).not.toHaveTextContent(sam.name);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'gina' }));
+  });
+
+  it('freeform: uncheck falls back to the RANKED top needer, not raw allPlayers[0] order (round-2 review)', async () => {
+    // `zed` sits FIRST in `allPlayers` but doesn't need glaze (all-raid gear, the `makePlayer`
+    // default) — a raw `nextPool[0]` fallback would wrongly land on him. `gina` sits SECOND but
+    // is the ranked top needer (an eligible tome slot). This makes the assert non-vacuous: a
+    // raw-order fallback and a ranked fallback disagree on who the recipient should be.
+    const zed = makePlayer({ id: 'zed', name: 'Zed' });
+    const gina = makePlayer({
+      id: 'gina',
+      name: 'Gina',
+      gear: [
+        makeGear({ slot: 'weapon', bisSource: 'raid' }),
+        makeGear({ slot: 'head', bisSource: 'raid' }),
+        makeGear({ slot: 'body', bisSource: 'raid' }),
+        makeGear({ slot: 'hands', bisSource: 'raid' }),
+        makeGear({ slot: 'legs', bisSource: 'raid' }),
+        makeGear({ slot: 'feet', bisSource: 'raid' }),
+        makeGear({ slot: 'earring', bisSource: 'tome', hasItem: true, isAugmented: false }), // needs glaze
+        makeGear({ slot: 'necklace', bisSource: 'raid' }),
+        makeGear({ slot: 'bracelet', bisSource: 'raid' }),
+        makeGear({ slot: 'ring1', bisSource: 'raid' }),
+        makeGear({ slot: 'ring2', bisSource: 'raid' }),
+      ],
+    });
+    const sam = makePlayer({ id: 'sam', name: 'Sam', isSubstitute: true });
+    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { initialWeek: number }> = {
+      isOpen: true,
+      onClose: vi.fn(),
+      groupId: 'g1',
+      tierId: 't1',
+      maxWeek: 5,
+      floors: ['M9S', 'M10S', 'M11S', 'M12S'],
+      initialWeek: 2,
+      allPlayers: [zed, gina, sam], // raw order: zed, gina, sam
+    };
+    render(<QuickLogMaterialModal {...props} />);
+
+    // Mount seed already ranks correctly (Gina is the material's only needer) — sanity check
+    // that the fixture's ranking disagrees with raw array order before the toggle dance below.
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(gina.name);
+
+    // Check subs, then MANUALLY pick the sub — a manual pick arms `userPickedRecipient`,
+    // disarming the auto-recipient effect, so nothing else can self-heal the fallback below.
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(sam.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(sam.name);
+
+    // Uncheck: Sam drops out. Pre-fix, the fallback was raw `nextPool[0]` = Zed (doesn't need
+    // glaze). Fixed, it's the ranked top needer = Gina.
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(gina.name);
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).not.toHaveTextContent(zed.name);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'gina' }));
   });
 });

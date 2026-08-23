@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.18',
+    date: '2026-08-22T14:00:00Z',
+    title: 'Phase D slice D5 — the weekly grid chassis on Log (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: "Log's placeholder becomes the real weekly grid, and material entries become editable",
+        description:
+          'V2 preview: Log\'s placeholder body is replaced by the real weekly grid (R-17/R-19) — four floor sections, each carrying the classic floor-card header (accent stripe, "Floor N · Book I–IV", duty name) and one row of loot + material cells drawn from that floor\'s loot table. An empty loot cell opens the recipient picker pre-filled to that floor and slot, targeting the week you\'re looking at; a filled cell reopens the picker on its newest entry. An empty material cell opens the material modal with a suggested recipient (who\'s next up this week) and an "include substitutes" option; a filled cell reopens that same modal in edit mode — v2\'s material cells gain, for the first time, the edit door (the classic grid\'s material editing, re-expressed through the one owned modal), so a wrong recipient or material can be corrected instead of only logged. Switching Log\'s view or stepping its week chevrons no longer triggers a spurious background refetch of the static\'s tiers.',
+        pr: 243,
+        prTitle: 'feat(v2): D5 grid chassis — weekly Log grid, R-21 edit door first mount, tier-effect stability',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.17',
     date: '2026-08-22T07:00:00Z',
     title: 'Preview shell feedback pass — loot views, roster, and avatars',

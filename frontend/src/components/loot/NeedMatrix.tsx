@@ -196,7 +196,9 @@ export function NeedMatrix(props: NeedMatrixProps) {
                   className={`px-3 py-2 text-left font-medium ${floorScope !== 'all' && relevant ? FLOOR_ACCENT_CLASS[floorScope] : ''}`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-text-secondary"><GearSlotIcon slot={row.slot} size={18} /></span>
+                    {/* inline-flex blockifies the icon's aria-hidden span against index.css's
+                        display-revert rule (see :55-61 above) — a plain span left it 0x0. */}
+                    <span className="inline-flex items-center text-text-secondary"><GearSlotIcon slot={row.slot} size={18} /></span>
                     <span className={`text-sm font-semibold ${FLOOR_TEXT_CLASS[row.floorNumber]}`}>{row.label}</span>
                   </div>
                 </th>
