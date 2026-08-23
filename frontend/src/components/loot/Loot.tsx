@@ -86,16 +86,28 @@
  *     default to all/all/all), so an `?entry=` deep-link can never be hidden by
  *     a filter on first mount; only a mid-session filter change can hide a row,
  *     which is acceptable.
- *   - D4/D5 interims, so a reader doesn't mistake a stub for a gap: Log's body
- *     is `LogWeekGrid` (D5) — four floor sections, one cell per gear/material
- *     slot, wired below. Still open: the Books card and a displayed-week-bound
- *     reset menu are D7; Log's `?entry=` highlight is D6/D11; a count bar/
- *     legend above the grid is D6. "Log material" on Log — D4's other named
- *     gap — shipped in D8 (the toolbar's free-form door, below).
+ *   - D4/D5/D6a interims, so a reader doesn't mistake a stub for a gap: Log's
+ *     body is `LogWeekGrid` (D5) — four floor sections, one cell per
+ *     gear/material slot, wired below. D6a shipped the cell's modifier family
+ *     (plain click edits, Shift+Click copies a deep link, Alt+Click jumps to
+ *     the recipient's roster card, right-click/kebab opens the shared context
+ *     menu) and the Log-side `?entry=` deep-link landing (validate → pulse →
+ *     scroll → self-clear) below. Still open: the Books card and a
+ *     displayed-week-bound reset menu are D7; a count bar/legend below the
+ *     grid is D6b; the teaching tooltip and the recipient-badge hover-× are
+ *     also D6b; the jump destination is card-level (`?player=`) until D12
+ *     retargets it to slot-level anchors (R-28). "Log material" on Log — D4's
+ *     other named gap — shipped in D8 (the toolbar's free-form door, below).
  *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
  *     mounted on History here, and `LootResetMenu` stays bound to
- *     `clock.currentWeek`. A `week` param on Log positions the displayed week
- *     and nothing more (until D6/D11 land the highlight).
+ *     `clock.currentWeek`. A `week` param on Log positions the displayed
+ *     week; a link whose `?entry=` resolves in a DIFFERENT week re-points the
+ *     display to that entry's week instead (D6a — the landing entry always
+ *     wins over a stale/hand-edited `?week=`, `Loot.tsx:629-704`). The
+ *     correction itself does not resolve/fire until the week clock can
+ *     honor the entry's week — see the "F1" comment ahead of the highlight
+ *     derivation (D6a browser pass; a provisional clock must never clamp
+ *     this correction, `useLogWeek.ts`'s own clamp-ceiling rule).
  *   - The Priority sub-view (Queues⇄Who Needs It⇄Weapons) persists per user
  *     under `v2-loot-priority-view` (R-1) — NOT URL-backed. Who Needs It is
  *     the landing view (R-1); an unset/unrecognized stored value (including a
@@ -115,7 +127,10 @@
  *     six configs the LootResetMenu emits (week/all × loot/books/data).
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
+} from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ListChecks, Shield } from 'lucide-react';
 
 import { PageHeader } from '../layout/PageHeader';
@@ -123,6 +138,7 @@ import { LootToolbar } from './LootToolbar';
 import { WeekScopeControl } from './WeekScopeControl';
 import { FloorCard } from './FloorCard';
 import { LogWeekGrid } from './LogWeekGrid';
+import { logCellDomId } from './logWeekGridData';
 import { suggestedMaterialRecipient } from './materialSuggestion';
 import { NeedMatrix } from './NeedMatrix';
 import { WeaponPriorityBridge } from './WeaponPriorityBridge';
@@ -174,6 +190,43 @@ const logger = baseLogger.scope('loot');
 
 /** Stable empty fallback so a missing/empty tier doesn't churn memo deps. */
 const EMPTY_PLAYERS: SnapshotPlayer[] = [];
+
+/**
+ * Builds a Loot deep-link URL from the CURRENT `window.location.href`
+ * (`SectionedLogView.tsx:847-855` pattern) so existing params — notably
+ * `?tier=` — survive, then sets/deletes only the params this link controls.
+ * File-local, module scope (director F-17): shared by BOTH copy paths below
+ * (the History `copyLink` this refactors onto it, and the Log grid's
+ * `copyLogEntryLink`) so the two ~12-line near-clones the pre-D6a code held
+ * don't drift apart.
+ *
+ * `shell` is always STRIPPED (coverage-plan D4): with the session-sticky
+ * `?shell=` tier, a pinned value would lock the recipient's whole tab into
+ * the sender's shell — links must respect the recipient's own preference.
+ * `week` is set only when the caller passes one (the Log link always does;
+ * History omits it — a HISTORY link has no week axis, and an emergent `week`
+ * would silently ship the sender's Log week into legacy History's own
+ * `?week=` reader too — the shipped ruling `copyLink`'s original comment
+ * documented). `entryType` is ALWAYS set for a Log link (R-18 note 1 — the
+ * `?entry=` consumption effect below needs it to disambiguate the two
+ * independent id sequences) but keeps History's shipped omit-for-loot shape
+ * otherwise.
+ */
+const buildEntryLink = (opts: { lview: 'log' | 'history'; week?: number; ref: HistoryItem }): string => {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('shell');
+  // Entry links carry ONE navigation target — competing deep-link params are stripped.
+  url.searchParams.delete('player');
+  url.searchParams.delete('book');
+  url.searchParams.set('tab', 'gear');
+  url.searchParams.set('lview', opts.lview);
+  if (opts.week != null) url.searchParams.set('week', String(opts.week));
+  else url.searchParams.delete('week');
+  url.searchParams.set('entry', String(opts.ref.entry.id));
+  if (opts.lview === 'log' || opts.ref.kind === 'material') url.searchParams.set('entryType', opts.ref.kind);
+  else url.searchParams.delete('entryType');
+  return url.toString();
+};
 
 // ── Priority sub-view (R-1/R-3) ──
 // Who Needs It (renamed from "Matrix") is the landing view (R-1) — the
@@ -319,6 +372,32 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const clock = useWeekClock(group.id, tier?.tierId);
   const logWeek = useLogWeek(group.id, tier?.tierId, clock, lview === 'log');
 
+  // ── Own `useSearchParams()` (D6a Task 6) — the Log grid's jump/highlight
+  // wiring, same independent-subscription pattern `useLogWeek`/`useUrlTabState`/
+  // `RosterCard.tsx:280` already use rather than threading params down. ──
+  const [searchParams, setSearchParams] = useSearchParams();
+  // react-router's `setSearchParams` functional-form updater is bound to the
+  // `searchParams` closed over by THIS specific `setSearchParams` reference
+  // (react-router-dom's own `useCallback` deps are `[navigate, searchParams]`)
+  // — it is not a live re-read at call time the way React's own `setState`
+  // updater is. The `?entry=` effect's 2.5s-delayed clear (below) schedules
+  // its `setSearchParams` call well after mount, so a closure captured back
+  // when the effect first ran would strip against a STALE snapshot even
+  // though it uses the functional syntax, clobbering any param written by an
+  // intervening navigation (e.g. the user stepping the Log week while the
+  // highlight is still pending). Updated on every render (not gated by any
+  // effect's deps), so `.current` is always the freshest reference by the
+  // time a delayed timer actually calls it. Synced via `useLayoutEffect`
+  // (not a plain render-phase assignment) so the write only lands once React
+  // has actually committed — a render-phase write would leave `.current`
+  // pointing at an INTERRUPTED render's `setSearchParams` if React starts but
+  // never commits one (react-router v7's `startTransition`-based navigation
+  // makes this a real window, not just a defensive nicety).
+  const setSearchParamsRef = useRef(setSearchParams);
+  useLayoutEffect(() => {
+    setSearchParamsRef.current = setSearchParams;
+  });
+
   // ── Priority sub-view (persisted, R-1) + floor scope (session, R-2/R-10) ──
   const [priorityView, setPriorityView] = useState<PriorityView>(readStoredPriorityView);
   const changePriorityView = useCallback((v: PriorityView) => {
@@ -445,41 +524,213 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     setPickerState({ mode: 'edit', editEntry: entry });
   }, []);
 
+  // History-shaped link: no week (History has no week axis), entryType
+  // omitted for loot (the shipped shape LootHistoryTable's highlight effect
+  // already reads) — `buildEntryLink`'s doc comment carries the full rationale.
   const copyLink = useCallback((item: HistoryItem) => {
-    // v2 deep-link: build from the CURRENT URL (SectionedLogView.tsx:847-855
-    // pattern) so existing params — notably `?tier=` — survive, then set/delete
-    // only the params this link controls. Keeps legacy's `entry`/`entryType`
-    // names (LootHistoryTable's highlight effect reads them) alongside v2's own
-    // routing params. `shell` is deliberately STRIPPED (coverage-plan ruling
-    // D4): with the session-sticky ?shell= tier, a pinned value would lock the
-    // recipient's whole tab into the sender's shell — links must respect the
-    // recipient's own preference. `tab`/`lview` resolve in both shells.
-    // `week` is STRIPPED for the same class of reason: this is a HISTORY link,
-    // History has no week axis, and an emergent `week` would silently ship the
-    // sender's Log week — to legacy's History view too (it reads `?week=`).
-    // Log's own week-carrying deep links are D6/D11.
-    const url = new URL(window.location.href);
-    url.searchParams.delete('shell');
-    url.searchParams.delete('week');
-    url.searchParams.set('tab', 'gear');
-    url.searchParams.set('lview', 'history');
-    url.searchParams.set('entry', String(item.entry.id));
-    if (item.kind === 'material') url.searchParams.set('entryType', 'material');
-    else url.searchParams.delete('entryType');
-    navigator.clipboard.writeText(url.toString()).then(
+    navigator.clipboard.writeText(buildEntryLink({ lview: 'history', ref: item })).then(
       () => toast.success('Link copied'),
       () => toast.error("Couldn't copy the link"),
     );
   }, []);
 
+  // D6a Task 6: the Log grid's copy-link door — same builder, `lview: 'log'`
+  // + the DISPLAYED week (never `clock.currentWeek` — a Log link that always
+  // pointed at "now" would dead-scroll the instant the sender is looking at
+  // any other week, R-15's whole point). `entryType` is ALWAYS set for a Log
+  // link (buildEntryLink's `opts.lview === 'log'` branch) — the `?entry=`
+  // consumption effect below needs it to disambiguate the two independent id
+  // sequences (F-10a).
+  const copyLogEntryLink = useCallback((ref: HistoryItem) => {
+    navigator.clipboard.writeText(buildEntryLink({ lview: 'log', week: logWeek.week, ref })).then(
+      () => toast.success('Link copied'),
+      () => toast.error("Couldn't copy the link"),
+    );
+  }, [logWeek.week]);
+
+  // D6a Task 6: Alt+Click / context-menu "Jump to {name}" from the Log grid —
+  // the same same-route URL-param jump `RosterCard.tsx:280-297` uses, landing
+  // on the roster tab at that player. One navigation, one highlight: deletes
+  // any leftover `entry`/`entryType`/`book` so a stale highlight from THIS
+  // screen can't pulse a second target on the roster (director F-18).
+  const jumpToRecipient = useCallback((playerId: string) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('tab', 'roster');
+      params.set('player', playerId);
+      params.delete('entry');
+      params.delete('entryType');
+      params.delete('book');
+      return params;
+    });
+  }, [setSearchParams]);
+
   const requestDelete = useCallback((item: HistoryItem) => {
     setDeleteTarget(item);
   }, []);
+
+  // D6a Task 6: literal wiring — `LogGridEntryRef` IS `HistoryItem` (director
+  // F-12, `LootEntryRow.tsx`'s type alias), so the Log grid's delete door
+  // reaches the SAME `deleteTarget` confirm-modal state History's delete door
+  // does. No adapter, no cast.
+  const deleteFromGrid = requestDelete;
 
   const playerNameFor = useCallback(
     (playerId: string, fallback: string) => players.find((p) => p.id === playerId)?.name ?? fallback,
     [players],
   );
+
+  // ── Log `?entry=` deep-link (D6a Task 6) ──
+  // Re-expresses `LootHistoryTable.tsx:60-103`'s contract for the Log view:
+  // derived (not stored) so the highlight tracks the URL param directly, and
+  // gated on `lview === 'log'` so History's own `?entry=` reader (same params,
+  // different view) never sees a Log-originated id. `entryType` defaults to
+  // 'loot'; validation runs against the UNFILTERED log MATCHING THE TYPE — a
+  // loot id arriving as `entryType=material` resolves to nothing, and vice
+  // versa, because the two id sequences are independent (F-10a).
+  const entryParam = searchParams.get('entry');
+  const entryType: 'loot' | 'material' = searchParams.get('entryType') === 'material' ? 'material' : 'loot';
+  const parsedEntryId = entryParam ? parseInt(entryParam, 10) : null;
+  const foundLootEntry =
+    lview === 'log' && entryType === 'loot' && parsedEntryId != null && !Number.isNaN(parsedEntryId)
+      ? lootLog.find((e) => e.id === parsedEntryId)
+      : undefined;
+  const foundMaterialEntry =
+    lview === 'log' && entryType === 'material' && parsedEntryId != null && !Number.isNaN(parsedEntryId)
+      ? materialLog.find((e) => e.id === parsedEntryId)
+      : undefined;
+  // F1 (D6a browser pass, live-reproduced): a cold `?week=`+`?entry=` landing
+  // RACES the week clock. `lootTrackingStore` starts `currentWeek: 1, maxWeek:
+  // 1` and only corrects once the async `fetchCurrentWeek` (mount effect,
+  // above) resolves, so on the render(s) right after a fast log fetch beats a
+  // slower clock fetch, `clock` is still provisional. Resolving the highlight
+  // here regardless would let the OUT-OF-WEEK correction below (F-10b) fire
+  // against that provisional clock: `useLogWeek.setWeek` clamps to `1 …
+  // max(provisional maxWeek, provisional currentWeek)` (its own documented,
+  // deliberate rule — see `useLogWeek.ts`'s doc header), lands exactly on the
+  // provisional `currentWeek`, and treats that as "already current" —
+  // clearing the override and writing the `'current'` sentinel into
+  // `v2-history-week-*`. That DESTROYS the user's actual target week: once the
+  // real clock arrives the display follows wherever "current" then resolves,
+  // never the entry's own week, and the stored preference is gone. So: stay
+  // unresolved (`null`) while the found entry's week exceeds what the clock
+  // can currently vouch for (`Math.max(clock.maxWeek, clock.currentWeek)`,
+  // the same ceiling `useLogWeek.setWeek` itself clamps against). This is a
+  // RENDER-TIME guard, not a stored flag — `clock` is a hook dependency
+  // (`useWeekClock` above), so its later arrival re-renders this derivation,
+  // flipping `highlightId` from null to the real id with FRESH closures, and
+  // the effect below then fires `setWeek` unclamped. A genuinely out-of-range
+  // entry (corrupt link, week beyond the clock's real max) simply never
+  // resolves — the same fate as any other invalid `?entry=` ("pointing at no
+  // known entry" below): the params linger until the user navigates away.
+  // F2 (PR #244 review): the guard above only protects a week that EXCEEDS
+  // the provisional ceiling — a WEEK-1 entry passes it even while the clock
+  // is still provisional (ceiling === 1), because 1 is never > 1. If the
+  // DISPLAYED week differs (e.g. a stale/mismatched `?week=` alongside the
+  // link), the correction effect below would still fire `logWeek.setWeek(1)`
+  // against that provisional clock: it clamps to `1 … max(1, 1)` = 1, lands
+  // exactly on the provisional `currentWeek`, and gets treated as "already
+  // current" — clearing the override and writing the `'current'` sentinel,
+  // the exact clobber this guard exists to prevent. So: also stay unresolved
+  // while the clock is still provisional (`clockCeiling === 1`) AND a
+  // correction would actually fire (`foundEntryWeek !== logWeek.week`) —
+  // mirroring the OUT-OF-RANGE case's "stay null until the clock can vouch
+  // for this" rule for the one ceiling value (1) a provisional clock can't be
+  // told apart from a genuine one by magnitude alone. Exactly like the
+  // OUT-OF-RANGE case, this is a RENDER-TIME guard: `clockCeiling` is derived
+  // from `clock` (a hook dependency), so the real clock's later arrival
+  // re-renders this derivation — once `clockCeiling` moves off `1`, the
+  // second disjunct goes false, `unresolvedByClock` flips to false, and
+  // `highlightId` transitions to the real id with a FRESH closure, letting
+  // the effect below fire the (now-safe) correction against the real clock.
+  const foundEntryWeek = foundLootEntry?.weekNumber ?? foundMaterialEntry?.weekNumber;
+  const clockCeiling = Math.max(clock.maxWeek, clock.currentWeek);
+  const unresolvedByClock =
+    foundEntryWeek != null
+    && (foundEntryWeek > clockCeiling || (clockCeiling === 1 && foundEntryWeek !== logWeek.week));
+  const highlightId: number | null =
+    unresolvedByClock ? null : foundLootEntry?.id ?? foundMaterialEntry?.id ?? null;
+  const highlightKind: 'loot' | 'material' | null =
+    unresolvedByClock ? null : foundLootEntry ? 'loot' : foundMaterialEntry ? 'material' : null;
+  const highlightEntry: { kind: 'loot' | 'material'; id: number } | null =
+    highlightId != null && highlightKind != null ? { kind: highlightKind, id: highlightId } : null;
+
+  useEffect(() => {
+    if (highlightId == null || highlightKind == null) return;
+    const found = highlightKind === 'material'
+      ? materialLog.find((e) => e.id === highlightId)
+      : lootLog.find((e) => e.id === highlightId);
+    if (!found) return;
+
+    // OUT-OF-WEEK (F-10b): the entry lives on a week the Log isn't currently
+    // displaying — re-point the Log to it FIRST, so the scroll never targets
+    // a cell that hasn't rendered (the link would otherwise dead-scroll).
+    // This is a ONE-TIME correction on arrival, not a continuous sync — see
+    // the deps note below for why `logWeek`/`setSearchParams` are read via
+    // closure rather than listed reactively.
+    if (found.weekNumber !== logWeek.week) {
+      logWeek.setWeek(found.weekNumber);
+    }
+
+    const ref: HistoryItem = highlightKind === 'material'
+      ? { kind: 'material', entry: found as MaterialLogEntry }
+      : { kind: 'loot', entry: found as LootLogEntry };
+
+    const scrollTimer = setTimeout(() => {
+      document.getElementById(logCellDomId(ref))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+
+    // Functional form + `{ replace: true }` (LootHistoryTable.tsx:91-96
+    // precedent) THROUGH `setSearchParamsRef` (not the `setSearchParams`
+    // closed over above) — an intervening write to OTHER params, notably
+    // `useLogWeek`'s own `?week=` mirror or a manual week change via
+    // WeekScopeControl while this highlight is still pending its self-clear,
+    // survives. A non-functional strip built from a stale snapshot — or the
+    // functional form called through a stale `setSearchParams` reference,
+    // whose OWN closure over `prev` react-router fixed at THAT reference's
+    // creation time (see `setSearchParamsRef`'s doc comment) — would silently
+    // stomp whatever changed in between.
+    const clearTimer = setTimeout(() => {
+      setSearchParamsRef.current((prev) => {
+        const params = new URLSearchParams(prev);
+        params.delete('entry');
+        params.delete('entryType');
+        return params;
+      }, { replace: true });
+    }, 2500);
+
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(clearTimer);
+    };
+    // Deps are the id/kind PAIR only — this must fire exactly once per
+    // highlighted-entry arrival, not every time `logWeek` happens to get a
+    // new identity from an UNRELATED navigation (`logWeek` is a fresh object
+    // every render — see useLogWeek.ts's own header; the `setSearchParams`
+    // instability the ref above works around is the SAME class of issue).
+    // Including `logWeek` here would re-fire this effect on every subsequent
+    // navigation while a highlight is pending, re-applying the OUT-OF-WEEK
+    // correction above and fighting a user's own later week change (a real
+    // tug-of-war observed while developing this effect, not a hypothetical).
+    // `lootLog`/
+    // `materialLog` are read via closure too: `highlightId` is ITSELF derived
+    // from them above, so by construction they're already fresh at the exact
+    // render where `highlightId` transitions to a new value — the only
+    // moment this effect body actually runs its lookup. `logWeek.setWeek` is
+    // ALSO called from that same closure — this is correct ONLY because both
+    // that call and the lookup above run SYNCHRONOUSLY in the effect body, at
+    // the fresh render where `highlightId` just changed; the closures are
+    // same-render fresh, not because a stale reference is safe to call later.
+    // react-router's `setSearchParams` functional-form `prev` is a
+    // closure-frozen snapshot bound at that specific reference's creation
+    // time (confirmed empirically — see `setSearchParamsRef`'s doc comment
+    // above), NOT a live re-read the way React's own `setState` updater is.
+    // `logWeek.setWeek` has the same closure-capture shape internally. Do NOT
+    // move either call into a `setTimeout` here without routing it through a
+    // ref updated every render, the way the 2.5s clear below already does —
+    // that is exactly the bug `setSearchParamsRef` was added to fix.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, highlightKind]);
 
   // Reproduces the legacy reset semantics (SectionedLogView.tsx:450-511) for the
   // six configs LootResetMenu emits (week/all × loot/books/data). Loot/data →
@@ -762,6 +1013,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             });
           }}
           onEditMaterial={(entry) => setMaterialState({ mode: 'edit', editEntry: entry })}
+          onCopyEntryLink={copyLogEntryLink}
+          onJumpToPlayer={jumpToRecipient}
+          onDeleteEntry={deleteFromGrid}
+          highlightEntry={highlightEntry}
         />
       ) : priorityView === 'who-needs-it' ? (
         <NeedMatrix

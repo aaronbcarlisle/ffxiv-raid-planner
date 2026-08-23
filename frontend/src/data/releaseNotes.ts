@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.19',
+    date: '2026-08-23T16:00:00Z',
+    title: 'Phase D slice D6a — Log grid cell affordances (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: "Log grid cells gain click modifiers, a multi-entry menu, and a per-cell kebab",
+        description:
+          "V2 preview: the Log grid's cells go from a single edit button to a full modifier family. A plain click still edits the newest entry; Shift+click copies a deep link straight to that cell (paste it and Log opens at the right week with the cell highlighted); Alt+click jumps to the recipient's roster card, with the pointer changing to a hand only while Alt is held over a jumpable cell. Right-clicking a cell, or opening the small menu button that appears on hover or keyboard focus, brings up Edit / Copy link / Jump to player / Delete in one place — delete goes through the same confirmation as everywhere else. A cell holding more than one entry now shows a real ×N button: opening it lists every entry newest-first, loot and material alike, so any older entry can be edited directly instead of only the latest one.",
+        pr: 244,
+        prTitle: 'feat(v2): D6a grid affordances — modifier clicks, ×N menu, cell kebab, Log deep links',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.18',
     date: '2026-08-22T14:00:00Z',
     title: 'Phase D slice D5 — the weekly grid chassis on Log (v2 preview)',

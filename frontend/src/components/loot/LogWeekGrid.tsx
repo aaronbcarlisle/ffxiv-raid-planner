@@ -51,19 +51,21 @@
  * `FloorDropRow`, per director F-13's "one derivation" rule) — no separate
  * icon, no duplicate label; the coloured text IS the column name.
  *
- * Cell body: `RecipientBadge` (file-local) — role-tinted per `roleVar`
+ * Cell body: `RecipientBadge` (`./RecipientBadge.tsx` — extracted D6 Task 2 so
+ * `LogCellEntriesMenu` shares it) — role-tinted per its `roleVar` helper
  * (`NeedMatrix.tsx:46`'s pattern), `JobIcon` + name, `min-h-7` reserved on
  * its wrapper so empty↔filled never shifts row height (legacy's fixed-28px
  * rationale, `WeeklyLootGrid.tsx:374-376`, re-expressed as `min-h-7`). An unknown
  * `recipientPlayerId` (player left the roster) falls back to
  * `entry.recipientPlayerName` in `var(--color-text-secondary)`, no job icon —
- * the record survives the player. A second+ entry adds a STATIC `×N` text
- * chip (never a button, never aria-hidden — `EntryPopover` for older entries
- * is D6; Task 6 records the interim). Editing a cell always targets
- * `entries[0]` (newest — Task 2 sorts DESC).
+ * the record survives the player. A second+ entry's `×N` route is
+ * `LogCellEntriesMenu` (`./LogCellEntriesMenu.tsx`, D6 Task 2) — a REAL
+ * trigger button, mounted D6a Task 4. Editing the main control always
+ * targets `entries[0]` (newest — Task 2 sorts DESC); the chip menu reaches
+ * every other entry.
  *
  * Interactivity (R-17 / director F-15): `Button variant="ghost" size="sm"`
- * wraps the WHOLE cell body as one control — never `IconButton` (that's
+ * is the cell's edit control — never `IconButton` for IT (that's
  * `NeedMatrix`'s pattern for a single glyph; here the control's accessible
  * name already carries the recipient, so a text-capable `Button` is the
  * right primitive, not a workaround). `canEdit=false` drops the `Button`
@@ -72,16 +74,63 @@
  * cells take the same read-only branch (F-12 — no enabled button whose
  * handler cannot act, `FloorCard.tsx:174-180` precedent); filled material
  * cells stay editable regardless (the edit door needs no suggestion pool).
+ *
+ * D6a Task 4 anatomy: a FILLED interactive cell is no longer one lone
+ * `Button` — it's a `<span className="group flex items-center gap-1">`
+ * holding up to three siblings, no button nested in another: the edit
+ * `Button` (`flex-1`), `LogCellEntriesMenu`'s chip trigger (multi-entry
+ * only), and a hover/focus-revealed kebab `IconButton` (R-D6b, every filled
+ * cell) that opens the SAME `buildEntryMenuItems` menu the right-click does
+ * — one items list, two triggers, anchored to its own rect rather than the
+ * cursor. An EMPTY interactive cell keeps the single-`Button` shape (no
+ * chip, no kebab — there's nothing yet to open a menu about). The multi-
+ * entry accessible name folds the count in (`… (newest of N)`, the D5-owed
+ * fix) so it's announced on both the edit button and the chip trigger.
+ *
+ * D6a Task 6 wiring: the modifier layer is live on the edit control — plain
+ * click/AT-activation (`detail===0`) edits `entries[0]` (D6-c: a cell's
+ * PRIMARY action, never the jump), Shift+Click copies a Log deep link,
+ * Alt+Click jumps to the recipient's roster card, and `useAltHeld` swaps the
+ * cursor to a pointer only while Alt is held AND a jump target resolves.
+ * Empty-cell modifier clicks are no-ops (D6-h). Alt+Enter does **not** ride
+ * the same jump route (D6a browser pass, F3, live-falsified in Chrome):
+ * Chrome's keyboard-activation click on a focused `<button>` does not carry
+ * `altKey`, so a trusted Alt+Enter fires the PRIMARY action (edit) — same as
+ * a plain click, never the jump. The keyboard/AT jump routes are the
+ * per-cell kebab and Shift+F10/menu-key → "Jump to {player}" in the context
+ * menu below, per D6-c's own rationale ("the AT route to the jump is the
+ * context menu") — no separate keydown handler exists or is needed. The
+ * context menu (right-click anywhere in the filled cell — the ×N chip, the
+ * kebab, or the cell's own padding, not just the edit button; PR #244 r3
+ * fix moved `onContextMenu` from the edit `Button` to the FILLED-cell
+ * wrapper `<span className="group ...">` so the whole cell is the target —
+ * or the cell's own hover/focus-revealed kebab — one kebab per filled cell,
+ * so two trigger routes total) is Edit / Copy link / Jump to {player} (only
+ * when the recipient resolves) / Delete (danger, routed through `Loot.tsx`'s
+ * existing confirm modals — legacy parity, `SectionedLogView.tsx:901-906` +
+ * `:262-275`). Shift+F10/menu-key fires `contextmenu` on whichever control
+ * has focus (edit button, chip, or kebab); it bubbles to the wrapper's
+ * handler same as a mouse right-click, so `e.currentTarget` there is always
+ * the wrapper — one anchor rect for both input methods. Read-only
+ * (`canEdit=false`) cells stay fully inert — no modifiers, no menu, no
+ * kebab (D6-l, a named divergence from legacy's viewer-facing copy/jump —
+ * see `phase-d-loot-plan.md` §5). NOT yet shipped here (D6b): the teaching
+ * tooltip, the recipient-badge hover-`×`, the count bar/legend mounted
+ * below the grid, and the floor-header "Log floor" kebab.
  */
-import { useMemo } from 'react';
-import { Button } from '../primitives';
+import { useMemo, useState } from 'react';
+import { MoreVertical } from 'lucide-react';
+import { Button, IconButton } from '../primitives';
 import { Tag } from '../ui';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
-import { JobIcon } from '../ui/JobIcon';
-import { getValidRole } from '../../gamedata';
+import { useAltHeld } from '../../hooks/useAltHeld';
+import { jumpMenuAnchor } from '../roster/rosterLedgerJumps';
 import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { MATERIAL_TOKEN } from './FloorDropRow';
-import { buildLogWeekGrid, type LogGridFloor } from './logWeekGridData';
+import { RecipientBadge, resolveRecipient, type RecipientLike } from './RecipientBadge';
+import { LogCellEntriesMenu } from './LogCellEntriesMenu';
+import { buildLogWeekGrid, logCellDomId, type LogGridFloor, type LogGridEntryRef } from './logWeekGridData';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import type {
   GearSlot, LootLogEntry, MaterialLogEntry, MaterialType, SnapshotPlayer,
@@ -101,44 +150,31 @@ export interface LogWeekGridProps {
   onEditGear: (entry: LootLogEntry) => void;
   onAssignMaterial: (material: MaterialType, floorNumber: FloorNumber) => void;
   onEditMaterial: (entry: MaterialLogEntry) => void;
+  /**
+   * D6 Task 3 → D6a Task 6 tightens to required (TS now enforces every mount
+   * wires it). Shift+Click on a filled cell (R-18). Context-menu "Copy link"
+   * — see `buildEntryMenuItems`.
+   */
+  onCopyEntryLink: (ref: LogGridEntryRef) => void;
+  /** D6 Task 3 → required. Alt+Click / context-menu "Jump to {name}" — the R-18 jump gate. */
+  onJumpToPlayer: (playerId: string) => void;
+  /** D6 Task 3 → required. context-menu "Delete" (danger, after a separator). */
+  onDeleteEntry: (ref: LogGridEntryRef) => void;
+  /**
+   * D6a Task 6: the `?entry=` deep-link target (`Loot.tsx`'s consumption
+   * effect, gated on the Log view). The matching filled cell's wrapper span
+   * gets `id={logCellDomId(ref)}` and ` highlight-pulse` appended — the exact
+   * `LootEntryRow.tsx:80-83` idiom. `null` when nothing is highlighted.
+   */
+  highlightEntry: { kind: 'loot' | 'material'; id: number } | null;
 }
 
-/** Role-colored token — same formula as `NeedMatrix.tsx:46`. */
-const roleVar = (player: SnapshotPlayer) => `var(--color-role-${getValidRole(player.role)}, var(--color-text-muted))`;
-
-interface RecipientLike {
-  recipientPlayerId: string;
-  recipientPlayerName: string;
-}
-
-interface ResolvedRecipient {
-  name: string;
-  color: string;
-  job?: string;
-}
-
-/** Unknown `recipientPlayerId` (player left the roster) falls back to the entry's own recorded name. */
-function resolveRecipient(entry: RecipientLike, playerMap: Map<string, SnapshotPlayer>): ResolvedRecipient {
-  const player = playerMap.get(entry.recipientPlayerId);
-  if (!player) return { name: entry.recipientPlayerName, color: 'var(--color-text-secondary)' };
-  return { name: player.name, color: roleVar(player), job: player.job };
-}
-
-/** File-local — the WeeklyLootGrid.tsx:392-400 badge treatment re-expressed with `roleVar`. */
-function RecipientBadge({ color, name, job }: { color: string; name: string; job?: string }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold"
-      style={{
-        color,
-        backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
-        border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
-      }}
-    >
-      {job && <JobIcon job={job} size="xs" />}
-      {name}
-    </span>
-  );
+/** The grid-root right-click menu's state — ONE mount, never per-cell (director F-15). */
+interface LogGridMenuState {
+  x: number;
+  y: number;
+  ref: LogGridEntryRef;
+  jumpPlayerId: string | null;
 }
 
 interface GridCellProps<E extends RecipientLike> {
@@ -147,24 +183,47 @@ interface GridCellProps<E extends RecipientLike> {
   floorName: string;
   interactive: boolean;
   playerMap: Map<string, SnapshotPlayer>;
+  /** Shared Alt-held state — ONE `useAltHeld()` call at the `LogWeekGrid` top level (D6 Task 3). */
+  altHeld: boolean;
+  /** Builds this cell's `LogGridEntryRef` — the caller knows its own kind ('loot'/'material'), so
+   *  `GridCell` never has to discriminate a generic `E` at runtime. */
+  buildRef: (entry: E) => LogGridEntryRef;
   onEmpty: () => void;
   onFilled: (entry: E) => void;
+  onCopyEntryLink?: (ref: LogGridEntryRef) => void;
+  onJumpToPlayer?: (playerId: string) => void;
+  /** Opens the grid-root context menu (the `LogWeekGrid`-level `setMenu`). */
+  onOpenMenu: (state: LogGridMenuState) => void;
+  /** D6a Task 6: the screen-level `?entry=` target — `null` when nothing is highlighted. */
+  highlightEntry: { kind: 'loot' | 'material'; id: number } | null;
 }
 
 /** One `<td>`'s body — shared by gear and material cells (both entry shapes satisfy `RecipientLike`). */
 function GridCell<E extends RecipientLike>({
-  entries, label, floorName, interactive, playerMap, onEmpty, onFilled,
+  entries, label, floorName, interactive, playerMap, altHeld, buildRef,
+  onEmpty, onFilled, onCopyEntryLink, onJumpToPlayer, onOpenMenu, highlightEntry,
 }: GridCellProps<E>) {
   const newest = entries[0];
   const recipient = newest ? resolveRecipient(newest, playerMap) : undefined;
+  const isMulti = entries.length > 1;
+  // D6a Task 6 (F1 fix, PR #244 review): the highlighted ref is found by
+  // SEARCHING the whole cell, not assumed to be `newest`. A deep link copied
+  // before a second entry landed in the same cell can target an OLDER entry —
+  // `Loot.tsx`'s `?entry=` validation matches against the WHOLE unfiltered
+  // log, not just each cell's newest — so a link like that used to validate,
+  // re-point the week, and then silently no-op scroll: nothing in the cell
+  // ever carried that entry's DOM id. Search every entry so the id + pulse
+  // land on whichever one actually matches, wherever it sits in the cell.
+  const highlightedRef = highlightEntry
+    ? entries.map(buildRef).find((r) => r.kind === highlightEntry.kind && r.entry.id === highlightEntry.id)
+    : undefined;
 
+  // D6a Task 4: the interactive branch's ×N route lives entirely in
+  // `LogCellEntriesMenu` now — the edit control's content is the badge
+  // alone, never a chip (there's nothing to click-through to on a control
+  // that already opens the newest entry).
   const content = newest && recipient ? (
-    <>
-      <RecipientBadge color={recipient.color} name={recipient.name} job={recipient.job} />
-      {entries.length > 1 && (
-        <span className="rounded bg-accent/20 px-1 text-xs font-bold text-accent">×{entries.length}</span>
-      )}
-    </>
+    <RecipientBadge color={recipient.color} name={recipient.name} job={recipient.job} />
   ) : (
     <span className="text-text-muted italic">—</span>
   );
@@ -172,29 +231,164 @@ function GridCell<E extends RecipientLike>({
   const body = <span className="inline-flex min-h-7 items-center gap-1">{content}</span>;
 
   if (!interactive) {
-    const sentence = recipient ? `${label}: ${recipient.name}` : `${label}: not logged`;
+    // D6-l + review fix: a multi-entry read-only cell keeps a STATIC ×N span
+    // (D5's chip styling, reproduced verbatim — never a button, never
+    // aria-hidden, so the F-4 sweep is unaffected) alongside the sr-only
+    // sentence. There's no `LogCellEntriesMenu` trigger here (Viewer-role
+    // cells render no controls at all), so the sighted ×N signal would
+    // otherwise be lost entirely for share-code viewers while screen-reader
+    // users still get it from the sentence — restored so both audiences see
+    // the count, not just one.
+    //
+    // F2 (director M2) fix: the chip sits INSIDE this span's own
+    // `inline-flex ... gap-1` wrapper — D5's original shape
+    // (`020b4e42:LogWeekGrid.tsx:161-171`) — not outside `body`, so
+    // `gap-1`/`items-center` apply to it instead of it landing flush on the
+    // text baseline. This is a fresh wrapper, not the shared `body` above:
+    // `body` also backs the interactive branch's edit button, which must
+    // NOT gain a chip in its content (its ×N route is `LogCellEntriesMenu`,
+    // a sibling of the button, not part of it).
+    //
+    // F1 (director R2) fix: this wrapper also carries the `?entry=`
+    // deep-link landing contract — `id={logCellDomId(ref)}` +
+    // ` highlight-pulse` when this cell holds the highlighted entry, reusing
+    // the exact `highlightedRef` plumbing the interactive branch uses below
+    // (PR #244 F1 follow-up: `highlightedRef` is found by searching every
+    // entry in the cell, not assumed to be `newest` — see the derivation's
+    // own comment above). No control is added (no button/role/tabIndex/onClick
+    // — D6-l keeps viewer cells inert) and the span is never aria-hidden (the
+    // F-4 sweep stays green).
+    const sentence = recipient
+      ? (isMulti ? `${label}: ${recipient.name}, ${entries.length} entries` : `${label}: ${recipient.name}`)
+      : `${label}: not logged`;
     return (
       <>
-        {body}
+        <span
+          id={highlightedRef ? logCellDomId(highlightedRef) : undefined}
+          className={`inline-flex min-h-7 items-center gap-1${highlightedRef ? ' highlight-pulse' : ''}`}
+        >
+          {content}
+          {isMulti && (
+            <span className="rounded bg-accent/20 px-1 text-xs font-bold text-accent">×{entries.length}</span>
+          )}
+        </span>
         <span className="sr-only">{sentence}</span>
       </>
     );
   }
 
+  // D6a Task 4 (the D5-owed fold-in fix): a multi-entry cell's accessible
+  // name carries the count too, so it's announced on BOTH the edit button
+  // and the chip trigger, not just the chip.
   const ariaLabel = recipient
-    ? `Edit ${label} for ${recipient.name} — ${floorName}`
+    ? (isMulti
+      ? `Edit ${label} for ${recipient.name} — ${floorName} (newest of ${entries.length})`
+      : `Edit ${label} for ${recipient.name} — ${floorName}`)
     : `Log ${label} — ${floorName}`;
 
-  return (
+  // D6 Task 3 (director F-15): the jump gate — one `playerMap` lookup, no
+  // re-resolution in `FloorSection`. This is what makes the "affordance
+  // exists only when the target does" claim true, matching `Roster.tsx:361`'s
+  // own `players.some(...)` guard on the consuming side.
+  const jump = newest && onJumpToPlayer && playerMap.has(newest.recipientPlayerId)
+    ? () => onJumpToPlayer(newest.recipientPlayerId)
+    : null;
+
+  const copyLink = () => {
+    if (!newest || !onCopyEntryLink) return;
+    onCopyEntryLink(buildRef(newest));
+  };
+
+  // PR #244 r3 fix: `requestMenu` now anchors off whatever element it's
+  // called on — the FILLED-cell WRAPPER span (below), not the edit `Button`
+  // — so its rect arg is typed generically rather than pinned to a button.
+  const requestMenu = (e: React.MouseEvent<HTMLElement>) => {
+    if (!newest) return;
+    const { x, y } = jumpMenuAnchor(e, e.currentTarget.getBoundingClientRect());
+    onOpenMenu({
+      x,
+      y,
+      ref: buildRef(newest),
+      jumpPlayerId: jump ? newest.recipientPlayerId : null,
+    });
+  };
+
+  const editButton = (
     <Button
       variant="ghost"
       size="sm"
-      className="w-full justify-start"
+      className={`${newest ? 'flex-1' : 'w-full'} justify-start${altHeld && jump ? ' cursor-pointer' : ''}`}
       aria-label={ariaLabel}
-      onClick={() => (newest ? onFilled(newest) : onEmpty())}
+      onClick={(e) => {
+        if (!newest) {
+          if (e.shiftKey || e.altKey) return;              // D6-h: empty interactive cell modifiers are no-ops
+          onEmpty();
+          return;
+        }
+        if (e.shiftKey) { copyLink(); return; }             // R-18: Shift copies
+        if (e.altKey)   { if (jump) jump(); return; }       // R-18: Alt jumps; no target → no-op
+        onFilled(newest);                                   // plain + AT (detail===0): edit (D6-c)
+      }}
     >
       {body}
     </Button>
+  );
+
+  // Empty interactive cells keep the single-`Button` shape — no chip, no
+  // kebab (there's nothing yet to open a menu about).
+  if (!newest) {
+    return editButton;
+  }
+
+  // R-D6b (ruled): every FILLED interactive cell's sibling row gains a
+  // hover/focus-revealed kebab opening the SAME `buildEntryMenuItems` items
+  // the right-click context menu opens — one items list, two triggers.
+  // Anchored to the kebab's own rect (not the cursor), the
+  // `useRosterCardActions` kebab-menu shape in miniature.
+  const openKebabMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    onOpenMenu({
+      x: r.left,
+      y: r.bottom,
+      ref: buildRef(newest),
+      jumpPlayerId: jump ? newest.recipientPlayerId : null,
+    });
+  };
+
+  return (
+    <span
+      id={highlightedRef ? logCellDomId(highlightedRef) : undefined}
+      className={`group flex items-center gap-1${highlightedRef ? ' highlight-pulse' : ''}`}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        requestMenu(e);
+      }}
+    >
+      {editButton}
+      {isMulti && (
+        <LogCellEntriesMenu
+          entryRefs={entries.map(buildRef)}
+          playerMap={playerMap}
+          cellLabel={label}
+          floorName={floorName}
+          // Same edit door `onFilled` already targets (kind-discriminated
+          // onEditGear/onEditMaterial — `FloorSection` binds the right one
+          // per cell-kind). `ref.entry` is guaranteed to be this cell's `E`
+          // at runtime (`buildRef` built every ref FROM an `E`); the
+          // generic can't express that statically, hence the cast.
+          onEdit={(ref) => onFilled(ref.entry as unknown as E)}
+        />
+      )}
+      <IconButton
+        aria-label={`${label} entry actions — ${floorName}`}
+        icon={<MoreVertical className="h-3.5 w-3.5" />}
+        variant="ghost"
+        size="sm"
+        className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+        onClick={openKebabMenu}
+      />
+    </span>
   );
 }
 
@@ -204,16 +398,22 @@ interface FloorSectionProps {
   playerMap: Map<string, SnapshotPlayer>;
   canEdit: boolean;
   canAssignMaterial: boolean;
+  altHeld: boolean;
   onAssignGear: LogWeekGridProps['onAssignGear'];
   onEditGear: LogWeekGridProps['onEditGear'];
   onAssignMaterial: LogWeekGridProps['onAssignMaterial'];
   onEditMaterial: LogWeekGridProps['onEditMaterial'];
+  onCopyEntryLink: LogWeekGridProps['onCopyEntryLink'];
+  onJumpToPlayer: LogWeekGridProps['onJumpToPlayer'];
+  onOpenMenu: (state: LogGridMenuState) => void;
+  highlightEntry: LogWeekGridProps['highlightEntry'];
   isFirst: boolean;
 }
 
 function FloorSection({
-  floor, week, playerMap, canEdit, canAssignMaterial,
-  onAssignGear, onEditGear, onAssignMaterial, onEditMaterial, isFirst,
+  floor, week, playerMap, canEdit, canAssignMaterial, altHeld,
+  onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
+  onCopyEntryLink, onJumpToPlayer, onOpenMenu, highlightEntry, isFirst,
 }: FloorSectionProps) {
   const {
     floorNumber, floorName, bookNumeral, gearCells, materialCells,
@@ -277,8 +477,14 @@ function FloorSection({
                     floorName={floorName}
                     interactive={canEdit}
                     playerMap={playerMap}
+                    altHeld={altHeld}
+                    buildRef={(entry) => ({ kind: 'loot', entry })}
                     onEmpty={() => onAssignGear({ slot: cell.slot, label: cell.label, floorNumber })}
                     onFilled={onEditGear}
+                    onCopyEntryLink={onCopyEntryLink}
+                    onJumpToPlayer={onJumpToPlayer}
+                    onOpenMenu={onOpenMenu}
+                    highlightEntry={highlightEntry}
                   />
                 </td>
               ))}
@@ -296,8 +502,14 @@ function FloorSection({
                       floorName={floorName}
                       interactive={interactive}
                       playerMap={playerMap}
+                      altHeld={altHeld}
+                      buildRef={(entry) => ({ kind: 'material', entry })}
                       onEmpty={() => onAssignMaterial(cell.material, floorNumber)}
                       onFilled={onEditMaterial}
+                      onCopyEntryLink={onCopyEntryLink}
+                      onJumpToPlayer={onJumpToPlayer}
+                      onOpenMenu={onOpenMenu}
+                      highlightEntry={highlightEntry}
                     />
                   </td>
                 );
@@ -310,10 +522,48 @@ function FloorSection({
   );
 }
 
+/**
+ * The grid-root right-click menu's items, in R-18 order: Edit · Copy link ·
+ * Jump to {name} (only when the jump target actually resolved — the same
+ * gate `GridCell`'s `jump` closure already applied, recorded here as
+ * `jumpPlayerId`) · separator + Delete (danger). `onCopyEntryLink` /
+ * `onJumpToPlayer` / `onDeleteEntry` are required on `LogWeekGridProps`
+ * (D6a Task 6) — every cell reaching this menu is already `canEdit`-gated
+ * (interactive branch), so no per-item `canEdit` check is needed here either.
+ */
+function buildEntryMenuItems(
+  menu: LogGridMenuState,
+  playerMap: Map<string, SnapshotPlayer>,
+  onEditGear: LogWeekGridProps['onEditGear'],
+  onEditMaterial: LogWeekGridProps['onEditMaterial'],
+  onCopyEntryLink: LogWeekGridProps['onCopyEntryLink'],
+  onJumpToPlayer: LogWeekGridProps['onJumpToPlayer'],
+  onDeleteEntry: LogWeekGridProps['onDeleteEntry'],
+): ContextMenuItem[] {
+  const { ref, jumpPlayerId } = menu;
+  const items: ContextMenuItem[] = [
+    {
+      label: 'Edit',
+      onClick: () => (ref.kind === 'loot' ? onEditGear(ref.entry) : onEditMaterial(ref.entry)),
+    },
+    { label: 'Copy link', onClick: () => onCopyEntryLink(ref) },
+  ];
+  if (jumpPlayerId) {
+    const player = playerMap.get(jumpPlayerId);
+    if (player) {
+      items.push({ label: `Jump to ${player.name}`, onClick: () => onJumpToPlayer(jumpPlayerId) });
+    }
+  }
+  items.push({ separator: true });
+  items.push({ label: 'Delete', danger: true, onClick: () => onDeleteEntry(ref) });
+  return items;
+}
+
 export function LogWeekGrid(props: LogWeekGridProps) {
   const {
     floors, week, lootLog, materialLog, players, canEdit, canAssignMaterial,
     onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
+    onCopyEntryLink, onJumpToPlayer, onDeleteEntry, highlightEntry,
   } = props;
 
   const grid = useMemo(
@@ -323,6 +573,12 @@ export function LogWeekGrid(props: LogWeekGridProps) {
     [floors, week, lootLog, materialLog],
   );
   const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
+  // D6 Task 3: ONE `useAltHeld()` call at the grid top level, passed down —
+  // never one hook instance per cell.
+  const altHeld = useAltHeld();
+  // D6 Task 3: ONE `ContextMenu` mount at the grid root — every floor's cells
+  // share this single state, never a per-floor or per-cell menu instance.
+  const [menu, setMenu] = useState<LogGridMenuState | null>(null);
 
   return (
     <div
@@ -337,13 +593,26 @@ export function LogWeekGrid(props: LogWeekGridProps) {
           playerMap={playerMap}
           canEdit={canEdit}
           canAssignMaterial={canAssignMaterial}
+          altHeld={altHeld}
           onAssignGear={onAssignGear}
           onEditGear={onEditGear}
           onAssignMaterial={onAssignMaterial}
           onEditMaterial={onEditMaterial}
+          onCopyEntryLink={onCopyEntryLink}
+          onJumpToPlayer={onJumpToPlayer}
+          onOpenMenu={setMenu}
+          highlightEntry={highlightEntry}
           isFirst={idx === 0}
         />
       ))}
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={buildEntryMenuItems(menu, playerMap, onEditGear, onEditMaterial, onCopyEntryLink, onJumpToPlayer, onDeleteEntry)}
+          onClose={() => setMenu(null)}
+        />
+      )}
     </div>
   );
 }

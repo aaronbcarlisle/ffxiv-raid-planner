@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { LogWeekGrid } from './LogWeekGrid';
+import { logCellDomId, type LogGridEntryRef } from './logWeekGridData';
 import { GEAR_SLOT_NAMES } from '../../types';
 import type { LootLogEntry, MaterialLogEntry, SnapshotPlayer } from '../../types';
 
@@ -65,6 +66,11 @@ function makeMaterialEntry(overrides: Partial<MaterialLogEntry> = {}): MaterialL
 
 const EMPTY_FLOORS: string[] = [];
 
+// D6a Task 6 (sanctioned edit, class 4): the four now-required props —
+// `onCopyEntryLink` / `onJumpToPlayer` / `onDeleteEntry` (tightened from
+// optional) + the new `highlightEntry` (defaults to null, "nothing
+// highlighted") — so every pre-existing call site keeps compiling without
+// having to name them individually.
 function baseProps(overrides: Partial<Parameters<typeof LogWeekGrid>[0]> = {}) {
   return {
     floors: EMPTY_FLOORS,
@@ -78,6 +84,10 @@ function baseProps(overrides: Partial<Parameters<typeof LogWeekGrid>[0]> = {}) {
     onEditGear: vi.fn(),
     onAssignMaterial: vi.fn(),
     onEditMaterial: vi.fn(),
+    onCopyEntryLink: vi.fn(),
+    onJumpToPlayer: vi.fn(),
+    onDeleteEntry: vi.fn(),
+    highlightEntry: null,
     ...overrides,
   };
 }
@@ -161,8 +171,14 @@ describe('LogWeekGrid — multi-entry cell', () => {
     // lootLog order shouldn't matter — buildLogWeekGrid sorts newest-first.
     render(<LogWeekGrid {...baseProps({ lootLog: [older, newer], onEditGear })} />);
     const label = GEAR_SLOT_NAMES.earring;
-    const button = screen.getByRole('button', { name: `Edit ${label} for Alice — Floor 1` });
-    expect(within(button).getByText('×2')).toBeInTheDocument();
+    // D6a Task 4: the accessible name folds the count in, and the ×N chip is
+    // now a SIBLING (`LogCellEntriesMenu`'s own trigger), not nested inside
+    // the edit button.
+    const button = screen.getByRole('button', { name: `Edit ${label} for Alice — Floor 1 (newest of 2)` });
+    expect(within(button).queryByText('×2')).not.toBeInTheDocument();
+    const chip = screen.getByRole('button', { name: `2 entries for ${label} — Floor 1` });
+    expect(within(chip).getByText('×2')).toBeInTheDocument();
+    expect(button).not.toContainElement(chip);
 
     fireEvent.click(button);
     expect(onEditGear).toHaveBeenCalledWith(newer);
@@ -252,5 +268,447 @@ describe('LogWeekGrid — unknown recipient', () => {
     expect(within(button).queryByRole('img')).not.toBeInTheDocument();
     const badge = within(button).getByText('Departed Player');
     expect(badge.style.color).toBe('var(--color-text-secondary)');
+  });
+});
+
+describe('D6 modifier layer', () => {
+  const tankOne = makePlayer({
+    id: 'p1', name: 'Tank One', job: 'PLD', role: 'tank',
+  });
+  const ears = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+  });
+
+  // Accepts a substring regex the same way `cellButton(/Log Neck/)` does below —
+  // a bare string is wrapped so callers don't need the FULL dynamic aria-label
+  // ("Edit Ears for Tank One — Floor 1") just to find the "Ears" cell.
+  //
+  // D6a Task 4: a filled cell's sibling row now also carries a kebab
+  // (`${label} entry actions — ${floorName}`, R-D6b + F3/PR #244 review) and,
+  // when multi-entry, a chip trigger
+  // (`N entries for ${label} — ${floorName}`) — both of which ALSO match a
+  // bare label fragment like 'Ears' or 'Neck'. Disambiguate by preferring
+  // the Edit/Log-prefixed control (the one this helper always meant).
+  function cellButton(fragment: string | RegExp) {
+    const matcher = typeof fragment === 'string' ? new RegExp(fragment) : fragment;
+    const candidates = screen.getAllByRole('button', { name: matcher });
+    const edit = candidates.find((el) => /^(Edit|Log) /.test(el.getAttribute('aria-label') ?? ''));
+    // F6 (director M4): no silent fallback to candidates[0] — that would
+    // quietly select the kebab (or chip trigger) if the aria-label prefix
+    // ever drifts, masking a real selection failure behind a passing test.
+    if (!edit) throw new Error(`cellButton(${String(fragment)}): no Edit/Log-prefixed control among ${candidates.length} candidate(s)`);
+    return edit;
+  }
+
+  // Mouse-path tests PIN detail: 1 (director F-14) — fireEvent.click defaults to detail: 0,
+  // which is the AT path; the C4 precedent is RosterGearTable.test.tsx:381,523.
+  it('Shift+Click copies and does NOT open the edit door', () => {
+    const onEditGear = vi.fn(); const onCopyEntryLink = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], onEditGear, onCopyEntryLink,
+    })}
+    />);
+    fireEvent.click(cellButton('Ears'), { shiftKey: true, detail: 1 });
+    expect(onCopyEntryLink).toHaveBeenCalledWith({ kind: 'loot', entry: ears });
+    expect(onEditGear).not.toHaveBeenCalled();
+  });
+
+  it('Alt+Click jumps to the recipient and does NOT edit', () => {
+    const onEditGear = vi.fn(); const onJumpToPlayer = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], onEditGear, onJumpToPlayer,
+    })}
+    />);
+    fireEvent.click(cellButton('Ears'), { altKey: true, detail: 1 });
+    expect(onJumpToPlayer).toHaveBeenCalledWith(ears.recipientPlayerId);
+    expect(onEditGear).not.toHaveBeenCalled();
+  });
+
+  it('Alt+Click is a no-op when the recipient is not on the roster', () => {
+    const ghost = makeLootEntry({
+      itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'ghost', recipientPlayerName: 'Departed',
+    });
+    const onEditGear = vi.fn(); const onJumpToPlayer = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ghost], players: [tankOne], onEditGear, onJumpToPlayer,
+    })}
+    />);
+    fireEvent.click(cellButton('Ears'), { altKey: true, detail: 1 });
+    expect(onJumpToPlayer).not.toHaveBeenCalled();
+    expect(onEditGear).not.toHaveBeenCalled();
+  });
+
+  it('an unmodified synthetic click (detail: 0, no altKey) edits — the AT route never jumps (D6-c)', () => {
+    const onEditGear = vi.fn(); const onJumpToPlayer = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], onEditGear, onJumpToPlayer,
+    })}
+    />);
+    fireEvent.click(cellButton('Ears'), { detail: 0 });
+    expect(onEditGear).toHaveBeenCalledWith(ears);
+    expect(onJumpToPlayer).not.toHaveBeenCalled();
+  });
+
+  it('cursor-pointer appears only while Alt is held AND a jump target exists', () => {
+    const onJumpToPlayer = vi.fn();
+    const unresolvable = makeLootEntry({
+      itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'ghost', recipientPlayerName: 'Departed',
+    });
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears, unresolvable], players: [tankOne], onJumpToPlayer,
+    })}
+    />);
+    const earsButton = cellButton('Ears');
+    const neckButton = cellButton('Neck');
+    expect(earsButton.className).not.toContain('cursor-pointer');
+
+    fireEvent.keyDown(window, { key: 'Alt' });
+    expect(earsButton.className).toContain('cursor-pointer');
+    expect(neckButton.className).not.toContain('cursor-pointer');
+
+    fireEvent.keyUp(window, { key: 'Alt' });
+    expect(earsButton.className).not.toContain('cursor-pointer');
+  });
+
+  it('right-click opens the menu with Edit/Copy link/Jump/Delete', () => {
+    const onCopyEntryLink = vi.fn(); const onJumpToPlayer = vi.fn(); const onDeleteEntry = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], onCopyEntryLink, onJumpToPlayer, onDeleteEntry,
+    })}
+    />);
+    fireEvent.contextMenu(cellButton('Ears'));
+    expect(screen.getByRole('menuitem', { name: /Edit/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: `Jump to ${tankOne.name}` })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+  });
+
+  it('menu Delete calls onDeleteEntry with the newest ref', () => {
+    const onDeleteEntry = vi.fn();
+    render(<LogWeekGrid {...baseProps({ lootLog: [ears], players: [tankOne], onDeleteEntry })} />);
+    fireEvent.contextMenu(cellButton('Ears'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    expect(onDeleteEntry).toHaveBeenCalledWith({ kind: 'loot', entry: ears });
+  });
+
+  it('the Jump item is absent when the recipient is unresolvable', () => {
+    const ghost = makeLootEntry({
+      itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'ghost', recipientPlayerName: 'Departed',
+    });
+    const onJumpToPlayer = vi.fn();
+    render(<LogWeekGrid {...baseProps({ lootLog: [ghost], players: [tankOne], onJumpToPlayer })} />);
+    fireEvent.contextMenu(cellButton('Ears'));
+    expect(screen.queryByRole('menuitem', { name: /Jump to/ })).not.toBeInTheDocument();
+  });
+
+  it('Shift/Alt clicks on an EMPTY interactive cell are no-ops (D6-h)', () => {
+    const onAssignGear = vi.fn();
+    render(<LogWeekGrid {...baseProps({ lootLog: [ears], players: [tankOne], onAssignGear })} />);
+    fireEvent.click(cellButton(/Log Neck/), { shiftKey: true });
+    fireEvent.click(cellButton(/Log Neck/), { altKey: true });
+    expect(onAssignGear).not.toHaveBeenCalled();
+  });
+});
+
+describe('D6 cell anatomy (D6a Task 4)', () => {
+  const tankOne = makePlayer({
+    id: 'p1', name: 'Tank One', job: 'PLD', role: 'tank',
+  });
+  const healerOne = makePlayer({
+    id: 'p2', name: 'Healer One', job: 'WHM', role: 'healer',
+  });
+  const older = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-01T00:00:00Z', recipientPlayerId: 'p2', recipientPlayerName: 'Healer One',
+  });
+  const newer = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-05T00:00:00Z', recipientPlayerId: 'p2', recipientPlayerName: 'Healer One',
+  });
+
+  it('multi-entry: chip is a sibling button, not nested in the edit button', () => {
+    render(<LogWeekGrid {...baseProps({ lootLog: [older, newer], players: [tankOne, healerOne] })} />);
+    const edit = screen.getByRole('button', { name: 'Edit Ears for Healer One — Floor 1 (newest of 2)' });
+    const chip = screen.getByRole('button', { name: '2 entries for Ears — Floor 1' });
+    expect(edit).not.toContainElement(chip);
+  });
+
+  it('multi-entry accessible name folds the count in (D5-owed fix); single-entry name has no suffix', () => {
+    render(<LogWeekGrid {...baseProps({ lootLog: [older, newer], players: [tankOne, healerOne] })} />);
+    expect(screen.getByRole('button', { name: 'Edit Ears for Healer One — Floor 1 (newest of 2)' })).toBeInTheDocument();
+
+    const single = makeLootEntry({
+      itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    render(<LogWeekGrid {...baseProps({ lootLog: [single], players: [tankOne] })} />);
+    expect(screen.getByRole('button', { name: 'Edit Neck for Tank One — Floor 1' })).toBeInTheDocument();
+  });
+
+  it('chip menu item click opens the edit door for the OLDER entry', async () => {
+    const onEditGear = vi.fn();
+    render(<LogWeekGrid {...baseProps({ lootLog: [older, newer], players: [tankOne, healerOne], onEditGear })} />);
+    const chip = screen.getByRole('button', { name: '2 entries for Ears — Floor 1' });
+    fireEvent.keyDown(chip, { key: 'Enter' });
+    const items = await screen.findAllByRole('menuitem');
+    expect(items).toHaveLength(2);
+    // newest-first order (D6 Task 2) — index 1 is the OLDER entry.
+    fireEvent.click(items[1]);
+    expect(onEditGear).toHaveBeenCalledWith(older);
+    expect(onEditGear).not.toHaveBeenCalledWith(newer);
+  });
+
+  it('read-only multi-entry sr-only sentence includes the count', () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne, healerOne], canEdit: false,
+    })}
+    />);
+    expect(screen.getByText('Ears: Healer One, 2 entries')).toBeInTheDocument();
+  });
+
+  it('review fix: read-only multi-entry cell shows a visible static ×2 span alongside the sr-only sentence', () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne, healerOne], canEdit: false,
+    })}
+    />);
+    const chip = screen.getByText('×2');
+    expect(chip).toBeInTheDocument();
+    expect(screen.getByText('Ears: Healer One, 2 entries')).toBeInTheDocument();
+
+    // F2 (director M2): the chip lives INSIDE the same `inline-flex ...
+    // gap-1` wrapper as the badge (D5's shape) — not as a sibling outside
+    // it — so `gap-1`/`items-center` actually apply to it.
+    const badge = screen.getByText('Healer One');
+    const wrapper = chip.parentElement;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.className).toContain('gap-1');
+    expect(wrapper?.className).toContain('items-center');
+    expect(wrapper).toContainElement(badge);
+  });
+
+  it('review fix: read-only single-entry cell shows neither a ×N span nor a count in the sr-only sentence', () => {
+    const single = makeLootEntry({
+      itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    render(<LogWeekGrid {...baseProps({ lootLog: [single], players: [tankOne], canEdit: false })} />);
+    expect(screen.queryByText(/^×\d/)).not.toBeInTheDocument();
+    expect(screen.getByText('Neck: Tank One')).toBeInTheDocument();
+  });
+
+  it('the revealed kebab renders on every FILLED interactive cell (single or multi-entry) with hover/focus reveal classes', () => {
+    const single = makeLootEntry({
+      itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    render(<LogWeekGrid {...baseProps({ lootLog: [single], players: [tankOne] })} />);
+    const kebab = screen.getByRole('button', { name: 'Ears entry actions — Floor 1' });
+    expect(kebab.className).toContain('opacity-0');
+    expect(kebab.className).toContain('focus-visible:opacity-100');
+    expect(kebab.className).toContain('group-hover:opacity-100');
+  });
+
+  it('kebab click opens the SAME gated item set the right-click menu opens (Edit + Copy link + Jump + Delete, all handlers passed)', () => {
+    const onEditGear = vi.fn();
+    const onCopyEntryLink = vi.fn();
+    const onJumpToPlayer = vi.fn();
+    const onDeleteEntry = vi.fn();
+    const single = makeLootEntry({
+      itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [single], players: [tankOne], onEditGear, onCopyEntryLink, onJumpToPlayer, onDeleteEntry,
+    })}
+    />);
+    const kebab = screen.getByRole('button', { name: 'Ears entry actions — Floor 1' });
+    fireEvent.click(kebab);
+    expect(screen.getByRole('menuitem', { name: /Edit/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: `Jump to ${tankOne.name}` })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+    expect(onEditGear).toHaveBeenCalledWith(single);
+  });
+
+  it('the aria-hidden flex/grid sweep still passes over the new anatomy (F-4 re-run)', () => {
+    const neck = makeLootEntry({
+      itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const glaze = makeMaterialEntry({
+      materialType: 'glaze', floor: 'Floor 2', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const { container } = render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer, neck], materialLog: [glaze], players: [tankOne, healerOne],
+    })}
+    />);
+    const ariaHiddenEls = container.querySelectorAll('[aria-hidden="true"]');
+    expect(ariaHiddenEls.length).toBeGreaterThan(0);
+    ariaHiddenEls.forEach((el) => {
+      const isFlexOrGrid = /\b(flex|inline-flex|grid|inline-grid)\b/.test(el.className);
+      if (isFlexOrGrid) {
+        expect(el.getAttribute('role')).toBe('presentation');
+      }
+    });
+  });
+});
+
+// ── PR #244 r3 fix: whole-cell right-click target (wrapper-level menu) ──────
+// claude[bot] round-3 finding: `onContextMenu` lived only on the edit
+// `Button` (D6 modifier layer's `requestMenu`), so right-clicking the ×N
+// chip, the kebab, or the cell's own padding fell through to the native
+// browser menu instead of `buildEntryMenuItems` — narrower than "right-click
+// a cell" as the file header / release note describe. The existing
+// `fireEvent.contextMenu(cellButton(...))` tests above still pass unchanged
+// after the fix — their continuing to pass is the bubbling proof (Shift+F10
+// fires `contextmenu` on the focused control, which bubbles to the wrapper).
+describe('D6a right-click target (PR #244 r3 fix): whole-cell right-click', () => {
+  const tankOne = makePlayer({ id: 'p1', name: 'Tank One', job: 'PLD', role: 'tank' });
+  const healerOne = makePlayer({ id: 'p2', name: 'Healer One', job: 'WHM', role: 'healer' });
+  const older = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-01T00:00:00Z', recipientPlayerId: 'p2', recipientPlayerName: 'Healer One',
+  });
+  const newer = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-05T00:00:00Z', recipientPlayerId: 'p2', recipientPlayerName: 'Healer One',
+  });
+
+  it('right-clicking the cell WRAPPER itself (not the edit button) opens the menu with the full item set', () => {
+    const onCopyEntryLink = vi.fn(); const onJumpToPlayer = vi.fn(); const onDeleteEntry = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne, healerOne], onCopyEntryLink, onJumpToPlayer, onDeleteEntry,
+    })}
+    />);
+    // Reach the wrapper via the ×2 chip's own ancestor — `.group` is the
+    // `<span className="group flex items-center gap-1">` wrapper D6a Task 4
+    // introduced (same idiom the highlightEntry tests above use).
+    const chip = screen.getByRole('button', { name: '2 entries for Ears — Floor 1' });
+    const wrapper = chip.closest('.group')!;
+    expect(wrapper).not.toBe(chip);
+    fireEvent.contextMenu(wrapper);
+    expect(screen.getByRole('menuitem', { name: /Edit/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: `Jump to ${healerOne.name}` })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+  });
+
+  it('right-clicking the ×N chip trigger opens the ENTRY context menu (bubbles to the wrapper), not nothing', () => {
+    const onDeleteEntry = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne, healerOne], onDeleteEntry,
+    })}
+    />);
+    const chip = screen.getByRole('button', { name: '2 entries for Ears — Floor 1' });
+    fireEvent.contextMenu(chip);
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+    // The menu targets the NEWEST entry — same contract as the edit button's
+    // own right-click (`buildRef(newest)` in `requestMenu`).
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    expect(onDeleteEntry).toHaveBeenCalledWith({ kind: 'loot', entry: newer });
+  });
+});
+
+// ── D6a Task 6: highlightEntry — the `?entry=` deep-link target ─────────────
+describe('D6a Task 6: highlightEntry', () => {
+  const tankOne = makePlayer({ id: 'p1', name: 'Tank One', job: 'PLD', role: 'tank' });
+  const ears = makeLootEntry({
+    id: 501, itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+  });
+  const neck = makeLootEntry({
+    id: 502, itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+  });
+
+  it('renders the pulse class + DOM id on the matching cell only', () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears, neck], players: [tankOne],
+      highlightEntry: { kind: 'loot', id: ears.id },
+    })}
+    />);
+    const earsWrapper = screen.getByRole('button', { name: 'Edit Ears for Tank One — Floor 1' }).closest('.group')!;
+    const neckWrapper = screen.getByRole('button', { name: 'Edit Neck for Tank One — Floor 1' }).closest('.group')!;
+    expect(earsWrapper.className).toContain('highlight-pulse');
+    expect(earsWrapper.id).toBe(`log-cell-loot-${ears.id}`);
+    expect(neckWrapper.className).not.toContain('highlight-pulse');
+    expect(neckWrapper.id).toBe('');
+  });
+
+  it('highlightEntry: null renders neither the pulse class nor an id anywhere', () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], highlightEntry: null,
+    })}
+    />);
+    const wrapper = screen.getByRole('button', { name: 'Edit Ears for Tank One — Floor 1' }).closest('.group')!;
+    expect(wrapper.className).not.toContain('highlight-pulse');
+    expect(wrapper.id).toBe('');
+  });
+
+  it("kind discriminates, not just id — a material ref sharing the loot entry's numeric id does not highlight it", () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne],
+      highlightEntry: { kind: 'material', id: ears.id },
+    })}
+    />);
+    const wrapper = screen.getByRole('button', { name: 'Edit Ears for Tank One — Floor 1' }).closest('.group')!;
+    expect(wrapper.className).not.toContain('highlight-pulse');
+  });
+
+  it('the cross-file id contract (F-2): document.getElementById(logCellDomId(ref)) resolves to the pulsed wrapper — the same helper both sides consume', () => {
+    const ref: LogGridEntryRef = { kind: 'loot', entry: ears };
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne],
+      highlightEntry: { kind: ref.kind, id: ref.entry.id },
+    })}
+    />);
+    const el = document.getElementById(logCellDomId(ref));
+    expect(el).not.toBeNull();
+    expect(el?.className).toContain('highlight-pulse');
+  });
+
+  // F1 (director R2) — the read-only (canEdit=false, share-code viewer) FILLED
+  // branch must carry the SAME landing contract as the interactive branch, or a
+  // viewer following a copied deep link gets week re-pointing with no scroll/pulse
+  // while the URL params silently self-clear as if the link worked.
+  it('F1: read-only FILLED cell also gets the deep-link landing contract — id + highlight-pulse', () => {
+    const ref: LogGridEntryRef = { kind: 'loot', entry: ears };
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears, neck], players: [tankOne], canEdit: false,
+      highlightEntry: { kind: ref.kind, id: ref.entry.id },
+    })}
+    />);
+    const el = document.getElementById(logCellDomId(ref));
+    expect(el).not.toBeNull();
+    expect(el?.className).toContain('highlight-pulse');
+  });
+
+  it('F1: read-only cell renders neither an id nor the pulse class when highlightEntry is null', () => {
+    const ref: LogGridEntryRef = { kind: 'loot', entry: ears };
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], canEdit: false, highlightEntry: null,
+    })}
+    />);
+    expect(document.getElementById(logCellDomId(ref))).toBeNull();
+    expect(document.querySelector('.highlight-pulse')).toBeNull();
+  });
+
+  // F1 (director R2, PR #244 review): the highlighted ref used to be assumed
+  // `entries[0]` (newest) — a deep link copied before a second entry landed
+  // in the same cell targets an OLDER entry that `Loot.tsx`'s `?entry=`
+  // validation (searches the whole unfiltered log) happily resolves, so the
+  // id + pulse must land wherever that entry actually sits in the cell, not
+  // just on whichever is newest. The edit door still targets the newest
+  // entry regardless — highlighting and editing are separate concerns.
+  it('F1: a multi-entry cell highlighting the OLDER (non-newest) entry gets that entry\'s DOM id + pulse', () => {
+    const older = makeLootEntry({
+      id: 601, itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-01T00:00:00Z',
+      recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const newer = makeLootEntry({
+      id: 602, itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-05T00:00:00Z',
+      recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const olderRef: LogGridEntryRef = { kind: 'loot', entry: older };
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne],
+      highlightEntry: { kind: 'loot', id: older.id },
+    })}
+    />);
+    const editButton = screen.getByRole('button', { name: 'Edit Ears for Tank One — Floor 1 (newest of 2)' });
+    const wrapper = editButton.closest('.group')!;
+    expect(wrapper.id).toBe(logCellDomId(olderRef));
+    expect(wrapper.className).toContain('highlight-pulse');
   });
 });

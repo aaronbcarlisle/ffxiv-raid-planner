@@ -11,11 +11,15 @@ import { getValidRole } from '../../gamedata';
 import { relativeTime } from '../../utils/staticActivity';
 import { GEAR_SLOT_NAMES } from '../../types';
 import { UPGRADE_MATERIAL_DISPLAY_NAMES } from '../../gamedata/loot-tables';
-import type { LootLogEntry, MaterialLogEntry, SnapshotPlayer } from '../../types';
+import type { LootLogEntry, SnapshotPlayer } from '../../types';
+import type { LogGridEntryRef } from './logWeekGridData';
 
-export type HistoryItem =
-  | { kind: 'loot'; entry: LootLogEntry }
-  | { kind: 'material'; entry: MaterialLogEntry };
+/**
+ * Re-aliased onto the grid's discriminated ref type (D6 Task 2, director
+ * F-12) — one type across `LogWeekGrid`, `LogCellEntriesMenu`, the History
+ * rows, and `requestDelete`, rather than a structurally-identical duplicate.
+ */
+export type HistoryItem = LogGridEntryRef;
 
 export interface LootEntryRowProps {
   item: HistoryItem;
