@@ -503,7 +503,8 @@ re-expression deltas disclosed at build.**
    `LogCellEntriesMenu` (R-D6a, the v2-owned fork; `EntryPopover` was not imported — see the R-18
    build note below) opens a newest-first list of every entry the badge counts, loot and material
    alike, and clicking any row edits that exact entry. The cell's single edit `Button` still targets
-   `entries[0]` only, by design (D6-c) — the chip is the route to everything else. F-14i is closed.
+   `entries[0]` only — the R-17/D5 interim shape, unchanged by this close — the chip is the route to
+   everything else. F-14i is closed.
 2. **Material cells bucket every matching entry per week, not just one.** The legacy grid's
    `find()` surfaced a single material entry per cell, silently under-reporting a week where the
    same material dropped twice (e.g. two Solvents). `logWeekGridData.ts` buckets materials the
@@ -587,7 +588,7 @@ kebab exists so every modifier action has a keyboard and AT route; right-click i
   aimed at something else would surprise.
 - **The Alt-jump destination is card-level, by stated interim.** `Alt+Click` / "Jump to {player}"
   lands on `tab=roster&player={id}` — the only `?player=` contract the app consumes today
-  (`Roster.tsx:359,388`; scroll + URL-strip owned by `GroupViewContent.tsx:234-257`; the pulse
+  (`Roster.tsx:359,388`; scroll + URL-strip owned by `GroupViewContent.tsx:239-265`; the pulse
   applied by `RosterCards`) — and renders only when the entry's recipient resolves to a current
   roster player. This ruling's own note 2 above (slot-level `gear-row-{playerId}-{slot}` anchors +
   `highlightedSlot`) and R-28's week-split destination are **not** built by D6a; they arrive in

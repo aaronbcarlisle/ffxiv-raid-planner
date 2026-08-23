@@ -292,7 +292,11 @@ describe('D6 modifier layer', () => {
     const matcher = typeof fragment === 'string' ? new RegExp(fragment) : fragment;
     const candidates = screen.getAllByRole('button', { name: matcher });
     const edit = candidates.find((el) => /^(Edit|Log) /.test(el.getAttribute('aria-label') ?? ''));
-    return edit ?? candidates[0];
+    // F6 (director M4): no silent fallback to candidates[0] — that would
+    // quietly select the kebab (or chip trigger) if the aria-label prefix
+    // ever drifts, masking a real selection failure behind a passing test.
+    if (!edit) throw new Error(`cellButton(${String(fragment)}): no Edit/Log-prefixed control among ${candidates.length} candidate(s)`);
+    return edit;
   }
 
   // Mouse-path tests PIN detail: 1 (director F-14) — fireEvent.click defaults to detail: 0,
@@ -365,7 +369,7 @@ describe('D6 modifier layer', () => {
     expect(earsButton.className).not.toContain('cursor-pointer');
   });
 
-  it('right-click opens the menu with Edit/Copy link/Jump/Delete and menu-key anchors to the cell', () => {
+  it('right-click opens the menu with Edit/Copy link/Jump/Delete', () => {
     const onCopyEntryLink = vi.fn(); const onJumpToPlayer = vi.fn(); const onDeleteEntry = vi.fn();
     render(<LogWeekGrid {...baseProps({
       lootLog: [ears], players: [tankOne], onCopyEntryLink, onJumpToPlayer, onDeleteEntry,
@@ -463,8 +467,19 @@ describe('D6 cell anatomy (D6a Task 4)', () => {
       lootLog: [older, newer], players: [tankOne, healerOne], canEdit: false,
     })}
     />);
-    expect(screen.getByText('×2')).toBeInTheDocument();
+    const chip = screen.getByText('×2');
+    expect(chip).toBeInTheDocument();
     expect(screen.getByText('Ears: Healer One, 2 entries')).toBeInTheDocument();
+
+    // F2 (director M2): the chip lives INSIDE the same `inline-flex ...
+    // gap-1` wrapper as the badge (D5's shape) — not as a sibling outside
+    // it — so `gap-1`/`items-center` actually apply to it.
+    const badge = screen.getByText('Healer One');
+    const wrapper = chip.parentElement;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.className).toContain('gap-1');
+    expect(wrapper?.className).toContain('items-center');
+    expect(wrapper).toContainElement(badge);
   });
 
   it('review fix: read-only single-entry cell shows neither a ×N span nor a count in the sr-only sentence', () => {
@@ -586,5 +601,31 @@ describe('D6a Task 6: highlightEntry', () => {
     const el = document.getElementById(logCellDomId(ref));
     expect(el).not.toBeNull();
     expect(el?.className).toContain('highlight-pulse');
+  });
+
+  // F1 (director R2) — the read-only (canEdit=false, share-code viewer) FILLED
+  // branch must carry the SAME landing contract as the interactive branch, or a
+  // viewer following a copied deep link gets week re-pointing with no scroll/pulse
+  // while the URL params silently self-clear as if the link worked.
+  it('F1: read-only FILLED cell also gets the deep-link landing contract — id + highlight-pulse', () => {
+    const ref: LogGridEntryRef = { kind: 'loot', entry: ears };
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears, neck], players: [tankOne], canEdit: false,
+      highlightEntry: { kind: ref.kind, id: ref.entry.id },
+    })}
+    />);
+    const el = document.getElementById(logCellDomId(ref));
+    expect(el).not.toBeNull();
+    expect(el?.className).toContain('highlight-pulse');
+  });
+
+  it('F1: read-only cell renders neither an id nor the pulse class when highlightEntry is null', () => {
+    const ref: LogGridEntryRef = { kind: 'loot', entry: ears };
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], canEdit: false, highlightEntry: null,
+    })}
+    />);
+    expect(document.getElementById(logCellDomId(ref))).toBeNull();
+    expect(document.querySelector('.highlight-pulse')).toBeNull();
   });
 });

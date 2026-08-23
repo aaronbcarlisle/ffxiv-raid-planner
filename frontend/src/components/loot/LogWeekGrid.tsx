@@ -225,15 +225,37 @@ function GridCell<E extends RecipientLike>({
     // otherwise be lost entirely for share-code viewers while screen-reader
     // users still get it from the sentence — restored so both audiences see
     // the count, not just one.
+    //
+    // F2 (director M2) fix: the chip sits INSIDE this span's own
+    // `inline-flex ... gap-1` wrapper — D5's original shape
+    // (`020b4e42:LogWeekGrid.tsx:161-171`) — not outside `body`, so
+    // `gap-1`/`items-center` apply to it instead of it landing flush on the
+    // text baseline. This is a fresh wrapper, not the shared `body` above:
+    // `body` also backs the interactive branch's edit button, which must
+    // NOT gain a chip in its content (its ×N route is `LogCellEntriesMenu`,
+    // a sibling of the button, not part of it).
+    //
+    // F1 (director R2) fix: this wrapper also carries the `?entry=`
+    // deep-link landing contract — `id={logCellDomId(ref)}` +
+    // ` highlight-pulse` when this cell holds the highlighted entry, reusing
+    // the exact `isHighlighted`/`newestRef` plumbing the interactive branch
+    // uses below. No control is added (no button/role/tabIndex/onClick —
+    // D6-l keeps viewer cells inert) and the span is never aria-hidden (the
+    // F-4 sweep stays green).
     const sentence = recipient
       ? (isMulti ? `${label}: ${recipient.name}, ${entries.length} entries` : `${label}: ${recipient.name}`)
       : `${label}: not logged`;
     return (
       <>
-        {body}
-        {isMulti && (
-          <span className="rounded bg-accent/20 px-1 text-xs font-bold text-accent">×{entries.length}</span>
-        )}
+        <span
+          id={isHighlighted ? logCellDomId(newestRef!) : undefined}
+          className={`inline-flex min-h-7 items-center gap-1${isHighlighted ? ' highlight-pulse' : ''}`}
+        >
+          {content}
+          {isMulti && (
+            <span className="rounded bg-accent/20 px-1 text-xs font-bold text-accent">×{entries.length}</span>
+          )}
+        </span>
         <span className="sr-only">{sentence}</span>
       </>
     );
