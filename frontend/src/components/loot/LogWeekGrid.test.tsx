@@ -548,6 +548,60 @@ describe('D6 cell anatomy (D6a Task 4)', () => {
   });
 });
 
+// ── PR #244 r3 fix: whole-cell right-click target (wrapper-level menu) ──────
+// claude[bot] round-3 finding: `onContextMenu` lived only on the edit
+// `Button` (D6 modifier layer's `requestMenu`), so right-clicking the ×N
+// chip, the kebab, or the cell's own padding fell through to the native
+// browser menu instead of `buildEntryMenuItems` — narrower than "right-click
+// a cell" as the file header / release note describe. The existing
+// `fireEvent.contextMenu(cellButton(...))` tests above still pass unchanged
+// after the fix — their continuing to pass is the bubbling proof (Shift+F10
+// fires `contextmenu` on the focused control, which bubbles to the wrapper).
+describe('D6a right-click target (PR #244 r3 fix): whole-cell right-click', () => {
+  const tankOne = makePlayer({ id: 'p1', name: 'Tank One', job: 'PLD', role: 'tank' });
+  const healerOne = makePlayer({ id: 'p2', name: 'Healer One', job: 'WHM', role: 'healer' });
+  const older = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-01T00:00:00Z', recipientPlayerId: 'p2', recipientPlayerName: 'Healer One',
+  });
+  const newer = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-05T00:00:00Z', recipientPlayerId: 'p2', recipientPlayerName: 'Healer One',
+  });
+
+  it('right-clicking the cell WRAPPER itself (not the edit button) opens the menu with the full item set', () => {
+    const onCopyEntryLink = vi.fn(); const onJumpToPlayer = vi.fn(); const onDeleteEntry = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne, healerOne], onCopyEntryLink, onJumpToPlayer, onDeleteEntry,
+    })}
+    />);
+    // Reach the wrapper via the ×2 chip's own ancestor — `.group` is the
+    // `<span className="group flex items-center gap-1">` wrapper D6a Task 4
+    // introduced (same idiom the highlightEntry tests above use).
+    const chip = screen.getByRole('button', { name: '2 entries for Ears — Floor 1' });
+    const wrapper = chip.closest('.group')!;
+    expect(wrapper).not.toBe(chip);
+    fireEvent.contextMenu(wrapper);
+    expect(screen.getByRole('menuitem', { name: /Edit/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: `Jump to ${healerOne.name}` })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+  });
+
+  it('right-clicking the ×N chip trigger opens the ENTRY context menu (bubbles to the wrapper), not nothing', () => {
+    const onDeleteEntry = vi.fn();
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne, healerOne], onDeleteEntry,
+    })}
+    />);
+    const chip = screen.getByRole('button', { name: '2 entries for Ears — Floor 1' });
+    fireEvent.contextMenu(chip);
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+    // The menu targets the NEWEST entry — same contract as the edit button's
+    // own right-click (`buildRef(newest)` in `requestMenu`).
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }));
+    expect(onDeleteEntry).toHaveBeenCalledWith({ kind: 'loot', entry: newer });
+  });
+});
+
 // ── D6a Task 6: highlightEntry — the `?entry=` deep-link target ─────────────
 describe('D6a Task 6: highlightEntry', () => {
   const tankOne = makePlayer({ id: 'p1', name: 'Tank One', job: 'PLD', role: 'tank' });

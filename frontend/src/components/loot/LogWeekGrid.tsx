@@ -100,11 +100,18 @@
  * per-cell kebab and Shift+F10/menu-key → "Jump to {player}" in the context
  * menu below, per D6-c's own rationale ("the AT route to the jump is the
  * context menu") — no separate keydown handler exists or is needed. The
- * context menu (right-click, menu-key, or the cell's own hover/focus-revealed
- * kebab — one kebab per filled cell, so two trigger routes total) is Edit /
- * Copy link / Jump to {player} (only when the recipient resolves) / Delete
- * (danger, routed through `Loot.tsx`'s existing confirm modals — legacy
- * parity, `SectionedLogView.tsx:901-906` + `:262-275`). Read-only
+ * context menu (right-click anywhere in the filled cell — the ×N chip, the
+ * kebab, or the cell's own padding, not just the edit button; PR #244 r3
+ * fix moved `onContextMenu` from the edit `Button` to the FILLED-cell
+ * wrapper `<span className="group ...">` so the whole cell is the target —
+ * or the cell's own hover/focus-revealed kebab — one kebab per filled cell,
+ * so two trigger routes total) is Edit / Copy link / Jump to {player} (only
+ * when the recipient resolves) / Delete (danger, routed through `Loot.tsx`'s
+ * existing confirm modals — legacy parity, `SectionedLogView.tsx:901-906` +
+ * `:262-275`). Shift+F10/menu-key fires `contextmenu` on whichever control
+ * has focus (edit button, chip, or kebab); it bubbles to the wrapper's
+ * handler same as a mouse right-click, so `e.currentTarget` there is always
+ * the wrapper — one anchor rect for both input methods. Read-only
  * (`canEdit=false`) cells stay fully inert — no modifiers, no menu, no
  * kebab (D6-l, a named divergence from legacy's viewer-facing copy/jump —
  * see `phase-d-loot-plan.md` §5). NOT yet shipped here (D6b): the teaching
@@ -292,7 +299,10 @@ function GridCell<E extends RecipientLike>({
     onCopyEntryLink(buildRef(newest));
   };
 
-  const requestMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+  // PR #244 r3 fix: `requestMenu` now anchors off whatever element it's
+  // called on — the FILLED-cell WRAPPER span (below), not the edit `Button`
+  // — so its rect arg is typed generically rather than pinned to a button.
+  const requestMenu = (e: React.MouseEvent<HTMLElement>) => {
     if (!newest) return;
     const { x, y } = jumpMenuAnchor(e, e.currentTarget.getBoundingClientRect());
     onOpenMenu({
@@ -318,12 +328,6 @@ function GridCell<E extends RecipientLike>({
         if (e.shiftKey) { copyLink(); return; }             // R-18: Shift copies
         if (e.altKey)   { if (jump) jump(); return; }       // R-18: Alt jumps; no target → no-op
         onFilled(newest);                                   // plain + AT (detail===0): edit (D6-c)
-      }}
-      onContextMenu={(e) => {
-        if (!newest) return;                                // empty interactive cells: no custom menu
-        e.preventDefault();
-        e.stopPropagation();
-        requestMenu(e);
       }}
     >
       {body}
@@ -355,6 +359,11 @@ function GridCell<E extends RecipientLike>({
     <span
       id={highlightedRef ? logCellDomId(highlightedRef) : undefined}
       className={`group flex items-center gap-1${highlightedRef ? ' highlight-pulse' : ''}`}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        requestMenu(e);
+      }}
     >
       {editButton}
       {isMulti && (
