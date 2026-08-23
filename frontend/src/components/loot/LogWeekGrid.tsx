@@ -58,13 +58,14 @@
  * rationale, `WeeklyLootGrid.tsx:374-376`, re-expressed as `min-h-7`). An unknown
  * `recipientPlayerId` (player left the roster) falls back to
  * `entry.recipientPlayerName` in `var(--color-text-secondary)`, no job icon —
- * the record survives the player. A second+ entry adds a STATIC `×N` text
- * chip (never a button, never aria-hidden — `EntryPopover` for older entries
- * is D6; Task 6 records the interim). Editing a cell always targets
- * `entries[0]` (newest — Task 2 sorts DESC).
+ * the record survives the player. A second+ entry's `×N` route is
+ * `LogCellEntriesMenu` (`./LogCellEntriesMenu.tsx`, D6 Task 2) — a REAL
+ * trigger button, mounted D6a Task 4. Editing the main control always
+ * targets `entries[0]` (newest — Task 2 sorts DESC); the chip menu reaches
+ * every other entry.
  *
  * Interactivity (R-17 / director F-15): `Button variant="ghost" size="sm"`
- * wraps the WHOLE cell body as one control — never `IconButton` (that's
+ * is the cell's edit control — never `IconButton` for IT (that's
  * `NeedMatrix`'s pattern for a single glyph; here the control's accessible
  * name already carries the recipient, so a text-capable `Button` is the
  * right primitive, not a workaround). `canEdit=false` drops the `Button`
@@ -73,9 +74,22 @@
  * cells take the same read-only branch (F-12 — no enabled button whose
  * handler cannot act, `FloorCard.tsx:174-180` precedent); filled material
  * cells stay editable regardless (the edit door needs no suggestion pool).
+ *
+ * D6a Task 4 anatomy: a FILLED interactive cell is no longer one lone
+ * `Button` — it's a `<span className="group flex items-center gap-1">`
+ * holding up to three siblings, no button nested in another: the edit
+ * `Button` (`flex-1`), `LogCellEntriesMenu`'s chip trigger (multi-entry
+ * only), and a hover/focus-revealed kebab `IconButton` (R-D6b, every filled
+ * cell) that opens the SAME `buildEntryMenuItems` menu the right-click does
+ * — one items list, two triggers, anchored to its own rect rather than the
+ * cursor. An EMPTY interactive cell keeps the single-`Button` shape (no
+ * chip, no kebab — there's nothing yet to open a menu about). The multi-
+ * entry accessible name folds the count in (`… (newest of N)`, the D5-owed
+ * fix) so it's announced on both the edit button and the chip trigger.
  */
 import { useMemo, useState } from 'react';
-import { Button } from '../primitives';
+import { MoreVertical } from 'lucide-react';
+import { Button, IconButton } from '../primitives';
 import { Tag } from '../ui';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
@@ -84,6 +98,7 @@ import { jumpMenuAnchor } from '../roster/rosterLedgerJumps';
 import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { MATERIAL_TOKEN } from './FloorDropRow';
 import { RecipientBadge, resolveRecipient, type RecipientLike } from './RecipientBadge';
+import { LogCellEntriesMenu } from './LogCellEntriesMenu';
 import { buildLogWeekGrid, type LogGridFloor, type LogGridEntryRef } from './logWeekGridData';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import type {
@@ -151,14 +166,12 @@ function GridCell<E extends RecipientLike>({
 }: GridCellProps<E>) {
   const newest = entries[0];
   const recipient = newest ? resolveRecipient(newest, playerMap) : undefined;
+  const isMulti = entries.length > 1;
 
+  // D6a Task 4: the ×N route lives entirely in `LogCellEntriesMenu` now — the
+  // main control's content is the badge alone, never a chip.
   const content = newest && recipient ? (
-    <>
-      <RecipientBadge color={recipient.color} name={recipient.name} job={recipient.job} />
-      {entries.length > 1 && (
-        <span className="rounded bg-accent/20 px-1 text-xs font-bold text-accent">×{entries.length}</span>
-      )}
-    </>
+    <RecipientBadge color={recipient.color} name={recipient.name} job={recipient.job} />
   ) : (
     <span className="text-text-muted italic">—</span>
   );
@@ -166,7 +179,13 @@ function GridCell<E extends RecipientLike>({
   const body = <span className="inline-flex min-h-7 items-center gap-1">{content}</span>;
 
   if (!interactive) {
-    const sentence = recipient ? `${label}: ${recipient.name}` : `${label}: not logged`;
+    // D6-l: a multi-entry read-only cell folds the count into the sr-only
+    // sentence — the sighted chip lives only on the interactive branch now
+    // (`LogCellEntriesMenu`), so this sentence is the read-only viewer's
+    // only signal that there's more than one entry.
+    const sentence = recipient
+      ? (isMulti ? `${label}: ${recipient.name}, ${entries.length} entries` : `${label}: ${recipient.name}`)
+      : `${label}: not logged`;
     return (
       <>
         {body}
@@ -175,8 +194,13 @@ function GridCell<E extends RecipientLike>({
     );
   }
 
+  // D6a Task 4 (the D5-owed fold-in fix): a multi-entry cell's accessible
+  // name carries the count too, so it's announced on BOTH the edit button
+  // and the chip trigger, not just the chip.
   const ariaLabel = recipient
-    ? `Edit ${label} for ${recipient.name} — ${floorName}`
+    ? (isMulti
+      ? `Edit ${label} for ${recipient.name} — ${floorName} (newest of ${entries.length})`
+      : `Edit ${label} for ${recipient.name} — ${floorName}`)
     : `Log ${label} — ${floorName}`;
 
   // D6 Task 3 (director F-15): the jump gate — one `playerMap` lookup, no
@@ -203,11 +227,11 @@ function GridCell<E extends RecipientLike>({
     });
   };
 
-  return (
+  const editButton = (
     <Button
       variant="ghost"
       size="sm"
-      className={`w-full justify-start${altHeld && jump ? ' cursor-pointer' : ''}`}
+      className={`${newest ? 'flex-1' : 'w-full'} justify-start${altHeld && jump ? ' cursor-pointer' : ''}`}
       aria-label={ariaLabel}
       onClick={(e) => {
         if (!newest) {
@@ -228,6 +252,55 @@ function GridCell<E extends RecipientLike>({
     >
       {body}
     </Button>
+  );
+
+  // Empty interactive cells keep the single-`Button` shape — no chip, no
+  // kebab (there's nothing yet to open a menu about).
+  if (!newest) {
+    return editButton;
+  }
+
+  // R-D6b (ruled): every FILLED interactive cell's sibling row gains a
+  // hover/focus-revealed kebab opening the SAME `buildEntryMenuItems` items
+  // the right-click context menu opens — one items list, two triggers.
+  // Anchored to the kebab's own rect (not the cursor), the
+  // `useRosterCardActions` kebab-menu shape in miniature.
+  const openKebabMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    onOpenMenu({
+      x: r.left,
+      y: r.bottom,
+      ref: buildRef(newest),
+      jumpPlayerId: jump ? newest.recipientPlayerId : null,
+    });
+  };
+
+  return (
+    <span className="group flex items-center gap-1">
+      {editButton}
+      {isMulti && (
+        <LogCellEntriesMenu
+          entryRefs={entries.map(buildRef)}
+          playerMap={playerMap}
+          cellLabel={label}
+          floorName={floorName}
+          // Same edit door `onFilled` already targets (kind-discriminated
+          // onEditGear/onEditMaterial — `FloorSection` binds the right one
+          // per cell-kind). `ref.entry` is guaranteed to be this cell's `E`
+          // at runtime (`buildRef` built every ref FROM an `E`); the
+          // generic can't express that statically, hence the cast.
+          onEdit={(ref) => onFilled(ref.entry as unknown as E)}
+        />
+      )}
+      <IconButton
+        aria-label={`${label} entry actions`}
+        icon={<MoreVertical className="h-3.5 w-3.5" />}
+        variant="ghost"
+        size="sm"
+        className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+        onClick={openKebabMenu}
+      />
+    </span>
   );
 }
 

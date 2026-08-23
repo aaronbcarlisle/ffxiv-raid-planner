@@ -161,8 +161,14 @@ describe('LogWeekGrid — multi-entry cell', () => {
     // lootLog order shouldn't matter — buildLogWeekGrid sorts newest-first.
     render(<LogWeekGrid {...baseProps({ lootLog: [older, newer], onEditGear })} />);
     const label = GEAR_SLOT_NAMES.earring;
-    const button = screen.getByRole('button', { name: `Edit ${label} for Alice — Floor 1` });
-    expect(within(button).getByText('×2')).toBeInTheDocument();
+    // D6a Task 4: the accessible name folds the count in, and the ×N chip is
+    // now a SIBLING (`LogCellEntriesMenu`'s own trigger), not nested inside
+    // the edit button.
+    const button = screen.getByRole('button', { name: `Edit ${label} for Alice — Floor 1 (newest of 2)` });
+    expect(within(button).queryByText('×2')).not.toBeInTheDocument();
+    const chip = screen.getByRole('button', { name: `2 entries for ${label} — Floor 1` });
+    expect(within(chip).getByText('×2')).toBeInTheDocument();
+    expect(button).not.toContainElement(chip);
 
     fireEvent.click(button);
     expect(onEditGear).toHaveBeenCalledWith(newer);
@@ -266,9 +272,17 @@ describe('D6 modifier layer', () => {
   // Accepts a substring regex the same way `cellButton(/Log Neck/)` does below —
   // a bare string is wrapped so callers don't need the FULL dynamic aria-label
   // ("Edit Ears for Tank One — Floor 1") just to find the "Ears" cell.
+  //
+  // D6a Task 4: a filled cell's sibling row now also carries a kebab
+  // (`${label} entry actions`, R-D6b) and, when multi-entry, a chip trigger
+  // (`N entries for ${label} — ${floorName}`) — both of which ALSO match a
+  // bare label fragment like 'Ears' or 'Neck'. Disambiguate by preferring
+  // the Edit/Log-prefixed control (the one this helper always meant).
   function cellButton(fragment: string | RegExp) {
     const matcher = typeof fragment === 'string' ? new RegExp(fragment) : fragment;
-    return screen.getByRole('button', { name: matcher });
+    const candidates = screen.getAllByRole('button', { name: matcher });
+    const edit = candidates.find((el) => /^(Edit|Log) /.test(el.getAttribute('aria-label') ?? ''));
+    return edit ?? candidates[0];
   }
 
   // Mouse-path tests PIN detail: 1 (director F-14) — fireEvent.click defaults to detail: 0,
@@ -378,5 +392,114 @@ describe('D6 modifier layer', () => {
     fireEvent.click(cellButton(/Log Neck/), { shiftKey: true });
     fireEvent.click(cellButton(/Log Neck/), { altKey: true });
     expect(onAssignGear).not.toHaveBeenCalled();
+  });
+});
+
+describe('D6 cell anatomy (D6a Task 4)', () => {
+  const tankOne = makePlayer({
+    id: 'p1', name: 'Tank One', job: 'PLD', role: 'tank',
+  });
+  const healerOne = makePlayer({
+    id: 'p2', name: 'Healer One', job: 'WHM', role: 'healer',
+  });
+  const older = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-01T00:00:00Z', recipientPlayerId: 'p2', recipientPlayerName: 'Healer One',
+  });
+  const newer = makeLootEntry({
+    itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-05T00:00:00Z', recipientPlayerId: 'p2', recipientPlayerName: 'Healer One',
+  });
+
+  it('multi-entry: chip is a sibling button, not nested in the edit button', () => {
+    render(<LogWeekGrid {...baseProps({ lootLog: [older, newer], players: [tankOne, healerOne] })} />);
+    const edit = screen.getByRole('button', { name: 'Edit Ears for Healer One — Floor 1 (newest of 2)' });
+    const chip = screen.getByRole('button', { name: '2 entries for Ears — Floor 1' });
+    expect(edit).not.toContainElement(chip);
+  });
+
+  it('multi-entry accessible name folds the count in (D5-owed fix); single-entry name has no suffix', () => {
+    render(<LogWeekGrid {...baseProps({ lootLog: [older, newer], players: [tankOne, healerOne] })} />);
+    expect(screen.getByRole('button', { name: 'Edit Ears for Healer One — Floor 1 (newest of 2)' })).toBeInTheDocument();
+
+    const single = makeLootEntry({
+      itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    render(<LogWeekGrid {...baseProps({ lootLog: [single], players: [tankOne] })} />);
+    expect(screen.getByRole('button', { name: 'Edit Neck for Tank One — Floor 1' })).toBeInTheDocument();
+  });
+
+  it('chip menu item click opens the edit door for the OLDER entry', async () => {
+    const onEditGear = vi.fn();
+    render(<LogWeekGrid {...baseProps({ lootLog: [older, newer], players: [tankOne, healerOne], onEditGear })} />);
+    const chip = screen.getByRole('button', { name: '2 entries for Ears — Floor 1' });
+    fireEvent.keyDown(chip, { key: 'Enter' });
+    const items = await screen.findAllByRole('menuitem');
+    expect(items).toHaveLength(2);
+    // newest-first order (D6 Task 2) — index 1 is the OLDER entry.
+    fireEvent.click(items[1]);
+    expect(onEditGear).toHaveBeenCalledWith(older);
+    expect(onEditGear).not.toHaveBeenCalledWith(newer);
+  });
+
+  it('read-only multi-entry sr-only sentence includes the count', () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne, healerOne], canEdit: false,
+    })}
+    />);
+    expect(screen.getByText('Ears: Healer One, 2 entries')).toBeInTheDocument();
+  });
+
+  it('the revealed kebab renders on every FILLED interactive cell (single or multi-entry) with hover/focus reveal classes', () => {
+    const single = makeLootEntry({
+      itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    render(<LogWeekGrid {...baseProps({ lootLog: [single], players: [tankOne] })} />);
+    const kebab = screen.getByRole('button', { name: 'Ears entry actions' });
+    expect(kebab.className).toContain('opacity-0');
+    expect(kebab.className).toContain('focus-visible:opacity-100');
+    expect(kebab.className).toContain('group-hover:opacity-100');
+  });
+
+  it('kebab click opens the SAME gated item set the right-click menu opens (Edit + Copy link + Jump + Delete, all handlers passed)', () => {
+    const onEditGear = vi.fn();
+    const onCopyEntryLink = vi.fn();
+    const onJumpToPlayer = vi.fn();
+    const onDeleteEntry = vi.fn();
+    const single = makeLootEntry({
+      itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [single], players: [tankOne], onEditGear, onCopyEntryLink, onJumpToPlayer, onDeleteEntry,
+    })}
+    />);
+    const kebab = screen.getByRole('button', { name: 'Ears entry actions' });
+    fireEvent.click(kebab);
+    expect(screen.getByRole('menuitem', { name: /Edit/ })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: `Jump to ${tankOne.name}` })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+    expect(onEditGear).toHaveBeenCalledWith(single);
+  });
+
+  it('the aria-hidden flex/grid sweep still passes over the new anatomy (F-4 re-run)', () => {
+    const neck = makeLootEntry({
+      itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const glaze = makeMaterialEntry({
+      materialType: 'glaze', floor: 'Floor 2', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const { container } = render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer, neck], materialLog: [glaze], players: [tankOne, healerOne],
+    })}
+    />);
+    const ariaHiddenEls = container.querySelectorAll('[aria-hidden="true"]');
+    expect(ariaHiddenEls.length).toBeGreaterThan(0);
+    ariaHiddenEls.forEach((el) => {
+      const isFlexOrGrid = /\b(flex|inline-flex|grid|inline-grid)\b/.test(el.className);
+      if (isFlexOrGrid) {
+        expect(el.getAttribute('role')).toBe('presentation');
+      }
+    });
   });
 });
