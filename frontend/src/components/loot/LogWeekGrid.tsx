@@ -199,17 +199,17 @@ function GridCell<E extends RecipientLike>({
   const newest = entries[0];
   const recipient = newest ? resolveRecipient(newest, playerMap) : undefined;
   const isMulti = entries.length > 1;
-  // D6a Task 6: the newest entry's ref, built once and reused for the
-  // highlight check below AND wherever the existing code already calls
-  // `buildRef(newest)` — a highlighted entry is always this cell's `newest`
-  // (the deep link targets a real logged entry, and editing always targets
-  // `entries[0]`), so only the newest ever needs checking.
-  const newestRef = newest ? buildRef(newest) : null;
-  const isHighlighted =
-    newestRef != null &&
-    highlightEntry != null &&
-    newestRef.kind === highlightEntry.kind &&
-    newestRef.entry.id === highlightEntry.id;
+  // D6a Task 6 (F1 fix, PR #244 review): the highlighted ref is found by
+  // SEARCHING the whole cell, not assumed to be `newest`. A deep link copied
+  // before a second entry landed in the same cell can target an OLDER entry —
+  // `Loot.tsx`'s `?entry=` validation matches against the WHOLE unfiltered
+  // log, not just each cell's newest — so a link like that used to validate,
+  // re-point the week, and then silently no-op scroll: nothing in the cell
+  // ever carried that entry's DOM id. Search every entry so the id + pulse
+  // land on whichever one actually matches, wherever it sits in the cell.
+  const highlightedRef = highlightEntry
+    ? entries.map(buildRef).find((r) => r.kind === highlightEntry.kind && r.entry.id === highlightEntry.id)
+    : undefined;
 
   // D6a Task 4: the interactive branch's ×N route lives entirely in
   // `LogCellEntriesMenu` now — the edit control's content is the badge
@@ -245,9 +245,11 @@ function GridCell<E extends RecipientLike>({
     // F1 (director R2) fix: this wrapper also carries the `?entry=`
     // deep-link landing contract — `id={logCellDomId(ref)}` +
     // ` highlight-pulse` when this cell holds the highlighted entry, reusing
-    // the exact `isHighlighted`/`newestRef` plumbing the interactive branch
-    // uses below. No control is added (no button/role/tabIndex/onClick —
-    // D6-l keeps viewer cells inert) and the span is never aria-hidden (the
+    // the exact `highlightedRef` plumbing the interactive branch uses below
+    // (PR #244 F1 follow-up: `highlightedRef` is found by searching every
+    // entry in the cell, not assumed to be `newest` — see the derivation's
+    // own comment above). No control is added (no button/role/tabIndex/onClick
+    // — D6-l keeps viewer cells inert) and the span is never aria-hidden (the
     // F-4 sweep stays green).
     const sentence = recipient
       ? (isMulti ? `${label}: ${recipient.name}, ${entries.length} entries` : `${label}: ${recipient.name}`)
@@ -255,8 +257,8 @@ function GridCell<E extends RecipientLike>({
     return (
       <>
         <span
-          id={isHighlighted ? logCellDomId(newestRef!) : undefined}
-          className={`inline-flex min-h-7 items-center gap-1${isHighlighted ? ' highlight-pulse' : ''}`}
+          id={highlightedRef ? logCellDomId(highlightedRef) : undefined}
+          className={`inline-flex min-h-7 items-center gap-1${highlightedRef ? ' highlight-pulse' : ''}`}
         >
           {content}
           {isMulti && (
@@ -351,8 +353,8 @@ function GridCell<E extends RecipientLike>({
 
   return (
     <span
-      id={isHighlighted ? logCellDomId(newestRef!) : undefined}
-      className={`group flex items-center gap-1${isHighlighted ? ' highlight-pulse' : ''}`}
+      id={highlightedRef ? logCellDomId(highlightedRef) : undefined}
+      className={`group flex items-center gap-1${highlightedRef ? ' highlight-pulse' : ''}`}
     >
       {editButton}
       {isMulti && (
@@ -370,7 +372,7 @@ function GridCell<E extends RecipientLike>({
         />
       )}
       <IconButton
-        aria-label={`${label} entry actions`}
+        aria-label={`${label} entry actions — ${floorName}`}
         icon={<MoreVertical className="h-3.5 w-3.5" />}
         variant="ghost"
         size="sm"

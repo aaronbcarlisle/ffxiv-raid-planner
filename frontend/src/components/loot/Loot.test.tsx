@@ -1576,4 +1576,46 @@ describe('Loot — D6a Task 6: Log grid affordance wiring', () => {
     expect(lastGrid().week).toBe(3);
     expect(localStorage.getItem('v2-history-week-g1-aac-heavyweight')).toBe('3');
   });
+
+  // F2 (PR #244 review): the F1 guard above only protects a week that
+  // EXCEEDS the provisional ceiling — a WEEK-1 entry passes it even while
+  // the clock is still provisional (1/1), because 1 is never > 1. If the
+  // displayed week differs (here: `?week=3`), the OUT-OF-WEEK correction
+  // still fires `logWeek.setWeek(1)` against the provisional clock, which
+  // clamps to `1 … max(1, 1)` = 1 and treats that as "already current" —
+  // clearing the override and writing the `'current'` sentinel, the exact
+  // clobber the F1 guard exists to prevent. Unlike the week-3 case above,
+  // the real clock's later arrival does NOT naturally re-trigger this
+  // correction (1 stays `<= clockCeiling` once the real clock settles), so
+  // the guard must ALSO cover "clock still provisional AND a correction
+  // would fire" — not just "entry week exceeds the provisional ceiling".
+  it('F2: a provisional clock (1/1) must not let a WEEK-1 entry force a correction against it — highlight stays null and storage is untouched until the real clock arrives, then the correction fires unclamped', () => {
+    useLootTrackingStore.setState({
+      currentWeek: 1, maxWeek: 1,
+      lootLog: [makeLootEntry({ id: 89, weekNumber: 1 })],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=3&entry=89']);
+
+    // Provisional phase: the entry's own week (1) does not exceed the
+    // provisional ceiling (max(1, 1) = 1), but the DISPLAYED week (3, from
+    // the URL) differs — a correction would fire against a clock that can't
+    // yet be trusted. The highlight must stay UNRESOLVED and the displayed
+    // week (from the URL) must be left alone.
+    expect(lastGrid().highlightEntry).toBeNull();
+    expect(lastGrid().week).toBe(3);
+    expect(localStorage.getItem('v2-history-week-g1-aac-heavyweight')).toBeNull();
+
+    // The clock settles for real (fetchCurrentWeek resolves) — well past
+    // week 1, so the provisional-window guard no longer applies.
+    act(() => {
+      useLootTrackingStore.setState({ currentWeek: 6, maxWeek: 6 });
+    });
+
+    // The derivation flips from null to the id with FRESH closures — the
+    // correction now fires unclamped, landing on the entry's OWN week (1).
+    // The stored key holds the real week (1), never the 'current' sentinel.
+    expect(lastGrid().highlightEntry).toEqual({ kind: 'loot', id: 89 });
+    expect(lastGrid().week).toBe(1);
+    expect(localStorage.getItem('v2-history-week-g1-aac-heavyweight')).toBe('1');
+  });
 });

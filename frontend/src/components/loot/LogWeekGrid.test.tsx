@@ -284,7 +284,8 @@ describe('D6 modifier layer', () => {
   // ("Edit Ears for Tank One — Floor 1") just to find the "Ears" cell.
   //
   // D6a Task 4: a filled cell's sibling row now also carries a kebab
-  // (`${label} entry actions`, R-D6b) and, when multi-entry, a chip trigger
+  // (`${label} entry actions — ${floorName}`, R-D6b + F3/PR #244 review) and,
+  // when multi-entry, a chip trigger
   // (`N entries for ${label} — ${floorName}`) — both of which ALSO match a
   // bare label fragment like 'Ears' or 'Neck'. Disambiguate by preferring
   // the Edit/Log-prefixed control (the one this helper always meant).
@@ -496,7 +497,7 @@ describe('D6 cell anatomy (D6a Task 4)', () => {
       itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
     });
     render(<LogWeekGrid {...baseProps({ lootLog: [single], players: [tankOne] })} />);
-    const kebab = screen.getByRole('button', { name: 'Ears entry actions' });
+    const kebab = screen.getByRole('button', { name: 'Ears entry actions — Floor 1' });
     expect(kebab.className).toContain('opacity-0');
     expect(kebab.className).toContain('focus-visible:opacity-100');
     expect(kebab.className).toContain('group-hover:opacity-100');
@@ -514,7 +515,7 @@ describe('D6 cell anatomy (D6a Task 4)', () => {
       lootLog: [single], players: [tankOne], onEditGear, onCopyEntryLink, onJumpToPlayer, onDeleteEntry,
     })}
     />);
-    const kebab = screen.getByRole('button', { name: 'Ears entry actions' });
+    const kebab = screen.getByRole('button', { name: 'Ears entry actions — Floor 1' });
     fireEvent.click(kebab);
     expect(screen.getByRole('menuitem', { name: /Edit/ })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument();
@@ -627,5 +628,33 @@ describe('D6a Task 6: highlightEntry', () => {
     />);
     expect(document.getElementById(logCellDomId(ref))).toBeNull();
     expect(document.querySelector('.highlight-pulse')).toBeNull();
+  });
+
+  // F1 (director R2, PR #244 review): the highlighted ref used to be assumed
+  // `entries[0]` (newest) — a deep link copied before a second entry landed
+  // in the same cell targets an OLDER entry that `Loot.tsx`'s `?entry=`
+  // validation (searches the whole unfiltered log) happily resolves, so the
+  // id + pulse must land wherever that entry actually sits in the cell, not
+  // just on whichever is newest. The edit door still targets the newest
+  // entry regardless — highlighting and editing are separate concerns.
+  it('F1: a multi-entry cell highlighting the OLDER (non-newest) entry gets that entry\'s DOM id + pulse', () => {
+    const older = makeLootEntry({
+      id: 601, itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-01T00:00:00Z',
+      recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const newer = makeLootEntry({
+      id: 602, itemSlot: 'earring', floor: 'Floor 1', createdAt: '2026-01-05T00:00:00Z',
+      recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const olderRef: LogGridEntryRef = { kind: 'loot', entry: older };
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne],
+      highlightEntry: { kind: 'loot', id: older.id },
+    })}
+    />);
+    const editButton = screen.getByRole('button', { name: 'Edit Ears for Tank One — Floor 1 (newest of 2)' });
+    const wrapper = editButton.closest('.group')!;
+    expect(wrapper.id).toBe(logCellDomId(olderRef));
+    expect(wrapper.className).toContain('highlight-pulse');
   });
 });

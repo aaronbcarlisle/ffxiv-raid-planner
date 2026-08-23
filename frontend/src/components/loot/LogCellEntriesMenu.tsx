@@ -48,9 +48,14 @@ export interface LogCellEntriesMenuProps {
   onEdit: (ref: LogGridEntryRef) => void;
 }
 
-/** Short date for a menu row — `Jan 5` form, not a full timestamp. */
+/**
+ * Short date for a menu row — `Jan 5` form, not a full timestamp. UTC-pinned
+ * (F4, PR #244 review) so the shown date never shifts a day depending on the
+ * viewer's local offset — the `WeekScopeControl.formatWeekDate` precedent in
+ * this same folder.
+ */
 function shortDate(createdAt: string): string {
-  return new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return new Date(createdAt).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
 }
 
 /** Muted secondary text per ref kind — loot's method (+ extra flag) or material's augmented slot. */

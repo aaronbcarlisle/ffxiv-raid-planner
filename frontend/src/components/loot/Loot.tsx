@@ -620,9 +620,31 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // entry (corrupt link, week beyond the clock's real max) simply never
   // resolves — the same fate as any other invalid `?entry=` ("pointing at no
   // known entry" below): the params linger until the user navigates away.
+  // F2 (PR #244 review): the guard above only protects a week that EXCEEDS
+  // the provisional ceiling — a WEEK-1 entry passes it even while the clock
+  // is still provisional (ceiling === 1), because 1 is never > 1. If the
+  // DISPLAYED week differs (e.g. a stale/mismatched `?week=` alongside the
+  // link), the correction effect below would still fire `logWeek.setWeek(1)`
+  // against that provisional clock: it clamps to `1 … max(1, 1)` = 1, lands
+  // exactly on the provisional `currentWeek`, and gets treated as "already
+  // current" — clearing the override and writing the `'current'` sentinel,
+  // the exact clobber this guard exists to prevent. So: also stay unresolved
+  // while the clock is still provisional (`clockCeiling === 1`) AND a
+  // correction would actually fire (`foundEntryWeek !== logWeek.week`) —
+  // mirroring the OUT-OF-RANGE case's "stay null until the clock can vouch
+  // for this" rule for the one ceiling value (1) a provisional clock can't be
+  // told apart from a genuine one by magnitude alone. Exactly like the
+  // OUT-OF-RANGE case, this is a RENDER-TIME guard: `clockCeiling` is derived
+  // from `clock` (a hook dependency), so the real clock's later arrival
+  // re-renders this derivation — once `clockCeiling` moves off `1`, the
+  // second disjunct goes false, `unresolvedByClock` flips to false, and
+  // `highlightId` transitions to the real id with a FRESH closure, letting
+  // the effect below fire the (now-safe) correction against the real clock.
   const foundEntryWeek = foundLootEntry?.weekNumber ?? foundMaterialEntry?.weekNumber;
   const clockCeiling = Math.max(clock.maxWeek, clock.currentWeek);
-  const unresolvedByClock = foundEntryWeek != null && foundEntryWeek > clockCeiling;
+  const unresolvedByClock =
+    foundEntryWeek != null
+    && (foundEntryWeek > clockCeiling || (clockCeiling === 1 && foundEntryWeek !== logWeek.week));
   const highlightId: number | null =
     unresolvedByClock ? null : foundLootEntry?.id ?? foundMaterialEntry?.id ?? null;
   const highlightKind: 'loot' | 'material' | null =
