@@ -168,8 +168,10 @@ function GridCell<E extends RecipientLike>({
   const recipient = newest ? resolveRecipient(newest, playerMap) : undefined;
   const isMulti = entries.length > 1;
 
-  // D6a Task 4: the ×N route lives entirely in `LogCellEntriesMenu` now — the
-  // main control's content is the badge alone, never a chip.
+  // D6a Task 4: the interactive branch's ×N route lives entirely in
+  // `LogCellEntriesMenu` now — the edit control's content is the badge
+  // alone, never a chip (there's nothing to click-through to on a control
+  // that already opens the newest entry).
   const content = newest && recipient ? (
     <RecipientBadge color={recipient.color} name={recipient.name} job={recipient.job} />
   ) : (
@@ -179,16 +181,23 @@ function GridCell<E extends RecipientLike>({
   const body = <span className="inline-flex min-h-7 items-center gap-1">{content}</span>;
 
   if (!interactive) {
-    // D6-l: a multi-entry read-only cell folds the count into the sr-only
-    // sentence — the sighted chip lives only on the interactive branch now
-    // (`LogCellEntriesMenu`), so this sentence is the read-only viewer's
-    // only signal that there's more than one entry.
+    // D6-l + review fix: a multi-entry read-only cell keeps a STATIC ×N span
+    // (D5's chip styling, reproduced verbatim — never a button, never
+    // aria-hidden, so the F-4 sweep is unaffected) alongside the sr-only
+    // sentence. There's no `LogCellEntriesMenu` trigger here (Viewer-role
+    // cells render no controls at all), so the sighted ×N signal would
+    // otherwise be lost entirely for share-code viewers while screen-reader
+    // users still get it from the sentence — restored so both audiences see
+    // the count, not just one.
     const sentence = recipient
       ? (isMulti ? `${label}: ${recipient.name}, ${entries.length} entries` : `${label}: ${recipient.name}`)
       : `${label}: not logged`;
     return (
       <>
         {body}
+        {isMulti && (
+          <span className="rounded bg-accent/20 px-1 text-xs font-bold text-accent">×{entries.length}</span>
+        )}
         <span className="sr-only">{sentence}</span>
       </>
     );

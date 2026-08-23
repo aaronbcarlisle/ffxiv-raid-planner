@@ -448,6 +448,24 @@ describe('D6 cell anatomy (D6a Task 4)', () => {
     expect(screen.getByText('Ears: Healer One, 2 entries')).toBeInTheDocument();
   });
 
+  it('review fix: read-only multi-entry cell shows a visible static ×2 span alongside the sr-only sentence', () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [older, newer], players: [tankOne, healerOne], canEdit: false,
+    })}
+    />);
+    expect(screen.getByText('×2')).toBeInTheDocument();
+    expect(screen.getByText('Ears: Healer One, 2 entries')).toBeInTheDocument();
+  });
+
+  it('review fix: read-only single-entry cell shows neither a ×N span nor a count in the sr-only sentence', () => {
+    const single = makeLootEntry({
+      itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    render(<LogWeekGrid {...baseProps({ lootLog: [single], players: [tankOne], canEdit: false })} />);
+    expect(screen.queryByText(/^×\d/)).not.toBeInTheDocument();
+    expect(screen.getByText('Neck: Tank One')).toBeInTheDocument();
+  });
+
   it('the revealed kebab renders on every FILLED interactive cell (single or multi-entry) with hover/focus reveal classes', () => {
     const single = makeLootEntry({
       itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
