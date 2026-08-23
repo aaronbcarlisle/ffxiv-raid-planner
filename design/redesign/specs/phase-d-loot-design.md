@@ -598,7 +598,7 @@ kebab exists so every modifier action has a keyboard and AT route; right-click i
   (`SectionedLogView.tsx:901-906`) → `handleDeleteLoot` → `setConfirmState` →
   `deleteLootAndRevertGear(..., { revertGear: true })` (`:262-275`). One named delta: legacy always
   reverts gear; v2's loot confirm exposes a revert-gear **checkbox** (the `DeleteLootConfirmModal`
-  mount, `Loot.tsx:1144-1164`; the checkbox itself lives in `history/DeleteLootConfirmModal.tsx`)
+  mount, `Loot.tsx:1146-1166`; the checkbox itself lives in `history/DeleteLootConfirmModal.tsx`)
   instead of hard-coding it.
 - Out of D6a, ruled for **D6b**: the teaching tooltip, the recipient-badge hover-`×`, the count bar
   + legend, and the floor-header "Log floor" kebab (R-23/R-25/R-27's own build notes land there).
