@@ -1482,3 +1482,83 @@ describe('D5 §5 mount obligations — edit-door stability', () => {
     });
   });
 });
+
+// PR #243 review (claude[bot] on #243, R-D5a): check "Include substitutes" -> pick a sub ->
+// uncheck. `eligiblePlayers` drops the sub, so `recipientOptions` no longer contains that id
+// and the Radix Select trigger renders empty, but `recipientPlayerId` still held the departed
+// sub — `handleSubmit`'s `if (!recipientPlayerId) return` guard passed, so the door wrote a
+// recipient the UI wasn't showing. Fixed synchronously in the checkbox's own onChange
+// (`handleIncludeSubsChange`) — no new effect. Appended at EOF per the file's snapshot-freeze
+// rule; the `V1 freeze baseline` describe above stays untouched.
+describe('(PR #243) subs-toggle recipient re-derivation', () => {
+  it('pinned + allowSubs: check -> pick the sub -> uncheck re-derives the recipient to an eligible player (Select value AND submit payload)', async () => {
+    const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+    const sub = makePlayer({ id: 'p9', name: 'Sam', isSubstitute: true });
+    renderModal({ material: 'glaze', suggestedPlayer: p1, allPlayers: [p1, sub], allowSubs: true });
+
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(sub.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(sub.name);
+
+    // Uncheck: the sub drops out of `eligiblePlayers` — the Select must re-derive to an
+    // eligible player (here, back to the suggested player), not keep naming the departed sub.
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(p1.name);
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).not.toHaveTextContent(sub.name);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    // The truthful assert the finding calls out explicitly: what submit actually SENDS, not
+    // just what the trigger displays.
+    expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'p1' }));
+  });
+
+  it('toggling subs ON with a valid main-roster pick keeps the pick (a toggle must never clobber a valid pick — D8 R7 discipline)', () => {
+    const p1 = makePlayer({ id: 'p1', name: 'Alice' });
+    const p2 = makePlayer({ id: 'p2', name: 'Bob' });
+    const sub = makePlayer({ id: 'p9', name: 'Sam', isSubstitute: true });
+    renderModal({ material: 'glaze', suggestedPlayer: p1, allPlayers: [p1, p2, sub], allowSubs: true });
+
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(p2.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(p2.name);
+
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(p2.name);
+  });
+
+  it('freeform door: check -> pick the sub -> uncheck re-derives the recipient (same handler serves both doors)', async () => {
+    const gina = makePlayer({ id: 'gina', name: 'Gina' });
+    const sam = makePlayer({ id: 'sam', name: 'Sam', isSubstitute: true });
+    const props: Extract<React.ComponentProps<typeof QuickLogMaterialModal>, { initialWeek: number }> = {
+      isOpen: true,
+      onClose: vi.fn(),
+      groupId: 'g1',
+      tierId: 't1',
+      maxWeek: 5,
+      floors: ['M9S', 'M10S', 'M11S', 'M12S'],
+      initialWeek: 2,
+      allPlayers: [gina, sam],
+    };
+    render(<QuickLogMaterialModal {...props} />);
+
+    // Mount seed: Gina is the only main-roster player, so she's auto-picked.
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(gina.name);
+
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('option', { name: new RegExp(sam.name) }));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(sam.name);
+
+    fireEvent.click(checkboxByLabelText('Include substitutes'));
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).toHaveTextContent(gina.name);
+    expect(screen.getByRole('combobox', { name: 'Recipient' })).not.toHaveTextContent(sam.name);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Material' }));
+    await waitFor(() => expect(logMaterialAndUpdateGearMock).toHaveBeenCalledTimes(1));
+    const [, , data] = logMaterialAndUpdateGearMock.mock.calls[0] as [string, string, MaterialLogEntryCreate];
+    expect(data).toEqual(expect.objectContaining({ recipientPlayerId: 'gina' }));
+  });
+});

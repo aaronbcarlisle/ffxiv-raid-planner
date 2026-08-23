@@ -547,6 +547,31 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     setAugmentTomeWeapon(augmentTome);
   };
 
+  // PR #243 review fix: a widening/narrowing "Include substitutes" toggle can drop the
+  // current recipient out of the pool (check -> pick a sub -> uncheck) — the Select would
+  // render empty while `recipientPlayerId` still named the departed pick, and submit's
+  // `!recipientPlayerId` guard doesn't catch a truthy-but-no-longer-shown id. Handled
+  // synchronously in the checkbox's own onChange (no new effect — this file's effects are
+  // freeze-guarded) by computing the NEW pool inline with the SAME predicate the
+  // `eligiblePlayers` memo above uses, just evaluated against the incoming `checked` value
+  // instead of the `includeSubs` state this render hasn't committed yet. V1 never renders
+  // this checkbox (pinned without `allowSubs`), so this handler is unreachable from V1's door.
+  function handleIncludeSubsChange(checked: boolean) {
+    setIncludeSubs(checked);
+    const nextPool = allPlayers.filter((p) => mode === 'pinned'
+      ? (p.configured && (allowSubs ? (checked || !p.isSubstitute) : !p.isSubstitute))
+      : (p.configured && (checked || !p.isSubstitute))
+    );
+    // D8 R7 discipline: a toggle must never clobber a still-valid pick.
+    if (nextPool.some((p) => p.id === recipientPlayerId)) return;
+    const fallbackId = mode === 'pinned'
+      ? (nextPool.some((p) => p.id === suggestedPlayer?.id) ? suggestedPlayer!.id : (nextPool[0]?.id ?? ''))
+      : (nextPool[0]?.id ?? '');
+    // Route through the same recipient-change path a manual Select pick takes, so slot/
+    // augment state re-derives consistently instead of drifting from the id it now names.
+    handleRecipientChange(fallbackId);
+  }
+
   // R-26/D-37: a material change (direct pick, or a floor pick whose new floor doesn't carry
   // the current material) re-derives gear selection and lets the auto-recipient effect
   // re-rank (userPickedRecipient reset). A floor-only change (today's two floors never share
@@ -791,7 +816,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
           {mode !== 'pinned' || allowSubs ? (
             <div className="flex items-center justify-between">
               <Label htmlFor="recipient">Recipient</Label>
-              <Checkbox checked={includeSubs} onChange={setIncludeSubs} label="Include substitutes" className="text-xs" />
+              <Checkbox checked={includeSubs} onChange={handleIncludeSubsChange} label="Include substitutes" className="text-xs" />
             </div>
           ) : (
             <Label htmlFor="recipient">Recipient</Label>
