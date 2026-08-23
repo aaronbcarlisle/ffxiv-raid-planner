@@ -1398,3 +1398,141 @@ describe("Loot — A10 void'd-promise fixes", () => {
     });
   });
 });
+
+// ── D6a Task 6: Log grid affordance wiring — deep links, jumps, delete, the
+// `?entry=` landing ────────────────────────────────────────────────────────
+// `LogWeekGrid` stays the prop-capturing mock (D5 precedent above), so these
+// tests assert only Loot's OWN wiring: `copyLogEntryLink`/`jumpToRecipient`/
+// `deleteFromGrid` route correctly, and the `?entry=` consumption effect
+// (which lives in Loot.tsx, not the grid — the grid only ever RENDERS
+// `highlightEntry`) resolves/highlights/self-clears correctly. Every week
+// assertion drives the DISPLAYED week apart from the clock's (seeded at 3 by
+// the shared beforeEach) so a `clock.currentWeek` regression can't hide.
+describe('Loot — D6a Task 6: Log grid affordance wiring', () => {
+  function lastGrid() {
+    return gridCalls[gridCalls.length - 1];
+  }
+
+  /** Drive the Log week exactly as the real WeekScopeControl's chevrons do (D4 precedent). */
+  function setLogWeek(week: number) {
+    const scopeProps = weekScopeCalls[weekScopeCalls.length - 1];
+    act(() => {
+      (scopeProps.onWeekChange as (w: number) => void)(week);
+    });
+  }
+
+  it('copy link builds a Log-shaped URL: lview=log, week=DISPLAYED (2, clock is 3), entryType=loot, shell stripped, tier kept', async () => {
+    window.history.pushState({}, '', '/group/g1?tier=xyz&shell=v2');
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const entry = makeLootEntry({ id: 40, weekNumber: 2 });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2']);
+
+    act(() => {
+      (lastGrid().onCopyEntryLink as (ref: unknown) => void)({ kind: 'loot', entry });
+    });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    // jsdom's default test origin is http://localhost:3000.
+    expect(writeText.mock.calls[0][0]).toBe(
+      'http://localhost:3000/group/g1?tier=xyz&tab=gear&lview=log&week=2&entry=40&entryType=loot',
+    );
+  });
+
+  it('copy link (material variant): entryType=material for a material ref, still on the Log-shaped URL', async () => {
+    window.history.pushState({}, '', '/group/g1?tier=xyz');
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const entry = makeMaterialEntry({ id: 41, weekNumber: 2 });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2']);
+
+    act(() => {
+      (lastGrid().onCopyEntryLink as (ref: unknown) => void)({ kind: 'material', entry });
+    });
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0][0]).toBe(
+      'http://localhost:3000/group/g1?tier=xyz&tab=gear&lview=log&week=2&entry=41&entryType=material',
+    );
+  });
+
+  it('jump writes tab=roster&player={id} and deletes entry/entryType/book', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&entry=5&entryType=material&book=p9']);
+    act(() => {
+      (lastGrid().onJumpToPlayer as (id: string) => void)('p1');
+    });
+    const search = screen.getByTestId('loc').getAttribute('data-search')!;
+    expect(search).toContain('tab=roster');
+    expect(search).toContain('player=p1');
+    expect(search).not.toContain('entry=');
+    expect(search).not.toContain('entryType=');
+    expect(search).not.toContain('book=');
+  });
+
+  it('grid delete routes into the existing requestDelete → confirm modal state (LogGridEntryRef IS HistoryItem, no adapter)', async () => {
+    const entry = makeLootEntry({ id: 61, weekNumber: 3 });
+    useLootTrackingStore.setState({ lootLog: [entry] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    act(() => {
+      (lastGrid().onDeleteEntry as (ref: unknown) => void)({ kind: 'loot', entry });
+    });
+    expect(await screen.findByRole('button', { name: 'Delete Entry' })).toBeInTheDocument();
+  });
+
+  it('?entry= on the log view: valid id → highlightEntry passed down; self-clears with replace after 2.5s, surviving an intervening week change (proves the functional form)', () => {
+    vi.useFakeTimers();
+    try {
+      useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 55, weekNumber: 2 })] });
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2&entry=55']);
+      expect(lastGrid().highlightEntry).toEqual({ kind: 'loot', id: 55 });
+
+      // Intervening write BEFORE the 2.5s clear fires: this effect's own
+      // timers are NOT reset by a week change (logWeek.week is deliberately
+      // excluded from its deps — see Loot.tsx), so the eventual clear must
+      // read the CURRENT params at fire-time, not a stale schedule-time
+      // snapshot, to avoid stomping this. Target week 4, not 3: useLogWeek
+      // treats a target EQUAL to clock.currentWeek (3, seeded) as "follow the
+      // clock" and REMOVES `?week=` entirely rather than writing it — 4 keeps
+      // this an ordinary override write, which is what the assertion needs.
+      act(() => { vi.advanceTimersByTime(1000); });
+      setLogWeek(4);
+      act(() => { vi.advanceTimersByTime(1500); });
+
+      const search = screen.getByTestId('loc').getAttribute('data-search')!;
+      expect(search).not.toContain('entry=');
+      expect(search).not.toContain('entryType=');
+      expect(search).toContain('week=4');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('?entry= pointing at no known entry passes null and never strips params', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&entry=9999']);
+    expect(lastGrid().highlightEntry).toBeNull();
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('entry=9999');
+  });
+
+  it('CROSS-TYPE: a real loot id arriving with entryType=material yields null — and vice-versa (F-10a; ids are independent sequences)', () => {
+    useLootTrackingStore.setState({
+      lootLog: [makeLootEntry({ id: 31, weekNumber: 3 })],
+      materialLog: [makeMaterialEntry({ id: 32, weekNumber: 3 })],
+    });
+    const first = renderLoot({ tier: makeTier(players) }, ['/?lview=log&entry=31&entryType=material']);
+    expect(lastGrid().highlightEntry).toBeNull();
+    first.unmount();
+
+    // entryType absent defaults to 'loot' — a material id arriving without
+    // entryType=material must ALSO fail to resolve.
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&entry=32']);
+    expect(lastGrid().highlightEntry).toBeNull();
+  });
+
+  it('OUT-OF-WEEK: an entry in week 4 while displaying week 2 calls logWeek.setWeek(4) before highlighting (F-10b)', () => {
+    useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 77, weekNumber: 4 })] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2&entry=77']);
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(4);
+    expect(lastGrid().week).toBe(4);
+    expect(lastGrid().highlightEntry).toEqual({ kind: 'loot', id: 77 });
+  });
+});

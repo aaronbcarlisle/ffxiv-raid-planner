@@ -78,6 +78,17 @@ export type LogGridEntryRef =
   | { kind: 'loot'; entry: LootLogEntry }
   | { kind: 'material'; entry: MaterialLogEntry };
 
+/**
+ * The Log grid cell's DOM id — the ONE author of this string (director F-2,
+ * blocker). `Loot.tsx`'s `?entry=` scroll effect and `LogWeekGrid`'s cell
+ * wrapper (D6a Task 6) both consume this helper instead of each composing the
+ * string independently — contrast the shipped History path's drift-prone
+ * split (`LootHistoryTable.tsx:84-85` vs `LootEntryRow.tsx:80`), which this
+ * one-author rule forbids repeating here.
+ */
+export const logCellDomId = (ref: LogGridEntryRef): string =>
+  `log-cell-${ref.kind}-${ref.entry.id}`;
+
 /** ring / ring1 / ring2 all collapse into the one 'ring' cell (rule 3). */
 function gearBucketKey(itemSlot: string): string {
   return itemSlot === 'ring' || itemSlot === 'ring1' || itemSlot === 'ring2' ? 'ring' : itemSlot;

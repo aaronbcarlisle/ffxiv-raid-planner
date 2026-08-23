@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { LogWeekGrid } from './LogWeekGrid';
+import { logCellDomId, type LogGridEntryRef } from './logWeekGridData';
 import { GEAR_SLOT_NAMES } from '../../types';
 import type { LootLogEntry, MaterialLogEntry, SnapshotPlayer } from '../../types';
 
@@ -65,6 +66,11 @@ function makeMaterialEntry(overrides: Partial<MaterialLogEntry> = {}): MaterialL
 
 const EMPTY_FLOORS: string[] = [];
 
+// D6a Task 6 (sanctioned edit, class 4): the four now-required props —
+// `onCopyEntryLink` / `onJumpToPlayer` / `onDeleteEntry` (tightened from
+// optional) + the new `highlightEntry` (defaults to null, "nothing
+// highlighted") — so every pre-existing call site keeps compiling without
+// having to name them individually.
 function baseProps(overrides: Partial<Parameters<typeof LogWeekGrid>[0]> = {}) {
   return {
     floors: EMPTY_FLOORS,
@@ -78,6 +84,10 @@ function baseProps(overrides: Partial<Parameters<typeof LogWeekGrid>[0]> = {}) {
     onEditGear: vi.fn(),
     onAssignMaterial: vi.fn(),
     onEditMaterial: vi.fn(),
+    onCopyEntryLink: vi.fn(),
+    onJumpToPlayer: vi.fn(),
+    onDeleteEntry: vi.fn(),
+    highlightEntry: null,
     ...overrides,
   };
 }
@@ -519,5 +529,62 @@ describe('D6 cell anatomy (D6a Task 4)', () => {
         expect(el.getAttribute('role')).toBe('presentation');
       }
     });
+  });
+});
+
+// ── D6a Task 6: highlightEntry — the `?entry=` deep-link target ─────────────
+describe('D6a Task 6: highlightEntry', () => {
+  const tankOne = makePlayer({ id: 'p1', name: 'Tank One', job: 'PLD', role: 'tank' });
+  const ears = makeLootEntry({
+    id: 501, itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+  });
+  const neck = makeLootEntry({
+    id: 502, itemSlot: 'necklace', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+  });
+
+  it('renders the pulse class + DOM id on the matching cell only', () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears, neck], players: [tankOne],
+      highlightEntry: { kind: 'loot', id: ears.id },
+    })}
+    />);
+    const earsWrapper = screen.getByRole('button', { name: 'Edit Ears for Tank One — Floor 1' }).closest('.group')!;
+    const neckWrapper = screen.getByRole('button', { name: 'Edit Neck for Tank One — Floor 1' }).closest('.group')!;
+    expect(earsWrapper.className).toContain('highlight-pulse');
+    expect(earsWrapper.id).toBe(`log-cell-loot-${ears.id}`);
+    expect(neckWrapper.className).not.toContain('highlight-pulse');
+    expect(neckWrapper.id).toBe('');
+  });
+
+  it('highlightEntry: null renders neither the pulse class nor an id anywhere', () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne], highlightEntry: null,
+    })}
+    />);
+    const wrapper = screen.getByRole('button', { name: 'Edit Ears for Tank One — Floor 1' }).closest('.group')!;
+    expect(wrapper.className).not.toContain('highlight-pulse');
+    expect(wrapper.id).toBe('');
+  });
+
+  it("kind discriminates, not just id — a material ref sharing the loot entry's numeric id does not highlight it", () => {
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne],
+      highlightEntry: { kind: 'material', id: ears.id },
+    })}
+    />);
+    const wrapper = screen.getByRole('button', { name: 'Edit Ears for Tank One — Floor 1' }).closest('.group')!;
+    expect(wrapper.className).not.toContain('highlight-pulse');
+  });
+
+  it('the cross-file id contract (F-2): document.getElementById(logCellDomId(ref)) resolves to the pulsed wrapper — the same helper both sides consume', () => {
+    const ref: LogGridEntryRef = { kind: 'loot', entry: ears };
+    render(<LogWeekGrid {...baseProps({
+      lootLog: [ears], players: [tankOne],
+      highlightEntry: { kind: ref.kind, id: ref.entry.id },
+    })}
+    />);
+    const el = document.getElementById(logCellDomId(ref));
+    expect(el).not.toBeNull();
+    expect(el?.className).toContain('highlight-pulse');
   });
 });
