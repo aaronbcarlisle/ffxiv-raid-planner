@@ -469,17 +469,19 @@ re-expression deltas disclosed at build.**
   pinned branch gains an optional `allowSubs?: boolean` prop (`QuickLogMaterialModal.tsx:64`,
   `:307`, `:649-652`) — `undefined` everywhere it isn't explicitly passed, so V1's pinned door,
   the matrix cell door, and the queues floor-card door all stay value-identical to today and keep
-  R-a's main-roster-only inheritance (R-26's D8 build note, above). Only `Loot.tsx`'s grid
+  R-a's main-roster-only inheritance (R-26's D8 build note, below). Only `Loot.tsx`'s grid
   material-cell door passes `allowSubs: true` (`Loot.tsx:761`, `:901-902`), which both surfaces
   the "Include substitutes" checkbox and swaps the full roster in for the main-roster-only list it
   filters from. User-ruled 2026-08-22 during the D5 plan-vet fold, ahead of R-a's next natural
   pinned-door decision point.
 - **R-D5b · the section header matches `FloorCard`'s shipped treatment, not R-19's literal text.**
-  R-19 above describes a "floor-coloured accent bar"; what shipped is `FloorCard`'s header
-  reproduced exactly — the `FLOOR_ACCENT_CLASS` stripe, the duty name as a muted
+  R-19 below describes a "floor-coloured accent bar"; what shipped is FloorCard's header
+  treatment, plus R-19's `· Book {numeral}` metadata line in place of FloorCard's status
+  metadata — the `FLOOR_ACCENT_CLASS` stripe, the duty name as a muted
   `Tag variant="label" tone="muted"` (only when the tier actually names the floor, the same
   `floorName !== 'Floor N'` guard FloorCard uses), and the `Floor {n} · Book {numeral}` metadata
-  line — with **no tint band** (`FLOOR_TINT_CLASS` intentionally not added). One structural
+  line (not part of FloorCard's own header, which carries `· {cleared|in progress} · drops: …`
+  metadata instead) — with **no tint band** (`FLOOR_TINT_CLASS` intentionally not added). One structural
   difference from FloorCard: because one grid wrapper holds all four floors (not one card per
   floor), the accent stripe scopes to each floor's header bar rather than the section as a whole
   (`LogWeekGrid.tsx:1-20`). User-ruled 2026-08-22 — matching an already-shipped, already-reviewed
