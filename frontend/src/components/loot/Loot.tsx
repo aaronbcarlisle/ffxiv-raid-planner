@@ -93,15 +93,17 @@
  *     the recipient's roster card, right-click/kebab opens the shared context
  *     menu) and the Log-side `?entry=` deep-link landing (validate → pulse →
  *     scroll → self-clear) below. Still open: the Books card and a
- *     displayed-week-bound reset menu are D7; a count bar/legend above the
+ *     displayed-week-bound reset menu are D7; a count bar/legend below the
  *     grid is D6b; the teaching tooltip and the recipient-badge hover-× are
  *     also D6b; the jump destination is card-level (`?player=`) until D12
  *     retargets it to slot-level anchors (R-28). "Log material" on Log — D4's
  *     other named gap — shipped in D8 (the toolbar's free-form door, below).
  *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
  *     mounted on History here, and `LootResetMenu` stays bound to
- *     `clock.currentWeek`. A `week` param on Log positions the displayed week
- *     and, since D6a, also the entry highlight's landing week.
+ *     `clock.currentWeek`. A `week` param on Log positions the displayed
+ *     week; a link whose `?entry=` resolves in a DIFFERENT week re-points the
+ *     display to that entry's week instead (D6a — the landing entry always
+ *     wins over a stale/hand-edited `?week=`, `Loot.tsx:605-613`).
  *   - The Priority sub-view (Queues⇄Who Needs It⇄Weapons) persists per user
  *     under `v2-loot-priority-view` (R-1) — NOT URL-backed. Who Needs It is
  *     the landing view (R-1); an unset/unrecognized stored value (including a

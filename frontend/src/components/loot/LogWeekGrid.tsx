@@ -93,7 +93,8 @@
  * Alt+Click (and Alt+Enter) jumps to the recipient's roster card, and
  * `useAltHeld` swaps the cursor to a pointer only while Alt is held AND a
  * jump target resolves. Empty-cell modifier clicks are no-ops (D6-h). The
- * context menu (right-click, menu-key, or either kebab trigger) is Edit /
+ * context menu (right-click, menu-key, or the cell's own hover/focus-revealed
+ * kebab — one kebab per filled cell, so two trigger routes total) is Edit /
  * Copy link / Jump to {player} (only when the recipient resolves) / Delete
  * (danger, routed through `Loot.tsx`'s existing confirm modals — legacy
  * parity, `SectionedLogView.tsx:901-906` + `:262-275`). Read-only

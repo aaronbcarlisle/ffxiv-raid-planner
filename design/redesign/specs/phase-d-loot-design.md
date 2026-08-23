@@ -554,8 +554,9 @@ kebab exists so every modifier action has a keyboard and AT route; right-click i
 
 - **Shipped modifier table**, matching the ruling above exactly: Click = log (empty) / edit `entries[0]`
   (filled) — never a jump. `Shift+Click` = copy the entry's deep link
-  (`lview=log&week={displayed}&entry={id}&entryType={loot|material}`, `shell` stripped, `tier` kept
-  from `window.location.href`, the A10 clipboard shape). `Alt+Click` (and `Alt+Enter`, a
+  (`tab=gear&lview=log&week={displayed}&entry={id}&entryType={loot|material}`, `shell` stripped,
+  `tier` kept from `window.location.href`, the A10 clipboard shape — `tab=gear` is what lands the
+  recipient on the Loot tab at all, `Loot.tsx:214`). `Alt+Click` (and `Alt+Enter`, a
   keyboard-synthesised click carries modifier state) = jump to the recipient's roster card.
   Right-click / menu-key / the R-D6b kebab = Edit · Copy link · Jump to {player} (only when the
   recipient resolves) · Delete. Pointer cursor appears only while Alt is held **and** a jump target
@@ -596,8 +597,9 @@ kebab exists so every modifier action has a keyboard and AT route; right-click i
   `onDeleteLoot(entry.id)` (`WeeklyLootGrid.tsx:405-408`) → `handleGridDeleteLoot`
   (`SectionedLogView.tsx:901-906`) → `handleDeleteLoot` → `setConfirmState` →
   `deleteLootAndRevertGear(..., { revertGear: true })` (`:262-275`). One named delta: legacy always
-  reverts gear; v2's loot confirm exposes a revert-gear **checkbox** (`Loot.tsx:952-968`) instead of
-  hard-coding it.
+  reverts gear; v2's loot confirm exposes a revert-gear **checkbox** (the `DeleteLootConfirmModal`
+  mount, `Loot.tsx:1144-1164`; the checkbox itself lives in `history/DeleteLootConfirmModal.tsx`)
+  instead of hard-coding it.
 - Out of D6a, ruled for **D6b**: the teaching tooltip, the recipient-badge hover-`×`, the count bar
   + legend, and the floor-header "Log floor" kebab (R-23/R-25/R-27's own build notes land there).
 
