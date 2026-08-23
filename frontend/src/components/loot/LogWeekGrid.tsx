@@ -90,9 +90,16 @@
  * D6a Task 6 wiring: the modifier layer is live on the edit control — plain
  * click/AT-activation (`detail===0`) edits `entries[0]` (D6-c: a cell's
  * PRIMARY action, never the jump), Shift+Click copies a Log deep link,
- * Alt+Click (and Alt+Enter) jumps to the recipient's roster card, and
- * `useAltHeld` swaps the cursor to a pointer only while Alt is held AND a
- * jump target resolves. Empty-cell modifier clicks are no-ops (D6-h). The
+ * Alt+Click jumps to the recipient's roster card, and `useAltHeld` swaps the
+ * cursor to a pointer only while Alt is held AND a jump target resolves.
+ * Empty-cell modifier clicks are no-ops (D6-h). Alt+Enter does **not** ride
+ * the same jump route (D6a browser pass, F3, live-falsified in Chrome):
+ * Chrome's keyboard-activation click on a focused `<button>` does not carry
+ * `altKey`, so a trusted Alt+Enter fires the PRIMARY action (edit) — same as
+ * a plain click, never the jump. The keyboard/AT jump routes are the
+ * per-cell kebab and Shift+F10/menu-key → "Jump to {player}" in the context
+ * menu below, per D6-c's own rationale ("the AT route to the jump is the
+ * context menu") — no separate keydown handler exists or is needed. The
  * context menu (right-click, menu-key, or the cell's own hover/focus-revealed
  * kebab — one kebab per filled cell, so two trigger routes total) is Edit /
  * Copy link / Jump to {player} (only when the recipient resolves) / Delete

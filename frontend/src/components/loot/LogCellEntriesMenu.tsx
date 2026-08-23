@@ -13,9 +13,19 @@
  * Trigger geometry (director F-13): `Button size="xs"` — `px-2 py-0.5
  * text-xs` (`Button.tsx:46`) — NOT `size="sm"` with className px overrides;
  * same-property Tailwind utilities resolve by stylesheet order, so an
- * override would silently lose. `variant="ghost"` plus `rounded bg-accent/20
- * font-bold text-accent` reproduces the D5 chip look
- * (`LogWeekGrid.tsx`'s static `×N` span) on a real control this time.
+ * override would silently lose. `variant="accent-subtle"` (D6a browser-pass
+ * fix, F2): the D5 chip look (`rounded bg-accent/20 font-bold text-accent`,
+ * `LogWeekGrid.tsx`'s static `×N` span) was originally reproduced as
+ * `variant="ghost"` plus className overrides, but ghost's own `bg-transparent`
+ * (`Button.tsx:32-33`) and the shared base's `rounded-lg`/`font-semibold`
+ * (`Button.tsx:74`, applied regardless of variant) are the SAME same-property
+ * stylesheet-order fight this comment already warns about, this time against
+ * the variant/base utilities rather than the size prop — confirmed live in
+ * Chrome (fill stayed transparent, corners stayed `rounded-lg`, weight stayed
+ * 600). `accent-subtle` ships that exact look as its OWN variant
+ * (`bg-accent/10 text-accent border border-accent/30`, `Button.tsx:30-31`) —
+ * no className fill/radius/weight overrides needed or attempted; accept the
+ * primitive's look rather than re-fighting it.
  *
  * Row content shares `RecipientBadge`/`resolveRecipient` with `LogWeekGrid`
  * (`./RecipientBadge.tsx`, extracted this same task) — one `playerMap`
@@ -58,9 +68,8 @@ export function LogCellEntriesMenu({
     <Dropdown>
       <DropdownTrigger asChild>
         <Button
-          variant="ghost"
+          variant="accent-subtle"
           size="xs"
-          className="rounded bg-accent/20 font-bold text-accent"
           aria-label={`${entryRefs.length} entries for ${cellLabel} — ${floorName}`}
         >
           {`×${entryRefs.length}`}

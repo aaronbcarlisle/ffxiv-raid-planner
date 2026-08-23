@@ -103,7 +103,11 @@
  *     `clock.currentWeek`. A `week` param on Log positions the displayed
  *     week; a link whose `?entry=` resolves in a DIFFERENT week re-points the
  *     display to that entry's week instead (D6a — the landing entry always
- *     wins over a stale/hand-edited `?week=`, `Loot.tsx:605-613`).
+ *     wins over a stale/hand-edited `?week=`, `Loot.tsx:629-704`). The
+ *     correction itself does not resolve/fire until the week clock can
+ *     honor the entry's week — see the "F1" comment ahead of the highlight
+ *     derivation (D6a browser pass; a provisional clock must never clamp
+ *     this correction, `useLogWeek.ts`'s own clamp-ceiling rule).
  *   - The Priority sub-view (Queues⇄Who Needs It⇄Weapons) persists per user
  *     under `v2-loot-priority-view` (R-1) — NOT URL-backed. Who Needs It is
  *     the landing view (R-1); an unset/unrecognized stored value (including a
@@ -592,8 +596,37 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     lview === 'log' && entryType === 'material' && parsedEntryId != null && !Number.isNaN(parsedEntryId)
       ? materialLog.find((e) => e.id === parsedEntryId)
       : undefined;
-  const highlightId: number | null = foundLootEntry?.id ?? foundMaterialEntry?.id ?? null;
-  const highlightKind: 'loot' | 'material' | null = foundLootEntry ? 'loot' : foundMaterialEntry ? 'material' : null;
+  // F1 (D6a browser pass, live-reproduced): a cold `?week=`+`?entry=` landing
+  // RACES the week clock. `lootTrackingStore` starts `currentWeek: 1, maxWeek:
+  // 1` and only corrects once the async `fetchCurrentWeek` (mount effect,
+  // above) resolves, so on the render(s) right after a fast log fetch beats a
+  // slower clock fetch, `clock` is still provisional. Resolving the highlight
+  // here regardless would let the OUT-OF-WEEK correction below (F-10b) fire
+  // against that provisional clock: `useLogWeek.setWeek` clamps to `1 …
+  // max(provisional maxWeek, provisional currentWeek)` (its own documented,
+  // deliberate rule — see `useLogWeek.ts`'s doc header), lands exactly on the
+  // provisional `currentWeek`, and treats that as "already current" —
+  // clearing the override and writing the `'current'` sentinel into
+  // `v2-history-week-*`. That DESTROYS the user's actual target week: once the
+  // real clock arrives the display follows wherever "current" then resolves,
+  // never the entry's own week, and the stored preference is gone. So: stay
+  // unresolved (`null`) while the found entry's week exceeds what the clock
+  // can currently vouch for (`Math.max(clock.maxWeek, clock.currentWeek)`,
+  // the same ceiling `useLogWeek.setWeek` itself clamps against). This is a
+  // RENDER-TIME guard, not a stored flag — `clock` is a hook dependency
+  // (`useWeekClock` above), so its later arrival re-renders this derivation,
+  // flipping `highlightId` from null to the real id with FRESH closures, and
+  // the effect below then fires `setWeek` unclamped. A genuinely out-of-range
+  // entry (corrupt link, week beyond the clock's real max) simply never
+  // resolves — the same fate as any other invalid `?entry=` ("pointing at no
+  // known entry" below): the params linger until the user navigates away.
+  const foundEntryWeek = foundLootEntry?.weekNumber ?? foundMaterialEntry?.weekNumber;
+  const clockCeiling = Math.max(clock.maxWeek, clock.currentWeek);
+  const unresolvedByClock = foundEntryWeek != null && foundEntryWeek > clockCeiling;
+  const highlightId: number | null =
+    unresolvedByClock ? null : foundLootEntry?.id ?? foundMaterialEntry?.id ?? null;
+  const highlightKind: 'loot' | 'material' | null =
+    unresolvedByClock ? null : foundLootEntry ? 'loot' : foundMaterialEntry ? 'material' : null;
   const highlightEntry: { kind: 'loot' | 'material'; id: number } | null =
     highlightId != null && highlightKind != null ? { kind: highlightKind, id: highlightId } : null;
 

@@ -557,8 +557,15 @@ kebab exists so every modifier action has a keyboard and AT route; right-click i
   (filled) — never a jump. `Shift+Click` = copy the entry's deep link
   (`tab=gear&lview=log&week={displayed}&entry={id}&entryType={loot|material}`, `shell` stripped,
   `tier` kept from `window.location.href`, the A10 clipboard shape — `tab=gear` is what lands the
-  recipient on the Loot tab at all, `Loot.tsx:214`). `Alt+Click` (and `Alt+Enter`, a
-  keyboard-synthesised click carries modifier state) = jump to the recipient's roster card.
+  recipient on the Loot tab at all, `Loot.tsx:214`). `Alt+Click` = jump to the recipient's roster
+  card. **Correction (D6a browser pass, 2026-08-23, F3) — the "Alt+Enter also jumps" parenthetical
+  above was false, live-falsified in Chrome:** a trusted Alt+Enter on a focused cell fires the
+  PRIMARY action (edit), not the jump — Chrome's keyboard-activation click on a `<button>` does not
+  carry `altKey`, so nothing distinguishes it from a plain click/AT-activation (D6-c already routes
+  that case to edit). The keyboard/AT jump routes are the cell kebab and Shift+F10/menu-key → "Jump
+  to {player}" in the context menu below (D6-c's own rationale: "the AT route to the jump is the
+  context menu"). No separate keydown handler was added — the plan's no-separate-handler stance
+  stands with this premise corrected.
   Right-click / menu-key / the R-D6b kebab = Edit · Copy link · Jump to {player} (only when the
   recipient resolves) · Delete. Pointer cursor appears only while Alt is held **and** a jump target
   resolves (`useAltHeld`, extracted verbatim to `hooks/useAltHeld.ts`, the C4 reference — one
