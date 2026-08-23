@@ -116,7 +116,7 @@
  */
 
 import {
-  useCallback, useEffect, useMemo, useRef, useState,
+  useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ListChecks, Shield } from 'lucide-react';
@@ -372,9 +372,16 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // intervening navigation (e.g. the user stepping the Log week while the
   // highlight is still pending). Updated on every render (not gated by any
   // effect's deps), so `.current` is always the freshest reference by the
-  // time a delayed timer actually calls it.
+  // time a delayed timer actually calls it. Synced via `useLayoutEffect`
+  // (not a plain render-phase assignment) so the write only lands once React
+  // has actually committed — a render-phase write would leave `.current`
+  // pointing at an INTERRUPTED render's `setSearchParams` if React starts but
+  // never commits one (react-router v7's `startTransition`-based navigation
+  // makes this a real window, not just a defensive nicety).
   const setSearchParamsRef = useRef(setSearchParams);
-  setSearchParamsRef.current = setSearchParams;
+  useLayoutEffect(() => {
+    setSearchParamsRef.current = setSearchParams;
+  });
 
   // ── Priority sub-view (persisted, R-1) + floor scope (session, R-2/R-10) ──
   const [priorityView, setPriorityView] = useState<PriorityView>(readStoredPriorityView);
@@ -643,10 +650,19 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // `materialLog` are read via closure too: `highlightId` is ITSELF derived
     // from them above, so by construction they're already fresh at the exact
     // render where `highlightId` transitions to a new value — the only
-    // moment this effect body actually runs its lookup. Calling a "stale"
-    // `logWeek.setWeek`/`setSearchParams` reference later is still correct:
-    // both dispatch against the live router via a functional updater, not a
-    // closure-frozen snapshot.
+    // moment this effect body actually runs its lookup. `logWeek.setWeek` is
+    // ALSO called from that same closure — this is correct ONLY because both
+    // that call and the lookup above run SYNCHRONOUSLY in the effect body, at
+    // the fresh render where `highlightId` just changed; the closures are
+    // same-render fresh, not because a stale reference is safe to call later.
+    // react-router's `setSearchParams` functional-form `prev` is a
+    // closure-frozen snapshot bound at that specific reference's creation
+    // time (confirmed empirically — see `setSearchParamsRef`'s doc comment
+    // above), NOT a live re-read the way React's own `setState` updater is.
+    // `logWeek.setWeek` has the same closure-capture shape internally. Do NOT
+    // move either call into a `setTimeout` here without routing it through a
+    // ref updated every render, the way the 2.5s clear below already does —
+    // that is exactly the bug `setSearchParamsRef` was added to fix.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId, highlightKind]);
 
