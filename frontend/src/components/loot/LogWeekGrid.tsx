@@ -51,7 +51,8 @@
  * `FloorDropRow`, per director F-13's "one derivation" rule) — no separate
  * icon, no duplicate label; the coloured text IS the column name.
  *
- * Cell body: `RecipientBadge` (file-local) — role-tinted per `roleVar`
+ * Cell body: `RecipientBadge` (`./RecipientBadge.tsx` — extracted D6 Task 2 so
+ * `LogCellEntriesMenu` shares it) — role-tinted per its `roleVar` helper
  * (`NeedMatrix.tsx:46`'s pattern), `JobIcon` + name, `min-h-7` reserved on
  * its wrapper so empty↔filled never shifts row height (legacy's fixed-28px
  * rationale, `WeeklyLootGrid.tsx:374-376`, re-expressed as `min-h-7`). An unknown
@@ -77,10 +78,9 @@ import { useMemo } from 'react';
 import { Button } from '../primitives';
 import { Tag } from '../ui';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
-import { JobIcon } from '../ui/JobIcon';
-import { getValidRole } from '../../gamedata';
 import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { MATERIAL_TOKEN } from './FloorDropRow';
+import { RecipientBadge, resolveRecipient, type RecipientLike } from './RecipientBadge';
 import { buildLogWeekGrid, type LogGridFloor } from './logWeekGridData';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import type {
@@ -101,44 +101,6 @@ export interface LogWeekGridProps {
   onEditGear: (entry: LootLogEntry) => void;
   onAssignMaterial: (material: MaterialType, floorNumber: FloorNumber) => void;
   onEditMaterial: (entry: MaterialLogEntry) => void;
-}
-
-/** Role-colored token — same formula as `NeedMatrix.tsx:46`. */
-const roleVar = (player: SnapshotPlayer) => `var(--color-role-${getValidRole(player.role)}, var(--color-text-muted))`;
-
-interface RecipientLike {
-  recipientPlayerId: string;
-  recipientPlayerName: string;
-}
-
-interface ResolvedRecipient {
-  name: string;
-  color: string;
-  job?: string;
-}
-
-/** Unknown `recipientPlayerId` (player left the roster) falls back to the entry's own recorded name. */
-function resolveRecipient(entry: RecipientLike, playerMap: Map<string, SnapshotPlayer>): ResolvedRecipient {
-  const player = playerMap.get(entry.recipientPlayerId);
-  if (!player) return { name: entry.recipientPlayerName, color: 'var(--color-text-secondary)' };
-  return { name: player.name, color: roleVar(player), job: player.job };
-}
-
-/** File-local — the WeeklyLootGrid.tsx:392-400 badge treatment re-expressed with `roleVar`. */
-function RecipientBadge({ color, name, job }: { color: string; name: string; job?: string }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold"
-      style={{
-        color,
-        backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
-        border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
-      }}
-    >
-      {job && <JobIcon job={job} size="xs" />}
-      {name}
-    </span>
-  );
 }
 
 interface GridCellProps<E extends RecipientLike> {

@@ -68,6 +68,16 @@ export interface LogGridFloor {
   materialCells: LogGridMaterialCell[];
 }
 
+/**
+ * One discriminated ref type across the grid, the History rows
+ * (`LootEntryRow.tsx`'s `HistoryItem` is a type alias of this — director
+ * F-12), and `requestDelete` — a multi-entry cell's `×N` chip menu
+ * (`LogCellEntriesMenu`, D6 Task 2) hands one of these back via `onEdit`.
+ */
+export type LogGridEntryRef =
+  | { kind: 'loot'; entry: LootLogEntry }
+  | { kind: 'material'; entry: MaterialLogEntry };
+
 /** ring / ring1 / ring2 all collapse into the one 'ring' cell (rule 3). */
 function gearBucketKey(itemSlot: string): string {
   return itemSlot === 'ring' || itemSlot === 'ring1' || itemSlot === 'ring2' ? 'ring' : itemSlot;
