@@ -86,16 +86,22 @@
  *     default to all/all/all), so an `?entry=` deep-link can never be hidden by
  *     a filter on first mount; only a mid-session filter change can hide a row,
  *     which is acceptable.
- *   - D4/D5 interims, so a reader doesn't mistake a stub for a gap: Log's body
- *     is `LogWeekGrid` (D5) — four floor sections, one cell per gear/material
- *     slot, wired below. Still open: the Books card and a displayed-week-bound
- *     reset menu are D7; Log's `?entry=` highlight is D6/D11; a count bar/
- *     legend above the grid is D6. "Log material" on Log — D4's other named
- *     gap — shipped in D8 (the toolbar's free-form door, below).
+ *   - D4/D5/D6a interims, so a reader doesn't mistake a stub for a gap: Log's
+ *     body is `LogWeekGrid` (D5) — four floor sections, one cell per
+ *     gear/material slot, wired below. D6a shipped the cell's modifier family
+ *     (plain click edits, Shift+Click copies a deep link, Alt+Click jumps to
+ *     the recipient's roster card, right-click/kebab opens the shared context
+ *     menu) and the Log-side `?entry=` deep-link landing (validate → pulse →
+ *     scroll → self-clear) below. Still open: the Books card and a
+ *     displayed-week-bound reset menu are D7; a count bar/legend above the
+ *     grid is D6b; the teaching tooltip and the recipient-badge hover-× are
+ *     also D6b; the jump destination is card-level (`?player=`) until D12
+ *     retargets it to slot-level anchors (R-28). "Log material" on Log — D4's
+ *     other named gap — shipped in D8 (the toolbar's free-form door, below).
  *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
  *     mounted on History here, and `LootResetMenu` stays bound to
  *     `clock.currentWeek`. A `week` param on Log positions the displayed week
- *     and nothing more (until D6/D11 land the highlight).
+ *     and, since D6a, also the entry highlight's landing week.
  *   - The Priority sub-view (Queues⇄Who Needs It⇄Weapons) persists per user
  *     under `v2-loot-priority-view` (R-1) — NOT URL-backed. Who Needs It is
  *     the landing view (R-1); an unset/unrecognized stored value (including a

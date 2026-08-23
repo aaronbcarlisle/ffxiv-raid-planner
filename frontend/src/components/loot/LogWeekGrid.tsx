@@ -86,6 +86,22 @@
  * chip, no kebab — there's nothing yet to open a menu about). The multi-
  * entry accessible name folds the count in (`… (newest of N)`, the D5-owed
  * fix) so it's announced on both the edit button and the chip trigger.
+ *
+ * D6a Task 6 wiring: the modifier layer is live on the edit control — plain
+ * click/AT-activation (`detail===0`) edits `entries[0]` (D6-c: a cell's
+ * PRIMARY action, never the jump), Shift+Click copies a Log deep link,
+ * Alt+Click (and Alt+Enter) jumps to the recipient's roster card, and
+ * `useAltHeld` swaps the cursor to a pointer only while Alt is held AND a
+ * jump target resolves. Empty-cell modifier clicks are no-ops (D6-h). The
+ * context menu (right-click, menu-key, or either kebab trigger) is Edit /
+ * Copy link / Jump to {player} (only when the recipient resolves) / Delete
+ * (danger, routed through `Loot.tsx`'s existing confirm modals — legacy
+ * parity, `SectionedLogView.tsx:901-906` + `:262-275`). Read-only
+ * (`canEdit=false`) cells stay fully inert — no modifiers, no menu, no
+ * kebab (D6-l, a named divergence from legacy's viewer-facing copy/jump —
+ * see `phase-d-loot-plan.md` §5). NOT yet shipped here (D6b): the teaching
+ * tooltip, the recipient-badge hover-`×`, the count bar/legend mounted
+ * below the grid, and the floor-header "Log floor" kebab.
  */
 import { useMemo, useState } from 'react';
 import { MoreVertical } from 'lucide-react';

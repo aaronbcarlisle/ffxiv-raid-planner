@@ -499,6 +499,11 @@ re-expression deltas disclosed at build.**
    A cell holding more than one entry (the `×N` badge) opens the edit door on the newest one only;
    there is no route yet from `×N` to the other entries it counts. D6's `EntryPopover` (R-18/R-27)
    closes this — until then the badge is a count with no route to what it counts (F-14i).
+   **Closed in D6a (2026-08-23):** the `×N` badge is now a real trigger button —
+   `LogCellEntriesMenu` (R-D6a, the v2-owned fork; `EntryPopover` was not imported — see the R-18
+   build note below) opens a newest-first list of every entry the badge counts, loot and material
+   alike, and clicking any row edits that exact entry. The cell's single edit `Button` still targets
+   `entries[0]` only, by design (D6-c) — the chip is the route to everything else. F-14i is closed.
 2. **Material cells bucket every matching entry per week, not just one.** The legacy grid's
    `find()` surfaced a single material entry per cell, silently under-reporting a week where the
    same material dropped twice (e.g. two Solvents). `logWeekGridData.ts` buckets materials the
@@ -544,6 +549,57 @@ kebab exists so every modifier action has a keyboard and AT route; right-click i
    `RosterGearTable` and drives them with same-route params, the C7 pattern at `RosterCard.tsx:281-297`.
 3. A material entry's jump target is `slotAugmented` (`WeeklyLootGrid.tsx:731`), which is **null for a
    universal tomestone** — that case jumps to the card, not to a row.
+
+**Build note (D6a, 2026-08-23) — the modifier family shipped; two forks ruled ahead of build.**
+
+- **Shipped modifier table**, matching the ruling above exactly: Click = log (empty) / edit `entries[0]`
+  (filled) — never a jump. `Shift+Click` = copy the entry's deep link
+  (`lview=log&week={displayed}&entry={id}&entryType={loot|material}`, `shell` stripped, `tier` kept
+  from `window.location.href`, the A10 clipboard shape). `Alt+Click` (and `Alt+Enter`, a
+  keyboard-synthesised click carries modifier state) = jump to the recipient's roster card.
+  Right-click / menu-key / the R-D6b kebab = Edit · Copy link · Jump to {player} (only when the
+  recipient resolves) · Delete. Pointer cursor appears only while Alt is held **and** a jump target
+  resolves (`useAltHeld`, extracted verbatim to `hooks/useAltHeld.ts`, the C4 reference — one
+  consumer each in `RosterGearTable` and `LogWeekGrid`).
+- **R-D6a · the `×N` route is a fork, not an import.** `LogCellEntriesMenu`
+  (`loot/LogCellEntriesMenu.tsx`) is v2-owned, built on `primitives/Dropdown`, generic over loot
+  AND material entries (newest-first; clicking any row edits that exact entry). The frozen
+  `EntryPopover` above is **not imported** — D6-a's three verified legs (legacy is
+  `LootLogEntry[]`-only so half of D6's material need goes unmet, it re-derives a ring label v2's
+  data layer already canonicalises, and it hand-rolls positioning/dismissal the Radix primitive
+  gives for free) supersede §5's recorded "Import" default for this leaf; `phase-d-loot-plan.md` §5
+  (the `EntryPopover` / `LootFairnessLegend` row) is updated in this same write-back to record the
+  outcome. `LootFairnessLegend`'s own import default is untouched — it lands with the count bar in
+  D6b, not here.
+- **R-D6b · the context menu also lives on a hover/focus-revealed per-cell kebab** (every filled
+  cell), opening the identical items list right-click/menu-key open — one items list, multiple
+  triggers, and a real button browse-mode AT users can reach without relying on Shift+F10 passing
+  through an AT virtual cursor.
+- **D6-c refinement — `detail === 0` (a synthetic AT click) fires the PRIMARY action, not the jump.**
+  Deliberate divergence from the C4 gate: on `RosterGearTable`'s jump spans the jump IS the only
+  action, so detail-0 maps to it there; a grid cell's primary action is edit, and mapping AT
+  activation to a hidden secondary action would violate "appearance must match behavior." The AT
+  route to the jump is the context menu (this ruling's own rationale: "the kebab exists so every
+  modifier action has a keyboard and AT route").
+- **D6-h — empty-cell modifier clicks are no-ops.** Shift/Alt held over an empty cell does nothing;
+  there is no entry to copy a link to or jump from, and opening the log door on a modifier click
+  aimed at something else would surprise.
+- **The Alt-jump destination is card-level, by stated interim.** `Alt+Click` / "Jump to {player}"
+  lands on `tab=roster&player={id}` — the only `?player=` contract the app consumes today
+  (`Roster.tsx:359,388`; scroll + URL-strip owned by `GroupViewContent.tsx:234-257`; the pulse
+  applied by `RosterCards`) — and renders only when the entry's recipient resolves to a current
+  roster player. This ruling's own note 2 above (slot-level `gear-row-{playerId}-{slot}` anchors +
+  `highlightedSlot`) and R-28's week-split destination are **not** built by D6a; they arrive in
+  **D12**, which retargets the same callback.
+- **Delete parity, verified end to end.** Delete routes through `Loot.tsx`'s existing
+  `requestDelete` → confirm modals, matching the legacy hover-× path hop for hop:
+  `onDeleteLoot(entry.id)` (`WeeklyLootGrid.tsx:405-408`) → `handleGridDeleteLoot`
+  (`SectionedLogView.tsx:901-906`) → `handleDeleteLoot` → `setConfirmState` →
+  `deleteLootAndRevertGear(..., { revertGear: true })` (`:262-275`). One named delta: legacy always
+  reverts gear; v2's loot confirm exposes a revert-gear **checkbox** (`Loot.tsx:952-968`) instead of
+  hard-coding it.
+- Out of D6a, ruled for **D6b**: the teaching tooltip, the recipient-badge hover-`×`, the count bar
+  + legend, and the floor-header "Log floor" kebab (R-23/R-25/R-27's own build notes land there).
 
 ### R-19 · Floor colour is stated **once**, on the section header
 
