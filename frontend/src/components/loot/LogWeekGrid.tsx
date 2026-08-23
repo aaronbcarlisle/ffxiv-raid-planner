@@ -243,6 +243,7 @@ function FloorSection({
                   AT no real column to describe (browser heuristics resolve it against
                   the ROW header below, "Loot" — a false label), so it stays a plain,
                   unlabeled `<td>` instead of reaching for an sr-only name to satisfy it. */}
+              {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- empty corner cell (role=cell, not a control); the rule is upstream-off and over-broad via the a11yRecommendedWarn mapping */}
               <td className="px-3 py-2" />
               {gearCells.map((cell) => (
                 <th key={cell.slot} scope="col" className="px-3 py-2 text-left text-xs font-medium text-text-muted">

@@ -176,7 +176,9 @@ function editGearSelection(
 }
 
 /** Field seed for edit mode — single source for the mount-time lazy initializers AND the
- *  reopen-rehydration effect below, so the two paths can't drift (D5 §5(d)). */
+ *  reopen-rehydration effect below, so the two paths can't drift (D5 §5(d)). The floor
+ *  fallback below exists so an entry whose recorded floor doesn't actually carry its
+ *  material never opens edit mode on an empty pill row with nothing pressed. */
 function editEntrySeed(entry: MaterialLogEntry) {
   // Floor fallback moved VERBATIM from the reset effect — the table-membership test, not a
   // re-derivation (director F-9: getFloorForUpgradeMaterial only coincidentally agrees with

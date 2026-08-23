@@ -165,6 +165,10 @@ describe('materialPriorityEntries — averageDrops passthrough', () => {
     const withoutArg = materialPriorityEntries({
       material: 'glaze', players: [alice], settings: enhancedSettings, lootLog, materialLog: [], currentWeek: 1,
     });
+    // Positive control: the omit-arg call really does invoke calculateAverageDrops,
+    // proving the not.toHaveBeenCalled() check above is a real assertion and not
+    // vacuously true against a spy nothing in this test ever calls.
+    expect(spy).toHaveBeenCalledTimes(1);
     // Same result whether the caller passes the value or leaves it to be computed.
     expect(enhancedScoreOf(withArg[0])).toBe(enhancedScoreOf(withoutArg[0]));
 

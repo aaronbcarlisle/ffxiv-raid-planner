@@ -12,6 +12,11 @@
 // tests that need a specific player never assert on that label, only on the
 // player's own name (which the option's accessible name always contains
 // alongside the JobIcon's alt text and any priority suffix).
+//
+// Near EOF (~:1320) a hoisted, file-scoped `vi.mock('../ui')` wraps
+// NumberInput/Tag/RadioGroup with a passthrough recorder for EVERY test in
+// this file (not just the describe block it sits next to); `actual.RadioGroup(props)`
+// calls the real component as a plain function, assuming it isn't forwardRef/memo-wrapped.
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import type { SnapshotPlayer, GearSlotStatus, MaterialLogEntryCreate, MaterialLogEntry } from '../../types';

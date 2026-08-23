@@ -300,6 +300,17 @@ describe('NeedMatrix', () => {
     expect(chip.textContent).toBe('T');
   });
 
+  it('F1: every GearSlotIcon rendered in a row header sits inside an inline-flex wrapper', () => {
+    const { container } = renderMatrix();
+    // th[scope="row"]-scoped and role!=presentation to isolate GearSlotIcon (no role)
+    // from the material row's letter-chip span (aria-hidden AND role="presentation").
+    const headerIcons = container.querySelectorAll('th[scope="row"] [aria-hidden="true"]:not([role="presentation"])');
+    expect(headerIcons.length).toBeGreaterThan(0);
+    headerIcons.forEach((icon) => {
+      expect(icon.parentElement?.className).toContain('inline-flex');
+    });
+  });
+
   it('applies the warning tone once needers reach half the roster (ceil), and not below that', () => {
     renderMatrix();
     // Ring: 2 of 3 needers — 2 >= ceil(3/2) = 2 → warning.
