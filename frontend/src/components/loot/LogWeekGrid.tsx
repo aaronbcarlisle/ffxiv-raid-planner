@@ -127,13 +127,22 @@
  * only (older entries: chip menu → edit door, or History). Read-only cells
  * render no trigger at all, so they carry no tooltip either (D6-l holds).
  *
- * D6b Task B: the floor-header kebab (`FloorSection`'s header row) opens a
- * ONE-item menu — "Log floor" — firing the required `onLogFloor(floorNumber)`
- * prop, the door into the ALREADY-shipped `LogWeekWizard` single-floor run
- * (`Loot.tsx` wires it to `setWizardState({ floor })`). Gated on `canEdit`
- * alone. The week's fairness read (`WeekCountBar` + the imported
- * `LootFairnessLegend`) renders directly below this grid in `Loot.tsx`
- * (Task C) — not part of this file.
+ * D6b Task B shipped the floor-header kebab's door into the ALREADY-shipped
+ * `LogWeekWizard` single-floor run ("Log floor", firing the required
+ * `onLogFloor(floorNumber)` prop; `Loot.tsx` wires it to
+ * `setWizardState({ floor })`). D7 (R-16 2/4, R-25) grew that into a
+ * three-item menu — Log floor · separator · Reset {floorName} loot · Reset
+ * {floorName} books (`buildFloorMenuItems`, both reset items danger,
+ * week-less labels per R-D7d) — and converted the single kebab-click trigger
+ * into two: the kebab `IconButton` (`aria-haspopup="menu"`) and a right-click
+ * anywhere on the header bar, both opening the SAME items list via the
+ * grid-root `ContextMenu` mount (R-D7b's two-trigger conversion off the D6b
+ * Radix Dropdown `FloorSection` used to render). `onResetFloorLoot`/
+ * `onResetFloorBooks` route to `Loot.tsx`'s `handleResetConfirm` planner,
+ * scoped to this floor at the DISPLAYED week. Gated on `canEdit` alone. The
+ * week's fairness read (`WeekCountBar` + the imported `LootFairnessLegend`)
+ * renders directly below this grid in `Loot.tsx` (Task C) — not part of this
+ * file.
  */
 import { useMemo, useState } from 'react';
 import { ClipboardList, MoreVertical, Trash2, X } from 'lucide-react';

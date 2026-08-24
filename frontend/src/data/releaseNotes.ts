@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.21',
+    date: '2026-08-24T14:00:00Z',
+    title: 'Phase D slice D7a — Log resets: displayed-week menu + floor-kebab resets (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'The Reset menu moves to Log and follows the week you\'re viewing; floors get their own resets',
+        description:
+          "V2 preview: the destructive Reset menu moves from History to Log, and its six options now scope to whatever week Log is showing — the labels name the week (\"Reset Week 3 loot\", etc.) instead of always targeting the clock's current week. Each floor's header menu gains two new items, \"Reset {floor} loot\" and \"Reset {floor} books\", scoped to just that floor at the displayed week, right alongside the existing \"Log floor\" entry — and right-clicking the floor header opens the same menu as the kebab. History keeps only its per-entry actions (edit / copy link / delete).",
+        pr: 0,
+        prTitle: 'feat(v2): D7a Log resets — toolbar reset menu on the displayed week + floor-kebab resets',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.20',
     date: '2026-08-23T20:00:00Z',
     title: 'Phase D slice D6b — Log grid teaching layer + fairness read (v2 preview)',

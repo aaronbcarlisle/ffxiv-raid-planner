@@ -96,17 +96,22 @@
  *     layer (the per-cell modifier tooltip + the recipient-badge hover-×,
  *     both in `LogWeekGrid.tsx`), the floor-header kebab's "Log floor" door
  *     (wired below), and the fairness read below the grid (`WeekCountBar` +
- *     the imported `LootFairnessLegend`). Still open: the Books card and a
- *     displayed-week-bound reset menu are D7; the jump destination is
- *     card-level (`?player=`) until D12 retargets it to slot-level anchors
- *     (R-28). "Log material" on Log — D4's other named gap — shipped in D8
- *     (the toolbar's free-form door, below).
- *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
- *     mounted on History here, and `LootResetMenu` stays bound to
- *     `clock.currentWeek`. A `week` param on Log positions the displayed
+ *     the imported `LootFairnessLegend`). The displayed-week reset menu
+ *     shipped in D7a: the toolbar `LootResetMenu` now mounts on Log at
+ *     `logWeek.week` (gated `lview === 'log' && canEdit`), and the
+ *     floor-header kebab's two reset items route through the same
+ *     `handleResetConfirm` planner with real floor scoping. The Books card
+ *     re-home is still pending as **D7b**: `BookLedgerCard` and
+ *     `FairnessSummary` stay mounted on History for now — `FairnessSummary`
+ *     until D14. The jump destination is card-level (`?player=`) until D12
+ *     retargets it to slot-level anchors (R-28). "Log material" on Log —
+ *     D4's other named gap — shipped in D8 (the toolbar's free-form door,
+ *     below).
+ *     A `week` param on Log positions the displayed
  *     week; a link whose `?entry=` resolves in a DIFFERENT week re-points the
  *     display to that entry's week instead (D6a — the landing entry always
- *     wins over a stale/hand-edited `?week=`, `Loot.tsx:629-704`). The
+ *     wins over a stale/hand-edited `?week=`, the F1/F2 guard comments ahead
+ *     of the highlight derivation). The
  *     correction itself does not resolve/fire until the week clock can
  *     honor the entry's week — see the "F1" comment ahead of the highlight
  *     derivation (D6a browser pass; a provisional clock must never clamp
@@ -126,8 +131,12 @@
  *     the other param on every jump), so no coordination lives here.
  *   - Material delete + the Reset "loot"/"data" paths always revert gear
  *     (`{ revertGear: true }`), matching the legacy reset semantics
- *     (`SectionedLogView.tsx:450-511`); the History reset reproduces exactly the
- *     six configs the LootResetMenu emits (week/all × loot/books/data).
+ *     (`SectionedLogView.tsx:450-511`); `handleResetConfirm` executes whatever
+ *     `ResetConfig` fires it through the shared `resolveResetActions` planner
+ *     (R-16, `resetActions.ts`) — the toolbar `LootResetMenu`'s six week/all ×
+ *     loot/books/data configs (D7a, mounted on Log at `logWeek.week`) or a
+ *     floor-scoped config from a floor-header kebab trigger, both routed
+ *     through the same pipeline.
  */
 
 import {
