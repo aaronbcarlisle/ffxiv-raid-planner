@@ -1,10 +1,11 @@
 /**
- * LootResetMenu — the History view's destructive Reset dropdown (F6d, spec
- * §5.9; cut-order item 1). A ghost trigger opens a menu of six scoped resets;
- * each item calls `onSelect(config)` with the `ResetConfig` the host feeds to
- * `ResetConfirmModal` (which enforces the type-to-confirm RESET gate). The host
- * (`Loot`) owns the confirm + coordination — this is presentational routing
- * only. `week` is the clock's current week.
+ * LootResetMenu — the Log view's destructive Reset dropdown (F6d, spec §5.9;
+ * cut-order item 1; moved off History to Log in D7, R-16) — bound to the
+ * DISPLAYED week, the one entry point that isn't surface-attached. A ghost
+ * trigger opens a menu of six scoped resets; each item calls `onSelect(config)`
+ * with the `ResetConfig` the host feeds to `ResetConfirmModal` (which enforces
+ * the type-to-confirm RESET gate). The host (`Loot`) owns the confirm +
+ * coordination — this is presentational routing only.
  */
 import { RotateCcw } from 'lucide-react';
 import { Button } from '../primitives/Button';
@@ -18,7 +19,7 @@ import {
 import type { ResetConfig } from '../ui/ResetConfirmModal';
 
 export interface LootResetMenuProps {
-  /** The clock's current week — scopes the "week" resets. */
+  /** The Log view's displayed week — scopes the "week" resets. */
   week: number;
   onSelect: (config: ResetConfig) => void;
 }
@@ -37,13 +38,13 @@ export function LootResetMenu({ week, onSelect }: LootResetMenuProps) {
       </DropdownTrigger>
       <DropdownContent align="end" className="w-48">
         <DropdownItem onSelect={() => onSelect({ scope: 'week', target: 'loot', week })}>
-          Reset week loot
+          Reset Week {week} loot
         </DropdownItem>
         <DropdownItem onSelect={() => onSelect({ scope: 'week', target: 'books', week })}>
-          Reset week books
+          Reset Week {week} books
         </DropdownItem>
         <DropdownItem onSelect={() => onSelect({ scope: 'week', target: 'data', week })}>
-          Reset week data
+          Reset Week {week} data
         </DropdownItem>
         <DropdownSeparator />
         <DropdownItem danger onSelect={() => onSelect({ scope: 'all', target: 'loot' })}>

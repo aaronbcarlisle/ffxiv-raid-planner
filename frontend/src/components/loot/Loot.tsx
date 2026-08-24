@@ -152,6 +152,7 @@ import { LootAdjustmentsModal, type AdjustmentUpdate } from './LootAdjustmentsMo
 import { LogWeekWizard } from './LogWeekWizard';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { LootResetMenu } from './LootResetMenu';
+import { resolveResetActions, describeResetToast } from './resetActions';
 import { FairnessSummary } from './FairnessSummary';
 import { BookLedgerCard } from './BookLedgerCard';
 import { LootHistoryTable } from './LootHistoryTable';
@@ -737,49 +738,51 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId, highlightKind]);
 
-  // Reproduces the legacy reset semantics (SectionedLogView.tsx:450-511) for the
-  // six configs LootResetMenu emits (week/all × loot/books/data). Loot/data →
-  // filter the logs by week (or all) and loop the coordination deletes with
-  // `{ revertGear: true }`; books/data → clearWeekPageLedger / clearAllPageLedger.
+  // Executes any `ResetConfig` the Log's `LootResetMenu` (D7, six toolbar
+  // configs bound to the displayed week) or a floor/player-scoped trigger
+  // (Task 3+'s kebabs) can emit. `resolveResetActions` (R-16,
+  // `resetActions.ts`) is the single place a config's blast radius is
+  // computed — this handler just executes the plan it returns: loot/data
+  // loop the coordination deletes with `{ revertGear: true }`; books/data
+  // route through the matching `clear*`/`delete*` store method by
+  // `plan.bookOp.kind`.
   const handleResetConfirm = useCallback(async () => {
     if (!resetConfig || !tierId) return;
-    const { scope, target, week } = resetConfig;
-    const { clearAllPageLedger, clearWeekPageLedger } = useLootTrackingStore.getState();
+    const {
+      clearAllPageLedger, clearWeekPageLedger, clearFloorPageLedger,
+      clearAllFloorPageLedger, clearPlayerWeekPageLedger, deletePlayerLedger,
+    } = useLootTrackingStore.getState();
     try {
-      const shouldResetLoot = target === 'loot' || target === 'data';
-      const shouldResetBooks = target === 'books' || target === 'data';
-
-      if (shouldResetLoot) {
-        // Read fresh from the store at confirm-time (legacy parity).
-        const allLoot = useLootTrackingStore.getState().lootLog;
-        const allMaterial = useLootTrackingStore.getState().materialLog;
-        const lootEntries =
-          scope === 'week' && week != null ? allLoot.filter((e) => e.weekNumber === week) : allLoot;
-        const materialEntries =
-          scope === 'week' && week != null ? allMaterial.filter((e) => e.weekNumber === week) : allMaterial;
-        for (const entry of lootEntries) {
-          await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
-        }
-        for (const entry of materialEntries) {
-          await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
-        }
+      // Read fresh from the store at confirm-time (legacy parity), then plan.
+      const plan = resolveResetActions(resetConfig, {
+        lootLog: useLootTrackingStore.getState().lootLog,
+        materialLog: useLootTrackingStore.getState().materialLog,
+        floors,
+      });
+      for (const entry of plan.lootEntries) {
+        await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
       }
-
-      if (shouldResetBooks) {
-        if (scope === 'week' && week != null) await clearWeekPageLedger(groupId, tierId, week);
-        else await clearAllPageLedger(groupId, tierId);
+      for (const entry of plan.materialEntries) {
+        await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
       }
+      const op = plan.bookOp;
+      if (op.kind === 'player-all') await deletePlayerLedger(groupId, tierId, op.playerId);
+      else if (op.kind === 'player-week') await clearPlayerWeekPageLedger(groupId, tierId, op.playerId, op.week);
+      else if (op.kind === 'floor-all') await clearAllFloorPageLedger(groupId, tierId, op.floor);
+      else if (op.kind === 'floor-week') await clearFloorPageLedger(groupId, tierId, op.week, op.floor);
+      else if (op.kind === 'week') await clearWeekPageLedger(groupId, tierId, op.week);
+      else if (op.kind === 'all') await clearAllPageLedger(groupId, tierId);
 
       refresh();
       await fetchPageLedger(groupId, tierId);
-      toast.success(`Reset ${scope === 'week' ? `Week ${week}` : 'all'} ${target} complete`);
+      toast.success(describeResetToast(resetConfig));
     } catch (error) {
       logger.error('Reset failed:', error);
       toast.error('Reset failed');
     } finally {
       setResetConfig(null);
     }
-  }, [resetConfig, groupId, tierId, refresh, fetchPageLedger]);
+  }, [resetConfig, groupId, tierId, floors, refresh, fetchPageLedger]);
 
   const subtitle = `Who's up next, and the record of what's dropped · fairness rules: ${MODE_LABELS[getEffectivePriorityMode(settings)]}`;
 
@@ -866,8 +869,8 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             ) : null
           }
           resetMenu={
-            lview === 'history' && canEdit ? (
-              <LootResetMenu week={clock.currentWeek} onSelect={setResetConfig} />
+            lview === 'log' && canEdit ? (
+              <LootResetMenu week={logWeek.week} onSelect={setResetConfig} />
             ) : undefined
           }
           canEdit={canEdit}
