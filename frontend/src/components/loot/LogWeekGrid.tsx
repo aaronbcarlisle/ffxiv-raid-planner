@@ -114,13 +114,31 @@
  * the wrapper — one anchor rect for both input methods. Read-only
  * (`canEdit=false`) cells stay fully inert — no modifiers, no menu, no
  * kebab (D6-l, a named divergence from legacy's viewer-facing copy/jump —
- * see `phase-d-loot-plan.md` §5). NOT yet shipped here (D6b): the teaching
- * tooltip, the recipient-badge hover-`×`, the count bar/legend mounted
- * below the grid, and the floor-header "Log floor" kebab.
+ * see `phase-d-loot-plan.md` §5).
+ *
+ * D6b Task 4 remainder (teaching tooltip + hover-×): every FILLED
+ * interactive cell's edit `Button` is wrapped in a `Tooltip` carrying the
+ * file-local `CellTeachingTooltip` — the R-27 modifier legend (Click/
+ * Shift+Click/Alt+Click/Right-click), the Alt row omitted when no jump
+ * target resolves (same `canJump` gate `jump` already computes). An EMPTY
+ * interactive cell's `Button` gets a one-line "Click to log {label}" tooltip
+ * instead. The anatomy's new sibling — a hover/focus-revealed `×` `IconButton`
+ * between the ×N chip and the kebab (R-27 + D6-e) — deletes the NEWEST entry
+ * only (older entries: chip menu → edit door, or History). Read-only cells
+ * render no trigger at all, so they carry no tooltip either (D6-l holds).
+ *
+ * D6b Task B: the floor-header kebab (`FloorSection`'s header row) opens a
+ * ONE-item menu — "Log floor" — firing the required `onLogFloor(floorNumber)`
+ * prop, the door into the ALREADY-shipped `LogWeekWizard` single-floor run
+ * (`Loot.tsx` wires it to `setWizardState({ floor })`). Gated on `canEdit`
+ * alone. The week's fairness read (`WeekCountBar` + the imported
+ * `LootFairnessLegend`) renders directly below this grid in `Loot.tsx`
+ * (Task C) — not part of this file.
  */
 import { useMemo, useState } from 'react';
-import { MoreVertical } from 'lucide-react';
-import { Button, IconButton } from '../primitives';
+import { ClipboardList, MoreVertical, X } from 'lucide-react';
+import { Button, IconButton, Tooltip } from '../primitives';
+import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '../primitives/Dropdown';
 import { Tag } from '../ui';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
@@ -130,7 +148,9 @@ import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { MATERIAL_TOKEN } from './FloorDropRow';
 import { RecipientBadge, resolveRecipient, type RecipientLike } from './RecipientBadge';
 import { LogCellEntriesMenu } from './LogCellEntriesMenu';
-import { buildLogWeekGrid, logCellDomId, type LogGridFloor, type LogGridEntryRef } from './logWeekGridData';
+import {
+  buildLogWeekGrid, logCellDomId, type LogGridFloor, type LogGridEntryRef, type HighlightEntryRef,
+} from './logWeekGridData';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import type {
   GearSlot, LootLogEntry, MaterialLogEntry, MaterialType, SnapshotPlayer,
@@ -166,7 +186,15 @@ export interface LogWeekGridProps {
    * gets `id={logCellDomId(ref)}` and ` highlight-pulse` appended — the exact
    * `LootEntryRow.tsx:80-83` idiom. `null` when nothing is highlighted.
    */
-  highlightEntry: { kind: 'loot' | 'material'; id: number } | null;
+  highlightEntry: HighlightEntryRef | null;
+  /**
+   * D6b Task B: the floor-header kebab's "Log floor" item — opens the
+   * ALREADY-shipped `LogWeekWizard` single-floor run at this floor
+   * (`Loot.tsx` wires it to `setWizardState({ floor })`). Required (B-R2 —
+   * lands required directly, no optional shim); `FloorSection` gates its
+   * kebab on `canEdit` alone.
+   */
+  onLogFloor: (floor: FloorNumber) => void;
 }
 
 /** The grid-root right-click menu's state — ONE mount, never per-cell (director F-15). */
@@ -190,18 +218,54 @@ interface GridCellProps<E extends RecipientLike> {
   buildRef: (entry: E) => LogGridEntryRef;
   onEmpty: () => void;
   onFilled: (entry: E) => void;
-  onCopyEntryLink?: (ref: LogGridEntryRef) => void;
-  onJumpToPlayer?: (playerId: string) => void;
+  /** D6a Task 6 tightened these to required (`LogWeekGridProps` already requires both) — D6b Task 4
+   *  remainder fold-in (ruling B-R5) drops the now-dead optional-guards this left behind. */
+  onCopyEntryLink: (ref: LogGridEntryRef) => void;
+  onJumpToPlayer: (playerId: string) => void;
   /** Opens the grid-root context menu (the `LogWeekGrid`-level `setMenu`). */
   onOpenMenu: (state: LogGridMenuState) => void;
+  /** D6b Task 4 remainder: the hover-× (R-27 + D6-e) — deletes the newest entry only. */
+  onDeleteEntry: (ref: LogGridEntryRef) => void;
   /** D6a Task 6: the screen-level `?entry=` target — `null` when nothing is highlighted. */
-  highlightEntry: { kind: 'loot' | 'material'; id: number } | null;
+  highlightEntry: HighlightEntryRef | null;
+}
+
+/**
+ * CellTeachingTooltip — R-27's per-cell modifier legend, mounted on the
+ * FILLED interactive cell's edit `Button` (D6b Task 4 remainder). A
+ * re-expression of the roster kebab's own teaching tooltip
+ * (`RosterCard.tsx`'s "Player Options" hint, R-076) for THIS grid's own
+ * modifier set — data-driven so the four rows aren't hand-repeated JSX
+ * (jscpd headroom) — never a transcription of `history/`'s
+ * `EntryPopover`/`WeeklyLootGrid` (jscpd is blocking CI; those files don't
+ * teach modifier chips at all). The Alt row only renders when a jump target
+ * actually resolves (`canJump`) — the same "affordance exists only when the
+ * target does" rule `GridCell`'s own `jump` gate below already applies.
+ */
+const CELL_TEACHING_ROWS: { key: string; desc: string; jumpOnly?: boolean }[] = [
+  { key: 'Click', desc: 'Edit entry' },
+  { key: 'Shift+Click', desc: 'Copy link' },
+  { key: 'Alt+Click', desc: 'Go to player', jumpOnly: true },
+  { key: 'Right-click', desc: 'More options' },
+];
+
+function CellTeachingTooltip({ canJump }: { canJump: boolean }) {
+  return (
+    <div className="space-y-1 text-xs">
+      {CELL_TEACHING_ROWS.filter((row) => !row.jumpOnly || canJump).map((row) => (
+        <div key={row.key} className="flex items-center gap-2">
+          <kbd className="rounded bg-surface-base px-1 py-0.5 font-mono text-xs">{row.key}</kbd>
+          <span className="text-text-muted">{row.desc}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /** One `<td>`'s body — shared by gear and material cells (both entry shapes satisfy `RecipientLike`). */
 function GridCell<E extends RecipientLike>({
   entries, label, floorName, interactive, playerMap, altHeld, buildRef,
-  onEmpty, onFilled, onCopyEntryLink, onJumpToPlayer, onOpenMenu, highlightEntry,
+  onEmpty, onFilled, onCopyEntryLink, onJumpToPlayer, onOpenMenu, onDeleteEntry, highlightEntry,
 }: GridCellProps<E>) {
   const newest = entries[0];
   const recipient = newest ? resolveRecipient(newest, playerMap) : undefined;
@@ -290,12 +354,12 @@ function GridCell<E extends RecipientLike>({
   // re-resolution in `FloorSection`. This is what makes the "affordance
   // exists only when the target does" claim true, matching `Roster.tsx:361`'s
   // own `players.some(...)` guard on the consuming side.
-  const jump = newest && onJumpToPlayer && playerMap.has(newest.recipientPlayerId)
+  const jump = newest && playerMap.has(newest.recipientPlayerId)
     ? () => onJumpToPlayer(newest.recipientPlayerId)
     : null;
 
   const copyLink = () => {
-    if (!newest || !onCopyEntryLink) return;
+    if (!newest) return;
     onCopyEntryLink(buildRef(newest));
   };
 
@@ -335,10 +399,37 @@ function GridCell<E extends RecipientLike>({
   );
 
   // Empty interactive cells keep the single-`Button` shape — no chip, no
-  // kebab (there's nothing yet to open a menu about).
+  // kebab (there's nothing yet to open a menu about) — wrapped in a
+  // one-line teaching tooltip (D6b Task 4 remainder).
   if (!newest) {
-    return editButton;
+    // Fold-in #1 (Task A review): pin the same 400ms delay the filled-cell
+    // tooltip below uses — this one used to fall through to the provider's
+    // 500ms default, giving the grid two different hover delays for no
+    // reason.
+    return <Tooltip content={`Click to log ${label}`} delayDuration={400}>{editButton}</Tooltip>;
   }
+
+  // D6b Task 4 remainder: the hover-× (R-27 + D6-e) deletes the NEWEST entry
+  // only — an older entry's route is the chip menu's edit door or History,
+  // the same "interim, same shape as D5's edit-newest" contract the edit
+  // button and kebab already share. Controller ruling B-R1: the
+  // ` — ${floorName}` suffix (a deliberate deviation from the plan's literal
+  // string) keeps the family consistent with the kebab's own D6a-fixed
+  // label — two same-recipient same-slot cells on different floors would
+  // otherwise collide. `recipientName` (not `recipient.name` directly)
+  // because TS can't correlate `recipient`'s `newest`-derived nullability
+  // across the `!newest` return above — the runtime value is always
+  // resolved here (`resolveRecipient` never itself returns undefined), but
+  // the fallback keeps this defensive against a future refactor and never
+  // renders "undefined".
+  //
+  // PR #245 review fix: the hover-× name now also folds in the
+  // `(newest of ${entries.length})` suffix when `isMulti`, mirroring the
+  // edit button's own accessible-name formula immediately below (`ariaLabel`
+  // at ~line 348) — the × was silent about deleting only the newest of
+  // several entries even though its sibling edit button already disclosed
+  // exactly that.
+  const recipientName = recipient ? recipient.name : newest.recipientPlayerName;
 
   // R-D6b (ruled): every FILLED interactive cell's sibling row gains a
   // hover/focus-revealed kebab opening the SAME `buildEntryMenuItems` items
@@ -365,7 +456,9 @@ function GridCell<E extends RecipientLike>({
         requestMenu(e);
       }}
     >
-      {editButton}
+      <Tooltip content={<CellTeachingTooltip canJump={jump != null} />} delayDuration={400}>
+        {editButton}
+      </Tooltip>
       {isMulti && (
         <LogCellEntriesMenu
           entryRefs={entries.map(buildRef)}
@@ -381,10 +474,21 @@ function GridCell<E extends RecipientLike>({
         />
       )}
       <IconButton
+        aria-label={isMulti
+          ? `Delete ${label} entry for ${recipientName} — ${floorName} (newest of ${entries.length})`
+          : `Delete ${label} entry for ${recipientName} — ${floorName}`}
+        icon={<X className="h-3 w-3" />}
+        variant="ghost"
+        size="sm"
+        className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+        onClick={() => onDeleteEntry(buildRef(newest))}
+      />
+      <IconButton
         aria-label={`${label} entry actions — ${floorName}`}
         icon={<MoreVertical className="h-3.5 w-3.5" />}
         variant="ghost"
         size="sm"
+        aria-haspopup="menu"
         className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
         onClick={openKebabMenu}
       />
@@ -406,14 +510,18 @@ interface FloorSectionProps {
   onCopyEntryLink: LogWeekGridProps['onCopyEntryLink'];
   onJumpToPlayer: LogWeekGridProps['onJumpToPlayer'];
   onOpenMenu: (state: LogGridMenuState) => void;
+  /** D6b Task 4 remainder: the hover-× — passed to every `GridCell` (gear + material alike). */
+  onDeleteEntry: LogWeekGridProps['onDeleteEntry'];
   highlightEntry: LogWeekGridProps['highlightEntry'];
+  /** D6b Task B: the floor-header kebab's "Log floor" item. */
+  onLogFloor: LogWeekGridProps['onLogFloor'];
   isFirst: boolean;
 }
 
 function FloorSection({
   floor, week, playerMap, canEdit, canAssignMaterial, altHeld,
   onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
-  onCopyEntryLink, onJumpToPlayer, onOpenMenu, highlightEntry, isFirst,
+  onCopyEntryLink, onJumpToPlayer, onOpenMenu, onDeleteEntry, highlightEntry, onLogFloor, isFirst,
 }: FloorSectionProps) {
   const {
     floorNumber, floorName, bookNumeral, gearCells, materialCells,
@@ -430,6 +538,28 @@ function FloorSection({
         {hasDutyName && <Tag variant="label" tone="muted">{floorName}</Tag>}
         <span className={`font-display text-sm font-bold ${FLOOR_TEXT_CLASS[floorNumber]}`}>Floor {floorNumber}</span>
         <span className="text-xs text-text-muted">· Book {bookNumeral}</span>
+        {/* D6b Task B (R-25): the floor-header door into the single-floor
+            wizard run — gated on `canEdit` alone (the prop is required, so
+            no presence check). NOT a standing button: D7 later adds this
+            floor's resets to this same menu. */}
+        {canEdit && (
+          <Dropdown>
+            <DropdownTrigger asChild>
+              <IconButton
+                aria-label={`${floorName} actions`}
+                icon={<MoreVertical className="h-4 w-4" />}
+                variant="ghost"
+                size="sm"
+                className="ml-auto"
+              />
+            </DropdownTrigger>
+            <DropdownContent align="end">
+              <DropdownItem icon={<ClipboardList className="h-4 w-4" />} onSelect={() => onLogFloor(floorNumber)}>
+                Log floor
+              </DropdownItem>
+            </DropdownContent>
+          </Dropdown>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -484,6 +614,7 @@ function FloorSection({
                     onCopyEntryLink={onCopyEntryLink}
                     onJumpToPlayer={onJumpToPlayer}
                     onOpenMenu={onOpenMenu}
+                    onDeleteEntry={onDeleteEntry}
                     highlightEntry={highlightEntry}
                   />
                 </td>
@@ -509,6 +640,7 @@ function FloorSection({
                       onCopyEntryLink={onCopyEntryLink}
                       onJumpToPlayer={onJumpToPlayer}
                       onOpenMenu={onOpenMenu}
+                      onDeleteEntry={onDeleteEntry}
                       highlightEntry={highlightEntry}
                     />
                   </td>
@@ -563,7 +695,7 @@ export function LogWeekGrid(props: LogWeekGridProps) {
   const {
     floors, week, lootLog, materialLog, players, canEdit, canAssignMaterial,
     onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
-    onCopyEntryLink, onJumpToPlayer, onDeleteEntry, highlightEntry,
+    onCopyEntryLink, onJumpToPlayer, onDeleteEntry, highlightEntry, onLogFloor,
   } = props;
 
   const grid = useMemo(
@@ -601,7 +733,9 @@ export function LogWeekGrid(props: LogWeekGridProps) {
           onCopyEntryLink={onCopyEntryLink}
           onJumpToPlayer={onJumpToPlayer}
           onOpenMenu={setMenu}
+          onDeleteEntry={onDeleteEntry}
           highlightEntry={highlightEntry}
+          onLogFloor={onLogFloor}
           isFirst={idx === 0}
         />
       ))}

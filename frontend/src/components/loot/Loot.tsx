@@ -86,18 +86,21 @@
  *     default to all/all/all), so an `?entry=` deep-link can never be hidden by
  *     a filter on first mount; only a mid-session filter change can hide a row,
  *     which is acceptable.
- *   - D4/D5/D6a interims, so a reader doesn't mistake a stub for a gap: Log's
- *     body is `LogWeekGrid` (D5) — four floor sections, one cell per
+ *   - D4/D5/D6a/D6b interims, so a reader doesn't mistake a stub for a gap:
+ *     Log's body is `LogWeekGrid` (D5) — four floor sections, one cell per
  *     gear/material slot, wired below. D6a shipped the cell's modifier family
  *     (plain click edits, Shift+Click copies a deep link, Alt+Click jumps to
  *     the recipient's roster card, right-click/kebab opens the shared context
  *     menu) and the Log-side `?entry=` deep-link landing (validate → pulse →
- *     scroll → self-clear) below. Still open: the Books card and a
- *     displayed-week-bound reset menu are D7; a count bar/legend below the
- *     grid is D6b; the teaching tooltip and the recipient-badge hover-× are
- *     also D6b; the jump destination is card-level (`?player=`) until D12
- *     retargets it to slot-level anchors (R-28). "Log material" on Log — D4's
- *     other named gap — shipped in D8 (the toolbar's free-form door, below).
+ *     scroll → self-clear) below. D6b shipped the rest of R-18's teaching
+ *     layer (the per-cell modifier tooltip + the recipient-badge hover-×,
+ *     both in `LogWeekGrid.tsx`), the floor-header kebab's "Log floor" door
+ *     (wired below), and the fairness read below the grid (`WeekCountBar` +
+ *     the imported `LootFairnessLegend`). Still open: the Books card and a
+ *     displayed-week-bound reset menu are D7; the jump destination is
+ *     card-level (`?player=`) until D12 retargets it to slot-level anchors
+ *     (R-28). "Log material" on Log — D4's other named gap — shipped in D8
+ *     (the toolbar's free-form door, below).
  *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
  *     mounted on History here, and `LootResetMenu` stays bound to
  *     `clock.currentWeek`. A `week` param on Log positions the displayed
@@ -138,8 +141,10 @@ import { LootToolbar } from './LootToolbar';
 import { WeekScopeControl } from './WeekScopeControl';
 import { FloorCard } from './FloorCard';
 import { LogWeekGrid } from './LogWeekGrid';
-import { logCellDomId } from './logWeekGridData';
+import { logCellDomId, type HighlightEntryRef } from './logWeekGridData';
 import { suggestedMaterialRecipient } from './materialSuggestion';
+import { WeekCountBar } from './WeekCountBar';
+import { LootFairnessLegend } from '../history/WeeklyLootGrid';
 import { NeedMatrix } from './NeedMatrix';
 import { WeaponPriorityBridge } from './WeaponPriorityBridge';
 import { RecipientPicker, type DropItemContext } from './RecipientPicker';
@@ -652,7 +657,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     unresolvedByClock ? null : foundLootEntry?.id ?? foundMaterialEntry?.id ?? null;
   const highlightKind: 'loot' | 'material' | null =
     unresolvedByClock ? null : foundLootEntry ? 'loot' : foundMaterialEntry ? 'material' : null;
-  const highlightEntry: { kind: 'loot' | 'material'; id: number } | null =
+  const highlightEntry: HighlightEntryRef | null =
     highlightId != null && highlightKind != null ? { kind: highlightKind, id: highlightId } : null;
 
   useEffect(() => {
@@ -983,41 +988,69 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           />
         </div>
       ) : lview === 'log' ? (
-        <LogWeekGrid
-          floors={floors}
-          week={logWeek.week}
-          lootLog={lootLog}
-          materialLog={materialLog}
-          players={players}
-          canEdit={canEdit}
-          canAssignMaterial={mainRosterPlayers.length > 0}
-          onAssignGear={(item) =>
-            setPickerState({
-              mode: 'assign',
-              item: { ...item, floorName: floors[item.floorNumber - 1] ?? `Floor ${item.floorNumber}` },
-            })}
-          onEditGear={(entry) => setPickerState({ mode: 'edit', editEntry: entry })}
-          onAssignMaterial={(material, floorNumber) => {
-            // R-D5c (user-ruled): the suggestion is CLOCK-week priority — "who is
-            // up next now" — even when back-logging; the write itself targets the
-            // displayed week (initialWeek).
-            const suggested = suggestedMaterialRecipient({
-              material, players: mainRosterPlayers, settings, lootLog, materialLog,
-              currentWeek: clock.currentWeek,
-            }) ?? mainRosterPlayers[0];
-            if (!suggested) return; // unreachable behind canAssignMaterial — TS narrowing only
-            setMaterialState({
-              mode: 'cell', material,
-              floorName: floors[floorNumber - 1] ?? `Floor ${floorNumber}`, suggested,
-              allowSubs: true /* R-D5a: the grid door reaches subs */,
-            });
-          }}
-          onEditMaterial={(entry) => setMaterialState({ mode: 'edit', editEntry: entry })}
-          onCopyEntryLink={copyLogEntryLink}
-          onJumpToPlayer={jumpToRecipient}
-          onDeleteEntry={deleteFromGrid}
-          highlightEntry={highlightEntry}
-        />
+        <>
+          <LogWeekGrid
+            floors={floors}
+            week={logWeek.week}
+            lootLog={lootLog}
+            materialLog={materialLog}
+            players={players}
+            canEdit={canEdit}
+            canAssignMaterial={mainRosterPlayers.length > 0}
+            onAssignGear={(item) =>
+              setPickerState({
+                mode: 'assign',
+                item: { ...item, floorName: floors[item.floorNumber - 1] ?? `Floor ${item.floorNumber}` },
+              })}
+            onEditGear={(entry) => setPickerState({ mode: 'edit', editEntry: entry })}
+            onAssignMaterial={(material, floorNumber) => {
+              // R-D5c (user-ruled): the suggestion is CLOCK-week priority — "who is
+              // up next now" — even when back-logging; the write itself targets the
+              // displayed week (initialWeek).
+              const suggested = suggestedMaterialRecipient({
+                material, players: mainRosterPlayers, settings, lootLog, materialLog,
+                currentWeek: clock.currentWeek,
+              }) ?? mainRosterPlayers[0];
+              if (!suggested) return; // unreachable behind canAssignMaterial — TS narrowing only
+              setMaterialState({
+                mode: 'cell', material,
+                floorName: floors[floorNumber - 1] ?? `Floor ${floorNumber}`, suggested,
+                allowSubs: true /* R-D5a: the grid door reaches subs */,
+              });
+            }}
+            onEditMaterial={(entry) => setMaterialState({ mode: 'edit', editEntry: entry })}
+            onCopyEntryLink={copyLogEntryLink}
+            onJumpToPlayer={jumpToRecipient}
+            onDeleteEntry={deleteFromGrid}
+            highlightEntry={highlightEntry}
+            // D6b Task B: the floor-header kebab's "Log floor" door — the SAME
+            // wizard the controls row's own "Log floor" button opens (R-7), at
+            // the clicked floor. `wizardState.floor` drives both
+            // `singleFloorMode`/`initialFloor` below, and `writeWeek` (Log-view
+            // branch) already targets the DISPLAYED week — no new wizard props.
+            onLogFloor={(floor) => setWizardState({ floor })}
+          />
+          {/* D6b Task C (R-23, R-D6n): the fairness read sits directly below
+              the grid — count bar then legend (§4 mockup order). Not gated on
+              `canEdit` — a read surface, viewers included. Reads the
+              DISPLAYED week (`logWeek.week`), never `clock.currentWeek`
+              (D6-g), so it always matches whatever week the grid above shows.
+              PR #245 r3 review fix: the whole wrapper is gated on
+              `mainRosterPlayers.length > 0` — `WeekCountBar` itself already
+              returns null for an empty roster, but `LootFairnessLegend` does
+              not, so an ungated wrapper let the legend render alone. A
+              freshly created static seeds every seat `configured=False`
+              (`backend/app/routers/tiers.py`), making an empty main roster
+              the DEFAULT for a new static, not an edge case — without this
+              gate that default view showed a bare orphaned
+              "Loot fairness: ..." strip under the grid. */}
+          {mainRosterPlayers.length > 0 && (
+            <div className="mt-4 flex flex-col gap-3">
+              <WeekCountBar players={mainRosterPlayers} lootLog={lootLog} week={logWeek.week} />
+              <LootFairnessLegend />
+            </div>
+          )}
+        </>
       ) : priorityView === 'who-needs-it' ? (
         <NeedMatrix
           players={mainRosterPlayers}

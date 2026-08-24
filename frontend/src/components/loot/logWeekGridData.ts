@@ -79,6 +79,15 @@ export type LogGridEntryRef =
   | { kind: 'material'; entry: MaterialLogEntry };
 
 /**
+ * The `?entry=` deep-link target shape (D6b Task B, controller ruling B-R4 —
+ * a DRY fold-in, type-only, zero behavior change). Three sites used to spell
+ * this same literal independently — `LogWeekGrid.tsx`'s `LogWeekGridProps`
+ * and `GridCellProps`, and `Loot.tsx`'s derived `highlightEntry` const — one
+ * author now, `tsc -b` is the lock that keeps them from drifting apart again.
+ */
+export type HighlightEntryRef = { kind: 'loot' | 'material'; id: number };
+
+/**
  * The Log grid cell's DOM id — the ONE author of this string (director F-2,
  * blocker). `Loot.tsx`'s `?entry=` scroll effect and `LogWeekGrid`'s cell
  * wrapper (D6a Task 6) both consume this helper instead of each composing the

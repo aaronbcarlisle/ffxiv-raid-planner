@@ -688,6 +688,34 @@ colour.
 and Team Summary's own home was already ruled there by F-08 (`systems-flow-map.md:218`, `:122`), which
 also closes D-43. *(This paragraph read "still open, and only this" until R-40 ruled it.)*
 
+**Build note (D6b, 2026-08-23) — shipped as the v2-owned `WeekCountBar`, not the imported frozen
+`LootCountBar`.**
+
+- **Per ruling R-D6n**, the count bar is a re-expression (`loot/WeekCountBar.tsx`), not an import —
+  the frozen `history/LootCountBar.tsx` drops to `text-[10px]`/`text-[9px]`, below the 12px floor
+  this grid and its teaching layer hold everywhere else. This makes the plan's "sub-12px disclosed
+  interim" branch (D6-n option 1) moot: it was never taken. Every text node in `WeekCountBar.tsx`
+  is `text-xs` or larger. `LootFairnessLegend` is still imported from `history/WeeklyLootGrid.tsx`
+  unmodified, per R-D6n.
+- **Boundary semantics preserved from the frozen reference:** main-roster only
+  (`!isSubstitute`, `WeekCountBar.tsx:32`), counts scoped to the one week passed in
+  (`WeekCountBar.tsx:35`), sorted by seat — `T1 T2 H1 H2 M1 M2 R1 R2`, an unknown/missing
+  position sorting last (`WeekCountBar.tsx:29,41-44`) — and colored against the roster average:
+  `> avg+1` → `var(--color-status-info)`, `< avg-1` → `var(--color-status-warning)`, otherwise
+  `var(--color-text-secondary)` (`WeekCountBar.tsx:56-62`).
+- **Reads the DISPLAYED week** (D6-g) — `week={logWeek.week}`, never `clock.currentWeek`
+  (`Loot.tsx:1039`), so the read always matches whatever week the grid above it shows.
+- **Review fix (PR #245):** the mount was changed to `players={mainRosterPlayers}` — the same
+  `configured && !isSubstitute` read `FairnessSummary` already uses (`Loot.tsx:336-339`) — a
+  deliberate delta from the frozen reference's raw-`players` feed, so an unconfigured placeholder
+  seat (`backend/app/routers/tiers.py:97-106`) neither renders a nameless 0-drop tile nor dilutes
+  the average's denominator.
+- **Named interim, not a fix:** the per-tile tooltip trigger is a non-focusable `<div>`
+  (`WeekCountBar.tsx:77-81`) — a 1:1 carry from the frozen reference's own non-focusable trigger.
+  Keyboard users cannot open a tile's tooltip at all (there is nothing in the tab order to focus).
+  This joins the already-queued project-wide Tooltip keyboard-gap item; disclosed here, not fixed
+  by this slice.
+
 ### R-24 · Assign mode gains **Method and Notes** (extends R-12)
 
 The picker's assign body gains the method choice (drop / book / tome / purchase) and the notes field.
@@ -711,6 +739,24 @@ means "log it or clear it".
 `:119-125`); four standing CTAs above four data rows would compete with the cells that are themselves
 the primary logging affordance. This closes the D-26/D-30 coupling the matrix flagged: R-7 homes
 Priority's floor wizard, R-25 homes Log's.
+
+**Build note (D6b, 2026-08-23) — shipped kebab-only, exactly as ruled.**
+
+- Each `FloorSection` header carries a `canEdit`-gated `Dropdown` kebab (`LogWeekGrid.tsx:536-553`),
+  `aria-label={`${floorName} actions`}` (a duty name, or the `Floor N` fallback when gamedata names
+  none — `logWeekGridData.ts:149`), holding the ONE item this ruling specifies: `Log floor`
+  (`LogWeekGrid.tsx:548-550`). No standing button — the kebab is the only door.
+- Selecting it fires the required `onLogFloor(floorNumber)` prop, which `Loot.tsx:1031` wires to
+  `setWizardState({ floor })` — the SAME already-shipped `LogWeekWizard` the controls row's own
+  "Log floor" button opens (R-7), not a second wizard instance.
+- **Displayed-week initial, exactly like R-7's own door:** `writeWeek` resolves to `logWeek.week`
+  whenever `lview === 'log'` (`Loot.tsx:795`), and the wizard mount reads
+  `currentWeek={writeWeek}` / `singleFloorMode={wizardState?.floor != null}` /
+  `initialFloor={wizardState?.floor ?? 1}` (`Loot.tsx:1153,1157-1158`) — so opening the kebab on
+  a non-current displayed week logs against THAT week by default. The user can still change the
+  week inside the wizard afterward, same as every other door into it.
+- D7 adds this floor's resets to this same menu — the kebab is the intended home, not a stopgap
+  needing replacement.
 
 ### R-26 · **`QuickLogMaterialModal` is the one owned material component**
 
@@ -753,6 +799,38 @@ floor card)" reads as "(**Who Needs It** + queues floor card)."
 defines the modifiers and this is what teaches them, the same pairing C7 needed for R-076 · the
 `Floor N · Book {I–IV}` header line (folded into R-19) · the recipient-badge hover inline-delete `×`
 (`:402-433`), which keeps one-hover deletion alongside the kebab route.
+
+**Build note (D6b, 2026-08-23) — both restorations shipped, re-expressed at the 12px floor.**
+
+- **The teaching tooltip** is `CellTeachingTooltip` (`LogWeekGrid.tsx:233-263`), mounted on every
+  FILLED interactive cell's edit `Button` via `Tooltip` (`LogWeekGrid.tsx:452`). It is a
+  re-expression, not a transcription, of the legacy rows: `Click` "Edit entry" ·
+  `Shift+Click` "Copy link" · `Alt+Click` "Go to player" · `Right-click` "More options"
+  (`LogWeekGrid.tsx:245-250`), data-driven off `CELL_TEACHING_ROWS` rather than hand-repeated JSX.
+  Every row is `text-xs` (`LogWeekGrid.tsx:254,257`) — the 12px-floor correction over legacy's
+  `text-[10px]` chips. The `Alt+Click` row is gated on `canJump` and omitted entirely when no jump
+  target resolves (`LogWeekGrid.tsx:255`, the same `jump` gate `GridCell` already computes for the
+  cursor swap) — the tooltip never teaches a modifier the cell can't currently honor.
+- **The hover-`×`** is an `IconButton` sibling between the `×N` chip and the kebab
+  (`LogWeekGrid.tsx:469-476`), revealed on hover **and** keyboard focus
+  (`opacity-0 focus-visible:opacity-100 group-hover:opacity-100`, `LogWeekGrid.tsx:474`) — the
+  **D6-e delta**: the frozen reference is keyboard-reachable but visually invisible on focus
+  (`group-hover:opacity-100` only, no `focus-visible` rule), and this build adds the reveal rather
+  than carrying the gap forward.
+- **Delete routing matches legacy hop for hop** (verified end to end, D6-d): the hover-`×` calls
+  `onDeleteEntry`, which `Loot.tsx`'s existing `requestDelete` routes to the same confirm modals
+  the D6a modifier-menu Delete item already uses — `DeleteLootConfirmModal` for loot,
+  `ConfirmModal` for material (`Loot.tsx:1229-1265`), matching
+  `onDeleteLoot` → `handleGridDeleteLoot` (`SectionedLogView.tsx:901-906`) → `handleDeleteLoot` →
+  `deleteLootAndRevertGear(..., { revertGear: true })` (`SectionedLogView.tsx:262-275`). **One
+  named delta, carried from the R-18 build note and unchanged here:** legacy always reverts gear
+  on delete; v2's loot confirm exposes a revert-gear **checkbox** instead of hard-coding it
+  (`DeleteLootConfirmModal` mount, `Loot.tsx:1229-1246`) — the checkbox control itself lives in
+  `history/DeleteLootConfirmModal.tsx`, read-only reuse.
+- **Named interim, not D11's scope:** the hover-`×` (and the identical Delete item on the
+  modifier-menu route) both target the NEWEST entry only — `onClick={() => onDeleteEntry(buildRef(newest))}`
+  (`LogWeekGrid.tsx:475`). An older entry is reached via the `×N` chip menu → its edit door, or via
+  History. Arbitrary-entry delete on the grid itself is **D11**'s scope, not this slice's.
 
 ### R-28 · The gear-slot jump **splits by week** (D-05, completing R-18)
 
