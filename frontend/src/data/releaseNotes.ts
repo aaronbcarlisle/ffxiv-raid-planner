@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.20',
+    date: '2026-08-23T20:00:00Z',
+    title: 'Phase D slice D6b — Log grid teaching layer + fairness read (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Log grid cells explain their own shortcuts, gain a quick-delete, and floors get a logging menu',
+        description:
+          "V2 preview: hovering or keyboard-focusing a Log grid cell now shows a small tooltip spelling out what click, Shift-click, Alt-click, and right-click each do on that cell (the Alt-click row only appears when there's actually a roster card to jump to). A new × button next to each filled cell deletes its newest entry directly, through the same confirmation used everywhere else. Each floor's header gains a small menu with a \"Log floor\" entry, so a whole floor's drops can be logged without leaving the grid. And directly under the grid, a new weekly count bar shows every roster member's drop count for the week you're viewing — colored against the roster average, with the legend that explains the colors.",
+        pr: 0,
+        prTitle: 'docs(v2): D6b write-backs — R-23/R-25/R-27 build notes, release note',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.19',
     date: '2026-08-23T16:00:00Z',
     title: 'Phase D slice D6a — Log grid cell affordances (v2 preview)',

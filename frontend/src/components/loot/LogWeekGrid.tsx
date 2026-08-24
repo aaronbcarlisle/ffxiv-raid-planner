@@ -131,8 +131,9 @@
  * ONE-item menu — "Log floor" — firing the required `onLogFloor(floorNumber)`
  * prop, the door into the ALREADY-shipped `LogWeekWizard` single-floor run
  * (`Loot.tsx` wires it to `setWizardState({ floor })`). Gated on `canEdit`
- * alone. NOT yet shipped here: the count bar/legend mounted below the grid
- * (Task C).
+ * alone. The week's fairness read (`WeekCountBar` + the imported
+ * `LootFairnessLegend`) renders directly below this grid in `Loot.tsx`
+ * (Task C) — not part of this file.
  */
 import { useMemo, useState } from 'react';
 import { ClipboardList, MoreVertical, X } from 'lucide-react';
