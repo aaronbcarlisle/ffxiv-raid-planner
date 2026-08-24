@@ -706,7 +706,7 @@ also closes D-43. *(This paragraph read "still open, and only this" until R-40 r
 - **Reads the DISPLAYED week** (D6-g) — `week={logWeek.week}`, never `clock.currentWeek`
   (`Loot.tsx:1039`), so the read always matches whatever week the grid above it shows.
 - **Named interim, not a fix:** the per-tile tooltip trigger is a non-focusable `<div>`
-  (`WeekCountBar.tsx:79-82`) — a 1:1 carry from the frozen reference's own non-focusable trigger.
+  (`WeekCountBar.tsx:77-81`) — a 1:1 carry from the frozen reference's own non-focusable trigger.
   Keyboard users cannot open a tile's tooltip at all (there is nothing in the tab order to focus).
   This joins the already-queued project-wide Tooltip keyboard-gap item; disclosed here, not fixed
   by this slice.
