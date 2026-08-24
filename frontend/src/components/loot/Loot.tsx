@@ -1036,7 +1036,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               DISPLAYED week (`logWeek.week`), never `clock.currentWeek`
               (D6-g), so it always matches whatever week the grid above shows. */}
           <div className="mt-4 flex flex-col gap-3">
-            <WeekCountBar players={players} lootLog={lootLog} week={logWeek.week} />
+            <WeekCountBar players={mainRosterPlayers} lootLog={lootLog} week={logWeek.week} />
             <LootFairnessLegend />
           </div>
         </>

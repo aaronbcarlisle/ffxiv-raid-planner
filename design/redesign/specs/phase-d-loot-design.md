@@ -705,6 +705,11 @@ also closes D-43. *(This paragraph read "still open, and only this" until R-40 r
   `var(--color-text-secondary)` (`WeekCountBar.tsx:56-62`).
 - **Reads the DISPLAYED week** (D6-g) — `week={logWeek.week}`, never `clock.currentWeek`
   (`Loot.tsx:1039`), so the read always matches whatever week the grid above it shows.
+- **Review fix (PR #245):** the mount was changed to `players={mainRosterPlayers}` — the same
+  `configured && !isSubstitute` read `FairnessSummary` already uses (`Loot.tsx:336-339`) — a
+  deliberate delta from the frozen reference's raw-`players` feed, so an unconfigured placeholder
+  seat (`backend/app/routers/tiers.py:97-106`) neither renders a nameless 0-drop tile nor dilutes
+  the average's denominator.
 - **Named interim, not a fix:** the per-tile tooltip trigger is a non-focusable `<div>`
   (`WeekCountBar.tsx:77-81`) — a 1:1 carry from the frozen reference's own non-focusable trigger.
   Keyboard users cannot open a tile's tooltip at all (there is nothing in the tab order to focus).

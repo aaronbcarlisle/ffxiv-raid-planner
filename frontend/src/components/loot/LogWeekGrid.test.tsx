@@ -852,7 +852,10 @@ describe('D6b teaching tooltip + hover-×', () => {
       floors: NAMED_FLOORS, lootLog: [older, newest], players: [tankOne, healerOne], onDeleteEntry,
     })}
     />);
-    const del = screen.getByRole('button', { name: 'Delete Ears entry for Healer One — M9S' });
+    // This fixture is two entries (older + newest, same recipient) so the
+    // cell is multi — review fix below adds the isMulti suffix here too,
+    // mirroring the edit button's own "(newest of N)" name.
+    const del = screen.getByRole('button', { name: 'Delete Ears entry for Healer One — M9S (newest of 2)' });
     // Fold-in #3 (Task A review): pin all three reveal classes, the same
     // shape the kebab's own reveal test above uses — not just the
     // keyboard-focus one.
@@ -861,6 +864,20 @@ describe('D6b teaching tooltip + hover-×', () => {
     expect(del.className).toContain('group-hover:opacity-100');
     fireEvent.click(del);
     expect(onDeleteEntry).toHaveBeenCalledWith({ kind: 'loot', entry: newest });
+  });
+
+  it('hover-× discloses newest-only semantics in a multi-entry cell, mirroring the edit button\'s "(newest of N)" suffix (review fix)', () => {
+    const older = makeLootEntry({
+      itemSlot: 'necklace', floor: 'M9S', createdAt: '2026-01-01T00:00:00Z', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const newest = makeLootEntry({
+      itemSlot: 'necklace', floor: 'M9S', createdAt: '2026-01-05T00:00:00Z', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    renderGrid(<LogWeekGrid {...baseProps({
+      floors: NAMED_FLOORS, lootLog: [older, newest], players: [tankOne, healerOne],
+    })}
+    />);
+    expect(screen.getByRole('button', { name: 'Delete Neck entry for Tank One — M9S (newest of 2)' })).toBeInTheDocument();
   });
 
   it('the aria-hidden flex/grid sweep still passes over the new anatomy (open tooltip portal)', async () => {

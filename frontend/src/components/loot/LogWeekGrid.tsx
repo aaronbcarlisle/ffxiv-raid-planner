@@ -422,6 +422,13 @@ function GridCell<E extends RecipientLike>({
   // resolved here (`resolveRecipient` never itself returns undefined), but
   // the fallback keeps this defensive against a future refactor and never
   // renders "undefined".
+  //
+  // PR #245 review fix: the hover-× name now also folds in the
+  // `(newest of ${entries.length})` suffix when `isMulti`, mirroring the
+  // edit button's own accessible-name formula immediately below (`ariaLabel`
+  // at ~line 348) — the × was silent about deleting only the newest of
+  // several entries even though its sibling edit button already disclosed
+  // exactly that.
   const recipientName = recipient ? recipient.name : newest.recipientPlayerName;
 
   // R-D6b (ruled): every FILLED interactive cell's sibling row gains a
@@ -467,7 +474,9 @@ function GridCell<E extends RecipientLike>({
         />
       )}
       <IconButton
-        aria-label={`Delete ${label} entry for ${recipientName} — ${floorName}`}
+        aria-label={isMulti
+          ? `Delete ${label} entry for ${recipientName} — ${floorName} (newest of ${entries.length})`
+          : `Delete ${label} entry for ${recipientName} — ${floorName}`}
         icon={<X className="h-3 w-3" />}
         variant="ghost"
         size="sm"

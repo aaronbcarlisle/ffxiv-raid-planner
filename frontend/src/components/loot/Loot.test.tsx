@@ -1687,15 +1687,31 @@ describe('Loot — D6b Task B: floor-header kebab wiring', () => {
 // week apart from the clock's own currentWeek (D5/D6a vacuous-coincidence
 // rule) so a `week={clock.currentWeek}` regression can't hide.
 describe('Loot — D6b Task C: count bar + legend', () => {
-  it('count bar + legend render under the grid with the DISPLAYED week', () => {
+  it('count bar + legend render under the grid with the DISPLAYED week, fed the CONFIGURED main roster (review fix)', () => {
     useLootTrackingStore.setState({ currentWeek: 5, maxWeek: 5, lootLog: [makeLootEntry({ id: 77 })] });
-    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2']);
+    // Review fix: the backend seeds unconfigured placeholder seats
+    // (configured=false, isSubstitute=false — `backend/app/routers/tiers.py`)
+    // for open roster slots. A raw `players` feed would render a nameless
+    // 0-drop tile for this seat AND inflate the average's denominator,
+    // disagreeing with History's own `FairnessSummary`, which reads
+    // `mainRosterPlayers` (`configured && !isSubstitute`). This placeholder
+    // proves the bar is fed that same filtered read, not the raw roster.
+    const placeholder = {
+      ...makePlayer('empty1', ''), configured: false, isSubstitute: false,
+    } as unknown as SnapshotPlayer;
+    const roster = [...players, placeholder];
+    renderLoot({ tier: makeTier(roster) }, ['/?lview=log&week=2']);
 
     expect(screen.getByTestId('week-count-bar')).toBeInTheDocument();
     const last = weekCountBarCalls[weekCountBarCalls.length - 1];
     expect(last.week).toBe(2);
     expect(last.week).not.toBe(5); // the seeded clock's currentWeek — divergence proof
-    expect(last.players).toBe(players);
+    const fedPlayers = last.players as SnapshotPlayer[];
+    // Excludes the unconfigured placeholder AND the substitute (`s1`) — the
+    // same `mainRosterPlayers` filter FairnessSummary already uses — never
+    // the raw `players` array.
+    expect(fedPlayers).not.toContain(placeholder);
+    expect(fedPlayers.map((p) => p.id)).toEqual(['p1', 'p2']);
     expect(last.lootLog).toEqual(useLootTrackingStore.getState().lootLog);
     expect(screen.getByText('Loot fairness:')).toBeInTheDocument();
   });

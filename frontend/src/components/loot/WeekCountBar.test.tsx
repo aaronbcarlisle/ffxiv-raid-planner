@@ -178,6 +178,17 @@ describe('WeekCountBar', () => {
     ];
 
     renderBar(<WeekCountBar players={[p1, p2]} lootLog={lootLog} week={2} />);
+    // PR #245 review: `fireEvent.focus()` on a tile is the repo-established
+    // Radix-tooltip jsdom idiom (NeedMatrix.test.tsx precedent, also used
+    // throughout LogWeekGrid.test.tsx) — Radix opens a tooltip INSTANTLY on
+    // focus, but only after a delay timer on pointer/hover, so `focus` is the
+    // one open path these sync tests can drive without fake timers. These
+    // tests assert tooltip CONTENT (name/count/deviation text) only; they
+    // make no claim about keyboard reachability — the tile trigger is a
+    // non-focusable `<div>`, so a real keyboard user cannot tab to it at all.
+    // That gap is a deliberate, disclosed interim, not an oversight: see the
+    // R-23 build note's "Named interim, not a fix" bullet in
+    // `design/redesign/specs/phase-d-loot-design.md`.
     fireEvent.focus(tileFor('p1'));
 
     // Radix duplicates open content (visible popup + visually-hidden
