@@ -92,10 +92,11 @@
  *     (plain click edits, Shift+Click copies a deep link, Alt+Click jumps to
  *     the recipient's roster card, right-click/kebab opens the shared context
  *     menu) and the Log-side `?entry=` deep-link landing (validate → pulse →
- *     scroll → self-clear) below. Still open: the Books card and a
- *     displayed-week-bound reset menu are D7; a count bar/legend below the
- *     grid is D6b; the teaching tooltip and the recipient-badge hover-× are
- *     also D6b; the jump destination is card-level (`?player=`) until D12
+ *     scroll → self-clear) below. D6b Task C added the fairness read below
+ *     the grid (`WeekCountBar` + the imported `LootFairnessLegend`). Still
+ *     open: the Books card and a displayed-week-bound reset menu are D7; the
+ *     teaching tooltip and the recipient-badge hover-× are also D6b; the
+ *     jump destination is card-level (`?player=`) until D12
  *     retargets it to slot-level anchors (R-28). "Log material" on Log — D4's
  *     other named gap — shipped in D8 (the toolbar's free-form door, below).
  *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
@@ -140,6 +141,8 @@ import { FloorCard } from './FloorCard';
 import { LogWeekGrid } from './LogWeekGrid';
 import { logCellDomId, type HighlightEntryRef } from './logWeekGridData';
 import { suggestedMaterialRecipient } from './materialSuggestion';
+import { WeekCountBar } from './WeekCountBar';
+import { LootFairnessLegend } from '../history/WeeklyLootGrid';
 import { NeedMatrix } from './NeedMatrix';
 import { WeaponPriorityBridge } from './WeaponPriorityBridge';
 import { RecipientPicker, type DropItemContext } from './RecipientPicker';
@@ -983,47 +986,58 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           />
         </div>
       ) : lview === 'log' ? (
-        <LogWeekGrid
-          floors={floors}
-          week={logWeek.week}
-          lootLog={lootLog}
-          materialLog={materialLog}
-          players={players}
-          canEdit={canEdit}
-          canAssignMaterial={mainRosterPlayers.length > 0}
-          onAssignGear={(item) =>
-            setPickerState({
-              mode: 'assign',
-              item: { ...item, floorName: floors[item.floorNumber - 1] ?? `Floor ${item.floorNumber}` },
-            })}
-          onEditGear={(entry) => setPickerState({ mode: 'edit', editEntry: entry })}
-          onAssignMaterial={(material, floorNumber) => {
-            // R-D5c (user-ruled): the suggestion is CLOCK-week priority — "who is
-            // up next now" — even when back-logging; the write itself targets the
-            // displayed week (initialWeek).
-            const suggested = suggestedMaterialRecipient({
-              material, players: mainRosterPlayers, settings, lootLog, materialLog,
-              currentWeek: clock.currentWeek,
-            }) ?? mainRosterPlayers[0];
-            if (!suggested) return; // unreachable behind canAssignMaterial — TS narrowing only
-            setMaterialState({
-              mode: 'cell', material,
-              floorName: floors[floorNumber - 1] ?? `Floor ${floorNumber}`, suggested,
-              allowSubs: true /* R-D5a: the grid door reaches subs */,
-            });
-          }}
-          onEditMaterial={(entry) => setMaterialState({ mode: 'edit', editEntry: entry })}
-          onCopyEntryLink={copyLogEntryLink}
-          onJumpToPlayer={jumpToRecipient}
-          onDeleteEntry={deleteFromGrid}
-          highlightEntry={highlightEntry}
-          // D6b Task B: the floor-header kebab's "Log floor" door — the SAME
-          // wizard the controls row's own "Log floor" button opens (R-7), at
-          // the clicked floor. `wizardState.floor` drives both
-          // `singleFloorMode`/`initialFloor` below, and `writeWeek` (Log-view
-          // branch) already targets the DISPLAYED week — no new wizard props.
-          onLogFloor={(floor) => setWizardState({ floor })}
-        />
+        <>
+          <LogWeekGrid
+            floors={floors}
+            week={logWeek.week}
+            lootLog={lootLog}
+            materialLog={materialLog}
+            players={players}
+            canEdit={canEdit}
+            canAssignMaterial={mainRosterPlayers.length > 0}
+            onAssignGear={(item) =>
+              setPickerState({
+                mode: 'assign',
+                item: { ...item, floorName: floors[item.floorNumber - 1] ?? `Floor ${item.floorNumber}` },
+              })}
+            onEditGear={(entry) => setPickerState({ mode: 'edit', editEntry: entry })}
+            onAssignMaterial={(material, floorNumber) => {
+              // R-D5c (user-ruled): the suggestion is CLOCK-week priority — "who is
+              // up next now" — even when back-logging; the write itself targets the
+              // displayed week (initialWeek).
+              const suggested = suggestedMaterialRecipient({
+                material, players: mainRosterPlayers, settings, lootLog, materialLog,
+                currentWeek: clock.currentWeek,
+              }) ?? mainRosterPlayers[0];
+              if (!suggested) return; // unreachable behind canAssignMaterial — TS narrowing only
+              setMaterialState({
+                mode: 'cell', material,
+                floorName: floors[floorNumber - 1] ?? `Floor ${floorNumber}`, suggested,
+                allowSubs: true /* R-D5a: the grid door reaches subs */,
+              });
+            }}
+            onEditMaterial={(entry) => setMaterialState({ mode: 'edit', editEntry: entry })}
+            onCopyEntryLink={copyLogEntryLink}
+            onJumpToPlayer={jumpToRecipient}
+            onDeleteEntry={deleteFromGrid}
+            highlightEntry={highlightEntry}
+            // D6b Task B: the floor-header kebab's "Log floor" door — the SAME
+            // wizard the controls row's own "Log floor" button opens (R-7), at
+            // the clicked floor. `wizardState.floor` drives both
+            // `singleFloorMode`/`initialFloor` below, and `writeWeek` (Log-view
+            // branch) already targets the DISPLAYED week — no new wizard props.
+            onLogFloor={(floor) => setWizardState({ floor })}
+          />
+          {/* D6b Task C (R-23, R-D6n): the fairness read sits directly below
+              the grid — count bar then legend (§4 mockup order). Not gated on
+              `canEdit` — a read surface, viewers included. Reads the
+              DISPLAYED week (`logWeek.week`), never `clock.currentWeek`
+              (D6-g), so it always matches whatever week the grid above shows. */}
+          <div className="mt-4 flex flex-col gap-3">
+            <WeekCountBar players={players} lootLog={lootLog} week={logWeek.week} />
+            <LootFairnessLegend />
+          </div>
+        </>
       ) : priorityView === 'who-needs-it' ? (
         <NeedMatrix
           players={mainRosterPlayers}

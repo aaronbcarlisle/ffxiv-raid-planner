@@ -19,7 +19,7 @@ import type { StaticGroup, TierSnapshot, SnapshotPlayer, LootLogEntry, MaterialL
 // Capture buckets shared with the hoisted mocks.
 const {
   floorCardCalls, pickerCalls, weekScopeCalls, wizardCalls, matrixCalls, materialModalCalls,
-  gridCalls, suggestedMaterialRecipientMock, deleteLootMock, deleteMaterialMock,
+  gridCalls, weekCountBarCalls, suggestedMaterialRecipientMock, deleteLootMock, deleteMaterialMock,
 } = vi.hoisted(() => ({
   floorCardCalls: [] as Array<Record<string, unknown>>,
   pickerCalls: [] as Array<Record<string, unknown>>,
@@ -28,6 +28,7 @@ const {
   matrixCalls: [] as Array<Record<string, unknown>>,
   materialModalCalls: [] as Array<Record<string, unknown>>,
   gridCalls: [] as Array<Record<string, unknown>>,
+  weekCountBarCalls: [] as Array<Record<string, unknown>>,
   suggestedMaterialRecipientMock: vi.fn(),
   deleteLootMock: vi.fn().mockResolvedValue(undefined),
   deleteMaterialMock: vi.fn().mockResolvedValue(undefined),
@@ -106,6 +107,16 @@ vi.mock('./LogWeekGrid', () => ({
   },
 }));
 
+// D6b Task C: prop-capturing mock (D5's LogWeekGrid-mock precedent) so the
+// wiring test below asserts only Loot's OWN prop derivation — the real
+// week-scoped/threshold behavior is covered by WeekCountBar.test.tsx.
+vi.mock('./WeekCountBar', () => ({
+  WeekCountBar: (props: Record<string, unknown>) => {
+    weekCountBarCalls.push(props);
+    return <div data-testid="week-count-bar" data-week={String(props.week)} />;
+  },
+}));
+
 vi.mock('./materialSuggestion', () => ({
   suggestedMaterialRecipient: (...args: unknown[]) => suggestedMaterialRecipientMock(...args),
 }));
@@ -181,6 +192,14 @@ function LocationProbe() {
   return <div data-testid="loc" data-search={loc.search} />;
 }
 
+// D6b Task C (fold-in, controller-routed minor from Task B's review): ONE
+// module-scope copy — this used to be declared three times (once per describe
+// that needed it, D5/D6a/D6b-B), a duplication jscpd would eventually flag.
+// Same dedup shape Task B applied to `cellButton` in LogWeekGrid.test.tsx.
+function lastGrid() {
+  return gridCalls[gridCalls.length - 1];
+}
+
 function renderLoot(
   props: Partial<Parameters<typeof Loot>[0]> & { tier: TierSnapshot | null },
   initialEntries: string[] = ['/'],
@@ -211,6 +230,7 @@ beforeEach(() => {
   matrixCalls.length = 0;
   materialModalCalls.length = 0;
   gridCalls.length = 0;
+  weekCountBarCalls.length = 0;
   suggestedMaterialRecipientMock.mockReset();
   deleteLootMock.mockClear();
   deleteMaterialMock.mockClear();
@@ -1249,10 +1269,6 @@ describe('Loot — D4 triad + the Log tab week model', () => {
 // four callbacks route to the right door with the right roster. The retired
 // placeholder's own absence pins live in the D4-triad describe above.
 describe('Loot — D5: LogWeekGrid + the material edit door', () => {
-  function lastGrid() {
-    return gridCalls[gridCalls.length - 1];
-  }
-
   it('mounts LogWeekGrid on Log at the DISPLAYED week, not the clock week (vacuous-assert trap: drive them apart first)', () => {
     // The clock is seeded at week 3 (beforeEach) — a `?week=` on mount is the
     // Log tab's FIRST resolve, so it wins outright (useLogWeek.ts). Diverge
@@ -1409,10 +1425,6 @@ describe("Loot — A10 void'd-promise fixes", () => {
 // assertion drives the DISPLAYED week apart from the clock's (seeded at 3 by
 // the shared beforeEach) so a `clock.currentWeek` regression can't hide.
 describe('Loot — D6a Task 6: Log grid affordance wiring', () => {
-  function lastGrid() {
-    return gridCalls[gridCalls.length - 1];
-  }
-
   /** Drive the Log week exactly as the real WeekScopeControl's chevrons do (D4 precedent). */
   function setLogWeek(week: number) {
     const scopeProps = weekScopeCalls[weekScopeCalls.length - 1];
@@ -1650,10 +1662,6 @@ describe('Loot — D6a Task 6: Log grid affordance wiring', () => {
 // the shared beforeEach) so a `currentWeek={clock.currentWeek}` regression
 // can't hide — the D5/D4 vacuous-coincidence rule.
 describe('Loot — D6b Task B: floor-header kebab wiring', () => {
-  function lastGrid() {
-    return gridCalls[gridCalls.length - 1];
-  }
-
   it('kebab Log floor opens the ONE wizard with the DISPLAYED week and that floor', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2']);
     expect(lastGrid().week).toBe(2);
@@ -1668,5 +1676,27 @@ describe('Loot — D6b Task B: floor-header kebab wiring', () => {
     expect(wizard.currentWeek).toBe(2); // DISPLAYED week, not the clock's
     expect(wizard.initialFloor).toBe(3);
     expect(wizard.singleFloorMode).toBe(true);
+  });
+});
+
+// ── D6b Task C: WeekCountBar + LootFairnessLegend mounted under the Log grid ─
+// `WeekCountBar` stays a prop-capturing mock (D5's LogWeekGrid-mock precedent)
+// — real week-scoping/threshold behavior is covered by WeekCountBar.test.tsx.
+// `LootFairnessLegend` is left REAL (genuinely clean, imported unmodified) —
+// its static "Loot fairness:" text is the assertion. Driven at a displayed
+// week apart from the clock's own currentWeek (D5/D6a vacuous-coincidence
+// rule) so a `week={clock.currentWeek}` regression can't hide.
+describe('Loot — D6b Task C: count bar + legend', () => {
+  it('count bar + legend render under the grid with the DISPLAYED week', () => {
+    useLootTrackingStore.setState({ currentWeek: 5, maxWeek: 5, lootLog: [makeLootEntry({ id: 77 })] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2']);
+
+    expect(screen.getByTestId('week-count-bar')).toBeInTheDocument();
+    const last = weekCountBarCalls[weekCountBarCalls.length - 1];
+    expect(last.week).toBe(2);
+    expect(last.week).not.toBe(5); // the seeded clock's currentWeek — divergence proof
+    expect(last.players).toBe(players);
+    expect(last.lootLog).toEqual(useLootTrackingStore.getState().lootLog);
+    expect(screen.getByText('Loot fairness:')).toBeInTheDocument();
   });
 });
