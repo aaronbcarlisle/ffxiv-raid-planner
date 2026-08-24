@@ -806,8 +806,8 @@ defines the modifiers and this is what teaches them, the same pairing C7 needed 
   `text-[10px]` chips. The `Alt+Click` row is gated on `canJump` and omitted entirely when no jump
   target resolves (`LogWeekGrid.tsx:255`, the same `jump` gate `GridCell` already computes for the
   cursor swap) — the tooltip never teaches a modifier the cell can't currently honor.
-- **The hover-`×`** is an `IconButton` sibling between the edit control and the entries/kebab
-  triggers (`LogWeekGrid.tsx:469-476`), revealed on hover **and** keyboard focus
+- **The hover-`×`** is an `IconButton` sibling between the `×N` chip and the kebab
+  (`LogWeekGrid.tsx:469-476`), revealed on hover **and** keyboard focus
   (`opacity-0 focus-visible:opacity-100 group-hover:opacity-100`, `LogWeekGrid.tsx:474`) — the
   **D6-e delta**: the frozen reference is keyboard-reachable but visually invisible on focus
   (`group-hover:opacity-100` only, no `focus-visible` rule), and this build adds the reveal rather

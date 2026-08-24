@@ -15,7 +15,7 @@
  */
 
 import type { SnapshotPlayer, LootLogEntry } from '../../types';
-import { getRoleColor } from '../../gamedata';
+import { getRoleColor, getValidRole } from '../../gamedata';
 import { Tooltip } from '../primitives';
 
 export interface WeekCountBarProps {
@@ -50,9 +50,7 @@ export function WeekCountBar({ players, lootLog, week }: WeekCountBarProps) {
     <div className="flex gap-2 overflow-x-auto rounded-lg border border-border-default bg-surface-card p-3">
       {seated.map((player) => {
         const count = countByPlayer.get(player.id) ?? 0;
-        const roleColor = player.role
-          ? getRoleColor(player.role as 'tank' | 'healer' | 'melee' | 'ranged' | 'caster')
-          : 'var(--color-text-secondary)';
+        const roleColor = getRoleColor(getValidRole(player.role));
         const deviation = count - average;
         const countColor =
           deviation > 1

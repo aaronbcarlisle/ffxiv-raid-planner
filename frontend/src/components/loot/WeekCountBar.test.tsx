@@ -214,6 +214,13 @@ describe('WeekCountBar', () => {
     expect((await screen.findAllByText('-1.5 from avg')).length).toBeGreaterThan(0);
   });
 
+  it('a player with a malformed role string renders without throwing, position label intact', () => {
+    const bogus = makePlayer({ id: 'p1', name: 'Alice', position: 'T1', role: 'bogus' });
+
+    expect(() => renderBar(<WeekCountBar players={[bogus]} lootLog={[]} week={2} />)).not.toThrow();
+    expect(within(tileFor('p1')).getByText('T1')).toBeInTheDocument();
+  });
+
   it('no text-[…px] class anywhere in the rendered container (12px floor)', () => {
     const p1 = makePlayer({ id: 'p1', name: 'Alice', position: 'T1' });
     const lootLog = [
