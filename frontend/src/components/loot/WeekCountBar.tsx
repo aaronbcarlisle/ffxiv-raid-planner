@@ -96,5 +96,3 @@ export function WeekCountBar({ players, lootLog, week }: WeekCountBarProps) {
     </div>
   );
 }
-
-export default WeekCountBar;

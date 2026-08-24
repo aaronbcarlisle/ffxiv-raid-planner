@@ -188,6 +188,32 @@ describe('WeekCountBar', () => {
     expect(screen.getAllByText('At average').length).toBeGreaterThan(0);
   });
 
+  it('tile tooltip: deviation label shows the exact ±N.N for a tile off the average', async () => {
+    // Same fixture as the color-thresholds test above: counts 4/1/1/0, avg 1.5 —
+    // p1 is exactly +2.5 off, p4 is exactly -1.5 off (the `toFixed(1)` / `+`-prefix
+    // branch the "At average" case above never exercises).
+    const p1 = makePlayer({ id: 'p1', name: 'Alice', position: 'T1' });
+    const p2 = makePlayer({ id: 'p2', name: 'Bob', position: 'H1' });
+    const p3 = makePlayer({ id: 'p3', name: 'Cara', position: 'M1' });
+    const p4 = makePlayer({ id: 'p4', name: 'Dee', position: 'R1' });
+    const lootLog = [
+      makeLootEntry({ recipientPlayerId: 'p1', weekNumber: 2 }),
+      makeLootEntry({ recipientPlayerId: 'p1', weekNumber: 2 }),
+      makeLootEntry({ recipientPlayerId: 'p1', weekNumber: 2 }),
+      makeLootEntry({ recipientPlayerId: 'p1', weekNumber: 2 }),
+      makeLootEntry({ recipientPlayerId: 'p2', weekNumber: 2 }),
+      makeLootEntry({ recipientPlayerId: 'p3', weekNumber: 2 }),
+    ];
+
+    renderBar(<WeekCountBar players={[p1, p2, p3, p4]} lootLog={lootLog} week={2} />);
+
+    fireEvent.focus(tileFor('p1'));
+    expect((await screen.findAllByText('+2.5 from avg')).length).toBeGreaterThan(0);
+
+    fireEvent.focus(tileFor('p4'));
+    expect((await screen.findAllByText('-1.5 from avg')).length).toBeGreaterThan(0);
+  });
+
   it('no text-[…px] class anywhere in the rendered container (12px floor)', () => {
     const p1 = makePlayer({ id: 'p1', name: 'Alice', position: 'T1' });
     const lootLog = [
