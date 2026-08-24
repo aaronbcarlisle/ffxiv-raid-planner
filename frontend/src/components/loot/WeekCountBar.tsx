@@ -39,7 +39,17 @@ export function WeekCountBar({ players, lootLog, week }: WeekCountBarProps) {
   }
 
   const seated = [...mainRoster].sort((a, b) => {
-    const seatOf = (p: SnapshotPlayer) => (p.position ? SEAT_ORDER.indexOf(p.position) : SEAT_ORDER.length);
+    // PR #245 r2 (Copilot round 2): a missing/null position AND a truthy but
+    // unrecognized one (corrupt/legacy data — `RaidPosition` doesn't admit
+    // this at the type level, but runtime data isn't guaranteed to respect
+    // that) both sort LAST. Previously only the missing/null branch got the
+    // `SEAT_ORDER.length` sentinel — a garbage truthy value fell through to
+    // `indexOf`'s `-1` and sorted FIRST instead, ahead of T1.
+    const seatOf = (p: SnapshotPlayer) => {
+      if (!p.position) return SEAT_ORDER.length;
+      const idx = SEAT_ORDER.indexOf(p.position);
+      return idx === -1 ? SEAT_ORDER.length : idx;
+    };
     return seatOf(a) - seatOf(b);
   });
 

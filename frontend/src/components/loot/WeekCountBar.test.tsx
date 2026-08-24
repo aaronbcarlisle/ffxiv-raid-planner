@@ -133,6 +133,25 @@ describe('WeekCountBar', () => {
     expect(tiles().map((t) => t.getAttribute('data-player-id'))).toEqual(['t1', 'h2', 'm1', 'r2', 'u1']);
   });
 
+  it('PR #245 r2: a GARBAGE (non-seat, truthy) position sorts LAST, same as a missing one', () => {
+    // `RaidPosition` doesn't admit an arbitrary string — this `as` cast is
+    // the point: it exercises the runtime-only hardening for corrupt/legacy
+    // data that TypeScript itself would never let through normal usage.
+    // Before the fix, `SEAT_ORDER.indexOf('XX')` (-1) was used AS the sort
+    // key directly for any truthy `position`, so a garbage value sorted
+    // FIRST (before T1 at index 0) instead of last, contradicting this
+    // file's own "unknown sorts last" claim (`WeekCountBar.tsx:29,41-44` per
+    // the R-23 build note) — that claim only actually held for a
+    // missing/null position.
+    const garbage = makePlayer({ id: 'g1', name: 'Garbage', position: 'ZZ' as unknown as SnapshotPlayer['position'] });
+    const tOne = makePlayer({ id: 't1', name: 'Tank One', position: 'T1' });
+    const rTwo = makePlayer({ id: 'r2', name: 'Ranger Two', position: 'R2' });
+
+    renderBar(<WeekCountBar players={[garbage, rTwo, tOne]} lootLog={[]} week={2} />);
+
+    expect(tiles().map((t) => t.getAttribute('data-player-id'))).toEqual(['t1', 'r2', 'g1']);
+  });
+
   it('color thresholds: counts 4/1/1/0 (avg 1.5) — 4 is info, 0 is warning, 1 is secondary', () => {
     const p1 = makePlayer({ id: 'p1', name: 'Alice', position: 'T1' });
     const p2 = makePlayer({ id: 'p2', name: 'Bob', position: 'H1' });
