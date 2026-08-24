@@ -105,6 +105,8 @@ const EMPTY_FLOORS: string[] = [];
 // optional) + the new `highlightEntry` (defaults to null, "nothing
 // highlighted") — so every pre-existing call site keeps compiling without
 // having to name them individually.
+// D6b Task B (sanctioned edit, class 4): `onLogFloor` joins the same list —
+// the floor-header kebab's required prop.
 function baseProps(overrides: Partial<Parameters<typeof LogWeekGrid>[0]> = {}) {
   return {
     floors: EMPTY_FLOORS,
@@ -121,9 +123,26 @@ function baseProps(overrides: Partial<Parameters<typeof LogWeekGrid>[0]> = {}) {
     onCopyEntryLink: vi.fn(),
     onJumpToPlayer: vi.fn(),
     onDeleteEntry: vi.fn(),
+    onLogFloor: vi.fn(),
     highlightEntry: null,
     ...overrides,
   };
+}
+
+// D6b Task B (fold-in #2, controller-routed minor from Task A's review): ONE
+// module-scope copy — this used to be declared twice (once per describe that
+// needed it), a duplication jscpd would eventually flag. Disambiguates a
+// filled cell's Edit/Log-prefixed control from its kebab/chip/hover-×
+// siblings, all of which also match a bare label fragment like 'Ears'.
+function cellButton(fragment: string | RegExp) {
+  const matcher = typeof fragment === 'string' ? new RegExp(fragment) : fragment;
+  const candidates = screen.getAllByRole('button', { name: matcher });
+  const edit = candidates.find((el) => /^(Edit|Log) /.test(el.getAttribute('aria-label') ?? ''));
+  // F6 (director M4): no silent fallback to candidates[0] — that would
+  // quietly select the kebab (or chip trigger) if the aria-label prefix
+  // ever drifts, masking a real selection failure behind a passing test.
+  if (!edit) throw new Error(`cellButton(${String(fragment)}): no Edit/Log-prefixed control among ${candidates.length} candidate(s)`);
+  return edit;
 }
 
 // Step 0 (D6b harness rewrite): every `<LogWeekGrid>` render now needs a
@@ -324,8 +343,9 @@ describe('D6 modifier layer', () => {
     itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
   });
 
-  // Accepts a substring regex the same way `cellButton(/Log Neck/)` does below —
-  // a bare string is wrapped so callers don't need the FULL dynamic aria-label
+  // `cellButton` is the module-scope helper above (fold-in #2) — accepts a
+  // substring regex the same way `cellButton(/Log Neck/)` does below, a bare
+  // string is wrapped so callers don't need the FULL dynamic aria-label
   // ("Edit Ears for Tank One — Floor 1") just to find the "Ears" cell.
   //
   // D6a Task 4: a filled cell's sibling row now also carries a kebab
@@ -334,16 +354,6 @@ describe('D6 modifier layer', () => {
   // (`N entries for ${label} — ${floorName}`) — both of which ALSO match a
   // bare label fragment like 'Ears' or 'Neck'. Disambiguate by preferring
   // the Edit/Log-prefixed control (the one this helper always meant).
-  function cellButton(fragment: string | RegExp) {
-    const matcher = typeof fragment === 'string' ? new RegExp(fragment) : fragment;
-    const candidates = screen.getAllByRole('button', { name: matcher });
-    const edit = candidates.find((el) => /^(Edit|Log) /.test(el.getAttribute('aria-label') ?? ''));
-    // F6 (director M4): no silent fallback to candidates[0] — that would
-    // quietly select the kebab (or chip trigger) if the aria-label prefix
-    // ever drifts, masking a real selection failure behind a passing test.
-    if (!edit) throw new Error(`cellButton(${String(fragment)}): no Edit/Log-prefixed control among ${candidates.length} candidate(s)`);
-    return edit;
-  }
 
   // Mouse-path tests PIN detail: 1 (director F-14) — fireEvent.click defaults to detail: 0,
   // which is the AT path; the C4 precedent is RosterGearTable.test.tsx:381,523.
@@ -767,16 +777,10 @@ describe('D6b teaching tooltip + hover-×', () => {
   // headers > shows the duty-name Tag...` already uses.
   const NAMED_FLOORS = ['M9S', 'M10S', 'M11S', 'M12S'];
 
-  // Same disambiguation helper as the `D6 modifier layer` describe above — a
-  // filled cell's kebab/chip/hover-× all also match a bare label fragment
-  // like 'Ears', so this always resolves to the Edit-prefixed control.
-  function cellButton(fragment: string | RegExp) {
-    const matcher = typeof fragment === 'string' ? new RegExp(fragment) : fragment;
-    const candidates = screen.getAllByRole('button', { name: matcher });
-    const edit = candidates.find((el) => /^(Edit|Log) /.test(el.getAttribute('aria-label') ?? ''));
-    if (!edit) throw new Error(`cellButton(${String(fragment)}): no Edit/Log-prefixed control among ${candidates.length} candidate(s)`);
-    return edit;
-  }
+  // Same disambiguation helper (module-scope `cellButton`, fold-in #2) as the
+  // `D6 modifier layer` describe above — a filled cell's kebab/chip/hover-×
+  // all also match a bare label fragment like 'Ears', so this always
+  // resolves to the Edit-prefixed control.
 
   it('filled cells carry the teaching tooltip; the Alt row is omitted when no jump target', async () => {
     const ears = makeLootEntry({
@@ -849,7 +853,12 @@ describe('D6b teaching tooltip + hover-×', () => {
     })}
     />);
     const del = screen.getByRole('button', { name: 'Delete Ears entry for Healer One — M9S' });
+    // Fold-in #3 (Task A review): pin all three reveal classes, the same
+    // shape the kebab's own reveal test above uses — not just the
+    // keyboard-focus one.
+    expect(del.className).toContain('opacity-0');
     expect(del.className).toContain('focus-visible:opacity-100');
+    expect(del.className).toContain('group-hover:opacity-100');
     fireEvent.click(del);
     expect(onDeleteEntry).toHaveBeenCalledWith({ kind: 'loot', entry: newest });
   });
@@ -883,5 +892,48 @@ describe('D6b teaching tooltip + hover-×', () => {
     renderGrid(<LogWeekGrid {...baseProps({ lootLog: [single], players: [tankOne] })} />);
     const kebab = screen.getByRole('button', { name: 'Ears entry actions — Floor 1' });
     expect(kebab).toHaveAttribute('aria-haspopup', 'menu');
+  });
+});
+
+// ── D6b Task B: floor-header kebab "Log floor" ───────────────────────────────
+// R-25: the floor header row gains a right-aligned kebab opening a ONE-item
+// menu ("Log floor") that fires the new required `onLogFloor(floorNumber)`
+// prop — the door into the ALREADY-shipped `LogWeekWizard` single-floor run
+// (Loot.tsx wires it to `setWizardState({ floor })`, tested in Loot.test.tsx).
+// Not a standing button — D7 later adds this floor's resets to this same menu.
+describe('D6b Task B: floor-header kebab "Log floor"', () => {
+  const NAMED_FLOORS = ['M9S', 'M10S', 'M11S', 'M12S'];
+
+  it('renders a floor-scoped kebab per floor — both name shapes: named duty and the "Floor N" fallback', () => {
+    const { unmount } = renderGrid(<LogWeekGrid {...baseProps({ floors: NAMED_FLOORS })} />);
+    expect(screen.getByRole('button', { name: 'M9S actions' })).toBeInTheDocument();
+    unmount();
+
+    // EMPTY_FLOORS (baseProps default) -> the 'Floor N' fallback name, same
+    // fixture shape the "shows the duty-name Tag..." / hasDutyName guard
+    // tests above build.
+    renderGrid(<LogWeekGrid {...baseProps()} />);
+    expect(screen.getByRole('button', { name: 'Floor 1 actions' })).toBeInTheDocument();
+  });
+
+  it("the Log floor item calls onLogFloor(2) when invoked on floor 2's kebab — driven apart from 1", async () => {
+    const onLogFloor = vi.fn();
+    renderGrid(<LogWeekGrid {...baseProps({ floors: NAMED_FLOORS, onLogFloor })} />);
+    const kebab = screen.getByRole('button', { name: 'M10S actions' });
+    // Radix idiom (director F-9, binding): fireEvent.click does NOT open a
+    // Radix dropdown in jsdom.
+    fireEvent.keyDown(kebab, { key: 'Enter' });
+    const item = await screen.findByRole('menuitem', { name: 'Log floor' });
+    fireEvent.click(item);
+    expect(onLogFloor).toHaveBeenCalledWith(2);
+    expect(onLogFloor).not.toHaveBeenCalledWith(1);
+  });
+
+  it('no kebab renders when canEdit=false', () => {
+    renderGrid(<LogWeekGrid {...baseProps({ floors: NAMED_FLOORS, canEdit: false })} />);
+    // No lootLog/materialLog entries either, so a fully read-only mount
+    // renders zero buttons anywhere in the grid — same assertion shape the
+    // "LogWeekGrid — read-only (canEdit=false)" describe above uses.
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 });

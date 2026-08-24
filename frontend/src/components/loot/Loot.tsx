@@ -138,7 +138,7 @@ import { LootToolbar } from './LootToolbar';
 import { WeekScopeControl } from './WeekScopeControl';
 import { FloorCard } from './FloorCard';
 import { LogWeekGrid } from './LogWeekGrid';
-import { logCellDomId } from './logWeekGridData';
+import { logCellDomId, type HighlightEntryRef } from './logWeekGridData';
 import { suggestedMaterialRecipient } from './materialSuggestion';
 import { NeedMatrix } from './NeedMatrix';
 import { WeaponPriorityBridge } from './WeaponPriorityBridge';
@@ -652,7 +652,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     unresolvedByClock ? null : foundLootEntry?.id ?? foundMaterialEntry?.id ?? null;
   const highlightKind: 'loot' | 'material' | null =
     unresolvedByClock ? null : foundLootEntry ? 'loot' : foundMaterialEntry ? 'material' : null;
-  const highlightEntry: { kind: 'loot' | 'material'; id: number } | null =
+  const highlightEntry: HighlightEntryRef | null =
     highlightId != null && highlightKind != null ? { kind: highlightKind, id: highlightId } : null;
 
   useEffect(() => {
@@ -1017,6 +1017,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
           onJumpToPlayer={jumpToRecipient}
           onDeleteEntry={deleteFromGrid}
           highlightEntry={highlightEntry}
+          // D6b Task B: the floor-header kebab's "Log floor" door — the SAME
+          // wizard the controls row's own "Log floor" button opens (R-7), at
+          // the clicked floor. `wizardState.floor` drives both
+          // `singleFloorMode`/`initialFloor` below, and `writeWeek` (Log-view
+          // branch) already targets the DISPLAYED week — no new wizard props.
+          onLogFloor={(floor) => setWizardState({ floor })}
         />
       ) : priorityView === 'who-needs-it' ? (
         <NeedMatrix

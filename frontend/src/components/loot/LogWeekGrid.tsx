@@ -130,8 +130,9 @@
  * floor-header "Log floor" kebab.
  */
 import { useMemo, useState } from 'react';
-import { MoreVertical, X } from 'lucide-react';
+import { ClipboardList, MoreVertical, X } from 'lucide-react';
 import { Button, IconButton, Tooltip } from '../primitives';
+import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '../primitives/Dropdown';
 import { Tag } from '../ui';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
@@ -141,7 +142,9 @@ import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { MATERIAL_TOKEN } from './FloorDropRow';
 import { RecipientBadge, resolveRecipient, type RecipientLike } from './RecipientBadge';
 import { LogCellEntriesMenu } from './LogCellEntriesMenu';
-import { buildLogWeekGrid, logCellDomId, type LogGridFloor, type LogGridEntryRef } from './logWeekGridData';
+import {
+  buildLogWeekGrid, logCellDomId, type LogGridFloor, type LogGridEntryRef, type HighlightEntryRef,
+} from './logWeekGridData';
 import type { FloorNumber } from '../../gamedata/loot-tables';
 import type {
   GearSlot, LootLogEntry, MaterialLogEntry, MaterialType, SnapshotPlayer,
@@ -177,7 +180,15 @@ export interface LogWeekGridProps {
    * gets `id={logCellDomId(ref)}` and ` highlight-pulse` appended — the exact
    * `LootEntryRow.tsx:80-83` idiom. `null` when nothing is highlighted.
    */
-  highlightEntry: { kind: 'loot' | 'material'; id: number } | null;
+  highlightEntry: HighlightEntryRef | null;
+  /**
+   * D6b Task B: the floor-header kebab's "Log floor" item — opens the
+   * ALREADY-shipped `LogWeekWizard` single-floor run at this floor
+   * (`Loot.tsx` wires it to `setWizardState({ floor })`). Required (B-R2 —
+   * lands required directly, no optional shim); `FloorSection` gates its
+   * kebab on `canEdit` alone.
+   */
+  onLogFloor: (floor: FloorNumber) => void;
 }
 
 /** The grid-root right-click menu's state — ONE mount, never per-cell (director F-15). */
@@ -210,7 +221,7 @@ interface GridCellProps<E extends RecipientLike> {
   /** D6b Task 4 remainder: the hover-× (R-27 + D6-e) — deletes the newest entry only. */
   onDeleteEntry: (ref: LogGridEntryRef) => void;
   /** D6a Task 6: the screen-level `?entry=` target — `null` when nothing is highlighted. */
-  highlightEntry: { kind: 'loot' | 'material'; id: number } | null;
+  highlightEntry: HighlightEntryRef | null;
 }
 
 /**
@@ -385,7 +396,11 @@ function GridCell<E extends RecipientLike>({
   // kebab (there's nothing yet to open a menu about) — wrapped in a
   // one-line teaching tooltip (D6b Task 4 remainder).
   if (!newest) {
-    return <Tooltip content={`Click to log ${label}`}>{editButton}</Tooltip>;
+    // Fold-in #1 (Task A review): pin the same 400ms delay the filled-cell
+    // tooltip below uses — this one used to fall through to the provider's
+    // 500ms default, giving the grid two different hover delays for no
+    // reason.
+    return <Tooltip content={`Click to log ${label}`} delayDuration={400}>{editButton}</Tooltip>;
   }
 
   // D6b Task 4 remainder: the hover-× (R-27 + D6-e) deletes the NEWEST entry
@@ -483,13 +498,15 @@ interface FloorSectionProps {
   /** D6b Task 4 remainder: the hover-× — passed to every `GridCell` (gear + material alike). */
   onDeleteEntry: LogWeekGridProps['onDeleteEntry'];
   highlightEntry: LogWeekGridProps['highlightEntry'];
+  /** D6b Task B: the floor-header kebab's "Log floor" item. */
+  onLogFloor: LogWeekGridProps['onLogFloor'];
   isFirst: boolean;
 }
 
 function FloorSection({
   floor, week, playerMap, canEdit, canAssignMaterial, altHeld,
   onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
-  onCopyEntryLink, onJumpToPlayer, onOpenMenu, onDeleteEntry, highlightEntry, isFirst,
+  onCopyEntryLink, onJumpToPlayer, onOpenMenu, onDeleteEntry, highlightEntry, onLogFloor, isFirst,
 }: FloorSectionProps) {
   const {
     floorNumber, floorName, bookNumeral, gearCells, materialCells,
@@ -506,6 +523,28 @@ function FloorSection({
         {hasDutyName && <Tag variant="label" tone="muted">{floorName}</Tag>}
         <span className={`font-display text-sm font-bold ${FLOOR_TEXT_CLASS[floorNumber]}`}>Floor {floorNumber}</span>
         <span className="text-xs text-text-muted">· Book {bookNumeral}</span>
+        {/* D6b Task B (R-25): the floor-header door into the single-floor
+            wizard run — gated on `canEdit` alone (the prop is required, so
+            no presence check). NOT a standing button: D7 later adds this
+            floor's resets to this same menu. */}
+        {canEdit && (
+          <Dropdown>
+            <DropdownTrigger asChild>
+              <IconButton
+                aria-label={`${floorName} actions`}
+                icon={<MoreVertical className="h-4 w-4" />}
+                variant="ghost"
+                size="sm"
+                className="ml-auto"
+              />
+            </DropdownTrigger>
+            <DropdownContent align="end">
+              <DropdownItem icon={<ClipboardList className="h-4 w-4" />} onSelect={() => onLogFloor(floorNumber)}>
+                Log floor
+              </DropdownItem>
+            </DropdownContent>
+          </Dropdown>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -641,7 +680,7 @@ export function LogWeekGrid(props: LogWeekGridProps) {
   const {
     floors, week, lootLog, materialLog, players, canEdit, canAssignMaterial,
     onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
-    onCopyEntryLink, onJumpToPlayer, onDeleteEntry, highlightEntry,
+    onCopyEntryLink, onJumpToPlayer, onDeleteEntry, highlightEntry, onLogFloor,
   } = props;
 
   const grid = useMemo(
@@ -681,6 +720,7 @@ export function LogWeekGrid(props: LogWeekGridProps) {
           onOpenMenu={setMenu}
           onDeleteEntry={onDeleteEntry}
           highlightEntry={highlightEntry}
+          onLogFloor={onLogFloor}
           isFirst={idx === 0}
         />
       ))}

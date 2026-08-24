@@ -1640,3 +1640,33 @@ describe('Loot — D6a Task 6: Log grid affordance wiring', () => {
     expect(localStorage.getItem('v2-history-week-g1-aac-heavyweight')).toBe('1');
   });
 });
+
+// ── D6b Task B: the floor-header kebab's "Log floor" wiring ─────────────────
+// `LogWeekGrid` stays the prop-capturing mock (D5/D6a precedent above) — this
+// suite asserts only Loot's OWN wiring: the grid's new `onLogFloor` reaches
+// `setWizardState({ floor })`, the SAME single wizard mount the toolbar's
+// whole-week run and the controls row's own "Log floor" button already share
+// (R-7). Driven at a displayed week apart from the clock's (seeded 3/5 by
+// the shared beforeEach) so a `currentWeek={clock.currentWeek}` regression
+// can't hide — the D5/D4 vacuous-coincidence rule.
+describe('Loot — D6b Task B: floor-header kebab wiring', () => {
+  function lastGrid() {
+    return gridCalls[gridCalls.length - 1];
+  }
+
+  it('kebab Log floor opens the ONE wizard with the DISPLAYED week and that floor', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2']);
+    expect(lastGrid().week).toBe(2);
+    expect(lastGrid().week).not.toBe(3); // the seeded clock's currentWeek — divergence proof
+
+    act(() => {
+      (lastGrid().onLogFloor as (floor: number) => void)(3);
+    });
+
+    const wizard = wizardCalls[wizardCalls.length - 1];
+    expect(wizard.isOpen).toBe(true);
+    expect(wizard.currentWeek).toBe(2); // DISPLAYED week, not the clock's
+    expect(wizard.initialFloor).toBe(3);
+    expect(wizard.singleFloorMode).toBe(true);
+  });
+});
