@@ -1032,6 +1032,17 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             // `singleFloorMode`/`initialFloor` below, and `writeWeek` (Log-view
             // branch) already targets the DISPLAYED week — no new wizard props.
             onLogFloor={(floor) => setWizardState({ floor })}
+            // D7a Task 3 (R-16 2/4, R-25): the floor-header menu's two resets —
+            // the SAME `resolveResetActions`/`handleResetConfirm` pipeline the
+            // toolbar `LootResetMenu` above already routes through, scoped to
+            // this floor at the DISPLAYED week (`logWeek.week`, never
+            // `clock.currentWeek` — the same split `onLogFloor` above uses).
+            onResetFloorLoot={(floor) => setResetConfig({
+              scope: 'floor', target: 'loot', week: logWeek.week, floor,
+            })}
+            onResetFloorBooks={(floor) => setResetConfig({
+              scope: 'floor', target: 'books', week: logWeek.week, floor,
+            })}
           />
           {/* D6b Task C (R-23, R-D6n): the fairness read sits directly below
               the grid — count bar then legend (§4 mockup order). Not gated on

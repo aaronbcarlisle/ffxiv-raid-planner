@@ -1793,3 +1793,78 @@ describe('Loot — D7a: toolbar resets move to Log on the displayed week (R-16)'
     await waitFor(() => expect(clearAllPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
   });
 });
+
+// ── D7a Task 3: floor-header kebab gains the floor's resets ─────────────────
+// `LogWeekGrid` stays the prop-capturing mock (D5/D6a/D6b-B precedent above),
+// so this drives the captured `onResetFloorLoot`/`onResetFloorBooks` props
+// the same way the real kebab menu's items would (the real kebab UI —
+// content, click-to-open, right-click parity — is covered in
+// LogWeekGrid.test.tsx), then walks the REAL `ResetConfirmModal` (type
+// RESET) to assert the deletions/store calls. Closes the "honest seam" left
+// in Task 2 Step 1: floor/player-scoped configs were plan-tested
+// (`resetActions.test.ts`) but never integration-tested end to end. Driven
+// at the DISPLAYED week 1 with the clock seeded at 3 (`beforeEach`) so a
+// `week: clock.currentWeek` regression at the wiring can't hide — the
+// D4/D5/D6a/D7a-toolbar vacuous-coincidence rule, applied here too.
+describe("Loot — D7a Task 3: floor-header kebab's resets (displayed week)", () => {
+  it("floor loot reset deletes ONLY the displayed week's entries for that floor — three-way discrimination against not-week-3-M9S and not-week-1-M10S", async () => {
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({ id: 1, weekNumber: 1, floor: 'M9S' }), // the target
+        makeLootEntry({ id: 2, weekNumber: 3, floor: 'M9S' }), // right floor, wrong (clock) week
+        makeLootEntry({ id: 3, weekNumber: 1, floor: 'M10S' }), // right week, wrong floor
+      ],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    // aac-heavyweight's floors array is ['M9S','M10S','M11S','M12S']
+    // (raid-tiers.ts) — floor 1 = M9S.
+    act(() => {
+      (lastGrid().onResetFloorLoot as (floor: number) => void)(1);
+    });
+
+    // The confirm modal's description names Floor 1 / Week 1 — direct
+    // evidence the emitted config carries the DISPLAYED week, not the clock's.
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    expect(screen.getByText(/loot entries for Floor 1 in Week 1\./)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() => expect(deleteLootMock).toHaveBeenCalledTimes(1));
+    const [groupId, tierId, entryId, entry, opts] = deleteLootMock.mock.calls[0];
+    expect(groupId).toBe('g1');
+    expect(tierId).toBe('aac-heavyweight');
+    expect(entryId).toBe(1);
+    expect((entry as LootLogEntry).weekNumber).toBe(1);
+    expect((entry as LootLogEntry).floor).toBe('M9S');
+    expect(opts).toEqual({ revertGear: true });
+  });
+
+  it('floor books reset routes to clearFloorPageLedger WEEK FIRST, then floor', async () => {
+    const clearFloorPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    const fetchPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      clearFloorPageLedger: clearFloorPageLedgerMock,
+      fetchPageLedger: fetchPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    act(() => {
+      (lastGrid().onResetFloorBooks as (floor: number) => void)(1);
+    });
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    // Loot.test.tsx fixture tier id is 'aac-heavyweight', not 't1'; the
+    // wiring's ResetConfig is `{ scope: 'floor', target: 'books', week:
+    // logWeek.week, floor }`, whose bookOp resolves to `floor-week` — the
+    // handler calls `clearFloorPageLedger(groupId, tierId, op.week, op.floor)`
+    // (week BEFORE floor, resetActions.ts + Loot.tsx's handleResetConfirm).
+    await waitFor(() => expect(clearFloorPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 1, 1));
+    await waitFor(() => expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
+  });
+});

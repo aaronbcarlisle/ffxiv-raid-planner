@@ -136,9 +136,8 @@
  * (Task C) — not part of this file.
  */
 import { useMemo, useState } from 'react';
-import { ClipboardList, MoreVertical, X } from 'lucide-react';
+import { ClipboardList, MoreVertical, Trash2, X } from 'lucide-react';
 import { Button, IconButton, Tooltip } from '../primitives';
-import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '../primitives/Dropdown';
 import { Tag } from '../ui';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
@@ -195,6 +194,17 @@ export interface LogWeekGridProps {
    * kebab on `canEdit` alone.
    */
   onLogFloor: (floor: FloorNumber) => void;
+  /**
+   * D7 (R-16 2/4, R-25): the floor-header menu's two reset items —
+   * `Loot.tsx` wires these to `setResetConfig({ scope: 'floor', target:
+   * 'loot'|'books', week: logWeek.week, floor })`, the SAME displayed-week
+   * split `onLogFloor` above and the toolbar `LootResetMenu` already use.
+   * R-D7a (user-ruled): TWO items, never a single combined "reset floor
+   * data". R-D7d (user-ruled): the labels stay week-less — `Loot.tsx`'s
+   * wiring is what actually scopes the write to the displayed week.
+   */
+  onResetFloorLoot: (floor: FloorNumber) => void;
+  onResetFloorBooks: (floor: FloorNumber) => void;
 }
 
 /** The grid-root right-click menu's state — ONE mount, never per-cell (director F-15). */
@@ -203,6 +213,18 @@ interface LogGridMenuState {
   y: number;
   ref: LogGridEntryRef;
   jumpPlayerId: string | null;
+}
+
+/**
+ * The grid-root floor-header menu's state (D7) — ONE mount shared by every
+ * `FloorSection`, the same "one instance, not one per row" shape
+ * `LogGridMenuState` above already establishes for the cell menu.
+ */
+interface FloorMenuState {
+  x: number;
+  y: number;
+  floorNumber: FloorNumber;
+  floorName: string;
 }
 
 interface GridCellProps<E extends RecipientLike> {
@@ -513,15 +535,23 @@ interface FloorSectionProps {
   /** D6b Task 4 remainder: the hover-× — passed to every `GridCell` (gear + material alike). */
   onDeleteEntry: LogWeekGridProps['onDeleteEntry'];
   highlightEntry: LogWeekGridProps['highlightEntry'];
-  /** D6b Task B: the floor-header kebab's "Log floor" item. */
-  onLogFloor: LogWeekGridProps['onLogFloor'];
+  /**
+   * D7: opens the grid-root floor menu (the `LogWeekGrid`-level
+   * `setFloorMenu`) — mirrors `onOpenMenu` above for the cell menu. The
+   * menu's items (Log floor / Reset {floorName} loot / Reset {floorName}
+   * books) are built ONCE at the grid root from `LogWeekGridProps`' own
+   * `onLogFloor`/`onResetFloorLoot`/`onResetFloorBooks` (the
+   * `buildEntryMenuItems` pattern below, re-applied) — `FloorSection` itself
+   * never needs those three callbacks directly, only this state setter.
+   */
+  onOpenFloorMenu: (state: FloorMenuState) => void;
   isFirst: boolean;
 }
 
 function FloorSection({
   floor, week, playerMap, canEdit, canAssignMaterial, altHeld,
   onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
-  onCopyEntryLink, onJumpToPlayer, onOpenMenu, onDeleteEntry, highlightEntry, onLogFloor, isFirst,
+  onCopyEntryLink, onJumpToPlayer, onOpenMenu, onDeleteEntry, highlightEntry, onOpenFloorMenu, isFirst,
 }: FloorSectionProps) {
   const {
     floorNumber, floorName, bookNumeral, gearCells, materialCells,
@@ -530,35 +560,44 @@ function FloorSection({
   // heading is the duplication PR #224's review caught at the other header sites.
   const hasDutyName = floorName !== `Floor ${floorNumber}`;
 
+  // D7 (R-25, R-16 2/4): both triggers into the SAME grid-root floor menu —
+  // the header kebab's click and a right-click anywhere on the header bar
+  // (the `requestMenu`/`openKebabMenu` idiom `GridCell` above already uses
+  // for the cell menu, re-applied one level up). `jumpMenuAnchor` supplies
+  // the keyboard-invoked (Shift+F10/menu-key, both-zero coordinates)
+  // fallback the cell menu already relies on.
+  const openFloorMenu = (e: React.MouseEvent<HTMLElement>) => {
+    const { x, y } = jumpMenuAnchor(e, e.currentTarget.getBoundingClientRect());
+    onOpenFloorMenu({ x, y, floorNumber, floorName });
+  };
+
   return (
     <div className={isFirst ? '' : 'border-t border-border-default'}>
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the kebab IconButton below is the real interactive route; onContextMenu here is a pointer-convenience duplicate (Shift+F10/menu-key on the focused kebab already fires `contextmenu`, which bubbles to this div, same as the cell wrapper's onContextMenu) */}
       <div
         className={`flex items-center gap-3 border-b border-border-default bg-surface-base px-4 py-3 ${FLOOR_ACCENT_CLASS[floorNumber]}`}
+        onContextMenu={canEdit ? (e) => { e.preventDefault(); openFloorMenu(e); } : undefined}
       >
         {hasDutyName && <Tag variant="label" tone="muted">{floorName}</Tag>}
         <span className={`font-display text-sm font-bold ${FLOOR_TEXT_CLASS[floorNumber]}`}>Floor {floorNumber}</span>
         <span className="text-xs text-text-muted">· Book {bookNumeral}</span>
-        {/* D6b Task B (R-25): the floor-header door into the single-floor
-            wizard run — gated on `canEdit` alone (the prop is required, so
-            no presence check). NOT a standing button: D7 later adds this
-            floor's resets to this same menu. */}
+        {/* D7 (R-25, R-16 2/4): the floor-header door into the single-floor
+            wizard run AND this floor's two resets — Log floor / Reset
+            {floorName} loot / Reset {floorName} books, the shipped menu
+            `buildFloorMenuItems` builds at the grid root. Gated on `canEdit`
+            alone (the prop is required, so no presence check); a read-only
+            header renders no kebab and its `onContextMenu` above is `undefined`
+            (D6-l parity — fully inert, not just visually absent). */}
         {canEdit && (
-          <Dropdown>
-            <DropdownTrigger asChild>
-              <IconButton
-                aria-label={`${floorName} actions`}
-                icon={<MoreVertical className="h-4 w-4" />}
-                variant="ghost"
-                size="sm"
-                className="ml-auto"
-              />
-            </DropdownTrigger>
-            <DropdownContent align="end">
-              <DropdownItem icon={<ClipboardList className="h-4 w-4" />} onSelect={() => onLogFloor(floorNumber)}>
-                Log floor
-              </DropdownItem>
-            </DropdownContent>
-          </Dropdown>
+          <IconButton
+            aria-label={`${floorName} actions`}
+            icon={<MoreVertical className="h-4 w-4" />}
+            variant="ghost"
+            size="sm"
+            aria-haspopup="menu"
+            className="ml-auto"
+            onClick={openFloorMenu}
+          />
         )}
       </div>
       <div className="overflow-x-auto">
@@ -691,11 +730,47 @@ function buildEntryMenuItems(
   return items;
 }
 
+/**
+ * The grid-root floor-header menu's items (D7, R-25 + R-16 2/4): Log floor ·
+ * separator · Reset {floorName} loot · Reset {floorName} books (both
+ * danger). R-D7a (user-ruled): exactly these two reset items — never a
+ * single combined "reset floor data" item. R-D7d (user-ruled): the labels
+ * stay week-less — `Loot.tsx`'s wiring is what actually scopes the write to
+ * the displayed week, not the label. `onLogFloor`/`onResetFloorLoot`/
+ * `onResetFloorBooks` are required on `LogWeekGridProps`, so no per-item
+ * presence check is needed (mirrors `buildEntryMenuItems`'s own reasoning
+ * above for its required callbacks).
+ */
+function buildFloorMenuItems(
+  menu: FloorMenuState,
+  onLogFloor: LogWeekGridProps['onLogFloor'],
+  onResetFloorLoot: LogWeekGridProps['onResetFloorLoot'],
+  onResetFloorBooks: LogWeekGridProps['onResetFloorBooks'],
+): ContextMenuItem[] {
+  return [
+    { label: 'Log floor', icon: <ClipboardList className="h-4 w-4" />, onClick: () => onLogFloor(menu.floorNumber) },
+    { separator: true },
+    {
+      label: `Reset ${menu.floorName} loot`,
+      icon: <Trash2 className="h-4 w-4" />,
+      danger: true,
+      onClick: () => onResetFloorLoot(menu.floorNumber),
+    },
+    {
+      label: `Reset ${menu.floorName} books`,
+      icon: <Trash2 className="h-4 w-4" />,
+      danger: true,
+      onClick: () => onResetFloorBooks(menu.floorNumber),
+    },
+  ];
+}
+
 export function LogWeekGrid(props: LogWeekGridProps) {
   const {
     floors, week, lootLog, materialLog, players, canEdit, canAssignMaterial,
     onAssignGear, onEditGear, onAssignMaterial, onEditMaterial,
     onCopyEntryLink, onJumpToPlayer, onDeleteEntry, highlightEntry, onLogFloor,
+    onResetFloorLoot, onResetFloorBooks,
   } = props;
 
   const grid = useMemo(
@@ -711,6 +786,9 @@ export function LogWeekGrid(props: LogWeekGridProps) {
   // D6 Task 3: ONE `ContextMenu` mount at the grid root — every floor's cells
   // share this single state, never a per-floor or per-cell menu instance.
   const [menu, setMenu] = useState<LogGridMenuState | null>(null);
+  // D7: same shape, one level up — ONE floor-header menu shared by every
+  // `FloorSection`, never a per-floor menu instance.
+  const [floorMenu, setFloorMenu] = useState<FloorMenuState | null>(null);
 
   return (
     <div
@@ -735,7 +813,7 @@ export function LogWeekGrid(props: LogWeekGridProps) {
           onOpenMenu={setMenu}
           onDeleteEntry={onDeleteEntry}
           highlightEntry={highlightEntry}
-          onLogFloor={onLogFloor}
+          onOpenFloorMenu={setFloorMenu}
           isFirst={idx === 0}
         />
       ))}
@@ -745,6 +823,14 @@ export function LogWeekGrid(props: LogWeekGridProps) {
           y={menu.y}
           items={buildEntryMenuItems(menu, playerMap, onEditGear, onEditMaterial, onCopyEntryLink, onJumpToPlayer, onDeleteEntry)}
           onClose={() => setMenu(null)}
+        />
+      )}
+      {floorMenu && (
+        <ContextMenu
+          x={floorMenu.x}
+          y={floorMenu.y}
+          items={buildFloorMenuItems(floorMenu, onLogFloor, onResetFloorLoot, onResetFloorBooks)}
+          onClose={() => setFloorMenu(null)}
         />
       )}
     </div>

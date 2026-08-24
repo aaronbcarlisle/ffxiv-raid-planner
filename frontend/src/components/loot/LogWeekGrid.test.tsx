@@ -107,6 +107,8 @@ const EMPTY_FLOORS: string[] = [];
 // having to name them individually.
 // D6b Task B (sanctioned edit, class 4): `onLogFloor` joins the same list —
 // the floor-header kebab's required prop.
+// D7 (sanctioned edit, class 4): `onResetFloorLoot` / `onResetFloorBooks`
+// join the same list — the floor-header menu's two new required resets.
 function baseProps(overrides: Partial<Parameters<typeof LogWeekGrid>[0]> = {}) {
   return {
     floors: EMPTY_FLOORS,
@@ -124,6 +126,8 @@ function baseProps(overrides: Partial<Parameters<typeof LogWeekGrid>[0]> = {}) {
     onJumpToPlayer: vi.fn(),
     onDeleteEntry: vi.fn(),
     onLogFloor: vi.fn(),
+    onResetFloorLoot: vi.fn(),
+    onResetFloorBooks: vi.fn(),
     highlightEntry: null,
     ...overrides,
   };
@@ -913,11 +917,13 @@ describe('D6b teaching tooltip + hover-×', () => {
 });
 
 // ── D6b Task B: floor-header kebab "Log floor" ───────────────────────────────
-// R-25: the floor header row gains a right-aligned kebab opening a ONE-item
-// menu ("Log floor") that fires the new required `onLogFloor(floorNumber)`
-// prop — the door into the ALREADY-shipped `LogWeekWizard` single-floor run
-// (Loot.tsx wires it to `setWizardState({ floor })`, tested in Loot.test.tsx).
-// Not a standing button — D7 later adds this floor's resets to this same menu.
+// R-25: the floor header row gains a right-aligned kebab firing the required
+// `onLogFloor(floorNumber)` prop — the door into the ALREADY-shipped
+// `LogWeekWizard` single-floor run (Loot.tsx wires it to `setWizardState({
+// floor })`, tested in Loot.test.tsx). D7 (below) grew this into a real
+// two-trigger `ui/ContextMenu` (kebab click + header right-click) carrying
+// this floor's two resets alongside "Log floor" — these tests now exercise
+// that mechanism instead of the original Radix `Dropdown`.
 describe('D6b Task B: floor-header kebab "Log floor"', () => {
   const NAMED_FLOORS = ['M9S', 'M10S', 'M11S', 'M12S'];
 
@@ -933,14 +939,15 @@ describe('D6b Task B: floor-header kebab "Log floor"', () => {
     expect(screen.getByRole('button', { name: 'Floor 1 actions' })).toBeInTheDocument();
   });
 
-  it("the Log floor item calls onLogFloor(2) when invoked on floor 2's kebab — driven apart from 1", async () => {
+  it("the Log floor item calls onLogFloor(2) when invoked on floor 2's kebab — driven apart from 1", () => {
     const onLogFloor = vi.fn();
     renderGrid(<LogWeekGrid {...baseProps({ floors: NAMED_FLOORS, onLogFloor })} />);
     const kebab = screen.getByRole('button', { name: 'M10S actions' });
-    // Radix idiom (director F-9, binding): fireEvent.click does NOT open a
-    // Radix dropdown in jsdom.
-    fireEvent.keyDown(kebab, { key: 'Enter' });
-    const item = await screen.findByRole('menuitem', { name: 'Log floor' });
+    // D7: the kebab now opens `ui/ContextMenu` (the cell kebab's own
+    // click-to-open idiom, e.g. `openKebabMenu` above), not a Radix
+    // `Dropdown` — director F-9's keyDown-Enter idiom no longer applies here.
+    fireEvent.click(kebab);
+    const item = screen.getByRole('menuitem', { name: 'Log floor' });
     fireEvent.click(item);
     expect(onLogFloor).toHaveBeenCalledWith(2);
     expect(onLogFloor).not.toHaveBeenCalledWith(1);
@@ -952,5 +959,71 @@ describe('D6b Task B: floor-header kebab "Log floor"', () => {
     // renders zero buttons anywhere in the grid — same assertion shape the
     // "LogWeekGrid — read-only (canEdit=false)" describe above uses.
     expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+});
+
+// ── D7: floor-header kebab gains the floor's resets, two triggers (R-16 2/4,
+// R-25) ──────────────────────────────────────────────────────────────────────
+// R-D7a (user-ruled): exactly TWO reset items — "Reset {floorName} loot" and
+// "Reset {floorName} books" — both danger, after a separator from "Log
+// floor". R-D7b (user-ruled): the mechanism is `ui/ContextMenu`, opened by
+// BOTH the kebab's click AND a right-click anywhere on the header bar — the
+// same two-trigger shape D6b's cell kebab already established. R-D7d
+// (user-ruled): the labels stay week-less ("Reset M10S loot", never "...
+// Week N loot") — `Loot.tsx`'s wiring is what actually scopes the write to
+// the displayed week, not the label.
+describe("D7: floor-header kebab gains the floor's resets, two triggers", () => {
+  const NAMED_FLOORS = ['M9S', 'M10S', 'M11S', 'M12S'];
+
+  it('kebab click opens a menu holding exactly Log floor / Reset {floorName} loot / Reset {floorName} books', () => {
+    renderGrid(<LogWeekGrid {...baseProps({ floors: NAMED_FLOORS })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'M10S actions' }));
+    const items = screen.getAllByRole('menuitem');
+    expect(items.map((i) => i.textContent)).toEqual([
+      'Log floor', 'Reset M10S loot', 'Reset M10S books',
+    ]);
+  });
+
+  it('Reset M10S loot fires onResetFloorLoot(2) — driven apart from onResetFloorBooks', () => {
+    const onResetFloorLoot = vi.fn();
+    const onResetFloorBooks = vi.fn();
+    renderGrid(<LogWeekGrid {...baseProps({ floors: NAMED_FLOORS, onResetFloorLoot, onResetFloorBooks })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'M10S actions' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset M10S loot' }));
+    expect(onResetFloorLoot).toHaveBeenCalledWith(2);
+    expect(onResetFloorLoot).not.toHaveBeenCalledWith(1);
+    expect(onResetFloorBooks).not.toHaveBeenCalled();
+  });
+
+  it('Reset M10S books fires onResetFloorBooks(2) only', () => {
+    const onResetFloorLoot = vi.fn();
+    const onResetFloorBooks = vi.fn();
+    renderGrid(<LogWeekGrid {...baseProps({ floors: NAMED_FLOORS, onResetFloorLoot, onResetFloorBooks })} />);
+    fireEvent.click(screen.getByRole('button', { name: 'M10S actions' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset M10S books' }));
+    expect(onResetFloorBooks).toHaveBeenCalledWith(2);
+    expect(onResetFloorLoot).not.toHaveBeenCalled();
+  });
+
+  it('right-clicking the floor header bar opens the SAME items the kebab click does', () => {
+    renderGrid(<LogWeekGrid {...baseProps({ floors: NAMED_FLOORS })} />);
+    // The "Floor N" span is a direct child of the header bar div regardless
+    // of `canEdit` — a canEdit-agnostic way to reach the header bar itself
+    // (as opposed to the kebab button, which doesn't exist when canEdit is
+    // false, per the test below).
+    const header = screen.getByText('Floor 2').closest('div')!;
+    fireEvent.contextMenu(header);
+    const items = screen.getAllByRole('menuitem');
+    expect(items.map((i) => i.textContent)).toEqual([
+      'Log floor', 'Reset M10S loot', 'Reset M10S books',
+    ]);
+  });
+
+  it('canEdit=false: no kebab renders, and right-clicking the header bar opens nothing', () => {
+    renderGrid(<LogWeekGrid {...baseProps({ floors: NAMED_FLOORS, canEdit: false })} />);
+    expect(screen.queryByRole('button', { name: 'M10S actions' })).not.toBeInTheDocument();
+    const header = screen.getByText('Floor 2').closest('div')!;
+    fireEvent.contextMenu(header);
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
   });
 });
