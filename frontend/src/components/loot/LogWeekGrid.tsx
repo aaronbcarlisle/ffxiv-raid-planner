@@ -126,8 +126,13 @@
  * between the ×N chip and the kebab (R-27 + D6-e) — deletes the NEWEST entry
  * only (older entries: chip menu → edit door, or History). Read-only cells
  * render no trigger at all, so they carry no tooltip either (D6-l holds).
- * NOT yet shipped here: the count bar/legend mounted below the grid, and the
- * floor-header "Log floor" kebab.
+ *
+ * D6b Task B: the floor-header kebab (`FloorSection`'s header row) opens a
+ * ONE-item menu — "Log floor" — firing the required `onLogFloor(floorNumber)`
+ * prop, the door into the ALREADY-shipped `LogWeekWizard` single-floor run
+ * (`Loot.tsx` wires it to `setWizardState({ floor })`). Gated on `canEdit`
+ * alone. NOT yet shipped here: the count bar/legend mounted below the grid
+ * (Task C).
  */
 import { useMemo, useState } from 'react';
 import { ClipboardList, MoreVertical, X } from 'lucide-react';
