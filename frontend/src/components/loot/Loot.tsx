@@ -1034,11 +1034,22 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               the grid — count bar then legend (§4 mockup order). Not gated on
               `canEdit` — a read surface, viewers included. Reads the
               DISPLAYED week (`logWeek.week`), never `clock.currentWeek`
-              (D6-g), so it always matches whatever week the grid above shows. */}
-          <div className="mt-4 flex flex-col gap-3">
-            <WeekCountBar players={mainRosterPlayers} lootLog={lootLog} week={logWeek.week} />
-            <LootFairnessLegend />
-          </div>
+              (D6-g), so it always matches whatever week the grid above shows.
+              PR #245 r3 review fix: the whole wrapper is gated on
+              `mainRosterPlayers.length > 0` — `WeekCountBar` itself already
+              returns null for an empty roster, but `LootFairnessLegend` does
+              not, so an ungated wrapper let the legend render alone. A
+              freshly created static seeds every seat `configured=False`
+              (`backend/app/routers/tiers.py`), making an empty main roster
+              the DEFAULT for a new static, not an edge case — without this
+              gate that default view showed a bare orphaned
+              "Loot fairness: ..." strip under the grid. */}
+          {mainRosterPlayers.length > 0 && (
+            <div className="mt-4 flex flex-col gap-3">
+              <WeekCountBar players={mainRosterPlayers} lootLog={lootLog} week={logWeek.week} />
+              <LootFairnessLegend />
+            </div>
+          )}
         </>
       ) : priorityView === 'who-needs-it' ? (
         <NeedMatrix

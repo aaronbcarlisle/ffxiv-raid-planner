@@ -1715,4 +1715,29 @@ describe('Loot — D6b Task C: count bar + legend', () => {
     expect(last.lootLog).toEqual(useLootTrackingStore.getState().lootLog);
     expect(screen.getByText('Loot fairness:')).toBeInTheDocument();
   });
+
+  it('count bar + legend do NOT render when the configured main roster is empty (review fix r3 — no orphaned legend strip on a freshly created static)', () => {
+    // A freshly created static: the backend seeds every seat
+    // `configured=False` (`backend/app/routers/tiers.py`) — this is the
+    // DEFAULT shape for a new static, not an edge case. Two unconfigured
+    // placeholders plus a substitute (also excluded by `mainRosterPlayers`'
+    // `configured && !isSubstitute` filter) — mainRosterPlayers resolves to
+    // the empty array either way.
+    useLootTrackingStore.setState({ currentWeek: 5, maxWeek: 5, lootLog: [] });
+    const placeholder1 = {
+      ...makePlayer('empty1', ''), configured: false, isSubstitute: false,
+    } as unknown as SnapshotPlayer;
+    const placeholder2 = {
+      ...makePlayer('empty2', ''), configured: false, isSubstitute: false,
+    } as unknown as SnapshotPlayer;
+    const sub = makePlayer('sub1', 'Subby', { sub: true });
+    renderLoot({ tier: makeTier([placeholder1, placeholder2, sub]) }, ['/?lview=log&week=2']);
+
+    // Before the fix, `WeekCountBar` (mocked here, so it can't itself
+    // return null) and `LootFairnessLegend` shared an UNGATED wrapper — the
+    // legend rendered unconditionally even with zero configured players,
+    // producing a bare orphaned "Loot fairness: ..." strip under the grid.
+    expect(screen.queryByTestId('week-count-bar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Loot fairness:')).not.toBeInTheDocument();
+  });
 });
