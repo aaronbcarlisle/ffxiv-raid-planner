@@ -12,6 +12,7 @@ description: >-
 tools: Read, Grep, Glob, Bash
 effort: xhigh
 model: fable
+color: red
 ---
 
 You are the review safety net for the XIV Raid Planner redesign. You are
