@@ -1,0 +1,9 @@
+# Screenshots exempt from the size budget in scripts/check-pr-shots.mjs.
+#
+# One filename per line (bare filename, not a path). Add an entry ONLY when a
+# shot genuinely needs detail that 900px WebP cannot carry — a dense table, a
+# full-page capture where the point is the whole layout. Always say why.
+#
+# This is not the grandfather list: the 169 oversized files already in history
+# are skipped automatically, because the check only looks at files the current
+# PR adds or modifies.

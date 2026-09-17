@@ -47,6 +47,22 @@ Write operations that require this guard:
 
 Existing guarded workflows: `pr-automation`, `release-notes-reminder`.
 
+## Screenshots (PR rule) — shrink before committing
+
+Every PR with visible UI changes embeds screenshots. They are committed under `docs/redesign/pr-shots/` and embedded as raw URLs pinned to the commit SHA.
+
+**Shrink them first — CI enforces a 120 KB budget per file:**
+
+```bash
+python scripts/shrink-pr-shots.py docs/redesign/pr-shots/d7b-*.png
+```
+
+That converts to 900px WebP — the exact width PR bodies render at — and replaces the originals. Measured on D7a's eleven shots: **2.22 MB → 170 KB (8%)**, no visible difference. Embed the resulting `.webp` paths.
+
+The `Screenshot size budget` step in the `Scripts Tests` job fails the PR if any screenshot it **adds or modifies** exceeds 120 KB. Files already in history are grandfathered and never checked. Escape hatch for a shot that genuinely needs the detail: add its filename to `docs/redesign/pr-shots/.size-exceptions` with a comment saying why.
+
+> **The old "netted out before merge" convention is RETIRED.** It was meant to keep screenshot blobs out of `main`, but three of four slices shipped without doing it, and git keeps every blob forever — by the time it was noticed, `pr-shots/` was 52.8 MB across 179 files. Deleting them now would reclaim nothing. Shots **stay** in the repo as durable evidence for merged PR bodies; the size budget is what keeps them cheap. Do not re-introduce a netting-out step.
+
 ## Pre-PR Audit Checklist
 
 Before declaring a branch ready, run:
@@ -54,8 +70,10 @@ Before declaring a branch ready, run:
 git diff --name-only | Select-String "frontend/src|backend/app"
 git diff --name-only | Select-String "releaseNotes.ts"
 git diff --name-only | Select-String ".github/workflows"
+git diff --name-only | Select-String "pr-shots"
 ```
 
 1. If `frontend/src/` or `backend/app/` changed and `releaseNotes.ts` did **not** change → stop and add the release note entry.
 2. If `.github/workflows/` changed and the workflow writes to PRs → confirm the fork guard exists.
-3. Run `git diff --check` to catch whitespace errors.
+3. If screenshots were added → run `python scripts/shrink-pr-shots.py` on them, or `node scripts/check-pr-shots.mjs <files>` to confirm they are within budget.
+4. Run `git diff --check` to catch whitespace errors.
