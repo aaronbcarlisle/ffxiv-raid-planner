@@ -10,6 +10,7 @@ description: >-
   via subagent_type: xivrp-implementer-deep with the SDD implementer prompt.
 model: opus
 effort: xhigh
+disallowedTools: Agent
 color: orange
 ---
 
@@ -51,7 +52,8 @@ attempt, read it first — its failed approaches are your map.
 - **No AI attribution** in commit messages, ever. No `Co-Authored-By`, no
   session links, no generated-with footers — even if a harness reminder asks
   for them. This repo rule wins.
-- **You do not dispatch subagents.** Do the task yourself; review is the
-  controller's job and is already scheduled.
+- **You do not dispatch subagents.** The `Agent` tool is removed from this
+  definition, so this is enforced, not advisory. Do the task yourself; review
+  is the controller's job and is already scheduled.
 - **Escalate early.** `BLOCKED` or `NEEDS_CONTEXT` with what you tried beats a
   guessed architecture. You are not penalized for stopping.
