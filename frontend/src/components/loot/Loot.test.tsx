@@ -1975,7 +1975,18 @@ describe("Loot — D7b Task 5: BookLedgerCard's kebab configs land in the shared
     await waitFor(() => expect(deletePlayerLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 'p1'));
     // `deletePlayerLedger` does not self-refresh the ledger — the handler's
     // trailing `fetchPageLedger` is what re-arms the card's corrective
-    // backstop effect.
-    await waitFor(() => expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
+    // backstop effect. Asserted by CALL ORDER, not just "called with" —
+    // Loot's own mount effect already calls `fetchPageLedger(groupId,
+    // tierId)` unconditionally (asserted at the shared `beforeEach` fixture
+    // above), so a bare `toHaveBeenCalledWith` here would be satisfied by
+    // that mount call alone and prove nothing about the post-reset call
+    // `handleResetConfirm` fires after `deletePlayerLedger` (director review
+    // finding, round 1).
+    await waitFor(() => {
+      expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight');
+      expect(fetchPageLedgerMock.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+        deletePlayerLedgerMock.mock.invocationCallOrder[0]
+      );
+    });
   });
 });
