@@ -1850,8 +1850,14 @@ describe("Loot — D7a Task 3: floor-header kebab's resets (displayed week)", ()
     });
     renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
 
+    // Floor 2 at displayed week 1 on purpose: the two arguments must DIFFER or
+    // this assertion is vacuous. With floor 1 / week 1 a swapped production
+    // call — `clearFloorPageLedger(groupId, tierId, op.floor, op.week)` —
+    // produces the identical `(…, 1, 1)` and the test still passes. At
+    // floor 2 / week 1 the correct call is `(…, 1, 2)` and a swap yields
+    // `(…, 2, 1)`, which fails. (Whole-branch review finding 1.)
     act(() => {
-      (lastGrid().onResetFloorBooks as (floor: number) => void)(1);
+      (lastGrid().onResetFloorBooks as (floor: number) => void)(2);
     });
 
     expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
@@ -1864,7 +1870,7 @@ describe("Loot — D7a Task 3: floor-header kebab's resets (displayed week)", ()
     // logWeek.week, floor }`, whose bookOp resolves to `floor-week` — the
     // handler calls `clearFloorPageLedger(groupId, tierId, op.week, op.floor)`
     // (week BEFORE floor, resetActions.ts + Loot.tsx's handleResetConfirm).
-    await waitFor(() => expect(clearFloorPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 1, 1));
+    await waitFor(() => expect(clearFloorPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 1, 2));
     await waitFor(() => expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
   });
 });

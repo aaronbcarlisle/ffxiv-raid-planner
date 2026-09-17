@@ -489,7 +489,11 @@ in D7b with the card re-home.**
   two-trigger conversion off the D6b Radix Dropdown; kebab keeps `aria-label="{floorName} actions"`
   + gains `aria-haspopup="menu"`). Named interim per R-D7b: `ui/ContextMenu` lacks
   focus-restore-on-close and `aria-expanded`, and closes on scroll — joins the standing
-  kebab-family a11y queue. The header-bar `onContextMenu` carries a targeted
+  kebab-family a11y queue. **Third gap, same queue (whole-branch review, nit 5):** a
+  keyboard-invoked context menu (Shift+F10 / the menu key with the kebab focused) bubbles to the
+  header `<div>`, so `jumpMenuAnchor` measures the full-width bar and anchors the menu at its
+  far-left while the kebab sits at `ml-auto` right. Enter/Space on the kebab anchors correctly
+  (button rect), so the keyboard route works — it is only mis-placed. The header-bar `onContextMenu` carries a targeted
   `jsx-a11y/no-static-element-interactions` disable with reason (the pre-authorized F-7
   containment; `eslint.config.js` untouched).
 - The R-22 boundary restated: Revert and Start-next-week remain CLOCK-bound with the divergence

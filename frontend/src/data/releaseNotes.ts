@@ -61,7 +61,7 @@ export interface Release {
 export const RELEASES: Release[] = [
   {
     version: '2.1.21',
-    date: '2026-08-24T14:00:00Z',
+    date: '2026-09-17T20:00:00Z',
     title: 'Phase D slice D7a — Log resets: displayed-week menu + floor-kebab resets (v2 preview)',
     items: [
       {

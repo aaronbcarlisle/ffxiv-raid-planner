@@ -81,6 +81,17 @@ describe('resolveResetActions (D7 R-16)', () => {
     expect(p.bookOp).toEqual({ kind: 'player-week', playerId: 'p1', week: 3 });
   });
 
+  // The docblock claims precedence is playerId > floor > week > all, but the
+  // case above uses scope:'week', which only pins playerId over WEEK — moving
+  // the playerId branches below the floor branches would leave it green. This
+  // case is the one that pins playerId over FLOOR. (Whole-branch review nit 4.)
+  it('books player+floor+week → {kind:player-week} — playerId wins over floor too', () => {
+    const p = resolveResetActions(
+      { scope: 'floor', target: 'books', floor: 2, week: 3, playerId: 'p1', playerName: 'Tank One' },
+      INPUT);
+    expect(p.bookOp).toEqual({ kind: 'player-week', playerId: 'p1', week: 3 });
+  });
+
   it('books player all-time → {kind:player-all}', () => {
     const p = resolveResetActions(
       { scope: 'all', target: 'books', playerId: 'p1', playerName: 'Tank One' }, INPUT);
