@@ -976,15 +976,6 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             currentWeek={clock.currentWeek}
             floors={floors}
           />
-          <BookLedgerCard
-            groupId={group.id}
-            tierId={tier.tierId}
-            players={players}
-            floors={floors}
-            currentWeek={clock.currentWeek}
-            canEdit={canEdit}
-            effectiveUserId={effectiveUserId}
-          />
           <LootHistoryTable
             lootLog={lootLog}
             materialLog={materialLog}
@@ -1073,6 +1064,26 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               <LootFairnessLegend />
             </div>
           )}
+          {/* D7b (R-14): the books ledger is Log's now — full width below the
+              fairness read, on the DISPLAYED week (`logWeek.week`): the card
+              writes with the week it is given, so backfilling week 3 credits
+              week 3, never the current lockout. A sibling of the gated
+              wrapper above, UNGATED (D7-C ruling) — Books is useful even on a
+              freshly created static with an empty configured roster (there's
+              nothing to divide by zero here, unlike the fairness read).
+              `clockWeek` is separate from `currentWeek` (the displayed week):
+              it feeds ONLY the scope toggle's "This week" label (R-D7f). */}
+          <BookLedgerCard
+            groupId={group.id}
+            tierId={tier.tierId}
+            players={players}
+            floors={floors}
+            currentWeek={logWeek.week}
+            clockWeek={clock.currentWeek}
+            canEdit={canEdit}
+            effectiveUserId={effectiveUserId}
+            className="mt-4"
+          />
         </>
       ) : priorityView === 'who-needs-it' ? (
         <NeedMatrix

@@ -1,5 +1,5 @@
 /**
- * BookLedgerCard — the v2 Loot History "Books" home (spec §2.5/§5.7): players ×
+ * BookLedgerCard — the v2 Loot Log "Books" home (R-14) (spec §2.5/§5.7): players ×
  * Books I–IV sourced from `pageBalances`, cell-click adjust, a per-row ledger,
  * and mark-floor-cleared — reusing the three legacy book modals UNMODIFIED
  * (`EditBookBalanceModal`, `PlayerLedgerModal`, `MarkFloorClearedModal`; ring0,
@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { History } from 'lucide-react';
-import { CardShell, SegmentedToggle } from '../ui';
+import { CardShell, SegmentedToggle, JobIcon } from '../ui';
 import { Button, IconButton } from '../primitives';
 import { EditBookBalanceModal } from '../history/EditBookBalanceModal';
 import { PlayerLedgerModal } from '../history/PlayerLedgerModal';
@@ -30,9 +30,22 @@ export interface BookLedgerCardProps {
   tierId: string;
   players: SnapshotPlayer[];
   floors: string[];
+  /**
+   * The DISPLAYED week (Log's `logWeek.week`, which can diverge from the
+   * clock) — every write this card makes keys off THIS week: the scoped
+   * fetch, `adjustBookBalance`'s week-of-record, and
+   * `MarkFloorClearedModal`'s default.
+   */
   currentWeek: number;
+  /**
+   * The clock's current week (`clock.currentWeek`). Used ONLY to phrase the
+   * scope toggle's "This week" label (R-D7f) honestly once `currentWeek`
+   * above is the displayed week rather than the clock's.
+   */
+  clockWeek: number;
   canEdit: boolean;
   effectiveUserId?: string;
+  className?: string;
 }
 
 type BookType = 'I' | 'II' | 'III' | 'IV';
@@ -63,8 +76,10 @@ export function BookLedgerCard({
   players,
   floors,
   currentWeek,
+  clockWeek,
   canEdit,
   effectiveUserId,
+  className,
 }: BookLedgerCardProps) {
   const { pageBalances, fetchPageBalances, adjustBookBalance, markFloorCleared, fetchPageLedger } =
     useLootTrackingStore();
@@ -80,6 +95,11 @@ export function BookLedgerCard({
 
   const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const scopedWeek = scope === 'week' ? currentWeek : undefined;
+  // R-D7f: `currentWeek` is the DISPLAYED week, which can diverge from the
+  // clock — the toggle must not claim "This week" for a backlogged view.
+  // `WeekScopeControl.tsx`'s same shape: honest only when they match.
+  const thisWeekLabel =
+    currentWeek === clockWeek ? `This week (Week ${currentWeek})` : `Week ${currentWeek}`;
 
   // `clearWeekPageLedger`/`clearAllPageLedger` (lootTrackingStore.ts) internally
   // call `fetchPageBalances(groupId, tierId)` UNSCOPED as part of their own
@@ -157,6 +177,7 @@ export function BookLedgerCard({
     <CardShell
       as="div"
       title="Books"
+      className={className}
       headerRight={
         <div className="flex items-center gap-2">
           <SegmentedToggle
@@ -165,7 +186,7 @@ export function BookLedgerCard({
             value={scope}
             onChange={setScope}
             options={[
-              { value: 'week', label: 'This week' },
+              { value: 'week', label: thisWeekLabel },
               { value: 'all', label: 'All time' },
             ]}
           />
@@ -202,7 +223,12 @@ export function BookLedgerCard({
                   highlightPlayerId === b.playerId ? ' highlight-pulse' : ''
                 }`}
               >
-                <td className="px-3 py-2 text-text-primary">{b.playerName}</td>
+                <td className="px-3 py-2 text-text-primary">
+                  <div className="flex items-center gap-1.5">
+                    {player?.job && <JobIcon job={player.job} size="sm" />}
+                    <span className="text-text-primary truncate max-w-[100px]">{b.playerName}</span>
+                  </div>
+                </td>
                 {BOOK_KEYS.map(([label, key]) => (
                   <td key={label} className="px-3 py-2 text-center">
                     {rowCanEdit ? (

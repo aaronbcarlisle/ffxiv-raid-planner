@@ -254,8 +254,9 @@ beforeEach(() => {
   // the mount effect hits `fetch` for real; locally that resolves quietly
   // against a dev backend on :8001, but in CI (no backend) it rejects with
   // ECONNREFUSED as an UNHANDLED rejection and fails the whole run.
-  // `fetchPageBalances` is added for the History view — BookLedgerCard fires it
-  // in its own mount effect once the History body renders.
+  // `fetchPageBalances` is added for the Log view — BookLedgerCard fires it
+  // in its own mount effect once the Log body renders (D7b: re-homed off
+  // History).
   useLootTrackingStore.setState({
     currentWeek: 3, maxWeek: 5, lootLog: [], materialLog: [], pageLedger: [], pageBalances: [],
     fetchLootLog: vi.fn().mockResolvedValue(undefined),
@@ -744,9 +745,12 @@ describe('Loot', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'History' }));
 
-    // History body: fairness strip + Books + record. Floor cards gone.
+    // History body: fairness strip + record. Floor cards gone. D7b re-homed
+    // the Books card off History onto Log — assert its absence via the
+    // "Books scope" toggle (bare text 'Books' isn't distinctive enough; other
+    // surfaces could render it).
     expect(screen.getByText('Drops this tier')).toBeInTheDocument();
-    expect(screen.getByText('Books')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Books scope' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
     // lview is reflected in the URL.
     expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('lview=history');
@@ -1663,6 +1667,10 @@ describe('Loot — D6b Task C: count bar + legend', () => {
     // producing a bare orphaned "Loot fairness: ..." strip under the grid.
     expect(screen.queryByTestId('week-count-bar')).not.toBeInTheDocument();
     expect(screen.queryByText('Loot fairness:')).not.toBeInTheDocument();
+    // D7-C (director F-4): the Books card is UNGATED — unlike the fairness
+    // read above, it still mounts on a freshly created static with an empty
+    // configured roster (there's nothing to divide by zero here).
+    expect(screen.getByRole('group', { name: 'Books scope' })).toBeInTheDocument();
   });
 });
 
@@ -1872,5 +1880,38 @@ describe("Loot — D7a Task 3: floor-header kebab's resets (displayed week)", ()
     // (week BEFORE floor, resetActions.ts + Loot.tsx's handleResetConfirm).
     await waitFor(() => expect(clearFloorPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 1, 2));
     await waitFor(() => expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
+  });
+});
+
+// ── D7b (R-14): BookLedgerCard re-homes to Log on the DISPLAYED week ────────
+// `BookLedgerCard` is left REAL here (the file's own convention — its store
+// calls are stubbed at the shared `beforeEach` above, not mocked). Driven at
+// a displayed week (1) apart from the seeded clock (3) so a
+// `currentWeek={clock.currentWeek}` regression at the mount can't hide (the
+// D4/D5/D6a/D7a vacuous-coincidence rule) — the toggle's own label doubles as
+// the R-D7f divergence proof.
+describe('Loot — D7b: BookLedgerCard re-homes to Log on the displayed week (R-14)', () => {
+  it('mounts BookLedgerCard on Log at the DISPLAYED week, not the clock', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    // Diverged (displayed 1 vs. clock 3): the toggle option reads the bare
+    // "Week 1" — never "This week" — which is the R-D7f label proof.
+    fireEvent.click(screen.getByRole('button', { name: 'Week 1' }));
+
+    const { fetchPageBalances } = useLootTrackingStore.getState();
+    expect(vi.mocked(fetchPageBalances)).toHaveBeenCalledWith('g1', 'aac-heavyweight', 1);
+    for (const call of vi.mocked(fetchPageBalances).mock.calls) {
+      expect(call[2]).not.toBe(3); // the seeded clock's currentWeek — divergence proof
+    }
+  });
+
+  it('History no longer mounts the books card', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    expect(screen.queryByRole('group', { name: 'Books scope' })).not.toBeInTheDocument();
+  });
+
+  it('Priority never mounts the books card', () => {
+    renderLoot({ tier: makeTier(players) });
+    expect(screen.queryByRole('group', { name: 'Books scope' })).not.toBeInTheDocument();
   });
 });

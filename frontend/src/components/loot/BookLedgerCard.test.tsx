@@ -3,7 +3,7 @@
 // BookLedgerCard's own wiring contract (which props they're opened with, what
 // their onSubmit/onHistoryCleared callbacks do), not the modals' internal UI.
 // Mocked here, matching the Loot.test.tsx convention for reused leaf surfaces.
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import type { SnapshotPlayer, PageBalance, PageLedgerEntry } from '../../types';
@@ -92,6 +92,7 @@ const baseProps = {
   players,
   floors: ['M9S', 'M10S', 'M11S', 'M12S'],
   currentWeek: 3,
+  clockWeek: 3,
   canEdit: true,
 };
 
@@ -149,7 +150,9 @@ describe('BookLedgerCard', () => {
     expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', undefined);
 
     fetchPageBalances.mockClear();
-    fireEvent.click(screen.getByRole('button', { name: 'This week' }));
+    // R-D7f: with currentWeek === clockWeek (both 3, baseProps) the label is
+    // "This week (Week 3)".
+    fireEvent.click(screen.getByRole('button', { name: 'This week (Week 3)' }));
 
     expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', 3);
   });
@@ -163,7 +166,7 @@ describe('BookLedgerCard', () => {
     // mark-cleared) refetches `pageLedger` — simulating that reference change
     // directly must re-fire OUR scoped fetch, landing last and correcting it.
     render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
-    fireEvent.click(screen.getByRole('button', { name: 'This week' }));
+    fireEvent.click(screen.getByRole('button', { name: 'This week (Week 3)' }));
 
     const { fetchPageBalances } = storeActions();
     fetchPageBalances.mockClear();
@@ -252,6 +255,46 @@ describe('BookLedgerCard', () => {
       expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', undefined);
       expect(fetchPageLedger).toHaveBeenCalledWith('g1', 't1');
     });
+  });
+
+  // ── D7b (R-14): the row regains its JobIcon ─────────────────────────────
+  it("a balance row shows the player's JobIcon beside the name", () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    // Alice's fixture job is 'PLD' (makePlayer default) — JobIcon renders an
+    // <img alt={job}>, so its accessible name IS the job code.
+    const aliceRow = document.getElementById('book-row-p1')!;
+    expect(within(aliceRow).getByRole('img', { name: 'PLD' })).toBeInTheDocument();
+  });
+
+  it('a balance row whose player is missing from the roster renders the name without an icon', () => {
+    // A pageBalances row can outlive its player (e.g. the player was removed
+    // from the roster) — playersById.get() then returns undefined, and the
+    // row's `player?.job` guard must skip JobIcon entirely rather than throw.
+    useLootTrackingStore.setState({
+      pageBalances: [...balances, makeBalance('ghost1', 'Ghost')],
+    });
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const ghostRow = document.getElementById('book-row-ghost1')!;
+    expect(ghostRow).toHaveTextContent('Ghost');
+    expect(within(ghostRow).queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  // ── R-D7f: the scope-toggle's "This week" label must stay honest once
+  // `currentWeek` is the DISPLAYED week (which can diverge from the clock) ──
+  it('R-D7f: the scope-toggle label reflects displayed-vs-clock-week divergence', () => {
+    const { rerender } = render(
+      <BookLedgerCard {...baseProps} currentWeek={3} clockWeek={3} />,
+      { wrapper: MemoryRouter },
+    );
+    // Displayed === clock: "This week (Week N)".
+    expect(screen.getByRole('button', { name: 'This week (Week 3)' })).toBeInTheDocument();
+
+    rerender(<BookLedgerCard {...baseProps} currentWeek={1} clockWeek={3} />);
+    // Diverged: bare "Week N" — no "This week" claim on a backlogged view.
+    expect(screen.getByRole('button', { name: 'Week 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /This week/ })).not.toBeInTheDocument();
   });
 });
 
