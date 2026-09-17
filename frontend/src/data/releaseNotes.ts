@@ -69,7 +69,7 @@ export const RELEASES: Release[] = [
         title: 'The Reset menu moves to Log and follows the week you\'re viewing; floors get their own resets',
         description:
           "V2 preview: the destructive Reset menu moves from History to Log, and its three week-scoped options now follow whatever week Log is showing — the labels name that week (\"Reset Week 3 loot\", etc.) instead of always targeting the clock's current week. Its three all-time options (\"Reset ALL …\") are tier-wide and unchanged. Each floor's header menu gains two new items, \"Reset {floor} loot\" and \"Reset {floor} books\", scoped to just that floor at the displayed week, right alongside the existing \"Log floor\" entry — and right-clicking the floor header opens the same menu as the kebab. History keeps its per-entry actions (edit / copy link / delete) and no longer carries the bulk Reset menu; its Books card and fairness summary move in a later slice.",
-        pr: 0,
+        pr: 257,
         prTitle: 'feat(v2): D7a Log resets — toolbar reset menu on the displayed week + floor-kebab resets',
       },
     ],
