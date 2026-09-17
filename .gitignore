@@ -77,7 +77,11 @@ temp/
 dev.ps1
 .logs/
 
-# Auto-generated session handoff files (Claude Code)
+# Session handoff files (Claude Code) — local working notes, never committed.
+# Briefly tracked on main (#255/#256) so a fresh session could find it without
+# knowing the active branch; reverted because landing every update through a
+# docs-only PR cost more than the file is worth.
+SESSION_HANDOFF.md
 **/SESSION_HANDOFF_AUTO_*.md
 
 # Vercel
