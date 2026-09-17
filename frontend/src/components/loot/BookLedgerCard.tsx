@@ -14,15 +14,18 @@
  * — every other row's cells render as plain text.
  */
 import { useEffect, useMemo, useState } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { History } from 'lucide-react';
-import { CardShell, SegmentedToggle, JobIcon } from '../ui';
+import { History, MoreVertical, Trash2 } from 'lucide-react';
+import { CardShell, SegmentedToggle, JobIcon, ContextMenu, type ContextMenuItem } from '../ui';
 import { Button, IconButton } from '../primitives';
 import { EditBookBalanceModal } from '../history/EditBookBalanceModal';
 import { PlayerLedgerModal } from '../history/PlayerLedgerModal';
 import { MarkFloorClearedModal } from '../history/MarkFloorClearedModal';
+import { jumpMenuAnchor } from '../roster/rosterLedgerJumps';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
+import type { ResetConfig } from '../ui/ResetConfirmModal';
 import type { SnapshotPlayer } from '../../types';
 
 export interface BookLedgerCardProps {
@@ -30,6 +33,11 @@ export interface BookLedgerCardProps {
   tierId: string;
   players: SnapshotPlayer[];
   floors: string[];
+  /**
+   * D7 (R-16): column/row kebab items hand their ResetConfig to the host's
+   * single confirm gate.
+   */
+  onResetConfig: (config: ResetConfig) => void;
   /**
    * The DISPLAYED week (Log's `logWeek.week`, which can diverge from the
    * clock) — every write this card makes keys off THIS week: the scoped
@@ -70,6 +78,55 @@ interface LedgerState {
   playerName: string;
 }
 
+/**
+ * D7b (R-16 4/4): the column/row kebab's single grid-root menu state — the
+ * `FloorMenuState`/`LogGridMenuState` shape (`LogWeekGrid.tsx`) re-applied to
+ * this card. ONE mount shared by every column header and every row, never
+ * one instance per column/row.
+ */
+type BooksMenuState =
+  | { kind: 'column'; x: number; y: number; floor: number }
+  | { kind: 'row'; x: number; y: number; playerId: string; playerName: string };
+
+/**
+ * The kebab's ONE item, computed from the menu target + the card's own
+ * `scope` toggle (This week / All time) — label and config flip together
+ * (D7-h). A single `if`/`else` resolving to one object literal, never two
+ * branch-local array literals per surface (jscpd containment).
+ */
+function buildBooksMenuItem(
+  menu: BooksMenuState,
+  scope: 'week' | 'all',
+  currentWeek: number,
+  onResetConfig: (config: ResetConfig) => void
+): ContextMenuItem[] {
+  let label: string;
+  let config: ResetConfig;
+  if (menu.kind === 'column') {
+    if (scope === 'week') {
+      label = `Reset Floor ${menu.floor} books (Week ${currentWeek})`;
+      config = { scope: 'floor', target: 'books', week: currentWeek, floor: menu.floor };
+    } else {
+      label = `Reset ALL Floor ${menu.floor} books`;
+      config = { scope: 'floor', target: 'books', floor: menu.floor };
+    }
+  } else if (scope === 'week') {
+    label = `Reset ${menu.playerName}'s Week ${currentWeek} books`;
+    config = {
+      scope: 'week', target: 'books', week: currentWeek, playerId: menu.playerId, playerName: menu.playerName,
+    };
+  } else {
+    label = `Reset ALL ${menu.playerName}'s books`;
+    config = { scope: 'all', target: 'books', playerId: menu.playerId, playerName: menu.playerName };
+  }
+  return [{
+    label,
+    icon: <Trash2 className="h-4 w-4" />,
+    danger: true,
+    onClick: () => onResetConfig(config),
+  }];
+}
+
 export function BookLedgerCard({
   groupId,
   tierId,
@@ -79,6 +136,7 @@ export function BookLedgerCard({
   clockWeek,
   canEdit,
   effectiveUserId,
+  onResetConfig,
   className,
 }: BookLedgerCardProps) {
   const { pageBalances, fetchPageBalances, adjustBookBalance, markFloorCleared, fetchPageLedger } =
@@ -92,6 +150,21 @@ export function BookLedgerCard({
   const [editState, setEditState] = useState<EditState | null>(null);
   const [ledgerState, setLedgerState] = useState<LedgerState | null>(null);
   const [showMarkCleared, setShowMarkCleared] = useState(false);
+  const [booksMenu, setBooksMenu] = useState<BooksMenuState | null>(null);
+
+  // D7b (R-16 4/4): both triggers (kebab click + right-click) into the SAME
+  // grid-root state — the `openFloorMenu` idiom `LogWeekGrid.tsx`'s
+  // `FloorSection` already establishes, re-applied one level down (column
+  // header + row here, instead of floor header). `jumpMenuAnchor` supplies
+  // the keyboard-invoked (Shift+F10/menu-key) fallback anchor.
+  const openColumnMenu = (e: ReactMouseEvent<HTMLElement>, floor: number) => {
+    const { x, y } = jumpMenuAnchor(e, e.currentTarget.getBoundingClientRect());
+    setBooksMenu({ kind: 'column', x, y, floor });
+  };
+  const openRowMenu = (e: ReactMouseEvent<HTMLElement>, playerId: string, playerName: string) => {
+    const { x, y } = jumpMenuAnchor(e, e.currentTarget.getBoundingClientRect());
+    setBooksMenu({ kind: 'row', x, y, playerId, playerName });
+  };
 
   const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const scopedWeek = scope === 'week' ? currentWeek : undefined;
@@ -202,12 +275,38 @@ export function BookLedgerCard({
         <thead>
           <tr className="border-b border-border-default">
             <th className="px-3 py-2 text-left text-text-secondary">Player</th>
-            {BOOK_KEYS.map(([label]) => (
-              <th key={label} className="px-3 py-2 text-center text-text-secondary">
-                Book {label}
-              </th>
-            ))}
-            <th className="px-3 py-2 w-8" />
+            {BOOK_KEYS.map(([label], idx) => {
+              const floor = idx + 1;
+              return (
+                <th
+                  key={label}
+                  className="px-3 py-2 text-center text-text-secondary"
+                  onContextMenu={
+                    canEdit
+                      ? (e) => {
+                          e.preventDefault();
+                          openColumnMenu(e, floor);
+                        }
+                      : undefined
+                  }
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span>Book {label}</span>
+                    {canEdit && (
+                      <IconButton
+                        aria-label={`Book ${label} actions`}
+                        icon={<MoreVertical className="h-4 w-4" />}
+                        variant="ghost"
+                        size="sm"
+                        aria-haspopup="menu"
+                        onClick={(e) => openColumnMenu(e, floor)}
+                      />
+                    )}
+                  </div>
+                </th>
+              );
+            })}
+            <th className="px-3 py-2 w-16" />
           </tr>
         </thead>
         <tbody>
@@ -222,6 +321,14 @@ export function BookLedgerCard({
                 className={`border-b border-border-default last:border-b-0${
                   highlightPlayerId === b.playerId ? ' highlight-pulse' : ''
                 }`}
+                onContextMenu={
+                  canEdit
+                    ? (e) => {
+                        e.preventDefault();
+                        openRowMenu(e, b.playerId, b.playerName);
+                      }
+                    : undefined
+                }
               >
                 <td className="px-3 py-2 text-text-primary">
                   <div className="flex items-center gap-1.5">
@@ -252,19 +359,47 @@ export function BookLedgerCard({
                   </td>
                 ))}
                 <td className="px-1 py-2 text-center">
-                  <IconButton
-                    aria-label={`${b.playerName}'s ledger`}
-                    icon={<History className="w-4 h-4" />}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setLedgerState({ playerId: b.playerId, playerName: b.playerName })}
-                  />
+                  <div className="flex items-center justify-center gap-0.5">
+                    <IconButton
+                      aria-label={`${b.playerName}'s ledger`}
+                      icon={<History className="w-4 h-4" />}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLedgerState({ playerId: b.playerId, playerName: b.playerName })}
+                    />
+                    {/* D7b (R-16 4/4): gates on `canEdit` ONLY — never
+                        `rowCanEdit`. The member-own-row exception above
+                        grants cell editing on this player's own row, not a
+                        bulk-reset door onto it (D7-g). */}
+                    {canEdit && (
+                      <IconButton
+                        aria-label={`${b.playerName} book actions`}
+                        icon={<MoreVertical className="w-4 h-4" />}
+                        variant="ghost"
+                        size="sm"
+                        aria-haspopup="menu"
+                        onClick={(e) => openRowMenu(e, b.playerId, b.playerName)}
+                      />
+                    )}
+                  </div>
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+
+      {/* D7b (R-16 4/4): ONE `ContextMenu` mount at the card root — every
+          column header and every row share this single state, never a
+          per-column or per-row menu instance (D6/D7's own rule, re-applied). */}
+      {booksMenu && (
+        <ContextMenu
+          x={booksMenu.x}
+          y={booksMenu.y}
+          items={buildBooksMenuItem(booksMenu, scope, currentWeek, onResetConfig)}
+          onClose={() => setBooksMenu(null)}
+        />
+      )}
 
       {editState && (
         <EditBookBalanceModal

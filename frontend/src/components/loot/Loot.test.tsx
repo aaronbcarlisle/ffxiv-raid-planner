@@ -1915,3 +1915,67 @@ describe('Loot — D7b: BookLedgerCard re-homes to Log on the displayed week (R-
     expect(screen.queryByRole('group', { name: 'Books scope' })).not.toBeInTheDocument();
   });
 });
+
+// ── D7b Task 5 (R-16 4/4): the card's own column + row kebabs are the last
+// two entry points into the shared confirm gate — `BookLedgerCard` is left
+// REAL here (same convention as the describe block above); the kebab UI
+// itself (content, follow-the-toggle, two triggers) is covered in
+// BookLedgerCard.test.tsx. `pageBalances` is seeded PER TEST, never in the
+// shared `beforeEach` (which seeds it empty), so an unrelated test never
+// inherits a stray Alice row. Driven at displayed week 1 with the clock
+// seeded at 3 so a `week: clock.currentWeek` regression can't hide.
+describe("Loot — D7b Task 5: BookLedgerCard's kebab configs land in the shared confirm (R-16 4/4)", () => {
+  it("row kebab's Week-1 item (after toggling the card to This week) routes to clearPlayerWeekPageLedger at the DISPLAYED week", async () => {
+    const clearPlayerWeekPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+      clearPlayerWeekPageLedger: clearPlayerWeekPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    // The kebab's item defaults to all-time — flip the card's own scope
+    // toggle to "Week 1" FIRST so the follow-the-toggle item becomes the
+    // week-scoped one (R-D7f: displayed 1 vs. clock 3 -> bare "Week 1", never
+    // "This week").
+    fireEvent.click(screen.getByRole('button', { name: 'Week 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alice book actions' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: "Reset Alice's Week 1 books" }));
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    expect(screen.getByText(/Alice's book entries for Week 1\./)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() =>
+      expect(clearPlayerWeekPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 'p1', 1)
+    );
+    const week = clearPlayerWeekPageLedgerMock.mock.calls[0][3];
+    expect(week).not.toBe(3); // the seeded clock's currentWeek — divergence proof
+  });
+
+  it("row kebab's default all-time item routes to deletePlayerLedger, then re-arms via a trailing fetchPageLedger", async () => {
+    const deletePlayerLedgerMock = vi.fn().mockResolvedValue(undefined);
+    const fetchPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+      deletePlayerLedger: deletePlayerLedgerMock,
+      fetchPageLedger: fetchPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Alice book actions' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: "Reset ALL Alice's books" }));
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() => expect(deletePlayerLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 'p1'));
+    // `deletePlayerLedger` does not self-refresh the ledger — the handler's
+    // trailing `fetchPageLedger` is what re-arms the card's corrective
+    // backstop effect.
+    await waitFor(() => expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
+  });
+});

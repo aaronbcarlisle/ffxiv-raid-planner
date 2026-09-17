@@ -94,12 +94,14 @@ const baseProps = {
   currentWeek: 3,
   clockWeek: 3,
   canEdit: true,
+  onResetConfig: vi.fn(),
 };
 
 beforeEach(() => {
   editModalCalls.length = 0;
   ledgerModalCalls.length = 0;
   markClearedCalls.length = 0;
+  baseProps.onResetConfig.mockClear();
 
   // Seed pageBalances and stub every store action BookLedgerCard calls —
   // unstubbed actions fire real fetches that fail CI (see Loot.test.tsx).
@@ -399,5 +401,115 @@ describe('BookLedgerCard — book deep-link highlight (C7, D-05)', () => {
       vi.advanceTimersByTime(2600);
     });
     expect(screen.getByTestId('location-search').textContent).not.toContain('book=');
+  });
+});
+
+// ── D7b (R-16 4/4): column + row kebabs, follow-the-toggle ─────────────────
+// Every reset item's label AND config flip together with the card's own
+// `scope` toggle (This week / All time) — the legacy books-menu mechanism,
+// re-expressed as ONE item per kebab rather than two.
+describe('BookLedgerCard — column + row kebabs (D7b, R-16 4/4)', () => {
+  it('column kebab (Book II, floor 2): default "All time" emits a week-less floor config; toggling to "This week" flips label AND config together', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const kebab = screen.getByRole('button', { name: 'Book II actions' });
+    expect(kebab).toHaveAttribute('aria-haspopup', 'menu');
+    fireEvent.click(kebab);
+
+    // ONE item, never two.
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: 'Reset ALL Floor 2 books' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset ALL Floor 2 books' }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({ scope: 'floor', target: 'books', floor: 2 });
+
+    baseProps.onResetConfig.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'This week (Week 3)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book II actions' }));
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: 'Reset Floor 2 books (Week 3)' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset Floor 2 books (Week 3)' }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({
+      scope: 'floor', target: 'books', week: 3, floor: 2,
+    });
+  });
+
+  it('column kebab label/config follow currentWeek, not a hardcoded 3 (anti-vacuous)', () => {
+    render(<BookLedgerCard {...baseProps} currentWeek={1} clockWeek={3} />, { wrapper: MemoryRouter });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Week 1' })); // scope -> 'week'
+    fireEvent.click(screen.getByRole('button', { name: 'Book II actions' }));
+    expect(screen.getByRole('menuitem', { name: 'Reset Floor 2 books (Week 1)' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset Floor 2 books (Week 1)' }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({
+      scope: 'floor', target: 'books', week: 1, floor: 2,
+    });
+  });
+
+  it('right-clicking a Book column header opens the SAME single item the kebab click does', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const header = screen.getByText('Book II').closest('th')!;
+    fireEvent.contextMenu(header);
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: 'Reset ALL Floor 2 books' })).toBeInTheDocument();
+  });
+
+  it('row kebab (Alice): default "All time" emits a week-less all-scope config naming the player; toggling flips label AND config together', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const kebab = screen.getByRole('button', { name: 'Alice book actions' });
+    expect(kebab).toHaveAttribute('aria-haspopup', 'menu');
+    fireEvent.click(kebab);
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: "Reset ALL Alice's books" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: "Reset ALL Alice's books" }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({
+      scope: 'all', target: 'books', playerId: 'p1', playerName: 'Alice',
+    });
+
+    baseProps.onResetConfig.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'This week (Week 3)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alice book actions' }));
+    expect(screen.getByRole('menuitem', { name: "Reset Alice's Week 3 books" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: "Reset Alice's Week 3 books" }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({
+      scope: 'week', target: 'books', week: 3, playerId: 'p1', playerName: 'Alice',
+    });
+  });
+
+  it("right-clicking Alice's row opens the SAME single item the kebab click does", () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const row = document.getElementById('book-row-p1')!;
+    fireEvent.contextMenu(row);
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: "Reset ALL Alice's books" })).toBeInTheDocument();
+  });
+
+  it('canEdit=false: no kebabs render, and right-clicking the header/row opens nothing', () => {
+    render(<BookLedgerCard {...baseProps} canEdit={false} />, { wrapper: MemoryRouter });
+
+    expect(screen.queryByRole('button', { name: 'Book II actions' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Alice book actions' })).not.toBeInTheDocument();
+
+    const header = screen.getByText('Book II').closest('th')!;
+    fireEvent.contextMenu(header);
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+
+    const row = document.getElementById('book-row-p1')!;
+    fireEvent.contextMenu(row);
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+  });
+
+  it("member-own-row (D7-g): canEdit=false + effectiveUserId matching Alice's row still shows NO row kebab", () => {
+    render(<BookLedgerCard {...baseProps} canEdit={false} effectiveUserId="u-alice" />, { wrapper: MemoryRouter });
+
+    // Alice's cells are still editable (member-own-row exception) but the
+    // bulk-reset kebab gates on `canEdit` alone (never `rowCanEdit`) — no
+    // row grants a member a bulk-reset door onto their own ledger.
+    expect(screen.queryByRole('button', { name: 'Alice book actions' })).not.toBeInTheDocument();
+    const row = document.getElementById('book-row-p1')!;
+    fireEvent.contextMenu(row);
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
   });
 });

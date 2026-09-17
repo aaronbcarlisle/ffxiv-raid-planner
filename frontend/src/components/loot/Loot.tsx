@@ -1072,7 +1072,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               freshly created static with an empty configured roster (there's
               nothing to divide by zero here, unlike the fairness read).
               `clockWeek` is separate from `currentWeek` (the displayed week):
-              it feeds ONLY the scope toggle's "This week" label (R-D7f). */}
+              it feeds ONLY the scope toggle's "This week" label (R-D7f).
+              D7b Task 5 (R-16 3/4 + 4/4): the card's own column + row kebabs
+              are the remaining two entry points into the shared
+              `resolveResetActions`/`handleResetConfirm` pipeline above —
+              `onResetConfig={setResetConfig}` is the same wiring the
+              floor-header kebab already uses. */}
           <BookLedgerCard
             groupId={group.id}
             tierId={tier.tierId}
@@ -1082,6 +1087,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             clockWeek={clock.currentWeek}
             canEdit={canEdit}
             effectiveUserId={effectiveUserId}
+            onResetConfig={setResetConfig}
             className="mt-4"
           />
         </>
