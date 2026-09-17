@@ -18,8 +18,8 @@ After D7a merges: D7b (Tasks 4–6, fresh session), then D9a per the phase depen
 - **Original request:** "Determine the next block of work for the v2 ui redesign."
 - **Status:** Determination complete and recorded (this file + memory). No repo code changed this
   session. The D7a branch is exactly as the 2026-08-24 session left it.
-- **Repo:** `D:\FFXIV\Dev\xrp-dev\ffxiv-raid-planner` (web app; workspace root one level up holds
-  the Dalamud plugin as a separate repo).
+- **Repo:** this checkout of `ffxiv-raid-planner` (the web app). The workspace root one level up
+  holds the Dalamud plugin as a separate repo.
 - **Branch:** `phase-d/d7a-log-resets`, based on main `1f47c336` (the D6b squash). **Local only —
   `origin/phase-d/d7a-log-resets` does not exist.**
 - **Remote:** `origin` = `aaronbcarlisle/ffxiv-raid-planner`, default branch `main`
@@ -29,8 +29,9 @@ After D7a merges: D7b (Tasks 4–6, fresh session), then D9a per the phase depen
 ## Read These First
 
 1. `.superpowers/sdd/2026-08-24-phase-d7-books-and-resets/progress.md` — the D7a SDD ledger; its
-   last line is the authoritative "what's left" list. (`.superpowers/` is git-ignored — it exists
-   only in this checkout.)
+   last line is the authoritative "what's left" list. **Checkout-local:** `.superpowers/` is
+   git-ignored, so a fresh clone will not have it. Everything load-bearing from it is restated in
+   this file's Work Remaining; the ledger is corroboration, not a prerequisite.
 2. `design/redesign/plans/2026-08-24-phase-d7-books-and-resets.md` — **the binding D7 plan**
    (director-vetted, user rulings R-D7a–f locked). Tasks 1–3 + 7a are D7a; Tasks 4–6 are D7b.
    Its "Definition of done (slice level)" section is the browser-pass script. **Still untracked —
@@ -51,8 +52,8 @@ After D7a merges: D7b (Tasks 4–6, fresh session), then D9a per the phase depen
 - Verified the true state of the redesign build line against git and the SDD ledger (not memory).
 - Established that D7a's five commits are local-only, gate-green at head, and unshipped.
 - Dry-run merge of `origin/main` into the branch: clean.
-- Corrected the stale Phase D memory entry (`project_phase_d_execution.md` + `MEMORY.md` index
-  line in `C:\Users\aaron\.claude\projects\D--FFXIV-Dev-xrp-dev-ffxiv-raid-planner\memory\`).
+- Corrected the stale Phase D memory entry (`project_phase_d_execution.md` + its `MEMORY.md` index
+  line) in the assistant's project memory directory, which lives outside the repo.
 - Wrote this handoff.
 
 ## Work Remaining
@@ -103,7 +104,7 @@ against merged main — re-run them.
 | Main commits not on branch | 9 (Dependabot #246–#252 + agent-roster chores #253–#254) | `git log --oneline phase-d/d7a-log-resets..origin/main` |
 | Branch diff vs main | 10 files, +731 / −174 | `git diff --stat origin/main...HEAD` |
 | Merge conflicts merging main (`df6ada0b`) into branch | 0 | `git merge-tree --write-tree origin/main phase-d/d7a-log-resets` |
-| Files main changed that the branch also touches | 0 | `git diff --name-only phase-d/d7a-log-resets...origin/main` |
+| Files main changed that the branch also touches | 0 | intersection of `git diff --name-only origin/main...phase-d/d7a-log-resets` and `git diff --name-only phase-d/d7a-log-resets...origin/main` (the branch's 10 files vs main's dependency/agent files — no member in common) |
 | Dependency manifests changed on main | `frontend/package.json`, `frontend/pnpm-lock.yaml`, `scripts/package.json`, `backend/requirements*.txt` | same |
 | Remote branch | absent | `git rev-parse --verify origin/phase-d/d7a-log-resets` (fails) |
 
@@ -141,8 +142,13 @@ outside the repo were updated (see Work Completed).
 Untracked, to commit on the D7a branch: `design/redesign/plans/2026-08-24-phase-d7-books-and-resets.md`.
 Untracked, to delete: `_tok_report.txt`. (The eight stale `d6b-*.png` were deleted 2026-09-17.)
 
-`SESSION_HANDOFF.md` is **always tracked, committed directly on `main`** (user ruling 2026-09-17) —
-rewrite it via the `handoff` skill at session end and push it to main, not to the feature branch.
+`SESSION_HANDOFF.md` is **always tracked and lives on `main`** (user ruling 2026-09-17). Rewrite it
+at session end (the `handoff` skill comes from the user's local skill install, not this repo), then
+land it on `main` through a docs-only PR from a short-lived `chore/*` branch — `main` is protected
+by six required checks, so a direct push is rejected. Never commit it to a feature branch.
+**Supersedes** the "Do NOT commit: `SESSION_HANDOFF.md`" lines in the historical plans
+`design/redesign/plans/2026-07-11-phase-r-dual-shell-restore.md:129` and
+`2026-07-11-phase-a-flip-debt-fixes.md:66`; this ruling wins.
 
 ## Important Context
 
@@ -195,5 +201,5 @@ rewrite it via the `handoff` skill at session end and push it to main, not to th
 ```
 Read SESSION_HANDOFF.md and continue the work from where we left off. Start by summarizing what was done and what remains, then proceed with the next task.
 
-The next task is finishing Phase D slice D7a on the local-only branch phase-d/d7a-log-resets: merge origin/main (expect 0 conflicts), reinstall, re-run the full frontend gate (build, lint, check:design-system:strict, dupes under the 5% jscpd threshold, tokens:check, deadcode vs baseline, test — all green with history/ diff empty), commit the untracked plan file, delete the stale d6b-*.png and _tok_report.txt leftovers, then run the whole-branch redesign-reviewer + xivrp-director change-review, do the live browser pass from the plan's Definition of done with displayed week ≠ clock week and commit d7a-*.png screenshots, invoke pr-checklist, push, and open the PR (title = the 2.1.21 release note's prTitle, pr: backfilled, F-3 disclosures in the body). Done = PR open, 14/14 checks green, a real claude[bot] review comment present, and the review loop clean; merging is the user's call.
+The next task is finishing Phase D slice D7a on the local-only branch phase-d/d7a-log-resets: merge origin/main (expect 0 conflicts), reinstall, re-run the full frontend gate (build, lint, check:design-system:strict, dupes under the 5% jscpd threshold, tokens:check, deadcode vs baseline, test — all green with history/ diff empty), commit the untracked plan file, delete the stray _tok_report.txt scratch file, then run the whole-branch redesign-reviewer + xivrp-director change-review, do the live browser pass from the plan's Definition of done with displayed week ≠ clock week and commit d7a-*.png screenshots, invoke pr-checklist, push, and open the PR (title = the 2.1.21 release note's prTitle, pr: backfilled, F-3 disclosures in the body). Done = PR open, 14/14 checks green, a real claude[bot] review comment present, and the review loop clean; merging is the user's call.
 ```
