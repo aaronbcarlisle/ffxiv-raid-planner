@@ -285,4 +285,4 @@ See **[docs/README.md](./docs/README.md)** for the full doc map. Canonical set:
 
 **Low Context (~15-20% remaining):** Summarize progress and next steps for the user; reference specific file paths.
 
-**Session Continuity:** Capture decisions and discoveries; keep `docs/PRODUCT_MODEL.md` current if the model evolves.
+**Session Continuity:** Capture decisions and discoveries; keep `docs/PRODUCT_MODEL.md` current if the model evolves. **`SESSION_HANDOFF.md` (repo root, always tracked on `main`) is where a fresh session starts** — read it before picking up any in-flight work, and rewrite it at session end (landed on `main` via a docs-only PR, never a feature branch).
