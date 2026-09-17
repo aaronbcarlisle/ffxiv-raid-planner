@@ -242,6 +242,22 @@ Target **under ~1,500 changed lines** per PR. History shows why: 27% of past PRs
 
 ---
 
+## Agent Roster (model × effort)
+
+Project agents live in `.claude/agents/`. **Always name the agent (or pass `model:`) on every dispatch** — an omitted model inherits the session's model, and an omitted effort inherits the session's effort. Effort goes where a wrong call cascades (plan, review, adjudication), not on the mechanical middle.
+
+| Stage | Who | Model | Effort | Notes |
+|-------|-----|-------|--------|-------|
+| Brainstorm → spec → plan | main session | fable | **xhigh** (`/effort`) | Stays in-session: a subagent planner loses the brainstorm context. Drop to **high** once the plan is vetted. |
+| Plan-vet / change-vet | `xivrp-director` | opus | xhigh (pinned) | Different model from controller + reviewer on purpose — an independent read. Read-only. |
+| Implement (default) | `xivrp-implementer` | sonnet | high (pinned) | Every plan task unless flagged. |
+| Implement (transcription / sweep) | `xivrp-implementer` + `model: haiku` on the call | haiku | high (the pin still applies; there is no per-call effort override) | Only when the plan text contains the complete code, or for grep-and-list / rename / suppression-audit sweeps. The per-call model beats the definition's model, not its effort. |
+| Implement (riskiest / fix-loop round 4-5) | `xivrp-implementer-deep` | opus | xhigh (pinned) | Aggregation, assembly, byte-for-byte, DnD, tricky hooks. Pass `model: fable` on the call for a slice's single riskiest task. |
+| Task review + whole-branch review | `redesign-reviewer` | fable | xhigh (pinned) | **Never downgraded to save cost.** Diff-scoped per task; full branch diff for the final review. |
+| Contested finding / adjudication | main session | fable | bump to **xhigh** | Bump, don't cruise: escalate the one decision, then drop back. |
+
+Fresh session per slice (continuation line atop the handoff) is the rule; long sessions replay full context every turn.
+
 ## Additional Documentation
 
 See **[docs/README.md](./docs/README.md)** for the full doc map. Canonical set:
@@ -269,4 +285,4 @@ See **[docs/README.md](./docs/README.md)** for the full doc map. Canonical set:
 
 **Low Context (~15-20% remaining):** Summarize progress and next steps for the user; reference specific file paths.
 
-**Session Continuity:** Capture decisions and discoveries; keep `docs/PRODUCT_MODEL.md` current if the model evolves.
+**Session Continuity:** Capture decisions and discoveries; keep `docs/PRODUCT_MODEL.md` current if the model evolves. **`SESSION_HANDOFF.md` (repo root, always tracked on `main`) is where a fresh session starts** — read it before picking up any in-flight work, and rewrite it at session end (landed on `main` via a docs-only PR, never a feature branch).
