@@ -1990,3 +1990,68 @@ describe("Loot — D7b Task 5: BookLedgerCard's kebab configs land in the shared
     });
   });
 });
+
+// ── D7b Task 6 (R-14 consequence): the roster's Books jump lands on Log ────
+// `handleBooksJump` (RosterCard.tsx) writes `lview=log` since the card
+// re-homed here (Tasks 4-5) — this proves the landing works end-to-end: the
+// card mounts under Log, the row is present and pulsed, and the `book` param
+// self-clears. `BookLedgerCard` is left REAL (the file's own convention);
+// `pageBalances` is seeded PER TEST, never in the shared `beforeEach` (which
+// seeds it empty).
+describe('Loot — D7b Task 6: the roster Books jump lands on Log (R-14 consequence)', () => {
+  // Same stub-and-restore shape as BookLedgerCard.test.tsx's own deep-link
+  // suite — jsdom defines no scrollIntoView at all.
+  let originalScrollIntoView: typeof Element.prototype.scrollIntoView | undefined;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    if (originalScrollIntoView) {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    } else {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
+  });
+
+  it('mounts the card under Log, pulses the row, and self-clears while week + lview survive', () => {
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&book=p1&week=1']);
+
+    const row = document.getElementById('book-row-p1');
+    expect(row).toBeInTheDocument();
+    expect(row?.className).toContain('highlight-pulse');
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    const search = screen.getByTestId('loc').dataset.search ?? '';
+    expect(search).not.toContain('book=p1');
+    expect(search).toContain('week=1');
+    expect(search).toContain('lview=log');
+  });
+
+  it('self-clears with the real jump shape (no week param — the Log resolves its own week)', () => {
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&book=p1']);
+
+    const row = document.getElementById('book-row-p1');
+    expect(row).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    const search = screen.getByTestId('loc').dataset.search ?? '';
+    expect(search).not.toContain('book=p1');
+    expect(search).toContain('lview=log');
+  });
+});

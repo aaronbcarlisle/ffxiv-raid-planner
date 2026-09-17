@@ -1451,7 +1451,7 @@ describe('RosterCard — Edit Books jump (C7, D-05)', () => {
 
     const params = new URLSearchParams(currentSearch());
     expect(params.get('tab')).toBe('gear');
-    expect(params.get('lview')).toBe('history');
+    expect(params.get('lview')).toBe('log');
     expect(params.get('book')).toBe('p1');
   });
 
