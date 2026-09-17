@@ -466,9 +466,24 @@ in D7b with the card re-home.**
   (`clearFloorPageLedger`/`clearAllFloorPageLedger`/`clearPlayerWeekPageLedger`) are reversal-POST
   shims netting balances to zero via compensating adjustment rows, while `deletePlayerLedger` is a
   TRUE backend DELETE — the future row kebab's week vs all-time items differ in destructiveness
-  semantics (D7b surfaces them).
+  semantics (D7b surfaces them). **Present tense for D7a:** the floor kebab's
+  `Reset {floorName} books` already reaches a shim today — it emits a floor+week config, so it runs
+  `clearFloorPageLedger`, which writes compensating `adjustment` rows rather than deleting any. Of
+  D7a's six toolbar book paths, `Reset Week {N} books/data` and `Reset ALL books/data` are true
+  DELETEs (`clearWeekPageLedger`, `clearAllPageLedger`); `deletePlayerLedger` and
+  `clearPlayerWeekPageLedger` are wired through the planner but unreachable until D7b's row kebab.
 - Inherited copy divergence, disclosed not fixed: `ui/ResetConfirmModal.tsx:152` says "permanently
-  delete" even on the reversal-POST paths (shared frozen file; R-44 was the one approved delta).
+  delete" even on the reversal-POST paths (shared frozen file; R-44 was the one approved delta) —
+  and D7a is the slice that first makes one of those paths reachable, via the floor kebab's books
+  item.
+- **D7-D fact (i), now observed:** the floor menu names the duty (`Reset M9S loot`) while the frozen
+  confirm names the position (`loot entries for Floor 1 in Week 3`, `ResetConfirmModal.tsx:70`).
+  Both are correct and the index-1 mapping is unit-pinned; the vocabulary simply differs across the
+  menu/confirm seam because the confirm copy is shared frozen V1 copy.
+- **Materials ride with loot, per legacy:** a `target: 'loot'` (or `'data'`) config deletes the
+  matching *material* entries too — `handleResetConfirm` loops `plan.materialEntries` on the same
+  scope. Exact parity with `SectionedLogView.tsx:470-477`, which filters materials by week and
+  floor on the floor branch; called out here because the floor-scoped door is new in v2.
 - Floor kebab per rulings **R-D7a** (two week-less reset items — `Reset {floorName} loot` /
   `Reset {floorName} books` — joining "Log floor" after a separator) and **R-D7b** (ContextMenu
   two-trigger conversion off the D6b Radix Dropdown; kebab keeps `aria-label="{floorName} actions"`
