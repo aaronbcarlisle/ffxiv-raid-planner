@@ -791,7 +791,10 @@ Task 4 · Task 7 last. Tasks 1→7 execute in order.
    the row kebab's all-time item is a true delete while its week item writes compensating
    adjustments.
 4. Screenshots embedded in the PR per the pr-shots convention (commit on-branch under
-   `docs/redesign/pr-shots/d7-*`, SHA-pinned URLs, netted out before merge).
+   `docs/redesign/pr-shots/d7-*`, SHA-pinned URLs). **Amended 2026-09-17 for D7b:** the
+   "netted out before merge" half of that convention is **retired** — shots now stay in the repo,
+   but must be run through `python scripts/shrink-pr-shots.py` first (900px WebP; CI enforces a
+   120 KB per-file budget). See `.claude/skills/pr-checklist/SKILL.md` § Screenshots.
 5. `pnpm dupes` green with `history/` in scope (the re-expression discipline held).
 6. Release note present (internal); design-record + parity-matrix write-backs in the same PR; the
    D7-A/B/C/D rulings recorded in this plan's vet record and the PR body.

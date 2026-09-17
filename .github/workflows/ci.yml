@@ -102,6 +102,12 @@ jobs:
     name: Scripts Tests
     runs-on: ubuntu-latest
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    # Read-only. `pull-requests: read` lets the screenshot budget ask the API
+    # which files this PR touches, which is cheaper and more reliable than
+    # deepening the shallow clone just to diff against the base.
+    permissions:
+      contents: read
+      pull-requests: read
     defaults:
       run:
         working-directory: scripts
@@ -120,6 +126,19 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      # Only PRs: on a push there is no meaningful "files changed" set, and the
+      # 169 oversized shots already in history are deliberately grandfathered.
+      # A read-only `gh` query, so fork PRs (read-only token) run it fine.
+      - name: Screenshot size budget
+        if: github.event_name == 'pull_request'
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          mapfile -t CHANGED < <(gh pr view "$PR_NUMBER" --json files --jq '.files[].path')
+          node scripts/check-pr-shots.mjs "${CHANGED[@]}"
 
   migration-exec:
     name: Migration Execution (PostgreSQL)
