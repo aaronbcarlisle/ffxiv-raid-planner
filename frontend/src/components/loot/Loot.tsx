@@ -96,17 +96,22 @@
  *     layer (the per-cell modifier tooltip + the recipient-badge hover-×,
  *     both in `LogWeekGrid.tsx`), the floor-header kebab's "Log floor" door
  *     (wired below), and the fairness read below the grid (`WeekCountBar` +
- *     the imported `LootFairnessLegend`). Still open: the Books card and a
- *     displayed-week-bound reset menu are D7; the jump destination is
- *     card-level (`?player=`) until D12 retargets it to slot-level anchors
- *     (R-28). "Log material" on Log — D4's other named gap — shipped in D8
- *     (the toolbar's free-form door, below).
- *     `FairnessSummary` / `BookLedgerCard` / `LootResetMenu` therefore stay
- *     mounted on History here, and `LootResetMenu` stays bound to
- *     `clock.currentWeek`. A `week` param on Log positions the displayed
+ *     the imported `LootFairnessLegend`). The displayed-week reset menu
+ *     shipped in D7a: the toolbar `LootResetMenu` now mounts on Log at
+ *     `logWeek.week` (gated `lview === 'log' && canEdit`), and the
+ *     floor-header kebab's two reset items route through the same
+ *     `handleResetConfirm` planner with real floor scoping. The Books card
+ *     re-home is still pending as **D7b**: `BookLedgerCard` and
+ *     `FairnessSummary` stay mounted on History for now — `FairnessSummary`
+ *     until D14. The jump destination is card-level (`?player=`) until D12
+ *     retargets it to slot-level anchors (R-28). "Log material" on Log —
+ *     D4's other named gap — shipped in D8 (the toolbar's free-form door,
+ *     below).
+ *     A `week` param on Log positions the displayed
  *     week; a link whose `?entry=` resolves in a DIFFERENT week re-points the
  *     display to that entry's week instead (D6a — the landing entry always
- *     wins over a stale/hand-edited `?week=`, `Loot.tsx:629-704`). The
+ *     wins over a stale/hand-edited `?week=`, the F1/F2 guard comments ahead
+ *     of the highlight derivation). The
  *     correction itself does not resolve/fire until the week clock can
  *     honor the entry's week — see the "F1" comment ahead of the highlight
  *     derivation (D6a browser pass; a provisional clock must never clamp
@@ -126,8 +131,12 @@
  *     the other param on every jump), so no coordination lives here.
  *   - Material delete + the Reset "loot"/"data" paths always revert gear
  *     (`{ revertGear: true }`), matching the legacy reset semantics
- *     (`SectionedLogView.tsx:450-511`); the History reset reproduces exactly the
- *     six configs the LootResetMenu emits (week/all × loot/books/data).
+ *     (`SectionedLogView.tsx:450-511`); `handleResetConfirm` executes whatever
+ *     `ResetConfig` fires it through the shared `resolveResetActions` planner
+ *     (R-16, `resetActions.ts`) — the toolbar `LootResetMenu`'s six week/all ×
+ *     loot/books/data configs (D7a, mounted on Log at `logWeek.week`) or a
+ *     floor-scoped config from a floor-header kebab trigger, both routed
+ *     through the same pipeline.
  */
 
 import {
@@ -152,6 +161,7 @@ import { LootAdjustmentsModal, type AdjustmentUpdate } from './LootAdjustmentsMo
 import { LogWeekWizard } from './LogWeekWizard';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { LootResetMenu } from './LootResetMenu';
+import { resolveResetActions, describeResetToast } from './resetActions';
 import { FairnessSummary } from './FairnessSummary';
 import { BookLedgerCard } from './BookLedgerCard';
 import { LootHistoryTable } from './LootHistoryTable';
@@ -737,49 +747,51 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId, highlightKind]);
 
-  // Reproduces the legacy reset semantics (SectionedLogView.tsx:450-511) for the
-  // six configs LootResetMenu emits (week/all × loot/books/data). Loot/data →
-  // filter the logs by week (or all) and loop the coordination deletes with
-  // `{ revertGear: true }`; books/data → clearWeekPageLedger / clearAllPageLedger.
+  // Executes any `ResetConfig` the Log's `LootResetMenu` (D7, six toolbar
+  // configs bound to the displayed week) or a floor/player-scoped trigger
+  // (Task 3+'s kebabs) can emit. `resolveResetActions` (R-16,
+  // `resetActions.ts`) is the single place a config's blast radius is
+  // computed — this handler just executes the plan it returns: loot/data
+  // loop the coordination deletes with `{ revertGear: true }`; books/data
+  // route through the matching `clear*`/`delete*` store method by
+  // `plan.bookOp.kind`.
   const handleResetConfirm = useCallback(async () => {
     if (!resetConfig || !tierId) return;
-    const { scope, target, week } = resetConfig;
-    const { clearAllPageLedger, clearWeekPageLedger } = useLootTrackingStore.getState();
+    const {
+      clearAllPageLedger, clearWeekPageLedger, clearFloorPageLedger,
+      clearAllFloorPageLedger, clearPlayerWeekPageLedger, deletePlayerLedger,
+    } = useLootTrackingStore.getState();
     try {
-      const shouldResetLoot = target === 'loot' || target === 'data';
-      const shouldResetBooks = target === 'books' || target === 'data';
-
-      if (shouldResetLoot) {
-        // Read fresh from the store at confirm-time (legacy parity).
-        const allLoot = useLootTrackingStore.getState().lootLog;
-        const allMaterial = useLootTrackingStore.getState().materialLog;
-        const lootEntries =
-          scope === 'week' && week != null ? allLoot.filter((e) => e.weekNumber === week) : allLoot;
-        const materialEntries =
-          scope === 'week' && week != null ? allMaterial.filter((e) => e.weekNumber === week) : allMaterial;
-        for (const entry of lootEntries) {
-          await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
-        }
-        for (const entry of materialEntries) {
-          await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
-        }
+      // Read fresh from the store at confirm-time (legacy parity), then plan.
+      const plan = resolveResetActions(resetConfig, {
+        lootLog: useLootTrackingStore.getState().lootLog,
+        materialLog: useLootTrackingStore.getState().materialLog,
+        floors,
+      });
+      for (const entry of plan.lootEntries) {
+        await deleteLootAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
       }
-
-      if (shouldResetBooks) {
-        if (scope === 'week' && week != null) await clearWeekPageLedger(groupId, tierId, week);
-        else await clearAllPageLedger(groupId, tierId);
+      for (const entry of plan.materialEntries) {
+        await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
       }
+      const op = plan.bookOp;
+      if (op.kind === 'player-all') await deletePlayerLedger(groupId, tierId, op.playerId);
+      else if (op.kind === 'player-week') await clearPlayerWeekPageLedger(groupId, tierId, op.playerId, op.week);
+      else if (op.kind === 'floor-all') await clearAllFloorPageLedger(groupId, tierId, op.floor);
+      else if (op.kind === 'floor-week') await clearFloorPageLedger(groupId, tierId, op.week, op.floor);
+      else if (op.kind === 'week') await clearWeekPageLedger(groupId, tierId, op.week);
+      else if (op.kind === 'all') await clearAllPageLedger(groupId, tierId);
 
       refresh();
       await fetchPageLedger(groupId, tierId);
-      toast.success(`Reset ${scope === 'week' ? `Week ${week}` : 'all'} ${target} complete`);
+      toast.success(describeResetToast(resetConfig));
     } catch (error) {
       logger.error('Reset failed:', error);
       toast.error('Reset failed');
     } finally {
       setResetConfig(null);
     }
-  }, [resetConfig, groupId, tierId, refresh, fetchPageLedger]);
+  }, [resetConfig, groupId, tierId, floors, refresh, fetchPageLedger]);
 
   const subtitle = `Who's up next, and the record of what's dropped · fairness rules: ${MODE_LABELS[getEffectivePriorityMode(settings)]}`;
 
@@ -866,8 +878,8 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             ) : null
           }
           resetMenu={
-            lview === 'history' && canEdit ? (
-              <LootResetMenu week={clock.currentWeek} onSelect={setResetConfig} />
+            lview === 'log' && canEdit ? (
+              <LootResetMenu week={logWeek.week} onSelect={setResetConfig} />
             ) : undefined
           }
           canEdit={canEdit}
@@ -1029,6 +1041,17 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             // `singleFloorMode`/`initialFloor` below, and `writeWeek` (Log-view
             // branch) already targets the DISPLAYED week — no new wizard props.
             onLogFloor={(floor) => setWizardState({ floor })}
+            // D7a Task 3 (R-16 2/4, R-25): the floor-header menu's two resets —
+            // the SAME `resolveResetActions`/`handleResetConfirm` pipeline the
+            // toolbar `LootResetMenu` above already routes through, scoped to
+            // this floor at the DISPLAYED week (`logWeek.week`, never
+            // `clock.currentWeek` — the same split `onLogFloor` above uses).
+            onResetFloorLoot={(floor) => setResetConfig({
+              scope: 'floor', target: 'loot', week: logWeek.week, floor,
+            })}
+            onResetFloorBooks={(floor) => setResetConfig({
+              scope: 'floor', target: 'books', week: logWeek.week, floor,
+            })}
           />
           {/* D6b Task C (R-23, R-D6n): the fairness read sits directly below
               the grid — count bar then legend (§4 mockup order). Not gated on

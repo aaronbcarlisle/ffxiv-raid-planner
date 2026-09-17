@@ -6,8 +6,8 @@
  * WeekScopeControl or History's HistoryFilters — slotted by Loot; Priority
  * slots nothing, since R-15 moved the week to Log and Priority is always the
  * clock's current week), a spacer, and — for editors — the Loot actions (Reset
- * [history-only], Adjustments, Rules, Log a drop, Log material [D8, R-20/R-26],
- * and the week-logging wizard).
+ * [Log-only, D7 — bound to the Log's displayed week, R-16], Adjustments, Rules,
+ * Log a drop, Log material [D8, R-20/R-26], and the week-logging wizard).
  *
  * The wizard button names its week: R-22 requires the clock's mutations to say
  * which week they act on, and the same honesty applies to a write action that
@@ -23,7 +23,7 @@ export interface LootToolbarProps {
   viewToggle?: ReactNode;
   /** Left control cluster — WeekScopeControl (log) or HistoryFilters (history); Priority slots nothing. */
   weekControl: ReactNode;
-  /** History-only Reset dropdown (canEdit), rendered inside the action cluster. */
+  /** The Log view's displayed-week Reset dropdown (canEdit), rendered inside the action cluster. */
   resetMenu?: ReactNode;
   canEdit: boolean;
   onLogDrop: () => void;

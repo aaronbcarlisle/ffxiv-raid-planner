@@ -770,51 +770,6 @@ describe('Loot', () => {
     expect(screen.getByText('Every drop, who received it, and why — the transparent record')).toBeInTheDocument();
   });
 
-  it('shows the Reset menu only in the history view for editors', () => {
-    // Priority view: no Reset trigger.
-    const priority = renderLoot({ tier: makeTier(players) });
-    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
-    priority.unmount();
-
-    // History + editor: Reset trigger present.
-    const editor = renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
-    expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument();
-    editor.unmount();
-
-    // History + viewer: no Reset (the whole editor cluster is gated).
-    renderLoot({ canEdit: false, tier: makeTier(players) }, ['/?lview=history']);
-    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
-  });
-
-  it('reset "week loot" deletes exactly the current-week loot entries with gear reversion', async () => {
-    useLootTrackingStore.setState({
-      lootLog: [
-        makeLootEntry({ id: 1, weekNumber: 3 }),
-        makeLootEntry({ id: 2, weekNumber: 3 }),
-        makeLootEntry({ id: 3, weekNumber: 1 }),
-      ],
-    });
-    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
-
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Reset' }), { key: 'Enter' });
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Reset week loot' }));
-
-    // ResetConfirmModal requires typing RESET before the confirm enables.
-    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
-    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
-    fireEvent.click(resetButtons[resetButtons.length - 1]);
-
-    await waitFor(() => expect(deleteLootMock).toHaveBeenCalledTimes(2));
-    // Only the two week-3 entries, each reverting gear.
-    for (const call of deleteLootMock.mock.calls) {
-      expect(call[0]).toBe('g1');
-      expect(call[1]).toBe('aac-heavyweight');
-      expect(call[4]).toEqual({ revertGear: true });
-    }
-    expect(deleteLootMock.mock.calls.map((c) => (c[3] as LootLogEntry).weekNumber)).toEqual([3, 3]);
-  });
-
   it('opens the picker in edit mode from a loot row kebab', async () => {
     useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 7, weekNumber: 3 })] });
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
@@ -925,37 +880,6 @@ describe('Loot', () => {
       const toasts = useToastStore.getState().toasts;
       expect(toasts.some((t) => t.type === 'error' && t.message === 'Failed to delete entry')).toBe(true);
     });
-  });
-
-  it('reset "Reset ALL data" deletes every seeded loot+material entry (unfiltered by week) and clears all page ledger', async () => {
-    const clearAllPageLedgerMock = vi.fn().mockResolvedValue(undefined);
-    useLootTrackingStore.setState({
-      lootLog: [
-        makeLootEntry({ id: 1, weekNumber: 3 }),
-        makeLootEntry({ id: 2, weekNumber: 1 }),
-      ],
-      materialLog: [
-        makeMaterialEntry({ id: 10, weekNumber: 3 }),
-        makeMaterialEntry({ id: 11, weekNumber: 1 }),
-      ],
-      clearAllPageLedger: clearAllPageLedgerMock,
-    });
-    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
-
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Reset' }), { key: 'Enter' });
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Reset ALL data' }));
-
-    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
-    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
-    fireEvent.click(resetButtons[resetButtons.length - 1]);
-
-    await waitFor(() => expect(deleteLootMock).toHaveBeenCalledTimes(2));
-    await waitFor(() => expect(deleteMaterialMock).toHaveBeenCalledTimes(2));
-    // Both weeks (3 and 1) are present — proving scope="all" is NOT week-filtered.
-    expect(deleteLootMock.mock.calls.map((c) => (c[3] as LootLogEntry).weekNumber).sort()).toEqual([1, 3]);
-    expect(deleteMaterialMock.mock.calls.map((c) => (c[3] as MaterialLogEntry).weekNumber).sort()).toEqual([1, 3]);
-    await waitFor(() => expect(clearAllPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
   });
 });
 
@@ -1739,5 +1663,214 @@ describe('Loot — D6b Task C: count bar + legend', () => {
     // producing a bare orphaned "Loot fairness: ..." strip under the grid.
     expect(screen.queryByTestId('week-count-bar')).not.toBeInTheDocument();
     expect(screen.queryByText('Loot fairness:')).not.toBeInTheDocument();
+  });
+});
+
+// ── D7a: toolbar resets move to Log, bound to the DISPLAYED week (R-16) ─────
+// `LootResetMenu` moved off History onto the Log toolbar (D7a), scoped to
+// `logWeek.week` rather than `clock.currentWeek` — every test here drives Log
+// with the displayed week (1) diverging from the seeded clock (3, beforeEach)
+// so a `week={clock.currentWeek}` regression at the slot can't hide (the
+// D4/D5/D6a vacuous-coincidence rule). Three of these are the class-1 rewrite
+// of the pre-D7 History-bound reset tests (moved + re-scoped, not merely
+// renamed): the visibility gate, "reset week loot", and "Reset ALL data".
+// "reset week books" is genuinely new here — it pins the handler's book-op
+// routing through the toolbar's REAL "Reset week books" item. Floor/player-
+// scoped configs are NOT integration-tested in this task: no real door emits
+// one until Task 3's kebab (Task 1's units already pin the floor-scoping
+// math in `resetActions.test.ts`).
+describe('Loot — D7a: toolbar resets move to Log on the displayed week (R-16)', () => {
+  it('shows the Reset menu on the Log view for editors — not on History, not on Priority, not for viewers', () => {
+    // Priority view: no Reset trigger.
+    const priority = renderLoot({ tier: makeTier(players) });
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
+    priority.unmount();
+
+    // History view: no Reset trigger — D7a moved the menu off History.
+    const history = renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
+    history.unmount();
+
+    // Log + editor: Reset trigger present.
+    const editor = renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument();
+    editor.unmount();
+
+    // Log + viewer: no Reset (the whole editor cluster is gated).
+    renderLoot({ canEdit: false, tier: makeTier(players) }, ['/?lview=log&week=1']);
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
+  });
+
+  it("reset week loot on Log deletes exactly the DISPLAYED week's entries", async () => {
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({ id: 1, weekNumber: 1 }),
+        makeLootEntry({ id: 2, weekNumber: 1 }),
+        makeLootEntry({ id: 3, weekNumber: 3 }),
+      ],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Reset' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Reset Week 1 loot' }));
+
+    // ResetConfirmModal requires typing RESET before the confirm enables. Its
+    // description names the DISPLAYED week (1) — direct evidence the config
+    // the menu emitted carries `week: 1`, never the clock's 3.
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    expect(screen.getByText(/loot entries for Week 1\./)).toBeInTheDocument();
+    expect(screen.queryByText(/Week 3/)).not.toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() => expect(deleteLootMock).toHaveBeenCalledTimes(2));
+    // Only the two week-1 entries, each reverting gear — the week-3 entry
+    // (matching the clock, not the display) is untouched.
+    const weeks = deleteLootMock.mock.calls.map((c) => (c[3] as LootLogEntry).weekNumber);
+    expect(weeks).toEqual([1, 1]);
+    expect(weeks).not.toContain(3);
+    for (const call of deleteLootMock.mock.calls) {
+      expect(call[0]).toBe('g1');
+      expect(call[1]).toBe('aac-heavyweight');
+      expect(call[4]).toEqual({ revertGear: true });
+    }
+  });
+
+  it('reset week books on Log routes to clearWeekPageLedger with the DISPLAYED week', async () => {
+    const clearWeekPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    const fetchPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      clearWeekPageLedger: clearWeekPageLedgerMock,
+      fetchPageLedger: fetchPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Reset' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Reset Week 1 books' }));
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() => expect(clearWeekPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 1));
+    expect(clearWeekPageLedgerMock).not.toHaveBeenCalledWith('g1', 'aac-heavyweight', 3);
+    // The handler always refetches the ledger after a books op (the trailing
+    // `fetchPageLedger` the brief calls out for the `deletePlayerLedger`
+    // no-self-refetch case — exercised generally here for every book op).
+    await waitFor(() => expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
+  });
+
+  it('Reset ALL data still deletes both weeks and clears the full ledger', async () => {
+    const clearAllPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({ id: 1, weekNumber: 3 }),
+        makeLootEntry({ id: 2, weekNumber: 1 }),
+      ],
+      materialLog: [
+        makeMaterialEntry({ id: 10, weekNumber: 3 }),
+        makeMaterialEntry({ id: 11, weekNumber: 1 }),
+      ],
+      clearAllPageLedger: clearAllPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Reset' }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Reset ALL data' }));
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() => expect(deleteLootMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(deleteMaterialMock).toHaveBeenCalledTimes(2));
+    // Both weeks (3 and 1) are present — proving scope="all" is NOT week-filtered.
+    expect(deleteLootMock.mock.calls.map((c) => (c[3] as LootLogEntry).weekNumber).sort()).toEqual([1, 3]);
+    expect(deleteMaterialMock.mock.calls.map((c) => (c[3] as MaterialLogEntry).weekNumber).sort()).toEqual([1, 3]);
+    await waitFor(() => expect(clearAllPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
+  });
+});
+
+// ── D7a Task 3: floor-header kebab gains the floor's resets ─────────────────
+// `LogWeekGrid` stays the prop-capturing mock (D5/D6a/D6b-B precedent above),
+// so this drives the captured `onResetFloorLoot`/`onResetFloorBooks` props
+// the same way the real kebab menu's items would (the real kebab UI —
+// content, click-to-open, right-click parity — is covered in
+// LogWeekGrid.test.tsx), then walks the REAL `ResetConfirmModal` (type
+// RESET) to assert the deletions/store calls. Closes the "honest seam" left
+// in Task 2 Step 1: floor/player-scoped configs were plan-tested
+// (`resetActions.test.ts`) but never integration-tested end to end. Driven
+// at the DISPLAYED week 1 with the clock seeded at 3 (`beforeEach`) so a
+// `week: clock.currentWeek` regression at the wiring can't hide — the
+// D4/D5/D6a/D7a-toolbar vacuous-coincidence rule, applied here too.
+describe("Loot — D7a Task 3: floor-header kebab's resets (displayed week)", () => {
+  it("floor loot reset deletes ONLY the displayed week's entries for that floor — three-way discrimination against not-week-3-M9S and not-week-1-M10S", async () => {
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({ id: 1, weekNumber: 1, floor: 'M9S' }), // the target
+        makeLootEntry({ id: 2, weekNumber: 3, floor: 'M9S' }), // right floor, wrong (clock) week
+        makeLootEntry({ id: 3, weekNumber: 1, floor: 'M10S' }), // right week, wrong floor
+      ],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    // aac-heavyweight's floors array is ['M9S','M10S','M11S','M12S']
+    // (raid-tiers.ts) — floor 1 = M9S.
+    act(() => {
+      (lastGrid().onResetFloorLoot as (floor: number) => void)(1);
+    });
+
+    // The confirm modal's description names Floor 1 / Week 1 — direct
+    // evidence the emitted config carries the DISPLAYED week, not the clock's.
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    expect(screen.getByText(/loot entries for Floor 1 in Week 1\./)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() => expect(deleteLootMock).toHaveBeenCalledTimes(1));
+    const [groupId, tierId, entryId, entry, opts] = deleteLootMock.mock.calls[0];
+    expect(groupId).toBe('g1');
+    expect(tierId).toBe('aac-heavyweight');
+    expect(entryId).toBe(1);
+    expect((entry as LootLogEntry).weekNumber).toBe(1);
+    expect((entry as LootLogEntry).floor).toBe('M9S');
+    expect(opts).toEqual({ revertGear: true });
+  });
+
+  it('floor books reset routes to clearFloorPageLedger WEEK FIRST, then floor', async () => {
+    const clearFloorPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    const fetchPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      clearFloorPageLedger: clearFloorPageLedgerMock,
+      fetchPageLedger: fetchPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    // Floor 2 at displayed week 1 on purpose: the two arguments must DIFFER or
+    // this assertion is vacuous. With floor 1 / week 1 a swapped production
+    // call — `clearFloorPageLedger(groupId, tierId, op.floor, op.week)` —
+    // produces the identical `(…, 1, 1)` and the test still passes. At
+    // floor 2 / week 1 the correct call is `(…, 1, 2)` and a swap yields
+    // `(…, 2, 1)`, which fails. (Whole-branch review finding 1.)
+    act(() => {
+      (lastGrid().onResetFloorBooks as (floor: number) => void)(2);
+    });
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    // Loot.test.tsx fixture tier id is 'aac-heavyweight', not 't1'; the
+    // wiring's ResetConfig is `{ scope: 'floor', target: 'books', week:
+    // logWeek.week, floor }`, whose bookOp resolves to `floor-week` — the
+    // handler calls `clearFloorPageLedger(groupId, tierId, op.week, op.floor)`
+    // (week BEFORE floor, resetActions.ts + Loot.tsx's handleResetConfirm).
+    await waitFor(() => expect(clearFloorPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 1, 2));
+    await waitFor(() => expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
   });
 });

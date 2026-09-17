@@ -173,7 +173,7 @@ D-72 · D-66 → D-66 + D-70 · D-67 → D-67 + D-71. IDs are never re-used or r
 | **R-064 role-colour accent edge** *(ex-D-11)* | `RosterCard.tsx:313-318` | ✅ director sweep — present in v2; **missing from `v2-inventory.md`** (correction filed, §11 note) |
 | **R-072 Lodestone sync status line** *(ex-D-12)* | V2R-17 | ✅ **RESTORED leaner (C5, 2026-07-26)**: the line names the character (+ sync age); server, provenance and the job-mismatch explanation live in the hover detail, with a visible warning glyph + dot on mismatch. Redesigned per the C1-checkpoint rider — not v1's three-line block |
 | **R-041 Lodestone entry** *(ex-D-12)* + **R-132…R-141 the modal's own controls** | `CharacterManageBridge.tsx` → shared `LodestoneSearchModal` | ✅ **RESTORED (C8, 2026-07-28)** — only R-041 was rebuilt. R-132…R-141 (search, mock quick-search, URL/ID paste, linked panel, preview grid, Sync, overwrite warning, identity-only fallback, compare panel, mismatch notices) never left the codebase; they were unreachable in v2 until this entry existed. Legacy's kebab entry is untouched and `smoke-legacy` #14 still pins it |
-| **R-017 mobile reset-data buttons** *(ex-D-56)* | V2L-05 | ✅ RE-HOMED — same six reset scopes in the History toolbar's Reset menu, `canEdit`-gated; verified to render at phone widths (`LootToolbar.tsx:39` root div carries no responsive class; `resetMenu` at `:43`) |
+| **R-017 mobile reset-data buttons** *(ex-D-56)* | V2L-05 | ✅ RE-HOMED — same six reset scopes in the **Log** toolbar's Reset menu (D7a moved the slot off History; gate is now `lview === 'log' && canEdit`, `Loot.tsx:880`), verified to render at phone widths (`LootToolbar.tsx:39` root div carries no responsive class; `resetMenu` at `:43`) |
 | R-003, R-004 admin + join-request banners | V2K-17 | Same banners via the v2 banners slot |
 | R-008 Add Player | V2R-05 | Same shared `AddPlayerModal` flow |
 | R-010 card-order lock ⇄ R-011 show subs | V2R-04 "Reorder", V2R-03 "Show subs" | Lock/Reorder is the same gate with inverted polarity |
@@ -273,7 +273,7 @@ D-72 · D-66 → D-66 + D-70 · D-67 → D-67 + D-71. IDs are never re-used or r
 
 | Legacy | → v2 | Note |
 |---|---|---|
-| **L-08, L-09, L-10 mobile reset buttons + P-15 (loot-perm) their gate** *(ex-D-56)* | V2L-05 | ✅ RE-HOMED — the three reset actions land in the History toolbar's Reset menu (same six scopes), which renders at phone widths (`LootToolbar.tsx:39,43`). P-15's legacy gate was `canManageRoster(userRole, isAdminAccess)` (`GroupViewContent.tsx:1393`) vs V2L-05's `canEdit` — the same single admin-as-member divergence documented at **§12-A11** |
+| **L-08, L-09, L-10 mobile reset buttons + P-15 (loot-perm) their gate** *(ex-D-56)* | V2L-05 | ✅ RE-HOMED — the three reset actions land in the **Log** toolbar's Reset menu (same six scopes; D7a moved the slot off History, gate `lview === 'log' && canEdit` at `Loot.tsx:880`), which renders at phone widths (`LootToolbar.tsx:39,43`). P-15's legacy gate was `canManageRoster(userRole, isAdminAccess)` (`GroupViewContent.tsx:1393`) vs V2L-05's `canEdit` — the same single admin-as-member divergence documented at **§12-A11** |
 | L-06 More-page → Loot History navigation | V2M-03 (`lview=history`) | Wiring differs per shell, destination equivalent |
 | L-103 "Start Next Week" | V2L-03 | |
 | L-113 books Week/All-Time toggle · L-133 its persistence | V2L-15 "This week / All time" `SegmentedToggle` | *(URL persistence not separately evidenced)* |
@@ -673,8 +673,11 @@ more (below) and re-opened one.
   it *"Summary — Team-wide gear statistics"* (`git show 67f5393^:…/TabNavigation.tsx:27-33`).
   D-42's usage figure is correctly attributed — subject only to the era-1 caveat now on the row.
 - ~~D-56's mobile reachability of V2L-05~~ → **RESOLVED.** `LootToolbar.tsx:39` (the root div)
-  carries no responsive class and the reset menu renders whenever `canEdit` (`:43`), so V2L-05
+  carries no responsive class and the reset menu renders whenever its gate passes (`:43`), so V2L-05
   **is** available at phone widths. The reset re-home is complete; the residual is deleted.
+  *(D7a update: the menu now mounts on **Log**, not History — gate `lview === 'log' && canEdit`,
+  `Loot.tsx:880`. The toolbar is shared by both views and still carries no responsive class, so the
+  phone-width conclusion is unaffected; only the view it lives on changed.)*
 
 **Still open — two items:**
 

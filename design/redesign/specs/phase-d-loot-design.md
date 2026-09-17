@@ -449,6 +449,56 @@ is `SectionedLogView.tsx:450-538`, including `clearFloorPageLedger` / `clearAllF
 `clock.currentWeek` (`Loot.tsx:384`) where legacy passes the *selected* week (`HistoryView.tsx:287`) —
 under R-15 it must follow the displayed week or "reset week loot" wipes the wrong one.
 
+**Build note (D7a, 2026-08-24) — entry points 1 & 2 shipped; 3 & 4 (Books column/row kebabs) land
+in D7b with the card re-home.**
+
+- Toolbar `LootResetMenu` re-gated to `lview === 'log' && canEdit` at `logWeek.week` (the
+  DISPLAYED week, R-15-consistent); week-scoped labels name the week per ruling **R-D7d**
+  (`Reset Week {N} loot/books/data`); the trigger stays the labeled **Reset** button per ruling
+  **R-D7e** — a named deviation from the §4 mockup's bare `⋮`.
+- The scope machinery: `handleResetConfirm` now consumes the pure planner `loot/resetActions.ts`
+  (`resolveResetActions` + `describeResetToast`) — a structural re-expression of the frozen
+  `SectionedLogView.tsx:450-538` semantics with legacy's playerId-beats-floor-beats-week-beats-all
+  precedence, unit-pinned. One deliberate hardening over the frozen reference: a floor-scoped loot
+  config with NO week filters by floor across all weeks (legacy fell through to EVERYTHING); a
+  missing/out-of-range floor fails closed.
+- The mechanism split, disclosed: the three floor/player book clears
+  (`clearFloorPageLedger`/`clearAllFloorPageLedger`/`clearPlayerWeekPageLedger`) are reversal-POST
+  shims netting balances to zero via compensating adjustment rows, while `deletePlayerLedger` is a
+  TRUE backend DELETE — the future row kebab's week vs all-time items differ in destructiveness
+  semantics (D7b surfaces them). **Present tense for D7a:** the floor kebab's
+  `Reset {floorName} books` already reaches a shim today — it emits a floor+week config, so it runs
+  `clearFloorPageLedger`, which writes compensating `adjustment` rows rather than deleting any. Of
+  D7a's six toolbar book paths, `Reset Week {N} books/data` and `Reset ALL books/data` are true
+  DELETEs (`clearWeekPageLedger`, `clearAllPageLedger`); `deletePlayerLedger` and
+  `clearPlayerWeekPageLedger` are wired through the planner but unreachable until D7b's row kebab.
+- Inherited copy divergence, disclosed not fixed: `ui/ResetConfirmModal.tsx:152` says "permanently
+  delete" even on the reversal-POST paths (shared frozen file; R-44 was the one approved delta) —
+  and D7a is the slice that first makes one of those paths reachable, via the floor kebab's books
+  item.
+- **D7-D fact (i), now observed:** the floor menu names the duty (`Reset M9S loot`) while the frozen
+  confirm names the position (`loot entries for Floor 1 in Week 3`, `ResetConfirmModal.tsx:70`).
+  Both are correct and the index-1 mapping is unit-pinned; the vocabulary simply differs across the
+  menu/confirm seam because the confirm copy is shared frozen V1 copy.
+- **Materials ride with loot, per legacy:** a `target: 'loot'` (or `'data'`) config deletes the
+  matching *material* entries too — `handleResetConfirm` loops `plan.materialEntries` on the same
+  scope. Exact parity with `SectionedLogView.tsx:470-477`, which filters materials by week and
+  floor on the floor branch; called out here because the floor-scoped door is new in v2.
+- Floor kebab per rulings **R-D7a** (two week-less reset items — `Reset {floorName} loot` /
+  `Reset {floorName} books` — joining "Log floor" after a separator) and **R-D7b** (ContextMenu
+  two-trigger conversion off the D6b Radix Dropdown; kebab keeps `aria-label="{floorName} actions"`
+  + gains `aria-haspopup="menu"`). Named interim per R-D7b: `ui/ContextMenu` lacks
+  focus-restore-on-close and `aria-expanded`, and closes on scroll — joins the standing
+  kebab-family a11y queue. **Third gap, same queue (whole-branch review, nit 5):** a
+  keyboard-invoked context menu (Shift+F10 / the menu key with the kebab focused) bubbles to the
+  header `<div>`, so `jumpMenuAnchor` measures the full-width bar and anchors the menu at its
+  far-left while the kebab sits at `ml-auto` right. Enter/Space on the kebab anchors correctly
+  (button rect), so the keyboard route works — it is only mis-placed. The header-bar `onContextMenu` carries a targeted
+  `jsx-a11y/no-static-element-interactions` disable with reason (the pre-authorized F-7
+  containment; `eslint.config.js` untouched).
+- The R-22 boundary restated: Revert and Start-next-week remain CLOCK-bound with the divergence
+  notice — only the reset family follows the displayed week.
+
 ### R-17 · One logging path — **loot cells** to the picker, **material cells** to the material modal
 
 A loot cell opens `RecipientPicker`: empty → assign mode pre-filled floor + slot, filled → edit mode.
@@ -757,6 +807,9 @@ Priority's floor wizard, R-25 homes Log's.
   week inside the wizard afterward, same as every other door into it.
 - D7 adds this floor's resets to this same menu — the kebab is the intended home, not a stopgap
   needing replacement.
+- **D7a (2026-08-24):** the promised resets arrived — the kebab now carries `Log floor` + the
+  floor's two reset items (R-D7a), and the menu itself converted to the two-trigger `ContextMenu`
+  pattern (R-D7b).
 
 ### R-26 · **`QuickLogMaterialModal` is the one owned material component**
 
