@@ -183,11 +183,12 @@ export function BookLedgerCard({
   // is a CORRECTIVE BACKSTOP that re-issues our scoped
   // `fetchPageBalances(groupId, tierId, scopedWeek)` whenever the ledger
   // changes, so a stale unscoped write eventually gets overwritten. The actual
-  // ordering guarantee for the reset flow is the POST-AWAIT second trigger at
-  // `Loot.tsx:287` (`fetchPageLedger` called after `await`ing the reset) — that
-  // call is LOAD-BEARING and must not be removed on the assumption this card
-  // self-heals. The `adjustBookBalance` path is unaffected by any of this: it
-  // relies on this card's own `refetch()` at ~line 200, not on this effect.
+  // ordering guarantee for the reset flow is the POST-AWAIT second trigger in
+  // `Loot.tsx`'s `handleResetConfirm` (the `await fetchPageLedger(groupId, tierId)`
+  // that runs after the book op) — that call is LOAD-BEARING and must not be
+  // removed on the assumption this card self-heals. The `adjustBookBalance`
+  // path is unaffected by any of this: it relies on this card's own
+  // `refetch()` at ~line 200, not on this effect.
   useEffect(() => {
     fetchPageBalances(groupId, tierId, scopedWeek);
   }, [groupId, tierId, scope, currentWeek, fetchPageBalances, scopedWeek, pageLedger]);

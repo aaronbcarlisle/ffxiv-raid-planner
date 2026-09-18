@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.22',
+    date: '2026-09-17T22:00:00Z',
+    title: 'Phase D slice D7b — Books card re-homes to Log: displayed-week ledger + column/row reset kebabs (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'The Books card moves to Log and follows the week you\'re viewing; every column and row gets its own reset menu',
+        description:
+          "V2 preview: the Books card now lives on the Log view, under that week's record, and follows the week you're viewing — editing a balance, marking a floor cleared, and the card's own This-week/All-time toggle all use that week, and the toggle names it (\"This week (Week 3)\" vs. just \"Week 3\" when you're looking at an older week). Each row now shows the player's job icon again. Each Book column and each player's row gets its own menu — a small kebab button or a right-click — with one reset option that follows the card's own This-week/All-time toggle, so it always matches what's on screen. The roster card's \"Edit Books\" jump now lands on Log, where the card actually lives. History keeps its record and fairness summary.",
+        pr: 0,
+        prTitle: 'feat(v2): D7b Books card re-homes to Log — displayed-week ledger, column/row reset kebabs, roster jump retarget',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.21',
     date: '2026-09-17T20:00:00Z',
     title: 'Phase D slice D7a — Log resets: displayed-week menu + floor-kebab resets (v2 preview)',

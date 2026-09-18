@@ -101,9 +101,9 @@
  *     `logWeek.week` (gated `lview === 'log' && canEdit`), and the
  *     floor-header kebab's two reset items route through the same
  *     `handleResetConfirm` planner with real floor scoping. The Books card
- *     re-home is still pending as **D7b**: `BookLedgerCard` and
- *     `FairnessSummary` stay mounted on History for now — `FairnessSummary`
- *     until D14. The jump destination is card-level (`?player=`) until D12
+ *     re-homed to Log in D7b: `BookLedgerCard` mounts here, full width below
+ *     the fairness read, on the DISPLAYED week — `FairnessSummary` stays on
+ *     History until D14. The jump destination is card-level (`?player=`) until D12
  *     retargets it to slot-level anchors (R-28). "Log material" on Log —
  *     D4's other named gap — shipped in D8 (the toolbar's free-form door,
  *     below).
@@ -125,6 +125,7 @@
  *     the first explicit pill click, global after it (R-10.2/R-10.3).
  *   - The book-row highlight (legacy `highlightedBookPlayerId`) is URL-backed in
  *     v2: the roster kebab's "Edit Books" jump (C7, D-05) writes `?book={playerId}`
+ *     and `?lview=log` (D7b — the Books card lives on Log now, not History)
  *     and `BookLedgerCard` owns the scroll + pulse + self-clear, exactly as
  *     `LootHistoryTable` owns `?entry=`. Loot itself stays out of it — the two
  *     highlights are mutually exclusive by construction (the roster card clears
@@ -135,8 +136,9 @@
  *     `ResetConfig` fires it through the shared `resolveResetActions` planner
  *     (R-16, `resetActions.ts`) — the toolbar `LootResetMenu`'s six week/all ×
  *     loot/books/data configs (D7a, mounted on Log at `logWeek.week`) or a
- *     floor-scoped config from a floor-header kebab trigger, both routed
- *     through the same pipeline.
+ *     floor-scoped config from a floor-header kebab trigger (D7a), or, since
+ *     D7b, the Books card's own column/row kebabs (`onResetConfig={setResetConfig}`,
+ *     R-16 3/4 + 4/4) — all four entry points routed through the same pipeline.
  */
 
 import {
