@@ -1562,7 +1562,7 @@ the frozen `AllWeeksView.tsx:13` import — the thing the freeze exists to preve
 **Build note (D9a, 2026-09-18) — the v2 consumer exists.** `LootHistoryTable.tsx` imports and mounts
 `ui/SortableHeader` for all seven sortable columns. `components/admin/SortableHeader` and
 `components/admin/sortUtils` are untouched and unimported by it — asserted by
-`git diff --stat origin/main...HEAD -- frontend/src/components/admin/` printing nothing (PR #N body).
+`git diff --stat origin/main...HEAD -- frontend/src/components/admin/` printing nothing (PR #262 body).
 
 ## 8. Open — what is left
 
