@@ -724,7 +724,8 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
         fireEvent.click(screen.getByRole('link', { name: /Tome Weapon/ }), { altKey: true, detail: 1 });
 
         // The jump = the Loot spine tab (PageMode 'gear') + History sub-view +
-        // the highlight params LootHistoryTable.tsx:69-103 consumes.
+        // the highlight params LootHistoryTable's `?entry=` effect consumes
+        // (row ids from `historyRowDomId`).
         const params = new URLSearchParams(currentSearch());
         expect(params.get('tab')).toBe('gear');
         expect(params.get('lview')).toBe('history');

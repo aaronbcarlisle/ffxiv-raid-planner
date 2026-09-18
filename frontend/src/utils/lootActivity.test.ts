@@ -7,7 +7,7 @@ import type { LootLogEntry, MaterialLogEntry } from '../types';
 //   loot     → "{recipient} received {slot display name} — {fight}"
 //   material → "{recipient} received {material display name}"
 // Slot names come from GEAR_SLOT_NAMES, material names from
-// UPGRADE_MATERIAL_DISPLAY_NAMES — the same sources LootEntryRow uses.
+// UPGRADE_MATERIAL_DISPLAY_NAMES — the same sources LootHistoryTable uses.
 // `relativeTime` reads Date.now(), so the clock is frozen for determinism.
 
 const NOW = '2026-06-30T12:00:00Z';
