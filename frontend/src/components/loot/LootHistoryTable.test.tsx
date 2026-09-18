@@ -314,7 +314,13 @@ describe('LootHistoryTable', () => {
 
     it('renders an absolute date (date half asserted only — the time half is local, D9a-o)', () => {
       renderTable({ lootLog: [makeLootEntry({ id: 1, createdAt: '2026-06-24T15:45:00Z' })] });
-      expect(cell('loot-entry-1', COL.date).textContent).toMatch(/^Jun 24, /);
+      // Built the same way the component does (Intl, local tz) — a literal
+      // 'Jun 24' fails on runners at UTC+8:15 or later, where the local date
+      // is already Jun 25.
+      const expectedDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(
+        new Date('2026-06-24T15:45:00Z'),
+      );
+      expect(cell('loot-entry-1', COL.date).textContent?.startsWith(`${expectedDate}, `)).toBe(true);
     });
   });
 

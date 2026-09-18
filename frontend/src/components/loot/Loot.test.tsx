@@ -7,7 +7,7 @@
 // editor toolbar, and the assign/log picker wiring. `useWeekClock` and
 // `useLogWeek` are left REAL (the clock reads the seeded loot store; the Log
 // week reads the MemoryRouter URL + localStorage). The History-view surfaces
-// (FairnessSummary / LootHistoryTable / HistoryFilters / LootEntryRow) and the
+// (FairnessSummary / LootHistoryTable / HistoryFilters) and the
 // Log-body's BookLedgerCard are left REAL — Task 9 asserts the assembly
 // wiring end-to-end. Loot now uses `useUrlTabState` (→ useSearchParams), so
 // every render is wrapped in a MemoryRouter.
@@ -884,6 +884,41 @@ describe('Loot', () => {
       const toasts = useToastStore.getState().toasts;
       expect(toasts.some((t) => t.type === 'error' && t.message === 'Failed to delete entry')).toBe(true);
     });
+  });
+
+  it('sorting by Player from the History view reorders the real table', () => {
+    // D9a Task 3 assembly guard: proves Loot hands LootHistoryTable a live
+    // `players` resolver (the roster, not the entry's own recipientPlayerName)
+    // and that the mounted table's own sort is wired end-to-end — not just
+    // unit-covered in isolation. Both entries share a decoy recipientPlayerName
+    // ('Fallback') so a broken `players` wire (falling through to that decoy)
+    // would tie the Player sort and leave the order unchanged, failing this
+    // test — only the REAL roster names ('Amy'/'Zed') break the tie correctly.
+    // Names chosen so the DEFAULT order (Week desc, tied → createdAt desc) is
+    // the REVERSE of A→Z — Zed's newer drop lands first — so an A→Z-coincidental
+    // default couldn't pass this assertion vacuously.
+    const sortPlayers = [makePlayer('p1', 'Amy'), makePlayer('p2', 'Zed')];
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({
+          id: 20, recipientPlayerId: 'p2', recipientPlayerName: 'Fallback',
+          weekNumber: 3, createdAt: '2026-06-25T12:00:00Z',
+        }),
+        makeLootEntry({
+          id: 21, recipientPlayerId: 'p1', recipientPlayerName: 'Fallback',
+          weekNumber: 3, createdAt: '2026-06-20T12:00:00Z',
+        }),
+      ],
+    });
+    renderLoot({ tier: makeTier(sortPlayers) }, ['/?lview=history']);
+
+    const rowIds = () => Array.from(document.querySelectorAll('tbody tr[id]')).map((tr) => tr.id);
+    expect(rowIds()).toEqual(['loot-entry-20', 'loot-entry-21']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Player' }));
+
+    expect(rowIds()).toEqual(['loot-entry-21', 'loot-entry-20']);
+    expect(screen.getByRole('columnheader', { name: 'Player' })).toHaveAttribute('aria-sort', 'ascending');
   });
 });
 

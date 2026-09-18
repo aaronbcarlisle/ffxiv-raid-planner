@@ -85,7 +85,8 @@
  *     locality). A fresh deep-link therefore always shows everything (filters
  *     default to all/all/all), so an `?entry=` deep-link can never be hidden by
  *     a filter on first mount; only a mid-session filter change can hide a row,
- *     which is acceptable.
+ *     which is acceptable. History's sort is session-local too (R-29 note 3) —
+ *     a fresh deep-link always opens Week desc.
  *   - D4/D5/D6a/D6b interims, so a reader doesn't mistake a stub for a gap:
  *     Log's body is `LogWeekGrid` (D5) — four floor sections, one cell per
  *     gear/material slot, wired below. D6a shipped the cell's modifier family
@@ -154,7 +155,7 @@ import { LootToolbar } from './LootToolbar';
 import { WeekScopeControl } from './WeekScopeControl';
 import { FloorCard } from './FloorCard';
 import { LogWeekGrid } from './LogWeekGrid';
-import { logCellDomId, type HighlightEntryRef } from './logWeekGridData';
+import { logCellDomId, type HighlightEntryRef, type HistoryItem } from './logWeekGridData';
 import { suggestedMaterialRecipient } from './materialSuggestion';
 import { WeekCountBar } from './WeekCountBar';
 import { LootFairnessLegend } from '../history/WeeklyLootGrid';
@@ -170,7 +171,6 @@ import { FairnessSummary } from './FairnessSummary';
 import { BookLedgerCard } from './BookLedgerCard';
 import { LootHistoryTable } from './LootHistoryTable';
 import { HistoryFilters } from './HistoryFilters';
-import type { HistoryItem } from './logWeekGridData';
 
 import { SegmentedToggle } from '../ui/SegmentedToggle';
 import { Tag } from '../ui/Tag';
@@ -589,9 +589,9 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   }, []);
 
   // D6a Task 6: literal wiring — `LogGridEntryRef` IS `HistoryItem` (director
-  // F-12, `LootEntryRow.tsx`'s type alias), so the Log grid's delete door
-  // reaches the SAME `deleteTarget` confirm-modal state History's delete door
-  // does. No adapter, no cast.
+  // F-12, `logWeekGridData.ts`'s `HistoryItem` alias), so the Log grid's delete
+  // door reaches the SAME `deleteTarget` confirm-modal state History's delete
+  // door does. No adapter, no cast.
   const deleteFromGrid = requestDelete;
 
   const playerNameFor = useCallback(
@@ -600,13 +600,14 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   );
 
   // ── Log `?entry=` deep-link (D6a Task 6) ──
-  // Re-expresses `LootHistoryTable.tsx:60-103`'s contract for the Log view:
-  // derived (not stored) so the highlight tracks the URL param directly, and
-  // gated on `lview === 'log'` so History's own `?entry=` reader (same params,
-  // different view) never sees a Log-originated id. `entryType` defaults to
-  // 'loot'; validation runs against the UNFILTERED log MATCHING THE TYPE — a
-  // loot id arriving as `entryType=material` resolves to nothing, and vice
-  // versa, because the two id sequences are independent (F-10a).
+  // Re-expresses `LootHistoryTable`'s `?entry=` highlight effect's contract
+  // for the Log view: derived (not stored) so the highlight tracks the URL
+  // param directly, and gated on `lview === 'log'` so History's own `?entry=`
+  // reader (same params, different view) never sees a Log-originated id.
+  // `entryType` defaults to 'loot'; validation runs against the UNFILTERED
+  // log MATCHING THE TYPE — a loot id arriving as `entryType=material`
+  // resolves to nothing, and vice versa, because the two id sequences are
+  // independent (F-10a).
   const entryParam = searchParams.get('entry');
   const entryType: 'loot' | 'material' = searchParams.get('entryType') === 'material' ? 'material' : 'loot';
   const parsedEntryId = entryParam ? parseInt(entryParam, 10) : null;
@@ -699,16 +700,16 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       document.getElementById(logCellDomId(ref))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
 
-    // Functional form + `{ replace: true }` (LootHistoryTable.tsx:91-96
-    // precedent) THROUGH `setSearchParamsRef` (not the `setSearchParams`
-    // closed over above) — an intervening write to OTHER params, notably
-    // `useLogWeek`'s own `?week=` mirror or a manual week change via
-    // WeekScopeControl while this highlight is still pending its self-clear,
-    // survives. A non-functional strip built from a stale snapshot — or the
-    // functional form called through a stale `setSearchParams` reference,
-    // whose OWN closure over `prev` react-router fixed at THAT reference's
-    // creation time (see `setSearchParamsRef`'s doc comment) — would silently
-    // stomp whatever changed in between.
+    // Functional form + `{ replace: true }` (the `replace: true` idiom
+    // `LootHistoryTable`'s clear timer uses) THROUGH `setSearchParamsRef`
+    // (not the `setSearchParams` closed over above) — an intervening write to
+    // OTHER params, notably `useLogWeek`'s own `?week=` mirror or a manual
+    // week change via WeekScopeControl while this highlight is still pending
+    // its self-clear, survives. A non-functional strip built from a stale
+    // snapshot — or the functional form called through a stale
+    // `setSearchParams` reference, whose OWN closure over `prev` react-router
+    // fixed at THAT reference's creation time (see `setSearchParamsRef`'s doc
+    // comment) — would silently stomp whatever changed in between.
     const clearTimer = setTimeout(() => {
       setSearchParamsRef.current((prev) => {
         const params = new URLSearchParams(prev);

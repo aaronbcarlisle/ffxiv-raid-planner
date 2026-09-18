@@ -288,7 +288,7 @@ export function LootHistoryTable({
         <tbody className="divide-y divide-border-subtle">
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={8} className="px-4 py-6 text-sm text-text-tertiary">
+              <td colSpan={COLUMNS.length + 1} className="px-4 py-6 text-sm text-text-tertiary">
                 No entries match — log a drop from the Priority view.
               </td>
             </tr>

@@ -3,11 +3,11 @@
  * table (spec §5.6). Kept storeless/hookless so the semantics are testable
  * without a render.
  *
- * Source-filter semantics (deliberate, matches Task 6's badge mapping except
- * `book`): `raid` = loot with `method === 'drop'`; `tome` = loot with
- * `method === 'tome' || method === 'purchase'`; `book` = loot with
- * `method === 'book'` (badges as R — raid gear bought with books — but
- * filters separately); `material` = material log items.
+ * Source-filter semantics (deliberate): `raid` = loot with
+ * `method === 'drop'`; `tome` = loot with `method === 'tome' || method ===
+ * 'purchase'`; `book` = loot with `method === 'book'`, filtered separately
+ * from raid even though books buy raid gear; `material` = material log
+ * items.
  */
 import type { HistoryItem } from '../components/loot/logWeekGridData';
 import { METHOD_INFO } from '../components/history/lootMethodDisplay';
