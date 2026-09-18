@@ -424,7 +424,9 @@ toggle, cell-click edit, per-row ledger, mark-floor-cleared, the member-own-row 
   the stored name only, no icon).
 - The roster kebab's `?book=` jump now also writes `?lview=log` (`RosterCard.tsx`'s
   `handleBooksJump`) so the jump lands on the view that actually holds the card; History loses the
-  card entirely (R-34).
+  card entirely (R-34). This retarget is Books-only: `RosterCard.tsx`'s `jumpToEntry` (the
+  loot/material entry jumps) still writes `?lview=history` — those stay on History until **D12**
+  (R-28's slot-level anchors, out of scope here).
 - Placement is per the **D7-C** ruling: a sibling of the (gated) fairness wrapper, itself UNGATED
   — Books stays useful on a freshly created static with an empty configured main roster (there is
   nothing to divide by zero here, unlike the fairness read). Pinned by test: `Loot.test.tsx`'s
@@ -433,15 +435,34 @@ toggle, cell-click edit, per-row ledger, mark-floor-cleared, the member-own-row 
 - Collapse toggle and the mobile Loot⇄Books panel-tab axis are dropped, restated from the ruling
   above — nothing new landed for either.
 - Two accepted behaviors, named rather than fixed:
-  1. **Cold deep-link one-paint flicker.** `lootTrackingStore`'s `currentWeek` initializes to `1`
-     before the real clock fetch resolves, so for one paint `clockWeek === currentWeek` even when
-     the eventual clock week is different — the toggle briefly reads `This week (Week 1)` before
-     settling to the honest label.
+  1. **The "This week" flicker is an in-app-navigation case, not a cold-load one.** `useLogWeek`'s
+     `override` state (`useLogWeek.ts:261`) initializes to `null` and only resolves `?week=` inside
+     a `useEffect` — which fires after the first paint, and only once per `groupId`/`tierId` pair
+     (`useLogWeek.ts:288-316`). On a TRUE cold load, `Loot.tsx:801`'s `if (!tier) return <div .../>`
+     blocks `BookLedgerCard` from mounting at all until `tier` arrives — by which point the resolve
+     effect (already scheduled on an earlier, `tier`-less paint) has typically already set
+     `override` from `?week=N`, so the card's very first paint already reads `currentWeek = N`.
+     With `N ≠ 1` this is honest from the start (`Week N`, not `This week`) — no flicker. The
+     flicker instead happens on an in-app navigation where `tier` is **already hydrated** when
+     `Loot` (re)mounts: `BookLedgerCard`'s first paint lands before the resolve effect has fired,
+     so `currentWeek` still falls back to `clock.currentWeek` — trivially equal to the `clockWeek`
+     prop (same source) — producing one paint of `This week (Week {clock.currentWeek})` before the
+     effect resolves the URL override and, if it differs, the label flips to the bare `Week N`.
+     **Special case, more than one paint:** with `?week=1` specifically, the override resolves to
+     `1` — which coincides with `lootTrackingStore`'s own `currentWeek: 1` default
+     (`lootTrackingStore.ts:115`) for as long as the mount effect's `fetchCurrentWeek(groupId,
+     tierId)` call (`Loot.tsx:487`) hasn't resolved the real clock week yet. Until that async fetch
+     settles, `currentWeek === clockWeek === 1` holds for real, not just for one paint, so the
+     toggle correctly-but-misleadingly reads `This week (Week 1)` across however many renders that
+     fetch takes.
   2. **All-time scope re-fires on every Log week step.** The card's fetch effect depends on
      `currentWeek` even when `scope === 'all'` (where `scopedWeek` is always `undefined`), so
-     stepping the Log week re-issues an identical unscoped `fetchPageBalances` call each time. The
-     dependency is load-bearing for the `pageLedger` corrective-backstop behavior documented at the
-     effect (not trimmed).
+     stepping the Log week re-issues an identical unscoped `fetchPageBalances` call each time. This
+     `currentWeek` dep is actually redundant, not load-bearing: in week scope `scopedWeek` (also a
+     dep) already changes in lockstep with it, and the backstop the adjacent comment documents is
+     the `pageLedger` dep alone. Pre-existing (`git blame` dates the line to 2026-07-02, before D7b
+     touched this card), left untrimmed here as a harmless idempotent over-fetch — out of this
+     task's scope to change.
 
 ### R-15 · **Log owns the week; Priority is always now**
 
@@ -556,7 +577,10 @@ D7b, with the card re-home).**
   right-click on the `<th>`/`<tr>` itself, both routing into ONE `BooksMenuState` and ONE
   `ContextMenu` mount at the card root — never a per-column or per-row menu instance.
   `jumpMenuAnchor` (the same helper `LogWeekGrid.tsx`'s floor menu uses) supplies the
-  keyboard-invoked (Shift+F10/menu-key) fallback anchor.
+  keyboard-invoked (Shift+F10/menu-key) fallback anchor. For a viewer (`!canEdit`), the right-click
+  door is not merely hidden — `BookLedgerCard.tsx:285-292,325-332` passes `onContextMenu={undefined}`
+  on both the `<th>` and `<tr>` in that case, so right-click is inert, not just visually absent (no
+  kebab renders either, per the `canEdit`-gated `IconButton` above).
   No `jsx-a11y` rule fired on the `<th>`/`<tr>` `onContextMenu` handlers, so — unlike the floor
   header's `<div>` — no eslint containment comment was needed here.
 - The row kebab gates on `canEdit` ONLY (**D7-g**): the member-own-row cell-edit exception

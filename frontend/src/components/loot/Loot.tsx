@@ -750,8 +750,8 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   }, [highlightId, highlightKind]);
 
   // Executes any `ResetConfig` the Log's `LootResetMenu` (D7, six toolbar
-  // configs bound to the displayed week) or a floor/player-scoped trigger
-  // (Task 3+'s kebabs) can emit. `resolveResetActions` (R-16,
+  // configs bound to the displayed week), the floor-header kebab, or the
+  // Books card's own column/row kebabs can emit. `resolveResetActions` (R-16,
   // `resetActions.ts`) is the single place a config's blast radius is
   // computed — this handler just executes the plan it returns: loot/data
   // loop the coordination deletes with `{ revertGear: true }`; books/data
