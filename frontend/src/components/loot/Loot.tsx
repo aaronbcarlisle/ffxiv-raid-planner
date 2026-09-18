@@ -777,7 +777,16 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
       }
       const op = plan.bookOp;
-      if (op.kind === 'player-all') await deletePlayerLedger(groupId, tierId, op.playerId);
+      // `deletePlayerLedger` is the only reset primitive that doesn't
+      // refresh anything on its own (every other branch's store method
+      // updates `pageLedger` directly) — without this, the week pill's
+      // per-week books dots (WeekScopeControl) go stale after "Reset ALL
+      // {name}'s books". fetchWeekDataTypes never re-throws (store catches
+      // internally) — left bare like the mount effect's own call.
+      if (op.kind === 'player-all') {
+        await deletePlayerLedger(groupId, tierId, op.playerId);
+        void fetchWeekDataTypes(groupId, tierId);
+      }
       else if (op.kind === 'player-week') await clearPlayerWeekPageLedger(groupId, tierId, op.playerId, op.week);
       else if (op.kind === 'floor-all') await clearAllFloorPageLedger(groupId, tierId, op.floor);
       else if (op.kind === 'floor-week') await clearFloorPageLedger(groupId, tierId, op.week, op.floor);
@@ -793,7 +802,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     } finally {
       setResetConfig(null);
     }
-  }, [resetConfig, groupId, tierId, floors, refresh, fetchPageLedger]);
+  }, [resetConfig, groupId, tierId, floors, refresh, fetchPageLedger, fetchWeekDataTypes]);
 
   const subtitle = `Who's up next, and the record of what's dropped · fairness rules: ${MODE_LABELS[getEffectivePriorityMode(settings)]}`;
 

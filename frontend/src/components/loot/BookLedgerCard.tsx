@@ -334,7 +334,7 @@ export function BookLedgerCard({
                 <td className="px-3 py-2 text-text-primary">
                   <div className="flex items-center gap-1.5">
                     {player?.job && <JobIcon job={player.job} size="sm" />}
-                    <span className="text-text-primary truncate max-w-[100px]">{b.playerName}</span>
+                    <span className="truncate max-w-[100px]">{b.playerName}</span>
                   </div>
                 </td>
                 {BOOK_KEYS.map(([label, key]) => (

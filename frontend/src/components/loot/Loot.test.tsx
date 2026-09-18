@@ -6,9 +6,9 @@
 // ⇄ History triad, four floor cards in F4→F1 order at the clock's week, the
 // editor toolbar, and the assign/log picker wiring. `useWeekClock` and
 // `useLogWeek` are left REAL (the clock reads the seeded loot store; the Log
-// week reads the MemoryRouter URL + localStorage). The
-// History-view surfaces (FairnessSummary / BookLedgerCard / LootHistoryTable /
-// HistoryFilters / LootEntryRow) are left REAL — Task 9 asserts the assembly
+// week reads the MemoryRouter URL + localStorage). The History-view surfaces
+// (FairnessSummary / LootHistoryTable / HistoryFilters / LootEntryRow) and the
+// Log-body's BookLedgerCard are left REAL — Task 9 asserts the assembly
 // wiring end-to-end. Loot now uses `useUrlTabState` (→ useSearchParams), so
 // every render is wrapped in a MemoryRouter.
 import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
@@ -1954,13 +1954,15 @@ describe("Loot — D7b Task 5: BookLedgerCard's kebab configs land in the shared
     expect(week).not.toBe(3); // the seeded clock's currentWeek — divergence proof
   });
 
-  it("row kebab's default all-time item routes to deletePlayerLedger, then re-arms via a trailing fetchPageLedger", async () => {
+  it("row kebab's default all-time item routes to deletePlayerLedger, then re-arms via a trailing fetchPageLedger and refreshes the week pill's books dots", async () => {
     const deletePlayerLedgerMock = vi.fn().mockResolvedValue(undefined);
     const fetchPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    const fetchWeekDataTypesMock = vi.fn().mockResolvedValue(undefined);
     useLootTrackingStore.setState({
       pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
       deletePlayerLedger: deletePlayerLedgerMock,
       fetchPageLedger: fetchPageLedgerMock,
+      fetchWeekDataTypes: fetchWeekDataTypesMock,
     });
     renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
 
@@ -1988,6 +1990,45 @@ describe("Loot — D7b Task 5: BookLedgerCard's kebab configs land in the shared
         deletePlayerLedgerMock.mock.invocationCallOrder[0]
       );
     });
+    // `deletePlayerLedger` is the only reset primitive that doesn't refresh
+    // the week pill's per-week books dots on its own — the handler's
+    // trailing `fetchWeekDataTypes` is what re-arms them. Asserted by CALL
+    // ORDER: Loot's own mount effect already calls `fetchWeekDataTypes`
+    // unconditionally, so a bare `toHaveBeenCalledWith` here would be
+    // satisfied by that mount call alone and prove nothing about the
+    // post-reset call (whole-branch review Should-fix 1).
+    await waitFor(() => {
+      expect(fetchWeekDataTypesMock).toHaveBeenCalledWith('g1', 'aac-heavyweight');
+      expect(fetchWeekDataTypesMock.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+        deletePlayerLedgerMock.mock.invocationCallOrder[0]
+      );
+    });
+  });
+
+  it("column kebab's default all-time item routes to clearAllFloorPageLedger, never clearFloorPageLedger", async () => {
+    const clearAllFloorPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    const clearFloorPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+      clearAllFloorPageLedger: clearAllFloorPageLedgerMock,
+      clearFloorPageLedger: clearFloorPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    // The card's scope toggle defaults to All time — no toggle click needed.
+    fireEvent.click(screen.getByRole('button', { name: 'Book II actions' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Reset ALL Floor 2 books' }));
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    expect(screen.getByText(/ALL book entries for Floor 2 \(every week\)/)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() =>
+      expect(clearAllFloorPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 2)
+    );
+    expect(clearFloorPageLedgerMock).not.toHaveBeenCalled();
   });
 });
 

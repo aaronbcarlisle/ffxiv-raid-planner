@@ -298,6 +298,27 @@ describe('BookLedgerCard', () => {
     expect(screen.getByRole('button', { name: 'Week 1' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /This week/ })).not.toBeInTheDocument();
   });
+
+  // ── director change-review C-1: adjust and mark-cleared must key off the
+  // DISPLAYED week (`currentWeek`), not the clock — proven by driving them
+  // apart (baseProps coincide at 3/3, which would pass vacuously) ──
+  it('C-1: cell-edit and mark-cleared both write at the DISPLAYED week, not the clock week', async () => {
+    render(<BookLedgerCard {...baseProps} currentWeek={1} clockWeek={3} />, { wrapper: MemoryRouter });
+
+    const aliceRow = document.getElementById('book-row-p1')!;
+    fireEvent.click(screen.getAllByText('3').find((el) => aliceRow.contains(el))!);
+    fireEvent.click(screen.getByText('submit-edit'));
+
+    await vi.waitFor(() => {
+      const call = storeActions().adjustBookBalance.mock.calls.at(-1);
+      expect(call?.[5]).toBe(1); // the week arg
+      expect(call?.[5]).not.toBe(3); // the clock's currentWeek — divergence proof
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark floor cleared' }));
+    expect(markClearedCalls.at(-1)?.currentWeek).toBe(1);
+    expect(markClearedCalls.at(-1)?.currentWeek).not.toBe(3);
+  });
 });
 
 // ── C7 (D-05): the Books deep-link highlight ──
