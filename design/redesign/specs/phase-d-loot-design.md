@@ -1103,29 +1103,38 @@ v1's comparator verbatim would be a **regression against what ships now**.
    `3f90d420:frontend/src/components/loot/WeekGroupHeader.tsx`. `:14-19` is the UTC-pinned `DATE_FMT`
    (`Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })`), with its
    rationale documented inline: "UTC-pinned so the shown date never shifts a day (WeekScopeControl
-   precedent)". `:29-39` is the week pill: `bg-accent/15 text-accent-hover` when current,
-   `bg-surface-elevated text-text-secondary` when not, with the measured-contrast rationale quoted
-   verbatim from the deleted file's comment — "text-accent-hover (not text-accent): the default accent
-   (#0c7d71) only clears AA on solid surface-base/card backgrounds, not on the bg-accent/15 tint
-   composited over them (#dbebea ≈ 4.07:1 in light theme, measured via the contrast harness).
-   accent-hover (#0a6b60) is darker and clears AA on the tinted pill with margin." `:42` is the
+   precedent)"; `:21-23` is `formatRange`, joining the two formatted dates with an en dash —
+   `` `${DATE_FMT.format(range.start)} – ${DATE_FMT.format(range.end)}` ``. `:29-39` is the week pill:
+   `:34`'s base classes (`font-display text-xs font-extrabold rounded-full px-2.5 py-0.5`) plus
+   `bg-accent/15 text-accent-hover` when current, `bg-surface-elevated text-text-secondary` when not,
+   with the measured-contrast rationale quoted verbatim from the deleted file's comment —
+   "text-accent-hover (not text-accent): the default accent (#0c7d71) only clears AA on solid
+   surface-base/card backgrounds, not on the bg-accent/15 tint composited over them (#dbebea ≈ 4.07:1
+   in light theme, measured via the contrast harness). accent-hover (#0a6b60) is darker and clears AA
+   on the tinted pill with margin" — and `:38`'s label, `` `WEEK ${week}` ``. `:42` is the
    `` `${count} drop${count === 1 ? '' : 's'}` `` copy.
 2. Resolved by D0's `ui/SortableHeader` (R-46); consumer arrived D9a.
 3. **Sort and filter state are session-local**, matching v1 (`AllWeeksView.tsx:97-102`, which persists
    nothing). If that is ever revisited, the key must be distinct — `v2-sort-preset-{tierId}` is already
    taken by the roster (`useRosterSortPreset.ts:43`).
 
-**Build note (D9a, 2026-09-18) — shipped the table half; separators are D9b.** Eight columns on
-`ui/SortableHeader` (`LootHistoryTable.tsx`'s `COLUMNS`), a fixed newest-first tiebreak
-(`sortHistoryItems`'s `tiebreak`, R-D9a-B: `createdAt` desc → `loot` before `material` → id desc,
-never direction-aware) and per-column natural first direction (`nextHistorySort`'s
-`NATURAL_DIRECTION`, R-D9a-C). `thead` is `sticky top-0 z-10`, pinned to the
-`GroupViewContent.tsx:711-713` scrollport inside `AppChrome.tsx:238-242`'s `<main>`; the card wrapper
-is `overflow-clip`, so there is no horizontal scroll below the eight-column width (R-D9a-D, D9a-n) —
-desktop ≥1024 px fits, narrower is Phase P. The Date column reads local time (D9a-o); D9b's week-range
-separators stay UTC-pinned per implementation note 1 above — both are correct for what they each show.
-Sort state is session-local component state (`useState`), matching note 3. Week separators and the
-current-week marker are **not** built this slice — rebuild them from note 1's git-ref archaeology.
+**Build note (D9a, 2026-09-18) — shipped the table half; separators are D9b.** Seven sortable columns
+on `ui/SortableHeader` (`COLUMNS`) plus a plain sr-only `Actions` `<th>` for the kebab, a fixed
+newest-first tiebreak (`sortHistoryItems`'s `tiebreak`, R-D9a-B: `createdAt` desc → `loot` before
+`material` → id desc, never direction-aware) and per-column natural first direction
+(`nextHistorySort`'s `NATURAL_DIRECTION`, R-D9a-C). `thead` is `sticky top-0 z-10`, pinned to
+`AppChrome`'s `<main id="main-content">` pane and `GroupViewContent`'s `overflow-y-auto` content div
+(the element `#main-content [class*="overflow-y-auto"]` resolves to); the card wrapper is
+`overflow-clip`, so there is no horizontal scroll below the eight-column width (R-D9a-D, D9a-n) —
+**measured in the browser pass:** at 1440, 1024 and 900 px viewport widths the table fits its card
+with no clipping (872 px table in an 874 px card at 1024; 788 in 790 at 900; the ⋮ column fully
+visible at all three) — cells wrap below the table's max-content width (~921 px), and clipping would
+only begin below the min-content width, which 900 px does not reach. Phase P still re-decides the
+trade for mobile widths this pass didn't reach. The Date column reads local time (D9a-o); D9b's
+week-range separators stay UTC-pinned per implementation note 1 above — both are correct for what
+they each show. Sort state is session-local component state (`useState`), matching note 3. Week
+separators and the current-week marker are **not** built this slice — rebuild them from note 1's
+git-ref archaeology.
 
 ### R-30 · **One filter state** — the pills write into the search box (D-72)
 
@@ -1321,7 +1330,11 @@ today and that mount goes away.
 **R-D9a-A**: it lands in the Type column (`LootHistoryTable.tsx`'s `CELL.type` material branch,
 `` `aug ${augSlotLabel(...)}` ``), with `tome_weapon` (and `null`) now reading `tome wpn` rather than
 the enum value (D9a-t). The stats count and the filtered-vs-empty split are **not** built this
-slice — D9b.
+slice — D9b. **The Keeps/Restores rows above cite pre-rewrite line numbers; they now resolve to:**
+`LootEntryRow.tsx:128-132` → `3f90d420:frontend/src/components/loot/LootEntryRow.tsx:132-136`;
+`LootHistoryTable.tsx:81-103` → the `?entry=` effect in the rewritten `LootHistoryTable.tsx`;
+`LootHistoryTable.tsx:110-116` → the single empty row (`colSpan` = all columns) in the rewritten
+`LootHistoryTable.tsx`.
 
 ### R-35 · Shortcuts: `Ctrl+Shift+F` stays, `Alt+1/2/3` does not
 
@@ -1547,8 +1560,7 @@ the frozen `AllWeeksView.tsx:13` import — the thing the freeze exists to preve
 **Build note (D9a, 2026-09-18) — the v2 consumer exists.** `LootHistoryTable.tsx` imports and mounts
 `ui/SortableHeader` for all seven sortable columns. `components/admin/SortableHeader` and
 `components/admin/sortUtils` are untouched and unimported by it — asserted by
-`git diff --stat origin/main...HEAD -- frontend/src/components/admin/` printing nothing (see Task 4's
-gate).
+`git diff --stat origin/main...HEAD -- frontend/src/components/admin/` printing nothing (PR #N body).
 
 ## 8. Open — what is left
 

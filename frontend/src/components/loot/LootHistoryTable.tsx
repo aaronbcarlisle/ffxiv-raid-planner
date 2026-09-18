@@ -191,6 +191,43 @@ const CELL: Record<HistorySortField, (item: HistoryItem, ctx: CellContext) => Re
     ),
 };
 
+interface ActionsCellContext {
+  canEdit: boolean;
+  onEdit: (entry: LootLogEntry) => void;
+  onCopyLink: (item: HistoryItem) => void;
+  onDelete: (item: HistoryItem) => void;
+}
+
+/**
+ * The ⋮ cell's body, rendered through a function exactly like the seven `CELL`
+ * entries so every `<td>` in the row has the same shape — the `<td>`'s only
+ * child stays an expression container rather than JSX authored directly
+ * inside it, which is what keeps `jsx-a11y/control-has-associated-label`
+ * (mapping `<td>` to the `gridcell` role) from flagging the cell; the actual
+ * labelled control is the `IconButton`'s `aria-label="Entry actions"`.
+ */
+function renderActionsCell(item: HistoryItem, ctx: ActionsCellContext): ReactNode {
+  const { kind, entry } = item;
+  return (
+    <Dropdown>
+      <DropdownTrigger asChild>
+        <IconButton aria-label="Entry actions" icon={<MoreVertical className="h-4 w-4" />} variant="ghost" size="sm" />
+      </DropdownTrigger>
+      <DropdownContent align="end">
+        {kind === 'loot' && ctx.canEdit && (
+          <DropdownItem onSelect={() => ctx.onEdit(entry)}>Edit</DropdownItem>
+        )}
+        <DropdownItem onSelect={() => ctx.onCopyLink(item)}>Copy link</DropdownItem>
+        {ctx.canEdit && (
+          <DropdownItem danger onSelect={() => ctx.onDelete(item)}>
+            Delete
+          </DropdownItem>
+        )}
+      </DropdownContent>
+    </Dropdown>
+  );
+}
+
 export function LootHistoryTable({
   lootLog,
   materialLog,
@@ -261,6 +298,7 @@ export function LootHistoryTable({
     [lootLog, materialLog, filters, sort, sortCtx],
   );
   const cellCtx: CellContext = { floors, playersById };
+  const actionsCtx: ActionsCellContext = { canEdit, onEdit, onCopyLink, onDelete };
 
   return (
     <div className="rounded-lg border border-border-default bg-surface-card overflow-clip">
@@ -304,24 +342,7 @@ export function LootHistoryTable({
                       {CELL[c.field](item, cellCtx)}
                     </td>
                   ))}
-                  <td className="px-4 py-2.5">
-                    <Dropdown>
-                      <DropdownTrigger asChild>
-                        <IconButton aria-label="Entry actions" icon={<MoreVertical className="h-4 w-4" />} variant="ghost" size="sm" />
-                      </DropdownTrigger>
-                      <DropdownContent align="end">
-                        {kind === 'loot' && canEdit && (
-                          <DropdownItem onSelect={() => onEdit(entry)}>Edit</DropdownItem>
-                        )}
-                        <DropdownItem onSelect={() => onCopyLink(item)}>Copy link</DropdownItem>
-                        {canEdit && (
-                          <DropdownItem danger onSelect={() => onDelete(item)}>
-                            Delete
-                          </DropdownItem>
-                        )}
-                      </DropdownContent>
-                    </Dropdown>
-                  </td>
+                  <td className="px-4 py-2.5">{renderActionsCell(item, actionsCtx)}</td>
                 </tr>
               );
             })

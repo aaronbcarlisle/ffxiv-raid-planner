@@ -68,7 +68,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'History is now one flat table you can sort by any column',
         description:
-          "V2 preview: History is now one flat table you can sort by any column, newest first by default. Floor chips, slot icons, the weapon's job on weapon rows, and the augmented slot on material rows all carry over. The header row stays put while you scroll. Week separators, search, and clicking a row to edit come in the next slices.",
+          "V2 preview: History is now one flat table you can sort by any column, newest first by default. History now shows floor chips, slot icons, the weapon's job on weapon rows, and the augmented slot on material rows. The header row stays put while you scroll. Week separators, search, and clicking a row to edit come in the next slices.",
         pr: 0,
         prTitle:
           'feat(v2): D9a History becomes a flat sortable table — v2 header, fixed tiebreak, floor chip, weapon job + slot icons, kebab column',
