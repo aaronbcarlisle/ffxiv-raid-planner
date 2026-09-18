@@ -1098,16 +1098,34 @@ v1's comparator verbatim would be a **regression against what ships now**.
 
 **Implementation notes, not rulings:**
 
-1. The current-week marker is `WeekGroupHeader.tsx:34-36`; carry its token choice with it — `:30-33`
-   documents `text-accent-hover` rather than `text-accent` as a *measured* AA-contrast decision.
-2. **`SortableHeader` is not keyboard-operable and must be fixed before Log/History adopt it.**
-   `admin/SortableHeader.tsx:35-39` is a raw `<th onClick>` — no `tabIndex`, no `role`, no key handler
-   (it does set `aria-sort`, `:38`). R-29 makes sorting the mechanism that absorbs D-32's chronological
-   axis *and* D-33's layout axis, so shipping it mouse-only would strand a keyboard user with neither.
-   It also wants promoting out of `components/admin/` if a ring-0 loot surface imports it.
+1. ⚠ **Rewritten 2026-09-18 — the cited file is deleted; D9b rebuilds from this note, not from the
+   old citation.** The current-week marker and its token choice live only in git history now, at
+   `3f90d420:frontend/src/components/loot/WeekGroupHeader.tsx`. `:14-19` is the UTC-pinned `DATE_FMT`
+   (`Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })`), with its
+   rationale documented inline: "UTC-pinned so the shown date never shifts a day (WeekScopeControl
+   precedent)". `:29-39` is the week pill: `bg-accent/15 text-accent-hover` when current,
+   `bg-surface-elevated text-text-secondary` when not, with the measured-contrast rationale quoted
+   verbatim from the deleted file's comment — "text-accent-hover (not text-accent): the default accent
+   (#0c7d71) only clears AA on solid surface-base/card backgrounds, not on the bg-accent/15 tint
+   composited over them (#dbebea ≈ 4.07:1 in light theme, measured via the contrast harness).
+   accent-hover (#0a6b60) is darker and clears AA on the tinted pill with margin." `:42` is the
+   `` `${count} drop${count === 1 ? '' : 's'}` `` copy.
+2. Resolved by D0's `ui/SortableHeader` (R-46); consumer arrived D9a.
 3. **Sort and filter state are session-local**, matching v1 (`AllWeeksView.tsx:97-102`, which persists
    nothing). If that is ever revisited, the key must be distinct — `v2-sort-preset-{tierId}` is already
    taken by the roster (`useRosterSortPreset.ts:43`).
+
+**Build note (D9a, 2026-09-18) — shipped the table half; separators are D9b.** Eight columns on
+`ui/SortableHeader` (`LootHistoryTable.tsx`'s `COLUMNS`), a fixed newest-first tiebreak
+(`sortHistoryItems`'s `tiebreak`, R-D9a-B: `createdAt` desc → `loot` before `material` → id desc,
+never direction-aware) and per-column natural first direction (`nextHistorySort`'s
+`NATURAL_DIRECTION`, R-D9a-C). `thead` is `sticky top-0 z-10`, pinned to the
+`GroupViewContent.tsx:711-713` scrollport inside `AppChrome.tsx:238-242`'s `<main>`; the card wrapper
+is `overflow-clip`, so there is no horizontal scroll below the eight-column width (R-D9a-D, D9a-n) —
+desktop ≥1024 px fits, narrower is Phase P. The Date column reads local time (D9a-o); D9b's week-range
+separators stay UTC-pinned per implementation note 1 above — both are correct for what they each show.
+Sort state is session-local component state (`useState`), matching note 3. Week separators and the
+current-week marker are **not** built this slice — rebuild them from note 1's git-ref archaeology.
 
 ### R-30 · **One filter state** — the pills write into the search box (D-72)
 
@@ -1241,6 +1259,11 @@ state the floor twice. Same principle as R-9 and R-19 — say it once, in the el
 a design-system violation — while the floor *filter* chip on the same screen already uses the class
 tokens (`:493-497`; `loot-tables.ts:69-73` exposes `bg`/`text`/`border` alongside `hex`). Use the tokens.
 
+**Build note (D9a, 2026-09-18) — shipped.** `LootHistoryTable.tsx`'s `floorToneOf` is a typed
+`floors.indexOf` lookup into `` `floor-${n}` `` (a closed `Tone` union — only floors 1–4 tint), rendered
+via `Tag tone="floor-N"`; an empty `entry.floor` renders `—` rather than an empty chip. `FLOOR_COLORS`
+(`loot-tables.ts`) is unused by this cell.
+
 ### R-38 · A weapon row shows the **weapon's** job icon (amends R-8's standing input)
 
 The Slot cell carries `weaponJob`; the recipient's own job icon stays where it belongs, on the
@@ -1263,6 +1286,12 @@ A monochrome generic slot glyph leads the Slot cell, alongside the material dot 
 *Why:* R-8 mandates the icon "wherever a logged entry renders (Log + History too)", and v1's Slot cell
 has none (`:582-593`), so without this ruling the icon rule would silently become Log-only. On a long
 table it also makes the column scannable by shape rather than by reading.
+
+**Build note (D9a, 2026-09-18) — R-38 / R-39 shipped.** The Slot cell's anatomy, in one line each
+(`LootHistoryTable.tsx`'s `lootSlotLeadIns` + `CELL.slot`): a loot row leads with `GearSlotIcon` (R-39,
+known slots only) then `weaponJob`'s `JobIcon` when present (R-38) then `slotNameOf`; a material row
+carries `MATERIAL_DOT`, not a slot glyph, then `slotNameOf`. The recipient's own `JobIcon` renders
+separately in the Player cell, never in Slot.
 
 ### R-34 · What History keeps, loses, and still owns
 
@@ -1287,6 +1316,12 @@ filtered set.
 wording this row carried is resolved: R-23 put the per-week read in Log, R-40 puts the whole-tier read
 on Home, and History — whose identity is *find* — carries neither. `Loot.tsx:397` is its only mount
 today and that mount goes away.
+
+**Build note (D9a, 2026-09-18) — partial.** The aug readout survived the flattening in D9a per
+**R-D9a-A**: it lands in the Type column (`LootHistoryTable.tsx`'s `CELL.type` material branch,
+`` `aug ${augSlotLabel(...)}` ``), with `tome_weapon` (and `null`) now reading `tome wpn` rather than
+the enum value (D9a-t). The stats count and the filtered-vs-empty split are **not** built this
+slice — D9b.
 
 ### R-35 · Shortcuts: `Ctrl+Shift+F` stays, `Alt+1/2/3` does not
 
@@ -1508,6 +1543,12 @@ must be keyboard-operable — but the existing component is rendered by **V1's**
 on a frozen shell. Two components until admin chooses to migrate is the cheaper trade. This also
 retires R-29's suggestion of *relocating* `admin/SortableHeader`, which would have forced an edit to
 the frozen `AllWeeksView.tsx:13` import — the thing the freeze exists to prevent.
+
+**Build note (D9a, 2026-09-18) — the v2 consumer exists.** `LootHistoryTable.tsx` imports and mounts
+`ui/SortableHeader` for all seven sortable columns. `components/admin/SortableHeader` and
+`components/admin/sortUtils` are untouched and unimported by it — asserted by
+`git diff --stat origin/main...HEAD -- frontend/src/components/admin/` printing nothing (see Task 4's
+gate).
 
 ## 8. Open — what is left
 
