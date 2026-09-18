@@ -464,6 +464,7 @@ toggle, cell-click edit, per-row ledger, mark-floor-cleared, the member-own-row 
      settles, `currentWeek === clockWeek === 1` holds for real, not just for one paint, so the
      toggle correctly-but-misleadingly reads `This week (Week 1)` across however many renders that
      fetch takes.
+     **Observed in the D7b browser pass (2026-09-17):** a bare `?lview=log&week=2` cold open in a fresh tab, with the v2 storage key holding `1`, displayed **Week 2** and kept `?week=2` — the tier was already known at `Loot`'s first resolve (NewShell renders `<Loot tier={currentTier}>` only once the group has loaded), so the re-key path never ran. The clobber therefore remains a real code path in `useLogWeek.ts:288-314` that bites only if the first resolve runs tier-less; it was not reproduced on a cold open, and it stays queued rather than fixed.
   2. **All-time scope re-fires on every Log week step.** The card's fetch effect depends on
      `currentWeek` even when `scope === 'all'` (where `scopedWeek` is always `undefined`), so
      stepping the Log week re-issues an identical unscoped `fetchPageBalances` call each time. This
