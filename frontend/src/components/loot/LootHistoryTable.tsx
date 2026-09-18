@@ -16,7 +16,8 @@
  * `<tr>` renders are the SAME call — `historyRowDomId` (D9a-q, one author).
  *
  * Frozen V1 reference (never imported): `history/AllWeeksView.tsx` renders
- * the same eight cells with inline hex and a clickable row.
+ * the same seven data cells (no kebab column, that's v2's) with inline hex
+ * and a clickable row.
  *
  * Trades on record: the card is `overflow-clip` (D9a-n) — an `overflow-x-auto`
  * scrollport would defeat the sticky `<thead>`, so below the width where eight
@@ -72,7 +73,6 @@ const COLUMNS: ReadonlyArray<{
   field: HistorySortField;
   label: string;
   thClassName?: string;
-  align?: 'left' | 'center';
 }> = [
   { field: 'week', label: 'Week', thClassName: 'w-16' },
   { field: 'floor', label: 'Floor', thClassName: 'w-24' },
@@ -80,7 +80,7 @@ const COLUMNS: ReadonlyArray<{
   { field: 'player', label: 'Player' },
   { field: 'method', label: 'Method', thClassName: 'w-24' },
   { field: 'date', label: 'Date' },
-  { field: 'type', label: 'Type', thClassName: 'w-28' },
+  { field: 'type', label: 'Type', thClassName: 'w-36' },
 ];
 
 /** A logged `itemSlot` the glyph set knows — the bare `'ring'` included, unknown keys excluded. */
@@ -97,6 +97,11 @@ function floorToneOf(floors: string[], floor: string): Tone {
 /** D9a-t: the shipped `null → tome wpn` fallback kept, the `tome_weapon` enum leak closed. */
 function augSlotLabel(slotAugmented: MaterialLogEntry['slotAugmented']): string {
   return slotAugmented == null || slotAugmented === 'tome_weapon' ? 'tome wpn' : slotAugmented;
+}
+
+/** The one authored spelling of "what name does this row show" — sort key and cell text both call it. */
+function recipientNameOf(item: HistoryItem, playersById: Map<string, SnapshotPlayer>): string {
+  return playersById.get(item.entry.recipientPlayerId)?.name ?? item.entry.recipientPlayerName;
 }
 
 const MATERIAL_DOT: Record<MaterialType, string> = {
@@ -165,27 +170,32 @@ const CELL: Record<HistorySortField, (item: HistoryItem, ctx: CellContext) => Re
     return (
       <span className="inline-flex items-center gap-1.5">
         {p?.job && <JobIcon job={p.job} size="xs" />}
-        <span className="text-text-primary">{p?.name ?? i.entry.recipientPlayerName}</span>
+        <span className="text-text-primary">{recipientNameOf(i, c.playersById)}</span>
       </span>
     );
   },
   method: (i) => <span className="text-text-secondary">{methodLabelOf(i)}</span>,
-  date: (i) => (
-    <span className="text-text-secondary whitespace-nowrap">{DATE_FMT.format(new Date(i.entry.createdAt))}</span>
-  ),
+  date: (i) => {
+    const d = new Date(i.entry.createdAt);
+    return Number.isNaN(d.getTime()) ? (
+      <span className="text-text-tertiary">—</span>
+    ) : (
+      <span className="text-text-secondary whitespace-nowrap">{DATE_FMT.format(d)}</span>
+    );
+  },
   type: (i) =>
     i.kind === 'loot' ? (
       i.entry.isExtra ? (
-        <Tag variant="label" tone="muted">
+        <Tag variant="label" tone="muted" className="whitespace-nowrap">
           Extra
         </Tag>
       ) : (
-        <Tag variant="label" tone="success">
+        <Tag variant="label" tone="success" className="whitespace-nowrap">
           BiS
         </Tag>
       )
     ) : (
-      <Tag variant="label" tone="muted">
+      <Tag variant="label" tone="muted" className="whitespace-nowrap">
         {`aug ${augSlotLabel(i.entry.slotAugmented)}`}
       </Tag>
     ),
@@ -289,7 +299,7 @@ export function LootHistoryTable({
   const sortCtx = useMemo<HistorySortContext>(
     () => ({
       floors,
-      playerNameOf: (i) => playersById.get(i.entry.recipientPlayerId)?.name ?? i.entry.recipientPlayerName,
+      playerNameOf: (i) => recipientNameOf(i, playersById),
     }),
     [floors, playersById],
   );
@@ -297,6 +307,9 @@ export function LootHistoryTable({
     () => sortHistoryItems(filterHistoryItems(buildHistoryItems(lootLog, materialLog), filters), sort, sortCtx),
     [lootLog, materialLog, filters, sort, sortCtx],
   );
+  // Plain args to the render functions below (CELL / renderActionsCell), not
+  // props on memoized children — identity is irrelevant here, so memoizing
+  // these literals would be noise, not a fix.
   const cellCtx: CellContext = { floors, playersById };
   const actionsCtx: ActionsCellContext = { canEdit, onEdit, onCopyLink, onDelete };
 
@@ -315,7 +328,6 @@ export function LootHistoryTable({
                 currentDirection={sort.direction}
                 onSort={(f) => setSort((s) => nextHistorySort(f, s))}
                 thClassName={c.thClassName}
-                align={c.align}
               />
             ))}
             <th scope="col" className="w-12 px-4 py-3">

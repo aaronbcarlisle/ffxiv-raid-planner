@@ -1122,15 +1122,14 @@ v1's comparator verbatim would be a **regression against what ships now**.
 on `ui/SortableHeader` (`COLUMNS`) plus a plain sr-only `Actions` `<th>` for the kebab, a fixed
 newest-first tiebreak (`sortHistoryItems`'s `tiebreak`, R-D9a-B: `createdAt` desc → `loot` before
 `material` → id desc, never direction-aware) and per-column natural first direction
-(`nextHistorySort`'s `NATURAL_DIRECTION`, R-D9a-C). `thead` is `sticky top-0 z-10`, pinned to
-`AppChrome`'s `<main id="main-content">` pane and `GroupViewContent`'s `overflow-y-auto` content div
-(the element `#main-content [class*="overflow-y-auto"]` resolves to); the card wrapper is
-`overflow-clip`, so there is no horizontal scroll below the eight-column width (R-D9a-D, D9a-n) —
-**measured in the browser pass:** at 1440, 1024 and 900 px viewport widths the table fits its card
-with no clipping (872 px table in an 874 px card at 1024; 788 in 790 at 900; the ⋮ column fully
-visible at all three) — cells wrap below the table's max-content width (~921 px), and clipping would
-only begin below the min-content width, which 900 px does not reach. Phase P still re-decides the
-trade for mobile widths this pass didn't reach. The Date column reads local time (D9a-o); D9b's
+(`nextHistorySort`'s `NATURAL_DIRECTION`, R-D9a-C). `thead` is `sticky top-0 z-10`, pinned to its
+nearest scrollport — `GroupViewContent`'s `overflow-y-auto` content div inside `AppChrome`'s
+`<main id="main-content">` (the element `#main-content [class*="overflow-y-auto"]` resolves to);
+the table's card never scrolls horizontally (`overflow-clip`); the content pane itself can still
+overflow at narrow widths from the pre-existing stats-card row above the table, which is not this
+slice's (R-D9a-D, D9a-n) — measured at 1440: the table's max-content width is 921 px and its
+min-content width 788 px; at 1024 (872 px card) and 900 (788 px card) it fits with wrapped cells;
+clipping would begin only below ~788 px of card width — mobile territory, Phase P. The Date column reads local time (D9a-o); D9b's
 week-range separators stay UTC-pinned per implementation note 1 above — both are correct for what
 they each show. Sort state is session-local component state (`useState`), matching note 3. Week
 separators and the current-week marker are **not** built this slice — rebuild them from note 1's

@@ -322,6 +322,13 @@ describe('LootHistoryTable', () => {
       );
       expect(cell('loot-entry-1', COL.date).textContent?.startsWith(`${expectedDate}, `)).toBe(true);
     });
+
+    it('renders an em dash for an unparseable date instead of throwing (M4)', () => {
+      expect(() =>
+        renderTable({ lootLog: [makeLootEntry({ id: 1, createdAt: 'not-a-date' })] }),
+      ).not.toThrow();
+      expect(cell('loot-entry-1', COL.date).textContent?.trim()).toBe('—');
+    });
   });
 
   describe('Type cell (R-34 / R-D9a-A / D9a-t)', () => {
@@ -348,6 +355,9 @@ describe('LootHistoryTable', () => {
       expect(cell('material-entry-5', COL.type)).toHaveTextContent('aug tome wpn');
       expect(cell('material-entry-6', COL.type)).toHaveTextContent('aug tome wpn');
       expect(screen.queryByText(/tome_weapon/)).toBeNull();
+
+      const tag = within(cell('material-entry-5', COL.type)).getByText('aug tome wpn');
+      expect(tag.className).toContain('whitespace-nowrap');
     });
   });
 
