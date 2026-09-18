@@ -9,7 +9,7 @@
  * `method === 'book'` (badges as R — raid gear bought with books — but
  * filters separately); `material` = material log items.
  */
-import type { HistoryItem } from '../components/loot/LootEntryRow';
+import type { HistoryItem } from '../components/loot/logWeekGridData';
 import { METHOD_INFO } from '../components/history/lootMethodDisplay';
 import { GEAR_SLOT_NAMES, type LootLogEntry, type MaterialLogEntry } from '../types';
 import { UPGRADE_MATERIAL_DISPLAY_NAMES } from '../gamedata/loot-tables';

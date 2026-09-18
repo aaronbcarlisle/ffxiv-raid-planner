@@ -69,14 +69,22 @@ export interface LogGridFloor {
 }
 
 /**
- * One discriminated ref type across the grid, the History rows
- * (`LootEntryRow.tsx`'s `HistoryItem` is a type alias of this — director
- * F-12), and `requestDelete` — a multi-entry cell's `×N` chip menu
- * (`LogCellEntriesMenu`, D6 Task 2) hands one of these back via `onEdit`.
+ * One discriminated ref type across the grid, the History rows (`HistoryItem`
+ * below is a type alias of this — director F-12), and `requestDelete` — a
+ * multi-entry cell's `×N` chip menu (`LogCellEntriesMenu`, D6 Task 2) hands
+ * one of these back via `onEdit`.
  */
 export type LogGridEntryRef =
   | { kind: 'loot'; entry: LootLogEntry }
   | { kind: 'material'; entry: MaterialLogEntry };
+
+/**
+ * The History table's row item — the same ref under the name History uses
+ * (D9a-e: re-homed here from the retired History row component so the alias
+ * sits beside the type it aliases; `LootHistoryTable`, `Loot.tsx` and
+ * `utils/historyItems` all import it from here).
+ */
+export type HistoryItem = LogGridEntryRef;
 
 /**
  * The `?entry=` deep-link target shape (D6b Task B, controller ruling B-R4 —
@@ -91,12 +99,21 @@ export type HighlightEntryRef = { kind: 'loot' | 'material'; id: number };
  * The Log grid cell's DOM id — the ONE author of this string (director F-2,
  * blocker). `Loot.tsx`'s `?entry=` scroll effect and `LogWeekGrid`'s cell
  * wrapper (D6a Task 6) both consume this helper instead of each composing the
- * string independently — contrast the shipped History path's drift-prone
- * split (`LootHistoryTable.tsx:84-85` vs `LootEntryRow.tsx:80`), which this
- * one-author rule forbids repeating here.
+ * string independently. The History path once had the drift-prone split this
+ * rule forbids (its effect and its row each spelling the id); D9a closed it
+ * with `historyRowDomId` below (D9a-q). The two ids differ on purpose — the
+ * Log grid and the History table mount different elements for the same entry.
  */
 export const logCellDomId = (ref: LogGridEntryRef): string =>
   `log-cell-${ref.kind}-${ref.entry.id}`;
+
+/**
+ * The History row's DOM id — ONE author (D9a-q): `LootHistoryTable`'s
+ * `?entry=` effect and its `<tr id>` both call this. Takes `HighlightEntryRef`
+ * (`{kind, id}`, above) rather than a full `HistoryItem` because the effect
+ * holds no entry object, only its kind + id.
+ */
+export const historyRowDomId = (ref: HighlightEntryRef): string => `${ref.kind}-entry-${ref.id}`;
 
 /** ring / ring1 / ring2 all collapse into the one 'ring' cell (rule 3). */
 function gearBucketKey(itemSlot: string): string {

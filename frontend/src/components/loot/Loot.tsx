@@ -170,7 +170,7 @@ import { FairnessSummary } from './FairnessSummary';
 import { BookLedgerCard } from './BookLedgerCard';
 import { LootHistoryTable } from './LootHistoryTable';
 import { HistoryFilters } from './HistoryFilters';
-import type { HistoryItem } from './LootEntryRow';
+import type { HistoryItem } from './logWeekGridData';
 
 import { SegmentedToggle } from '../ui/SegmentedToggle';
 import { Tag } from '../ui/Tag';
@@ -995,8 +995,6 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             players={players}
             floors={floors}
             filters={filters}
-            currentWeek={clock.currentWeek}
-            rangeOfWeek={clock.rangeOfWeek}
             canEdit={canEdit}
             onEdit={openEdit}
             onCopyLink={copyLink}

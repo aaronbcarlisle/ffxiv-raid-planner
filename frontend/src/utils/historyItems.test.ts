@@ -16,7 +16,7 @@ import {
   type HistorySortDirection,
   type HistorySortContext,
 } from './historyItems';
-import type { HistoryItem } from '../components/loot/LootEntryRow';
+import type { HistoryItem } from '../components/loot/logWeekGridData';
 import type { LootLogEntry, LootMethod, MaterialLogEntry } from '../types';
 
 function makeLootEntry(overrides: Partial<LootLogEntry> = {}): LootLogEntry {
