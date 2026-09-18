@@ -101,10 +101,12 @@
  *     `logWeek.week` (gated `lview === 'log' && canEdit`), and the
  *     floor-header kebab's two reset items route through the same
  *     `handleResetConfirm` planner with real floor scoping. The Books card
- *     re-home is still pending as **D7b**: `BookLedgerCard` and
- *     `FairnessSummary` stay mounted on History for now — `FairnessSummary`
- *     until D14. The jump destination is card-level (`?player=`) until D12
- *     retargets it to slot-level anchors (R-28). "Log material" on Log —
+ *     re-homed to Log in D7b: `BookLedgerCard` mounts here, full width below
+ *     the fairness read, on the DISPLAYED week — `FairnessSummary` stays on
+ *     History until D14. The Alt+Click recipient jump (Log → roster card,
+ *     `?player=`) still lands card-level until D12 retargets it to slot-level
+ *     anchors (R-28); the Books jump is the separate `?book=` param described
+ *     below. "Log material" on Log —
  *     D4's other named gap — shipped in D8 (the toolbar's free-form door,
  *     below).
  *     A `week` param on Log positions the displayed
@@ -125,6 +127,7 @@
  *     the first explicit pill click, global after it (R-10.2/R-10.3).
  *   - The book-row highlight (legacy `highlightedBookPlayerId`) is URL-backed in
  *     v2: the roster kebab's "Edit Books" jump (C7, D-05) writes `?book={playerId}`
+ *     and `?lview=log` (D7b — the Books card lives on Log now, not History)
  *     and `BookLedgerCard` owns the scroll + pulse + self-clear, exactly as
  *     `LootHistoryTable` owns `?entry=`. Loot itself stays out of it — the two
  *     highlights are mutually exclusive by construction (the roster card clears
@@ -135,8 +138,9 @@
  *     `ResetConfig` fires it through the shared `resolveResetActions` planner
  *     (R-16, `resetActions.ts`) — the toolbar `LootResetMenu`'s six week/all ×
  *     loot/books/data configs (D7a, mounted on Log at `logWeek.week`) or a
- *     floor-scoped config from a floor-header kebab trigger, both routed
- *     through the same pipeline.
+ *     floor-scoped config from a floor-header kebab trigger (D7a), or, since
+ *     D7b, the Books card's own column/row kebabs (`onResetConfig={setResetConfig}`,
+ *     R-16 3/4 + 4/4) — all four entry points routed through the same pipeline.
  */
 
 import {
@@ -748,8 +752,8 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   }, [highlightId, highlightKind]);
 
   // Executes any `ResetConfig` the Log's `LootResetMenu` (D7, six toolbar
-  // configs bound to the displayed week) or a floor/player-scoped trigger
-  // (Task 3+'s kebabs) can emit. `resolveResetActions` (R-16,
+  // configs bound to the displayed week), the floor-header kebab, or the
+  // Books card's own column/row kebabs can emit. `resolveResetActions` (R-16,
   // `resetActions.ts`) is the single place a config's blast radius is
   // computed — this handler just executes the plan it returns: loot/data
   // loop the coordination deletes with `{ revertGear: true }`; books/data
@@ -775,7 +779,16 @@ export function Loot({ group, tier, canEdit }: LootProps) {
         await deleteMaterialAndRevertGear(groupId, tierId, entry.id, entry, { revertGear: true });
       }
       const op = plan.bookOp;
-      if (op.kind === 'player-all') await deletePlayerLedger(groupId, tierId, op.playerId);
+      // `deletePlayerLedger` is the only reset primitive that doesn't
+      // refresh anything on its own (every other branch's store method
+      // updates `pageLedger` directly) — without this, the week pill's
+      // per-week books dots (WeekScopeControl) go stale after "Reset ALL
+      // {name}'s books". fetchWeekDataTypes never re-throws (store catches
+      // internally) — left bare like the mount effect's own call.
+      if (op.kind === 'player-all') {
+        await deletePlayerLedger(groupId, tierId, op.playerId);
+        void fetchWeekDataTypes(groupId, tierId);
+      }
       else if (op.kind === 'player-week') await clearPlayerWeekPageLedger(groupId, tierId, op.playerId, op.week);
       else if (op.kind === 'floor-all') await clearAllFloorPageLedger(groupId, tierId, op.floor);
       else if (op.kind === 'floor-week') await clearFloorPageLedger(groupId, tierId, op.week, op.floor);
@@ -791,7 +804,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     } finally {
       setResetConfig(null);
     }
-  }, [resetConfig, groupId, tierId, floors, refresh, fetchPageLedger]);
+  }, [resetConfig, groupId, tierId, floors, refresh, fetchPageLedger, fetchWeekDataTypes]);
 
   const subtitle = `Who's up next, and the record of what's dropped · fairness rules: ${MODE_LABELS[getEffectivePriorityMode(settings)]}`;
 
@@ -976,15 +989,6 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             currentWeek={clock.currentWeek}
             floors={floors}
           />
-          <BookLedgerCard
-            groupId={group.id}
-            tierId={tier.tierId}
-            players={players}
-            floors={floors}
-            currentWeek={clock.currentWeek}
-            canEdit={canEdit}
-            effectiveUserId={effectiveUserId}
-          />
           <LootHistoryTable
             lootLog={lootLog}
             materialLog={materialLog}
@@ -1073,6 +1077,32 @@ export function Loot({ group, tier, canEdit }: LootProps) {
               <LootFairnessLegend />
             </div>
           )}
+          {/* D7b (R-14): the books ledger is Log's now — full width below the
+              fairness read, on the DISPLAYED week (`logWeek.week`): the card
+              writes with the week it is given, so backfilling week 3 credits
+              week 3, never the current lockout. A sibling of the gated
+              wrapper above, UNGATED (D7-C ruling) — Books is useful even on a
+              freshly created static with an empty configured roster (there's
+              nothing to divide by zero here, unlike the fairness read).
+              `clockWeek` is separate from `currentWeek` (the displayed week):
+              it feeds ONLY the scope toggle's "This week" label (R-D7f).
+              D7b Task 5 (R-16 3/4 + 4/4): the card's own column + row kebabs
+              are the remaining two entry points into the shared
+              `resolveResetActions`/`handleResetConfirm` pipeline above —
+              `onResetConfig={setResetConfig}` is the same wiring the
+              floor-header kebab already uses. */}
+          <BookLedgerCard
+            groupId={group.id}
+            tierId={tier.tierId}
+            players={players}
+            floors={floors}
+            currentWeek={logWeek.week}
+            clockWeek={clock.currentWeek}
+            canEdit={canEdit}
+            effectiveUserId={effectiveUserId}
+            onResetConfig={setResetConfig}
+            className="mt-4"
+          />
         </>
       ) : priorityView === 'who-needs-it' ? (
         <NeedMatrix

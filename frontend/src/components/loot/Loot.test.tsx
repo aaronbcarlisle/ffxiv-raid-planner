@@ -6,9 +6,9 @@
 // ⇄ History triad, four floor cards in F4→F1 order at the clock's week, the
 // editor toolbar, and the assign/log picker wiring. `useWeekClock` and
 // `useLogWeek` are left REAL (the clock reads the seeded loot store; the Log
-// week reads the MemoryRouter URL + localStorage). The
-// History-view surfaces (FairnessSummary / BookLedgerCard / LootHistoryTable /
-// HistoryFilters / LootEntryRow) are left REAL — Task 9 asserts the assembly
+// week reads the MemoryRouter URL + localStorage). The History-view surfaces
+// (FairnessSummary / LootHistoryTable / HistoryFilters / LootEntryRow) and the
+// Log-body's BookLedgerCard are left REAL — Task 9 asserts the assembly
 // wiring end-to-end. Loot now uses `useUrlTabState` (→ useSearchParams), so
 // every render is wrapped in a MemoryRouter.
 import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
@@ -254,8 +254,9 @@ beforeEach(() => {
   // the mount effect hits `fetch` for real; locally that resolves quietly
   // against a dev backend on :8001, but in CI (no backend) it rejects with
   // ECONNREFUSED as an UNHANDLED rejection and fails the whole run.
-  // `fetchPageBalances` is added for the History view — BookLedgerCard fires it
-  // in its own mount effect once the History body renders.
+  // `fetchPageBalances` is added for the Log view — BookLedgerCard fires it
+  // in its own mount effect once the Log body renders (D7b: re-homed off
+  // History).
   useLootTrackingStore.setState({
     currentWeek: 3, maxWeek: 5, lootLog: [], materialLog: [], pageLedger: [], pageBalances: [],
     fetchLootLog: vi.fn().mockResolvedValue(undefined),
@@ -744,9 +745,12 @@ describe('Loot', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'History' }));
 
-    // History body: fairness strip + Books + record. Floor cards gone.
+    // History body: fairness strip + record. Floor cards gone. D7b re-homed
+    // the Books card off History onto Log — assert its absence via the
+    // "Books scope" toggle (bare text 'Books' isn't distinctive enough; other
+    // surfaces could render it).
     expect(screen.getByText('Drops this tier')).toBeInTheDocument();
-    expect(screen.getByText('Books')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Books scope' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
     // lview is reflected in the URL.
     expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('lview=history');
@@ -1663,6 +1667,10 @@ describe('Loot — D6b Task C: count bar + legend', () => {
     // producing a bare orphaned "Loot fairness: ..." strip under the grid.
     expect(screen.queryByTestId('week-count-bar')).not.toBeInTheDocument();
     expect(screen.queryByText('Loot fairness:')).not.toBeInTheDocument();
+    // D7-C (director F-4): the Books card is UNGATED — unlike the fairness
+    // read above, it still mounts on a freshly created static with an empty
+    // configured roster (there's nothing to divide by zero here).
+    expect(screen.getByRole('group', { name: 'Books scope' })).toBeInTheDocument();
   });
 });
 
@@ -1872,5 +1880,219 @@ describe("Loot — D7a Task 3: floor-header kebab's resets (displayed week)", ()
     // (week BEFORE floor, resetActions.ts + Loot.tsx's handleResetConfirm).
     await waitFor(() => expect(clearFloorPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 1, 2));
     await waitFor(() => expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight'));
+  });
+});
+
+// ── D7b (R-14): BookLedgerCard re-homes to Log on the DISPLAYED week ────────
+// `BookLedgerCard` is left REAL here (the file's own convention — its store
+// calls are stubbed at the shared `beforeEach` above, not mocked). Driven at
+// a displayed week (1) apart from the seeded clock (3) so a
+// `currentWeek={clock.currentWeek}` regression at the mount can't hide (the
+// D4/D5/D6a/D7a vacuous-coincidence rule) — the toggle's own label doubles as
+// the R-D7f divergence proof.
+describe('Loot — D7b: BookLedgerCard re-homes to Log on the displayed week (R-14)', () => {
+  it('mounts BookLedgerCard on Log at the DISPLAYED week, not the clock', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    // Diverged (displayed 1 vs. clock 3): the toggle option reads the bare
+    // "Week 1" — never "This week" — which is the R-D7f label proof.
+    fireEvent.click(screen.getByRole('button', { name: 'Week 1' }));
+
+    const { fetchPageBalances } = useLootTrackingStore.getState();
+    expect(vi.mocked(fetchPageBalances)).toHaveBeenCalledWith('g1', 'aac-heavyweight', 1);
+    for (const call of vi.mocked(fetchPageBalances).mock.calls) {
+      expect(call[2]).not.toBe(3); // the seeded clock's currentWeek — divergence proof
+    }
+  });
+
+  it('History no longer mounts the books card', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    expect(screen.queryByRole('group', { name: 'Books scope' })).not.toBeInTheDocument();
+  });
+
+  it('Priority never mounts the books card', () => {
+    renderLoot({ tier: makeTier(players) });
+    expect(screen.queryByRole('group', { name: 'Books scope' })).not.toBeInTheDocument();
+  });
+});
+
+// ── D7b Task 5 (R-16 4/4): the card's own column + row kebabs are the last
+// two entry points into the shared confirm gate — `BookLedgerCard` is left
+// REAL here (same convention as the describe block above); the kebab UI
+// itself (content, follow-the-toggle, two triggers) is covered in
+// BookLedgerCard.test.tsx. `pageBalances` is seeded PER TEST, never in the
+// shared `beforeEach` (which seeds it empty), so an unrelated test never
+// inherits a stray Alice row. Driven at displayed week 1 with the clock
+// seeded at 3 so a `week: clock.currentWeek` regression can't hide.
+describe("Loot — D7b Task 5: BookLedgerCard's kebab configs land in the shared confirm (R-16 4/4)", () => {
+  it("row kebab's Week-1 item (after toggling the card to This week) routes to clearPlayerWeekPageLedger at the DISPLAYED week", async () => {
+    const clearPlayerWeekPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+      clearPlayerWeekPageLedger: clearPlayerWeekPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    // The kebab's item defaults to all-time — flip the card's own scope
+    // toggle to "Week 1" FIRST so the follow-the-toggle item becomes the
+    // week-scoped one (R-D7f: displayed 1 vs. clock 3 -> bare "Week 1", never
+    // "This week").
+    fireEvent.click(screen.getByRole('button', { name: 'Week 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alice book actions' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: "Reset Alice's Week 1 books" }));
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    expect(screen.getByText(/Alice's book entries for Week 1\./)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() =>
+      expect(clearPlayerWeekPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 'p1', 1)
+    );
+    const week = clearPlayerWeekPageLedgerMock.mock.calls[0][3];
+    expect(week).not.toBe(3); // the seeded clock's currentWeek — divergence proof
+  });
+
+  it("row kebab's default all-time item routes to deletePlayerLedger, then re-arms via a trailing fetchPageLedger and refreshes the week pill's books dots", async () => {
+    const deletePlayerLedgerMock = vi.fn().mockResolvedValue(undefined);
+    const fetchPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    const fetchWeekDataTypesMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+      deletePlayerLedger: deletePlayerLedgerMock,
+      fetchPageLedger: fetchPageLedgerMock,
+      fetchWeekDataTypes: fetchWeekDataTypesMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Alice book actions' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: "Reset ALL Alice's books" }));
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() => expect(deletePlayerLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 'p1'));
+    // `deletePlayerLedger` does not self-refresh the ledger — the handler's
+    // trailing `fetchPageLedger` is what re-arms the card's corrective
+    // backstop effect. Asserted by CALL ORDER, not just "called with" —
+    // Loot's own mount effect already calls `fetchPageLedger(groupId,
+    // tierId)` unconditionally (asserted at the shared `beforeEach` fixture
+    // above), so a bare `toHaveBeenCalledWith` here would be satisfied by
+    // that mount call alone and prove nothing about the post-reset call
+    // `handleResetConfirm` fires after `deletePlayerLedger` (director review
+    // finding, round 1).
+    await waitFor(() => {
+      expect(fetchPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight');
+      expect(fetchPageLedgerMock.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+        deletePlayerLedgerMock.mock.invocationCallOrder[0]
+      );
+    });
+    // `deletePlayerLedger` is the only reset primitive that doesn't refresh
+    // the week pill's per-week books dots on its own — the handler's
+    // trailing `fetchWeekDataTypes` is what re-arms them. Asserted by CALL
+    // ORDER: Loot's own mount effect already calls `fetchWeekDataTypes`
+    // unconditionally, so a bare `toHaveBeenCalledWith` here would be
+    // satisfied by that mount call alone and prove nothing about the
+    // post-reset call (whole-branch review Should-fix 1).
+    await waitFor(() => {
+      expect(fetchWeekDataTypesMock).toHaveBeenCalledWith('g1', 'aac-heavyweight');
+      expect(fetchWeekDataTypesMock.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+        deletePlayerLedgerMock.mock.invocationCallOrder[0]
+      );
+    });
+  });
+
+  it("column kebab's default all-time item routes to clearAllFloorPageLedger, never clearFloorPageLedger", async () => {
+    const clearAllFloorPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    const clearFloorPageLedgerMock = vi.fn().mockResolvedValue(undefined);
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+      clearAllFloorPageLedger: clearAllFloorPageLedgerMock,
+      clearFloorPageLedger: clearFloorPageLedgerMock,
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+
+    // The card's scope toggle defaults to All time — no toggle click needed.
+    fireEvent.click(screen.getByRole('button', { name: 'Book II actions' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Reset ALL Floor 2 books' }));
+
+    expect(await screen.findByText('Confirm Reset')).toBeInTheDocument();
+    expect(screen.getByText(/ALL book entries for Floor 2 \(every week\)/)).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Type RESET'), { target: { value: 'RESET' } });
+    const resetButtons = screen.getAllByRole('button', { name: 'Reset' });
+    fireEvent.click(resetButtons[resetButtons.length - 1]);
+
+    await waitFor(() =>
+      expect(clearAllFloorPageLedgerMock).toHaveBeenCalledWith('g1', 'aac-heavyweight', 2)
+    );
+    expect(clearFloorPageLedgerMock).not.toHaveBeenCalled();
+  });
+});
+
+// ── D7b Task 6 (R-14 consequence): the roster's Books jump lands on Log ────
+// `handleBooksJump` (RosterCard.tsx) writes `lview=log` since the card
+// re-homed here (Tasks 4-5) — this proves the landing works end-to-end: the
+// card mounts under Log, the row is present and pulsed, and the `book` param
+// self-clears. `BookLedgerCard` is left REAL (the file's own convention);
+// `pageBalances` is seeded PER TEST, never in the shared `beforeEach` (which
+// seeds it empty).
+describe('Loot — D7b Task 6: the roster Books jump lands on Log (R-14 consequence)', () => {
+  // Same stub-and-restore shape as BookLedgerCard.test.tsx's own deep-link
+  // suite — jsdom defines no scrollIntoView at all.
+  let originalScrollIntoView: typeof Element.prototype.scrollIntoView | undefined;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    if (originalScrollIntoView) {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    } else {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    }
+  });
+
+  it('mounts the card under Log, pulses the row, and self-clears while week + lview survive', () => {
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&book=p1&week=1']);
+
+    const row = document.getElementById('book-row-p1');
+    expect(row).toBeInTheDocument();
+    expect(row?.className).toContain('highlight-pulse');
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    const search = screen.getByTestId('loc').dataset.search ?? '';
+    expect(search).not.toContain('book=p1');
+    expect(search).toContain('week=1');
+    expect(search).toContain('lview=log');
+  });
+
+  it('self-clears with the real jump shape (no week param — the Log resolves its own week)', () => {
+    useLootTrackingStore.setState({
+      pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&book=p1']);
+
+    const row = document.getElementById('book-row-p1');
+    expect(row).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    const search = screen.getByTestId('loc').dataset.search ?? '';
+    expect(search).not.toContain('book=p1');
+    expect(search).toContain('lview=log');
   });
 });

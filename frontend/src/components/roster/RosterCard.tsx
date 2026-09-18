@@ -297,11 +297,13 @@ export function RosterCard({
   );
   // C7 (D-05): the kebab's Books jump — the same route, the Books card's own
   // highlight param (BookLedgerCard scrolls + pulses `book-row-{playerId}`).
+  // Since D7 (R-14) the Books card lives on the Log view, not History — this
+  // jump lands there.
   const handleBooksJump = useCallback(() => {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('tab', 'gear');
-      params.set('lview', 'history');
+      params.set('lview', 'log');
       params.set('book', player.id);
       params.delete('entry');
       params.delete('entryType');

@@ -3,7 +3,7 @@
 // BookLedgerCard's own wiring contract (which props they're opened with, what
 // their onSubmit/onHistoryCleared callbacks do), not the modals' internal UI.
 // Mocked here, matching the Loot.test.tsx convention for reused leaf surfaces.
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import type { SnapshotPlayer, PageBalance, PageLedgerEntry } from '../../types';
@@ -92,13 +92,16 @@ const baseProps = {
   players,
   floors: ['M9S', 'M10S', 'M11S', 'M12S'],
   currentWeek: 3,
+  clockWeek: 3,
   canEdit: true,
+  onResetConfig: vi.fn(),
 };
 
 beforeEach(() => {
   editModalCalls.length = 0;
   ledgerModalCalls.length = 0;
   markClearedCalls.length = 0;
+  baseProps.onResetConfig.mockClear();
 
   // Seed pageBalances and stub every store action BookLedgerCard calls —
   // unstubbed actions fire real fetches that fail CI (see Loot.test.tsx).
@@ -149,7 +152,9 @@ describe('BookLedgerCard', () => {
     expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', undefined);
 
     fetchPageBalances.mockClear();
-    fireEvent.click(screen.getByRole('button', { name: 'This week' }));
+    // R-D7f: with currentWeek === clockWeek (both 3, baseProps) the label is
+    // "This week (Week 3)".
+    fireEvent.click(screen.getByRole('button', { name: 'This week (Week 3)' }));
 
     expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', 3);
   });
@@ -163,7 +168,7 @@ describe('BookLedgerCard', () => {
     // mark-cleared) refetches `pageLedger` — simulating that reference change
     // directly must re-fire OUR scoped fetch, landing last and correcting it.
     render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
-    fireEvent.click(screen.getByRole('button', { name: 'This week' }));
+    fireEvent.click(screen.getByRole('button', { name: 'This week (Week 3)' }));
 
     const { fetchPageBalances } = storeActions();
     fetchPageBalances.mockClear();
@@ -252,6 +257,67 @@ describe('BookLedgerCard', () => {
       expect(fetchPageBalances).toHaveBeenCalledWith('g1', 't1', undefined);
       expect(fetchPageLedger).toHaveBeenCalledWith('g1', 't1');
     });
+  });
+
+  // ── D7b (R-14): the row regains its JobIcon ─────────────────────────────
+  it("a balance row shows the player's JobIcon beside the name", () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    // Alice's fixture job is 'PLD' (makePlayer default) — JobIcon renders an
+    // <img alt={job}>, so its accessible name IS the job code.
+    const aliceRow = document.getElementById('book-row-p1')!;
+    expect(within(aliceRow).getByRole('img', { name: 'PLD' })).toBeInTheDocument();
+  });
+
+  it('a balance row whose player is missing from the roster renders the name without an icon', () => {
+    // A pageBalances row can outlive its player (e.g. the player was removed
+    // from the roster) — playersById.get() then returns undefined, and the
+    // row's `player?.job` guard must skip JobIcon entirely rather than throw.
+    useLootTrackingStore.setState({
+      pageBalances: [...balances, makeBalance('ghost1', 'Ghost')],
+    });
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const ghostRow = document.getElementById('book-row-ghost1')!;
+    expect(ghostRow).toHaveTextContent('Ghost');
+    expect(within(ghostRow).queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  // ── R-D7f: the scope-toggle's "This week" label must stay honest once
+  // `currentWeek` is the DISPLAYED week (which can diverge from the clock) ──
+  it('R-D7f: the scope-toggle label reflects displayed-vs-clock-week divergence', () => {
+    const { rerender } = render(
+      <BookLedgerCard {...baseProps} currentWeek={3} clockWeek={3} />,
+      { wrapper: MemoryRouter },
+    );
+    // Displayed === clock: "This week (Week N)".
+    expect(screen.getByRole('button', { name: 'This week (Week 3)' })).toBeInTheDocument();
+
+    rerender(<BookLedgerCard {...baseProps} currentWeek={1} clockWeek={3} />);
+    // Diverged: bare "Week N" — no "This week" claim on a backlogged view.
+    expect(screen.getByRole('button', { name: 'Week 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /This week/ })).not.toBeInTheDocument();
+  });
+
+  // ── director change-review C-1: adjust and mark-cleared must key off the
+  // DISPLAYED week (`currentWeek`), not the clock — proven by driving them
+  // apart (baseProps coincide at 3/3, which would pass vacuously) ──
+  it('C-1: cell-edit and mark-cleared both write at the DISPLAYED week, not the clock week', async () => {
+    render(<BookLedgerCard {...baseProps} currentWeek={1} clockWeek={3} />, { wrapper: MemoryRouter });
+
+    const aliceRow = document.getElementById('book-row-p1')!;
+    fireEvent.click(screen.getAllByText('3').find((el) => aliceRow.contains(el))!);
+    fireEvent.click(screen.getByText('submit-edit'));
+
+    await vi.waitFor(() => {
+      const call = storeActions().adjustBookBalance.mock.calls.at(-1);
+      expect(call?.[5]).toBe(1); // the week arg
+      expect(call?.[5]).not.toBe(3); // the clock's currentWeek — divergence proof
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark floor cleared' }));
+    expect(markClearedCalls.at(-1)?.currentWeek).toBe(1);
+    expect(markClearedCalls.at(-1)?.currentWeek).not.toBe(3);
   });
 });
 
@@ -356,5 +422,115 @@ describe('BookLedgerCard — book deep-link highlight (C7, D-05)', () => {
       vi.advanceTimersByTime(2600);
     });
     expect(screen.getByTestId('location-search').textContent).not.toContain('book=');
+  });
+});
+
+// ── D7b (R-16 4/4): column + row kebabs, follow-the-toggle ─────────────────
+// Every reset item's label AND config flip together with the card's own
+// `scope` toggle (This week / All time) — the legacy books-menu mechanism,
+// re-expressed as ONE item per kebab rather than two.
+describe('BookLedgerCard — column + row kebabs (D7b, R-16 4/4)', () => {
+  it('column kebab (Book II, floor 2): default "All time" emits a week-less floor config; toggling to "This week" flips label AND config together', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const kebab = screen.getByRole('button', { name: 'Book II actions' });
+    expect(kebab).toHaveAttribute('aria-haspopup', 'menu');
+    fireEvent.click(kebab);
+
+    // ONE item, never two.
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: 'Reset ALL Floor 2 books' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset ALL Floor 2 books' }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({ scope: 'floor', target: 'books', floor: 2 });
+
+    baseProps.onResetConfig.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'This week (Week 3)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book II actions' }));
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: 'Reset Floor 2 books (Week 3)' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset Floor 2 books (Week 3)' }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({
+      scope: 'floor', target: 'books', week: 3, floor: 2,
+    });
+  });
+
+  it('column kebab label/config follow currentWeek, not a hardcoded 3 (anti-vacuous)', () => {
+    render(<BookLedgerCard {...baseProps} currentWeek={1} clockWeek={3} />, { wrapper: MemoryRouter });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Week 1' })); // scope -> 'week'
+    fireEvent.click(screen.getByRole('button', { name: 'Book II actions' }));
+    expect(screen.getByRole('menuitem', { name: 'Reset Floor 2 books (Week 1)' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Reset Floor 2 books (Week 1)' }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({
+      scope: 'floor', target: 'books', week: 1, floor: 2,
+    });
+  });
+
+  it('right-clicking a Book column header opens the SAME single item the kebab click does', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const header = screen.getByText('Book II').closest('th')!;
+    fireEvent.contextMenu(header);
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: 'Reset ALL Floor 2 books' })).toBeInTheDocument();
+  });
+
+  it('row kebab (Alice): default "All time" emits a week-less all-scope config naming the player; toggling flips label AND config together', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const kebab = screen.getByRole('button', { name: 'Alice book actions' });
+    expect(kebab).toHaveAttribute('aria-haspopup', 'menu');
+    fireEvent.click(kebab);
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: "Reset ALL Alice's books" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: "Reset ALL Alice's books" }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({
+      scope: 'all', target: 'books', playerId: 'p1', playerName: 'Alice',
+    });
+
+    baseProps.onResetConfig.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'This week (Week 3)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alice book actions' }));
+    expect(screen.getByRole('menuitem', { name: "Reset Alice's Week 3 books" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: "Reset Alice's Week 3 books" }));
+    expect(baseProps.onResetConfig).toHaveBeenCalledWith({
+      scope: 'week', target: 'books', week: 3, playerId: 'p1', playerName: 'Alice',
+    });
+  });
+
+  it("right-clicking Alice's row opens the SAME single item the kebab click does", () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const row = document.getElementById('book-row-p1')!;
+    fireEvent.contextMenu(row);
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1);
+    expect(screen.getByRole('menuitem', { name: "Reset ALL Alice's books" })).toBeInTheDocument();
+  });
+
+  it('canEdit=false: no kebabs render, and right-clicking the header/row opens nothing', () => {
+    render(<BookLedgerCard {...baseProps} canEdit={false} />, { wrapper: MemoryRouter });
+
+    expect(screen.queryByRole('button', { name: 'Book II actions' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Alice book actions' })).not.toBeInTheDocument();
+
+    const header = screen.getByText('Book II').closest('th')!;
+    fireEvent.contextMenu(header);
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+
+    const row = document.getElementById('book-row-p1')!;
+    fireEvent.contextMenu(row);
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+  });
+
+  it("member-own-row (D7-g): canEdit=false + effectiveUserId matching Alice's row still shows NO row kebab", () => {
+    render(<BookLedgerCard {...baseProps} canEdit={false} effectiveUserId="u-alice" />, { wrapper: MemoryRouter });
+
+    // Alice's cells are still editable (member-own-row exception) but the
+    // bulk-reset kebab gates on `canEdit` alone (never `rowCanEdit`) — no
+    // row grants a member a bulk-reset door onto their own ledger.
+    expect(screen.queryByRole('button', { name: 'Alice book actions' })).not.toBeInTheDocument();
+    const row = document.getElementById('book-row-p1')!;
+    fireEvent.contextMenu(row);
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
   });
 });

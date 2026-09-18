@@ -409,6 +409,71 @@ Everything else in that sidebar is accounted for and already present in `BookLed
 toggle, cell-click edit, per-row ledger, mark-floor-cleared, the member-own-row exception and the
 `book-row-{playerId}` anchor.
 
+**Build note (D7b, 2026-09-17) — shipped.**
+
+- `BookLedgerCard` mounts on Log (`Loot.tsx`), full width below the fairness read, keyed on the
+  DISPLAYED week: `currentWeek={logWeek.week}`. The three writes this ruling named are all
+  re-pointed to it — the scoped `fetchPageBalances` fetch, `adjustBookBalance`'s week-of-record,
+  and `MarkFloorClearedModal`'s default week.
+- A new required prop, `clockWeek` (fed `clock.currentWeek`), is kept separate from `currentWeek`
+  and feeds ONLY the scope toggle's "This week" label — **R-D7f**: `This week (Week N)` when the
+  displayed week matches the clock, the bare `Week N` when it doesn't, so the toggle never claims
+  "this week" for a backlogged view (`BookLedgerCard.tsx`'s `thisWeekLabel`, the same honesty
+  `WeekScopeControl.tsx` already applies elsewhere).
+- The per-row `JobIcon` is restored (a missing-roster row — no matching `SnapshotPlayer` — renders
+  the stored name only, no icon).
+- The roster kebab's `?book=` jump now also writes `?lview=log` (`RosterCard.tsx`'s
+  `handleBooksJump`) so the jump lands on the view that actually holds the card; History loses the
+  card entirely (R-34). This retarget is Books-only: `RosterCard.tsx`'s `jumpToEntry` (the
+  loot/material entry jumps) still writes `?lview=history` — those stay on History until **D12**
+  (R-28's slot-level anchors, out of scope here).
+- Placement is per the **D7-C** ruling: a sibling of the (gated) fairness wrapper, itself UNGATED
+  — Books stays useful on a freshly created static with an empty configured main roster (there is
+  nothing to divide by zero here, unlike the fairness read). Pinned by test: `Loot.test.tsx`'s
+  fresh-static Log test asserts `getByRole('group', { name: 'Books scope' })` renders against two
+  unconfigured placeholders + a substitute.
+- Collapse toggle and the mobile Loot⇄Books panel-tab axis are dropped, restated from the ruling
+  above — nothing new landed for either.
+- Two accepted behaviors, named rather than fixed:
+  1. **The cold-load first paint is honest only when storage agrees with the URL — it is not a
+     flicker-free case by construction.** `useLogWeek`'s `override` state (`useLogWeek.ts:261`)
+     initializes to `null` and only resolves `?week=` inside a `useEffect` — which fires after the
+     first paint, and only once per `groupId`/`tierId` pair (`useLogWeek.ts:288-314`). `NewShell.tsx`
+     mounts `Loot` on `currentGroup` alone (`:92-99`) while `currentTier` is still `null`
+     (`tierStore.ts:65`), so the FIRST resolve runs with `tierId` undefined — `?week=` still wins
+     there (the URL check runs before the `!tierId` short-circuit, `useLogWeek.ts:236-239`), and the
+     card's very first paint reads `currentWeek = N`. But `tier` arriving asynchronously changes the
+     effect's key (`groupId`/`tierId` pair, `:289-292`), so it re-runs as a NON-first resolve: that
+     pass passes `null` for the URL (`:299`) and reads STORAGE only, so `override` is replaced by
+     whatever the tier's stored week is (or `null` → clock) and the mirror (`:309-310`)
+     rewrites/deletes `?week=` to match. Net: the first paint is honest at `Week N` from the start
+     only when storage already agrees with `N` — for a shared or hand-edited `?week=N` that diverges
+     from storage, the label still flips after the tier resolves, AND the deep link's week is lost.
+     This `?week=` cold-load clobber is PRE-EXISTING `useLogWeek` behavior (D4/D5), not introduced by
+     D7b — queued as a follow-up, observed in the D7b browser pass. The in-app-navigation flicker and
+     the `?week=1` special case below are unaffected by this correction. The flicker happens on an
+     in-app navigation where `tier` is **already hydrated** when `Loot` (re)mounts:
+     `BookLedgerCard`'s first paint lands before the resolve effect has fired, so `currentWeek` still
+     falls back to `clock.currentWeek` — trivially equal to the `clockWeek` prop (same source) —
+     producing one paint of `This week (Week {clock.currentWeek})` before the effect resolves the
+     URL override and, if it differs, the label flips to the bare `Week N`.
+     **Special case, more than one paint:** with `?week=1` specifically, the override resolves to
+     `1` — which coincides with `lootTrackingStore`'s own `currentWeek: 1` default
+     (`lootTrackingStore.ts:115`) for as long as the mount effect's `fetchCurrentWeek(groupId,
+     tierId)` call (`Loot.tsx:487`) hasn't resolved the real clock week yet. Until that async fetch
+     settles, `currentWeek === clockWeek === 1` holds for real, not just for one paint, so the
+     toggle correctly-but-misleadingly reads `This week (Week 1)` across however many renders that
+     fetch takes.
+     **Observed in the D7b browser pass (2026-09-17):** a bare `?lview=log&week=2` cold open in a fresh tab, with the v2 storage key holding `1`, displayed **Week 2** and kept `?week=2` — the tier was already known at `Loot`'s first resolve (NewShell renders `<Loot tier={currentTier}>` only once the group has loaded), so the re-key path never ran. The clobber therefore remains a real code path in `useLogWeek.ts:288-314` that bites only if the first resolve runs tier-less; it was not reproduced on a cold open, and it stays queued rather than fixed.
+  2. **All-time scope re-fires on every Log week step.** The card's fetch effect depends on
+     `currentWeek` even when `scope === 'all'` (where `scopedWeek` is always `undefined`), so
+     stepping the Log week re-issues an identical unscoped `fetchPageBalances` call each time. This
+     `currentWeek` dep is actually redundant, not load-bearing: in week scope `scopedWeek` (also a
+     dep) already changes in lockstep with it, and the backstop the adjacent comment documents is
+     the `pageLedger` dep alone. Pre-existing (`git blame` dates the line to 2026-07-02, before D7b
+     touched this card), left untrimmed here as a harmless idempotent over-fetch — out of this
+     task's scope to change.
+
 ### R-15 · **Log owns the week; Priority is always now**
 
 Week stepping exists only in Log. Priority ranks against the current lockout, always, and has no week
@@ -449,8 +514,8 @@ is `SectionedLogView.tsx:450-538`, including `clearFloorPageLedger` / `clearAllF
 `clock.currentWeek` (`Loot.tsx:384`) where legacy passes the *selected* week (`HistoryView.tsx:287`) —
 under R-15 it must follow the displayed week or "reset week loot" wipes the wrong one.
 
-**Build note (D7a, 2026-08-24) — entry points 1 & 2 shipped; 3 & 4 (Books column/row kebabs) land
-in D7b with the card re-home.**
+**Build note (D7a 2026-08-24 / D7b 2026-09-17) — all four entry points shipped (1 & 2 D7a; 3 & 4
+D7b, with the card re-home).**
 
 - Toolbar `LootResetMenu` re-gated to `lview === 'log' && canEdit` at `logWeek.week` (the
   DISPLAYED week, R-15-consistent); week-scoped labels name the week per ruling **R-D7d**
@@ -465,13 +530,19 @@ in D7b with the card re-home.**
 - The mechanism split, disclosed: the three floor/player book clears
   (`clearFloorPageLedger`/`clearAllFloorPageLedger`/`clearPlayerWeekPageLedger`) are reversal-POST
   shims netting balances to zero via compensating adjustment rows, while `deletePlayerLedger` is a
-  TRUE backend DELETE — the future row kebab's week vs all-time items differ in destructiveness
-  semantics (D7b surfaces them). **Present tense for D7a:** the floor kebab's
+  TRUE backend DELETE — the Books card's row kebab (D7b, below) surfaces both: its week item runs
+  `clearPlayerWeekPageLedger` (a shim) and its all-time item runs `deletePlayerLedger` (a true
+  delete), so the two items on the same row differ in destructiveness. **Present tense for D7a:**
+  the floor kebab's
   `Reset {floorName} books` already reaches a shim today — it emits a floor+week config, so it runs
   `clearFloorPageLedger`, which writes compensating `adjustment` rows rather than deleting any. Of
   D7a's six toolbar book paths, `Reset Week {N} books/data` and `Reset ALL books/data` are true
   DELETEs (`clearWeekPageLedger`, `clearAllPageLedger`); `deletePlayerLedger` and
-  `clearPlayerWeekPageLedger` are wired through the planner but unreachable until D7b's row kebab.
+  `clearPlayerWeekPageLedger` are wired through the planner and, since D7b, first reachable
+  *through the reset-confirm pipeline* via the Books card's row kebab (below) — `deletePlayerLedger`
+  itself has been reachable in v2 since F6d through the card's own `PlayerLedgerModal` "Clear
+  History" door (`history/PlayerLedgerModal.tsx:59`, mounted in `BookLedgerCard.tsx`), a separate,
+  non-planner path this note is not about.
 - Inherited copy divergence, disclosed not fixed: `ui/ResetConfirmModal.tsx:152` says "permanently
   delete" even on the reversal-POST paths (shared frozen file; R-44 was the one approved delta) —
   and D7a is the slice that first makes one of those paths reachable, via the floor kebab's books
@@ -498,6 +569,44 @@ in D7b with the card re-home.**
   containment; `eslint.config.js` untouched).
 - The R-22 boundary restated: Revert and Start-next-week remain CLOCK-bound with the divergence
   notice — only the reset family follows the displayed week.
+
+**Build note (D7b, 2026-09-17) — entry points 3 & 4 (Books column/row kebabs) shipped.**
+
+- The Books **column** kebab (per floor header) and Books **row** kebab (per player) each carry
+  ONE item, following the card's own scope toggle (This week / All time — the toggle's default
+  stays all-time, unchanged). The four emitted configs, exactly as the card builds them
+  (`BookLedgerCard.tsx`'s `buildBooksMenuItem`):
+  - Column, week scope: `Reset Floor {F} books (Week {N})` → `{ scope: 'floor', target: 'books', week: N, floor: F }`
+  - Column, all-time scope: `Reset ALL Floor {F} books` → `{ scope: 'floor', target: 'books', floor: F }`
+  - Row, week scope: `Reset {name}'s Week {N} books` → `{ scope: 'week', target: 'books', week: N, playerId, playerName }`
+  - Row, all-time scope: `Reset ALL {name}'s books` → `{ scope: 'all', target: 'books', playerId, playerName }`
+  Labels follow **R-D7d**'s naming convention (the toolbar/floor items already established); both
+  kebabs hand their config to the same `onResetConfig={setResetConfig}` the floor-header kebab
+  already uses, so all four entry points converge on one `handleResetConfirm`/`resolveResetActions`
+  pipeline.
+- Two-trigger mechanism per **R-D7b**, re-applied one level down from the floor header: a
+  `canEdit`-gated `IconButton` kebab (`aria-label="Book {numeral} actions"` on the column,
+  `aria-label="{playerName} book actions"` on the row, both `aria-haspopup="menu"`) plus
+  right-click on the `<th>`/`<tr>` itself, both routing into ONE `BooksMenuState` and ONE
+  `ContextMenu` mount at the card root — never a per-column or per-row menu instance.
+  `jumpMenuAnchor` (the same helper `LogWeekGrid.tsx`'s floor menu uses) supplies the
+  keyboard-invoked (Shift+F10/menu-key) fallback anchor. For a viewer (`!canEdit`), the right-click
+  door is not merely hidden — `BookLedgerCard.tsx:285-292,325-332` passes `onContextMenu={undefined}`
+  on both the `<th>` and `<tr>` in that case, so right-click is inert, not just visually absent (no
+  kebab renders either, per the `canEdit`-gated `IconButton` above).
+  No `jsx-a11y` rule fired on the `<th>`/`<tr>` `onContextMenu` handlers, so — unlike the floor
+  header's `<div>` — no eslint containment comment was needed here.
+- The row kebab gates on `canEdit` ONLY (**D7-g**): the member-own-row cell-edit exception
+  (`rowCanEdit`, which also admits the row's own linked user) grants edit access to that row's
+  balance cells but never the bulk-reset kebab — a member editing their own row still sees no
+  kebab.
+- The **R-D7b named interim** recorded under D7a (no focus-restore-on-close, no `aria-expanded`,
+  closes on scroll, and a keyboard-invoked context menu mis-anchoring relative to the visible
+  trigger) now applies to these two new surfaces as well — it was never floor-kebab-specific, and
+  is restated here rather than left implicit.
+- The inherited `ResetConfirmModal.tsx:152` "permanently delete" copy (disclosed, not fixed, under
+  D7a) sits over these paths too, including the row's `clearPlayerWeekPageLedger` shim — the same
+  frozen shared file, unedited.
 
 ### R-17 · One logging path — **loot cells** to the picker, **material cells** to the material modal
 
