@@ -435,19 +435,28 @@ toggle, cell-click edit, per-row ledger, mark-floor-cleared, the member-own-row 
 - Collapse toggle and the mobile Loot⇄Books panel-tab axis are dropped, restated from the ruling
   above — nothing new landed for either.
 - Two accepted behaviors, named rather than fixed:
-  1. **The "This week" flicker is an in-app-navigation case, not a cold-load one.** `useLogWeek`'s
-     `override` state (`useLogWeek.ts:261`) initializes to `null` and only resolves `?week=` inside
-     a `useEffect` — which fires after the first paint, and only once per `groupId`/`tierId` pair
-     (`useLogWeek.ts:288-316`). On a TRUE cold load, `Loot.tsx:801`'s `if (!tier) return <div .../>`
-     blocks `BookLedgerCard` from mounting at all until `tier` arrives — by which point the resolve
-     effect (already scheduled on an earlier, `tier`-less paint) has typically already set
-     `override` from `?week=N`, so the card's very first paint already reads `currentWeek = N`.
-     With `N ≠ 1` this is honest from the start (`Week N`, not `This week`) — no flicker. The
-     flicker instead happens on an in-app navigation where `tier` is **already hydrated** when
-     `Loot` (re)mounts: `BookLedgerCard`'s first paint lands before the resolve effect has fired,
-     so `currentWeek` still falls back to `clock.currentWeek` — trivially equal to the `clockWeek`
-     prop (same source) — producing one paint of `This week (Week {clock.currentWeek})` before the
-     effect resolves the URL override and, if it differs, the label flips to the bare `Week N`.
+  1. **The cold-load first paint is honest only when storage agrees with the URL — it is not a
+     flicker-free case by construction.** `useLogWeek`'s `override` state (`useLogWeek.ts:261`)
+     initializes to `null` and only resolves `?week=` inside a `useEffect` — which fires after the
+     first paint, and only once per `groupId`/`tierId` pair (`useLogWeek.ts:288-314`). `NewShell.tsx`
+     mounts `Loot` on `currentGroup` alone (`:92-99`) while `currentTier` is still `null`
+     (`tierStore.ts:65`), so the FIRST resolve runs with `tierId` undefined — `?week=` still wins
+     there (the URL check runs before the `!tierId` short-circuit, `useLogWeek.ts:236-239`), and the
+     card's very first paint reads `currentWeek = N`. But `tier` arriving asynchronously changes the
+     effect's key (`groupId`/`tierId` pair, `:289-292`), so it re-runs as a NON-first resolve: that
+     pass passes `null` for the URL (`:299`) and reads STORAGE only, so `override` is replaced by
+     whatever the tier's stored week is (or `null` → clock) and the mirror (`:309-310`)
+     rewrites/deletes `?week=` to match. Net: the first paint is honest at `Week N` from the start
+     only when storage already agrees with `N` — for a shared or hand-edited `?week=N` that diverges
+     from storage, the label still flips after the tier resolves, AND the deep link's week is lost.
+     This `?week=` cold-load clobber is PRE-EXISTING `useLogWeek` behavior (D4/D5), not introduced by
+     D7b — queued as a follow-up, observed in the D7b browser pass. The in-app-navigation flicker and
+     the `?week=1` special case below are unaffected by this correction. The flicker happens on an
+     in-app navigation where `tier` is **already hydrated** when `Loot` (re)mounts:
+     `BookLedgerCard`'s first paint lands before the resolve effect has fired, so `currentWeek` still
+     falls back to `clock.currentWeek` — trivially equal to the `clockWeek` prop (same source) —
+     producing one paint of `This week (Week {clock.currentWeek})` before the effect resolves the
+     URL override and, if it differs, the label flips to the bare `Week N`.
      **Special case, more than one paint:** with `?week=1` specifically, the override resolves to
      `1` — which coincides with `lootTrackingStore`'s own `currentWeek: 1` default
      (`lootTrackingStore.ts:115`) for as long as the mount effect's `fetchCurrentWeek(groupId,
@@ -528,8 +537,11 @@ D7b, with the card re-home).**
   `clearFloorPageLedger`, which writes compensating `adjustment` rows rather than deleting any. Of
   D7a's six toolbar book paths, `Reset Week {N} books/data` and `Reset ALL books/data` are true
   DELETEs (`clearWeekPageLedger`, `clearAllPageLedger`); `deletePlayerLedger` and
-  `clearPlayerWeekPageLedger` are wired through the planner and, since D7b, reachable via the
-  Books card's row kebab (below).
+  `clearPlayerWeekPageLedger` are wired through the planner and, since D7b, first reachable
+  *through the reset-confirm pipeline* via the Books card's row kebab (below) — `deletePlayerLedger`
+  itself has been reachable in v2 since F6d through the card's own `PlayerLedgerModal` "Clear
+  History" door (`history/PlayerLedgerModal.tsx:59`, mounted in `BookLedgerCard.tsx`), a separate,
+  non-planner path this note is not about.
 - Inherited copy divergence, disclosed not fixed: `ui/ResetConfirmModal.tsx:152` says "permanently
   delete" even on the reversal-POST paths (shared frozen file; R-44 was the one approved delta) —
   and D7a is the slice that first makes one of those paths reachable, via the floor kebab's books

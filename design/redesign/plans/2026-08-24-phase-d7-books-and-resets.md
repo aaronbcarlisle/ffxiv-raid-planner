@@ -790,6 +790,12 @@ Task 4 · Task 7 last. Tasks 1→7 execute in order.
    paths v2 makes reachable for the first time (frozen shared copy — disclosed, not fixed), and
    the row kebab's all-time item is a true delete while its week item writes compensating
    adjustments.
+   - Step the Log week within 2.5 s of a `?book=` jump — `?week=` must survive the param's
+     self-clear.
+   - A This-week-scoped column reset must not leave the card settled on all-time numbers (the
+     unscoped-refetch backstop).
+   - A bare `?lview=log&week=N` cold open in a fresh tab — observe whether the storage re-resolve
+     clobbers the URL week (pre-existing `useLogWeek` behavior; disclosed, not fixed here).
 4. Screenshots embedded in the PR per the pr-shots convention (commit on-branch under
    `docs/redesign/pr-shots/d7-*`, SHA-pinned URLs). **Amended 2026-09-17 for D7b:** the
    "netted out before merge" half of that convention is **retired** — shots now stay in the repo,
