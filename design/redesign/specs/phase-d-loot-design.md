@@ -1300,7 +1300,9 @@ table it also makes the column scannable by shape rather than by reading.
 
 **Build note (D9a, 2026-09-18) — R-38 / R-39 shipped.** The Slot cell's anatomy, in one line each
 (`LootHistoryTable.tsx`'s `lootSlotLeadIns` + `CELL.slot`): a loot row leads with `GearSlotIcon` (R-39,
-known slots only) then `weaponJob`'s `JobIcon` when present (R-38) then `slotNameOf`; a material row
+known slots only) then — on weapon rows only — `weaponJob`'s `JobIcon` (R-38; gated on the slot, not
+on the field's presence, because the loot edit API keeps a non-null `weapon_job` when an entry's slot
+is changed away from weapon — a Body row could otherwise carry a stale job icon) then `slotNameOf`; a material row
 carries `MATERIAL_DOT`, not a slot glyph, then `slotNameOf`. The recipient's own `JobIcon` renders
 separately in the Player cell, never in Slot.
 

@@ -277,6 +277,16 @@ describe('LootHistoryTable', () => {
       renderTable({ lootLog: [makeLootEntry({ id: 1, itemSlot: 'body' })] });
       expect(cell('loot-entry-1', COL.slot).querySelector('img')).toBeNull();
     });
+
+    it('ignores a stale weaponJob on a non-weapon row (the edit API keeps weapon_job when the slot changes)', () => {
+      // A weapon entry later edited to Body keeps its old `weaponJob`; the icon
+      // is gated on the slot, not on the field's presence.
+      renderTable({ lootLog: [makeLootEntry({ id: 1, itemSlot: 'body', weaponJob: 'DRG' })] });
+      const slotCell = cell('loot-entry-1', COL.slot);
+      expect(slotCell.querySelector('img')).toBeNull();
+      expect(within(slotCell).queryByAltText('DRG')).not.toBeInTheDocument();
+      expect(slotCell).toHaveTextContent('Body');
+    });
   });
 
   describe('Player cell', () => {

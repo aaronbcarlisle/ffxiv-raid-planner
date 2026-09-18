@@ -127,13 +127,15 @@ interface CellContext {
 /**
  * The Slot cell's lead-ins for a loot row: the R-39 glyph (known slots only),
  * then the R-38 job icon of the WEAPON that dropped — not the recipient's job,
- * which is the Player cell's.
+ * which is the Player cell's. Gated on the weapon slot, not on `weaponJob`
+ * presence: the loot edit API keeps a non-null `weapon_job` when an entry's
+ * slot is changed away from weapon, so a Body row can carry a stale job.
  */
 function lootSlotLeadIns(entry: LootLogEntry): ReactNode {
   return (
     <>
       {isLootSlot(entry.itemSlot) && <GearSlotIcon slot={entry.itemSlot} size={16} />}
-      {entry.weaponJob && <JobIcon job={entry.weaponJob} size="xs" />}
+      {entry.itemSlot === 'weapon' && entry.weaponJob && <JobIcon job={entry.weaponJob} size="xs" />}
     </>
   );
 }

@@ -650,7 +650,8 @@ export interface LootHistoryTableProps {
 - Modify: `frontend/src/data/releaseNotes.ts` (internal entry)
 
 - [ ] **Step 1: Design-record build notes (dated, under each ruling).** R-29 — shipped the
-  **table half** (D9a): eight columns on `ui/SortableHeader`, fixed newest-first tiebreak
+  **table half** (D9a): seven sortable columns on `ui/SortableHeader` plus a plain sr-only
+  `Actions` `<th>` for the kebab (the eighth column is not sortable), fixed newest-first tiebreak
   (R-D9a-B), per-column natural first direction (R-D9a-C), sticky `thead` to the
   `GroupViewContent.tsx:711-713` scrollport with the `overflow-clip` no-h-scroll trade (R-D9a-D,
   D9a-n), local-time Date column vs the UTC-pinned range D9b will add (D9a-o), session-local sort;
