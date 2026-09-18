@@ -103,8 +103,10 @@
  *     `handleResetConfirm` planner with real floor scoping. The Books card
  *     re-homed to Log in D7b: `BookLedgerCard` mounts here, full width below
  *     the fairness read, on the DISPLAYED week — `FairnessSummary` stays on
- *     History until D14. The jump destination is card-level (`?player=`) until D12
- *     retargets it to slot-level anchors (R-28). "Log material" on Log —
+ *     History until D14. The Alt+Click recipient jump (Log → roster card,
+ *     `?player=`) still lands card-level until D12 retargets it to slot-level
+ *     anchors (R-28); the Books jump is the separate `?book=` param described
+ *     below. "Log material" on Log —
  *     D4's other named gap — shipped in D8 (the toolbar's free-form door,
  *     below).
  *     A `week` param on Log positions the displayed
