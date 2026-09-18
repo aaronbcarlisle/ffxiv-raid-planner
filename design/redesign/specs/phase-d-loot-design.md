@@ -1127,9 +1127,12 @@ nearest scrollport — `GroupViewContent`'s `overflow-y-auto` content div inside
 `<main id="main-content">` (the element `#main-content [class*="overflow-y-auto"]` resolves to);
 the table's card never scrolls horizontally (`overflow-clip`); the content pane itself can still
 overflow at narrow widths from the pre-existing stats-card row above the table, which is not this
-slice's (R-D9a-D, D9a-n) — measured at 1440: the table's max-content width is 921 px and its
-min-content width 788 px; at 1024 (872 px card) and 900 (788 px card) it fits with wrapped cells;
-clipping would begin only below ~788 px of card width — mobile territory, Phase P. The Date column reads local time (D9a-o); D9b's
+slice's (R-D9a-D, D9a-n) — measured on the shipped table (after the Type column went `w-36` +
+`whitespace-nowrap`): at 1440 the table's max-content width is 953 px and its min-content width
+835 px; at 1024 it fills an 874 px card (872 px) and at 900 it sits at its min-content in an
+837 px card (2 px of slack), the ⋮ column fully visible at both; at 880 the card stays 837 px and
+the *pane* scrolls horizontally from its own minimum width (the stats-card row), so the table card
+itself never clips at any width tested — narrower is mobile territory, Phase P. The Date column reads local time (D9a-o); D9b's
 week-range separators stay UTC-pinned per implementation note 1 above — both are correct for what
 they each show. Sort state is session-local component state (`useState`), matching note 3. Week
 separators and the current-week marker are **not** built this slice — rebuild them from note 1's
