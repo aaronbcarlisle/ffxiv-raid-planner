@@ -49,7 +49,7 @@ set -euo pipefail
 # Per-branch PR lookup cap. A branch name with this many PRs is pathological;
 # if we ever hit it the list may be truncated and the branch is kept untouched
 # rather than judged on partial data (see the truncation guard below).
-PR_LIMIT=100
+PR_LIMIT="${PR_LIMIT:-100}"
 
 DRY_RUN=0
 if [ "${1:-}" = "--dry-run" ]; then
@@ -87,6 +87,7 @@ deleted=0
 kept=0
 
 while IFS= read -r b; do
+  b="${b#refs/heads/}"
   [ -z "$b" ] && continue
   [ "$b" = "$default_branch" ] && continue
   [ "$b" = "$current" ] && continue
@@ -131,17 +132,28 @@ while IFS= read -r b; do
 
   # A MERGED PR proves a branch by this name merged; the OID proves THIS ref is
   # what merged. Only the pair authorises -D.
-  local_tip="$(git rev-parse --verify --quiet "$b" || true)"
+  # Fully qualified: `git rev-parse <name>` follows gitrevisions disambiguation,
+  # which puts refs/tags/<name> AHEAD of refs/heads/<name>. A tag sharing a
+  # branch name would otherwise make local_tip the tag's object rather than the
+  # tip of the ref we are about to delete - and the whole guard rests on this.
+  local_tip="$(git rev-parse --verify --quiet "refs/heads/$b" || true)"
   n="$(printf '%s\n' "$rows" | awk -v tip="$local_tip" '$1 == "MERGED" && $3 == tip {print $2; exit}')"
 
   if [ -n "$n" ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
       printf '[tidy] WOULD DELETE (PR #%s merged): %s\n' "$n" "$b"
-    else
-      git branch -D "$b" >/dev/null
+      deleted=$((deleted + 1))
+    # Compare-and-delete: `git update-ref -d <ref> <oldvalue>` fails unless the
+    # ref still points at the SHA we checked, so the guard holds at deletion
+    # time and not merely at read time. `git branch -D` has no such check, and
+    # this runs unattended from a hook while other processes touch the repo.
+    elif git update-ref -d "refs/heads/$b" "$local_tip" 2>/dev/null; then
       printf '[tidy] deleted (PR #%s merged): %s\n' "$n" "$b"
+      deleted=$((deleted + 1))
+    else
+      printf '[tidy] kept (ref moved during the run): %s\n' "$b"
+      kept=$((kept + 1))
     fi
-    deleted=$((deleted + 1))
     continue
   fi
 
@@ -155,7 +167,10 @@ while IFS= read -r b; do
   n="$(printf '%s\n' "$rows" | awk '{print $2; exit}')"
   printf '[tidy] kept (PR #%s closed unmerged): %s\n' "$n" "$b"
   kept=$((kept + 1))
-done < <(git for-each-ref --format='%(refname:short)' refs/heads/)
+# Full refnames, not %(refname:short): "short" DISAMBIGUATES, so a tag sharing a
+# branch name turns the branch into "heads/<name>" - which then misses its own
+# PR lookup and resolves no ref. Strip the prefix ourselves for the exact name.
+done < <(git for-each-ref --format='%(refname)' refs/heads/)
 
 if [ "$deleted" -eq 0 ] && [ "$kept" -eq 0 ]; then
   exit 0
