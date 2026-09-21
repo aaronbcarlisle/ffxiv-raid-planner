@@ -26,8 +26,11 @@
 #   * you reuse a branch name whose old PR merged long ago.
 # In both cases the PR reads MERGED while the local tip holds commits that were
 # never merged, and `-D` would drop them to the reflog silently, from a hook,
-# with no prompt. Comparing against `headRefOid` closes exactly the gap that
-# `-d` normally closes and that the squash-merge blindness forces us to give up.
+# with no prompt. Comparing against the merged PR's last commit closes exactly
+# the gap that `-d` normally closes and that squash-merge blindness forces us to
+# give up. Note it is the PR's commit list, NOT `headRefOid`: the latter tracks
+# the head ref's current oid and moves if anyone pushes to a surviving head
+# branch after the merge, which would make a never-merged tip look authorised.
 #
 # PRs from forks are ignored (by head-repository node id, NOT owner login - a
 # fork may be owned by the same account): `gh pr list --head` matches
@@ -113,9 +116,12 @@ while IFS= read -r b; do
   # One API call per branch. `--state all` so a reused branch name surfaces
   # every PR it ever headed, not just the newest. The head repository's id comes
   # back as a field and is filtered in shell - nothing is interpolated into jq.
+  # Deliberately lean: asking for `commits` here too would blow GitHub's node
+  # budget at this limit ("requesting up to 1,000,000 possible nodes"), so the
+  # at-merge oid is fetched per candidate below instead.
   rows="$(gh pr list --head "$b" --state all --limit "$PR_LIMIT" \
-            --json state,number,headRefOid,headRepository \
-            --jq '.[] | "\(.state) \(.number) \(.headRefOid) \(.headRepository.id // "-")"' \
+            --json state,number,headRepository \
+            --jq '.[] | "\(.state) \(.number) \(.headRepository.id // "-")"' \
           2>/dev/null || true)"
 
   # Truncation would break the rule that an OPEN PR always wins: the open row
@@ -128,7 +134,7 @@ while IFS= read -r b; do
   fi
 
   # A null head repository (deleted fork) can never match, so it is dropped too.
-  rows="$(printf '%s\n' "$rows" | awk -v id="$repo_id" 'NF && $4 == id')"
+  rows="$(printf '%s\n' "$rows" | awk -v id="$repo_id" 'NF && $3 == id')"
 
   if [ -z "$rows" ]; then
     printf '[tidy] kept (no PR):          %s\n' "$b"
@@ -144,13 +150,28 @@ while IFS= read -r b; do
   fi
 
   # A MERGED PR proves a branch by this name merged; the OID proves THIS ref is
-  # what merged. Only the pair authorises -D.
+  # what merged. Only the pair authorises a delete.
   # Fully qualified: `git rev-parse <name>` follows gitrevisions disambiguation,
   # which puts refs/tags/<name> AHEAD of refs/heads/<name>. A tag sharing a
   # branch name would otherwise make local_tip the tag's object rather than the
   # tip of the ref we are about to delete - and the whole guard rests on this.
   local_tip="$(git rev-parse --verify --quiet "refs/heads/$b" || true)"
-  n="$(printf '%s\n' "$rows" | awk -v tip="$local_tip" '$1 == "MERGED" && $3 == tip {print $2; exit}')"
+
+  # One targeted lookup per merged candidate (usually exactly one). We compare
+  # against the PR's LAST COMMIT, never `headRefOid`: `headRefOid` is the head
+  # ref's CURRENT oid and keeps moving after the merge, so if the head branch
+  # survived (anything merged before delete-branch-on-merge was enabled) and
+  # someone pushed to it, `headRefOid` would be a commit that never merged - and
+  # a local branch at that tip would look authorised. A merged PR's commit list
+  # is fixed at merge, so its last commit is the immutable at-merge snapshot.
+  n=""
+  for cand in $(printf '%s\n' "$rows" | awk '$1 == "MERGED" {print $2}'); do
+    merged_tip="$(gh pr view "$cand" --json commits --jq '(.commits | last | .oid) // ""' 2>/dev/null || true)"
+    if [ -n "$merged_tip" ] && [ "$merged_tip" = "$local_tip" ]; then
+      n="$cand"
+      break
+    fi
+  done
 
   if [ -n "$n" ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
