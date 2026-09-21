@@ -779,7 +779,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-7')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
 
     const picker = screen.getByTestId('recipient-picker');
@@ -792,7 +792,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('material-entry-9')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
@@ -819,7 +819,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-4')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
@@ -837,7 +837,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('material-entry-12')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
@@ -855,7 +855,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-6')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => {
@@ -875,7 +875,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-5')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Delete Entry' }));
@@ -1215,7 +1215,7 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-21')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));

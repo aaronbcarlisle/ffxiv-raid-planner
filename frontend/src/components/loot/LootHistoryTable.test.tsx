@@ -82,8 +82,9 @@ function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> 
   );
 }
 
+/** Row-scoped: the kebab's accessible name is row-specific, so match the shared middle. */
 function openKebab(container: HTMLElement) {
-  fireEvent.keyDown(within(container).getByRole('button', { name: 'Entry actions' }), { key: 'Enter' });
+  fireEvent.keyDown(within(container).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
 }
 
 /** Column order is the table's contract: Week · Floor · Slot · Player · Method · Date · Type · ⋮ */
@@ -448,6 +449,36 @@ describe('LootHistoryTable', () => {
       openKebab(document.getElementById('material-entry-5')!);
       fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
       expect(onDelete).toHaveBeenCalledWith({ kind: 'material', entry });
+    });
+
+    // R-D6b precedent (`LogWeekGrid.tsx:519` — `${label} entry actions — ${floorName}`):
+    // the name names the ROW, so tabbing the column tells a screen-reader user
+    // which entry the focused menu would edit or delete.
+    it('names every kebab by its own slot and recipient, never a shared "Entry actions"', () => {
+      renderTable({ lootLog: [makeLootEntry({ id: 1 })], materialLog: [makeMaterialEntry({ id: 5 })] });
+      expect(
+        within(document.getElementById('loot-entry-1')!).getByRole('button', {
+          name: 'Body entry actions — Aria',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(document.getElementById('material-entry-5')!).getByRole('button', {
+          name: 'Twine entry actions — Aria',
+        }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Entry actions' })).not.toBeInTheDocument();
+    });
+
+    it('resolves the kebab name through the roster, exactly as the Player cell does', () => {
+      renderTable({
+        lootLog: [makeLootEntry({ id: 1, itemSlot: 'earring', recipientPlayerName: 'Stale Snapshot Name' })],
+        players: [makePlayer({ name: 'Renamed' })],
+      });
+      expect(
+        within(document.getElementById('loot-entry-1')!).getByRole('button', {
+          name: 'Ears entry actions — Renamed',
+        }),
+      ).toBeInTheDocument();
     });
   });
 

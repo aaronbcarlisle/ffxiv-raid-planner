@@ -1336,9 +1336,11 @@ today and that mount goes away.
 the enum value (D9a-t). The stats count and the filtered-vs-empty split are **not** built this
 slice — D9b. **The Keeps/Restores rows above cite pre-rewrite line numbers; they now resolve to:**
 `LootEntryRow.tsx:128-132` → `3f90d420:frontend/src/components/loot/LootEntryRow.tsx:132-136`;
-`LootHistoryTable.tsx:81-103` → the `?entry=` effect in the rewritten `LootHistoryTable.tsx`;
-`LootHistoryTable.tsx:110-116` → the single empty row (`colSpan` = all columns) in the rewritten
-`LootHistoryTable.tsx`.
+`3f90d420:…/LootHistoryTable.tsx:81-103` (the pre-rewrite `?entry=` effect) → the effect of the same
+name in today's `LootHistoryTable.tsx`, now keyed on `historyRowDomId`;
+`3f90d420:…/LootHistoryTable.tsx:110-116` (the pre-rewrite early-return empty `<p>`) → the single
+empty `<tr>` (`colSpan={COLUMNS.length + 1}`) inside today's `<tbody>`. Both left-hand citations are
+`3f90d420` line numbers, not current ones — cite the symbols above, which do not rot.
 
 ### R-35 · Shortcuts: `Ctrl+Shift+F` stays, `Alt+1/2/3` does not
 

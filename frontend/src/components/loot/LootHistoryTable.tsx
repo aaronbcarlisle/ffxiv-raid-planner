@@ -20,8 +20,11 @@
  * and a clickable row.
  *
  * Trades on record: the card is `overflow-clip` (D9a-n) — an `overflow-x-auto`
- * scrollport would defeat the sticky `<thead>`, so below the width where eight
- * columns fit the right edge clips (Phase P re-decides for mobile). The Date
+ * scrollport would defeat the sticky `<thead>`, so the card cannot scroll
+ * sideways and *would* clip below the width where eight columns fit. Measured,
+ * that width is never reached: the content pane scrolls first, from the stats
+ * card row above this table, so the card itself clipped at no width tested down
+ * to 880 (numbers in the R-29 build note; Phase P re-decides for mobile). The Date
  * column is LOCAL time (D9a-o); D9b's week-range separators stay UTC-pinned.
  *
  * Later slices: D9b re-adds week separators / current-week marker / the stats
@@ -205,6 +208,7 @@ const CELL: Record<HistorySortField, (item: HistoryItem, ctx: CellContext) => Re
 
 interface ActionsCellContext {
   canEdit: boolean;
+  playersById: Map<string, SnapshotPlayer>;
   onEdit: (entry: LootLogEntry) => void;
   onCopyLink: (item: HistoryItem) => void;
   onDelete: (item: HistoryItem) => void;
@@ -216,14 +220,23 @@ interface ActionsCellContext {
  * child stays an expression container rather than JSX authored directly
  * inside it, which is what keeps `jsx-a11y/control-has-associated-label`
  * (mapping `<td>` to the `gridcell` role) from flagging the cell; the actual
- * labelled control is the `IconButton`'s `aria-label="Entry actions"`.
+ * labelled control is the `IconButton`, whose name is ROW-SPECIFIC —
+ * `{slot} entry actions — {player}`, the `LogWeekGrid.tsx:519` precedent
+ * (`${label} entry actions — ${floorName}`, R-D6b). Eight rows of an
+ * identically-named button tell a screen-reader user nothing about which
+ * entry the focused menu would edit or delete.
  */
 function renderActionsCell(item: HistoryItem, ctx: ActionsCellContext): ReactNode {
   const { kind, entry } = item;
   return (
     <Dropdown>
       <DropdownTrigger asChild>
-        <IconButton aria-label="Entry actions" icon={<MoreVertical className="h-4 w-4" />} variant="ghost" size="sm" />
+        <IconButton
+          aria-label={`${slotNameOf(item)} entry actions — ${recipientNameOf(item, ctx.playersById)}`}
+          icon={<MoreVertical className="h-4 w-4" />}
+          variant="ghost"
+          size="sm"
+        />
       </DropdownTrigger>
       <DropdownContent align="end">
         {kind === 'loot' && ctx.canEdit && (
@@ -313,7 +326,7 @@ export function LootHistoryTable({
   // props on memoized children — identity is irrelevant here, so memoizing
   // these literals would be noise, not a fix.
   const cellCtx: CellContext = { floors, playersById };
-  const actionsCtx: ActionsCellContext = { canEdit, onEdit, onCopyLink, onDelete };
+  const actionsCtx: ActionsCellContext = { canEdit, playersById, onEdit, onCopyLink, onDelete };
 
   return (
     <div className="rounded-lg border border-border-default bg-surface-card overflow-clip">
