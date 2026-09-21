@@ -29,7 +29,8 @@
 # with no prompt. Comparing against `headRefOid` closes exactly the gap that
 # `-d` normally closes and that the squash-merge blindness forces us to give up.
 #
-# PRs from forks are ignored (`headRepositoryOwner`): `gh pr list --head` matches
+# PRs from forks are ignored (by head-repository node id, NOT owner login - a
+# fork may be owned by the same account): `gh pr list --head` matches
 # on branch NAME across repositories, and generic names like `patch-1` or
 # `fix/typo` are what fork PRs get by default - a merged fork PR must never
 # authorise deleting a same-named local branch here.
@@ -110,8 +111,8 @@ while IFS= read -r b; do
   fi
 
   # One API call per branch. `--state all` so a reused branch name surfaces
-  # every PR it ever headed, not just the newest. The owner comes back as a
-  # field and is filtered in shell - nothing is interpolated into the jq program.
+  # every PR it ever headed, not just the newest. The head repository's id comes
+  # back as a field and is filtered in shell - nothing is interpolated into jq.
   rows="$(gh pr list --head "$b" --state all --limit "$PR_LIMIT" \
             --json state,number,headRefOid,headRepository \
             --jq '.[] | "\(.state) \(.number) \(.headRefOid) \(.headRepository.id // "-")"' \
@@ -172,7 +173,13 @@ while IFS= read -r b; do
       # `git branch -d/-D` also drops the branch's config stanza; `update-ref`
       # does not, so an opted-in clone would otherwise accumulate one dead
       # `branch.<name>.*` section per merged branch forever, invisibly.
-      git config --remove-section "branch.$b" 2>/dev/null || true
+      # Guarded: the stanza belongs to whatever branch holds the name NOW, so if
+      # something recreated it between the delete and here, leave its config
+      # alone. (A narrowing, not a lock - git has no transaction spanning a ref
+      # delete and a config write.)
+      if ! git show-ref --verify --quiet "refs/heads/$b"; then
+        git config --remove-section "branch.$b" 2>/dev/null || true
+      fi
       printf '[tidy] deleted (PR #%s merged): %s\n' "$n" "$b"
       deleted=$((deleted + 1))
     else
