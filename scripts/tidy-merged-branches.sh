@@ -34,6 +34,13 @@
 # `fix/typo` are what fork PRs get by default - a merged fork PR must never
 # authorise deleting a same-named local branch here.
 #
+# The delete itself is `git update-ref -d refs/heads/<b> <local_tip>`, an
+# expected-old-value transaction, so the SHA guard holds at deletion time and
+# not merely at read time - `git branch -D` has no such check. That trade costs
+# two things `-D` does for free, both restored explicitly below: it does not
+# remove the branch's config stanza, and it does not refuse a branch checked out
+# in another worktree.
+#
 # No PR at all, a closed-unmerged PR, a tip past the merged head, or checked out
 # in a worktree -> keep and say why.
 #
@@ -68,10 +75,14 @@ if ! gh auth status >/dev/null 2>&1; then
   exit 0
 fi
 
-# Same-repo owner, resolved once: fork PRs share the branch-name namespace.
-repo_owner="$(gh repo view --json owner --jq '.owner.login' 2>/dev/null || true)"
-if [ -z "$repo_owner" ]; then
-  echo "[tidy] could not resolve the repo owner - skipping." >&2
+# This repository's node id, resolved once. Identity is compared by ID, not by
+# owner login: GitHub allows a fork owned by the SAME account or org, so a
+# matching owner does not prove the PR head lives in this repo - and a merged
+# PR from such a fork could otherwise authorise deleting a same-named local ref.
+# The id is also immune to a rename.
+repo_id="$(gh repo view --json id --jq '.id' 2>/dev/null || true)"
+if [ -z "$repo_id" ]; then
+  echo "[tidy] could not resolve the repository id - skipping." >&2
   exit 0
 fi
 
@@ -102,8 +113,8 @@ while IFS= read -r b; do
   # every PR it ever headed, not just the newest. The owner comes back as a
   # field and is filtered in shell - nothing is interpolated into the jq program.
   rows="$(gh pr list --head "$b" --state all --limit "$PR_LIMIT" \
-            --json state,number,headRefOid,headRepositoryOwner \
-            --jq '.[] | "\(.state) \(.number) \(.headRefOid) \(.headRepositoryOwner.login)"' \
+            --json state,number,headRefOid,headRepository \
+            --jq '.[] | "\(.state) \(.number) \(.headRefOid) \(.headRepository.id // "-")"' \
           2>/dev/null || true)"
 
   # Truncation would break the rule that an OPEN PR always wins: the open row
@@ -115,7 +126,8 @@ while IFS= read -r b; do
     continue
   fi
 
-  rows="$(printf '%s\n' "$rows" | awk -v o="$repo_owner" 'NF && $4 == o')"
+  # A null head repository (deleted fork) can never match, so it is dropped too.
+  rows="$(printf '%s\n' "$rows" | awk -v id="$repo_id" 'NF && $4 == id')"
 
   if [ -z "$rows" ]; then
     printf '[tidy] kept (no PR):          %s\n' "$b"
@@ -147,7 +159,20 @@ while IFS= read -r b; do
     # ref still points at the SHA we checked, so the guard holds at deletion
     # time and not merely at read time. `git branch -D` has no such check, and
     # this runs unattended from a hook while other processes touch the repo.
+    # The worktree snapshot above was taken before this branch's API calls, and
+    # `update-ref` is plumbing: unlike `git branch -D` it will happily delete a
+    # branch another worktree has checked out. Re-read the list here so the
+    # window is a few milliseconds rather than the whole run.
+    elif git worktree list --porcelain \
+           | awk '/^branch /{sub(/^refs\/heads\//, "", $2); print $2}' \
+           | grep -qxF "$b"; then
+      printf '[tidy] kept (checked out in a worktree): %s\n' "$b"
+      kept=$((kept + 1))
     elif git update-ref -d "refs/heads/$b" "$local_tip" 2>/dev/null; then
+      # `git branch -d/-D` also drops the branch's config stanza; `update-ref`
+      # does not, so an opted-in clone would otherwise accumulate one dead
+      # `branch.<name>.*` section per merged branch forever, invisibly.
+      git config --remove-section "branch.$b" 2>/dev/null || true
       printf '[tidy] deleted (PR #%s merged): %s\n' "$n" "$b"
       deleted=$((deleted + 1))
     else

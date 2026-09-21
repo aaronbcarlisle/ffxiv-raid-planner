@@ -52,20 +52,29 @@ because the two obvious signals are both wrong here:
 
 - `git branch --merged main` lists **nothing**. We squash-merge, so a merged
   branch's commits never become ancestors of `main` and `git branch -d` refuses
-  every one of them. (That's why the script uses `-D` — safe only because the
-  merge is confirmed through the API rather than inferred from the graph.)
+  every one of them — the graph cannot tell you what merged here.
 - The `[gone]` upstream marker is wrong in both directions: a branch whose
   remote was deleted without ever merging still reads `[gone]`, while a branch
   merged before delete-branch-on-merge was enabled does not.
 
-The **SHA match** is what makes `-D` safe. A merged PR on its own only proves
+The **SHA match** is what makes deletion safe. A merged PR on its own only proves
 that a branch by that name merged once — not that the local ref is what merged.
 If you kept committing on a branch after its PR landed, or reused a branch name
 whose old PR merged long ago, the PR still reads `MERGED` while the local tip
 holds work that never was; without the OID check a background hook would drop it
 to the reflog with no prompt. Fork PRs are ignored for the same reason
 (`gh pr list --head` matches branch *names* across repositories, and `patch-1`
-is exactly what a fork PR gets by default).
+is exactly what a fork PR gets by default) — matched on the repository's **node
+id**, not its owner, because GitHub allows a fork owned by the same account.
+
+The delete is `git update-ref -d refs/heads/<branch> <tip>`, not `git branch -D`:
+an expected-old-value transaction, so the SHA guard holds at the moment of
+deletion rather than a few milliseconds earlier when the value was read. That
+costs two things `git branch -D` gives for free, so the script does both
+explicitly — it removes the branch's `branch.<name>.*` config stanza after a
+successful delete, and it re-checks the worktree list immediately beforehand
+(`update-ref` is plumbing and will delete a branch another worktree has checked
+out).
 
 Branches with an open PR (a parked draft, say), with no PR at all, with a
 closed-unmerged PR, with commits beyond the merged head, or checked out in
