@@ -19,13 +19,13 @@
 # to survive any sweep.
 #
 # So: delete only when a branch has a MERGED PR **whose head commit is exactly
-# the local tip**, and no OPEN one. That SHA match is what makes `-D` safe. A
+# the local tip**, and no OPEN one. That SHA match is what makes the delete safe. A
 # merged PR alone is NOT enough - it says a branch by this name merged once, not
 # that THIS ref is what merged:
 #   * you keep committing on a branch after its PR landed, without a new PR yet;
 #   * you reuse a branch name whose old PR merged long ago.
 # In both cases the PR reads MERGED while the local tip holds commits that were
-# never merged, and `-D` would drop them to the reflog silently, from a hook,
+# never merged, and the delete would drop them to the reflog silently, from a hook,
 # with no prompt. Comparing against the merged PR's last commit closes exactly
 # the gap that `-d` normally closes and that squash-merge blindness forces us to
 # give up. Note it is the PR's commit list, NOT `headRefOid`: the latter tracks
