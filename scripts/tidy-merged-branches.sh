@@ -62,6 +62,11 @@ set -euo pipefail
 # rather than judged on partial data (see the truncation guard below).
 PR_LIMIT="${PR_LIMIT:-100}"
 
+# `gh pr view --json commits` asks for commits(first:100) and does not paginate,
+# so a PR at or above this count has a commit list we cannot trust to end at the
+# at-merge head. Not a knob - it mirrors gh's own page size.
+COMMIT_PAGE=100
+
 DRY_RUN=0
 if [ "${1:-}" = "--dry-run" ]; then
   DRY_RUN=1
@@ -189,15 +194,34 @@ while IFS= read -r b; do
   # someone pushed to it, `headRefOid` would be a commit that never merged - and
   # a local branch at that tip would look authorised. A merged PR's commit list
   # is fixed at merge, so its last commit is the immutable at-merge snapshot.
+  # `gh pr view --json commits` does NOT paginate - it asks for commits(first:100)
+  # - so on a PR with more commits `last` is the 100th, not the at-merge head.
+  # Same shape as the list truncation above: we cannot tell a real mismatch from
+  # a cut-off list, so say so instead of reporting a wrong reason.
   n=""
+  indeterminate=""
   for cand in $(printf '%s\n' "$rows" | awk '$1 == "MERGED" {print $2}'); do
-    merged_tip="$(gh pr view "$cand" --repo "$repo_slug" --json commits \
-                    --jq '(.commits | last | .oid) // ""' 2>/dev/null || true)"
-    if [ -n "$merged_tip" ] && [ "$merged_tip" = "$local_tip" ]; then
+    info="$(gh pr view "$cand" --repo "$repo_slug" --json commits \
+              --jq '"\(.commits | length) \((.commits | last | .oid) // "-")"' 2>/dev/null || true)"
+    cand_count="${info%% *}"
+    cand_tip="${info##* }"
+    case "$cand_count" in ''|*[!0-9]*) continue ;; esac
+    if [ "$cand_count" -ge "$COMMIT_PAGE" ]; then
+      indeterminate="$cand"
+      continue
+    fi
+    if [ "$cand_tip" != "-" ] && [ "$cand_tip" = "$local_tip" ]; then
       n="$cand"
       break
     fi
   done
+
+  if [ -z "$n" ] && [ -n "$indeterminate" ]; then
+    printf '[tidy] kept (PR #%s has >=%s commits, at-merge head not determinable): %s\n' \
+      "$indeterminate" "$COMMIT_PAGE" "$b"
+    kept=$((kept + 1))
+    continue
+  fi
 
   if [ -n "$n" ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
