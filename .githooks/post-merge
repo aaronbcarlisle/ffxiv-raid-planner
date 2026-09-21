@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+#
+# post-merge: delete local branches whose PR has merged.
+#
+# A merge on GitHub cannot fire a local hook, so the next `git pull` onto the
+# default branch is the first moment this machine learns a branch was merged -
+# which makes it the natural place to clean up. delete-branch-on-merge already
+# removed the remote; this removes the local leftover.
+#
+# OPT-IN, per clone:
+#   git config xrp.tidyBranches true
+#
+# Inert otherwise, so a fresh clone or a collaborator never has local branches
+# deleted by surprise. Disable again with:
+#   git config xrp.tidyBranches false
+#
+# The decision of what is safe to delete lives in scripts/tidy-merged-branches.sh
+# (PR state is the authority - see that file's header for why the obvious
+# signals, `git branch --merged` and the "[gone]" marker, are both wrong here).
+#
+# Install once per clone (shared with the other hooks):
+#   git config core.hooksPath .githooks
+#
+set -euo pipefail
+
+[ "$(git config --bool xrp.tidyBranches 2>/dev/null || echo false)" = "true" ] || exit 0
+
+default_branch="$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)"
+default_branch="${default_branch#origin/}"
+[ "$(git branch --show-current 2>/dev/null || true)" = "$default_branch" ] || exit 0
+
+repo_root="$(git rev-parse --show-toplevel)"
+tidy="$repo_root/scripts/tidy-merged-branches.sh"
+[ -x "$tidy" ] || exit 0
+
+# Drop remote-tracking refs for branches GitHub already deleted. Non-fatal:
+# offline should never break a pull.
+git fetch --prune --quiet >/dev/null 2>&1 || true
+
+# Never fail the pull over cleanup.
+"$tidy" || true
