@@ -46,6 +46,11 @@
 #
 set -euo pipefail
 
+# Per-branch PR lookup cap. A branch name with this many PRs is pathological;
+# if we ever hit it the list may be truncated and the branch is kept untouched
+# rather than judged on partial data (see the truncation guard below).
+PR_LIMIT=100
+
 DRY_RUN=0
 if [ "${1:-}" = "--dry-run" ]; then
   DRY_RUN=1
@@ -95,10 +100,20 @@ while IFS= read -r b; do
   # One API call per branch. `--state all` so a reused branch name surfaces
   # every PR it ever headed, not just the newest. The owner comes back as a
   # field and is filtered in shell - nothing is interpolated into the jq program.
-  rows="$(gh pr list --head "$b" --state all --limit 20 \
+  rows="$(gh pr list --head "$b" --state all --limit "$PR_LIMIT" \
             --json state,number,headRefOid,headRepositoryOwner \
             --jq '.[] | "\(.state) \(.number) \(.headRefOid) \(.headRepositoryOwner.login)"' \
           2>/dev/null || true)"
+
+  # Truncation would break the rule that an OPEN PR always wins: the open row
+  # could be the one that got cut, leaving a MERGED row to authorise a delete.
+  # We cannot prove a negative from a truncated list, so refuse to act on one.
+  if [ "$(printf '%s\n' "$rows" | grep -c .)" -ge "$PR_LIMIT" ]; then
+    printf '[tidy] kept (>=%s PRs, list may be truncated): %s\n' "$PR_LIMIT" "$b"
+    kept=$((kept + 1))
+    continue
+  fi
+
   rows="$(printf '%s\n' "$rows" | awk -v o="$repo_owner" 'NF && $4 == o')"
 
   if [ -z "$rows" ]; then

@@ -70,3 +70,8 @@ is exactly what a fork PR gets by default).
 Branches with an open PR (a parked draft, say), with no PR at all, with a
 closed-unmerged PR, with commits beyond the merged head, or checked out in
 another worktree are kept, and the script prints which case each one hit.
+
+The per-branch PR lookup is capped (`PR_LIMIT`), and a list that comes back at
+the cap is treated as **possibly truncated**: the branch is kept untouched
+rather than judged on partial data, because the open PR could be the row that
+got cut. You cannot prove "no open PR" from an incomplete list.
