@@ -63,7 +63,8 @@ per-field **key accessors** — structurally distinct from v1's flattened `Unifi
 week-header props D9b re-adds), keeps the `?entry=` highlight effect (`:69-103`) and the row ids
 `loot-entry-N` / `material-entry-N` it scrolls to — now composed by ONE author,
 `historyRowDomId` (D9a-q), so `Loot.tsx`'s mount and every History test in `Loot.test.tsx` that
-drives a row by id + `Entry actions` survive unchanged — and swaps its body for a `<table>` whose
+drives a row by id survive unchanged (the kebab's accessible *name* did not — see the DOM-contract
+note's review amendment) — and swaps its body for a `<table>` whose
 `<tr>`s are **inert** (no click, no `tabIndex`; R-31 is D11's) with the kebab as the only control.
 Column ⇄ sort key ⇄ cell renderer are one-authored: a `COLUMNS` header table and a `CELL` render
 map in the host, a `KEY` accessor map in the util, sharing `slotNameOf` / `methodLabelOf`
@@ -124,10 +125,15 @@ Predecessor record: `design/redesign/plans/2026-08-24-phase-d7-books-and-resets.
   `<tr>`, `scrollIntoView` at 100 ms, `replace: true` param delete at 2.5 s. The element id the
   effect scrolls to and the id the row renders are **the same call** (`historyRowDomId`, D9a-q).
 - **DOM contract preserved for `Loot.test.tsx`:** every row `<tr>` carries `id="loot-entry-{id}"`
-  / `id="material-entry-{id}"`; the kebab trigger keeps `aria-label="Entry actions"`; the menu
+  / `id="material-entry-{id}"`; the kebab keeps its `IconButton` trigger; the menu
   items keep the names `Edit` / `Copy link` / `Delete`. The seven `Loot.test.tsx` History kebab
   tests — `:777-788`, `:790-806`, `:808-831`, `:837-841`, `:855-859`, `:875-878`, `:1180-1184` —
-  must pass **unchanged**; that is the assembly-level proof the rewrite is a drop-in. (Director-
+  must pass **unchanged**; that is the assembly-level proof the rewrite is a drop-in.
+  **Amended in review (Copilot, `a33fb491`):** the trigger was planned to keep the constant
+  `aria-label="Entry actions"`, but eight identically-named buttons name no row — so the name is
+  now row-specific (`{slot} entry actions — {player}`, the `LogWeekGrid.tsx:519` / R-D6b
+  precedent). Those seven tests keep their row-scoped structure and every assertion; only the
+  name matcher moved to `/entry actions/`. (Director-
   verified: they drive only `getElementById` → `within(row).getByRole('button', {name:'Entry
   actions'})` → `findByRole('menuitem', …)` and then assert on `Loot`'s own state.
   `Loot.test.tsx`'s own `?entry=` tests at `:1347-1460` drive the **Log** view's consumption
