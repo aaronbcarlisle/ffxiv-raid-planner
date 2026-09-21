@@ -79,12 +79,37 @@ if ! gh auth status >/dev/null 2>&1; then
   exit 0
 fi
 
-# This repository's node id, resolved once. Identity is compared by ID, not by
-# owner login: GitHub allows a fork owned by the SAME account or org, so a
-# matching owner does not prove the PR head lives in this repo - and a merged
-# PR from such a fork could otherwise authorise deleting a same-named local ref.
-# The id is also immune to a rename.
-repo_id="$(gh repo view --json id --jq '.id' 2>/dev/null || true)"
+# Which repository every `gh` call below talks to, derived from THIS checkout's
+# origin remote and passed explicitly. `gh` honours a `GH_REPO` environment
+# override, and this runs from a hook in whatever shell the user happened to be
+# in: with `GH_REPO` set, `gh pr list` returns another repository's pull
+# requests entirely (demonstrated - it listed cli/cli's). Naming the repo on
+# every call removes the question.
+origin_url="$(git remote get-url origin 2>/dev/null || true)"
+if [ -z "$origin_url" ]; then
+  echo "[tidy] no 'origin' remote - skipping." >&2
+  exit 0
+fi
+repo_slug="${origin_url%.git}"
+repo_slug="${repo_slug%/}"
+case "$repo_slug" in
+  *://*) repo_slug="${repo_slug#*://}"; repo_slug="${repo_slug#*@}" ;;  # [scheme://][user@]host/owner/repo
+  *@*:*) repo_slug="${repo_slug#*@}"; repo_slug="${repo_slug/:/\/}" ;;  # user@host:owner/repo
+esac
+case "$repo_slug" in
+  */*/*) ;;  # host/owner/repo - the form gh accepts, and the only one we trust
+  *)
+    echo "[tidy] could not parse the origin remote ('$origin_url') - skipping." >&2
+    exit 0
+    ;;
+esac
+
+# This repository's node id. Identity is compared by ID, not by owner login:
+# GitHub allows a fork owned by the SAME account or org, so a matching owner
+# does not prove the PR head lives in this repo - and a merged PR from such a
+# fork could otherwise authorise deleting a same-named local ref. The id is also
+# immune to a rename. (`gh repo view` takes the repo positionally, not --repo.)
+repo_id="$(gh repo view "$repo_slug" --json id --jq '.id' 2>/dev/null || true)"
 if [ -z "$repo_id" ]; then
   echo "[tidy] could not resolve the repository id - skipping." >&2
   exit 0
@@ -119,7 +144,7 @@ while IFS= read -r b; do
   # Deliberately lean: asking for `commits` here too would blow GitHub's node
   # budget at this limit ("requesting up to 1,000,000 possible nodes"), so the
   # at-merge oid is fetched per candidate below instead.
-  rows="$(gh pr list --head "$b" --state all --limit "$PR_LIMIT" \
+  rows="$(gh pr list --repo "$repo_slug" --head "$b" --state all --limit "$PR_LIMIT" \
             --json state,number,headRepository \
             --jq '.[] | "\(.state) \(.number) \(.headRepository.id // "-")"' \
           2>/dev/null || true)"
@@ -166,7 +191,8 @@ while IFS= read -r b; do
   # is fixed at merge, so its last commit is the immutable at-merge snapshot.
   n=""
   for cand in $(printf '%s\n' "$rows" | awk '$1 == "MERGED" {print $2}'); do
-    merged_tip="$(gh pr view "$cand" --json commits --jq '(.commits | last | .oid) // ""' 2>/dev/null || true)"
+    merged_tip="$(gh pr view "$cand" --repo "$repo_slug" --json commits \
+                    --jq '(.commits | last | .oid) // ""' 2>/dev/null || true)"
     if [ -n "$merged_tip" ] && [ "$merged_tip" = "$local_tip" ]; then
       n="$cand"
       break
