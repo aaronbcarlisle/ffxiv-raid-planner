@@ -77,8 +77,15 @@ successful delete, and it re-checks the worktree list immediately beforehand
 out).
 
 Branches with an open PR (a parked draft, say), with no PR at all, with a
-closed-unmerged PR, with commits beyond the merged head, or checked out in
-another worktree are kept, and the script prints which case each one hit.
+closed-unmerged PR, with commits beyond the merged head, checked out in another
+worktree, or whose ref moved while the script was running are kept, and the
+script prints which case each one hit.
+
+One keep case has no remedy and is worth knowing about: `gh pr view --json
+commits` does not paginate, so on a pull request with **100 or more commits**
+the at-merge head cannot be read and the branch reports `at-merge head not
+determinable` and is kept every time. It is never deleted and never will be —
+remove it by hand with `git branch -D` once you have checked it yourself.
 
 The per-branch PR lookup is capped (`PR_LIMIT`), and a list that comes back at
 the cap is treated as **possibly truncated**: the branch is kept untouched

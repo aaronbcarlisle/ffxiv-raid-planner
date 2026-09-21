@@ -137,7 +137,7 @@ while IFS= read -r b; do
   [ "$b" = "$default_branch" ] && continue
   [ "$b" = "$current" ] && continue
 
-  if printf '%s\n' "$worktree_branches" | grep -qxF "$b"; then
+  if printf '%s\n' "$worktree_branches" | grep -qxF -- "$b"; then
     printf '[tidy] kept (in worktree):    %s\n' "$b"
     kept=$((kept + 1))
     continue
@@ -237,7 +237,7 @@ while IFS= read -r b; do
     # window is a few milliseconds rather than the whole run.
     elif git worktree list --porcelain \
            | awk '/^branch /{sub(/^refs\/heads\//, "", $2); print $2}' \
-           | grep -qxF "$b"; then
+           | grep -qxF -- "$b"; then
       printf '[tidy] kept (checked out in a worktree): %s\n' "$b"
       kept=$((kept + 1))
     elif git update-ref -d "refs/heads/$b" "$local_tip" 2>/dev/null; then
