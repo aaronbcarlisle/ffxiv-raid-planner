@@ -33,6 +33,12 @@ repo_root="$(git rev-parse --show-toplevel)"
 tidy="$repo_root/scripts/tidy-merged-branches.sh"
 [ -x "$tidy" ] || exit 0
 
+# The script explains itself when a human runs it by hand; from a hook that
+# fires on every pull, a missing or logged-out gh would just be noise. Check
+# here so the unattended path really is silent.
+command -v gh >/dev/null 2>&1 || exit 0
+gh auth status >/dev/null 2>&1 || exit 0
+
 # Drop remote-tracking refs for branches GitHub already deleted. Non-fatal:
 # offline should never break a pull.
 git fetch --prune --quiet >/dev/null 2>&1 || true

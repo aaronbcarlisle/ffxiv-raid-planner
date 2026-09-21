@@ -18,11 +18,24 @@
 # And an OPEN PR must always win: a branch parked as a draft PR on purpose has
 # to survive any sweep.
 #
-# So: delete only when a branch has at least one MERGED PR and no OPEN one.
-# No PR at all, a closed-unmerged PR, or checked out in a worktree -> keep and
-# say why. `-D` (not `-d`) is required because of the squash-merge blindness
-# above; it is safe here only because the merge is confirmed through the API
-# rather than inferred from the commit graph.
+# So: delete only when a branch has a MERGED PR **whose head commit is exactly
+# the local tip**, and no OPEN one. That SHA match is what makes `-D` safe. A
+# merged PR alone is NOT enough - it says a branch by this name merged once, not
+# that THIS ref is what merged:
+#   * you keep committing on a branch after its PR landed, without a new PR yet;
+#   * you reuse a branch name whose old PR merged long ago.
+# In both cases the PR reads MERGED while the local tip holds commits that were
+# never merged, and `-D` would drop them to the reflog silently, from a hook,
+# with no prompt. Comparing against `headRefOid` closes exactly the gap that
+# `-d` normally closes and that the squash-merge blindness forces us to give up.
+#
+# PRs from forks are ignored (`headRepositoryOwner`): `gh pr list --head` matches
+# on branch NAME across repositories, and generic names like `patch-1` or
+# `fix/typo` are what fork PRs get by default - a merged fork PR must never
+# authorise deleting a same-named local branch here.
+#
+# No PR at all, a closed-unmerged PR, a tip past the merged head, or checked out
+# in a worktree -> keep and say why.
 #
 # Usage:
 #   scripts/tidy-merged-branches.sh             # delete
@@ -50,6 +63,13 @@ if ! gh auth status >/dev/null 2>&1; then
   exit 0
 fi
 
+# Same-repo owner, resolved once: fork PRs share the branch-name namespace.
+repo_owner="$(gh repo view --json owner --jq '.owner.login' 2>/dev/null || true)"
+if [ -z "$repo_owner" ]; then
+  echo "[tidy] could not resolve the repo owner - skipping." >&2
+  exit 0
+fi
+
 default_branch="$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)"
 default_branch="${default_branch#origin/}"
 current="$(git branch --show-current 2>/dev/null || true)"
@@ -73,25 +93,33 @@ while IFS= read -r b; do
   fi
 
   # One API call per branch. `--state all` so a reused branch name surfaces
-  # every PR it ever headed, not just the newest.
-  states="$(gh pr list --head "$b" --state all --limit 20 --json state,number \
-              --jq '.[] | "\(.state) \(.number)"' 2>/dev/null || true)"
+  # every PR it ever headed, not just the newest. The owner comes back as a
+  # field and is filtered in shell - nothing is interpolated into the jq program.
+  rows="$(gh pr list --head "$b" --state all --limit 20 \
+            --json state,number,headRefOid,headRepositoryOwner \
+            --jq '.[] | "\(.state) \(.number) \(.headRefOid) \(.headRepositoryOwner.login)"' \
+          2>/dev/null || true)"
+  rows="$(printf '%s\n' "$rows" | awk -v o="$repo_owner" 'NF && $4 == o')"
 
-  if [ -z "$states" ]; then
+  if [ -z "$rows" ]; then
     printf '[tidy] kept (no PR):          %s\n' "$b"
     kept=$((kept + 1))
     continue
   fi
 
-  if printf '%s\n' "$states" | grep -q '^OPEN '; then
-    n="$(printf '%s\n' "$states" | awk '/^OPEN /{print $2; exit}')"
+  if printf '%s\n' "$rows" | grep -q '^OPEN '; then
+    n="$(printf '%s\n' "$rows" | awk '/^OPEN /{print $2; exit}')"
     printf '[tidy] kept (PR #%s open):    %s\n' "$n" "$b"
     kept=$((kept + 1))
     continue
   fi
 
-  if printf '%s\n' "$states" | grep -q '^MERGED '; then
-    n="$(printf '%s\n' "$states" | awk '/^MERGED /{print $2; exit}')"
+  # A MERGED PR proves a branch by this name merged; the OID proves THIS ref is
+  # what merged. Only the pair authorises -D.
+  local_tip="$(git rev-parse --verify --quiet "$b" || true)"
+  n="$(printf '%s\n' "$rows" | awk -v tip="$local_tip" '$1 == "MERGED" && $3 == tip {print $2; exit}')"
+
+  if [ -n "$n" ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
       printf '[tidy] WOULD DELETE (PR #%s merged): %s\n' "$n" "$b"
     else
@@ -102,7 +130,14 @@ while IFS= read -r b; do
     continue
   fi
 
-  n="$(printf '%s\n' "$states" | awk '{print $2; exit}')"
+  if printf '%s\n' "$rows" | grep -q '^MERGED '; then
+    n="$(printf '%s\n' "$rows" | awk '/^MERGED /{print $2; exit}')"
+    printf '[tidy] kept (local commits beyond PR #%s): %s\n' "$n" "$b"
+    kept=$((kept + 1))
+    continue
+  fi
+
+  n="$(printf '%s\n' "$rows" | awk '{print $2; exit}')"
   printf '[tidy] kept (PR #%s closed unmerged): %s\n' "$n" "$b"
   kept=$((kept + 1))
 done < <(git for-each-ref --format='%(refname:short)' refs/heads/)

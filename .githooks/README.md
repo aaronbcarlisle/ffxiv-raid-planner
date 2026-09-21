@@ -38,15 +38,17 @@ git config xrp.tidyBranches false   # disable
 A merge on GitHub can't fire a local hook, so the next pull onto `main` is the
 first moment your machine learns a branch merged — and since
 delete-branch-on-merge already removed the remote, the local copy is the only
-leftover. The hook exits silently when you haven't opted in, when you're not on
-`main`, or when `gh` is missing or unauthenticated; it never fails the pull.
+leftover. The hook exits silently when you haven't opted in, when you're not on `main`,
+or when `gh` is missing or unauthenticated (it checks `gh` itself, so the
+unattended path stays quiet — run the script by hand and it *will* tell you why
+it skipped). It never fails the pull.
 
 The decision logic lives in
 [`scripts/tidy-merged-branches.sh`](../scripts/tidy-merged-branches.sh), which
 you can also run by hand (`--dry-run` reports without deleting). **A branch is
-deleted only when it has a MERGED PR and no OPEN one** — the pull request, not
-the git graph, is the authority, because the two obvious signals are both wrong
-here:
+deleted only when it has a MERGED PR whose head commit is exactly the local
+tip, and no OPEN one.** The pull request, not the git graph, is the authority,
+because the two obvious signals are both wrong here:
 
 - `git branch --merged main` lists **nothing**. We squash-merge, so a merged
   branch's commits never become ancestors of `main` and `git branch -d` refuses
@@ -56,6 +58,15 @@ here:
   remote was deleted without ever merging still reads `[gone]`, while a branch
   merged before delete-branch-on-merge was enabled does not.
 
+The **SHA match** is what makes `-D` safe. A merged PR on its own only proves
+that a branch by that name merged once — not that the local ref is what merged.
+If you kept committing on a branch after its PR landed, or reused a branch name
+whose old PR merged long ago, the PR still reads `MERGED` while the local tip
+holds work that never was; without the OID check a background hook would drop it
+to the reflog with no prompt. Fork PRs are ignored for the same reason
+(`gh pr list --head` matches branch *names* across repositories, and `patch-1`
+is exactly what a fork PR gets by default).
+
 Branches with an open PR (a parked draft, say), with no PR at all, with a
-closed-unmerged PR, or checked out in another worktree are kept, and the script
-prints which case each one hit.
+closed-unmerged PR, with commits beyond the merged head, or checked out in
+another worktree are kept, and the script prints which case each one hit.
