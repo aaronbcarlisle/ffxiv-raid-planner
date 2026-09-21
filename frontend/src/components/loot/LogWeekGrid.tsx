@@ -191,8 +191,9 @@ export interface LogWeekGridProps {
   /**
    * D6a Task 6: the `?entry=` deep-link target (`Loot.tsx`'s consumption
    * effect, gated on the Log view). The matching filled cell's wrapper span
-   * gets `id={logCellDomId(ref)}` and ` highlight-pulse` appended — the exact
-   * `LootEntryRow.tsx:80-83` idiom. `null` when nothing is highlighted.
+   * gets `id={logCellDomId(ref)}` and ` highlight-pulse` appended — the same
+   * derivation `LootHistoryTable`'s `<tr>` makes from `historyRowDomId` + its
+   * own `?entry=` effect. `null` when nothing is highlighted.
    */
   highlightEntry: HighlightEntryRef | null;
   /**

@@ -50,7 +50,7 @@ function renderList(overrides: Partial<SessionListProps> = {}) {
 
 function openKebab() {
   // Radix DropdownMenu trigger — driven via keyDown per established convention
-  // (see WeekScopeControl.test.tsx / LootEntryRow.test.tsx); a plain click
+  // (see WeekScopeControl.test.tsx / LootHistoryTable.test.tsx); a plain click
   // does not flip the trigger's data-state in jsdom, so keyDown Enter is used
   // to open the menu; item selection itself is still driven via fireEvent.click.
   fireEvent.keyDown(screen.getByRole('button', { name: 'Session actions' }), { key: 'Enter' });
