@@ -228,9 +228,17 @@ for label, path, old, new, spec in MUTATIONS:
     rows.append((label, killed))
     print(f'{str(killed):>3} killed  <-  {label}', flush=True)
 
+# The clean re-check is the proof the tree SURVIVED the mutating — every file
+# restored, nothing left half-applied. It used to be printed and never scored,
+# so a failing or unparseable clean run still ended in `Battery OK` and exit 0
+# (PR #266, Copilot, High — the same defect as the mutation rows, one step
+# further out, in the check that exists to catch the others' fallout).
 print('\n--- clean tree re-check ---', flush=True)
+clean = []
 for spec in (LHT_SPEC, LOOT_SPEC, SEARCH_SPEC, LAYOUT_SPEC):
-    print(f'{spec}: {run_spec(spec)} failing', flush=True)
+    failing = run_spec(spec)
+    clean.append((spec, failing))
+    print(f'{spec}: {failing} failing', flush=True)
 
 print('\n--- markdown ---')
 for label, killed in rows:
@@ -257,6 +265,12 @@ for label, killed in rows:
         problems.append(f'{label}: killed nothing — check the MUTATION before the tests')
 if len(rows) != len(MUTATIONS):
     problems.append(f'only {len(rows)} of {len(MUTATIONS)} mutations ran')
+for spec, failing in clean:
+    if failing != 0:
+        problems.append(
+            f'clean-tree re-check {spec}: {failing} — the tree did not come back healthy, '
+            'so every kill count above is suspect'
+        )
 
 if problems:
     print('\n!! BATTERY FAILED')
