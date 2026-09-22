@@ -116,11 +116,15 @@ MUTATIONS = [
     # Kept deliberately (comment at the call site says why). A row reporting 0
     # here is CORRECT; a row reporting >0 would mean the ref survives unmount,
     # which is worth knowing immediately.
+    # Anchor re-derived after the round-3 modal fix reshaped this action from a
+    # one-liner into a block. The previous anchor silently stopped matching —
+    # and the new exit-code check above caught it on its first run, which is
+    # precisely what it was added for (PR #266, Copilot, High).
     (
         'gate 3 removed: `lview` check dropped from the action (defence in depth — expected 0)',
         LOOT,
-        "      action: () => { if (lview === 'history') historySearchRef.current?.focus(); },",
-        '      action: () => { historySearchRef.current?.focus(); },',
+        "        if (lview !== 'history') return;\n",
+        '',
         LOOT_SPEC,
     ),
     (
@@ -128,6 +132,23 @@ MUTATIONS = [
         LOOT,
         '    disabled: anyModalOpen,\n    shortcuts: [{',
         '    disabled: false,\n    shortcuts: [{',
+        LOOT_SPEC,
+    ),
+    # Both added after PR #266 round 3: Copilot found the modal guard covered
+    # only Loot-owned state, so an open chrome dialog or the global Shift+?
+    # help left `Ctrl+Shift+F` focusing the box BEHIND it.
+    (
+        'gate 2(a) narrowed back to Loot-owned modals (a chrome action dialog no longer blocks)',
+        LOOT,
+        '    adjustmentsOpen || deleteTarget !== null || resetConfig !== null ||\n    isActionModalOpen;',
+        '    adjustmentsOpen || deleteTarget !== null || resetConfig !== null;',
+        LOOT_SPEC,
+    ),
+    (
+        'gate 2(b) removed: focus inside an unreachable overlay no longer blocks',
+        LOOT,
+        "        if (document.activeElement?.closest('[role=\"dialog\"],[aria-modal=\"true\"]')) return;\n",
+        '',
         LOOT_SPEC,
     ),
     (
@@ -214,3 +235,32 @@ for spec in (LHT_SPEC, LOOT_SPEC, SEARCH_SPEC, LAYOUT_SPEC):
 print('\n--- markdown ---')
 for label, killed in rows:
     print(f'| {label} | **{killed}** |')
+
+# Exit non-zero on anything that means "this run did not prove what it claims"
+# (PR #266, Copilot, High). Previously the script always exited 0, so a run
+# that never applied a mutation — a drifted anchor, a crashed restore, an
+# unparseable vitest summary — read as a clean pass at a glance. `EXPECT_ZERO`
+# is the ONE row documented to kill nothing (the `lview` check is defence in
+# depth behind an already-null ref); a NON-zero there is also a failure,
+# because it would mean the ref outlives unmount.
+EXPECT_ZERO = 'gate 3 removed'
+problems = []
+for label, killed in rows:
+    expected_zero = label.startswith(EXPECT_ZERO)
+    if not isinstance(killed, int):
+        problems.append(f'{label}: {killed}')
+    elif killed == -1:
+        problems.append(f'{label}: could not parse the vitest summary')
+    elif expected_zero and killed != 0:
+        problems.append(f'{label}: expected 0, got {killed} — the ref now survives unmount')
+    elif not expected_zero and killed == 0:
+        problems.append(f'{label}: killed nothing — check the MUTATION before the tests')
+if len(rows) != len(MUTATIONS):
+    problems.append(f'only {len(rows)} of {len(MUTATIONS)} mutations ran')
+
+if problems:
+    print('\n!! BATTERY FAILED')
+    for p in problems:
+        print(f'   - {p}')
+    raise SystemExit(1)
+print('\nBattery OK: every mutation applied, restored, and scored as expected.')

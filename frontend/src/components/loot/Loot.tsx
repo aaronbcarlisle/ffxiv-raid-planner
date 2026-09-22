@@ -198,6 +198,7 @@ import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
+import { useGroupActionModalOpen } from '../../pages/groupActionsContext';
 import { toast } from '../../stores/toastStore';
 
 import { deleteLootAndRevertGear } from '../../utils/lootCoordination';
@@ -533,14 +534,33 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // with no guard at all (`history/AllWeeksView.tsx:111-120`); the three gates
   // below are what R-35's implementation note asks for.
   const historySearchRef = useRef<HTMLInputElement>(null);
-  // Gate 2 (modal). Loot-owned modals only — `WeekScopeControl`'s summary and
-  // `BookLedgerCard`'s two are child-owned and not in this boolean, which is
-  // harmless ONLY because gate 3 confines the action to History, where none of
-  // them mount. If this binding ever grows a non-History action, this boolean
-  // is the thing to revisit first.
+  // Gate 2 (modal), in TWO parts, because no single source knows about every
+  // overlay that can sit above History.
+  //
+  // (a) Typed state. Loot's own modals, plus the chrome-owned action dialogs
+  //     (Add Player / New Tier / Rollover / Delete) via the shared context —
+  //     `Roster.tsx`'s `isActionModalOpen` precedent, and `Loot` renders inside
+  //     the `GroupActionModals` provider (`NewShell.tsx:309`). The hook returns
+  //     false outside a provider, so a bare render still degrades safely.
+  //     `WeekScopeControl`'s summary and `BookLedgerCard`'s two stay out: they
+  //     are Log-only, and gate 3 confines this action to History.
+  //
+  // (b) Focus containment, for the overlays that expose no state Loot can
+  //     reach — the GLOBAL `KeyboardShortcutsHelp` being the live example
+  //     (`Layout.tsx` owns `showKeyboardHelp`; nothing publishes it). Without
+  //     this, pressing `Ctrl+Shift+F` while the `Shift+?` help is open focused
+  //     the search box BEHIND the modal — the guard R-35 advertises, bypassed
+  //     (PR #266, Copilot, found in a collapsed "Previously missed" block).
+  //     `ui/Modal` moves focus into itself on open, so "is the focused element
+  //     inside a dialog" answers this for every such overlay, present and
+  //     future, without new plumbing. Deliberately NOT a check for the mere
+  //     PRESENCE of `[role="dialog"]`: the v2 chrome keeps an always-mounted
+  //     one (the nav drawer), so presence would disable the shortcut forever.
+  const isActionModalOpen = useGroupActionModalOpen();
   const anyModalOpen =
     pickerState !== null || wizardState !== null || materialState !== null ||
-    adjustmentsOpen || deleteTarget !== null || resetConfig !== null;
+    adjustmentsOpen || deleteTarget !== null || resetConfig !== null ||
+    isActionModalOpen;
   useKeyboardShortcuts({
     disabled: anyModalOpen,
     shortcuts: [{
@@ -567,7 +587,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       // focusing an invisible box. Recorded rather than deleted because,
       // unlike R-D10-F's `params.delete('q')`, it is not protecting against
       // a structurally impossible state — only an unbuilt one.
-      action: () => { if (lview === 'history') historySearchRef.current?.focus(); },
+      action: () => {
+        if (lview !== 'history') return;
+        // Gate 2(b), above: an overlay Loot cannot see is open and holds focus.
+        if (document.activeElement?.closest('[role="dialog"],[aria-modal="true"]')) return;
+        historySearchRef.current?.focus();
+      },
     }],
   });
 

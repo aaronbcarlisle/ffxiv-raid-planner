@@ -102,6 +102,7 @@ phase the difference is load-bearing: a director re-opens a `(plan)` row, never 
 | **R-D11-D** (USER) | The kebab **converts** to the two-trigger `ui/ContextMenu`, upholding D9a-k | D9a-k pre-ruled it: "D11 converts to the two-trigger `ContextMenu` + right-click + View week N in Log + material Edit under R-32; converting here would be converting twice." One items list, two triggers, one mount — the `LogWeekGrid`/`BookLedgerCard` shape. **Interim cost, named:** `ui/ContextMenu` has no focus-restore-on-close and no `aria-expanded`, and closes on scroll; R-D7b booked exactly these three for the Books kebabs (`phase-d-loot-design.md:559-562,603`) and D11 joins the same standing queue — with the honest note that a table multiplies them by row count. **A fourth, added at whole-branch review:** with a menu open, clicking *another row* to dismiss it now closes the menu on `mousedown` and then delivers the `click` to that row, opening its editor. In D9a/D10 that gesture was side-effect-free because rows were inert — the clickable row is the cause, not the Radix→`ContextMenu` swap (the old `Dropdown` was `modal={false}`). Family-consistent with `LogWeekGrid`, so it joins the queue rather than being special-cased here |
 | **R-D11-E** (plan) | Row interactivity is **permission-shaped**: `tabIndex={0}` + `role="button"` + `aria-label` only when `canEdit`. Shift/Alt pointer modifiers stay live for **everyone**; the kebab is a viewer's complete keyboard/AT route | R-31 q1 forbids advertising an activation that will not fire — and a focused row whose plain Enter does nothing is that violation with a keyboard instead of a cursor. That the modifiers stay live for viewers is R-31's own premise: "pointer only when `canEdit`, **plus R-18's Alt-held swap**" is vacuous otherwise, because an editor's row is already `cursor-pointer`. **The honest delta, stated rather than argued away:** a V1 viewer *can* focus a row and press `Shift+Enter`/`Alt+Enter` today (`AllWeeksView.tsx:311-325` handles both **before** the `canEdit` gate at `:326`, and `:555-559` routes the keyboard through). D11 does not carry that row-level **gesture**; every **capability** survives on the kebab (Copy link · Jump · View week N in Log), which R-32 already names "the keyboard and AT route". Affordance parity with a mapped home — not a silent drop. **Second divergence, recorded:** D6-l ruled v2's Log grid cells **inert** for viewers (`phase-d-loot-plan.md:243`) while History's stay modifier-live, so the two v2 surfaces differ for read-only users. Defensible (different rulings own them) but it qualifies §0's "one mental model", so it is written down rather than left to be re-discovered |
 | **R-D11-F** (plan) | `cursor-pointer` iff `canEdit \|\| (altHeld && canJump)`. **ONE** `useAltHeld()` at the table top level | The second clause is the whole content of "R-18's Alt-held swap" on this surface, and `LogWeekGrid.tsx:416` (`altHeld && jump ? ' cursor-pointer' : ''`) is the exact precedent. One hook instance per table, never per row — D6 Task 3's rule, stated there because the naive shape is one per cell |
+| **R-D11-O** (plan, round 3) | The modal gate is **two-part**: typed state (Loot's own modals **plus** the chrome-owned action dialogs via `useGroupActionModalOpen()`) *and* a focus-containment check for overlays Loot can see no state for | Round 3 found the original gate covered Loot-owned modals only, and the comment defending that was wrong — it argued other overlays were harmless "because gate 3 confines the action to History", but `GroupActionModals`' dialogs and the **global** `KeyboardShortcutsHelp` both mount *over* History. `Ctrl+Shift+F` therefore focused the search box **behind** an open modal: the guard R-35 advertises, bypassed. Typed state handles what Loot can reach (`Roster.tsx:163`'s precedent, and `Loot` renders inside the provider at `NewShell.tsx:309`); focus containment handles what it cannot, because `ui/Modal` moves focus into itself on open. Keyed on **focus**, never on the presence of `[role="dialog"]` — the v2 chrome keeps an always-mounted nav drawer, so a presence check would disable the shortcut forever |
 | **R-D11-G** (plan) | A plain click that **completes a text selection** does not open the editor | R-31 q2 makes the text selectable on purpose. A drag-select that ends in a modal takes the affordance back on mouseup, which is worse than `select-none` because it reads as a bug rather than a policy. Read `window.getSelection()?.toString()`; Shift+Click keeps V1's `removeAllRanges()` guard (`AllWeeksView.tsx:315`) so copying leaves no selection artifact |
 | **R-D11-H** (plan) | A material row's **Edit** opens D8's modal through the **existing** `materialState.mode === 'edit'` door (`Loot.tsx:1155,1368-1384`) — no new modal, no new state shape | R-32 names this as net-new for v2 and D-37 restores it. D8's §5 mount obligations (full roster, referential stability, lazy edit initializers) were discharged in D5 **for this same mount**, and D11 adds a second *caller*, not a second mount — so the contract is inherited satisfied. Stated rather than assumed, because §5 requires whichever of D5/D11 lands first to state it, and D5 did |
 | **R-D11-I** (plan) | **§2.1's claim that the command palette "renders in both shells" is wrong on `main`** and is corrected, not inherited | `CommandPalette` has exactly **one** production mount: `NewShell.tsx:4,330` (v2). Every other reference is a test, a `vi.mock`, a comment or a release note — verified independently by the director. Editing it is therefore not a V1 reach. The help modal's dual-shell reach is real and unchanged |
@@ -464,7 +465,7 @@ Baselines were measured on this branch before any code was written.
 
 | Gate | `main` @ `3253d858` | D11 | Δ |
 |---|---|---|---|
-| `pnpm test` | 235 files / **3078** | 236 files / **3114** | **+1 file / +36** |
+| `pnpm test` | 235 files / **3078** | 236 files / **3116** | **+1 file / +38** |
 | `pnpm lint` | 0 errors / 903 warnings | 0 errors / **903** | **0** |
 | `pnpm knip` — unused exported types | 140 | **140** | **+0** |
 | `pnpm knip` — unused exports | 181 | **181** | **+0** |
@@ -479,11 +480,11 @@ claimed +35 from parts summing to 38, caught at whole-branch review:
 | Spec | `main` | D11 | Δ |
 |---|---|---|---|
 | `LootHistoryTable.test.tsx` | 65 | 81 | **+16** (T-1…T-16, T-13b, minus the replaced D9a-i suite) |
-| `Loot.test.tsx` | 103 | 110 | **+7** (T-22…T-27, T-26 split in two) |
+| `Loot.test.tsx` | 103 | 112 | **+9** (T-22…T-27, T-26 split in two, T-24b/T-24c from round 3) |
 | `HistorySearch.test.tsx` | 24 | 30 | **+6** (T-17…T-21) |
 | `Layout.chrome.test.tsx` | 12 | 14 | **+2** (T-29) |
 | `KeyboardShortcutsHelp.test.tsx` | 0 | 5 | **+5** (new file — the +1 test file) |
-| | | | **+36** |
+| | | | **+38** |
 
 **The lint ceiling held at exactly 903**, which is the number B1 was about: the first draft of this
 plan would have shipped 905 by pre-authorising two disables the code never needed.
@@ -511,6 +512,20 @@ a `finally` that copies back is only as good as the bytes it copies.
 | gate 1 removed **in the shared hook**: typing in an input stops suppressing shortcuts | **1** |
 | `clearSearch` reverts to the internal ref (M2's defect reintroduced) | **1** |
 | legacy help mount ALSO receives `extraGroups` (V1's `Shift+?` changes) | **1** |
+
+**Round 3 added three rows and an exit code.** Two prove the modal-guard fix (gate 2(a) narrowed
+back to Loot-owned state → **1**; gate 2(b)'s focus-containment check removed → **1**), and the
+script now **exits non-zero** on any verdict that means "this run did not prove what it claims" —
+`ANCHOR MISSING` / `ANCHOR NOT UNIQUE` / `RESTORE FAILED` / `INVALID MUTANT`, an unparseable vitest
+summary, a row that killed nothing, a documented expected-zero row that killed *something*, or
+fewer rows than mutations. Previously it always exited 0, so a drifted anchor read as a clean pass
+at a glance (PR #266, Copilot, High).
+
+⚠ **It caught its own author on the first hardened run.** The round-3 modal fix reshaped
+`action: () => { … }` from a one-liner into a block, which silently orphaned the gate-3 mutation's
+anchor — the script reported `ANCHOR MISSING` and exited 1. Under the previous version that row
+would have printed a verdict and passed. The anchor is re-derived, and this is the same class D10
+spent two rounds on: evidence that looks like protection but cannot fail.
 
 **The 0 is the finding, and it is correct.** Off History `HistorySearch` is unmounted, so React has
 already nulled `historySearchRef` and `?.focus()` cannot fire — the optional chain is the

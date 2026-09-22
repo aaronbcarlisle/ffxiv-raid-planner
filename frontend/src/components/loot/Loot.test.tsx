@@ -137,6 +137,18 @@ vi.mock('../../utils/lootCoordination', () => ({
 vi.mock('../../utils/materialCoordination', () => ({
   deleteMaterialAndRevertGear: deleteMaterialMock,
 }));
+/**
+ * The chrome-owned action-dialog signal (`GroupActionModals`). Loot renders
+ * inside that provider in the app (`NewShell.tsx:309`) but bare in this spec,
+ * where the real hook would always return false — so the modal-guard test
+ * would pass without the gate existing. Mocked as a mutable flag instead, and
+ * reset in `beforeEach`.
+ */
+let actionModalOpen = false;
+vi.mock('../../pages/groupActionsContext', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../pages/groupActionsContext')>()),
+  useGroupActionModalOpen: () => actionModalOpen,
+}));
 
 import { Loot } from './Loot';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
@@ -243,6 +255,7 @@ beforeEach(() => {
       addListener: vi.fn(), removeListener: vi.fn(), dispatchEvent: vi.fn(),
     })),
   );
+  actionModalOpen = false;
   floorCardCalls.length = 0;
   pickerCalls.length = 0;
   weekScopeCalls.length = 0;
@@ -2548,6 +2561,51 @@ describe('Loot — D11: Ctrl+Shift+F focuses History search (R-35 / R-D11-C)', (
 
     // The box is still mounted behind the modal — focus must not jump to it.
     expect(document.activeElement).not.toBe(searchBox());
+  });
+
+  /**
+   * T-24b/T-24c (PR #266, Copilot — filed inside a collapsed "Previously
+   * missed" block under a body reading `Findings: None`).
+   *
+   * The modal guard originally enumerated only Loot's OWN modal state, and the
+   * comment justifying that was wrong: it claimed child/other overlays were
+   * harmless because gate 3 confines the action to History, but both of these
+   * mount over History. The shortcut therefore focused the search box BEHIND
+   * an open modal — the guard R-35 advertises, bypassed.
+   */
+  it('T-24b: does nothing while a CHROME action dialog is open (shared context, not Loot state)', () => {
+    // Set BEFORE the render so the first commit already reflects the provider's
+    // signal — this is a gate on state the chrome owns, not a transition.
+    actionModalOpen = true;
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    const box = searchBox();
+    expect(document.activeElement).not.toBe(box);
+
+    pressCtrlShiftF();
+
+    expect(document.activeElement).not.toBe(box);
+  });
+
+  it('T-24c: does nothing while an overlay Loot cannot see holds focus (the global Shift+? help)', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    const box = searchBox();
+
+    // Stand in for `KeyboardShortcutsHelp`: an aria-modal dialog that has taken
+    // focus, exactly as `ui/Modal` leaves the DOM when it opens. Loot owns no
+    // state for it — focus containment is the only signal available.
+    const overlay = document.createElement('div');
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.tabIndex = -1;
+    document.body.appendChild(overlay);
+    overlay.focus();
+    expect(document.activeElement).toBe(overlay);
+
+    pressCtrlShiftF();
+
+    expect(document.activeElement).toBe(overlay);
+    expect(document.activeElement).not.toBe(box);
+    overlay.remove();
   });
 
   it('T-25: does nothing while focus is in a text input (gate 1, the shared hook s guard)', () => {
