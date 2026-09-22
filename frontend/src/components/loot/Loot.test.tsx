@@ -920,6 +920,131 @@ describe('Loot', () => {
     expect(rowIds()).toEqual(['loot-entry-21', 'loot-entry-20']);
     expect(screen.getByRole('columnheader', { name: 'Player' })).toHaveAttribute('aria-sort', 'ascending');
   });
+
+  it('tells History the load FAILED instead of letting it claim the tier is empty', async () => {
+    // The wire for the Copilot finding: `fetchLootLog` clears its loading flag
+    // on the error path too, so without this signal a failed first load leaves
+    // empty arrays + logsLoading false, and the table asserts "No loot or
+    // materials logged this tier." over a request that never landed.
+    useLootTrackingStore.setState({
+      lootLog: [],
+      materialLog: [],
+      fetchLootLog: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+
+    expect(await screen.findByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+    expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
+  });
+
+  it('does not let a LATE or UNRELATED array write retract the verdict', async () => {
+    // Round 7: the retraction effect is gone. `fetchLootLog` writes its response
+    // with nothing scoping the write to the request that asked for it, so array
+    // identity means "some fetch succeeded", never "this one did" - and both
+    // reviewers found stale-write races through it (a previous tier's response
+    // retracting the current tier's verdict; an earlier same-tier request
+    // landing after a later one rejected). The verdict must now survive any
+    // array write the component merely observes.
+    useLootTrackingStore.setState({
+      lootLog: [],
+      materialLog: [],
+      fetchLootLog: vi.fn().mockRejectedValue(new Error('loot boom')),
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+    expect(await screen.findByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+
+    // A stale/unrelated success lands: fresh arrays, exactly as a real fetch writes them.
+    act(() => {
+      useLootTrackingStore.setState({ materialLog: [] });
+    });
+    act(() => {
+      useLootTrackingStore.setState({ lootLog: [] });
+    });
+
+    // The loot request that this tier actually issued still failed.
+    expect(screen.getByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+    expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
+  });
+
+  it('stops speaking the moment real rows exist, without observing the refetch', async () => {
+    // What the retraction effect was FOR, now covered by the table's own
+    // `logsFailed && tierIsEmpty` gate: a refetch that produced rows suppresses
+    // the message because the component is holding logs, not because anyone
+    // watched the fetch land.
+    useLootTrackingStore.setState({
+      lootLog: [],
+      materialLog: [],
+      fetchLootLog: vi.fn().mockRejectedValue(new Error('loot boom')),
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+    expect(await screen.findByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+
+    act(() => {
+      useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 40, weekNumber: 3 })] });
+    });
+
+    expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+    expect(document.getElementById('loot-entry-40')).toBeInTheDocument();
+  });
+
+
+  it('does NOT blame the logs when an unrelated request in the same batch fails', async () => {
+    // `logsFailed` rides a Promise.all with fetchPageLedger and
+    // fetchCurrentWeek. Catching at the batch level would let either of those
+    // put History into "Couldn't load this tier's entries." while the logs
+    // arrived fine — exactly the wrongness that ruled out the store's shared
+    // `error` field. The catches are per-log-promise for this reason.
+    useLootTrackingStore.setState({
+      lootLog: [],
+      materialLog: [],
+      fetchPageLedger: vi.fn().mockRejectedValue(new Error('ledger boom')),
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+
+    expect(await screen.findByText('No loot or materials logged this tier.')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+  });
+
+  it('claims the tier is empty only when the load actually SUCCEEDED with nothing in it', async () => {
+    // The control for the test above: same empty arrays, no rejection.
+    useLootTrackingStore.setState({ lootLog: [], materialLog: [] });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+
+    expect(await screen.findByText('No loot or materials logged this tier.')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+  });
+
+  it("marks the CLOCK's current week on the History separator, not the Log's displayed week", () => {
+    // D9b assembly guard (review M2). `currentWeek` and `logWeek.week` are both
+    // numbers in scope at the LootHistoryTable mount, so `currentWeek={logWeek.week}`
+    // would compile and pass every unit test in LootHistoryTable.test.tsx — the
+    // table cannot tell which number it was handed. Only a mounted-Loot test
+    // where the two DIFFER can catch that wire.
+    //
+    // The harness seeds clock currentWeek = 3; `?week=2` points the Log at week
+    // 2 (useLogWeek reads the raw param on its first resolve). Both weeks carry
+    // an entry, so both separators render and exactly one must be marked.
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({ id: 30, weekNumber: 3, createdAt: '2026-06-25T12:00:00Z' }),
+        makeLootEntry({ id: 31, weekNumber: 2, createdAt: '2026-06-18T12:00:00Z' }),
+      ],
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history&week=2']);
+
+    const bands = Array.from(document.querySelectorAll('tbody tr:not([id])')).map((tr) =>
+      Array.from(tr.querySelectorAll('span'))
+        .map((sp) => sp.textContent?.trim() ?? '')
+        .join(' | ')
+    );
+    expect(bands).toHaveLength(2);
+
+    const marked = bands.filter((b) => b.includes('current'));
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toContain('WEEK 3');
+    // The explicit negative: wire this to the Log's week and THIS is what fails.
+    expect(bands.find((b) => b.includes('WEEK 2'))).not.toContain('current');
+  });
 });
 
 // ── D4: the triad, and the death of scopedWeek (R-13/R-15/R-20/R-22) ─────────

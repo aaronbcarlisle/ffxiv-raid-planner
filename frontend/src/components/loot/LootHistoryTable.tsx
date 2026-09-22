@@ -1,5 +1,5 @@
 /**
- * LootHistoryTable — the flat sortable transparent record (R-29/R-46; D9a).
+ * LootHistoryTable — the flat sortable transparent record (R-29/R-46; D9a+D9b).
  *
  * One `<table>`: seven `SortableHeader` columns (Week · Floor · Slot · Player ·
  * Method · Date · Type) plus the ⋮ kebab column, ordered by a session-local
@@ -9,6 +9,16 @@
  * material rows), R-38 weapon job in Slot and recipient job in Player, the
  * `aug {slot}` readout in Type (R-34 / R-D9a-A / D9a-t). Rows are inert — the
  * kebab is the only control (D9a-i, D9a-k).
+ *
+ * D9b adds the three things D9a deferred. **Week separators (R-29)** render
+ * ONLY while the sort field is `week` — under a Player sort the rows either
+ * side of a week band are no longer a week, so the band would be a lie. They
+ * are direction-agnostic (R-D9b-E): week ASC is still grouped by week. The
+ * **stats count (R-34)** sits above the `<thead>`, inside the card, as a
+ * `role="status"` line so a filter change announces. The **filtered-vs-empty
+ * split (R-34)** replaces D9a's single message: "nothing logged this tier" and
+ * "nothing matches your filters" are different facts and v1 already said so
+ * (`AllWeeksView.tsx:530-537`).
  *
  * Owns the `?entry=&entryType=` deep-link highlight (legacy parity,
  * `SectionedLogView.tsx:628-680`): scrolls to and pulses the matching row, then
@@ -24,15 +34,22 @@
  * sideways and *would* clip below the width where eight columns fit. Measured,
  * that width is never reached: the content pane scrolls first, from the stats
  * card row above this table, so the card itself clipped at no width tested down
- * to 880 (numbers in the R-29 build note; Phase P re-decides for mobile). The Date
- * column is LOCAL time (D9a-o); D9b's week-range separators stay UTC-pinned.
+ * to 880 (numbers in the R-29 build note; Phase P re-decides for mobile). The
+ * separator row adds a `colSpan` cell, so those widths were re-measured in D9b.
  *
- * Later slices: D9b re-adds week separators / current-week marker / the stats
- * count and the filtered-vs-empty split (and with them `currentWeek` +
- * `rangeOfWeek`, D9a-l); D10 the search box; D11 the row click / right-click
+ * TWO date formatters, deliberately: the Date **column** is LOCAL time (D9a-o,
+ * a logged moment) and the separator **range** is UTC-pinned (a lockout
+ * boundary, `WeekScopeControl` precedent). Both are correct for what they show.
+ *
+ * The deep-link pulse rides a `<tr>` inside a `border-collapse: collapse`
+ * table. D9a evidenced that from computed style only; D9b looked at it — the
+ * `inset` ring paints on all four edges in both themes at 1440 (screenshots in
+ * the D9b PR). The outset glow is clipped by `overflow-clip`, as designed.
+ *
+ * Later slices: D10 the search box; D11 the row click / right-click
  * `ContextMenu` conversion (R-31/R-32); D12 gear-row anchors.
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MoreVertical } from 'lucide-react';
 import { SortableHeader } from '../ui/SortableHeader';
@@ -58,6 +75,7 @@ import {
 import { GEAR_SLOTS } from '../../types';
 import type { LootLogEntry, LootSlot, MaterialLogEntry, MaterialType, SnapshotPlayer } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
+import type { WeekRange } from '../../hooks/useWeekClock';
 
 export interface LootHistoryTableProps {
   lootLog: LootLogEntry[];
@@ -65,11 +83,33 @@ export interface LootHistoryTableProps {
   players: SnapshotPlayer[];
   floors: string[];
   filters: HistoryFilterState;
+  /** pass clock.currentWeek — which separator carries the current-week marker. */
+  currentWeek: number;
+  /** pass clock.rangeOfWeek — returns null for a week the clock can't date. */
+  rangeOfWeek: (week: number) => WeekRange | null;
+  /**
+   * True when the log fetch for this tier FAILED. Same reason as
+   * `logsLoading`: empty arrays after a failed request are not evidence of an
+   * empty tier, and saying so is a false claim the user cannot act on — the
+   * toast tells them something broke while the table tells them there is
+   * nothing to see (D9b review, Copilot).
+   */
+  logsFailed: boolean;
+  /**
+   * True while either log is being fetched. The empty state AND the stats
+   * count read it: "No loot or materials logged this tier." and "0 entries"
+   * are both claims about the tier, and the component cannot make either over
+   * arrays that simply haven't arrived (D9b review M1 + round 2). Rows are
+   * still rendered while true — a tier
+   * switch shows the previous tier's rows until the new ones land, which is
+   * the pre-existing behaviour on both shells and not this slice's to change.
+   */
+  logsLoading: boolean;
   canEdit: boolean;
   onEdit: (entry: LootLogEntry) => void;
   onCopyLink: (item: HistoryItem) => void;
   onDelete: (item: HistoryItem) => void;
-} // currentWeek / rangeOfWeek REMOVED (D9a-l) — D9b re-adds both with the week separators.
+}
 
 /** Header order IS column order; the `CELL` map renders one cell per field from the same list. */
 const COLUMNS: ReadonlyArray<{
@@ -121,6 +161,31 @@ const DATE_FMT = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric',
   minute: '2-digit',
 });
+
+/**
+ * UTC-pinned so the shown date never shifts a day (WeekScopeControl precedent).
+ * Carried verbatim from the deleted `WeekGroupHeader`
+ * (`3f90d420:frontend/src/components/loot/WeekGroupHeader.tsx:14-19`), comment
+ * included — a lockout boundary is a UTC fact, unlike the Date column above.
+ */
+const RANGE_FMT = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+function formatRange(range: WeekRange): string {
+  return `${RANGE_FMT.format(range.start)} – ${RANGE_FMT.format(range.end)}`;
+}
+
+/**
+ * R-D9b-A: "entries", not the archaeology's "{n} drop(s)". The count includes
+ * material rows, and the stats line above the table says "entries" too — one
+ * screen, one word. ONE author for both readouts.
+ */
+function entryCount(n: number): string {
+  return `${n} ${n === 1 ? 'entry' : 'entries'}`;
+}
 
 interface CellContext {
   floors: string[];
@@ -206,6 +271,71 @@ const CELL: Record<HistorySortField, (item: HistoryItem, ctx: CellContext) => Re
     ),
 };
 
+/**
+ * The R-29 week separator, rebuilt from the deleted `WeekGroupHeader`
+ * (`3f90d420:.../WeekGroupHeader.tsx`) per R-29 implementation note 1. It lives
+ * here rather than in a restored file of its own (R-D9b-D): it is table-coupled
+ * now — `colSpan`, row semantics — and has exactly one consumer.
+ *
+ * The pill goes through `Tag` rather than the archaeology's hand-rolled span,
+ * because `Tag`'s `accent` tone IS the measured pair the deleted file's comment
+ * argued for — `bg-accent/15 text-accent-hover`, where the default
+ * `text-accent` (#0c7d71) clears AA on solid surface-base/card but NOT on the
+ * bg-accent/15 tint composited over them (#dbebea ≈ 4.07:1 light, measured via
+ * the contrast harness); accent-hover (#0a6b60) clears it with margin. `muted`
+ * is likewise the archaeology's `bg-surface-elevated text-text-secondary`. So
+ * the design-system primitive preserves the contrast ruling exactly; only
+ * `font-display` has to be re-applied on top (R-D9b-F).
+ */
+function WeekSeparatorRow({
+  week,
+  isCurrent,
+  range,
+  count,
+}: {
+  week: number;
+  isCurrent: boolean;
+  range: WeekRange | null;
+  count: number;
+}) {
+  // Range and marker share ONE span joined on ` · `, so a week the clock can't
+  // date renders "current" without a leading orphan dot (R-D9b-B).
+  const meta = [range ? formatRange(range) : null, isCurrent ? 'current' : null]
+    .filter((part): part is string => part !== null)
+    .join(' · ');
+
+  // Held in a variable, not authored inline, for the same reason
+  // `renderActionsCell` is: `jsx-a11y/control-has-associated-label` maps `<td>`
+  // to a cell role and scans only two levels deep for accessible text. The text
+  // here is real but sits at depth three, so authoring it inline trips a false
+  // positive on both the `<tr>` and the `<td>`.
+  const body = (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        {/* `font-display` only: an appended weight utility does NOT win over
+            Tag's own `font-medium` (both land in the same Tailwind layer, so
+            emission order decides, not string order — measured 500 on the
+            rendered pill). The archaeology's `font-extrabold` is therefore
+            deliberately not carried; the tone tokens, which are what the
+            contrast ruling is about, are (R-D9b-F). */}
+        <Tag variant="label" tone={isCurrent ? 'accent' : 'muted'} className="font-display">
+          {`WEEK ${week}`}
+        </Tag>
+        {meta && <span className="text-xs text-text-tertiary">{meta}</span>}
+      </div>
+      <span className="text-xs text-text-tertiary">{entryCount(count)}</span>
+    </div>
+  );
+
+  return (
+    <tr className="bg-surface-raised/50">
+      <td colSpan={COLUMNS.length + 1} className="px-4 py-2">
+        {body}
+      </td>
+    </tr>
+  );
+}
+
 interface ActionsCellContext {
   canEdit: boolean;
   playersById: Map<string, SnapshotPlayer>;
@@ -259,6 +389,10 @@ export function LootHistoryTable({
   players,
   floors,
   filters,
+  currentWeek,
+  rangeOfWeek,
+  logsLoading,
+  logsFailed,
   canEdit,
   onEdit,
   onCopyLink,
@@ -322,6 +456,69 @@ export function LootHistoryTable({
     () => sortHistoryItems(filterHistoryItems(buildHistoryItems(lootLog, materialLog), filters), sort, sortCtx),
     [lootLog, materialLog, filters, sort, sortCtx],
   );
+  // Separators are a property of the WEEK SORT, not of the data (R-29): under
+  // any other field the rows either side of a band are no longer one week.
+  // Direction-agnostic — week asc is still grouped by week (R-D9b-E).
+  const showSeparators = sort.field === 'week';
+  // Counted off `rows` (the FILTERED set), so a separator always describes what
+  // is on screen rather than what the tier holds.
+  const weekCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const item of rows) {
+      counts.set(item.entry.weekNumber, (counts.get(item.entry.weekNumber) ?? 0) + 1);
+    }
+    return counts;
+  }, [rows]);
+
+  // R-34's filtered-vs-empty split. Read off the RAW props, not `rows`: the
+  // question is whether the tier holds anything at all, which is what the
+  // unfiltered logs answer ONCE THEY HAVE LOADED — hence the `logsLoading`
+  // guard, which withholds the claim rather than asserting it over arrays that
+  // are empty only because the request is still in flight.
+  const tierIsEmpty = lootLog.length === 0 && materialLog.length === 0;
+
+  // R-34's stats count. The split is gated on both kinds being PRESENT, which
+  // replaces v1's `entryType === 'all'` gate (`AllWeeksView.tsx:508`) — a state
+  // R-30/D10 deletes outright.
+  //
+  // Blank — not "0 entries" — while the logs are in flight with nothing to
+  // show: "0 entries" is a COUNT OF THE TIER, the same claim-over-unloaded-data
+  // the empty message below withholds, and this one sits in a live region, so
+  // it would also announce "0 entries" and then "17 entries" on every load.
+  // The element stays mounted either way: a live region inserted already
+  // populated is not reliably announced (the `role="status"` precedent at
+  // `Loot.tsx`'s priority toolbar), so the text empties, never the node.
+  const lootShown = rows.filter((item) => item.kind === 'loot').length;
+  const materialShown = rows.length - lootShown;
+  const statsLabel =
+    (logsLoading || (logsFailed && tierIsEmpty)) && rows.length === 0
+      ? ''
+      : lootShown > 0 && materialShown > 0
+        ? `${entryCount(rows.length)} (${lootShown} gear, ${materialShown} material)`
+        : entryCount(rows.length);
+
+  // Four zero-row states, in precedence order. The first two WITHHOLD a claim
+  // the component cannot support; only the last two assert anything.
+  //
+  // `logsFailed` is gated on `tierIsEmpty` rather than taken on its own: if
+  // this component is HOLDING logs then they demonstrably loaded, whatever a
+  // stale flag says, so zero rows can only be the filter.
+  //
+  // ⚠ This gate is the ONLY thing stopping a stale verdict. It began as
+  // defence in depth beside a caller-side retraction, but round 7 deleted that
+  // retraction — it could not be made correct, because array identity means
+  // "some fetch succeeded", never "this one did" (see the docblock at the
+  // removal site in `Loot.tsx`). `Loot` now sets `logsFailed` in its tier
+  // effect and clears it only on a tier change, so do not relax this gate on
+  // the assumption that something upstream also lifts the flag.
+  const emptyMessage = logsLoading
+    ? 'Loading entries…'
+    : logsFailed && tierIsEmpty
+      ? "Couldn't load this tier's entries."
+      : tierIsEmpty
+        ? 'No loot or materials logged this tier.'
+        : 'No entries match your filters.';
+
   // Plain args to the render functions below (CELL / renderActionsCell), not
   // props on memoized children — identity is irrelevant here, so memoizing
   // these literals would be noise, not a fix.
@@ -330,6 +527,15 @@ export function LootHistoryTable({
 
   return (
     <div className="rounded-lg border border-border-default bg-surface-card overflow-clip">
+      {/* R-D9b-C: inside the card, above the header, so the count travels with
+          the table it describes. `role="status"` announces a filter change —
+          the one moment the number changes without the user reading it. */}
+      <div
+        role="status"
+        className="flex justify-end border-b border-border-default px-4 py-2 text-xs text-text-tertiary"
+      >
+        {statsLabel}
+      </div>
       <table className="w-full text-sm">
         <caption className="sr-only">Loot and material history for this tier</caption>
         <thead className="sticky top-0 z-10 bg-surface-card border-b border-border-default">
@@ -354,23 +560,38 @@ export function LootHistoryTable({
           {rows.length === 0 ? (
             <tr>
               <td colSpan={COLUMNS.length + 1} className="px-4 py-6 text-sm text-text-tertiary">
-                No entries match — log a drop from the Priority view.
+                {emptyMessage}
               </td>
             </tr>
           ) : (
-            rows.map((item) => {
+            rows.map((item, index) => {
               const { kind, entry } = item;
               const rowId = historyRowDomId({ kind, id: entry.id });
               const isHighlighted = highlightType === kind && highlightId === entry.id;
+              // `rows` is already sorted, so a week boundary is simply "the
+              // previous row was a different week" — no second grouping pass.
+              const week = entry.weekNumber;
+              const startsWeek =
+                showSeparators && (index === 0 || rows[index - 1].entry.weekNumber !== week);
               return (
-                <tr key={rowId} id={rowId} className={`hover:bg-surface-raised${isHighlighted ? ' highlight-pulse' : ''}`}>
-                  {COLUMNS.map((c) => (
-                    <td key={c.field} className="px-4 py-2.5">
-                      {CELL[c.field](item, cellCtx)}
-                    </td>
-                  ))}
-                  <td className="px-4 py-2.5">{renderActionsCell(item, actionsCtx)}</td>
-                </tr>
+                <Fragment key={rowId}>
+                  {startsWeek && (
+                    <WeekSeparatorRow
+                      week={week}
+                      isCurrent={week === currentWeek}
+                      range={rangeOfWeek(week)}
+                      count={weekCounts.get(week) ?? 0}
+                    />
+                  )}
+                  <tr id={rowId} className={`hover:bg-surface-raised${isHighlighted ? ' highlight-pulse' : ''}`}>
+                    {COLUMNS.map((c) => (
+                      <td key={c.field} className="px-4 py-2.5">
+                        {CELL[c.field](item, cellCtx)}
+                      </td>
+                    ))}
+                    <td className="px-4 py-2.5">{renderActionsCell(item, actionsCtx)}</td>
+                  </tr>
+                </Fragment>
               );
             })
           )}

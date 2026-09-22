@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { LootHistoryTable } from './LootHistoryTable';
 import { historyRowDomId } from './logWeekGridData';
 import { DEFAULT_HISTORY_FILTERS } from '../../utils/historyItems';
@@ -62,6 +62,31 @@ function makeMaterialEntry(overrides: Partial<MaterialLogEntry> = {}): MaterialL
 const floors = ['M9S', 'M10S', 'M11S', 'M12S'];
 const players = [makePlayer()];
 
+/**
+ * A UTC-pinned range generator: week N starts Jun 16 2026 UTC + (N-1) weeks.
+ * Week 3 therefore spans Jun 30 - Jul 7. Built from `Date.UTC` so that a
+ * formatter which lost its `timeZone: 'UTC'` renders a DIFFERENT day — note
+ * this only bites off UTC (it does locally, `America/New_York`; a UTC CI
+ * runner cannot tell the two apart, so treat this as a local guard).
+ */
+const rangeOfWeek = (week: number) => ({
+  start: new Date(Date.UTC(2026, 5, 16 + (week - 1) * 7)),
+  end: new Date(Date.UTC(2026, 5, 23 + (week - 1) * 7)),
+});
+
+/**
+ * Reports the live query string, so a test can assert that the deep-link
+ * effect CLEANED UP rather than inferring it from the absence of a pulse.
+ * Inert: outside the table, no role, no aria.
+ */
+function LocationProbe() {
+  return <span data-testid="location-search">{useLocation().search}</span>;
+}
+
+function search(): string {
+  return screen.getByTestId('location-search').textContent ?? '';
+}
+
 function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> = {}, initialEntries: string[] = ['/']) {
   const props = {
     lootLog: [],
@@ -69,6 +94,10 @@ function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> 
     players,
     floors,
     filters: DEFAULT_HISTORY_FILTERS,
+    currentWeek: 3,
+    rangeOfWeek,
+    logsLoading: false,
+    logsFailed: false,
     canEdit: true,
     onEdit: vi.fn(),
     onCopyLink: vi.fn(),
@@ -78,6 +107,7 @@ function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> 
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <LootHistoryTable {...props} />
+      <LocationProbe />
     </MemoryRouter>
   );
 }
@@ -92,6 +122,29 @@ const COL = { week: 0, floor: 1, slot: 2, player: 3, method: 4, date: 5, type: 6
 
 function rowIds(container: HTMLElement): string[] {
   return Array.from(container.querySelectorAll('tbody tr[id]')).map((tr) => tr.id);
+}
+
+/**
+ * Separators are the only `<tbody>` rows without an entry id (the empty-state
+ * row aside). Read as ` | `-joined span text, not raw `textContent`: JSX drops
+ * the whitespace between sibling elements, so a plain concatenation would run
+ * "WEEK 3" straight into the range.
+ */
+function separatorText(tr: Element): string {
+  return Array.from(tr.querySelectorAll('span'))
+    .map((sp) => sp.textContent?.trim() ?? '')
+    .join(' | ');
+}
+
+function separatorTexts(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('tbody tr:not([id])')).map(separatorText);
+}
+
+/** The interleave, in DOM order: entry ids as-is, separators as `sep:<text>`. */
+function rowSequence(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('tbody tr')).map((tr) =>
+    tr.id ? tr.id : `sep:${separatorText(tr)}`
+  );
 }
 
 function cell(rowId: string, col: number): HTMLElement {
@@ -383,19 +436,264 @@ describe('LootHistoryTable', () => {
       expect(document.getElementById('loot-entry-1')).not.toBeInTheDocument();
     });
 
-    it('renders the muted empty line in one full-width cell, headers still present', () => {
-      const { container } = renderTable({ lootLog: [], materialLog: [] });
-      const emptyCell = screen.getByText('No entries match — log a drop from the Priority view.');
+    it('distinguishes "nothing logged" from "nothing matches" (R-34)', () => {
+      const { container, unmount } = renderTable({ lootLog: [], materialLog: [] });
+      const emptyCell = screen.getByText('No loot or materials logged this tier.');
       expect(emptyCell.tagName).toBe('TD');
       expect(emptyCell).toHaveAttribute('colspan', '8');
       expect(container.querySelectorAll('tbody td')).toHaveLength(1);
       expect(screen.getAllByRole('columnheader')).toHaveLength(8);
+      expect(screen.queryByText('No entries match your filters.')).not.toBeInTheDocument();
+      unmount();
+
+      // Same zero rows on screen, different cause: the tier HAS entries and the
+      // filter excludes them. The shipped single message conflated the two.
+      renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
+        filters: { ...DEFAULT_HISTORY_FILTERS, week: 9 },
+      });
+      expect(screen.getByText('No entries match your filters.')).toBeInTheDocument();
+      expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
+    });
+
+    it('renders no week separator alongside an empty state', () => {
+      const { container } = renderTable({ lootLog: [], materialLog: [] });
+      // One row total = the empty-state row; there is no week band to draw.
+      expect(container.querySelectorAll('tbody tr')).toHaveLength(1);
+      expect(container.querySelector('tbody tr:not([id]) td')).toHaveAttribute('colspan', '8');
+    });
+
+    it('says the load FAILED rather than claiming the tier is empty', () => {
+      renderTable({ lootLog: [], materialLog: [], logsFailed: true });
+      expect(screen.getByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+      // The falsehood this replaces: empty arrays after a failed request are
+      // not evidence of an empty tier.
+      expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
+      // And no count is asserted either — "0 entries" would be equally untrue.
+      expect(screen.getByRole('status')).toHaveTextContent('');
+    });
+
+    it('never claims a load failure while it is HOLDING logs — zero rows is the filter', () => {
+      // A stale `logsFailed` must not outrank the evidence in the component's
+      // own hands. The tier has an entry; the filter excludes it.
+      renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
+        filters: { ...DEFAULT_HISTORY_FILTERS, week: 9 },
+        logsFailed: true,
+      });
+      expect(screen.getByText('No entries match your filters.')).toBeInTheDocument();
+      expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+      // And the count is a real one here — zero IS the honest answer.
+      expect(screen.getByRole('status')).toHaveTextContent('0 entries');
+    });
+
+    it('prefers "loading" over "failed" while a retry is in flight', () => {
+      renderTable({ lootLog: [], materialLog: [], logsLoading: true, logsFailed: true });
+      expect(screen.getByText('Loading entries…')).toBeInTheDocument();
+      expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+    });
+
+    it('withholds the "nothing logged" claim while the logs are still loading (M1)', () => {
+      const { unmount } = renderTable({ lootLog: [], materialLog: [], logsLoading: true });
+      expect(screen.getByText('Loading entries…')).toBeInTheDocument();
+      // The claim is about the TIER; empty-because-unfetched must not assert it.
+      expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
+      expect(screen.queryByText('No entries match your filters.')).not.toBeInTheDocument();
+      unmount();
+
+      // Same empty arrays, load finished — now the claim is earned.
+      renderTable({ lootLog: [], materialLog: [], logsLoading: false });
+      expect(screen.getByText('No loot or materials logged this tier.')).toBeInTheDocument();
+    });
+
+    it('keeps rendering rows while loading — only the empty message is withheld', () => {
+      const { container } = renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
+        logsLoading: true,
+      });
+      expect(rowIds(container)).toEqual(['loot-entry-1']);
+      expect(screen.queryByText('Loading entries…')).not.toBeInTheDocument();
     });
 
     it('renders material rows with the material-entry id', () => {
       const materialLog = [makeMaterialEntry({ id: 5, weekNumber: 2 })];
       renderTable({ materialLog });
       expect(document.getElementById('material-entry-5')).toBeInTheDocument();
+    });
+  });
+
+  describe('week separators (R-29 / R-D9b-A / R-D9b-B / R-D9b-E)', () => {
+    const threeWeeks = [
+      makeLootEntry({ id: 1, weekNumber: 3, createdAt: '2026-07-01T12:00:00Z' }),
+      makeLootEntry({ id: 2, weekNumber: 3, createdAt: '2026-07-01T10:00:00Z' }),
+      makeLootEntry({ id: 3, weekNumber: 2, createdAt: '2026-06-24T10:00:00Z' }),
+      makeLootEntry({ id: 4, weekNumber: 1, createdAt: '2026-06-17T10:00:00Z' }),
+    ];
+
+    it('precedes each week group with one separator: pill, UTC range, current marker, count', () => {
+      const { container } = renderTable({ lootLog: threeWeeks });
+
+      // currentWeek is 3. The ranges are UTC-pinned: a formatter that lost
+      // `timeZone: 'UTC'` reads Jun 29 / Jul 6 in a UTC-negative zone.
+      expect(rowSequence(container)).toEqual([
+        'sep:WEEK 3 | Jun 30 – Jul 7 · current | 2 entries',
+        'loot-entry-1',
+        'loot-entry-2',
+        'sep:WEEK 2 | Jun 23 – Jun 30 | 1 entry',
+        'loot-entry-3',
+        'sep:WEEK 1 | Jun 16 – Jun 23 | 1 entry',
+        'loot-entry-4',
+      ]);
+    });
+
+    it('spans the separator across every column, the kebab included', () => {
+      const { container } = renderTable({ lootLog: threeWeeks });
+      const cells = container.querySelectorAll('tbody tr:not([id]) > td');
+      expect(cells).toHaveLength(3);
+      for (const td of cells) {
+        expect(td).toHaveAttribute('colspan', '8');
+      }
+    });
+
+    it('tints ONLY the current week pill, with the measured accent-hover token', () => {
+      const { container } = renderTable({ lootLog: threeWeeks });
+      const pills = Array.from(container.querySelectorAll('tbody tr:not([id]) span')).filter((sp) =>
+        (sp.textContent ?? '').startsWith('WEEK ')
+      );
+      expect(pills.map((pill) => pill.textContent)).toEqual(['WEEK 3', 'WEEK 2', 'WEEK 1']);
+      expect(pills[0]).toHaveClass('bg-accent/15', 'text-accent-hover');
+      expect(pills[0]).not.toHaveClass('bg-surface-elevated');
+      for (const past of pills.slice(1)) {
+        expect(past).toHaveClass('bg-surface-elevated', 'text-text-secondary');
+        expect(past).not.toHaveClass('text-accent-hover');
+      }
+    });
+
+    it('marks the current week in TEXT as well as tint, so the signal is not colour-only', () => {
+      const { container } = renderTable({ lootLog: threeWeeks });
+      const withCurrent = separatorTexts(container).filter((t) => t.includes('· current'));
+      expect(withCurrent).toHaveLength(1);
+      expect(withCurrent[0]).toContain('WEEK 3');
+    });
+
+    it('drops every separator under a non-week sort, and restores them on the way back', () => {
+      const { container } = renderTable({ lootLog: threeWeeks });
+      expect(separatorTexts(container)).toHaveLength(3);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Player' }));
+      expect(separatorTexts(container)).toEqual([]);
+      expect(rowIds(container)).toHaveLength(4);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Date' }));
+      expect(separatorTexts(container)).toEqual([]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Week' }));
+      expect(separatorTexts(container)).toHaveLength(3);
+    });
+
+    it('keeps separators under week ASC (R-D9b-E: the axis, not the direction)', () => {
+      const { container } = renderTable({ lootLog: threeWeeks });
+      fireEvent.click(screen.getByRole('button', { name: 'Week' }));
+
+      expect(header('Week')).toHaveAttribute('aria-sort', 'ascending');
+      expect(rowSequence(container)).toEqual([
+        'sep:WEEK 1 | Jun 16 – Jun 23 | 1 entry',
+        'loot-entry-4',
+        'sep:WEEK 2 | Jun 23 – Jun 30 | 1 entry',
+        'loot-entry-3',
+        'sep:WEEK 3 | Jun 30 – Jul 7 · current | 2 entries',
+        'loot-entry-1',
+        'loot-entry-2',
+      ]);
+    });
+
+    it('renders no range, and no stray separator dot, when rangeOfWeek returns null', () => {
+      const { container } = renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 3 }), makeLootEntry({ id: 2, weekNumber: 2 })],
+        rangeOfWeek: () => null,
+      });
+      expect(separatorTexts(container)).toEqual([
+        'WEEK 3 | current | 1 entry',
+        'WEEK 2 | 1 entry',
+      ]);
+    });
+
+    it('counts only the rows the filter left, per week', () => {
+      const lootLog = [
+        makeLootEntry({ id: 1, weekNumber: 3, method: 'drop' }),
+        makeLootEntry({ id: 2, weekNumber: 3, method: 'tome' }),
+        makeLootEntry({ id: 3, weekNumber: 2, method: 'tome' }),
+      ];
+      const { container } = renderTable({ lootLog, filters: { ...DEFAULT_HISTORY_FILTERS, source: 'tome' } });
+      expect(separatorTexts(container)).toEqual([
+        'WEEK 3 | Jun 30 – Jul 7 · current | 1 entry',
+        'WEEK 2 | Jun 23 – Jun 30 | 1 entry',
+      ]);
+    });
+
+    it('counts material rows in the separator total (entries, not just drops — R-D9b-A)', () => {
+      const { container } = renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
+        materialLog: [makeMaterialEntry({ id: 9, weekNumber: 2 })],
+      });
+      expect(separatorTexts(container)).toEqual(['WEEK 2 | Jun 23 – Jun 30 | 2 entries']);
+    });
+  });
+
+  describe('stats count (R-34 / R-D9b-C)', () => {
+    it('counts the filtered set and splits gear vs material when both are present', () => {
+      renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 }), makeLootEntry({ id: 2, weekNumber: 3 })],
+        materialLog: [makeMaterialEntry({ id: 9, weekNumber: 2 })],
+      });
+      expect(screen.getByRole('status')).toHaveTextContent('3 entries (2 gear, 1 material)');
+    });
+
+    it('omits the split when one kind is absent, and reads it off the FILTERED set', () => {
+      const props = {
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 }), makeLootEntry({ id: 2, weekNumber: 3 })],
+        materialLog: [makeMaterialEntry({ id: 9, weekNumber: 3 })],
+      };
+      const { unmount } = renderTable(props);
+      expect(screen.getByRole('status')).toHaveTextContent('3 entries (2 gear, 1 material)');
+      unmount();
+
+      // Week 2 leaves one loot row and no materials — the split must vanish.
+      renderTable({ ...props, filters: { ...DEFAULT_HISTORY_FILTERS, week: 2 } });
+      expect(screen.getByRole('status')).toHaveTextContent('1 entry');
+      expect(screen.getByRole('status').textContent).not.toContain('gear');
+    });
+
+    it('stays blank rather than claiming "0 entries" while the logs are loading', () => {
+      const { unmount } = renderTable({ lootLog: [], materialLog: [], logsLoading: true });
+      const status = screen.getByRole('status');
+      // Mounted (a live region inserted pre-populated is not reliably
+      // announced) but silent — there is no count to report yet.
+      expect(status).toBeInTheDocument();
+      expect(status).toHaveTextContent('');
+      unmount();
+
+      // A count that IS knowable still renders while loading — only the
+      // unknowable one is withheld.
+      renderTable({ lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })], logsLoading: true });
+      expect(screen.getByRole('status')).toHaveTextContent('1 entry');
+    });
+
+    it('reads 0 entries when nothing matches', () => {
+      renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
+        filters: { ...DEFAULT_HISTORY_FILTERS, week: 9 },
+      });
+      expect(screen.getByRole('status')).toHaveTextContent('0 entries');
+    });
+
+    it('sits inside the table card above the header row, not in a table cell', () => {
+      const { container } = renderTable({ lootLog: [makeLootEntry({ id: 1 })] });
+      const status = screen.getByRole('status');
+      const table = container.querySelector('table')!;
+      expect(status.closest('table')).toBeNull();
+      expect(status.parentElement).toBe(table.parentElement);
+      expect(status.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
   });
 
@@ -529,6 +827,65 @@ describe('LootHistoryTable', () => {
       const lootLog = [makeLootEntry({ id: 1, weekNumber: 2 })];
       renderTable({ lootLog }, ['/?entry=999']);
       expect(document.getElementById('loot-entry-1')).not.toHaveClass('highlight-pulse');
+    });
+
+    /**
+     * The D9b obligation named in the plan row. `RosterCard.tsx:281-297`'s C7
+     * jump lands here with whatever History filter the user last left behind,
+     * so "found" must be decided against the RAW logs, not the rendered rows.
+     * If it were decided against the filtered set, a jump to a filtered-out
+     * entry would leave `?entry=` stuck in the URL forever — and the next
+     * filter change would suddenly pulse a row nobody asked for.
+     */
+    it('resolves ?entry= against the UNFILTERED logs, so a filtered-out entry still self-clears', () => {
+      const lootLog = [
+        makeLootEntry({ id: 1, weekNumber: 3 }),
+        makeLootEntry({ id: 7, weekNumber: 2 }),
+      ];
+      // Week 3 only: entry 7 exists in the tier but is not on screen.
+      renderTable({ lootLog, filters: { ...DEFAULT_HISTORY_FILTERS, week: 3 } }, ['/?entry=7']);
+      expect(document.getElementById('loot-entry-7')).not.toBeInTheDocument();
+      expect(search()).toContain('entry=7');
+
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+
+      // The param is GONE: the effect ran, which it only does when the id
+      // resolved. Resolve against `rows` instead and this assertion fails,
+      // because the effect would never have armed.
+      expect(search()).not.toContain('entry=7');
+      expect(document.getElementById('loot-entry-1')).not.toHaveClass('highlight-pulse');
+    });
+
+    it('never arms the effect for an id absent from the raw logs (the control for the above)', () => {
+      renderTable({ lootLog: [makeLootEntry({ id: 1, weekNumber: 3 })] }, ['/?entry=404']);
+      expect(search()).toContain('entry=404');
+
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+
+      // Still there — nothing resolved, so nothing cleaned up. This is what
+      // separates "found but filtered out" from "not found at all".
+      expect(search()).toContain('entry=404');
+    });
+
+    it('still pulses the right row with week separators rendered between the rows', () => {
+      const lootLog = [
+        makeLootEntry({ id: 1, weekNumber: 3 }),
+        makeLootEntry({ id: 7, weekNumber: 2 }),
+        makeLootEntry({ id: 8, weekNumber: 1 }),
+      ];
+      const { container } = renderTable({ lootLog }, ['/?entry=7']);
+
+      expect(separatorTexts(container)).toHaveLength(3);
+      expect(document.getElementById('loot-entry-7')).toHaveClass('highlight-pulse');
+      expect(document.getElementById('loot-entry-1')).not.toHaveClass('highlight-pulse');
+      // The separator rows are inert decoration — never a pulse target.
+      for (const sep of container.querySelectorAll('tbody tr:not([id])')) {
+        expect(sep).not.toHaveClass('highlight-pulse');
+      }
     });
 
     it('scrolls the element whose id historyRowDomId returns (one author for effect + row)', () => {

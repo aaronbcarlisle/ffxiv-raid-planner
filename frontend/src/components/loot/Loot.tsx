@@ -357,6 +357,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // ── Stores (slice selectors — avoid churning the whole store reference) ──
   const lootLog = useLootTrackingStore((s) => s.lootLog);
   const materialLog = useLootTrackingStore((s) => s.materialLog);
+  // History's empty state is the only consumer: it must not claim "nothing
+  // logged this tier" over logs that are merely still in flight (D9b M1).
+  // A derived primitive, so the selector stays referentially stable.
+  const logsLoading = useLootTrackingStore(
+    (s) => s.loadingStates.lootLog || s.loadingStates.materialLog,
+  );
   const pageLedger = useLootTrackingStore((s) => s.pageLedger);
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
   const fetchMaterialLog = useLootTrackingStore((s) => s.fetchMaterialLog);
@@ -439,6 +445,20 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // the scope under them — logging the newest floor's drop re-derives "newest
   // in-progress" one floor up.
   const [landingScope, setLandingScope] = useState<FloorNumber | null>(null);
+  // Did THIS tier's log fetch fail? Distinct from the store's single shared
+  // `error` field, which any of its fetches can set — History must not show a
+  // load error because an unrelated balances call failed (D9b review).
+  //
+  // TWO flags, not one: each fetch writes only its OWN array
+  // (`lootTrackingStore.ts`), so a single shared verdict retracted by either
+  // array would let a PARTIAL failure — `/loot-log` 500s while `/material-log`
+  // returns `[]` — clear a verdict the loot log never earned, and History would
+  // then assert "No loot or materials logged this tier." over a log that never
+  // landed (D9b review round 5, claude[bot]). Each verdict is latched and
+  // retracted by its own log alone.
+  const [lootLogFailed, setLootLogFailed] = useState(false);
+  const [materialLogFailed, setMaterialLogFailed] = useState(false);
+  const logsFailed = lootLogFailed || materialLogFailed;
   // Pre-settle fallback only: renders the same value the latch will compute
   // whenever the store already holds this tier's data (the common warm path).
   const preSettleScope = useMemo(
@@ -475,6 +495,9 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // batch instead of letting a failure become an unhandled rejection.
     // fetchWeekDataTypes never re-throws (store catches internally) — left bare.
     setLandingScope(null); // a new tier derives its own landing default
+    // A new tier starts with no verdict on either log.
+    setLootLogFailed(false);
+    setMaterialLogFailed(false);
     // Stale-response guard (PR #224 review): Loot mounts un-keyed
     // (NewShell.tsx:93), so a tier switch re-runs this effect on a live
     // component while the previous tier's chain may still be in flight. If the
@@ -482,9 +505,23 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // through the OLD tier's `floors` closure — no floor name matches, and it
     // would overwrite the correct latch with a lower floor.
     let cancelled = false;
+    // `logsFailed` is a claim about the LOGS, so only the two log promises may
+    // set it — attached per-promise, not to the `Promise.all`. A batch-level
+    // catch would let a `fetchPageLedger` or `fetchCurrentWeek` failure put
+    // History into "Couldn't load this tier's entries." while its logs arrived
+    // perfectly well, which is the same wrongness that ruled out the store's
+    // single shared `error` field (D9b review round 2, Copilot). Rethrows so
+    // the batch still rejects and the one toast below still fires.
+    // `cancelled`: an old tier's rejection must not mark the NEW tier failed.
+    const markFailed =
+      (setFailed: (v: boolean) => void) =>
+      (error: unknown): never => {
+        if (!cancelled) setFailed(true);
+        throw error;
+      };
     void Promise.all([
-      fetchLootLog(groupId, tierId),
-      fetchMaterialLog(groupId, tierId),
+      fetchLootLog(groupId, tierId).catch(markFailed(setLootLogFailed)),
+      fetchMaterialLog(groupId, tierId).catch(markFailed(setMaterialLogFailed)),
       fetchPageLedger(groupId, tierId),
       fetchCurrentWeek(groupId, tierId),
     ])
@@ -503,6 +540,37 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     void fetchWeekDataTypes(groupId, tierId);
     return () => { cancelled = true; };
   }, [groupId, tierId, floors, fetchLootLog, fetchMaterialLog, fetchPageLedger, fetchCurrentWeek, fetchWeekDataTypes]);
+
+  /**
+   * NO RETRACTION EFFECT — removed deliberately in D9b review round 7.
+   *
+   * There was one, keyed on the log arrays' identity, to lift the verdict when
+   * a store-internal refetch (after a log mutation) proved the logs were fine.
+   * It could not be made correct at this level: `fetchLootLog` writes
+   * `set({ lootLog: response })` with nothing scoping the write to the request
+   * or tier that asked for it, so array identity means "*some* fetch
+   * succeeded", never "*this* one did". Both reviewers found stale-write races
+   * through it — a previous tier's response retracting the current tier's
+   * verdict, and an earlier same-tier request landing after a later one
+   * rejected. A generation ref fixes the LATCH but not the retraction, because
+   * the component cannot tell which request produced an array it merely
+   * observes.
+   *
+   * So the verdict is now set and cleared by ONE code path: the tier effect
+   * above, which is `cancelled`-latched and per-log. The case the retraction
+   * existed for is covered better by the table itself, which only lets
+   * `logsFailed` speak when it is holding no logs at all (`logsFailed &&
+   * tierIsEmpty`) — so a refetch that produced rows already suppresses the
+   * message without anyone having to observe the refetch.
+   *
+   * Residual, disclosed rather than patched: a failed load, followed by
+   * mutations, followed by deleting back to exactly zero rows, still shows
+   * "Couldn't load this tier's entries." instead of "No loot or materials
+   * logged this tier." The original load did fail, so the message is stale
+   * rather than fabricated — strictly less wrong than the races that buying it
+   * back would reintroduce. The real fix is tier/request-scoped fetches in
+   * `lootTrackingStore`, queued with the `fetchPageLedger` gating item.
+   */
 
   // Also refetches the week clock — the FIRST-ever loot entry for a tier can
   // set its `week_start_date` anchor server-side, which would otherwise leave
@@ -996,6 +1064,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             players={players}
             floors={floors}
             filters={filters}
+            currentWeek={clock.currentWeek}
+            rangeOfWeek={clock.rangeOfWeek}
+            logsLoading={logsLoading}
+            logsFailed={logsFailed}
             canEdit={canEdit}
             onEdit={openEdit}
             onCopyLink={copyLink}

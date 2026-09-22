@@ -1045,6 +1045,13 @@ for the week), which is what `:142` asks for, reached from wherever the user alr
 ⚠ **Renamed 2026-08-21 by R-P1** — see R-1's amendment. "R-4's matrix cell" reads as "R-4's **Who
 Needs It** cell."
 
+**Sketch amendment (D9b, 2026-09-21).** Two details above are superseded by what shipped, and the
+sketch is left as drawn rather than redrawn so the change stays visible: the stats count
+(`12 entries (9 gear, 3 material)`) is **not** in the toolbar stack above the card — it moved inside
+the card, immediately above `<thead>`, as a `role="status"` line (R-D9b-C, user ruling); and the
+separator renders `· current` **beside the date range**, with the entry count right-aligned at the
+far end of the band, rather than after the count as drawn.
+
 **Director verdict (2026-07-28): PARITY-GAP — approve with required changes.** All thirteen required
 changes are folded in; the four that were design forks rather than corrections were ruled by the user
 as R-24 (method + notes), R-25 (floor kebab), R-26 (one material component) and R-27 (grid details).
@@ -1137,6 +1144,43 @@ week-range separators stay UTC-pinned per implementation note 1 above — both a
 they each show. Sort state is session-local component state (`useState`), matching note 3. Week
 separators and the current-week marker are **not** built this slice — rebuild them from note 1's
 git-ref archaeology.
+
+**Build note (D9b, 2026-09-21) — separators shipped; R-29 is now complete.** A `<tr>` with one
+`colSpan={COLUMNS.length + 1}` cell (`WeekSeparatorRow` in `LootHistoryTable.tsx`, not a restored
+`WeekGroupHeader.tsx` — R-D9b-D: it is table-coupled now and has one consumer), emitted whenever the
+previous row's `weekNumber` differs, gated on `sort.field === 'week'` and **direction-agnostic**
+(R-D9b-E — week asc is still grouped by week). Three deviations from note 1's archaeology, all
+deliberate:
+- **R-D9b-A** — the count reads `{n} entries`, not `{n} drop(s)`: §6's sketch says "entries", R-34's
+  stats count on the same screen says "entries", and the number includes material rows. `entryCount`
+  is the single author for both readouts.
+- **R-D9b-B** — the current week carries a visible `· current` beside the range as well as the pill
+  tint (§6's sketch). Tint alone is a colour-only signal. Range and marker share one span joined on
+  ` · `, so a week the clock cannot date renders "current" with no orphan dot.
+- **R-D9b-F** — the pill is `Tag variant="label" tone={isCurrent ? 'accent' : 'muted'}`, not the
+  archaeology's hand-rolled span. `Tag`'s `accent` tone **is** the measured pair note 1 argues for
+  (`bg-accent/15 text-accent-hover`) and `muted` **is** its non-current pair
+  (`bg-surface-elevated text-text-secondary`), so the contrast ruling survives intact — verified live
+  in light theme, where the pill computes `rgb(10, 107, 96)` = `#0a6b60` = accent-hover exactly.
+  **Three deltas from the archaeology's span, all cosmetic and all disclosed:** `font-extrabold` is
+  dropped — a **choice**, not an impossibility: an appended plain weight utility does not beat `Tag`'s
+  own `font-medium` (same Tailwind layer, and the emitted stylesheet sorts `.font-extrabold` before
+  `.font-medium`, so the later rule wins the equal-specificity tie whatever the class string says —
+  measured 500 on the rendered pill), and the important form `font-extrabold!` **would** have carried
+  it. Forcing `!` past a primitive's own base is a worse trade than a lighter pill, and the shipped
+  weight reads fine in both themes (D9b PR screenshots); `Tag` adds a **1 px border** (`border-accent/30` / `border-border-default`) the
+  span never had; and `Tag`'s `BASE` is `px-2` against the archaeology's `px-2.5`. Net: a ringed pill
+  2 px narrower, in the display face, carrying the identical contrast pair. `font-display` is applied
+  and does take effect.
+
+**Re-measured after the layout change** (D9a's own lesson): with separators rendered, the table's
+min-content is **836 px** and max-content **954 px** at 1440 — +1 px each vs D9a's 835/953, so the
+`colSpan` cell does not move the intrinsic widths and D9a-n's clipping conclusion stands.
+
+**The `<tr>` `highlight-pulse` ring was finally eyeballed** (D9a had computed-style evidence only):
+under `border-collapse: collapse` the `inset` ring paints on all four edges in **both** themes at
+1440. The outset glow is clipped by the card's `overflow-clip`, as D9a's trade note predicted. No
+fix was needed.
 
 ### R-30 · **One filter state** — the pills write into the search box (D-72)
 
@@ -1341,6 +1385,56 @@ name in today's `LootHistoryTable.tsx`, now keyed on `historyRowDomId`;
 `3f90d420:…/LootHistoryTable.tsx:110-116` (the pre-rewrite early-return empty `<p>`) → the single
 empty `<tr>` (`colSpan={COLUMNS.length + 1}`) inside today's `<tbody>`. Both left-hand citations are
 `3f90d420` line numbers, not current ones — cite the symbols above, which do not rot.
+
+**Build note (D9b, 2026-09-21) — the Restores row is now built. R-34 is NOT complete.** Only one
+of its four rows lands here; the rest are still owed, and are listed so a reader scanning for
+remaining Phase-D work does not tick this ruling off:
+
+| R-34 row | State |
+|---|---|
+| **Loses** (books card + bulk reset menu → Log) | ✅ D7a/D7b |
+| **Restores** (stats count + filtered-vs-empty) | ✅ **D9b, below** |
+| **Keeps** — the `?entry=` highlight and the `aug {slot}` readout | ✅ D9a/D9b |
+| **Keeps** — per-entry edit/delete **"materials included, per R-32"** | ⚠ **half**: material rows get Copy link + Delete only; material **edit** needs D8's modal and arrives with R-32 in **D11** (`LootHistoryTable.tsx`'s kebab gates Edit on `kind === 'loot'`) |
+| **Receives** (past-week gear-slot jumps, R-28's split) | ❌ **D12** |
+| **"History renders no fairness block"** | ❌ **D14** — `FairnessSummary` is still mounted in the History branch (`Loot.tsx`, and that file's own header comment says it stays until D14) |
+
+What D9b itself builds:
+- **Stats count.** `{n} entries`, plus `({X} gear, {Y} material)` gated on both kinds being present
+  in the **filtered** set — the new condition this row called for, replacing v1's `entryType ===
+  'all'` gate (`AllWeeksView.tsx:508`) for a state R-30/D10 deletes. It sits **inside the table card,
+  above `<thead>`** (R-D9b-C, user ruling) as a `role="status"` line, so a filter change announces;
+  §6's sketch placed it a level out, in the toolbar stack, but the count belongs with the table it
+  describes and D14's removal of `FairnessSummary` would otherwise re-flow it.
+- **Filtered-vs-empty.** v1's two **strings** are restored byte-for-byte
+  (`AllWeeksView.tsx:534-535`): `No entries match your filters.` when the tier holds entries the
+  filter excludes, `No loot or materials logged this tier.` when it holds none. D9a's single message
+  (`No entries match — log a drop from the Priority view.`) is gone; its hint had also gone stale,
+  since logging is a Log-toolbar action now, not a Priority-view one.
+  ⚠ **A third zero-row state was added in review (D9b M1).** "No loot or materials logged this
+  tier." is a claim about the *tier*, and empty arrays do not support it while the fetch is still in
+  flight — nor during a tier switch, where the store holds the previous tier's rows. The table now
+  takes `logsLoading` (`loadingStates.lootLog || .materialLog`) and shows `Loading entries…` instead
+  of asserting. **A fourth state followed in review:** the store clears its loading flags on the
+  ERROR path too, so a failed load left the same empty arrays with `logsLoading` false — the identical
+  falsehood through a different door. `logsFailed` (tier-scoped local state in `Loot.tsx`, deliberately
+  not the store's single shared `error` field) renders `Couldn't load this tier's entries.` The stats
+  count is gated the same way and goes blank rather than reporting `0 entries`, which in a live region
+  would otherwise be announced. The store's flags initialise `false`, so a single pre-effect frame is still
+  unguarded; that is the same one-frame window D9a had, and it is the request duration — the part a
+  user actually sees — that this closes. Rows keep rendering while loading; only the claim is
+  withheld.
+  ⚠ **The CONDITION is deliberately not v1's.** v1 branches on *filter-activeness*
+  (`debouncedQuery || entryType !== 'all' || activeFloors.size < 4`); v2 branches on
+  *log-emptiness* — the **raw** `lootLog`/`materialLog` props, not `rows`. They differ in exactly one
+  state: an **empty tier with a filter set**, where v1 says "No entries match your filters" and v2
+  says "No loot or materials logged this tier." v2's is the truthful one there — no filter change
+  could produce a row — and R-34 rules the strings, not the predicate. Recorded because "restored
+  verbatim" is true of the copy and false of the logic.
+- **The `?entry=` highlight still resolves against the unfiltered logs**, as this row requires, and
+  that is now pinned by a test: an entry excluded by the active filter still arms the effect and
+  still self-clears the param, with a paired control proving an id absent from the raw logs does
+  **not**. Mutation-checked — re-pointing the lookup at the filtered set kills exactly that test.
 
 ### R-35 · Shortcuts: `Ctrl+Shift+F` stays, `Alt+1/2/3` does not
 
