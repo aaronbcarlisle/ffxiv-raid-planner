@@ -13,7 +13,7 @@
  * WeekScopeControl / FloorCard / LogWeekGrid / RecipientPicker /
  * WeaponPriorityBridge / LootAdjustmentsModal / LogWeekWizard /
  * QuickLogMaterialModal / LootResetMenu / FairnessSummary / BookLedgerCard /
- * LootHistoryTable / HistoryFilters) + shared `ui/` (SegmentedToggle) + the
+ * LootHistoryTable / HistorySearch) + shared `ui/` (SegmentedToggle) + the
  * reused legacy confirm modals (DeleteLootConfirmModal, ResetConfirmModal,
  * ConfirmModal — read-only reuse, never edited), and reads STORES/HOOKS
  * directly (useWeekClock, useLogWeek, useUrlTabState, useLootTrackingStore,
@@ -28,7 +28,10 @@
  *     the clock") → legacy `history-week-{groupId}-{tierId}` (read-only,
  *     continuity in and nothing out) → follow the clock. ONLY the Log tab
  *     renders a week control (`WeekScopeControl`): Priority is always the
- *     clock's current week (R-13/R-15), and History keeps its own filter row.
+ *     clock's current week (R-13/R-15), and History's `weekControl` slot is
+ *     EMPTY — D10 moved its controls out of the toolbar into `HistorySearch`,
+ *     below the fairness card and directly above the table they filter
+ *     (R-D10-H).
  *   - The wizard's week target is SPLIT (R-20): on Log it runs against the
  *     displayed week and its `onSuccess(week)` re-points the Log week to
  *     whatever week was logged; everywhere else it runs against the clock's
@@ -81,12 +84,17 @@
  *   - `onNavigate` is part of the slot contract (Task 10, mirroring Roster/Home)
  *     but no view has a cross-tab affordance yet — reserved.
  *   - Only `lview` (Priority⇄Log⇄History) is URL-backed *through this hook*; the
- *     History filters are session-local `useState` (matches legacy filter
- *     locality). A fresh deep-link therefore always shows everything (filters
- *     default to all/all/all), so an `?entry=` deep-link can never be hidden by
- *     a filter on first mount; only a mid-session filter change can hide a row,
- *     which is acceptable. History's sort is session-local too (R-29 note 3) —
- *     a fresh deep-link always opens Week desc.
+ *     History SEARCH QUERY is session-local `useState` (matching legacy filter
+ *     locality). D10 dissolved the old three-pill filter state into it, so the
+ *     query string is the tab's ONLY filter surface (R-30) and there is no
+ *     second state to fall out of step with it. A fresh deep-link therefore
+ *     still shows everything, for the same reason as before restated in the
+ *     new vocabulary: the query starts EMPTY and an empty parse filters
+ *     nothing, so an `?entry=` deep-link can never be hidden on first mount
+ *     (R-37). Only a mid-session edit of the box can hide a row, which is
+ *     acceptable — and even then the table resolves `?entry=` against the
+ *     UNFILTERED logs (R-34). History's sort is session-local too (R-29 note
+ *     3) — a fresh deep-link always opens Week desc.
  *   - D4/D5/D6a/D6b interims, so a reader doesn't mistake a stub for a gap:
  *     Log's body is `LogWeekGrid` (D5) — four floor sections, one cell per
  *     gear/material slot, wired below. D6a shipped the cell's modifier family
@@ -170,7 +178,7 @@ import { resolveResetActions, describeResetToast } from './resetActions';
 import { FairnessSummary } from './FairnessSummary';
 import { BookLedgerCard } from './BookLedgerCard';
 import { LootHistoryTable } from './LootHistoryTable';
-import { HistoryFilters } from './HistoryFilters';
+import { HistorySearch } from './HistorySearch';
 
 import { SegmentedToggle } from '../ui/SegmentedToggle';
 import { Tag } from '../ui/Tag';
@@ -183,6 +191,7 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { useWeekClock } from '../../hooks/useWeekClock';
 import { useLogWeek } from './useLogWeek';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
+import { useDebounce } from '../../hooks/useDebounce';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -195,7 +204,7 @@ import { deleteMaterialAndRevertGear } from '../../utils/materialCoordination';
 import { logger as baseLogger } from '../../lib/logger';
 import { getTierById } from '../../gamedata/raid-tiers';
 import { getEffectivePriorityMode } from '../../utils/priority';
-import { DEFAULT_HISTORY_FILTERS, historyWeeks, buildHistoryItems } from '../../utils/historyItems';
+import { parseHistoryQuery } from '../../utils/historyQuery';
 import { DEFAULT_SETTINGS } from '../../utils/constants';
 import {
   type FloorNumber, UPGRADE_MATERIAL_DISPLAY_NAMES, getFloorForUpgradeMaterial,
@@ -234,6 +243,16 @@ const EMPTY_PLAYERS: SnapshotPlayer[] = [];
 const buildEntryLink = (opts: { lview: 'log' | 'history'; week?: number; ref: HistoryItem }): string => {
   const url = new URL(window.location.href);
   url.searchParams.delete('shell');
+  // ⚠ R-37 / R-D10-F: what follows is a DENYLIST — this function KEEPS every
+  // param it does not explicitly delete. The History search query is
+  // deliberately absent from it because the query is NOT a URL param: it
+  // lives in `useState` below, so there is nothing to strip and a
+  // `delete('q')` here would be dead code that merely reads as protection.
+  // That makes the ABSENCE load-bearing. If a later slice ever URL-backs the
+  // query, it MUST add the delete here, or a copied link ships the sender's
+  // filter and hides the very row it points at — the exact failure R-37
+  // describes. Pinned by the `Loot.test.tsx` copy-link test that types a real
+  // query into the real box before copying.
   // Entry links carry ONE navigation target — competing deep-link params are stripped.
   url.searchParams.delete('player');
   url.searchParams.delete('book');
@@ -351,6 +370,14 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     () => players.filter((p) => p.configured && !p.isSubstitute),
     [players],
   );
+  // The History Player pill row (D10). Same membership the deleted
+  // HistoryFilters dropdown listed — configured players, SUBS INCLUDED, in
+  // roster order — so the pill set did not change when the control did.
+  // `filter` already returns a fresh array, so sorting it in place is safe.
+  const configuredPlayers = useMemo(
+    () => players.filter((p) => p.configured).sort((a, b) => a.sortOrder - b.sortOrder),
+    [players],
+  );
   const tierInfo = tier ? getTierById(tier.tierId) : null;
   const floors = useMemo(() => tierInfo?.floors ?? [], [tierInfo]);
 
@@ -379,12 +406,23 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const viewAsUser = useViewAsStore((s) => s.viewAsUser);
   const effectiveUserId = viewAsUser ? viewAsUser.userId : user?.id;
 
-  // ── Priority ⇄ Log ⇄ History view (URL-backed) + session-local History filters ──
+  // ── Priority ⇄ Log ⇄ History view (URL-backed) + the session-local History query ──
   // Declared before `useLogWeek` because the hook's `?week=` mirror is gated on
   // the Log being visible (below). `useUrlTabState` is pure URL derivation with
   // no effects of its own, so the ordering is free.
   const [lview, setLview] = useUrlTabState('lview', ['priority', 'log', 'history'] as const, 'priority');
-  const [filters, setFilters] = useState(DEFAULT_HISTORY_FILTERS);
+  // D10: ONE piece of filter state for the whole History tab (R-30), and never
+  // URL-backed — see the R-37 note at `buildEntryLink` above. Two clocks on
+  // purpose: `HistorySearch`'s pills read the LIVE string so a click lights on
+  // the same frame, while the TABLE and the hint line read the 200 ms debounced
+  // parse — a pill that waited would read as a dropped click, and a warning
+  // fired per keystroke would scold the user mid-word.
+  const [historyQuery, setHistoryQuery] = useState('');
+  const debouncedHistoryQuery = useDebounce(historyQuery, 200);
+  const parsedHistoryQuery = useMemo(
+    () => parseHistoryQuery(debouncedHistoryQuery),
+    [debouncedHistoryQuery],
+  );
 
   // ── Shared week clock + the LOG TAB's displayed week (R-15) ──
   // The clock is screen-wide (Priority ranks against it, History reports it);
@@ -927,14 +965,11 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             />
           }
           weekControl={
-            lview === 'history' ? (
-              <HistoryFilters
-                filters={filters}
-                onChange={setFilters}
-                weeks={historyWeeks(buildHistoryItems(lootLog, materialLog))}
-                players={players.filter((p) => p.configured)}
-              />
-            ) : lview === 'log' ? (
+            // R-D10-H: History slots NOTHING here any more. Its search block is a
+            // full-width box plus three wrapping pill rows, and this slot is a
+            // flex row with the action cluster to its right — so the block
+            // renders inside the History grid below, next to what it filters.
+            lview === 'log' ? (
               // R-13/R-15: the week control belongs to Log and ONLY to Log.
               // ⚠ `lootLog`/`materialLog`/`pageLedger` must stay the RAW store
               // slices: WeekScopeControl decides whether to show the revert
@@ -1058,12 +1093,24 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             currentWeek={clock.currentWeek}
             floors={floors}
           />
+          {/* R-D10-H: BELOW the fairness card, ABOVE the table. FairnessSummary
+              stays on History until D14 moves it Home (R-40); putting the
+              control adjacent to what it filters is right now AND converges
+              with the spec sketch once D14 lands. */}
+          <HistorySearch
+            query={historyQuery}
+            onQueryChange={setHistoryQuery}
+            unknownKeys={parsedHistoryQuery.unknownKeys}
+            unknownValues={parsedHistoryQuery.unknownValues}
+            floors={floors}
+            players={configuredPlayers}
+          />
           <LootHistoryTable
             lootLog={lootLog}
             materialLog={materialLog}
             players={players}
             floors={floors}
-            filters={filters}
+            query={parsedHistoryQuery}
             currentWeek={clock.currentWeek}
             rangeOfWeek={clock.rangeOfWeek}
             logsLoading={logsLoading}

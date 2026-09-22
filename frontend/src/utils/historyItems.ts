@@ -1,36 +1,20 @@
 /**
- * historyItems — pure merge/sort/filter helpers behind the v2 Loot History
- * table (spec §5.6). Kept storeless/hookless so the semantics are testable
- * without a render.
+ * historyItems — pure merge/sort helpers behind the v2 Loot History table
+ * (spec §5.6). Kept storeless/hookless so the semantics are testable without
+ * a render.
  *
- * Source-filter semantics (deliberate): `raid` = loot with
- * `method === 'drop'`; `tome` = loot with `method === 'tome' || method ===
- * 'purchase'`; `book` = loot with `method === 'book'`, filtered separately
- * from raid even though books buy raid gear; `material` = material log
- * items.
+ * D10 took the filter half out: the query string is now the single filter
+ * surface (R-30), so `HistoryFilterState`/`DEFAULT_HISTORY_FILTERS`/
+ * `filterHistoryItems`/`historyWeeks` are gone and the source-filter
+ * semantics paragraph moved with `matchesSource` to `utils/historyQuery.ts`,
+ * where `source:` now lives. `slotNameOf` gained the query matcher as a
+ * second consumer — deliberately: ONE author for what a cell says and what a
+ * query matches.
  */
 import type { HistoryItem } from '../components/loot/logWeekGridData';
 import { METHOD_INFO } from '../components/history/lootMethodDisplay';
 import { GEAR_SLOT_NAMES, type LootLogEntry, type MaterialLogEntry } from '../types';
 import { UPGRADE_MATERIAL_DISPLAY_NAMES } from '../gamedata/loot-tables';
-
-export type HistorySource = 'all' | 'raid' | 'tome' | 'book' | 'material';
-
-export interface HistoryFilterState {
-  week: number | 'all';
-  playerId: string | 'all';
-  source: HistorySource;
-}
-
-export const DEFAULT_HISTORY_FILTERS: HistoryFilterState = {
-  week: 'all',
-  playerId: 'all',
-  source: 'all',
-};
-
-function weekOf(item: HistoryItem): number {
-  return item.entry.weekNumber;
-}
 
 function createdAtOf(item: HistoryItem): number {
   return new Date(item.entry.createdAt).getTime();
@@ -99,6 +83,17 @@ export function methodLabelOf(item: HistoryItem): string {
   return info?.label ?? item.entry.method;
 }
 
+/**
+ * The Type cell's `aug {slot}` text AND the `slot:` match — one author.
+ * D9a-t kept the shipped `null -> tome wpn` fallback and closed the
+ * `tome_weapon` enum leak; D10 moved it here so the matcher can reuse it,
+ * because comparing the RAW enum meant `slot:wpn` could not find a row whose
+ * Type column visibly reads `aug tome wpn` (PR #265 round 9).
+ */
+export function augSlotLabel(slotAugmented: MaterialLogEntry['slotAugmented']): string {
+  return slotAugmented == null || slotAugmented === 'tome_weapon' ? 'tome wpn' : slotAugmented;
+}
+
 /** The Slot cell's text AND the slot sort key — one author (D9a-g). */
 export function slotNameOf(item: HistoryItem): string {
   if (item.kind === 'material') {
@@ -147,29 +142,4 @@ export function sortHistoryItems(
   const key = KEY[sort.field];
   const sign = sort.direction === 'asc' ? 1 : -1;
   return [...items].sort((a, b) => sign * compareKeys(key(a, ctx), key(b, ctx)) || tiebreak(a, b));
-}
-
-function matchesSource(item: HistoryItem, source: HistorySource): boolean {
-  if (source === 'all') return true;
-  if (source === 'material') return item.kind === 'material';
-  if (item.kind !== 'loot') return false;
-  const { method } = item.entry;
-  if (source === 'raid') return method === 'drop';
-  if (source === 'tome') return method === 'tome' || method === 'purchase';
-  if (source === 'book') return method === 'book';
-  return true;
-}
-
-export function filterHistoryItems(items: HistoryItem[], f: HistoryFilterState): HistoryItem[] {
-  return items.filter((item) => {
-    if (f.week !== 'all' && weekOf(item) !== f.week) return false;
-    if (f.playerId !== 'all' && item.entry.recipientPlayerId !== f.playerId) return false;
-    if (!matchesSource(item, f.source)) return false;
-    return true;
-  });
-}
-
-/** Distinct weeks present in the merged log, desc — feeds the week filter pill. */
-export function historyWeeks(items: HistoryItem[]): number[] {
-  return Array.from(new Set(items.map(weekOf))).sort((a, b) => b - a);
 }

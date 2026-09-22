@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { LootHistoryTable } from './LootHistoryTable';
 import { historyRowDomId } from './logWeekGridData';
-import { DEFAULT_HISTORY_FILTERS } from '../../utils/historyItems';
+import { parseHistoryQuery } from '../../utils/historyQuery';
 import { GEAR_SLOT_ICONS } from '../../types';
 import type { LootLogEntry, MaterialLogEntry, SnapshotPlayer } from '../../types';
 
@@ -63,6 +63,16 @@ const floors = ['M9S', 'M10S', 'M11S', 'M12S'];
 const players = [makePlayer()];
 
 /**
+ * D10: the table takes a PARSED query where it used to take `HistoryFilterState`.
+ * Fixtures go through the real parser rather than hand-built objects so a test
+ * exercises the same shape `Loot` hands down — a hand-rolled `{ filters: [...] }`
+ * could drift from what `parseHistoryQuery` actually emits and still pass.
+ */
+function q(query = '') {
+  return parseHistoryQuery(query);
+}
+
+/**
  * A UTC-pinned range generator: week N starts Jun 16 2026 UTC + (N-1) weeks.
  * Week 3 therefore spans Jun 30 - Jul 7. Built from `Date.UTC` so that a
  * formatter which lost its `timeZone: 'UTC'` renders a DIFFERENT day — note
@@ -87,13 +97,14 @@ function search(): string {
   return screen.getByTestId('location-search').textContent ?? '';
 }
 
-function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> = {}, initialEntries: string[] = ['/']) {
-  const props = {
+/** One author for the default prop set — `renderTable` and the T-9 rerender both read it. */
+function tableProps(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> = {}) {
+  return {
     lootLog: [],
     materialLog: [],
     players,
     floors,
-    filters: DEFAULT_HISTORY_FILTERS,
+    query: q(),
     currentWeek: 3,
     rangeOfWeek,
     logsLoading: false,
@@ -104,6 +115,10 @@ function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> 
     onDelete: vi.fn(),
     ...overrides,
   };
+}
+
+function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> = {}, initialEntries: string[] = ['/']) {
+  const props = tableProps(overrides);
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <LootHistoryTable {...props} />
@@ -426,12 +441,43 @@ describe('LootHistoryTable', () => {
   });
 
   describe('filters + empty', () => {
-    it('applies the filters prop to narrow rendered rows', () => {
+    it('applies the parsed query prop to narrow rendered rows', () => {
       const lootLog = [
         makeLootEntry({ id: 1, weekNumber: 2, method: 'drop' }),
         makeLootEntry({ id: 2, weekNumber: 2, method: 'tome' }),
       ];
-      renderTable({ lootLog, filters: { ...DEFAULT_HISTORY_FILTERS, source: 'tome' } });
+      renderTable({ lootLog, query: q('source:tome') });
+      expect(document.getElementById('loot-entry-2')).toBeInTheDocument();
+      expect(document.getElementById('loot-entry-1')).not.toBeInTheDocument();
+    });
+
+    it('matches player: and job: through the ROSTER, exactly as the cells render them', () => {
+      // The query context must read the SAME `playersById` map the Player cell
+      // and the player sort key read: `player:` against the roster name (not
+      // the stale snapshot name frozen on the entry) and `job:` against the
+      // roster job behind the cell's icon. Wire either to something else and
+      // the table would filter on a value the user cannot see.
+      const lootLog = [
+        makeLootEntry({ id: 1, recipientPlayerId: 'p1', recipientPlayerName: 'Stale Snapshot Name' }),
+        makeLootEntry({ id: 2, recipientPlayerId: 'p2', recipientPlayerName: 'Bob' }),
+      ];
+      const roster = [
+        makePlayer({ id: 'p1', name: 'Renamed', job: 'WHM' }),
+        makePlayer({ id: 'p2', name: 'Bob', job: 'DRK' }),
+      ];
+
+      const renamed = renderTable({ lootLog, players: roster, query: q('player:renamed') });
+      expect(document.getElementById('loot-entry-1')).toBeInTheDocument();
+      expect(document.getElementById('loot-entry-2')).not.toBeInTheDocument();
+      renamed.unmount();
+
+      // The name ON THE ENTRY matches nothing — the ctx never falls back to it
+      // while the roster has the player.
+      const stale = renderTable({ lootLog, players: roster, query: q('player:"Stale Snapshot Name"') });
+      expect(document.querySelectorAll('tbody tr[id]')).toHaveLength(0);
+      stale.unmount();
+
+      renderTable({ lootLog, players: roster, query: q('job:drk') });
       expect(document.getElementById('loot-entry-2')).toBeInTheDocument();
       expect(document.getElementById('loot-entry-1')).not.toBeInTheDocument();
     });
@@ -450,7 +496,7 @@ describe('LootHistoryTable', () => {
       // filter excludes them. The shipped single message conflated the two.
       renderTable({
         lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
-        filters: { ...DEFAULT_HISTORY_FILTERS, week: 9 },
+        query: q('week:9'),
       });
       expect(screen.getByText('No entries match your filters.')).toBeInTheDocument();
       expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
@@ -478,7 +524,7 @@ describe('LootHistoryTable', () => {
       // own hands. The tier has an entry; the filter excludes it.
       renderTable({
         lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
-        filters: { ...DEFAULT_HISTORY_FILTERS, week: 9 },
+        query: q('week:9'),
         logsFailed: true,
       });
       expect(screen.getByText('No entries match your filters.')).toBeInTheDocument();
@@ -624,7 +670,7 @@ describe('LootHistoryTable', () => {
         makeLootEntry({ id: 2, weekNumber: 3, method: 'tome' }),
         makeLootEntry({ id: 3, weekNumber: 2, method: 'tome' }),
       ];
-      const { container } = renderTable({ lootLog, filters: { ...DEFAULT_HISTORY_FILTERS, source: 'tome' } });
+      const { container } = renderTable({ lootLog, query: q('source:tome') });
       expect(separatorTexts(container)).toEqual([
         'WEEK 3 | Jun 30 – Jul 7 · current | 1 entry',
         'WEEK 2 | Jun 23 – Jun 30 | 1 entry',
@@ -659,7 +705,7 @@ describe('LootHistoryTable', () => {
       unmount();
 
       // Week 2 leaves one loot row and no materials — the split must vanish.
-      renderTable({ ...props, filters: { ...DEFAULT_HISTORY_FILTERS, week: 2 } });
+      renderTable({ ...props, query: q('week:2') });
       expect(screen.getByRole('status')).toHaveTextContent('1 entry');
       expect(screen.getByRole('status').textContent).not.toContain('gear');
     });
@@ -682,7 +728,7 @@ describe('LootHistoryTable', () => {
     it('reads 0 entries when nothing matches', () => {
       renderTable({
         lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
-        filters: { ...DEFAULT_HISTORY_FILTERS, week: 9 },
+        query: q('week:9'),
       });
       expect(screen.getByRole('status')).toHaveTextContent('0 entries');
     });
@@ -843,7 +889,7 @@ describe('LootHistoryTable', () => {
         makeLootEntry({ id: 7, weekNumber: 2 }),
       ];
       // Week 3 only: entry 7 exists in the tier but is not on screen.
-      renderTable({ lootLog, filters: { ...DEFAULT_HISTORY_FILTERS, week: 3 } }, ['/?entry=7']);
+      renderTable({ lootLog, query: q('week:3') }, ['/?entry=7']);
       expect(document.getElementById('loot-entry-7')).not.toBeInTheDocument();
       expect(search()).toContain('entry=7');
 
@@ -856,6 +902,50 @@ describe('LootHistoryTable', () => {
       // because the effect would never have armed.
       expect(search()).not.toContain('entry=7');
       expect(document.getElementById('loot-entry-1')).not.toHaveClass('highlight-pulse');
+    });
+
+    /**
+     * T-9 (D10), the third case the D10 row adds to the pair above. The pin
+     * proves the id RESOLVES while a filter hides the row; this proves what the
+     * user then sees, and pins the resolution to the RAW logs a second way —
+     * through the clear timer's ORIGIN. Widen the query inside the 2.5 s window
+     * and the row appears ALREADY PULSING, then self-clears on the schedule the
+     * FIRST render started.
+     *
+     * Derive `entryFound` from `rows` instead and the first assertion still
+     * passes (the row is visible once the query clears, so the effect arms
+     * then) — but the timer would have started 500 ms late, so the param is
+     * still in the URL at t=2500 and the last two assertions fail. That late
+     * re-arm is exactly the bug: a pulse fired at whatever moment the user
+     * happened to change the filter.
+     */
+    it('an ?entry= the active query filters out is still found — pulses when the query widens, on the ORIGINAL clock', () => {
+      const props = tableProps({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 3 }), makeLootEntry({ id: 7, weekNumber: 2 })],
+      });
+      const tree = (query: ReturnType<typeof q>) => (
+        <MemoryRouter initialEntries={['/?entry=7']}>
+          <LootHistoryTable {...props} query={query} />
+          <LocationProbe />
+        </MemoryRouter>
+      );
+      const { rerender } = render(tree(q('week:3')));
+      expect(document.getElementById('loot-entry-7')).not.toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      rerender(tree(q('')));
+
+      expect(document.getElementById('loot-entry-7')).toHaveClass('highlight-pulse');
+      expect(document.getElementById('loot-entry-1')).not.toHaveClass('highlight-pulse');
+
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      expect(search()).not.toContain('entry=7');
+      expect(document.getElementById('loot-entry-7')).not.toHaveClass('highlight-pulse');
     });
 
     it('never arms the effect for an id absent from the raw logs (the control for the above)', () => {

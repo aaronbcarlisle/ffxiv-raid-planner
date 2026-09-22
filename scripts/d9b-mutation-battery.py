@@ -27,14 +27,23 @@ LOOT = 'src/components/loot/Loot.tsx'
 LHT_SPEC = 'src/components/loot/LootHistoryTable.test.tsx'
 LOOT_SPEC = 'src/components/loot/Loot.test.tsx'
 
+# D10 deleted `filterHistoryItems` and the `filters` prop, so the first
+# mutation's old text no longer compiled — and a non-compiling mutant fails
+# EVERY test in the spec, which reads as a large kill count while proving
+# nothing (claude[bot], PR #265). It is re-expressed below in D10's vocabulary,
+# and `INVALID_MUTANT` now catches the whole class rather than this instance.
+STUB_CTX_DECL = (
+    "const STUB_CTX = { playerNameOf: () => '', playerJobOf: () => '' };\n"
+)
+
 MUTATIONS = [
     (
         '`?entry=` resolved against the filtered set instead of the raw logs',
         LHT,
         """      ? materialLog.some((e) => e.id === parsedEntryId)
       : lootLog.some((e) => e.id === parsedEntryId));""",
-        """      ? filterHistoryItems(buildHistoryItems([], materialLog), filters).some((i) => i.entry.id === parsedEntryId)
-      : filterHistoryItems(buildHistoryItems(lootLog, []), filters).some((i) => i.entry.id === parsedEntryId));""",
+        """      ? filterHistoryItemsByQuery(buildHistoryItems([], materialLog), query, STUB_CTX).some((i) => i.entry.id === parsedEntryId)
+      : filterHistoryItemsByQuery(buildHistoryItems(lootLog, []), query, STUB_CTX).some((i) => i.entry.id === parsedEntryId));""",
         LHT_SPEC,
     ),
     (
@@ -114,6 +123,16 @@ def run_spec(spec):
         encoding='utf-8', errors='replace',
     )
     blob = out.stdout + out.stderr
+    # A mutant that cannot compile fails every test in the spec for a reason
+    # that has nothing to do with the defect. Scoring it as a kill is the
+    # third silent-harness failure this branch produced (after a no-op `sed`
+    # and a subprocess decode crash) — so detect it instead of counting it.
+    if re.search(
+        r'Cannot find name|is not defined|used before its declaration|Transform failed|'
+        r'Failed to parse|esbuild',
+        blob,
+    ):
+        return 'INVALID MUTANT (did not compile)'
     m = re.search(r'Tests\s+(\d+) failed \| (\d+) passed', blob)
     if m:
         return int(m.group(1))
@@ -125,19 +144,30 @@ def run_spec(spec):
 rows = []
 for label, path, old, new, spec in MUTATIONS:
     src = io.open(path, encoding='utf-8', newline='').read()
-    if old not in src:
-        rows.append((label, 'ANCHOR MISSING'))
-        print(f'!! anchor missing: {label}', flush=True)
+    # Present AND unique. `replace(old, new, 1)` silently takes the first
+    # occurrence, so a duplicated anchor mutates the wrong site and reports a
+    # kill for a defect never introduced — which is exactly how this battery's
+    # first run produced a false zero (a first-match replace hit
+    # `FairnessSummary`, not the table). Checking only `old not in src` left
+    # that hole open (claude[bot]/Copilot, PR #265).
+    hits = src.count(old)
+    if hits != 1:
+        verdict = 'ANCHOR MISSING' if hits == 0 else f'ANCHOR NOT UNIQUE ({hits})'
+        rows.append((label, verdict))
+        print(f'!! {verdict.lower()}: {label}', flush=True)
         continue
     shutil.copyfile(path, path + '.bak')
     try:
-        io.open(path, 'w', encoding='utf-8', newline='').write(src.replace(old, new, 1))
+        mutated = src.replace(old, new, 1)
+        if 'STUB_CTX' in new:
+            mutated = mutated.replace('export function LootHistoryTable(', STUB_CTX_DECL + 'export function LootHistoryTable(', 1)
+        io.open(path, 'w', encoding='utf-8', newline='').write(mutated)
         killed = run_spec(spec)
     finally:
         shutil.copyfile(path + '.bak', path)
         os.remove(path + '.bak')
     rows.append((label, killed))
-    print(f'{killed:>3} killed  <-  {label}', flush=True)
+    print(f'{str(killed):>3} killed  <-  {label}', flush=True)
 
 print('\n--- clean tree re-check ---', flush=True)
 for spec in (LHT_SPEC, LOOT_SPEC):

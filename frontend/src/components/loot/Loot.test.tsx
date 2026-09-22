@@ -7,9 +7,10 @@
 // editor toolbar, and the assign/log picker wiring. `useWeekClock` and
 // `useLogWeek` are left REAL (the clock reads the seeded loot store; the Log
 // week reads the MemoryRouter URL + localStorage). The History-view surfaces
-// (FairnessSummary / LootHistoryTable / HistoryFilters) and the
+// (FairnessSummary / HistorySearch / LootHistoryTable) and the
 // Log-body's BookLedgerCard are left REAL — Task 9 asserts the assembly
-// wiring end-to-end. Loot now uses `useUrlTabState` (→ useSearchParams), so
+// wiring end-to-end, and D10's T-10 needs the search box and the table to be
+// the real ones or it could not prove they share one source of truth. Loot now uses `useUrlTabState` (→ useSearchParams), so
 // every render is wrapped in a MemoryRouter.
 import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -198,6 +199,16 @@ function LocationProbe() {
 // Same dedup shape Task B applied to `cellButton` in LogWeekGrid.test.tsx.
 function lastGrid() {
   return gridCalls[gridCalls.length - 1];
+}
+
+/** D10: the History search box — the tab's only filter surface (R-30). */
+function searchBox(): HTMLInputElement {
+  return screen.getByRole('textbox', { name: 'Search history' }) as HTMLInputElement;
+}
+
+/** A pill from one of HistorySearch's three labelled rows. */
+function pill(row: 'Type' | 'Floor' | 'Player', name: string): HTMLElement {
+  return within(screen.getByRole('group', { name: `${row} filter` })).getByRole('button', { name });
 }
 
 function renderLoot(
@@ -830,6 +841,137 @@ describe('Loot', () => {
     expect(copied).not.toContain('shell=');
   });
 
+  it('T-10: a floor pill writes its token into the REAL box and the REAL table narrows (R-1, R-30)', async () => {
+    // THE acceptance test for the slice: D10's premise is that the pill row
+    // and the search box are ONE state, so the pill must reach the table only
+    // by way of the string in the box. A spy-based component test would still
+    // pass if the table kept a second source of truth; here both HistorySearch
+    // and LootHistoryTable are real (see the mock list at the top of this
+    // file), so nothing else can carry the signal.
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({ id: 50, weekNumber: 3, floor: 'M9S' }),
+        makeLootEntry({ id: 51, weekNumber: 3, floor: 'M10S' }),
+      ],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+
+    // Both floors on screen, box empty: the R-37 first-mount state.
+    expect(searchBox().value).toBe('');
+    expect(document.getElementById('loot-entry-50')).toBeInTheDocument();
+    expect(document.getElementById('loot-entry-51')).toBeInTheDocument();
+
+    fireEvent.click(pill('Floor', 'M9S'));
+
+    // The pill wrote a token, and it wrote it into the box — immediately,
+    // off the LIVE query, not the debounced one.
+    expect(searchBox().value).toBe('floor:m9s');
+    expect(pill('Floor', 'M9S')).toHaveAttribute('aria-pressed', 'true');
+    expect(pill('Floor', 'All')).toHaveAttribute('aria-pressed', 'false');
+
+    // TWO CLOCKS (§3.5): the pill lit on this frame, but the TABLE is on the
+    // 200 ms debounce, so on this same tick it has NOT moved yet. Drop the
+    // `useDebounce` and this row is already gone here.
+    expect(document.getElementById('loot-entry-51')).toBeInTheDocument();
+
+    // …and 200 ms later the table has narrowed to exactly that floor.
+    await waitFor(() => expect(document.getElementById('loot-entry-51')).not.toBeInTheDocument());
+    expect(document.getElementById('loot-entry-50')).toBeInTheDocument();
+
+    // Clearing the box restores every row — there is no second filter left
+    // holding the table down.
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(searchBox().value).toBe('');
+    await waitFor(() => expect(document.getElementById('loot-entry-51')).toBeInTheDocument());
+    expect(document.getElementById('loot-entry-50')).toBeInTheDocument();
+  });
+
+  it('renders the History search block on History only, between the fairness card and the table (R-D10-H)', () => {
+    const priority = renderLoot({ tier: makeTier(players) });
+    expect(screen.queryByRole('textbox', { name: 'Search history' })).not.toBeInTheDocument();
+    priority.unmount();
+
+    const log = renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    expect(screen.queryByRole('textbox', { name: 'Search history' })).not.toBeInTheDocument();
+    log.unmount();
+
+    useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 60, weekNumber: 3 })] });
+    // Roster order is sortOrder, NOT array order, and an unconfigured player
+    // is not on the roster yet — both are the membership the deleted
+    // HistoryFilters dropdown listed, carried over unchanged.
+    const pillRoster = [
+      { ...makePlayer('p1', 'Alice'), sortOrder: 2 },
+      { ...makePlayer('p2', 'Bob'), sortOrder: 0 },
+      { ...makePlayer('s1', 'Sub', { sub: true }), sortOrder: 1 },
+      { ...makePlayer('p3', 'Ghost'), configured: false, sortOrder: 3 },
+    ] as SnapshotPlayer[];
+    renderLoot({ tier: makeTier(pillRoster) }, ['/?lview=history']);
+    const box = searchBox();
+    // R-D10-A: EVERY configured player gets a pill — SUBSTITUTES INCLUDED.
+    expect(
+      within(screen.getByRole('group', { name: 'Player filter' }))
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['All', 'Bob', 'Sub', 'Alice']);
+    // R-D10-H: BELOW FairnessSummary ('Drops this tier'), ABOVE the table.
+    // Put it above the card and both of these still render — only the order
+    // assertions fail.
+    const fairness = screen.getByText('Drops this tier');
+    const table = document.querySelector('table')!;
+    expect(fairness.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(box.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // And the toolbar slot it vacated stays empty (R-D10-H, LootToolbar:24).
+    expect(screen.queryByTestId('week-scope')).not.toBeInTheDocument();
+  });
+
+  it('T-8 (R-37/R-D10-F): a typed query never reaches the copied deep-link', async () => {
+    // The query is session-local `useState`, so `buildEntryLink`'s denylist has
+    // nothing to delete — which means the ABSENCE of a delete is what holds
+    // R-37 up. Drive the REAL box and the REAL copy path: assert against a mock
+    // or directly-set state and this passes forever while protecting nothing.
+    window.history.pushState({}, '', '/group/g1?tier=xyz');
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({ id: 4, weekNumber: 3, floor: 'M12S' }),
+        makeLootEntry({ id: 5, weekNumber: 3, floor: 'M9S' }),
+      ],
+    });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+
+    fireEvent.change(searchBox(), { target: { value: 'floor:m12s alice' } });
+    // Wait for the debounce to LAND — the M9S row leaving is the proof the
+    // query is actually in force at the moment the link is built, not merely
+    // typed into a box nobody read.
+    await waitFor(() => expect(document.getElementById('loot-entry-5')).not.toBeInTheDocument());
+
+    const row = document.getElementById('loot-entry-4')!;
+    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const copied = writeText.mock.calls[0][0] as string;
+    expect(copied).toContain('lview=history&entry=4');
+    expect(copied).toContain('tier=xyz');
+    // The exact param set — a denylist can only be pinned positively.
+    expect([...new URL(copied).searchParams.keys()].sort()).toEqual(['entry', 'lview', 'tab', 'tier']);
+    expect(copied).not.toContain('m12s');
+    expect(copied).not.toContain('alice');
+    // …and the invariant ITSELF: the query never enters the URL at all.
+    // The assertions above only pin `buildEntryLink`, which reads
+    // `window.location.href` — under MemoryRouter the repo's standard
+    // URL-backing path (`useUrlTabState` -> `useSearchParams`) never touches
+    // `window.location`, so a later slice could URL-back the query and leave
+    // every assertion above green. This one reads the router's own location
+    // and would fail (D10 review, S2).
+    const routerSearch = screen.getByTestId('loc').dataset.search ?? '';
+    expect(routerSearch).not.toContain('m12s');
+    expect(routerSearch).not.toContain('alice');
+    // The box still holds it — copying a link does not clear the user's search.
+    expect(searchBox().value).toBe('floor:m12s alice');
+  });
+
   it('sets entryType=material (and deletes it for loot) in the copied link', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
@@ -1172,16 +1314,22 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     expect(screen.queryByTestId('week-scope')).not.toBeInTheDocument();
     priority.unmount();
 
-    // History slots its own filter pills, not the week control…
+    // History renders a body of its own, just not the week control. D10
+    // deleted the 'All weeks' pill this used to discriminate on, so the
+    // search box takes over the same job on both sides: without a positive
+    // marker, `queryByTestId('week-scope')` alone would also pass on a
+    // History view that rendered nothing at all, and the R-15 regression
+    // (the week control creeping back onto a non-Log tab) would stop being
+    // caught.
     const history = renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
     expect(screen.queryByTestId('week-scope')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'All weeks' })).toBeInTheDocument();
+    expect(searchBox()).toBeInTheDocument();
     history.unmount();
 
-    // …and Log is the one place it lives.
+    // …and Log is the one place the week control lives — with no search box.
     renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
     expect(screen.getByTestId('week-scope')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'All weeks' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Search history' })).not.toBeInTheDocument();
   });
 
   it('hands WeekScopeControl the RAW store slices the revert summary itemises', () => {
