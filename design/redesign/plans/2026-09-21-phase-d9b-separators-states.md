@@ -246,30 +246,32 @@ reintroduce. The real fix is tier/request-scoped fetches in `lootTrackingStore`,
 | `pnpm knip` | Unused exported types **141 → 140**; every other count identical | **+0** — D9a's disclosed +1 closed |
 | `pnpm dupes` | 3.57 % lines / 4.01 % tokens, 322 clones | **equal**, no regression |
 
-**Mutation checks.** Re-run as one scripted battery against the FINAL tree (`91856d32`+), not
-quoted from the rounds they were first run in — Copilot caught two rows still naming symbols that
-round 5 had renamed, so an audit trail that cannot be reproduced against HEAD is worthless. Each
-mutation is applied alone, its spec run, then the file restored byte-for-byte; the clean tree is
-re-checked at the end (both specs 0 failing).
+**Mutation checks.** Run as one scripted battery via `scripts/d9b-mutation-battery.py`, re-run against
+**`f0cc5398`** — the tree this PR actually ships — after round 7 deleted the retraction mechanism and
+changed the battery with it. Each mutation is applied alone, its spec run, then the file restored
+byte-for-byte; the clean tree is re-checked at the end (both specs 0 failing). **This table is the
+script's output, row for row** — if they ever diverge again, the script wins:
 
 | Mutation | Tests killed |
 |---|---|
 | `?entry=` resolved against the filtered set instead of the raw logs | **1** |
 | `timeZone: 'UTC'` dropped from the separator range formatter | **4** |
 | `logsFailed` ungated from `tierIsEmpty` in the empty-message ladder | **1** |
-| `currentWeek={logWeek.week}` instead of `clock.currentWeek` at the table's mount | **1** |
+| `currentWeek={logWeek.week}` instead of `clock.currentWeek` at the mount | **1** |
 | `setFailed(true)` removed from `markFailed` | **3** |
 | the per-log-promise catches collapsed to a batch-level catch | **1** |
-| both per-log retraction effects removed | **1** |
-| the two per-log retraction effects recombined into one | **1** |
+| an identity-based retraction effect reintroduced (removed in round 7) | **1** |
 
-⚠ **The first run of this battery reported two false zeros, and they were the script's fault, not
-missing coverage.** Recorded because the failure mode is easy to repeat: (1) the `currentWeek`
-anchor was not unique — `FairnessSummary` takes the same prop three lines above, so a
-first-match replace mutated the wrong mount; (2) the "batch-level catch" mutation left the loot
-log's own catch in place, so it did not actually express the design being tested. A mutation that
-kills nothing means *either* a gap in the tests *or* a mutation that missed — check the second before
-believing the first. The `timeZone` row stays local-only: a UTC CI runner cannot distinguish it.
+⚠ **Two ways this table has already been wrong, both caught by review rather than by me.**
+(1) The first run reported two false **zeros** — the script's fault, not the tests': a non-unique
+anchor mutated `FairnessSummary` instead of the table, and a "batch-level catch" mutation left half
+the old behaviour in place. A row reporting 0 means *either* a gap in the tests *or* a mutation that
+missed; check the second before believing the first. (2) After round 7 the table still listed eight
+rows naming the deleted retraction effects, whose anchors would print `ANCHOR MISSING` rather than a
+kill — which is precisely the "reproducible evidence" claim collapsing. The lesson both times: an
+audit trail that is not re-derived from the code it describes is decoration.
+
+The `timeZone` row stays local-only — a UTC CI runner cannot distinguish it.
 
 **Live browser pass**, 1440 viewport, DEVTST, both themes, 0 console errors from this surface:
 

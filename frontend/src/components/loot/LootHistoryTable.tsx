@@ -502,11 +502,15 @@ export function LootHistoryTable({
   //
   // `logsFailed` is gated on `tierIsEmpty` rather than taken on its own: if
   // this component is HOLDING logs then they demonstrably loaded, whatever a
-  // stale flag says, so zero rows can only be the filter. That keeps the
-  // component self-consistent independent of how the flag is driven — the
-  // caller also retracts it on a successful refetch, and neither mechanism
-  // should be the only thing standing between a user and a false claim
-  // (D9b review round 4).
+  // stale flag says, so zero rows can only be the filter.
+  //
+  // ⚠ This gate is the ONLY thing stopping a stale verdict. It began as
+  // defence in depth beside a caller-side retraction, but round 7 deleted that
+  // retraction — it could not be made correct, because array identity means
+  // "some fetch succeeded", never "this one did" (see the docblock at the
+  // removal site in `Loot.tsx`). `Loot` now sets `logsFailed` in its tier
+  // effect and clears it only on a tier change, so do not relax this gate on
+  // the assumption that something upstream also lifts the flag.
   const emptyMessage = logsLoading
     ? 'Loading entries…'
     : logsFailed && tierIsEmpty
