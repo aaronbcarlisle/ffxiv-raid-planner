@@ -302,7 +302,12 @@ for label, path, old, new, spec in MUTATIONS:
         print(f'!! RESTORE FAILED (tree is dirty): {label}', flush=True)
         break
     rows.append((label, killed))
-    print(f'{str(killed):>3} killed  <-  {label}', flush=True)
+    # A string verdict is not a kill count: print it as the alarm it is rather
+    # than as `RUNNER FAILED (...) killed`.
+    if isinstance(killed, int):
+        print(f'{killed:>3} killed  <-  {label}', flush=True)
+    else:
+        print(f'!! {killed}  <-  {label}', flush=True)
 
 # The clean re-check is the proof the tree SURVIVED the mutating — every file
 # restored, nothing left half-applied. It used to be printed and never scored,
@@ -314,7 +319,8 @@ clean = []
 for spec in (LHT_SPEC, LOOT_SPEC, SEARCH_SPEC, LAYOUT_SPEC):
     failing = run_spec(spec)
     clean.append((spec, failing))
-    print(f'{spec}: {failing} failing', flush=True)
+    print(f'{spec}: {failing} failing' if isinstance(failing, int)
+          else f'{spec}: !! {failing}', flush=True)
 
 print('\n--- markdown ---')
 for label, killed in rows:

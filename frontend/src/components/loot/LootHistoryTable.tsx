@@ -73,9 +73,13 @@
  * `cursor-pointer` is set iff `altHeld ? canJump : canEdit` (R-D11-F; ONE
  * `useAltHeld()` per table, D6 Task 3's rule) — a CHOICE rather than a union,
  * because `activate` returns out of the Alt branch before the edit path, so
- * while Alt is held the jump is the only activation on offer to anyone. A
+ * with Alt held (and Shift not, which is checked FIRST and copies for
+ * everyone) the jump is the only activation left on offer to anyone. A
  * viewer's plain click is a no-op that never advertised itself, and so is an
- * editor's Alt-click on a row whose recipient no longer resolves (R-31 q1). No `select-none` anywhere
+ * editor's Alt-click on a row whose recipient no longer resolves (R-31 q1).
+ * Shift is deliberately NOT in the predicate: its copy fires for everyone, so
+ * a missing cursor there under-advertises a power-user gesture rather than
+ * promising one that will not fire — q1 bans the lie, not the secret. No `select-none` anywhere
  * (R-31 q2): the text is meant to be read back, so a plain CLICK that completes
  * a drag-select is a selection, not an activation (R-D11-G, read off
  * `window.getSelection()` on the pointer path only — a keyboard Enter cannot
@@ -796,7 +800,8 @@ export function LootHistoryTable({
               // R-D11-F: the pointer cursor is set iff the activation that
               // WOULD fire right now does something — which is a choice, not a
               // union, because `activate` RETURNS out of the `altKey` branch
-              // before the edit path. So while Alt is held the only candidate
+              // before the edit path. So with Alt held and Shift not (Shift is
+              // checked first, and copies for everyone) the only candidate left
               // is the jump, even for an editor: on a row whose recipient no
               // longer resolves, a click does nothing and the cursor must not
               // claim otherwise (`LogWeekGrid.tsx`'s `altHeld && jump` swap).
