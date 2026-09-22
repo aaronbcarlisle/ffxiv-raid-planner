@@ -262,6 +262,14 @@ script's output, row for row** — if they ever diverge again, the script wins:
 | the per-log-promise catches collapsed to a batch-level catch | **1** |
 | an identity-based retraction effect reintroduced (removed in round 7) | **1** |
 
+> **Superseded at D10 (PR #265), and the reason is the point.** D10 deleted `filterHistoryItems`
+> and the `filters` prop, so row 1's mutant — which injects them — stopped compiling. A
+> non-compiling mutant fails *every* test in the spec, so the row kept reporting a healthy kill
+> count while proving nothing. The mutation is re-expressed in D10's vocabulary there, row 1 now
+> reads **2** on that branch (D10 added a third `?entry=` case), and the script gained an
+> `INVALID MUTANT (did not compile)` verdict so this class is detected rather than scored. **Run
+> the script; do not read this table as current.**
+
 ⚠ **Two ways this table has already been wrong, both caught by review rather than by me.**
 (1) The first run reported two false **zeros** — the script's fault, not the tests': a non-unique
 anchor mutated `FairnessSummary` instead of the table, and a "batch-level catch" mutation left half
