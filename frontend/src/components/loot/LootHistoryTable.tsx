@@ -96,10 +96,11 @@ export interface LootHistoryTableProps {
    */
   logsFailed: boolean;
   /**
-   * True while either log is being fetched. Only the EMPTY state reads it:
-   * "No loot or materials logged this tier." is a claim about the tier, and
-   * the component cannot make that claim over arrays that simply haven't
-   * arrived (D9b review M1). Rows are still rendered while true — a tier
+   * True while either log is being fetched. The empty state AND the stats
+   * count read it: "No loot or materials logged this tier." and "0 entries"
+   * are both claims about the tier, and the component cannot make either over
+   * arrays that simply haven't arrived (D9b review M1 + round 2). Rows are
+   * still rendered while true — a tier
    * switch shows the previous tier's rows until the new ones land, which is
    * the pre-existing behaviour on both shells and not this slice's to change.
    */

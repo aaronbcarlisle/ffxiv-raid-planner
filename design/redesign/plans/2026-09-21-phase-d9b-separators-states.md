@@ -201,6 +201,21 @@ threads this time; no review body carried suppressed comments.
 | **The round-4 retraction treated ONE log's success as proof both arrived** (claude[bot]). The effect was keyed on `[lootLog, materialLog]`, but each fetch writes only its own array — so on a partial failure (`/loot-log` 500s, `/material-log` returns `[]`) the material's fresh array retracted the loot log's verdict, and History asserted "No loot or materials logged this tier." over a log that never landed | **Real** — M1 a third time, now reached *through* the fix for its polarity-flipped twin | **Fixed.** Split into `lootLogFailed` / `materialLogFailed`, each latched by its own fetch and retracted by its own array alone; `logsFailed` is their union. **Mutation-checked** — recombining the effects kills exactly the partial-failure test. ⚠ My first draft of that test was **vacuous**: the mock wrote the material array synchronously during `Promise.all` argument evaluation, i.e. *before* the loot rejection latched, so the race never happened and the mutant survived. Rewritten to sequence explicitly — wait for the failure message, then write the material array |
 | **`DESIGN_SYSTEM.md` §3.36 was stale again** — it listed three zero-row states and no `logsFailed` prop, having been written before round 2 | **Real** | **Fixed.** Props updated; the states line is now a four-row precedence table that spells out which two withhold a claim and which two assert one |
 
+### Round 6 — and the deliberate stop
+
+Neither bot raised a **Must fix** this round. Two "Consider" items:
+
+| Finding | Disposition |
+|---|---|
+| **The battery script is Windows-only** — `subprocess.run([...], shell=True)` is Windows-only semantics with a list argv; on POSIX it runs bare `npx`, the summary regex misses, and **every row reports -1**, clean-tree re-check included (claude[bot]) | **Fixed.** It was checked in as *reproducible evidence*, and a script that reports -1 for everything on Linux is worse than no script. `shell=True` dropped, launcher resolved per platform, and a docstring note that it runs from `frontend/`. Re-run after the change — identical numbers |
+| **The retraction effects are not tier-scoped** — `markFailed` has a `cancelled` latch because `Loot` mounts un-keyed, but the retractions have no equivalent. Tier A → B with A in flight: B's log fetch fails and latches, then A's **empty** response lands, changes the array identity, and clears B's verdict → "No loot or materials logged this tier." over B's log that never arrived (claude[bot]) | **DISCLOSED AND QUEUED — deliberately not patched.** See below |
+
+**Why the second one stops here.** It is real, and distinct from the tier-switch races declined in round 2 (those rested on the arrays never being emptied; this one has a stale *fetch* replacing the array). But it is the sixth round, it is the third variation on the same underlying gap — **the store's fetches are not tier-scoped** — and the component-level fixes have themselves generated a finding every round. Patching a store-level race a sixth time in component state is treating the symptom that keeps changing shape.
+
+The honest fix is tier-aware fetches in `lootTrackingStore`, which is already the standing `fetchPageLedger` gating item and reaches well past this slice. **Reproduction, for whoever takes it:** tier A empty and slow, tier B's `/loot-log` failing; switch A → B before A resolves. Recommended shape: the generation ref `markFailed`'s `cancelled` latch already demonstrates, captured by the retraction effects — or, better, tier-tagged responses in the store so array identity means "*this tier's* fetch succeeded" rather than "*a* fetch succeeded".
+
+Also folded in: the `logsLoading` docblock said "Only the EMPTY state reads it", which stopped being true in round 2 when the stats count started reading it too.
+
 ---
 
 ## 6. Measured results (this slice; command named, run from `frontend/`)

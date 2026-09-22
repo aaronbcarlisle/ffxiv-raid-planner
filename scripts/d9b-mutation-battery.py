@@ -2,12 +2,25 @@
 
 Each entry: (label, file, old, new, test target). Applies the mutation, runs the
 target spec, records how many tests failed, then restores the file verbatim.
+
+RUN FROM `frontend/` — the paths below are relative to it, though this file
+lives at the repo root:
+
+    cd frontend && python ../scripts/d9b-mutation-battery.py
+
+A row reporting 0 means EITHER the tests miss that defect OR the mutation did
+not express it. Check the second before believing the first: the first run of
+this battery produced two false zeros, one from a non-unique anchor (a
+first-match replace hit `FairnessSummary`, not the table) and one from a
+mutation that left half the old behaviour in place.
 """
 import io
+import os
 import re
 import shutil
 import subprocess
-import sys
+
+NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 
 LHT = 'src/components/loot/LootHistoryTable.tsx'
 LOOT = 'src/components/loot/Loot.tsx'
@@ -108,9 +121,13 @@ MUTATIONS = [
 
 
 def run_spec(spec):
+    # No `shell=True`: with a list argv that is Windows-only semantics. On POSIX
+    # it runs `/bin/sh -c npx` with the rest as $0..$2, so bare `npx` executes,
+    # the summary regex never matches, and EVERY row reports -1 (D9b review
+    # round 6, claude[bot]). Resolve the launcher per platform instead.
     out = subprocess.run(
-        ['npx', 'vitest', 'run', spec],
-        capture_output=True, text=True, shell=True,
+        [NPX, 'vitest', 'run', spec],
+        capture_output=True, text=True,
         encoding='utf-8', errors='replace',
     )
     blob = out.stdout + out.stderr
@@ -135,7 +152,6 @@ for label, path, old, new, spec in MUTATIONS:
         killed = run_spec(spec)
     finally:
         shutil.copyfile(path + '.bak', path)
-        import os
         os.remove(path + '.bak')
     rows.append((label, killed))
     print(f'{killed:>3} killed  <-  {label}', flush=True)
