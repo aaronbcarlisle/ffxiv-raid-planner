@@ -486,14 +486,25 @@ Create `frontend/src/components/roster/gearRowScroll.ts`:
  * fork-shells/share-leaves rule, and the same call D6 made for `useAltHeld`
  * ("extract to hooks/ (NO V1 consumer) or duplicate" — here there IS one).
  *
- * Why polling, stated honestly: at THIS call site the poll almost never loops.
- * We run from an effect inside an already-mounted `Roster`, where the card
- * exists at tick 1 — so the `?? player-card-` fallback short-circuits
- * immediately even when the row is still settling. (Legacy's copy fires BEFORE
- * `setPageMode('roster')` has rendered anything, which is where the 24-attempt
- * loop earns its keep.) The loop is kept for the one case that does need it —
- * a card mid-expand — and because the row is checked FIRST on every tick, so a
- * late row still wins over the early card.
+ * ⚠ PRECEDENCE, stated exactly — the card wins whenever the row is absent on
+ * the tick that finds anything. Both ids are re-resolved every tick, but the
+ * `??` fallback is evaluated on the SAME tick as the row, so a card present at
+ * tick 1 is scrolled and the loop exits; a row that mounts later never gets
+ * looked at. The loop therefore only runs while NEITHER element exists.
+ *
+ * That is correct HERE, and only here. Task 4 calls this from a post-commit
+ * effect inside an already-mounted `Roster`, where density is a global view
+ * toggle (`RosterCards`) rather than a per-card animation — `RosterGearTable`
+ * has already committed synchronously if it ever will, so tick 1 sees the
+ * final state. There is no "card mid-expand" state in v2 to lose to.
+ *
+ * The poll is kept as a cheap net for a first paint that hasn't landed yet
+ * (it costs nothing when the element is already there), and because legacy's
+ * copy needs it — that one fires BEFORE `setPageMode('roster')` has rendered
+ * anything. ⚠ If a future change makes the gear table mount late (lazy,
+ * Suspense, AnimatePresence, deferred value), this precedence silently
+ * downgrades every expanded-card jump to a card-level one. Defer the fallback
+ * until the budget is spent if that day comes.
  *
  * Why the card fallback: the row exists only when the card is EXPANDED
  * (`RosterGearTable` does not mount in compact density) and, for
