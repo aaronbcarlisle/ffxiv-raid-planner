@@ -208,6 +208,11 @@ describe('GroupViewContent — D12 the ?player=/?slot= strip', () => {
     mockPageMode = 'overview';
     mockActionModalOpen = false;
     mockAddedPlayer = null;
+    // Shared across the whole file (`useMockGroupViewState`'s `setPageMode`),
+    // so without this the tab-switch assertion below can be satisfied by an
+    // earlier test's call — same convention as the keyboardSpy /
+    // clearAddedPlayerSpy clears in the slot-contract describe above.
+    setPageMode.mockClear();
     // The effect resolves `?player=` against the tier's OWN players and bails
     // when it finds none — the shared fixture ships an empty roster, so
     // without this seed the whole effect (and its strip) never runs.

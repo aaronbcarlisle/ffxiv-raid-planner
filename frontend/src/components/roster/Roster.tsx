@@ -381,7 +381,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     // Resolves a URL deep-link id against roster data that arrives asynchronously
     // (the tier fetch); must run in an effect so it re-evaluates once `players`
     // populates. `playerHandledRef` above guards it to one-shot.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- deep-link highlight is set in response to the URL param; mirrors Schedule's resolving effect (no scroll side-effect here — the shared GroupViewContent effect owns scroll+strip)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- deep-link highlight is set in response to the URL param; mirrors Schedule's resolving effect (no scroll side-effect in THIS effect: GroupViewContent owns the card scroll and the URL strip, and the D12 ROW scroll is Roster's own separate effect below)
     setHighlightedPlayerId(playerParam);
     // Same deep-link resolution as the line above — the directive there covers
     // this effect, so a second one would report as an unused directive.
@@ -404,6 +404,13 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   // highlight itself (F6e timer-ownership lesson — never in the resolving
   // effect's cleanup, so unrelated `players`/`playerLinkParams` identity churn
   // during the window can't kill the timer before it fires).
+  //
+  // D12: keyed on the SLOT too, to match the widened `handledKey` above. That
+  // key deliberately lets a same-player/different-slot jump through; keyed on
+  // the player alone, that second jump would set an identical id, skip this
+  // effect, and inherit whatever was left of the first jump's window — a half
+  // defence, which is worse than either whole. Clearing both at 2500ms re-runs
+  // this effect once with both null, where it returns on the guard below.
   useEffect(() => {
     if (!highlightedPlayerId) return;
     const timer = window.setTimeout(() => {
@@ -411,7 +418,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
       setHighlightedSlot(null);
     }, 2500);
     return () => window.clearTimeout(timer);
-  }, [highlightedPlayerId]);
+  }, [highlightedPlayerId, highlightedSlot]);
 
   // Copy a deep-link to a player card (replicates GroupViewContent.handleCopyUrl).
   // A10 clipboard shape (Loot.tsx copyLink / SessionList.tsx precedent): success

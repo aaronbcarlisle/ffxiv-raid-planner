@@ -727,8 +727,17 @@ describe('Roster — D12 the ?slot= deep link', () => {
     );
     await waitFor(() => expect(container.querySelector('#gear-row-p1-head')).not.toBeNull());
     const row = container.querySelector('#gear-row-p1-head') as HTMLElement;
-    await waitFor(() => expect(row.scrollIntoView).toHaveBeenCalled());
-    expect(row.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+    const wrongRow = container.querySelector('#gear-row-p1-ring2') as HTMLElement;
+
+    // `scrollIntoView` is stubbed on the PROTOTYPE, so `row.scrollIntoView` is
+    // not a per-element spy: `toHaveBeenCalled()` on it is satisfied by a
+    // scroll of ANY element, the wrong row included. `mock.contexts` records
+    // each call's receiver, which is the only thing that can tell the row the
+    // param named from some other row of the same card.
+    const scrollSpy = vi.mocked(Element.prototype.scrollIntoView);
+    await waitFor(() => expect(scrollSpy.mock.contexts).toContain(row));
+    expect(scrollSpy.mock.contexts).not.toContain(wrongRow);
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
   });
 
   // R-D12-G: BOTH pulse — the slot highlight never replaces the card highlight.
