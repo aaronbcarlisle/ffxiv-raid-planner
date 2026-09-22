@@ -51,4 +51,32 @@ describe('scrollToGearRow', () => {
     vi.advanceTimersByTime(5000);
     expect(row.scrollIntoView).not.toHaveBeenCalled();
   });
+
+  // The precedence above, as an executable claim: card at tick 1 beats a row
+  // that mounts later. If this ever flips, the comment is the thing to fix.
+  it('scrolls the card, not a later-mounting row, when only the card exists at tick 1', () => {
+    const card = mountEl('player-card-p1');
+    scrollToGearRow('p1', 'head');
+    vi.advanceTimersByTime(39);
+    const row = mountEl('gear-row-p1-head');
+    vi.advanceTimersByTime(5000);
+    expect(card.scrollIntoView).toHaveBeenCalled();
+    expect(row.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  // The attempt budget: 24 lookups at t=0 plus 23 × 40ms, so the last is at
+  // t=920ms. After that, no timers should be pending.
+  it('respects the attempt budget and stops polling when exhausted', () => {
+    scrollToGearRow('p1', 'head');
+    vi.advanceTimersByTime(920);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('cancel() suppresses the re-center when called after the row is found', () => {
+    const row = mountEl('gear-row-p1-head');
+    const cancel = scrollToGearRow('p1', 'head');
+    cancel();
+    vi.advanceTimersByTime(5000);
+    expect(row.scrollIntoView).toHaveBeenCalledTimes(1);
+  });
 });
