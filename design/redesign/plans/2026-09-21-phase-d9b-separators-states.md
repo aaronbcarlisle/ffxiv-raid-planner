@@ -214,18 +214,30 @@ threads this time; no review body carried suppressed comments.
 | `pnpm knip` | Unused exported types **141 → 140**; every other count identical | **+0** — D9a's disclosed +1 closed |
 | `pnpm dupes` | 3.57 % lines / 4.01 % tokens, 322 clones | **equal**, no regression |
 
-**Mutation checks** (temporary edit, run, revert — proving the new tests are load-bearing):
+**Mutation checks.** Re-run as one scripted battery against the FINAL tree (`91856d32`+), not
+quoted from the rounds they were first run in — Copilot caught two rows still naming symbols that
+round 5 had renamed, so an audit trail that cannot be reproduced against HEAD is worthless. Each
+mutation is applied alone, its spec run, then the file restored byte-for-byte; the clean tree is
+re-checked at the end (both specs 0 failing).
 
 | Mutation | Tests killed |
 |---|---|
-| `?entry=` resolved against the **filtered** set instead of the raw logs | exactly **1** — the unfiltered-resolution test |
-| `timeZone: 'UTC'` removed from `RANGE_FMT` | **4** (runner TZ `America/New_York`; a UTC CI runner cannot distinguish, so this guard is local-only — stated, not overclaimed) |
-| `currentWeek={logWeek.week}` instead of `clock.currentWeek` | exactly **1** — the week-source assembly guard |
-| `setLogsFailed(true)` removed from the fetch `.catch` | exactly **1** — the load-failure assembly guard |
-| the per-log-promise catches collapsed back to a batch-level catch | exactly **1** — the unrelated-failure scoping guard |
-| the `[lootLog, materialLog]` retraction effect removed | exactly **1** — the empty-refetch retraction guard |
-| `logsFailed` ungated from `tierIsEmpty` | exactly **1** — the holding-logs guard |
-| the per-log retraction effects recombined into one | exactly **1** — the partial-failure guard |
+| `?entry=` resolved against the filtered set instead of the raw logs | **1** |
+| `timeZone: 'UTC'` dropped from the separator range formatter | **4** |
+| `logsFailed` ungated from `tierIsEmpty` in the empty-message ladder | **1** |
+| `currentWeek={logWeek.week}` instead of `clock.currentWeek` at the table's mount | **1** |
+| `setFailed(true)` removed from `markFailed` | **3** |
+| the per-log-promise catches collapsed to a batch-level catch | **1** |
+| both per-log retraction effects removed | **1** |
+| the two per-log retraction effects recombined into one | **1** |
+
+⚠ **The first run of this battery reported two false zeros, and they were the script's fault, not
+missing coverage.** Recorded because the failure mode is easy to repeat: (1) the `currentWeek`
+anchor was not unique — `FairnessSummary` takes the same prop three lines above, so a
+first-match replace mutated the wrong mount; (2) the "batch-level catch" mutation left the loot
+log's own catch in place, so it did not actually express the design being tested. A mutation that
+kills nothing means *either* a gap in the tests *or* a mutation that missed — check the second before
+believing the first. The `timeZone` row stays local-only: a UTC CI runner cannot distinguish it.
 
 **Live browser pass**, 1440 viewport, DEVTST, both themes, 0 console errors from this surface:
 
