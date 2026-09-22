@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.25',
+    date: '2026-09-22T05:30:00Z',
+    title: 'Phase D slice D10 — History search (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'History gets a search box, and the filter dropdowns become part of it',
+        description:
+          'V2 preview: History’s Week/Player/Source dropdowns are replaced by a single search box with a structured syntax — player:"Tank One", floor:m9s,m10s, type:gear, source:tome, week:3. The Type, Floor and Player pills above it are now shortcuts into that box: clicking one writes its token, clicking it again removes it, so there is one place to look when the table comes back empty instead of two. Picking two floors returns both rather than nothing, "source:tome" covers tome purchases the old Source filter could not express, and a half-typed filter like "player:" no longer empties the table while you are still typing the name. An unrecognised filter now says so instead of silently doing nothing. The search stays on your screen only — it is never added to a copied entry link, so a shared link can never arrive filtered.',
+        pr: 265,
+        prTitle:
+          'feat(v2): D10 History search — one query string replaces the filter pills',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.24',
     date: '2026-09-21T22:00:00Z',
     title: 'Phase D slice D9b — History week separators + entry counts (v2 preview)',
