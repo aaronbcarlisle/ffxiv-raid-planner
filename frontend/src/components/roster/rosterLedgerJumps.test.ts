@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { buildSlotJumpTargets, jumpMenuAnchor } from './rosterLedgerJumps';
+import {
+  jumpAnchorSlotOf,
+  gearRowDomId,
+  isJumpAnchorSlot,
+  entryJumpView,
+} from './rosterLedgerJumps';
+import type { HistoryItem } from '../loot/logWeekGridData';
 import type { LootLogEntry, MaterialLogEntry } from '../../types';
 
 function loot(overrides: Partial<LootLogEntry> & { id: number; itemSlot: string }): LootLogEntry {
@@ -131,5 +138,106 @@ describe('jumpMenuAnchor (C7, D-05)', () => {
   it('anchors to the icon only when the event carries no position at all', () => {
     // Shift+F10 / the context-menu key dispatch with both coordinates 0.
     expect(jumpMenuAnchor({ clientX: 0, clientY: 0 }, rect)).toEqual({ x: 120, y: 80 });
+  });
+});
+
+// ⚠ Real field names, no `as` cast: `LootLogEntry`/`MaterialLogEntry` carry
+// `floor: string` and `recipientPlayerName` (types/index.ts:1242-1259,
+// :1292-1307) — NOT `floorNumber`/`recipientName`. A cast would hide the next
+// shape change instead of failing on it.
+const lootHistoryItem = (over: Partial<LootLogEntry>): HistoryItem => ({
+  kind: 'loot',
+  entry: {
+    id: 1, tierSnapshotId: 't1', weekNumber: 3, floor: 'M11S', itemSlot: 'head',
+    recipientPlayerId: 'p1', recipientPlayerName: 'Tank One', method: 'drop', isExtra: false,
+    createdAt: '2026-01-01T00:00:00Z', createdByUserId: 'u1', createdByUsername: 'dev',
+    ...over,
+  },
+});
+
+const materialHistoryItem = (over: Partial<MaterialLogEntry>): HistoryItem => ({
+  kind: 'material',
+  entry: {
+    id: 1, tierSnapshotId: 't1', weekNumber: 3, floor: 'M11S', materialType: 'twine',
+    recipientPlayerId: 'p1', recipientPlayerName: 'Tank One', method: 'drop',
+    slotAugmented: 'head', createdAt: '2026-01-01T00:00:00Z', createdByUserId: 'u1',
+    createdByUsername: 'dev',
+    ...over,
+  },
+});
+
+describe('jumpAnchorSlotOf', () => {
+  it('maps a loot entry to its own slot', () => {
+    expect(jumpAnchorSlotOf(lootHistoryItem({ itemSlot: 'body' }))).toBe('body');
+  });
+
+  // R-D12-H: the loot log stores one `ring`; gear tracks ring1/ring2.
+  it('anchors a generic ring loot entry to ring1', () => {
+    expect(jumpAnchorSlotOf(lootHistoryItem({ itemSlot: 'ring' }))).toBe('ring1');
+  });
+
+  it('passes an explicit ring1/ring2 through unchanged', () => {
+    expect(jumpAnchorSlotOf(lootHistoryItem({ itemSlot: 'ring2' }))).toBe('ring2');
+  });
+
+  it('returns null for an unknown itemSlot', () => {
+    expect(jumpAnchorSlotOf(lootHistoryItem({ itemSlot: 'mount' }))).toBeNull();
+  });
+
+  it('maps a material entry to its augmented slot', () => {
+    expect(jumpAnchorSlotOf(materialHistoryItem({ slotAugmented: 'legs' }))).toBe('legs');
+  });
+
+  // R-D12-E: NOT normalized to 'weapon' — the sub-row owns it (C4).
+  it('keeps tome_weapon as its own anchor, never the weapon row', () => {
+    expect(jumpAnchorSlotOf(materialHistoryItem({ slotAugmented: 'tome_weapon' }))).toBe('tome_weapon');
+  });
+
+  // R-D12-F / phase-d-loot-plan.md:200: universal tomestone lands on the card.
+  it('returns null for a material entry with no slotAugmented', () => {
+    expect(jumpAnchorSlotOf(materialHistoryItem({ slotAugmented: null }))).toBeNull();
+    expect(jumpAnchorSlotOf(materialHistoryItem({ slotAugmented: undefined }))).toBeNull();
+  });
+});
+
+describe('gearRowDomId', () => {
+  it('builds the legacy-shaped anchor id', () => {
+    expect(gearRowDomId('p1', 'head')).toBe('gear-row-p1-head');
+    expect(gearRowDomId('p1', 'tome_weapon')).toBe('gear-row-p1-tome_weapon');
+  });
+});
+
+describe('isJumpAnchorSlot', () => {
+  it('accepts every gear slot and tome_weapon, rejects anything else', () => {
+    expect(isJumpAnchorSlot('head')).toBe(true);
+    expect(isJumpAnchorSlot('tome_weapon')).toBe(true);
+    expect(isJumpAnchorSlot('ring')).toBe(false);   // normalized upstream, never an anchor
+    expect(isJumpAnchorSlot('')).toBe(false);
+    expect(isJumpAnchorSlot('__proto__')).toBe(false);
+  });
+});
+
+describe('entryJumpView', () => {
+  // R-D12-A: the displayed week, not "older".
+  it('routes an entry in the displayed week to the Log', () => {
+    expect(entryJumpView(3, 3)).toBe('log');
+  });
+
+  it('routes an OLDER entry to History', () => {
+    expect(entryJumpView(2, 5)).toBe('history');
+  });
+
+  it('routes a NEWER entry to History too', () => {
+    expect(entryJumpView(7, 5)).toBe('history');
+  });
+
+  // R-D12-C: a provisional clock is signalled by a null displayedWeek.
+  it('routes to History when the displayed week is unknown', () => {
+    expect(entryJumpView(3, null)).toBe('history');
+  });
+
+  it('routes to History when the entry has no week', () => {
+    expect(entryJumpView(null, 3)).toBe('history');
+    expect(entryJumpView(undefined, 3)).toBe('history');
   });
 });
