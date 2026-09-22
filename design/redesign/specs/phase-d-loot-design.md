@@ -1347,6 +1347,13 @@ because each is a *class* of mistake, not a one-off:
   test now also reads the **router's** location, and a mutation that URL-backs the query does fail
   it.
 
+**`week 3` never worked, in either shell (R-D10-T).** `w3` and `week3` are single tokens and hit the
+shorthand regex; `week 3` is **two** terms, matched independently — `week` matches every row (the
+matcher tests `` `week ${n}`.includes(term) ``) and `3` matches anything containing a 3, so a week-4
+row on floor `M3S` came back. v1 has the identical hole. Free terms are otherwise v1-verbatim, but a
+shorthand the docs *advertise* while the parser filters by "contains 3" is a defect, not parity: an
+adjacent `week` + digits pair is now rejoined before matching.
+
 Free text was extended to reach `slotAugmented` too (**R-D10-S**) — `legs` is what someone types to
 find which twine went into legs, and point 9's rule binds harder on the un-keyed form than the
 keyed one.

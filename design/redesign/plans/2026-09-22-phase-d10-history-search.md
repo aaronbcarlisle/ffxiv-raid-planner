@@ -178,9 +178,18 @@ freely typed `player:ali` as a case that must still filter.
 | `type` | **aliased** (R-47): `gear`\|`loot` → loot rows; `materials`\|`material` → material rows; `extra` → loot && `isExtra`; `bis` → loot && `!isExtra`; anything else falls back to v1's substring against the kind |
 | `source` | `matchesSource` moved from `historyItems.ts` — `raid` = loot+`drop`, `tome` = loot+(`tome`\|`purchase`), `book` = loot+`book`, `material` = material rows, `all` = everything. An unrecognised value matches nothing **and is reported in `unknownValues`** |
 
-**Free terms** keep v1's behaviour verbatim including the `w3` / `week 3` shorthand
-(`AllWeeksView.tsx:253-268`): each term must match *somewhere* across name, job, slot, raw slot,
-floor, method, type, weapon job, `extra`, `bis`, `w{n}`, `week {n}`.
+**Free terms** keep v1's behaviour (`AllWeeksView.tsx:253-268`): each term must match *somewhere*
+across name, job, slot, raw slot, floor, method, type, weapon job, `extra`, `bis`, `w{n}`,
+`week {n}`. **Two deliberate deviations**, both closing find-surface gaps rather than changing
+what v1 got right:
+
+- **R-D10-S** — a term also reaches a material's `slotAugmented`, so the `aug {slot}` readout is
+  searchable by the word a user would actually type (`legs`).
+- **R-D10-T** — an adjacent `week` + digits pair is rejoined before matching. v1 splits
+  `week 3` into two terms and matches them independently, so `week` hits every row and `3` hits
+  anything containing a 3; a week-4 row on floor `M3S` came back for a query that said week 3.
+  `w3` and `week3` are single tokens and always worked. Verbatim parity here would mean shipping
+  a shorthand the docs advertise and the parser ignores.
 
 ```ts
 export interface HistoryQueryContext {
