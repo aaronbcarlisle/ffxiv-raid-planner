@@ -1493,6 +1493,7 @@ One row per ruling, each naming the ruling it pins:
 | `RosterGearTable` pulses on `slot === highlightedSlot \|\| true` | the pulse is scoped | `RosterGearTable.test.tsx` |
 | The tome sub-row's anchor becomes `gear-row-{playerId}-weapon` | **R-D12-E** | `RosterGearTable.test.tsx` |
 | `RosterCards` forwards `highlightedSlot` to every card | scoping | `Roster.test.tsx` |
+| `Roster` casts `?slot=` instead of validating through `isJumpAnchorSlot` | param validation | `Roster.test.tsx` — ⚠ **the pulse alone cannot kill this**: with `highlightedSlot='__proto__'` no row pulses either way. The row must ALSO assert the row exists and that `scrollIntoView` was never called, since an unvalidated slot still reaches `scrollToGearRow` and scrolls the card. Take this row from Task 4's strengthened test, not from the pulse |
 | `RosterCard.jumpToEntry` drops the `clockSettled` guard | **R-D12-C** | `RosterCard.test.tsx` |
 | `RosterCard.jumpToEntry` drops the `override ??` half (clock always wins) | **R-D12-C**, other half | `RosterCard.test.tsx` |
 | `RosterCard.jumpToEntry` uses `clockCurrentWeek` instead of the resolver | **R-D12-B** | `RosterCard.test.tsx` (the `?week=` + stored-week cases) |
@@ -1518,6 +1519,18 @@ One row per ruling, each naming the ruling it pins:
 > `entryJumpView(null, null)`) or the **`displayedWeek ?? 1` fallback** (killed by
 > `entryJumpView(1, null)`) — which is also the real R-D12-C hazard, the Log mounting at the
 > provisional week 1.
+
+> ⚠ **A SECOND equivalent mutant, found the same way at Task 4.** Dropping `setHighlightedSlot(null)`
+> from `Roster`'s 2500 ms clear is **unkillable**: both readers of `highlightedSlot` are gated on
+> `highlightedPlayerId`, which the same timer nulls, so a stale slot is unobservable. The line stays
+> (it is mandated, and is the same defensive class as the composite ref key) but **no battery row may
+> use it** — it would score 0 and read as a test gap. The same applies to `useEffect` vs
+> `useLayoutEffect` for the scroll call: that constraint is enforced by review and by Task 2's doc
+> comment, not by any test, and mutating it proves nothing.
+>
+> The general rule these two cases teach: **before writing a battery row, ask whether the mutated
+> line is observable at all.** A defensive line whose effect is masked by a guard elsewhere is
+> documentation, not behaviour, and mutating documentation always scores 0.
 
 - [ ] **Step 3: Prove the harness, then the battery**
 
