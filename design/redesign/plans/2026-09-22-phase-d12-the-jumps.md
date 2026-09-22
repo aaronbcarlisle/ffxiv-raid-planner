@@ -1496,6 +1496,18 @@ One row per ruling, each naming the ruling it pins:
 > cannot compile fails every test in the spec and proves nothing — the harness flags it
 > `INVALID MUTANT`. Anchors must be present **and unique**.
 
+> ⚠ **The `entryJumpView` null-guard row has an equivalent-mutant trap — proven by experiment
+> during Task 1's re-review, not predicted.** The guard is
+> `if (entryWeek == null || displayedWeek == null) return 'history'`. Deleting **one half** is an
+> **equivalent mutant**: once either half narrows its argument to `number`, `number === null` is
+> always `false`, so the surviving half is unreachable at runtime — it is type-narrowing
+> documentation, not behaviour. Both half-deletions were applied and both left the suite 30/30
+> green. **No test can ever kill them**, so such a row would be a false negative by construction.
+> Use one of the two mutants that ARE killed today: **whole-guard deletion** (killed by
+> `entryJumpView(null, null)`) or the **`displayedWeek ?? 1` fallback** (killed by
+> `entryJumpView(1, null)`) — which is also the real R-D12-C hazard, the Log mounting at the
+> provisional week 1.
+
 - [ ] **Step 3: Prove the harness, then the battery**
 
 ```bash
