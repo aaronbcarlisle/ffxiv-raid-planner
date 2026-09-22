@@ -1239,6 +1239,13 @@ token work.
 
 ### R-37 · The filter query is **session-local**, and `copyLink` strips it
 
+> ⚠ **Built differently, and deliberately (R-D10-F, D10).** The heading's mechanism did not survive
+> contact: the query lives in `useState` and never enters the URL, so `copyLink` has **nothing to
+> strip**. A `params.delete('q')` against a param nothing writes is dead code that reads as
+> protection. What is load-bearing is the **absence** of that delete — `buildEntryLink` keeps every
+> param it does not explicitly remove — so the invariant is commented at the denylist site and
+> pinned by a test that reads the router's own location. **Do not add a strip call.**
+
 The query is not URL-backed. `copyLink` strips it from the link it builds, exactly as it already
 strips `shell` (`Loot.tsx:252`).
 
