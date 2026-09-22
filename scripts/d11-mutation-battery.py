@@ -36,6 +36,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 
 NPX = 'npx.cmd' if os.name == 'nt' else 'npx'
 
@@ -67,10 +68,17 @@ MUTATIONS = [
         LHT_SPEC,
     ),
     (
-        'Alt-held pointer drops the jump-target gate (`canEdit || altHeld`)',
+        'Alt-held pointer drops the jump-target gate (`altHeld ? true`)',
         LHT,
+        'const pointer = altHeld ? canJumpTo(item) : canEdit;',
+        'const pointer = altHeld ? true : canEdit;',
+        LHT_SPEC,
+    ),
+    (
+        'pointer regresses to the pre-fix UNION (the defect PR #266 shipped)',
+        LHT,
+        'const pointer = altHeld ? canJumpTo(item) : canEdit;',
         'const pointer = canEdit || (altHeld && canJumpTo(item));',
-        'const pointer = canEdit || altHeld;',
         LHT_SPEC,
     ),
     (
@@ -196,12 +204,80 @@ def run_spec(spec):
     if m:
         return int(m.group(1))
     if re.search(r'Tests\s+\d+ passed', blob):
+        # A pass-only summary must come with a ZERO exit. Vitest also exits
+        # non-zero for failures outside the assertions — an unhandled
+        # rejection, a worker crash, a config error — while still printing
+        # this healthy-looking line, and taking the text at its word records
+        # that as `0 failing` (PR #266, Copilot, High). On a mutation row a
+        # bogus 0 reads as "killed nothing" and fails loud; on the clean-tree
+        # re-check it reads as healthy and prints `Battery OK`. Only the
+        # assertion-failure summary above is allowed to exit non-zero.
+        if out.returncode != 0:
+            return f'RUNNER FAILED (exit {out.returncode} behind a pass-only summary)'
         return 0
     return -1
 
 
 def sha(path):
     return hashlib.sha1(io.open(path, 'rb').read()).hexdigest()
+
+
+# --- self-check -------------------------------------------------------------
+# `run_spec` is the single point every verdict in this file passes through, so
+# a misread there is invisible in the output and fatal to the conclusion. Run
+# it with `--selftest` (no repo mutation, no vitest) to pin its verdict table:
+#
+#     python ../scripts/d11-mutation-battery.py --selftest
+#
+# The third case is the one PR #266 (Copilot, High) caught: vitest exits
+# non-zero for failures OUTSIDE the assertions — an unhandled rejection, a
+# worker crash, a config error — while still printing a healthy-looking
+# summary. Read as `0 failing`, that is a survived mutant on a mutation row
+# (loud) but a HEALTHY TREE on the clean re-check (silent), which is exactly
+# the check that exists to catch the others' fallout.
+SELFTEST_CASES = [
+    (1, 'Tests  3 failed | 79 passed', 3, 'assertion failures: the expected non-zero exit'),
+    (0, 'Tests  82 passed', 0, 'a clean run'),
+    (1, 'Tests  82 passed\n Unhandled Rejection', 'RUNNER', 'non-zero exit behind a pass-only summary'),
+    (1, 'Cannot find name `canJumpTo`', 'INVALID', 'a mutant that did not compile'),
+    (1, 'vitest died before printing a summary', -1, 'an unparseable run'),
+]
+
+
+def _selftest():
+    import types
+    global subprocess
+    real, failures = subprocess, []
+    try:
+        for rc, blob, expected, why in SELFTEST_CASES:
+            subprocess = types.SimpleNamespace(
+                run=lambda *a, _rc=rc, _blob=blob, **k: types.SimpleNamespace(
+                    stdout=_blob, stderr='', returncode=_rc,
+                ),
+            )
+            got = run_spec('selftest-spec')
+            if isinstance(expected, str):
+                ok = isinstance(got, str) and got.startswith(expected)
+            else:
+                ok = got == expected
+            print(f'{"ok  " if ok else "FAIL"}  exit {rc} + {why!r} -> {got!r}', flush=True)
+            if not ok:
+                failures.append(f'{why}: expected {expected!r}, got {got!r}')
+    finally:
+        subprocess = real
+    if failures:
+        print()
+        print('!! SELFTEST FAILED')
+        for f in failures:
+            print(f'   - {f}')
+        raise SystemExit(1)
+    print()
+    print('Selftest OK: run_spec reports every run honestly.')
+    raise SystemExit(0)
+
+
+if '--selftest' in sys.argv:
+    _selftest()
 
 
 rows = []
@@ -226,7 +302,12 @@ for label, path, old, new, spec in MUTATIONS:
         print(f'!! RESTORE FAILED (tree is dirty): {label}', flush=True)
         break
     rows.append((label, killed))
-    print(f'{str(killed):>3} killed  <-  {label}', flush=True)
+    # A string verdict is not a kill count: print it as the alarm it is rather
+    # than as `RUNNER FAILED (...) killed`.
+    if isinstance(killed, int):
+        print(f'{killed:>3} killed  <-  {label}', flush=True)
+    else:
+        print(f'!! {killed}  <-  {label}', flush=True)
 
 # The clean re-check is the proof the tree SURVIVED the mutating — every file
 # restored, nothing left half-applied. It used to be printed and never scored,
@@ -238,7 +319,8 @@ clean = []
 for spec in (LHT_SPEC, LOOT_SPEC, SEARCH_SPEC, LAYOUT_SPEC):
     failing = run_spec(spec)
     clean.append((spec, failing))
-    print(f'{spec}: {failing} failing', flush=True)
+    print(f'{spec}: {failing} failing' if isinstance(failing, int)
+          else f'{spec}: !! {failing}', flush=True)
 
 print('\n--- markdown ---')
 for label, killed in rows:

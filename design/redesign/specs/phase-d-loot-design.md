@@ -1607,7 +1607,15 @@ R-D11-A…N):
 2. **This diverges from the Log grid on purpose.** D6-l ruled v2's read-only grid cells inert while
    History's rows stay modifier-live for viewers. Two rulings own the two surfaces; recorded because
    it qualifies "one mental model across both surfaces".
-3. **The cursor gate is `canEdit || (altHeld && canJump)`**, one `useAltHeld()` per table.
+3. **The cursor gate is `altHeld ? canJump : canEdit`**, one `useAltHeld()` per table — a choice,
+   not a union. *(Amended 2026-09-22, #268: D11 shipped `canEdit || (altHeld && canJump)`, which lit
+   the cursor for an **editor** holding Alt over a row whose recipient no longer resolves — `activate`
+   takes the Alt branch and returns before the edit path, so that click does nothing at all.)*
+   **Scope ruling (2026-09-22, #268): the swap is ALT-ONLY, and Shift stays out of the predicate.**
+   Shift+Click copies for everyone with no permission gate and is checked *before* Alt, so a row
+   with no cursor under Shift withholds a power-user gesture rather than promising one that will
+   not fire. R-31 q1 bans the false promise, not the undisclosed capability — and there is no
+   `useShiftHeld` anywhere in `frontend/src`. Recorded so a later review pass does not reopen it.
 4. **Text stays selectable**, and a plain click that *completes* a drag-select is treated as a
    selection rather than an activation — **pointer path only**. Enter cannot complete a drag, and
    gating the keyboard on a stale selection elsewhere on the page would be q1's mismatch again.
