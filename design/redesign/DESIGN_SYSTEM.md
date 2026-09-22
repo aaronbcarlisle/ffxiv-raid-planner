@@ -495,7 +495,11 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   resolving in the roster, so the affordance exists only when its target does — and a **plain**
   activation opens the entry for editing: the picker for a loot row, D8's material modal for a
   material row. *The row's appearance predicts its behaviour per permission level*: `cursor-pointer`
-  iff `canEdit || (altHeld && canJump)` (one `useAltHeld()` per table, never per row), and
+  iff `altHeld ? canJump : canEdit` (one `useAltHeld()` per table, never per row) — a **choice, not a
+  union**, because the handler returns out of the Alt branch before the edit path, so while Alt is
+  held the jump is the only activation on offer *to anyone* (corrected in #268: the union this
+  replaced lit the cursor for an **editor** Alt-hovering a row whose recipient no longer resolves,
+  where nothing fires at all), and
   `tabIndex`/`role="button"`/`aria-label`/`onKeyDown` **only** when `canEdit` — a focused row whose
   plain Enter does nothing is D-55's violation with a keyboard instead of a cursor. Shift/Alt stay
   live for viewers, whose complete keyboard route is the kebab. Text stays **selectable** (no
