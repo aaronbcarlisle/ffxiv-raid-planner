@@ -25,7 +25,16 @@ interface KeyboardShortcutsHelpProps {
   extraGroups?: ShortcutGroup[];
 }
 
-export function KeyboardShortcutsHelp({ isOpen, onClose, isAdmin = false, extraGroups = [] }: KeyboardShortcutsHelpProps) {
+/**
+ * The default for `extraGroups`, hoisted to module scope so the legacy mount
+ * (which passes nothing) gets ONE stable identity. A `= []` default literal is
+ * a fresh array per render, which would make the memo below recompute on every
+ * render of the V1 shell — the one branch this prop is supposed to leave
+ * exactly as it was (whole-branch review, D11).
+ */
+const NO_EXTRA_GROUPS: ShortcutGroup[] = [];
+
+export function KeyboardShortcutsHelp({ isOpen, onClose, isAdmin = false, extraGroups = NO_EXTRA_GROUPS }: KeyboardShortcutsHelpProps) {
   // Initialize from localStorage
   const [enabled, setEnabled] = useState(() => areShortcutsEnabled());
 

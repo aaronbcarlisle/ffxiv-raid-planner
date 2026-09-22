@@ -1138,6 +1138,49 @@ describe('LootHistoryTable', () => {
       expect(onEdit).not.toHaveBeenCalled();
     });
 
+    /**
+     * T-13b (whole-branch review): the MENU's jump gate, which T-3 covers only
+     * for the ROW. `buildRowMenuItems` gates "Jump to {name}" on the recipient
+     * resolving in the roster — without that gate a ghost row offers "Jump to
+     * Departed Player" and the click navigates to `?player=ghost`, landing on
+     * no card. That is the same "advertises what it won't honour" defect
+     * R-D11-E removes from the row, one control over, so it gets the same
+     * treatment: asserted for BOTH permission levels and for both kinds,
+     * because the gate sits outside the `canEdit` branches.
+     */
+    it('T-13b: a ghost recipient drops the Jump item from the menu entirely — editor, viewer, and material rows (the menu half of the jump gate)', () => {
+      const ghostLoot = makeLootEntry({
+        id: 7,
+        weekNumber: 2,
+        recipientPlayerId: 'ghost',
+        recipientPlayerName: 'Departed Player',
+      });
+      const ghostMaterial = makeMaterialEntry({
+        id: 8,
+        weekNumber: 2,
+        recipientPlayerId: 'ghost',
+        recipientPlayerName: 'Departed Player',
+      });
+
+      const editor = renderTable({ lootLog: [ghostLoot], materialLog: [ghostMaterial] });
+      fireEvent.contextMenu(document.getElementById('loot-entry-7')!);
+      expect(menuLabels()).toEqual(['Edit', 'Copy link', 'View week 2 in Log', 'Delete']);
+      expect(screen.queryByRole('menuitem', { name: /Jump to/ })).not.toBeInTheDocument();
+      closeMenu();
+
+      fireEvent.contextMenu(document.getElementById('material-entry-8')!);
+      expect(menuLabels()).toEqual(['Edit', 'Copy link', 'View week 2 in Log', 'Delete']);
+      closeMenu();
+      editor.unmount();
+
+      // The viewer case is the one that matters most: the kebab is their ONLY
+      // route, so a dead item there has no working alternative beside it.
+      renderTable({ lootLog: [ghostLoot], canEdit: false });
+      fireEvent.contextMenu(document.getElementById('loot-entry-7')!);
+      expect(menuLabels()).toEqual(['Copy link', 'View week 2 in Log']);
+      expect(screen.queryByRole('menuitem', { name: /Jump to/ })).not.toBeInTheDocument();
+    });
+
     it("T-14: View week N in Log fires onViewWeekInLog({kind, entry}) with the ROW's own week — two rows, two weeks (R-D11-A)", () => {
       const onViewWeekInLog = vi.fn();
       const loot = makeLootEntry({ id: 1, weekNumber: 2 });

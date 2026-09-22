@@ -88,6 +88,18 @@ MUTATIONS = [
         "  if (true) {\n    items.push({\n      label: 'Edit',",
         LHT_SPEC,
     ),
+    # Added after the whole-branch review found this gate had ZERO coverage:
+    # deleting it passed every D11 test, and a ghost row would then offer
+    # "Jump to Departed Player" into `?player=ghost` — the row's own defect
+    # (R-D11-E) reappearing one control over. T-13b is the test; this is the
+    # proof T-13b can fail.
+    (
+        'menu Jump ungated from the roster lookup (a ghost row offers a dead jump)',
+        LHT,
+        '  if (ctx.playersById.has(recipientId)) {',
+        '  if (true) {',
+        LHT_SPEC,
+    ),
     # ── The jump (R-D11-A / R-D11-B) ─────────────────────────────────────
     (
         'jump handler also writes `?week=` (the inert param R-D11-B rejects)',

@@ -565,20 +565,27 @@ D7b, with the card re-home).**
   instead of once per card. It also carries one gap of its own — the kebab `<button>` now sits inside
   a `<tr role="button">`, which ARIA marks presentational (mitigated: the row's `onKeyDown` ignores
   events whose target is not the row itself, so the kebab's Enter never doubles as a row activation).
-  **And a fourth, found in D11's browser pass with the comparison that makes it actionable:** the
-  History row kebab opened with **Enter** does not move focus into the menu (no `focusin` fires at
-  all), while the same component opened by **mouse** focuses the first item at the second animation
-  frame — and D7's own `M9S actions` kebab *does* move focus on Enter. So it is usage-specific, not
-  component-wide. The menu remains operable (`ArrowDown` enters it; roving `tabindex` is correct),
-  so this is one keypress and a missed announcement rather than lost access. Whoever takes this
-  queue should price `ui/ContextMenu` against Radix once for the whole family — and start from that
-  D7-vs-D11 difference, which is a live reproduction rather than a theory. **Third gap, same queue (whole-branch review, nit 5):** a
+  **Third gap, same queue (whole-branch review, nit 5):** a
   keyboard-invoked context menu (Shift+F10 / the menu key with the kebab focused) bubbles to the
   header `<div>`, so `jumpMenuAnchor` measures the full-width bar and anchors the menu at its
   far-left while the kebab sits at `ml-auto` right. Enter/Space on the kebab anchors correctly
   (button rect), so the keyboard route works — it is only mis-placed. The header-bar `onContextMenu` carries a targeted
   `jsx-a11y/no-static-element-interactions` disable with reason (the pre-authorized F-7
   containment; `eslint.config.js` untouched).
+  **Fourth gap, found in D11's browser pass, with the comparison that makes it actionable:** the
+  History row kebab opened with **Enter** does not move focus into the menu (no `focusin` fires at
+  all), while the same component opened by **mouse** focuses the first item at the second animation
+  frame — and D7's own `M9S actions` kebab *does* move focus on Enter. So it is usage-specific, not
+  component-wide. The menu remains operable (`ArrowDown` enters it; roving `tabindex` measured
+  correct at `0, -1, -1`), so this is one keypress and a missed announcement rather than lost
+  access. **Fifth, same family (D11 whole-branch review):** with a row menu open, clicking another
+  row to dismiss it closes the menu on `mousedown` and then delivers the `click` to that row,
+  opening its editor — a consequence of rows becoming clickable, not of the Radix→`ContextMenu`
+  swap. Whoever takes this queue should price `ui/ContextMenu` against Radix once for the whole
+  family, starting from that D7-vs-D11 focus difference, which is a live reproduction rather than a
+  theory. Note D11's own Shift+F10 variant of the third gap: invoked with the **kebab** focused it
+  bubbles to the `<tr>`, so `jumpMenuAnchor` measures the row and anchors at its left edge while
+  the kebab sits right — same class, same queue.
 - The R-22 boundary restated: Revert and Start-next-week remain CLOCK-bound with the divergence
   notice — only the reset family follows the displayed week.
 

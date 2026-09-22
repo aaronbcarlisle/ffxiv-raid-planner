@@ -99,7 +99,7 @@ phase the difference is load-bearing: a director re-opens a `(plan)` row, never 
 | **R-D11-B** (plan) | The item writes **no `?week=`** and calls **no** `logWeek.setWeek` — D6a's out-of-week correction owns the week | Two independent reasons, and the second is the stronger. **(1)** `useLogWeek` resolves `?week=` on **mount only** (`useLogWeek.ts:22-40`, and `:291,299`'s `isFirstResolve ? urlWeek : null`) and `Loot` mounts un-keyed (`NewShell.tsx:92-98`) with `lview` derived, not a key (`Loot.tsx:413`) — so a `?week=` written here is inert on the only path that would write it. **(2)** Calling `logWeek.setWeek` instead would fire a **second `setSearchParams` in the same handler**, and react-router's functional updater is bound to the `searchParams` its own reference closed over — not a live re-read (the hazard `Loot.tsx:441-465` documents at length). The two writes would build from the same snapshot and the last would clobber the first. D6a's correction (`Loot.tsx:797-799`) runs in an **effect**, a separate tick, which is why it composes. **⚠ Disclosed residual — see R-D11-N** |
 | **R-D11-N** (plan) | The F2 provisional-clock guard can swallow this jump. **Disclosed, tested at the normal path, not fixed here** | `unresolvedByClock` (`Loot.tsx:772-780`) is true when `clockCeiling === 1 && foundEntryWeek !== logWeek.week`. On a genuine week-1 tier that is reachable in-app: `resolveOverride` accepts a stale `?week=5` or storage value **unclamped by design** (`useLogWeek.ts:62-72`), so the Log can display week 5 while every entry is week 1 → the highlight never resolves → no correction, no pulse, **and no self-clear**, because the 2.5s clear timer lives inside the same skipped effect (`Loot.tsx:819-826`; `:750-751` states the "params linger" consequence outright). It self-heals on a return to History, whose own highlight effect is not `lview`-gated (`LootHistoryTable.tsx:423-433`). Narrowing it means touching D6a's guard, which exists to stop a far worse clobber (the provisional-clock sentinel write) — so this joins the standing queue rather than being patched under a different slice's name |
 | **R-D11-C** (USER) | The help entry ships as an **additive `V2_SHORTCUT_GROUPS`** consumed through a new optional `extraGroups` prop that only `Layout.tsx`'s v2 mount passes | R-35 requires a registry entry; the D11 row requires V1's `Shift+?` help to be unchanged; §5's open item makes the shell-aware **split** an explicit D14 decision whose default is "no V1 copy change". `Layout.tsx` already mounts the help modal **twice** — `:97-101` (v2 branch) and `:140-144` (legacy branch) — so the seam is a prop, not a mechanism. **Two interims recorded, not glossed:** (a) an append-only prop cannot express D14's stated default ("V1's rows stay, v2's reflect the new set"), so **D14 decides whether to generalise or replace it**; (b) v2's help is a **mixed-truth list** the day this lands — `Alt+1-3`, `V`, `G` (`keyboardShortcutGroups.ts:26,41-42`) are still rendered there and R-35/R-42 dropped all three for v2. D11 does not make that worse (those rows render in v2 today) but it does add one authoritative row beside them. (c) `chromeActive` excludes `/` (`Layout.tsx:70`), so a v2-resolved user on `/` takes the legacy mount and sees no History group — correct, since there is no Loot screen there, but "the v2 mount" is the accurate phrase, not "v2 users" |
-| **R-D11-D** (USER) | The kebab **converts** to the two-trigger `ui/ContextMenu`, upholding D9a-k | D9a-k pre-ruled it: "D11 converts to the two-trigger `ContextMenu` + right-click + View week N in Log + material Edit under R-32; converting here would be converting twice." One items list, two triggers, one mount — the `LogWeekGrid`/`BookLedgerCard` shape. **Interim cost, named:** `ui/ContextMenu` has no focus-restore-on-close and no `aria-expanded`, and closes on scroll; R-D7b booked exactly these three for the Books kebabs (`phase-d-loot-design.md:559-562,603`) and D11 joins the same standing queue — with the honest note that a table multiplies them by row count |
+| **R-D11-D** (USER) | The kebab **converts** to the two-trigger `ui/ContextMenu`, upholding D9a-k | D9a-k pre-ruled it: "D11 converts to the two-trigger `ContextMenu` + right-click + View week N in Log + material Edit under R-32; converting here would be converting twice." One items list, two triggers, one mount — the `LogWeekGrid`/`BookLedgerCard` shape. **Interim cost, named:** `ui/ContextMenu` has no focus-restore-on-close and no `aria-expanded`, and closes on scroll; R-D7b booked exactly these three for the Books kebabs (`phase-d-loot-design.md:559-562,603`) and D11 joins the same standing queue — with the honest note that a table multiplies them by row count. **A fourth, added at whole-branch review:** with a menu open, clicking *another row* to dismiss it now closes the menu on `mousedown` and then delivers the `click` to that row, opening its editor. In D9a/D10 that gesture was side-effect-free because rows were inert — the clickable row is the cause, not the Radix→`ContextMenu` swap (the old `Dropdown` was `modal={false}`). Family-consistent with `LogWeekGrid`, so it joins the queue rather than being special-cased here |
 | **R-D11-E** (plan) | Row interactivity is **permission-shaped**: `tabIndex={0}` + `role="button"` + `aria-label` only when `canEdit`. Shift/Alt pointer modifiers stay live for **everyone**; the kebab is a viewer's complete keyboard/AT route | R-31 q1 forbids advertising an activation that will not fire — and a focused row whose plain Enter does nothing is that violation with a keyboard instead of a cursor. That the modifiers stay live for viewers is R-31's own premise: "pointer only when `canEdit`, **plus R-18's Alt-held swap**" is vacuous otherwise, because an editor's row is already `cursor-pointer`. **The honest delta, stated rather than argued away:** a V1 viewer *can* focus a row and press `Shift+Enter`/`Alt+Enter` today (`AllWeeksView.tsx:311-325` handles both **before** the `canEdit` gate at `:326`, and `:555-559` routes the keyboard through). D11 does not carry that row-level **gesture**; every **capability** survives on the kebab (Copy link · Jump · View week N in Log), which R-32 already names "the keyboard and AT route". Affordance parity with a mapped home — not a silent drop. **Second divergence, recorded:** D6-l ruled v2's Log grid cells **inert** for viewers (`phase-d-loot-plan.md:243`) while History's stay modifier-live, so the two v2 surfaces differ for read-only users. Defensible (different rulings own them) but it qualifies §0's "one mental model", so it is written down rather than left to be re-discovered |
 | **R-D11-F** (plan) | `cursor-pointer` iff `canEdit \|\| (altHeld && canJump)`. **ONE** `useAltHeld()` at the table top level | The second clause is the whole content of "R-18's Alt-held swap" on this surface, and `LogWeekGrid.tsx:416` (`altHeld && jump ? ' cursor-pointer' : ''`) is the exact precedent. One hook instance per table, never per row — D6 Task 3's rule, stated there because the naive shape is one per cell |
 | **R-D11-G** (plan) | A plain click that **completes a text selection** does not open the editor | R-31 q2 makes the text selectable on purpose. A drag-select that ends in a modal takes the affordance back on mouseup, which is worse than `select-none` because it reads as a bug rather than a policy. Read `window.getSelection()?.toString()`; Shift+Click keeps V1's `removeAllRanges()` guard (`AllWeeksView.tsx:315`) so copying leaves no selection artifact |
@@ -464,7 +464,7 @@ Baselines were measured on this branch before any code was written.
 
 | Gate | `main` @ `3253d858` | D11 | Δ |
 |---|---|---|---|
-| `pnpm test` | 235 files / **3078** | 236 files / **3113** | **+1 file / +35** |
+| `pnpm test` | 235 files / **3078** | 236 files / **3114** | **+1 file / +36** |
 | `pnpm lint` | 0 errors / 903 warnings | 0 errors / **903** | **0** |
 | `pnpm knip` — unused exported types | 140 | **140** | **+0** |
 | `pnpm knip` — unused exports | 181 | **181** | **+0** |
@@ -472,12 +472,21 @@ Baselines were measured on this branch before any code was written.
 | `pnpm check:design-system:strict` | clean | clean | — |
 | `pnpm dupes` | green — 322 clones | green — **322** | **0** |
 
-**Test accounting.** +35 = +19 (`LootHistoryTable.test.tsx`, T-1…T-16 plus the replaced D9a-i
-suite) +7 (`Loot.test.tsx`: T-22…T-27, with T-26 split in two) +6 (`HistorySearch.test.tsx`,
-T-17…T-21) +2 (`Layout.chrome.test.tsx`, T-29) +4 (`KeyboardShortcutsHelp.test.tsx`, new file —
-the +1 test file). **The lint ceiling held at exactly 903**, which is the number B1 was about: the
-first draft of this plan would have shipped 905 by pre-authorising two disables the code never
-needed.
+**Test accounting**, each figure counted against `main`'s own copy of the file rather than derived
+(`git show main:<path> | grep -c`), after the first version of this table did not reconcile — it
+claimed +35 from parts summing to 38, caught at whole-branch review:
+
+| Spec | `main` | D11 | Δ |
+|---|---|---|---|
+| `LootHistoryTable.test.tsx` | 65 | 81 | **+16** (T-1…T-16, T-13b, minus the replaced D9a-i suite) |
+| `Loot.test.tsx` | 103 | 110 | **+7** (T-22…T-27, T-26 split in two) |
+| `HistorySearch.test.tsx` | 24 | 30 | **+6** (T-17…T-21) |
+| `Layout.chrome.test.tsx` | 12 | 14 | **+2** (T-29) |
+| `KeyboardShortcutsHelp.test.tsx` | 0 | 5 | **+5** (new file — the +1 test file) |
+| | | | **+36** |
+
+**The lint ceiling held at exactly 903**, which is the number B1 was about: the first draft of this
+plan would have shipped 905 by pre-authorising two disables the code never needed.
 
 **knip holding rather than rising is the expected result:** `V2_SHORTCUT_GROUPS` landed with two
 consumers the same day (`Layout.tsx`'s v2 mount and `CommandPalette.tsx`). A rise of one would have
@@ -514,8 +523,19 @@ worth knowing immediately.
 
 ### Live browser pass
 
-`?shell=v2` → Loot → History, DEVTST, 1440×1100, **zero console errors or warnings** (checked with
-preserved messages across every navigation in the pass).
+`?shell=v2` → Loot → History, DEVTST, **zero console errors or warnings** (checked with preserved
+messages across every navigation in the pass).
+
+⚠ **Viewport correction, caught at review rather than shipped.** This section first claimed
+**1440×1100**. It was not: the `resize_page` call did not survive the pass's navigations and the
+window was maximized, so every observation was made at **3440×1297, DPR 1** — measured
+(`window.innerWidth`) after the fact, not assumed. A later resize attempt was refused outright
+("Restore window to normal state before setting content size"), so the number is corrected instead
+of the pass being re-run. It does not weaken what was observed: every affordance fact below is
+width-independent (attributes, classes, menu contents, keyboard activations, computed ring), and
+the one width-sensitive question in this family — eight columns inside an `overflow-clip` card —
+was measured in D9a down to 880 px and is not re-opened by a *wider* viewport. What a maximized
+window does **not** exercise is narrow layout, which is Phase P's pass by standing ruling.
 
 **As owner:** row is `tabindex=0` + `role="button"` + `aria-label="Material: Twine — Tank Two,
 Week 3"`, `cursor-pointer`, focus-ring classes present, **no `select-none` on any row** · kebab
@@ -539,6 +559,25 @@ it opens the full viewer menu.
 **R-D11-G, live, with its control:** with "Tank Two" selected in the Player cell, a plain row click
 opened nothing; clearing the selection and clicking the same row opened "Edit Material Entry". The
 guard is real, not vacuous.
+
+**The owner keyboard walk (§5's gate, discharged at review — it was owed and initially was not
+reported).** With the row focused from the keyboard: `Enter` opened **"Edit · Neck"**;
+`Shift+Enter` copied `…?tab=gear&lview=history&tier=aac-heavyweight&entry=72` (no `q`, no `shell`
+— R-37 holding); `Alt+Enter` navigated to `?tab=roster&player=d34b23c0-…`, the card-level D12
+interim. All three modifiers carry from the keyboard, which is R-31 q3.
+
+**The focus ring, which §5 gated on *seeing* rather than asserting** (`d11-08`): the focused `<tr>`
+matches `:focus-visible` and its **computed** `box-shadow` is
+`rgb(20, 184, 166) 0px 0px 0px 2px inset` — the resolved paint value, not class presence, which is
+all T-10 can prove in jsdom. The screenshot shows the ring on all four edges of the row, unclipped
+inside the `overflow-clip` card, which is the specific doubt the file's own docblock raises about
+rings on a `<tr>` under `border-collapse: collapse`. It also independently confirms the D9b
+transfer: the pulse uses the same inset mechanism and paints the same way.
+
+⚠ **Tooling note:** `take_screenshot` began timing out (`Page.captureScreenshot timed out`) after
+the seventh shot and never recovered, though the page stayed responsive and the first timed-out
+call had in fact written its file. `d11-08` is that file, opened and verified before use rather
+than trusted because it existed.
 
 **V1 unchanged, the evidence pair:** `Shift+?` in **v2** renders 10 groups including **History /
 `Ctrl+Shift+F`**; `Shift+?` in **legacy** renders 9 groups with **no History group and no
