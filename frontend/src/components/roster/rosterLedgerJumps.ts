@@ -1,5 +1,5 @@
 /**
- * rosterLedgerJumps — which ledger entry a gear slot points at (C7, D-05).
+ * rosterLedgerJumps — both directions of the gear↔ledger mapping (C7, D-05, D12).
  *
  * The v2 expression of legacy's two-part wiring: `GroupViewContent`'s
  * `playerSlotsWithLootEntries` / `playerSlotsWithMaterialEntries` maps decided
@@ -132,7 +132,7 @@ export function isJumpAnchorSlot(value: string): value is JumpAnchorSlot {
   return ANCHOR_SLOTS.has(value);
 }
 
-/** The gear row's DOM id. Legacy's shape (`GearTable.tsx:324,659`), v2's anchors. */
+/** The gear row's DOM id. Legacy's shape (`GearTable.tsx:325,664`), v2's anchors. */
 export function gearRowDomId(playerId: string, slot: JumpAnchorSlot): string {
   return `gear-row-${playerId}-${slot}`;
 }

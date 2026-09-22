@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { buildSlotJumpTargets, jumpMenuAnchor } from './rosterLedgerJumps';
 import {
+  buildSlotJumpTargets,
+  jumpMenuAnchor,
   jumpAnchorSlotOf,
   gearRowDomId,
   isJumpAnchorSlot,
@@ -8,6 +9,7 @@ import {
 } from './rosterLedgerJumps';
 import type { HistoryItem } from '../loot/logWeekGridData';
 import type { LootLogEntry, MaterialLogEntry } from '../../types';
+import { GEAR_SLOTS } from '../../types';
 
 function loot(overrides: Partial<LootLogEntry> & { id: number; itemSlot: string }): LootLogEntry {
   return {
@@ -208,12 +210,18 @@ describe('gearRowDomId', () => {
 });
 
 describe('isJumpAnchorSlot', () => {
-  it('accepts every gear slot and tome_weapon, rejects anything else', () => {
-    expect(isJumpAnchorSlot('head')).toBe(true);
+  it('accepts every gear slot and tome_weapon', () => {
+    for (const slot of GEAR_SLOTS) {
+      expect(isJumpAnchorSlot(slot)).toBe(true);
+    }
     expect(isJumpAnchorSlot('tome_weapon')).toBe(true);
+  });
+
+  it('rejects invalid slots', () => {
     expect(isJumpAnchorSlot('ring')).toBe(false);   // normalized upstream, never an anchor
     expect(isJumpAnchorSlot('')).toBe(false);
     expect(isJumpAnchorSlot('__proto__')).toBe(false);
+    expect(isJumpAnchorSlot('constructor')).toBe(false);
   });
 });
 
@@ -239,5 +247,18 @@ describe('entryJumpView', () => {
   it('routes to History when the entry has no week', () => {
     expect(entryJumpView(null, 3)).toBe('history');
     expect(entryJumpView(undefined, 3)).toBe('history');
+  });
+
+  // Kills a `displayedWeek ?? 1` fallback — the provisional-week-1 hazard
+  // R-D12-C exists to prevent. Without this, that mutant returns 'history'
+  // for (3, null) and passes.
+  it('routes a week-1 entry to History when the displayed week is unknown', () => {
+    expect(entryJumpView(1, null)).toBe('history');
+  });
+
+  // Kills outright deletion of the null guard: `null === null` is true, so an
+  // unguarded comparison would return 'log'.
+  it('routes to History when NEITHER week is known', () => {
+    expect(entryJumpView(null, null)).toBe('history');
   });
 });
