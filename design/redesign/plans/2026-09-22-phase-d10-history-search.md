@@ -412,7 +412,7 @@ Four Should-fix and eight nits; all dispositioned, **all accepted**. Three were 
 
 | # | Finding | Fix |
 |---|---|---|
-| **S1** | **Functional bug.** A pill click while an unterminated quote sat in the box appended the new token *inside* the quote — pill unlit, table empty, no hint. `toggleQueryToken`/`removeQueryKey` re-emitted untouched tokens by raw `text` | `emitToken` normalises an unterminated token (keyed → bare, free → quote closed); 2 tests |
+| **S1** | **Functional bug.** A pill click while an unterminated quote sat in the box appended the new token *inside* the quote — pill unlit, table empty, no hint. `toggleQueryToken`/`removeQueryKey` re-emitted untouched tokens by raw `text` | **Superseded in review round 1** — see §5b. `appendToken` inserts the new token *before* a trailing unterminated one and leaves it verbatim; `serializeToken` quotes any whitespace-bearing value. `emitToken` no longer exists; 4 tests |
 | **S2** | **Test pinned the wrong thing.** T-8's comment claimed it would catch a later slice URL-backing the query. It would not — `buildEntryLink` reads `window.location.href`, which `useUrlTabState` never touches under `MemoryRouter` | T-8 now also asserts the **router's** location; mutation-verified by actually URL-backing the query |
 | **S3** | **Searchable-but-invisible.** `slot:`/free text matched a stale `weaponJob` on non-weapon rows — the Slot cell hides it (`itemSlot === 'weapon'` gate) because the edit API keeps `weapon_job` after a slot change | `weaponJobOf` gates identically; 1 test |
 | **S4** | Free text could not reach `aug {slot}` though `slot:` could — `legs` is the natural query | added, as **R-D10-S**; 1 test |
@@ -429,6 +429,33 @@ a no-op (which reads exactly like a load-bearing test), and a `subprocess` cp125
 a mutation **in the working tree** — caught only because the next command grepped for the fix.
 Mutation harnesses now assert their anchor and restore in a `finally`. A mutation that kills 0 is
 first evidence about the *mutation*, not the test.
+
+---
+
+## 5b. PR #265 review rounds
+
+The pre-PR reviews (§5a) were not the end of it. Three bot rounds on the PR itself, each after the
+previous one looked clean — **Copilot filed new threads on every push**, which is the same pattern
+D9b recorded and the reason "0 unresolved threads" is not an exit condition.
+
+| Round | Finding | Disposition |
+|---|---|---|
+| 1 | **The S1 fix was wrong.** Normalising an unterminated token emitted it **bare**, so `player:"Tank One` became `player:Tank One` → re-tokenized as `player:Tank` + free `One`. A different filter, silently; the one-word regression could not see it | **Fixed at the cause** (`dd4c50e8`): `appendToken` inserts before a trailing open token instead of rewriting it; `serializeToken` quotes any whitespace-bearing value. `emitToken` deleted. +2 tests, both mutation-verified |
+| 1 | Plan §3.1's `week:` row still described the `parseInt` behaviour R-D10-R rejected | Fixed |
+| 1 | Two configured roster slots sharing a name are one pill and one result set (`SnapshotPlayer.name` has no uniqueness constraint) | **Declined, documented.** An id-bearing token closes it and defeats R-30 — the pills teach a syntax the user can read and retype, and `player:#a3f1c2` is neither. Recorded as R-D10-J's second residual |
+| 1 | Release note missing | **Bot race** — reviewed `6a53e736`; the note landed in `26db65c8` |
+| 2 | The **D10 row** and **R-37's own heading** still said "`copyLink` strips it" — the mechanism R-D10-F replaced | Fixed (`f9cf2ca2`). Both now state that nothing is stripped and the *absence* of the delete is load-bearing |
+| 3 | **This plan and the R-30 build note still described `emitToken`** — the rejected mechanism — inside a bullet framed as a lesson worth carrying forward | Fixed. The bullet now carries the wrong-fix-then-right-fix arc, which is the transferable part |
+
+**The through-line of rounds 2 and 3 is one failure mode: a doc that describes the mechanism a
+ruling was *written with* rather than the one that *shipped*.** It bit three times on one branch,
+each time in the artifact a future reader would most trust — the phase plan's done-marker, the
+ruling's own heading, and a "carry this forward" lesson. An audit trail not re-derived from the
+code after the last change is decoration, and this is the second slice running to prove it.
+
+**Round 1 is the D9b lesson repeating exactly:** a fix introduced the next defect, and the cure was
+to stop patching the symptom (rewrite the token) and address the cause (never append after an open
+quote). The diff got smaller.
 
 ---
 

@@ -1316,12 +1316,21 @@ filters out.
 **Found at whole-branch review, fixed in-slice.** Three of these are worth carrying forward
 because each is a *class* of mistake, not a one-off:
 
-- **A writer that re-emits tokens verbatim breaks on an unterminated quote.** Clicking a pill while
-  `player:"Tank` sat in the box appended `floor:m9s` *inside* the open quote, producing one token
-  whose bare value was `Tank floor:m9s` — pill unlit, table empty, and **neither** hint line firing,
-  because the key was known and the value merely unmatched. Exactly the unexplained empty table
-  point 5 was ruled to prevent, reintroduced through the writers instead of the parser. Untouched
-  tokens are now re-emitted normalised when unterminated (keyed → bare; free → quote closed).
+- **A writer must never append after an unterminated quote.** Clicking a pill while `player:"Tank`
+  sat in the box appended `floor:m9s` *inside* the open quote, producing one token whose bare value
+  was `Tank floor:m9s` — pill unlit, table empty, and **neither** hint line firing, because the key
+  was known and the value merely unmatched. Exactly the unexplained empty table point 5 was ruled to
+  prevent, reintroduced through the writers instead of the parser.
+
+  ⚠ **The first fix for this was itself wrong, and is the more useful half of the lesson.** It
+  normalised the open token — keyed → bare, free → quote closed — which fixed the one-word case and
+  broke the multiword one: `player:"Tank One` became `player:Tank One`, re-tokenizing as
+  `player:Tank` plus a free `One`. A different filter, silently, past a regression test that only
+  covered one word. **The shipped fix does not rewrite the token at all.** An unterminated token can
+  only ever be *last* (its quote runs to end-of-string), so `appendToken` inserts the new token
+  **before** it and leaves it verbatim — R-D10-D's promise intact, no semantics changed.
+  `serializeToken` separately quotes any value containing whitespace, so editing the open token
+  itself cannot emit a bare multiword value. `emitToken` no longer exists; do not reinstate it.
 - **`slot:` matched a stale `weaponJob` the cell deliberately hides.** The Slot cell gates its job
   icon on `itemSlot === 'weapon'` because the edit API keeps a non-null `weapon_job` when a slot
   moves away from weapon — so `slot:pld` surfaced a Body row showing no PLD anywhere. Point 9 with
