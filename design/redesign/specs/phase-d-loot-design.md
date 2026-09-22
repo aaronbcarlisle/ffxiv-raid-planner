@@ -1250,6 +1250,87 @@ resolves the highlight against the **unfiltered** logs (`:72-77`) but renders on
 (`:90-97`). The user sees the right screen and no highlight, with nothing to indicate why. A
 non-shareable filter is the cheaper loss.
 
+**Build note — R-30 / R-36 / R-47 / R-37 all shipped in D10.** `HistoryFilters.tsx` (97 lines),
+`DEFAULT_HISTORY_FILTERS`, `HistoryFilterState`, `HistorySource`, `filterHistoryItems` and
+`historyWeeks` are **deleted**; the query string is the tab's only filter state. v2's parser is
+`utils/historyQuery.ts`, the control block is `components/loot/HistorySearch.tsx`, and
+`AllWeeksView.tsx` was never edited or imported (R-43 held). Contract in `DESIGN_SYSTEM.md` §3.37.
+
+Nine things this ruling text did **not** settle were ruled at plan or build time, and the build
+follows the ruling, not the sketch, wherever they disagree:
+
+1. **The pill set is §6's** — Type · Floor · Player. Week and Source keep their tokens but lose
+   their controls, so **the placeholder is where they are taught**:
+   `Search — player:"Tank One", floor:m9s,m10s, source:tome, week:3`. It deliberately does **not**
+   carry `Ctrl+Shift+F`, which §6's sketch draws and V1's placeholder advertises — that binding is
+   D11's (R-35), and advertising an activation that will not fire inverts D-55.
+2. **Pills merge into one comma list**, never a second token of the same key. `floor:m9s floor:m10s`
+   ANDs to empty, so a second click had to extend the first token's value list.
+3. **`hasQueryToken` and `toggleQueryToken` must agree across repeated keys.** Found at build: the
+   reader searched every token of a key while the writer edited only the first, so a hand-typed
+   `floor:m9s floor:m10s` lit the M10S pill off the *second* token and a click could never switch it
+   off. The remove branch now clears the value from all tokens of that key.
+4. **`player:` — quoted means exact, bare means substring.** The deleted dropdown matched by
+   **id** (`a99da91d:frontend/src/utils/historyItems.ts:166` — the line is gone from HEAD); a name-substring pill would silently over-select whenever one
+   roster name prefixes another ("Tank One" / "Tank One Alt"). Pills always quote, so a pill still
+   means *this player*, while R-30's own sanctioned `player:ali` still filters. **Residual,
+   accepted:** once a roster row is deleted the log keeps only `recipientPlayerName`, so a current
+   same-named player's pill claims those rows.
+5. **An unknown key is *ignored*; an unknown value on `source:`/`week:` *matches nothing*.** Both
+   are surfaced in the hint line. Not an inconsistency: a key the parser cannot identify names no
+   field and so cannot constrain anything, while a value on a known field is a real constraint
+   nothing satisfies. This closes the half of R-30's complaint the ruling text left open — it names
+   the unknown *key* but an unknown *value* produced the same unexplained empty table.
+6. **An unterminated quote is lenient.** It still groups to end-of-string, but it does not buy
+   exact-match semantics: `player:"Tank` is a query mid-typing, and exact-matching it empties the
+   table for exactly the reason the neutral trailing colon exists.
+7. **`week:` takes a whole number or it is an unknown value.** `parseInt('3abc')` is `3`, which
+   filtered to week 3 while reporting nothing — the failure mode of point 5 reintroduced by a
+   weaker check. One helper authors both the validity test and the match.
+8. **`method:` matches the raw method only.** Every `METHOD_INFO` label is the capitalised raw value
+   (`lootMethodDisplay.ts:10-13`), so a label clause could never add a match under case-insensitive
+   substring — dead code by the same standard that rejected a `delete('q')` for R-37.
+9. **`slot:` also reaches a material's `slotAugmented`**, so R-34's `aug {slot}` readout is
+   searchable. On the tab whose identity is *find*, visible-and-unsearchable is a defect. (`date:`
+   is the same class and is left alone — v1 has no date field either, so it is parity-neutral.)
+
+**R-37 holds by construction, not by a strip call.** The query lives in `useState` and never enters
+the URL, so `copyLink` has nothing to delete — a `params.delete('q')` against a param nothing writes
+is dead code that reads as protection. Because `buildEntryLink` **keeps every param it does not
+explicitly delete**, the *absence* of that delete is load-bearing and is commented at the denylist
+site; a test drives the real box and the real copy-link path to pin it. The `?entry=` highlight still
+resolves against the **unfiltered** logs, with a third test case added for a target the active query
+filters out.
+
+**Found at whole-branch review, fixed in-slice.** Three of these are worth carrying forward
+because each is a *class* of mistake, not a one-off:
+
+- **A writer that re-emits tokens verbatim breaks on an unterminated quote.** Clicking a pill while
+  `player:"Tank` sat in the box appended `floor:m9s` *inside* the open quote, producing one token
+  whose bare value was `Tank floor:m9s` — pill unlit, table empty, and **neither** hint line firing,
+  because the key was known and the value merely unmatched. Exactly the unexplained empty table
+  point 5 was ruled to prevent, reintroduced through the writers instead of the parser. Untouched
+  tokens are now re-emitted normalised when unterminated (keyed → bare; free → quote closed).
+- **`slot:` matched a stale `weaponJob` the cell deliberately hides.** The Slot cell gates its job
+  icon on `itemSlot === 'weapon'` because the edit API keeps a non-null `weapon_job` when a slot
+  moves away from weapon — so `slot:pld` surfaced a Body row showing no PLD anywhere. Point 9 with
+  the sign flipped: searchable but invisible. The matcher now gates identically.
+- **A test can pin the wrong thing convincingly.** T-8 asserted that `copyLink`'s output carries no
+  query, and its comment claimed that URL-backing the query later would fail it. It would not:
+  `buildEntryLink` reads `window.location.href`, while the repo's URL-backing path
+  (`useUrlTabState` → `useSearchParams`) never touches `window.location` under `MemoryRouter`. The
+  test now also reads the **router's** location, and a mutation that URL-backs the query does fail
+  it.
+
+Free text was extended to reach `slotAugmented` too (**R-D10-S**) — `legs` is what someone types to
+find which twine went into legs, and point 9's rule binds harder on the un-keyed form than the
+keyed one.
+
+**Placement (interim).** The search block sits **inside the History grid, below `FairnessSummary`
+and directly above the table** — not above the card, as §6's sketch implies. `FairnessSummary` stays
+between the toolbar and the table until D14 moves it Home (R-40), and a control belongs next to what
+it filters. The two positions converge once D14 lands.
+
 ### R-31 · A plain row click **opens the entry for editing**
 
 Same contract as a Log grid cell: click authors, `Shift+Click` copies the link, `Alt+Click` jumps to

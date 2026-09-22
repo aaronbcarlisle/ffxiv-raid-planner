@@ -494,7 +494,7 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   range, a `· current` marker on the current week, and a right-aligned `"{n} entries"` count.
   Direction-agnostic — they render under week asc as well as desc (R-D9b-E).
 - **Props:** `{ lootLog: LootLogEntry[]; materialLog: MaterialLogEntry[]; players: SnapshotPlayer[];
-  floors: string[]; filters: HistoryFilterState; currentWeek: number; rangeOfWeek: (week: number) =>
+  floors: string[]; query: ParsedHistoryQuery; currentWeek: number; rangeOfWeek: (week: number) =>
   WeekRange | null; logsLoading: boolean; logsFailed: boolean; canEdit: boolean;
   onEdit: (entry: LootLogEntry) => void; onCopyLink: (item: HistoryItem) => void;
   onDelete: (item: HistoryItem) => void }`.
@@ -537,6 +537,63 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   `<td colSpan>` inside the single `<tbody>`, which a screen reader announces as a data cell rather
   than a group header; one `<tbody>` per week with a `<th>` row is the semantically correct shape and
   is queued for the Phase P a11y pass (D9b review M3).
+
+### 3.37 HistorySearch — D10
+
+> ⚠ **`HistoryFilters` no longer exists.** D10 deleted it, along with `DEFAULT_HISTORY_FILTERS`,
+> `HistoryFilterState`, `HistorySource`, `filterHistoryItems` and `historyWeeks`. Its three
+> dropdowns (Week / Player / Source) held React state that filtered the table independently of the
+> search box — the two-sources-of-truth shape R-30 exists to remove. **The query string is now the
+> only filter state on this tab.** Nothing should re-create a parallel one.
+
+- **Anatomy:** a search row — `ui/Input` (`fullWidth`, `leftIcon` Search glyph) with the clear `✕`
+  as a **sibling** `primitives/IconButton`, not `Input`'s `rightIcon` slot (R-D10-I: that slot has
+  no other consumer, reserves only `pr-8`/`pr-10`, and `IconButton` carries `min-h-[44px]` below
+  `sm:` — a 44 px control inside the `h-10` (`md`) box. The fix for that would have to land in `ui/Input.tsx`,
+  which every V1 form renders, so the composition avoids the slot entirely). Below it a
+  `role="status"` hint line, then three pill rows — Type · Floor · Player — each a `role="group"`
+  with a `text-xs uppercase tracking-wide text-text-tertiary` label and `ui/Tag variant="filter"`
+  pills, composed exactly like the Priority floor row.
+- **The pills write tokens (R-30).** Clicking inserts the pill's token into the box; clicking again
+  removes it. They are therefore a **teaching surface** for a syntax that is otherwise
+  undiscoverable — the power-user feature and the beginner affordance are the same control. Values
+  of one key **merge into one comma list** (`floor:m9s,m10s`), never a second token of that key,
+  because repeated keys AND and would match nothing (R-36/R-D10-D).
+- **A pill lights only on exact token equality** — value *and* quoting form (R-D10-L). A typed
+  `player:ali` filters the table but lights nothing: the pills reflect what they wrote, not what
+  matches. Each row's `All` pill is lit exactly when **no** token of that key exists, and unlit
+  whenever *any* token of that key does — including one whose value the row has no pill for
+  (`floor:m1` unlights `All` without lighting a floor).
+- **Props:** `{ query: string; onQueryChange: (next: string) => void; unknownKeys: string[];
+  unknownValues: { key: 'source' | 'week'; value: string }[]; floors: string[];
+  players: SnapshotPlayer[] }`. Controlled; the host owns the query.
+- **Two clocks, deliberately.** The pills read the **live** query so a click lights immediately; the
+  table and the hint line read a **200 ms debounced** parse. A pill that waited to light would read
+  as a dropped click; a hint that fired per keystroke would scold you mid-word.
+- **The hint line is always mounted and empties its text** rather than unmounting — a live region
+  inserted already populated is not reliably announced (the D9b stats-count precedent). Each
+  applicable fact is its own `<p>`, because they are different outcomes and one sentence would make
+  the wrong one true:
+
+  | Condition | Line |
+  |---|---|
+  | unknown key | `Unknown filter "colour" — ignored. Try: player, floor, slot, type, method, week, job, source` |
+  | unknown `source:` value | `Unknown source "tomes" — nothing matches. Try: raid, tome, book, material` |
+  | unknown `week:` value | `Unknown week "three" — nothing matches. Use a week number.` |
+
+  **An unknown key is ignored; an unknown value matches nothing.** That is not an inconsistency: a
+  key the parser cannot identify names no field, so it cannot constrain anything, while a value on a
+  known field is a real constraint that nothing satisfies (R-D10-G/K).
+- **The placeholder is the resting-state teaching surface** and names the two keys that have tokens
+  but no pills: `Search — player:"Tank One", floor:m9s,m10s, source:tome, week:3`. It must **not**
+  advertise `Ctrl+Shift+F` — §6's sketch and V1's placeholder both do, but that binding is D11's, and
+  advertising an activation that will not fire is the D-55 rule inverted.
+- **The query is session-local and never enters the URL (R-37).** `buildEntryLink` keeps every param
+  it does not explicitly delete, so this holds *by construction* rather than by a strip call — which
+  is why the absence of a delete is commented at that site. URL-backing the query would let a filter
+  hide an `?entry=` deep-link silently: the table resolves the highlight against the **unfiltered**
+  logs but renders only filtered rows, so a filtered-out target scrolls to nothing and clears its own
+  params 2.5 s later, showing the right screen with no highlight and no reason why.
 
 ---
 

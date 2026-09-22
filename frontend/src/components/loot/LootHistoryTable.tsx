@@ -46,8 +46,14 @@
  * `inset` ring paints on all four edges in both themes at 1440 (screenshots in
  * the D9b PR). The outset glow is clipped by `overflow-clip`, as designed.
  *
- * Later slices: D10 the search box; D11 the row click / right-click
- * `ContextMenu` conversion (R-31/R-32); D12 gear-row anchors.
+ * D10 replaced the `filters` prop with a parsed search `query` and deleted
+ * `HistoryFilters` outright — the query string is the tab's ONLY filter state
+ * (R-30), so nothing here ANDs two surfaces together any more. The four
+ * zero-row strings and the stats count are unchanged by that slice (R-7);
+ * they are R-34-ruled and byte-restored from V1.
+ *
+ * Later slices: D11 the row click / right-click `ContextMenu` conversion
+ * (R-31/R-32); D12 gear-row anchors.
  */
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -61,17 +67,20 @@ import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../pri
 import { historyRowDomId, type HistoryItem } from './logWeekGridData';
 import {
   buildHistoryItems,
-  filterHistoryItems,
   sortHistoryItems,
   nextHistorySort,
   slotNameOf,
   methodLabelOf,
   DEFAULT_HISTORY_SORT,
-  type HistoryFilterState,
   type HistorySortContext,
   type HistorySortField,
   type HistorySortState,
 } from '../../utils/historyItems';
+import {
+  filterHistoryItemsByQuery,
+  type HistoryQueryContext,
+  type ParsedHistoryQuery,
+} from '../../utils/historyQuery';
 import { GEAR_SLOTS } from '../../types';
 import type { LootLogEntry, LootSlot, MaterialLogEntry, MaterialType, SnapshotPlayer } from '../../types';
 import type { FloorNumber } from '../../gamedata/loot-tables';
@@ -82,7 +91,13 @@ export interface LootHistoryTableProps {
   materialLog: MaterialLogEntry[];
   players: SnapshotPlayer[];
   floors: string[];
-  filters: HistoryFilterState;
+  /**
+   * The DEBOUNCED, parsed search query (D10). It replaced the three-pill
+   * `HistoryFilterState`: the query string is the tab's only filter state
+   * (R-30), so there is nothing here to AND against a second surface. An
+   * empty parse filters nothing.
+   */
+  query: ParsedHistoryQuery;
   /** pass clock.currentWeek — which separator carries the current-week marker. */
   currentWeek: number;
   /** pass clock.rangeOfWeek — returns null for a week the clock can't date. */
@@ -388,7 +403,7 @@ export function LootHistoryTable({
   materialLog,
   players,
   floors,
-  filters,
+  query,
   currentWeek,
   rangeOfWeek,
   logsLoading,
@@ -452,9 +467,23 @@ export function LootHistoryTable({
     }),
     [floors, playersById],
   );
+  // Same `playersById` the sort context reads, for the same reason: the name
+  // a `player:` token matches must be the name the Player cell shows, and the
+  // job a `job:` token matches must be the job its icon shows.
+  const queryCtx = useMemo<HistoryQueryContext>(
+    () => ({
+      playerNameOf: (i) => recipientNameOf(i, playersById),
+      playerJobOf: (i) => playersById.get(i.entry.recipientPlayerId)?.job ?? '',
+    }),
+    [playersById],
+  );
   const rows = useMemo(
-    () => sortHistoryItems(filterHistoryItems(buildHistoryItems(lootLog, materialLog), filters), sort, sortCtx),
-    [lootLog, materialLog, filters, sort, sortCtx],
+    () => sortHistoryItems(
+      filterHistoryItemsByQuery(buildHistoryItems(lootLog, materialLog), query, queryCtx),
+      sort,
+      sortCtx,
+    ),
+    [lootLog, materialLog, query, queryCtx, sort, sortCtx],
   );
   // Separators are a property of the WEEK SORT, not of the data (R-29): under
   // any other field the rows either side of a band are no longer one week.

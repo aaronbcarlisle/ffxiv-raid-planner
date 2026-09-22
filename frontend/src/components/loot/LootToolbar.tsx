@@ -3,11 +3,13 @@
  *
  * A flat flex row (RosterToolbar pattern): the Priority ⇄ Log ⇄ History view
  * toggle (leftmost, PR2), the left control cluster (the Log tab's
- * WeekScopeControl or History's HistoryFilters — slotted by Loot; Priority
- * slots nothing, since R-15 moved the week to Log and Priority is always the
- * clock's current week), a spacer, and — for editors — the Loot actions (Reset
- * [Log-only, D7 — bound to the Log's displayed week, R-16], Adjustments, Rules,
- * Log a drop, Log material [D8, R-20/R-26], and the week-logging wizard).
+ * WeekScopeControl — slotted by Loot; Priority and History slot NOTHING, since
+ * R-15 moved the week to Log and Priority is always the clock's current week,
+ * while D10 moved History's controls out of this row into HistorySearch, which
+ * renders beside the table it filters, R-D10-H), a spacer, and — for editors
+ * — the Loot actions (Reset [Log-only, D7 — bound to the Log's displayed week,
+ * R-16], Adjustments, Rules, Log a drop, Log material [D8, R-20/R-26], and the
+ * week-logging wizard).
  *
  * The wizard button names its week: R-22 requires the clock's mutations to say
  * which week they act on, and the same honesty applies to a write action that
@@ -21,7 +23,7 @@ import { Button } from '../primitives/Button';
 export interface LootToolbarProps {
   /** Priority ⇄ Log ⇄ History SegmentedToggle, slotted by Loot (leftmost). */
   viewToggle?: ReactNode;
-  /** Left control cluster — WeekScopeControl (log) or HistoryFilters (history); Priority slots nothing. */
+  /** Left control cluster — WeekScopeControl on Log ONLY; Priority and History slot nothing (R-15, R-D10-H). */
   weekControl: ReactNode;
   /** The Log view's displayed-week Reset dropdown (canEdit), rendered inside the action cluster. */
   resetMenu?: ReactNode;
