@@ -43,7 +43,7 @@ import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { SafeAvatar } from '../ui/SafeAvatar';
 import { RosterGearTable } from './RosterGearTable';
-import { buildSlotJumpTargets, type JumpKind, type SlotJumpTargets } from './rosterLedgerJumps';
+import { buildSlotJumpTargets, type JumpAnchorSlot, type JumpKind, type SlotJumpTargets } from './rosterLedgerJumps';
 import { hasHoverData } from './gearHoverData';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
@@ -110,6 +110,13 @@ export interface RosterCardProps {
    * Defaults to compact (pre-C1 rendering).
    */
   density?: ViewMode;
+  /**
+   * D12: the gear row a ledger jump landed on, pulsed inside the expanded
+   * gear table. The grid forwards it to the highlighted card alone; in
+   * compact density there is no table to carry it and the card's own
+   * `?player=` pulse is the whole outcome (R-D12-F).
+   */
+  highlightedSlot?: JumpAnchorSlot | null;
   actions: RosterCardActions;
   // ── Forwarded straight to useRosterCardActions (sourced from tier/context by
   //    the grid/assembly — Tasks 6/10). Defaulted so the card renders standalone.
@@ -157,6 +164,7 @@ export function RosterCard({
   reorderMode,
   dragHandle,
   density = 'compact',
+  highlightedSlot = null,
   actions,
   groupId = '',
   tierId = '',
@@ -1053,6 +1061,8 @@ export function RosterCard({
                 onTomeMaterialJump={handleTomeMaterialJump}
                 slotJumps={slotJumps}
                 onSlotJump={handleSlotJump}
+                playerId={player.id}
+                highlightedSlot={highlightedSlot}
                 disabledReason={gearPermission.reason}
               />
             </div>

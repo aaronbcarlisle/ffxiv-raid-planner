@@ -46,6 +46,8 @@ import { RosterCards } from './RosterCards';
 import { GearBoard } from './GearBoard';
 import { CharacterManageBridge } from './CharacterManageBridge';
 
+import { isJumpAnchorSlot, type JumpAnchorSlot } from './rosterLedgerJumps';
+import { scrollToGearRow } from './gearRowScroll';
 import { useRosterDensity } from './useRosterDensity';
 import { useRosterSortPreset } from './useRosterSortPreset';
 import { useRosterViewShortcuts } from './useRosterViewShortcuts';
@@ -354,19 +356,49 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   const [playerLinkParams] = useSearchParams();
   const playerHandledRef = useRef<string | null>(null);
   const [highlightedPlayerId, setHighlightedPlayerId] = useState<string | null>(null);
+  // D12: the slot half of the jump. `GroupViewContent.tsx` strips BOTH params
+  // on its own 2500ms timer (R-D12-I) — Roster still must not write the URL,
+  // so this is local state cleared by its own timer, exactly like the card
+  // highlight above.
+  const [highlightedSlot, setHighlightedSlot] = useState<JumpAnchorSlot | null>(null);
 
   useEffect(() => {
     const playerParam = playerLinkParams.get('player');
     if (!playerParam) return;
     if (!players.some((p) => p.id === playerParam)) return;
-    if (playerHandledRef.current === playerParam) return;
-    playerHandledRef.current = playerParam;
+    const slotParam = playerLinkParams.get('slot');
+    // D12: the one-shot key carries the slot too. Defensive, not a live fix —
+    // `Roster` unmounts on every tab switch and the only `?player=` writer sits
+    // on the gear tab, so a second jump always lands on a fresh mount with the
+    // ref at null. Keying on the bare id would still let a future same-tab jump
+    // to a DIFFERENT slot of the SAME player inherit a silent no-op.
+    const handledKey = `${playerParam}::${slotParam ?? ''}`;
+    if (playerHandledRef.current === handledKey) return;
+    playerHandledRef.current = handledKey;
+    // Validated, never trusted: `?slot=` reaches `gearRowDomId`, so an
+    // unvalidated value would build an arbitrary global DOM id to look up.
+    const slot = slotParam && isJumpAnchorSlot(slotParam) ? slotParam : null;
     // Resolves a URL deep-link id against roster data that arrives asynchronously
     // (the tier fetch); must run in an effect so it re-evaluates once `players`
     // populates. `playerHandledRef` above guards it to one-shot.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deep-link highlight is set in response to the URL param; mirrors Schedule's resolving effect (no scroll side-effect here — the shared GroupViewContent effect owns scroll+strip)
     setHighlightedPlayerId(playerParam);
+    // Same deep-link resolution as the line above — the directive there covers
+    // this effect, so a second one would report as an unused directive.
+    setHighlightedSlot(slot);
   }, [playerLinkParams, players]);
+
+  // D12: scroll the row into view. A POST-COMMIT effect (never a layout effect
+  // — `gearRowScroll.ts`'s precedence is stated for an already-committed tree),
+  // and keyed on the highlight itself rather than living in the resolving
+  // effect's cleanup, so unrelated `players`/param identity churn during the
+  // window can't cancel it. `GroupViewContent` scrolls the CARD at 100ms; this
+  // targets a row inside that card and re-centers at +220ms, so the two compose
+  // rather than fight (see `gearRowScroll.ts`).
+  useEffect(() => {
+    if (!highlightedPlayerId || !highlightedSlot) return;
+    return scrollToGearRow(highlightedPlayerId, highlightedSlot);
+  }, [highlightedPlayerId, highlightedSlot]);
 
   // Highlight clears 2500ms after it is set, via its OWN effect keyed on the
   // highlight itself (F6e timer-ownership lesson — never in the resolving
@@ -374,7 +406,10 @@ export function Roster({ group, tier, canManage }: RosterProps) {
   // during the window can't kill the timer before it fires).
   useEffect(() => {
     if (!highlightedPlayerId) return;
-    const timer = window.setTimeout(() => setHighlightedPlayerId(null), 2500);
+    const timer = window.setTimeout(() => {
+      setHighlightedPlayerId(null);
+      setHighlightedSlot(null);
+    }, 2500);
     return () => window.clearTimeout(timer);
   }, [highlightedPlayerId]);
 
@@ -386,6 +421,11 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', 'roster');
     url.searchParams.set('player', playerId);
+    // D12: a card link is a CARD target. The URL is built from the live
+    // `window.location.href`, so without this a copy taken during the 2500ms
+    // window after a slot jump ships the previous jump's row and pulses it on a
+    // player the sender never pointed at (the F-18 class).
+    url.searchParams.delete('slot');
     navigator.clipboard.writeText(url.toString()).then(
       () => toast.success('Link copied to clipboard'),
       () => toast.error("Couldn't copy the link"),
@@ -549,6 +589,7 @@ export function Roster({ group, tier, canManage }: RosterProps) {
           isAdminAccess={isAdminAccess}
           clipboardPlayer={clipboardPlayer}
           highlightedPlayerId={highlightedPlayerId}
+          highlightedSlot={highlightedSlot}
           groupId={group.id}
           tierId={tierId}
           contentType={contentType}

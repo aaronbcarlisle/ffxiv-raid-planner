@@ -69,6 +69,7 @@ import { CardShell, PlayerIdentity, ProgressBar, Tag } from '../ui';
 import { IconButton } from '../primitives/IconButton';
 import { OpenSeatCard } from './OpenSeatCard';
 import { RosterCard } from './RosterCard';
+import type { JumpAnchorSlot } from './rosterLedgerJumps';
 import type { DragAttributes, DragListeners } from './dragTypes';
 import { useDragAndDrop, type PlayerUpdate } from '../dnd/useDragAndDrop';
 import { useDragStore } from '../../stores/dragStore';
@@ -131,6 +132,13 @@ export interface RosterCardsProps {
    * `highlight-pulse` treatment.
    */
   highlightedPlayerId?: string | null;
+  /**
+   * D12: the gear row to pulse on the highlighted card. Forwarded to that
+   * card ALONE — a slot is meaningless without the player it belongs to,
+   * and `gear-row-{playerId}-{slot}` ids are global, so a second card
+   * pulsing the same slot would make the anchor ambiguous.
+   */
+  highlightedSlot?: JumpAnchorSlot | null;
   // ── Shared context, forwarded straight through to every RosterCard ──
   groupId?: string;
   tierId?: string;
@@ -341,6 +349,7 @@ export function RosterCards({
   isAdminAccess,
   clipboardPlayer,
   highlightedPlayerId,
+  highlightedSlot,
   groupId,
   tierId,
   contentType,
@@ -396,6 +405,7 @@ export function RosterCards({
         reorderMode={reorderMode}
         dragHandle={dragHandle}
         density={density}
+        highlightedSlot={player.id === highlightedPlayerId ? highlightedSlot ?? null : null}
         actions={actionsForPlayer(player)}
         groupId={groupId}
         tierId={tierId}

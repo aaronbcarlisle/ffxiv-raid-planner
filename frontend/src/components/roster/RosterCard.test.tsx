@@ -1722,3 +1722,60 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
     expect(pickerOpen()).toBe(false);
   });
 });
+
+// ── D12: the card's half of the `?slot=` jump ────────────────────────────────
+// `Roster` validates the param and `RosterCards` forwards it to the highlighted
+// card alone; this card's whole job is to hand `playerId` + `highlightedSlot`
+// down to `RosterGearTable`, where the `gear-row-{playerId}-{slot}` anchors
+// live. Drop `playerId` and no row carries an id at all — the jump then has
+// nothing to land on and silently degrades to the card fallback — so the
+// pairing, not either prop alone, is what these lock.
+describe('RosterCard — D12 gear-row anchors (the ?slot= landing)', () => {
+  it("anchors every gear row with this card's own player id, in expanded density", () => {
+    const { container } = renderCard(makePlayer(), { density: 'expanded' });
+
+    expect(container.querySelector('#gear-row-p1-head')).not.toBeNull();
+    expect(container.querySelector('#gear-row-p1-body')).not.toBeNull();
+    expect(container.querySelector('#gear-row-p1-ring2')).not.toBeNull();
+  });
+
+  it('pulses the named row and no other', () => {
+    const { container } = renderCard(makePlayer(), {
+      density: 'expanded',
+      highlightedSlot: 'head',
+    });
+
+    expect(container.querySelector('#gear-row-p1-head')).toHaveClass('highlight-pulse');
+    expect(container.querySelector('#gear-row-p1-body')).not.toHaveClass('highlight-pulse');
+  });
+
+  it("scopes the anchors to THIS card's player, so two cards can never collide", () => {
+    const { container } = renderCard(makePlayer({ id: 'p9' }), {
+      density: 'expanded',
+      highlightedSlot: 'head',
+    });
+
+    expect(container.querySelector('#gear-row-p9-head')).toHaveClass('highlight-pulse');
+    expect(container.querySelector('#gear-row-p1-head')).toBeNull();
+  });
+
+  it('pulses nothing when no slot is highlighted', () => {
+    const { container } = renderCard(makePlayer(), { density: 'expanded' });
+
+    expect(container.querySelector('#gear-row-p1-head')).not.toBeNull();
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
+  });
+
+  // R-D12-F cause 2: compact mounts the pip strip instead of the table, so
+  // there is no row to land on and the card's own `?player=` pulse is the
+  // whole outcome.
+  it('renders no gear rows at all in compact density', () => {
+    const { container } = renderCard(makePlayer(), {
+      density: 'compact',
+      highlightedSlot: 'head',
+    });
+
+    expect(container.querySelector('#gear-row-p1-head')).toBeNull();
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
+  });
+});
