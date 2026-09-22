@@ -463,6 +463,28 @@ D9b recorded and the reason "0 unresolved threads" is not an exit condition.
 | 5 | **The D9b mutation battery's first row could only ever report a compile error.** D10 deleted `filterHistoryItems` and the `filters` prop that row's mutant injects; a non-compiling mutant fails every test in the spec, so it reported a healthy kill count while proving nothing (claude[bot]) | **Fixed**: re-expressed in D10's vocabulary (row 1 now reads **2**), and the script gained an `INVALID MUTANT (did not compile)` verdict so the *class* is detected. The detector was itself verified by re-running the pre-fix mutation and watching it fire. D9b's table is marked superseded with the reason |
 | 3 | **This plan and the R-30 build note still described `emitToken`** — the rejected mechanism — inside a bullet framed as a lesson worth carrying forward | Fixed. The bullet now carries the wrong-fix-then-right-fix arc, which is the transferable part |
 
+| 6 | §3.1 still promised free terms are v1-verbatim "including the `w3` / `week 3` shorthand" — which R-D10-T had stopped being true one commit earlier | Fixed: the contract now names **both** deliberate deviations (R-D10-S, R-D10-T) and why each closes a find-surface gap |
+| 7 | **The battery accepted a non-unique anchor** — `old not in src` then `replace(old, new, 1)`, so a duplicated anchor mutates the first occurrence and reports a kill for a defect never introduced. The script's own docstring records that exact failure from its first run | Fixed: `count(old) == 1` or `ANCHOR NOT UNIQUE (n)`. **This one contradicted this plan** — §5a claimed every mutation asserts its anchor present *and unique*, true of the ad-hoc harnesses and not of the checked-in battery |
+| 7 | R-37 held **both** mechanisms at once: a warning saying nothing is stripped, under a heading and a paragraph both saying `copyLink` strips it | Heading and body now state what shipped; the original wording is kept inline, attributed and dated, so the ruling's history is not rewritten |
+| 7 | R-D10-Q's rationale said the implementer "chose exactness" without saying the choice was overruled | Fixed |
+
+**Seven rounds, and the count is the finding.** Two failure modes produced all of them, and neither
+is local to a line:
+
+1. **A doc describing the mechanism a ruling was *written* with rather than the one that
+   *shipped*** — rounds 2, 3, 6 and part of 7. Each time it was the artifact a future reader would
+   most trust: the phase plan's done-marker, the ruling's own heading, a "carry this forward"
+   lesson, the free-term contract.
+2. **Evidence that looks like protection but cannot fail** — rounds 1, 5 and the rest of 7: a
+   mutant that could only ever report a compile error, an anchor check that did not check
+   uniqueness, a test whose comment claimed a guarantee its harness could not deliver, and (in my
+   own tooling) a `sed` that silently no-opped and a `subprocess` crash that left a mutation in
+   the tree.
+
+**The feature never failed a review round.** Every finding was in error handling added *during*
+review, or in the audit trail describing it — the same shape D9b had, which is why that shape is
+now recorded rather than just fixed.
+
 **The through-line of rounds 2 and 3 is one failure mode: a doc that describes the mechanism a
 ruling was *written with* rather than the one that *shipped*.** It bit three times on one branch,
 each time in the artifact a future reader would most trust — the phase plan's done-marker, the
