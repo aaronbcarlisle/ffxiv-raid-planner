@@ -1138,6 +1138,36 @@ they each show. Sort state is session-local component state (`useState`), matchi
 separators and the current-week marker are **not** built this slice — rebuild them from note 1's
 git-ref archaeology.
 
+**Build note (D9b, 2026-09-21) — separators shipped; R-29 is now complete.** A `<tr>` with one
+`colSpan={COLUMNS.length + 1}` cell (`WeekSeparatorRow` in `LootHistoryTable.tsx`, not a restored
+`WeekGroupHeader.tsx` — R-D9b-D: it is table-coupled now and has one consumer), emitted whenever the
+previous row's `weekNumber` differs, gated on `sort.field === 'week'` and **direction-agnostic**
+(R-D9b-E — week asc is still grouped by week). Three deviations from note 1's archaeology, all
+deliberate:
+- **R-D9b-A** — the count reads `{n} entries`, not `{n} drop(s)`: §6's sketch says "entries", R-34's
+  stats count on the same screen says "entries", and the number includes material rows. `entryCount`
+  is the single author for both readouts.
+- **R-D9b-B** — the current week carries a visible `· current` beside the range as well as the pill
+  tint (§6's sketch). Tint alone is a colour-only signal. Range and marker share one span joined on
+  ` · `, so a week the clock cannot date renders "current" with no orphan dot.
+- **R-D9b-F** — the pill is `Tag variant="label" tone={isCurrent ? 'accent' : 'muted'}`, not the
+  archaeology's hand-rolled span. `Tag`'s `accent` tone **is** the measured pair note 1 argues for
+  (`bg-accent/15 text-accent-hover`) and `muted` **is** its non-current pair
+  (`bg-surface-elevated text-text-secondary`), so the contrast ruling survives intact — verified live
+  in light theme, where the pill computes `rgb(10, 107, 96)` = `#0a6b60` = accent-hover exactly. Only
+  `font-extrabold` is dropped: an appended weight utility does **not** beat `Tag`'s own `font-medium`
+  (same Tailwind layer, emission order decides — measured 500 on the rendered pill), so shipping it
+  would have been a no-op class. `font-display` is applied and does take effect.
+
+**Re-measured after the layout change** (D9a's own lesson): with separators rendered, the table's
+min-content is **836 px** and max-content **954 px** at 1440 — +1 px each vs D9a's 835/953, so the
+`colSpan` cell does not move the intrinsic widths and D9a-n's clipping conclusion stands.
+
+**The `<tr>` `highlight-pulse` ring was finally eyeballed** (D9a had computed-style evidence only):
+under `border-collapse: collapse` the `inset` ring paints on all four edges in **both** themes at
+1440. The outset glow is clipped by the card's `overflow-clip`, as D9a's trade note predicted. No
+fix was needed.
+
 ### R-30 · **One filter state** — the pills write into the search box (D-72)
 
 Clicking a pill inserts its token — `player:alice`, `floor:m12s`, `type:loot` — and clicking it again
@@ -1341,6 +1371,23 @@ name in today's `LootHistoryTable.tsx`, now keyed on `historyRowDomId`;
 `3f90d420:…/LootHistoryTable.tsx:110-116` (the pre-rewrite early-return empty `<p>`) → the single
 empty `<tr>` (`colSpan={COLUMNS.length + 1}`) inside today's `<tbody>`. Both left-hand citations are
 `3f90d420` line numbers, not current ones — cite the symbols above, which do not rot.
+
+**Build note (D9b, 2026-09-21) — the Restores row is now built; R-34 is complete.**
+- **Stats count.** `{n} entries`, plus `({X} gear, {Y} material)` gated on both kinds being present
+  in the **filtered** set — the new condition this row called for, replacing v1's `entryType ===
+  'all'` gate (`AllWeeksView.tsx:508`) for a state R-30/D10 deletes. It sits **inside the table card,
+  above `<thead>`** (R-D9b-C, user ruling) as a `role="status"` line, so a filter change announces;
+  §6's sketch placed it a level out, in the toolbar stack, but the count belongs with the table it
+  describes and D14's removal of `FairnessSummary` would otherwise re-flow it.
+- **Filtered-vs-empty.** v1's two strings restored verbatim: `No entries match your filters.` when
+  the tier holds entries the filter excludes, `No loot or materials logged this tier.` when it holds
+  none. The condition reads the **raw** `lootLog`/`materialLog` props, not `rows`. D9a's single
+  message (`No entries match — log a drop from the Priority view.`) is gone; its hint had also gone
+  stale, since logging is a Log-toolbar action now, not a Priority-view one.
+- **The `?entry=` highlight still resolves against the unfiltered logs**, as this row requires, and
+  that is now pinned by a test: an entry excluded by the active filter still arms the effect and
+  still self-clears the param, with a paired control proving an id absent from the raw logs does
+  **not**. Mutation-checked — re-pointing the lookup at the filtered set kills exactly that test.
 
 ### R-35 · Shortcuts: `Ctrl+Shift+F` stays, `Alt+1/2/3` does not
 

@@ -1,0 +1,193 @@
+# Phase D · Slice D9b — Week separators + History states
+
+**Branch:** `phase-d/d9b-separators-states` off `main` @ `257ec940`
+**Binding authority:** `design/redesign/specs/phase-d-loot-plan.md:196` (the D9b row)
+**Design rulings:** R-29 (separators), R-34 (stats count, filtered-vs-empty)
+**Predecessor:** D9a (PR #262) shipped the flat sortable table and *deliberately deferred* all four
+items below.
+
+---
+
+## 0. Opening evidence — the `<tr>` `highlight-pulse` ring, finally eyeballed
+
+D9a shipped the deep-link pulse on a `<tr>` inside a `border-collapse: collapse` table and recorded
+it as **DOM-evidenced only** — computed style asserted, never looked at. Chrome has historically
+dropped `box-shadow` on table rows in the collapsed border model, which would have made the whole
+inset-ring design (`index.css:562`, chosen *because* "inset ring + fill render on all four edges
+regardless of element type") silently a no-op on this surface.
+
+**Measured 2026-09-21, live, on `main` @ `257ec940`**, DEVTST `loot-entry-69`, viewport 1440x900,
+animation frozen at the 0% keyframe (`animation-play-state: paused`) so the ring could be captured:
+
+| Theme | Computed `box-shadow` | Painted? |
+|---|---|---|
+| dark | `oklab(... / 0.85) 0 0 0 2px inset` + outset glow | **Yes** — 2px ring on all four edges |
+| light | `oklab(... / 0.7) 0 0 0 2px inset` + outset glow | **Yes** — 2px ring on all four edges |
+
+`getComputedStyle(table).borderCollapse === 'collapse'` in both. The outset glow is clipped by the
+card's `overflow-clip`, exactly as D9a's trade note predicted; the inset ring — the load-bearing
+half — is intact. **No fix needed.** This closes the open question, and the claim is now
+screenshot-backed rather than inferred.
+
+---
+
+## 1. Scope
+
+Four deliverables, all named in the D9b plan row.
+
+1. **R-29 week separators**, rendered **only while `sort.field === 'week'`**, rebuilt from the
+   deleted `WeekGroupHeader` (`3f90d420:frontend/src/components/loot/WeekGroupHeader.tsx`).
+2. **R-34's stats count** — `{n} entries` with a `(X gear, Y material)` split.
+3. **R-34's filtered-vs-empty split** — two distinct empty messages.
+4. **`currentWeek` / `rangeOfWeek` props re-added** (D9a-l), re-consuming
+   `hooks/useWeekClock`'s `WeekRange` so `knip` returns to **+0** vs `main`.
+
+Plus the D9b row's explicit test obligation: the `?entry=` highlight resolves against the
+**unfiltered** logs, proven under separators.
+
+**Out of scope** (later slices, unchanged): the search box (D10), row click / right-click
+`ContextMenu` (D11), gear-row anchors (D12), `FairnessSummary`'s move to Home (D14).
+
+---
+
+## 2. Rulings taken this slice
+
+| # | Ruling | Why | Cost if reversed |
+|---|---|---|---|
+| **R-D9b-A** | Separator count reads **`{n} entries`**, not the archaeology's `{n} drop(s)` | The §6 sketch says "4 entries", and R-34's stats count on the same screen says "entries" — one screen, one word. The count includes material rows, which are not "drops" in the sense the Type column uses | one string + one test |
+| **R-D9b-B** | Current week marked by the tinted pill **and** a visible `· current` | §6 sketch. The archaeology's tint alone is a colour-only signal — inaudible to a screen reader and weak for colourblind users. The measured `text-accent-hover` token is kept **verbatim** per impl note 1 | one span |
+| **R-D9b-C** | The stats count sits **inside the table card, above `<thead>`** | User ruling. The count travels with the table it describes rather than with a toolbar row D14 will re-flow. `role="status"` so a filter change announces | one element move |
+| **R-D9b-D** | The separator is a **`<tr><td colSpan>`** inside the existing single `<tbody>`, authored **in `LootHistoryTable.tsx`** rather than as a restored `WeekGroupHeader.tsx` | The rebuilt thing is table-coupled now (`colSpan`, row semantics) and has exactly one consumer; a separate file would be a one-import indirection. Impl note 1 preserves the archaeology's *content*, not its file | file move |
+| **R-D9b-F** | The pill goes through `Tag variant="label"` (`accent` / `muted` tones), not the archaeology's hand-rolled span; `font-extrabold` is dropped | `Tag`'s `accent` tone IS `bg-accent/15 text-accent-hover` and `muted` IS `bg-surface-elevated text-text-secondary` — the measured-contrast ruling survives exactly, verified live (`#0a6b60` in light). An appended weight utility does not beat `Tag`'s `font-medium` (measured 500), so shipping `font-extrabold` would have been a no-op class | one className |
+| **R-D9b-E** | Separators are direction-agnostic — they render under Week **asc** as well as desc | R-29 scopes them to "sorted by week", not to a direction. Ascending week order is still grouped by week, so the separator is still true | one condition |
+
+---
+
+## 3. Implementation
+
+### 3.1 `LootHistoryTable.tsx`
+
+**Props** — re-add the two D9a dropped, restoring the `WeekRange` import:
+
+```ts
+  /** pass clock.currentWeek. */
+  currentWeek: number;
+  /** pass clock.rangeOfWeek. */
+  rangeOfWeek: (week: number) => WeekRange | null;
+```
+
+**Separator range formatting** — lifted verbatim from the archaeology, comment included:
+
+```ts
+/** UTC-pinned so the shown date never shifts a day (WeekScopeControl precedent). */
+const RANGE_FMT = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+```
+
+This is deliberately a *second* formatter beside the existing `DATE_FMT`: the Date **column** is
+local time (D9a-o, a logged moment) and the separator **range** is UTC (a lockout boundary). Both
+are correct for what they each show; the R-29 build note already records the split.
+
+**Pill** — `Tag variant="label"` with the `accent` / `muted` tones (R-D9b-F, taken during the build
+once `Tag`'s tone map was read). Those tones ARE the archaeology's two class pairs, so the
+measured-contrast ruling at `3f90d420:.../WeekGroupHeader.tsx:30-36` is preserved exactly; the
+reasoning is carried over into a comment beside the component. `font-extrabold` is deliberately not
+carried — see the ruling.
+
+**Grouping** — `rows` is already sorted; when the sort is `week`, a separator is emitted whenever
+`entry.weekNumber` differs from the previous row's. Counts come from one pass over `rows`.
+
+**Render gate** — `const showSeparators = sort.field === 'week';`
+
+### 3.2 Stats count
+
+```
+{total} {total === 1 ? 'entry' : 'entries'}   // always
+ (X gear, Y material)                          // only when BOTH > 0
+```
+
+R-34 replaces v1's `entryType === 'all'` condition (a state R-30/D10 deletes) with "both kinds are
+present in the filtered set". Counted off `rows` — the *filtered* set — so the number always
+describes what is on screen.
+
+### 3.3 Filtered-vs-empty
+
+| Condition | Message |
+|---|---|
+| `lootLog.length + materialLog.length === 0` | `No loot or materials logged this tier.` |
+| otherwise, `rows.length === 0` | `No entries match your filters.` |
+
+Both strings are v1's (`AllWeeksView.tsx:530-537`), which is the parity target R-34 names. The
+shipped single message (`No entries match — log a drop from the Priority view.`) goes away: its
+hint is also stale, since logging now happens from the Log toolbar, not "the Priority view".
+
+### 3.4 `Loot.tsx`
+
+Two props onto the existing mount: `currentWeek={clock.currentWeek}` and
+`rangeOfWeek={clock.rangeOfWeek}` — the exact spelling `3f90d420:.../Loot.tsx:998-999` used.
+
+---
+
+## 4. Tests
+
+| # | Test | Proves |
+|---|---|---|
+| T1 | Week desc: a separator precedes each week's first row, with pill, UTC range and `{n} entries` | R-29 core |
+| T2 | Sorting by Player removes every separator | R-29's "only under week sort" |
+| T3 | Week **asc** still renders separators | R-D9b-E |
+| T4 | The current week's separator carries `· current`; a past week's does not | R-D9b-B |
+| T5 | `rangeOfWeek -> null` renders the separator without a range and without a stray `·` | the archaeology's `{range && ...}` |
+| T6 | Counts are per week and reflect the active filter | R-29 / R-34 |
+| T7 | `12 entries (9 gear, 3 material)` only when both kinds present; `entry` singular at 1 | R-34 stats |
+| T8 | Empty logs -> "No loot or materials logged this tier."; non-empty logs filtered to zero -> "No entries match your filters." | R-34 split |
+| T9 | **`?entry=` resolves against the UNFILTERED logs**: an entry excluded by the active filter is still "found" (params still self-clear), and one that is visible renders `highlight-pulse` with separators on | the D9b row's named obligation + the C7 jump destination |
+
+T9 is the one the plan row calls out by name, because `RosterCard.tsx:281-297`'s shipped C7 jump
+lands here and the user arriving from it has whatever filter they last left behind.
+
+---
+
+## 5. Gates
+
+- `pnpm test` · `pnpm lint` (0 errors, <= 903 warnings) · `pnpm build` (`tsc -b`, **not** `--noEmit`)
+- `pnpm check:design-system:strict`
+- `pnpm dupes` — no regression against 3.57% lines / 4.01% tokens
+- **`pnpm knip` -> Unused exported types 141 -> 140** (`WeekRange` consumed), every other count equal
+- Live browser pass at 1440, both themes, plus re-measured table min/max-content widths — the
+  separator row adds a `colSpan` cell whose content can widen min-content (D9a's lesson: **a layout
+  change invalidates earlier measurements**)
+- Screenshots embedded in the PR body (user rule)
+- Release note in `releaseNotes.ts` (internal; `CURRENT_VERSION` unchanged)
+
+---
+
+## 6. Measured results (this slice; command named, run from `frontend/`)
+
+| Gate | Result | vs `main` @ `257ec940` |
+|---|---|---|
+| `pnpm test` | **233 files / 2989 tests passed** | +17 tests, 0 failures |
+| `pnpm lint` | **0 errors / 903 warnings** | **equal** — the ceiling, unchanged |
+| `pnpm build` (`tsc -b && vite build`) | clean | — |
+| `pnpm check:design-system:strict` | clean | — |
+| `pnpm knip` | Unused exported types **141 → 140**; every other count identical | **+0** — D9a's disclosed +1 closed |
+| `pnpm dupes` | 3.57 % lines / 4.01 % tokens, 322 clones | **equal**, no regression |
+
+**Mutation checks** (temporary edit, run, revert — proving the new tests are load-bearing):
+
+| Mutation | Tests killed |
+|---|---|
+| `?entry=` resolved against the **filtered** set instead of the raw logs | exactly **1** — the unfiltered-resolution test |
+| `timeZone: 'UTC'` removed from `RANGE_FMT` | **4** (runner TZ `America/New_York`; a UTC CI runner cannot distinguish, so this guard is local-only — stated, not overclaimed) |
+
+**Live browser pass**, 1440 viewport, DEVTST, both themes, 0 console errors from this surface:
+
+- Separators render under Week desc **and** Week asc; vanish under Player and Date.
+- Current-week marker verified against real data by logging one week-10 drop, capturing, then
+  **deleting it again** (confirm modal's "also uncheck as acquired" unticked first, so no gear state
+  was touched). History returned to 17 entries; the dev DB is no dirtier than it was.
+- Light-theme current pill computes `rgb(10, 107, 96)` = `#0a6b60` = `accent-hover`, the exact value
+  the archaeology's contrast comment names.
+- **Re-measured** (D9a's lesson): min-content **836 px**, max-content **954 px** — +1 px vs D9a's
+  835/953. The separator's `colSpan` cell does not move the intrinsic widths.
+- The one console warning seen (`aria-hidden` on a focused `input.sr-only`) comes from the **delete
+  confirm modal's** checkbox, not from this table — pre-existing, and already on the standing queue
+  as the Modal focus-restore / index.css aria-hidden items.

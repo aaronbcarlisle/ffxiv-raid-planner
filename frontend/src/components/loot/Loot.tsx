@@ -996,6 +996,8 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             players={players}
             floors={floors}
             filters={filters}
+            currentWeek={clock.currentWeek}
+            rangeOfWeek={clock.rangeOfWeek}
             canEdit={canEdit}
             onEdit={openEdit}
             onCopyLink={copyLink}

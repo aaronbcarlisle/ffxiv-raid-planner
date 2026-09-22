@@ -60,6 +60,23 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.24',
+    date: '2026-09-21T22:00:00Z',
+    title: 'Phase D slice D9b — History week separators + entry counts (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'History groups by week again, and tells you how many entries you are looking at',
+        description:
+          'V2 preview: sorted by week (the default), History now breaks the table into labelled week bands — each one showing the week number, its date range and how many entries it holds, with the current week marked. Sort by any other column and the bands disappear, because the rows either side of one would no longer be a week. The table also shows a running count above it, split into gear and materials when both are present, and an empty History now says whether nothing has been logged this tier or nothing matches your filters — previously it gave the same message either way.',
+        pr: 0,
+        prTitle:
+          'feat(v2): D9b History week separators + stats count and the filtered-vs-empty split',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.23',
     date: '2026-09-18T20:00:00Z',
     title: 'Phase D slice D9a — History becomes a flat sortable table (v2 preview)',
