@@ -83,6 +83,17 @@ export function methodLabelOf(item: HistoryItem): string {
   return info?.label ?? item.entry.method;
 }
 
+/**
+ * The Type cell's `aug {slot}` text AND the `slot:` match — one author.
+ * D9a-t kept the shipped `null -> tome wpn` fallback and closed the
+ * `tome_weapon` enum leak; D10 moved it here so the matcher can reuse it,
+ * because comparing the RAW enum meant `slot:wpn` could not find a row whose
+ * Type column visibly reads `aug tome wpn` (PR #265 round 9).
+ */
+export function augSlotLabel(slotAugmented: MaterialLogEntry['slotAugmented']): string {
+  return slotAugmented == null || slotAugmented === 'tome_weapon' ? 'tome wpn' : slotAugmented;
+}
+
 /** The Slot cell's text AND the slot sort key — one author (D9a-g). */
 export function slotNameOf(item: HistoryItem): string {
   if (item.kind === 'material') {

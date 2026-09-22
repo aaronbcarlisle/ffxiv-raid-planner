@@ -1218,7 +1218,8 @@ v2's own pill state (`HistoryFilters.tsx`, `DEFAULT_HISTORY_FILTERS`) dissolves 
 
 A comma-separated value means OR: `floor:m9s,m10s`. Repeated keys keep their current AND meaning, so
 no existing query changes behaviour. `source:` is added, mapping to v2's `matchesSource`
-(`historyItems.ts:54-64`) — `source:tome` is tome-or-purchase **and loot-only**, which no `method:`
+(moved to `utils/historyQuery.ts` at D10; it was `historyItems.ts:54-64` when this was ruled) —
+`source:tome` is tome-or-purchase **and loot-only**, which no `method:`
 tokens can express.
 
 > **Precision added at D10 build.** Comma alternation — added by this same ruling — means

@@ -21,7 +21,7 @@
  * `HistoryFilters` to avoid in the first place (R-4).
  */
 import type { HistoryItem } from '../components/loot/logWeekGridData';
-import { slotNameOf } from './historyItems';
+import { slotNameOf, augSlotLabel } from './historyItems';
 
 // ---------------------------------------------------------------------------
 // Tokenizer — shared by the parser and the pill token writers.
@@ -381,7 +381,7 @@ function valueMatches(
       const slotName = slotNameOf(item).toLowerCase();
       const rawSlot = rawSlotOf(item).toLowerCase();
       const weaponJob = weaponJobOf(item);
-      const slotAugmented = item.kind === 'material' ? item.entry.slotAugmented : undefined;
+      const slotAugmented = item.kind === 'material' ? augSlotLabel(item.entry.slotAugmented) : undefined;
       return (
         slotName.includes(v)
         || rawSlot.includes(v)
@@ -445,7 +445,10 @@ function termMatches(term: string, item: HistoryItem, ctx: HistoryQueryContext):
   // "legs" is what someone actually types to find which twine went into legs,
   // and R-D10-N's rule — visible-and-unsearchable is a defect on the tab whose
   // identity is *find* — binds harder on the un-keyed form than the keyed one.
-  const slotAugmented = item.kind === 'material' ? item.entry.slotAugmented : undefined;
+  // Matched through `augSlotLabel`, i.e. against what the Type cell SHOWS: the
+  // raw enum spells a universal tomestone `null`/`tome_weapon` while the cell
+  // reads `aug tome wpn`, so comparing the enum left the visible text unfindable.
+  const slotAugmented = item.kind === 'material' ? augSlotLabel(item.entry.slotAugmented) : undefined;
   const isExtra = item.kind === 'loot' && item.entry.isExtra;
   const isBis = item.kind === 'loot' && !item.entry.isExtra;
   const weekNumber = item.entry.weekNumber;

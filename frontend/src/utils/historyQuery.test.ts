@@ -551,3 +551,21 @@ describe('review round 8 — removal must not close an unrelated open quote (Cop
     expect(parseHistoryQuery(next).filters[0].values.map((v) => v.text)).toEqual(['Healer Two']);
   });
 });
+
+describe('review round 9 — the aug readout matches what the CELL shows (Copilot)', () => {
+  it('slot:wpn and free "tome wpn" find a universal-tomestone row', () => {
+    // The Type cell renders both `null` and `tome_weapon` as `aug tome wpn`
+    // (augSlotLabel). Comparing the RAW enum left that visible text unfindable
+    // — and for a null row there was no value to compare at all.
+    const nullAug = mat({ id: 1, materialType: 'universal_tomestone', slotAugmented: null });
+    const enumAug = mat({ id: 2, materialType: 'universal_tomestone', slotAugmented: 'tome_weapon' });
+    const legs = mat({ id: 3, materialType: 'twine', slotAugmented: 'legs' });
+    const items = [nullAug, enumAug, legs];
+
+    expect(filter('slot:wpn', items).map((i) => i.entry.id)).toEqual([1, 2]);
+    expect(filter('tome wpn', items).map((i) => i.entry.id)).toEqual([1, 2]);
+    // Control: an ordinary slot still matches on its own name, not via the
+    // fallback — the mapping must not swallow real values.
+    expect(filter('slot:legs', items).map((i) => i.entry.id)).toEqual([3]);
+  });
+});

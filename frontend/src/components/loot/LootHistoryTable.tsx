@@ -71,6 +71,7 @@ import {
   nextHistorySort,
   slotNameOf,
   methodLabelOf,
+  augSlotLabel,
   DEFAULT_HISTORY_SORT,
   type HistorySortContext,
   type HistorySortField,
@@ -150,11 +151,6 @@ function isLootSlot(s: string): s is LootSlot {
 function floorToneOf(floors: string[], floor: string): Tone {
   const idx = floors.indexOf(floor);
   return idx >= 0 && idx < 4 ? `floor-${(idx + 1) as FloorNumber}` : 'muted';
-}
-
-/** D9a-t: the shipped `null → tome wpn` fallback kept, the `tome_weapon` enum leak closed. */
-function augSlotLabel(slotAugmented: MaterialLogEntry['slotAugmented']): string {
-  return slotAugmented == null || slotAugmented === 'tome_weapon' ? 'tome wpn' : slotAugmented;
 }
 
 /** The one authored spelling of "what name does this row show" — sort key and cell text both call it. */
