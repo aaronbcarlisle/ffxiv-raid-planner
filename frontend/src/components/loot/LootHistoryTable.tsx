@@ -87,6 +87,15 @@ export interface LootHistoryTableProps {
   currentWeek: number;
   /** pass clock.rangeOfWeek — returns null for a week the clock can't date. */
   rangeOfWeek: (week: number) => WeekRange | null;
+  /**
+   * True while either log is being fetched. Only the EMPTY state reads it:
+   * "No loot or materials logged this tier." is a claim about the tier, and
+   * the component cannot make that claim over arrays that simply haven't
+   * arrived (D9b review M1). Rows are still rendered while true — a tier
+   * switch shows the previous tier's rows until the new ones land, which is
+   * the pre-existing behaviour on both shells and not this slice's to change.
+   */
+  logsLoading: boolean;
   canEdit: boolean;
   onEdit: (entry: LootLogEntry) => void;
   onCopyLink: (item: HistoryItem) => void;
@@ -373,6 +382,7 @@ export function LootHistoryTable({
   filters,
   currentWeek,
   rangeOfWeek,
+  logsLoading,
   canEdit,
   onEdit,
   onCopyLink,
@@ -461,9 +471,16 @@ export function LootHistoryTable({
       : entryCount(rows.length);
 
   // R-34's filtered-vs-empty split. Read off the RAW props, not `rows`: the
-  // question is whether the tier holds anything at all, which is exactly what
-  // the unfiltered logs answer.
+  // question is whether the tier holds anything at all, which is what the
+  // unfiltered logs answer ONCE THEY HAVE LOADED — hence the `logsLoading`
+  // guard, which withholds the claim rather than asserting it over arrays that
+  // are empty only because the request is still in flight.
   const tierIsEmpty = lootLog.length === 0 && materialLog.length === 0;
+  const emptyMessage = logsLoading
+    ? 'Loading entries…'
+    : tierIsEmpty
+      ? 'No loot or materials logged this tier.'
+      : 'No entries match your filters.';
 
   // Plain args to the render functions below (CELL / renderActionsCell), not
   // props on memoized children — identity is irrelevant here, so memoizing
@@ -506,7 +523,7 @@ export function LootHistoryTable({
           {rows.length === 0 ? (
             <tr>
               <td colSpan={COLUMNS.length + 1} className="px-4 py-6 text-sm text-text-tertiary">
-                {tierIsEmpty ? 'No loot or materials logged this tier.' : 'No entries match your filters.'}
+                {emptyMessage}
               </td>
             </tr>
           ) : (

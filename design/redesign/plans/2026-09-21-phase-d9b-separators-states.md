@@ -160,6 +160,27 @@ lands here and the user arriving from it has whatever filter they last left behi
 
 ---
 
+## 5a. Review findings folded in
+
+Both reviewers ran over the finished diff. Verdicts: **change-vet FALSE-DONE** (one line, in the
+spec's status text, not the code) and **code review PASS on spec compliance** with 3 Minors.
+
+| # | Finding | Disposition |
+|---|---|---|
+| **F1** | The R-34 build note said "R-34 is complete". It is not — D9b builds **one** of its four rows | **Fixed.** Replaced with a per-row status table: Loses ✅ D7 · Restores ✅ D9b · Keeps' material-edit half → D11 · Receives → D12 · fairness-block removal → D14. This is the exact drift class the repo has been bitten by, and it was mine |
+| **M1** | `tierIsEmpty` asserts "nothing logged this tier" over arrays that are empty only because the fetch hasn't landed — D9b upgraded D9a's neutral message into a false positive claim | **Fixed.** New `logsLoading` prop → a third state, `Loading entries…`. Two tests. The one-frame pre-effect window remains (store flags initialise `false`) and is disclosed rather than papered over |
+| **M2** | Nothing proved `currentWeek` comes from `clock` rather than `logWeek.week` — both are numbers in scope and either compiles | **Fixed.** Assembly guard in `Loot.test.tsx` on the D9a precedent: clock week 3, Log pointed at week 2 via `?week=2`, asserts the marker lands on WEEK 3. **Mutation-checked** — wiring it to `logWeek.week` kills exactly that test |
+| **M3** | The separator is a `<td colSpan>` in the single `<tbody>`; a screen reader announces it as a data cell, not a group header | **Accepted debt, queued.** One `<tbody>` per week with a `<th>` row is the correct shape; R-D9b-D ruled the single-tbody form and R-34's D9a note already framed the empty row the same way. Recorded in `DESIGN_SYSTEM.md` §3.36 and queued for the **Phase P a11y pass** |
+| **N1** | "Only `font-extrabold` is dropped" understated it — `Tag` also adds a 1px border and `px-2` vs `px-2.5`; and the weight change is a *choice*, since `font-extrabold!` would carry | **Fixed.** All three deltas disclosed; the framing corrected from inevitability to trade |
+| **N2** | `DESIGN_SYSTEM.md` §3.36 still documented one-card-per-week, `WeekGroupHeader`, `"{count} drop(s)"` and the deleted empty string | **Fixed.** §3.36 rewritten for the shipped table, with a banner that `WeekGroupHeader` no longer exists; §3.35's cross-reference and the §2 index line repointed |
+| **N3** | The test helper's UTC comment overclaimed — the guard only bites off UTC | **Fixed.** Comment now says so. Pinning `TZ` in `setup.ts` would make it portable but needs a D9a local-time-test audit first — not this slice |
+| **N4** | `toEqual([''])` encoded "no separator" as "the empty row has no span" | **Fixed.** Now asserts the row count and the `colSpan`, which is the load-bearing shape |
+| **N5** | The pill test pins `Tag`'s internal class strings | **Kept deliberately.** The plan row makes the measured `text-accent-hover` token binding; pinning it is the point. Reviewer agreed |
+| **N6 / F8** | `pr: 0` and the plan-row "✅ BUILT (D9b)" need the PR number | Backfilled at PR open |
+| **F9** | §6's ASCII sketch now contradicts the shipped surface (count placement, `· current` position) | **Fixed.** Annotated in place rather than redrawn, so the change stays visible |
+
+---
+
 ## 6. Measured results (this slice; command named, run from `frontend/`)
 
 | Gate | Result | vs `main` @ `257ec940` |

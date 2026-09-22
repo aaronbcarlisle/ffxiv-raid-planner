@@ -64,8 +64,10 @@ const players = [makePlayer()];
 
 /**
  * A UTC-pinned range generator: week N starts Jun 16 2026 UTC + (N-1) weeks.
- * Week 3 therefore spans Jun 30 - Jul 7. Deliberately built from `Date.UTC`
- * so a formatter that lost its `timeZone: 'UTC'` renders a different day.
+ * Week 3 therefore spans Jun 30 - Jul 7. Built from `Date.UTC` so that a
+ * formatter which lost its `timeZone: 'UTC'` renders a DIFFERENT day — note
+ * this only bites off UTC (it does locally, `America/New_York`; a UTC CI
+ * runner cannot tell the two apart, so treat this as a local guard).
  */
 const rangeOfWeek = (week: number) => ({
   start: new Date(Date.UTC(2026, 5, 16 + (week - 1) * 7)),
@@ -94,6 +96,7 @@ function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> 
     filters: DEFAULT_HISTORY_FILTERS,
     currentWeek: 3,
     rangeOfWeek,
+    logsLoading: false,
     canEdit: true,
     onEdit: vi.fn(),
     onCopyLink: vi.fn(),
@@ -454,8 +457,31 @@ describe('LootHistoryTable', () => {
 
     it('renders no week separator alongside an empty state', () => {
       const { container } = renderTable({ lootLog: [], materialLog: [] });
+      // One row total = the empty-state row; there is no week band to draw.
       expect(container.querySelectorAll('tbody tr')).toHaveLength(1);
-      expect(separatorTexts(container)).toEqual(['']);
+      expect(container.querySelector('tbody tr:not([id]) td')).toHaveAttribute('colspan', '8');
+    });
+
+    it('withholds the "nothing logged" claim while the logs are still loading (M1)', () => {
+      const { unmount } = renderTable({ lootLog: [], materialLog: [], logsLoading: true });
+      expect(screen.getByText('Loading entries…')).toBeInTheDocument();
+      // The claim is about the TIER; empty-because-unfetched must not assert it.
+      expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
+      expect(screen.queryByText('No entries match your filters.')).not.toBeInTheDocument();
+      unmount();
+
+      // Same empty arrays, load finished — now the claim is earned.
+      renderTable({ lootLog: [], materialLog: [], logsLoading: false });
+      expect(screen.getByText('No loot or materials logged this tier.')).toBeInTheDocument();
+    });
+
+    it('keeps rendering rows while loading — only the empty message is withheld', () => {
+      const { container } = renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
+        logsLoading: true,
+      });
+      expect(rowIds(container)).toEqual(['loot-entry-1']);
+      expect(screen.queryByText('Loading entries…')).not.toBeInTheDocument();
     });
 
     it('renders material rows with the material-entry id', () => {

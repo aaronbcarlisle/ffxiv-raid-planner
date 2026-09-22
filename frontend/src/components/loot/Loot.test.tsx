@@ -920,6 +920,38 @@ describe('Loot', () => {
     expect(rowIds()).toEqual(['loot-entry-21', 'loot-entry-20']);
     expect(screen.getByRole('columnheader', { name: 'Player' })).toHaveAttribute('aria-sort', 'ascending');
   });
+
+  it("marks the CLOCK's current week on the History separator, not the Log's displayed week", () => {
+    // D9b assembly guard (review M2). `currentWeek` and `logWeek.week` are both
+    // numbers in scope at the LootHistoryTable mount, so `currentWeek={logWeek.week}`
+    // would compile and pass every unit test in LootHistoryTable.test.tsx — the
+    // table cannot tell which number it was handed. Only a mounted-Loot test
+    // where the two DIFFER can catch that wire.
+    //
+    // The harness seeds clock currentWeek = 3; `?week=2` points the Log at week
+    // 2 (useLogWeek reads the raw param on its first resolve). Both weeks carry
+    // an entry, so both separators render and exactly one must be marked.
+    useLootTrackingStore.setState({
+      lootLog: [
+        makeLootEntry({ id: 30, weekNumber: 3, createdAt: '2026-06-25T12:00:00Z' }),
+        makeLootEntry({ id: 31, weekNumber: 2, createdAt: '2026-06-18T12:00:00Z' }),
+      ],
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history&week=2']);
+
+    const bands = Array.from(document.querySelectorAll('tbody tr:not([id])')).map((tr) =>
+      Array.from(tr.querySelectorAll('span'))
+        .map((sp) => sp.textContent?.trim() ?? '')
+        .join(' | ')
+    );
+    expect(bands).toHaveLength(2);
+
+    const marked = bands.filter((b) => b.includes('current'));
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toContain('WEEK 3');
+    // The explicit negative: wire this to the Log's week and THIS is what fails.
+    expect(bands.find((b) => b.includes('WEEK 2'))).not.toContain('current');
+  });
 });
 
 // ── D4: the triad, and the death of scopedWeek (R-13/R-15/R-20/R-22) ─────────

@@ -357,6 +357,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // ── Stores (slice selectors — avoid churning the whole store reference) ──
   const lootLog = useLootTrackingStore((s) => s.lootLog);
   const materialLog = useLootTrackingStore((s) => s.materialLog);
+  // History's empty state is the only consumer: it must not claim "nothing
+  // logged this tier" over logs that are merely still in flight (D9b M1).
+  // A derived primitive, so the selector stays referentially stable.
+  const logsLoading = useLootTrackingStore(
+    (s) => s.loadingStates.lootLog || s.loadingStates.materialLog,
+  );
   const pageLedger = useLootTrackingStore((s) => s.pageLedger);
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
   const fetchMaterialLog = useLootTrackingStore((s) => s.fetchMaterialLog);
@@ -998,6 +1004,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             filters={filters}
             currentWeek={clock.currentWeek}
             rangeOfWeek={clock.rangeOfWeek}
+            logsLoading={logsLoading}
             canEdit={canEdit}
             onEdit={openEdit}
             onCopyLink={copyLink}

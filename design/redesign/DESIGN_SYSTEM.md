@@ -211,7 +211,7 @@ Kept from v2: text input (default/error/disabled, sizes, with-icon, input-group)
 
 **Built in F6c (contracted §3.28–3.30):** `SegmentedToggle` (§3.28, shared `ui/` — value-generic, reused by Loot's Priority⇄History and `RecipientPicker`'s scope switch); `GearBoard` + `GearBoardCell` (§3.29, the Roster Board gear-editing matrix); `RosterCard` (§3.30, Roster Cards view).
 
-**Built in F6d (contracted §3.31–3.36):** `RecipientPicker` (§3.31, unified assign/log/edit surface — kills the `QuickLogDropModal`+`AddLootEntryModal` forks); `FloorCard` (§3.32); `PriorityRow` (§3.33, shared `ui/`); `FairnessSummary` (§3.34); `WeekScopeControl` (§3.35, the shared week-clock's mutation host); `LootHistoryTable` + `WeekGroupHeader` (§3.36).
+**Built in F6d (contracted §3.31–3.36):** `RecipientPicker` (§3.31, unified assign/log/edit surface — kills the `QuickLogDropModal`+`AddLootEntryModal` forks); `FloorCard` (§3.32); `PriorityRow` (§3.33, shared `ui/`); `FairnessSummary` (§3.34); `WeekScopeControl` (§3.35, the shared week-clock's mutation host); `LootHistoryTable` + `WeekGroupHeader` (§3.36 — `WeekGroupHeader` deleted in D9a; see that entry).
 
 *(These nine — §3.28–3.36 — were backfilled after the fact; F6c/F6d shipped ahead of their contracts. No behavior changed to write them; see §7 items 2/3 for the two ledger items this resolves.)*
 
@@ -474,16 +474,50 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
 - **Anatomy:** a `Dropdown` (`Button` trigger, `variant="secondary" size="sm" trailing="chevron"`, label `"This week (Week N)"` when `scopedWeek === currentWeek` else `"Week N"`) opening a `DropdownContent` list of every week `maxWeek…1` (descending), each item showing the week label + a UTC-pinned date range + colored data-type dots (`loot`→accent, `books`→`membership-lead`, `mats`→`status-warning`, from `weekDataTypes`); when `canEdit`, a separator plus "Start next week" and "Revert week" (disabled at `currentWeek <= 1`) items, each opening a `ConfirmModal`.
 - **Props:** `{ clock: WeekClock; scopedWeek: number; onScopedWeekChange: (week: number) => void; canEdit: boolean }`.
 - **States:** dropdown closed/open; `pendingMutation`: `null` | `'start-next'` | `'revert'` (drives which `ConfirmModal` is open); mutation in flight → toast success/failure on settle.
-- **Usage rules:** this is the **single mutation host** for the shared `WeekClock` — `startNextWeek`/`revertWeek` live here and nowhere else. `WeekNavigatorStrip` (§3.24) reads the same clock for its own stepper UI but never mutates it (see that entry's "one clock, one mutation host" note) — do not add a second path that calls `startNextWeek`/`revertWeek`. Dates are UTC-pinned (`toLocaleDateString('en-US', { timeZone: 'UTC', ... })`) so the shown range never shifts a day from the mid-day UTC anchor — the same convention `WeekGroupHeader` (§3.36) reuses.
+- **Usage rules:** this is the **single mutation host** for the shared `WeekClock` — `startNextWeek`/`revertWeek` live here and nowhere else. `WeekNavigatorStrip` (§3.24) reads the same clock for its own stepper UI but never mutates it (see that entry's "one clock, one mutation host" note) — do not add a second path that calls `startNextWeek`/`revertWeek`. Dates are UTC-pinned (`toLocaleDateString('en-US', { timeZone: 'UTC', ... })`) so the shown range never shifts a day from the mid-day UTC anchor — the same convention the History table's week separators (§3.36) reuse.
 
-### 3.36 LootHistoryTable + WeekGroupHeader — F6d
+### 3.36 LootHistoryTable — F6d, rewritten D9a + completed D9b
 
-- **Anatomy (LootHistoryTable):** merges + filters the loot and material logs (`buildHistoryItems`/`filterHistoryItems`), groups the result by week (descending, first-seen order), and renders one card per week (`rounded-lg border bg-surface-card`) — each headed by a `WeekGroupHeader` and followed by one `LootEntryRow` per item. Empty state: a muted "No entries match — log a drop from the Priority view." line.
-- **Props (LootHistoryTable):** `{ lootLog: LootLogEntry[]; materialLog: MaterialLogEntry[]; players: SnapshotPlayer[]; floors: string[]; filters: HistoryFilterState; currentWeek: number; rangeOfWeek: (week: number) => WeekRange | null; canEdit: boolean; onEdit: (entry: LootLogEntry) => void; onCopyLink: (item: HistoryItem) => void; onDelete: (item: HistoryItem) => void }`.
-- **Anatomy (WeekGroupHeader):** a header row — a `"WEEK N"` pill (accent-tinted `text-accent-hover` when `isCurrent`, else neutral `surface-elevated`/`text-text-secondary`) + a UTC-formatted date range (when `range` is supplied) + a right-aligned `"{count} drop(s)"` line.
-- **Props (WeekGroupHeader):** `{ week: number; isCurrent: boolean; range: { start: Date; end: Date } | null; count: number }`.
-- **States:** deep-link highlight — a `?entry=&entryType=` URL param, validated against the **unfiltered** logs (an id not present in the current logs is treated as absent, never throws), scrolls the matching row into view and pulses it, then self-clears the params after 2.5s (legacy parity, `SectionedLogView.tsx:628-680`) | no-groups empty state | normal grouped rendering.
-- **a11y / Usage rules:** `WeekGroupHeader` is purely presentational — no store access, props only. `WeekGroupHeader`'s UTC-pinned date formatting reuses the exact convention `WeekScopeControl` (§3.35) established — don't reintroduce local-time formatting for week ranges anywhere in Loot. The deep-link effect derives its highlight state from the URL directly rather than mirroring it into component state, so there is nothing to desync.
+> ⚠ **`WeekGroupHeader` no longer exists.** D9a (PR #262) replaced the one-card-per-week layout with
+> a single flat sortable `<table>` and deleted the component; D9b rebuilt its content as a separator
+> row inside that table. The archaeology lives at
+> `3f90d420:frontend/src/components/loot/WeekGroupHeader.tsx` and is quoted in R-29 implementation
+> note 1 (`design/redesign/specs/phase-d-loot-design.md`). Nothing should import or re-create it.
+
+- **Anatomy:** one `<table>` in an `overflow-clip` card. Seven `ui/SortableHeader` columns (Week ·
+  Floor · Slot · Player · Method · Date · Type) plus a plain sr-only `Actions` `<th>` for the ⋮ kebab,
+  under a `sticky top-0` `<thead>`. Above the table, inside the card, a right-aligned `role="status"`
+  line carries the entry count. Rows are inert — the kebab is the only control (D9a-i/k).
+- **Week separators (R-29, D9b):** while and only while the sort field is `week`, a `<tr>` with one
+  `colSpan={COLUMNS.length + 1}` cell opens each week band: a `Tag variant="label"` `"WEEK N"` pill
+  (`tone="accent"` when current, else `"muted"`, plus `font-display`), the week's UTC-pinned date
+  range, a `· current` marker on the current week, and a right-aligned `"{n} entries"` count.
+  Direction-agnostic — they render under week asc as well as desc (R-D9b-E).
+- **Props:** `{ lootLog: LootLogEntry[]; materialLog: MaterialLogEntry[]; players: SnapshotPlayer[];
+  floors: string[]; filters: HistoryFilterState; currentWeek: number; rangeOfWeek: (week: number) =>
+  WeekRange | null; logsLoading: boolean; canEdit: boolean; onEdit: (entry: LootLogEntry) => void;
+  onCopyLink: (item: HistoryItem) => void; onDelete: (item: HistoryItem) => void }`.
+- **States:** sorted (session-local `useState`, default Week desc, ties `createdAt` desc → loot before
+  material → id desc, never direction-aware) | deep-link highlight | **three** distinct zero-row
+  states — `"Loading entries…"` while either log is in flight, `"No loot or materials logged this
+  tier."` when the tier genuinely holds nothing, `"No entries match your filters."` when it holds
+  entries the filter excludes (R-34).
+- **Deep-link highlight:** `?entry=&entryType=` is validated against the **unfiltered** logs — an id
+  absent from them is treated as absent and never throws, while an id present but filtered off screen
+  still arms the effect, so the params self-clear after 2.5s either way. The id the effect scrolls to
+  and the id each `<tr>` renders are the same call, `historyRowDomId` (D9a-q). This is where
+  `RosterCard`'s C7 jumps land. The `highlight-pulse` inset ring paints on all four edges of a `<tr>`
+  under `border-collapse: collapse` in both themes (verified live, D9b); the outset glow is clipped by
+  the card's `overflow-clip`, by design.
+- **a11y / Usage rules:** the count line is `role="status"` so a filter change announces and a sort
+  change (count unchanged) stays silent. The separator's UTC-pinned range reuses the convention
+  `WeekScopeControl` (§3.35) established — don't reintroduce local-time formatting for week *ranges*;
+  the Date **column** is deliberately local time, because it shows a logged moment rather than a
+  lockout boundary (D9a-o). The deep-link effect derives its highlight from the URL rather than
+  mirroring it into state, so there is nothing to desync. **Known debt:** the separator is a
+  `<td colSpan>` inside the single `<tbody>`, which a screen reader announces as a data cell rather
+  than a group header; one `<tbody>` per week with a `<th>` row is the semantically correct shape and
+  is queued for the Phase P a11y pass (D9b review M3).
 
 ---
 
