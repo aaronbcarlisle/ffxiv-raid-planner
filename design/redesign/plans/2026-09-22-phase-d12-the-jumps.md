@@ -192,7 +192,7 @@ const loot = (over: Partial<LootLogEntry>): HistoryItem => ({
   kind: 'loot',
   entry: {
     id: 1, tierSnapshotId: 't1', weekNumber: 3, floor: 'M11S', itemSlot: 'head',
-    recipientPlayerId: 'p1', recipientPlayerName: 'Tank One', method: 'need', isExtra: false,
+    recipientPlayerId: 'p1', recipientPlayerName: 'Tank One', method: 'drop', isExtra: false,
     createdAt: '2026-01-01T00:00:00Z', createdByUserId: 'u1', createdByUsername: 'dev',
     ...over,
   },
@@ -202,7 +202,7 @@ const material = (over: Partial<MaterialLogEntry>): HistoryItem => ({
   kind: 'material',
   entry: {
     id: 1, tierSnapshotId: 't1', weekNumber: 3, floor: 'M11S', materialType: 'twine',
-    recipientPlayerId: 'p1', recipientPlayerName: 'Tank One', method: 'need',
+    recipientPlayerId: 'p1', recipientPlayerName: 'Tank One', method: 'drop',
     slotAugmented: 'head', createdAt: '2026-01-01T00:00:00Z', createdByUserId: 'u1',
     createdByUsername: 'dev',
     ...over,
