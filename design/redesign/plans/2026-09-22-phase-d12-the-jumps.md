@@ -71,8 +71,9 @@ Three affordances currently over-promise or under-deliver, and every one of them
 | `Alt+Click` a gear slot → **History**, always | `RosterCard.tsx:281-297` `jumpToEntry` | R-28 ruled the destination splits by week in D-30; D7 retargeted only the books half and said so at `phase-d-loot-design.md:428`. |
 | The gear table has **no row ids and no pulse** | `RosterGearTable.tsx` | R-18 note 2: "The jump destination is net-new" — the anchors live only in frozen legacy `GearTable.tsx:324,659`. |
 
-D12 closes all three. It adds no new modifier, no new menu item, and no new copy beyond one
-`aria-label`.
+D12 closes all three. It adds **no new modifier, no new menu item, and no new user-visible copy at
+all** — every string it touches already exists. The only new surface is a DOM `id`, a CSS class and
+a URL param.
 
 ---
 
@@ -83,16 +84,26 @@ cannot reopen them.
 
 | # | Ruling | Rationale | Risk if wrong |
 |---|---|---|---|
-| **R-D12-A** | The Roster→Loot split is **`lview=log` iff `entry.weekNumber === the Log's displayed week`; every other case → `lview=history`.** Not "older → History" — *anything not in the displayed week*. | R-28's prose only names the older case, but an entry **newer** than the displayed week is equally absent from that week's grid. One symmetric rule beats two asymmetric ones. **User-ruled 2026-09-22.** | Routing a newer entry to the Log would make `Loot.tsx`'s out-of-week correction fire `logWeek.setWeek`, which **persists** the new week into `v2-history-week-*` — a jump silently moving the user's working week. |
-| **R-D12-B** | "The displayed week" is resolved with `useLogWeek`'s **own** `resolveOverride` (`?week=` → v2 key → legacy key → clock), exported for this purpose. Not re-derived. | `Loot` genuinely **unmounts** on a tab switch (`GroupViewContent.tsx:977` renders the gear slot only while `pageMode === 'gear'`), so `useLogWeek`'s mount-only `?week=` read fires on **every** roster→Loot jump. Same function, same inputs, same answer — the card's decision and the Log's later resolve cannot disagree. | A re-derivation drifts the moment either side changes, and the failure is silent: the Log opens on a week whose grid does not hold the pulsed entry. |
-| **R-D12-C** | While the clock is **provisional** (`Math.max(clock.maxWeek, clock.currentWeek) === 1`) every entry jump routes to **History**. | `lootTrackingStore` starts `currentWeek: 1, maxWeek: 1`. Routing to the Log against a provisional clock lets `Loot.tsx`'s correction effect fire `setWeek` and write the `'current'` sentinel — the exact clobber the F1/F2 guards in that file exist to prevent. History has no week axis, so it is always a correct destination. | **Disclosed residual:** a genuine week-1 tier also has ceiling 1, so its slot jumps land on History rather than the Log cell. Same trade-off R-D11-N already documents for the same guard; the entry is still found and still pulses. |
+| **R-D12-A** | The Roster→Loot split is **`lview=log` iff `entry.weekNumber === the Log's displayed week`; every other case → `lview=history`.** Not "older → History" — *anything not in the displayed week*. | R-28's prose only names the older case, but an entry **newer** than the displayed week is equally absent from that week's grid. One symmetric rule beats two asymmetric ones. **User-ruled 2026-09-22.** | ⚠ **Do not "unify" this with R-D11-A.** History's *"View week N in Log"* (`Loot.tsx:776-800`) deliberately DOES route an out-of-week entry to the Log and lets the correction effect persist the week. The difference is **consent**: that item's own label says it changes the week; a gear-slot jump promises no such thing. A later pass that reads the two as inconsistent and merges them re-ships a silent week change. |
+| **R-D12-B** | "The displayed week" is resolved with `useLogWeek`'s **own** `resolveOverride` (`?week=` → v2 key → legacy key → clock), exported for this purpose. Not re-derived. | `Loot` genuinely **unmounts** on a tab switch — `GroupViewContent.tsx:977` is a bare `{pageMode === 'gear' && …}` with no `hidden` wrapper and no `AnimatePresence` retention (contrast the legacy roster sub-views at `:958,968`, which *are* kept mounted behind `className="hidden"`). So `useLogWeek`'s mount-only `?week=` read (`lastKeyRef.current === null`, `useLogWeek.ts:287-299`) fires on **every** roster→Loot jump. Same function, same inputs, same answer. | A re-derivation drifts the moment either side changes, and the failure is silent: the Log opens on a week whose grid does not hold the pulsed entry. **Depends on both sides keying storage identically** — see the storage-key note below this table. |
+| **R-D12-C** | Routing to `lview=log` requires a week the Log's mount is guaranteed to land on. A **concrete override** (`?week=` or a stored week) is such a guarantee; **following the clock while the clock is provisional** (`Math.max(clock.maxWeek, clock.currentWeek) === 1`) is not. So: `displayedWeek = override ?? (clockSettled ? clockCurrentWeek : null)`, and a `null` routes to **History**. | ⚠ **Corrected at plan-vet — the obvious rationale is false.** Routing to the Log under a provisional clock does *not* let `setWeek` fire: `Loot.tsx:892-894`'s F1/F2 guards make `unresolvedByClock` true for every case except `foundEntryWeek === 1 === logWeek.week`, where `:915`'s `found.weekNumber !== logWeek.week` is false and no correction runs. The **real** failure is a dead pulse: with `override === null` the Log mounts at `week = clock.currentWeek` = 1, then `fetchCurrentWeek` lands and `logWeek.week` **moves to the real current week** (`useLogWeek.ts:316`) — walking away from the entry it was told to pulse, while the highlight effect cannot re-fire (deps are `[highlightId, highlightKind]`, `Loot.tsx:977`, and neither moved). History has no week axis, so it is always a correct destination. | **Disclosed residual, smaller than it sounds:** only a tier that is *genuinely* on week 1 **and** has no stored week is misrouted, and even then the entry is found and still pulses on History. In practice the clock is already warm on the roster tab — both `Roster.tsx:260` and `GroupViewContent.tsx:322-323` call `fetchCurrentWeek` for `pageMode === 'roster'` — so this fires on a genuine week-1 tier or a sub-second race, not a common path. |
 | **R-D12-D** | The jump writes **no `?week=`** and never calls `setWeek`. It preserves whatever `?week=` is already in the URL. | That param is the first input to R-D12-B's resolver. Writing it would be either redundant (Log branch, we only route there when it already matches) or actively harmful (it arms the disclosed legacy-History seeding cohort — `Loot.tsx`'s header). | Writing a week turns a read-only navigation into a persisted preference change. |
 | **R-D12-E** | A material entry with `slotAugmented === 'tome_weapon'` lands on the **tome sub-row's own anchor**, `gear-row-{playerId}-tome_weapon` — **not** normalized to the weapon row. | v2 already ruled this direction: `rosterLedgerJumps.ts:52-57` keeps `tome_weapon` off the weapon row because "the tome sub-row's own jump owns it (C4)". The inverse mapping must agree. Legacy's `useViewNavigation.ts:125` normalizes to `weapon`; that is a **named delta**, not parity drift. **User-ruled 2026-09-22.** | Landing on the weapon row pulses a row about the *raid* weapon while the user asked about the *tome* one. |
-| **R-D12-F** | A jump whose anchor slot does not resolve to a **rendered** row falls back to the **card** — no error, no toast. Three causes: `slotAugmented` is `null` (universal tomestone, already ruled at `phase-d-loot-plan.md:200`); the roster is in **compact** density so `RosterGearTable` never mounts; the tome sub-row is absent because the player is not pursuing. | Legacy's own reference behaviour: `startScroll(() => gear-row-…, () => player-card-…)` (`useViewNavigation.ts:135-138`) carries exactly this fallback. The card pulse is already wired from `?player=`, so the fallback costs nothing. | A dead-scroll with no pulse reads as a broken jump. |
+| **R-D12-F** | A jump whose anchor slot does not resolve to a **rendered** row falls back to the **card** — no error, no toast. **Four** causes: (1) `slotAugmented` is `null` (universal tomestone, already ruled at `phase-d-loot-plan.md:200`); (2) the roster is in **compact** density so `RosterGearTable` never mounts; (3) the tome sub-row is absent because the player is not pursuing; (4) ⚠ **`rview=board`** — `GearBoard` renders **no anchor at all**, not even `player-card-{id}` (`RosterCards.tsx:386,421` are v2's only sites; `GearBoard.tsx:170,185` carry `key`, never `id`), so in Board view the jump lands nowhere and pulses nothing. | Legacy's own reference behaviour: `startScroll(() => gear-row-…, () => player-card-…)` (`useViewNavigation.ts:135-138`) carries exactly this fallback. The card pulse is already wired from `?player=`, so causes 1–3 cost nothing. | **Cause 4 is a NAMED RESIDUAL, deliberately not fixed here (user-ruled 2026-09-22).** It is **pre-existing** — the shipped card-level `?player=` jump (C7/D6a) already dead-ends in Board view — and D12 inherits rather than creates it. Fixing it means either writing `rview=cards` on the jump (a sticky, URL-backed view change: the same class of side effect R-D12-D rejects for the week) or giving `GearBoard` its own anchors (~60 lines, widens the slice). Queued, not silently skipped. |
 | **R-D12-G** | **Both** the card and the slot row pulse. | Legacy parity — `handleNavigateToPlayer` sets `setHighlightedPlayerId` **and** `setHighlightedSlot` (`useViewNavigation.ts:131-132`), so both pulse there too. `?player=` is already in the URL, so the card pulse needs no new code, and it is the "where am I" cue on a long roster. **User-ruled 2026-09-22.** | Suppressing the card pulse costs new code in `Roster.tsx` and loses the coarse cue. |
 | **R-D12-H** | A generic `itemSlot: 'ring'` loot entry anchors to **`ring1`**. | Legacy parity (`useViewNavigation.ts:126`) and the only available answer — the loot log stores one `ring` slot while gear tracks `ring1`/`ring2`, and nothing in the entry distinguishes them. It is the mirror of `findLootEntry`'s ring fallback, which lets **both** ring rows claim a generic entry. | Picking `ring2` or nothing would surprise; the asymmetry (one→both outbound, one→first inbound) is inherent to the data and is documented in the module. |
-| **R-D12-I** | `?slot=` is stripped by **`GroupViewContent`'s existing `?player=` timer**, not by a second writer in `Roster.tsx`. | `Roster.tsx:352-353`'s header comment already rules that Roster must not touch the URL — `GroupViewContent.tsx:255-259` owns the strip. Two writers on the same 2500 ms boundary race. One line, in the effect that already exists. | A second URL writer produces a lost-update race that only shows up under timing. |
+| **R-D12-I** | `?slot=` is stripped by **`GroupViewContent`'s existing `?player=` timer**, not by a second writer in `Roster.tsx`. | `Roster.tsx:352-353`'s header comment already rules that Roster must not touch the URL — `GroupViewContent.tsx:256-263` owns the strip. Two writers on the same 2500 ms boundary race. One line, in the effect that already exists. | A second URL writer produces a lost-update race that only shows up under timing. **That one line is the slice's only V1-reachable hunk, so it must not be claimable** — Task 4 authors the test for it (there is currently *zero* coverage of that effect). |
 | **R-D12-J** | The row scroll is a **v2-local** poller (`components/roster/gearRowScroll.ts`), a deliberate fork of `useViewNavigation.ts:25-52`'s `scrollIntoViewWhenReady`, **not** an extraction of it. | That helper is module-private inside a hook V1 consumes; extracting it is a V1 edit for zero V1 benefit. §2.1's fork-shells/share-leaves rule and D6's own `useAltHeld` precedent ("extract to `hooks/` (**no V1 consumer**) or duplicate") point the same way — here there **is** a V1 consumer. | Editing `useViewNavigation.ts` turns a v2-only slice into a shared-layer reach needing the two-part assert. |
+
+### R-D12-B's hidden precondition — the two sides must key storage identically
+
+Verified at plan-vet, and stated here because it is invisible at the call site: `Loot.tsx:438` calls
+`useLogWeek(group.id, tier?.tierId, …)`, and `Roster.tsx:552-553` → `RosterCards.tsx:400-401` hands
+`RosterCard` the **same** `group.id` / `tier?.tierId`. That is what makes "same function, same
+inputs" true. ⚠ `RosterCard.tsx:161-162` **defaults both props to `''`** — an unwired mount would
+make `resolveLogWeekOverride` skip storage entirely (`useLogWeek.ts:239`'s `if (!groupId || !tierId)
+return null`) and silently disagree with the Log. Task 6 must not introduce a path where the card
+routes without them.
 
 ### What D12 explicitly does NOT do
 
@@ -129,7 +140,9 @@ cannot reopen them.
 | `src/data/releaseNotes.ts` | `internal: true` entry. | modify |
 
 Test files modified alongside their components: `RosterGearTable.test.tsx`, `RosterCard.test.tsx`,
-`Roster.test.tsx`, `Loot.test.tsx`, `LogWeekGrid.test.tsx`, `LootHistoryTable.test.tsx`.
+`Roster.test.tsx`, `Loot.test.tsx`, `LogWeekGrid.test.tsx`, `LootHistoryTable.test.tsx`, and
+**`pages/GroupViewContent.test.tsx` — net-new coverage of the `?player=` deep-link effect, which has
+none today** (Task 4 Step 1b; it is what makes the slice's single shared hunk non-claimable).
 
 ---
 
@@ -171,22 +184,29 @@ import {
 import type { HistoryItem } from '../loot/logWeekGridData';
 import type { LootLogEntry, MaterialLogEntry } from '../../types';
 
+// ⚠ Real field names, no `as` cast: `LootLogEntry`/`MaterialLogEntry` carry
+// `floor: string` and `recipientPlayerName` (types/index.ts:1242-1259,
+// :1292-1307) — NOT `floorNumber`/`recipientName`. A cast would hide the next
+// shape change instead of failing on it.
 const loot = (over: Partial<LootLogEntry>): HistoryItem => ({
   kind: 'loot',
   entry: {
-    id: 1, weekNumber: 3, floorNumber: 1, itemSlot: 'head', recipientPlayerId: 'p1',
-    recipientName: 'Tank One', method: 'need', isExtra: false, createdAt: '2026-01-01T00:00:00Z',
+    id: 1, tierSnapshotId: 't1', weekNumber: 3, floor: 'M11S', itemSlot: 'head',
+    recipientPlayerId: 'p1', recipientPlayerName: 'Tank One', method: 'need', isExtra: false,
+    createdAt: '2026-01-01T00:00:00Z', createdByUserId: 'u1', createdByUsername: 'dev',
     ...over,
-  } as LootLogEntry,
+  },
 });
 
 const material = (over: Partial<MaterialLogEntry>): HistoryItem => ({
   kind: 'material',
   entry: {
-    id: 1, weekNumber: 3, floorNumber: 1, materialType: 'twine', recipientPlayerId: 'p1',
-    recipientName: 'Tank One', createdAt: '2026-01-01T00:00:00Z', slotAugmented: 'head',
+    id: 1, tierSnapshotId: 't1', weekNumber: 3, floor: 'M11S', materialType: 'twine',
+    recipientPlayerId: 'p1', recipientPlayerName: 'Tank One', method: 'need',
+    slotAugmented: 'head', createdAt: '2026-01-01T00:00:00Z', createdByUserId: 'u1',
+    createdByUsername: 'dev',
     ...over,
-  } as MaterialLogEntry,
+  },
 });
 
 describe('jumpAnchorSlotOf', () => {
@@ -324,11 +344,13 @@ export function jumpAnchorSlotOf(item: HistoryItem): JumpAnchorSlot | null {
  * Log will display. Older AND newer both go to History — R-28's prose names
  * only the older case, but a newer entry is just as absent from that grid.
  *
- * `displayedWeek === null` means the caller could not resolve one (R-D12-C: a
- * provisional week clock). History has no week axis, so it is always a correct
- * destination — and, unlike the Log, reaching it can never trigger
- * `Loot.tsx`'s out-of-week correction, which would PERSIST a week the user
- * never chose.
+ * `displayedWeek === null` means the caller could not name a week the Log's
+ * mount is GUARANTEED to land on (R-D12-C: no concrete override, and a clock
+ * still at its provisional `currentWeek: 1`). Routing there would let the Log
+ * mount at week 1 and then walk to the real current week the moment
+ * `fetchCurrentWeek` lands — leaving the entry unpulsed with no second chance,
+ * because the highlight effect's deps never move. History has no week axis, so
+ * it is always a correct destination.
  */
 export function entryJumpView(
   entryWeek: number | null | undefined,
@@ -464,9 +486,14 @@ Create `frontend/src/components/roster/gearRowScroll.ts`:
  * fork-shells/share-leaves rule, and the same call D6 made for `useAltHeld`
  * ("extract to hooks/ (NO V1 consumer) or duplicate" — here there IS one).
  *
- * Why polling: a cross-tab jump switches `pageMode` and the roster mounts
- * behind an AnimatePresence `mode="wait"` transition, so the row is not in the
- * DOM on the next frame. A single fixed timeout races that animation.
+ * Why polling, stated honestly: at THIS call site the poll almost never loops.
+ * We run from an effect inside an already-mounted `Roster`, where the card
+ * exists at tick 1 — so the `?? player-card-` fallback short-circuits
+ * immediately even when the row is still settling. (Legacy's copy fires BEFORE
+ * `setPageMode('roster')` has rendered anything, which is where the 24-attempt
+ * loop earns its keep.) The loop is kept for the one case that does need it —
+ * a card mid-expand — and because the row is checked FIRST on every tick, so a
+ * late row still wins over the early card.
  *
  * Why the card fallback: the row exists only when the card is EXPANDED
  * (`RosterGearTable` does not mount in compact density) and, for
@@ -555,36 +582,39 @@ universal tomestone."
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `RosterGearTable.test.tsx` (reuse the file's existing render helper / default props):
+Append to `RosterGearTable.test.tsx`. ⚠ **The file's helper is
+`renderTable(gear: GearSlotStatus[], extra: Partial<Props> = {})` — gear is POSITIONAL and first**
+(`RosterGearTable.test.tsx:50-59`). Use the file's existing gear builder for the first argument; do
+not invent a props-object call shape.
 
 ```ts
 describe('D12 — gear row anchors and the jump pulse', () => {
   it('gives every main row a gear-row-{playerId}-{slot} id', () => {
-    const { container } = renderTable({ playerId: 'p1' });
+    const { container } = renderTable(allSlotsGear(), { playerId: 'p1' });
     expect(container.querySelector('#gear-row-p1-weapon')).not.toBeNull();
     expect(container.querySelector('#gear-row-p1-head')).not.toBeNull();
     expect(container.querySelector('#gear-row-p1-ring2')).not.toBeNull();
   });
 
   it('renders no anchors at all without a playerId (the id would be ambiguous)', () => {
-    const { container } = renderTable({});
+    const { container } = renderTable(allSlotsGear());
     expect(container.querySelector('[id^="gear-row-"]')).toBeNull();
   });
 
   it('pulses only the highlighted row', () => {
-    const { container } = renderTable({ playerId: 'p1', highlightedSlot: 'head' });
+    const { container } = renderTable(allSlotsGear(), { playerId: 'p1', highlightedSlot: 'head' });
     expect(container.querySelector('#gear-row-p1-head')!.className).toContain('highlight-pulse');
     expect(container.querySelector('#gear-row-p1-body')!.className).not.toContain('highlight-pulse');
   });
 
   it('pulses nothing when highlightedSlot is null', () => {
-    const { container } = renderTable({ playerId: 'p1', highlightedSlot: null });
+    const { container } = renderTable(allSlotsGear(), { playerId: 'p1', highlightedSlot: null });
     expect(container.querySelector('.highlight-pulse')).toBeNull();
   });
 
   // R-D12-E: the tome sub-row owns tome_weapon; the weapon row must not steal it.
   it('anchors the tome sub-row separately from the weapon row', () => {
-    const { container } = renderTable({
+    const { container } = renderTable(allSlotsGear(), {
       playerId: 'p1',
       tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
       highlightedSlot: 'tome_weapon',
@@ -596,9 +626,9 @@ describe('D12 — gear row anchors and the jump pulse', () => {
       .not.toContain('highlight-pulse');
   });
 
-  // R-D12-F: not pursuing => no sub-row => the card fallback does the work.
+  // R-D12-F cause 3: not pursuing => no sub-row => the card fallback does the work.
   it('renders no tome anchor when the player is not pursuing', () => {
-    const { container } = renderTable({
+    const { container } = renderTable(allSlotsGear(), {
       playerId: 'p1',
       tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
       highlightedSlot: 'tome_weapon',
@@ -609,8 +639,10 @@ describe('D12 — gear row anchors and the jump pulse', () => {
 });
 ```
 
-> If `RosterGearTable.test.tsx` has no `renderTable` helper, add one that spreads the file's existing
-> default props object over the overrides — do **not** duplicate a props literal per test.
+> `allSlotsGear()` stands for whatever the file already uses to build a full `GearSlotStatus[]` —
+> read the top of the file and reuse it verbatim rather than adding a second builder. Note the helper
+> hardcodes `tomeWeapon={emptyTome}` **before** spreading `extra` (`:57`), so a `tomeWeapon` override
+> in `extra` wins; that is what the two tome tests rely on.
 
 - [ ] **Step 2: Run and watch fail**
 
@@ -702,8 +734,9 @@ and it carries the slice's single shared-file hunk. Dispatch it to **`xivrp-impl
 - Modify: `frontend/src/components/roster/RosterCards.tsx` (`:116-133` props, `:386`/`:414-421` rows)
 - Modify: `frontend/src/components/roster/RosterCard.tsx` (props block ~`:90-120`; the
   `RosterGearTable` mount)
-- Modify: `frontend/src/pages/GroupViewContent.tsx` (**one line**, `:255-259`)
-- Test: `frontend/src/components/roster/Roster.test.tsx`, `RosterCard.test.tsx`
+- Modify: `frontend/src/pages/GroupViewContent.tsx` (**one line**, inside the strip at `:256-263`)
+- Test: `frontend/src/components/roster/Roster.test.tsx`, `RosterCard.test.tsx`, **and
+  `frontend/src/pages/GroupViewContent.test.tsx` (new coverage — see Step 1b)**
 
 **Interfaces:**
 - Consumes: `isJumpAnchorSlot`, `JumpAnchorSlot` (Task 1); `scrollToGearRow` (Task 2);
@@ -712,15 +745,29 @@ and it carries the slice's single shared-file hunk. Dispatch it to **`xivrp-impl
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `Roster.test.tsx` (follow the file's existing `MemoryRouter` render helper):
+Append to `Roster.test.tsx`. ⚠ **The file's URL helper is
+`renderRosterAtUrl(tier, initialEntries)`** (`Roster.test.tsx:205`) — a `MemoryRouter` plus a
+`LocationProbe`; there is no `route`/`density` options object. **Expanded density is not a prop**: it
+comes from `useRosterDensity.ts:76`'s `useState<ViewMode>(readStoredDensity)`, so each test must seed
+`localStorage.setItem(ROSTER_DENSITY_KEY, 'expanded')` **before** rendering (`ROSTER_DENSITY_KEY =
+'v2-roster-density'`, exported from `useRosterDensity.ts:44`). **That seed is load-bearing — without
+it `RosterGearTable` never mounts and every assertion below passes vacuously.**
 
 ```ts
+import { ROSTER_DENSITY_KEY } from './useRosterDensity';
+
 describe('D12 — the ?slot= deep link', () => {
+  // Without this the card renders its compact pip strip, no gear table, and
+  // every `#gear-row-*` query below would be a vacuous null-vs-null.
+  beforeEach(() => localStorage.setItem(ROSTER_DENSITY_KEY, 'expanded'));
+
+  it('mounts the gear table at all (guards the seed above)', async () => {
+    const { container } = renderRosterAtUrl(tier, ['/group/G1?tab=roster']);
+    await waitFor(() => expect(container.querySelector('#gear-row-p1-head')).not.toBeNull());
+  });
+
   it('pulses the named gear row when ?player= and ?slot= both resolve', async () => {
-    const { container } = renderRoster({
-      route: '/group/G1?tab=roster&player=p1&slot=head',
-      density: 'expanded',
-    });
+    const { container } = renderRosterAtUrl(tier, ['/group/G1?tab=roster&player=p1&slot=head']);
     await waitFor(() => {
       expect(container.querySelector('#gear-row-p1-head')!.className)
         .toContain('highlight-pulse');
@@ -729,10 +776,7 @@ describe('D12 — the ?slot= deep link', () => {
 
   // R-D12-G: BOTH pulse — legacy sets highlightedPlayerId AND highlightedSlot.
   it('pulses the card as well as the row', async () => {
-    const { container } = renderRoster({
-      route: '/group/G1?tab=roster&player=p1&slot=head',
-      density: 'expanded',
-    });
+    const { container } = renderRosterAtUrl(tier, ['/group/G1?tab=roster&player=p1&slot=head']);
     await waitFor(() => {
       expect(container.querySelector('#player-card-p1')!.className)
         .toContain('highlight-pulse');
@@ -740,19 +784,13 @@ describe('D12 — the ?slot= deep link', () => {
   });
 
   it('ignores a slot that is not an anchor slot', async () => {
-    const { container } = renderRoster({
-      route: '/group/G1?tab=roster&player=p1&slot=__proto__',
-      density: 'expanded',
-    });
+    const { container } = renderRosterAtUrl(tier, ['/group/G1?tab=roster&player=p1&slot=__proto__']);
     await waitFor(() => expect(container.querySelector('#player-card-p1')).not.toBeNull());
     expect(container.querySelector('.highlight-pulse[id^="gear-row-"]')).toBeNull();
   });
 
   it('applies the slot pulse to the named player only', async () => {
-    const { container } = renderRoster({
-      route: '/group/G1?tab=roster&player=p1&slot=head',
-      density: 'expanded',
-    });
+    const { container } = renderRosterAtUrl(tier, ['/group/G1?tab=roster&player=p1&slot=head']);
     await waitFor(() => expect(container.querySelector('#gear-row-p1-head')).not.toBeNull());
     expect(container.querySelector('#gear-row-p2-head')!.className)
       .not.toContain('highlight-pulse');
@@ -761,10 +799,7 @@ describe('D12 — the ?slot= deep link', () => {
   it('clears the slot pulse after 2500ms', async () => {
     vi.useFakeTimers();
     try {
-      const { container } = renderRoster({
-        route: '/group/G1?tab=roster&player=p1&slot=head',
-        density: 'expanded',
-      });
+      const { container } = renderRosterAtUrl(tier, ['/group/G1?tab=roster&player=p1&slot=head']);
       await vi.advanceTimersByTimeAsync(0);
       expect(container.querySelector('#gear-row-p1-head')!.className)
         .toContain('highlight-pulse');
@@ -775,8 +810,57 @@ describe('D12 — the ?slot= deep link', () => {
       vi.useRealTimers();
     }
   });
+
+  // R-D12-F cause 2: compact density has no rows at all — the card still pulses.
+  it('falls back to the card pulse in compact density', async () => {
+    localStorage.setItem(ROSTER_DENSITY_KEY, 'compact');
+    const { container } = renderRosterAtUrl(tier, ['/group/G1?tab=roster&player=p1&slot=head']);
+    await waitFor(() => {
+      expect(container.querySelector('#player-card-p1')!.className).toContain('highlight-pulse');
+    });
+    expect(container.querySelector('#gear-row-p1-head')).toBeNull();
+  });
+
+  // R-D12-F cause 4, the NAMED RESIDUAL — pinned so it can't silently change.
+  it('lands nowhere in Board view (named residual, pre-existing from C7/D6a)', async () => {
+    const { container } = renderRosterAtUrl(tier, ['/group/G1?tab=roster&rview=board&player=p1&slot=head']);
+    await waitFor(() => expect(container.querySelector('table')).not.toBeNull());
+    expect(container.querySelector('#player-card-p1')).toBeNull();
+    expect(container.querySelector('#gear-row-p1-head')).toBeNull();
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
+  });
 });
 ```
+
+- [ ] **Step 1b: Write the failing test for the shared-file line**
+
+⚠ **There is currently ZERO coverage of `GroupViewContent`'s `?player=` deep-link effect
+(`:242-265`) or its 2500 ms strip.** That effect holds the slice's only V1-reachable hunk, so the
+two-part assert has nothing behind it and Task 7's `R-D12-I` battery row would score **0 kills** —
+which by the harness's own rule is evidence about the *mutation*, not the test. Author the coverage
+here, in `frontend/src/pages/GroupViewContent.test.tsx`:
+
+```ts
+describe('D12 — the ?player=/?slot= strip', () => {
+  it('strips BOTH player and slot at 2500ms, leaving sibling params alone', async () => {
+    vi.useFakeTimers();
+    try {
+      renderGroupView({ initialEntries: ['/group/G1?tab=roster&player=p1&slot=head&tier=T1'] });
+      await vi.advanceTimersByTimeAsync(2500);
+      const search = screen.getByTestId('loc').getAttribute('data-search')!;
+      expect(search).not.toContain('player=');
+      expect(search).not.toContain('slot=');
+      expect(search).toContain('tier=T1');   // the strip is targeted, not a reset
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+```
+
+> Build `renderGroupView` / the `LocationProbe` from `Roster.test.tsx:198-213`'s pattern if
+> `GroupViewContent.test.tsx` has no router helper. Read that file first — reuse whatever mount
+> scaffolding it already has rather than standing up a second one.
 
 - [ ] **Step 2: Run and watch fail**
 
@@ -815,9 +899,15 @@ In the resolving effect, after `setHighlightedPlayerId(playerParam)`:
     setHighlightedSlot(slot);
 ```
 
-> ⚠ `playerHandledRef` guards the effect to one shot per `playerParam`. Change its stored key to
-> `` `${playerParam}::${slotParam ?? ''}` `` so two jumps to *different slots of the same player*
-> both fire. Without this the second jump silently does nothing — write the test for it.
+> **Defensive, not a live bug — corrected at plan-vet.** `playerHandledRef` (`Roster.tsx:355`) keys
+> on the bare `playerParam`, so in principle two jumps to *different slots of the same player* would
+> collapse to one. **That scenario is unreachable in the running app:** `Roster` itself unmounts on
+> every tab switch (`GroupViewContent.tsx:940`, the same bare-`&&` shape as the gear slot), and the
+> only writer of `?player=` is `Loot.tsx:758`, reachable only from the gear tab — so the second jump
+> always arrives on a freshly mounted `Roster` with the ref at `null`. Still change the key to
+> `` `${playerParam}::${slotParam ?? ''}` ``, because it costs one line and stops a future
+> same-tab jump from inheriting a silent no-op. **Do not write a test asserting the two-jump
+> scenario** — it would encode a premise the app can't produce.
 
 Own the scroll (a separate effect keyed on the highlight, the F6e timer-ownership lesson):
 
@@ -852,10 +942,29 @@ Pass it to `RosterCards`, next to `highlightedPlayerId`:
           highlightedSlot={highlightedSlot}
 ```
 
+**And close R4 — the stale-slot leak in `handleCopyUrl`** (`Roster.tsx:385-393`). It builds from
+`window.location.href`, sets `tab`/`player` and deletes nothing, so during the 2500 ms window after
+a jump to p1, copying **p2's** card link yields `?player=p2&slot=head` — and p2's head row pulses.
+That is exactly the F-18 class `jumpToRecipient` guards against:
+
+```ts
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', 'roster');
+    url.searchParams.set('player', playerId);
+    // D12: a card link is a CARD target. Without this, copying during the
+    // 2500ms window after a slot jump ships the previous jump's row and pulses
+    // it on a player the sender never pointed at (the F-18 class).
+    url.searchParams.delete('slot');
+```
+
+with a test: seed `?player=p1&slot=head`, copy p2's link, assert the clipboard text has no `slot=`.
+
 - [ ] **Step 4: Implement — `RosterCards.tsx` and `RosterCard.tsx`**
 
 `RosterCards`: add the prop, document it, destructure it, and forward it **only to the highlighted
-card** at both render sites (`:386-398` and `:414-421`):
+card** — in `renderConfiguredCard` (`:380-410`) **only**. ⚠ The second render site (`:412-429`) is
+the **open-seat** path: it renders `OpenSeatCard`, which has no gear table and no such prop. Do not
+touch it.
 
 ```ts
   /**
@@ -878,7 +987,7 @@ card** at both render sites (`:386-398` and `:414-421`):
 
 - [ ] **Step 5: Implement — the one shared-file line**
 
-`pages/GroupViewContent.tsx`, inside the existing `?player=` 2500 ms strip:
+`pages/GroupViewContent.tsx`, inside the existing `?player=` 2500 ms strip (`:256-263`):
 
 ```ts
       setSearchParams(prev => {
@@ -1035,9 +1144,27 @@ Expected: FAIL — `onJumpToPlayer` is called with one argument.
       });
 ```
 
-> ⚠ `LogWeekGrid.tsx:390`'s `newest` is a **bare entry**, not a `HistoryItem`. Wrap it in the cell's
-> own `kind` before calling — read the surrounding code and use the ref the cell already builds
-> (`buildRef`), never a hand-rolled `{ kind: 'loot', entry: newest }` guess in a material cell.
+> ⚠ `LogWeekGrid.tsx:390`'s `newest` is a **bare entry** (`E extends RecipientLike`, from
+> `GridCellProps<E>` at `:240-263`), not a `HistoryItem`. The cell already has
+> `buildRef: (entry: E) => LogGridEntryRef` in scope at `:250`, and `HistoryItem` is a type alias of
+> `LogGridEntryRef` (`logWeekGridData.ts:77-87`) — so the call is `jumpAnchorSlotOf(buildRef(newest))`,
+> which is kind-correct in a material cell. A hand-rolled `{ kind: 'loot', entry: newest }` would be
+> wrong there. In `buildEntryMenuItems` the ref is already destructured (`:724`), so that call is
+> `jumpAnchorSlotOf(ref)`, **not** `jumpAnchorSlotOf(menu.ref)`.
+
+**Also close R5 — `buildEntryLink`'s denylist** (`Loot.tsx:245-262`). That function carries an
+explicit, loud contract: *"what follows is a DENYLIST — this function KEEPS every param it does not
+explicitly delete… If a later slice ever URL-backs the query, it MUST add the delete here."* It
+already strips `player` and `book` as "competing deep-link params". D12 introduces a third:
+
+```ts
+  url.searchParams.delete('player');
+  url.searchParams.delete('book');
+  // D12: `slot` rides with `player` and is the third competing deep-link
+  // param. Inert today (Roster early-returns without `?player=`), but the
+  // denylist's whole point is that a param it doesn't name survives.
+  url.searchParams.delete('slot');
+```
 
 - [ ] **Step 4: Run and watch pass**
 
@@ -1141,11 +1268,21 @@ describe('D12 — R-28, the entry jump splits by week', () => {
     expect(search).toContain('lview=log');
   });
 
-  // R-D12-C.
-  it('routes to History while the week clock is still provisional', async () => {
-    // store at currentWeek 1 / maxWeek 1, entry weekNumber 1
+  // R-D12-C: no override + provisional clock = no week the Log's mount is
+  // guaranteed to land on.
+  it('routes to History under a provisional clock with no stored or URL week', async () => {
+    // store at currentWeek 1 / maxWeek 1, no ?week=, no v2-history-week-* key,
+    // entry weekNumber 1
     await altClickSlotIcon('head');
     expect(search).toContain('lview=history');
+  });
+
+  // R-D12-C, the other half: a CONCRETE override pins the Log's week whatever
+  // the clock is doing, so the Log branch is safe even while provisional.
+  it('still routes to the Log under a provisional clock when ?week= pins it', async () => {
+    // ?week=1, store at currentWeek 1 / maxWeek 1, entry weekNumber 1
+    await altClickSlotIcon('head');
+    expect(search).toContain('lview=log');
   });
 
   // R-D12-D — the load-bearing absence.
@@ -1197,9 +1334,18 @@ import { resolveLogWeekOverride } from '../loot/useLogWeek';
 
 ```ts
   const [jumpParams, setSearchParams] = useSearchParams();
+  // Read at CLICK time through a ref so the callback below doesn't re-create
+  // on every unrelated URL write (M1 — see its deps note).
+  const jumpParamsRef = useRef(jumpParams);
+  jumpParamsRef.current = jumpParams;
   const clockCurrentWeek = useLootTrackingStore((s) => s.currentWeek);
   const clockMaxWeek = useLootTrackingStore((s) => s.maxWeek);
 ```
+
+⚠ `groupId`/`tierId` are `RosterCard` props that **default to `''`** (`:161-162`). They are wired in
+production (`Roster.tsx:552-553` → `RosterCards.tsx:400-401`), which is what makes R-D12-B's "same
+inputs" true — but a test that mounts the card without them will silently skip storage
+(`useLogWeek.ts:239`) and route by the clock alone. Every Task-6 test must pass both.
 
 Replace `jumpToEntry`:
 
@@ -1216,19 +1362,21 @@ Replace `jumpToEntry`:
   // legacy-History seeding cohort (`Loot.tsx`'s header) from a screen with no
   // week control on it.
   //
-  // R-D12-C: while the clock is provisional (`lootTrackingStore` starts
-  // `currentWeek: 1, maxWeek: 1`) every jump goes to History. Routing to the
-  // Log against a provisional clock lets `Loot.tsx`'s out-of-week correction
-  // fire `setWeek`, which writes the `'current'` sentinel and destroys the
-  // user's real week — the exact clobber that file's F1/F2 guards exist for.
-  // Disclosed residual: a genuine week-1 tier is indistinguishable here, so
-  // its jumps land on History too. The entry is still found and still pulses.
+  // R-D12-C: the Log branch needs a week the Log's MOUNT is guaranteed to land
+  // on. A concrete override (`?week=` or a stored week) is one — it pins the
+  // week regardless of the clock. "Follow the clock" while the clock is still
+  // provisional (`lootTrackingStore` starts `currentWeek: 1, maxWeek: 1`) is
+  // NOT: the Log would mount at week 1, then `fetchCurrentWeek` lands,
+  // `logWeek.week` moves to the real current week, and the entry we asked it
+  // to pulse is no longer in the grid — with no second chance, because the
+  // highlight effect's deps (`[highlightId, highlightKind]`) never move.
+  // (It is NOT the `setWeek` clobber it looks like: `Loot.tsx`'s F1/F2 guards
+  // already make that unreachable. Checked at plan-vet.)
   const jumpToEntry = useCallback(
     (entryId: number, kind: JumpKind, entryWeek: number | null | undefined) => {
+      const override = resolveLogWeekOverride(groupId, tierId, jumpParamsRef.current.get('week'));
       const clockSettled = Math.max(clockMaxWeek, clockCurrentWeek) > 1;
-      const displayedWeek = clockSettled
-        ? resolveLogWeekOverride(groupId, tierId, jumpParams.get('week')) ?? clockCurrentWeek
-        : null;
+      const displayedWeek = override ?? (clockSettled ? clockCurrentWeek : null);
       const lview = entryJumpView(entryWeek, displayedWeek);
       setSearchParams((prev) => {
         const params = new URLSearchParams(prev);
@@ -1243,7 +1391,12 @@ Replace `jumpToEntry`:
         return params;
       });
     },
-    [clockMaxWeek, clockCurrentWeek, groupId, tierId, jumpParams, setSearchParams],
+    // `jumpParams` is read through a REF, not listed (M1): it gets a new
+    // identity on every `?week=` mirror, `?entry=` self-clear and 2500ms strip,
+    // and listing it would churn this callback -> `handleSlotJump` ->
+    // `RosterGearTable` on every one of them. Same ref-per-render pattern as
+    // `NewShell.tsx:247-248` and `Loot.tsx`'s `setSearchParamsRef`.
+    [clockMaxWeek, clockCurrentWeek, groupId, tierId, setSearchParams],
   );
 ```
 
@@ -1330,10 +1483,13 @@ One row per ruling, each naming the ruling it pins:
 | The tome sub-row's anchor becomes `gear-row-{playerId}-weapon` | **R-D12-E** | `RosterGearTable.test.tsx` |
 | `RosterCards` forwards `highlightedSlot` to every card | scoping | `Roster.test.tsx` |
 | `RosterCard.jumpToEntry` drops the `clockSettled` guard | **R-D12-C** | `RosterCard.test.tsx` |
+| `RosterCard.jumpToEntry` drops the `override ??` half (clock always wins) | **R-D12-C**, other half | `RosterCard.test.tsx` |
 | `RosterCard.jumpToEntry` uses `clockCurrentWeek` instead of the resolver | **R-D12-B** | `RosterCard.test.tsx` (the `?week=` + stored-week cases) |
 | `RosterCard.jumpToEntry` also writes `params.set('week', …)` | **R-D12-D** | `RosterCard.test.tsx` |
 | `Loot.jumpToRecipient` drops the `else params.delete('slot')` | stale-slot pulse | `Loot.test.tsx` |
-| `GroupViewContent`'s strip drops `params.delete('slot')` | **R-D12-I** | `GroupViewContent.test.tsx` |
+| `buildEntryLink` drops `delete('slot')` | **R5** — the denylist contract | `Loot.test.tsx` |
+| `Roster.handleCopyUrl` drops `delete('slot')` | **R4** — the F-18 leak | `Roster.test.tsx` |
+| `GroupViewContent`'s strip drops `params.delete('slot')` | **R-D12-I** | `GroupViewContent.test.tsx` (**authored in Task 4 Step 1b — this row scores 0 without it**) |
 | `scrollToGearRow` drops the card fallback | **R-D12-F** | `gearRowScroll.test.ts` |
 
 > A row reporting **0 kills** is first evidence about the **mutation**, not the test. A mutant that
@@ -1387,16 +1543,30 @@ Walk and screenshot:
    lands on **Log**, that cell pulsing.
 2. Same, entry in an **older** week → lands on **History**, that row pulsing. Confirm the URL has
    **no `?week=`** and `localStorage['v2-history-week-…']` is **unchanged**.
-3. Log grid → `Alt+Click` a filled cell → roster card **and** its gear row both pulse (R-D12-G).
-4. History row kebab → "Jump to {player}" → same, and the row scrolls into view.
-5. A universal-tomestone material entry → lands on the **card**, no row pulse, no `?slot=`.
-6. A `tome_weapon` material entry on a **pursuing** player → the **sub-row** pulses, not the weapon
+3. **R-D12-A's newer case** — set the Log to a *past* week (so `?week=` is seeded), return to
+   Roster, then `Alt+Click` a slot whose entry is in the **current** week → lands on **History**,
+   not the Log. This is the case R-28's prose never covers and the whole reason A is a ruling.
+4. Log grid → `Alt+Click` a filled cell → roster card **and** its gear row both pulse (R-D12-G).
+5. History row kebab → "Jump to {player}" → same, and the row scrolls into view.
+6. **R-D12-H** — a loot entry with a generic `ring` slot → lands on the **R. Ring (`ring1`)** row.
+7. A universal-tomestone material entry → lands on the **card**, no row pulse, no `?slot=`.
+8. A `tome_weapon` material entry on a **pursuing** player → the **sub-row** pulses, not the weapon
    row. Repeat on a **non-pursuing** player → card only.
-7. Roster in **compact** density → a Log-grid jump still pulses the card, no console error.
-8. Confirm `?player=`/`?slot=` are both gone from the URL after 2500 ms.
+9. Roster in **compact** density → a Log-grid jump still pulses the card, no console error.
+10. Confirm `?player=`/`?slot=` are both gone from the URL after 2500 ms.
 
 0 console errors on every step. Copy screenshots **out of the session scratchpad** and embed them in
 the PR body (standing rule).
+
+**Not demonstrable live, and said so rather than claimed** (the D8/R-21 honesty precedent,
+`phase-d-loot-plan.md:246`):
+
+- **R-D12-C** — the clock is already warm on the roster tab (`Roster.tsx:260` and
+  `GroupViewContent.tsx:322-323` both call `fetchCurrentWeek` for `pageMode === 'roster'`), so the
+  provisional window is sub-second and cannot be held open by hand. **Unit- and mutation-proven
+  only.**
+- **R-D12-F cause 4** (Board view) — pinned by a test as a named residual, not walked in the
+  browser; there is nothing to see.
 
 - [ ] **Step 3: Docs**
 
@@ -1405,6 +1575,12 @@ the PR body (standing rule).
    symmetric rule, the resolver, the two disclosed residuals), plus R-D12-A…J.
 2. `design/redesign/specs/phase-d-loot-plan.md:200` — mark the D12 row **✅ BUILT**, in the shape
    D9a/D9b/D10/D11 use.
+2b. `design/redesign/specs/phase-d-loot-plan.md` **§2.1's shared-layer inventory** (`:74-88`) — add
+   a `pages/GroupViewContent.tsx` row as **D-REC-4** (D-REC-3 is already taken by the
+   `a11yRecommendedWarn` citation correction at `:251`). It omits the file today exactly as it
+   omitted `layout/Layout.tsx` until D11's plan-vet added it as D-REC-2 (`:79`), and the same
+   caveat applies verbatim: **it is not a legacy-only path, so DoD 3 part (a) passes trivially for
+   it** — the guard is Task 4 Step 1b's test, never the `git diff`.
 3. `design/redesign/DESIGN_SYSTEM.md` — `RosterGearTable`'s new anchor/pulse contract.
 4. `frontend/src/data/releaseNotes.ts` — `internal: true`, `pr` + `prTitle`, `CURRENT_VERSION`
    **unchanged**.
@@ -1419,8 +1595,10 @@ Invoke the **`pr-checklist`** skill first. The body must carry:
 - The knip before/after (CI runs `deadcode` `continue-on-error`, so it is claimable otherwise).
 - An explicit grep assert that no v2 file uses `FLOOR_COLORS[n].hex`.
 - The embedded screenshots.
-- Both disclosed residuals: R-D12-C's genuine-week-1 case, and the ring one-to-many/one-to-first
-  asymmetry.
+- **Three** disclosed residuals: R-D12-C's genuine-week-1-with-no-stored-week case; the ring
+  one-to-many/one-to-first asymmetry; and **R-D12-F cause 4 — the Board-view dead end**, named as
+  pre-existing (C7/D6a), user-ruled out of scope, and pinned by a test.
+- The two items marked **unit-proven only** rather than demonstrated (R-D12-C, R-D12-F cause 4).
 - **No AI attribution of any kind.**
 
 ---
@@ -1451,6 +1629,25 @@ assertion is written out.
 `resolveLogWeekOverride` keeps `resolveOverride`'s exact `(groupId, tierId, urlWeek)` signature.
 `onJumpToPlayer`'s widened type is identical in `LogWeekGridProps` and `LootHistoryTableProps`.
 
-**One risk flagged for the implementer of Task 4:** `playerHandledRef` currently stores the bare
-`playerParam`, which would swallow a second jump to a *different slot of the same player*. The
-step-3 note requires the composite key and the test for it.
+**Plan-vet disposition (2026-09-22, `xivrp-director`, verdict ALIGNED / APPROVE WITH CHANGES).**
+All eight required changes and all seven minors are folded in above. The three claims I asked it to
+verify independently held: `Loot` does unmount on a tab switch (R-D12-B is sound), the slice reaches
+exactly one shared file for one line, and R-D12-E agrees with C7's existing narrowing. Three of its
+findings changed the plan materially rather than cosmetically:
+
+| Finding | What changed |
+|---|---|
+| **R1** — the one shared-file line had **no test at all** (zero coverage of `GroupViewContent`'s `?player=` effect), so its battery row would have scored 0 and the V1 assert would have been claimable | Task 4 gained **Step 1b**, authoring that coverage. |
+| **R2** — R-D12-C's stated rationale (a `setWeek` clobber) is **false**: `Loot.tsx:892-894`'s F1/F2 guards already make it unreachable | Rationale rewritten to the real failure (a dead pulse as `logWeek.week` walks to the settled clock), and the predicate narrowed to `override ?? (clockSettled ? clockCurrentWeek : null)` — which shrinks the residual to "week-1 tier **with no stored week**". |
+| **R3** — an unenumerated fourth fallback cause: **Board view has no anchor at all**, not even the card | R-D12-F gained cause 4 as a **named residual** (user-ruled 2026-09-22: name it, fix nothing — it is pre-existing from C7/D6a), pinned by a test. |
+
+Two of its findings corrected **me**, not the code: the `playerHandledRef` two-jump hazard is
+unreachable in the running app (downgraded to a defensive one-liner, with an explicit instruction
+*not* to write a test encoding the impossible scenario), and my Task 3/4 test bodies did not compile
+against the harnesses that exist (`renderTable(gear, extra)` is positional; `renderRosterAtUrl(tier,
+initialEntries)` has no `density` option — expanded density must be seeded through
+`ROSTER_DENSITY_KEY` in `localStorage`, without which every gear-row assertion passes vacuously).
+
+Its one scope observation, recorded and **not** acted on: `d12-mutation-battery.py` is the third
+near-identical copy of the harness (~360 lines each). A `--slice` flag on one shared script would
+stop that compounding, but it edits D11's shipped script — a chore for its own slice.
