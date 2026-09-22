@@ -1059,6 +1059,32 @@ describe('LootHistoryTable', () => {
       expect(row('loot-entry-1')).not.toHaveClass('cursor-pointer');
     });
 
+    it('T-9b: cursor-pointer — an EDITOR holding Alt over an UNRESOLVABLE recipient loses it too (R-D11-E/F)', () => {
+      // T-9 pins the matrix for a viewer only, which is why the editor leg of
+      // it went unnoticed: while Alt is held, `activate` takes the `altKey`
+      // branch and RETURNS before the `canEdit` edit path, so on a ghost row
+      // the click does nothing at all — and a `canEdit`-driven pointer would
+      // be advertising that nothing. R-D11-E's own defect, on the one control
+      // this slice exists to make honest.
+      renderTable({
+        lootLog: [lootEntry, makeLootEntry({ id: 2, recipientPlayerId: 'ghost', recipientPlayerName: 'Departed Player' })],
+      });
+      // At rest an editor's rows both advertise the edit a plain click performs.
+      expect(row('loot-entry-1')).toHaveClass('cursor-pointer');
+      expect(row('loot-entry-2')).toHaveClass('cursor-pointer');
+
+      fireEvent.keyDown(window, { key: 'Alt' });
+      // Alt held: the resolvable row keeps it — the jump WILL fire.
+      expect(row('loot-entry-1')).toHaveClass('cursor-pointer');
+      // The ghost row must drop it: the jump cannot fire and the edit is
+      // unreachable, so nothing happens on click.
+      expect(row('loot-entry-2')).not.toHaveClass('cursor-pointer');
+
+      // Releasing Alt restores the edit's own advertisement.
+      fireEvent.keyUp(window, { key: 'Alt' });
+      expect(row('loot-entry-2')).toHaveClass('cursor-pointer');
+    });
+
     it('T-10: the editable row carries the focus-visible INSET ring; the viewer row carries no ring classes at all (M3, R-D11-E)', () => {
       const editor = renderTable({ lootLog: [lootEntry] });
       expect(row('loot-entry-1')).toHaveClass(
