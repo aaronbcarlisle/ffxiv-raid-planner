@@ -599,3 +599,57 @@ describe('RosterGearTable — C7 slot ledger jumps (D-05)', () => {
     expect(onSlotJump).toHaveBeenCalledWith('head', 'loot');
   });
 });
+
+describe('D12 — gear row anchors and the jump pulse', () => {
+  // No fixture in this file builds a full GearSlotStatus[] — the table maps
+  // over GEAR_SLOTS itself (falling back to an empty per-slot status), so an
+  // empty gear array already renders every main row. Reusing `[]` here keeps
+  // this suite from adding a second gear-array builder alongside `slot()`.
+  it('gives every main row a gear-row-{playerId}-{slot} id', () => {
+    const { container } = renderTable([], { playerId: 'p1' });
+    expect(container.querySelector('#gear-row-p1-weapon')).not.toBeNull();
+    expect(container.querySelector('#gear-row-p1-head')).not.toBeNull();
+    expect(container.querySelector('#gear-row-p1-ring2')).not.toBeNull();
+  });
+
+  it('renders no anchors at all without a playerId (the id would be ambiguous)', () => {
+    const { container } = renderTable([]);
+    expect(container.querySelector('[id^="gear-row-"]')).toBeNull();
+  });
+
+  it('pulses only the highlighted row', () => {
+    const { container } = renderTable([], { playerId: 'p1', highlightedSlot: 'head' });
+    expect(container.querySelector('#gear-row-p1-head')!.className).toContain('highlight-pulse');
+    expect(container.querySelector('#gear-row-p1-body')!.className).not.toContain('highlight-pulse');
+  });
+
+  it('pulses nothing when highlightedSlot is null', () => {
+    const { container } = renderTable([], { playerId: 'p1', highlightedSlot: null });
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
+  });
+
+  // R-D12-E: the tome sub-row owns tome_weapon; the weapon row must not steal it.
+  it('anchors the tome sub-row separately from the weapon row', () => {
+    const { container } = renderTable([], {
+      playerId: 'p1',
+      tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+      highlightedSlot: 'tome_weapon',
+    });
+    const sub = container.querySelector('#gear-row-p1-tome_weapon');
+    expect(sub).not.toBeNull();
+    expect(sub!.className).toContain('highlight-pulse');
+    expect(container.querySelector('#gear-row-p1-weapon')!.className)
+      .not.toContain('highlight-pulse');
+  });
+
+  // R-D12-F cause 3: not pursuing => no sub-row => the card fallback does the work.
+  it('renders no tome anchor when the player is not pursuing', () => {
+    const { container } = renderTable([], {
+      playerId: 'p1',
+      tomeWeapon: { pursuing: false, hasItem: false, isAugmented: false },
+      highlightedSlot: 'tome_weapon',
+    });
+    expect(container.querySelector('#gear-row-p1-tome_weapon')).toBeNull();
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
+  });
+});

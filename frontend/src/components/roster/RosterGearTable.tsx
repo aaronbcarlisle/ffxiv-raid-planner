@@ -38,8 +38,8 @@ import {
 import { fromGearState, requiresAugmentation, toGearState, type GearState } from '../../utils/calculations';
 import { isOffhandRelevant } from '../../utils/offhand';
 import { hasHoverData } from './gearHoverData';
-import { jumpMenuAnchor } from './rosterLedgerJumps';
-import type { JumpKind, SlotJumpTargets } from './rosterLedgerJumps';
+import { gearRowDomId, jumpMenuAnchor } from './rosterLedgerJumps';
+import type { JumpAnchorSlot, JumpKind, SlotJumpTargets } from './rosterLedgerJumps';
 
 /**
  * Icon state treatment, condensed from legacy `GearTable` SlotIcon: real item
@@ -121,6 +121,19 @@ export interface RosterGearTableProps {
   slotJumps?: SlotJumpTargets;
   /** C7 (D-05): follow a slot's jump. The parent owns the navigation. */
   onSlotJump?: (slot: GearSlot, kind: JumpKind) => void;
+  /**
+   * D12 (R-18's destination): the player these rows belong to. Supplying it
+   * renders `gear-row-{playerId}-{slot}` anchors — the ids a ledger jump
+   * scrolls to and pulses. Optional because the table also renders standalone
+   * (and in tests) where a global id would be ambiguous.
+   */
+  playerId?: string;
+  /**
+   * D12: the row to pulse, from `?slot=` (`Roster.tsx` owns the param and the
+   * 2500 ms clear). `'tome_weapon'` targets the SUB-ROW, never the weapon row
+   * above it (R-D12-E) — the inverse of `findMaterialEntry`'s own rule.
+   */
+  highlightedSlot?: JumpAnchorSlot | null;
   /** Why editing is unavailable (shown by the disabled selector). */
   disabledReason?: string;
 }
@@ -138,6 +151,8 @@ export function RosterGearTable({
   onTomeMaterialJump,
   slotJumps,
   onSlotJump,
+  playerId,
+  highlightedSlot = null,
   disabledReason,
 }: RosterGearTableProps) {
   const bySlot = new Map(gear.map((g) => [g.slot, g]));
@@ -294,7 +309,13 @@ export function RosterGearTable({
           );
 
           const mainRow = (
-            <tr key={slot} className="border-t border-border-subtle">
+            <tr
+              key={slot}
+              id={playerId ? gearRowDomId(playerId, slot) : undefined}
+              className={`border-t border-border-subtle${
+                highlightedSlot === slot ? ' highlight-pulse' : ''
+              }`}
+            >
               <th scope="row" aria-label={rowLabel} className="py-1.5 pr-2 text-left font-normal">
                 {hasItemData ? (
                   // Hover item card (D-02): the legacy detailed gear tooltip,
@@ -459,7 +480,12 @@ export function RosterGearTable({
             <Fragment key={slot}>
               {mainRow}
               {isWeapon && tomeWeapon.pursuing && (
-              <tr className="border-t border-border-subtle/60 bg-surface-elevated/40">
+              <tr
+                id={playerId ? gearRowDomId(playerId, 'tome_weapon') : undefined}
+                className={`border-t border-border-subtle/60 bg-surface-elevated/40${
+                  highlightedSlot === 'tome_weapon' ? ' highlight-pulse' : ''
+                }`}
+              >
                 <th
                   scope="row"
                   aria-label="Tome Weapon (interim)"
