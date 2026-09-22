@@ -424,7 +424,10 @@ function weaponJobOf(item: HistoryItem): string | null | undefined {
 }
 
 function termMatches(term: string, item: HistoryItem, ctx: HistoryQueryContext): boolean {
-  // Week shorthand: w3, week3, week 3 (AllWeeksView.tsx:253-268, verbatim).
+  // Week shorthand. `w3` and `week3` reach here as single tokens exactly as in
+  // v1 (`AllWeeksView.tsx:253-268`); `week 3` only reaches it because
+  // `joinWeekShorthand` deliberately rejoined it upstream (R-D10-T) — v1 splits
+  // it and matches the halves independently. Not verbatim, on purpose.
   const weekMatch = term.match(/^w(?:eek\s*)?(\d+)$/i);
   if (weekMatch) {
     return item.entry.weekNumber === parseInt(weekMatch[1], 10);
@@ -543,6 +546,16 @@ export function toggleQueryToken(
       ? t.values.filter((v) => !isTarget(v))
       : [...t.values, { text: value, quoted }];
     if (nextValues.length === 0) continue; // drop the token entirely
+    // An unterminated token that lost NOTHING keeps its own text. Reserializing
+    // it would close its quote — and `serializeToken` quotes whitespace-bearing
+    // values — silently promoting a lenient bare value to an exact match
+    // (R-D10-Q). Removing `player:"Tank One"` from
+    // `player:"Tank One" player:"Healer Two` must not change what the second
+    // token means. Same rule `appendToken` follows for an open tail.
+    if (t.unterminated && nextValues.length === t.values.length) {
+      parts.push(t.text);
+      continue;
+    }
     parts.push(serializeToken(key, nextValues));
   }
   return parts.join(' ');

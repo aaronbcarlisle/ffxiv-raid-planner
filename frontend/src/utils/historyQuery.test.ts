@@ -528,3 +528,26 @@ describe('review round 4 — the "week 3" shorthand (Copilot, Medium)', () => {
     expect(filter('tank book', [hit, wrongMethod, wrongPlayer]).map((i) => i.entry.id)).toEqual([1]);
   });
 });
+
+describe('review round 8 — removal must not close an unrelated open quote (Copilot)', () => {
+  it('removing one player value leaves a trailing unterminated token lenient', () => {
+    // The remove branch reserialized EVERY token of the key, so clicking the
+    // Tank One pill closed the quote on the token still being typed — turning
+    // a lenient substring value into an exact match without touching it.
+    const q = 'player:"Tank One" player:"Healer Two';
+    const next = toggleQueryToken(q, 'player', 'Tank One', true);
+    expect(next).toBe('player:"Healer Two');
+
+    const values = parseHistoryQuery(next).filters[0].values;
+    expect(values.map((v) => v.text)).toEqual(['Healer Two']);
+    expect(values[0].quoted).toBe(false); // still lenient (R-D10-Q)
+  });
+
+  it('control: an unterminated token that DID lose a value is still reserialized', () => {
+    // The guard is "lost nothing", not "is unterminated" — a token the click
+    // actually edited must be rewritten, or the value never comes off.
+    const q = 'player:"Tank One","Healer Two';
+    const next = toggleQueryToken(q, 'player', 'Tank One', true);
+    expect(parseHistoryQuery(next).filters[0].values.map((v) => v.text)).toEqual(['Healer Two']);
+  });
+});
