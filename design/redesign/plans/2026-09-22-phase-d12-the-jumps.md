@@ -1528,9 +1528,24 @@ One row per ruling, each naming the ruling it pins:
 > `useLayoutEffect` for the scroll call: that constraint is enforced by review and by Task 2's doc
 > comment, not by any test, and mutating it proves nothing.
 >
-> The general rule these two cases teach: **before writing a battery row, ask whether the mutated
+> A **THIRD** turned up in Task 4's fix round: widening the clear effect's deps to
+> `[highlightedPlayerId, highlightedSlot]` cannot be killed by reverting them, for the same reason a
+> two-jump test is forbidden — the scenario the widening defends against is unreachable while
+> `Roster` remounts on every tab switch.
+>
+> **The slice's three known equivalent mutants, none of which may become a battery row:**
+> `setHighlightedSlot(null)` in the 2500 ms clear · the clear effect's dep array ·
+> `useEffect` vs `useLayoutEffect` for the scroll call (enforced by review and by `gearRowScroll`'s
+> doc comment, not by any test).
+>
+> The general rule these cases teach: **before writing a battery row, ask whether the mutated
 > line is observable at all.** A defensive line whose effect is masked by a guard elsewhere is
 > documentation, not behaviour, and mutating documentation always scores 0.
+>
+> ⚠ Conversely, the **"wrong row" row IS valid — but only against the post-fix test.** Until Task 4's
+> fix round, `Roster.test.tsx`'s row-scroll test asserted on the shared `Element.prototype`
+> `scrollIntoView` stub, so a mutant pointing the scroll at `'ring2'` survived with the suite fully
+> green. It now asserts the receiver via `mock.contexts`. Cite the post-fix test.
 
 - [ ] **Step 3: Prove the harness, then the battery**
 
