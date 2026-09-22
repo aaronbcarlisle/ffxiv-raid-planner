@@ -493,18 +493,25 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // through the OLD tier's `floors` closure — no floor name matches, and it
     // would overwrite the correct latch with a lower floor.
     let cancelled = false;
+    // `logsFailed` is a claim about the LOGS, so only the two log promises may
+    // set it — attached per-promise, not to the `Promise.all`. A batch-level
+    // catch would let a `fetchPageLedger` or `fetchCurrentWeek` failure put
+    // History into "Couldn't load this tier's entries." while its logs arrived
+    // perfectly well, which is the same wrongness that ruled out the store's
+    // single shared `error` field (D9b review round 2, Copilot). Rethrows so
+    // the batch still rejects and the one toast below still fires.
+    // `cancelled`: an old tier's rejection must not mark the NEW tier failed.
+    const markLogsFailed = (error: unknown): never => {
+      if (!cancelled) setLogsFailed(true);
+      throw error;
+    };
     void Promise.all([
-      fetchLootLog(groupId, tierId),
-      fetchMaterialLog(groupId, tierId),
+      fetchLootLog(groupId, tierId).catch(markLogsFailed),
+      fetchMaterialLog(groupId, tierId).catch(markLogsFailed),
       fetchPageLedger(groupId, tierId),
       fetchCurrentWeek(groupId, tierId),
     ])
-      .catch(() => {
-        // Tier-scoped via the same `cancelled` latch the landing scope uses:
-        // an old tier's rejection must not mark the NEW tier's logs failed.
-        if (!cancelled) setLogsFailed(true);
-        toast.error('Failed to load loot data');
-      })
+      .catch(() => toast.error('Failed to load loot data'))
       // R-10 landing latch — runs on success AND failure (a failed fetch still
       // latches from whatever the store holds, so the scope never moves later).
       .then(() => {

@@ -190,7 +190,14 @@ threads this time; no review body carried suppressed comments.
 | **A failed load leaves empty arrays with `logsLoading === false`**, so History asserts "No loot or materials logged this tier." over a request that never landed (Copilot) | **Real and reachable** — `fetchLootLog` clears its loading flag on the error path too, and `Loot` only raises a toast | **Fixed.** New `logsFailed` prop → a fourth zero-row state, `Couldn't load this tier's entries.`, with no count either. Scoped with local state set inside the existing `cancelled` latch rather than the store's single shared `error`, which any of its fetches can set. Unit tests + an assembly test with a rejecting `fetchLootLog`, plus a control for succeeded-but-empty. **Mutation-checked** |
 | **`logsLoading` is a pair of global booleans**; on a tier switch an old response can clear the flag while the new request is pending, and "with empty arrays at that point" the table calls the new tier loaded (Copilot) | **Premise partly refuted.** The arrays are never emptied — `clearLootTracking` exists with **zero call sites**, and each fetch overwrites on success. A tier switch therefore renders the *previous tier's rows*, never the false-empty claim | **Disclosed, not fixed.** The residual is stale rows, which pre-dates D9b on both shells and is named in the `logsLoading` docblock. Request-scoped loading is a store change and belongs with the standing `fetchPageLedger` gating item |
 | **`currentWeek`/`rangeOfWeek` may read a clock still holding the previous tier's values** after a switch (Copilot) | **Real, pre-existing** | **Disclosed.** Every `clock` consumer shares it (`WeekScopeControl` shows the same stale "Week N"). D9b adds a reader, not the behaviour — queued rather than forked into this slice |
-| **The plan's gate table said 2989 tests (+17) while the PR body said 2992 (+20)** (Copilot) | **Real** — I updated the PR body and not the plan | **Fixed**; both now read the final **2997 (+25)** |
+| **The plan's gate table said 2989 tests (+17) while the PR body said 2992 (+20)** (Copilot) | **Real** — I updated the PR body and not the plan | **Fixed**; both now read the final count |
+
+### Round 3 — Copilot re-reviewed the round-2 fix and found a flaw in it
+
+| Finding | Verdict | Disposition |
+|---|---|---|
+| **`logsFailed` was set from a `Promise.all` catch** that also covers `fetchPageLedger` and `fetchCurrentWeek`, so an unrelated failure would put History into "Couldn't load this tier's entries." while its logs arrived fine | **Real, and pointed** — it is precisely the wrongness I had just argued ruled out the store's shared `error` field, reintroduced one line later through the batch | **Fixed.** `markLogsFailed` is attached **per log promise** and rethrows, so the batch still rejects and the single toast still fires. New assembly test: `fetchPageLedger` rejects, logs succeed → History must still say "No loot or materials logged this tier." **Mutation-checked** — restoring the batch-level catch kills exactly that test |
+| **`DESIGN_SYSTEM.md` §3.36 was stale again** — it listed three zero-row states and no `logsFailed` prop, having been written before round 2 | **Real** | **Fixed.** Props updated; the states line is now a four-row precedence table that spells out which two withhold a claim and which two assert one |
 
 ---
 
@@ -198,7 +205,7 @@ threads this time; no review body carried suppressed comments.
 
 | Gate | Result | vs `main` @ `257ec940` |
 |---|---|---|
-| `pnpm test` | **233 files / 2997 tests passed** | **+25** vs main's 2972, 0 failures |
+| `pnpm test` | **233 files / 2998 tests passed** | **+26** vs main's 2972, 0 failures |
 | `pnpm lint` | **0 errors / 903 warnings** | **equal** — the ceiling, unchanged |
 | `pnpm build` (`tsc -b && vite build`) | clean | — |
 | `pnpm check:design-system:strict` | clean | — |
@@ -213,6 +220,7 @@ threads this time; no review body carried suppressed comments.
 | `timeZone: 'UTC'` removed from `RANGE_FMT` | **4** (runner TZ `America/New_York`; a UTC CI runner cannot distinguish, so this guard is local-only — stated, not overclaimed) |
 | `currentWeek={logWeek.week}` instead of `clock.currentWeek` | exactly **1** — the week-source assembly guard |
 | `setLogsFailed(true)` removed from the fetch `.catch` | exactly **1** — the load-failure assembly guard |
+| the per-log-promise catches collapsed back to a batch-level catch | exactly **1** — the unrelated-failure scoping guard |
 
 **Live browser pass**, 1440 viewport, DEVTST, both themes, 0 console errors from this surface:
 

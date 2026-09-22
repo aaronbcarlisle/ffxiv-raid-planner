@@ -937,6 +937,23 @@ describe('Loot', () => {
     expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
   });
 
+  it('does NOT blame the logs when an unrelated request in the same batch fails', async () => {
+    // `logsFailed` rides a Promise.all with fetchPageLedger and
+    // fetchCurrentWeek. Catching at the batch level would let either of those
+    // put History into "Couldn't load this tier's entries." while the logs
+    // arrived fine — exactly the wrongness that ruled out the store's shared
+    // `error` field. The catches are per-log-promise for this reason.
+    useLootTrackingStore.setState({
+      lootLog: [],
+      materialLog: [],
+      fetchPageLedger: vi.fn().mockRejectedValue(new Error('ledger boom')),
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+
+    expect(await screen.findByText('No loot or materials logged this tier.')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+  });
+
   it('claims the tier is empty only when the load actually SUCCEEDED with nothing in it', async () => {
     // The control for the test above: same empty arrays, no rejection.
     useLootTrackingStore.setState({ lootLog: [], materialLog: [] });

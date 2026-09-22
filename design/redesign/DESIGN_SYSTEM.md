@@ -495,13 +495,25 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   Direction-agnostic — they render under week asc as well as desc (R-D9b-E).
 - **Props:** `{ lootLog: LootLogEntry[]; materialLog: MaterialLogEntry[]; players: SnapshotPlayer[];
   floors: string[]; filters: HistoryFilterState; currentWeek: number; rangeOfWeek: (week: number) =>
-  WeekRange | null; logsLoading: boolean; canEdit: boolean; onEdit: (entry: LootLogEntry) => void;
-  onCopyLink: (item: HistoryItem) => void; onDelete: (item: HistoryItem) => void }`.
+  WeekRange | null; logsLoading: boolean; logsFailed: boolean; canEdit: boolean;
+  onEdit: (entry: LootLogEntry) => void; onCopyLink: (item: HistoryItem) => void;
+  onDelete: (item: HistoryItem) => void }`.
 - **States:** sorted (session-local `useState`, default Week desc, ties `createdAt` desc → loot before
-  material → id desc, never direction-aware) | deep-link highlight | **three** distinct zero-row
-  states — `"Loading entries…"` while either log is in flight, `"No loot or materials logged this
-  tier."` when the tier genuinely holds nothing, `"No entries match your filters."` when it holds
-  entries the filter excludes (R-34).
+  material → id desc, never direction-aware) | deep-link highlight | **four** distinct zero-row
+  states, in precedence order (R-34 + D9b review):
+
+  | Condition | Body | Count line |
+  |---|---|---|
+  | `logsLoading` | `Loading entries…` | blank |
+  | `logsFailed` | `Couldn't load this tier's entries.` | blank |
+  | both logs empty | `No loot or materials logged this tier.` | `0 entries` |
+  | otherwise | `No entries match your filters.` | `0 entries` |
+
+  **The first two WITHHOLD a claim; only the last two assert anything.** Empty arrays are not
+  evidence of an empty tier while a request is in flight or after one failed, and "0 entries" is the
+  same claim as the message — in a live region, announced. `logsFailed` is tier-scoped state owned by
+  `Loot.tsx` and set only by the two **log** fetches, never by the batch they ride in: an unrelated
+  ledger or week-clock failure must not make History claim its logs are gone.
 - **Deep-link highlight:** `?entry=&entryType=` is validated against the **unfiltered** logs — an id
   absent from them is treated as absent and never throws, while an id present but filtered off screen
   still arms the effect, so the params self-clear after 2.5s either way. The id the effect scrolls to
