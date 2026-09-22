@@ -505,7 +505,7 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   | Condition | Body | Count line |
   |---|---|---|
   | `logsLoading` | `Loading entries…` | blank |
-  | `logsFailed` | `Couldn't load this tier's entries.` | blank |
+  | `logsFailed` **and both logs empty** | `Couldn't load this tier's entries.` | blank |
   | both logs empty | `No loot or materials logged this tier.` | `0 entries` |
   | otherwise | `No entries match your filters.` | `0 entries` |
 
@@ -513,7 +513,12 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   evidence of an empty tier while a request is in flight or after one failed, and "0 entries" is the
   same claim as the message — in a live region, announced. `logsFailed` is tier-scoped state owned by
   `Loot.tsx` and set only by the two **log** fetches, never by the batch they ride in: an unrelated
-  ledger or week-clock failure must not make History claim its logs are gone.
+  ledger or week-clock failure must not make History claim its logs are gone. It is **retracted** as
+  soon as either log array's identity changes (a fetch writes a fresh array on success, including an
+  empty one, and leaves it untouched on failure), because store-internal refetches after a log
+  mutation would otherwise leave the verdict standing over logs that had since arrived. The table
+  independently gates the failure message on the tier being empty — a component holding logs must
+  never claim they failed to load.
 - **Deep-link highlight:** `?entry=&entryType=` is validated against the **unfiltered** logs — an id
   absent from them is treated as absent and never throws, while an id present but filtered off screen
   still arms the effect, so the params self-clear after 2.5s either way. The id the effect scrolls to

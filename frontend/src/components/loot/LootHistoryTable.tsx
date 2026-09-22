@@ -469,6 +469,13 @@ export function LootHistoryTable({
     return counts;
   }, [rows]);
 
+  // R-34's filtered-vs-empty split. Read off the RAW props, not `rows`: the
+  // question is whether the tier holds anything at all, which is what the
+  // unfiltered logs answer ONCE THEY HAVE LOADED — hence the `logsLoading`
+  // guard, which withholds the claim rather than asserting it over arrays that
+  // are empty only because the request is still in flight.
+  const tierIsEmpty = lootLog.length === 0 && materialLog.length === 0;
+
   // R-34's stats count. The split is gated on both kinds being PRESENT, which
   // replaces v1's `entryType === 'all'` gate (`AllWeeksView.tsx:508`) — a state
   // R-30/D10 deletes outright.
@@ -483,23 +490,25 @@ export function LootHistoryTable({
   const lootShown = rows.filter((item) => item.kind === 'loot').length;
   const materialShown = rows.length - lootShown;
   const statsLabel =
-    (logsLoading || logsFailed) && rows.length === 0
+    (logsLoading || (logsFailed && tierIsEmpty)) && rows.length === 0
       ? ''
       : lootShown > 0 && materialShown > 0
         ? `${entryCount(rows.length)} (${lootShown} gear, ${materialShown} material)`
         : entryCount(rows.length);
 
-  // R-34's filtered-vs-empty split. Read off the RAW props, not `rows`: the
-  // question is whether the tier holds anything at all, which is what the
-  // unfiltered logs answer ONCE THEY HAVE LOADED — hence the `logsLoading`
-  // guard, which withholds the claim rather than asserting it over arrays that
-  // are empty only because the request is still in flight.
-  const tierIsEmpty = lootLog.length === 0 && materialLog.length === 0;
   // Four zero-row states, in precedence order. The first two WITHHOLD a claim
   // the component cannot support; only the last two assert anything.
+  //
+  // `logsFailed` is gated on `tierIsEmpty` rather than taken on its own: if
+  // this component is HOLDING logs then they demonstrably loaded, whatever a
+  // stale flag says, so zero rows can only be the filter. That keeps the
+  // component self-consistent independent of how the flag is driven — the
+  // caller also retracts it on a successful refetch, and neither mechanism
+  // should be the only thing standing between a user and a false claim
+  // (D9b review round 4).
   const emptyMessage = logsLoading
     ? 'Loading entries…'
-    : logsFailed
+    : logsFailed && tierIsEmpty
       ? "Couldn't load this tier's entries."
       : tierIsEmpty
         ? 'No loot or materials logged this tier.'

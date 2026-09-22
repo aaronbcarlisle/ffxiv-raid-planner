@@ -192,11 +192,12 @@ threads this time; no review body carried suppressed comments.
 | **`currentWeek`/`rangeOfWeek` may read a clock still holding the previous tier's values** after a switch (Copilot) | **Real, pre-existing** | **Disclosed.** Every `clock` consumer shares it (`WeekScopeControl` shows the same stale "Week N"). D9b adds a reader, not the behaviour — queued rather than forked into this slice |
 | **The plan's gate table said 2989 tests (+17) while the PR body said 2992 (+20)** (Copilot) | **Real** — I updated the PR body and not the plan | **Fixed**; both now read the final count |
 
-### Round 3 — Copilot re-reviewed the round-2 fix and found a flaw in it
+### Rounds 3-4 — the bots re-reviewed each fix, and each fix had a flaw
 
 | Finding | Verdict | Disposition |
 |---|---|---|
 | **`logsFailed` was set from a `Promise.all` catch** that also covers `fetchPageLedger` and `fetchCurrentWeek`, so an unrelated failure would put History into "Couldn't load this tier's entries." while its logs arrived fine | **Real, and pointed** — it is precisely the wrongness I had just argued ruled out the store's shared `error` field, reintroduced one line later through the batch | **Fixed.** `markLogsFailed` is attached **per log promise** and rethrows, so the batch still rejects and the single toast still fires. New assembly test: `fetchPageLedger` rejects, logs succeed → History must still say "No loot or materials logged this tier." **Mutation-checked** — restoring the batch-level catch kills exactly that test |
+| **`logsFailed` never clears on a later successful log fetch** (claude[bot]). `setLogsFailed(false)` ran only in the tier effect, but the tier effect is not the only thing that loads the logs — every log mutation refetches them from inside the store, and `refresh` doesn't touch them. So a failed first load kept the error message for the whole tier visit, and a filter matching nothing showed the load error instead of "No entries match your filters." | **Real and reachable** — the same false-claim class the slice exists to remove, with the polarity flipped | **Fixed twice over, deliberately.** (1) A retraction effect keyed on `[lootLog, materialLog]`: a fetch writes a freshly parsed array on success and leaves it untouched on failure, so a changed reference is the one signal the component gets that the logs arrived — including a delete that emptied the tier. (2) `logsFailed` is now gated on `tierIsEmpty` in the table itself: a component HOLDING logs must not claim they failed to load, whatever a stale flag says. Neither mechanism is the only thing between a user and a false claim. Both mutation-checked |
 | **`DESIGN_SYSTEM.md` §3.36 was stale again** — it listed three zero-row states and no `logsFailed` prop, having been written before round 2 | **Real** | **Fixed.** Props updated; the states line is now a four-row precedence table that spells out which two withhold a claim and which two assert one |
 
 ---
@@ -205,7 +206,7 @@ threads this time; no review body carried suppressed comments.
 
 | Gate | Result | vs `main` @ `257ec940` |
 |---|---|---|
-| `pnpm test` | **233 files / 2998 tests passed** | **+26** vs main's 2972, 0 failures |
+| `pnpm test` | **233 files / 3000 tests passed** | **+28** vs main's 2972, 0 failures |
 | `pnpm lint` | **0 errors / 903 warnings** | **equal** — the ceiling, unchanged |
 | `pnpm build` (`tsc -b && vite build`) | clean | — |
 | `pnpm check:design-system:strict` | clean | — |
@@ -221,6 +222,8 @@ threads this time; no review body carried suppressed comments.
 | `currentWeek={logWeek.week}` instead of `clock.currentWeek` | exactly **1** — the week-source assembly guard |
 | `setLogsFailed(true)` removed from the fetch `.catch` | exactly **1** — the load-failure assembly guard |
 | the per-log-promise catches collapsed back to a batch-level catch | exactly **1** — the unrelated-failure scoping guard |
+| the `[lootLog, materialLog]` retraction effect removed | exactly **1** — the empty-refetch retraction guard |
+| `logsFailed` ungated from `tierIsEmpty` | exactly **1** — the holding-logs guard |
 
 **Live browser pass**, 1440 viewport, DEVTST, both themes, 0 console errors from this surface:
 

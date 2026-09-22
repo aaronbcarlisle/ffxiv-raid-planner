@@ -937,6 +937,26 @@ describe('Loot', () => {
     expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
   });
 
+  it('retracts the verdict even when the successful refetch comes back EMPTY', async () => {
+    // claude[bot]'s "delete back down to zero rows" case: the store writes a
+    // fresh empty array, so the identity changes and the verdict must lift —
+    // leaving the honest "nothing logged" message, not the stale load error.
+    useLootTrackingStore.setState({
+      lootLog: [],
+      materialLog: [],
+      fetchLootLog: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+    expect(await screen.findByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+
+    act(() => {
+      useLootTrackingStore.setState({ lootLog: [], materialLog: [] });
+    });
+
+    expect(await screen.findByText('No loot or materials logged this tier.')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+  });
+
   it('does NOT blame the logs when an unrelated request in the same batch fails', async () => {
     // `logsFailed` rides a Promise.all with fetchPageLedger and
     // fetchCurrentWeek. Catching at the batch level would let either of those

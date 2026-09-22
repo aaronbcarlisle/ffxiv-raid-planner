@@ -473,6 +473,20 @@ describe('LootHistoryTable', () => {
       expect(screen.getByRole('status')).toHaveTextContent('');
     });
 
+    it('never claims a load failure while it is HOLDING logs — zero rows is the filter', () => {
+      // A stale `logsFailed` must not outrank the evidence in the component's
+      // own hands. The tier has an entry; the filter excludes it.
+      renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
+        filters: { ...DEFAULT_HISTORY_FILTERS, week: 9 },
+        logsFailed: true,
+      });
+      expect(screen.getByText('No entries match your filters.')).toBeInTheDocument();
+      expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+      // And the count is a real one here — zero IS the honest answer.
+      expect(screen.getByRole('status')).toHaveTextContent('0 entries');
+    });
+
     it('prefers "loading" over "failed" while a retry is in flight', () => {
       renderTable({ lootLog: [], materialLog: [], logsLoading: true, logsFailed: true });
       expect(screen.getByText('Loading entries…')).toBeInTheDocument();

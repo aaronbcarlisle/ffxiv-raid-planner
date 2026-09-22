@@ -532,6 +532,30 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // `weekStartDate`/`currentWeek` stale (wrong/missing week ranges) until a
   // remount. Every onSuccess (picker/material modal/wizard/weapon bridge)
   // routes through this one callback, so the fix covers all of them.
+  /**
+   * Retract the failure verdict the moment the logs demonstrably load.
+   *
+   * `setLogsFailed(true)` is latched by the tier effect above, but that effect
+   * is NOT the only thing that loads the logs: every log mutation refetches
+   * them from inside the store (`lootTrackingStore.ts` — log/update/delete for
+   * both loot and materials), and `refresh` below deliberately doesn't touch
+   * them. Without this, a failed first load would keep History saying
+   * "Couldn't load this tier's entries." for the whole tier visit — over logs
+   * that had since arrived — and a filter matching nothing would show the load
+   * error instead of "No entries match your filters." That is the same false
+   * claim this slice exists to remove, with the polarity flipped (D9b review
+   * round 4, claude[bot]).
+   *
+   * Array IDENTITY is the signal, because it is the only one the component
+   * gets: a fetch writes `set({ lootLog: response })` with a freshly parsed
+   * array on success and leaves the array untouched on failure. So a changed
+   * reference means "a fetch succeeded", including a delete that emptied the
+   * tier — and an unchanged one means nothing new arrived.
+   */
+  useEffect(() => {
+    setLogsFailed(false);
+  }, [lootLog, materialLog]);
+
   const refresh = useCallback(() => {
     if (groupId && tierId) {
       void fetchTier(groupId, tierId);
