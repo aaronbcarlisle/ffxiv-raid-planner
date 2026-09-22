@@ -223,6 +223,40 @@ describe('Layout chrome — pre-hydration auth slot (H13)', () => {
  * the chrome context by hand. This row proves the SHIPPED host publishes it —
  * real Layout → real AppChrome → real AppRail footer → real UserMenu.
  */
+/**
+ * T-29 (D11, R-D11-C / M5) — the V1-unchanged assert that can actually fail.
+ *
+ * `Layout.tsx` is not a legacy-only path (D-REC-2): it renders BOTH shells,
+ * so DoD 3 part (a)'s "git diff over legacy paths is empty" passes trivially
+ * here even for a mutation that adds `extraGroups` to the LEGACY mount. This
+ * suite is the guard that structurally cannot pass vacuously: it opens the
+ * real `KeyboardShortcutsHelp` (not mocked) in each branch and asserts on
+ * its rendered content directly.
+ */
+describe('Layout chrome — Shift+? help content differs by branch (T-29)', () => {
+  const openHelp = () => {
+    window.dispatchEvent(new Event('show-keyboard-shortcuts'));
+  };
+
+  it('legacy branch: no History group, no Ctrl+Shift+F', async () => {
+    renderAt('/profile');
+    openHelp();
+    expect(await screen.findByText('Keyboard Shortcuts')).toBeInTheDocument();
+    expect(screen.queryByText('History')).toBeNull();
+    expect(screen.queryByText('Ctrl+Shift+F')).toBeNull();
+    expect(screen.queryByText('Search history')).toBeNull();
+  });
+
+  it('v2 branch: both the History group and Ctrl+Shift+F are present', async () => {
+    renderAt('/profile?shell=v2');
+    openHelp();
+    expect(await screen.findByText('Keyboard Shortcuts')).toBeInTheDocument();
+    expect(screen.getByText('History')).toBeInTheDocument();
+    expect(screen.getByText('Ctrl+Shift+F')).toBeInTheDocument();
+    expect(screen.getByText('Search history')).toBeInTheDocument();
+  });
+});
+
 describe('Layout chrome — the v2→legacy escape hatch under the REAL host (H14/G2)', () => {
   // Two real UserMenus are in the v2 DOM off-group — the rail footer (desktop)
   // and the mobile top bar — so each row scopes to the one it means. Only one

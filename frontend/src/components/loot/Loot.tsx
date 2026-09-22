@@ -192,11 +192,13 @@ import { useWeekClock } from '../../hooks/useWeekClock';
 import { useLogWeek } from './useLogWeek';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useViewAsStore } from '../../stores/viewAsStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
+import { useGroupActionModalOpen } from '../../pages/groupActionsContext';
 import { toast } from '../../stores/toastStore';
 
 import { deleteLootAndRevertGear } from '../../utils/lootCoordination';
@@ -523,6 +525,77 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const [deleteTarget, setDeleteTarget] = useState<HistoryItem | null>(null);
   const [resetConfig, setResetConfig] = useState<ResetConfig | null>(null);
 
+  // ── R-35: `Ctrl+Shift+F` focuses History's search box (D11) ──
+  // Registered v2-locally through the SHARED hook rather than in
+  // `useGroupViewKeyboardShortcuts` — importing `useKeyboardShortcuts` is not
+  // editing it (`pages/Profile.tsx` is the standing precedent for a
+  // component-local registration), so the shared hook every V1 screen runs
+  // stays untouched. V1 implements this binding as a bare `document` listener
+  // with no guard at all (`history/AllWeeksView.tsx:111-120`); the three gates
+  // below are what R-35's implementation note asks for.
+  const historySearchRef = useRef<HTMLInputElement>(null);
+  // Gate 2 (modal), in TWO parts, because no single source knows about every
+  // overlay that can sit above History.
+  //
+  // (a) Typed state. Loot's own modals, plus the chrome-owned action dialogs
+  //     (Add Player / New Tier / Rollover / Delete) via the shared context —
+  //     `Roster.tsx`'s `isActionModalOpen` precedent, and `Loot` renders inside
+  //     the `GroupActionModals` provider (`NewShell.tsx:309`). The hook returns
+  //     false outside a provider, so a bare render still degrades safely.
+  //     `WeekScopeControl`'s summary and `BookLedgerCard`'s two stay out: they
+  //     are Log-only, and gate 3 confines this action to History.
+  //
+  // (b) Focus containment, for the overlays that expose no state Loot can
+  //     reach — the GLOBAL `KeyboardShortcutsHelp` being the live example
+  //     (`Layout.tsx` owns `showKeyboardHelp`; nothing publishes it). Without
+  //     this, pressing `Ctrl+Shift+F` while the `Shift+?` help is open focused
+  //     the search box BEHIND the modal — the guard R-35 advertises, bypassed
+  //     (PR #266, Copilot, found in a collapsed "Previously missed" block).
+  //     `ui/Modal` moves focus into itself on open, so "is the focused element
+  //     inside a dialog" answers this for every such overlay, present and
+  //     future, without new plumbing. Deliberately NOT a check for the mere
+  //     PRESENCE of `[role="dialog"]`: the v2 chrome keeps an always-mounted
+  //     one (the nav drawer), so presence would disable the shortcut forever.
+  const isActionModalOpen = useGroupActionModalOpen();
+  const anyModalOpen =
+    pickerState !== null || wizardState !== null || materialState !== null ||
+    adjustmentsOpen || deleteTarget !== null || resetConfig !== null ||
+    isActionModalOpen;
+  useKeyboardShortcuts({
+    disabled: anyModalOpen,
+    shortcuts: [{
+      key: 'f',
+      requireMod: true,
+      requireShift: true,
+      description: 'Search history',
+      // Gate 3 (view) lives INSIDE the action, not in a conditional shortcut
+      // array, so the registration is stable across view switches. The cost,
+      // stated rather than discovered: `useKeyboardShortcuts` calls
+      // `preventDefault()` on any MATCH, before running the action, so
+      // `Ctrl+Shift+F` is swallowed on Priority and Log too — where it
+      // no-ops. Focusing the box is the whole action; switching views under
+      // a focus shortcut would be a different feature.
+      //
+      // ⚠ This check is DEFENCE IN DEPTH, not the load-bearing gate, and the
+      // D11 mutation battery proves it: deleting it kills 0 tests. Off
+      // History `HistorySearch` is unmounted, so React has already nulled
+      // `historySearchRef` and `?.focus()` cannot fire — the optional chain
+      // is what actually holds. It is kept anyway because the two mechanisms
+      // fail differently: the day a refactor keeps the History subtree
+      // MOUNTED but hidden (a tab that hides rather than unmounts), the ref
+      // stays live and this line is the only thing stopping the chord from
+      // focusing an invisible box. Recorded rather than deleted because,
+      // unlike R-D10-F's `params.delete('q')`, it is not protecting against
+      // a structurally impossible state — only an unbuilt one.
+      action: () => {
+        if (lview !== 'history') return;
+        // Gate 2(b), above: an overlay Loot cannot see is open and holds focus.
+        if (document.activeElement?.closest('[role="dialog"],[aria-modal="true"]')) return;
+        historySearchRef.current?.focus();
+      },
+    }],
+  });
+
   // Mount fetch — v2 must not depend on legacy chrome's own loot effect ordering.
   const groupId = group.id;
   const tierId = tier?.tierId;
@@ -685,6 +758,51 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       params.set('player', playerId);
       params.delete('entry');
       params.delete('entryType');
+      params.delete('book');
+      return params;
+    });
+  }, [setSearchParams]);
+
+  // D11 (R-D11-H): a History material row's Edit — the SAME `materialState`
+  // edit door the Log grid's `onEditMaterial` opens below, so D8's modal keeps
+  // ONE mount and gains a second CALLER. D8's §5 mount obligations (full
+  // roster, referential stability, lazy edit initializers) were discharged in
+  // D5 for this mount; a second caller inherits them satisfied.
+  const editMaterialFromHistory = useCallback((entry: MaterialLogEntry) => {
+    setMaterialState({ mode: 'edit', editEntry: entry });
+  }, []);
+
+  // D11 (R-D11-A): History's "View week {n} in Log" — a same-tab jump that
+  // carries the ENTRY, not just its week: `lview=log` + `entry` + `entryType`,
+  // so the Log lands with the entry's own cell pulsing (the `?entry=` effect
+  // below), not merely on the week the user just searched. `book` is deleted
+  // for the reason `jumpToRecipient` deletes `entry`/`entryType`/`book`:
+  // highlights are mutually exclusive, one navigation carries one target
+  // (director F-18). `RosterCard.tsx:281-296` is the precedent minus its
+  // `tab=gear` — this jump never leaves the Loot tab, so setting it would be
+  // noise (n3).
+  //
+  // Deliberately NO `week` and NO `logWeek.setWeek` (R-D11-B):
+  //   (1) `useLogWeek` reads `?week=` on MOUNT ONLY, and `Loot` does not
+  //       remount on an `lview` change (`NewShell.tsx` mounts it un-keyed), so
+  //       a `week` written here would be inert on the only path that writes it;
+  //   (2) `setWeek` would be a SECOND `setSearchParams` in this handler, and
+  //       react-router's functional updater closes over the `searchParams` its
+  //       own reference was created with (see `setSearchParamsRef` above) —
+  //       the second write would rebuild from the same pre-jump snapshot and
+  //       clobber the first, leaving the URL on `lview=history`.
+  // The out-of-week correction in the `?entry=` effect below runs in a later
+  // tick, which is why it composes: it re-points the Log to the entry's week
+  // and mirrors `?week=` itself. Disclosed residual (R-D11-N): the F2
+  // provisional-clock guard can swallow this jump on a genuine week-1 tier
+  // displaying a stale week — no pulse, no self-clear — and it self-heals on a
+  // return to History. Not narrowed here: that guard stops a worse clobber.
+  const viewWeekInLog = useCallback((item: HistoryItem) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.set('lview', 'log');
+      params.set('entry', String(item.entry.id));
+      params.set('entryType', item.kind);
       params.delete('book');
       return params;
     });
@@ -1104,6 +1222,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             unknownValues={parsedHistoryQuery.unknownValues}
             floors={floors}
             players={configuredPlayers}
+            /* R-35/D11: the box `Ctrl+Shift+F` focuses. `HistorySearch`
+               resolves this against its own internal ref, so its clear-button
+               focus restore keeps working through the same one. */
+            inputRef={historySearchRef}
           />
           <LootHistoryTable
             lootLog={lootLog}
@@ -1117,7 +1239,14 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             logsFailed={logsFailed}
             canEdit={canEdit}
             onEdit={openEdit}
+            onEditMaterial={editMaterialFromHistory}
             onCopyLink={copyLink}
+            /* D11: the SAME jump the Log grid uses — it already strips
+               entry/entryType/book, so a History-originated highlight cannot
+               follow the user to the roster (director F-18). Card-level until
+               D12's slot anchors (R-28). */
+            onJumpToPlayer={jumpToRecipient}
+            onViewWeekInLog={viewWeekInLog}
             onDelete={requestDelete}
           />
         </div>

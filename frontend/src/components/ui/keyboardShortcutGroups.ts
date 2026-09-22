@@ -84,3 +84,23 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
 ];
+
+/**
+ * v2-only additions to the shortcut reference (D11, R-D11-C).
+ *
+ * V1's `Shift+?` help must render byte-identical to today — so a new binding
+ * that only exists on the v2 Loot screen cannot join `SHORTCUT_GROUPS` above.
+ * This list is consumed separately, by callers that know they are v2 (the v2
+ * branch of `Layout.tsx`'s help mount, and `CommandPalette.tsx`, which is
+ * v2-only outright). Whether this seam gets generalised (a shell-aware split
+ * of the whole registry) or replaced by something else is D14's decision —
+ * this is the minimal append that keeps V1 unchanged until then.
+ */
+export const V2_SHORTCUT_GROUPS: ShortcutGroup[] = [
+  {
+    title: 'History',
+    shortcuts: [
+      { key: 'Ctrl+Shift+F', description: 'Search history' },
+    ],
+  },
+];

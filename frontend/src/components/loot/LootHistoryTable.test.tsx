@@ -111,6 +111,9 @@ function tableProps(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> =
     logsFailed: false,
     canEdit: true,
     onEdit: vi.fn(),
+    onEditMaterial: vi.fn(),
+    onJumpToPlayer: vi.fn(),
+    onViewWeekInLog: vi.fn(),
     onCopyLink: vi.fn(),
     onDelete: vi.fn(),
     ...overrides,
@@ -127,9 +130,36 @@ function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> 
   );
 }
 
-/** Row-scoped: the kebab's accessible name is row-specific, so match the shared middle. */
+/**
+ * Row-scoped: the kebab's accessible name is row-specific, so match the shared
+ * middle. D11 (R-D11-D): the kebab is a `ui/ContextMenu` trigger — it opens on
+ * a plain CLICK; the Radix `Dropdown` it replaced opened on Enter-keydown.
+ */
 function openKebab(container: HTMLElement) {
-  fireEvent.keyDown(within(container).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+  fireEvent.click(within(container).getByRole('button', { name: /entry actions/ }));
+}
+
+/** The open menu's item labels, in DOM order (separators are not menuitems). */
+function menuLabels(): (string | null)[] {
+  return screen.getAllByRole('menuitem').map((m) => m.textContent);
+}
+
+/** `ui/ContextMenu` closes on a document-level Escape. */
+function closeMenu() {
+  fireEvent.keyDown(document, { key: 'Escape' });
+}
+
+/**
+ * A live browser selection over `el`'s text — what a drag-select leaves behind
+ * at mouseup, which is what R-D11-G's guard reads (`window.getSelection()`).
+ * jsdom implements the Selection API for real, so this is not a stub.
+ */
+function selectText(el: HTMLElement) {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection()!;
+  sel.removeAllRanges();
+  sel.addRange(range);
 }
 
 /** Column order is the table's contract: Week · Floor · Slot · Player · Method · Date · Type · ⋮ */
@@ -752,12 +782,22 @@ describe('LootHistoryTable', () => {
       expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
     });
 
-    it('hides Edit for a material row even when canEdit is true (loot rows only)', async () => {
-      renderTable({ materialLog: [makeMaterialEntry({ id: 5 })] });
+    // INVERTED in D11 (R-32): this case used to assert Edit was ABSENT for a
+    // material row ("loot rows only"). R-32 names material Edit as v2's net-new
+    // item and D-37 restores it; it opens D8's modal through Loot's existing
+    // edit door (R-D11-H), so the row's Edit must reach `onEditMaterial`, not
+    // `onEdit`.
+    it('shows Edit for a material row when canEdit is true, wired to onEditMaterial (R-32 — inverts the D9a assertion)', async () => {
+      const onEdit = vi.fn();
+      const onEditMaterial = vi.fn();
+      const entry = makeMaterialEntry({ id: 5 });
+      renderTable({ materialLog: [entry], onEdit, onEditMaterial });
       openKebab(document.getElementById('material-entry-5')!);
       expect(await screen.findByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument();
-      expect(screen.queryByRole('menuitem', { name: 'Edit' })).not.toBeInTheDocument();
       expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+      expect(onEditMaterial).toHaveBeenCalledWith(entry);
+      expect(onEdit).not.toHaveBeenCalled();
     });
 
     it('hides Edit and Delete but keeps Copy link when canEdit is false', async () => {
@@ -826,13 +866,364 @@ describe('LootHistoryTable', () => {
     });
   });
 
-  describe('inert row (D9a-i)', () => {
-    it('the row carries no tabindex, no cursor-pointer and no aria-label', () => {
-      const { container } = renderTable({ lootLog: [makeLootEntry({ id: 1 })] });
-      const tr = container.querySelector('tbody tr')!;
-      expect(tr).not.toHaveAttribute('tabindex');
-      expect(tr).not.toHaveAttribute('aria-label');
-      expect(tr).not.toHaveClass('cursor-pointer');
+  // R-D11-K: this block REPLACES the `inert row (D9a-i)` suite that stood here.
+  // That suite asserted no tabindex / no aria-label / no cursor-pointer on the
+  // row — precisely what R-31 reverses — so it is rewritten in place with the
+  // supersession named rather than deleted silently (the D9b/D10 convention
+  // for a ruling that ages out). T-5 and T-9 carry its assertions forward for
+  // the one row they still describe: a VIEWER's.
+  describe('row as a control (R-31; supersedes D9a-i per R-D11-K)', () => {
+    const lootEntry = makeLootEntry({ id: 1, weekNumber: 2 });
+    const materialEntry = makeMaterialEntry({ id: 5, weekNumber: 2 });
+    const row = (id: string) => document.getElementById(id)!;
+    /** Every activation outlet, so "only X fired" is a real claim rather than an unchecked one. */
+    const outlets = () => ({
+      onEdit: vi.fn(), onEditMaterial: vi.fn(), onCopyLink: vi.fn(), onJumpToPlayer: vi.fn(),
+    });
+
+    afterEach(() => {
+      window.getSelection()?.removeAllRanges();
+    });
+
+    it('T-1: a plain click edits — onEdit(entry) on a loot row, onEditMaterial(entry) on a material row (R-31, R-D11-H)', () => {
+      const o = outlets();
+      renderTable({ lootLog: [lootEntry], materialLog: [materialEntry], ...o });
+
+      fireEvent.click(row('loot-entry-1'));
+      expect(o.onEdit).toHaveBeenCalledWith(lootEntry);
+      expect(o.onEditMaterial).not.toHaveBeenCalled();
+
+      fireEvent.click(row('material-entry-5'));
+      expect(o.onEditMaterial).toHaveBeenCalledWith(materialEntry);
+      expect(o.onEdit).toHaveBeenCalledTimes(1);
+      expect(o.onCopyLink).not.toHaveBeenCalled();
+      expect(o.onJumpToPlayer).not.toHaveBeenCalled();
+    });
+
+    it('T-2: Shift+click copies the link and nothing else — and clears the selection Shift+click extends (V1 :315)', () => {
+      const o = outlets();
+      renderTable({ lootLog: [lootEntry], ...o });
+      selectText(cell('loot-entry-1', COL.player));
+      expect(window.getSelection()?.toString()).toContain('Aria');
+
+      fireEvent.click(row('loot-entry-1'), { shiftKey: true });
+      expect(o.onCopyLink).toHaveBeenCalledWith({ kind: 'loot', entry: lootEntry });
+      expect(o.onEdit).not.toHaveBeenCalled();
+      expect(o.onEditMaterial).not.toHaveBeenCalled();
+      expect(o.onJumpToPlayer).not.toHaveBeenCalled();
+      expect(window.getSelection()?.toString()).toBe('');
+    });
+
+    it('T-3: Alt+click jumps to the recipient and nothing else; with an UNRESOLVABLE recipient nothing fires at all (the jump gate)', () => {
+      const o = outlets();
+      const resolvable = renderTable({ lootLog: [lootEntry], ...o });
+      fireEvent.click(row('loot-entry-1'), { altKey: true });
+      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1');
+      expect(o.onEdit).not.toHaveBeenCalled();
+      expect(o.onCopyLink).not.toHaveBeenCalled();
+      resolvable.unmount();
+
+      const ghost = outlets();
+      renderTable({
+        lootLog: [makeLootEntry({ id: 2, recipientPlayerId: 'ghost', recipientPlayerName: 'Departed Player' })],
+        ...ghost,
+      });
+      fireEvent.click(row('loot-entry-2'), { altKey: true });
+      expect(ghost.onJumpToPlayer).not.toHaveBeenCalled();
+      expect(ghost.onEdit).not.toHaveBeenCalled();
+      expect(ghost.onEditMaterial).not.toHaveBeenCalled();
+      expect(ghost.onCopyLink).not.toHaveBeenCalled();
+    });
+
+    it('T-4: canEdit=false — a plain click and a plain Enter fire nothing; Shift and Alt still fire (R-D11-E)', () => {
+      const o = outlets();
+      renderTable({ lootLog: [lootEntry], canEdit: false, ...o });
+      const tr = row('loot-entry-1');
+
+      fireEvent.click(tr);
+      fireEvent.keyDown(tr, { key: 'Enter' });
+      fireEvent.keyDown(tr, { key: ' ' });
+      expect(o.onEdit).not.toHaveBeenCalled();
+      expect(o.onEditMaterial).not.toHaveBeenCalled();
+
+      fireEvent.click(tr, { shiftKey: true });
+      expect(o.onCopyLink).toHaveBeenCalledWith({ kind: 'loot', entry: lootEntry });
+      fireEvent.click(tr, { altKey: true });
+      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1');
+      expect(o.onEdit).not.toHaveBeenCalled();
+    });
+
+    it("T-5: only an editable row is focusable and roled, and its label names kind, slot, player and week (R-D11-E, R-D11-L)", () => {
+      const viewer = renderTable({ lootLog: [lootEntry], materialLog: [materialEntry], canEdit: false });
+      for (const id of ['loot-entry-1', 'material-entry-5']) {
+        expect(row(id)).not.toHaveAttribute('tabindex');
+        expect(row(id)).not.toHaveAttribute('role');
+        expect(row(id)).not.toHaveAttribute('aria-label');
+      }
+      viewer.unmount();
+
+      const editor = renderTable({ lootLog: [lootEntry], materialLog: [materialEntry], canEdit: true });
+      expect(row('loot-entry-1')).toHaveAttribute('tabindex', '0');
+      expect(row('loot-entry-1')).toHaveAttribute('role', 'button');
+      expect(row('loot-entry-1')).toHaveAttribute('aria-label', 'Loot: Body — Aria, Week 2');
+      expect(row('material-entry-5')).toHaveAttribute('tabindex', '0');
+      expect(row('material-entry-5')).toHaveAttribute('role', 'button');
+      expect(row('material-entry-5')).toHaveAttribute('aria-label', 'Material: Twine — Aria, Week 2');
+      editor.unmount();
+
+      // The name resolves through the ROSTER, exactly as the Player cell and the kebab do.
+      renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 4, recipientPlayerName: 'Stale Snapshot Name' })],
+        players: [makePlayer({ name: 'Renamed' })],
+      });
+      expect(row('loot-entry-1')).toHaveAttribute('aria-label', 'Loot: Body — Renamed, Week 4');
+    });
+
+    it('T-6: no row carries select-none, either permission (R-31 q2)', () => {
+      for (const canEdit of [true, false]) {
+        const { container, unmount } = renderTable({ lootLog: [lootEntry], materialLog: [materialEntry], canEdit });
+        const trs = container.querySelectorAll('tbody tr');
+        expect(trs.length).toBeGreaterThan(0);
+        for (const tr of trs) expect(tr.className).not.toMatch(/\bselect-none\b/);
+        unmount();
+      }
+    });
+
+    it('T-7: a plain click that completes a text selection does not edit; the same click edits once the selection is gone (R-D11-G) — and a focused row\'s Enter is never gated by a stale selection', () => {
+      const o = outlets();
+      renderTable({ lootLog: [lootEntry], ...o });
+      const tr = row('loot-entry-1');
+      selectText(cell('loot-entry-1', COL.player));
+      expect(window.getSelection()?.toString()).toContain('Aria'); // the guard's input is real
+
+      fireEvent.click(tr);
+      expect(o.onEdit).not.toHaveBeenCalled();
+
+      // Keyboard is exempt: Enter cannot complete a drag-select, so a stale
+      // selection elsewhere on the page must not silently swallow it.
+      fireEvent.keyDown(tr, { key: 'Enter' });
+      expect(o.onEdit).toHaveBeenCalledTimes(1);
+
+      window.getSelection()?.removeAllRanges();
+      fireEvent.click(tr);
+      expect(o.onEdit).toHaveBeenCalledTimes(2);
+      expect(o.onCopyLink).not.toHaveBeenCalled();
+      expect(o.onJumpToPlayer).not.toHaveBeenCalled();
+    });
+
+    it('T-8: Enter edits · Shift+Enter copies · Alt+Enter jumps · Space edits (both prevented); other keys and a keydown bubbling up from the kebab do nothing (R-31 q3)', () => {
+      const o = outlets();
+      renderTable({ lootLog: [lootEntry], ...o });
+      const tr = row('loot-entry-1');
+
+      // `fireEvent` returns false when the default was prevented — Space
+      // would otherwise scroll the page.
+      expect(fireEvent.keyDown(tr, { key: 'Enter' })).toBe(false);
+      expect(o.onEdit).toHaveBeenCalledTimes(1);
+      fireEvent.keyDown(tr, { key: 'Enter', shiftKey: true });
+      expect(o.onCopyLink).toHaveBeenCalledWith({ kind: 'loot', entry: lootEntry });
+      fireEvent.keyDown(tr, { key: 'Enter', altKey: true });
+      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1');
+      expect(fireEvent.keyDown(tr, { key: ' ' })).toBe(false);
+      expect(o.onEdit).toHaveBeenCalledTimes(2);
+
+      expect(fireEvent.keyDown(tr, { key: 'a' })).toBe(true);
+      fireEvent.keyDown(tr, { key: 'Escape' });
+      // The kebab's own Enter bubbles through the row on its way to the
+      // button's native click; it must not ALSO count as a row activation.
+      fireEvent.keyDown(within(tr).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+      expect(o.onEdit).toHaveBeenCalledTimes(2);
+      expect(o.onCopyLink).toHaveBeenCalledTimes(1);
+      expect(o.onJumpToPlayer).toHaveBeenCalledTimes(1);
+      expect(o.onEditMaterial).not.toHaveBeenCalled();
+    });
+
+    it('T-9: cursor-pointer — editor: yes; viewer: no; viewer + Alt held + resolvable recipient: yes; viewer + Alt held + UNRESOLVABLE recipient: still no (R-D11-F)', () => {
+      const editor = renderTable({ lootLog: [lootEntry] });
+      expect(row('loot-entry-1')).toHaveClass('cursor-pointer');
+      editor.unmount();
+
+      renderTable({
+        lootLog: [lootEntry, makeLootEntry({ id: 2, recipientPlayerId: 'ghost', recipientPlayerName: 'Departed Player' })],
+        canEdit: false,
+      });
+      expect(row('loot-entry-1')).not.toHaveClass('cursor-pointer');
+      expect(row('loot-entry-2')).not.toHaveClass('cursor-pointer');
+
+      fireEvent.keyDown(window, { key: 'Alt' });
+      expect(row('loot-entry-1')).toHaveClass('cursor-pointer');
+      // The anti-vacuous half: Alt alone is not enough — the jump must have somewhere to go.
+      expect(row('loot-entry-2')).not.toHaveClass('cursor-pointer');
+
+      fireEvent.keyUp(window, { key: 'Alt' });
+      expect(row('loot-entry-1')).not.toHaveClass('cursor-pointer');
+    });
+
+    it('T-10: the editable row carries the focus-visible INSET ring; the viewer row carries no ring classes at all (M3, R-D11-E)', () => {
+      const editor = renderTable({ lootLog: [lootEntry] });
+      expect(row('loot-entry-1')).toHaveClass(
+        'focus-visible:outline-none',
+        'focus-visible:ring-2',
+        'focus-visible:ring-accent',
+        'focus-visible:ring-inset',
+      );
+      editor.unmount();
+
+      renderTable({ lootLog: [lootEntry], canEdit: false });
+      expect(row('loot-entry-1').className).not.toMatch(/focus-visible/);
+    });
+  });
+
+  describe('row menu — one items list, two triggers (R-32 / R-D11-D / R-D11-M)', () => {
+    it("T-11: a kebab click opens the menu WITHOUT also firing the row's plain-click editor (m4: stopPropagation)", () => {
+      const onEdit = vi.fn();
+      const onEditMaterial = vi.fn();
+      renderTable({
+        lootLog: [makeLootEntry({ id: 1 })],
+        materialLog: [makeMaterialEntry({ id: 5 })],
+        onEdit,
+        onEditMaterial,
+      });
+      openKebab(document.getElementById('loot-entry-1')!);
+      expect(screen.getAllByRole('menuitem').length).toBeGreaterThan(0);
+      closeMenu();
+      openKebab(document.getElementById('material-entry-5')!);
+      expect(screen.getAllByRole('menuitem').length).toBeGreaterThan(0);
+      expect(onEdit).not.toHaveBeenCalled();
+      expect(onEditMaterial).not.toHaveBeenCalled();
+    });
+
+    it('T-12: the kebab and a row right-click open the SAME items in the SAME order (R-D11-D)', () => {
+      renderTable({ lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })] });
+      const tr = document.getElementById('loot-entry-1')!;
+      openKebab(tr);
+      const viaKebab = menuLabels();
+      closeMenu();
+      expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+
+      fireEvent.contextMenu(tr);
+      expect(menuLabels()).toEqual(viaKebab);
+      expect(viaKebab).toEqual(['Edit', 'Copy link', 'Jump to Aria', 'View week 2 in Log', 'Delete']);
+    });
+
+    it('T-13: items by permission and kind — viewer: Copy link · Jump · View week; editor loot: + Edit + Delete (danger, behind the family separator); editor material: Edit PRESENT (R-32 inverts D9a)', () => {
+      const viewer = renderTable({ lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })], canEdit: false });
+      fireEvent.contextMenu(document.getElementById('loot-entry-1')!);
+      expect(menuLabels()).toEqual(['Copy link', 'Jump to Aria', 'View week 2 in Log']);
+      expect(screen.getByRole('menu').querySelector('[role="separator"]')).toBeNull();
+      closeMenu();
+      viewer.unmount();
+
+      const onEdit = vi.fn();
+      const onEditMaterial = vi.fn();
+      const material = makeMaterialEntry({ id: 5, weekNumber: 2 });
+      renderTable({
+        lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })],
+        materialLog: [material],
+        onEdit,
+        onEditMaterial,
+      });
+      fireEvent.contextMenu(document.getElementById('loot-entry-1')!);
+      expect(menuLabels()).toEqual(['Edit', 'Copy link', 'Jump to Aria', 'View week 2 in Log', 'Delete']);
+      const del = screen.getByRole('menuitem', { name: 'Delete' });
+      expect(del).toHaveClass('text-status-error');
+      // R-D11-M: the entry family's separator sits immediately before Delete.
+      expect(del.previousElementSibling).toHaveAttribute('role', 'separator');
+      closeMenu();
+
+      fireEvent.contextMenu(document.getElementById('material-entry-5')!);
+      expect(menuLabels()).toEqual(['Edit', 'Copy link', 'Jump to Aria', 'View week 2 in Log', 'Delete']);
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+      expect(onEditMaterial).toHaveBeenCalledWith(material);
+      expect(onEdit).not.toHaveBeenCalled();
+    });
+
+    /**
+     * T-13b (whole-branch review): the MENU's jump gate, which T-3 covers only
+     * for the ROW. `buildRowMenuItems` gates "Jump to {name}" on the recipient
+     * resolving in the roster — without that gate a ghost row offers "Jump to
+     * Departed Player" and the click navigates to `?player=ghost`, landing on
+     * no card. That is the same "advertises what it won't honour" defect
+     * R-D11-E removes from the row, one control over, so it gets the same
+     * treatment: asserted for BOTH permission levels and for both kinds,
+     * because the gate sits outside the `canEdit` branches.
+     */
+    it('T-13b: a ghost recipient drops the Jump item from the menu entirely — editor, viewer, and material rows (the menu half of the jump gate)', () => {
+      const ghostLoot = makeLootEntry({
+        id: 7,
+        weekNumber: 2,
+        recipientPlayerId: 'ghost',
+        recipientPlayerName: 'Departed Player',
+      });
+      const ghostMaterial = makeMaterialEntry({
+        id: 8,
+        weekNumber: 2,
+        recipientPlayerId: 'ghost',
+        recipientPlayerName: 'Departed Player',
+      });
+
+      const editor = renderTable({ lootLog: [ghostLoot], materialLog: [ghostMaterial] });
+      fireEvent.contextMenu(document.getElementById('loot-entry-7')!);
+      expect(menuLabels()).toEqual(['Edit', 'Copy link', 'View week 2 in Log', 'Delete']);
+      expect(screen.queryByRole('menuitem', { name: /Jump to/ })).not.toBeInTheDocument();
+      closeMenu();
+
+      fireEvent.contextMenu(document.getElementById('material-entry-8')!);
+      expect(menuLabels()).toEqual(['Edit', 'Copy link', 'View week 2 in Log', 'Delete']);
+      closeMenu();
+      editor.unmount();
+
+      // The viewer case is the one that matters most: the kebab is their ONLY
+      // route, so a dead item there has no working alternative beside it.
+      renderTable({ lootLog: [ghostLoot], canEdit: false });
+      fireEvent.contextMenu(document.getElementById('loot-entry-7')!);
+      expect(menuLabels()).toEqual(['Copy link', 'View week 2 in Log']);
+      expect(screen.queryByRole('menuitem', { name: /Jump to/ })).not.toBeInTheDocument();
+    });
+
+    it("T-14: View week N in Log fires onViewWeekInLog({kind, entry}) with the ROW's own week — two rows, two weeks (R-D11-A)", () => {
+      const onViewWeekInLog = vi.fn();
+      const loot = makeLootEntry({ id: 1, weekNumber: 2 });
+      const material = makeMaterialEntry({ id: 5, weekNumber: 5 });
+      renderTable({ lootLog: [loot], materialLog: [material], onViewWeekInLog });
+
+      openKebab(document.getElementById('loot-entry-1')!);
+      expect(screen.queryByRole('menuitem', { name: 'View week 5 in Log' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('menuitem', { name: 'View week 2 in Log' }));
+      expect(onViewWeekInLog).toHaveBeenLastCalledWith({ kind: 'loot', entry: loot });
+      expect(screen.queryAllByRole('menuitem')).toHaveLength(0); // the item closes the menu
+
+      openKebab(document.getElementById('material-entry-5')!);
+      expect(screen.queryByRole('menuitem', { name: 'View week 2 in Log' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('menuitem', { name: 'View week 5 in Log' }));
+      expect(onViewWeekInLog).toHaveBeenLastCalledWith({ kind: 'material', entry: material });
+      expect(onViewWeekInLog).toHaveBeenCalledTimes(2);
+    });
+
+    it('T-15: a keyboard-invoked context menu (clientX/Y 0,0) anchors to the ROW rect; a mouse right-click anchors to the cursor (R-32 note 2)', () => {
+      renderTable({ lootLog: [makeLootEntry({ id: 1 })] });
+      const tr = document.getElementById('loot-entry-1')!;
+      tr.getBoundingClientRect = () =>
+        ({ left: 40, top: 100, right: 400, bottom: 124, width: 360, height: 24, x: 40, y: 100, toJSON: () => ({}) }) as DOMRect;
+
+      fireEvent.contextMenu(tr, { clientX: 0, clientY: 0 });
+      let menu = screen.getByRole('menu');
+      expect(menu.style.left).toBe('40px');
+      expect(menu.style.top).toBe('124px');
+      closeMenu();
+
+      fireEvent.contextMenu(tr, { clientX: 200, clientY: 300 });
+      menu = screen.getByRole('menu');
+      expect(menu.style.left).toBe('200px');
+      expect(menu.style.top).toBe('300px');
+    });
+
+    it('T-16: the kebab keeps its row-specific name and announces its popup (aria-haspopup="menu", R-D7b)', () => {
+      renderTable({ lootLog: [makeLootEntry({ id: 1 })] });
+      const kebab = within(document.getElementById('loot-entry-1')!).getByRole('button', {
+        name: 'Body entry actions — Aria',
+      });
+      expect(kebab).toHaveAttribute('aria-haspopup', 'menu');
     });
   });
 
