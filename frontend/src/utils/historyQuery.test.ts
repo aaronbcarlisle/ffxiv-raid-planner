@@ -225,6 +225,28 @@ describe('T-5 source: (R-36, R-9) — carried over from historyItems.test.ts as 
     expect(filterHistoryItemsByQuery(items, parsed, ctx)).toEqual([]);
     expect(parsed.unknownValues).toEqual([{ key: 'source', value: 'tomes' }]);
   });
+
+  it('the LOOT-ONLY gate holds: materials logged as tome/purchase stay out (PR #265 round 10)', () => {
+    // The whole reason `source:` earns its place over `method:tome,purchase`
+    // is the `item.kind !== 'loot'` guard. Every fixture above uses a material
+    // with `method: 'drop'`, so removing that guard left all of them passing
+    // while `source:tome` silently swept materials in.
+    const withTomeMaterials: HistoryItem[] = [
+      ...items,
+      mat({ id: 90, method: 'tome' }),
+      mat({ id: 91, method: 'purchase' }),
+      mat({ id: 92, method: 'book' }),
+      mat({ id: 93, method: 'drop' }),
+    ];
+    expect(filter('source:tome', withTomeMaterials).map((i) => i.entry.id).sort((a, b) => a - b))
+      .toEqual([2, 3]);
+    expect(filter('source:raid', withTomeMaterials).map((i) => i.entry.id)).toEqual([1]);
+    expect(filter('source:book', withTomeMaterials).map((i) => i.entry.id)).toEqual([4]);
+    // …and the contrast that justifies the key existing at all: the `method:`
+    // form reaches the same two methods but cannot exclude the materials.
+    expect(filter('method:tome,purchase', withTomeMaterials).map((i) => i.entry.id).sort((a, b) => a - b))
+      .toEqual([2, 3, 90, 91]);
+  });
 });
 
 describe('T-6 neutral colon + unknown key (R-30, R-D10-G)', () => {
@@ -567,5 +589,25 @@ describe('review round 9 — the aug readout matches what the CELL shows (Copilo
     // Control: an ordinary slot still matches on its own name, not via the
     // fallback — the mapping must not swallow real values.
     expect(filter('slot:legs', items).map((i) => i.entry.id)).toEqual([3]);
+  });
+});
+
+describe('review round 10 — the literal "aug" is searchable too (claude[bot])', () => {
+  it('a user can retype "aug legs" straight off the screen', () => {
+    const legs = mat({ id: 1, materialType: 'twine', slotAugmented: 'legs' });
+    const head = mat({ id: 2, materialType: 'glaze', slotAugmented: 'head' });
+    // Two ANDed free terms: `aug` matched no field at all before this, so a
+    // string copied verbatim from the Type column emptied the table.
+    expect(filter('aug legs', [legs, head]).map((i) => i.entry.id)).toEqual([1]);
+    expect(filter('slot:aug', [legs, head]).map((i) => i.entry.id)).toEqual([1, 2]);
+  });
+
+  it('control: the slot half still matches on its own', () => {
+    const legs = mat({ id: 1, materialType: 'twine', slotAugmented: 'legs' });
+    const wpn = mat({ id: 2, materialType: 'universal_tomestone', slotAugmented: null });
+    expect(filter('slot:legs', [legs, wpn]).map((i) => i.entry.id)).toEqual([1]);
+    expect(filter('slot:wpn', [legs, wpn]).map((i) => i.entry.id)).toEqual([2]);
+    // …and `aug` must not become a catch-all that matches loot rows too.
+    expect(filter('aug', [legs, wpn, loot({ id: 3 })]).map((i) => i.entry.id)).toEqual([1, 2]);
   });
 });

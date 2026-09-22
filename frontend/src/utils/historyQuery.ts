@@ -381,7 +381,7 @@ function valueMatches(
       const slotName = slotNameOf(item).toLowerCase();
       const rawSlot = rawSlotOf(item).toLowerCase();
       const weaponJob = weaponJobOf(item);
-      const slotAugmented = item.kind === 'material' ? augSlotLabel(item.entry.slotAugmented) : undefined;
+      const slotAugmented = item.kind === 'material' ? augLabelOf(item) : undefined;
       return (
         slotName.includes(v)
         || rawSlot.includes(v)
@@ -419,6 +419,21 @@ function valueMatches(
  * (The stale data itself is a D9a carry-over: the render gate landed, the
  * data-side fix did not.)
  */
+/**
+ * The Type cell's material text, **exactly as rendered** — `aug legs`,
+ * `aug tome wpn` — not just the slot half.
+ *
+ * Round 9 compared `augSlotLabel(...)` alone, which left the literal `aug`
+ * matching no field at all: a user who read `aug legs` off the screen and
+ * typed it back got two ANDed free terms, `legs` matching and `aug` matching
+ * nothing, so the table emptied for a string copied verbatim from the row in
+ * front of them. Same visible-but-unfindable shape as R-D10-N/S, one token
+ * further out.
+ */
+function augLabelOf(item: HistoryItem): string | undefined {
+  return item.kind === 'material' ? `aug ${augSlotLabel(item.entry.slotAugmented)}` : undefined;
+}
+
 function weaponJobOf(item: HistoryItem): string | null | undefined {
   return item.kind === 'loot' && item.entry.itemSlot === 'weapon' ? item.entry.weaponJob : undefined;
 }
@@ -448,7 +463,7 @@ function termMatches(term: string, item: HistoryItem, ctx: HistoryQueryContext):
   // Matched through `augSlotLabel`, i.e. against what the Type cell SHOWS: the
   // raw enum spells a universal tomestone `null`/`tome_weapon` while the cell
   // reads `aug tome wpn`, so comparing the enum left the visible text unfindable.
-  const slotAugmented = item.kind === 'material' ? augSlotLabel(item.entry.slotAugmented) : undefined;
+  const slotAugmented = augLabelOf(item);
   const isExtra = item.kind === 'loot' && item.entry.isExtra;
   const isBis = item.kind === 'loot' && !item.entry.isExtra;
   const weekNumber = item.entry.weekNumber;

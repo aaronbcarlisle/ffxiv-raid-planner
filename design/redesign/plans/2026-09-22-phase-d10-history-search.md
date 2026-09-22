@@ -504,24 +504,26 @@ Baselines were measured on this branch before any code, not carried from the han
 
 | Gate | `main` @ `a99da91d` | D10 | Δ |
 |---|---|---|---|
-| `pnpm test` | 233 files / **3001** | 235 files / **3074** | **+2 files / +73** |
+| `pnpm test` | 233 files / **3001** | 235 files / **3078** | **+2 files / +77** |
 | `pnpm lint` | 0 errors / 903 warnings | 0 errors / **903** | **0** |
 | `pnpm knip` — unused exported types | 140 | **140** | **+0** |
 | `pnpm knip` — unused exports | 181 | **181** | **+0** |
 | `pnpm build` (`tsc -b && vite build`) | clean | clean | — |
 | `pnpm check:design-system:strict` | clean | clean | — |
 
-**Test accounting.** +73 net = +55 (`historyQuery.test.ts`, new) +24 (`HistorySearch.test.tsx`,
+**Test accounting.** +77 net = +59 (`historyQuery.test.ts`, new) +24 (`HistorySearch.test.tsx`,
 new) +2 (`LootHistoryTable.test.tsx`) +3 (`Loot.test.tsx`) −11 (`historyItems.test.ts`, the pruned
 `filterHistoryItems` ×9 and `historyWeeks` ×2). Five of those eleven are the `matchesSource` cases
 **moved** into T-5, not lost — verified case by case at review. **Nine came from the pre-PR review
 (§5a) and nine more from the PR's eight rounds (§5b)** — over a quarter of this slice's tests exist
 because a reviewer found something.
 
-⚠ **Correction:** commit `e1a5758f`'s message states "Tests 3072 -> 3075". The measured figure is
-**3074**. The commit is pushed and a force-push to amend it is not worth the history rewrite, so the
-number is corrected here, in the record §6 is for. Noted rather than quietly left, because an
-inaccurate audit trail is the exact failure mode rounds 2, 3, 6 and 7 were all about.
+⚠ **Corrections, kept rather than quietly fixed** — an inaccurate audit trail is the exact failure
+mode rounds 2, 3, 6 and 7 were about, so my own instances belong in the record too:
+`e1a5758f`'s message says "Tests 3072 -> 3075" (measured: 3074), and the **PR body** shipped 3067
+while this table said 3074 — caught by Copilot in round 10, which is a fair hit: two evidence
+surfaces disagreeing is exactly what the reader cannot resolve. The PR body is now aligned, and
+pushed commit messages are corrected here rather than by force-push.
 
 **knip holding rather than falling is the expected result**, not a miss: every symbol deleted had a
 live consumer, so none of them were on knip's lists to begin with. A *rise* would have meant an
