@@ -60,6 +60,32 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.27',
+    date: '2026-09-22T11:15:00Z',
+    title: 'Phase D — D11 follow-up: the two findings left open at merge',
+    items: [
+      {
+        category: 'fix',
+        title: 'A History row no longer shows a clickable cursor for an Alt+Click that cannot fire',
+        description:
+          'V2 preview: while Alt is held, a History row offers exactly one action — jumping to the player who received that entry — so a row whose player has since left the roster now correctly shows no clickable cursor, even for someone who can edit. Previously the edit permission alone lit the cursor, but holding Alt takes the jump path and stops there, so the click did nothing at all. This was the one remaining case where the row advertised an action it would not perform, which is precisely what D11 set out to remove.',
+        pr: 268,
+        prTitle:
+          'fix(v2): the two D11 findings left open at merge — pointer honesty + a mutation harness that can\u2019t pass a crashed run',
+      },
+      {
+        category: 'fix',
+        title: 'The D11 mutation harness can no longer report a crashed run as healthy',
+        description:
+          'Internal tooling, no user-facing change: the harness read the test summary text and ignored the exit code, so a run that died outside the assertions — an unhandled rejection, a worker crash, a config error — while still printing a passing summary was scored as healthy. On the clean-tree re-check that was the difference between "Battery OK" and the truth. It now rejects a non-zero exit behind a pass-only summary, and carries a --selftest mode that pins the whole verdict table.',
+        pr: 268,
+        prTitle:
+          'fix(v2): the two D11 findings left open at merge — pointer honesty + a mutation harness that can\u2019t pass a crashed run',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.26',
     date: '2026-09-22T09:30:00Z',
     title: 'Phase D slice D11 — History row affordances (v2 preview)',
