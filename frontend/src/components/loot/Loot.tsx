@@ -445,6 +445,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // the scope under them — logging the newest floor's drop re-derives "newest
   // in-progress" one floor up.
   const [landingScope, setLandingScope] = useState<FloorNumber | null>(null);
+  // Did THIS tier's log fetch fail? Distinct from the store's single shared
+  // `error` field, which any of its fetches can set — History must not show a
+  // load error because an unrelated balances call failed (D9b review).
+  const [logsFailed, setLogsFailed] = useState(false);
   // Pre-settle fallback only: renders the same value the latch will compute
   // whenever the store already holds this tier's data (the common warm path).
   const preSettleScope = useMemo(
@@ -481,6 +485,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // batch instead of letting a failure become an unhandled rejection.
     // fetchWeekDataTypes never re-throws (store catches internally) — left bare.
     setLandingScope(null); // a new tier derives its own landing default
+    setLogsFailed(false); // a new tier starts with no verdict on its logs
     // Stale-response guard (PR #224 review): Loot mounts un-keyed
     // (NewShell.tsx:93), so a tier switch re-runs this effect on a live
     // component while the previous tier's chain may still be in flight. If the
@@ -494,7 +499,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       fetchPageLedger(groupId, tierId),
       fetchCurrentWeek(groupId, tierId),
     ])
-      .catch(() => toast.error('Failed to load loot data'))
+      .catch(() => {
+        // Tier-scoped via the same `cancelled` latch the landing scope uses:
+        // an old tier's rejection must not mark the NEW tier's logs failed.
+        if (!cancelled) setLogsFailed(true);
+        toast.error('Failed to load loot data');
+      })
       // R-10 landing latch — runs on success AND failure (a failed fetch still
       // latches from whatever the store holds, so the scope never moves later).
       .then(() => {
@@ -1005,6 +1015,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             currentWeek={clock.currentWeek}
             rangeOfWeek={clock.rangeOfWeek}
             logsLoading={logsLoading}
+            logsFailed={logsFailed}
             canEdit={canEdit}
             onEdit={openEdit}
             onCopyLink={copyLink}

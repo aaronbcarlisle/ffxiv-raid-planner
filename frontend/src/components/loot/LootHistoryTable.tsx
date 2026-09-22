@@ -88,6 +88,14 @@ export interface LootHistoryTableProps {
   /** pass clock.rangeOfWeek — returns null for a week the clock can't date. */
   rangeOfWeek: (week: number) => WeekRange | null;
   /**
+   * True when the log fetch for this tier FAILED. Same reason as
+   * `logsLoading`: empty arrays after a failed request are not evidence of an
+   * empty tier, and saying so is a false claim the user cannot act on — the
+   * toast tells them something broke while the table tells them there is
+   * nothing to see (D9b review, Copilot).
+   */
+  logsFailed: boolean;
+  /**
    * True while either log is being fetched. Only the EMPTY state reads it:
    * "No loot or materials logged this tier." is a claim about the tier, and
    * the component cannot make that claim over arrays that simply haven't
@@ -383,6 +391,7 @@ export function LootHistoryTable({
   currentWeek,
   rangeOfWeek,
   logsLoading,
+  logsFailed,
   canEdit,
   onEdit,
   onCopyLink,
@@ -463,12 +472,22 @@ export function LootHistoryTable({
   // R-34's stats count. The split is gated on both kinds being PRESENT, which
   // replaces v1's `entryType === 'all'` gate (`AllWeeksView.tsx:508`) — a state
   // R-30/D10 deletes outright.
+  //
+  // Blank — not "0 entries" — while the logs are in flight with nothing to
+  // show: "0 entries" is a COUNT OF THE TIER, the same claim-over-unloaded-data
+  // the empty message below withholds, and this one sits in a live region, so
+  // it would also announce "0 entries" and then "17 entries" on every load.
+  // The element stays mounted either way: a live region inserted already
+  // populated is not reliably announced (the `role="status"` precedent at
+  // `Loot.tsx`'s priority toolbar), so the text empties, never the node.
   const lootShown = rows.filter((item) => item.kind === 'loot').length;
   const materialShown = rows.length - lootShown;
   const statsLabel =
-    lootShown > 0 && materialShown > 0
-      ? `${entryCount(rows.length)} (${lootShown} gear, ${materialShown} material)`
-      : entryCount(rows.length);
+    (logsLoading || logsFailed) && rows.length === 0
+      ? ''
+      : lootShown > 0 && materialShown > 0
+        ? `${entryCount(rows.length)} (${lootShown} gear, ${materialShown} material)`
+        : entryCount(rows.length);
 
   // R-34's filtered-vs-empty split. Read off the RAW props, not `rows`: the
   // question is whether the tier holds anything at all, which is what the
@@ -476,11 +495,15 @@ export function LootHistoryTable({
   // guard, which withholds the claim rather than asserting it over arrays that
   // are empty only because the request is still in flight.
   const tierIsEmpty = lootLog.length === 0 && materialLog.length === 0;
+  // Four zero-row states, in precedence order. The first two WITHHOLD a claim
+  // the component cannot support; only the last two assert anything.
   const emptyMessage = logsLoading
     ? 'Loading entries…'
-    : tierIsEmpty
-      ? 'No loot or materials logged this tier.'
-      : 'No entries match your filters.';
+    : logsFailed
+      ? "Couldn't load this tier's entries."
+      : tierIsEmpty
+        ? 'No loot or materials logged this tier.'
+        : 'No entries match your filters.';
 
   // Plain args to the render functions below (CELL / renderActionsCell), not
   // props on memoized children — identity is irrelevant here, so memoizing

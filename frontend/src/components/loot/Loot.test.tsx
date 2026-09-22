@@ -921,6 +921,31 @@ describe('Loot', () => {
     expect(screen.getByRole('columnheader', { name: 'Player' })).toHaveAttribute('aria-sort', 'ascending');
   });
 
+  it('tells History the load FAILED instead of letting it claim the tier is empty', async () => {
+    // The wire for the Copilot finding: `fetchLootLog` clears its loading flag
+    // on the error path too, so without this signal a failed first load leaves
+    // empty arrays + logsLoading false, and the table asserts "No loot or
+    // materials logged this tier." over a request that never landed.
+    useLootTrackingStore.setState({
+      lootLog: [],
+      materialLog: [],
+      fetchLootLog: vi.fn().mockRejectedValue(new Error('boom')),
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+
+    expect(await screen.findByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+    expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
+  });
+
+  it('claims the tier is empty only when the load actually SUCCEEDED with nothing in it', async () => {
+    // The control for the test above: same empty arrays, no rejection.
+    useLootTrackingStore.setState({ lootLog: [], materialLog: [] });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+
+    expect(await screen.findByText('No loot or materials logged this tier.')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+  });
+
   it("marks the CLOCK's current week on the History separator, not the Log's displayed week", () => {
     // D9b assembly guard (review M2). `currentWeek` and `logWeek.week` are both
     // numbers in scope at the LootHistoryTable mount, so `currentWeek={logWeek.week}`

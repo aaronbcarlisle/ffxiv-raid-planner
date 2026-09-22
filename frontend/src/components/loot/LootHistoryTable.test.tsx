@@ -97,6 +97,7 @@ function renderTable(overrides: Partial<Parameters<typeof LootHistoryTable>[0]> 
     currentWeek: 3,
     rangeOfWeek,
     logsLoading: false,
+    logsFailed: false,
     canEdit: true,
     onEdit: vi.fn(),
     onCopyLink: vi.fn(),
@@ -462,6 +463,22 @@ describe('LootHistoryTable', () => {
       expect(container.querySelector('tbody tr:not([id]) td')).toHaveAttribute('colspan', '8');
     });
 
+    it('says the load FAILED rather than claiming the tier is empty', () => {
+      renderTable({ lootLog: [], materialLog: [], logsFailed: true });
+      expect(screen.getByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+      // The falsehood this replaces: empty arrays after a failed request are
+      // not evidence of an empty tier.
+      expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
+      // And no count is asserted either — "0 entries" would be equally untrue.
+      expect(screen.getByRole('status')).toHaveTextContent('');
+    });
+
+    it('prefers "loading" over "failed" while a retry is in flight', () => {
+      renderTable({ lootLog: [], materialLog: [], logsLoading: true, logsFailed: true });
+      expect(screen.getByText('Loading entries…')).toBeInTheDocument();
+      expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+    });
+
     it('withholds the "nothing logged" claim while the logs are still loading (M1)', () => {
       const { unmount } = renderTable({ lootLog: [], materialLog: [], logsLoading: true });
       expect(screen.getByText('Loading entries…')).toBeInTheDocument();
@@ -631,6 +648,21 @@ describe('LootHistoryTable', () => {
       renderTable({ ...props, filters: { ...DEFAULT_HISTORY_FILTERS, week: 2 } });
       expect(screen.getByRole('status')).toHaveTextContent('1 entry');
       expect(screen.getByRole('status').textContent).not.toContain('gear');
+    });
+
+    it('stays blank rather than claiming "0 entries" while the logs are loading', () => {
+      const { unmount } = renderTable({ lootLog: [], materialLog: [], logsLoading: true });
+      const status = screen.getByRole('status');
+      // Mounted (a live region inserted pre-populated is not reliably
+      // announced) but silent — there is no count to report yet.
+      expect(status).toBeInTheDocument();
+      expect(status).toHaveTextContent('');
+      unmount();
+
+      // A count that IS knowable still renders while loading — only the
+      // unknowable one is withheld.
+      renderTable({ lootLog: [makeLootEntry({ id: 1, weekNumber: 2 })], logsLoading: true });
+      expect(screen.getByRole('status')).toHaveTextContent('1 entry');
     });
 
     it('reads 0 entries when nothing matches', () => {

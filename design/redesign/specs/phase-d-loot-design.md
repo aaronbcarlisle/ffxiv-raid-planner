@@ -1415,7 +1415,12 @@ What D9b itself builds:
   tier." is a claim about the *tier*, and empty arrays do not support it while the fetch is still in
   flight — nor during a tier switch, where the store holds the previous tier's rows. The table now
   takes `logsLoading` (`loadingStates.lootLog || .materialLog`) and shows `Loading entries…` instead
-  of asserting. The store's flags initialise `false`, so a single pre-effect frame is still
+  of asserting. **A fourth state followed in review:** the store clears its loading flags on the
+  ERROR path too, so a failed load left the same empty arrays with `logsLoading` false — the identical
+  falsehood through a different door. `logsFailed` (tier-scoped local state in `Loot.tsx`, deliberately
+  not the store's single shared `error` field) renders `Couldn't load this tier's entries.` The stats
+  count is gated the same way and goes blank rather than reporting `0 entries`, which in a live region
+  would otherwise be announced. The store's flags initialise `false`, so a single pre-effect frame is still
   unguarded; that is the same one-frame window D9a had, and it is the request duration — the part a
   user actually sees — that this closes. Rows keep rendering while loading; only the claim is
   withheld.

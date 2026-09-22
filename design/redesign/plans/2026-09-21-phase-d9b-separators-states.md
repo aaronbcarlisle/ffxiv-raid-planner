@@ -179,13 +179,26 @@ spec's status text, not the code) and **code review PASS on spec compliance** wi
 | **N6 / F8** | `pr: 0` and the plan-row "✅ BUILT (D9b)" need the PR number | Backfilled at PR open |
 | **F9** | §6's ASCII sketch now contradicts the shipped surface (count placement, `· current` position) | **Fixed.** Annotated in place rather than redrawn, so the change stays visible |
 
+### Round 2 — the PR's own bots (`claude[bot]` + Copilot)
+
+Both channels checked, per the #262 lesson: inline threads **and** review bodies. Copilot used inline
+threads this time; no review body carried suppressed comments.
+
+| Finding | Verdict | Disposition |
+|---|---|---|
+| **`statsLabel` isn't gated on `logsLoading`** — while the body reads `Loading entries…` the `role="status"` line reads `0 entries`, and being a live region it *announces* that, then announces the real count (both bots, independently) | **Real.** The same claim-over-unloaded-data as M1, two lines above it, which I missed | **Fixed.** Blank while loading with no rows; the node stays mounted so the live region keeps being tracked. Two tests, including the positive case — a count that IS knowable still renders |
+| **A failed load leaves empty arrays with `logsLoading === false`**, so History asserts "No loot or materials logged this tier." over a request that never landed (Copilot) | **Real and reachable** — `fetchLootLog` clears its loading flag on the error path too, and `Loot` only raises a toast | **Fixed.** New `logsFailed` prop → a fourth zero-row state, `Couldn't load this tier's entries.`, with no count either. Scoped with local state set inside the existing `cancelled` latch rather than the store's single shared `error`, which any of its fetches can set. Unit tests + an assembly test with a rejecting `fetchLootLog`, plus a control for succeeded-but-empty. **Mutation-checked** |
+| **`logsLoading` is a pair of global booleans**; on a tier switch an old response can clear the flag while the new request is pending, and "with empty arrays at that point" the table calls the new tier loaded (Copilot) | **Premise partly refuted.** The arrays are never emptied — `clearLootTracking` exists with **zero call sites**, and each fetch overwrites on success. A tier switch therefore renders the *previous tier's rows*, never the false-empty claim | **Disclosed, not fixed.** The residual is stale rows, which pre-dates D9b on both shells and is named in the `logsLoading` docblock. Request-scoped loading is a store change and belongs with the standing `fetchPageLedger` gating item |
+| **`currentWeek`/`rangeOfWeek` may read a clock still holding the previous tier's values** after a switch (Copilot) | **Real, pre-existing** | **Disclosed.** Every `clock` consumer shares it (`WeekScopeControl` shows the same stale "Week N"). D9b adds a reader, not the behaviour — queued rather than forked into this slice |
+| **The plan's gate table said 2989 tests (+17) while the PR body said 2992 (+20)** (Copilot) | **Real** — I updated the PR body and not the plan | **Fixed**; both now read the final **2997 (+25)** |
+
 ---
 
 ## 6. Measured results (this slice; command named, run from `frontend/`)
 
 | Gate | Result | vs `main` @ `257ec940` |
 |---|---|---|
-| `pnpm test` | **233 files / 2989 tests passed** | +17 tests, 0 failures |
+| `pnpm test` | **233 files / 2997 tests passed** | **+25** vs main's 2972, 0 failures |
 | `pnpm lint` | **0 errors / 903 warnings** | **equal** — the ceiling, unchanged |
 | `pnpm build` (`tsc -b && vite build`) | clean | — |
 | `pnpm check:design-system:strict` | clean | — |
@@ -198,6 +211,8 @@ spec's status text, not the code) and **code review PASS on spec compliance** wi
 |---|---|
 | `?entry=` resolved against the **filtered** set instead of the raw logs | exactly **1** — the unfiltered-resolution test |
 | `timeZone: 'UTC'` removed from `RANGE_FMT` | **4** (runner TZ `America/New_York`; a UTC CI runner cannot distinguish, so this guard is local-only — stated, not overclaimed) |
+| `currentWeek={logWeek.week}` instead of `clock.currentWeek` | exactly **1** — the week-source assembly guard |
+| `setLogsFailed(true)` removed from the fetch `.catch` | exactly **1** — the load-failure assembly guard |
 
 **Live browser pass**, 1440 viewport, DEVTST, both themes, 0 console errors from this surface:
 
