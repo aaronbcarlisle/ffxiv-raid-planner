@@ -1242,7 +1242,7 @@ defeats the rationale and breaks label-matches-outcome. Aliasing keeps the bette
 this tab is loot, so *gear vs materials* is the real distinction — while making the obvious typed
 token work.
 
-### R-37 · The filter query is **session-local**, and `copyLink` strips it
+### R-37 · The filter query is **session-local**, and never reaches a copied link
 
 > ⚠ **Built differently, and deliberately (R-D10-F, D10).** The heading's mechanism did not survive
 > contact: the query lives in `useState` and never enters the URL, so `copyLink` has **nothing to
@@ -1251,8 +1251,10 @@ token work.
 > param it does not explicitly remove — so the invariant is commented at the denylist site and
 > pinned by a test that reads the router's own location. **Do not add a strip call.**
 
-The query is not URL-backed. `copyLink` strips it from the link it builds, exactly as it already
-strips `shell` (`Loot.tsx:252`).
+The query is not URL-backed, so it cannot reach a copied link. *(As ruled 2026-07-28 this said
+"`copyLink` strips it from the link it builds, exactly as it already strips `shell`" — a mechanism
+that presumes the query IS in the URL. D10 built the stronger version instead; see the warning
+above and R-D10-F.)*
 
 *Why:* `Loot.tsx:39-43` documents the invariant being protected, in the code, as a deliberate decision:
 filters are session-local *so that an `?entry=` deep-link can never be hidden by a filter on first

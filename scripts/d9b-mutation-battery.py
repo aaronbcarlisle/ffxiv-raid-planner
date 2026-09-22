@@ -144,9 +144,17 @@ def run_spec(spec):
 rows = []
 for label, path, old, new, spec in MUTATIONS:
     src = io.open(path, encoding='utf-8', newline='').read()
-    if old not in src:
-        rows.append((label, 'ANCHOR MISSING'))
-        print(f'!! anchor missing: {label}', flush=True)
+    # Present AND unique. `replace(old, new, 1)` silently takes the first
+    # occurrence, so a duplicated anchor mutates the wrong site and reports a
+    # kill for a defect never introduced — which is exactly how this battery's
+    # first run produced a false zero (a first-match replace hit
+    # `FairnessSummary`, not the table). Checking only `old not in src` left
+    # that hole open (claude[bot]/Copilot, PR #265).
+    hits = src.count(old)
+    if hits != 1:
+        verdict = 'ANCHOR MISSING' if hits == 0 else f'ANCHOR NOT UNIQUE ({hits})'
+        rows.append((label, verdict))
+        print(f'!! {verdict.lower()}: {label}', flush=True)
         continue
     shutil.copyfile(path, path + '.bak')
     try:
