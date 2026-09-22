@@ -448,7 +448,17 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // Did THIS tier's log fetch fail? Distinct from the store's single shared
   // `error` field, which any of its fetches can set — History must not show a
   // load error because an unrelated balances call failed (D9b review).
-  const [logsFailed, setLogsFailed] = useState(false);
+  //
+  // TWO flags, not one: each fetch writes only its OWN array
+  // (`lootTrackingStore.ts`), so a single shared verdict retracted by either
+  // array would let a PARTIAL failure — `/loot-log` 500s while `/material-log`
+  // returns `[]` — clear a verdict the loot log never earned, and History would
+  // then assert "No loot or materials logged this tier." over a log that never
+  // landed (D9b review round 5, claude[bot]). Each verdict is latched and
+  // retracted by its own log alone.
+  const [lootLogFailed, setLootLogFailed] = useState(false);
+  const [materialLogFailed, setMaterialLogFailed] = useState(false);
+  const logsFailed = lootLogFailed || materialLogFailed;
   // Pre-settle fallback only: renders the same value the latch will compute
   // whenever the store already holds this tier's data (the common warm path).
   const preSettleScope = useMemo(
@@ -485,7 +495,9 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // batch instead of letting a failure become an unhandled rejection.
     // fetchWeekDataTypes never re-throws (store catches internally) — left bare.
     setLandingScope(null); // a new tier derives its own landing default
-    setLogsFailed(false); // a new tier starts with no verdict on its logs
+    // A new tier starts with no verdict on either log.
+    setLootLogFailed(false);
+    setMaterialLogFailed(false);
     // Stale-response guard (PR #224 review): Loot mounts un-keyed
     // (NewShell.tsx:93), so a tier switch re-runs this effect on a live
     // component while the previous tier's chain may still be in flight. If the
@@ -501,13 +513,15 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     // single shared `error` field (D9b review round 2, Copilot). Rethrows so
     // the batch still rejects and the one toast below still fires.
     // `cancelled`: an old tier's rejection must not mark the NEW tier failed.
-    const markLogsFailed = (error: unknown): never => {
-      if (!cancelled) setLogsFailed(true);
-      throw error;
-    };
+    const markFailed =
+      (setFailed: (v: boolean) => void) =>
+      (error: unknown): never => {
+        if (!cancelled) setFailed(true);
+        throw error;
+      };
     void Promise.all([
-      fetchLootLog(groupId, tierId).catch(markLogsFailed),
-      fetchMaterialLog(groupId, tierId).catch(markLogsFailed),
+      fetchLootLog(groupId, tierId).catch(markFailed(setLootLogFailed)),
+      fetchMaterialLog(groupId, tierId).catch(markFailed(setMaterialLogFailed)),
       fetchPageLedger(groupId, tierId),
       fetchCurrentWeek(groupId, tierId),
     ])
@@ -551,10 +565,18 @@ export function Loot({ group, tier, canEdit }: LootProps) {
    * array on success and leaves the array untouched on failure. So a changed
    * reference means "a fetch succeeded", including a delete that emptied the
    * tier — and an unchanged one means nothing new arrived.
+   *
+   * ONE EFFECT PER LOG, keyed on that log alone. A combined effect would let a
+   * successful material fetch retract the loot log's verdict on a partial
+   * failure (round 5) — each array only ever evidences its own fetch.
    */
   useEffect(() => {
-    setLogsFailed(false);
-  }, [lootLog, materialLog]);
+    setLootLogFailed(false);
+  }, [lootLog]);
+
+  useEffect(() => {
+    setMaterialLogFailed(false);
+  }, [materialLog]);
 
   const refresh = useCallback(() => {
     if (groupId && tierId) {

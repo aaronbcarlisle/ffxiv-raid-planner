@@ -937,6 +937,30 @@ describe('Loot', () => {
     expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
   });
 
+  it("does not let a successful MATERIAL fetch retract the LOOT log's failure", async () => {
+    // The partial-failure case: each fetch writes only its OWN array, so a
+    // verdict retracted by either array would clear one the loot log never
+    // earned - and History would then claim the tier is empty over a log that
+    // never landed. That is M1 again, reached through the round-4 fix.
+    useLootTrackingStore.setState({
+      lootLog: [],
+      materialLog: [],
+      fetchLootLog: vi.fn().mockRejectedValue(new Error('loot boom')),
+    });
+    renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
+    expect(await screen.findByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+
+    // Now the MATERIAL log succeeds the way the store does it - a fresh array,
+    // written strictly after the loot verdict has been latched and committed.
+    act(() => {
+      useLootTrackingStore.setState({ materialLog: [] });
+    });
+
+    // The loot log still never landed, so the verdict must stand.
+    expect(screen.getByText("Couldn't load this tier's entries.")).toBeInTheDocument();
+    expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
+  });
+
   it('retracts the verdict even when the successful refetch comes back EMPTY', async () => {
     // claude[bot]'s "delete back down to zero rows" case: the store writes a
     // fresh empty array, so the identity changes and the verdict must lift —

@@ -513,8 +513,10 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   evidence of an empty tier while a request is in flight or after one failed, and "0 entries" is the
   same claim as the message — in a live region, announced. `logsFailed` is tier-scoped state owned by
   `Loot.tsx` and set only by the two **log** fetches, never by the batch they ride in: an unrelated
-  ledger or week-clock failure must not make History claim its logs are gone. It is **retracted** as
-  soon as either log array's identity changes (a fetch writes a fresh array on success, including an
+  ledger or week-clock failure must not make History claim its logs are gone. It is really **two** flags — one per log, union'd — because
+  each fetch writes only its own array, and a shared verdict would let a successful material fetch
+  clear a failure the loot log never recovered from. Each is **retracted** as soon as its OWN array's
+  identity changes (a fetch writes a fresh array on success, including an
   empty one, and leaves it untouched on failure), because store-internal refetches after a log
   mutation would otherwise leave the verdict standing over logs that had since arrived. The table
   independently gates the failure message on the tier being empty — a component holding logs must
