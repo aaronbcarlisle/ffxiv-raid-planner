@@ -541,11 +541,6 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     return () => { cancelled = true; };
   }, [groupId, tierId, floors, fetchLootLog, fetchMaterialLog, fetchPageLedger, fetchCurrentWeek, fetchWeekDataTypes]);
 
-  // Also refetches the week clock — the FIRST-ever loot entry for a tier can
-  // set its `week_start_date` anchor server-side, which would otherwise leave
-  // `weekStartDate`/`currentWeek` stale (wrong/missing week ranges) until a
-  // remount. Every onSuccess (picker/material modal/wizard/weapon bridge)
-  // routes through this one callback, so the fix covers all of them.
   /**
    * NO RETRACTION EFFECT — removed deliberately in D9b review round 7.
    *
@@ -577,6 +572,11 @@ export function Loot({ group, tier, canEdit }: LootProps) {
    * `lootTrackingStore`, queued with the `fetchPageLedger` gating item.
    */
 
+  // Also refetches the week clock — the FIRST-ever loot entry for a tier can
+  // set its `week_start_date` anchor server-side, which would otherwise leave
+  // `weekStartDate`/`currentWeek` stale (wrong/missing week ranges) until a
+  // remount. Every onSuccess (picker/material modal/wizard/weapon bridge)
+  // routes through this one callback, so the fix covers all of them.
   const refresh = useCallback(() => {
     if (groupId && tierId) {
       void fetchTier(groupId, tierId);
