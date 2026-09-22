@@ -1218,8 +1218,13 @@ v2's own pill state (`HistoryFilters.tsx`, `DEFAULT_HISTORY_FILTERS`) dissolves 
 
 A comma-separated value means OR: `floor:m9s,m10s`. Repeated keys keep their current AND meaning, so
 no existing query changes behaviour. `source:` is added, mapping to v2's `matchesSource`
-(`historyItems.ts:54-64`) — `source:tome` is tome-or-purchase, which no combination of `method:`
+(`historyItems.ts:54-64`) — `source:tome` is tome-or-purchase **and loot-only**, which no `method:`
 tokens can express.
+
+> **Precision added at D10 build.** Comma alternation — added by this same ruling — means
+> `method:tome,purchase` *does* reach the method half. What it cannot reach is `source:`'s
+> **loot-only gate**: a material logged under either method is swept in by the `method:` form and
+> excluded by the `source:` one. The key earns its place on the kind gate, not on the OR.
 
 *Why:* one parser change closes both losses D-31 would otherwise take — the multi-select floor chips it
 names in the restore, and v2's Tome pill. Comma was chosen over "repeated keys OR" because the latter

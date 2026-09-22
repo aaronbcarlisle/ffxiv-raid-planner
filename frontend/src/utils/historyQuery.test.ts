@@ -495,3 +495,36 @@ describe('review round 1 — the unterminated MULTIWORD case (Copilot)', () => {
     expect(values).toEqual(['Tank One', 'Healer Two']);
   });
 });
+
+describe('review round 4 — the "week 3" shorthand (Copilot, Medium)', () => {
+  it('week 3 filters by week, not by "contains a 3"', () => {
+    // The tokenizer splits unquoted whitespace, so `week 3` arrives as TWO
+    // terms. Matched independently: `week` hits every row (the matcher tests
+    // `week ${n}`.includes(term)) and `3` hits anything containing a 3 — so a
+    // WEEK 4 row on floor M3S came back for a query that said week 3.
+    const wanted = loot({ id: 1, weekNumber: 3, floor: 'M9S' });
+    const decoy = loot({ id: 2, weekNumber: 4, floor: 'M3S' });
+    expect(filter('week 3', [wanted, decoy]).map((i) => i.entry.id)).toEqual([1]);
+  });
+
+  it('the single-token forms are unchanged, and a lone "week" still is not a filter', () => {
+    const w3 = loot({ id: 1, weekNumber: 3 });
+    const w4 = loot({ id: 2, weekNumber: 4 });
+    expect(filter('w3', [w3, w4]).map((i) => i.entry.id)).toEqual([1]);
+    expect(filter('week3', [w3, w4]).map((i) => i.entry.id)).toEqual([1]);
+    // Control: only an ADJACENT week+number pair is joined. A bare `week`
+    // keeps its v1 behaviour rather than becoming a week filter for nothing.
+    expect(filter('week', [w3, w4])).toHaveLength(2);
+  });
+
+  it('two adjacent ordinary terms are NOT joined — they still AND', () => {
+    // Discriminator for the join CONDITION, not just the join itself:
+    // widening it to "any adjacent pair" swallows the second term, and every
+    // other test in this file still passes. (Found by a mutation that killed
+    // zero — the mutation was fine; the control was missing.)
+    const hit = loot({ id: 1, recipientPlayerId: 'p1', method: 'book' }); // Tank One + book
+    const wrongMethod = loot({ id: 2, recipientPlayerId: 'p1', method: 'drop' });
+    const wrongPlayer = loot({ id: 3, recipientPlayerId: 'p2', method: 'book' });
+    expect(filter('tank book', [hit, wrongMethod, wrongPlayer]).map((i) => i.entry.id)).toEqual([1]);
+  });
+});

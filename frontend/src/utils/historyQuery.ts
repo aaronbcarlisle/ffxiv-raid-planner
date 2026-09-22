@@ -252,6 +252,31 @@ export interface HistoryQueryContext {
   playerJobOf: (item: HistoryItem) => string;
 }
 
+/**
+ * R-D10-T: rejoins a `week` term followed by a bare number.
+ *
+ * `w3` and `week3` are one token and hit `termMatches`' shorthand regex, but
+ * **`week 3` is two tokens** — the tokenizer splits unquoted whitespace — and
+ * each is then matched independently. `week` alone matches every row (the
+ * matcher tests `\`week ${n}\`.includes(term)`), and `3` matches anything
+ * containing a 3, so a week-4 row on floor `M3S` came back for a query that
+ * said week 3. v1 has the identical hole; free terms are otherwise
+ * v1-verbatim by §3.1, but a *documented* shorthand that silently filters by
+ * "contains 3" is a defect, not parity worth keeping.
+ */
+function joinWeekShorthand(terms: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < terms.length; i++) {
+    if (terms[i] === 'week' && i + 1 < terms.length && /^\d+$/.test(terms[i + 1])) {
+      out.push(`week${terms[i + 1]}`);
+      i++;
+      continue;
+    }
+    out.push(terms[i]);
+  }
+  return out;
+}
+
 export function parseHistoryQuery(query: string): ParsedHistoryQuery {
   const tokens = tokenize(query);
   const filters: HistoryQueryFilter[] = [];
@@ -293,7 +318,7 @@ export function parseHistoryQuery(query: string): ParsedHistoryQuery {
     }
   }
 
-  return { filters, terms, unknownKeys, unknownValues };
+  return { filters, terms: joinWeekShorthand(terms), unknownKeys, unknownValues };
 }
 
 // ---------------------------------------------------------------------------

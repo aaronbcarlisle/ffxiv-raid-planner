@@ -325,7 +325,9 @@ evaluation.
   nothing for `type:gear` (`'loot'.includes('gear')` is false, `AllWeeksView.tsx:234`).
 - **T-5 `source:` (R-36, R-9)** — all five values carried over from
   `historyItems.test.ts:287-311` as a **move**: `raid` excludes books, `tome` returns both `tome`
-  and `purchase` (which no `method:` token can express), `book`, `material`, `all`; plus
+  and `purchase` — which `method:tome,purchase` now reaches for the method half, but not
+  `source:`'s loot-only gate, so a material logged under either method is swept in by one and not
+  the other — `book`, `material`, `all`; plus
   `source:tomes` matches nothing and reports an unknown value (R-D10-K).
 - **T-6 neutral colon + unknown key (R-30, R-D10-G)** — `player:` returns **every** row and
   reports no unknown key; `colour:blue` returns every row and reports `colour`; `colour:` also
