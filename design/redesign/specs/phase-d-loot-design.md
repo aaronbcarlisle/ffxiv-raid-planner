@@ -560,7 +560,19 @@ D7b, with the card re-home).**
   two-trigger conversion off the D6b Radix Dropdown; kebab keeps `aria-label="{floorName} actions"`
   + gains `aria-haspopup="menu"`). Named interim per R-D7b: `ui/ContextMenu` lacks
   focus-restore-on-close and `aria-expanded`, and closes on scroll — joins the standing
-  kebab-family a11y queue. **Third gap, same queue (whole-branch review, nit 5):** a
+  kebab-family a11y queue. **D11 enlarged this queue rather than adding to it differently:** History's
+  row kebab took the same conversion (R-D11-D), so those three gaps now recur **once per table row**
+  instead of once per card. It also carries one gap of its own — the kebab `<button>` now sits inside
+  a `<tr role="button">`, which ARIA marks presentational (mitigated: the row's `onKeyDown` ignores
+  events whose target is not the row itself, so the kebab's Enter never doubles as a row activation).
+  **And a fourth, found in D11's browser pass with the comparison that makes it actionable:** the
+  History row kebab opened with **Enter** does not move focus into the menu (no `focusin` fires at
+  all), while the same component opened by **mouse** focuses the first item at the second animation
+  frame — and D7's own `M9S actions` kebab *does* move focus on Enter. So it is usage-specific, not
+  component-wide. The menu remains operable (`ArrowDown` enters it; roving `tabindex` is correct),
+  so this is one keypress and a missed announcement rather than lost access. Whoever takes this
+  queue should price `ui/ContextMenu` against Radix once for the whole family — and start from that
+  D7-vs-D11 difference, which is a live reproduction rather than a theory. **Third gap, same queue (whole-branch review, nit 5):** a
   keyboard-invoked context menu (Shift+F10 / the menu key with the kebab focused) bubbles to the
   header `<div>`, so `jumpMenuAnchor` measures the full-width bar and anchors the menu at its
   far-left while the kebab sits at `ml-auto` right. Enter/Space on the kebab anchors correctly
@@ -1279,6 +1291,10 @@ follows the ruling, not the sketch, wherever they disagree:
    `Search — player:"Tank One", floor:m9s,m10s, source:tome, week:3`. It deliberately does **not**
    carry `Ctrl+Shift+F`, which §6's sketch draws and V1's placeholder advertises — that binding is
    D11's (R-35), and advertising an activation that will not fire inverts D-55.
+   **Discharged (D11, 2026-09-22):** the binding now fires, so the prohibition's *reason* is spent.
+   The placeholder still omits it — it is already carrying four keys of syntax teaching, which is
+   this rule's other job — and the shortcut is surfaced instead as the `(^⇧F)` hint at the end of
+   the search row, which is where §6's sketch draws it (R-D11-J).
 2. **Pills merge into one comma list**, never a second token of the same key. `floor:m9s floor:m10s`
    ANDs to empty, so a second click had to extend the first token's value list.
 3. **`hasQueryToken` and `toggleQueryToken` must agree across repeated keys.** Found at build: the
@@ -1511,7 +1527,7 @@ remaining Phase-D work does not tick this ruling off:
 | **Loses** (books card + bulk reset menu → Log) | ✅ D7a/D7b |
 | **Restores** (stats count + filtered-vs-empty) | ✅ **D9b, below** |
 | **Keeps** — the `?entry=` highlight and the `aug {slot}` readout | ✅ D9a/D9b |
-| **Keeps** — per-entry edit/delete **"materials included, per R-32"** | ⚠ **half**: material rows get Copy link + Delete only; material **edit** needs D8's modal and arrives with R-32 in **D11** (`LootHistoryTable.tsx`'s kebab gates Edit on `kind === 'loot'`) |
+| **Keeps** — per-entry edit/delete **"materials included, per R-32"** | ✅ **complete (D11)**: a material row's Edit — from the kebab, the row right-click, or a plain row click — opens D8's `QuickLogMaterialModal` through the same `materialState.mode === 'edit'` door the Log grid uses. One mount, a second caller; D8's §5 mount obligations were discharged in D5 for that mount, so they are inherited satisfied. The `kind === 'loot'` gate is gone |
 | **Receives** (past-week gear-slot jumps, R-28's split) | ❌ **D12** |
 | **"History renders no fairness block"** | ❌ **D14** — `FairnessSummary` is still mounted in the History branch (`Loot.tsx`, and that file's own header comment says it stays until D14) |
 
@@ -1568,6 +1584,56 @@ bare component-local `document` listener with no guard (`AllWeeksView.tsx:111-12
 mounts `RecipientPicker` and `LogWeekWizard` above it. It needs a focus/modal guard, and it needs
 registering in `ui/keyboardShortcutGroups.ts` (which lists only `Ctrl+Shift+S` today, `:28`) or it will
 never appear in the `Shift+?` help.
+
+**Build note (D11, 2026-09-22) — R-31, R-32 and R-35 are built.** Nine points the ruling text left
+open, settled in the slice (full reasoning in `plans/2026-09-22-phase-d11-row-affordances.md` §2,
+R-D11-A…N):
+
+1. **Row interactivity is permission-shaped.** `tabIndex`/`role="button"`/`aria-label`/`onKeyDown`
+   only when `canEdit`; Shift and Alt stay live for **everyone**, which is R-31 q1's own premise —
+   "pointer only when `canEdit`, plus R-18's Alt-held swap" is vacuous otherwise, because an
+   editor's row is already `cursor-pointer`. **Named delta against V1:** a V1 viewer *can* focus a
+   row and press `Shift+Enter`/`Alt+Enter` today (`AllWeeksView.tsx:311-325` runs both **before**
+   the `canEdit` gate at `:326`). D11 does not carry that row-level **gesture**; every **capability**
+   survives on the kebab, which R-32 already calls the keyboard and AT route. Affordance parity with
+   a mapped home, not a silent drop.
+2. **This diverges from the Log grid on purpose.** D6-l ruled v2's read-only grid cells inert while
+   History's rows stay modifier-live for viewers. Two rulings own the two surfaces; recorded because
+   it qualifies "one mental model across both surfaces".
+3. **The cursor gate is `canEdit || (altHeld && canJump)`**, one `useAltHeld()` per table.
+4. **Text stays selectable**, and a plain click that *completes* a drag-select is treated as a
+   selection rather than an activation — **pointer path only**. Enter cannot complete a drag, and
+   gating the keyboard on a stale selection elsewhere on the page would be q1's mismatch again.
+5. **`role="button"` costs the `<tr>` its `row` semantics** (mitigated by an `aria-label` carrying
+   the whole row, V1's `:553` shape), and the kebab `<button>` then sits inside it, which ARIA marks
+   presentational. The row's `onKeyDown` ignores keydowns whose target is not the row itself, so the
+   kebab's Enter never doubles as a row activation.
+6. **The menu is one item list behind two triggers**, per D9a-k: kebab (own rect, `stopPropagation`)
+   and row right-click (`jumpMenuAnchor`, so Shift+F10 lands on the row). It keeps the family's
+   separator before Delete, which R-32's item list does not draw but `LogWeekGrid.tsx:738-739` and
+   V1's own menu (`AllWeeksView.tsx:392-393`) both do. **Interim:** `ui/ContextMenu` has no
+   focus-restore-on-close, no `aria-expanded`, and closes on any captured scroll — R-D7b's three,
+   now multiplied by row count. Standing queue.
+7. **"View week N in Log" carries the entry** (`lview=log` + `entry` + `entryType`), not just the
+   week, and writes **no `?week=`** — `useLogWeek` reads that param on mount only and `Loot` does not
+   remount on an `lview` change, so it would be inert; and calling `logWeek.setWeek` instead would be
+   a second `setSearchParams` in one handler, which react-router's snapshot-bound functional updater
+   would clobber. D6a's out-of-week correction runs in a later tick, which is why it composes.
+   **Disclosed residual:** the F2 provisional-clock guard can swallow the jump on a genuine week-1
+   tier displaying a stale unclamped week — no pulse, no self-clear until the user returns to
+   History. Not narrowed here; that guard prevents a worse clobber.
+8. **`Ctrl+Shift+F` is registered v2-locally** through the shared `useKeyboardShortcuts` hook —
+   importing it is not editing it — so the hook every V1 screen runs is untouched. Three gates: the
+   hook's own input-focus guard, a modal guard fed by Loot's modal state, and `lview === 'history'`
+   checked *inside* the action so registration stays stable. The hook `preventDefault`s on any match,
+   so the chord is swallowed on Priority and Log too, where it no-ops.
+9. **The registry entry keeps V1's help byte-identical.** `SHORTCUT_GROUPS` is unchanged; a new
+   additive `V2_SHORTCUT_GROUPS` reaches the help through an optional `extraGroups` prop that only
+   `Layout.tsx`'s **v2** mount passes (the file already mounts the modal once per shell). The seam is
+   append-only, so it cannot express §5's D14 default ("V1's rows stay, v2's reflect the new set") —
+   **D14 decides whether to generalise or replace it**. Until then v2's help is a mixed-truth list:
+   `Alt+1-3`, `V` and `G` still render there and R-35/R-42 dropped all three for v2. D11 does not
+   make that worse, but it does add one authoritative row beside them.
 
 ---
 

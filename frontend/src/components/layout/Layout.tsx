@@ -7,6 +7,7 @@ import { SettingsDockToggle } from './SettingsDockToggle';
 import { SettingsPanelController } from './SettingsPanelController';
 import { ViewAsBanner } from '../admin';
 import { KeyboardShortcutsHelp } from '../ui';
+import { V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
 import { useGlobalKeyboardShortcuts } from '../../hooks/useGlobalKeyboardShortcuts';
 import { useAuthStore } from '../../stores/authStore';
 import { useResolvedShell, useShellParamPersistence } from '../../lib/shellPreference';
@@ -93,11 +94,14 @@ export function Layout() {
             settings to the NonGroupTopBar's SettingsGear off-group, and the
             group TopBar has carried its own gear since F6a. */}
 
-        {/* Global keyboard shortcuts modal */}
+        {/* Global keyboard shortcuts modal. `extraGroups` is v2-only (R-D11-C):
+            the legacy mount below must never receive it — that is what keeps
+            V1's `Shift+?` help byte-identical across this slice. */}
         <KeyboardShortcutsHelp
           isOpen={showKeyboardHelp}
           onClose={() => setShowKeyboardHelp(false)}
           isAdmin={isAdmin}
+          extraGroups={V2_SHORTCUT_GROUPS}
         />
       </div>
     );

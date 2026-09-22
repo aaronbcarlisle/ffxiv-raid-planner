@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Modal } from '../ui/Modal';
-import { SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
+import { SHORTCUT_GROUPS, V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
 import { useGroupViewState } from '../../hooks/useGroupViewState';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
@@ -259,7 +259,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           Keyboard Shortcuts
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5 max-h-40 overflow-y-auto">
-          {SHORTCUT_GROUPS.flatMap((group) =>
+          {/* This file's sole mount is v2-only (NewShell.tsx) — see R-D11-I —
+              so appending V2_SHORTCUT_GROUPS here is not a V1 reach. */}
+          {[...SHORTCUT_GROUPS, ...V2_SHORTCUT_GROUPS].flatMap((group) =>
             group.shortcuts.map((s) => (
               <div
                 key={`${group.title}-${s.key}`}

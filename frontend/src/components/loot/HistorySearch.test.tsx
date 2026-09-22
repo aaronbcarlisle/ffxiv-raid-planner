@@ -1,6 +1,7 @@
 // `@testing-library/user-event` is not a dependency of this project (see
 // `Loot.test.tsx`/`WeekScopeControl.test.tsx` headers) — interaction is driven
 // via `fireEvent`, the established convention.
+import { createRef } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { HistorySearch, type HistorySearchProps } from './HistorySearch';
@@ -340,5 +341,79 @@ describe('review fixes — N5 / N7', () => {
     );
     expect(screen.getByRole('textbox', { name: 'Search history' })).toHaveFocus();
     expect(document.body).not.toHaveFocus();
+  });
+});
+
+describe('D11 — inputRef seam (T-17…T-19) and the (^⇧F) hint (T-20…T-21)', () => {
+  it('T-17: a passed inputRef reaches the input, and .focus() on it moves focus there', () => {
+    const ref = createRef<HTMLInputElement>();
+    renderControl({ inputRef: ref });
+    const input = screen.getByRole('textbox', { name: 'Search history' });
+    expect(ref.current).toBe(input);
+    ref.current?.focus();
+    expect(input).toHaveFocus();
+  });
+
+  it('T-18: with a passed inputRef, clicking clear restores focus to THAT input (M2)', () => {
+    // Mutation-verified: reverting `clearSearch` to read the internal ref
+    // instead of the resolved one makes this fail, because the internal ref
+    // is never attached when a caller supplies its own (M2's exact failure).
+    const ref = createRef<HTMLInputElement>();
+    const { rerender } = renderControl({ query: 'floor:m9s', inputRef: ref });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    rerender(
+      <HistorySearch
+        query=""
+        onQueryChange={() => {}}
+        unknownKeys={[]}
+        unknownValues={[]}
+        floors={FLOORS}
+        players={PLAYERS}
+        inputRef={ref}
+      />,
+    );
+    const input = screen.getByRole('textbox', { name: 'Search history' });
+    expect(ref.current).toBe(input);
+    expect(input).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+
+  it('T-19: with no inputRef, the existing D10 clear-restore still works', () => {
+    const { rerender } = renderControl({ query: 'floor:m9s' });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    rerender(
+      <HistorySearch
+        query=""
+        onQueryChange={() => {}}
+        unknownKeys={[]}
+        unknownValues={[]}
+        floors={FLOORS}
+        players={PLAYERS}
+      />,
+    );
+    expect(screen.getByRole('textbox', { name: 'Search history' })).toHaveFocus();
+    expect(document.body).not.toHaveFocus();
+  });
+
+  it('T-20: the (^⇧F) hint renders, is aria-hidden, and carries no flex/grid class of its own', () => {
+    renderControl();
+    const hint = screen.getByText('(^⇧F)');
+    expect(hint.tagName).toBe('SPAN');
+    expect(hint).toHaveAttribute('aria-hidden', 'true');
+    expect(hint.className).not.toMatch(/\bflex\b|\bgrid\b|\binline-flex\b|\binline-grid\b/);
+  });
+
+  it('T-20b: the hint renders unconditionally, unlike the clear button', () => {
+    // Empty query: clear button absent, hint still present.
+    renderControl({ query: '' });
+    expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
+    expect(screen.getByText('(^⇧F)')).toBeInTheDocument();
+  });
+
+  it('T-21: the placeholder string is unchanged by this slice', () => {
+    renderControl();
+    expect(
+      screen.getByPlaceholderText('Search — player:"Tank One", floor:m9s,m10s, source:tome, week:3'),
+    ).toBeInTheDocument();
   });
 });

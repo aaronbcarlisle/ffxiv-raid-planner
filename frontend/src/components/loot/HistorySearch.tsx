@@ -23,11 +23,12 @@
  *
  * No Week or Source pill row (R-D10-A) — both keys survive only as tokens,
  * named in the placeholder (R-D10-P) so they stay discoverable. The
- * placeholder does not mention `Ctrl+Shift+F`: that binding belongs to D11,
- * and advertising an activation that does not yet fire would violate the
- * D-55/R-31 rule this repo applies to every such affordance.
+ * placeholder still omits `Ctrl+Shift+F` — it already carries four keys of
+ * syntax teaching (R-D10-P's other job) — and instead the shortcut is
+ * surfaced as a `(^⇧F)` hint at the end of the search row (D11, R-D11-J,
+ * spec §6's sketch).
  */
-import { useRef } from 'react';
+import { useRef, type RefObject } from 'react';
 import { Search, X } from 'lucide-react';
 import { Input, Tag, type Tone } from '../ui';
 import { IconButton } from '../primitives';
@@ -54,6 +55,15 @@ export interface HistorySearchProps {
   floors: string[];
   /** Configured players, caller-filtered and sort-ordered — feeds the Player pill row. */
   players: SnapshotPlayer[];
+  /**
+   * Optional caller-supplied ref to the search input (D11, R-35's
+   * `Ctrl+Shift+F` focuses through this). Resolved once alongside the
+   * internal ref — see `ref` below — and used for BOTH the `<Input>` and
+   * `clearSearch`, so a caller-supplied ref keeps N5's clear-focus-restore
+   * working instead of dropping focus to `<body>`. Optional so every test
+   * that renders the control bare keeps working unchanged.
+   */
+  inputRef?: RefObject<HTMLInputElement | null>;
 }
 
 const PLACEHOLDER = 'Search — player:"Tank One", floor:m9s,m10s, source:tome, week:3';
@@ -89,6 +99,7 @@ export function HistorySearch({
   unknownValues,
   floors,
   players,
+  inputRef,
 }: HistorySearchProps) {
   const unknownSourceValues = unknownValues.filter((v) => v.key === 'source').map((v) => v.value);
   const unknownWeekValues = unknownValues.filter((v) => v.key === 'week').map((v) => v.value);
@@ -117,10 +128,16 @@ export function HistorySearch({
   // drops a keyboard user's focus to <body>. Hand it back to the box they were
   // searching in. (V1's raw button has the same hole — this is a fix, not
   // parity debt. `Input` already forwards its ref, so nothing shared changes.)
-  const inputRef = useRef<HTMLInputElement>(null);
+  //
+  // M2: resolved ONCE and used by BOTH the `<Input>` below and `clearSearch` —
+  // a caller-supplied `inputRef` (D11's only caller, R-35's `Ctrl+Shift+F`)
+  // must be the same ref clearing focuses back to, or the internal one is
+  // never attached and clearing drops focus to <body>.
+  const internalRef = useRef<HTMLInputElement>(null);
+  const ref = inputRef ?? internalRef;
   const clearSearch = () => {
     onQueryChange('');
-    inputRef.current?.focus();
+    ref.current?.focus();
   };
 
   const toggle = (key: HistoryQueryKey, value: string, quoted: boolean) => {
@@ -131,7 +148,7 @@ export function HistorySearch({
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center gap-1.5">
         <Input
-          ref={inputRef}
+          ref={ref}
           value={query}
           onChange={onQueryChange}
           fullWidth
@@ -148,6 +165,13 @@ export function HistorySearch({
             onClick={clearSearch}
           />
         )}
+        {/* R-D11-J: unconditional (unlike the clear button) — a plain inline
+            span with no flex/grid display of its own, since index.css's
+            aria-hidden rule reverts `display` on this element (the F-4
+            hazard `LootHistoryTable.tsx` documents at its slot cell). */}
+        <span aria-hidden="true" className="text-xs text-text-tertiary">
+          (^⇧F)
+        </span>
       </div>
 
       {/* R-D10-C: always mounted, text emptied when there is nothing to say —

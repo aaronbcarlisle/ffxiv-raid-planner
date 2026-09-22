@@ -211,6 +211,15 @@ function pill(row: 'Type' | 'Floor' | 'Player', name: string): HTMLElement {
   return within(screen.getByRole('group', { name: `${row} filter` })).getByRole('button', { name });
 }
 
+/**
+ * D11 (R-D11-D): the History kebab is a `ui/ContextMenu` trigger — it opens on
+ * a plain CLICK. The Radix `Dropdown` it replaced opened on Enter-keydown,
+ * which is what the three D9a tests below used to fire inline.
+ */
+function openKebab(row: HTMLElement) {
+  fireEvent.click(within(row).getByRole('button', { name: /entry actions/ }));
+}
+
 function renderLoot(
   props: Partial<Parameters<typeof Loot>[0]> & { tier: TierSnapshot | null },
   initialEntries: string[] = ['/'],
@@ -790,7 +799,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-7')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+    openKebab(row);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit' }));
 
     const picker = screen.getByTestId('recipient-picker');
@@ -803,7 +812,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('material-entry-9')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+    openKebab(row);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
@@ -830,7 +839,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-4')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+    openKebab(row);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
@@ -947,7 +956,7 @@ describe('Loot', () => {
     await waitFor(() => expect(document.getElementById('loot-entry-5')).not.toBeInTheDocument());
 
     const row = document.getElementById('loot-entry-4')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+    openKebab(row);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
@@ -979,7 +988,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('material-entry-12')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+    openKebab(row);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
@@ -997,7 +1006,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-6')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+    openKebab(row);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => {
@@ -1017,7 +1026,7 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-5')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+    openKebab(row);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
 
     fireEvent.click(await screen.findByRole('button', { name: 'Delete Entry' }));
@@ -1488,7 +1497,7 @@ describe('Loot — D4 triad + the Log tab week model', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
 
     const row = document.getElementById('loot-entry-21')!;
-    fireEvent.keyDown(within(row).getByRole('button', { name: /entry actions/ }), { key: 'Enter' });
+    openKebab(row);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Copy link' }));
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
@@ -2402,5 +2411,155 @@ describe('Loot — D7b Task 6: the roster Books jump lands on Log (R-14 conseque
     const search = screen.getByTestId('loc').dataset.search ?? '';
     expect(search).not.toContain('book=p1');
     expect(search).toContain('lview=log');
+  });
+});
+
+// ── D11: History row affordance wiring ───────────────────────────────────────
+// `LootHistoryTable` is REAL here (D10's rule), so these drive the actual
+// kebab → `ui/ContextMenu` items and assert only Loot's OWN wiring: the two
+// new callbacks (`editMaterialFromHistory`, `viewWeekInLog`) and the URL /
+// modal state they reach. The row's modifier family itself is pinned in
+// LootHistoryTable.test.tsx (T-1…T-16).
+describe('Loot — D11: History row affordances (R-D11-A / R-D11-B / R-D11-H)', () => {
+  /** The MemoryRouter's live query string, parsed — one author for both T-26 halves. */
+  function params(): URLSearchParams {
+    return new URLSearchParams(screen.getByTestId('loc').getAttribute('data-search') ?? '');
+  }
+
+  // T-26 is two halves on purpose: ONE fixture cannot make both of its legs
+  // failing-capable. With an OUT-of-week entry, D6a's correction runs
+  // `logWeek.setWeek`, whose `?week=` mirror would mask a handler that wrongly
+  // wrote `week` itself (same value, same URL). So the "writes no week" leg
+  // uses an entry ON the clock week (nothing else can write one), and the
+  // "lands on the entry's week" leg uses an out-of-week entry.
+  it('T-26a: "View week N in Log" writes exactly lview=log + entry + entryType, drops book, keeps siblings — and writes NO week (R-D11-B)', () => {
+    // Clock is 3/5 (beforeEach); a week-3 entry means the Log already shows
+    // the right week, so no correction fires and `useLogWeek` mirrors nothing.
+    useLootTrackingStore.setState({ materialLog: [makeMaterialEntry({ id: 41, weekNumber: 3 })] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history&book=p1&tier=xyz']);
+    expect(screen.queryByTestId('log-week-grid')).not.toBeInTheDocument();
+
+    openKebab(document.getElementById('material-entry-41')!);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'View week 3 in Log' }));
+
+    const p = params();
+    expect(p.get('lview')).toBe('log');
+    expect(p.get('entry')).toBe('41');
+    expect(p.get('entryType')).toBe('material');
+    expect(p.has('book')).toBe(false);
+    expect(p.get('tier')).toBe('xyz'); // the functional updater keeps siblings
+    expect(p.has('week')).toBe(false);
+    // Landed: the Log is up on the clock's week with THIS entry highlighted.
+    expect(lastGrid().week).toBe(3);
+    expect(lastGrid().highlightEntry).toEqual({ kind: 'material', id: 41 });
+  });
+
+  it("T-26b: an out-of-week entry lands on ITS week through D6a's correction — the grid shows week 2 while the clock is 3, the cell is highlighted, and the week the URL then carries is the correction's own mirror", () => {
+    useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 42, weekNumber: 2 })] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+
+    openKebab(document.getElementById('loot-entry-42')!);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'View week 2 in Log' }));
+
+    expect(lastGrid().week).toBe(2);
+    expect(weekScopeCalls[weekScopeCalls.length - 1].displayedWeek).toBe(2);
+    expect(lastGrid().highlightEntry).toEqual({ kind: 'loot', id: 42 });
+    const p = params();
+    expect(p.get('lview')).toBe('log');
+    expect(p.get('entry')).toBe('42');
+    expect(p.get('entryType')).toBe('loot');
+    // `week=2` is `logWeek.setWeek`'s mirror from the correction EFFECT (a
+    // later tick), not the handler's — T-26a is where "the handler writes no
+    // week" is provable. Had the handler ALSO called `setWeek`, that second
+    // `setSearchParams` would have rebuilt from the pre-jump snapshot and this
+    // URL would still read `lview=history` (R-D11-B leg 2's clobber).
+    expect(p.get('week')).toBe('2');
+    expect(localStorage.getItem('v2-history-week-g1-aac-heavyweight')).toBe('2');
+  });
+
+  it("T-27: a History material row's Edit opens QuickLogMaterialModal in EDIT mode with THAT entry — the Log grid's door, second caller (R-D11-H)", () => {
+    const entry = makeMaterialEntry({ id: 9, weekNumber: 3 });
+    useLootTrackingStore.setState({ materialLog: [entry] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
+
+    openKebab(document.getElementById('material-entry-9')!);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+
+    expect(screen.getByTestId('material-modal')).toBeInTheDocument();
+    const last = materialModalCalls[materialModalCalls.length - 1];
+    expect(last.isOpen).toBe(true);
+    // Identity, not shape: the store's own object reaches the modal untouched
+    // (through `buildHistoryItems`' wrapper and the `edit` arm).
+    expect(last.editEntry).toBe(entry);
+    expect(last.floor).toBeUndefined(); // the EDIT arm, never the pinned cell door
+    // And not the loot door.
+    expect(screen.queryByTestId('recipient-picker')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * R-35's binding and its three gates (D11). `HistorySearch` is NOT mocked in
+ * this spec, so these drive the real box: `searchBox()` is the same
+ * `aria-label` a user's screen reader reads.
+ *
+ * Gate 1 (focus) and gate 2 (modal) belong to the SHARED
+ * `useKeyboardShortcuts` hook, which is exactly why they are asserted here
+ * rather than trusted: R-35 names both, and V1's version of this binding
+ * (`history/AllWeeksView.tsx:111-120`) has neither.
+ */
+describe('Loot — D11: Ctrl+Shift+F focuses History search (R-35 / R-D11-C)', () => {
+  const searchBox = () => screen.getByRole('textbox', { name: 'Search history' });
+
+  /** The real chord, dispatched where the hook listens (window). */
+  function pressCtrlShiftF(target: Window | Element = window) {
+    fireEvent.keyDown(target, { key: 'F', ctrlKey: true, shiftKey: true });
+  }
+
+  it('T-22: focuses the search box on History', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    expect(document.activeElement).not.toBe(searchBox());
+
+    pressCtrlShiftF();
+
+    expect(document.activeElement).toBe(searchBox());
+  });
+
+  it('T-23: does nothing on Priority or Log — there is no box to focus (gate 3)', () => {
+    const priority = renderLoot({ tier: makeTier(players) }, ['/?lview=priority']);
+    expect(screen.queryByRole('textbox', { name: 'Search history' })).not.toBeInTheDocument();
+    pressCtrlShiftF();
+    expect(document.activeElement).toBe(document.body);
+    priority.unmount();
+
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    pressCtrlShiftF();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('T-24: does nothing while a Loot-owned modal is open (gate 2)', () => {
+    useLootTrackingStore.setState({ materialLog: [makeMaterialEntry({ id: 9, weekNumber: 3 })] });
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    openKebab(document.getElementById('material-entry-9')!);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
+    expect(screen.getByTestId('material-modal')).toBeInTheDocument();
+
+    pressCtrlShiftF();
+
+    // The box is still mounted behind the modal — focus must not jump to it.
+    expect(document.activeElement).not.toBe(searchBox());
+  });
+
+  it('T-25: does nothing while focus is in a text input (gate 1, the shared hook s guard)', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    const box = searchBox();
+
+    // Dispatched FROM the input, which is what `isInputElement` inspects. The
+    // assertion is anti-vacuous by construction: without the guard the action
+    // would run and focus this very element, so a pass means the hook
+    // declined rather than that nothing was listening (T-22 proves it does).
+    pressCtrlShiftF(box);
+
+    expect(document.activeElement).not.toBe(box);
   });
 });

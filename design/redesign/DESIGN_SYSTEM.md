@@ -487,7 +487,28 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
 - **Anatomy:** one `<table>` in an `overflow-clip` card. Seven `ui/SortableHeader` columns (Week ·
   Floor · Slot · Player · Method · Date · Type) plus a plain sr-only `Actions` `<th>` for the ⋮ kebab,
   under a `sticky top-0` `<thead>`. Above the table, inside the card, a right-aligned `role="status"`
-  line carries the entry count. Rows are inert — the kebab is the only control (D9a-i/k).
+  line carries the entry count. **Rows are controls as of D11** (R-31) — see *Row affordances* below;
+  D9a-i's "rows are inert" is superseded (R-D11-K).
+- **Row affordances (R-31 / R-D11-E, D11):** one handler serves `onClick` and `onKeyDown`, so the
+  modifiers are designed rather than inherited from a cast. **Shift** copies the entry link (and
+  clears the selection Shift+Click just extended), **Alt** jumps to the recipient — gated on the id
+  resolving in the roster, so the affordance exists only when its target does — and a **plain**
+  activation opens the entry for editing: the picker for a loot row, D8's material modal for a
+  material row. *The row's appearance predicts its behaviour per permission level*: `cursor-pointer`
+  iff `canEdit || (altHeld && canJump)` (one `useAltHeld()` per table, never per row), and
+  `tabIndex`/`role="button"`/`aria-label`/`onKeyDown` **only** when `canEdit` — a focused row whose
+  plain Enter does nothing is D-55's violation with a keyboard instead of a cursor. Shift/Alt stay
+  live for viewers, whose complete keyboard route is the kebab. Text stays **selectable** (no
+  `select-none`, unlike V1), and a plain click that *completes* a drag-select is treated as a
+  selection, not an activation — pointer path only, since Enter cannot complete a drag.
+- **Row menu (R-32 / R-D11-D, D11):** **Edit · Copy link · Jump to {player} · View week N in Log ·
+  ─── · Delete**, from one unexported `buildRowMenuItems` feeding **two triggers** — the ⋮ kebab
+  (`aria-haspopup="menu"`, anchored at its own rect, `stopPropagation` so a kebab click never also
+  activates the row) and a right-click on the row, anchored through `jumpMenuAnchor` so a
+  keyboard-invoked context menu (Shift+F10, both coords `0`) lands on the row rather than the page
+  corner. ONE `ui/ContextMenu` mount at the table root, never one per row. Edit and Delete are
+  `canEdit`-gated; Jump appears only when the recipient resolves. "View week N in Log" writes
+  `lview=log` + `entry` + `entryType` and deliberately **no** `?week=` (R-D11-B).
 - **Week separators (R-29, D9b):** while and only while the sort field is `week`, a `<tr>` with one
   `colSpan={COLUMNS.length + 1}` cell opens each week band: a `Tag variant="label"` `"WEEK N"` pill
   (`tone="accent"` when current, else `"muted"`, plus `font-display`), the week's UTC-pinned date
@@ -497,7 +518,10 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   floors: string[]; query: ParsedHistoryQuery; currentWeek: number; rangeOfWeek: (week: number) =>
   WeekRange | null; logsLoading: boolean; logsFailed: boolean; canEdit: boolean;
   onEdit: (entry: LootLogEntry) => void; onCopyLink: (item: HistoryItem) => void;
-  onDelete: (item: HistoryItem) => void }`.
+  onDelete: (item: HistoryItem) => void; onEditMaterial: (entry: MaterialLogEntry) => void;
+  onJumpToPlayer: (playerId: string) => void; onViewWeekInLog: (item: HistoryItem) => void }`
+  — the last three added in D11, all **required** (an optional callback would make a menu item's
+  presence a function of the caller rather than of the data).
 - **States:** sorted (session-local `useState`, default Week desc, ties `createdAt` desc → loot before
   material → id desc, never direction-aware) | deep-link highlight | **four** distinct zero-row
   states, in precedence order (R-34 + D9b review):
@@ -537,6 +561,25 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   `<td colSpan>` inside the single `<tbody>`, which a screen reader announces as a data cell rather
   than a group header; one `<tbody>` per week with a `<th>` row is the semantically correct shape and
   is queued for the Phase P a11y pass (D9b review M3).
+- **a11y trades D11 accepted, recorded so they are re-decided rather than re-discovered:**
+  (1) `role="button"` costs an editable `<tr>` its `row` semantics, so the header/cell association is
+  lost for AT — mitigated by an `aria-label` carrying the whole row (`Loot: Body — Aria, Week 2`),
+  V1's own shape. (2) The kebab `<button>` then sits inside that `role="button"`, which ARIA marks
+  presentational; it stays in the tab order and browsers still expose it, and the row's `onKeyDown`
+  ignores keydowns whose target is not the row itself, so the kebab's Enter never doubles as a row
+  activation. (3) The focus ring is `ring-inset` for the same reason the pulse is — the card is
+  `overflow-clip`, so an outset ring is clipped on the first and last rows. (4) `ui/ContextMenu`
+  has no focus-restore-on-close and no `aria-expanded`, and closes on any captured scroll. R-D7b
+  booked those three for the Books kebabs and D11 joins the same standing queue — with a table they
+  are multiplied by row count. (5) **Measured in D11's browser pass, not read off the source:** the
+  component's mount-focus lands the first item when the row kebab is opened **by mouse** (observed
+  at the second animation frame), but **not** when it is opened with **Enter** — focus stays on the
+  trigger and no `focusin` fires at all. This is usage-specific rather than component-wide: D7's
+  floor kebab (`M9S actions`), same component, *does* move focus on Enter. The menu stays fully
+  operable — `ArrowDown` enters it and the roving `tabindex` is correct (`0, -1, -1`) — so it costs
+  one keypress and a missed announcement, not access. Root cause not chased inside D11, because the
+  fix belongs in `ui/ContextMenu`, which three shipped surfaces share; it goes to the same queue
+  with this comparison attached, which is the part that makes it actionable.
 
 ### 3.37 HistorySearch — D10
 
@@ -566,7 +609,19 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   (`floor:m1` unlights `All` without lighting a floor).
 - **Props:** `{ query: string; onQueryChange: (next: string) => void; unknownKeys: string[];
   unknownValues: { key: 'source' | 'week'; value: string }[]; floors: string[];
-  players: SnapshotPlayer[] }`. Controlled; the host owns the query.
+  players: SnapshotPlayer[]; inputRef?: RefObject<HTMLInputElement | null> }`. Controlled; the host
+  owns the query.
+- **`inputRef` seam (R-35, D11):** optional, and **resolved once** — `const ref = inputRef ??
+  internalRef` feeds both the `<Input>` and the clear button's focus restore. Attaching the resolved
+  ref while leaving `clearSearch` on the internal one silently reopens D10's N5 hole for the only
+  caller that passes a ref (the internal one is then never attached, so clearing drops focus to
+  `<body>`); a regression test pins the paired case.
+- **`(^⇧F)` hint (R-D11-J, D11):** a `text-xs text-text-tertiary` `aria-hidden` span after the clear
+  `✕`, rendered **unconditionally** — the ✕ is conditional on a non-empty query, the shortcut is
+  not. It must stay a plain inline span: `index.css`'s aria-hidden rule applies `display: revert`,
+  so anything depending on its own flex/grid display breaks (the F-4 hazard). The **placeholder**
+  still omits the shortcut — it already carries four keys of syntax teaching, and §6's sketch puts
+  the hint here.
 - **Two clocks, deliberately.** The pills read the **live** query so a click lights immediately; the
   table and the hint line read a **200 ms debounced** parse. A pill that waited to light would read
   as a dropped click; a hint that fired per keystroke would scold you mid-word.

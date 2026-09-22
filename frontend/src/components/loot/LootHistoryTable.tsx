@@ -7,8 +7,8 @@
  * R-29 note 3: not persisted, not in the URL). Cells: R-33 floor chip (`Tag`
  * floor tone, D9a-r), R-39 slot glyph (`GearSlotIcon`; a material dot for
  * material rows), R-38 weapon job in Slot and recipient job in Player, the
- * `aug {slot}` readout in Type (R-34 / R-D9a-A / D9a-t). Rows are inert — the
- * kebab is the only control (D9a-i, D9a-k).
+ * `aug {slot}` readout in Type (R-34 / R-D9a-A / D9a-t). Since D11 the row
+ * itself is a control (below) — D9a-i's "rows are inert" is superseded.
  *
  * D9b adds the three things D9a deferred. **Week separators (R-29)** render
  * ONLY while the sort field is `week` — under a Player sort the rows either
@@ -52,18 +52,68 @@
  * zero-row strings and the stats count are unchanged by that slice (R-7);
  * they are R-34-ruled and byte-restored from V1.
  *
- * Later slices: D11 the row click / right-click `ContextMenu` conversion
- * (R-31/R-32); D12 gear-row anchors.
+ * D11 makes the row a control (R-31) and converts the kebab (R-32, R-D11-D).
+ *
+ * **The row.** ONE `activate` handler serves both `onClick` and `onKeyDown`, so
+ * R-31 q3's modifiers are designed rather than inherited from a cast: Shift →
+ * copy link (and clear the selection Shift+Click extends, V1
+ * `AllWeeksView.tsx:315`); Alt → jump to the recipient's roster card when the
+ * id resolves in the roster (card-level `?player=` until D12's slot anchors,
+ * R-28); plain → edit (loot → `onEdit`, material → `onEditMaterial`, which is
+ * D8's modal through Loot's existing `materialState.mode === 'edit'` door,
+ * R-D11-H). Activation is PERMISSION-SHAPED (R-D11-E): only a `canEdit` row is
+ * focusable (`tabIndex={0}`), roled (`role="button"` — R-D11-L's recorded
+ * trade: it costs the `<tr>` its `row` semantics, so the `aria-label` carries
+ * the whole row in V1's shape), keyboard-activatable (Enter / Space, V1
+ * `:555-559`; only when the row ITSELF is the target, so a keydown bubbling up
+ * from the kebab never doubles as a row activation) and ringed
+ * (`focus-visible` INSET — the card is `overflow-clip`, so an outset ring would
+ * be clipped on the first and last rows, the same reason the pulse ring is
+ * inset). The Shift/Alt pointer modifiers stay live for viewers, and
+ * `cursor-pointer` is set iff `canEdit || (altHeld && canJump)` (R-D11-F; ONE
+ * `useAltHeld()` per table, D6 Task 3's rule) — a viewer's plain click is a
+ * no-op that never advertised itself (R-31 q1). No `select-none` anywhere
+ * (R-31 q2): the text is meant to be read back, so a plain CLICK that completes
+ * a drag-select is a selection, not an activation (R-D11-G, read off
+ * `window.getSelection()` on the pointer path only — a keyboard Enter cannot
+ * complete a drag-select, so a stale selection elsewhere does not gate it).
+ *
+ * **The menu.** ONE `ContextMenu` at the table root with ONE `menu` state and
+ * two triggers — kebab click and row right-click — into the same
+ * `buildRowMenuItems` list, the `LogWeekGrid` / `BookLedgerCard` family shape.
+ * Items: Edit (`canEdit`; loot or material) · Copy link · Jump to {name} (only
+ * when the id resolves) · View week {n} in Log (R-D11-A: carries the ENTRY, so
+ * the Log lands with the cell pulsing, not merely on the week) · separator +
+ * Delete (`canEdit`; the separator is the family's, R-D11-M). No icons — the
+ * entry family carries none. The kebab's `onClick` `stopPropagation`s, because
+ * its ancestor `<tr>` now has an `onClick` (the grid precedent's did not); a
+ * right-click anchors through `jumpMenuAnchor`, so Shift+F10 / the menu key
+ * (both coordinates 0) land on the row, not the page corner (R-32 note 2). A
+ * viewer keeps Copy link · Jump · View week on the kebab: that is their
+ * complete keyboard/AT route (R-D11-E), replacing V1's row-level
+ * Shift+Enter / Alt+Enter gesture, which is deliberately not carried.
+ *
+ * Later slice: D12 gear-row anchors.
  */
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MoreVertical } from 'lucide-react';
 import { SortableHeader } from '../ui/SortableHeader';
 import { Tag, type Tone } from '../ui/Tag';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
 import { JobIcon } from '../ui/JobIcon';
+import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { IconButton } from '../primitives/IconButton';
-import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem } from '../primitives/Dropdown';
+import { jumpMenuAnchor } from '../roster/rosterLedgerJumps';
+import { useAltHeld } from '../../hooks/useAltHeld';
 import { historyRowDomId, type HistoryItem } from './logWeekGridData';
 import {
   buildHistoryItems,
@@ -123,6 +173,18 @@ export interface LootHistoryTableProps {
   logsLoading: boolean;
   canEdit: boolean;
   onEdit: (entry: LootLogEntry) => void;
+  /**
+   * D11 (R-D11-H): a material row's Edit — D8's modal through Loot's existing
+   * `materialState.mode === 'edit'` door, a second CALLER of one mount.
+   * Required, like the two below, for `LogWeekGridProps`' own reason: an
+   * optional callback would make a menu item's presence a function of the
+   * caller rather than of the data, and this table has exactly one mount.
+   */
+  onEditMaterial: (entry: MaterialLogEntry) => void;
+  /** Alt+Click / "Jump to {name}" — card-level (`?player=`) until D12's slot anchors (R-28). */
+  onJumpToPlayer: (playerId: string) => void;
+  /** "View week {n} in Log" (R-D11-A): a same-tab jump carrying the entry, not just its week. */
+  onViewWeekInLog: (item: HistoryItem) => void;
   onCopyLink: (item: HistoryItem) => void;
   onDelete: (item: HistoryItem) => void;
 }
@@ -347,12 +409,19 @@ function WeekSeparatorRow({
   );
 }
 
+/**
+ * The ONE row menu's state — which row it is about and where it opens
+ * (`LogWeekGrid`'s `LogGridMenuState` shape). Never per row.
+ */
+interface RowMenuState {
+  x: number;
+  y: number;
+  item: HistoryItem;
+}
+
 interface ActionsCellContext {
-  canEdit: boolean;
   playersById: Map<string, SnapshotPlayer>;
-  onEdit: (entry: LootLogEntry) => void;
-  onCopyLink: (item: HistoryItem) => void;
-  onDelete: (item: HistoryItem) => void;
+  openMenu: (menu: RowMenuState) => void;
 }
 
 /**
@@ -366,32 +435,90 @@ interface ActionsCellContext {
  * (`${label} entry actions — ${floorName}`, R-D6b). Eight rows of an
  * identically-named button tell a screen-reader user nothing about which
  * entry the focused menu would edit or delete.
+ *
+ * D11 (R-D11-D): a TRIGGER for the table-root `ContextMenu`, anchored at its
+ * own rect (`LogWeekGrid.tsx`'s `openKebabMenu`), not a Radix `Dropdown` of
+ * its own — one items list, two triggers. `aria-haspopup="menu"` is R-D7b's
+ * shape. The `stopPropagation` is the one thing that precedent did NOT need:
+ * its ancestor had no `onClick`, and this one's `<tr>` does (m4) — without it a
+ * single kebab click would open the menu AND the row's editor.
  */
 function renderActionsCell(item: HistoryItem, ctx: ActionsCellContext): ReactNode {
-  const { kind, entry } = item;
   return (
-    <Dropdown>
-      <DropdownTrigger asChild>
-        <IconButton
-          aria-label={`${slotNameOf(item)} entry actions — ${recipientNameOf(item, ctx.playersById)}`}
-          icon={<MoreVertical className="h-4 w-4" />}
-          variant="ghost"
-          size="sm"
-        />
-      </DropdownTrigger>
-      <DropdownContent align="end">
-        {kind === 'loot' && ctx.canEdit && (
-          <DropdownItem onSelect={() => ctx.onEdit(entry)}>Edit</DropdownItem>
-        )}
-        <DropdownItem onSelect={() => ctx.onCopyLink(item)}>Copy link</DropdownItem>
-        {ctx.canEdit && (
-          <DropdownItem danger onSelect={() => ctx.onDelete(item)}>
-            Delete
-          </DropdownItem>
-        )}
-      </DropdownContent>
-    </Dropdown>
+    <IconButton
+      aria-label={`${slotNameOf(item)} entry actions — ${recipientNameOf(item, ctx.playersById)}`}
+      aria-haspopup="menu"
+      icon={<MoreVertical className="h-4 w-4" />}
+      variant="ghost"
+      size="sm"
+      onClick={(e) => {
+        e.stopPropagation();
+        const r = e.currentTarget.getBoundingClientRect();
+        ctx.openMenu({ x: r.left, y: r.bottom, item });
+      }}
+    />
   );
+}
+
+interface RowMenuContext {
+  canEdit: boolean;
+  playersById: Map<string, SnapshotPlayer>;
+  onEdit: LootHistoryTableProps['onEdit'];
+  onEditMaterial: LootHistoryTableProps['onEditMaterial'];
+  onCopyLink: LootHistoryTableProps['onCopyLink'];
+  onJumpToPlayer: LootHistoryTableProps['onJumpToPlayer'];
+  onViewWeekInLog: LootHistoryTableProps['onViewWeekInLog'];
+  onDelete: LootHistoryTableProps['onDelete'];
+}
+
+/**
+ * The row menu's items (R-32), in order: Edit (`canEdit`; loot → `onEdit`,
+ * material → `onEditMaterial`) · Copy link · Jump to {name} (only when the id
+ * resolves in the roster — the same gate the row's Alt activation applies) ·
+ * View week {n} in Log · separator + Delete (`canEdit`, danger; the separator
+ * is the entry family's, R-D11-M). No icons: `buildEntryMenuItems` carries
+ * none for the entry family, and one menu growing icons its twin lacks is the
+ * drift this phase keeps catching. The Jump name is the roster's
+ * (`recipientNameOf`), the same resolution the Player cell and the kebab's
+ * label use, so a renamed player reads consistently in all three.
+ *
+ * Module-level and deliberately NOT exported: `react-refresh/only-export-
+ * components` is an error in this repo (D9a-m recorded the same for
+ * `isLootSlot`). Exercised through the table, where its permission and kind
+ * branches are observable anyway.
+ */
+function buildRowMenuItems(item: HistoryItem, ctx: RowMenuContext): ContextMenuItem[] {
+  const items: ContextMenuItem[] = [];
+  if (ctx.canEdit) {
+    items.push({
+      label: 'Edit',
+      onClick: () => (item.kind === 'loot' ? ctx.onEdit(item.entry) : ctx.onEditMaterial(item.entry)),
+    });
+  }
+  items.push({ label: 'Copy link', onClick: () => ctx.onCopyLink(item) });
+  const recipientId = item.entry.recipientPlayerId;
+  if (ctx.playersById.has(recipientId)) {
+    items.push({
+      label: `Jump to ${recipientNameOf(item, ctx.playersById)}`,
+      onClick: () => ctx.onJumpToPlayer(recipientId),
+    });
+  }
+  items.push({ label: `View week ${item.entry.weekNumber} in Log`, onClick: () => ctx.onViewWeekInLog(item) });
+  if (ctx.canEdit) {
+    items.push({ separator: true });
+    items.push({ label: 'Delete', danger: true, onClick: () => ctx.onDelete(item) });
+  }
+  return items;
+}
+
+/**
+ * R-D11-G: is there a live text selection on the page? A plain click that
+ * COMPLETES a drag-select (mouseup → click) is a selection, not an activation
+ * — and rows are selectable on purpose (R-31 q2), so this is what stands in
+ * for the `select-none` V1 used.
+ */
+function selectionActive(): boolean {
+  return (window.getSelection()?.toString() ?? '') !== '';
 }
 
 export function LootHistoryTable({
@@ -406,12 +533,21 @@ export function LootHistoryTable({
   logsFailed,
   canEdit,
   onEdit,
+  onEditMaterial,
+  onJumpToPlayer,
+  onViewWeekInLog,
   onCopyLink,
   onDelete,
 }: LootHistoryTableProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   // Session-local (R-29 note 3): a fresh mount starts on Week desc.
   const [sort, setSort] = useState<HistorySortState>(DEFAULT_HISTORY_SORT);
+  // R-D11-F: ONE `useAltHeld()` at the table top level — never one per row
+  // (D6 Task 3's rule; `LogWeekGrid.tsx` is the precedent).
+  const altHeld = useAltHeld();
+  // R-D11-D: ONE `ContextMenu` mount at the table root, ONE state — every
+  // row's kebab and right-click share it (`LogWeekGrid.tsx`'s `menu`).
+  const [menu, setMenu] = useState<RowMenuState | null>(null);
 
   // Derived (not stored) — the highlight tracks the URL param directly, so
   // there's nothing to desync. Two primitives (not an object) so the effect's
@@ -544,11 +680,67 @@ export function LootHistoryTable({
         ? 'No loot or materials logged this tier.'
         : 'No entries match your filters.';
 
-  // Plain args to the render functions below (CELL / renderActionsCell), not
-  // props on memoized children — identity is irrelevant here, so memoizing
-  // these literals would be noise, not a fix.
+  // Plain args to the render functions below (CELL / renderActionsCell /
+  // buildRowMenuItems), not props on memoized children — identity is
+  // irrelevant here, so memoizing these literals would be noise, not a fix.
   const cellCtx: CellContext = { floors, playersById };
-  const actionsCtx: ActionsCellContext = { canEdit, playersById, onEdit, onCopyLink, onDelete };
+  const actionsCtx: ActionsCellContext = { playersById, openMenu: setMenu };
+  const menuCtx: RowMenuContext = {
+    canEdit, playersById, onEdit, onEditMaterial, onCopyLink, onJumpToPlayer, onViewWeekInLog, onDelete,
+  };
+
+  /** The row's Alt activation and the menu's Jump item share this gate: the id resolves in the roster. */
+  const canJumpTo = (item: HistoryItem) => playersById.has(item.entry.recipientPlayerId);
+
+  // R-31: ONE activation handler for both `onClick` and `onKeyDown`, so the
+  // modifier family is designed here rather than inherited from a cast (V1
+  // routed the keyboard through `handleRowClick` via `e as unknown as
+  // React.MouseEvent`). Order matters: Shift and Alt are live for EVERYONE
+  // (R-D11-E — that is R-31's own premise, "plus R-18's Alt-held swap" is
+  // vacuous otherwise); only the plain activation is permission-shaped.
+  const activate = (mods: { shiftKey: boolean; altKey: boolean }, item: HistoryItem) => {
+    if (mods.shiftKey) {
+      onCopyLink(item);
+      // V1 `AllWeeksView.tsx:315`: Shift+Click extends the browser selection
+      // to the click point; clear it so copying leaves no selection artifact.
+      window.getSelection()?.removeAllRanges();
+      return;
+    }
+    if (mods.altKey) {
+      if (canJumpTo(item)) onJumpToPlayer(item.entry.recipientPlayerId);
+      return;
+    }
+    if (!canEdit) return; // R-D11-E: a viewer's plain activation is a no-op that never advertised itself
+    if (item.kind === 'loot') onEdit(item.entry);
+    else onEditMaterial(item.entry); // R-D11-H
+  };
+
+  const onRowClick = (e: ReactMouseEvent<HTMLTableRowElement>, item: HistoryItem) => {
+    // R-D11-G, pointer path only: a plain click that completes a drag-select
+    // is a selection. Shift/Alt are exempt (Shift+Click's own selection is
+    // cleared inside `activate`), and so is the keyboard path below — Enter
+    // cannot complete a drag-select, so a stale selection elsewhere on the
+    // page must not silently gate a focused row.
+    if (!e.shiftKey && !e.altKey && selectionActive()) return;
+    activate(e, item);
+  };
+
+  const onRowKeyDown = (e: ReactKeyboardEvent<HTMLTableRowElement>, item: HistoryItem) => {
+    // Only when the ROW itself is focused: the kebab's own Enter/Space
+    // bubbles through here, and its native click already opens the menu.
+    if (e.target !== e.currentTarget) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return; // V1 `:555-559` handles both
+    e.preventDefault();
+    activate(e, item);
+  };
+
+  const openRowMenu = (e: ReactMouseEvent<HTMLTableRowElement>, item: HistoryItem) => {
+    e.preventDefault();
+    // R-32 note 2 / PR #200: Shift+F10 and the menu key dispatch at (0, 0) —
+    // anchor those to the row's rect rather than the page corner.
+    const { x, y } = jumpMenuAnchor(e, e.currentTarget.getBoundingClientRect());
+    setMenu({ x, y, item });
+  };
 
   return (
     <div className="rounded-lg border border-border-default bg-surface-card overflow-clip">
@@ -598,6 +790,27 @@ export function LootHistoryTable({
               const week = entry.weekNumber;
               const startsWeek =
                 showSeparators && (index === 0 || rows[index - 1].entry.weekNumber !== week);
+              // R-D11-F: the pointer cursor is set iff a plain click WILL do
+              // something (editor) or Alt is held over a row whose jump WILL
+              // fire (`LogWeekGrid.tsx`'s `altHeld && jump` swap). A viewer's
+              // row at rest advertises nothing (R-31 q1).
+              const pointer = canEdit || (altHeld && canJumpTo(item));
+              // Ring INSET (M3): the card is `overflow-clip`, so an outset ring
+              // would be clipped on the first and last rows — the idiom V1's
+              // own clickable cells use in the same situation
+              // (`history/WeeklyLootGrid.tsx:577,708`), and the reason the
+              // pulse ring is inset too. NO `select-none` (R-31 q2).
+              const rowClassName =
+                `hover:bg-surface-raised${pointer ? ' cursor-pointer' : ''}` +
+                (canEdit
+                  ? ' focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset'
+                  : '') +
+                (isHighlighted ? ' highlight-pulse' : '');
+              // R-D11-L: `role="button"` costs the `<tr>` its `row` semantics,
+              // so the label carries the whole row (V1 `AllWeeksView.tsx:553`).
+              const rowLabel =
+                `${kind === 'loot' ? 'Loot' : 'Material'}: ${slotNameOf(item)} — ` +
+                `${recipientNameOf(item, playersById)}, Week ${week}`;
               return (
                 <Fragment key={rowId}>
                   {startsWeek && (
@@ -608,7 +821,21 @@ export function LootHistoryTable({
                       count={weekCounts.get(week) ?? 0}
                     />
                   )}
-                  <tr id={rowId} className={`hover:bg-surface-raised${isHighlighted ? ' highlight-pulse' : ''}`}>
+                  {/* R-D11-E: focusable, roled, labelled and keyboard-activatable
+                      ONLY when `canEdit` — a focused row whose Enter does nothing
+                      is R-31 q1's violation with a keyboard instead of a cursor.
+                      `onClick`/`onContextMenu` are unconditional: Shift/Alt and
+                      the menu are a viewer's affordances too. */}
+                  <tr
+                    id={rowId}
+                    className={rowClassName}
+                    tabIndex={canEdit ? 0 : undefined}
+                    role={canEdit ? 'button' : undefined}
+                    aria-label={canEdit ? rowLabel : undefined}
+                    onClick={(e) => onRowClick(e, item)}
+                    onKeyDown={canEdit ? (e) => onRowKeyDown(e, item) : undefined}
+                    onContextMenu={(e) => openRowMenu(e, item)}
+                  >
                     {COLUMNS.map((c) => (
                       <td key={c.field} className="px-4 py-2.5">
                         {CELL[c.field](item, cellCtx)}
@@ -622,6 +849,17 @@ export function LootHistoryTable({
           )}
         </tbody>
       </table>
+      {/* R-D11-D: the ONE menu, outside every `<tr>` — a menu-item click must
+          not bubble (React-tree-wise, through the portal) into a row's
+          `onClick`. Rendered per open, like the grid's. */}
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={buildRowMenuItems(menu.item, menuCtx)}
+          onClose={() => setMenu(null)}
+        />
+      )}
     </div>
   );
 }
