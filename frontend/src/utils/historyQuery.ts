@@ -40,7 +40,7 @@ interface RawToken {
   /** Lower-cased key, or null for a free term. */
   key: string | null;
   values: RawValue[];
-  /** True when the token carries an unclosed quote — see `emitToken`. */
+  /** True when the token carries an unclosed quote — see `appendToken`. */
   unterminated: boolean;
 }
 
@@ -121,7 +121,7 @@ function classifyToken(text: string): RawToken {
   }
   // An odd number of quotes means the token never closed one. The writers
   // need this: re-emitting such a token VERBATIM lets its open quote swallow
-  // whatever is appended after it (see `emitToken`).
+  // whatever is appended after it (see `appendToken`).
   const unterminated = (text.match(/"/g)?.length ?? 0) % 2 === 1;
   if (colonIdx <= 0) {
     return { text, key: null, values: [], unterminated };
@@ -132,26 +132,26 @@ function classifyToken(text: string): RawToken {
 }
 
 /**
- * How a writer re-emits a token it is NOT editing.
+ * Appends a new token to a tokenized query.
  *
- * Normally verbatim — R-D10-D's promise that an untouched token keeps its own
- * spelling. But an **unterminated** token cannot be passed through: its open
- * quote runs to end-of-string (R-15), so appending `floor:m9s` after
- * `player:"Tank` would produce ONE token whose bare value is `Tank floor:m9s`
- * — the pill would not light, the table would empty, and neither hint line
- * would fire because the key is known and the value is merely unmatched. That
- * is exactly the unexplained-empty-table state R-D10-K was ruled to kill.
+ * An **unterminated** token can only ever be LAST — its open quote runs to
+ * end-of-string (R-15) — so the fix for "the open quote swallows whatever we
+ * append" is to keep it last, not to rewrite it. Appending after `player:"Tank
+ * One` would otherwise produce ONE token whose value is `Tank One floor:m9s`:
+ * pill unlit, table empty, and NEITHER hint line firing, because the key is
+ * known and the value merely unmatched — the unexplained empty table R-D10-K
+ * exists to prevent.
  *
- * So an unterminated token is re-emitted in the normalised form the parser
- * already reads it as, which changes no semantics:
- *   - keyed  → `player:Tank`   (bare, because R-D10-Q makes an unterminated
- *                               quote lenient — it was never an exact match)
- *   - free   → `"player:alice"` (quote CLOSED, not stripped: stripping would
- *                               promote a free term into a `player:` filter)
+ * Putting the new token before it preserves R-D10-D's promise that an
+ * untouched token keeps its own spelling, and changes no semantics at all.
  */
-function emitToken(t: RawToken): string {
-  if (!t.unterminated) return t.text;
-  return t.key === null ? `${t.text}"` : serializeToken(t.key, t.values);
+function appendToken(tokens: RawToken[], newToken: string): string {
+  const parts = tokens.map((t) => t.text);
+  const trailingOpen = tokens.length > 0 && tokens[tokens.length - 1].unterminated;
+  const tail = trailingOpen ? parts.pop() : undefined;
+  parts.push(newToken);
+  if (tail !== undefined) parts.push(tail);
+  return parts.join(' ');
 }
 
 /**
@@ -185,8 +185,18 @@ function tokenize(query: string): RawToken[] {
   return tokens;
 }
 
+/**
+ * Emits `key:value,value`. A value is quoted when it was quoted OR when it
+ * contains whitespace — the second half is a **round-trip invariant**, not a
+ * style choice: a bare value with a space re-tokenizes as two tokens, so
+ * emitting one would silently change the query it came from. (Quoting a value
+ * that arrived as an unterminated multiword also commits it to exact matching;
+ * at the point the user clicked a pill they are no longer mid-typing that
+ * token, and a committed quote beats a corrupted one.)
+ */
 function serializeToken(key: string, values: RawValue[]): string {
-  return `${key}:${values.map((v) => (v.quoted ? `"${v.text}"` : v.text)).join(',')}`;
+  const emit = (v: RawValue) => (v.quoted || /\s/.test(v.text) ? `"${v.text}"` : v.text);
+  return `${key}:${values.map(emit).join(',')}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -487,9 +497,7 @@ export function toggleQueryToken(
   const firstIndex = tokens.findIndex((t) => t.key === key);
 
   if (firstIndex === -1) {
-    const parts = tokens.map(emitToken);
-    parts.push(serializeToken(key, [{ text: value, quoted }]));
-    return parts.join(' ');
+    return appendToken(tokens, serializeToken(key, [{ text: value, quoted }]));
   }
 
   // `hasQueryToken` lights the pill off ANY token carrying the key, so the
@@ -503,7 +511,7 @@ export function toggleQueryToken(
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
     if (t.key !== key || (!present && i !== firstIndex)) {
-      parts.push(emitToken(t));
+      parts.push(t.text);
       continue;
     }
     const nextValues = present
@@ -519,6 +527,6 @@ export function toggleQueryToken(
 export function removeQueryKey(q: string, key: HistoryQueryKey): string {
   return tokenize(q)
     .filter((t) => t.key !== key)
-    .map(emitToken)
+    .map((t) => t.text)
     .join(' ');
 }

@@ -1274,8 +1274,12 @@ follows the ruling, not the sketch, wherever they disagree:
    **id** (`a99da91d:frontend/src/utils/historyItems.ts:166` — the line is gone from HEAD); a name-substring pill would silently over-select whenever one
    roster name prefixes another ("Tank One" / "Tank One Alt"). Pills always quote, so a pill still
    means *this player*, while R-30's own sanctioned `player:ali` still filters. **Residual,
-   accepted:** once a roster row is deleted the log keeps only `recipientPlayerName`, so a current
-   same-named player's pill claims those rows.
+   accepted, both disclosed:** once a roster row is deleted the log keeps only
+   `recipientPlayerName`, so a current same-named player's pill claims those rows; and
+   `SnapshotPlayer.name` carries no uniqueness constraint, so two configured slots sharing a name
+   are one pill and one result set. An id-bearing token would close the second and defeat R-30 —
+   the pills exist to *teach* a syntax the user can read and retype, and `player:#a3f1c2` is
+   neither.
 5. **An unknown key is *ignored*; an unknown value on `source:`/`week:` *matches nothing*.** Both
    are surfaced in the hint line. Not an inconsistency: a key the parser cannot identify names no
    field and so cannot constrain anything, while a value on a known field is a real constraint

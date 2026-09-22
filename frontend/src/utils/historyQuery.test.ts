@@ -407,8 +407,10 @@ describe('review fixes — S1 / S3 / S4 / N8', () => {
     // it verbatim lets its open quote swallow whatever is appended, producing
     // ONE token whose bare value is `Tank floor:m9s` — pill unlit, table empty,
     // and NEITHER hint line fires (the key is known, the value merely unmatched).
+    // The open token STAYS last and keeps its own spelling; the new token is
+    // inserted before it, so there is nothing after the quote to swallow.
     const next = toggleQueryToken('player:"Tank', 'floor', 'm9s', false);
-    expect(next).toBe('player:Tank floor:m9s');
+    expect(next).toBe('floor:m9s player:"Tank');
 
     // The pill must now light, which is the user-visible half of the bug.
     expect(hasQueryToken(next, 'floor', 'm9s', false)).toBe(true);
@@ -420,11 +422,11 @@ describe('review fixes — S1 / S3 / S4 / N8', () => {
     expect(parsed.unknownKeys).toEqual([]);
   });
 
-  it('S1: an unterminated FREE term is closed, not promoted into a filter', () => {
-    // Stripping the quote instead of closing it would turn a free term into a
-    // `player:` filter — a meaning change the user never asked for.
+  it('S1: an unterminated FREE term keeps its meaning after a pill click', () => {
+    // Rewriting it at all risks promoting a free term into a `player:` filter;
+    // moving the appended token in front of it avoids touching it.
     const next = toggleQueryToken('"player:alice', 'floor', 'm9s', false);
-    expect(next).toBe('"player:alice" floor:m9s');
+    expect(next).toBe('floor:m9s "player:alice');
     const parsed = parseHistoryQuery(next);
     expect(parsed.terms).toEqual(['player:alice']);
     expect(parsed.filters.map((f) => f.key)).toEqual(['floor']);
@@ -463,5 +465,33 @@ describe('review fixes — S1 / S3 / S4 / N8', () => {
     const wrongPlayer = loot({ id: 4, weekNumber: 2, method: 'tome', recipientPlayerId: 'p2' });
     const q = 'week:2 source:tome player:"Tank One"';
     expect(filter(q, [hit, wrongWeek, wrongSource, wrongPlayer]).map((i) => i.entry.id)).toEqual([1]);
+  });
+});
+
+describe('review round 1 — the unterminated MULTIWORD case (Copilot)', () => {
+  it('a pill click after player:"Tank One does not split the name', () => {
+    // The first S1 fix rewrote the open token as bare `player:Tank One`, which
+    // re-tokenizes as `player:Tank` + a free `One` — a different filter. This
+    // is the defect-behind-the-defect: patching the SYMPTOM (rewrite the token)
+    // instead of the CAUSE (never append after an open quote).
+    const next = toggleQueryToken('player:"Tank One', 'floor', 'm9s', false);
+    expect(next).toBe('floor:m9s player:"Tank One');
+
+    const parsed = parseHistoryQuery(next);
+    expect(parsed.terms).toEqual([]); // no stray `One`
+    const player = parsed.filters.find((f) => f.key === 'player');
+    expect(player?.values.map((v) => v.text)).toEqual(['Tank One']);
+    // Still LENIENT (R-D10-Q) — an unterminated quote never bought exactness.
+    expect(player?.values[0].quoted).toBe(false);
+    expect(hasQueryToken(next, 'floor', 'm9s', false)).toBe(true);
+  });
+
+  it('serializeToken never emits a bare value containing whitespace', () => {
+    // The round-trip invariant behind the fix: editing the open token itself
+    // must not produce `player:Tank One,"Healer Two"`, which re-parses wrong.
+    const next = toggleQueryToken('player:"Tank One', 'player', 'Healer Two', true);
+    expect(next).toBe('player:"Tank One","Healer Two"');
+    const values = parseHistoryQuery(next).filters[0].values.map((v) => v.text);
+    expect(values).toEqual(['Tank One', 'Healer Two']);
   });
 });
