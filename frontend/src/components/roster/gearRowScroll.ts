@@ -31,9 +31,15 @@
  *
  * Why the card fallback: the row exists only in expanded density
  * (`RosterGearTable` does not mount in compact) and, for `tome_weapon`, only
- * while the player is pursuing one. R-D12-F routes these misses and Board view
- * (where both fail to exist) to the card — legacy's own fallback
- * (`useViewNavigation.ts:135-138`), already pulsing from `?player=`.
+ * while the player is pursuing one. Those two misses land on the card —
+ * legacy's own fallback (`useViewNavigation.ts:135-138`), already pulsing
+ * from `?player=`.
+ *
+ * Board view is NOT one of them. It is R-D12-F's fourth cause and a
+ * user-ruled named residual: `GearBoard` renders no anchor at all, not even
+ * `player-card-{playerId}`, so here it is the neither-exists case — the poll
+ * spends its budget and goes silent, which is the honest outcome when there
+ * is nothing on screen to point at.
  *
  * Interaction with `GroupViewContent`'s own 100 ms `player-card-{id}` scroll:
  * both use `block: 'center'` and the row is INSIDE the card, so whichever
