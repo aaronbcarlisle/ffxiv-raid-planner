@@ -208,13 +208,30 @@ Neither bot raised a **Must fix** this round. Two "Consider" items:
 | Finding | Disposition |
 |---|---|
 | **The battery script is Windows-only** — `subprocess.run([...], shell=True)` is Windows-only semantics with a list argv; on POSIX it runs bare `npx`, the summary regex misses, and **every row reports -1**, clean-tree re-check included (claude[bot]) | **Fixed.** It was checked in as *reproducible evidence*, and a script that reports -1 for everything on Linux is worse than no script. `shell=True` dropped, launcher resolved per platform, and a docstring note that it runs from `frontend/`. Re-run after the change — identical numbers |
-| **The retraction effects are not tier-scoped** — `markFailed` has a `cancelled` latch because `Loot` mounts un-keyed, but the retractions have no equivalent. Tier A → B with A in flight: B's log fetch fails and latches, then A's **empty** response lands, changes the array identity, and clears B's verdict → "No loot or materials logged this tier." over B's log that never arrived (claude[bot]) | **DISCLOSED AND QUEUED — deliberately not patched.** See below |
+| **The retraction effects are not tier-scoped**, and (Copilot) the store permits overlapping SAME-TIER fetches too, so an earlier request landing after a later one rejected also clears the verdict | **REMOVED the mechanism** — see below |
 
-**Why the second one stops here.** It is real, and distinct from the tier-switch races declined in round 2 (those rested on the arrays never being emptied; this one has a stale *fetch* replacing the array). But it is the sixth round, it is the third variation on the same underlying gap — **the store's fetches are not tier-scoped** — and the component-level fixes have themselves generated a finding every round. Patching a store-level race a sixth time in component state is treating the symptom that keeps changing shape.
+**Why the retraction was deleted rather than patched (round 7).** Copilot's version of this finding
+widened it past my round-6 read: it is not only a tier-switch race, because the store permits
+overlapping *same-tier* fetches (initial load plus mutation refetches) with no generation guard. That
+makes the mechanism unfixable at this level rather than merely leaky — `fetchLootLog` writes
+`set({ lootLog: response })` with nothing scoping the write to the request that asked for it, so array
+identity means "*some* fetch succeeded", never "*this* one did". A generation ref fixes the **latch**
+and not the **retraction**, because the component cannot tell which request produced an array it
+merely observes.
 
-The honest fix is tier-aware fetches in `lootTrackingStore`, which is already the standing `fetchPageLedger` gating item and reaches well past this slice. **Reproduction, for whoever takes it:** tier A empty and slow, tier B's `/loot-log` failing; switch A → B before A resolves. Recommended shape: the generation ref `markFailed`'s `cancelled` latch already demonstrates, captured by the retraction effects — or, better, tier-tagged responses in the store so array identity means "*this tier's* fetch succeeded" rather than "*a* fetch succeeded".
+So the retraction effects are gone. The verdict is now set and cleared by ONE `cancelled`-latched,
+per-log code path: the tier effect. The case the retraction existed for — a refetch proving the logs
+are fine — is covered better by the table's own `logsFailed && tierIsEmpty` gate, which stops the
+message the moment rows exist, without anyone having to observe a fetch land.
 
-Also folded in: the `logsLoading` docblock said "Only the EMPTY state reads it", which stopped being true in round 2 when the stats count started reading it too.
+This is the "cut it back rather than keep patching" option stated in round 6, and it removes two live
+findings plus a whole class of staleness instead of adding a seventh piece of state.
+
+**Residual, disclosed:** a failed load → mutations → deleting back to exactly zero rows still shows
+"Couldn't load this tier's entries." The original load *did* fail, so that message is stale rather
+than fabricated — strictly less wrong than the races that buying the retraction back would
+reintroduce. The real fix is tier/request-scoped fetches in `lootTrackingStore`, queued with the
+`fetchPageLedger` gating item.
 
 ---
 

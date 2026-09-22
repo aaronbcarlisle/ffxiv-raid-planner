@@ -547,36 +547,35 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // remount. Every onSuccess (picker/material modal/wizard/weapon bridge)
   // routes through this one callback, so the fix covers all of them.
   /**
-   * Retract the failure verdict the moment the logs demonstrably load.
+   * NO RETRACTION EFFECT — removed deliberately in D9b review round 7.
    *
-   * `setLogsFailed(true)` is latched by the tier effect above, but that effect
-   * is NOT the only thing that loads the logs: every log mutation refetches
-   * them from inside the store (`lootTrackingStore.ts` — log/update/delete for
-   * both loot and materials), and `refresh` below deliberately doesn't touch
-   * them. Without this, a failed first load would keep History saying
-   * "Couldn't load this tier's entries." for the whole tier visit — over logs
-   * that had since arrived — and a filter matching nothing would show the load
-   * error instead of "No entries match your filters." That is the same false
-   * claim this slice exists to remove, with the polarity flipped (D9b review
-   * round 4, claude[bot]).
+   * There was one, keyed on the log arrays' identity, to lift the verdict when
+   * a store-internal refetch (after a log mutation) proved the logs were fine.
+   * It could not be made correct at this level: `fetchLootLog` writes
+   * `set({ lootLog: response })` with nothing scoping the write to the request
+   * or tier that asked for it, so array identity means "*some* fetch
+   * succeeded", never "*this* one did". Both reviewers found stale-write races
+   * through it — a previous tier's response retracting the current tier's
+   * verdict, and an earlier same-tier request landing after a later one
+   * rejected. A generation ref fixes the LATCH but not the retraction, because
+   * the component cannot tell which request produced an array it merely
+   * observes.
    *
-   * Array IDENTITY is the signal, because it is the only one the component
-   * gets: a fetch writes `set({ lootLog: response })` with a freshly parsed
-   * array on success and leaves the array untouched on failure. So a changed
-   * reference means "a fetch succeeded", including a delete that emptied the
-   * tier — and an unchanged one means nothing new arrived.
+   * So the verdict is now set and cleared by ONE code path: the tier effect
+   * above, which is `cancelled`-latched and per-log. The case the retraction
+   * existed for is covered better by the table itself, which only lets
+   * `logsFailed` speak when it is holding no logs at all (`logsFailed &&
+   * tierIsEmpty`) — so a refetch that produced rows already suppresses the
+   * message without anyone having to observe the refetch.
    *
-   * ONE EFFECT PER LOG, keyed on that log alone. A combined effect would let a
-   * successful material fetch retract the loot log's verdict on a partial
-   * failure (round 5) — each array only ever evidences its own fetch.
+   * Residual, disclosed rather than patched: a failed load, followed by
+   * mutations, followed by deleting back to exactly zero rows, still shows
+   * "Couldn't load this tier's entries." instead of "No loot or materials
+   * logged this tier." The original load did fail, so the message is stale
+   * rather than fabricated — strictly less wrong than the races that buying it
+   * back would reintroduce. The real fix is tier/request-scoped fetches in
+   * `lootTrackingStore`, queued with the `fetchPageLedger` gating item.
    */
-  useEffect(() => {
-    setLootLogFailed(false);
-  }, [lootLog]);
-
-  useEffect(() => {
-    setMaterialLogFailed(false);
-  }, [materialLog]);
 
   const refresh = useCallback(() => {
     if (groupId && tierId) {

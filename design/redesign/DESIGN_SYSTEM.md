@@ -515,10 +515,10 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   `Loot.tsx` and set only by the two **log** fetches, never by the batch they ride in: an unrelated
   ledger or week-clock failure must not make History claim its logs are gone. It is really **two** flags — one per log, union'd — because
   each fetch writes only its own array, and a shared verdict would let a successful material fetch
-  clear a failure the loot log never recovered from. Each is **retracted** as soon as its OWN array's
-  identity changes (a fetch writes a fresh array on success, including an
-  empty one, and leaves it untouched on failure), because store-internal refetches after a log
-  mutation would otherwise leave the verdict standing over logs that had since arrived. The table
+  clear a failure the loot log never recovered from. Neither is retracted by observing the store: array
+  identity means "*some* fetch succeeded", never "*this* one did", and the store permits overlapping
+  fetches, so a retraction built on it races (removed in D9b round 7). The verdict is set and cleared
+  by one `cancelled`-latched path, the tier effect. The table
   independently gates the failure message on the tier being empty — a component holding logs must
   never claim they failed to load.
 - **Deep-link highlight:** `?entry=&entryType=` is validated against the **unfiltered** logs — an id

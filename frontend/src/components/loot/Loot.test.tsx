@@ -937,11 +937,14 @@ describe('Loot', () => {
     expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
   });
 
-  it("does not let a successful MATERIAL fetch retract the LOOT log's failure", async () => {
-    // The partial-failure case: each fetch writes only its OWN array, so a
-    // verdict retracted by either array would clear one the loot log never
-    // earned - and History would then claim the tier is empty over a log that
-    // never landed. That is M1 again, reached through the round-4 fix.
+  it('does not let a LATE or UNRELATED array write retract the verdict', async () => {
+    // Round 7: the retraction effect is gone. `fetchLootLog` writes its response
+    // with nothing scoping the write to the request that asked for it, so array
+    // identity means "some fetch succeeded", never "this one did" - and both
+    // reviewers found stale-write races through it (a previous tier's response
+    // retracting the current tier's verdict; an earlier same-tier request
+    // landing after a later one rejected). The verdict must now survive any
+    // array write the component merely observes.
     useLootTrackingStore.setState({
       lootLog: [],
       materialLog: [],
@@ -950,36 +953,40 @@ describe('Loot', () => {
     renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
     expect(await screen.findByText("Couldn't load this tier's entries.")).toBeInTheDocument();
 
-    // Now the MATERIAL log succeeds the way the store does it - a fresh array,
-    // written strictly after the loot verdict has been latched and committed.
+    // A stale/unrelated success lands: fresh arrays, exactly as a real fetch writes them.
     act(() => {
       useLootTrackingStore.setState({ materialLog: [] });
     });
+    act(() => {
+      useLootTrackingStore.setState({ lootLog: [] });
+    });
 
-    // The loot log still never landed, so the verdict must stand.
+    // The loot request that this tier actually issued still failed.
     expect(screen.getByText("Couldn't load this tier's entries.")).toBeInTheDocument();
     expect(screen.queryByText('No loot or materials logged this tier.')).not.toBeInTheDocument();
   });
 
-  it('retracts the verdict even when the successful refetch comes back EMPTY', async () => {
-    // claude[bot]'s "delete back down to zero rows" case: the store writes a
-    // fresh empty array, so the identity changes and the verdict must lift —
-    // leaving the honest "nothing logged" message, not the stale load error.
+  it('stops speaking the moment real rows exist, without observing the refetch', async () => {
+    // What the retraction effect was FOR, now covered by the table's own
+    // `logsFailed && tierIsEmpty` gate: a refetch that produced rows suppresses
+    // the message because the component is holding logs, not because anyone
+    // watched the fetch land.
     useLootTrackingStore.setState({
       lootLog: [],
       materialLog: [],
-      fetchLootLog: vi.fn().mockRejectedValue(new Error('boom')),
+      fetchLootLog: vi.fn().mockRejectedValue(new Error('loot boom')),
     });
     renderLoot({ tier: makeTier([makePlayer('p1', 'Alice')]) }, ['/?lview=history']);
     expect(await screen.findByText("Couldn't load this tier's entries.")).toBeInTheDocument();
 
     act(() => {
-      useLootTrackingStore.setState({ lootLog: [], materialLog: [] });
+      useLootTrackingStore.setState({ lootLog: [makeLootEntry({ id: 40, weekNumber: 3 })] });
     });
 
-    expect(await screen.findByText('No loot or materials logged this tier.')).toBeInTheDocument();
     expect(screen.queryByText("Couldn't load this tier's entries.")).not.toBeInTheDocument();
+    expect(document.getElementById('loot-entry-40')).toBeInTheDocument();
   });
+
 
   it('does NOT blame the logs when an unrelated request in the same batch fails', async () => {
     // `logsFailed` rides a Promise.all with fetchPageLedger and

@@ -89,32 +89,15 @@ MUTATIONS = [
         LOOT_SPEC,
     ),
     (
-        'both per-log retraction effects removed',
+        'an identity-based retraction effect reintroduced (removed in round 7)',
         LOOT,
-        """  useEffect(() => {
+        '  const refresh = useCallback(() => {',
+        '''  useEffect(() => {
     setLootLogFailed(false);
-  }, [lootLog]);
+    setMaterialLogFailed(false);
+  }, [lootLog, materialLog]);
 
-  useEffect(() => {
-    setMaterialLogFailed(false);
-  }, [materialLog]);""",
-        '',
-        LOOT_SPEC,
-    ),
-    (
-        'the two per-log retraction effects recombined into one',
-        LOOT,
-        """  useEffect(() => {
-    setLootLogFailed(false);
-  }, [lootLog]);
-
-  useEffect(() => {
-    setMaterialLogFailed(false);
-  }, [materialLog]);""",
-        """  useEffect(() => {
-    setLootLogFailed(false);
-    setMaterialLogFailed(false);
-  }, [lootLog, materialLog]);""",
+  const refresh = useCallback(() => {''',
         LOOT_SPEC,
     ),
 ]
