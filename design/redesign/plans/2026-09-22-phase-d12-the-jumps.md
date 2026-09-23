@@ -560,7 +560,8 @@ export function scrollToGearRow(
 cd frontend && npx vitest run src/components/roster/gearRowScroll.test.ts
 ```
 
-Expected: PASS (5 tests).
+Expected: PASS (5 tests as planned; the committed file carries **8** — three more were added in
+Task 2's fix rounds to kill the attempt-budget and cancel-after-found mutants).
 
 - [ ] **Step 5: Commit**
 
