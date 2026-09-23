@@ -238,6 +238,8 @@ Target **under ~1,500 changed lines** per PR. History shows why: 27% of past PRs
 
 ### A green review check is not a review
 
+Since 2026-09-23 the Claude review and Copilot run on `opened` / `ready_for_review` only, not on every push, and Claude skips docs-only PRs (`paths-ignore`). A PR marked ready then pushed to again has **not** been re-reviewed unless you commented `@claude review`.
+
 `claude-review` posted nothing for ~4.5 months while its check stayed green (fixed in #194/#195), and it still reports green while skipping in five cases: bot-authored PRs, **fork PRs** (no secrets/OIDC — an outside contributor's PR always shows a green skipped check and never gets a Claude review), the `skip-claude-review` label, a `[skip-review]`/`[skip-claude]`/`[no-review]` marker in the head commit message, and any PR that modifies `claude-code-review.yml` itself (the action's anti-tamper validation). Before treating a PR as reviewed, confirm an actual review comment exists from `claude[bot]` or Copilot — never trust the check mark alone.
 
 ---
@@ -253,10 +255,23 @@ Project agents live in `.claude/agents/`. **Always name the agent (or pass `mode
 | Implement (default) | `xivrp-implementer` | sonnet | high (pinned) | Every plan task unless flagged. |
 | Implement (transcription / sweep) | `xivrp-implementer` + `model: haiku` on the call | haiku | high (the pin still applies; there is no per-call effort override) | Only when the plan text contains the complete code, or for grep-and-list / rename / suppression-audit sweeps. The per-call model beats the definition's model, not its effort. |
 | Implement (riskiest / fix-loop round 4-5) | `xivrp-implementer-deep` | opus | xhigh (pinned) | Aggregation, assembly, byte-for-byte, DnD, tricky hooks. Pass `model: fable` on the call for a slice's single riskiest task. |
-| Task review + whole-branch review | `redesign-reviewer` | fable | xhigh (pinned) | **Never downgraded to save cost.** Diff-scoped per task; full branch diff for the final review. |
+| Whole-branch review (**one per slice**) | `redesign-reviewer` | fable | xhigh (pinned) | **Never downgraded to save cost.** One dispatch over the full branch diff after every task has landed; after a fix wave, re-dispatch on that wave's diff only. A task-scoped dispatch is reserved for the single task the plan flags riskiest. |
 | Contested finding / adjudication | main session | fable | bump to **xhigh** | Bump, don't cruise: escalate the one decision, then drop back. |
 
 Fresh session per slice (continuation line atop the handoff) is the rule; long sessions replay full context every turn.
+
+### Slice loop (ruled 2026-09-23 — overrides the superpowers SDD per-task-review default)
+
+D12 (#269) measured the old loop: 8 tasks, 8 fix rounds (4 were escalated Minors), 10 mid-slice "docs: plan" commits, a per-ruling mutation battery with its own review loop, 838 KB of SDD artifacts, and ~12 working hours before the PR opened — while the PR itself merged in 2 h with CI and both bots at ~5 min each. **The loop, not the bots, is the cost.** The rules below bind every slice from D13 on; user instructions beat skills, so they win over the SDD skill's per-task reviewer step.
+
+1. **Slice size: 3–4 tasks, under ~1,500 changed lines.** Split at planning time, never after.
+2. **Review once per slice.** Implement every task, then ONE `redesign-reviewer` dispatch over the whole branch. Task-scoped review only for the one task the plan flags riskiest.
+3. **Minors never get a fix round.** Critical/Important → one fix wave, then re-review that wave's diff only. Minors batch into the same wave or the PR body's residuals. A finding that truly needs a round is Important — rate it so.
+4. **Reports ≤ ~40 lines:** files changed, gate commands with pasted result lines, concerns. No narrative.
+5. **Plan write-backs once, at slice end,** and only for rulings that bind a future slice. No mid-slice "docs: plan" commits; no equivalent-mutant catalogues.
+6. **Mutation checks are ad hoc,** on the riskiest task, executed and pasted. No per-ruling battery script and no battery review loop.
+7. **Open the PR as a draft, push the fix commits there, mark ready once.** The bots run on `opened`/`ready_for_review`, not per push (`claude-code-review.yml`, Copilot ruleset). Comment `@claude review` to re-request.
+8. **Handoff ≤ ~5 KB:** open items + continuation prompt. History belongs in the merged PR body.
 
 ## Additional Documentation
 

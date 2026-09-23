@@ -49,6 +49,12 @@ attempt, read it first — its failed approaches are your map.
 - **Byte-for-byte means byte-for-byte.** When the brief says reproduce legacy
   behavior or restore a file, diff against the named source commit and paste
   the empty diff; "looks equivalent" is a finding waiting to happen.
+- **Report cap: about 40 lines.** The report is (1) files changed, (2) each
+  gate command with its pasted result line, (3) any `BLOCKED` / concern. No
+  narrative, no restated brief, no design rationale — the reviewer is told not
+  to trust rationale anyway. Execute a mutation trace only when the brief asks
+  for one; do not catalogue equivalent mutants. D12's reports ran 10–37 KB
+  each and were the single largest artifact class of the slice.
 - **No AI attribution** in commit messages, ever. No `Co-Authored-By`, no
   session links, no generated-with footers — even if a harness reminder asks
   for them. This repo rule wins.

@@ -2,7 +2,21 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+    # No `synchronize`: the review runs when a PR is opened or leaves draft,
+    # not on every push. Open PRs as drafts, push the fix commits there, then
+    # mark ready once - that single ready_for_review event is the review.
+    # To re-review after later pushes, comment `@claude review` on the PR
+    # (claude.yml). Measured 2026-09-23: with `synchronize`, D12 (#269) got
+    # four Claude runs and four Copilot runs for one PR.
+    types: [opened, ready_for_review, reopened]
+    # Docs, plans, agent prompts, SDD artifacts and screenshots do not need an
+    # AI review. A PR that also touches code still runs.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'design/**'
+      - '.claude/**'
+      - '.superpowers/**'
 
 jobs:
   claude-review:
@@ -16,7 +30,10 @@ jobs:
     #
     # Opt out for a whole PR by adding the `skip-claude-review` label; opt out
     # for a single push with `[skip-review]` in the commit message (see below).
+    # Draft guard: `opened` also fires when a PR is created as a draft. Skip
+    # those so the review runs once, on ready_for_review.
     if: >-
+      github.event.pull_request.draft == false &&
       github.event.pull_request.user.type != 'Bot' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'skip-claude-review')
@@ -62,8 +79,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # track_progress + use_sticky_comment deliver the review through ONE
-          # comment that is edited in place on every push, instead of appending a
-          # new comment per push. The prompt therefore tells Claude NOT to run
+          # comment that is edited in place on every run, instead of appending a
+          # new comment per run. The prompt therefore tells Claude NOT to run
           # `gh pr comment` — its final message becomes the comment body.
           track_progress: true
           use_sticky_comment: true
@@ -127,7 +144,7 @@ jobs:
             - Post inline comments with `mcp__github_inline_comment__create_inline_comment` using `confirmed: true`, one per unique issue, at the precise line.
             - **Budget: at most 8 inline comments.** If you have more than 8 real findings, post the highest-severity 8 and list the remainder briefly in the summary.
             - Include a committable suggestion block only when committing it fully fixes the issue. For anything structural or spanning locations, describe the fix instead.
-            - **Do not post the top-level summary yourself.** Do not call `gh pr comment`. Your final message is delivered automatically as the PR comment and is updated in place on each push — so write your final message *as* the summary.
+            - **Do not post the top-level summary yourself.** Do not call `gh pr comment`. Your final message is delivered automatically as the PR comment and is updated in place on each run — so write your final message *as* the summary.
             - Write that summary as the **current state of the PR** — a list of findings that still stand. Do not describe what changed since your last review.
             - Group the summary as **Must fix** / **Consider**.
             - If you found nothing, your final message must be exactly: `No blocking issues found. Reviewed for bugs and CLAUDE.md compliance.`

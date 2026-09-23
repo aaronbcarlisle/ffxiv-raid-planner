@@ -30,6 +30,15 @@ Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`).
 { category: 'fix', title: 'Short headline', description: 'What changed and why it matters.', pr: 128, prTitle: 'fix(scope): the PR title' }
 ```
 
+## Draft-first PRs — the bots fire on ready, not per push
+
+Since 2026-09-23 `claude-code-review.yml` triggers on `opened` / `ready_for_review` / `reopened` only (no `synchronize`) and skips docs-only PRs, and the Copilot ruleset no longer reviews on push. So:
+
+1. **Open as a draft** (`gh pr create --draft`) while the branch is still moving. CI runs on every push regardless (`ci.yml` skips drafts — flip to ready when you want the full gate).
+2. **Mark ready exactly once**, when the branch is final. That `ready_for_review` event is the AI review.
+3. **Fix commits after ready get no automatic re-review.** Comment `@claude review` on the PR to request one; Copilot re-review is the "re-request review" button.
+4. **Docs-only / agent-prompt / SDD-artifact PRs** get no Claude review by design (`paths-ignore`). Do not wait for one.
+
 ## Fork PR Guard (GitHub Actions)
 
 Any GitHub Actions workflow (new or updated) that **writes to PRs** must include a fork guard:

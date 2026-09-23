@@ -290,9 +290,13 @@ legacy MobileBottomNav still rendering under v2, breadcrumb overlap, etc.).
 
 ## 9. Process notes
 
-- SDD cadence unchanged (spec → user skim → plan → implement w/ redesign-reviewer per
-  task → whole-branch review → browser validation → PR w/ screenshots → review loop →
-  merge). Implementers sonnet by default; opus/fable for Phase R reconciliation.
+- SDD cadence (**trimmed 2026-09-23**, see CLAUDE.md § Slice loop): spec → user skim →
+  plan (3–4 tasks) → implement all tasks → ONE whole-branch redesign-reviewer pass →
+  one fix wave (Minors batched, never their own round) → browser validation → draft PR
+  w/ screenshots → mark ready once (bots fire on ready) → merge. The per-task reviewer
+  step and the per-ruling mutation battery are retired — D12 measured them as the
+  slice's cost, not the bots. Implementers sonnet by default; opus/fable for the
+  riskiest task only.
 - NO AI attribution anywhere (absolute).
 - Effort: ultracode for specs/adjudication, high for implement loops (per memory
   `feedback-effort-allocation`).
