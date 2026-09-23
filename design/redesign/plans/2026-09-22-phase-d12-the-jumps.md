@@ -1345,10 +1345,6 @@ import { resolveLogWeekOverride } from '../loot/useLogWeek';
 
 ```ts
   const [jumpParams, setSearchParams] = useSearchParams();
-  // Read at CLICK time through a ref so the callback below doesn't re-create
-  // on every unrelated URL write (M1 — see its deps note).
-  const jumpParamsRef = useRef(jumpParams);
-  jumpParamsRef.current = jumpParams;
   const clockCurrentWeek = useLootTrackingStore((s) => s.currentWeek);
   const clockMaxWeek = useLootTrackingStore((s) => s.maxWeek);
 ```
@@ -1385,7 +1381,7 @@ Replace `jumpToEntry`:
   // already make that unreachable. Checked at plan-vet.)
   const jumpToEntry = useCallback(
     (entryId: number, kind: JumpKind, entryWeek: number | null | undefined) => {
-      const override = resolveLogWeekOverride(groupId, tierId, jumpParamsRef.current.get('week'));
+      const override = resolveLogWeekOverride(groupId, tierId, jumpParams.get('week'));
       const clockSettled = Math.max(clockMaxWeek, clockCurrentWeek) > 1;
       const displayedWeek = override ?? (clockSettled ? clockCurrentWeek : null);
       const lview = entryJumpView(entryWeek, displayedWeek);
@@ -1402,14 +1398,21 @@ Replace `jumpToEntry`:
         return params;
       });
     },
-    // `jumpParams` is read through a REF, not listed (M1): it gets a new
-    // identity on every `?week=` mirror, `?entry=` self-clear and 2500ms strip,
-    // and listing it would churn this callback -> `handleSlotJump` ->
-    // `RosterGearTable` on every one of them. Same ref-per-render pattern as
-    // `NewShell.tsx:247-248` and `Loot.tsx`'s `setSearchParamsRef`.
-    [clockMaxWeek, clockCurrentWeek, groupId, tierId, setSearchParams],
+    // `jumpParams` is listed, not read through a ref. Listing it costs nothing
+    // extra: react-router rebuilds `setSearchParams` together with
+    // `searchParams` (`NewShell.tsx:241-246`), so this callback re-creates on
+    // every URL write regardless. A stable callback would need BOTH behind
+    // refs, `Loot.tsx`'s `setSearchParamsRef` way — a follow-up, not D12.
+    [jumpParams, clockMaxWeek, clockCurrentWeek, groupId, tierId, setSearchParams],
   );
 ```
+
+> ⚠ **Corrected at Task 6 (2026-09-23).** The plan-vet's M1 originally mandated a
+> `jumpParamsRef` synced in the render body. The implementer measured two things: that line is a
+> `react-hooks/refs` lint **error**, and M1's premise was **false** — `setSearchParams` is already in
+> the deps and react-router re-creates it on every URL write, so the ref never bought the stability
+> it claimed. Ruled: drop the ref, list `jumpParams`. The churn is identical to the pre-Task-6
+> baseline. (A dropped `jumpParams` dep is therefore a **fifth equivalent mutant** — see Task 7.)
 
 Feed the week from both callers:
 
@@ -1533,10 +1536,24 @@ One row per ruling, each naming the ruling it pins:
 > two-jump test is forbidden — the scenario the widening defends against is unreachable while
 > `Roster` remounts on every tab switch.
 >
-> **The slice's three known equivalent mutants, none of which may become a battery row:**
+> **The slice's known equivalent mutants, none of which may become a battery row:**
 > `setHighlightedSlot(null)` in the 2500 ms clear · the clear effect's dep array ·
 > `useEffect` vs `useLayoutEffect` for the scroll call (enforced by review and by `gearRowScroll`'s
-> doc comment, not by any test).
+> doc comment, not by any test) · **(Task 6)** a dropped `jumpParams` dep on `RosterCard`'s
+> `jumpToEntry` — `setSearchParams` changes whenever `jumpParams` does, so only lint sees it ·
+> **(Task 6)** any `useLayoutEffect`↔`useEffect` swap, unobservable in jsdom.
+>
+> **Three row-sourcing caveats found at Tasks 5–6 (2026-09-23):**
+> 1. The `buildRef`-kind row (`LogWeekGrid.tsx`'s cell closure hand-rolling `{ kind: 'loot' }`) must
+>    cite the **material-cell `'legs'`** test in `LogWeekGrid.test.tsx`. The universal-tomestone
+>    `null` test survives that mutant **by coincidence** (an undefined `itemSlot` also yields `null`).
+> 2. The R-28-literal-prose row (`entryWeek < displayedWeek ? 'history' : 'log'`) kills **four**
+>    `RosterCard` tests (NEWER, provisional-clock, and two pre-existing History jumps). The row pins
+>    R-D12-A, so name the **NEWER** test as its killer; the harness counts all four.
+> 3. `GroupViewContent.test.tsx`'s card-scroll test asserts `card.scrollIntoView` on the shared
+>    `Element.prototype` stub (receiver-blind, the shape Task 4's F1 fixed elsewhere). It is safe for
+>    the `params.delete('slot')` row, but **no row that mutates the scrolled element** may be sourced
+>    from it unless it is first switched to `mock.contexts`.
 >
 > The general rule these cases teach: **before writing a battery row, ask whether the mutated
 > line is observable at all.** A defensive line whose effect is masked by a guard elsewhere is
