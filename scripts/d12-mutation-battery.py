@@ -9,8 +9,10 @@ lives at the repo root:
 
     cd frontend && python ../scripts/d12-mutation-battery.py
 
-Harness inherited from `d11-mutation-battery.py` byte-for-byte, whose
-hard-won rules all still apply and are all still enforced below:
+Harness inherited from `d11-mutation-battery.py` — its safeguards unchanged;
+D11's one documented-zero exception (the `lview` gate's `EXPECT_ZERO`
+carve-out) is removed below because D12 has no row documented to kill
+nothing. The hard-won rules all still apply and are all still enforced:
 
   1. The anchor must be present AND UNIQUE. `replace(old, new, 1)` silently
      takes the first occurrence, so a duplicated anchor mutates the wrong site
@@ -129,6 +131,18 @@ MUTATIONS = [
         '',
         LEDGER_SPEC,
     ),
+    # The REAL R-D12-C hazard, per the brief: a `displayedWeek ?? 1` fallback
+    # would let the Log mount at the provisional week 1 instead of routing to
+    # History. Narrows the guard to entryWeek alone and folds the fallback
+    # into the comparison — `rosterLedgerJumps.test.ts:252-257` exists
+    # specifically to kill this ("Kills a `displayedWeek ?? 1` fallback").
+    (
+        "entryJumpView falls back to displayedWeek ?? 1 (the provisional-week-1 hazard R-D12-C guards against)",
+        LEDGER,
+        "  if (entryWeek == null || displayedWeek == null) return 'history';\n  return entryWeek === displayedWeek ? 'log' : 'history';",
+        "  if (entryWeek == null) return 'history';\n  return entryWeek === (displayedWeek ?? 1) ? 'log' : 'history';",
+        LEDGER_SPEC,
+    ),
     (
         "isJumpAnchorSlot returns true unconditionally (the ?slot= param's validator)",
         LEDGER,
@@ -182,18 +196,39 @@ MUTATIONS = [
     (
         "Roster.handleCopyUrl drops delete('slot') (R4, the F-18 stale-slot leak)",
         ROSTER,
-        "    url.searchParams.set('player', playerId);\n    // D12: a card link is a CARD target. The URL is built from the live\n    // `window.location.href`, so without this a copy taken during the 2500ms\n    // window after a slot jump ships the previous jump's row and pulses it on a\n    // player the sender never pointed at (the F-18 class).\n    url.searchParams.delete('slot');",
-        "    url.searchParams.set('player', playerId);",
+        "    url.searchParams.delete('slot');\n",
+        '',
         ROSTER_SPEC,
     ),
     # ── The card's jumpToEntry resolver seam (RosterCard.tsx, R-D12-B/C/D) ──
-    # "Settled" is the clock's CEILING past 1 (Math.max(maxWeek, currentWeek)),
-    # not currentWeek alone — the doc comment at the call site names this
-    # exactly. Dropping the maxWeek half is the one mutation that isolates a
-    # single test: every OTHER test in the describe block sets maxWeek equal
-    # to currentWeek, where the two forms agree.
+    # THREE distinct mutations live on this one couple of lines — kept
+    # separate and labeled by exactly what each drops, because a name that
+    # blurs them (e.g. calling the ceiling row "the clockSettled guard") reads
+    # as a match to the brief's row it is NOT.
+    #
+    # (a) The brief's OWN row 35: drop `clockSettled` from the fallback
+    # entirely — `override ?? (clockSettled ? clockCurrentWeek : null)` loses
+    # its provisional-clock guard and always trusts the clock. Kills exactly
+    # the ONE test that exercises a still-provisional clock with no override:
+    # `RosterCard.test.tsx:2003` ("routes to History under a provisional
+    # clock with no stored or URL week").
     (
-        "RosterCard.jumpToEntry's clockSettled drops the maxWeek half of Math.max (currentWeek alone)",
+        "RosterCard.jumpToEntry's displayedWeek drops the clockSettled guard (R-D12-C, the brief's row 35)",
+        CARD,
+        "      const displayedWeek = override ?? (clockSettled ? clockCurrentWeek : null);",
+        '      const displayedWeek = override ?? clockCurrentWeek;',
+        CARD_SPEC,
+    ),
+    # (b) A DIFFERENT, additive mutation: "Settled" is the clock's CEILING
+    # past 1 (Math.max(maxWeek, currentWeek)), not currentWeek alone — the
+    # doc comment at the call site names this exactly. Dropping the maxWeek
+    # half of that ceiling isolates a single test where the two forms
+    # disagree: `RosterCard.test.tsx:2034` ("treats a clock whose maxWeek has
+    # moved past 1 as settled, even at currentWeek 1"). Every OTHER test in
+    # the describe block sets maxWeek equal to currentWeek, where dropping
+    # this half changes nothing.
+    (
+        "RosterCard.jumpToEntry's clockSettled ceiling drops the maxWeek half of Math.max (currentWeek alone)",
         CARD,
         '      const clockSettled = Math.max(clockMaxWeek, clockCurrentWeek) > 1;',
         '      const clockSettled = clockCurrentWeek > 1;',
@@ -206,11 +241,20 @@ MUTATIONS = [
         '      const displayedWeek = clockSettled ? clockCurrentWeek : null;',
         CARD_SPEC,
     ),
+    # R-D12-B is "the RESOLVER, not a re-derivation" — forcing `override` to
+    # `null` outright collapses to the SAME expression as the row above
+    # (`override ?? (...)` becomes exactly `clockSettled ? clockCurrentWeek :
+    # null`), so it does not pin R-D12-B distinctly. This re-derives override
+    # from `?week=` ALONE, dropping only the resolver's STORED-week fallback
+    # (localStorage's v2 key, its legacy-key fallback, and the 'current'
+    # sentinel) — still correct for every `?week=` test, but blind to a
+    # stored week with no `?week=` present. Expected killers: the
+    # stored-week tests (`:1972`, `:1984`, `:2024`); NOT the `?week=` tests.
     (
-        'RosterCard.jumpToEntry drops the resolver (override forced to null, R-D12-B)',
+        "RosterCard.jumpToEntry's override re-derives from ?week= alone, dropping the resolver's stored-week fallback (R-D12-B)",
         CARD,
         "      const override = resolveLogWeekOverride(groupId, tierId, jumpParams.get('week'));",
-        '      const override = null;',
+        "      const override = jumpParams.get('week') ? Number(jumpParams.get('week')) : null;",
         CARD_SPEC,
     ),
     (
@@ -231,8 +275,8 @@ MUTATIONS = [
     (
         "buildEntryLink drops delete('slot') (R5, the denylist contract)",
         LOOT,
-        "  url.searchParams.delete('player');\n  url.searchParams.delete('book');\n  // D12: `slot` rides with `player` and is the third competing deep-link\n  // param. Inert today (Roster early-returns without `?player=`), but the\n  // denylist's whole point is that a param it doesn't name survives.\n  url.searchParams.delete('slot');",
-        "  url.searchParams.delete('player');\n  url.searchParams.delete('book');",
+        "  url.searchParams.delete('slot');\n",
+        '',
         LOOT_SPEC,
     ),
     # ── A hand-rolled ledger ref (LogWeekGrid.tsx) ──
@@ -241,7 +285,8 @@ MUTATIONS = [
     # undefined itemSlot also yields null from jumpAnchorSlotOf), so it would
     # read as a false negative if named as the killer.
     (
-        "the material GridCell's buildRef hand-rolls { kind: 'loot' } instead of 'material'",
+        "the material GridCell's buildRef hand-rolls { kind: 'loot' } instead of 'material' "
+        "(killer: the material-cell 'legs' test, not the null one)",
         LOG_WEEK_GRID,
         "                      buildRef={(entry) => ({ kind: 'material', entry })}",
         "                      buildRef={(entry) => ({ kind: 'loot', entry })}",
@@ -251,8 +296,8 @@ MUTATIONS = [
     (
         "GroupViewContent's 2500ms strip drops params.delete('slot')",
         GVC,
-        "        params.delete('player');\n        // D12 (R-D12-I): ?slot= rides with ?player= and is stripped by the same\n        // timer — the v2 Roster must not write the URL (its own header comment),\n        // and two writers on one boundary race. V1 never writes slot, so this\n        // delete is a no-op on every legacy path.\n        params.delete('slot');",
-        "        params.delete('player');",
+        "        params.delete('slot');\n",
+        '',
         GVC_SPEC,
     ),
     # ── The row-then-card scroll fallback (gearRowScroll.ts, R-D12-F) ──
