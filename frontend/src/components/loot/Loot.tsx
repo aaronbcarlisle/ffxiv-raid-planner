@@ -164,6 +164,7 @@ import { WeekScopeControl } from './WeekScopeControl';
 import { FloorCard } from './FloorCard';
 import { LogWeekGrid } from './LogWeekGrid';
 import { logCellDomId, type HighlightEntryRef, type HistoryItem } from './logWeekGridData';
+import type { JumpAnchorSlot } from '../roster/rosterLedgerJumps';
 import { suggestedMaterialRecipient } from './materialSuggestion';
 import { WeekCountBar } from './WeekCountBar';
 import { LootFairnessLegend } from '../history/WeeklyLootGrid';
@@ -258,6 +259,10 @@ const buildEntryLink = (opts: { lview: 'log' | 'history'; week?: number; ref: Hi
   // Entry links carry ONE navigation target — competing deep-link params are stripped.
   url.searchParams.delete('player');
   url.searchParams.delete('book');
+  // D12: `slot` rides with `player` and is the third competing deep-link
+  // param. Inert today (Roster early-returns without `?player=`), but the
+  // denylist's whole point is that a param it doesn't name survives.
+  url.searchParams.delete('slot');
   url.searchParams.set('tab', 'gear');
   url.searchParams.set('lview', opts.lview);
   if (opts.week != null) url.searchParams.set('week', String(opts.week));
@@ -746,16 +751,20 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     );
   }, [logWeek.week]);
 
-  // D6a Task 6: Alt+Click / context-menu "Jump to {name}" from the Log grid —
-  // the same same-route URL-param jump `RosterCard.tsx:280-297` uses, landing
-  // on the roster tab at that player. One navigation, one highlight: deletes
-  // any leftover `entry`/`entryType`/`book` so a stale highlight from THIS
-  // screen can't pulse a second target on the roster (director F-18).
-  const jumpToRecipient = useCallback((playerId: string) => {
+  // D6a Task 6 / D12: Alt+Click / context-menu "Jump to {name}" — the same
+  // same-route URL-param jump `RosterCard.tsx` uses. D12 makes it SLOT-level
+  // (R-18 note 2): `?slot=` names the gear row to scroll to and pulse, and is
+  // OMITTED when the entry has no row to land on (R-D12-F: a universal
+  // tomestone). The delete on the `null` path matters — a previous jump's slot
+  // would otherwise pulse an unrelated row on this one (director F-18, the
+  // same reason entry/entryType/book go).
+  const jumpToRecipient = useCallback((playerId: string, slot?: JumpAnchorSlot | null) => {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('tab', 'roster');
       params.set('player', playerId);
+      if (slot) params.set('slot', slot);
+      else params.delete('slot');
       params.delete('entry');
       params.delete('entryType');
       params.delete('book');

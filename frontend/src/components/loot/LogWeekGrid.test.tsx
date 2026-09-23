@@ -379,7 +379,8 @@ describe('D6 modifier layer', () => {
     })}
     />);
     fireEvent.click(cellButton('Ears'), { altKey: true, detail: 1 });
-    expect(onJumpToPlayer).toHaveBeenCalledWith(ears.recipientPlayerId);
+    // D12: the second arg is the entry's anchor slot — 'earring' for `ears`.
+    expect(onJumpToPlayer).toHaveBeenCalledWith(ears.recipientPlayerId, 'earring');
     expect(onEditGear).not.toHaveBeenCalled();
   });
 
@@ -440,6 +441,16 @@ describe('D6 modifier layer', () => {
     expect(screen.getByRole('menuitem', { name: 'Copy link' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: `Jump to ${tankOne.name}` })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+  });
+
+  // D12: the cell menu's "Jump to" item mirrors the cell Alt+Click above —
+  // same anchor slot, from the same entry.
+  it('the menu Jump item passes the same slot', () => {
+    const onJumpToPlayer = vi.fn();
+    renderGrid(<LogWeekGrid {...baseProps({ lootLog: [ears], players: [tankOne], onJumpToPlayer })} />);
+    fireEvent.contextMenu(cellButton('Ears'));
+    fireEvent.click(screen.getByRole('menuitem', { name: `Jump to ${tankOne.name}` }));
+    expect(onJumpToPlayer).toHaveBeenCalledWith(ears.recipientPlayerId, 'earring');
   });
 
   it('menu Delete calls onDeleteEntry with the newest ref', () => {
