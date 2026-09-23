@@ -1929,10 +1929,10 @@ describe('RosterCard — D12 R-28, the entry jump splits by week', () => {
     expect(params.get('week')).toBe('2');
   });
 
-  // The card reads `?week=` through a ref, so the ref has to FOLLOW the URL: a
-  // `?week=` that lands while the card is already mounted must still decide
-  // the split. Every other test mounts at its final URL, where a ref frozen at
-  // mount would read exactly the same thing.
+  // The split reads `?week=` at CLICK time: a `?week=` that lands while the
+  // card is already mounted must still decide it. Every other test mounts at
+  // its final URL, where a value captured once at mount would read exactly the
+  // same thing.
   it('reads ?week= at CLICK time, not at mount', () => {
     setClock(5);
     useLootTrackingStore.setState({ lootLog: [lootEntry(2)] });

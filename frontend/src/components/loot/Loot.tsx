@@ -50,7 +50,7 @@
  *     only ever arms the legacy cohort below from a screen that can also
  *     disarm it (PR #235 review round 2). The read direction runs both ways
  *     too: a legacy-written `?week=` seeds v2's Log on mount the same way
- *     (`useLogWeek.ts`'s `resolveOverride` reads the raw param before ever
+ *     (`useLogWeek.ts`'s `resolveLogWeekOverride` reads the raw param before ever
  *     touching v2/legacy storage — on the FIRST resolve only; tier/group
  *     re-resolves skip the URL by the hook's mount-only rule).
  *     For a v2-seeded `?week=` reaching legacy History, the outcome forks on

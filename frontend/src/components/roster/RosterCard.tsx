@@ -25,7 +25,7 @@
  *     hook — the card reaches it through the kebab's own opener rather than
  *     duplicating its state.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ExternalLink, MoreVertical, Repeat, Swords, Target } from 'lucide-react';
 import {
@@ -293,15 +293,6 @@ export function RosterCard({
   // sub-view (R-28's split, below) + the `entry`/`entryType` highlight params
   // both views consume (scroll, pulse, self-clearing after 2.5s).
   const [jumpParams, setSearchParams] = useSearchParams();
-  // `?week=` is read at CLICK time through a ref, kept out of `jumpToEntry`'s
-  // deps (M1 — see its deps note for what that does and does not buy). Synced
-  // after every commit, `Loot.tsx`'s `setSearchParamsRef` idiom: a
-  // render-phase `.current =` write is a `react-hooks/refs` error, and it
-  // could leave the ref on an interrupted render's params.
-  const jumpParamsRef = useRef(jumpParams);
-  useLayoutEffect(() => {
-    jumpParamsRef.current = jumpParams;
-  });
   const clockCurrentWeek = useLootTrackingStore((s) => s.currentWeek);
   const clockMaxWeek = useLootTrackingStore((s) => s.maxWeek);
 
@@ -329,7 +320,7 @@ export function RosterCard({
   // already make that unreachable. Checked at plan-vet.)
   const jumpToEntry = useCallback(
     (entryId: number, kind: JumpKind, entryWeek: number | null | undefined) => {
-      const override = resolveLogWeekOverride(groupId, tierId, jumpParamsRef.current.get('week'));
+      const override = resolveLogWeekOverride(groupId, tierId, jumpParams.get('week'));
       const clockSettled = Math.max(clockMaxWeek, clockCurrentWeek) > 1;
       const displayedWeek = override ?? (clockSettled ? clockCurrentWeek : null);
       const lview = entryJumpView(entryWeek, displayedWeek);
@@ -346,17 +337,12 @@ export function RosterCard({
         return params;
       });
     },
-    // `jumpParams` is read through a REF, not listed (M1): it gets a new
-    // identity on every `?week=` mirror, `?entry=` self-clear and 2500ms strip.
-    // ⚠ The ref alone does NOT keep this callback stable across those writes:
-    // react-router v7 re-creates `setSearchParams` whenever `searchParams`
-    // changes (its own `useCallback` deps are `[navigate, searchParams]` — the
-    // churn `NewShell.tsx:241-246` records), and it is listed below. Harmless
-    // today: this card already re-renders on every URL write (it subscribes
-    // through `useSearchParams`) and `RosterGearTable` is not memoized. A
-    // future `memo` on the table would need `setSearchParams` behind a ref as
-    // well — `NewShell.tsx:247-248` / `Loot.tsx`'s `setSearchParamsRef`.
-    [clockMaxWeek, clockCurrentWeek, groupId, tierId, setSearchParams],
+    // Listing `jumpParams` costs nothing extra: this callback already re-creates
+    // on every URL write, because react-router rebuilds `setSearchParams`
+    // whenever `searchParams` changes (the churn `NewShell.tsx:241-246`
+    // records). If a stable callback is ever wanted, BOTH go behind refs,
+    // `Loot.tsx`'s `setSearchParamsRef` style — one ref alone buys nothing.
+    [jumpParams, clockMaxWeek, clockCurrentWeek, groupId, tierId, setSearchParams],
   );
   // C7 (D-05): the kebab's Books jump — the same route, the Books card's own
   // highlight param (BookLedgerCard scrolls + pulses `book-row-{playerId}`).
