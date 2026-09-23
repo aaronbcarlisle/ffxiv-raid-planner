@@ -227,8 +227,16 @@ function readLegacyWeek(groupId: string, tierId: string): number | null {
  * `urlWeek` is the raw `?week=` value on a FIRST resolve and always `null` on
  * a tier/group re-resolve — see the doc header's "mount only" rule. The two
  * cases share this function precisely so the storage half stays identical.
+ *
+ * Exported for D12 (R-D12-B): `RosterCard`'s entry jump has to know which week
+ * the Log will display in order to route by R-28's split, and `Loot` genuinely
+ * REMOUNTS on a tab switch (`GroupViewContent.tsx` renders the gear slot only
+ * while `pageMode === 'gear'`), so this function's first-resolve branch is
+ * exactly what runs on arrival. Same function, same inputs, same answer — a
+ * re-derivation on the card could drift and the failure would be silent: the
+ * Log opens on a week whose grid does not hold the pulsed entry.
  */
-function resolveOverride(
+export function resolveLogWeekOverride(
   groupId: string | undefined,
   tierId: string | undefined,
   urlWeek: string | null,
@@ -296,7 +304,7 @@ export function useLogWeek(
     // the param usually holds this hook's own mirror of the PREVIOUS tier, so
     // feeding it back in would shadow the new tier's stored week — see the
     // doc header's resolution-order note.
-    const resolved = resolveOverride(groupId, tierId, isFirstResolve ? urlWeek : null);
+    const resolved = resolveLogWeekOverride(groupId, tierId, isFirstResolve ? urlWeek : null);
     setOverride(resolved);
 
     if (isFirstResolve) return;
