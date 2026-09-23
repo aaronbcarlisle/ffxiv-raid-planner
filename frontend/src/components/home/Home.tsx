@@ -3,20 +3,22 @@
  *
  * The F6b assembly: a "This week" page header (dynamic subtitle), a 3-card hero
  * (next session + RSVP · this week's loot · roster readiness), and a two-region
- * dashboard (actionable left: "Needs your attention" + BiS-by-role; ambient
- * right: recent activity + a display-only Track card). Wired in as the
- * `overview` slot on `GroupViewContent` (see NewShell).
+ * dashboard (actionable left: "Needs your attention" + BiS-by-role + Team
+ * Summary; ambient right: recent activity + a display-only Track card). Wired
+ * in as the `overview` slot on `GroupViewContent` (see NewShell).
  *
  * Boundary discipline (ring0): composes `home/` siblings + shared `ui/`
  * components + the existing shell `PageHeader`, and reads STORES directly for
  * the data the legacy prop contract never carried (schedule / loot / join
- * requests / mount farm / auth). It NEVER imports a ring1 (`schedule`/
- * `split-clear`) or ring3 (`mount-farms`/`collections`) component — the mount
- * data comes from `mountFarmStore` (a store), never `components/mount-farms/*`.
+ * requests / mount farm / auth / static-character). It NEVER imports a ring1
+ * (`schedule`/`split-clear`) or ring3 (`mount-farms`/`collections`) component —
+ * the mount data comes from `mountFarmStore` (a store), never
+ * `components/mount-farms/*`.
  *
  * Fetch-on-mount mirrors `StaticHomeTab`'s membership-gated effect: members get
- * sessions/loot/progress; group-requests fetch only when `canManage` (so
- * applicants/non-members never trigger a 403).
+ * sessions/loot/progress/page+material balances; group-requests fetch only when
+ * `canManage` (so applicants/non-members never trigger a 403); registrations
+ * fetch for any member (not tier-gated) to feed Team Summary's role chips.
  */
 
 import { useEffect, useMemo } from 'react';
@@ -34,6 +36,7 @@ import { Tag } from '../ui/Tag';
 import { WeeklyLootSummaryCard } from './WeeklyLootSummaryCard';
 import { RosterReadinessCard } from './RosterReadinessCard';
 import { RoleBisCard } from './RoleBisCard';
+import { TeamSummaryCard } from './TeamSummaryCard';
 import { StaticActivityFeed } from './StaticActivityFeed';
 import { TrackCard } from './TrackCard';
 
@@ -41,6 +44,7 @@ import { useScheduleStore } from '../../stores/scheduleStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useMountFarmStore } from '../../stores/mountFarmStore';
+import { useStaticCharacterStore } from '../../stores/staticCharacterStore';
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from '../../stores/toastStore';
 import { useWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
@@ -87,8 +91,12 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
   const fetchPageLedger = useLootTrackingStore((s) => s.fetchPageLedger);
   const fetchMaterialLog = useLootTrackingStore((s) => s.fetchMaterialLog);
+  const fetchPageBalances = useLootTrackingStore((s) => s.fetchPageBalances);
+  const fetchMaterialBalances = useLootTrackingStore((s) => s.fetchMaterialBalances);
 
   const fetchProgress = useMountFarmStore((s) => s.fetchProgress);
+
+  const fetchRegistrations = useStaticCharacterStore((s) => s.fetchRegistrations);
 
   const userId = useAuthStore((s) => s.user?.id);
 
@@ -105,15 +113,20 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     if (isMember) {
       fetchSessions(group.id);
       fetchProgress(group.id, getAllTrialIds());
+      // Not tier-gated (feeds Team Summary's "Mains only" chips even before a
+      // tier is picked); swallows its own errors (staticCharacterStore).
+      void fetchRegistrations(group.id);
       if (tierId) {
-        // A3 (A10 shape, Roster/Loot mount-fetch precedent): fetchLootLog and
-        // fetchPageLedger re-throw after recording store error state, but this
-        // screen never renders lootTrackingStore.error — surface ONE toast for
-        // the pair (Promise.all attaches handlers to every member, so nothing
-        // escapes unhandled).
+        // A3 (A10 shape, Roster/Loot mount-fetch precedent): fetchLootLog,
+        // fetchPageLedger, fetchPageBalances and fetchMaterialBalances re-throw
+        // after recording store error state, but this screen never renders
+        // lootTrackingStore.error — surface ONE toast for the group (Promise.all
+        // attaches handlers to every member, so nothing escapes unhandled).
         void Promise.all([
           fetchLootLog(group.id, tierId),
           fetchPageLedger(group.id, tierId),
+          fetchPageBalances(group.id, tierId),
+          fetchMaterialBalances(group.id, tierId),
         ]).catch(() => toast.error('Failed to load loot data'));
         // fetchMaterialLog re-throws on failure (lootTrackingStore) — swallow like
         // the ScheduleTab mount-fetch precedent so this new call can't become an
@@ -129,8 +142,11 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     fetchGroupRequests,
     fetchSessions,
     fetchProgress,
+    fetchRegistrations,
     fetchLootLog,
     fetchPageLedger,
+    fetchPageBalances,
+    fetchMaterialBalances,
     fetchMaterialLog,
   ]);
 
@@ -309,6 +325,7 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
                 )}
               </CardShell>
               <RoleBisCard />
+              {group.userRole && <TeamSummaryCard groupId={group.id} tierId={tierId} />}
             </div>
           }
           side={

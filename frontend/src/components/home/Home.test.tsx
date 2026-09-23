@@ -19,13 +19,20 @@ const mocks = vi.hoisted(() => ({
   lootLog: [] as unknown[],
   materialLog: [] as unknown[],
   pageLedger: [] as unknown[],
+  pageBalances: [] as unknown[],
+  materialBalances: [] as unknown[],
   currentWeek: 3,
   fetchLootLog: vi.fn(),
   fetchPageLedger: vi.fn(),
   fetchMaterialLog: vi.fn().mockResolvedValue(undefined),
+  fetchPageBalances: vi.fn(),
+  fetchMaterialBalances: vi.fn(),
   players: [] as SnapshotPlayer[],
   mountData: null as unknown,
   fetchProgress: vi.fn(),
+  registrationsByGroup: {} as Record<string, unknown>,
+  fetchRegistrations: vi.fn().mockResolvedValue(undefined),
+  toastError: vi.fn(),
   user: { id: 'u1' } as { id: string } | null,
 }));
 
@@ -43,10 +50,14 @@ vi.mock('../../stores/lootTrackingStore', () => ({
       lootLog: mocks.lootLog,
       materialLog: mocks.materialLog,
       pageLedger: mocks.pageLedger,
+      pageBalances: mocks.pageBalances,
+      materialBalances: mocks.materialBalances,
       currentWeek: mocks.currentWeek,
       fetchLootLog: mocks.fetchLootLog,
       fetchPageLedger: mocks.fetchPageLedger,
       fetchMaterialLog: mocks.fetchMaterialLog,
+      fetchPageBalances: mocks.fetchPageBalances,
+      fetchMaterialBalances: mocks.fetchMaterialBalances,
     }),
 }));
 vi.mock('../../stores/tierStore', () => ({ useTierPlayers: () => mocks.players }));
@@ -54,10 +65,32 @@ vi.mock('../../stores/mountFarmStore', () => ({
   useMountFarmStore: (sel: (s: Record<string, unknown>) => unknown) =>
     sel({ data: mocks.mountData, fetchProgress: mocks.fetchProgress }),
 }));
+vi.mock('../../stores/staticCharacterStore', () => ({
+  useStaticCharacterStore: (sel: (s: Record<string, unknown>) => unknown) =>
+    sel({ registrationsByGroup: mocks.registrationsByGroup, fetchRegistrations: mocks.fetchRegistrations }),
+}));
 vi.mock('../../stores/authStore', () => ({
   useAuthStore: (sel: (s: Record<string, unknown>) => unknown) => sel({ user: mocks.user }),
 }));
-vi.mock('../../gamedata', () => ({ getAllTrialIds: () => [], getTrialById: () => null }));
+vi.mock('../../stores/toastStore', () => ({
+  toast: { error: mocks.toastError, success: vi.fn(), warning: vi.fn(), info: vi.fn() },
+}));
+const FULL_TIER = {
+  id: 't1',
+  name: 'Test Tier',
+  shortName: 'M9S-M12S',
+  patch: '7.4',
+  floors: ['M9S', 'M10S', 'M11S', 'M12S'],
+  itemLevels: { savage: 790, savageWeapon: 795, tome: 780, tomeAugmented: 790, crafted: 770, minimum: 765 },
+  gearPrefixes: { savage: 'Grand Champion', tome: 'Base', crafted: 'Crafted' },
+  upgradeMaterials: { twine: 'Twine', glaze: 'Glaze', solvent: 'Solvent' },
+  isCurrent: true,
+};
+vi.mock('../../gamedata', () => ({
+  getAllTrialIds: () => [],
+  getTrialById: () => null,
+  getTierById: () => FULL_TIER,
+}));
 vi.mock('../../gamedata/raid-tiers', () => ({ getTierById: () => ({ floors: ['M9S', 'M10S'] }) }));
 
 import { Home } from './Home';
@@ -133,13 +166,20 @@ beforeEach(() => {
   mocks.lootLog = [];
   mocks.materialLog = [];
   mocks.pageLedger = [];
+  mocks.pageBalances = [];
+  mocks.materialBalances = [];
   mocks.currentWeek = 3;
   mocks.fetchLootLog = vi.fn();
   mocks.fetchPageLedger = vi.fn();
   mocks.fetchMaterialLog = vi.fn().mockResolvedValue(undefined);
+  mocks.fetchPageBalances = vi.fn();
+  mocks.fetchMaterialBalances = vi.fn();
   mocks.players = [];
   mocks.mountData = null;
   mocks.fetchProgress = vi.fn();
+  mocks.registrationsByGroup = {};
+  mocks.fetchRegistrations = vi.fn().mockResolvedValue(undefined);
+  mocks.toastError.mockClear();
   mocks.user = { id: 'u1' };
 });
 
@@ -234,5 +274,45 @@ describe('Home', () => {
     expect(mocks.fetchPageLedger).toHaveBeenCalledWith('g1', 't1');
     expect(mocks.fetchMaterialLog).toHaveBeenCalledWith('g1', 't1');
     expect(mocks.fetchGroupRequests).toHaveBeenCalledWith('g1');
+  });
+
+  it('a member with a tier triggers the Team Summary fetches (page balances, material balances, registrations)', () => {
+    renderHome();
+    expect(mocks.fetchPageBalances).toHaveBeenCalledWith('g1', 't1');
+    expect(mocks.fetchMaterialBalances).toHaveBeenCalledWith('g1', 't1');
+    expect(mocks.fetchRegistrations).toHaveBeenCalledWith('g1');
+  });
+
+  it('a non-member triggers none of the Team Summary fetches and does not render the card', () => {
+    const nonMemberGroup = { id: 'g1', name: 'Crescent', userRole: null } as unknown as StaticGroup;
+    renderHome({ group: nonMemberGroup, canManage: false });
+    expect(mocks.fetchPageBalances).not.toHaveBeenCalled();
+    expect(mocks.fetchMaterialBalances).not.toHaveBeenCalled();
+    expect(mocks.fetchRegistrations).not.toHaveBeenCalled();
+    expect(screen.queryByRole('heading', { name: 'Team Summary' })).not.toBeInTheDocument();
+  });
+
+  it('a member without a tier fetches registrations but not balances', () => {
+    renderHome({ tier: null });
+    expect(mocks.fetchRegistrations).toHaveBeenCalledWith('g1');
+    expect(mocks.fetchPageBalances).not.toHaveBeenCalled();
+    expect(mocks.fetchMaterialBalances).not.toHaveBeenCalled();
+  });
+
+  it('fires exactly one "Failed to load loot data" toast when two fetches in the group reject', async () => {
+    mocks.fetchLootLog = vi.fn().mockRejectedValue(new Error('boom'));
+    mocks.fetchPageBalances = vi.fn().mockRejectedValue(new Error('boom'));
+    renderHome();
+    await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1));
+    expect(mocks.toastError).toHaveBeenCalledWith('Failed to load loot data');
+  });
+
+  it('renders the "Team Summary" heading after "BiS progress by role" in DOM order', () => {
+    renderHome();
+    const headingNames = screen.getAllByRole('heading').map((h) => h.textContent);
+    const bisIndex = headingNames.findIndex((t) => /bis progress by role/i.test(t ?? ''));
+    const teamSummaryIndex = headingNames.findIndex((t) => t === 'Team Summary');
+    expect(bisIndex).toBeGreaterThanOrEqual(0);
+    expect(teamSummaryIndex).toBeGreaterThan(bisIndex);
   });
 });
