@@ -90,8 +90,10 @@
  * D6a Task 6 wiring: the modifier layer is live on the edit control — plain
  * click/AT-activation (`detail===0`) edits `entries[0]` (D6-c: a cell's
  * PRIMARY action, never the jump), Shift+Click copies a Log deep link,
- * Alt+Click jumps to the recipient's roster card, and `useAltHeld` swaps the
- * cursor to a pointer only while Alt is held AND a jump target resolves.
+ * Alt+Click jumps to the recipient on the roster — the entry's gear row when
+ * `jumpAnchorSlotOf` resolves one (D12), the card otherwise — and
+ * `useAltHeld` swaps the cursor to a pointer only while Alt is held AND a
+ * jump target resolves.
  * Empty-cell modifier clicks are no-ops (D6-h). Alt+Enter does **not** ride
  * the same jump route (D6a browser pass, F3, live-falsified in Chrome):
  * Chrome's keyboard-activation click on a focused `<button>` does not carry

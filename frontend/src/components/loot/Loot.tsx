@@ -113,8 +113,10 @@
  *     re-homed to Log in D7b: `BookLedgerCard` mounts here, full width below
  *     the fairness read, on the DISPLAYED week — `FairnessSummary` stays on
  *     History until D14. The Alt+Click recipient jump (Log → roster card,
- *     `?player=`) still lands card-level until D12 retargets it to slot-level
- *     anchors (R-28); the Books jump is the separate `?book=` param described
+ *     `?player=`) is SLOT-level since D12 (R-28): `?slot=` names the gear
+ *     row to land on when the entry resolves one (`jumpAnchorSlotOf`), and
+ *     falls back to the card when it does not (R-D12-F: a universal
+ *     tomestone); the Books jump is the separate `?book=` param described
  *     below. "Log material" on Log —
  *     D4's other named gap — shipped in D8 (the toolbar's free-form door,
  *     below).
@@ -1252,8 +1254,9 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             onCopyLink={copyLink}
             /* D11: the SAME jump the Log grid uses — it already strips
                entry/entryType/book, so a History-originated highlight cannot
-               follow the user to the roster (director F-18). Card-level until
-               D12's slot anchors (R-28). */
+               follow the user to the roster (director F-18). SLOT-level
+               since D12 (R-28): lands on the gear row when the item resolves
+               one, the card otherwise (R-D12-F). */
             onJumpToPlayer={jumpToRecipient}
             onViewWeekInLog={viewWeekInLog}
             onDelete={requestDelete}

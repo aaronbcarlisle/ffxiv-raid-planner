@@ -384,6 +384,41 @@ describe('D6 modifier layer', () => {
     expect(onEditGear).not.toHaveBeenCalled();
   });
 
+  // D12 (review finding, Important 2): the ⚠ note's real regression is a
+  // hand-rolled `{ kind: 'loot', entry: newest }` in place of
+  // `buildRef(newest)` at the cell's jump closure — invisible against a
+  // loot-only fixture set (every other jump test here uses `ears`, a loot
+  // entry) because `LootLogEntry.itemSlot` and `MaterialLogEntry.slotAugmented`
+  // never collide by name. A material cell is the only fixture that can catch
+  // it: a hand-rolled loot ref reads `(entry as LootLogEntry).itemSlot`, which
+  // is `undefined` on a material entry, silently degrading the jump to
+  // card-level instead of raising a type error.
+  it('Alt+Click on a material cell jumps to its slotAugmented row, not card-level', () => {
+    const twine = makeMaterialEntry({
+      materialType: 'twine', floor: 'Floor 3', slotAugmented: 'legs',
+      recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const onJumpToPlayer = vi.fn();
+    renderGrid(<LogWeekGrid {...baseProps({ materialLog: [twine], players: [tankOne], onJumpToPlayer })} />);
+    fireEvent.click(cellButton('Twine'), { altKey: true, detail: 1 });
+    expect(onJumpToPlayer).toHaveBeenCalledWith('p1', 'legs');
+  });
+
+  // D12 (review finding, Minor 1): R-D12-F's `null` (no row to land on) must
+  // be PRODUCED by a real consumer, not just injected directly into
+  // `jumpToRecipient` (as `Loot.test.tsx`'s tests do) — a universal tomestone
+  // has no `slotAugmented`, so `jumpAnchorSlotOf` resolves it to `null`.
+  it('Alt+Click on a universal-tomestone material cell passes slot: null', () => {
+    const tome = makeMaterialEntry({
+      materialType: 'universal_tomestone', floor: 'Floor 2',
+      recipientPlayerId: 'p1', recipientPlayerName: 'Tank One',
+    });
+    const onJumpToPlayer = vi.fn();
+    renderGrid(<LogWeekGrid {...baseProps({ materialLog: [tome], players: [tankOne], onJumpToPlayer })} />);
+    fireEvent.click(cellButton('Tome'), { altKey: true, detail: 1 });
+    expect(onJumpToPlayer).toHaveBeenCalledWith('p1', null);
+  });
+
   it('Alt+Click is a no-op when the recipient is not on the roster', () => {
     const ghost = makeLootEntry({
       itemSlot: 'earring', floor: 'Floor 1', recipientPlayerId: 'ghost', recipientPlayerName: 'Departed',

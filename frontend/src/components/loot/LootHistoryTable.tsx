@@ -57,9 +57,11 @@
  * **The row.** ONE `activate` handler serves both `onClick` and `onKeyDown`, so
  * R-31 q3's modifiers are designed rather than inherited from a cast: Shift →
  * copy link (and clear the selection Shift+Click extends, V1
- * `AllWeeksView.tsx:315`); Alt → jump to the recipient's roster card when the
- * id resolves in the roster (card-level `?player=` until D12's slot anchors,
- * R-28); plain → edit (loot → `onEdit`, material → `onEditMaterial`, which is
+ * `AllWeeksView.tsx:315`); Alt → jump to the recipient on the roster when the
+ * id resolves there — SLOT-level since D12 (R-28): `?slot=` lands on the
+ * item's gear row via `jumpAnchorSlotOf`, or the card when it resolves none
+ * (R-D12-F: a universal tomestone); plain → edit (loot → `onEdit`, material →
+ * `onEditMaterial`, which is
  * D8's modal through Loot's existing `materialState.mode === 'edit'` door,
  * R-D11-H). Activation is PERMISSION-SHAPED (R-D11-E): only a `canEdit` row is
  * focusable (`tabIndex={0}`), roled (`role="button"` — R-D11-L's recorded
@@ -100,7 +102,7 @@
  * complete keyboard/AT route (R-D11-E), replacing V1's row-level
  * Shift+Enter / Alt+Enter gesture, which is deliberately not carried.
  *
- * Later slice: D12 gear-row anchors.
+ * D12 (Task 5): the jump gained gear-row anchors — see **The row** above.
  */
 import {
   Fragment,
