@@ -93,19 +93,27 @@ MUTATIONS = [
         "  if (!raw) return 'weapon';",
         LEDGER_SPEC,
     ),
-    # ⚠ Row-sourcing caveat #2 (Tasks 5-6): this is R-28's TRUE literal prose —
-    # the null-guard folded into the same condition, exactly as legacy's
-    # `useViewNavigation.ts:150-165` wrote it — not just the equality flip.
-    # Scored against CARD_SPEC (not LEDGER_SPEC): kills exactly four
-    # RosterCard tests (NEWER, provisional-clock, and two pre-existing History
-    # jumps), because entryJumpView's null cases now silently resolve to 'log'
-    # too. The row pins R-D12-A; name the NEWER test as its killer — the
-    # harness counts all four.
     (
-        "entryJumpView regresses to R-28's literal prose (the null guard folded into one condition)",
+        "entryJumpView regresses to R-28's literal prose (entryWeek < displayedWeek ? history : log)",
         LEDGER,
-        "  if (entryWeek == null || displayedWeek == null) return 'history';\n  return entryWeek === displayedWeek ? 'log' : 'history';",
-        "  return entryWeek != null && displayedWeek != null && entryWeek < displayedWeek ? 'history' : 'log';",
+        "  return entryWeek === displayedWeek ? 'log' : 'history';",
+        "  return entryWeek < displayedWeek ? 'history' : 'log';",
+        LEDGER_SPEC,
+    ),
+    # ── Task 6's WIRING of R-28/R-D12-A at the call site (RosterCard.tsx) ──
+    # A DIFFERENT site from the row above: that one mutates entryJumpView's
+    # own definition (killed by the ledger unit's NEWER case alone, 1 test).
+    # This one bypasses the shared helper entirely at RosterCard's call site,
+    # inlining R-28's literal (pre-D12) prose — guard folded into the
+    # condition, so entryJumpView's null-safety is lost for every card jump.
+    # Scored against CARD_SPEC: kills exactly four RosterCard tests (two
+    # pre-existing History jumps, the NEWER case, and the provisional-clock
+    # case) — name the NEWER test as its killer; the harness counts all four.
+    (
+        "RosterCard.jumpToEntry inlines R-28's literal prose at the call site, bypassing entryJumpView",
+        CARD,
+        '      const lview = entryJumpView(entryWeek, displayedWeek);',
+        "      const lview = entryWeek != null && displayedWeek != null && entryWeek < displayedWeek ? 'history' : 'log';",
         CARD_SPEC,
     ),
     # A null-guard half-deletion is an EQUIVALENT MUTANT (proven at Task 1's
