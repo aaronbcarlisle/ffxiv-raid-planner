@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
 import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { RosterCard } from './RosterCard';
 import { TooltipProvider } from '../primitives';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
@@ -1858,6 +1859,16 @@ describe('RosterCard — D12 R-28, the entry jump splits by week', () => {
     return new URLSearchParams(currentSearch());
   }
 
+  /** Moves `?week=` AFTER the card has mounted: a URL change the card sees as
+   *  a re-render, never a remount. */
+  function WeekNavigator({ week }: { week: string | null }) {
+    const navigate = useNavigate();
+    useEffect(() => {
+      if (week !== null) navigate(`/?week=${week}`, { replace: true });
+    }, [week, navigate]);
+    return null;
+  }
+
   beforeEach(() => {
     localStorage.clear();
     setClock(1, 1);
@@ -1915,6 +1926,46 @@ describe('RosterCard — D12 R-28, the entry jump splits by week', () => {
     expect(params.get('lview')).toBe('log');
     // Preserved, not rewritten: it is the Log's first resolver input, so the
     // Log's mount reaches the same week the card just routed by.
+    expect(params.get('week')).toBe('2');
+  });
+
+  // The card reads `?week=` through a ref, so the ref has to FOLLOW the URL: a
+  // `?week=` that lands while the card is already mounted must still decide
+  // the split. Every other test mounts at its final URL, where a ref frozen at
+  // mount would read exactly the same thing.
+  it('reads ?week= at CLICK time, not at mount', () => {
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(2)] });
+    const tree = (week: string | null) => (
+      <MemoryRouter>
+        <TooltipProvider>
+          <RosterCard
+            player={makePlayer({ gear: gearWithHead })}
+            userRole="owner"
+            currentUserId="u1"
+            isAdminAccess={false}
+            canManage
+            clipboardPlayer={null}
+            reorderMode={false}
+            density="expanded"
+            groupId="g1"
+            tierId="t1"
+            contentType="savage"
+            actions={actions}
+          />
+          <WeekNavigator week={week} />
+          <LocationProbe />
+        </TooltipProvider>
+      </MemoryRouter>
+    );
+    const { rerender } = render(tree(null));
+    rerender(tree('2'));
+    expect(new URLSearchParams(currentSearch()).get('week')).toBe('2');
+
+    fireEvent.click(screen.getByRole('link', { name: /Head/ }), { altKey: true, detail: 1 });
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('lview')).toBe('log');
     expect(params.get('week')).toBe('2');
   });
 
