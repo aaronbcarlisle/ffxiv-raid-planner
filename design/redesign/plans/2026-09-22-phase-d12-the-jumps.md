@@ -1547,9 +1547,11 @@ One row per ruling, each naming the ruling it pins:
 > 1. The `buildRef`-kind row (`LogWeekGrid.tsx`'s cell closure hand-rolling `{ kind: 'loot' }`) must
 >    cite the **material-cell `'legs'`** test in `LogWeekGrid.test.tsx`. The universal-tomestone
 >    `null` test survives that mutant **by coincidence** (an undefined `itemSlot` also yields `null`).
-> 2. The R-28-literal-prose row (`entryWeek < displayedWeek ? 'history' : 'log'`) kills **four**
->    `RosterCard` tests (NEWER, provisional-clock, and two pre-existing History jumps). The row pins
->    R-D12-A, so name the **NEWER** test as its killer; the harness counts all four.
+> 2. R-28's literal prose (`entryWeek < displayedWeek ? 'history' : 'log'`) has **two** sites, and
+>    the battery carries both: at `entryJumpView`'s **definition** (`rosterLedgerJumps.ts`, scored on
+>    its unit file, **1** kill = the NEWER case) and inlined at `RosterCard`'s **call site** (scored on
+>    `RosterCard.test.tsx`, **4** kills: NEWER, provisional-clock, and two pre-existing History jumps).
+>    The definition row is the brief's; the call-site row pins Task 6's wiring. Both name NEWER.
 > 3. `GroupViewContent.test.tsx`'s card-scroll test asserts `card.scrollIntoView` on the shared
 >    `Element.prototype` stub (receiver-blind, the shape Task 4's F1 fixed elsewhere). It is safe for
 >    the `params.delete('slot')` row, but **no row that mutates the scrolled element** may be sourced
