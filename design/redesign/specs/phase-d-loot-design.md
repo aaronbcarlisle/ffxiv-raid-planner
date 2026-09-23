@@ -793,7 +793,7 @@ kebab exists so every modifier action has a keyboard and AT route; right-click i
 anchor/pulse contract.** `components/roster/rosterLedgerJumps.ts` (already the C7/D-05 home for the
 forward "which ledger entry does this slot point at" direction) gains the inverse: `JumpAnchorSlot`
 (`GearSlot | 'tome_weapon'`), `isJumpAnchorSlot` (the `?slot=` param's validator), `gearRowDomId(playerId,
-slot)` → `` `gear-row-${playerId}-${slot}` `` (legacy's own shape, `GearTable.tsx:324,659`), and
+slot)` → `` `gear-row-${playerId}-${slot}` `` (legacy's own shape, `GearTable.tsx:325,664`), and
 `jumpAnchorSlotOf(item: HistoryItem)` → the anchor a ledger entry lands on, `null` for a
 `slotAugmented`-less entry (note 3's universal-tomestone case, unchanged). `RosterGearTable.tsx` renders
 `id={gearRowDomId(playerId, slot)}` on every main gear row and a second one on the `tome_weapon` sub-row,
@@ -803,7 +803,11 @@ on mount), the row scroll (`components/roster/gearRowScroll.ts` — a v2-local p
 with the player-card fallback, **R-D12-J**: a deliberate FORK of `useViewNavigation.ts:25-52`'s
 `scrollIntoViewWhenReady`, not an extraction — that helper is module-private inside a hook V1 consumes),
 and the 2500 ms clear (its own timer, matching `GroupViewContent`'s `?player=` timer's cadence without
-sharing its code).
+sharing its code). The `?slot=` **writer** is `Loot.tsx`'s existing `jumpToRecipient` (`:763-769`): it
+now takes an optional `slot` and sets `?slot=` when `jumpAnchorSlotOf` resolves a row, deleting it
+otherwise — reached from `LogWeekGrid.tsx`'s Alt+Click (`:397`) and kebab (`:742`) and
+`LootHistoryTable.tsx`'s equivalents (`:516`, `:723`) — closing the loop on the D6a build note's
+"stated interim" paragraph above (`:774-780`, "retargets the same callback").
 
 **Named delta against `useViewNavigation.ts:125`:** legacy normalizes a `tome_weapon` material entry to
 the `weapon` row before scrolling to it. v2 does **not** — `jumpAnchorSlotOf` keeps it on its own
@@ -1053,9 +1057,10 @@ which R-28's prose above never named (**R-D12-A**, user-ruled 2026-09-22: "an en
 displayed week is equally absent from that week's grid; one symmetric rule beats two asymmetric
 ones"). "The displayed week" is resolved with `useLogWeek`'s **own** exported `resolveLogWeekOverride`
 (`components/loot/useLogWeek.ts:239` — a rename of the former `resolveOverride`, no behaviour change)
-— never re-derived — because `Loot` genuinely **unmounts** on a tab switch (`GroupViewContent.tsx:982`,
-a bare `{pageMode === 'gear' && (slots?.gear ?? (…))}` with no `hidden` wrapper and no
-`AnimatePresence` retention), so the mount-only `?week=` read fires fresh on every roster→Loot jump and
+— never re-derived — because `Loot` genuinely **unmounts** on a tab switch (`GroupViewContent.tsx:982`'s
+gear branch is keyed on `pageMode` inside `AnimatePresence mode="wait"` (`:888-890`), so it is torn
+down after its exit animation rather than kept mounted behind `className="hidden"` like the roster
+sub-views (`:973`)), so the mount-only `?week=` read fires fresh on every roster→Loot jump and
 the two sides can never disagree (**R-D12-B**). `RosterCard.jumpToEntry` (`:321-339`) computes
 `displayedWeek = override ?? (clockSettled ? clockCurrentWeek : null)`, where
 `clockSettled = Math.max(clockMaxWeek, clockCurrentWeek) > 1`, and never writes `?week=` itself or calls
@@ -1067,8 +1072,9 @@ header discloses.
 
 1. **R-D12-C — a tier genuinely on week 1 with no stored week routes every jump to History.**
    ⚠ Corrected at plan-vet: the obvious rationale (a `setWeek` clobber) is **false** —
-   `Loot.tsx:892-894`'s F1/F2 guards already make that unreachable (`unresolvedByClock` covers exactly
-   this case). The real failure is a **dead pulse**: with `override === null` the Log would mount at
+   `Loot.tsx:901-905`'s F1/F2 guards (`clockCeiling` / `unresolvedByClock`) already make that
+   unreachable (`unresolvedByClock` covers exactly this case). The real failure is a **dead pulse**:
+   with `override === null` the Log would mount at
    `week = clock.currentWeek` (provisionally `1`), `fetchCurrentWeek` then lands and `logWeek.week`
    walks to the real current week while the highlight effect's deps (`[highlightId, highlightKind]`)
    never move — so `displayedWeek: null` routes to History instead, which is always a correct
@@ -1091,7 +1097,7 @@ header discloses.
 `plans/2026-09-22-phase-d12-the-jumps.md` §2):**
 
 - **R-D12-A** — the split is symmetric: displayed week → Log, every other week (older **or** newer) →
-  History. Do not "unify" with R-32/R-D11-B's "View week N in Log" — that item's own label discloses
+  History. Do not "unify" with R-32/R-D11-A's "View week N in Log" — that item's own label discloses
   the week change it makes; a gear-slot jump promises no such thing.
 - **R-D12-B** — the displayed week comes from `useLogWeek`'s own `resolveLogWeekOverride`, never
   re-derived; sound because `Loot` unmounts on every tab switch.
@@ -1106,7 +1112,7 @@ header discloses.
 - **R-D12-H** — a generic `ring` entry anchors to `ring1`; the ring asymmetry above.
 - **R-D12-I** — `?slot=` is stripped by `GroupViewContent`'s existing `?player=` timer
   (`pages/GroupViewContent.tsx:265`), not a second writer in `Roster.tsx` — the slice's one shared-file
-  hunk, one added line.
+  hunk, +5 (4 comment + 1 executable).
 - **R-D12-J** — the row scroll (`components/roster/gearRowScroll.ts`) is a v2-local fork of
   `useViewNavigation.ts:25-52`'s `scrollIntoViewWhenReady`, not an extraction of it.
 
