@@ -30,6 +30,19 @@ Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`).
 { category: 'fix', title: 'Short headline', description: 'What changed and why it matters.', pr: 128, prTitle: 'fix(scope): the PR title' }
 ```
 
+## Draft-first PRs — the bots fire on ready, not per push
+
+Since 2026-09-23 `claude-code-review.yml` triggers on `opened` / `ready_for_review` / `reopened` only (no `synchronize`) and skips docs-only PRs, and the Copilot ruleset no longer reviews on push. So:
+
+1. **Open as a draft** (`gh pr create --draft`) while the branch is still moving. CI runs on every push regardless (`ci.yml` skips drafts — flip to ready when you want the full gate).
+2. **Mark ready exactly once**, when the branch is final. That `ready_for_review` event is the AI review.
+3. **Fix commits after ready get no automatic re-review.** Comment `@claude review` on the PR to request one; Copilot re-review is the "re-request review" button.
+4. **Docs-only / agent-prompt / SDD-artifact PRs** get no Claude review by design (`paths-ignore`). Do not wait for one.
+
+## A green review check is not a review
+
+`claude-review` posted nothing for ~4.5 months while its check stayed green (two bugs in one commit: `pull-requests: read` + the plugin missing `--comment`; fixed in #194/#195). It still reports green while skipping in six cases: bot-authored PRs, **fork PRs** (no secrets/OIDC), the `skip-claude-review` label, a `[skip-review]`/`[skip-claude]`/`[no-review]` marker in the head commit message, draft PRs, and any PR that modifies `claude-code-review.yml` itself (the action's anti-tamper validation). Copilot files some findings as suppressed comments that are not review threads, and `claude[bot]` edits its comment in place, so a fresh review keeps its old timestamp. Before treating a PR as reviewed, confirm an actual review comment exists from `claude[bot]` or Copilot — never trust the check mark alone.
+
 ## Fork PR Guard (GitHub Actions)
 
 Any GitHub Actions workflow (new or updated) that **writes to PRs** must include a fork guard:

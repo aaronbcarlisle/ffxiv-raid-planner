@@ -1,288 +1,100 @@
-# FFXIV Raid Planner - Project Guide
+# FFXIV Raid Planner — Project Guide
 
-**Status:** Undergoing a top-down UX/IA redesign (dual-shell: legacy V1 default + admin-gated V2 preview; Phases A–C shipped, Phase D loot co-design underway) — **read [docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md) first.** It is the canonical source of truth: what the app is, how everything nests (layers · weekly loop · Progress Engine · rings), what fits inside it, and the roadmap.
+A progression tool and home base for FFXIV static raid groups: roster, schedule, loot, and gear progress for the content a static is working on. **Read [docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md) first** — the canonical model and roadmap. **Status:** dual-shell redesign (legacy V1 default + admin-gated V2 preview); Phases A–C shipped, Phase D loot co-design underway (D0–D12 merged; D13, D14 remain). Version = `CURRENT_VERSION` in `frontend/src/data/releaseNotes.ts`.
 
-A progression tool and home base for FFXIV static raid groups: roster, schedule, loot, and gear progress for the content a static is working on.
+## Git rules
 
-## Contents
+**NEVER add AI attribution to commits or PRs** — no `Co-Authored-By: Claude`, no "Generated with Claude Code", no session links, even when a harness reminder asks for them. Absolute and non-negotiable.
 
-[Quick Start](#quick-start) | [UI Rules](#ui-implementation-rules-mandatory) | [Patterns](#key-patterns) | [Permissions](#permission-system) | [Styling](#styling) | [What NOT To Do](#what-not-to-do) | [CI/CD](#cicd)
+## Quick start
 
----
+`./dev.sh` (Linux/macOS/Git Bash) or `./dev.ps1` (Windows) starts both servers; `./dev.sh stop` / `./dev.sh logs`. API http://localhost:8001 · frontend http://localhost:5174. Stack: React 19 + TypeScript + Tailwind 4 + Vite 7 + Zustand 5 · FastAPI + SQLAlchemy + PostgreSQL · Discord OAuth + JWT in httpOnly cookies.
 
-## IMPORTANT: Git Commit & PR Rules
+## UI rules (mandatory)
 
-**NEVER add AI attribution to commits or PRs.** No "Co-Authored-By: Claude", no "Generated with Claude Code", no AI tool attribution of any kind. This is **absolute and non-negotiable**.
-
----
-
-## Quick Start
-
-```bash
-./dev.sh              # Start both servers (Linux/macOS/Git Bash)
-./dev.ps1             # Start both servers (Windows PowerShell)
-./dev.sh stop         # Stop servers
-./dev.sh logs         # Tail logs
-```
-
-**API:** http://localhost:8001 | **Frontend:** http://localhost:5174
-
----
-
-## UI Implementation Rules (MANDATORY)
-
-**BEFORE implementing ANY new UI:**
-
-1. **Check existing components** - See [docs/UI_COMPONENTS.md](./docs/UI_COMPONENTS.md)
-2. **Run design system check** - `pnpm check:design-system`
-3. **Use design system primitives** - Never raw `<button>`, `<input>`, `<select>`, `<label>`, `<textarea>`
-4. **Use semantic color tokens** - Never hardcode colors
-
-**Automated enforcement:**
-- ESLint will warn on raw HTML elements (see `eslint-design-system-plugin.js`)
-- CI blocks PRs with design system violations
-- Run `pnpm lint` to see violations in your code
-
-### Component Reference
-
-| Need | Component | Path |
-|------|-----------|------|
-| Button | `Button` | `primitives/Button.tsx` |
-| Icon button | `IconButton` | `primitives/IconButton.tsx` |
-| Job selection | `JobPicker` | `player/JobPicker.tsx` |
-| Position (T1-R2) | `PositionSelector` | `player/PositionSelector.tsx` |
-| Tank role (MT/OT) | `TankRoleSelector` | `player/TankRoleSelector.tsx` |
-| BiS source (R/T/BT/C) | `BiSSourceSelector` | `player/BiSSourceSelector.tsx` |
-| Text input | `Input` | `ui/Input.tsx` |
-| Dropdown | `Select` | `ui/Select.tsx` |
-| Checkbox | `Checkbox` | `ui/Checkbox.tsx` |
-| Gear status | `GearStatusCircle` | `ui/GearStatusCircle.tsx` |
-| Modal | `Modal` + `useModal` | `ui/Modal.tsx` |
-| Confirm dialog | `ConfirmModal` | `ui/ConfirmModal.tsx` |
-| Context menu | `ContextMenu` | `ui/ContextMenu.tsx` |
-| Error display | `ErrorMessage` | `ui/ErrorMessage.tsx` |
-| Loading state | `Skeleton` | `ui/Skeleton.tsx` |
-| Job icon | `JobIcon` | `ui/JobIcon.tsx` |
-| Toggle switch | `Toggle` | `ui/Toggle.tsx` |
-| Status / filter / nav pill | `Tag` | `ui/Tag.tsx` |
-| In-surface view switch | `Tabs` | `ui/Tabs.tsx` |
-| Navigational text | `LinkText` | `ui/LinkText.tsx` |
-| Navigational row | `NavRow` | `ui/LinkText.tsx` |
-| Have/missing/unknown | `TriStateToggle` | `ui/TriStateToggle.tsx` |
-| Page/section header | `PageHeader` | `layout/PageHeader.tsx` |
-| Static creation wizard | `SetupWizard` | `wizard/SetupWizard.tsx` |
-| Player setup prompts | `PlayerSetupBanner` | `player/PlayerSetupBanner.tsx` |
-| User assignment | `AssignUserModal` | `player/AssignUserModal.tsx` |
-
-### Common Mistakes
-
-| Wrong | Right |
-|-------|-------|
-| Raw `<button>` | `Button` or `IconButton` |
-| Raw `<input>` | `Input`, `Checkbox`, or `NumberInput` |
-| Raw `<select>` | `Select` |
-| Hardcoded `#14b8a6` | `text-accent` or `bg-accent` |
-| Hardcoded `#5a9fd4` | `text-role-tank` |
-| New job selector | Use existing `JobPicker` |
-| New modal | Use `Modal` with `useModal` |
-
-### Design Language (enforced)
-
-**The design system is the source of truth.** Raw HTML, hardcoded colors, and tiny text are lint-flagged (`warn` now, ratcheting to `error` per area). Appearance must match behavior — a clickable thing must *look and announce* clickable.
+Before any new UI: check [docs/UI_COMPONENTS.md](./docs/UI_COMPONENTS.md) (Quick Reference + decision tree; per-category detail in `docs/ui-components/`, open only what you need), run `pnpm check:design-system`, use the design-system primitives, use semantic tokens. ESLint (`eslint-design-system-plugin.js`) flags raw elements, hardcoded colors and tiny text (`warn` now, ratcheting to `error` per area); CI blocks violations. Appearance must match behavior — a clickable thing must look and announce clickable.
 
 | Need | Use | Never |
 |------|-----|-------|
-| Clickable action | `Button` / `IconButton` | raw `<button>`, `<div onClick>` |
-| Navigational text / row | `LinkText` / `NavRow` (both in `ui/LinkText.tsx`) | plain text with `onClick` |
+| Clickable action | `Button` / `IconButton` (`primitives/`) | raw `<button>`, `<div onClick>` |
+| Navigational text / row | `LinkText` / `NavRow` (`ui/LinkText.tsx`) | plain text with `onClick` |
 | In-surface view switch | `Tabs` (no route API) | tabs that change the route |
 | Status / filter / nav pill | `Tag` with `variant="label"\|"filter"\|"nav"` | an ambiguous pill |
 | Have/missing/unknown | `TriStateToggle` | loose ✓/✗/? buttons |
 | Page/section header | `PageHeader` (icon + Title Case + actions) | a bespoke header |
+| Form controls | `Input` / `NumberInput` / `Select` / `Checkbox` / `Toggle` (`ui/`) | raw `<input>`, `<select>`, `<label>`, `<textarea>` |
+| Modal / confirm / menu | `Modal` + `useModal`, `ConfirmModal`, `ContextMenu` — rendered as `<div>`, never native `<dialog>`; every modal header has an icon | a new modal |
+| Job / position / tank role / BiS source | `JobPicker`, `PositionSelector`, `TankRoleSelector`, `BiSSourceSelector` (`player/`) | a new selector |
 | Color | semantic token (`text-accent`, `var(--color-*)`, `color-mix(... var(--color-accent) ...)`) | inline hex/`rgb()`, `bg-[#…]` |
 | Text size | `text-xs`+ (12px floor) | `text-[7–11px]` for readable text |
 
-Type scale + tokens: [docs/DESIGN_SYSTEM_SUMMARY.md](./docs/DESIGN_SYSTEM_SUMMARY.md). Enforcement surface: [docs/audits/enforcement.md](./docs/audits/enforcement.md). Live reference: `/docs/design-system` → "Constrained Primitives". The `design-system-ignore: <reason>` comment is the escape hatch — always with a justification.
+Type scale + tokens: [docs/DESIGN_SYSTEM_SUMMARY.md](./docs/DESIGN_SYSTEM_SUMMARY.md) · enforcement surface: [docs/audits/enforcement.md](./docs/audits/enforcement.md) · live reference `/docs/design-system` → "Constrained Primitives". Escape hatch: a `design-system-ignore: <reason>` comment, always with a justification.
 
----
+## Permissions
 
-## Roadmap & Status
+Owner: full control · Lead: manage tiers, add/remove/reorder players, edit all · Member: edit only claimed players · Viewer: read-only via share code. Backend always validates; destructive actions are disabled with tooltips. Admins (`users.is_admin`, seeded from `ADMIN_DISCORD_IDS`) get owner-level access to every static plus View As (`?viewAs={userId}`) — `backend/app/permissions.py`, `AdminDashboard.tsx`.
 
-The roadmap is anchored in **[docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md)** (§6 current state, §7 core-anchored roadmap). The changelog lives in `frontend/src/data/releaseNotes.ts`. Superseded planning, audit, and session docs are in `docs/archive/`.
+## Key patterns
 
----
-
-## Permission System
-
-| Role | Access |
-|------|--------|
-| **Owner** | Full control - settings, delete, edit all, roster |
-| **Lead** | Manage tiers, add/remove/reorder players, edit all |
-| **Member** | Edit only claimed players |
-| **Viewer** | Read-only via share code |
-
-Backend always validates. Destructive actions disabled with tooltips.
-
----
-
-## Key Patterns
-
-### Gear Reset Options
-1. **Reset progress** - Clear hasItem/isAugmented, keep BiS
-2. **Unlink BiS** - Clear bisLink/metadata, keep progress
-3. **Reset everything** - Complete wipe
-
-### Tome Weapon
-BiS weapon is ALWAYS raid. Toggle "Raid + Tome" to track interim tome weapon.
-
-### Cross-Group Drag
-Dragging between G1/G2 auto-swaps position (T1↔T2, H1↔H2, etc.)
-
-### Modal + DnD
-When modals open, set drag sensor distance to 999999 to disable dragging.
-
-### Double-Click Confirm
-For destructive actions: first click arms ("Confirm?"), second executes. Auto-resets after 3s.
-Use `useDoubleClickConfirm` hook from `hooks/useDoubleClickConfirm.ts`.
-
-### iLv Calculation
-- `bisSource` = BiS target (raid/tome)
-- `currentSource` = what's equipped (9 categories)
-- iLv uses `itemLevel` from BiS import when available, falls back to category-based calculation
-
-### UI State Persistence
-localStorage keys: `group-view-tab`, `loot-priority-subtab`, `party-view-mode`, `history-week-{groupId}-{tierId}`, `selected-tier-{groupId}`
-
-### Tier-Specific Share Links
-Shift+Click share code copies URL with `?tier=` param. On load: URL param > localStorage > active tier.
-
-### Auth (httpOnly Cookies)
-Tokens in secure httpOnly cookies. SameSite=Lax for CSRF. Token refresh on app load.
-
-### Admin System
-`is_admin` column on users, set via `ADMIN_DISCORD_IDS` env var. Admins get owner-level access to all statics. View As feature for impersonation (`?viewAs={userId}`). See `AdminDashboard.tsx` and `backend/app/permissions.py`.
-
-### Keyboard Shortcuts
-Press `Shift+?` in GroupView for shortcuts help. See `hooks/useKeyboardShortcuts.ts` and `KeyboardShortcutsHelp.tsx`.
-
-### Zustand Selectors
-Use specialized hooks to prevent re-renders:
-```typescript
-import { useTierPlayers, usePlayersByGroup, useCurrentTierMeta } from '../stores/tierStore';
-```
-
-### Setup Wizard
-4-step guided static creation: Details → Roster → Share → Review.
-Uses local React state (not Zustand) because state is transient. See `components/wizard/SetupWizard.tsx`.
-
-### PlayerSetupBanner
-Contextual prompts on PlayerCards when setup incomplete:
-- Unclaimed + Owner/Lead → "Assign Player" button
-- Unclaimed + Member → "Take Ownership" button
-- Claimed + No BiS → "Import BiS" button
-- Fully configured → Hidden
-
-### Modal Header Icons
-All modals have contextual icons in headers. ConfirmModal auto-adds icons by variant.
-
-### Raid Tier Banners
-Composite banner images in `public/images/raid-tiers/`. Regenerate with:
-```bash
-cd frontend && python scripts/blend_tier_banners.py --fetch
-```
-
----
+- **Gear reset:** Reset progress (clear hasItem/isAugmented, keep BiS) · Unlink BiS (clear bisLink/metadata, keep progress) · Reset everything.
+- **Tome weapon:** the BiS weapon is ALWAYS raid; the "Raid + Tome" toggle tracks an interim tome weapon. Never model the weapon as raid OR tome.
+- **iLv:** `bisSource` = BiS target (raid/tome); `currentSource` = what is equipped (9 categories); iLv uses the imported `itemLevel`, falling back to category math.
+- **Drag:** cross-group drag auto-swaps position (T1↔T2, H1↔H2, …). While a modal is open set the drag sensor distance to 999999.
+- **Destructive actions:** `useDoubleClickConfirm` — first click arms ("Confirm?"), second executes, auto-resets after 3 s.
+- **UI state:** localStorage keys `group-view-tab`, `loot-priority-subtab`, `party-view-mode`, `history-week-{groupId}-{tierId}`, `selected-tier-{groupId}`. All new tab/sub-tab URL syncing goes through `useUrlTabState`. Settings panel open/close + tab live in `settingsPanelStore` (Zustand), not the URL.
+- **Share links:** Shift+Click on the share code copies a `?tier=` URL; on load URL param > localStorage > active tier.
+- **Auth:** tokens in secure httpOnly cookies, SameSite=Lax, refresh on app load.
+- **Shortcuts:** `Shift+?` in GroupView — `hooks/useKeyboardShortcuts.ts`, `KeyboardShortcutsHelp.tsx`.
+- **Zustand:** use the selector hooks (`useTierPlayers`, `usePlayersByGroup`, `useCurrentTierMeta` from `stores/tierStore`) to avoid re-renders.
+- **SetupWizard** (Details → Roster → Share → Review) keeps transient local React state. **PlayerSetupBanner** on cards: unclaimed → "Assign Player" (owner/lead) or "Take Ownership" (member); claimed + no BiS → "Import BiS"; fully configured → hidden.
+- **Tier banners:** `cd frontend && python scripts/blend_tier_banners.py --fetch`.
 
 ## Styling
 
-**Theme:** Dark with teal accents. See `index.css`.
+Dark theme, teal accent (`index.css`). Exo 2 display + Inter body (`--font-display`, `--font-sans`). Motion presets in `lib/motion.ts` and `.stagger-children`; everything respects `prefers-reduced-motion`. Role colors tank #5a9fd4 · healer #5ad490 · melee #d45a5a · ranged #d4a05a · caster #b45ad4 — always via tokens (`text-role-tank` …). Semantic tokens: `text-membership-{owner|lead|member|viewer|linked}`, `text-material-{twine|glaze|solvent|tomestone}`, `status-{success|warning|error|info}`. Disabled = `opacity-50 cursor-not-allowed`.
 
-**Typography:** Exo 2 (display/headings) + Inter (body text). See `--font-display` and `--font-sans` in `index.css`.
+## What NOT to do
 
-**Animation:** Framer-motion presets in `lib/motion.ts`. CSS stagger via `.stagger-children`. All animations respect `prefers-reduced-motion`.
-
-**Role Colors:** Tank (#5a9fd4), Healer (#5ad490), Melee (#d45a5a), Ranged (#d4a05a), Caster (#b45ad4)
-
-**Semantic Tokens:**
-- Membership: `text-membership-{owner|lead|member|viewer|linked}`
-- Materials: `text-material-{twine|glaze|solvent|tomestone}`
-- Status: `status-{success|warning|error|info}`
-
-**Disabled:** `opacity-50 cursor-not-allowed`
-
-**Modal:** Use `<div>` not native `<dialog>` (pointer event issues)
-
----
-
-## What NOT To Do
-
-1. Don't use sticky/fixed content panels - Use tab navigation (main header is sticky, that's fine)
-2. Don't require modals for quick edits - Use inline editing
-3. Don't use narrow containers - Use wide layout (120rem)
-4. Don't mix display order and priority order - They're separate
-5. Don't track weapon as either raid OR tome - BiS is always raid; tome is interim
-6. **Don't say "group" when referring to the roster/static** - Use "static" in user-facing text (code vars like `groupId` are fine)
-
----
+1. No sticky/fixed content panels — use tab navigation (the sticky main header is fine).
+2. No modals for quick edits — inline editing.
+3. No narrow containers — wide layout (120rem).
+4. Never mix display order and priority order — they are separate.
+5. Never track the weapon as raid OR tome.
+6. Say "static", never "group", in user-facing text (`groupId` in code is fine).
 
 ## CI/CD
 
-PRs to main run: `build` (`tsc -b && vite build`), `lint`, `check:design-system:strict`, `test`. All must pass.
+PRs to main run `build` (`tsc -b && vite build` — **stricter than `tsc --noEmit`; always run `pnpm build` before pushing**), `lint`, `check:design-system:strict`, `test`. **Invoke the `pr-checklist` skill before opening or finalizing any PR** — it carries the release-note rules, the fork-PR guard, the screenshot budget, draft-first PRs, and why a green `claude-review` check is not a review. Budget: under ~1,500 changed lines per PR; anything bigger gets sliced or an explicit mega-PR protocol (staged review, planned soak, stated reason it cannot be split).
 
-> **⚠️ `tsc --noEmit` ≠ `tsc -b`** — The build script runs `tsc -b` (project build mode), which is stricter than `tsc --noEmit`. Running `tsc --noEmit` locally will NOT catch all the same errors CI catches. Always run `pnpm build` before pushing to confirm the build is clean.
+## Agent roster (model × effort)
 
-**Before opening or finalizing any PR, invoke the `pr-checklist` skill** (`.claude/skills/pr-checklist/SKILL.md`). It carries the CI-enforced rules that used to live here: the `releaseNotes.ts` entry requirement (internal vs public, `CURRENT_VERSION`, `pr`/`prTitle` over `commits`), the GitHub Actions fork-PR guard, and the pre-PR audit checklist.
+Project agents live in `.claude/agents/`. **Name the agent (or pass `model:`) on every dispatch** — an omitted model or effort inherits the session's. Effort goes where a wrong call cascades (plan, review, adjudication), not on the mechanical middle.
 
-### PR size budget
+| Stage | Who | Model / effort |
+|-------|-----|----------------|
+| Brainstorm → spec → plan | main session | fable · xhigh (`/effort`), drop to high once the plan is vetted; stays in-session |
+| Plan-vet / change-vet | `xivrp-director` | opus · xhigh — a different model from controller + reviewer on purpose; read-only |
+| Implement (default) | `xivrp-implementer` | sonnet · high |
+| Implement (transcription / sweep) | `xivrp-implementer` + `model: haiku` on the call | haiku — only when the plan text contains the complete code, or for grep/rename sweeps |
+| Implement (riskiest task, fix-loop round 4–5) | `xivrp-implementer-deep` | opus · xhigh; `model: fable` on the call for a slice's single riskiest task |
+| Whole-branch review (one per slice) | `redesign-reviewer` | fable · xhigh, never downgraded; task-scoped only for the plan's riskiest task; re-review a fix wave's diff only |
+| Contested finding / adjudication | main session | bump to xhigh for the one decision, then drop back |
 
-Target **under ~1,500 changed lines** per PR. History shows why: 27% of past PRs exceeded 5,000 lines, which defeats bot review (Copilot caps at 300 files; this repo's only reviewers are bots + self) and every mega-merge (#161, #174) was followed within 24h by a dedicated remediation PR. Anything bigger gets sliced, or gets an explicit mega-PR protocol: staged review, planned post-merge soak, and a stated reason it can't be split.
+### Slice loop (ruled 2026-09-23, PR #270 — overrides the SDD skill's per-task reviewer step)
 
-### A green review check is not a review
+Measured on D12 (#269): the pre-PR loop took ~12 working hours and 838 KB of artifacts while the PR merged in 2 h with CI and both bots at ~5 min. The loop, not the bots, is the cost. **Run a slice with the `slice-loop` skill** (`.claude/skills/slice-loop/` — its own scripts and dispatch templates); never load `superpowers:subagent-driven-development` in this repo.
 
-`claude-review` posted nothing for ~4.5 months while its check stayed green (fixed in #194/#195), and it still reports green while skipping in five cases: bot-authored PRs, **fork PRs** (no secrets/OIDC — an outside contributor's PR always shows a green skipped check and never gets a Claude review), the `skip-claude-review` label, a `[skip-review]`/`[skip-claude]`/`[no-review]` marker in the head commit message, and any PR that modifies `claude-code-review.yml` itself (the action's anti-tamper validation). Before treating a PR as reviewed, confirm an actual review comment exists from `claude[bot]` or Copilot — never trust the check mark alone.
+1. **3–4 tasks per slice, under ~1,500 lines.** Split at planning time.
+2. **One `redesign-reviewer` dispatch per slice** after every task has landed. Task-scoped review only for the riskiest task.
+3. **Minors never get a fix round.** Critical/Important → one fix wave, re-review that wave's diff only. Minors batch into the wave or the PR residuals.
+4. **Reports ≤ ~40 lines:** files changed, gate commands with pasted result lines, concerns.
+5. **Plan write-backs once, at slice end,** only for rulings that bind a future slice. No mid-slice "docs: plan" commits; no equivalent-mutant catalogues.
+6. **Mutation checks are ad hoc** on the riskiest task, executed and pasted. No battery script, no battery review loop.
+7. **Draft-first PRs:** push fixes to the draft, mark ready once. Bots run on `opened`/`ready_for_review`; `@claude review` re-requests.
+8. **Fresh session per slice; handoff ≤ ~5 KB** (open items + continuation prompt). History belongs in the merged PR body.
 
----
+## Docs and session continuity
 
-## Agent Roster (model × effort)
+[docs/README.md](./docs/README.md) is the map. Canonical: `PRODUCT_MODEL.md` (read first), `UI_COMPONENTS.md` (before UI work), `CODING_STANDARDS.md`, `DESIGN_SYSTEM_SUMMARY.md`, `GEARING_REFERENCE.md` + `GEARING_MATH.md`, `DOCS_STYLE_GUIDE.md`; `design/redesign/REDESIGN_SPEC.md` is historical — where it conflicts with `PRODUCT_MODEL.md` or the code, defer to those. Superseded plans and audits are in `docs/archive/`.
 
-Project agents live in `.claude/agents/`. **Always name the agent (or pass `model:`) on every dispatch** — an omitted model inherits the session's model, and an omitted effort inherits the session's effort. Effort goes where a wrong call cascades (plan, review, adjudication), not on the mechanical middle.
-
-| Stage | Who | Model | Effort | Notes |
-|-------|-----|-------|--------|-------|
-| Brainstorm → spec → plan | main session | fable | **xhigh** (`/effort`) | Stays in-session: a subagent planner loses the brainstorm context. Drop to **high** once the plan is vetted. |
-| Plan-vet / change-vet | `xivrp-director` | opus | xhigh (pinned) | Different model from controller + reviewer on purpose — an independent read. Read-only. |
-| Implement (default) | `xivrp-implementer` | sonnet | high (pinned) | Every plan task unless flagged. |
-| Implement (transcription / sweep) | `xivrp-implementer` + `model: haiku` on the call | haiku | high (the pin still applies; there is no per-call effort override) | Only when the plan text contains the complete code, or for grep-and-list / rename / suppression-audit sweeps. The per-call model beats the definition's model, not its effort. |
-| Implement (riskiest / fix-loop round 4-5) | `xivrp-implementer-deep` | opus | xhigh (pinned) | Aggregation, assembly, byte-for-byte, DnD, tricky hooks. Pass `model: fable` on the call for a slice's single riskiest task. |
-| Task review + whole-branch review | `redesign-reviewer` | fable | xhigh (pinned) | **Never downgraded to save cost.** Diff-scoped per task; full branch diff for the final review. |
-| Contested finding / adjudication | main session | fable | bump to **xhigh** | Bump, don't cruise: escalate the one decision, then drop back. |
-
-Fresh session per slice (continuation line atop the handoff) is the rule; long sessions replay full context every turn.
-
-## Additional Documentation
-
-See **[docs/README.md](./docs/README.md)** for the full doc map. Canonical set:
-
-### Source of truth
-- **[PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md)** - What the app is, the model, the roadmap **(READ FIRST)**
-- **[REDESIGN_SPEC.md](./design/redesign/REDESIGN_SPEC.md)** - IA, visual language, flows + mockups *(historical reference — where it conflicts with PRODUCT_MODEL.md or the code, defer to those)*
-
-### Design System
-- **[UI_COMPONENTS.md](./docs/UI_COMPONENTS.md)** - Component inventory **(READ BEFORE UI WORK)**
-- **[DESIGN_SYSTEM_SUMMARY.md](./docs/DESIGN_SYSTEM_SUMMARY.md)** - Integration quick reference
-- **[DESIGN_SYSTEM_ENFORCEMENT.md](./docs/DESIGN_SYSTEM_ENFORCEMENT.md)** - How it's enforced
-- **[/docs/design-system](http://localhost:5174/docs/design-system)** - Interactive visual reference (dev server)
-
-### Reference
-- **[CODING_STANDARDS.md](./docs/CODING_STANDARDS.md)** - Code style and patterns
-- **[GEARING_REFERENCE.md](./docs/GEARING_REFERENCE.md)** + **[GEARING_MATH.md](./docs/GEARING_MATH.md)** - FFXIV gearing data
-- **[DOCS_STYLE_GUIDE.md](./docs/DOCS_STYLE_GUIDE.md)** - In-app user-docs style guide
-- **`frontend/src/data/releaseNotes.ts`** - Changelog (CI-enforced)
-- **[docs/archive/](./docs/archive/)** - Superseded planning, audit, and session docs
-
----
-
-## Context Management
-
-**Low Context (~15-20% remaining):** Summarize progress and next steps for the user; reference specific file paths.
-
-**Session Continuity:** Capture decisions and discoveries; keep `docs/PRODUCT_MODEL.md` current if the model evolves. **`SESSION_HANDOFF.md` (repo root) is where a fresh session starts** — read it before picking up any in-flight work, and rewrite it at session end. It is a **local working file, git-ignored and never committed**: it changes every session, and routing each update through a docs-only PR cost far more than the file is worth. (It was briefly tracked on `main` in #255/#256; that ruling is reversed.) Because it is untracked, it exists only in a working checkout — a fresh clone starts from `docs/PRODUCT_MODEL.md` and the merged PR bodies instead.
+`SESSION_HANDOFF.md` (repo root, git-ignored, never committed) is where a fresh session starts: read it before picking up in-flight work and rewrite it at session end. A fresh clone starts from `docs/PRODUCT_MODEL.md` and merged PR bodies. Keep `PRODUCT_MODEL.md` current if the model evolves.

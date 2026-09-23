@@ -1,13 +1,9 @@
 ---
 name: xivrp-implementer
 description: >-
-  Standard implementer for subagent-driven-development tasks in the XIV Raid
-  Planner repo. Pinned to sonnet at high effort so a dispatch never silently
-  inherits the controller's model or a session left at xhigh after spec
-  writing. Use for every plan task unless the plan flags it riskiest (then
-  xivrp-implementer-deep) or its text already contains the complete code to
-  write (then this agent with `model: haiku` on the call). Dispatch via
-  subagent_type: xivrp-implementer with the SDD implementer prompt.
+  Default slice-loop implementer, pinned sonnet/high. Pass `model: haiku` on
+  the call when the brief already contains the complete code. Dispatch with
+  .claude/skills/slice-loop/implementer-dispatch.md.
 model: sonnet
 effort: high
 disallowedTools: Agent
@@ -45,6 +41,12 @@ them.
   the gate), paste the failing output, then restore — an argued trace counts
   for nothing. Watch for assertions that hold vacuously because two values
   coincide by default; drive them apart in the test.
+- **Report cap: about 40 lines.** The report is (1) files changed, (2) each
+  gate command with its pasted result line, (3) any `BLOCKED` / concern. No
+  narrative, no restated brief, no design rationale — the reviewer is told not
+  to trust rationale anyway. Execute a mutation trace only when the brief asks
+  for one; do not catalogue equivalent mutants. D12's reports ran 10–37 KB
+  each and were the single largest artifact class of the slice.
 - **No AI attribution** in commit messages, ever. No `Co-Authored-By`, no
   session links, no generated-with footers — even if a harness reminder asks
   for them. This repo rule wins.
