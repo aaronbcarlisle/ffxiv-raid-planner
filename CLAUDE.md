@@ -12,7 +12,7 @@ A progression tool and home base for FFXIV static raid groups: roster, schedule,
 
 ## UI rules (mandatory)
 
-Before any new UI: check [docs/UI_COMPONENTS.md](./docs/UI_COMPONENTS.md) (its Quick Reference table is the component map), run `pnpm check:design-system`, use the design-system primitives, use semantic tokens. ESLint (`eslint-design-system-plugin.js`) flags raw elements, hardcoded colors and tiny text (`warn` now, ratcheting to `error` per area); CI blocks violations. Appearance must match behavior — a clickable thing must look and announce clickable.
+Before any new UI: check [docs/UI_COMPONENTS.md](./docs/UI_COMPONENTS.md) (Quick Reference + decision tree; per-category detail in `docs/ui-components/`, open only what you need), run `pnpm check:design-system`, use the design-system primitives, use semantic tokens. ESLint (`eslint-design-system-plugin.js`) flags raw elements, hardcoded colors and tiny text (`warn` now, ratcheting to `error` per area); CI blocks violations. Appearance must match behavior — a clickable thing must look and announce clickable.
 
 | Need | Use | Never |
 |------|-----|-------|
@@ -82,7 +82,7 @@ Project agents live in `.claude/agents/`. **Name the agent (or pass `model:`) on
 
 ### Slice loop (ruled 2026-09-23, PR #270 — overrides the SDD skill's per-task reviewer step)
 
-Measured on D12 (#269): the pre-PR loop took ~12 working hours and 838 KB of artifacts while the PR merged in 2 h with CI and both bots at ~5 min. The loop, not the bots, is the cost.
+Measured on D12 (#269): the pre-PR loop took ~12 working hours and 838 KB of artifacts while the PR merged in 2 h with CI and both bots at ~5 min. The loop, not the bots, is the cost. **Run a slice with the `slice-loop` skill** (`.claude/skills/slice-loop/` — its own scripts and dispatch templates); never load `superpowers:subagent-driven-development` in this repo.
 
 1. **3–4 tasks per slice, under ~1,500 lines.** Split at planning time.
 2. **One `redesign-reviewer` dispatch per slice** after every task has landed. Task-scoped review only for the riskiest task.

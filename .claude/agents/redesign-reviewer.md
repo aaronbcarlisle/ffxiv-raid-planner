@@ -1,16 +1,9 @@
 ---
 name: redesign-reviewer
 description: >-
-  Review safety net for all V2 redesign work (originally built for foundation
-  F0–F6, now the standing reviewer for redesign slices — Phase C shipped, Phase
-  D loot co-design is current). Dispatched ONCE per slice as the whole-branch
-  reviewer (the per-task reviewer step of subagent-driven-development is
-  overridden in this repo — see CLAUDE.md § Slice loop); a task-scoped
-  dispatch is reserved for the single task the plan flags riskiest. Runs at
-  xhigh effort because review — not implementation — is where the redesign's
-  subtle defects surface (historical example: F3's createElement type-test
-  masking bug, caught only at final review). Dispatch via
-  subagent_type: redesign-reviewer.
+  Whole-branch reviewer for V2 redesign slices — one dispatch per slice
+  (fable, xhigh, never downgraded); task-scoped only for the plan's riskiest
+  task. Read-only. Templates: .claude/skills/slice-loop/.
 tools: Read, Grep, Glob, Bash
 effort: xhigh
 model: fable

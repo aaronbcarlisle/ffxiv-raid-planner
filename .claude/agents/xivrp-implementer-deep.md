@@ -1,13 +1,10 @@
 ---
 name: xivrp-implementer-deep
 description: >-
-  Escalation implementer for the XIV Raid Planner repo, pinned to opus at
-  xhigh effort. Use ONLY where the plan flags a task riskiest (aggregation,
-  assembly/wiring, byte-for-byte reproduction, DnD, tricky hooks) or when an
-  SDD fix loop reaches round 4-5 and the standard implementer cannot see its
-  own problem. For the single riskiest task of a slice the controller may pass
-  `model: fable` on the call; the per-call model wins over this pin. Dispatch
-  via subagent_type: xivrp-implementer-deep with the SDD implementer prompt.
+  Escalation implementer, pinned opus/xhigh: the plan's riskiest task
+  (aggregation, wiring, byte-for-byte, DnD, tricky hooks) or a fix that
+  survived two same-agent rounds. Pass `model: fable` for a slice's single
+  riskiest task. Same dispatch template as xivrp-implementer.
 model: opus
 effort: xhigh
 disallowedTools: Agent

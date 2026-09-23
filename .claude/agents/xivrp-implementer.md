@@ -1,13 +1,9 @@
 ---
 name: xivrp-implementer
 description: >-
-  Standard implementer for subagent-driven-development tasks in the XIV Raid
-  Planner repo. Pinned to sonnet at high effort so a dispatch never silently
-  inherits the controller's model or a session left at xhigh after spec
-  writing. Use for every plan task unless the plan flags it riskiest (then
-  xivrp-implementer-deep) or its text already contains the complete code to
-  write (then this agent with `model: haiku` on the call). Dispatch via
-  subagent_type: xivrp-implementer with the SDD implementer prompt.
+  Default slice-loop implementer, pinned sonnet/high. Pass `model: haiku` on
+  the call when the brief already contains the complete code. Dispatch with
+  .claude/skills/slice-loop/implementer-dispatch.md.
 model: sonnet
 effort: high
 disallowedTools: Agent

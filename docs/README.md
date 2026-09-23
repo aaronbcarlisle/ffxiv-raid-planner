@@ -15,7 +15,7 @@ This folder is intentionally small. It holds the **source of truth** for what th
 
 | Doc | What it is |
 |---|---|
-| [UI_COMPONENTS.md](./UI_COMPONENTS.md) | Component inventory — **read before any UI work**. |
+| [UI_COMPONENTS.md](./UI_COMPONENTS.md) | Component inventory — **read before any UI work**. Quick Reference + decision tree; per-category detail in [`ui-components/`](./ui-components/). |
 | [DESIGN_SYSTEM_SUMMARY.md](./DESIGN_SYSTEM_SUMMARY.md) | Design-system integration quick reference. |
 | [DESIGN_SYSTEM_ENFORCEMENT.md](./DESIGN_SYSTEM_ENFORCEMENT.md) | How the design system is enforced (lint, CI). |
 | [audits/enforcement.md](./audits/enforcement.md) | The current enforcement surface. |
