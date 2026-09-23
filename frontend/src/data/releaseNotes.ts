@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.29',
+    date: '2026-09-23T15:50:00Z',
+    title: 'Phase D slice D13 — Team Summary restored on static Home (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'Team Summary is back, on the static Home page',
+        description:
+          'V2 preview: the per-player Team Summary from the classic Summary tab returns as a Home module — gear progress, books I–IV and upgrade materials as have/needed, Main/Alt/Sub chips with a "Mains only" filter, the four totals tiles and the Team Total row. A parity test renders it beside the classic table from the same data and requires every number to match. Shown to static members; the phone layout comes with the dedicated mobile pass.',
+        pr: 271,
+        prTitle: 'feat(v2): D13 — Team Summary restored on static Home (D-42)',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.28',
     date: '2026-09-23T10:00:00Z',
     title: 'Phase D slice D12 — the jumps: slot-level Alt+Click destinations (v2 preview)',
