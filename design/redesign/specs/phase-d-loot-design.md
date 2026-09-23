@@ -789,6 +789,34 @@ kebab exists so every modifier action has a keyboard and AT route; right-click i
 - Out of D6a, ruled for **D6b**: the teaching tooltip, the recipient-badge hover-`×`, the count bar
   + legend, and the floor-header "Log floor" kebab (R-23/R-25/R-27's own build notes land there).
 
+**Build note (D12, 2026-09-23) — R-18 note 2's destination shipped: `RosterGearTable` gains the
+anchor/pulse contract.** `components/roster/rosterLedgerJumps.ts` (already the C7/D-05 home for the
+forward "which ledger entry does this slot point at" direction) gains the inverse: `JumpAnchorSlot`
+(`GearSlot | 'tome_weapon'`), `isJumpAnchorSlot` (the `?slot=` param's validator), `gearRowDomId(playerId,
+slot)` → `` `gear-row-${playerId}-${slot}` `` (legacy's own shape, `GearTable.tsx:325,664`), and
+`jumpAnchorSlotOf(item: HistoryItem)` → the anchor a ledger entry lands on, `null` for a
+`slotAugmented`-less entry (note 3's universal-tomestone case, unchanged). `RosterGearTable.tsx` renders
+`id={gearRowDomId(playerId, slot)}` on every main gear row and a second one on the `tome_weapon` sub-row,
+and applies `.highlight-pulse` to whichever row matches its new `highlightedSlot` prop. `Roster.tsx` owns
+both halves of the jump-in state (`highlightedPlayerId`/`highlightedSlot`, resolved from `?player=`/`?slot=`
+on mount), the row scroll (`components/roster/gearRowScroll.ts` — a v2-local poll-then-recenter scroller
+with the player-card fallback, **R-D12-J**: a deliberate FORK of `useViewNavigation.ts:25-52`'s
+`scrollIntoViewWhenReady`, not an extraction — that helper is module-private inside a hook V1 consumes),
+and the 2500 ms clear (its own timer, matching `GroupViewContent`'s `?player=` timer's cadence without
+sharing its code). The `?slot=` **writer** is `Loot.tsx`'s existing `jumpToRecipient` (`:763-769`): it
+now takes an optional `slot` and sets `?slot=` when `jumpAnchorSlotOf` resolves a row, deleting it
+otherwise — reached from `LogWeekGrid.tsx`'s Alt+Click (`:397`) and kebab (`:742`) and
+`LootHistoryTable.tsx`'s equivalents (`:516`, `:723`) — closing the loop on the D6a build note's
+"stated interim" paragraph above (`:774-780`, "retargets the same callback").
+
+**Named delta against `useViewNavigation.ts:125`:** legacy normalizes a `tome_weapon` material entry to
+the `weapon` row before scrolling to it. v2 does **not** — `jumpAnchorSlotOf` keeps it on its own
+`gear-row-{playerId}-tome_weapon` anchor (**R-D12-E**, user-ruled 2026-09-22), because the tome sub-row's
+own jump already owns that entry (C4) and normalizing it would pulse a row about the *raid* weapon for a
+question about the *tome* one. **Both** the card and the row pulse together (**R-D12-G**, legacy parity —
+`useViewNavigation.ts:131-132`). Full rulings list at the end of the R-28 build note below
+(R-D12-A…J).
+
 ### R-19 · Floor colour is stated **once**, on the section header
 
 The header carries the floor-coloured accent bar **and keeps its `Floor N · Book {I–IV}` metadata line**
@@ -1021,6 +1049,79 @@ the **History row** when it is older, and on the **Books row** for books.
 *Why:* `systems-flow-map.md:175` already ruled the destination splits post-D-30; R-14 retargeted only
 the books half. `RosterCard.tsx:281-297` still hard-codes `lview=history` for every loot and material
 jump, so the loot half is unbuilt.
+
+**Build note (D12, 2026-09-23) — R-28 is built, as one symmetric rule, not two asymmetric ones.**
+`entryJumpView(entryWeek, displayedWeek)` (`rosterLedgerJumps.ts`) returns `'log'` iff the two weeks
+are equal and `'history'` for **every** other case — including a week *newer* than the displayed one,
+which R-28's prose above never named (**R-D12-A**, user-ruled 2026-09-22: "an entry newer than the
+displayed week is equally absent from that week's grid; one symmetric rule beats two asymmetric
+ones"). "The displayed week" is resolved with `useLogWeek`'s **own** exported `resolveLogWeekOverride`
+(`components/loot/useLogWeek.ts:239` — a rename of the former `resolveOverride`, no behaviour change)
+— never re-derived — because `Loot` genuinely **unmounts** on a tab switch (`GroupViewContent.tsx:982`'s
+gear branch is keyed on `pageMode` inside `AnimatePresence mode="wait"` (`:888-890`), so it is torn
+down after its exit animation rather than kept mounted behind `className="hidden"` like the roster
+sub-views (`:973`)), so the mount-only `?week=` read fires fresh on every roster→Loot jump and
+the two sides can never disagree (**R-D12-B**). `RosterCard.jumpToEntry` (`:321-339`) computes
+`displayedWeek = override ?? (clockSettled ? clockCurrentWeek : null)`, where
+`clockSettled = Math.max(clockMaxWeek, clockCurrentWeek) > 1`, and never writes `?week=` itself or calls
+`setWeek` (**R-D12-D**) — writing one would be either redundant (the Log branch only routes there when
+it already matches) or would arm the disclosed legacy-History `?week=`-seeding cohort `Loot.tsx`'s own
+header discloses.
+
+**Four disclosed residuals, named rather than fixed this slice:**
+
+1. **R-D12-C — a tier genuinely on week 1 with no stored week routes every jump to History.**
+   ⚠ Corrected at plan-vet: the obvious rationale (a `setWeek` clobber) is **false** —
+   `Loot.tsx:901-905`'s F1/F2 guards (`clockCeiling` / `unresolvedByClock`) already make that
+   unreachable (`unresolvedByClock` covers exactly this case). The real failure is a **dead pulse**:
+   with `override === null` the Log would mount at
+   `week = clock.currentWeek` (provisionally `1`), `fetchCurrentWeek` then lands and `logWeek.week`
+   walks to the real current week while the highlight effect's deps (`[highlightId, highlightKind]`)
+   never move — so `displayedWeek: null` routes to History instead, which is always a correct
+   destination since it has no week axis. **Unit- and mutation-proven only, not walked live** — the
+   clock is already warm on the roster tab (`Roster.tsx:262` and `GroupViewContent.tsx:325-328` both
+   call `fetchCurrentWeek` for `pageMode === 'roster'`), so the provisional window is sub-second and
+   cannot be held open by hand.
+2. **The ring one-to-many/one-to-first asymmetry.** A generic `itemSlot: 'ring'` loot entry anchors to
+   **`ring1`** inbound (**R-D12-H**, legacy parity, `useViewNavigation.ts:126`) — but `findLootEntry`'s
+   own ring fallback lets **either** `ring1` or `ring2` claim a generic entry outbound. One-to-many
+   outbound, one-to-first inbound; inherent to the data, since nothing on a generic-ring entry
+   distinguishes the two ring slots.
+3. **R-D12-F cause 4 — Board view (`rview=board`) renders no anchor at all,** not even the card.
+   Pre-existing since C7/D6a (the shipped `?player=` card jump already dead-ends there); user-ruled
+   out of scope 2026-09-22; pinned by a test in `Roster.test.tsx` rather than fixed. (R-D12-F's other
+   three causes — `slotAugmented === null`, compact density, a non-pursuing player's absent tome
+   sub-row — all fall back to the card, which is already wired from `?player=` and costs nothing new.)
+4. **R-D12-F cause 5 — a folded light party or hidden substitutes hides the card entirely.**
+   `RosterCards.tsx:457`'s `isFolded` (G1/G2/Unassigned/Subs, both grouped and flat views) and
+   `:466,528-530`'s `subsHidden` both skip the section's card render outright when the section is
+   collapsed or the substitutes are hidden, so `player-card-{id}` AND `gear-row-*` are both absent —
+   the same dead-end as cause 4 (Board view), not a fallback to the card. Pre-existing for `?player=`
+   since C7; found at PR #269 final review. A later slice may auto-unfold the section on landing.
+
+**Rulings taken this slice (R-D12-A…J, full reasoning in
+`plans/2026-09-22-phase-d12-the-jumps.md` §2):**
+
+- **R-D12-A** — the split is symmetric: displayed week → Log, every other week (older **or** newer) →
+  History. Do not "unify" with R-32/R-D11-A's "View week N in Log" — that item's own label discloses
+  the week change it makes; a gear-slot jump promises no such thing.
+- **R-D12-B** — the displayed week comes from `useLogWeek`'s own `resolveLogWeekOverride`, never
+  re-derived; sound because `Loot` unmounts on every tab switch.
+- **R-D12-C** — a `null` displayed week (no concrete override, an unsettled clock) routes to History;
+  disclosed residual above.
+- **R-D12-D** — the jump writes no `?week=` and never calls `setWeek`.
+- **R-D12-E** — a `tome_weapon` material entry anchors to its own sub-row, never the weapon row — a
+  named delta against `useViewNavigation.ts:125`.
+- **R-D12-F** — an anchor slot that doesn't resolve to a rendered row falls back to the card; five
+  causes, cause 4 (Board view) and cause 5 (a folded/hidden roster section) named residuals,
+  disclosed above.
+- **R-D12-G** — both the card and the slot row pulse together (legacy parity).
+- **R-D12-H** — a generic `ring` entry anchors to `ring1`; the ring asymmetry above.
+- **R-D12-I** — `?slot=` is stripped by `GroupViewContent`'s existing `?player=` timer
+  (`pages/GroupViewContent.tsx:265`), not a second writer in `Roster.tsx` — the slice's one shared-file
+  hunk, +5 (4 comment + 1 executable).
+- **R-D12-J** — the row scroll (`components/roster/gearRowScroll.ts`) is a v2-local fork of
+  `useViewNavigation.ts:25-52`'s `scrollIntoViewWhenReady`, not an extraction of it.
 
 ---
 

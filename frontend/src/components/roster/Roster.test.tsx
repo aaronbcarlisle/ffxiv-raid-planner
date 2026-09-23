@@ -10,6 +10,7 @@ import { render, screen, act, fireEvent, waitFor } from '@testing-library/react'
 import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import type { SnapshotPlayer, StaticGroup, TierSnapshot } from '../../types';
+import type { RosterCardProps } from './RosterCard';
 
 // ── Wiring mocks ──────────────────────────────────────────────────────────────
 const setGroupView = vi.fn();
@@ -93,11 +94,17 @@ vi.mock('../../pages/groupActionsContext', () => ({
 
 // RosterCard is heavy (kebab, modals, inline edits) — stub it so we only assert
 // the assembly's card-per-player contract.
-vi.mock('./RosterCard', () => ({
-  RosterCard: ({ player, actions }: {
-    player: SnapshotPlayer;
-    actions: { onCopyUrl?: () => void; onPaste?: () => void };
-  }) => (
+//
+// D12: that stub renders no gear table, so a `#gear-row-*` query underneath it
+// could only ever be null — every row assertion in this file would pass
+// vacuously. The mock is therefore a SWITCH: the D12 describe (and only it)
+// flips `useRealRosterCard`, mounting the genuine card and with it the genuine
+// `RosterGearTable` anchors, so the `?slot=` chain is asserted against real DOM
+// ids rather than against a stub that was told what to render.
+let useRealRosterCard = false;
+vi.mock('./RosterCard', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./RosterCard')>();
+  const StubCard = ({ player, actions }: RosterCardProps) => (
     <div data-testid="roster-card">
       {player.name}
       <button data-testid={`copy-url-${player.id}`} onClick={() => actions.onCopyUrl?.()}>
@@ -107,8 +114,12 @@ vi.mock('./RosterCard', () => ({
         paste
       </button>
     </div>
-  ),
-}));
+  );
+  return {
+    RosterCard: (props: RosterCardProps) =>
+      useRealRosterCard ? <actual.RosterCard {...props} /> : <StubCard {...props} />,
+  };
+});
 
 // CharacterManageBridge pulls the character panel + its stores — stub it.
 const charBridgeProps = vi.fn();
@@ -120,6 +131,7 @@ vi.mock('./CharacterManageBridge', () => ({
 }));
 
 import { Roster } from './Roster';
+import { ROSTER_DENSITY_KEY } from './useRosterDensity';
 import { TooltipProvider } from '../primitives';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useToastStore } from '../../stores/toastStore';
@@ -643,5 +655,219 @@ describe('Roster — C6 toolbar restorations', () => {
     expect(JSON.parse(localStorage.getItem('v2-roster-collapse-g1-t1') ?? '{}')).toEqual({
       g1: true,
     });
+  });
+});
+
+// ── D12: the `?slot=` deep link (R-18's destination, R-D12-F/G/I) ────────────
+// The gear→ledger→gear round trip lands on a ROW, not just the card. Roster
+// validates `?slot=` through `isJumpAnchorSlot`, holds it as local state beside
+// the card highlight, and forwards it to the highlighted card alone.
+//
+// Two pieces of scaffolding are load-bearing here and neither is a prop:
+//   1. `useRealRosterCard` (the mock switch above) — the file's default stub
+//      renders no gear table, so every `#gear-row-*` query would be null-vs-null.
+//   2. `ROSTER_DENSITY_KEY` — density is seeded from localStorage by
+//      `useRosterDensity`'s `useState(readStoredDensity)`, so compact (the
+//      default) mounts the pip strip and no gear table at all.
+// Remove either and the row assertions below go green while proving nothing.
+describe('Roster — D12 the ?slot= deep link', () => {
+  const players = [
+    makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
+    makePlayer({ id: 'p2', name: 'Tank Two', position: 'T2' }),
+  ];
+
+  // jsdom implements no scrollIntoView, and the real card's BiS popovers want a
+  // ResizeObserver. Task 2's own suite stubs scrollIntoView per element; here
+  // the elements come from a real render, so the prototype is the only seam.
+  let realScrollIntoView: typeof Element.prototype.scrollIntoView;
+
+  beforeEach(() => {
+    useRealRosterCard = true;
+    // C6's fold tests persist `v2-roster-collapse-g1-t1` for this very
+    // group+tier; inherited, Light Party 1 stays folded and NO card renders
+    // at all, so every assertion below would fail on a missing card rather
+    // than on the thing it is testing.
+    localStorage.clear();
+    localStorage.setItem(ROSTER_DENSITY_KEY, 'expanded');
+    realScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = vi.fn();
+    vi.stubGlobal('ResizeObserver', class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
+  });
+
+  afterEach(() => {
+    useRealRosterCard = false;
+    localStorage.removeItem(ROSTER_DENSITY_KEY);
+    Element.prototype.scrollIntoView = realScrollIntoView;
+    vi.unstubAllGlobals();
+  });
+
+  it('mounts the real gear table at all (guards the mock switch + the density seed)', async () => {
+    const { container } = renderRosterAtUrl(makeTier(players), ['/group/DEVTST?tab=roster']);
+    await waitFor(() => expect(container.querySelector('#gear-row-p1-head')).not.toBeNull());
+  });
+
+  it('pulses the named gear row when ?player= and ?slot= both resolve', async () => {
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?tab=roster&player=p1&slot=head'],
+    );
+    await waitFor(() => {
+      expect(container.querySelector('#gear-row-p1-head')?.className).toContain('highlight-pulse');
+    });
+  });
+
+  it('routes the row scroll at the row the param named', async () => {
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?tab=roster&player=p1&slot=head'],
+    );
+    await waitFor(() => expect(container.querySelector('#gear-row-p1-head')).not.toBeNull());
+    const row = container.querySelector('#gear-row-p1-head') as HTMLElement;
+    const wrongRow = container.querySelector('#gear-row-p1-ring2') as HTMLElement;
+
+    // `scrollIntoView` is stubbed on the PROTOTYPE, so `row.scrollIntoView` is
+    // not a per-element spy: `toHaveBeenCalled()` on it is satisfied by a
+    // scroll of ANY element, the wrong row included. `mock.contexts` records
+    // each call's receiver, which is the only thing that can tell the row the
+    // param named from some other row of the same card.
+    const scrollSpy = vi.mocked(Element.prototype.scrollIntoView);
+    await waitFor(() => expect(scrollSpy.mock.contexts).toContain(row));
+    expect(scrollSpy.mock.contexts).not.toContain(wrongRow);
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+  });
+
+  // R-D12-G: BOTH pulse — the slot highlight never replaces the card highlight.
+  it('pulses the card as well as the row', async () => {
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?tab=roster&player=p1&slot=head'],
+    );
+    await waitFor(() => {
+      expect(container.querySelector('#player-card-p1')?.className).toContain('highlight-pulse');
+    });
+  });
+
+  // `?slot=` reaches `gearRowDomId`, which builds a global DOM id — an
+  // unvalidated value would be handed straight to `getElementById`.
+  it('ignores a slot that is not an anchor slot', async () => {
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?tab=roster&player=p1&slot=__proto__'],
+    );
+    await waitFor(() => {
+      expect(container.querySelector('#player-card-p1')?.className).toContain('highlight-pulse');
+    });
+    // The row is THERE (expanded density) — it just must not pulse, so the
+    // absence below is a real absence and not a missing gear table.
+    expect(container.querySelector('#gear-row-p1-head')).not.toBeNull();
+    expect(container.querySelector('.highlight-pulse[id^="gear-row-"]')).toBeNull();
+    // Validation is what makes this a no-op rather than a lookup. A cast in
+    // place of `isJumpAnchorSlot` would leave the pulse absent all the same
+    // (no row equals "__proto__"), so the pulse alone cannot tell the two
+    // apart — but the scroll can: an unvalidated slot still reaches
+    // `scrollToGearRow`, misses the row, and scrolls the CARD from here, a
+    // second scroll competing with `GroupViewContent`'s own.
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('applies the slot pulse to the named player only', async () => {
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?tab=roster&player=p1&slot=head'],
+    );
+    await waitFor(() => {
+      expect(container.querySelector('#gear-row-p1-head')?.className).toContain('highlight-pulse');
+    });
+    expect(container.querySelector('#gear-row-p2-head')).not.toBeNull();
+    expect(container.querySelector('#gear-row-p2-head')?.className).not.toContain('highlight-pulse');
+  });
+
+  it('clears the slot pulse after 2500ms, alongside the card pulse', () => {
+    vi.useFakeTimers();
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?tab=roster&player=p1&slot=head'],
+    );
+
+    expect(container.querySelector('#gear-row-p1-head')).toHaveClass('highlight-pulse');
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    expect(container.querySelector('#gear-row-p1-head')).not.toHaveClass('highlight-pulse');
+    expect(container.querySelector('#player-card-p1')).not.toHaveClass('highlight-pulse');
+    // Roster still must not touch the URL — GroupViewContent owns the strip,
+    // and a copy-paste of it into Roster's clear timer has to fail here.
+    expect(screen.getByTestId('loc').dataset.search).toContain('slot=head');
+  });
+
+  // R-D12-F cause 2: compact density mounts no gear table, so there is no row
+  // to land on — the card pulse (and Task 2's card fallback) is the outcome.
+  it('falls back to the card pulse in compact density', async () => {
+    localStorage.setItem(ROSTER_DENSITY_KEY, 'compact');
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?tab=roster&player=p1&slot=head'],
+    );
+    await waitFor(() => {
+      expect(container.querySelector('#player-card-p1')?.className).toContain('highlight-pulse');
+    });
+    expect(container.querySelector('#gear-row-p1-head')).toBeNull();
+  });
+
+  // R-D12-F cause 4, the NAMED RESIDUAL (pre-existing from C7/D6a) — pinned so
+  // it cannot silently change: Board view renders neither anchor.
+  it('lands nowhere in Board view (named residual)', async () => {
+    const { container } = renderRosterAtUrl(
+      makeTier(players),
+      ['/group/DEVTST?tab=roster&rview=board&player=p1&slot=head'],
+    );
+    await waitFor(() => expect(container.querySelector('table')).not.toBeNull());
+    expect(container.querySelector('#player-card-p1')).toBeNull();
+    expect(container.querySelector('#gear-row-p1-head')).toBeNull();
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
+  });
+});
+
+// D12 R4 — the stale-slot leak in `handleCopyUrl`. The URL is built from
+// `window.location.href`, so during the 2500ms window after a jump to p1 a copy
+// of p2's card link used to ship `?player=p2&slot=head` and pulse p2's head
+// row: a link that points somewhere its sender never did (the F-18 class).
+// Runs against the STUB card (it exposes the copy-url control), so the switch
+// above stays off here.
+describe('Roster — D12 a card link is a card target', () => {
+  // The seeded `?slot=` fires Roster's scroll effect, which lands on the card
+  // fallback — and jsdom implements no scrollIntoView.
+  let realScrollIntoView: typeof Element.prototype.scrollIntoView;
+  beforeEach(() => {
+    localStorage.clear();
+    realScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+  afterEach(() => {
+    Element.prototype.scrollIntoView = realScrollIntoView;
+  });
+
+  it("drops a stale ?slot= when copying another card's link", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    window.history.pushState({}, '', '/group/DEVTST?tab=roster&player=p1&slot=head');
+
+    renderRoster(makeTier([
+      makePlayer({ id: 'p1', name: 'Tank One', position: 'T1' }),
+      makePlayer({ id: 'p2', name: 'Tank Two', position: 'T2' }),
+    ]));
+
+    fireEvent.click(screen.getByTestId('copy-url-p2'));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    const copied = writeText.mock.calls[0][0] as string;
+    expect(copied).toContain('player=p2');
+    expect(copied).not.toContain('slot=');
   });
 });

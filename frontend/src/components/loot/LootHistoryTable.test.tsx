@@ -918,7 +918,8 @@ describe('LootHistoryTable', () => {
       const o = outlets();
       const resolvable = renderTable({ lootLog: [lootEntry], ...o });
       fireEvent.click(row('loot-entry-1'), { altKey: true });
-      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1');
+      // D12: the second arg is the entry's anchor slot — 'body' for `lootEntry`.
+      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1', 'body');
       expect(o.onEdit).not.toHaveBeenCalled();
       expect(o.onCopyLink).not.toHaveBeenCalled();
       resolvable.unmount();
@@ -935,6 +936,15 @@ describe('LootHistoryTable', () => {
       expect(ghost.onCopyLink).not.toHaveBeenCalled();
     });
 
+    // D12: the anchor slot rides beside the player id — a slot other than
+    // `lootEntry`'s default 'body' proves the value is DERIVED, not a fixed arg.
+    it("Alt+Click on a row passes the entry's anchor slot to the jump", () => {
+      const o = outlets();
+      renderTable({ lootLog: [makeLootEntry({ id: 1, itemSlot: 'legs' })], ...o });
+      fireEvent.click(row('loot-entry-1'), { altKey: true });
+      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1', 'legs');
+    });
+
     it('T-4: canEdit=false — a plain click and a plain Enter fire nothing; Shift and Alt still fire (R-D11-E)', () => {
       const o = outlets();
       renderTable({ lootLog: [lootEntry], canEdit: false, ...o });
@@ -949,7 +959,7 @@ describe('LootHistoryTable', () => {
       fireEvent.click(tr, { shiftKey: true });
       expect(o.onCopyLink).toHaveBeenCalledWith({ kind: 'loot', entry: lootEntry });
       fireEvent.click(tr, { altKey: true });
-      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1');
+      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1', 'body');
       expect(o.onEdit).not.toHaveBeenCalled();
     });
 
@@ -1023,7 +1033,7 @@ describe('LootHistoryTable', () => {
       fireEvent.keyDown(tr, { key: 'Enter', shiftKey: true });
       expect(o.onCopyLink).toHaveBeenCalledWith({ kind: 'loot', entry: lootEntry });
       fireEvent.keyDown(tr, { key: 'Enter', altKey: true });
-      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1');
+      expect(o.onJumpToPlayer).toHaveBeenCalledWith('p1', 'body');
       expect(fireEvent.keyDown(tr, { key: ' ' })).toBe(false);
       expect(o.onEdit).toHaveBeenCalledTimes(2);
 
@@ -1205,6 +1215,18 @@ describe('LootHistoryTable', () => {
       fireEvent.contextMenu(document.getElementById('loot-entry-7')!);
       expect(menuLabels()).toEqual(['Copy link', 'View week 2 in Log']);
       expect(screen.queryByRole('menuitem', { name: /Jump to/ })).not.toBeInTheDocument();
+    });
+
+    // D12: the menu's "Jump to" item mirrors the row's own Alt+Click — same
+    // anchor slot. A material entry whose `slotAugmented` IS a gear slot
+    // (unlike the default universal-tomestone `materialEntry` fixture above)
+    // proves the menu resolves it through `jumpAnchorSlotOf`, not a fixed arg.
+    it('the menu Jump item passes the same slot', () => {
+      const onJumpToPlayer = vi.fn();
+      renderTable({ materialLog: [makeMaterialEntry({ id: 5, slotAugmented: 'tome_weapon' })], onJumpToPlayer });
+      fireEvent.contextMenu(document.getElementById('material-entry-5')!);
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Jump to Aria' }));
+      expect(onJumpToPlayer).toHaveBeenCalledWith('p1', 'tome_weapon');
     });
 
     it("T-14: View week N in Log fires onViewWeekInLog({kind, entry}) with the ROW's own week — two rows, two weeks (R-D11-A)", () => {

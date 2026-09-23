@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createElement, type ReactNode } from 'react';
 import { renderHook, act } from '@testing-library/react';
 import { MemoryRouter, useSearchParams, useNavigationType } from 'react-router-dom';
-import { useLogWeek, logWeekKey, CURRENT_WEEK_SENTINEL } from './useLogWeek';
+import { useLogWeek, logWeekKey, resolveLogWeekOverride, CURRENT_WEEK_SENTINEL } from './useLogWeek';
 import type { WeekClock } from '../../hooks/useWeekClock';
 
 const LEGACY_KEY = (groupId: string, tierId: string) => `history-week-${groupId}-${tierId}`;
@@ -563,5 +563,56 @@ describe('useLogWeek', () => {
       expect(() => act(() => result.current.followClock())).not.toThrow();
       expect(result.current.week).toBe(3);
     });
+  });
+});
+
+// ── D12 (R-D12-B): the resolver, exported ──
+// `RosterCard`'s entry jump routes by the week the Log WILL display, and asks
+// this function for it rather than re-deriving it. These pin the export's own
+// contract; the parity block pins that it is still the answer the hook gives.
+describe('resolveLogWeekOverride (exported for D12)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('is the same function the hook resolves with: ?week= wins', () => {
+    // Both storage keys hold OTHER weeks, so a 4 can only have come from the URL.
+    localStorage.setItem(logWeekKey('g1', 't1'), '2');
+    localStorage.setItem(LEGACY_KEY('g1', 't1'), '1');
+    expect(resolveLogWeekOverride('g1', 't1', '4')).toBe(4);
+  });
+
+  it("the 'current' sentinel resolves to null and never falls through to legacy", () => {
+    localStorage.setItem('v2-history-week-g1-t1', 'current');
+    localStorage.setItem('history-week-g1-t1', '9');
+    expect(resolveLogWeekOverride('g1', 't1', null)).toBeNull();
+  });
+
+  // R-D12-B's hidden precondition: `RosterCard` defaults `groupId`/`tierId`
+  // to '' — an unwired mount would skip storage and route by the clock alone.
+  it('never reads storage without BOTH ids (why the card must be wired with them)', () => {
+    localStorage.setItem(logWeekKey('g1', 't1'), '2');
+    expect(resolveLogWeekOverride('g1', '', null)).toBeNull();
+    expect(resolveLogWeekOverride('', 't1', null)).toBeNull();
+    expect(resolveLogWeekOverride('g1', 't1', null)).toBe(2);
+  });
+
+  // "Same function, same inputs, same answer": for every resolution branch the
+  // hook's first-resolve week is exactly the export's override, or the clock
+  // when the override is null. A hook that stopped resolving through it would
+  // drift here before it drifted in the app.
+  it.each([
+    ['?week= over both keys', '/?week=4', '2', '1'],
+    ['the v2 key over legacy', '/', '2', '1'],
+    ["the 'current' sentinel stops before legacy", '/', CURRENT_WEEK_SENTINEL, '9'],
+    ['legacy when the v2 key is absent', '/', null, '6'],
+    ['the clock when nothing is set', '/', null, null],
+  ])('parity with the hook: %s', (_label, path, v2, legacy) => {
+    if (v2 !== null) localStorage.setItem(logWeekKey('g1', 't1'), v2);
+    if (legacy !== null) localStorage.setItem(LEGACY_KEY('g1', 't1'), legacy);
+    const clock = makeClock({ currentWeek: 3 });
+    const { result } = setup(path, { groupId: 'g1', tierId: 't1', clock });
+    const urlWeek = new URL(path, 'http://localhost').searchParams.get('week');
+    expect(result.current.week).toBe(resolveLogWeekOverride('g1', 't1', urlWeek) ?? clock.currentWeek);
   });
 });

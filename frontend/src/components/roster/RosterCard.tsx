@@ -43,7 +43,14 @@ import { GearStatusCircle } from '../ui/GearStatusCircle';
 import { ItemHoverCard } from '../ui/ItemHoverCard';
 import { SafeAvatar } from '../ui/SafeAvatar';
 import { RosterGearTable } from './RosterGearTable';
-import { buildSlotJumpTargets, type JumpKind, type SlotJumpTargets } from './rosterLedgerJumps';
+import {
+  buildSlotJumpTargets,
+  entryJumpView,
+  type JumpAnchorSlot,
+  type JumpKind,
+  type SlotJumpTargets,
+} from './rosterLedgerJumps';
+import { resolveLogWeekOverride } from '../loot/useLogWeek';
 import { hasHoverData } from './gearHoverData';
 import { NowVsBisPanel } from './NowVsBisPanel';
 import { bisLinkTooltip, buildBisUrl } from './bisLinkMeta';
@@ -110,6 +117,13 @@ export interface RosterCardProps {
    * Defaults to compact (pre-C1 rendering).
    */
   density?: ViewMode;
+  /**
+   * D12: the gear row a ledger jump landed on, pulsed inside the expanded
+   * gear table. The grid forwards it to the highlighted card alone; in
+   * compact density there is no table to carry it and the card's own
+   * `?player=` pulse is the whole outcome (R-D12-F).
+   */
+  highlightedSlot?: JumpAnchorSlot | null;
   actions: RosterCardActions;
   // ── Forwarded straight to useRosterCardActions (sourced from tier/context by
   //    the grid/assembly — Tasks 6/10). Defaulted so the card renders standalone.
@@ -157,6 +171,7 @@ export function RosterCard({
   reorderMode,
   dragHandle,
   density = 'compact',
+  highlightedSlot = null,
   actions,
   groupId = '',
   tierId = '',
@@ -274,26 +289,67 @@ export function RosterCard({
   );
 
   // Jump = same-route URL params (the v2 nav pattern; Loot.tsx copyLink
-  // precedent): the Loot spine tab (PageMode 'gear') + its History sub-view +
-  // the highlight params LootHistoryTable consumes (scroll, pulse,
-  // self-clearing after 2.5s).
-  const [, setSearchParams] = useSearchParams();
+  // precedent): the Loot spine tab (PageMode 'gear') + its Log OR History
+  // sub-view (R-28's split, below) + the `entry`/`entryType` highlight params
+  // both views consume (scroll, pulse, self-clearing after 2.5s).
+  const [jumpParams, setSearchParams] = useSearchParams();
+  const clockCurrentWeek = useLootTrackingStore((s) => s.currentWeek);
+  const clockMaxWeek = useLootTrackingStore((s) => s.maxWeek);
+
+  // ── R-28 (D12): the entry jump SPLITS by week ──
+  // `lview=log` only when the entry sits in the week the Log will display;
+  // everything else — older AND newer (R-D12-A) — goes to History. The
+  // displayed week is resolved with `useLogWeek`'s OWN resolver (R-D12-B) so
+  // the card's decision and the Log's later mount cannot disagree.
+  //
+  // R-D12-D, load-bearing ABSENCE: no `?week=` is written and `setWeek` is
+  // never called. `?week=` is the resolver's first input, so preserving it is
+  // what makes this deterministic — and writing one would arm the disclosed
+  // legacy-History seeding cohort (`Loot.tsx`'s header) from a screen with no
+  // week control on it.
+  //
+  // R-D12-C: the Log branch needs a week the Log's MOUNT is guaranteed to land
+  // on. A concrete override (`?week=` or a stored week) is one — it pins the
+  // week regardless of the clock. "Follow the clock" while the clock is still
+  // provisional (`lootTrackingStore` starts `currentWeek: 1, maxWeek: 1`) is
+  // NOT: the Log would mount at week 1, then `fetchCurrentWeek` lands,
+  // `logWeek.week` moves to the real current week, and the entry we asked it
+  // to pulse is no longer in the grid — with no second chance, because the
+  // highlight effect's deps (`[highlightId, highlightKind]`) never move.
+  // (It is NOT the `setWeek` clobber it looks like: `Loot.tsx`'s F1/F2 guards
+  // already make that unreachable. Checked at plan-vet.)
   const jumpToEntry = useCallback(
-    (entryId: number, kind: 'loot' | 'material') => {
+    (entryId: number, kind: JumpKind, entryWeek: number | null | undefined) => {
+      const override = resolveLogWeekOverride(groupId, tierId, jumpParams.get('week'));
+      const clockSettled = Math.max(clockMaxWeek, clockCurrentWeek) > 1;
+      const displayedWeek = override ?? (clockSettled ? clockCurrentWeek : null);
+      const lview = entryJumpView(entryWeek, displayedWeek);
       setSearchParams((prev) => {
         const params = new URLSearchParams(prev);
         params.set('tab', 'gear');
-        params.set('lview', 'history');
+        params.set('lview', lview);
         params.set('entry', String(entryId));
         params.set('entryType', kind);
-        // One navigation, one highlight: the History view and the Books card
-        // read different params on the same route, so a leftover `book` would
-        // pulse a second row the user never asked for.
+        // One navigation, one highlight: the Log/History views and the Books
+        // card read different params on the same route, so a leftover `book`
+        // would pulse a second row the user never asked for.
         params.delete('book');
+        // The inbound landing params must not ride along on the outbound
+        // jump (F-18 hygiene, mirror of `Loot.jumpToRecipient`): a Loot->
+        // Roster landing writes `?player=`/`?slot=`, and if this jump left
+        // them in place, GroupViewContent's `?player=` effect would re-run
+        // on the next render and bounce straight back to Roster.
+        params.delete('player');
+        params.delete('slot');
         return params;
       });
     },
-    [setSearchParams]
+    // Listing `jumpParams` costs nothing extra: this callback already re-creates
+    // on every URL write, because react-router rebuilds `setSearchParams`
+    // whenever `searchParams` changes (the churn `NewShell.tsx:241-246`
+    // records). If a stable callback is ever wanted, BOTH go behind refs,
+    // `Loot.tsx`'s `setSearchParamsRef` style — one ref alone buys nothing.
+    [jumpParams, clockMaxWeek, clockCurrentWeek, groupId, tierId, setSearchParams],
   );
   // C7 (D-05): the kebab's Books jump — the same route, the Books card's own
   // highlight param (BookLedgerCard scrolls + pulses `book-row-{playerId}`).
@@ -307,12 +363,17 @@ export function RosterCard({
       params.set('book', player.id);
       params.delete('entry');
       params.delete('entryType');
+      // The inbound landing params must not ride along on the outbound jump
+      // (F-18 hygiene, mirror of `Loot.jumpToRecipient`): see `jumpToEntry`
+      // above for why.
+      params.delete('player');
+      params.delete('slot');
       return params;
     });
   }, [player.id, setSearchParams]);
   const handleTomeMaterialJump = useCallback(() => {
     if (!tomeMaterialEntry) return;
-    jumpToEntry(tomeMaterialEntry.id, 'material');
+    jumpToEntry(tomeMaterialEntry.id, 'material', tomeMaterialEntry.weekNumber);
   }, [tomeMaterialEntry, jumpToEntry]);
 
   // ── Gear → ledger jumps (Phase C C7, D-05) ──
@@ -334,9 +395,15 @@ export function RosterCard({
     (slot: GearSlot, kind: JumpKind) => {
       const entryId = slotJumps[slot]?.[kind];
       if (entryId == null) return;
-      jumpToEntry(entryId, kind);
+      // The week is looked up here rather than carried on `SlotJumpTarget`:
+      // that module's contract is "availability IS the target — one pass
+      // produces the id", and routing is this card's concern, not its.
+      const entry = kind === 'loot'
+        ? lootLog.find((e) => e.id === entryId)
+        : materialLog.find((e) => e.id === entryId);
+      jumpToEntry(entryId, kind, entry?.weekNumber);
     },
-    [slotJumps, jumpToEntry]
+    [slotJumps, lootLog, materialLog, jumpToEntry],
   );
 
   // ── Local UI state (name edit + job change) ──
@@ -1053,6 +1120,8 @@ export function RosterCard({
                 onTomeMaterialJump={handleTomeMaterialJump}
                 slotJumps={slotJumps}
                 onSlotJump={handleSlotJump}
+                playerId={player.id}
+                highlightedSlot={highlightedSlot}
                 disabledReason={gearPermission.reason}
               />
             </div>

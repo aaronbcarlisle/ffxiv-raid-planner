@@ -57,9 +57,11 @@
  * **The row.** ONE `activate` handler serves both `onClick` and `onKeyDown`, so
  * R-31 q3's modifiers are designed rather than inherited from a cast: Shift →
  * copy link (and clear the selection Shift+Click extends, V1
- * `AllWeeksView.tsx:315`); Alt → jump to the recipient's roster card when the
- * id resolves in the roster (card-level `?player=` until D12's slot anchors,
- * R-28); plain → edit (loot → `onEdit`, material → `onEditMaterial`, which is
+ * `AllWeeksView.tsx:315`); Alt → jump to the recipient on the roster when the
+ * id resolves there — SLOT-level since D12 (R-28): `?slot=` lands on the
+ * item's gear row via `jumpAnchorSlotOf`, or the card when it resolves none
+ * (R-D12-F: a universal tomestone); plain → edit (loot → `onEdit`, material →
+ * `onEditMaterial`, which is
  * D8's modal through Loot's existing `materialState.mode === 'edit'` door,
  * R-D11-H). Activation is PERMISSION-SHAPED (R-D11-E): only a `canEdit` row is
  * focusable (`tabIndex={0}`), roled (`role="button"` — R-D11-L's recorded
@@ -100,7 +102,7 @@
  * complete keyboard/AT route (R-D11-E), replacing V1's row-level
  * Shift+Enter / Alt+Enter gesture, which is deliberately not carried.
  *
- * Later slice: D12 gear-row anchors.
+ * D12 (Task 5): the jump gained gear-row anchors — see **The row** above.
  */
 import {
   Fragment,
@@ -119,7 +121,7 @@ import { GearSlotIcon } from '../ui/GearSlotIcon';
 import { JobIcon } from '../ui/JobIcon';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { IconButton } from '../primitives/IconButton';
-import { jumpMenuAnchor } from '../roster/rosterLedgerJumps';
+import { jumpMenuAnchor, jumpAnchorSlotOf, type JumpAnchorSlot } from '../roster/rosterLedgerJumps';
 import { useAltHeld } from '../../hooks/useAltHeld';
 import { historyRowDomId, type HistoryItem } from './logWeekGridData';
 import {
@@ -188,8 +190,12 @@ export interface LootHistoryTableProps {
    * caller rather than of the data, and this table has exactly one mount.
    */
   onEditMaterial: (entry: MaterialLogEntry) => void;
-  /** Alt+Click / "Jump to {name}" — card-level (`?player=`) until D12's slot anchors (R-28). */
-  onJumpToPlayer: (playerId: string) => void;
+  /**
+   * Alt+Click / "Jump to {name}" — D12's slot anchors (R-28): the second arg
+   * is the entry's anchor slot, `null`/`undefined` when it has none
+   * (R-D12-F: a universal tomestone).
+   */
+  onJumpToPlayer: (playerId: string, slot?: JumpAnchorSlot | null) => void;
   /** "View week {n} in Log" (R-D11-A): a same-tab jump carrying the entry, not just its week. */
   onViewWeekInLog: (item: HistoryItem) => void;
   onCopyLink: (item: HistoryItem) => void;
@@ -507,7 +513,7 @@ function buildRowMenuItems(item: HistoryItem, ctx: RowMenuContext): ContextMenuI
   if (ctx.playersById.has(recipientId)) {
     items.push({
       label: `Jump to ${recipientNameOf(item, ctx.playersById)}`,
-      onClick: () => ctx.onJumpToPlayer(recipientId),
+      onClick: () => ctx.onJumpToPlayer(recipientId, jumpAnchorSlotOf(item)),
     });
   }
   items.push({ label: `View week ${item.entry.weekNumber} in Log`, onClick: () => ctx.onViewWeekInLog(item) });
@@ -714,7 +720,7 @@ export function LootHistoryTable({
       return;
     }
     if (mods.altKey) {
-      if (canJumpTo(item)) onJumpToPlayer(item.entry.recipientPlayerId);
+      if (canJumpTo(item)) onJumpToPlayer(item.entry.recipientPlayerId, jumpAnchorSlotOf(item));
       return;
     }
     if (!canEdit) return; // R-D11-E: a viewer's plain activation is a no-op that never advertised itself

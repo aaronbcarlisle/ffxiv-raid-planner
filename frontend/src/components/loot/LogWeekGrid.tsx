@@ -90,8 +90,10 @@
  * D6a Task 6 wiring: the modifier layer is live on the edit control — plain
  * click/AT-activation (`detail===0`) edits `entries[0]` (D6-c: a cell's
  * PRIMARY action, never the jump), Shift+Click copies a Log deep link,
- * Alt+Click jumps to the recipient's roster card, and `useAltHeld` swaps the
- * cursor to a pointer only while Alt is held AND a jump target resolves.
+ * Alt+Click jumps to the recipient on the roster — the entry's gear row when
+ * `jumpAnchorSlotOf` resolves one (D12), the card otherwise — and
+ * `useAltHeld` swaps the cursor to a pointer only while Alt is held AND a
+ * jump target resolves.
  * Empty-cell modifier clicks are no-ops (D6-h). Alt+Enter does **not** ride
  * the same jump route (D6a browser pass, F3, live-falsified in Chrome):
  * Chrome's keyboard-activation click on a focused `<button>` does not carry
@@ -151,7 +153,7 @@ import { Tag } from '../ui';
 import { ContextMenu, type ContextMenuItem } from '../ui/ContextMenu';
 import { GearSlotIcon } from '../ui/GearSlotIcon';
 import { useAltHeld } from '../../hooks/useAltHeld';
-import { jumpMenuAnchor } from '../roster/rosterLedgerJumps';
+import { jumpMenuAnchor, jumpAnchorSlotOf, type JumpAnchorSlot } from '../roster/rosterLedgerJumps';
 import { FLOOR_TEXT_CLASS, FLOOR_ACCENT_CLASS } from './floorClasses';
 import { MATERIAL_TOKEN } from './FloorDropRow';
 import { RecipientBadge, resolveRecipient, type RecipientLike } from './RecipientBadge';
@@ -184,8 +186,13 @@ export interface LogWeekGridProps {
    * — see `buildEntryMenuItems`.
    */
   onCopyEntryLink: (ref: LogGridEntryRef) => void;
-  /** D6 Task 3 → required. Alt+Click / context-menu "Jump to {name}" — the R-18 jump gate. */
-  onJumpToPlayer: (playerId: string) => void;
+  /**
+   * D6 Task 3 → required. Alt+Click / context-menu "Jump to {name}" — the
+   * R-18 jump gate. D12 widens the second arg to the entry's anchor slot
+   * (`?slot=` on the roster) — `null`/`undefined` when the entry has no row
+   * to land on (R-D12-F: a universal tomestone).
+   */
+  onJumpToPlayer: (playerId: string, slot?: JumpAnchorSlot | null) => void;
   /** D6 Task 3 → required. context-menu "Delete" (danger, after a separator). */
   onDeleteEntry: (ref: LogGridEntryRef) => void;
   /**
@@ -253,7 +260,7 @@ interface GridCellProps<E extends RecipientLike> {
   /** D6a Task 6 tightened these to required (`LogWeekGridProps` already requires both) — D6b Task 4
    *  remainder fold-in (ruling B-R5) drops the now-dead optional-guards this left behind. */
   onCopyEntryLink: (ref: LogGridEntryRef) => void;
-  onJumpToPlayer: (playerId: string) => void;
+  onJumpToPlayer: (playerId: string, slot?: JumpAnchorSlot | null) => void;
   /** Opens the grid-root context menu (the `LogWeekGrid`-level `setMenu`). */
   onOpenMenu: (state: LogGridMenuState) => void;
   /** D6b Task 4 remainder: the hover-× (R-27 + D6-e) — deletes the newest entry only. */
@@ -387,7 +394,7 @@ function GridCell<E extends RecipientLike>({
   // exists only when the target does" claim true, matching `Roster.tsx:361`'s
   // own `players.some(...)` guard on the consuming side.
   const jump = newest && playerMap.has(newest.recipientPlayerId)
-    ? () => onJumpToPlayer(newest.recipientPlayerId)
+    ? () => onJumpToPlayer(newest.recipientPlayerId, jumpAnchorSlotOf(buildRef(newest)))
     : null;
 
   const copyLink = () => {
@@ -732,7 +739,7 @@ function buildEntryMenuItems(
   if (jumpPlayerId) {
     const player = playerMap.get(jumpPlayerId);
     if (player) {
-      items.push({ label: `Jump to ${player.name}`, onClick: () => onJumpToPlayer(jumpPlayerId) });
+      items.push({ label: `Jump to ${player.name}`, onClick: () => onJumpToPlayer(jumpPlayerId, jumpAnchorSlotOf(ref)) });
     }
   }
   items.push({ separator: true });

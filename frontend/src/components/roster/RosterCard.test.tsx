@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
 import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { RosterCard } from './RosterCard';
 import { TooltipProvider } from '../primitives';
 import type { RosterCardActions } from '../../hooks/useRosterCardActions';
@@ -115,11 +116,13 @@ const actions: RosterCardActions = {
 
 function renderCard(
   player: SnapshotPlayer,
-  extra: Partial<Parameters<typeof RosterCard>[0]> = {}
+  extra: Partial<Parameters<typeof RosterCard>[0]> = {},
+  // The URL the card mounts at, e.g. `?week=3` (D12: the entry jump reads it).
+  initialSearch = ''
 ) {
   // MemoryRouter: the card's C4 material jump calls useSearchParams.
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[`/${initialSearch}`]}>
       <TooltipProvider>
         <RosterCard
           player={player}
@@ -725,7 +728,8 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
 
         // The jump = the Loot spine tab (PageMode 'gear') + History sub-view +
         // the highlight params LootHistoryTable's `?entry=` effect consumes
-        // (row ids from `historyRowDomId`).
+        // (row ids from `historyRowDomId`). History because the clock is still
+        // provisional here (D12's R-28 split — see its describe at the end).
         const params = new URLSearchParams(currentSearch());
         expect(params.get('tab')).toBe('gear');
         expect(params.get('lview')).toBe('history');
@@ -1372,6 +1376,9 @@ describe('RosterCard — slot ledger jumps (C7, D-05)', () => {
   }
 
   it('Alt+Click on a slot with a loot entry jumps to that entry in the History view', () => {
+    // History because the store's clock is still provisional (1/1) and nothing
+    // pins a week — D12's R-28 split (its own describe, at the end) routes that
+    // case to History. The split's Log branch is pinned there, not here.
     useLootTrackingStore.setState({ lootLog: [lootEntry()] });
     renderCard(makePlayer({ gear: gearWithHead }), { density: 'expanded' });
 
@@ -1532,6 +1539,21 @@ describe('RosterCard — Edit Books jump (C7, D-05)', () => {
     const params = new URLSearchParams(currentSearch());
     expect(params.get('entry')).toBe('51');
     expect(params.get('book')).toBeNull();
+  });
+
+  // Final-review Finding 1 (PR #269): the Books jump is the other of the two
+  // outbound roster jumps — it must drop the inbound `?player=`/`?slot=`
+  // landing params too, the same reason the ledger jump above does.
+  it('drops the inbound ?player=/?slot= landing params on the Books jump', () => {
+    renderCard(makePlayer(), {}, '?player=p1&slot=head');
+
+    fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+    fireEvent.click(screen.getByText('Edit Books'));
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('book')).toBe('p1');
+    expect(params.has('player')).toBe(false);
+    expect(params.has('slot')).toBe(false);
   });
 });
 
@@ -1720,5 +1742,407 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
 
     fireEvent.keyDown(screen.getByPlaceholderText('Search jobs...'), { key: 'Escape' });
     expect(pickerOpen()).toBe(false);
+  });
+});
+
+// ── D12: the card's half of the `?slot=` jump ────────────────────────────────
+// `Roster` validates the param and `RosterCards` forwards it to the highlighted
+// card alone; this card's whole job is to hand `playerId` + `highlightedSlot`
+// down to `RosterGearTable`, where the `gear-row-{playerId}-{slot}` anchors
+// live. Drop `playerId` and no row carries an id at all — the jump then has
+// nothing to land on and silently degrades to the card fallback — so the
+// pairing, not either prop alone, is what these lock.
+describe('RosterCard — D12 gear-row anchors (the ?slot= landing)', () => {
+  it("anchors every gear row with this card's own player id, in expanded density", () => {
+    const { container } = renderCard(makePlayer(), { density: 'expanded' });
+
+    expect(container.querySelector('#gear-row-p1-head')).not.toBeNull();
+    expect(container.querySelector('#gear-row-p1-body')).not.toBeNull();
+    expect(container.querySelector('#gear-row-p1-ring2')).not.toBeNull();
+  });
+
+  it('pulses the named row and no other', () => {
+    const { container } = renderCard(makePlayer(), {
+      density: 'expanded',
+      highlightedSlot: 'head',
+    });
+
+    expect(container.querySelector('#gear-row-p1-head')).toHaveClass('highlight-pulse');
+    expect(container.querySelector('#gear-row-p1-body')).not.toHaveClass('highlight-pulse');
+  });
+
+  it("scopes the anchors to THIS card's player, so two cards can never collide", () => {
+    const { container } = renderCard(makePlayer({ id: 'p9' }), {
+      density: 'expanded',
+      highlightedSlot: 'head',
+    });
+
+    expect(container.querySelector('#gear-row-p9-head')).toHaveClass('highlight-pulse');
+    expect(container.querySelector('#gear-row-p1-head')).toBeNull();
+  });
+
+  it('pulses nothing when no slot is highlighted', () => {
+    const { container } = renderCard(makePlayer(), { density: 'expanded' });
+
+    expect(container.querySelector('#gear-row-p1-head')).not.toBeNull();
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
+  });
+
+  // R-D12-F cause 2: compact mounts the pip strip instead of the table, so
+  // there is no row to land on and the card's own `?player=` pulse is the
+  // whole outcome.
+  it('renders no gear rows at all in compact density', () => {
+    const { container } = renderCard(makePlayer(), {
+      density: 'compact',
+      highlightedSlot: 'head',
+    });
+
+    expect(container.querySelector('#gear-row-p1-head')).toBeNull();
+    expect(container.querySelector('.highlight-pulse')).toBeNull();
+  });
+});
+
+// ── D12 (R-28): the entry jump SPLITS by week ────────────────────────────────
+// `lview=log` only when the entry sits in the week the Log WILL display; older
+// AND newer both go to History (R-D12-A). That week is `useLogWeek`'s own
+// resolver — `?week=` → v2 key → legacy key (R-D12-B) — and the clock only when
+// nothing overrides it AND the clock has settled past the store's provisional
+// 1/1 (R-D12-C). The jump writes no week anywhere (R-D12-D).
+//
+// Every mount passes groupId "g1" / tierId "t1", the pair the storage keys
+// below are seeded under. The card defaults both to '' and the shared
+// `renderCard` passes tierId "tier1" — either would make the resolver skip
+// storage and route by the clock alone, and the stored-week tests would pass
+// or fail for the wrong reason.
+describe('RosterCard — D12 R-28, the entry jump splits by week', () => {
+  const V2_WEEK_KEY = 'v2-history-week-g1-t1';
+  const LEGACY_WEEK_KEY = 'history-week-g1-t1';
+  const gearWithHead = [
+    { slot: 'head' as const, bisSource: 'raid' as const, hasItem: true, isAugmented: false },
+  ];
+
+  function lootEntry(weekNumber: number, overrides: Partial<LootLogEntry> = {}): LootLogEntry {
+    return {
+      id: 41,
+      tierSnapshotId: 't1',
+      weekNumber,
+      floor: 'floor1',
+      itemSlot: 'head',
+      recipientPlayerId: 'p1',
+      recipientPlayerName: 'Tank One',
+      method: 'drop',
+      isExtra: false,
+      createdAt: '2026-07-01T00:00:00Z',
+      createdByUserId: 'u1',
+      createdByUsername: 'owner',
+      ...overrides,
+    };
+  }
+
+  function materialEntry(overrides: Partial<MaterialLogEntry>): MaterialLogEntry {
+    return {
+      id: 63,
+      tierSnapshotId: 't1',
+      weekNumber: 5,
+      floor: 'floor2',
+      materialType: 'twine',
+      recipientPlayerId: 'p1',
+      recipientPlayerName: 'Tank One',
+      method: 'drop',
+      slotAugmented: 'head',
+      createdAt: '2026-07-01T00:00:00Z',
+      createdByUserId: 'u1',
+      createdByUsername: 'owner',
+      ...overrides,
+    } satisfies MaterialLogEntry;
+  }
+
+  /** The week clock the card reads. The store STARTS provisional at 1/1. */
+  function setClock(currentWeek: number, maxWeek = currentWeek) {
+    useLootTrackingStore.setState({ currentWeek, maxWeek });
+  }
+
+  function mountCard(search = '', player = makePlayer({ gear: gearWithHead })) {
+    renderCard(player, { density: 'expanded', groupId: 'g1', tierId: 't1' }, search);
+  }
+
+  /** Mount at `search`, Alt+Click the Head slot's jump (the file's own idiom),
+   *  and read back the URL the jump wrote. */
+  function altClickHead(search = '') {
+    mountCard(search);
+    fireEvent.click(screen.getByRole('link', { name: /Head/ }), { altKey: true, detail: 1 });
+    return new URLSearchParams(currentSearch());
+  }
+
+  /** Moves `?week=` AFTER the card has mounted: a URL change the card sees as
+   *  a re-render, never a remount. */
+  function WeekNavigator({ week }: { week: string | null }) {
+    const navigate = useNavigate();
+    useEffect(() => {
+      if (week !== null) navigate(`/?week=${week}`, { replace: true });
+    }, [week, navigate]);
+    return null;
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    setClock(1, 1);
+  });
+
+  afterEach(() => {
+    // Storage and the clock outlive a test: hand every later describe the
+    // store's provisional start and an empty storage, as it found them.
+    localStorage.clear();
+    setClock(1, 1);
+  });
+
+  it('lands on the Log when the entry is in the displayed week', () => {
+    // clock currentWeek 5, no ?week=, entry weekNumber 5
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(5)] });
+
+    const params = altClickHead();
+
+    expect(params.get('tab')).toBe('gear');
+    expect(params.get('lview')).toBe('log');
+    expect(params.get('entry')).toBe('41');
+    expect(params.get('entryType')).toBe('loot');
+  });
+
+  it('lands on History when the entry is OLDER than the displayed week', () => {
+    // clock currentWeek 5, entry weekNumber 2
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(2)] });
+
+    expect(altClickHead().get('lview')).toBe('history');
+  });
+
+  // R-D12-A: the case R-28's prose doesn't name.
+  it('lands on History when the entry is NEWER than the displayed week', () => {
+    // ?week=3 in the URL, entry weekNumber 5 (this week's, by the clock) — the
+    // Log is pinned to week 3, whose grid does not hold it.
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(5)] });
+
+    const params = altClickHead('?week=3');
+
+    expect(params.get('lview')).toBe('history');
+    expect(params.get('week')).toBe('3');
+  });
+
+  // R-D12-B: the displayed week is the RESOLVED one, not the clock's.
+  it('compares against ?week=, not the clock', () => {
+    // ?week=2, clock currentWeek 5, entry weekNumber 2 -> Log
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(2)] });
+
+    const params = altClickHead('?week=2');
+
+    expect(params.get('lview')).toBe('log');
+    // Preserved, not rewritten: it is the Log's first resolver input, so the
+    // Log's mount reaches the same week the card just routed by.
+    expect(params.get('week')).toBe('2');
+  });
+
+  // The split reads `?week=` at CLICK time: a `?week=` that lands while the
+  // card is already mounted must still decide it. Every other test mounts at
+  // its final URL, where a value captured once at mount would read exactly the
+  // same thing.
+  it('reads ?week= at CLICK time, not at mount', () => {
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(2)] });
+    const tree = (week: string | null) => (
+      <MemoryRouter>
+        <TooltipProvider>
+          <RosterCard
+            player={makePlayer({ gear: gearWithHead })}
+            userRole="owner"
+            currentUserId="u1"
+            isAdminAccess={false}
+            canManage
+            clipboardPlayer={null}
+            reorderMode={false}
+            density="expanded"
+            groupId="g1"
+            tierId="t1"
+            contentType="savage"
+            actions={actions}
+          />
+          <WeekNavigator week={week} />
+          <LocationProbe />
+        </TooltipProvider>
+      </MemoryRouter>
+    );
+    const { rerender } = render(tree(null));
+    rerender(tree('2'));
+    expect(new URLSearchParams(currentSearch()).get('week')).toBe('2');
+
+    fireEvent.click(screen.getByRole('link', { name: /Head/ }), { altKey: true, detail: 1 });
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('lview')).toBe('log');
+    expect(params.get('week')).toBe('2');
+  });
+
+  it('compares against the stored v2 week when there is no ?week=', () => {
+    localStorage.setItem(V2_WEEK_KEY, '2');
+    // clock currentWeek 5, entry weekNumber 2 -> Log
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(2)] });
+
+    expect(altClickHead().get('lview')).toBe('log');
+  });
+
+  // Same function, not a re-derivation: the resolver's whole chain reaches the
+  // card — legacy's read-only key as a fallback, and the 'current' sentinel
+  // STOPPING before it.
+  it("follows the resolver through to legacy's key when the v2 key is absent", () => {
+    localStorage.setItem(LEGACY_WEEK_KEY, '2');
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(2)] });
+
+    expect(altClickHead().get('lview')).toBe('log');
+  });
+
+  it("a stored 'current' sentinel follows the clock and never falls through to legacy", () => {
+    localStorage.setItem(V2_WEEK_KEY, 'current');
+    localStorage.setItem(LEGACY_WEEK_KEY, '2');
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(2)] });
+
+    expect(altClickHead().get('lview')).toBe('history');
+  });
+
+  // R-D12-C: no override + provisional clock = no week the Log's mount is
+  // guaranteed to land on.
+  it('routes to History under a provisional clock with no stored or URL week', () => {
+    // store at currentWeek 1 / maxWeek 1, no ?week=, no v2-history-week-* key,
+    // entry weekNumber 1 — the very week the provisional clock names, so only
+    // the guard keeps it off the Log.
+    useLootTrackingStore.setState({ lootLog: [lootEntry(1)] });
+
+    expect(altClickHead().get('lview')).toBe('history');
+  });
+
+  // R-D12-C, the other half: a CONCRETE override pins the Log's week whatever
+  // the clock is doing, so the Log branch is safe even while provisional.
+  it('still routes to the Log under a provisional clock when ?week= pins it', () => {
+    // ?week=1, store at currentWeek 1 / maxWeek 1, entry weekNumber 1
+    useLootTrackingStore.setState({ lootLog: [lootEntry(1)] });
+
+    const params = altClickHead('?week=1');
+
+    expect(params.get('lview')).toBe('log');
+    expect(params.get('week')).toBe('1');
+  });
+
+  it('still routes to the Log under a provisional clock when a STORED week pins it', () => {
+    localStorage.setItem(V2_WEEK_KEY, '3');
+    useLootTrackingStore.setState({ lootLog: [lootEntry(3)] });
+
+    expect(altClickHead().get('lview')).toBe('log');
+  });
+
+  // "Settled" is the clock's CEILING past 1 — `Math.max(maxWeek, currentWeek)`,
+  // the same ceiling `Loot`'s provisional-clock guards and `useLogWeek.setWeek`
+  // use — not `currentWeek` alone.
+  it('treats a clock whose maxWeek has moved past 1 as settled, even at currentWeek 1', () => {
+    setClock(1, 3);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(1)] });
+
+    expect(altClickHead().get('lview')).toBe('log');
+  });
+
+  // R-D12-D — the load-bearing absence. Both branches, under a settled clock
+  // (so a stray write would have a concrete week to write) and with nothing
+  // stored (so ANY storage write shows).
+  it.each([
+    ['Log', 5, 'log'],
+    ['History', 2, 'history'],
+  ] as const)('never writes ?week= and never touches the stored week (%s branch)', (_branch, entryWeek, lview) => {
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(entryWeek)] });
+    const before = localStorage.getItem(V2_WEEK_KEY);
+
+    const params = altClickHead();
+
+    expect(params.get('lview')).toBe(lview);
+    expect(params.has('week')).toBe(false);
+    expect(localStorage.getItem(V2_WEEK_KEY)).toBe(before);
+    expect(localStorage.getItem(LEGACY_WEEK_KEY)).toBeNull();
+  });
+
+  it.each([
+    ['Log', 5, 'log'],
+    ['History', 2, 'history'],
+  ] as const)('still deletes ?book= on both branches (%s)', (_branch, entryWeek, lview) => {
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(entryWeek)] });
+
+    const params = altClickHead('?book=p1');
+
+    expect(params.get('lview')).toBe(lview);
+    expect(params.has('book')).toBe(false);
+  });
+
+  // Final-review Finding 1 (PR #269): a Loot->Roster landing writes
+  // `?player=`/`?slot=`; an Alt+Click on the pulsing row within that landing
+  // must not carry those INBOUND params along on the OUTBOUND jump, or
+  // GroupViewContent's `?player=` effect re-runs on the next render and
+  // bounces back to Roster. Mirror of `Loot.tsx`'s `jumpToRecipient`, which
+  // already drops `entry`/`entryType`/`book` the same way (director F-18).
+  it('drops the inbound ?player=/?slot= landing params on the outbound jump', () => {
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(5)] });
+
+    const params = altClickHead('?player=p1&slot=head');
+
+    expect(params.get('entry')).toBe('41');
+    expect(params.has('player')).toBe(false);
+    expect(params.has('slot')).toBe(false);
+  });
+
+  // The material half: the week comes from the MATERIAL log. Loot and material
+  // ids are independent sequences (F-10a), so the loot entry deliberately
+  // shares id 63 at a DIFFERENT week — a lookup in the wrong log would route
+  // by week 2 and land on History.
+  it("a material slot jump splits by the material entry's own week", () => {
+    setClock(5);
+    useLootTrackingStore.setState({
+      lootLog: [lootEntry(2, { id: 63 })],
+      materialLog: [materialEntry({ id: 63, weekNumber: 5 })],
+    });
+    mountCard();
+
+    fireEvent.contextMenu(screen.getByRole('link', { name: /Head/ }), { clientX: 20, clientY: 30 });
+    fireEvent.click(screen.getByText('Jump to Material Entry'));
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('entry')).toBe('63');
+    expect(params.get('entryType')).toBe('material');
+    expect(params.get('lview')).toBe('log');
+  });
+
+  it("the tome sub-row jump splits by its material entry's week", () => {
+    setClock(5);
+    useLootTrackingStore.setState({
+      materialLog: [materialEntry({ id: 77, weekNumber: 5, slotAugmented: 'tome_weapon' })],
+    });
+    mountCard(
+      '',
+      makePlayer({
+        gear: [
+          { slot: 'weapon', bisSource: 'raid', hasItem: false, isAugmented: false },
+        ] as unknown as SnapshotPlayer['gear'],
+        tomeWeapon: { pursuing: true, hasItem: false, isAugmented: false },
+      })
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: /Tome Weapon/ }), { altKey: true, detail: 1 });
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('entry')).toBe('77');
+    expect(params.get('entryType')).toBe('material');
+    expect(params.get('lview')).toBe('log');
   });
 });

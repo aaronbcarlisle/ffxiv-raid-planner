@@ -50,7 +50,7 @@
  *     only ever arms the legacy cohort below from a screen that can also
  *     disarm it (PR #235 review round 2). The read direction runs both ways
  *     too: a legacy-written `?week=` seeds v2's Log on mount the same way
- *     (`useLogWeek.ts`'s `resolveOverride` reads the raw param before ever
+ *     (`useLogWeek.ts`'s `resolveLogWeekOverride` reads the raw param before ever
  *     touching v2/legacy storage — on the FIRST resolve only; tier/group
  *     re-resolves skip the URL by the hook's mount-only rule).
  *     For a v2-seeded `?week=` reaching legacy History, the outcome forks on
@@ -113,8 +113,10 @@
  *     re-homed to Log in D7b: `BookLedgerCard` mounts here, full width below
  *     the fairness read, on the DISPLAYED week — `FairnessSummary` stays on
  *     History until D14. The Alt+Click recipient jump (Log → roster card,
- *     `?player=`) still lands card-level until D12 retargets it to slot-level
- *     anchors (R-28); the Books jump is the separate `?book=` param described
+ *     `?player=`) is SLOT-level since D12 (R-28): `?slot=` names the gear
+ *     row to land on when the entry resolves one (`jumpAnchorSlotOf`), and
+ *     falls back to the card when it does not (R-D12-F: a universal
+ *     tomestone); the Books jump is the separate `?book=` param described
  *     below. "Log material" on Log —
  *     D4's other named gap — shipped in D8 (the toolbar's free-form door,
  *     below).
@@ -164,6 +166,7 @@ import { WeekScopeControl } from './WeekScopeControl';
 import { FloorCard } from './FloorCard';
 import { LogWeekGrid } from './LogWeekGrid';
 import { logCellDomId, type HighlightEntryRef, type HistoryItem } from './logWeekGridData';
+import type { JumpAnchorSlot } from '../roster/rosterLedgerJumps';
 import { suggestedMaterialRecipient } from './materialSuggestion';
 import { WeekCountBar } from './WeekCountBar';
 import { LootFairnessLegend } from '../history/WeeklyLootGrid';
@@ -258,6 +261,10 @@ const buildEntryLink = (opts: { lview: 'log' | 'history'; week?: number; ref: Hi
   // Entry links carry ONE navigation target — competing deep-link params are stripped.
   url.searchParams.delete('player');
   url.searchParams.delete('book');
+  // D12: `slot` rides with `player` and is the third competing deep-link
+  // param. Inert today (Roster early-returns without `?player=`), but the
+  // denylist's whole point is that a param it doesn't name survives.
+  url.searchParams.delete('slot');
   url.searchParams.set('tab', 'gear');
   url.searchParams.set('lview', opts.lview);
   if (opts.week != null) url.searchParams.set('week', String(opts.week));
@@ -746,16 +753,20 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     );
   }, [logWeek.week]);
 
-  // D6a Task 6: Alt+Click / context-menu "Jump to {name}" from the Log grid —
-  // the same same-route URL-param jump `RosterCard.tsx:280-297` uses, landing
-  // on the roster tab at that player. One navigation, one highlight: deletes
-  // any leftover `entry`/`entryType`/`book` so a stale highlight from THIS
-  // screen can't pulse a second target on the roster (director F-18).
-  const jumpToRecipient = useCallback((playerId: string) => {
+  // D6a Task 6 / D12: Alt+Click / context-menu "Jump to {name}" — the same
+  // same-route URL-param jump `RosterCard.tsx` uses. D12 makes it SLOT-level
+  // (R-18 note 2): `?slot=` names the gear row to scroll to and pulse, and is
+  // OMITTED when the entry has no row to land on (R-D12-F: a universal
+  // tomestone). The delete on the `null` path matters — a previous jump's slot
+  // would otherwise pulse an unrelated row on this one (director F-18, the
+  // same reason entry/entryType/book go).
+  const jumpToRecipient = useCallback((playerId: string, slot?: JumpAnchorSlot | null) => {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev);
       params.set('tab', 'roster');
       params.set('player', playerId);
+      if (slot) params.set('slot', slot);
+      else params.delete('slot');
       params.delete('entry');
       params.delete('entryType');
       params.delete('book');
@@ -1243,8 +1254,9 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             onCopyLink={copyLink}
             /* D11: the SAME jump the Log grid uses — it already strips
                entry/entryType/book, so a History-originated highlight cannot
-               follow the user to the roster (director F-18). Card-level until
-               D12's slot anchors (R-28). */
+               follow the user to the roster (director F-18). SLOT-level
+               since D12 (R-28): lands on the gear row when the item resolves
+               one, the card otherwise (R-D12-F). */
             onJumpToPlayer={jumpToRecipient}
             onViewWeekInLog={viewWeekInLog}
             onDelete={requestDelete}

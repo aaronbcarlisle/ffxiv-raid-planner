@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.28',
+    date: '2026-09-23T10:00:00Z',
+    title: 'Phase D slice D12 — the jumps: slot-level Alt+Click destinations (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Alt+Click jumps now land on the gear slot itself, in both directions',
+        description:
+          'V2 preview: jumping from a Log grid cell or a History row to the player who received it now lands on that item\'s row in the gear table, not just the card — the card is only the fallback when the slot can\'t be resolved. The reverse jump, Alt+Click on a gear row, now goes to Log when the entry falls in the week Log has open, and to History otherwise, so the destination always matches what\'s on screen (R-28\'s week split). Ships with the D12 mutation battery covering the jump-resolution paths in both directions.',
+        pr: 269,
+        prTitle: 'feat(v2): D12 — the jumps: slot-level Alt+Click destinations and R-28\'s week split',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.27',
     date: '2026-09-22T11:15:00Z',
     title: 'Phase D — D11 follow-up: the two findings left open at merge',

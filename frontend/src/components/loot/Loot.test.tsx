@@ -1726,8 +1726,10 @@ describe('Loot — D6a Task 6: Log grid affordance wiring', () => {
     );
   });
 
-  it('copy link strips competing player/book deep-link params so copied entry links carry ONE navigation target', async () => {
-    window.history.pushState({}, '', '/group/g1?tier=xyz&player=p1&book=p2');
+  it('copy link strips competing player/book/slot deep-link params so copied entry links carry ONE navigation target', async () => {
+    // D12: `slot` rides with `player` (R5) — seeded here alongside it so the
+    // exact-match assertion below fails if the new denylist line is dropped.
+    window.history.pushState({}, '', '/group/g1?tier=xyz&player=p1&book=p2&slot=head');
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     const entry = makeLootEntry({ id: 42, weekNumber: 2 });
@@ -1744,6 +1746,7 @@ describe('Loot — D6a Task 6: Log grid affordance wiring', () => {
     );
     expect(copiedUrl).not.toContain('player=');
     expect(copiedUrl).not.toContain('book=');
+    expect(copiedUrl).not.toContain('slot=');
     expect(copiedUrl).toContain('tier=xyz');
   });
 
@@ -1758,6 +1761,42 @@ describe('Loot — D6a Task 6: Log grid affordance wiring', () => {
     expect(search).not.toContain('entry=');
     expect(search).not.toContain('entryType=');
     expect(search).not.toContain('book=');
+  });
+
+  // D12: `jumpToRecipient`'s second arg (the entry's anchor slot) writes/omits
+  // `?slot=` — the widened consumers (LogWeekGrid/LootHistoryTable) compute
+  // the slot with `jumpAnchorSlotOf`; these tests exercise `jumpToRecipient`
+  // itself by driving the mocked grid's `onJumpToPlayer` prop directly, same
+  // as the shipped one-arg jump test above.
+  it('a Log-grid jump writes tab=roster&player={id}&slot={slot}', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    act(() => {
+      (lastGrid().onJumpToPlayer as (id: string, slot?: string | null) => void)('p1', 'head');
+    });
+    const search = screen.getByTestId('loc').getAttribute('data-search')!;
+    expect(search).toContain('tab=roster');
+    expect(search).toContain('player=p1');
+    expect(search).toContain('slot=head');
+  });
+
+  // R-D12-F: a universal tomestone has no slotAugmented — card, not row.
+  it('omits ?slot= for a material entry with no augmented slot', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    act(() => {
+      (lastGrid().onJumpToPlayer as (id: string, slot?: string | null) => void)('p1', null);
+    });
+    const search = screen.getByTestId('loc').getAttribute('data-search')!;
+    expect(search).toContain('player=p1');
+    expect(search).not.toContain('slot=');
+  });
+
+  it('deletes a stale ?slot= when the new jump has none', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&player=p2&slot=head']);
+    act(() => {
+      (lastGrid().onJumpToPlayer as (id: string, slot?: string | null) => void)('p1', null);
+    });
+    const search = screen.getByTestId('loc').getAttribute('data-search')!;
+    expect(search).not.toContain('slot=');
   });
 
   it('grid delete routes into the existing requestDelete → confirm modal state (LogGridEntryRef IS HistoryItem, no adapter)', async () => {

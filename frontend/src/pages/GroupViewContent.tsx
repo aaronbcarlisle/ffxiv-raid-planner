@@ -258,6 +258,11 @@ export function GroupViewContent({ slots, actions, onSwitchToClassicUi }: GroupV
       setSearchParams(prev => {
         const params = new URLSearchParams(prev);
         params.delete('player');
+        // D12 (R-D12-I): ?slot= rides with ?player= and is stripped by the same
+        // timer — the v2 Roster must not write the URL (its own header comment),
+        // and two writers on one boundary race. V1 never writes slot, so this
+        // delete is a no-op on every legacy path.
+        params.delete('slot');
         return params;
       }, { replace: true });
     }, 2500);

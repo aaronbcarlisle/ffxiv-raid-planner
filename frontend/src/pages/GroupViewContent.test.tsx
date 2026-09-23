@@ -13,8 +13,8 @@
  * Heavy hooks/stores/leaf-components are mocked — the point is the override
  * contract, not full integration.
  */
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, waitFor, act } from '@testing-library/react';
+import { MemoryRouter, useLocation, useSearchParams } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AddedPlayerSignal } from './groupActionsContext';
 
@@ -22,10 +22,18 @@ import type { AddedPlayerSignal } from './groupActionsContext';
 const setPageMode = vi.fn();
 let mockPageMode = 'overview';
 const noop = vi.fn();
-function makeState() {
+function useMockGroupViewState() {
+  // The REAL hook sources these from react-router (`useGroupViewState.ts:157`),
+  // and `GroupViewContent`'s `?player=`/`?slot=` deep-link effect both reads
+  // and writes them. Delegating keeps that effect driveable from
+  // `MemoryRouter`'s `initialEntries` and makes its 2500ms strip observable in
+  // the location itself, rather than as a call recorded against a spy.
+  // Every other test in this file renders at `/` with no params, where this is
+  // indistinguishable from the fixed empty snapshot it replaces.
+  const [searchParams, setSearchParams] = useSearchParams();
   return {
-    searchParams: new URLSearchParams(),
-    setSearchParams: noop,
+    searchParams,
+    setSearchParams,
     pageMode: mockPageMode,
     setPageMode,
     gearSubTab: 'sync', setGearSubTab: noop,
@@ -56,7 +64,7 @@ function makeState() {
   };
 }
 vi.mock('../hooks/useGroupViewState', () => ({
-  useGroupViewState: () => makeState(),
+  useGroupViewState: () => useMockGroupViewState(),
 }));
 
 // ── Stores ──
@@ -128,8 +136,23 @@ vi.mock('../components/ui', async (orig) => {
 import { GroupViewContent } from './GroupViewContent';
 
 const actions = { onTierChange: vi.fn(), onAddPlayer: vi.fn(), onNewTier: vi.fn(), onRollover: vi.fn(), onDeleteTier: vi.fn() };
-const renderContent = (props: Partial<React.ComponentProps<typeof GroupViewContent>> = {}) =>
-  render(<MemoryRouter><GroupViewContent actions={actions} {...props} /></MemoryRouter>);
+
+/** Surfaces the live search string so a URL write is assertable. */
+function LocationProbe() {
+  const loc = useLocation();
+  return <div data-testid="loc" data-search={loc.search} />;
+}
+
+const renderContent = (
+  props: Partial<React.ComponentProps<typeof GroupViewContent>> = {},
+  initialEntries: string[] = ['/'],
+) =>
+  render(
+    <MemoryRouter initialEntries={initialEntries}>
+      <GroupViewContent actions={actions} {...props} />
+      <LocationProbe />
+    </MemoryRouter>,
+  );
 
 describe('GroupViewContent — slot contract', () => {
   beforeEach(() => {
@@ -168,5 +191,106 @@ describe('GroupViewContent — slot contract', () => {
     mockAddedPlayer = { playerId: 'p-new', nonce: 1 };
     renderContent();
     await waitFor(() => expect(clearAddedPlayerSpy).toHaveBeenCalledTimes(1));
+  });
+});
+
+// ── D12: the `?player=`/`?slot=` strip ───────────────────────────────────
+// This effect is the SHARED file's only D12 hunk — both shells render it — and
+// it had no coverage at all before D12: neither the deep-link resolution nor
+// the 2500ms strip. `?slot=` rides with `?player=` on one timer because the v2
+// `Roster` must not write the URL (two writers on one boundary race), so the
+// delete has to be here, in the frozen shell's own effect. V1 writes no `slot`
+// param anywhere, so on every legacy path it removes nothing.
+describe('GroupViewContent — D12 the ?player=/?slot= strip', () => {
+  let realScrollIntoView: typeof Element.prototype.scrollIntoView;
+
+  beforeEach(() => {
+    mockPageMode = 'overview';
+    mockActionModalOpen = false;
+    mockAddedPlayer = null;
+    // Shared across the whole file (`useMockGroupViewState`'s `setPageMode`),
+    // so without this the tab-switch assertion below can be satisfied by an
+    // earlier test's call — same convention as the keyboardSpy /
+    // clearAddedPlayerSpy clears in the slot-contract describe above.
+    setPageMode.mockClear();
+    // The effect resolves `?player=` against the tier's OWN players and bails
+    // when it finds none — the shared fixture ships an empty roster, so
+    // without this seed the whole effect (and its strip) never runs.
+    currentTier.players = [{ id: 'p1' }];
+    // jsdom implements no scrollIntoView; the effect's 100ms card scroll calls
+    // it as soon as the anchor exists.
+    realScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
+  afterEach(() => {
+    currentTier.players = [];
+    Element.prototype.scrollIntoView = realScrollIntoView;
+    vi.useRealTimers();
+  });
+
+  it('strips BOTH player and slot at 2500ms, leaving sibling params alone', () => {
+    vi.useFakeTimers();
+    renderContent({}, ['/group/G1?tab=roster&player=p1&slot=head&tier=T1']);
+
+    // Still present before the timer — otherwise "stripped" proves nothing.
+    expect(screen.getByTestId('loc').dataset.search).toContain('player=p1');
+    expect(screen.getByTestId('loc').dataset.search).toContain('slot=head');
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    const search = screen.getByTestId('loc').dataset.search ?? '';
+    expect(search).not.toContain('player=');
+    expect(search).not.toContain('slot=');
+    // The strip is targeted, not a reset: siblings survive it.
+    expect(search).toContain('tier=T1');
+    expect(search).toContain('tab=roster');
+  });
+
+  it('keeps both params for the whole 2500ms window', () => {
+    vi.useFakeTimers();
+    renderContent({}, ['/group/G1?tab=roster&player=p1&slot=head']);
+
+    act(() => {
+      vi.advanceTimersByTime(2499);
+    });
+
+    const search = screen.getByTestId('loc').dataset.search ?? '';
+    expect(search).toContain('player=p1');
+    expect(search).toContain('slot=head');
+  });
+
+  it('switches to the Roster tab and scrolls the card for a resolvable ?player=', () => {
+    vi.useFakeTimers();
+    const card = document.createElement('div');
+    card.id = 'player-card-p1';
+    document.body.appendChild(card);
+    try {
+      renderContent({}, ['/group/G1?tab=roster&player=p1&slot=head']);
+      expect(setPageMode).toHaveBeenCalledWith('roster');
+
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      expect(card.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+    } finally {
+      card.remove();
+    }
+  });
+
+  it('does nothing at all when ?player= resolves to no one', () => {
+    vi.useFakeTimers();
+    renderContent({}, ['/group/G1?tab=roster&player=nobody&slot=head']);
+
+    act(() => {
+      vi.advanceTimersByTime(2500);
+    });
+
+    // No resolution → no strip: the params are left exactly as they arrived.
+    const search = screen.getByTestId('loc').dataset.search ?? '';
+    expect(search).toContain('player=nobody');
+    expect(search).toContain('slot=head');
   });
 });
