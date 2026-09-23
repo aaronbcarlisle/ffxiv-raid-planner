@@ -334,6 +334,13 @@ export function RosterCard({
         // card read different params on the same route, so a leftover `book`
         // would pulse a second row the user never asked for.
         params.delete('book');
+        // The inbound landing params must not ride along on the outbound
+        // jump (F-18 hygiene, mirror of `Loot.jumpToRecipient`): a Loot->
+        // Roster landing writes `?player=`/`?slot=`, and if this jump left
+        // them in place, GroupViewContent's `?player=` effect would re-run
+        // on the next render and bounce straight back to Roster.
+        params.delete('player');
+        params.delete('slot');
         return params;
       });
     },
@@ -356,6 +363,11 @@ export function RosterCard({
       params.set('book', player.id);
       params.delete('entry');
       params.delete('entryType');
+      // The inbound landing params must not ride along on the outbound jump
+      // (F-18 hygiene, mirror of `Loot.jumpToRecipient`): see `jumpToEntry`
+      // above for why.
+      params.delete('player');
+      params.delete('slot');
       return params;
     });
   }, [player.id, setSearchParams]);

@@ -1068,7 +1068,7 @@ the two sides can never disagree (**R-D12-B**). `RosterCard.jumpToEntry` (`:321-
 it already matches) or would arm the disclosed legacy-History `?week=`-seeding cohort `Loot.tsx`'s own
 header discloses.
 
-**Three disclosed residuals, named rather than fixed this slice:**
+**Four disclosed residuals, named rather than fixed this slice:**
 
 1. **R-D12-C — a tier genuinely on week 1 with no stored week routes every jump to History.**
    ⚠ Corrected at plan-vet: the obvious rationale (a `setWeek` clobber) is **false** —
@@ -1092,6 +1092,12 @@ header discloses.
    out of scope 2026-09-22; pinned by a test in `Roster.test.tsx` rather than fixed. (R-D12-F's other
    three causes — `slotAugmented === null`, compact density, a non-pursuing player's absent tome
    sub-row — all fall back to the card, which is already wired from `?player=` and costs nothing new.)
+4. **R-D12-F cause 5 — a folded light party or hidden substitutes hides the card entirely.**
+   `RosterCards.tsx:457`'s `isFolded` (G1/G2/Unassigned/Subs, both grouped and flat views) and
+   `:466,528-530`'s `subsHidden` both skip the section's card render outright when the section is
+   collapsed or the substitutes are hidden, so `player-card-{id}` AND `gear-row-*` are both absent —
+   the same dead-end as cause 4 (Board view), not a fallback to the card. Pre-existing for `?player=`
+   since C7; found at PR #269 final review. A later slice may auto-unfold the section on landing.
 
 **Rulings taken this slice (R-D12-A…J, full reasoning in
 `plans/2026-09-22-phase-d12-the-jumps.md` §2):**
@@ -1106,8 +1112,9 @@ header discloses.
 - **R-D12-D** — the jump writes no `?week=` and never calls `setWeek`.
 - **R-D12-E** — a `tome_weapon` material entry anchors to its own sub-row, never the weapon row — a
   named delta against `useViewNavigation.ts:125`.
-- **R-D12-F** — an anchor slot that doesn't resolve to a rendered row falls back to the card; four
-  causes, cause 4 (Board view) a named residual, disclosed above.
+- **R-D12-F** — an anchor slot that doesn't resolve to a rendered row falls back to the card; five
+  causes, cause 4 (Board view) and cause 5 (a folded/hidden roster section) named residuals,
+  disclosed above.
 - **R-D12-G** — both the card and the slot row pulse together (legacy parity).
 - **R-D12-H** — a generic `ring` entry anchors to `ring1`; the ring asymmetry above.
 - **R-D12-I** — `?slot=` is stripped by `GroupViewContent`'s existing `?player=` timer

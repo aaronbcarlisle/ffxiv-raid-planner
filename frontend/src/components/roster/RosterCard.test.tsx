@@ -1540,6 +1540,21 @@ describe('RosterCard — Edit Books jump (C7, D-05)', () => {
     expect(params.get('entry')).toBe('51');
     expect(params.get('book')).toBeNull();
   });
+
+  // Final-review Finding 1 (PR #269): the Books jump is the other of the two
+  // outbound roster jumps — it must drop the inbound `?player=`/`?slot=`
+  // landing params too, the same reason the ledger jump above does.
+  it('drops the inbound ?player=/?slot= landing params on the Books jump', () => {
+    renderCard(makePlayer(), {}, '?player=p1&slot=head');
+
+    fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+    fireEvent.click(screen.getByText('Edit Books'));
+
+    const params = new URLSearchParams(currentSearch());
+    expect(params.get('book')).toBe('p1');
+    expect(params.has('player')).toBe(false);
+    expect(params.has('slot')).toBe(false);
+  });
 });
 
 // ── C7 (D-55 roster half): the modifier affordances ──
@@ -2068,6 +2083,23 @@ describe('RosterCard — D12 R-28, the entry jump splits by week', () => {
 
     expect(params.get('lview')).toBe(lview);
     expect(params.has('book')).toBe(false);
+  });
+
+  // Final-review Finding 1 (PR #269): a Loot->Roster landing writes
+  // `?player=`/`?slot=`; an Alt+Click on the pulsing row within that landing
+  // must not carry those INBOUND params along on the OUTBOUND jump, or
+  // GroupViewContent's `?player=` effect re-runs on the next render and
+  // bounces back to Roster. Mirror of `Loot.tsx`'s `jumpToRecipient`, which
+  // already drops `entry`/`entryType`/`book` the same way (director F-18).
+  it('drops the inbound ?player=/?slot= landing params on the outbound jump', () => {
+    setClock(5);
+    useLootTrackingStore.setState({ lootLog: [lootEntry(5)] });
+
+    const params = altClickHead('?player=p1&slot=head');
+
+    expect(params.get('entry')).toBe('41');
+    expect(params.has('player')).toBe(false);
+    expect(params.has('slot')).toBe(false);
   });
 
   // The material half: the week comes from the MATERIAL log. Loot and material
