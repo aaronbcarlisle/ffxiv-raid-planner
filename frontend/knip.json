@@ -11,7 +11,7 @@
   "project": ["src/**/*.{ts,tsx}"],
   "vitest": {
     "entry": [
-      "src/**/*.test.{ts,tsx}",
+      "src/**/*.{bench,test,test-d,spec,spec-d}.?(c|m)[jt]s?(x)",
       "scripts/**/*.test.mjs",
       "**/__mocks__/**/*.?(c|m)[jt]s?(x)",
       "!src/components/loot/loggingModel.enumeration.test.ts"
