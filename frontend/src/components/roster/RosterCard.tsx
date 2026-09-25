@@ -422,6 +422,8 @@ export function RosterCard({
   const editingRef = useRef(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [showJobPicker, setShowJobPicker] = useState(false);
+  const kebabRef = useRef<HTMLButtonElement>(null);
+  const jobPickerRef = useRef<HTMLDivElement>(null);
   const [pendingJob, setPendingJob] = useState<string | null>(null);
   const [jobChangeMode, setJobChangeMode] = useState<JobChangeMode>('keep');
   const [hookModalOpen, setHookModalOpen] = useState(false);
@@ -532,8 +534,20 @@ export function RosterCard({
   };
 
   // ── Job change → card-owned confirm → onUpdate({ job, role }) ──
-  const onJobPicked = (newJob: string) => {
+  // Closing the picker hands focus back to the kebab, its way in (R-E2-D).
+  // Radix would return it to the Popover's trigger, but that is the inert
+  // anchor span, so focus would fall to <body>. Only when focus was INSIDE
+  // the picker (Escape, a pick): an outside click or a Tab-away already put
+  // focus where the user sent it — Radix's own hasInteractedOutside rule.
+  const closeJobPicker = () => {
+    const focusWasInside = jobPickerRef.current?.contains(document.activeElement) ?? false;
     setShowJobPicker(false);
+    if (focusWasInside) kebabRef.current?.focus();
+  };
+  const onJobPicked = (newJob: string) => {
+    // Before the confirm opens, so the Modal records the kebab as its
+    // return-focus target.
+    closeJobPicker();
     if (newJob !== player.job) {
       setJobChangeMode('keep');
       setPendingJob(newJob);
@@ -1019,6 +1033,7 @@ export function RosterCard({
               }
             >
               <IconButton
+                ref={kebabRef}
                 aria-label="Player actions"
                 variant="ghost"
                 size="sm"
@@ -1045,7 +1060,10 @@ export function RosterCard({
             // pointer-inert, aria-hidden trigger under the header's left
             // edge places it where the old swap button did; nothing can
             // reach it, so the menu item is the only way in.
-            <Popover open={showJobPicker} onOpenChange={setShowJobPicker}>
+            <Popover
+              open={showJobPicker}
+              onOpenChange={(open) => (open ? setShowJobPicker(true) : closeJobPicker())}
+            >
               <PopoverTrigger asChild>
                 <span
                   aria-hidden="true"
@@ -1054,6 +1072,7 @@ export function RosterCard({
                 />
               </PopoverTrigger>
               <PopoverContent
+                ref={jobPickerRef}
                 align="start"
                 sideOffset={4}
                 className="!border-0 !bg-transparent !p-0 !shadow-none"
@@ -1061,7 +1080,7 @@ export function RosterCard({
                 <JobPicker
                   selectedJob={player.job}
                   onJobSelect={onJobPicked}
-                  onRequestClose={() => setShowJobPicker(false)}
+                  onRequestClose={closeJobPicker}
                   hostControlsDismissal
                 />
               </PopoverContent>
@@ -1308,58 +1327,59 @@ export function RosterCard({
       {/* Kebab modals (hook-owned) + card-owned job-change confirm (both portal). */}
       {modalsNode}
 
-      {pendingJob && (
-        <Modal
-          isOpen
-          onClose={() => setPendingJob(null)}
-          size="sm"
-          title={
-            <span className="flex items-center gap-2">
-              <Repeat className="h-5 w-5 text-accent" />
-              Change Job
-            </span>
-          }
-        >
-          <p className="mb-4 text-text-secondary">
-            Change <span className="font-medium text-text-primary">{player.name}</span> from{' '}
-            <span className="font-medium text-text-primary">{getJobDisplayName(player.job)}</span> to{' '}
-            <span className="font-medium text-text-primary">{getJobDisplayName(pendingJob)}</span>?
-          </p>
-          <RadioGroup
-            name="rosterJobChangeBis"
-            value={jobChangeMode}
-            onChange={(value) => setJobChangeMode(value as JobChangeMode)}
-            options={[
-              {
-                value: 'keep',
-                label: 'Keep current BiS setup',
-                description: 'Position, gear progress, and the BiS link are left unchanged.',
-              },
-              {
-                value: 'import',
-                label: 'Update BiS for the new job',
-                description: 'Changes the job, then opens the BiS import for the new set.',
-              },
-              {
-                value: 'unlink',
-                label: 'Unlink BiS on change',
-                description: 'Clears the BiS link (the new job needs its own set). Progress is kept.',
-              },
-            ]}
-          />
-          <div className="mt-6 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => setPendingJob(null)}>
-              Cancel
-            </Button>
-            {/* The commit button names the chosen outcome — in the import mode
-                that is legacy's exact button string (user ruling 2026-07-27),
-                so the flow reads the same as v1's three-button confirm. */}
-            <Button type="button" variant="primary" onClick={commitJobChange}>
-              {jobChangeMode === 'import' ? 'Change Job & Update BiS' : 'Change Job'}
-            </Button>
-          </div>
-        </Modal>
-      )}
+      {/* Kept mounted with `isOpen` toggling (not `pendingJob &&`): Modal
+          returns focus to its opener only on an isOpen -> false transition,
+          which an unmount never delivers. */}
+      <Modal
+        isOpen={pendingJob !== null}
+        onClose={() => setPendingJob(null)}
+        size="sm"
+        title={
+          <span className="flex items-center gap-2">
+            <Repeat className="h-5 w-5 text-accent" />
+            Change Job
+          </span>
+        }
+      >
+        <p className="mb-4 text-text-secondary">
+          Change <span className="font-medium text-text-primary">{player.name}</span> from{' '}
+          <span className="font-medium text-text-primary">{getJobDisplayName(player.job)}</span> to{' '}
+          <span className="font-medium text-text-primary">{getJobDisplayName(pendingJob ?? '')}</span>?
+        </p>
+        <RadioGroup
+          name="rosterJobChangeBis"
+          value={jobChangeMode}
+          onChange={(value) => setJobChangeMode(value as JobChangeMode)}
+          options={[
+            {
+              value: 'keep',
+              label: 'Keep current BiS setup',
+              description: 'Position, gear progress, and the BiS link are left unchanged.',
+            },
+            {
+              value: 'import',
+              label: 'Update BiS for the new job',
+              description: 'Changes the job, then opens the BiS import for the new set.',
+            },
+            {
+              value: 'unlink',
+              label: 'Unlink BiS on change',
+              description: 'Clears the BiS link (the new job needs its own set). Progress is kept.',
+            },
+          ]}
+        />
+        <div className="mt-6 flex justify-end gap-3">
+          <Button type="button" variant="secondary" onClick={() => setPendingJob(null)}>
+            Cancel
+          </Button>
+          {/* The commit button names the chosen outcome — in the import mode
+              that is legacy's exact button string (user ruling 2026-07-27),
+              so the flow reads the same as v1's three-button confirm. */}
+          <Button type="button" variant="primary" onClick={commitJobChange}>
+            {jobChangeMode === 'import' ? 'Change Job & Update BiS' : 'Change Job'}
+          </Button>
+        </div>
+      </Modal>
 
       {contextMenu && (
         <ContextMenu

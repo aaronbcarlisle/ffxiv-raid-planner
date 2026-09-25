@@ -1751,6 +1751,54 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
     fireEvent.keyDown(screen.getByPlaceholderText('Search jobs...'), { key: 'Escape' });
     expect(pickerOpen()).toBe(false);
   });
+
+  // E2 review I-1: the Popover's trigger is an inert anchor span, so Radix's
+  // own return-focus lands nowhere — the card hands focus to the kebab, the
+  // picker's way in, whenever focus was inside the picker when it closed.
+  describe('return focus (E2 review I-1)', () => {
+    const kebab = () => screen.getByRole('button', { name: /player actions/i });
+
+    it('Escape from the search returns focus to the kebab, not <body>', () => {
+      renderCard(makePlayer());
+      openJobPicker();
+      const search = screen.getByPlaceholderText('Search jobs...');
+      expect(search).toHaveFocus();
+
+      fireEvent.keyDown(search, { key: 'Escape' });
+      expect(pickerOpen()).toBe(false);
+      expect(kebab()).toHaveFocus();
+      expect(document.body).not.toHaveFocus();
+    });
+
+    it('a pick hands focus to the kebab, and the confirm returns it there on Cancel', () => {
+      renderCard(makePlayer());
+      openJobPicker();
+      fireEvent.click(screen.getByText('WAR'));
+      expect(pickerOpen()).toBe(false);
+      expect(screen.getByRole('button', { name: 'Change Job' })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByRole('button', { name: 'Change Job' })).not.toBeInTheDocument();
+      expect(kebab()).toHaveFocus();
+    });
+
+    it('an outside click onto another control leaves focus where the user put it', async () => {
+      renderCard(makePlayer());
+      openJobPicker();
+      await new Promise((r) => setTimeout(r, 0));
+
+      // The seat chip: a focusable control outside the picker. A real click
+      // focuses it on mousedown, before Radix dismisses on the click.
+      const chip = screen.getByRole('button', { name: /^Tank role/ });
+      fireEvent.pointerDown(chip);
+      chip.focus();
+      fireEvent.click(document.body);
+
+      expect(pickerOpen()).toBe(false);
+      expect(chip).toHaveFocus();
+      expect(kebab()).not.toHaveFocus();
+    });
+  });
 });
 
 // ── D12: the card's half of the `?slot=` jump ────────────────────────────────
