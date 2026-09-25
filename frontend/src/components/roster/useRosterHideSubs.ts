@@ -25,12 +25,17 @@ export const ROSTER_HIDE_SUBS_KEY = 'v2-roster-hide-subs';
 /** Legacy's key. Read-only here: continuity in, nothing out. */
 const LEGACY_ROSTER_HIDE_SUBS_KEY = 'roster-hide-subs';
 
+/** Only `'true'`/`'false'` are valid; anything else (e.g. a malformed value) isn't authoritative. */
+function isBoolString(value: string | null): value is 'true' | 'false' {
+  return value === 'true' || value === 'false';
+}
+
 function readStoredHideSubs(): boolean {
   try {
     const v2 = localStorage.getItem(ROSTER_HIDE_SUBS_KEY);
-    if (v2 !== null) return v2 === 'true';
+    if (isBoolString(v2)) return v2 === 'true';
     const legacy = localStorage.getItem(LEGACY_ROSTER_HIDE_SUBS_KEY);
-    if (legacy !== null) return legacy === 'true';
+    if (isBoolString(legacy)) return legacy === 'true';
   } catch {
     // Ignore localStorage errors (private mode / disabled / quota).
   }

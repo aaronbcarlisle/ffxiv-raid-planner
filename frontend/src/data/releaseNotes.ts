@@ -68,7 +68,7 @@ export const RELEASES: Release[] = [
         category: 'fix',
         title: 'Hiding substitutes in the new Roster no longer touches the classic layout',
         description:
-          'V2 preview: the new Roster\'s Show subs toggle keeps its own setting and reads the classic layout\'s only as a starting point, so flipping it in one layout no longer flips the other.',
+          'V2 preview: the new Roster\'s Show subs toggle keeps its own setting and reads the classic layout\'s setting only as a starting point, so flipping it in one layout no longer flips the other.',
         pr: 273,
         prTitle: 'feat(v2): D14b — Phase D close-out: v2-roster-hide-subs, DoD-2 enumeration, DoD sweep, write-back',
       },

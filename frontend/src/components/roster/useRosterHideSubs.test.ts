@@ -38,6 +38,23 @@ describe('useRosterHideSubs', () => {
     expect(result.current.subsHidden).toBe(false);
   });
 
+  it('a malformed v2 value falls through to a valid legacy value', () => {
+    localStorage.setItem(ROSTER_HIDE_SUBS_KEY, 'garbage');
+    localStorage.setItem(LEGACY_KEY, 'true');
+
+    const { result } = renderHook(() => useRosterHideSubs());
+
+    expect(result.current.subsHidden).toBe(true);
+  });
+
+  it('a malformed v2 value with no legacy value falls back to false', () => {
+    localStorage.setItem(ROSTER_HIDE_SUBS_KEY, 'garbage');
+
+    const { result } = renderHook(() => useRosterHideSubs());
+
+    expect(result.current.subsHidden).toBe(false);
+  });
+
   it('a toggle leaves the legacy key unchanged', () => {
     localStorage.setItem(LEGACY_KEY, 'false');
     const { result } = renderHook(() => useRosterHideSubs());

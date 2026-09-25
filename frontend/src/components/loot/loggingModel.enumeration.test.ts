@@ -481,7 +481,7 @@ const EXPECTED: Array<{
 ];
 
 describe('one-logging-model call-site enumeration (DoD-2, R-D14-K)', () => {
-  it('finds exactly the pinned (file, function) set under components/loot/**', () => {
+  it('finds exactly the pinned (file, function) set under components/loot/** and components/history/**', () => {
     const actual = findCallSites()
       .map(({ file, fn }) => ({ file, fn }))
       .sort((a, b) => a.file.localeCompare(b.file) || a.fn.localeCompare(b.fn));
