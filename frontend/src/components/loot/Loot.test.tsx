@@ -2828,8 +2828,9 @@ describe('Loot — D14 Task 2: v2 loot shortcuts (Alt+L/U everywhere, Alt+←/�
       expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
     });
 
-    // Fix wave (D14a review, MINOR #6): the two legs of `shortcutsGuarded()`
-    // that cover `markClearedOpen`'s own modal — the state itself, and
+    // Fix wave (D14a review, MINOR #6): the two legs of the Loot shortcut guard
+    // that cover `markClearedOpen`'s own modal — the state itself (the hook's
+    // `disabled: anyModalOpen || markClearedOpen`, since PR #272's dfb3e34) and
     // `focusInsideDialog()` once the modal grabs focus — are otherwise never
     // isolated: every other test presses Alt+B and checks Alt+ArrowLeft only
     // AFTER (or without regard to) the modal's focus move, so a pass never
