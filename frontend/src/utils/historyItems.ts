@@ -88,10 +88,14 @@ export function methodLabelOf(item: HistoryItem): string {
  * D9a-t kept the shipped `null -> tome wpn` fallback and closed the
  * `tome_weapon` enum leak; D10 moved it here so the matcher can reuse it,
  * because comparing the RAW enum meant `slot:wpn` could not find a row whose
- * Type column visibly reads `aug tome wpn` (PR #265 round 9).
+ * Type column visibly reads `aug tome wpn` (PR #265 round 9). R-E1-D: a real
+ * gear slot renders `GEAR_SLOT_NAMES[slot]` verbatim (Title Case, the one
+ * author of slot text — e.g. "aug R. Ring") instead of the raw enum; the
+ * tome branch is unchanged.
  */
 export function augSlotLabel(slotAugmented: MaterialLogEntry['slotAugmented']): string {
-  return slotAugmented == null || slotAugmented === 'tome_weapon' ? 'tome wpn' : slotAugmented;
+  if (slotAugmented == null || slotAugmented === 'tome_weapon') return 'tome wpn';
+  return GEAR_SLOT_NAMES[slotAugmented as keyof typeof GEAR_SLOT_NAMES] ?? slotAugmented;
 }
 
 /** The Slot cell's text AND the slot sort key — one author (D9a-g). */

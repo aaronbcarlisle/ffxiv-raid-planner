@@ -2810,7 +2810,7 @@ describe('Loot — D14 Task 2: v2 loot shortcuts (Alt+L/U everywhere, Alt+←/�
         pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
       });
       renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
-      fireEvent.click(screen.getByRole('button', { name: '1' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Edit Alice Book I balance, 1' }));
       expect(screen.getByText('Edit Book I')).toBeInTheDocument();
       // `ui/Modal` moves focus into itself inside a `requestAnimationFrame`
       // (`Modal.tsx`'s "Set initial focus" effect) — not synchronous with the

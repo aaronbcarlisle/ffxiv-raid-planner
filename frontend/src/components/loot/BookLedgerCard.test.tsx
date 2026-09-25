@@ -575,4 +575,28 @@ describe('BookLedgerCard — column + row kebabs (D7b, R-16 4/4)', () => {
     fireEvent.contextMenu(row);
     expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
   });
+
+  // T1-d1/T1-d2 (#30): every header cell scopes to its column with a
+  // non-empty accessible name, and each editable balance button names its
+  // own visible digit (label-in-name) rather than a bare number.
+  it('T1-d1: every columnheader has scope="col" and a non-empty accessible name', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    const headers = screen.getAllByRole('columnheader');
+    expect(headers.length).toBeGreaterThan(0);
+    for (const header of headers) {
+      expect(header).toHaveAttribute('scope', 'col');
+      expect(header).toHaveAccessibleName();
+    }
+    // The empty trailing header (row action column) gets the sr-only name.
+    expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument();
+  });
+
+  it('T1-d2: an editable balance button\'s aria-label names the player, book, and its visible value', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+
+    // Alice's fixture: bookI: 1, bookII: 2, bookIII: 3, bookIV: 4.
+    const bookIIIButton = screen.getByRole('button', { name: 'Edit Alice Book III balance, 3' });
+    expect(bookIIIButton).toHaveTextContent('3');
+  });
 });

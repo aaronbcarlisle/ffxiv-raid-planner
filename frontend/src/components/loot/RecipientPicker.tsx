@@ -566,6 +566,14 @@ export function RecipientPicker({
     ? 'Eligible · ranked by need + council rules'
     : scope === 'all' ? 'All members' : 'Off-spec / free';
 
+  // R-E1-B: the fight tag is omitted when floorName is empty or is itself
+  // the generic "Floor N" fallback — reuses FloorCard's duplication check
+  // (FloorCard.tsx:132) — so the context line never doubles or blanks the
+  // fight. "· raid drop" only appears when the live method is 'drop', in
+  // every mode.
+  const showFightTag = floorName !== '' && floorName !== `Floor ${floorNumber}`;
+  const contextLine = `${showFightTag ? `${floorName} ` : ''}Floor ${floorNumber} · ${label} slot${method === 'drop' ? ' · raid drop' : ''}`;
+
   const slotOptions = FLOOR_LOOT_TABLES[floorNumber].gearDrops.map((s) => (
     s === 'ring1' ? { value: 'ring', label: 'Ring' } : { value: s, label: GEAR_SLOT_NAMES[s] }
   ));
@@ -627,10 +635,8 @@ export function RecipientPicker({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg" footer={footer}>
       <div className="space-y-4">
-        {/* Context line */}
-        <p className="text-xs text-text-tertiary">
-          {floorName} Floor {floorNumber} · {label} slot · raid drop
-        </p>
+        {/* Context line (R-E1-B) */}
+        <p className="text-xs text-text-tertiary">{contextLine}</p>
 
         {/* Item selectors — editable in log AND edit mode */}
         {mode !== 'assign' && (
@@ -730,7 +736,7 @@ export function RecipientPicker({
                       >
                         <span
                           className={`w-6 flex-none text-center font-display text-sm font-extrabold ${
-                            entry.rank <= 2 ? 'text-accent' : 'text-text-muted'
+                            entry.rank <= 2 ? 'text-accent-hover' : 'text-text-muted'
                           }`}
                         >
                           #{entry.rank}
@@ -739,7 +745,7 @@ export function RecipientPicker({
                     ) : (
                       <span
                         className={`w-6 flex-none text-center font-display text-sm font-extrabold ${
-                          entry.rank <= 2 ? 'text-accent' : 'text-text-muted'
+                          entry.rank <= 2 ? 'text-accent-hover' : 'text-text-muted'
                         }`}
                       >
                         #{entry.rank}

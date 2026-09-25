@@ -7,6 +7,7 @@
  */
 
 import { InitialsAvatar } from './InitialsAvatar';
+import { Tooltip } from '../primitives/Tooltip';
 
 export interface PriorityRowEntry {
   playerId: string;
@@ -57,7 +58,9 @@ export function PriorityRow({ entries, maxVisible = 3, emptyLabel = 'no one need
               fontWeight="bold"
               textSize="2xs"
             />
-            <span className="truncate text-xs font-semibold text-text-primary">{entry.name}</span>
+            <Tooltip content={entry.name}>
+              <span className="max-w-32 truncate text-xs font-semibold text-text-primary">{entry.name}</span>
+            </Tooltip>
             <span className={`font-display text-xs font-extrabold ${top ? 'text-accent' : 'text-text-secondary'}`}>
               #{entry.rank}
             </span>

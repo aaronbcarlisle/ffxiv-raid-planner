@@ -81,6 +81,15 @@ const DOT_COLOR: Record<WeekEntryType, string> = {
   mats: 'bg-status-warning',
 };
 
+// T1-h (#15): one author for the worded form of each entry type — feeds both
+// the dropdown item's `title` (which otherwise leaks the raw "mats" key) and
+// the sr-only text beside the aria-hidden dots.
+const WEEK_ENTRY_LABEL: Record<WeekEntryType, string> = {
+  loot: 'loot',
+  books: 'books',
+  mats: 'materials',
+};
+
 /** UTC-pinned so the shown date never shifts a day from the mid-day UTC anchor. */
 function formatWeekDate(d: Date): string {
   return d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
@@ -252,11 +261,12 @@ export function WeekScopeControl({
               const rangeText = range
                 ? ` · ${formatWeekDate(range.start)} – ${formatWeekDate(range.end)}`
                 : '';
+              const wordedTypes = types.map((t) => WEEK_ENTRY_LABEL[t]);
               return (
                 <DropdownItem key={w} onSelect={() => onWeekChange(w)}>
                   <span
                     className="flex w-full items-center gap-2"
-                    title={types.length ? types.join(', ') : undefined}
+                    title={wordedTypes.length ? wordedTypes.join(', ') : undefined}
                   >
                     <span>{`Week ${w}${rangeText}`}</span>
                     {/* role="presentation" opts out of index.css's aria-hidden
@@ -267,6 +277,11 @@ export function WeekScopeControl({
                           <span key={t} className={`h-1.5 w-1.5 rounded-full ${DOT_COLOR[t]}`} />
                         ))}
                       </span>
+                    )}
+                    {/* T1-h (#15): sr-only counterpart to the aria-hidden dots
+                        above, worded from the same label map. */}
+                    {wordedTypes.length > 0 && (
+                      <span className="sr-only">{`Logged: ${wordedTypes.join(', ')}`}</span>
                     )}
                   </span>
                 </DropdownItem>

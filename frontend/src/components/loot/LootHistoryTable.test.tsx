@@ -449,9 +449,17 @@ describe('LootHistoryTable', () => {
       expect(screen.queryByText('free / sell')).toBeNull();
     });
 
-    it('renders aug body for a material with slotAugmented body', () => {
+    // T1-i1 (R-E1-D): the aug-slot label is `GEAR_SLOT_NAMES[slot]` verbatim
+    // (Title Case, the one author of slot text) — not the raw lowercase enum.
+    // `toHaveTextContent` is case-sensitive, so this pins the exact casing.
+    it('renders aug Body for a material with slotAugmented body', () => {
       renderTable({ materialLog: [makeMaterialEntry({ id: 5, slotAugmented: 'body' })] });
-      expect(cell('material-entry-5', COL.type)).toHaveTextContent('aug body');
+      expect(cell('material-entry-5', COL.type)).toHaveTextContent('aug Body');
+    });
+
+    it('renders aug R. Ring for a material with slotAugmented ring1', () => {
+      renderTable({ materialLog: [makeMaterialEntry({ id: 5, slotAugmented: 'ring1' })] });
+      expect(cell('material-entry-5', COL.type)).toHaveTextContent('aug R. Ring');
     });
 
     it('renders aug tome wpn for slotAugmented null AND tome_weapon (never the raw enum)', () => {

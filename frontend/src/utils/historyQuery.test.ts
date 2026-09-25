@@ -592,6 +592,17 @@ describe('review round 9 — the aug readout matches what the CELL shows (Copilo
   });
 });
 
+describe('R-E1-D / T1-i2 — the aug readout uses GEAR_SLOT_NAMES verbatim ("aug R. Ring")', () => {
+  it('"ring" and "slot:ring" match a ring1 aug row; "ring1" does not', () => {
+    const ring1Aug = mat({ id: 1, materialType: 'twine', slotAugmented: 'ring1' });
+    const items = [ring1Aug];
+
+    expect(filter('ring', items).map((i) => i.entry.id)).toEqual([1]);
+    expect(filter('slot:ring', items).map((i) => i.entry.id)).toEqual([1]);
+    expect(filter('ring1', items).map((i) => i.entry.id)).toEqual([]);
+  });
+});
+
 describe('review round 10 — the literal "aug" is searchable too (claude[bot])', () => {
   it('a user can retype "aug legs" straight off the screen', () => {
     const legs = mat({ id: 1, materialType: 'twine', slotAugmented: 'legs' });

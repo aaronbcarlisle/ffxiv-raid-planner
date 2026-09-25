@@ -68,12 +68,30 @@ describe('FairnessSummary', () => {
     expect(screen.getByText(/spread 4/)).toBeInTheDocument();
   });
 
-  it('handles an empty roster without crashing (— placeholders)', () => {
-    // Only a substitute in the roster → no mains → most/fewest are null.
+  // T1-e (rewrite): only a substitute in the roster → no mains → `most` is
+  // null. The Most/fewest and Distribution rows are replaced by ONE
+  // empty-state line — no "Most / fewest" card, no "Even"/"Uneven", no
+  // "spread 0" (a real-looking result for a comparison that has no players
+  // to compare). The Drops-this-tier and This-week counts are truthful at
+  // zero and stay.
+  it('handles an empty roster with one empty-state line — no Most/fewest, no Even, no spread', () => {
     render(<FairnessSummary {...base} players={[sub]} lootLog={[]} currentWeek={1} />);
-    expect(screen.getByText('Most / fewest')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+
+    expect(screen.queryByText('Most / fewest')).not.toBeInTheDocument();
+    expect(screen.queryByText('Distribution')).not.toBeInTheDocument();
+    expect(screen.queryByText('Even')).not.toBeInTheDocument();
+    expect(screen.queryByText('Uneven')).not.toBeInTheDocument();
+    expect(screen.queryByText(/spread 0/)).not.toBeInTheDocument();
+    expect(screen.queryByText('—')).not.toBeInTheDocument();
+
+    expect(screen.getByText('No configured players on this static yet.')).toBeInTheDocument();
+
+    // The counts stay — truthful at zero.
     expect(screen.getByText('Drops this tier')).toBeInTheDocument();
+    const dropsCard = screen.getByText('Drops this tier').parentElement!;
+    expect(within(dropsCard).getByText('0')).toBeInTheDocument();
     expect(screen.getByText('This week')).toBeInTheDocument();
+    const thisWeekCard = screen.getByText('This week').parentElement!;
+    expect(within(thisWeekCard).getByText('0')).toBeInTheDocument();
   });
 });

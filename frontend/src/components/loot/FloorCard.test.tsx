@@ -78,6 +78,15 @@ describe('FloorCard', () => {
     expect(screen.getByText('Floor 1')).toBeInTheDocument();
   });
 
+  // T1-f (R-E1-C): the header strip inherits the card's own bg-surface-card
+  // rather than carrying a separate, darker bg-surface-base.
+  it('T1-f: the header strip does not carry bg-surface-base', () => {
+    const players = [makePlayer('a', 'Alice')];
+    render(<FloorCard {...baseProps} players={players} />);
+    const header = screen.getByText('Floor 1').closest('div')!;
+    expect(header.className).not.toContain('bg-surface-base');
+  });
+
   it('a needer produces a priority chip and the header shows a pending chip', () => {
     const players = [makePlayer('a', 'Alice', { earringHas: false })];
     render(<FloorCard {...baseProps} players={players} />);
