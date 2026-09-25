@@ -162,7 +162,8 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
     const el = cellEls.current.get(cellKey(playerId, slot))?.querySelector<HTMLElement>('[role="checkbox"]');
     if (!el) return false;
     el.focus();
-    return true;
+    // `true` only when focus really moved — that is what lets the cell eat the key.
+    return el.ownerDocument.activeElement === el;
   };
   const descriptionId = useId();
 
@@ -187,7 +188,8 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
     // bounded `max-h` makes the scroll container the sticky ancestor so the
     // `sticky top-0` header pins while the body scrolls.
     <div className="max-h-[70vh] overflow-auto rounded-lg border border-border-default bg-surface-card">
-      <table className="w-full border-collapse text-xs" aria-describedby={descriptionId}>
+      {/* The arrow-key description only where arrows do something: a read-only board has no stop. */}
+      <table className="w-full border-collapse text-xs" aria-describedby={tabStop ? descriptionId : undefined}>
         <thead>
           <tr>
             {/* design-system-ignore: board micro-label — dense gearsheet column header (matches mockup 02-roster-board) */}
@@ -296,7 +298,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
           ))}
         </tbody>
       </table>
-      <span id={descriptionId} className="sr-only">Use arrow keys to move between gear cells.</span>
+      {tabStop && <span id={descriptionId} className="sr-only">Use arrow keys to move between gear cells.</span>}
     </div>
   );
 }

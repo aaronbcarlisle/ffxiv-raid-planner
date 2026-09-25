@@ -12,7 +12,7 @@
  */
 export type BoardArrowKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
 
-export interface BoardCellPos {
+interface BoardCellPos {
   row: number;
   col: number;
 }

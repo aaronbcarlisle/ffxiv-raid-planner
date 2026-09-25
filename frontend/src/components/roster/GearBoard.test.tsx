@@ -285,7 +285,7 @@ describe('GearBoard keyboard (R-E1-E)', () => {
     expect(tabStops()).toEqual([rowCells('Player a')[0]]);
   });
 
-  it('T2-c2: clicking a cell makes it the tab stop', () => {
+  it('T2-c2: focusing a cell (as a real click does) makes it the tab stop', () => {
     render(<GearBoard players={[p('a', 'M1'), p('b', 'H1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
     expect(tabStops()).toEqual([rowCells('Player a')[0]]);
     const target = rowCells('Player b')[5];
@@ -296,10 +296,33 @@ describe('GearBoard keyboard (R-E1-E)', () => {
     expect(tabStops()).toEqual([target]);
   });
 
-  it('T2-c3: a read-only board has no tab stop', () => {
+  it('T2-c3: a read-only board has no tab stop and no arrow-key description', () => {
     render(<GearBoard players={[p('a', 'M1'), p('b', 'H1')]} userRole="viewer" currentUserId="u-viewer" isAdminAccess={false} actionsForPlayer={noop} />);
     expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
     expect(tabStops()).toHaveLength(0);
+    expect(screen.getByRole('table')).not.toHaveAttribute('aria-describedby');
+    expect(screen.queryByText('Use arrow keys to move between gear cells.')).not.toBeInTheDocument();
+  });
+
+  it('T2-c6: the active cell losing its BiS target (spanning row) falls back to the first interactive cell', () => {
+    const { rerender } = render(<GearBoard players={[p('a', 'M1'), p('b', 'H1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    focus(rowCells('Player b')[4]);
+    expect(tabStops()).toEqual([rowCells('Player b')[4]]);
+    // b is still on the board, but its row is now the no-BiS spanning row: no cell exists to carry the stop.
+    rerender(<GearBoard players={[p('a', 'M1'), p('b', 'H1', { gear: noBisGear() })]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    expect(screen.getByText(/No BiS imported/i)).toBeInTheDocument();
+    expect(tabStops()).toEqual([rowCells('Player a')[0]]);
+  });
+
+  it('T2-c6 (unclaim variant): the active row turning non-editable falls back to the first interactive cell', () => {
+    const mine = { userId: 'u-me' };
+    const { rerender } = render(<GearBoard players={[p('a', 'M1', mine), p('b', 'H1', mine)]} {...MEMBER_GATE} actionsForPlayer={noop} />);
+    focus(rowCells('Player a')[2]);
+    expect(tabStops()).toEqual([rowCells('Player a')[2]]);
+    // a's cells are still rendered, now inert (tabIndex -1): the stop must leave them.
+    rerender(<GearBoard players={[p('a', 'M1', { userId: 'u-other' }), p('b', 'H1', mine)]} {...MEMBER_GATE} actionsForPlayer={noop} />);
+    expect(rowCells('Player a')[2]).toHaveAttribute('aria-disabled', 'true');
+    expect(tabStops()).toEqual([rowCells('Player b')[0]]);
   });
 
   it('T2-c4: removing a player ABOVE the active cell keeps the same player and slot as the stop', () => {
