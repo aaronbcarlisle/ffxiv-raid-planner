@@ -321,6 +321,44 @@ describe('BookLedgerCard', () => {
   });
 });
 
+// ── D14 Task 2 (R-D14-G): the controlled seam `Loot.tsx`'s `Alt+B` opens
+// through. Both modes exercised — omitted, the card is unchanged. ──
+describe('BookLedgerCard — markClearedOpen controlled seam (R-D14-G)', () => {
+  it('uncontrolled (markClearedOpen omitted): the card keeps its own internal state', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+    expect(screen.queryByTestId('mark-cleared-modal')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark floor cleared' }));
+    expect(screen.getByTestId('mark-cleared-modal')).toBeInTheDocument();
+
+    // The modal's own close, with no `onMarkClearedOpenChange` supplied,
+    // must still close it — through the card's internal state.
+    act(() => (markClearedCalls.at(-1)!.onClose as () => void)());
+    expect(screen.queryByTestId('mark-cleared-modal')).not.toBeInTheDocument();
+  });
+
+  it('controlled: the button click and the modal close both route through onMarkClearedOpenChange, never internal state', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <BookLedgerCard {...baseProps} markClearedOpen={false} onMarkClearedOpenChange={onChange} />,
+      { wrapper: MemoryRouter },
+    );
+    expect(screen.queryByTestId('mark-cleared-modal')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark floor cleared' }));
+    expect(onChange).toHaveBeenCalledWith(true);
+    // The prop hasn't moved yet — a controlled component doesn't grant
+    // itself visibility off its own click.
+    expect(screen.queryByTestId('mark-cleared-modal')).not.toBeInTheDocument();
+
+    rerender(<BookLedgerCard {...baseProps} markClearedOpen onMarkClearedOpenChange={onChange} />);
+    expect(screen.getByTestId('mark-cleared-modal')).toBeInTheDocument();
+
+    act(() => (markClearedCalls.at(-1)!.onClose as () => void)());
+    expect(onChange).toHaveBeenCalledWith(false);
+  });
+});
+
 // ── C7 (D-05): the Books deep-link highlight ──
 // The roster kebab's "Edit Books" jump writes `?book={playerId}` on this same
 // route; the card scrolls that row into view and pulses it, then clears the

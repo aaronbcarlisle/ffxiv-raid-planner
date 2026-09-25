@@ -325,6 +325,18 @@ function writeStored(storage: 'local' | 'session', key: string, value: string): 
   }
 }
 
+/**
+ * R-D14-F: "is the focused element inside an open dialog" — the fresh-at-
+ * keydown half of the one Loot shortcut guard. Reads `document.activeElement`
+ * live (called from inside each action, never baked into a render-time
+ * boolean), because an overlay Loot's own state can't see — the GLOBAL
+ * `KeyboardShortcutsHelp` (`Shift+?`) being the live example — opens without
+ * re-rendering Loot at all (PR #266, Copilot).
+ */
+function focusInsideDialog(): boolean {
+  return document.activeElement?.closest('[role="dialog"],[aria-modal="true"]') != null;
+}
+
 const FLOOR_NUMBERS: FloorNumber[] = [1, 2, 3, 4];
 
 /** Fairness-rules label shown in the subtitle, keyed by effective priority mode. */
@@ -530,6 +542,10 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   const [adjustmentsOpen, setAdjustmentsOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<HistoryItem | null>(null);
   const [resetConfig, setResetConfig] = useState<ResetConfig | null>(null);
+  // R-D14-G: `Alt+B`'s controlled seam into `BookLedgerCard`'s mark-floor-
+  // cleared modal — kept OUT of `anyModalOpen` (R-D14-F) so the guard below
+  // can name it explicitly, matching the ruling's literal shape.
+  const [markClearedOpen, setMarkClearedOpen] = useState(false);
 
   // ── R-35: `Ctrl+Shift+F` focuses History's search box (D11) ──
   // Registered v2-locally through the SHARED hook rather than in
@@ -567,39 +583,97 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     pickerState !== null || wizardState !== null || materialState !== null ||
     adjustmentsOpen || deleteTarget !== null || resetConfig !== null ||
     isActionModalOpen;
+  // R-D14-F: the ONE guard every Loot key runs through, `Ctrl+Shift+F`
+  // included. `anyModalOpen` and `markClearedOpen` are Loot's own state
+  // (fresh every render); `focusInsideDialog()` is called from INSIDE each
+  // action, at keydown time, not baked into a render-time boolean, because it
+  // is the only leg that catches an overlay Loot's own state can't see — the
+  // GLOBAL `KeyboardShortcutsHelp` (`Shift+?`), which opens without
+  // re-rendering Loot at all (PR #266, Copilot).
+  const shortcutsGuarded = () => anyModalOpen || markClearedOpen || focusInsideDialog();
   useKeyboardShortcuts({
-    disabled: anyModalOpen,
-    shortcuts: [{
-      key: 'f',
-      requireMod: true,
-      requireShift: true,
-      description: 'Search history',
-      // Gate 3 (view) lives INSIDE the action, not in a conditional shortcut
-      // array, so the registration is stable across view switches. The cost,
-      // stated rather than discovered: `useKeyboardShortcuts` calls
-      // `preventDefault()` on any MATCH, before running the action, so
-      // `Ctrl+Shift+F` is swallowed on Priority and Log too — where it
-      // no-ops. Focusing the box is the whole action; switching views under
-      // a focus shortcut would be a different feature.
-      //
-      // ⚠ This check is DEFENCE IN DEPTH, not the load-bearing gate, and the
-      // D11 mutation battery proves it: deleting it kills 0 tests. Off
-      // History `HistorySearch` is unmounted, so React has already nulled
-      // `historySearchRef` and `?.focus()` cannot fire — the optional chain
-      // is what actually holds. It is kept anyway because the two mechanisms
-      // fail differently: the day a refactor keeps the History subtree
-      // MOUNTED but hidden (a tab that hides rather than unmounts), the ref
-      // stays live and this line is the only thing stopping the chord from
-      // focusing an invisible box. Recorded rather than deleted because,
-      // unlike R-D10-F's `params.delete('q')`, it is not protecting against
-      // a structurally impossible state — only an unbuilt one.
-      action: () => {
-        if (lview !== 'history') return;
-        // Gate 2(b), above: an overlay Loot cannot see is open and holds focus.
-        if (document.activeElement?.closest('[role="dialog"],[aria-modal="true"]')) return;
-        historySearchRef.current?.focus();
+    shortcuts: [
+      {
+        key: 'f',
+        requireMod: true,
+        requireShift: true,
+        description: 'Search history',
+        // Gate 3 (view) lives INSIDE the action, not in a conditional shortcut
+        // array, so the registration is stable across view switches. The cost,
+        // stated rather than discovered: `useKeyboardShortcuts` calls
+        // `preventDefault()` on any MATCH, before running the action, so
+        // `Ctrl+Shift+F` is swallowed on Priority and Log too — where it
+        // no-ops. Focusing the box is the whole action; switching views under
+        // a focus shortcut would be a different feature.
+        action: () => {
+          if (lview !== 'history') return;
+          if (shortcutsGuarded()) return;
+          historySearchRef.current?.focus();
+        },
       },
-    }],
+      {
+        // R-D14-E: every Loot view, `canEdit` — the same handler
+        // `LootToolbar`'s "Log a drop" button calls (`onLogDrop`).
+        key: 'l',
+        requireAlt: true,
+        description: 'Log a drop',
+        action: () => {
+          if (shortcutsGuarded()) return;
+          if (!canEdit) return;
+          setPickerState({ mode: 'log' });
+        },
+      },
+      {
+        // R-D14-E: every Loot view, `canEdit` — the same handler
+        // `LootToolbar`'s "Log material" button calls (`onLogMaterial`).
+        key: 'u',
+        requireAlt: true,
+        description: 'Log material',
+        action: () => {
+          if (shortcutsGuarded()) return;
+          if (!canEdit) return;
+          setMaterialState({ mode: 'freeform' });
+        },
+      },
+      {
+        // R-D14-E: Log only, NO role gate — viewers use the chevrons too
+        // (`WeekScopeControl.tsx:233-240,294-300`). `logWeek.prev` already
+        // no-ops when `canPrev` is false.
+        key: 'ArrowLeft',
+        requireAlt: true,
+        description: 'Previous week (Log)',
+        action: () => {
+          if (shortcutsGuarded()) return;
+          if (lview !== 'log') return;
+          logWeek.prev();
+        },
+      },
+      {
+        // R-D14-E: Log only, NO role gate. `logWeek.next` already no-ops
+        // when `canNext` is false.
+        key: 'ArrowRight',
+        requireAlt: true,
+        description: 'Next week (Log)',
+        action: () => {
+          if (shortcutsGuarded()) return;
+          if (lview !== 'log') return;
+          logWeek.next();
+        },
+      },
+      {
+        // R-D14-E/G: Log only, `canEdit` — opens `BookLedgerCard`'s
+        // mark-floor-cleared modal through its controlled seam.
+        key: 'b',
+        requireAlt: true,
+        description: 'Mark floor cleared (Log)',
+        action: () => {
+          if (shortcutsGuarded()) return;
+          if (lview !== 'log') return;
+          if (!canEdit) return;
+          setMarkClearedOpen(true);
+        },
+      },
+    ],
   });
 
   // Mount fetch — v2 must not depend on legacy chrome's own loot effect ordering.
@@ -1346,6 +1420,8 @@ export function Loot({ group, tier, canEdit }: LootProps) {
             canEdit={canEdit}
             effectiveUserId={effectiveUserId}
             onResetConfig={setResetConfig}
+            markClearedOpen={markClearedOpen}
+            onMarkClearedOpenChange={setMarkClearedOpen}
             className="mt-4"
           />
         </>

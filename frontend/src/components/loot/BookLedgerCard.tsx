@@ -54,6 +54,14 @@ export interface BookLedgerCardProps {
   canEdit: boolean;
   effectiveUserId?: string;
   className?: string;
+  /**
+   * R-D14-G: an optional controlled pair for the mark-floor-cleared modal, so
+   * `Loot.tsx`'s `Alt+B` can open it from outside. Omitted → the card keeps
+   * its own internal `showMarkCleared` state, unchanged. The card's own
+   * button and the modal's close both go through whichever source is active.
+   */
+  markClearedOpen?: boolean;
+  onMarkClearedOpenChange?: (open: boolean) => void;
 }
 
 type BookType = 'I' | 'II' | 'III' | 'IV';
@@ -138,6 +146,8 @@ export function BookLedgerCard({
   effectiveUserId,
   onResetConfig,
   className,
+  markClearedOpen,
+  onMarkClearedOpenChange,
 }: BookLedgerCardProps) {
   const { pageBalances, fetchPageBalances, adjustBookBalance, markFloorCleared, fetchPageLedger } =
     useLootTrackingStore();
@@ -149,7 +159,10 @@ export function BookLedgerCard({
   const [scope, setScope] = useState<'week' | 'all'>('all');
   const [editState, setEditState] = useState<EditState | null>(null);
   const [ledgerState, setLedgerState] = useState<LedgerState | null>(null);
-  const [showMarkCleared, setShowMarkCleared] = useState(false);
+  const [internalShowMarkCleared, setInternalShowMarkCleared] = useState(false);
+  // R-D14-G: `markClearedOpen` omitted → internal state, unchanged.
+  const showMarkCleared = markClearedOpen ?? internalShowMarkCleared;
+  const setShowMarkCleared = onMarkClearedOpenChange ?? setInternalShowMarkCleared;
   const [booksMenu, setBooksMenu] = useState<BooksMenuState | null>(null);
 
   // D7b (R-16 4/4): both triggers (kebab click + right-click) into the SAME

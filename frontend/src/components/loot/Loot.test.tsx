@@ -2665,3 +2665,179 @@ describe('Loot — D11: Ctrl+Shift+F focuses History search (R-35 / R-D11-C)', (
     expect(document.activeElement).not.toBe(box);
   });
 });
+
+describe('Loot — D14 Task 2: v2 loot shortcuts (Alt+L/U everywhere, Alt+←/→/B on the Log) (R-D14-E/F/G)', () => {
+  function pressAlt(key: string, target: Window | Element = window) {
+    fireEvent.keyDown(target, { key, altKey: true });
+  }
+
+  describe('Editor (canEdit: true)', () => {
+    it('Alt+L opens the log-drop picker on Priority, Log and History', () => {
+      for (const lview of ['priority', 'log', 'history'] as const) {
+        const { unmount } = renderLoot({ tier: makeTier(players) }, [`/?lview=${lview}`]);
+        pressAlt('l');
+        expect(screen.getByTestId('recipient-picker')).toHaveAttribute('data-mode', 'log');
+        unmount();
+      }
+    });
+
+    it('Alt+U opens the freeform material log on Priority, Log and History', () => {
+      for (const lview of ['priority', 'log', 'history'] as const) {
+        const { unmount } = renderLoot({ tier: makeTier(players) }, [`/?lview=${lview}`]);
+        pressAlt('u');
+        expect(screen.getByTestId('material-modal')).toHaveAttribute('data-mode', 'freeform');
+        unmount();
+      }
+    });
+
+    it("Alt+B opens BookLedgerCard's mark-floor-cleared modal on the Log, end to end", () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+
+      pressAlt('b');
+
+      expect(screen.getByText('Mark Floor Cleared')).toBeInTheDocument();
+    });
+
+    it('Alt+B does nothing on Priority or History (Log only)', () => {
+      const priority = renderLoot({ tier: makeTier(players) }, ['/?lview=priority']);
+      pressAlt('b');
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+      priority.unmount();
+
+      renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+      pressAlt('b');
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Viewer (canEdit: false)', () => {
+    it('Alt+L/U/B do nothing', () => {
+      renderLoot({ tier: makeTier(players), canEdit: false }, ['/?lview=log']);
+
+      pressAlt('l');
+      pressAlt('u');
+      pressAlt('b');
+
+      expect(screen.queryByTestId('recipient-picker')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+    });
+
+    it("Alt+←/→ step the Log's displayed week — no role gate", () => {
+      renderLoot({ tier: makeTier(players), canEdit: false }, ['/?lview=log']);
+      expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+
+      pressAlt('ArrowLeft'); // 3 -> 2
+      expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+
+      pressAlt('ArrowRight'); // 2 -> 3 (back to the clock's week, param clears)
+      expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+    });
+  });
+
+  // Anti-vacuous for mutation check (a) — dropping the `lview === 'log'`
+  // condition on the week keys makes ONE of these fail (the param would
+  // move). Pressed and asserted SEPARATELY: prev-then-next would cancel back
+  // to the starting week and pass vacuously even with the gate deleted.
+  it('Alt+← does nothing off the Log (view gate)', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=priority&week=2']);
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+
+    pressAlt('ArrowLeft');
+
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+  });
+
+  it('Alt+→ does nothing off the Log (view gate)', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=priority&week=2']);
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+
+    pressAlt('ArrowRight');
+
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+  });
+
+  it('Alt+← at the first week does nothing', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+    const searchBefore = screen.getByTestId('loc').getAttribute('data-search');
+    pressAlt('ArrowLeft');
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toBe(searchBefore);
+  });
+
+  it("Alt+← is defaultPrevented on the Log, so the browser doesn't go Back", () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    const event = new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, cancelable: true, bubbles: true });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  describe('the one guard (R-D14-F): every key does nothing while an overlay is open', () => {
+    it('a typed Loot modal (the week-log wizard) blocks every key', () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+      fireEvent.click(screen.getByRole('button', { name: "Log this week's loot" }));
+      expect(screen.getByTestId('log-week-wizard')).toBeInTheDocument();
+      const searchBefore = screen.getByTestId('loc').getAttribute('data-search');
+
+      pressAlt('l');
+      pressAlt('u');
+      pressAlt('b');
+      pressAlt('ArrowLeft');
+
+      expect(screen.queryByTestId('recipient-picker')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+      expect(screen.getByTestId('loc').getAttribute('data-search')).toBe(searchBefore);
+    });
+
+    it("EditBookBalanceModal (BookLedgerCard's own local state) blocks every key", async () => {
+      useLootTrackingStore.setState({
+        pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+      });
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+      fireEvent.click(screen.getByRole('button', { name: '1' }));
+      expect(screen.getByText('Edit Book I')).toBeInTheDocument();
+      // `ui/Modal` moves focus into itself inside a `requestAnimationFrame`
+      // (`Modal.tsx`'s "Set initial focus" effect) — not synchronous with the
+      // click, so the guard has nothing to see until this lands.
+      await waitFor(() => expect(document.activeElement?.closest('[role="dialog"]')).toBeTruthy());
+
+      pressAlt('l');
+      pressAlt('u');
+      pressAlt('b');
+      pressAlt('ArrowLeft');
+
+      expect(screen.queryByTestId('recipient-picker')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+      expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+    });
+
+    // Anti-vacuous for mutation check (b) — dropping `focusInsideDialog()`
+    // from the guard makes this fail: `anyModalOpen`/`markClearedOpen` carry
+    // no signal for an overlay Loot's own state can't see.
+    it('the global Shift+? help (focus containment) blocks every key', () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+      // Stand in for `KeyboardShortcutsHelp`, exactly as T-24c does above.
+      const overlay = document.createElement('div');
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.tabIndex = -1;
+      document.body.appendChild(overlay);
+      overlay.focus();
+
+      pressAlt('l');
+      pressAlt('u');
+      pressAlt('b');
+      pressAlt('ArrowLeft');
+
+      expect(screen.queryByTestId('recipient-picker')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+      expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+      overlay.remove();
+    });
+  });
+});
