@@ -60,6 +60,38 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.30',
+    date: '2026-09-25T08:00:00Z',
+    title: 'Phase D slice D14a — fairness on Home, loot shortcuts, truthful shortcut help (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'Loot fairness moves to the static Home page',
+        description:
+          'V2 preview: the tier-wide loot fairness read (drops this tier, most/fewest, distribution, this week) leaves the Loot History view and sits at the top of Home\'s side column, next to the Team Summary. Anyone who can view the static sees it, as they could on History.',
+        pr: 272,
+        prTitle: 'feat(v2): D14a — fairness on Home, v2 loot shortcuts, shell-aware shortcut help (R-40, R-42)',
+      },
+      {
+        category: 'feature',
+        title: 'Loot keyboard shortcuts work in the new layout',
+        description:
+          'V2 preview: Alt+L logs a drop and Alt+U logs a material from any Loot view; on the Log, Alt+← / Alt+→ step the week and Alt+B marks a floor cleared. Shortcuts pause while a dialog is open.',
+        pr: 272,
+        prTitle: 'feat(v2): D14a — fairness on Home, v2 loot shortcuts, shell-aware shortcut help (R-40, R-42)',
+      },
+      {
+        category: 'fix',
+        title: 'The shortcut list only shows shortcuts that work',
+        description:
+          'V2 preview: the Shift+? help and the command palette now list exactly the shortcuts the new layout supports, with where each one works. The classic layout\'s shortcut list is unchanged.',
+        pr: 272,
+        prTitle: 'feat(v2): D14a — fairness on Home, v2 loot shortcuts, shell-aware shortcut help (R-40, R-42)',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.29',
     date: '2026-09-23T15:50:00Z',
     title: 'Phase D slice D13 — Team Summary restored on static Home (v2 preview)',
