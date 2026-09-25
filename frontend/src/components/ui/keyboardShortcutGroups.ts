@@ -15,6 +15,8 @@
  * shells is authored once below and placed in both lists (R-D14-H).
  */
 
+import { getCommandPaletteShortcutLabel } from '../../lib/platform';
+
 export interface ShortcutItem {
   key: string;
   description: string;
@@ -36,6 +38,20 @@ export interface ShortcutGroup {
 const MY_STATICS: ShortcutItem = { key: 'Shift+S', description: 'My Statics' };
 const ADMIN_DASHBOARD: ShortcutItem = { key: 'Ctrl+Shift+S', description: 'Admin Dashboard', adminOnly: true };
 const COPY_LINK: ShortcutItem = { key: 'Shift+Click', description: 'Copy link' };
+
+/**
+ * v2-only row (fix wave, R-E1-G): `key` is a getter over the one
+ * platform-aware label author, not a literal, so this registry row and
+ * `CommandPalette.tsx`'s own chip read the SAME value on every render —
+ * they cannot disagree on a Mac the way a hardcoded 'Ctrl+K' here and a
+ * computed '⌘K' there did. A getter (not a value computed once at module
+ * load) so it re-reads `navigator.platform` on each read, same as the
+ * chip's own on-render call.
+ */
+const COMMAND_PALETTE_SHORTCUT: ShortcutItem = {
+  get key() { return getCommandPaletteShortcutLabel(); },
+  description: 'Command palette',
+};
 
 const STATIC_TIER_GROUP: ShortcutGroup = {
   title: 'Static/Tier',
@@ -131,7 +147,7 @@ export const V2_SHORTCUT_GROUPS: ShortcutGroup[] = [
       { key: '2', description: 'Roster' },
       { key: '3', description: 'Tracking' },
       { key: '4', description: 'Loot' },
-      { key: 'Ctrl+K', description: 'Command palette' },
+      COMMAND_PALETTE_SHORTCUT,
       MY_STATICS,
       ADMIN_DASHBOARD,
     ],

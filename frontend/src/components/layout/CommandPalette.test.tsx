@@ -93,8 +93,16 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  // Fix wave (MINOR #2): jsdom's `platform` is a PROTOTYPE getter, so the
+  // own-property descriptor captured above is `undefined` for the ordinary
+  // case — the `if` branch never restores anything, and a test's
+  // `Object.defineProperty(navigator, 'platform', ...)` (which shadows the
+  // getter with an own property) leaks into every test that runs after it
+  // in this file. Deleting the own property un-shadows the prototype getter.
   if (originalPlatformDescriptor) {
     Object.defineProperty(window.navigator, 'platform', originalPlatformDescriptor);
+  } else {
+    delete (navigator as { platform?: string }).platform;
   }
 });
 
@@ -337,6 +345,13 @@ describe('CommandPalette', () => {
       const highlighted = options.filter((o) => classTokens(o).includes('bg-surface-elevated'));
       expect(highlighted).toHaveLength(1);
       expect(highlighted[0]).toBe(options[2]);
+      // MINOR #7: the highlight is state-driven only (R-E1-F) — a re-added
+      // `hover:bg-surface-elevated` Tailwind variant would let a SECOND row
+      // highlight via CSS `:hover` even though only one carries the state
+      // class above; assert its absence so that regression can't survive.
+      for (const option of options) {
+        expect(classTokens(option)).not.toContain('hover:bg-surface-elevated');
+      }
     });
   });
 

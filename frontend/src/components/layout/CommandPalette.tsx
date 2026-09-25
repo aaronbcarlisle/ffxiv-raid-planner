@@ -345,11 +345,12 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                              border border-border-default rounded text-text-muted
                              whitespace-nowrap flex-shrink-0"
                   >
-                    {/* R-E1-G: this registry's own row is authored 'Ctrl+K'
-                        (a fixed, non-platform-aware literal — the data stays
-                        the same everywhere else the registry is read); the
-                        one platform-aware label for it is substituted here. */}
-                    {s.description === 'Command palette' ? cmdkLabel : s.key}
+                    {/* Fix wave (R-E1-G): no special-casing needed here — the
+                        registry's "Command palette" row is itself a getter
+                        over `getCommandPaletteShortcutLabel()`
+                        (keyboardShortcutGroups.ts), so `s.key` already reads
+                        the same platform-aware label as this chip. */}
+                    {s.key}
                   </kbd>
                 </div>
               )),

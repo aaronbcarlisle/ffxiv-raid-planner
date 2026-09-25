@@ -50,16 +50,15 @@ export function FairnessSummary({
         value={String(dropsThisTier)}
         detail={`across ${weeksSpanned} raid week${weeksSpanned === 1 ? '' : 's'}`}
       />
-      {/* R-E1 / #… empty roster (keyed off `most === null`, lootFairness.ts:81-89):
-          the Most/fewest and Distribution rows compare players that don't
-          exist — a single sibling-styled line (TeamSummaryCard.tsx:268-269 /
+      {/* R-E1 / #30 empty roster (keyed off `most && fewest`, lootFairness.ts:81-89
+          sets the pair together — never one without the other): the
+          Most/fewest and Distribution rows compare players that don't exist
+          — a single sibling-styled line (TeamSummaryCard.tsx:268-269 /
           NeedMatrix.tsx:149 idiom) replaces both instead of showing "—" and
           "Even"/"spread 0", which would read as a real (empty) result. */}
-      {most === null ? (
-        <p className="col-span-2 text-sm text-text-muted">No configured players on this static yet.</p>
-      ) : (
+      {most && fewest ? (
         <>
-          <StatCard label="Most / fewest" value={`${most.count} / ${fewest?.count}`} detail={mostFewestDetail} />
+          <StatCard label="Most / fewest" value={`${most.count} / ${fewest.count}`} detail={mostFewestDetail} />
           <StatCard
             label="Distribution"
             value={even ? 'Even' : 'Uneven'}
@@ -67,6 +66,8 @@ export function FairnessSummary({
             detail={`spread ${spread} — ${even ? 'within' : 'over'} the ±2 band`}
           />
         </>
+      ) : (
+        <p className="sm:col-span-2 text-sm text-text-muted">No configured players on the roster yet.</p>
       )}
       <StatCard label="This week" value={String(thisWeekCount)} detail={`${thisWeekPending} pending`} />
     </div>

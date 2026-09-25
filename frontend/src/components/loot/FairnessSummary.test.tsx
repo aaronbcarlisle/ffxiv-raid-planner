@@ -84,7 +84,7 @@ describe('FairnessSummary', () => {
     expect(screen.queryByText(/spread 0/)).not.toBeInTheDocument();
     expect(screen.queryByText('—')).not.toBeInTheDocument();
 
-    expect(screen.getByText('No configured players on this static yet.')).toBeInTheDocument();
+    expect(screen.getByText('No configured players on the roster yet.')).toBeInTheDocument();
 
     // The counts stay — truthful at zero.
     expect(screen.getByText('Drops this tier')).toBeInTheDocument();
