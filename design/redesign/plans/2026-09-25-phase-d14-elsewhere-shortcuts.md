@@ -58,6 +58,13 @@
 **Riskiest task: Task 3.** The registry crosses the V1 freeze in `ui/` and `Layout.tsx`. Dispatch `xivrp-implementer-deep`, then run one task-scoped review.
 
 **Budget contingency:** if the branch diff passes about 1,300 lines before the Finish, Task 4 and the write-back split off as **D14b**, with their own PR.
+**✅ Taken 2026-09-25.** The branch reached 1,555 lines (1,035 of them tests).
+- **D14a** (this PR) is Tasks 1–3 plus their fix wave.
+- **D14b** is Task 4 (committed as `97cec462` on `feat/phase-d14b-closeout`, rebased onto `main` after D14a merges) plus Finish §2 (the DoD-1 sweep), §4 (DoD checks and the director phase-close vet) and §5 (the write-back).
+- **D14b's write-back must also record:**
+  - R-D14-A's scope qualifier: "every v2 binding" means static-view and global keys; page-local keys on Profile, SetupWizard and the priority editors are out;
+  - the D-54 narrowing (R-D14-E);
+  - Loot's keys `preventDefault` while a Loot modal is open, because the local block no longer passes `disabled: anyModalOpen`.
 
 **Main baselines** (`c0d4b4e2`): test 3244 · lint 0 errors / 903 warnings · knip files 15 / exports 179 / types 140.
 
