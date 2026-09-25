@@ -1,6 +1,6 @@
 # FFXIV Raid Planner — Project Guide
 
-A progression tool and home base for FFXIV static raid groups: roster, schedule, loot, and gear progress for the content a static is working on. **Read [docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md) first** — the canonical model and roadmap. **Status:** dual-shell redesign (legacy V1 default + admin-gated V2 preview); Phases A–C shipped, Phase D loot co-design underway (D0–D12 merged; D13, D14 remain). Version = `CURRENT_VERSION` in `frontend/src/data/releaseNotes.ts`.
+A progression tool and home base for FFXIV static raid groups: roster, schedule, loot, and gear progress for the content a static is working on. **Read [docs/PRODUCT_MODEL.md](./docs/PRODUCT_MODEL.md) first** — the canonical model and roadmap. **Status:** dual-shell redesign (legacy V1 default + admin-gated V2 preview); Phases A–D shipped — Phase D complete except D-18 (R-41: no Progress tab yet). Version = `CURRENT_VERSION` in `frontend/src/data/releaseNotes.ts`.
 
 ## Git rules
 

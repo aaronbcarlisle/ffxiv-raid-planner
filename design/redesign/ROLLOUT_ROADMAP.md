@@ -237,6 +237,11 @@ B–F land as normal PRs.
   half (grid-cell / table-row modifier-clicks).
   **Stage-2 receiving note (same date):** the F-05(b) Team Gear-Sync dashboard moves from
   PluginPage into the Roster area when Stage 2 dissolves the More/Plugin destinations.
+  **✅ Status (D14b, 2026-09-25): Phase D complete except D-18 (R-41: no Progress tab yet).** Shipped
+  as D0 #223 · D1 #224 · D2 #225 · D3 #226 · D4 #235 · D8 #236 · feedback polish #242 · D5 #243 ·
+  D6a #244 · D6b #245 · D7a #257 · D7b #261 · D9a #262 · D9b #264 · D10 #265 · D11 #266 (+ #268) ·
+  D12 #269 · D13 #271 · D14a #272 · D14b #TBD. Mobile work, including D13's Team Summary collapse,
+  is Phase P's (§7b).
 - **E — Polish:** the ~20 mechanical holistic items (a11y: GearBoardCell/palette
   arrow-keys/books table; RecipientPicker rank-chip contrast; copy pass [static vocab,
   TrackCard model-vocab leak, edit-mode picker copy]; memoization; tooltips; heatmap
@@ -251,6 +256,19 @@ B–F land as normal PRs.
   Phase B might restore); doc updates (CLAUDE.md Key Files/Component Reference,
   UI_COMPONENTS.md, PRODUCT_MODEL §6, REDESIGN_SPEC §7 drop corrections, broken
   REDESIGN_SPEC link).
+
+**Carried out of Phase D** (open at the D14b close; detail in `specs/phase-d-loot-plan.md` §5 and its
+D12 row):
+- `ui/Select`'s effect-ordering race — changing the recipient can clobber the slot `Select` back to
+  placeholder, in both shells; the two-eligible-needers browser case is still owed.
+- Legacy V1's no-op "clear notes": the PUT ignores a literal `notes: null`.
+- `eslint.config.js`'s `a11yRecommendedWarn` mapping flips upstream-off `jsx-a11y` rules to `warn` and
+  strips their options — a dedicated chore, not per-call-site patches.
+- D12's three disclosed residuals: R-D12-C (a week-1 tier with no stored week routes to History),
+  R-D12-H (the ring one-to-many / one-to-first asymmetry), R-D12-F cause 4 (Board view renders no
+  anchor; user-ruled out of scope).
+- Delete the orphaned `components/history/{LootLogPanel,PageBalancesPanel,UnifiedWeekOverview}.tsx` —
+  zero importers in `frontend/src`, listed in knip's unused files.
 
 ## 7b. Phase P — Beta polish walkthrough (added 2026-07-25, user ruling)
 
