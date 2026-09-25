@@ -115,7 +115,7 @@
 | Gear source cell per slot (have/need/need+priority; `.gcell` R/T/A/·/● codes) | new | `GearBoardCell` | `components/ui/GearStatusCircle.tsx` (gear atom — derived from) | DS §3.4; §7 gap 2 | REDESIGN_SPEC §5.2 names "gear-board cell" explicitly; derives its state machine from `GearStatusCircle` (raid=2-state, tome=3-state); `need+priority` (`.gcell.need.up`) is an internal variant. DS §7 gap 2 (unify ad-hoc pips) resolves here. |
 | BiS summary cell (X/11 count per row, status-colored) | new | `GearBoard` (internal column) | — | DS §1.1 (status tokens) | Internal rightmost column; no standalone component. |
 | "No BiS imported" player row state (warning spanning gear cells + "Import BiS" CTA) | new | `GearBoard` (internal row state) | — | DS §6 (empty states invite the next action) | Per-row conditional; "Import BiS" routes to player BiS import (remove trailing arrow per §4.1). |
-| Substitute "SUB" tag (on player name) | existing | `components/ui/Tag.tsx` | — | DS §3.3 (Tag `variant="label"`) | `Tag.type-test.tsx` enforces label-variant cannot have onClick. |
+| Substitute "SUB" tag (on player name) | existing | `components/ui/Tag.tsx` | — | DS §3.3 (Tag `variant="label"`) | `Tag.test-d.tsx` enforces label-variant cannot have onClick. |
 | Gear source legend (Raid/Tome/Augmented/Empty/Priority swatches) | new | `ProgressBarLegend` | — | DS §1.1 (gear-source tokens) | Once-per-screen legend; Board-specific 5th state (Priority) not on Home/Loot legends — handle as a legend variant. |
 
 ---
