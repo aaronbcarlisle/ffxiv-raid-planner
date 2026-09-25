@@ -124,7 +124,7 @@ export function FloorCard({
 
   return (
     <div className={`overflow-hidden rounded-lg border border-border-default ${FLOOR_ACCENT_CLASS[floorNumber]} bg-surface-card`}>
-      <div className="flex items-center gap-3 border-b border-border-default bg-surface-base px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-border-default px-4 py-3">
         {/* Duty chip only when gamedata actually names the floor — with no
             tier gamedata the caller passes the "Floor N" fallback, and a
             "Floor N" chip beside the "Floor N" heading is the duplication the

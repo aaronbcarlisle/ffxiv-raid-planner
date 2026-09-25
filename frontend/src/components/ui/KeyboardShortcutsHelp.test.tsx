@@ -15,7 +15,7 @@
  *
  * T-28b: `adminOnly` filtering applies to whichever list the caller supplies.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { KeyboardShortcutsHelp } from './KeyboardShortcutsHelp';
 import { SHORTCUT_GROUPS, V2_SHORTCUT_GROUPS } from './keyboardShortcutGroups';
@@ -147,5 +147,39 @@ describe('KeyboardShortcutsHelp — T-28b adminOnly filtering applies to the sup
       <KeyboardShortcutsHelp isOpen onClose={() => {}} isAdmin groups={groups} />,
     );
     expect(screen.getByText('Ctrl+Shift+Z')).toBeInTheDocument();
+  });
+});
+
+// Fix wave (IMPORTANT #1, R-E1-G): the v2 "Command palette" row's `key` is a
+// getter over `getCommandPaletteShortcutLabel()` (keyboardShortcutGroups.ts),
+// not a literal — this help overlay and CommandPalette's own chip must never
+// disagree on a Mac. Exercised through THIS overlay (not just the palette)
+// since the earlier fix wave only proved the palette side.
+describe('KeyboardShortcutsHelp — v2 Command palette row reads the one label (R-E1-G)', () => {
+  // jsdom's `platform` is a prototype getter with no own property, so the
+  // captured descriptor is `undefined` in the ordinary case — restore by
+  // deleting the own property the stub below installs (fix wave MINOR #2).
+  const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(window.navigator, 'platform');
+
+  afterEach(() => {
+    if (originalPlatformDescriptor) {
+      Object.defineProperty(window.navigator, 'platform', originalPlatformDescriptor);
+    } else {
+      delete (navigator as { platform?: string }).platform;
+    }
+  });
+
+  it('renders ⌘K for the Command palette row on a Mac platform', () => {
+    Object.defineProperty(navigator, 'platform', { value: 'MacIntel', configurable: true });
+    render(<KeyboardShortcutsHelp isOpen onClose={() => {}} groups={V2_SHORTCUT_GROUPS} />);
+    expect(screen.getByText('⌘K')).toBeInTheDocument();
+    expect(screen.queryByText('Ctrl+K')).toBeNull();
+  });
+
+  it('renders Ctrl+K for the Command palette row off a Mac platform', () => {
+    Object.defineProperty(navigator, 'platform', { value: 'Win32', configurable: true });
+    render(<KeyboardShortcutsHelp isOpen onClose={() => {}} groups={V2_SHORTCUT_GROUPS} />);
+    expect(screen.getByText('Ctrl+K')).toBeInTheDocument();
+    expect(screen.queryByText('⌘K')).toBeNull();
   });
 });

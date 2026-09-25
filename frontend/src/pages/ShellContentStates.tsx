@@ -177,8 +177,8 @@ export function ShellContentStates({
       <div data-testid="shell-state-not-found" className="mx-auto w-full max-w-2xl p-6">
         <EmptyState
           icon={<SearchX className="w-6 h-6" />}
-          heading="Group Not Found"
-          description="The static group you're looking for doesn't exist."
+          heading="Static Not Found"
+          description="The static you're looking for doesn't exist."
         />
       </div>
     );

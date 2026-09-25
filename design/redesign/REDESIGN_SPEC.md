@@ -353,7 +353,7 @@ UI copy uses these words and *only* these words for these concepts (rule 4 / *Co
 | **Static** | a raid group | "group," "team" |
 | **Track** | the abstraction a static progresses through (one Progress Engine, many tracks); adding non-savage content = "add a track" | "goal," "content" (vague), "activity" |
 | **Tier** | the current savage raid tier — the flagship track (e.g. "AAC Heavyweight") | — |
-| **Fight** | one named encounter inside a Tier (e.g. M9S, M12S) | "floor" in user-facing copy (floor is an internal/code term) |
+| **Fight** | one named encounter inside a Tier (e.g. M9S, M12S) | ~~"floor" in user-facing copy (floor is an internal/code term)~~ **as built: "Floor N" is the primary user-facing label for a floor, and the fight name (e.g. M12S) is its tag; compact controls may show the fight name alone — ruled 2026-09-25 (U-1), E1 plan R-E1-J** |
 | **Prog / Progress** | a *status* — how far along a static is on a fight or tier | a page name, a tab, a noun-place ("the Progress page"); say "Floor 3 prog," not "go to Progress" |
 | **Roster** | the people in the static + their gear toward BiS | — |
 | **BiS** | the best-in-slot target set for a job | — |

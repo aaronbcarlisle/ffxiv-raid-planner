@@ -131,12 +131,12 @@ describe('ShellContentStates', () => {
     expect(screen.getByRole('button', { name: 'Go to My Statics' })).toBeInTheDocument();
   });
 
-  it('3. not-found: no group, no error, not loading → Group Not Found', () => {
+  it('3. not-found: no group, no error, not loading → Static Not Found', () => {
     useStaticGroupStore.setState({ currentGroup: null, error: null, isLoading: false });
     renderStates();
     expect(screen.getByTestId('shell-state-not-found')).toBeInTheDocument();
-    expect(screen.getByText('Group Not Found')).toBeInTheDocument();
-    expect(screen.getByText("The static group you're looking for doesn't exist.")).toBeInTheDocument();
+    expect(screen.getByText('Static Not Found')).toBeInTheDocument();
+    expect(screen.getByText("The static you're looking for doesn't exist.")).toBeInTheDocument();
     expect(screen.queryByTestId('content')).not.toBeInTheDocument();
   });
 

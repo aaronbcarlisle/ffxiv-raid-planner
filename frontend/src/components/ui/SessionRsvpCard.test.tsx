@@ -173,9 +173,10 @@ describe('SessionRsvpCard', () => {
 // ---------------------------------------------------------------------------
 // F6e additive extensions (member grid, 'later' variant, day pill, actions).
 // The regression lock is written FIRST — with only the original props, the
-// card renders the F6b anatomy EXCEPT the two sanctioned default-render deltas:
-//   1. the 'next'-variant accent ring (ring-1 ring-accent/40), and
-//   2. trackAvailability === false → "Availability not required".
+// card renders the F6b anatomy EXCEPT the sanctioned default-render deltas:
+//   1. the 'next'-variant accent ring (ring-1 ring-accent/40),
+//   2. trackAvailability === false → "Availability not required", and
+//   3. (R-E1-I) the session's own title as a real <h4> heading in the body.
 // ---------------------------------------------------------------------------
 
 describe('SessionRsvpCard — F6e regression lock (no new props → Home render)', () => {
@@ -188,8 +189,10 @@ describe('SessionRsvpCard — F6e regression lock (no new props → Home render)
     expect(screen.queryByTestId('rsvp-warning-note')).not.toBeInTheDocument();
     expect(screen.getByTestId('rsvp-counts').textContent).not.toContain('no answer');
     expect(screen.getAllByTestId('rsvp-avatar').length).toBe(session.rsvps.length); // stack, not grid
-    // The ONE sanctioned default delta: the next-variant accent ring.
+    // The sanctioned default deltas: the next-variant accent ring, and the
+    // session title rendered as a real level-4 heading (R-E1-I).
     expect(document.querySelector('.ring-accent\\/40')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: 'Prog night' })).toBeInTheDocument();
   });
 });
 
@@ -209,6 +212,9 @@ describe('SessionRsvpCard — F6e new behaviors', () => {
     expect(screen.getByText('Prog night')).toBeInTheDocument();
     expect(screen.queryByText('Next session')).not.toBeInTheDocument();
     expect(document.querySelector('.ring-accent\\/40')).not.toBeInTheDocument();
+    // T4-b2: unchanged — no body-level <h4> title line is added for 'later'.
+    expect(screen.queryByRole('heading', { level: 4 })).not.toBeInTheDocument();
+    expect(screen.getAllByText('Prog night')).toHaveLength(1);
     // Inactive button carries the ghost variant (bg-transparent); the active
     // one (success) does not — class difference proves the ghost mapping.
     const inactive = screen.getByRole('button', { name: /tentative/i });
@@ -311,5 +317,26 @@ describe('SessionRsvpCard — F6e new behaviors', () => {
     expect(screen.queryByRole('button', { name: /i'm in/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /tentative/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /can't make it/i })).not.toBeInTheDocument();
+  });
+});
+
+describe('SessionRsvpCard — R-E1-I next-session title heading', () => {
+  it('T4-b1: next variant shows the "Next session" heading and the session title as a level-4 heading', () => {
+    render(<SessionRsvpCard session={makeSession({ title: 'Savage prog' })} />);
+    expect(screen.getByText('Next session')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: 'Savage prog' })).toBeInTheDocument();
+  });
+
+  it('T4-b3: an empty title renders no heading line', () => {
+    render(<SessionRsvpCard session={makeSession({ title: '   ' })} />);
+    expect(screen.queryByRole('heading', { level: 4 })).not.toBeInTheDocument();
+  });
+
+  it('T4-b4: with the title line rendered and no day label, the title appears once', () => {
+    // An unparseable startTime makes formatDay return null, so the day/time
+    // line's fallback would normally re-render session.title — it must be
+    // suppressed once the <h4> title line is already showing it.
+    render(<SessionRsvpCard session={makeSession({ title: 'Savage prog', startTime: 'not-a-date' })} />);
+    expect(screen.getAllByText('Savage prog')).toHaveLength(1);
   });
 });

@@ -154,9 +154,10 @@ export function AvailabilityHeatmap({
             const key = `${cell.date}-${cell.hour}`;
 
             if (canManage && onProposeSession) {
+              const names = cell.names.join(', ');
               const ariaLabel = `${formatDateHeader(cell.date).day} ${formatTimeLabel(
                 `${String(cell.hour).padStart(2, '0')}:00`,
-              )} — ${cell.count} of ${total} free`;
+              )} — ${cell.count} of ${total} free${names ? ` — ${names}` : ''}`;
               const onKeyDown = (e: React.KeyboardEvent) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
@@ -172,6 +173,7 @@ export function AvailabilityHeatmap({
                   className={`${baseClass} cursor-pointer`}
                   style={style}
                   data-scheduled={scheduled ? 'true' : undefined}
+                  title={names || undefined}
                   onClick={() => handleProposeSession(cell.date, cell.hour)}
                   onKeyDown={onKeyDown}
                 >

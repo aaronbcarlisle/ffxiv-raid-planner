@@ -28,9 +28,10 @@ describe('TrackCard', () => {
     expect(screen.queryByRole('link')).toBeNull();
   });
 
-  it('renders the Ring 3 label chip', () => {
+  it('renders the Mount farm label chip', () => {
     render(<TrackCard />);
-    expect(screen.getByText('Ring 3')).toBeInTheDocument();
+    expect(screen.getByText('Mount farm')).toBeInTheDocument();
+    expect(screen.queryByText(/Progress Engine/i)).toBeNull();
   });
 
   it('renders nothing when data is null', () => {

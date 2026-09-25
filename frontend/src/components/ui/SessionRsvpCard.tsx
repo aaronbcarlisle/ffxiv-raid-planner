@@ -268,6 +268,11 @@ export function SessionRsvpCard({
 
   const isLater = variant === 'later';
 
+  // R-E1-I: the 'next' variant's body leads with the session's own title as a
+  // real heading — the "Next session" CardShell title is an eyebrow, not the
+  // session's name. Suppressed for a blank title so no empty heading renders.
+  const showTitleLine = !isLater && session.title.trim().length > 0;
+
   const dayLabel = formatDay(session.startTime, sessionTz);
   const sessionTime = formatTime(session.startTime, sessionTz);
   const viewerTime = formatTime(session.startTime, viewerTz);
@@ -327,7 +332,7 @@ export function SessionRsvpCard({
   const dayTimeBlock = (
     <div>
       <div data-testid="session-daytime" className="font-display text-lg font-semibold text-text-primary">
-        {dayLabel ? `${dayLabel}` : session.title}
+        {dayLabel ? `${dayLabel}` : showTitleLine ? '' : session.title}
         {sessionTime && <span className="ml-2 text-text-secondary">{sessionTime}</span>}
       </div>
       <div data-testid="session-tz-line" className="text-xs text-text-tertiary">
@@ -358,6 +363,11 @@ export function SessionRsvpCard({
       }
     >
       <div className="flex flex-col gap-3">
+        {showTitleLine && (
+          <h4 className="text-xl font-display font-bold text-text-primary leading-tight">
+            {session.title}
+          </h4>
+        )}
         {/* Day / time — display font, optionally preceded by the day pill */}
         {showDayPill && dayPill ? (
           <div className="flex items-center gap-3">

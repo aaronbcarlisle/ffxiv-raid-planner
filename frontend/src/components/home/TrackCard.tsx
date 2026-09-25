@@ -38,13 +38,10 @@ export function TrackCard() {
       as="div"
       title={trackName}
       icon={<Trophy size={14} className="text-membership-linked" />}
-      headerRight={<Tag variant="label">Ring 3</Tag>}
+      headerRight={<Tag variant="label">Mount farm</Tag>}
     >
       <p className="text-xs text-text-secondary leading-snug mb-3">
         {membersComplete} of {totalMembers} have it
-        <span className="text-text-tertiary">
-          {' '}· same Progress Engine, no loot priority
-        </span>
       </p>
       <ProgressBar
         value={value}

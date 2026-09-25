@@ -1829,6 +1829,8 @@ non-member viewers Home fetches the loot log, page ledger and material log read-
 (`Home.tsx:150-162`); balances, registrations and `TeamSummaryCard` stay members-only (`:127-149`,
 `:366`). Team Summary itself (D13, #271) sits in the main column.
 
+**Placement and title: final, confirmed as built by the user 2026-09-25 (U-5, E1).**
+
 ### R-41 · The Split Planner is reached from the **Progress tab** — closes F-04
 
 Split Clears become a Progress-tab surface alongside Goals, Farms and Collections. Home's F-11

@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { History, MoreVertical, Trash2 } from 'lucide-react';
 import { CardShell, SegmentedToggle, JobIcon, ContextMenu, type ContextMenuItem } from '../ui';
 import { Button, IconButton } from '../primitives';
@@ -162,7 +163,13 @@ export function BookLedgerCard({
   onMarkClearedOpenChange,
 }: BookLedgerCardProps) {
   const { pageBalances, fetchPageBalances, adjustBookBalance, markFloorCleared, fetchPageLedger } =
-    useLootTrackingStore();
+    useLootTrackingStore(useShallow((s) => ({
+      pageBalances: s.pageBalances,
+      fetchPageBalances: s.fetchPageBalances,
+      adjustBookBalance: s.adjustBookBalance,
+      markFloorCleared: s.markFloorCleared,
+      fetchPageLedger: s.fetchPageLedger,
+    })));
   // `pageLedger` is subscribed on its own (not just via the whole-store
   // destructure above) so its identity is tracked as an explicit effect dep
   // below — see the fetch effect comment for why.
@@ -300,12 +307,13 @@ export function BookLedgerCard({
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border-default">
-            <th className="px-3 py-2 text-left text-text-secondary">Player</th>
+            <th scope="col" className="px-3 py-2 text-left text-text-secondary">Player</th>
             {BOOK_KEYS.map(([label], idx) => {
               const floor = idx + 1;
               return (
                 <th
                   key={label}
+                  scope="col"
                   className="px-3 py-2 text-center text-text-secondary"
                   onContextMenu={
                     canEdit
@@ -332,7 +340,9 @@ export function BookLedgerCard({
                 </th>
               );
             })}
-            <th className="px-3 py-2 w-16" />
+            <th scope="col" className="px-3 py-2 w-16">
+              <span className="sr-only">Actions</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -368,6 +378,7 @@ export function BookLedgerCard({
                       <Button
                         variant="ghost"
                         size="sm"
+                        aria-label={`Edit ${b.playerName} Book ${label} balance, ${b[key]}`}
                         onClick={() =>
                           setEditState({
                             playerId: b.playerId,

@@ -39,7 +39,6 @@ export function FairnessSummary({
   );
   const { dropsThisTier, weeksSpanned, most, fewest, spread, even, thisWeekCount, thisWeekPending } = fairness;
 
-  const mostFewestValue = most && fewest ? `${most.count} / ${fewest.count}` : '—';
   const mostFewestDetail = most && fewest
     ? `${most.names.join(', ')} ${most.count} · ${fewest.names.join(', ')} ${fewest.count}`
     : '';
@@ -51,13 +50,25 @@ export function FairnessSummary({
         value={String(dropsThisTier)}
         detail={`across ${weeksSpanned} raid week${weeksSpanned === 1 ? '' : 's'}`}
       />
-      <StatCard label="Most / fewest" value={mostFewestValue} detail={mostFewestDetail} />
-      <StatCard
-        label="Distribution"
-        value={even ? 'Even' : 'Uneven'}
-        valueClassName={even ? 'text-status-success' : 'text-status-warning'}
-        detail={`spread ${spread} — ${even ? 'within' : 'over'} the ±2 band`}
-      />
+      {/* R-E1 / #30 empty roster (keyed off `most && fewest`, lootFairness.ts:81-89
+          sets the pair together — never one without the other): the
+          Most/fewest and Distribution rows compare players that don't exist
+          — a single sibling-styled line (TeamSummaryCard.tsx:268-269 /
+          NeedMatrix.tsx:149 idiom) replaces both instead of showing "—" and
+          "Even"/"spread 0", which would read as a real (empty) result. */}
+      {most && fewest ? (
+        <>
+          <StatCard label="Most / fewest" value={`${most.count} / ${fewest.count}`} detail={mostFewestDetail} />
+          <StatCard
+            label="Distribution"
+            value={even ? 'Even' : 'Uneven'}
+            valueClassName={even ? 'text-status-success' : 'text-status-warning'}
+            detail={`spread ${spread} — ${even ? 'within' : 'over'} the ±2 band`}
+          />
+        </>
+      ) : (
+        <p className="sm:col-span-2 text-sm text-text-muted">No configured players on the roster yet.</p>
+      )}
       <StatCard label="This week" value={String(thisWeekCount)} detail={`${thisWeekPending} pending`} />
     </div>
   );

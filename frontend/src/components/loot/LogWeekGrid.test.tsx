@@ -176,6 +176,14 @@ describe('LogWeekGrid — sections and R-19 headers', () => {
     expect(within(header as HTMLElement).getByText('· Book II')).toBeInTheDocument();
   });
 
+  // T1-f (R-E1-C): the header strip inherits the card's own bg-surface-card
+  // rather than carrying a separate, darker bg-surface-base.
+  it('T1-f: the floor header strip does not carry bg-surface-base', () => {
+    renderGrid(<LogWeekGrid {...baseProps()} />);
+    const header = screen.getByText('Floor 2').closest('div');
+    expect(header?.className).not.toContain('bg-surface-base');
+  });
+
   it('shows the duty-name Tag when the floor is actually named', () => {
     renderGrid(<LogWeekGrid {...baseProps({ floors: ['M9S', 'M10S', 'M11S', 'M12S'] })} />);
     expect(screen.getByText('M9S')).toBeInTheDocument();

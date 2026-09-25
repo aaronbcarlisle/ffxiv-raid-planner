@@ -99,6 +99,23 @@ describe('RecipientPicker (assign mode)', () => {
     expect(options).toMatchObject({ updateGear: true, updateWeaponPriority: true });
   });
 
+  // T1-a (R-E1-A): the rank chip's accent color reads at AA contrast against
+  // the selected row's accent/10 tint — `text-accent-hover`, not `text-accent`.
+  it('T1-a: the top-two rank chips use text-accent-hover, not text-accent', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'M12S', floorNumber: 4, label: 'Weapon' }} />
+    );
+    const rankSpans = [screen.getByText('#1'), screen.getByText('#2')];
+    for (const span of rankSpans) {
+      expect(span.className).toContain('text-accent-hover');
+      // Whole-word check: "text-accent-hover" itself contains "text-accent"
+      // as a substring, so a plain `.not.toContain('text-accent')` would
+      // pass vacuously — this confirms the bare (non-hover) class is gone.
+      expect(span.className).not.toMatch(/(?:^|\s)text-accent(?:\s|$)/);
+    }
+  });
+
   it('keyboard interaction can change the selection', async () => {
     render(
       <RecipientPicker {...baseProps} mode="assign"
@@ -1056,5 +1073,55 @@ describe('RecipientPicker — D3 D-25 restore: pill suppression, Adjusted tag, a
         item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
     );
     expect(screen.queryByText('Loot history adjustments active')).not.toBeInTheDocument();
+  });
+});
+
+describe('RecipientPicker context line (R-E1-B)', () => {
+  function contextLineText(): string {
+    const el = document.querySelector('p.text-xs.text-text-tertiary');
+    if (!el) throw new Error('context line not found');
+    return el.textContent ?? '';
+  }
+
+  // T1-b1: log mode, method Drop (the default), a named fight.
+  it('T1-b1: log mode + Drop + a named fight reads "<fight> Floor N · <Label> slot · raid drop"', () => {
+    render(<RecipientPicker {...baseProps} mode="log" />);
+    // Default log-mode selectors: floors[0] = 'M9S' -> Floor 1, placeholder
+    // slot = earring -> "Ears".
+    expect(contextLineText()).toBe('M9S Floor 1 · Ears slot · raid drop');
+  });
+
+  // T1-b2: switching to Book (in log mode) drops "raid drop"; so does
+  // editing an existing Book entry.
+  it('T1-b2: log mode switched to Book has no "raid drop"', () => {
+    render(<RecipientPicker {...baseProps} mode="log" />);
+    fireEvent.click(screen.getByRole('radio', { name: /Book/i }));
+    expect(contextLineText()).toBe('M9S Floor 1 · Ears slot');
+    expect(contextLineText()).not.toContain('raid drop');
+  });
+
+  it('T1-b2: editing a Book entry has no "raid drop"', () => {
+    const entry = makeEntry({ method: 'book', floor: 'M9S', itemSlot: 'earring', recipientPlayerId: 'c1', notes: '' });
+    render(<RecipientPicker {...baseProps} mode="edit" editEntry={entry} />);
+    expect(contextLineText()).not.toContain('raid drop');
+  });
+
+  // T1-b3: a generic `floorName === 'Floor N'` and an empty `floorName` each
+  // render "Floor N" exactly once, with no doubled name and no empty
+  // separator (e.g. never "Floor 4 Floor 4" or " Floor 4").
+  it('T1-b3: a generic floorName renders "Floor N" once (no doubling)', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: 'Floor 4', floorNumber: 4, label: 'Weapon' }} />
+    );
+    expect(contextLineText()).toBe('Floor 4 · Weapon slot · raid drop');
+  });
+
+  it('T1-b3: an empty floorName renders "Floor N" once (no empty separator)', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'weapon', floorName: '', floorNumber: 4, label: 'Weapon' }} />
+    );
+    expect(contextLineText()).toBe('Floor 4 · Weapon slot · raid drop');
   });
 });

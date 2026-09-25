@@ -250,12 +250,21 @@ B–F land as normal PRs.
   `design/redesign/DESIGN_SYSTEM.md` (product mode — inherit, never impose), run
   `/detect` across the four v2 screens, `/polish` per surface, everything as reviewable
   diffs gated by the existing lint/CI. Screenshots rule applies to every PR.
+  **✅ Status (E1, 2026-09-25): the mechanical half shipped (#275).** Board roving focus + arrow keys;
+  the palette combobox + one shortcut label; loot/books a11y and copy; Home/Schedule copy per U-2/U-3;
+  heatmap manager names; v2 delete-flow tests. The six design calls were ruled: U-1 Floor-first is
+  prominence, not text order (R-E1-J); U-2 TrackCard tags "Mount farm"; U-3 the next-session card gets
+  a "Next session" eyebrow + real title; U-4 the roster subtitle describes the static, no change; U-5
+  R-D14-B's fairness placement/title confirmed as built; U-6 the first-paint week order confirmed.
+  **E2 — the impeccable-assisted pass — remains**, unstarted.
 - **F — Seam mitigation:** light docs restyle (tokens/typography alignment, consistent
   PageHeader — full non-group v2 chrome remains Ring 1); retarget user-menu items where
   v2 equivalents exist; dead-code sweep (knip: 8 files / 179 exports / 139 types as of DC — hold
   anything Phase B might restore); doc updates (CLAUDE.md Key Files/Component Reference,
   UI_COMPONENTS.md, PRODUCT_MODEL §6, REDESIGN_SPEC §7 drop corrections, broken
-  REDESIGN_SPEC link).
+  REDESIGN_SPEC link). **Received from E1:** the share-code not-found gap, the `fetchCurrentWeek`
+  stale-response race and the `no-tiny-text`/const-string enforcement gap — see "Carried out of E1"
+  below.
 
 **Carried out of Phase D** (open at the D14b close; **closed by DC #274 except R-D12-F cause 5**, which is re-carried below; detail in `specs/phase-d-loot-plan.md` §5 and its
 D12 row):
@@ -291,6 +300,35 @@ D12 row):
 - Delete the orphaned `components/history/{LootLogPanel,PageBalancesPanel,UnifiedWeekOverview}.tsx` —
   zero importers in `frontend/src`, listed in knip's unused files.
   **✅ CLOSED (DC Task 1).** The three files are deleted; knip's unused files 15 → 8.
+
+**Carried out of E1** (`plans/2026-09-25-phase-e1-mechanical-polish.md`'s status-check table has the
+41-item detail; new items below):
+- Holistic / Phase P (design calls): #3 card richness · #7 Board denominator vs color · #8 two "no
+  BiS" signals · #12 search-hidden selection · #13 adjustments close-on-failure · #14 subs in
+  adjustments · #20 materials-picker unification · #22 accent-tint idiom · #32 membership
+  intersection · #34 rsvp-row role seam · R-E1-J's compact fight-only controls (the floor pills, "Log
+  floor — M12S", the picker's "Fight" Select — accepted as-built, U-1).
+- Phase P (mobile): #11 SegmentedToggle 44 px touch target.
+- E2 (impeccable pass, visual): #5 spacing nit · #36 ultra-wide glyph adjacency.
+- Phase F (semantics / shared store / enforcement / backend): #9 `currentSource` recalc · #24's
+  remaining whole-store destructures (`LogWeekWizard/index.tsx:96`, `QuickLogMaterialModal.tsx:333`) ·
+  #27 `clearAllPageLedger` player set · #38 boundary-evening week · #11 Split planner/Export re-home ·
+  #11 `Badge.tsx` contrast-harness exclusion · the `fetchCurrentWeek` stale-response race (declined on
+  #274, user-approved 2026-09-25 to carry).
+  **New from E1:**
+  - **Needs explicit V1 authorization:** a bad share code never reaches "Static Not Found" in either
+    shell — `staticGroupStore.fetchGroupByShareCode` sets `error` but never clears a stale
+    `currentGroup`, and `ShellContentStates.tsx:145` precedes `:175` (frozen `GroupView.tsx` has the
+    same shape); pre-existing on `main`; ~60–90 lines across the store and both shells.
+  - `no-tiny-text` doesn't reach a class string held in a const (found via `GearBoardCell.tsx`'s
+    `BASE`).
+- Next mechanical slice: #40 null-anchor strip (`WeekNavigatorStrip.tsx:49-53,66`).
+- Holistic (new from E1, un-homed items surfaced but not fixed): a Book-method loot entry syncs gear
+  but its v2 delete confirm offers no revert checkbox (`DeleteLootConfirmModal.tsx:29,82`,
+  default-checked only for `drop` — the drop-only default is the documented delta at
+  `specs/phase-d-loot-design.md:781-788`); PriorityRow's tooltip trigger is a non-focusable span, so
+  keyboard users can't reveal a truncated name; FairnessSummary's empty state leaves an empty grid
+  cell at `≥ sm`.
 
 ## 7b. Phase P — Beta polish walkthrough (added 2026-07-25, user ruling)
 

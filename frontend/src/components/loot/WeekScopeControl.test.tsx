@@ -144,12 +144,35 @@ describe('WeekScopeControl', () => {
     const items = await screen.findAllByRole('menuitem');
     const week3Item = items.find((i) => /Week 3/.test(i.textContent ?? ''));
     const week1Item = items.find((i) => /Week 1/.test(i.textContent ?? ''));
+    // T1-h (#15): the title is worded from the shared label map — "mats"
+    // never leaks the raw entry-type key.
     expect(week3Item?.querySelector('[title="loot, books"]')).toBeTruthy();
-    expect(week1Item?.querySelector('[title="mats"]')).toBeTruthy();
+    expect(week1Item?.querySelector('[title="materials"]')).toBeTruthy();
     // Pins the opt-out from index.css's aria-hidden display-revert rule — without
     // it the dots wrapper loses flex and the h-1.5/w-1.5 dots collapse invisible.
     const dotsWrapper = week3Item?.querySelector('[aria-hidden="true"]') as HTMLElement;
     expect(dotsWrapper).toHaveAttribute('role', 'presentation');
+  });
+
+  // T1-h (#15): the sr-only counterpart to the aria-hidden dots, worded from
+  // the same label map — present only for a week that actually has data.
+  it('T1-h: a week with data carries the worded sr-only text; a week without data carries neither', async () => {
+    const clock = makeClock({
+      weekDataTypes: new Map([
+        [3, ['loot', 'books', 'mats']],
+      ]),
+    });
+    render(<WeekScopeControl {...makeProps({ clock })} />);
+    openMenu();
+    const items = await screen.findAllByRole('menuitem');
+    const week3Item = items.find((i) => /Week 3/.test(i.textContent ?? ''))!;
+    const week2Item = items.find((i) => /Week 2/.test(i.textContent ?? ''))!;
+
+    expect(within(week3Item).getByText('Logged: loot, books, materials')).toBeInTheDocument();
+    expect(week3Item.querySelector('[title]')).toHaveAttribute('title', 'loot, books, materials');
+
+    expect(week2Item.querySelector('[title]')).toBeNull();
+    expect(within(week2Item).queryByText(/^Logged:/)).not.toBeInTheDocument();
   });
 
   it('hides "Start next week" / "Revert week" when canEdit is false', async () => {

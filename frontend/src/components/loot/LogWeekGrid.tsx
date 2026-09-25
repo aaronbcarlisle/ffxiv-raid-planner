@@ -591,7 +591,7 @@ function FloorSection({
   return (
     <div className={isFirst ? '' : 'border-t border-border-default'}>
       <div
-        className={`flex items-center gap-3 border-b border-border-default bg-surface-base px-4 py-3 ${FLOOR_ACCENT_CLASS[floorNumber]}`}
+        className={`flex items-center gap-3 border-b border-border-default px-4 py-3 ${FLOOR_ACCENT_CLASS[floorNumber]}`}
         onContextMenu={canEdit ? (e) => { e.preventDefault(); openFloorMenu(e); } : undefined}
       >
         {hasDutyName && <Tag variant="label" tone="muted">{floorName}</Tag>}

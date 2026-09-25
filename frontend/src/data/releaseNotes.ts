@@ -60,6 +60,46 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.33',
+    date: '2026-09-25T18:00:00Z',
+    title: 'Phase E mechanical polish — E1 (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'The Roster Board works from the keyboard',
+        description:
+          'V2 preview: the Board is now a single tab stop — arrow keys move between gear cells and Space or Enter toggles the focused one, so keyboard users no longer tab through every cell.',
+        pr: 275,
+        prTitle: 'feat(v2): E1 — Phase E mechanical polish: board roving focus, palette combobox, loot/books a11y and copy, home/schedule copy',
+      },
+      {
+        category: 'improvement',
+        title: 'Arrow keys in the command palette',
+        description:
+          'V2 preview: the command palette highlights a result as you type; the arrow keys move the highlight and Enter runs it. Its shortcut label reads ⌘K on a Mac and Ctrl+K elsewhere.',
+        pr: 275,
+        prTitle: 'feat(v2): E1 — Phase E mechanical polish: board roving focus, palette combobox, loot/books a11y and copy, home/schedule copy',
+      },
+      {
+        category: 'improvement',
+        title: 'Clearer loot and books labels',
+        description:
+          'V2 preview: the loot picker says "raid drop" only when the method is a drop, long names in priority chips truncate with a tooltip, every Books balance button has a screen-reader name, augment rows use slot names ("R. Ring"), and the fairness card shows an empty state when a static has no main roster.',
+        pr: 275,
+        prTitle: 'feat(v2): E1 — Phase E mechanical polish: board roving focus, palette combobox, loot/books a11y and copy, home/schedule copy',
+      },
+      {
+        category: 'fix',
+        title: 'Home and Schedule say what they mean',
+        description:
+          'V2 preview: the next-session card shows the session\'s own title under "Next session", the mount-farm card reads "Mount farm", manager heatmap cells list who is free, and a missing static reads "Static Not Found".',
+        pr: 275,
+        prTitle: 'feat(v2): E1 — Phase E mechanical polish: board roving focus, palette combobox, loot/books a11y and copy, home/schedule copy',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.32',
     date: '2026-09-25T14:00:00Z',
     title: 'Phase D carry-outs — DC (v2 preview)',

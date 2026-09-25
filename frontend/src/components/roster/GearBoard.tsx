@@ -19,10 +19,17 @@
  *   - `need.up` priority highlight (F6d): the optional `priorities` map (from
  *     `computeNextUpgradePriorities`, keyed by playerId → needed slots) marks a
  *     cell as the next-upgrade ●. Omitted → every cell renders plain need.
+ *   - Keyboard (R-E1-E): ONE roving tab stop over the interactive cells, moved
+ *     by unmodified arrow keys through the pure `nextBoardCell` (gearBoardNav.ts).
+ *     The cells keep `role="checkbox"`; the table gains no grid role. The stop
+ *     is derived at render from `activeCell` (keyed `{ playerId, slot }`, never
+ *     row/col — indices drift when a player above leaves or the OFFH column
+ *     toggles), falling back to the first interactive cell in render order.
  */
-import { Fragment } from 'react';
+import { Fragment, useId, useRef, useState } from 'react';
 import { PlayerIdentity } from '../ui/PlayerIdentity';
 import { GearBoardCell } from './GearBoardCell';
+import { nextBoardCell } from './gearBoardNav';
 import { equippedAverageIlv } from './rosterIlv';
 import {
   groupPlayersByLightParty,
@@ -35,9 +42,9 @@ import {
 } from '../../utils/calculations';
 import { bisSlotTotals } from '../../utils/rosterReadiness';
 import { canEditGear } from '../../utils/permissions';
-import { getRoleColor, getValidRole } from '../../gamedata';
+import { getValidRole } from '../../gamedata';
 import { isOffhandRelevant, relevantGear } from '../../utils/offhand';
-import type { GearSlot, MemberRole, SnapshotPlayer } from '../../types';
+import type { GearSlot, GearSlotStatus, MemberRole, SnapshotPlayer } from '../../types';
 
 // Base column set; the off-hand column joins only when ANY roster player is
 // offhand-relevant (PLD, or slot data) — the board's columns are global, so
@@ -72,6 +79,26 @@ export interface GearBoardProps {
   priorities?: Map<string, Set<GearSlot>>;
 }
 
+/** A cell's identity across renders (R-E1-E) — never a row/col index. */
+interface BoardCellKey {
+  playerId: string;
+  slot: GearSlot;
+}
+
+/** One rendered player row: what every cell receives, plus the per-column
+ * interactive flags `nextBoardCell` navigates over (editable, has a BiS
+ * target, and not folded into the no-BiS spanning row). */
+interface BoardRow {
+  player: SnapshotPlayer;
+  editable: boolean;
+  obtained: number;
+  total: number;
+  cells: Array<GearSlotStatus | undefined>;
+  interactive: boolean[];
+}
+
+const cellKey = (playerId: string, slot: GearSlot) => `${playerId}/${slot}`;
+
 /** BiS-target slots that have the item / total BiS-target slots, for one player. */
 function playerBis(player: SnapshotPlayer): { obtained: number; total: number } {
   return bisSlotTotals([{ ...player, configured: true, isSubstitute: false }]);
@@ -92,12 +119,53 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
   const slotHeads = showOffhand ? OFFHAND_SLOT_HEADS : BASE_SLOT_HEADS;
   const totalCols = slotOrder.length;
   const grouped = groupPlayersByLightParty(players.filter((p) => p.configured), true);
-  const sections: Array<{ label: string; rows: SnapshotPlayer[] }> = [
+  const toRow = (player: SnapshotPlayer): BoardRow => {
+    // Per-row gear-edit gate (legacy GearTable's per-player canEditGear
+    // pattern, adapted to one-row-per-player).
+    const editable = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess).allowed;
+    const { obtained, total } = playerBis(player);
+    const cells = slotOrder.map((slot) => player.gear.find((x) => x.slot === slot));
+    return { player, editable, obtained, total, cells, interactive: cells.map((g) => editable && total > 0 && !!g?.bisSource) };
+  };
+  const sections = [
     { label: 'Light Party 1', rows: grouped.group1 },
     { label: 'Light Party 2', rows: grouped.group2 },
     { label: 'Unassigned', rows: grouped.unassigned },
     { label: 'Substitutes', rows: grouped.substitutes },
-  ].filter((s) => s.rows.length > 0);
+  ].filter((s) => s.rows.length > 0).map((s) => ({ label: s.label, rows: s.rows.map(toRow) }));
+  // Render order == grid row order: dividers are not rows, a no-BiS row is all-false.
+  const rows = sections.flatMap((s) => s.rows);
+  const grid = rows.map((r) => r.interactive);
+
+  // R-E1-E roving tab stop, DERIVED here at render (no effect, no extra
+  // render): the last focused interactive cell while it is still interactive,
+  // else the first interactive cell in render order. A read-only board has no
+  // interactive cell and therefore no stop.
+  const [activeCell, setActiveCell] = useState<BoardCellKey | null>(null);
+  const isInteractive = (key: BoardCellKey) => {
+    const col = slotOrder.indexOf(key.slot);
+    return col >= 0 && (rows.find((r) => r.player.id === key.playerId)?.interactive[col] ?? false);
+  };
+  const firstInteractive = (): BoardCellKey | null => {
+    for (const r of rows) {
+      const col = r.interactive.indexOf(true);
+      if (col >= 0) return { playerId: r.player.id, slot: slotOrder[col] };
+    }
+    return null;
+  };
+  const tabStop = activeCell && isInteractive(activeCell) ? activeCell : firstInteractive();
+
+  // Cell `<td>`s by { playerId, slot }: focus moves through this map, never a
+  // document query. Read only from event handlers.
+  const cellEls = useRef(new Map<string, HTMLTableCellElement>());
+  const focusCell = (playerId: string, slot: GearSlot): boolean => {
+    const el = cellEls.current.get(cellKey(playerId, slot))?.querySelector<HTMLElement>('[role="checkbox"]');
+    if (!el) return false;
+    el.focus();
+    // `true` only when focus really moved — that is what lets the cell eat the key.
+    return el.ownerDocument.activeElement === el;
+  };
+  const descriptionId = useId();
 
   // No permission guard inside `cycle`: it is only reachable via the per-row
   // `onCycle` closures below, which are withheld entirely for non-editable
@@ -120,7 +188,8 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
     // bounded `max-h` makes the scroll container the sticky ancestor so the
     // `sticky top-0` header pins while the body scrolls.
     <div className="max-h-[70vh] overflow-auto rounded-lg border border-border-default bg-surface-card">
-      <table className="w-full border-collapse text-xs">
+      {/* The arrow-key description only where arrows do something: a read-only board has no stop. */}
+      <table className="w-full border-collapse text-xs" aria-describedby={tabStop ? descriptionId : undefined}>
         <thead>
           <tr>
             {/* design-system-ignore: board micro-label — dense gearsheet column header (matches mockup 02-roster-board) */}
@@ -154,12 +223,10 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                   {section.label}
                 </td>
               </tr>
-              {section.rows.map((player) => {
+              {section.rows.map((row) => {
+                const { player, editable, obtained, total, cells } = row;
+                const rowIndex = rows.indexOf(row);
                 const role = getValidRole(player.role);
-                // Per-row gear-edit gate (legacy GearTable's per-player
-                // canEditGear pattern, adapted to one-row-per-player).
-                const editable = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess).allowed;
-                const { obtained, total } = playerBis(player);
                 // Equipped-first, same expression as the RosterCard headline
                 // (C5, director F3) — the two v2 roster views must print the
                 // same number for the same player.
@@ -170,7 +237,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                   <tr key={player.id} className="hover:bg-accent/5">
                     <td
                       className="border-b border-border-subtle py-2 pl-3 pr-2 text-left"
-                      style={{ borderLeft: `3px solid ${getRoleColor(role)}` }}
+                      style={{ borderLeft: `3px solid var(--color-role-${role}, var(--color-text-muted))` }}
                     >
                       <PlayerIdentity variant="board-cell" name={player.name} job={player.job} role={role} subtitle={subtitle} />
                     </td>
@@ -179,10 +246,19 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                         No BiS imported — priority can't be calculated
                       </td>
                     ) : (
-                      slotOrder.map((slot) => {
-                        const g = player.gear.find((x) => x.slot === slot);
+                      slotOrder.map((slot, col) => {
+                        const g = cells[col];
+                        const cellInteractive = row.interactive[col];
                         return (
-                          <td key={slot} className="h-10 border-b border-l border-border-subtle">
+                          <td
+                            key={slot}
+                            className="h-10 border-b border-l border-border-subtle"
+                            ref={(el) => {
+                              const key = cellKey(player.id, slot);
+                              if (el) cellEls.current.set(key, el);
+                              else cellEls.current.delete(key);
+                            }}
+                          >
                             {g ? (
                               <GearBoardCell
                                 slot={g}
@@ -190,6 +266,16 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                                 priority={priorities?.get(player.id)?.has(slot) ?? false}
                                 disabled={!editable}
                                 onCycle={editable ? () => void cycle(player, slot) : undefined}
+                                isTabStop={tabStop?.playerId === player.id && tabStop.slot === slot}
+                                onFocus={cellInteractive
+                                  ? () => setActiveCell((prev) => (prev?.playerId === player.id && prev.slot === slot ? prev : { playerId: player.id, slot }))
+                                  : undefined}
+                                onNavigate={cellInteractive
+                                  ? (key) => {
+                                    const next = nextBoardCell(grid, { row: rowIndex, col }, key);
+                                    return next !== null && focusCell(rows[next.row].player.id, slotOrder[next.col]);
+                                  }
+                                  : undefined}
                               />
                             ) : null}
                           </td>
@@ -212,6 +298,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
           ))}
         </tbody>
       </table>
+      {tabStop && <span id={descriptionId} className="sr-only">Use arrow keys to move between gear cells.</span>}
     </div>
   );
 }

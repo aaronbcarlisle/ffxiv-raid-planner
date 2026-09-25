@@ -63,7 +63,7 @@ beforeEach(() => {
 });
 
 describe('SessionList', () => {
-  it('promotes the first upcoming occurrence in the current week to "Next session"; later occurrences show their own title', () => {
+  it('promotes the first upcoming occurrence in the current week to "Next session"; its own title still shows (R-E1-I), and later occurrences show their own title', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-07-07T00:00:00.000Z'));
     const s1 = makeSession({
@@ -77,7 +77,9 @@ describe('SessionList', () => {
     renderList({ occurrences: [occ(s1), occ(s2)], isCurrentWeek: true });
     expect(screen.getByText('Next session')).toBeInTheDocument();
     expect(screen.getByText('Second Session')).toBeInTheDocument();
-    expect(screen.queryByText('First Session')).not.toBeInTheDocument();
+    // R-E1-I: the promoted ("next") card is no longer anonymous — its own
+    // title renders as a level-4 heading in the body.
+    expect(screen.getByRole('heading', { level: 4, name: 'First Session' })).toBeInTheDocument();
   });
 
   it('renders no "Next session" title anywhere when isCurrentWeek is false', () => {
