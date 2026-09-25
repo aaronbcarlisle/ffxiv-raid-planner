@@ -35,6 +35,14 @@ export interface PlayerIdentityProps {
    * are implemented.
    */
   variant?: PlayerIdentityVariant;
+  /**
+   * Inline variant only: a node on the NAME line, after the name (RosterCard's
+   * seat chip, R-E2-D). It never shrinks — the name truncates first — and the
+   * subtitle below spans the name AND this node.
+   */
+  nameAdornment?: ReactNode;
+  /** Inline variant only: native `title` on the (truncating) name text. */
+  nameTitle?: string;
 }
 
 /**
@@ -67,6 +75,17 @@ function getInitials(name: string): string {
  * a11y contract: role is never conveyed by color alone.  The job/position text
  * labels (visible in the subtitle) carry semantic meaning; the role ring is
  * decorative reinforcement only.
+ *
+ * Inline name line (E2, R-E2-D): `nameAdornment` is the one slot on it — a
+ * non-shrinking node after the name — so a caller's control rides the name
+ * line while the subtitle keeps the full text width under both. `nameTitle`
+ * is the name's native hover text (the untruncated name, plus any hint).
+ * The name is the only thing that shrinks; its text node always carries the
+ * full name, so truncation is visual only.
+ *
+ * Job badge (E2, R-E2-E): the badge sits on the avatar's outer edge, beyond
+ * the initials, cut out by a card-surface ring; the 12px avatar gap keeps it
+ * clear of the name.
  */
 export function PlayerIdentity({
   name,
@@ -76,6 +95,8 @@ export function PlayerIdentity({
   subtitle,
   avatarUrl,
   variant = 'inline',
+  nameAdornment,
+  nameTitle,
 }: PlayerIdentityProps) {
   // Subtitle + a11y role signal (shared across rendered variants).
   const autoSubtitle = [job, position].filter(Boolean).join(' · ');
@@ -146,8 +167,8 @@ export function PlayerIdentity({
   const initials = getInitials(name);
 
   return (
-    <div className="flex items-center gap-2">
-      {/* Avatar zone: role-colored ring wrapping SafeAvatar; JobIcon badge overlaid */}
+    <div className="flex min-w-0 items-center gap-3">
+      {/* Avatar zone: role-colored ring wrapping SafeAvatar; JobIcon badge on its edge */}
       <div
         data-testid="player-identity-ring"
         className="relative shrink-0 w-8 h-8 rounded-full border-2 border-transparent"
@@ -167,11 +188,13 @@ export function PlayerIdentity({
           }
         />
         {job && (
-          /* Job icon as a small badge at the bottom-right of the avatar.
-             aria-hidden: the job label is present in the subtitle text below,
-             so this icon is purely decorative here. */
+          /* Job icon as a small badge on the avatar's bottom-right edge,
+             outside the initials (R-E2-E); the card-surface ring cuts it out
+             of the role ring. aria-hidden: the job label is present in the
+             subtitle text below, so this icon is purely decorative here. */
           <div
-            className="absolute -bottom-0.5 -right-0.5 rounded-full bg-surface-card"
+            data-testid="player-identity-job-badge"
+            className="absolute -bottom-2 -right-2.5 rounded-full bg-surface-card ring-2 ring-surface-card"
             aria-hidden="true"
           >
             <JobIcon job={job} size="xs" />
@@ -179,10 +202,15 @@ export function PlayerIdentity({
         )}
       </div>
 
-      {/* Text zone: name + subtitle */}
-      <div className="min-w-0">
-        {/* a11y: name text provides the primary identification */}
-        <div className="text-sm font-medium text-text-primary truncate">{name}</div>
+      {/* Text zone: name line (name + optional adornment) + subtitle */}
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          {/* a11y: name text provides the primary identification */}
+          <div className="min-w-0 truncate text-sm font-medium text-text-primary" title={nameTitle}>
+            {name}
+          </div>
+          {nameAdornment && <div className="flex shrink-0 items-center">{nameAdornment}</div>}
+        </div>
         {/* a11y §5.4: visually-hidden role label — only rendered when no other textual
             signal (job / position / subtitle) is already present. Avoids double-
             announcement when the subtitle already names the job/position. */}

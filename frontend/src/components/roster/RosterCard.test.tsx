@@ -39,6 +39,15 @@ function currentSearch() {
   return screen.getByTestId('location-search').textContent ?? '';
 }
 
+/**
+ * E2 (R-E2-D, 2b): the job swap moved from a header IconButton into the
+ * kebab — open the menu, then its "Change Job" item.
+ */
+function openJobPickerViaKebab() {
+  fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Change Job' }));
+}
+
 beforeEach(() => {
   // Radix Popper (BiSSourceSelector's popover) needs ResizeObserver, which
   // jsdom lacks.
@@ -210,7 +219,7 @@ describe('RosterCard', () => {
     );
 
     // Open an overlay (the job picker) → the balanced open fires, close does not.
-    fireEvent.click(screen.getByRole('button', { name: /change job/i }));
+    openJobPickerViaKebab();
     expect(onModalOpen).toHaveBeenCalledTimes(1);
     expect(onModalClose).not.toHaveBeenCalled();
 
@@ -271,7 +280,7 @@ describe("RosterCard — A10 void'd-promise fixes", () => {
       onDuplicate: vi.fn(),
     };
     renderWithActions(rejecting);
-    fireEvent.click(screen.getByRole('button', { name: /change job/i }));
+    openJobPickerViaKebab();
     // JobPicker (real, full-picker mode) — pick a different job than PLD.
     fireEvent.click(screen.getByText('WAR'));
     // Card-owned confirm modal → primary action commits.
@@ -1303,7 +1312,7 @@ describe('RosterCard — job change → BiS import (C7, D-15)', () => {
 
   /** Open the confirm by picking WAR over the player's PLD. */
   function openJobChangeConfirm() {
-    fireEvent.click(screen.getByRole('button', { name: /change job/i }));
+    openJobPickerViaKebab();
     fireEvent.click(screen.getByText('WAR'));
   }
 
@@ -1636,7 +1645,7 @@ describe('RosterCard — modifier affordances (C7, D-55)', () => {
 // end-to-end behavior through the real Popover.
 describe('RosterCard — JobPicker portal (Task 2)', () => {
   function openJobPicker() {
-    fireEvent.click(screen.getByRole('button', { name: /change job/i }));
+    openJobPickerViaKebab();
   }
   function pickerOpen() {
     return screen.queryByPlaceholderText('Search jobs...') !== null;
@@ -1708,33 +1717,30 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
     expect(pickerOpen()).toBe(false);
   });
 
-  it('clicking the trigger while open closes it and does NOT reopen', async () => {
+  // E2 (R-E2-D): the picker has no visible trigger any more — the kebab item
+  // opens it. The race this guarded (a second trigger click read as "outside"
+  // by JobPicker's own mousedown listener, then re-toggled open) now lives on
+  // the kebab: clicking it while the picker is open must close the picker and
+  // never bounce it back open.
+  it('clicking the kebab while the picker is open closes it and does NOT reopen', async () => {
     renderCard(makePlayer());
-    const trigger = screen.getByRole('button', { name: /change job/i });
-
-    fireEvent.click(trigger);
+    openJobPicker();
     expect(pickerOpen()).toBe(true);
 
-    // Flush Radix's deferred outside-pointerdown registration so the second
-    // trigger click is evaluated the same way a real second click would be.
+    // Flush Radix's deferred outside-pointerdown registration so the click is
+    // evaluated the way a real one would be.
     await new Promise((r) => setTimeout(r, 0));
-    // Real browser event order: pointerdown, mousedown, THEN click. A plain
-    // fireEvent.click skips the mousedown a real second click always fires —
-    // JobPicker's own outside-click listener is mousedown-only
-    // (JobPicker.tsx:185), so a click-only test can never reproduce the race
-    // this covers (a non-suppressed JobPicker reads the trigger's mousedown
-    // as "outside," closing the popover itself; the trailing click then
-    // re-toggles Radix's now-closed state back open).
-    fireEvent.pointerDown(trigger);
-    fireEvent.mouseDown(trigger);
-    fireEvent.click(trigger);
+    // Real browser event order: pointerdown, mousedown, THEN click.
+    const kebab = screen.getByRole('button', { name: /player actions/i });
+    fireEvent.pointerDown(kebab);
+    fireEvent.mouseDown(kebab);
+    fireEvent.click(kebab);
 
     expect(pickerOpen()).toBe(false);
-    // Give any stray close-then-reopen microtask a chance to fire before
-    // asserting it stayed shut (the exact race the brief calls out: the
-    // trigger click reads as "outside" to a non-suppressed JobPicker).
     await new Promise((r) => setTimeout(r, 0));
     expect(pickerOpen()).toBe(false);
+    // …and the click still did its own job: the menu is open.
+    expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 
   it('an Escape from inside the search input closes the popover (end-to-end through the real Popover)', () => {
@@ -2182,5 +2188,182 @@ describe('RosterCard — D12 R-28, the entry jump splits by week', () => {
     expect(params.get('entry')).toBe('77');
     expect(params.get('entryType')).toBe('material');
     expect(params.get('lview')).toBe('log');
+  });
+});
+
+// ── E2 (R-E2-D, option 2b): the one-line header ─────────────────────────────
+// Avatar · name · ONE seat chip · iLvl · kebab, never wrapping. Only the name
+// shrinks; SUB and "+N" ride the subtitle before the job text; the job swap
+// lives in the kebab. Layout is asserted at class level (jsdom has no boxes);
+// the widths are browser-measured in the task report.
+describe('RosterCard — one-line header (E2, R-E2-D)', () => {
+  const LONG = 'Aurelianne Vastheart-Moonwhisper';
+  const twoPriorities = [{ job: 'PLD' }, { job: 'DRK' }] as SnapshotPlayer['weaponPriorities'];
+  const worstCase = () =>
+    makePlayer({ name: LONG, isSubstitute: true, weaponPriorities: twoPriorities });
+
+  it.each([
+    ['tank + SUB + "+N" (worst case)', worstCase(), /^Tank role MT, position T1$/],
+    ['SUB only', makePlayer({ name: LONG, job: 'WHM', role: 'healer', position: 'H1', tankRole: null, isSubstitute: true }), /^H1$/],
+    ['"+N" only', makePlayer({ name: LONG, job: 'DRG', role: 'melee', position: 'M1', tankRole: null, weaponPriorities: twoPriorities }), /^M1$/],
+  ])('%s: the header never wraps and the name is what truncates', (_label, player, chipName) => {
+    for (const density of ['compact', 'expanded'] as const) {
+      const { unmount } = renderCard(player, { density });
+      const header = screen.getByTestId('roster-card-header');
+      expect(header.className).not.toMatch(/flex-wrap/);
+      expect(header.querySelector('.flex-wrap')).toBeNull();
+      const name = screen.getByText(LONG);
+      expect(name).toHaveClass('min-w-0', 'truncate');
+      // The seat chip rides the name line in a non-shrinking slot; the right
+      // block (iLvl + kebab) never shrinks either.
+      const chip = within(header).getByRole('button', { name: chipName });
+      expect(name.parentElement).toContainElement(chip);
+      expect(chip.closest('.shrink-0')).not.toBeNull();
+      expect(screen.getByRole('button', { name: /player actions/i }).closest('.shrink-0')).not.toBeNull();
+      unmount();
+    }
+  });
+
+  it('the name carries the full name and the rename hint; a viewer gets the name alone', () => {
+    const { unmount } = renderCard(worstCase());
+    const name = screen.getByText(LONG);
+    expect(name).toHaveAttribute('title', `${LONG} — double-click to rename`);
+    // Truncation is visual only: the text node AT reads is the whole name.
+    expect(name.textContent).toBe(LONG);
+    unmount();
+
+    renderCard(worstCase(), { userRole: 'viewer' });
+    expect(screen.getByText(LONG)).toHaveAttribute('title', LONG);
+  });
+
+  it('SUB and "+N" ride the subtitle, before the job text, and never shrink', () => {
+    renderCard(worstCase());
+    const subtitle = screen.getByTestId('roster-card-subtitle');
+    const sub = screen.getByText('SUB');
+    const plus = screen.getByText('+1');
+    const job = within(subtitle).getByText('Paladin');
+    expect(subtitle).toContainElement(sub);
+    expect(subtitle).toContainElement(plus);
+    expect(sub.compareDocumentPosition(job) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(plus.compareDocumentPosition(job) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sub.closest('.shrink-0')).not.toBeNull();
+    expect(plus.closest('.shrink-0')).not.toBeNull();
+    expect(job).toHaveClass('min-w-0', 'truncate');
+    // Not on the name line: that line holds the name and the seat chip only…
+    const nameLine = screen.getByText(LONG).parentElement!;
+    expect(nameLine).not.toContainElement(sub);
+    expect(nameLine).not.toContainElement(plus);
+    // …and the subtitle spans the name line's full width (a sibling under
+    // it, not nested under the name).
+    expect(nameLine.parentElement).toContainElement(subtitle);
+    expect(nameLine).not.toContainElement(subtitle);
+  });
+
+  it('a tank card renders ONE merged seat chip and neither single-axis selector', () => {
+    renderCard(makePlayer());
+    const header = screen.getByTestId('roster-card-header');
+    const seat = within(header).getAllByRole('button', { name: /^Tank role/ });
+    expect(seat).toHaveLength(1);
+    expect(seat[0]).toHaveAccessibleName('Tank role MT, position T1');
+    // TankRoleSelector's and PositionSelector's triggers are bare "MT"/"T1".
+    expect(within(header).queryByRole('button', { name: 'MT' })).not.toBeInTheDocument();
+    expect(within(header).queryByRole('button', { name: 'T1' })).not.toBeInTheDocument();
+  });
+
+  it("a non-tank card keeps today's PositionSelector as its one chip", () => {
+    renderCard(makePlayer({ job: 'WHM', role: 'healer', position: 'H1', tankRole: null }));
+    const header = screen.getByTestId('roster-card-header');
+    expect(within(header).getByRole('button', { name: 'H1' })).toBeInTheDocument();
+    expect(within(header).queryByRole('button', { name: /^Tank role/ })).not.toBeInTheDocument();
+  });
+
+  it('the seat chip calls the handlers the two selectors did', () => {
+    const onUpdate = vi.fn().mockResolvedValue(undefined);
+    renderCard(makePlayer(), { actions: { ...actions, onUpdate } });
+    fireEvent.click(screen.getByRole('button', { name: /^Tank role/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Tank role' })).getByRole('button', { name: 'OT' }));
+    expect(onUpdate).toHaveBeenCalledWith({ tankRole: 'OT' });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear position' }));
+    expect(onUpdate).toHaveBeenCalledWith({ position: null });
+  });
+
+  it('has no job-swap button in the header', () => {
+    renderCard(makePlayer());
+    expect(
+      within(screen.getByTestId('roster-card-header')).queryByRole('button', { name: /change job/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it("a double-click on the seat chip is the chip's, not a rename; on the name it renames", () => {
+    renderCard(makePlayer());
+    fireEvent.doubleClick(screen.getByRole('button', { name: /^Tank role/ }));
+    expect(screen.queryByLabelText('Player name')).not.toBeInTheDocument();
+    fireEvent.doubleClick(screen.getByText('Tank One'));
+    expect(screen.getByLabelText('Player name')).toBeInTheDocument();
+  });
+
+  it('a double-click inside the seat popover (a portal, a React child of the name) never renames', () => {
+    renderCard(makePlayer());
+    fireEvent.click(screen.getByRole('button', { name: /^Tank role/ }));
+    fireEvent.doubleClick(screen.getByText('Position'));
+    expect(screen.queryByLabelText('Player name')).not.toBeInTheDocument();
+  });
+
+  it("the rename input fills the identity's width (no fixed w-40) and the seat chip steps aside", () => {
+    renderCard(makePlayer());
+    fireEvent.doubleClick(screen.getByText('Tank One'));
+    const input = screen.getByLabelText('Player name');
+    expect(input.className).not.toMatch(/\bw-40\b/);
+    // Input's own fullWidth wrapper, inside a V2-local min-w-0 flex-1 box.
+    const box = input.closest('.min-w-0.flex-1');
+    expect(screen.getByTestId('roster-card-header')).toContainElement(box as HTMLElement);
+    expect(box?.firstElementChild).toHaveClass('w-full');
+    expect(screen.queryByRole('button', { name: /^Tank role/ })).not.toBeInTheDocument();
+  });
+
+  describe('kebab "Change Job" (replaces the header IconButton)', () => {
+    const menuLabels = () => screen.getAllByRole('menuitem').map((i) => i.textContent?.trim());
+
+    it('opens the same job flow, slotted before "Flex Roles"', () => {
+      renderCard(makePlayer());
+      fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+      const labels = menuLabels();
+      expect(labels.indexOf('Change Job')).toBe(labels.indexOf('Flex Roles') - 1);
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Change Job' }));
+      expect(screen.getByPlaceholderText('Search jobs...')).toBeInTheDocument();
+    });
+
+    it("matches the old button's gate: absent wherever the button was hidden", () => {
+      // Member on someone else's card: canEditPlayer denies, the button was hidden.
+      const other = renderCard(makePlayer({ userId: 'someone-else' }), { userRole: 'member' });
+      fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+      expect(menuLabels()).not.toContain('Change Job');
+      other.unmount();
+
+      const viewer = renderCard(makePlayer(), { userRole: 'viewer' });
+      fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+      expect(menuLabels()).not.toContain('Change Job');
+      viewer.unmount();
+
+      // Member on their OWN claimed card: editable, so present.
+      renderCard(makePlayer({ userId: 'u1' }), { userRole: 'member' });
+      fireEvent.click(screen.getByRole('button', { name: /player actions/i }));
+      expect(menuLabels()).toContain('Change Job');
+    });
+  });
+});
+
+// ── E2 (R-E2-F, #7): the card and the Board print one fraction ──────────────
+describe('RosterCard — BiS progress via playerBisProgress (R-E2-F)', () => {
+  it('a tome slot owned but not augmented is incomplete on the card', () => {
+    const gear = Array.from({ length: 11 }, (_, i) => ({
+      slot: `s${i}`,
+      bisSource: i === 0 ? 'tome' : 'raid',
+      hasItem: i < 6,
+      isAugmented: false,
+    }));
+    renderCard(makePlayer({ gear } as unknown as Partial<SnapshotPlayer>));
+    // bisSlotTotals would count 6 obtained; the card's definition says 5.
+    expect(screen.getByText('5/11 BiS')).toBeInTheDocument();
   });
 });

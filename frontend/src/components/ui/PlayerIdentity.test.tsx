@@ -88,6 +88,49 @@ describe('PlayerIdentity', () => {
   });
 });
 
+describe('PlayerIdentity inline — E2 name line + job badge', () => {
+  it('R-E2-E: the job badge sits on the avatar edge, cut out by a card-surface ring', () => {
+    render(<PlayerIdentity name="Healer Two" job="WHM" />);
+    const badge = screen.getByTestId('player-identity-job-badge');
+    // Layout pin: pushed out past the initials (not the old -0.5 overlap)…
+    expect(badge).toHaveClass('absolute', '-bottom-2', '-right-2.5');
+    expect(badge.className).not.toMatch(/-(bottom|right)-0\.5(\s|$)/);
+    // …with a card-surface ring separating it from the role ring.
+    expect(badge).toHaveClass('rounded-full', 'bg-surface-card', 'ring-2', 'ring-surface-card');
+    // The avatar-to-name gap is wide enough to clear it (12px).
+    const root = screen.getByTestId('player-identity-ring').parentElement!;
+    expect(root).toHaveClass('gap-3');
+    expect(root).not.toHaveClass('gap-2');
+  });
+
+  it('nameAdornment rides the name line, never shrinks, and the subtitle spans both', () => {
+    render(
+      <PlayerIdentity
+        name="Tank One"
+        job="PLD"
+        subtitle="Paladin"
+        nameAdornment={<span>chip</span>}
+      />
+    );
+    const name = screen.getByText('Tank One');
+    const slot = screen.getByText('chip').parentElement!;
+    expect(name).toHaveClass('min-w-0', 'truncate');
+    expect(slot).toHaveClass('shrink-0');
+    expect(name.parentElement).toBe(slot.parentElement);
+    // The subtitle is the name line's sibling, not the name's.
+    const subtitle = screen.getByText('Paladin');
+    expect(subtitle.parentElement).toBe(name.parentElement!.parentElement);
+  });
+
+  it("nameTitle is the name text's native title; absent by default", () => {
+    const { unmount } = render(<PlayerIdentity name="Tank One" nameTitle="Tank One — hint" />);
+    expect(screen.getByText('Tank One')).toHaveAttribute('title', 'Tank One — hint');
+    unmount();
+    render(<PlayerIdentity name="Tank One" />);
+    expect(screen.getByText('Tank One')).not.toHaveAttribute('title');
+  });
+});
+
 describe('PlayerIdentity board-cell variant', () => {
   it('renders the name and caller subtitle (no null return)', () => {
     render(<PlayerIdentity variant="board-cell" name="Tank One" job="PLD" role="tank" subtitle="MT · 740" />);
