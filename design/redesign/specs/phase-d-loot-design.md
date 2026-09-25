@@ -2004,7 +2004,7 @@ writing v2-only** — the same shape as `useRosterSortPreset` (C6), whose identi
 caught. Closes the closeout's last open DoD item. Small severable micro-slice; not part of a Phase-D
 surface.
 
-**✅ Closed (D14b, #TBD; R-D14-J).** `components/roster/useRosterHideSubs.ts` reads `v2-roster-hide-subs`
+**✅ Closed (D14b, #273; R-D14-J).** `components/roster/useRosterHideSubs.ts` reads `v2-roster-hide-subs`
 → legacy `roster-hide-subs` → `false` (`:28-38`) and writes the v2 key only (`:49-56`); `Roster.tsx:148`
 consumes it. `GroupViewContent.tsx` is untouched by D14 (its legacy read/write, `:539,543`, is
 unchanged). D14b sweep T4-a/b: toggling v2's "Show subs" wrote only `v2-roster-hide-subs`; toggling

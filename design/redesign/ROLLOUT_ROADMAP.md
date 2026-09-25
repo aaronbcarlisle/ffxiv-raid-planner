@@ -240,7 +240,7 @@ B–F land as normal PRs.
   **✅ Status (D14b, 2026-09-25): Phase D complete except D-18 (R-41: no Progress tab yet).** Shipped
   as D0 #223 · D1 #224 · D2 #225 · D3 #226 · D4 #235 · D8 #236 · feedback polish #242 · D5 #243 ·
   D6a #244 · D6b #245 · D7a #257 · D7b #261 · D9a #262 · D9b #264 · D10 #265 · D11 #266 (+ #268) ·
-  D12 #269 · D13 #271 · D14a #272 · D14b #TBD. Mobile work, including D13's Team Summary collapse,
+  D12 #269 · D13 #271 · D14a #272 · D14b #273. Mobile work, including D13's Team Summary collapse,
   is Phase P's (§7b).
 - **E — Polish:** the ~20 mechanical holistic items (a11y: GearBoardCell/palette
   arrow-keys/books table; RecipientPicker rank-chip contrast; copy pass [static vocab,
