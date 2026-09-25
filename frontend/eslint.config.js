@@ -8,11 +8,10 @@ import designSystemPlugin from './eslint-design-system-plugin.js'
 import boundaries from 'eslint-plugin-boundaries'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
 
-// jsx-a11y recommended, downgraded to warn for the legacy backlog. The shared
-// layer re-locks these to error below (it is small and clean).
-// Upstream recommended, downgraded to warn: `off` rules stay off and each
-// rule keeps its upstream options (the old keys→'warn' map re-enabled three
-// upstream-off rules and stripped seven rules' options).
+// jsx-a11y recommended, downgraded to warn for the legacy backlog (the shared
+// layer re-locks these to error below, it is small and clean): `off` rules
+// stay off and each rule keeps its upstream options (the old keys→'warn' map
+// re-enabled three upstream-off rules and stripped seven rules' options).
 const a11yRecommendedWarn = Object.fromEntries(
   Object.entries(jsxA11y.flatConfigs.recommended.rules).map(([rule, entry]) => {
     const [severity, ...options] = Array.isArray(entry) ? entry : [entry]

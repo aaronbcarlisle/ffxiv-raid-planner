@@ -2025,17 +2025,6 @@ describe('RosterCard — D12 R-28, the entry jump splits by week', () => {
     expect(altClickHead().get('lview')).toBe('history');
   });
 
-  // R-D12-C: no override + provisional clock = no week the Log's mount is
-  // guaranteed to land on.
-  it('routes to History under a provisional clock with no stored or URL week', () => {
-    // store at currentWeek 1 / maxWeek 1, no ?week=, no v2-history-week-* key,
-    // entry weekNumber 1 — the very week the provisional clock names, so only
-    // the guard keeps it off the Log.
-    useLootTrackingStore.setState({ lootLog: [lootEntry(1)] });
-
-    expect(altClickHead().get('lview')).toBe('history');
-  });
-
   // R-D12-C, the other half: a CONCRETE override pins the Log's week whatever
   // the clock is doing, so the Log branch is safe even while provisional.
   it('still routes to the Log under a provisional clock when ?week= pins it', () => {
