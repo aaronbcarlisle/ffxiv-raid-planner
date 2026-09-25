@@ -71,6 +71,12 @@ export function LootAdjustmentsModal({ isOpen, onClose, players, onSave }: LootA
     return { lootAdjustment: p?.lootAdjustment ?? 0, priorityModifier: p?.priorityModifier ?? 0 };
   };
 
+  // R-E2-L: `players` now includes every configured player, subs included
+  // (Loot.tsx passes `configuredPlayers`). Split main roster from subs so the
+  // subs render under their own group label, same row shape either way.
+  const mainRosterPlayers = players.filter((p) => !p.isSubstitute);
+  const substitutePlayers = players.filter((p) => p.isSubstitute);
+
   // Seed the draft ONLY on the open transition (closed -> open) — mirrors
   // RecipientPicker.tsx's wasOpenRef guard so an in-progress edit can't be
   // silently reverted by a mid-open roster refresh.
@@ -94,6 +100,46 @@ export function LootAdjustmentsModal({ isOpen, onClose, players, onSave }: LootA
         [field]: value ?? 0,
       },
     }));
+  };
+
+  // One row, shared by the main-roster list and the Substitutes group below —
+  // a sub's row is identical to a main-roster row (same fields, same onChange
+  // wiring), so it saves through the same `handleChange`/`handleSave` path.
+  const renderRow = (player: SnapshotPlayer) => {
+    const entry = draft[player.id] ?? fallbackFor(player.id);
+    return (
+      <div
+        key={player.id}
+        className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-elevated p-3"
+      >
+        <JobIcon job={player.job} size="sm" />
+        <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{player.name}</span>
+        <div>
+          <Label htmlFor={`loot-adj-${player.id}`} size="sm">Loot adj</Label>
+          <NumberInput
+            id={`loot-adj-${player.id}`}
+            value={entry.lootAdjustment}
+            onChange={(value) => handleChange(player.id, 'lootAdjustment', value)}
+            min={PRIORITY_MODIFIER_MIN}
+            max={PRIORITY_MODIFIER_MAX}
+            step={PRIORITY_MODIFIER_STEP}
+            size="sm"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`priority-mod-${player.id}`} size="sm">Priority mod</Label>
+          <NumberInput
+            id={`priority-mod-${player.id}`}
+            value={entry.priorityModifier}
+            onChange={(value) => handleChange(player.id, 'priorityModifier', value)}
+            min={PRIORITY_MODIFIER_MIN}
+            max={PRIORITY_MODIFIER_MAX}
+            step={PRIORITY_MODIFIER_STEP}
+            size="sm"
+          />
+        </div>
+      </div>
+    );
   };
 
   const handleResetAll = () => {
@@ -126,8 +172,12 @@ export function LootAdjustmentsModal({ isOpen, onClose, players, onSave }: LootA
     try {
       await onSave(updates);
       onClose();
-    } catch {
-      toast.error('Failed to save adjustments');
+    } catch (err) {
+      // R-E2-K: `onSave` (Loot.handleSaveAdjustments) throws on a partial
+      // failure with the count baked into the message — surface THAT message
+      // (RosterCard.tsx's `err.message` pattern), not a generic string, and
+      // stay open so the draft survives for a retry.
+      toast.error(err instanceof Error ? err.message : 'Failed to save adjustments');
     } finally {
       setIsSaving(false);
     }
@@ -167,43 +217,18 @@ export function LootAdjustmentsModal({ isOpen, onClose, players, onSave }: LootA
         </p>
 
         <div className="space-y-2">
-          {players.map((player) => {
-            const entry = draft[player.id] ?? fallbackFor(player.id);
-            return (
-              <div
-                key={player.id}
-                className="flex items-center gap-3 rounded-lg border border-border-subtle bg-surface-elevated p-3"
-              >
-                <JobIcon job={player.job} size="sm" />
-                <span className="min-w-0 flex-1 truncate text-sm text-text-primary">{player.name}</span>
-                <div>
-                  <Label htmlFor={`loot-adj-${player.id}`} size="sm">Loot adj</Label>
-                  <NumberInput
-                    id={`loot-adj-${player.id}`}
-                    value={entry.lootAdjustment}
-                    onChange={(value) => handleChange(player.id, 'lootAdjustment', value)}
-                    min={PRIORITY_MODIFIER_MIN}
-                    max={PRIORITY_MODIFIER_MAX}
-                    step={PRIORITY_MODIFIER_STEP}
-                    size="sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`priority-mod-${player.id}`} size="sm">Priority mod</Label>
-                  <NumberInput
-                    id={`priority-mod-${player.id}`}
-                    value={entry.priorityModifier}
-                    onChange={(value) => handleChange(player.id, 'priorityModifier', value)}
-                    min={PRIORITY_MODIFIER_MIN}
-                    max={PRIORITY_MODIFIER_MAX}
-                    step={PRIORITY_MODIFIER_STEP}
-                    size="sm"
-                  />
-                </div>
-              </div>
-            );
-          })}
+          {mainRosterPlayers.map((player) => renderRow(player))}
         </div>
+
+        {/* R-E2-L: the modal now receives every configured player (Loot.tsx
+            passes `configuredPlayers`, subs included) — group subs under a
+            label rather than interleaving them, and only when any exist. */}
+        {substitutePlayers.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm text-text-muted">Substitutes</div>
+            {substitutePlayers.map((player) => renderRow(player))}
+          </div>
+        )}
 
         {players.length === 0 && (
           <div className="py-8 text-center text-text-muted">No configured players in this tier.</div>

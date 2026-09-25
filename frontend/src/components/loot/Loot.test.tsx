@@ -152,6 +152,7 @@ vi.mock('../../pages/groupActionsContext', async (importOriginal) => ({
 
 import { Loot } from './Loot';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useTierStore } from '../../stores/tierStore';
 import { useToastStore } from '../../stores/toastStore';
 
 function makePlayer(id: string, name: string, opts: { sub?: boolean } = {}): SnapshotPlayer {
@@ -2952,5 +2953,67 @@ describe('Loot — PR #272 fix: markClearedOpen resets off the Log (F3)', () => 
 
     fireEvent.click(screen.getByRole('button', { name: 'Log' }));
     expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+  });
+});
+
+// R-E2-K/R-E2-L: the real (unmocked) LootAdjustmentsModal, exercised through
+// Loot's own `handleSaveAdjustments` (:807) and the `configuredPlayers` prop
+// it now receives (:389-392,:1632) — `players` (module fixture, line 309) is
+// Alice/Bob (main roster) + Sub (a substitute), so this doubles as R-E2-L's
+// "modal receives every configured player" coverage.
+describe('Loot — R-E2-K/R-E2-L: adjustments modal (real handleSaveAdjustments path)', () => {
+  function openAdjustments() {
+    renderLoot({ tier: makeTier(players) });
+    fireEvent.click(screen.getByRole('button', { name: 'Adjustments' }));
+    expect(screen.getByText('Player adjustments')).toBeInTheDocument();
+  }
+
+  it('a partial failure keeps the modal open, shows exactly one error toast naming the failure count, and keeps the draft', async () => {
+    // p2 (Bob) rejects; p1 (Alice) resolves — two changed players, one failure.
+    useTierStore.setState({
+      updatePlayer: vi.fn((_g: string, _t: string, playerId: string) =>
+        playerId === 'p2' ? Promise.reject(new Error('network')) : Promise.resolve(undefined),
+      ),
+    });
+    openAdjustments();
+
+    const spinbuttons = screen.getAllByRole('spinbutton');
+    // Main roster first (Alice 0/1, Bob 2/3), then the Substitutes group (Sub 4/5).
+    fireEvent.change(spinbuttons[0], { target: { value: '10' } });
+    fireEvent.change(spinbuttons[2], { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(useToastStore.getState().toasts.some(
+        (t) => t.type === 'error' && t.message === 'Failed to update 1 player(s)',
+      )).toBe(true);
+    });
+    expect(useToastStore.getState().toasts.filter((t) => t.type === 'error')).toHaveLength(1);
+    // Still open — draft intact, not reverted.
+    expect(screen.getByText('Player adjustments')).toBeInTheDocument();
+    expect(spinbuttons[0]).toHaveValue(10);
+    expect(spinbuttons[2]).toHaveValue(15);
+  });
+
+  it('an all-success save closes the modal with no error toast', async () => {
+    useTierStore.setState({ updatePlayer: vi.fn().mockResolvedValue(undefined) });
+    openAdjustments();
+
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Player adjustments')).not.toBeInTheDocument();
+    });
+    expect(useToastStore.getState().toasts.some((t) => t.type === 'error')).toBe(false);
+  });
+
+  it('the substitute (Sub) renders under a Substitutes group label alongside the main roster', () => {
+    useTierStore.setState({ updatePlayer: vi.fn().mockResolvedValue(undefined) });
+    openAdjustments();
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+    expect(screen.getByText('Bob')).toBeInTheDocument();
+    expect(screen.getByText('Substitutes')).toBeInTheDocument();
+    expect(screen.getByText('Sub')).toBeInTheDocument();
   });
 });

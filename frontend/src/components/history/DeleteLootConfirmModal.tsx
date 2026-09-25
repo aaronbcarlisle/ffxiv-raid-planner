@@ -26,11 +26,17 @@ export function DeleteLootConfirmModal({
   entry,
   playerName,
 }: DeleteLootConfirmModalProps) {
-  const [revertGear, setRevertGear] = useState(entry.method === 'drop');
+  // R-E2-N: matches the ONE condition deleteLootAndRevertGear actually
+  // reverts on (lootCoordination.ts:315-345's `(method === 'drop' ||
+  // method === 'book') && !isExtra`) — a drop OR a book, never extra loot.
+  // Legacy always reverts (phase-d-loot-design.md:781-788), so the checkbox
+  // defaults to checked for both methods; this is a deliberate destructive-
+  // default change for books, matching legacy rather than today's V2 gap.
+  const canRevert = (entry.method === 'drop' || entry.method === 'book') && !entry.isExtra;
+  const [revertGear, setRevertGear] = useState(canRevert);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const slotName = GEAR_SLOT_NAMES[entry.itemSlot as keyof typeof GEAR_SLOT_NAMES] || entry.itemSlot;
-  const isDrop = entry.method === 'drop';
 
   const handleConfirm = async () => {
     setIsDeleting(true);
@@ -78,8 +84,8 @@ export function DeleteLootConfirmModal({
           </div>
         </div>
 
-        {/* Revert gear option - only for drops */}
-        {isDrop && (
+        {/* Revert gear option - drop or book, never extra loot (canRevert) */}
+        {canRevert && (
           <Checkbox
             checked={revertGear}
             onChange={setRevertGear}
@@ -87,12 +93,12 @@ export function DeleteLootConfirmModal({
           />
         )}
 
-        {/* Preview */}
+        {/* Preview — the checkbox and this line share ONE condition (canRevert) */}
         <div className="bg-status-error/10 border border-status-error/30 rounded-lg p-3 text-sm">
           <div className="text-status-error font-medium mb-1">This will:</div>
           <ul className="text-text-secondary space-y-1">
             <li>- Remove {slotName} from Week {entry.weekNumber} loot log</li>
-            {isDrop && revertGear && (
+            {canRevert && revertGear && (
               <li>- Uncheck {slotName} on {playerName}'s player card</li>
             )}
           </ul>

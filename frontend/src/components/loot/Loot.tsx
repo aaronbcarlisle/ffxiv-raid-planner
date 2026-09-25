@@ -802,8 +802,12 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     }
   }, [groupId, tierId, fetchTier, fetchCurrentWeek]);
 
-  // Save adjustments through the SAME allSettled + per-failure toast semantics as
-  // the legacy PlayerAdjustmentsModal (each update is an independent PUT).
+  // R-E2-K: legacy PlayerAdjustmentsModal.tsx:60-81 semantics (each update is
+  // an independent PUT, allSettled). Unlike the legacy modal, this callback
+  // does NOT toast itself — a partial failure THROWS an Error naming the
+  // failure count, so the modal (the sole caller, :1632) can keep itself
+  // open and surface exactly one error toast, same as RosterCard.tsx's
+  // `err instanceof Error ? err.message : …` pattern.
   const handleSaveAdjustments = useCallback(async (updates: AdjustmentUpdate[]) => {
     if (!tierId) return;
     const results = await Promise.allSettled(
@@ -815,7 +819,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       ),
     );
     const failed = results.filter((r) => r.status === 'rejected');
-    if (failed.length > 0) toast.error(`Failed to update ${failed.length} player(s)`);
+    if (failed.length > 0) throw new Error(`Failed to update ${failed.length} player(s)`);
   }, [groupId, tierId, updatePlayer]);
 
   const openRules = useCallback(() => {
@@ -1629,7 +1633,7 @@ export function Loot({ group, tier, canEdit }: LootProps) {
       <LootAdjustmentsModal
         isOpen={adjustmentsOpen}
         onClose={() => setAdjustmentsOpen(false)}
-        players={mainRosterPlayers}
+        players={configuredPlayers}
         onSave={handleSaveAdjustments}
       />
 
