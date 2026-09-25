@@ -9,7 +9,7 @@
  *   - Type "rost" → filters to Roster only
  *   - navigator.platform=MacIntel → ⌘K label; Win32 → Ctrl K label
  *   - 2 mocked groups → 2 "Switch to …" rows; click → navigate('/group/<code>')
- *   - Absorbed shortcut description is rendered
+ *   - Footer lists exactly v2's shortcut registry, no V1-only row (R-D14-A)
  *   - Escape closes (Modal handles it)
  *   - isOpen=false → dialog not in DOM
  */
@@ -38,6 +38,7 @@ vi.mock('../../hooks/useGroupViewState', () => ({
 
 // Imports after mocks so they pick up the mocked modules.
 import { CommandPalette } from './CommandPalette';
+import { V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import type { StaticGroupListItem } from '../../types';
 
@@ -180,10 +181,22 @@ describe('CommandPalette', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('renders at least one keyboard shortcut description from SHORTCUT_GROUPS', () => {
+  it('footer lists exactly v2\'s registry, in order, and no V1-only row (R-D14-A)', () => {
     renderPalette();
-    // "Switch main tabs" is from the Tab Navigation group in SHORTCUT_GROUPS.
-    expect(screen.getByText('Switch main tabs')).toBeInTheDocument();
+    // The grid is the heading's sibling; each row is <span>desc</span><kbd>key</kbd>.
+    const grid = screen.getByText('Keyboard Shortcuts').nextElementSibling;
+    if (!grid) throw new Error('shortcut grid not found');
+    const rendered = Array.from(grid.children).map((row) => [
+      row.querySelector('kbd')?.textContent ?? '',
+      row.querySelector('span')?.textContent ?? '',
+    ]);
+    expect(rendered).toStrictEqual(
+      V2_SHORTCUT_GROUPS.flatMap((g) => g.shortcuts.map((s) => [s.key, s.description])),
+    );
+    // A16: V1's list must not be appended — these rows are V1-only.
+    expect(screen.queryByText('Switch main tabs')).toBeNull();
+    expect(screen.queryByText('Alt+1-3')).toBeNull();
+    expect(screen.queryByText('Toggle grid view')).toBeNull();
   });
 
   it('renders the Keyboard Shortcuts section heading', () => {

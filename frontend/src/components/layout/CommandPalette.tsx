@@ -8,7 +8,7 @@
  *   - Open Settings (via useGroupViewState().setShowSettingsModal)
  *   - Switch static — one row per group (via useNavigate)
  *
- * Also renders a "Keyboard Shortcuts" reference absorbed from keyboardShortcutGroups.
+ * Also renders a "Keyboard Shortcuts" reference — v2's list from keyboardShortcutGroups.
  *
  * Built on Modal (hideDefaultHeader). No cmdk dependency.
  * Platform-aware ⌘K (Mac) / Ctrl K (Windows/other) label.
@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Modal } from '../ui/Modal';
-import { SHORTCUT_GROUPS, V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
+import { V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
 import { useGroupViewState } from '../../hooks/useGroupViewState';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
@@ -259,9 +259,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           Keyboard Shortcuts
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5 max-h-40 overflow-y-auto">
-          {/* This file's sole mount is v2-only (NewShell.tsx) — see R-D11-I —
-              so appending V2_SHORTCUT_GROUPS here is not a V1 reach. */}
-          {[...SHORTCUT_GROUPS, ...V2_SHORTCUT_GROUPS].flatMap((group) =>
+          {/* This file's sole mount is v2-only (NewShell.tsx), so the footer
+              lists v2's complete registry and nothing from V1's (R-D14-A):
+              a V1-only row here would advertise a binding v2 never fires. */}
+          {V2_SHORTCUT_GROUPS.flatMap((group) =>
             group.shortcuts.map((s) => (
               <div
                 key={`${group.title}-${s.key}`}

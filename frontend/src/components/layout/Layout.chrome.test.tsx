@@ -43,6 +43,12 @@ import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useShellPreferenceStore } from '../../lib/shellPreference';
+import { V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
+import {
+  V1_SHORTCUT_GROUPS_LITERAL,
+  expectedHelpGroups,
+  readRenderedHelpGroups,
+} from '../ui/keyboardShortcutGroups.fixture';
 import type { User } from '../../types';
 
 const authedUser = {
@@ -224,36 +230,52 @@ describe('Layout chrome — pre-hydration auth slot (H13)', () => {
  * real Layout → real AppChrome → real AppRail footer → real UserMenu.
  */
 /**
- * T-29 (D11, R-D11-C / M5) — the V1-unchanged assert that can actually fail.
+ * T-29 (D11 R-D11-C / M5; tightened D14 R-D14-I) — the V1-unchanged assert
+ * that can actually fail.
  *
  * `Layout.tsx` is not a legacy-only path (D-REC-2): it renders BOTH shells,
  * so DoD 3 part (a)'s "git diff over legacy paths is empty" passes trivially
- * here even for a mutation that adds `extraGroups` to the LEGACY mount. This
+ * here even for a mutation that passes `groups` to the LEGACY mount. This
  * suite is the guard that structurally cannot pass vacuously: it opens the
- * real `KeyboardShortcutsHelp` (not mocked) in each branch and asserts on
- * its rendered content directly.
+ * real `KeyboardShortcutsHelp` (not mocked) in each branch and compares its
+ * rendered cards, row by row — the legacy branch against the V1 LITERAL
+ * (never the export), the v2 branch against `V2_SHORTCUT_GROUPS`.
  */
 describe('Layout chrome — Shift+? help content differs by branch (T-29)', () => {
   const openHelp = () => {
     window.dispatchEvent(new Event('show-keyboard-shortcuts'));
   };
 
-  it('legacy branch: no History group, no Ctrl+Shift+F', async () => {
+  /** The help modal's dialog — scoped by its title, since the v2 chrome keeps
+   *  another dialog (the nav drawer) mounted. */
+  const helpDialog = async (): Promise<Element> => {
+    const title = await screen.findByText('Keyboard Shortcuts');
+    const dialog = title.closest('[role="dialog"]');
+    if (!dialog) throw new Error('help dialog not found');
+    return dialog;
+  };
+
+  it('legacy branch: renders EXACTLY the V1 literal, card by card and row by row (R-D14-I)', async () => {
     renderAt('/profile');
     openHelp();
-    expect(await screen.findByText('Keyboard Shortcuts')).toBeInTheDocument();
-    expect(screen.queryByText('History')).toBeNull();
+    // `authedUser.isAdmin` is false, so the literal's adminOnly row drops out.
+    expect(readRenderedHelpGroups(await helpDialog())).toStrictEqual(
+      expectedHelpGroups(V1_SHORTCUT_GROUPS_LITERAL, false),
+    );
     expect(screen.queryByText('Ctrl+Shift+F')).toBeNull();
     expect(screen.queryByText('Search history')).toBeNull();
   });
 
-  it('v2 branch: both the History group and Ctrl+Shift+F are present', async () => {
+  it('v2 branch: renders EXACTLY v2\'s list — Ctrl+Shift+F present, V1-only rows absent (R-D14-A)', async () => {
     renderAt('/profile?shell=v2');
     openHelp();
-    expect(await screen.findByText('Keyboard Shortcuts')).toBeInTheDocument();
-    expect(screen.getByText('History')).toBeInTheDocument();
+    expect(readRenderedHelpGroups(await helpDialog())).toStrictEqual(
+      expectedHelpGroups(V2_SHORTCUT_GROUPS, false),
+    );
     expect(screen.getByText('Ctrl+Shift+F')).toBeInTheDocument();
     expect(screen.getByText('Search history')).toBeInTheDocument();
+    expect(screen.queryByText('Switch main tabs')).toBeNull();
+    expect(screen.queryByText('Alt+1-3')).toBeNull();
   });
 });
 
