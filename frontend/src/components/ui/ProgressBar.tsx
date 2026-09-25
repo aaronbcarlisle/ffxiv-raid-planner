@@ -25,7 +25,8 @@ export type ProgressBarColor =
   | 'gear-augmented'
   | 'success'
   | 'warning'
-  | 'membership-linked';
+  | 'membership-linked'
+  | 'muted';
 
 /** Maps each color key to the corresponding CSS variable. */
 const COLOR_TOKEN: Record<ProgressBarColor, string> = {
@@ -41,6 +42,8 @@ const COLOR_TOKEN: Record<ProgressBarColor, string> = {
   success: 'var(--color-status-success)',
   warning: 'var(--color-status-warning)',
   'membership-linked': 'var(--color-membership-linked)',
+  // D13: the "below 50 %" gear fill (V1 `bg-text-muted`). Consumers: home/* only.
+  muted: 'var(--color-text-muted)',
 };
 
 function clamp01(v: number): number {

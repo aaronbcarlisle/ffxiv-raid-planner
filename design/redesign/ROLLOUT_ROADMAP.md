@@ -272,7 +272,9 @@ mobile work is deferred out of the build slices into ONE dedicated pass here, be
 and per-slice mobile affordances were taxing every step. Per-slice phone equivalents
 (the ex-D-56 rider) and 390 px browser-pass legs are dropped; the mobile pass designs
 the phone experience holistically (density affordance, toolbar reachability, the
-legacy MobileBottomNav still rendering under v2, breadcrumb overlap, etc.).
+legacy MobileBottomNav still rendering under v2, breadcrumb overlap, etc.). Carried in
+from slices: **Team Summary mobile collapse** (D-42's V1 collapse-on-phone, deferred by
+D13's R-D13-E, #271).
 
 ## 8. Phase H — Default flip → sunset (criteria, proposed)
 
