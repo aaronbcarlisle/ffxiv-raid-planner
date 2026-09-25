@@ -778,11 +778,13 @@ describe('Loot', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'History' }));
 
-    // History body: fairness strip + record. Floor cards gone. D7b re-homed
-    // the Books card off History onto Log — assert its absence via the
+    // History body: search + record (FairnessSummary moved to Home in D14 —
+    // R-40 — so it never renders here). Floor cards gone. D7b re-homed the
+    // Books card off History onto Log — assert its absence via the
     // "Books scope" toggle (bare text 'Books' isn't distinctive enough; other
     // surfaces could render it).
-    expect(screen.getByText('Drops this tier')).toBeInTheDocument();
+    expect(screen.queryByText('Drops this tier')).not.toBeInTheDocument();
+    expect(searchBox()).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Books scope' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
     // lview is reflected in the URL.
@@ -791,7 +793,10 @@ describe('Loot', () => {
 
   it('mounts the History view directly from an ?lview=history deep-link', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
-    expect(screen.getByText('Drops this tier')).toBeInTheDocument();
+    // FairnessSummary moved to Home in D14 (R-40) — History renders the
+    // table instead.
+    expect(screen.queryByText('Drops this tier')).not.toBeInTheDocument();
+    expect(document.querySelector('table')).toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
   });
 
@@ -908,7 +913,7 @@ describe('Loot', () => {
     expect(document.getElementById('loot-entry-50')).toBeInTheDocument();
   });
 
-  it('renders the History search block on History only, between the fairness card and the table (R-D10-H)', () => {
+  it('renders the History search block on History only, directly above the table (R-D10-H)', () => {
     const priority = renderLoot({ tier: makeTier(players) });
     expect(screen.queryByRole('textbox', { name: 'Search history' })).not.toBeInTheDocument();
     priority.unmount();
@@ -935,12 +940,12 @@ describe('Loot', () => {
         .getAllByRole('button')
         .map((b) => b.textContent),
     ).toEqual(['All', 'Bob', 'Sub', 'Alice']);
-    // R-D10-H: BELOW FairnessSummary ('Drops this tier'), ABOVE the table.
-    // Put it above the card and both of these still render — only the order
-    // assertions fail.
-    const fairness = screen.getByText('Drops this tier');
+    // R-D10-H, re-anchored for D14 (R-40 moved FairnessSummary off History
+    // onto Home): the search block is now the FIRST thing History's own grid
+    // renders, directly above the table — nothing sits between them any more.
+    const grid = box.closest('.grid')!;
+    expect(grid.firstElementChild?.contains(box)).toBe(true);
     const table = document.querySelector('table')!;
-    expect(fairness.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(box.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // And the toolbar slot it vacated stays empty (R-D10-H, LootToolbar:24).
     expect(screen.queryByTestId('week-scope')).not.toBeInTheDocument();
@@ -1990,7 +1995,7 @@ describe('Loot — D6b Task C: count bar + legend', () => {
     // (configured=false, isSubstitute=false — `backend/app/routers/tiers.py`)
     // for open roster slots. A raw `players` feed would render a nameless
     // 0-drop tile for this seat AND inflate the average's denominator,
-    // disagreeing with History's own `FairnessSummary`, which reads
+    // disagreeing with Home's own `FairnessSummary` (D14, R-40), which reads
     // `mainRosterPlayers` (`configured && !isSubstitute`). This placeholder
     // proves the bar is fed that same filtered read, not the raw roster.
     const placeholder = {
@@ -2005,8 +2010,8 @@ describe('Loot — D6b Task C: count bar + legend', () => {
     expect(last.week).not.toBe(5); // the seeded clock's currentWeek — divergence proof
     const fedPlayers = last.players as SnapshotPlayer[];
     // Excludes the unconfigured placeholder AND the substitute (`s1`) — the
-    // same `mainRosterPlayers` filter FairnessSummary already uses — never
-    // the raw `players` array.
+    // same `mainRosterPlayers` filter Home's `FairnessSummary` already uses —
+    // never the raw `players` array.
     expect(fedPlayers).not.toContain(placeholder);
     expect(fedPlayers.map((p) => p.id)).toEqual(['p1', 'p2']);
     expect(last.lootLog).toEqual(useLootTrackingStore.getState().lootLog);

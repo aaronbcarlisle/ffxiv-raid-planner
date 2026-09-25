@@ -34,6 +34,19 @@ const mocks = vi.hoisted(() => ({
   fetchRegistrations: vi.fn().mockResolvedValue(undefined),
   toastError: vi.fn(),
   user: { id: 'u1' } as { id: string } | null,
+  fairnessCalls: [] as Record<string, unknown>[],
+}));
+
+// Prop-capturing mock (D6b `WeekCountBar`-mock precedent, `loot/Loot.test.tsx`)
+// so the substitute/unconfigured-seat test below asserts Home's OWN
+// `mainRosterPlayers` derivation, not `computeTierFairness`'s (already-tested)
+// internal re-filter — the two are redundant on the real component, which
+// would make a dropped Home-side filter an invisible, vacuous mutation.
+vi.mock('../loot/FairnessSummary', () => ({
+  FairnessSummary: (props: Record<string, unknown>) => {
+    mocks.fairnessCalls.push(props);
+    return <div data-testid="fairness-summary" />;
+  },
 }));
 
 vi.mock('../../stores/scheduleStore', () => ({
@@ -181,6 +194,7 @@ beforeEach(() => {
   mocks.fetchRegistrations = vi.fn().mockResolvedValue(undefined);
   mocks.toastError.mockClear();
   mocks.user = { id: 'u1' };
+  mocks.fairnessCalls = [];
 });
 
 describe('Home', () => {
@@ -259,12 +273,14 @@ describe('Home', () => {
     expect(onOpenRequests).toHaveBeenCalledTimes(1);
   });
 
-  it('membership-gates the fetch effect: non-members skip group-request + session fetches', () => {
+  it('membership-gates the fetch effect: non-members skip group-request + session + progress fetches', () => {
     const nonMemberGroup = { id: 'g1', name: 'Crescent', userRole: null } as unknown as StaticGroup;
     renderHome({ group: nonMemberGroup, canManage: false });
     expect(mocks.fetchGroupRequests).not.toHaveBeenCalled();
     expect(mocks.fetchSessions).not.toHaveBeenCalled();
-    expect(mocks.fetchMaterialLog).not.toHaveBeenCalled();
+    expect(mocks.fetchProgress).not.toHaveBeenCalled();
+    // D14 (R-D14-C): a non-member with a tier DOES now fetch the three
+    // fairness logs, read-only — covered by its own dedicated test below.
   });
 
   it('fetches on mount for members (sessions, loot, progress) and group-requests when canManage', () => {
@@ -314,5 +330,44 @@ describe('Home', () => {
     const teamSummaryIndex = headingNames.findIndex((t) => t === 'Team Summary');
     expect(bisIndex).toBeGreaterThanOrEqual(0);
     expect(teamSummaryIndex).toBeGreaterThan(bisIndex);
+  });
+
+  it('renders the fairness module above the activity feed, in DOM order (R-D14-B)', () => {
+    renderHome();
+    const headingNames = screen.getAllByRole('heading').map((h) => h.textContent);
+    const fairnessIndex = headingNames.findIndex((t) => t === 'Loot fairness');
+    const activityIndex = headingNames.findIndex((t) => /recent activity/i.test(t ?? ''));
+    expect(fairnessIndex).toBeGreaterThanOrEqual(0);
+    expect(activityIndex).toBeGreaterThan(fairnessIndex);
+  });
+
+  it('a non-member viewer sees the fairness module too: fetches the three logs, no balances, no registrations, no Team Summary (R-D14-C)', () => {
+    const nonMemberGroup = { id: 'g1', name: 'Crescent', userRole: null } as unknown as StaticGroup;
+    renderHome({ group: nonMemberGroup, canManage: false });
+    expect(screen.getByRole('heading', { name: 'Loot fairness' })).toBeInTheDocument();
+    expect(mocks.fetchLootLog).toHaveBeenCalledWith('g1', 't1');
+    expect(mocks.fetchPageLedger).toHaveBeenCalledWith('g1', 't1');
+    expect(mocks.fetchMaterialLog).toHaveBeenCalledWith('g1', 't1');
+    expect(mocks.fetchPageBalances).not.toHaveBeenCalled();
+    expect(mocks.fetchMaterialBalances).not.toHaveBeenCalled();
+    expect(mocks.fetchRegistrations).not.toHaveBeenCalled();
+    expect(screen.queryByRole('heading', { name: 'Team Summary' })).not.toBeInTheDocument();
+  });
+
+  it("feeds FairnessSummary only configured, non-substitute players (R-D14-D)", () => {
+    const main = player({ id: 'M', name: 'Main' });
+    const sub = player({ id: 'S', name: 'Sub', isSubstitute: true });
+    const unconfigured = player({ id: 'U', name: 'Unset', configured: false });
+    const tierWithMix = { tierId: 't1', players: [main, sub, unconfigured] } as unknown as TierSnapshot;
+    renderHome({ tier: tierWithMix });
+
+    const last = mocks.fairnessCalls[mocks.fairnessCalls.length - 1];
+    const fedPlayers = last.players as SnapshotPlayer[];
+    // Mutation check (executed by hand, not committed): dropping
+    // `.filter((p) => p.configured && !p.isSubstitute)` in Home's
+    // `mainRosterPlayers` derivation turns this red —
+    // `expect(fedPlayers.map((p) => p.id)).toEqual(['M'])` fails with
+    // `['M', 'S', 'U']` received.
+    expect(fedPlayers.map((p) => p.id)).toEqual(['M']);
   });
 });

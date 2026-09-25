@@ -4,10 +4,12 @@
  * The F6b assembly: a "This week" page header (dynamic subtitle), a 3-card hero
  * (next session + RSVP · this week's loot · roster readiness), and a two-region
  * dashboard (actionable left: "Needs your attention" + BiS-by-role + Team
- * Summary; ambient right: recent activity + a display-only Track card). Wired
- * in as the `overview` slot on `GroupViewContent` (see NewShell).
+ * Summary; ambient right: loot fairness + recent activity + a display-only
+ * Track card). Wired in as the `overview` slot on `GroupViewContent` (see
+ * NewShell).
  *
- * Boundary discipline (ring0): composes `home/` siblings + shared `ui/`
+ * Boundary discipline (ring0): composes `home/` siblings + `loot/`'s
+ * `FairnessSummary` (D14, R-40 — its one reuse outside `loot/`) + shared `ui/`
  * components + the existing shell `PageHeader`, and reads STORES directly for
  * the data the legacy prop contract never carried (schedule / loot / join
  * requests / mount farm / auth / static-character). It NEVER imports a ring1
@@ -19,10 +21,15 @@
  * sessions/loot/progress/page+material balances; group-requests fetch only when
  * `canManage` (so applicants/non-members never trigger a 403); registrations
  * fetch for any member (not tier-gated) to feed Team Summary's role chips.
+ * D14 (R-D14-C): fairness renders for ANYONE who can view (Home only mounts
+ * for someone who already has view access, member or not), so a NON-member
+ * branch fetches the loot log, page ledger and material log read-only,
+ * mirroring Loot's own unconditional mount-fetch (`Loot.tsx:641-643`) —
+ * balances, registrations and `TeamSummaryCard` stay member-only.
  */
 
 import { useEffect, useMemo } from 'react';
-import { AlertTriangle, CalendarPlus, Inbox, UserPlus } from 'lucide-react';
+import { AlertTriangle, CalendarPlus, Inbox, Scale, UserPlus } from 'lucide-react';
 import type { PageMode, RsvpStatus, StaticGroup, TierSnapshot } from '../../types';
 
 import { PageHeader } from '../layout/PageHeader';
@@ -39,6 +46,7 @@ import { RoleBisCard } from './RoleBisCard';
 import { TeamSummaryCard } from './TeamSummaryCard';
 import { StaticActivityFeed } from './StaticActivityFeed';
 import { TrackCard } from './TrackCard';
+import { FairnessSummary } from '../loot/FairnessSummary';
 
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
@@ -50,6 +58,8 @@ import { toast } from '../../stores/toastStore';
 import { useWeeklyLootSummary } from '../../hooks/useWeeklyLootSummary';
 import { relativeTime } from '../../utils/staticActivity';
 import { getAllTrialIds } from '../../gamedata';
+import { getTierById } from '../../gamedata/raid-tiers';
+import { DEFAULT_SETTINGS } from '../../utils/constants';
 
 export interface HomeProps {
   group: StaticGroup;
@@ -86,6 +96,7 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const fetchGroupRequests = useJoinRequestStore((s) => s.fetchGroupRequests);
 
   const lootLog = useLootTrackingStore((s) => s.lootLog);
+  const materialLog = useLootTrackingStore((s) => s.materialLog);
   const pageLedger = useLootTrackingStore((s) => s.pageLedger);
   const currentWeek = useLootTrackingStore((s) => s.currentWeek);
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
@@ -133,6 +144,18 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
         // unhandled-rejection site. Feeds the activity feed only; non-fatal.
         void fetchMaterialLog(group.id, tierId).catch(() => undefined);
       }
+    } else if (tierId) {
+      // R-D14-C: fairness renders for anyone who can view, and Home only
+      // mounts for someone who already has view access (member or not) — so
+      // a non-member still needs its three logs, read-only. Same error
+      // handling as Loot's own unconditional mount-fetch (`Loot.tsx:641-643`):
+      // one Promise.all, one toast. Balances, registrations and Team Summary
+      // stay member-only (unchanged above).
+      void Promise.all([
+        fetchLootLog(group.id, tierId),
+        fetchPageLedger(group.id, tierId),
+        fetchMaterialLog(group.id, tierId),
+      ]).catch(() => toast.error('Failed to load loot data'));
     }
   }, [
     group.id,
@@ -149,6 +172,18 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     fetchMaterialBalances,
     fetchMaterialLog,
   ]);
+
+  // ── FairnessSummary inputs (R-D14-D — same derivations as Loot's mount,
+  // `Loot.tsx:1216-1224` before D14 moved the card here) ────────────────────
+  const settings = useMemo(() => ({ ...DEFAULT_SETTINGS, ...group.settings }), [group.settings]);
+  const mainRosterPlayers = useMemo(
+    () => (tier?.players ?? []).filter((p) => p.configured && !p.isSubstitute),
+    [tier?.players],
+  );
+  const fairnessFloors = useMemo(
+    () => (tier ? (getTierById(tier.tierId)?.floors ?? []) : []),
+    [tier],
+  );
 
   // ── Next session (first upcoming, ascending) ──────────────────────────────
   const nextSession = useMemo(() => {
@@ -330,6 +365,19 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
           }
           side={
             <div className="flex flex-col gap-4">
+              {tier && (
+                <CardShell title="Loot fairness" icon={<Scale size={14} />}>
+                  <FairnessSummary
+                    players={mainRosterPlayers}
+                    settings={settings}
+                    lootLog={lootLog}
+                    materialLog={materialLog}
+                    pageLedger={pageLedger}
+                    currentWeek={currentWeek}
+                    floors={fairnessFloors}
+                  />
+                </CardShell>
+              )}
               <StaticActivityFeed />
               <TrackCard />
             </div>

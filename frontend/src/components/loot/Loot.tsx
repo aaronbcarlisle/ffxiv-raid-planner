@@ -12,7 +12,7 @@
  * Boundary discipline (ring0): composes `loot/` siblings (LootToolbar /
  * WeekScopeControl / FloorCard / LogWeekGrid / RecipientPicker /
  * WeaponPriorityBridge / LootAdjustmentsModal / LogWeekWizard /
- * QuickLogMaterialModal / LootResetMenu / FairnessSummary / BookLedgerCard /
+ * QuickLogMaterialModal / LootResetMenu / BookLedgerCard /
  * LootHistoryTable / HistorySearch) + shared `ui/` (SegmentedToggle) + the
  * reused legacy confirm modals (DeleteLootConfirmModal, ResetConfirmModal,
  * ConfirmModal — read-only reuse, never edited), and reads STORES/HOOKS
@@ -111,8 +111,8 @@
  *     floor-header kebab's two reset items route through the same
  *     `handleResetConfirm` planner with real floor scoping. The Books card
  *     re-homed to Log in D7b: `BookLedgerCard` mounts here, full width below
- *     the fairness read, on the DISPLAYED week — `FairnessSummary` stays on
- *     History until D14. The Alt+Click recipient jump (Log → roster card,
+ *     the fairness read, on the DISPLAYED week — `FairnessSummary` moved off
+ *     History onto static Home in D14 (R-40). The Alt+Click recipient jump (Log → roster card,
  *     `?player=`) is SLOT-level since D12 (R-28): `?slot=` names the gear
  *     row to land on when the entry resolves one (`jumpAnchorSlotOf`), and
  *     falls back to the card when it does not (R-D12-F: a universal
@@ -178,7 +178,6 @@ import { LogWeekWizard } from './LogWeekWizard';
 import { QuickLogMaterialModal } from './QuickLogMaterialModal';
 import { LootResetMenu } from './LootResetMenu';
 import { resolveResetActions, describeResetToast } from './resetActions';
-import { FairnessSummary } from './FairnessSummary';
 import { BookLedgerCard } from './BookLedgerCard';
 import { LootHistoryTable } from './LootHistoryTable';
 import { HistorySearch } from './HistorySearch';
@@ -1213,19 +1212,6 @@ export function Loot({ group, tier, canEdit }: LootProps) {
 
       {lview === 'history' ? (
         <div className="grid gap-3.5">
-          <FairnessSummary
-            players={mainRosterPlayers}
-            settings={settings}
-            lootLog={lootLog}
-            materialLog={materialLog}
-            pageLedger={pageLedger}
-            currentWeek={clock.currentWeek}
-            floors={floors}
-          />
-          {/* R-D10-H: BELOW the fairness card, ABOVE the table. FairnessSummary
-              stays on History until D14 moves it Home (R-40); putting the
-              control adjacent to what it filters is right now AND converges
-              with the spec sketch once D14 lands. */}
           <HistorySearch
             query={historyQuery}
             onQueryChange={setHistoryQuery}
