@@ -11,11 +11,11 @@
  * Also renders a "Keyboard Shortcuts" reference — v2's list from keyboardShortcutGroups.
  *
  * Built on Modal (hideDefaultHeader). No cmdk dependency.
- * Platform-aware ⌘K (Mac) / Ctrl K (Windows/other) label.
+ * Platform-aware ⌘K (Mac) / Ctrl+K (Windows/other) label (one author: lib/platform.ts).
  * Actions (log a drop, etc.) are DEFERRED — navigate-only is the scope.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useId, useRef, useEffect } from 'react';
 import {
   Search,
   LayoutDashboard,
@@ -36,20 +36,7 @@ import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { useAuthStore } from '../../stores/authStore';
 import { buildStaticNavHref, prefRememberTabs } from '../../lib/navPreferences';
-
-// ── Platform label ──────────────────────────────────────────────────────────
-
-/**
- * Compute the platform-correct keyboard label at call time (not at module load)
- * so tests can stub `navigator.platform` before rendering and see the
- * correct value — no module resets required between test cases.
- */
-function computeCmdkLabel(): string {
-  return typeof navigator !== 'undefined' &&
-    /Mac|iPhone|iPad|iPod/.test(navigator.platform)
-    ? '⌘K'
-    : 'Ctrl K';
-}
+import { getCommandPaletteShortcutLabel } from '../../lib/platform';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -71,6 +58,12 @@ interface PaletteCommand {
 
 export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
+  // Index into `filtered` (below) of the combobox's active option. Reset
+  // directly in the handlers that change what's being highlighted
+  // (`handleQueryChange`, `handleClose`) rather than in a `useEffect` keyed
+  // on `query`/`isOpen` — an effect would run a render behind the change
+  // that caused it (R-E1-F).
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { setPageMode } = useGroupViewState();
@@ -84,15 +77,27 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   // match, or a non-admin sees a binding that never fires for them.
   const isAdmin = useAuthStore((s) => s.user?.isAdmin ?? false);
 
-  // Compute at render time so tests can stub navigator.platform.
-  const cmdkLabel = computeCmdkLabel();
+  // Single-author label (R-E1-G) — computed at render time so tests can stub
+  // navigator.platform. Used for both the input's chip and the footer's own
+  // "Command palette" row, which would otherwise show a hardcoded 'Ctrl+K'
+  // on a Mac.
+  const cmdkLabel = getCommandPaletteShortcutLabel();
+
+  const listboxId = useId();
+  const listRef = useRef<HTMLDivElement>(null);
 
   // Wrapper that resets the search query AND closes the palette.
   // Using a handler (not useEffect) avoids cascading-render lint violations.
   const handleClose = useCallback(() => {
     setQuery('');
+    setHighlightedIndex(0);
     onClose();
   }, [onClose]);
+
+  const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+    setHighlightedIndex(0);
+  }, []);
 
   const commands = useMemo<PaletteCommand[]>(
     () => [
@@ -185,6 +190,43 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     cmd.onSelect();
   }, []);
 
+  const optionId = useCallback((cmd: PaletteCommand) => `${listboxId}-option-${cmd.id}`, [listboxId]);
+  const activeCmd = filtered[highlightedIndex];
+
+  // Clamp (never wrap) at either edge (R-E1-F / T3-a5).
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex((prev) =>
+          filtered.length === 0 ? 0 : Math.min(prev + 1, filtered.length - 1),
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex((prev) => Math.max(prev - 1, 0));
+        break;
+      case 'Enter':
+        // Ignore an Enter that's committing an IME composition, not
+        // choosing a command (T3-a4).
+        if (e.nativeEvent.isComposing) return;
+        e.preventDefault();
+        if (activeCmd) handleSelect(activeCmd);
+        break;
+      default:
+        break;
+    }
+  }, [filtered.length, activeCmd, handleSelect]);
+
+  // Keep the highlighted row in view as it moves via keyboard/hover.
+  // `scrollIntoView` isn't implemented in jsdom, so this is guarded.
+  useEffect(() => {
+    if (!listRef.current) return;
+    const options = listRef.current.querySelectorAll('[role="option"]');
+    const el = options[highlightedIndex] as (HTMLElement & { scrollIntoView?: (arg?: unknown) => void }) | undefined;
+    el?.scrollIntoView?.({ block: 'nearest' });
+  }, [highlightedIndex]);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -203,12 +245,18 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         {/* design-system-ignore: borderless inline palette input — the palette surface IS the input; a standard <Input> variant would add unwanted chrome */}
         <input
           type="text"
+          role="combobox"
           className="flex-1 bg-transparent outline-none text-sm text-text-primary
                      placeholder:text-text-muted min-w-0"
           placeholder="Search commands…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={handleQueryChange}
+          onKeyDown={handleInputKeyDown}
           aria-label="Search commands"
+          aria-expanded={true}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeCmd ? optionId(activeCmd) : undefined}
           autoComplete="off"
           spellCheck={false}
         />
@@ -222,40 +270,50 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       </div>
 
       {/* ── Command list ───────────────────────────────────────────────── */}
-      <div role="listbox" aria-label="Commands" className="overflow-y-auto max-h-72">
+      <div ref={listRef} id={listboxId} role="listbox" aria-label="Commands" className="overflow-y-auto max-h-72">
         {filtered.length === 0 ? (
           <p className="px-4 py-3 text-sm text-text-muted">No commands found.</p>
         ) : (
-          filtered.map((cmd) => (
-            // design-system-ignore: styled command row — listbox option with full-row click target; not a Button variant
-            <div
-              key={cmd.id}
-              role="option"
-              aria-selected={false}
-              tabIndex={0}
-              className="flex items-center gap-3 px-4 py-2.5 cursor-pointer
-                         text-sm text-text-primary select-none
-                         hover:bg-surface-elevated
-                         focus-visible:bg-surface-elevated focus-visible:outline-none
-                         border-b border-border-subtle last:border-none
-                         transition-colors"
-              onClick={() => handleSelect(cmd)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleSelect(cmd);
-                }
-              }}
-            >
-              <span className="text-text-muted flex-shrink-0">{cmd.icon}</span>
-              <span className="flex-1 min-w-0 truncate">
-                {cmd.label}
-                {cmd.sub && (
-                  <span className="ml-2 text-xs text-text-muted">{cmd.sub}</span>
-                )}
-              </span>
-            </div>
-          ))
+          filtered.map((cmd, idx) => {
+            const highlighted = idx === highlightedIndex;
+            return (
+              // design-system-ignore: styled command row — listbox option with full-row click target; not a Button variant.
+              // tabIndex={-1}: focus stays on the combobox input (T3-a1/a2/a3);
+              // rows are not Tab stops. onKeyDown stays as a still-interactive
+              // fallback for a row that gets focus by other means (e.g. a
+              // click, which some browsers still focus on a tabIndex={-1}
+              // element) — the input's own handler covers the normal path.
+              <div
+                key={cmd.id}
+                id={optionId(cmd)}
+                role="option"
+                aria-selected={highlighted}
+                tabIndex={-1}
+                className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer
+                           text-sm text-text-primary select-none
+                           ${highlighted ? 'bg-surface-elevated' : ''}
+                           focus-visible:bg-surface-elevated focus-visible:outline-none
+                           border-b border-border-subtle last:border-none
+                           transition-colors`}
+                onClick={() => handleSelect(cmd)}
+                onMouseEnter={() => setHighlightedIndex(idx)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleSelect(cmd);
+                  }
+                }}
+              >
+                <span className="text-text-muted flex-shrink-0">{cmd.icon}</span>
+                <span className="flex-1 min-w-0 truncate">
+                  {cmd.label}
+                  {cmd.sub && (
+                    <span className="ml-2 text-xs text-text-muted">{cmd.sub}</span>
+                  )}
+                </span>
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -287,7 +345,11 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                              border border-border-default rounded text-text-muted
                              whitespace-nowrap flex-shrink-0"
                   >
-                    {s.key}
+                    {/* R-E1-G: this registry's own row is authored 'Ctrl+K'
+                        (a fixed, non-platform-aware literal — the data stays
+                        the same everywhere else the registry is read); the
+                        one platform-aware label for it is substituted here. */}
+                    {s.description === 'Command palette' ? cmdkLabel : s.key}
                   </kbd>
                 </div>
               )),

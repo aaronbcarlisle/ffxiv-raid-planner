@@ -7,7 +7,11 @@
  *   - Open → navigation rows present
  *   - Click "Go to Loot" → setPageMode('gear') + onClose
  *   - Type "rost" → filters to Roster only
- *   - navigator.platform=MacIntel → ⌘K label; Win32 → Ctrl K label
+ *   - navigator.platform=MacIntel → ⌘K on chip + footer row; Win32 → Ctrl+K on both (R-E1-G)
+ *   - Combobox: ArrowDown/Up move aria-activedescendant (clamped), a query
+ *     change resets the highlight, zero results means no activedescendant
+ *     and a no-op Enter, Enter is ignored while IME-composing, hover moves
+ *     the highlight (R-E1-F)
  *   - 2 mocked groups → 2 "Switch to …" rows; click → navigate('/group/<code>')
  *   - Footer lists exactly v2's shortcut registry, no V1-only row (R-D14-A)
  *   - Escape closes (Modal handles it)
@@ -55,6 +59,12 @@ const groupB = {
   name: 'Beta Static',
 } as unknown as StaticGroupListItem;
 
+// Captured once, before any test mutates it, so afterEach can restore the
+// real jsdom default rather than whatever the previous test's
+// Object.defineProperty stub left behind (R-E1-G: an unrestored stub would
+// leak the Mac/Win platform into unrelated tests run after it).
+const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(window.navigator, 'platform');
+
 beforeEach(() => {
   mockNavigate.mockClear();
   mockSetPageMode.mockClear();
@@ -83,6 +93,9 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  if (originalPlatformDescriptor) {
+    Object.defineProperty(window.navigator, 'platform', originalPlatformDescriptor);
+  }
 });
 
 function renderPalette(isOpen = true, onClose = vi.fn()) {
@@ -125,7 +138,7 @@ describe('CommandPalette', () => {
 
   it('filters to only Roster when query is "rost"', () => {
     renderPalette();
-    const input = screen.getByRole('textbox', { name: 'Search commands' });
+    const input = screen.getByRole('combobox', { name: 'Search commands' });
     fireEvent.change(input, { target: { value: 'rost' } });
     expect(screen.getByText('Go to Roster')).toBeInTheDocument();
     expect(screen.queryByText('Go to Home')).toBeNull();
@@ -135,28 +148,35 @@ describe('CommandPalette', () => {
 
   it('shows "No commands found." when query matches nothing', () => {
     renderPalette();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search commands' }), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search commands' }), {
       target: { value: 'zzznomatch' },
     });
     expect(screen.getByText('No commands found.')).toBeInTheDocument();
   });
 
-  it('shows ⌘K label when navigator.platform is MacIntel', () => {
+  // T3-b1 (R-E1-G): one label author (lib/platform.ts) feeds both surfaces —
+  // the input's chip AND the footer's own "Command palette" shortcut row —
+  // so they can never say different things.
+  it('shows ⌘K on both the chip and the footer row when navigator.platform is MacIntel', () => {
     Object.defineProperty(navigator, 'platform', {
       value: 'MacIntel',
       configurable: true,
     });
     renderPalette();
-    expect(screen.getByText('⌘K')).toBeInTheDocument();
+    expect(screen.getAllByText('⌘K')).toHaveLength(2);
+    expect(screen.queryByText('Ctrl+K')).toBeNull();
+    expect(screen.queryByText('Ctrl K')).toBeNull();
   });
 
-  it('shows Ctrl K label when navigator.platform is Win32', () => {
+  it('shows Ctrl+K on both the chip and the footer row when navigator.platform is Win32', () => {
     Object.defineProperty(navigator, 'platform', {
       value: 'Win32',
       configurable: true,
     });
     renderPalette();
-    expect(screen.getByText('Ctrl K')).toBeInTheDocument();
+    expect(screen.getAllByText('Ctrl+K')).toHaveLength(2);
+    expect(screen.queryByText('⌘K')).toBeNull();
+    expect(screen.queryByText('Ctrl K')).toBeNull();
   });
 
   it('shows two "Switch to …" rows for two groups', () => {
@@ -248,13 +268,76 @@ describe('CommandPalette', () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
-  it('activates a command row via keyboard Enter', () => {
-    const onClose = vi.fn();
-    renderPalette(true, onClose);
-    const row = screen.getByText('Go to Schedule').closest('[role="option"]')!;
-    fireEvent.keyDown(row, { key: 'Enter' });
-    expect(mockSetPageMode).toHaveBeenCalledWith('schedule');
-    expect(onClose).toHaveBeenCalledTimes(1);
+  // Rewritten (R-E1-F) to the input-driven combobox flow: rows are no
+  // longer tab stops (tabIndex={-1}), so activation is driven from the
+  // search input's own keydown handler, not a keydown fired at a row.
+  describe('combobox keyboard flow (R-E1-F)', () => {
+    function getInput() {
+      return screen.getByRole('combobox', { name: 'Search commands' });
+    }
+
+    it('T3-a1: ArrowDown moves aria-activedescendant to the second option', () => {
+      renderPalette();
+      const input = getInput();
+      const options = screen.getAllByRole('option');
+      expect(input.getAttribute('aria-activedescendant')).toBe(options[0].id);
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      expect(input.getAttribute('aria-activedescendant')).toBe(options[1].id);
+    });
+
+    it('T3-a2: ArrowDown then typing a query resets the highlight to the first match', () => {
+      renderPalette();
+      const input = getInput();
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      fireEvent.change(input, { target: { value: 'settings' } });
+      // "settings" narrows to a single row ("Open Settings"); the stale
+      // second-option highlight must not survive the query change.
+      const options = screen.getAllByRole('option');
+      expect(options).toHaveLength(1);
+      expect(input.getAttribute('aria-activedescendant')).toBe(options[0].id);
+    });
+
+    it('T3-a3: zero results means no aria-activedescendant, and Enter is a no-op', () => {
+      const onClose = vi.fn();
+      renderPalette(true, onClose);
+      const input = getInput();
+      fireEvent.change(input, { target: { value: 'zzznomatch' } });
+      expect(input.hasAttribute('aria-activedescendant')).toBe(false);
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(mockSetPageMode).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('T3-a4: Enter runs the highlighted command, but not while IME-composing', () => {
+      const onClose = vi.fn();
+      renderPalette(true, onClose);
+      const input = getInput();
+      // Highlighted option defaults to the first row ("Go to Home").
+      fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+      expect(mockSetPageMode).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(mockSetPageMode).toHaveBeenCalledWith('overview');
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('T3-a5: ArrowUp at the first option clamps instead of wrapping to the last', () => {
+      renderPalette();
+      const input = getInput();
+      const options = screen.getAllByRole('option');
+      fireEvent.keyDown(input, { key: 'ArrowUp' });
+      expect(input.getAttribute('aria-activedescendant')).toBe(options[0].id);
+    });
+
+    it('T3-a6: hovering a row moves the highlight, and only one row carries it', () => {
+      renderPalette();
+      const options = screen.getAllByRole('option');
+      fireEvent.mouseEnter(options[2]);
+      const classTokens = (el: Element) => el.className.split(/\s+/);
+      const highlighted = options.filter((o) => classTokens(o).includes('bg-surface-elevated'));
+      expect(highlighted).toHaveLength(1);
+      expect(highlighted[0]).toBe(options[2]);
+    });
   });
 
   it('renders the three slotless tab entries: Tracking, Plugin, More', () => {
