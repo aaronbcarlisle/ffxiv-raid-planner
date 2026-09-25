@@ -48,7 +48,9 @@ describe('FairnessSummary', () => {
     expect(screen.getByText('Drops this tier')).toBeInTheDocument();
     expect(screen.getByText('across 2 raid weeks')).toBeInTheDocument();
     expect(screen.getByText('Most / fewest')).toBeInTheDocument();
-    expect(screen.getByText(/Alice 3 · Bob 1/)).toBeInTheDocument();
+    expect(screen.getByText('3 / 1')).toBeInTheDocument();
+    expect(screen.getByText('Most: Alice')).toBeInTheDocument();
+    expect(screen.getByText('Fewest: Bob')).toBeInTheDocument();
     expect(screen.getByText('Even')).toBeInTheDocument();
     // This-week card: value = week-2 entries for mains (Alice's 2; sub excluded),
     // pending = floor-1 ring only (earring logged this week; no other raid-BiS

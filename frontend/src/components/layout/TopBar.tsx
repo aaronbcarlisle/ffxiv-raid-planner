@@ -14,7 +14,8 @@
  *
  * Conformant + boundary-clean by construction: design-system primitives only,
  * semantic tokens, 12px+ text, no raw `<button>`, and no Ring 0 imports. Legacy
- * Header/ContextSwitcher/TierSelector internals are untouched (byte-for-byte).
+ * Header/ContextSwitcher/TierSelector internals are otherwise untouched,
+ * aside from the V1-authorized `text-[10px]`→`text-xs` badge fix (R-E2-J/U-9).
  */
 
 import { useEffect } from 'react';

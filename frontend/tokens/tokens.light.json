@@ -25,7 +25,7 @@
         "primary": { "$type": "color", "$value": "#1a1a24" },
         "secondary": { "$type": "color", "$value": "#4a4a58" },
         "tertiary": { "$type": "color", "$value": "#5a5a6e" },
-        "muted": { "$type": "color", "$value": "#6b6b7e" },
+        "muted": { "$type": "color", "$value": "#606073" },
         "disabled": { "$type": "color", "$value": "#9898a8" },
         "on-accent": { "$type": "color", "$value": "#ffffff" },
         "on-gear-raid":      { "$type": "color", "$value": "#b91c1c" },

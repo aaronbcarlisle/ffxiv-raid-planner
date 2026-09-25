@@ -73,7 +73,7 @@ export function TierSelector({
         <span className="text-text-primary text-sm">
           {selectedTierInfo?.name || currentTierId || 'Select Tier'}
         </span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
+        <span className="text-xs px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
           Current
         </span>
       </div>
@@ -91,7 +91,7 @@ export function TierSelector({
             {selectedTierInfo?.name || currentTierId || 'Select Tier'}
           </span>
           {selectedTier?.tierId === mostRecentTier?.tierId && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
+            <span className="text-xs px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
               Current
             </span>
           )}
@@ -113,7 +113,7 @@ export function TierSelector({
             <DropdownItem onSelect={() => onTierChange(mostRecentTier.tierId)}>
               <span className="flex items-center gap-2">
                 {mostRecentTierInfo?.name || mostRecentTier.tierId}
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
+                <span className="text-xs px-1.5 py-0.5 rounded bg-accent/20 text-accent font-semibold uppercase">
                   Current
                 </span>
               </span>

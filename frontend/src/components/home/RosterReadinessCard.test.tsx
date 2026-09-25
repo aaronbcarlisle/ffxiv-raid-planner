@@ -37,7 +37,7 @@ describe('RosterReadinessCard', () => {
     render(<RosterReadinessCard />);
     expect(screen.getByText(/roster readiness/i)).toBeInTheDocument();
     expect(screen.getByText(/avg iLvl/i)).toBeInTheDocument();
-    expect(screen.getByText(/% BiS/i)).toBeInTheDocument();
+    expect(screen.getByText(/At full BiS/i)).toBeInTheDocument();
     expect(screen.getByText(/raiders/i)).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: /bis complete/i })).toBeInTheDocument();
   });

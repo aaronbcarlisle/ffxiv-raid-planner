@@ -8,7 +8,8 @@
  * `pages/` composition layer (Shell → page is allowed; page is boundary-exempt).
  * This keeps the new v2 shell components boundary-clean (no new suppressions),
  * while still REUSING the legacy `TierSelector` as-is via its `onTierChange`
- * prop — `TierSelector` itself is untouched (byte-for-byte for the legacy route).
+ * prop — `TierSelector` itself is otherwise untouched for the legacy route,
+ * aside from the V1-authorized `text-[10px]`→`text-xs` badge fix (R-E2-J/U-9).
  *
  * Rendered inside `<GroupActionModals>` (via TopBar), so `useGroupActions()`
  * resolves to the shared chrome handlers.

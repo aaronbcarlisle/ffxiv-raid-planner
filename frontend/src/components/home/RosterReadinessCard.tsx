@@ -2,8 +2,9 @@
  * RosterReadinessCard (ring0 `home/`)
  *
  * Hero readiness glance for the redesigned Home: a three-stat strip
- * (avg iLvl · % BiS · raider count) over a single "BiS complete" progress bar,
- * with a footer tallying obtained BiS slots and members still needing setup.
+ * (avg iLvl · at-full-BiS % · raider count, via the shared `StatCell` idiom)
+ * over a single "BiS complete" progress bar, with a footer tallying obtained
+ * BiS slots and members still needing setup.
  *
  * Boundary discipline (ring0): reads the tier store (`useTierPlayers` — ring0→
  * store is allowed) and composes shared `ui/` components. Never imports a
@@ -13,6 +14,7 @@
 
 import { CardShell } from '../ui/CardShell';
 import { ProgressBar } from '../ui/ProgressBar';
+import { StatCell } from '../ui/StatCell';
 import { useTierPlayers } from '../../stores/tierStore';
 import { bisCompleteCount, bisSlotTotals, rosterAvgIlv } from '../../utils/rosterReadiness';
 
@@ -23,15 +25,6 @@ function needsSetup(players: ReturnType<typeof useTierPlayers>): number {
     if (!p.configured) return true;
     return !p.gear.some((s) => s.bisSource !== null && s.bisSource !== undefined);
   }).length;
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex-1 text-center">
-      <p className="text-lg font-display font-bold tabular-nums text-text-primary leading-none">{value}</p>
-      <p className="mt-1 text-xs uppercase tracking-wide text-text-tertiary leading-none">{label}</p>
-    </div>
-  );
 }
 
 export function RosterReadinessCard() {
@@ -51,9 +44,15 @@ export function RosterReadinessCard() {
   return (
     <CardShell title="Roster readiness">
       <div className="flex items-stretch divide-x divide-border-subtle">
-        <Stat value={avgIlv != null ? String(avgIlv) : '—'} label="Avg iLvl" />
-        <Stat value={`${bisPct}%`} label="% BiS" />
-        <Stat value={String(raiderCount)} label="Raiders" />
+        <div className="flex-1">
+          <StatCell value={avgIlv != null ? String(avgIlv) : '—'} label="Avg iLvl" />
+        </div>
+        <div className="flex-1">
+          <StatCell value={`${bisPct}%`} label="At full BiS" />
+        </div>
+        <div className="flex-1">
+          <StatCell value={String(raiderCount)} label="Raiders" />
+        </div>
       </div>
 
       <ProgressBar

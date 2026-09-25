@@ -333,6 +333,31 @@ describe('Home', () => {
     expect(teamSummaryIndex).toBeGreaterThan(bisIndex);
   });
 
+  it('renders both rows inside one grid, with no TwoRegionDashboard (R-E2-G)', () => {
+    mocks.mountData = {
+      trials: [{ trialId: 'test-trial', totalMembers: 4, membersComplete: 2, memberProgress: [] }],
+    };
+    renderHome();
+
+    // Hero row and dashboard row are siblings of the SAME grid container —
+    // TwoRegionDashboard (pre-R-E2-G) put the dashboard row one level
+    // deeper, inside its own separate `.grid`, which would make these two
+    // `.closest('.grid')` calls resolve to different nodes.
+    const heroGrid = screen.getByRole('heading', { name: /roster readiness/i }).closest('.grid');
+    const dashboardGrid = screen.getByRole('heading', { name: /needs your attention/i }).closest('.grid');
+    expect(heroGrid).not.toBeNull();
+    expect(heroGrid).toBe(dashboardGrid);
+
+    // Side stack order unchanged: Loot fairness, Recent activity, Track card.
+    const headingNames = screen.getAllByRole('heading').map((h) => h.textContent);
+    const fairnessIndex = headingNames.findIndex((t) => t === 'Loot fairness');
+    const activityIndex = headingNames.findIndex((t) => /recent activity/i.test(t ?? ''));
+    const trackIndex = headingNames.findIndex((t) => t === 'test-trial');
+    expect(fairnessIndex).toBeGreaterThanOrEqual(0);
+    expect(activityIndex).toBeGreaterThan(fairnessIndex);
+    expect(trackIndex).toBeGreaterThan(activityIndex);
+  });
+
   it('renders the fairness module above the activity feed, in DOM order (R-D14-B)', () => {
     renderHome();
     const headingNames = screen.getAllByRole('heading').map((h) => h.textContent);
