@@ -257,7 +257,7 @@ B–F land as normal PRs.
   UI_COMPONENTS.md, PRODUCT_MODEL §6, REDESIGN_SPEC §7 drop corrections, broken
   REDESIGN_SPEC link).
 
-**Carried out of Phase D** (open at the D14b close; detail in `specs/phase-d-loot-plan.md` §5 and its
+**Carried out of Phase D** (open at the D14b close; **closed by DC #274 except R-D12-F cause 5**, which is re-carried below; detail in `specs/phase-d-loot-plan.md` §5 and its
 D12 row):
 - `ui/Select`'s effect-ordering race — changing the recipient can clobber the slot `Select` back to
   placeholder, in both shells; the two-eligible-needers browser case is still owed.
@@ -273,7 +273,7 @@ D12 row):
   update; see R-DC-G.
 - `eslint.config.js`'s `a11yRecommendedWarn` mapping flips upstream-off `jsx-a11y` rules to `warn` and
   strips their options — a dedicated chore, not per-call-site patches.
-  **✅ CLOSED (DC Task 2).** Lint warnings 893 → 812, no jsx-a11y rule rose; two v2 directives freed by
+  **✅ CLOSED (DC Task 2).** Lint warnings 903 → 812 across DC (Task 1's deletions −10, the mapping −81), no jsx-a11y rule rose; two v2 directives freed by
   the fix (`LogWeekGrid.tsx:593,632`) were deleted.
 - D12's three disclosed residuals: R-D12-C (a week-1 tier with no stored week routes to History),
   R-D12-H (the ring one-to-many / one-to-first asymmetry), R-D12-F cause 4 (Board view renders no
