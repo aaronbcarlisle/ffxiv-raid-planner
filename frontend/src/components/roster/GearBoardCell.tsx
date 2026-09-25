@@ -10,9 +10,14 @@
  * (F6d `need.up`, spec §5.8), the cell renders the next-upgrade glyph (●) in the
  * player's `role` color instead of the plain need dot. Visual target:
  * `mockups/02-roster-board.html` `.gcell` / `.gcell.need.up`.
+ *
+ * Keyboard (R-E1-E): the cell keeps `role="checkbox"`; Space/Enter cycle it and
+ * an unmodified arrow is routed to `onNavigate`. The Board owns the roving tab
+ * stop — `isTabStop` decides whether this cell is the one in the Tab sequence.
  */
 import { toGearState } from '../../utils/calculations';
 import { BIS_SOURCE_NAMES, BIS_SOURCE_FULL_NAMES } from '../../types';
+import { isBoardArrowKey, type BoardArrowKey } from './gearBoardNav';
 import type { GearSlot, GearSlotStatus } from '../../types';
 
 export interface GearBoardCellProps {
@@ -24,9 +29,23 @@ export interface GearBoardCellProps {
   priority?: boolean;
   /** Player role — colors the next-upgrade glyph (mockup `.need.up`). */
   role?: 'tank' | 'healer' | 'melee' | 'ranged' | 'caster';
+  /** Roving tab stop (R-E1-E): `false` takes the cell out of the Tab sequence
+   * (tabIndex -1) while it stays focusable by script and click. Defaults to
+   * `true`, so a standalone cell behaves as before. */
+  isTabStop?: boolean;
+  /** Unmodified arrow keys are routed here. Return `true` when focus moved so
+   * the cell can `preventDefault`; an edge returns `false` and the key keeps
+   * its default (e.g. scrolling the board). */
+  onNavigate?: (key: BoardArrowKey) => boolean;
+  /** Wired only while interactive: the Board records the focused cell as the
+   * roving stop, so a disabled cell (click-focusable at tabIndex -1) never
+   * becomes one. */
+  onFocus?: () => void;
 }
 
-const BASE = 'grid h-[30px] w-[30px] place-items-center rounded-md text-[9px] font-extrabold mx-auto';
+// design-system-ignore: text-[9px] is the board glyph (R/T/BT/C, ·, ●, —) in a dense 30 px gearsheet cell; each cell's full meaning is in its aria-label
+// `scroll-mt-10` clears the Board's ~34px sticky column header when focus scrolls a cell into view.
+const BASE = 'grid h-[30px] w-[30px] place-items-center rounded-md text-[9px] font-extrabold mx-auto scroll-mt-10';
 
 /** Source fill classes (token-only) keyed by BiS source, for the obtained state. */
 const FILL: Record<'raid' | 'tome' | 'base_tome' | 'crafted', string> = {
@@ -36,7 +55,16 @@ const FILL: Record<'raid' | 'tome' | 'base_tome' | 'crafted', string> = {
   crafted: 'bg-gear-crafted/25 text-text-primary',
 };
 
-export function GearBoardCell({ slot, onCycle, disabled = false, priority = false, role }: GearBoardCellProps) {
+export function GearBoardCell({
+  slot,
+  onCycle,
+  disabled = false,
+  priority = false,
+  role,
+  isTabStop = true,
+  onNavigate,
+  onFocus,
+}: GearBoardCellProps) {
   const { bisSource } = slot;
 
   // No BiS target set → non-interactive muted placeholder.
@@ -60,6 +88,12 @@ export function GearBoardCell({ slot, onCycle, disabled = false, priority = fals
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       if (!disabled) onCycle?.(slot.slot);
+      return;
+    }
+    // Only an unmodified arrow navigates (Alt+Left is browser Back; Shift/Ctrl/
+    // Meta combos belong to the browser), and only an actual move eats the key.
+    if (isBoardArrowKey(e.key) && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && onNavigate?.(e.key)) {
+      e.preventDefault();
     }
   };
 
@@ -67,10 +101,11 @@ export function GearBoardCell({ slot, onCycle, disabled = false, priority = fals
   const commonProps = {
     role: 'checkbox' as const,
     'aria-checked': obtained,
-    'aria-disabled': disabled,
-    tabIndex: interactive ? 0 : -1,
+    'aria-disabled': !interactive,
+    tabIndex: interactive && isTabStop ? 0 : -1,
     onClick: interactive ? handleClick : undefined,
     onKeyDown: interactive ? handleKeyDown : undefined,
+    onFocus: interactive ? onFocus : undefined,
   };
 
   if (!obtained) {

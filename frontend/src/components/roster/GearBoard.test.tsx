@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import { GearBoard } from './GearBoard';
 import type { SnapshotPlayer, GearSlotStatus, GearSlot } from '../../types';
 
@@ -168,5 +168,163 @@ describe('GearBoard', () => {
     expect(otherCell).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(otherCell);
     expect(otherUpdate).not.toHaveBeenCalled();
+  });
+
+  it('the role border reads the role token with a muted fallback, not a hex literal', () => {
+    render(<GearBoard players={[player({ id: 'a', name: 'Tank One' })]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    const identityCell = screen.getByText('Tank One').closest('td') as HTMLElement;
+    expect(identityCell.getAttribute('style')).toContain('var(--color-role-tank, var(--color-text-muted))');
+    expect(identityCell.getAttribute('style')).not.toMatch(/#[0-9a-f]{3,8}/i);
+  });
+});
+
+// R-E1-E: one roving tab stop, arrows move it, keyed by { playerId, slot }.
+describe('GearBoard keyboard (R-E1-E)', () => {
+  /** Non-PLD by default so the roster renders exactly the 11 base columns. */
+  const p = (id: string, position: NonNullable<SnapshotPlayer['position']>, over: Partial<SnapshotPlayer> = {}) =>
+    player({ id, name: `Player ${id}`, job: 'DRG', role: 'melee', position, ...over });
+  const noBisGear = () => SLOTS.map((slot) => ({ slot, bisSource: null, hasItem: false, isAugmented: false })) as GearSlotStatus[];
+  const MEMBER_GATE = { userRole: 'member', currentUserId: 'u-me', isAdminAccess: false } as const;
+  /** The row's cells in column order (a no-BiS row has none). */
+  const rowCells = (name: string) => within(screen.getByText(name).closest('tr') as HTMLElement).getAllByRole('checkbox');
+  /** The board cells in the Tab sequence — the roving stop, so at most one. */
+  const tabStops = () => screen.queryAllByRole('checkbox').filter((c) => c.getAttribute('tabindex') === '0');
+  const focus = (el: HTMLElement) => act(() => el.focus());
+
+  it('T2-b5: exactly one board cell sits in the Tab sequence between two sentinels', () => {
+    render(
+      <>
+        <button type="button">before</button>
+        <GearBoard players={[p('a', 'M1'), p('b', 'H1')]} {...OWNER_GATE} actionsForPlayer={noop} />
+        <button type="button">after</button>
+      </>,
+    );
+    // jsdom has no sequential focus navigation: emulate Tab as "the next
+    // element in document order whose tabIndex is >= 0".
+    const tab = () => {
+      const order = Array.from(document.body.querySelectorAll<HTMLElement>('button, [tabindex]')).filter((el) => el.tabIndex >= 0);
+      focus(order[order.indexOf(document.activeElement as HTMLElement) + 1]);
+    };
+    focus(screen.getByText('before'));
+    tab();
+    expect(document.activeElement).toHaveAttribute('role', 'checkbox');
+    expect(rowCells('Player a')).toContain(document.activeElement);
+    tab();
+    expect(document.activeElement).toBe(screen.getByText('after'));
+    expect(tabStops()).toHaveLength(1);
+  });
+
+  it('T2-b6: ArrowDown crosses a section divider and a no-BiS row to the same column', () => {
+    // LP1: a (live) · divider · LP2: b (no BiS → spanning row, no cells) · c (live)
+    render(<GearBoard players={[p('a', 'M1'), p('b', 'T2', { gear: noBisGear() }), p('c', 'H2')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    const from = rowCells('Player a')[3];
+    focus(from);
+    expect(fireEvent.keyDown(from, { key: 'ArrowDown' })).toBe(false); // defaultPrevented: focus moved
+    expect(document.activeElement).toBe(rowCells('Player c')[3]);
+    expect(tabStops()).toEqual([rowCells('Player c')[3]]);
+  });
+
+  it('T2-b6 (non-editable variant): ArrowDown/ArrowUp skip a divider and a row the member cannot edit', () => {
+    // b's cells are rendered (tabIndex -1, aria-disabled) but inert — the DOM
+    // has checkboxes there, so the skip must come from the grid, not the DOM.
+    render(
+      <GearBoard
+        players={[p('a', 'M1', { userId: 'u-me' }), p('b', 'T2', { userId: 'u-other' }), p('c', 'H2', { userId: 'u-me' })]}
+        {...MEMBER_GATE}
+        actionsForPlayer={noop}
+      />,
+    );
+    expect(rowCells('Player b')[3]).toHaveAttribute('aria-disabled', 'true');
+    const from = rowCells('Player a')[3];
+    focus(from);
+    expect(fireEvent.keyDown(from, { key: 'ArrowDown' })).toBe(false);
+    expect(document.activeElement).toBe(rowCells('Player c')[3]);
+    expect(fireEvent.keyDown(rowCells('Player c')[3], { key: 'ArrowUp' })).toBe(false);
+    expect(document.activeElement).toBe(from);
+  });
+
+  it('T2-b3b: an arrow at an edge moves nothing and is not defaultPrevented', () => {
+    render(<GearBoard players={[p('a', 'M1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    const first = rowCells('Player a')[0];
+    focus(first);
+    expect(fireEvent.keyDown(first, { key: 'ArrowLeft' })).toBe(true);
+    expect(fireEvent.keyDown(first, { key: 'ArrowUp' })).toBe(true);
+    expect(fireEvent.keyDown(first, { key: 'ArrowDown' })).toBe(true);
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('T2-b4: Alt+ArrowLeft and Shift+ArrowDown neither move focus nor are defaultPrevented', () => {
+    render(<GearBoard players={[p('a', 'M1'), p('b', 'H1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    const from = rowCells('Player a')[2];
+    focus(from);
+    expect(fireEvent.keyDown(from, { key: 'ArrowLeft', altKey: true })).toBe(true);
+    expect(fireEvent.keyDown(from, { key: 'ArrowDown', shiftKey: true })).toBe(true);
+    expect(document.activeElement).toBe(from);
+    expect(tabStops()).toEqual([from]);
+  });
+
+  it('ArrowRight skips a column with no cell (the OFFH column on a shield-free row)', () => {
+    // A PLD roster grows the OFFH column; neither fixture carries an offhand
+    // entry, so that `<td>` is empty and Right from Wpn lands on Head.
+    render(<GearBoard players={[player({ id: 'pld', name: 'Player pld', position: 'T1' }), p('whm', 'H1', { job: 'WHM', role: 'healer' })]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toContain('OffH');
+    const cells = rowCells('Player whm');
+    focus(cells[0]);
+    expect(fireEvent.keyDown(cells[0], { key: 'ArrowRight' })).toBe(false);
+    expect(document.activeElement).toBe(cells[1]);
+    // The `<td>` just before Head is the OFFH column, and it holds no cell.
+    const offhTd = (cells[1].closest('td') as HTMLElement).previousElementSibling as HTMLElement;
+    expect(offhTd.querySelector('[role="checkbox"]')).toBeNull();
+  });
+
+  it('T2-c1: removing the active player leaves exactly one tab stop', () => {
+    const { rerender } = render(<GearBoard players={[p('a', 'M1'), p('b', 'H1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    focus(rowCells('Player b')[2]);
+    expect(tabStops()).toEqual([rowCells('Player b')[2]]);
+    rerender(<GearBoard players={[p('a', 'M1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    expect(tabStops()).toEqual([rowCells('Player a')[0]]);
+  });
+
+  it('T2-c2: clicking a cell makes it the tab stop', () => {
+    render(<GearBoard players={[p('a', 'M1'), p('b', 'H1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    expect(tabStops()).toEqual([rowCells('Player a')[0]]);
+    const target = rowCells('Player b')[5];
+    // A real click focuses the (tabIndex -1) cell before the click event fires;
+    // jsdom has no such default action, so focus, then click.
+    focus(target);
+    fireEvent.click(target);
+    expect(tabStops()).toEqual([target]);
+  });
+
+  it('T2-c3: a read-only board has no tab stop', () => {
+    render(<GearBoard players={[p('a', 'M1'), p('b', 'H1')]} userRole="viewer" currentUserId="u-viewer" isAdminAccess={false} actionsForPlayer={noop} />);
+    expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
+    expect(tabStops()).toHaveLength(0);
+  });
+
+  it('T2-c4: removing a player ABOVE the active cell keeps the same player and slot as the stop', () => {
+    const { rerender } = render(<GearBoard players={[p('a', 'M1'), p('b', 'H1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    focus(rowCells('Player b')[4]);
+    expect(tabStops()).toEqual([rowCells('Player b')[4]]);
+    rerender(<GearBoard players={[p('b', 'H1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    expect(tabStops()).toEqual([rowCells('Player b')[4]]);
+  });
+
+  it('T2-c5: clicking a disabled cell leaves exactly one tab stop, on an interactive cell', () => {
+    render(<GearBoard players={[p('own', 'M1', { userId: 'u-me' }), p('other', 'H1', { userId: 'u-other' })]} {...MEMBER_GATE} actionsForPlayer={noop} />);
+    const inert = rowCells('Player other')[3];
+    expect(inert).toHaveAttribute('aria-disabled', 'true');
+    focus(inert);
+    fireEvent.click(inert);
+    expect(document.activeElement).toBe(inert);
+    const stops = tabStops();
+    expect(stops).toHaveLength(1);
+    expect(stops[0]).toHaveAttribute('aria-disabled', 'false');
+    expect(rowCells('Player own')).toContain(stops[0]);
+  });
+
+  it('describes the arrow keys to assistive tech through aria-describedby', () => {
+    render(<GearBoard players={[p('a', 'M1')]} {...OWNER_GATE} actionsForPlayer={noop} />);
+    expect(screen.getByRole('table')).toHaveAccessibleDescription('Use arrow keys to move between gear cells.');
   });
 });
