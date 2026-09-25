@@ -391,4 +391,48 @@ describe('Schedule', () => {
       expect(secondEnd).toBe(firstEnd);
     });
   });
+
+  // #39 (v2 half): the delete chain at Schedule.tsx:354-383 (deleteChoice,
+  // handleCancelOccurrence) and :505-527 (the modal) had no test.
+  describe('delete flow (#39)', () => {
+    function openSessionActions() {
+      fireEvent.keyDown(screen.getByRole('button', { name: 'Session actions' }), { key: 'Enter' });
+    }
+
+    it('T4-d1: recurring delete → "Delete recurring session" → "Cancel just this occurrence" calls the cancel path and closes the modal', async () => {
+      useScheduleStore.setState({ sessions: [sRec] } as never);
+      renderSchedule();
+      await waitFor(() => expect(useScheduleStore.getState().fetchExceptions).toHaveBeenCalled());
+
+      openSessionActions();
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
+      expect(screen.getByText('Delete recurring session')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel just this occurrence' }));
+
+      await waitFor(() => expect(useScheduleStore.getState().createException).toHaveBeenCalledWith(
+        'g1',
+        'sRec',
+        { occurrenceDate: '2026-07-01', type: 'cancelled' },
+      ));
+      expect(screen.queryByText('Delete recurring session')).not.toBeInTheDocument();
+    });
+
+    it('T4-d2: recurring delete → "Delete entire series" → ConfirmModal → the delete is called', async () => {
+      useScheduleStore.setState({ sessions: [sRec] } as never);
+      renderSchedule();
+      await waitFor(() => expect(useScheduleStore.getState().fetchExceptions).toHaveBeenCalled());
+
+      openSessionActions();
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete' }));
+      expect(screen.getByText('Delete recurring session')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete entire series' }));
+      expect(screen.queryByText('Delete recurring session')).not.toBeInTheDocument();
+      expect(screen.getByText('Delete session')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      await waitFor(() => expect(useScheduleStore.getState().deleteSession).toHaveBeenCalledWith('g1', 'sRec'));
+    });
+  });
 });

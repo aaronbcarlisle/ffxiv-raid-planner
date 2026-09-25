@@ -130,7 +130,9 @@ describe('AvailabilityHeatmap', () => {
         onProposeSession={onProposeSession}
       />,
     );
-    const button = screen.getByRole('button', { name: 'Tue 7:00 PM — 2 of 2 free' });
+    const button = screen.getByRole('button', { name: 'Tue 7:00 PM — 2 of 2 free — Alice, Bob' });
+    // R-E1-H: the manager cell also carries the read-only branch's `title`.
+    expect(button).toHaveAttribute('title', 'Alice, Bob');
     fireEvent.click(button);
     expect(onProposeSession).toHaveBeenCalledTimes(1);
     const draft = onProposeSession.mock.calls[0][0];
