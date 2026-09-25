@@ -240,8 +240,8 @@ screenshots embedded in the PR.
    - `createPageEntry` — no call site anywhere in `frontend/src`
    - **Totals: 15 · 11 · 9.** Every V1-only book/ledger pair is in `history/SectionedLogView`.
      "Unreachable" = the three orphaned `history/` panels (`LootLogPanel`, `PageBalancesPanel`,
-     `UnifiedWeekOverview`: zero importers), which the test tags `V1-only` with `via` "UNREACHABLE";
-     their deletion is carried out of Phase D (`ROLLOUT_ROADMAP.md` §7).
+     `UnifiedWeekOverview`: zero importers), which the test tags `unreachable` with `via` explaining
+     why each was never deleted; their deletion is carried out of Phase D (`ROLLOUT_ROADMAP.md` §7).
 
    *(The tree-wide count is much larger — `QuickLogDropModal`, `QuickLogWeaponModal`,
    `SectionedLogView`, `LootLogPanel`, `UnifiedWeekOverview`, `LogMaterialModal` all call it — which is

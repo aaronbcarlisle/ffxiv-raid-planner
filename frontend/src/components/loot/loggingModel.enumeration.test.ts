@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 /**
  * loggingModel.enumeration.test.ts — DoD-2 ("one logging model — asserted by
- * enumeration, not by claim", `phase-d-loot-plan.md:216-219`), tagged per
+ * enumeration, not by claim", `phase-d-loot-plan.md:217-249`), tagged per
  * R-D14-K.
  *
  * DoD-2's literal text claims, within v2's Loot subtree: `logLootAndUpdateGear`
@@ -28,14 +28,14 @@ import { describe, it, expect } from 'vitest';
  * Known v2 extras beyond DoD-2's literal list, each with its origin slice
  * (`git log -S`, oldest match — R-D14-K):
  *   - `logLootAndUpdateGear` @ `QuickLogWeaponModal.tsx:79`, reached via
- *     `WeaponPriorityBridge.tsx:15,80` → `Loot.tsx:1451` → `NewShell.tsx:13`.
+ *     `WeaponPriorityBridge.tsx:15,80` → `Loot.tsx:1476` → `NewShell.tsx:13`.
  *     Origin: 86655c59 "Loot Tracking System Redesign (Phases 2-5) (#4)" —
  *     predates the Phase-D slices entirely.
  *   - `markFloorCleared` @ `LogWeekWizard/index.tsx:603` — a DIRECT store call,
- *     not routed through `MarkFloorClearedModal` (unlike `BookLedgerCard.tsx:464`,
+ *     not routed through `MarkFloorClearedModal` (unlike `BookLedgerCard.tsx:475`,
  *     which is that modal's own `onSubmit`). Origin: b1b2da94 "fix: address
  *     remaining PR #66 review feedback (#67)".
- *   - The six ledger-clearing calls at `Loot.tsx:1098-1105`
+ *   - The six ledger-clearing calls at `Loot.tsx:1123-1130`
  *     (`deletePlayerLedger`, `clearPlayerWeekPageLedger`,
  *     `clearAllFloorPageLedger`, `clearFloorPageLedger`, `clearWeekPageLedger`,
  *     `clearAllPageLedger`) — none of which DoD-2's text names at all. Origin:
@@ -92,15 +92,25 @@ const IS_TEST_FILE = /\.(test|type-test)\.tsx?$/;
  * silent skip would be more dangerous than an occasional false positive the
  * next run surfaces.
  *
- * Known limit: `//`-detection runs on raw text outside of quotes only, so a
- * literal `//` inside JSX TEXT (not a quoted string — e.g. `<div>a // b</div>`)
- * is still stripped as a line comment, same as `//` inside an actual `{'...'}`
- * string would NOT be (strings are quote-delimited and skipped whole before
- * `//`-detection runs on what follows). None of the pinned call-site lines
- * below contain `//` or `https://` (checked by grep across loot/** and
- * history/** for lines with both a target call and `//`/`https://`; only
- * hits were inside `.test.tsx` files, already excluded) so this limit does
- * not affect the pinned set today.
+ * Known limits:
+ * 1. `//`-detection runs on raw text outside of quotes only, so a literal
+ *    `//` inside JSX TEXT (not a quoted string — e.g. `<div>a // b</div>`) is
+ *    still stripped as a line comment, same as `//` inside an actual
+ *    `{'...'}` string would NOT be (strings are quote-delimited and skipped
+ *    whole before `//`-detection runs on what follows). None of the pinned
+ *    call-site lines below contain `//` or `https://` (checked by grep
+ *    across loot/** and history/** for lines with both a target call and
+ *    `//`/`https://`; only hits were inside `.test.tsx` files, already
+ *    excluded) so this limit does not affect the pinned set today.
+ * 2. A quote/backtick only opens a string when the preceding character is
+ *    NOT `[A-Za-z0-9_]` (a TS string literal never starts right after a word
+ *    character). This guards JSX text like `<p>Don't</p>`, whose apostrophe
+ *    follows `n` and would otherwise open a fake "string" that swallows
+ *    everything up to the next quote. The guard's own limit: a tagged
+ *    template immediately after an identifier (`` tag`...` ``) also has its
+ *    backtick preceded by a word character, so it is likewise not opened as
+ *    a string — none of loot/** or history/** use tagged templates, so this
+ *    does not affect the pinned set today.
  */
 function stripComments(source: string): string {
   let out = '';
@@ -125,6 +135,14 @@ function stripComments(source: string): string {
     }
     const ch = source[i];
     if (ch === '`' || ch === '"' || ch === "'") {
+      const prev = i > 0 ? source[i - 1] : '';
+      if (/[A-Za-z0-9_]/.test(prev)) {
+        // Not a string opener — e.g. the apostrophe in JSX text like
+        // "Don't" (preceded by a word character; see header comment, limit 2).
+        out += ch;
+        i++;
+        continue;
+      }
       let j = i + 1;
       while (j < n && source[j] !== ch) {
         if (source[j] === '\\') j++;
@@ -178,8 +196,15 @@ function findCallSites(): CallSite[] {
 
 // `line` and `via` are documentation (the cite as of this commit); the assert compares (file, fn) only.
 // The pinned set, AS IT IS on the branch (R-D14-K). `tag` is v2-reachable (with
-// its import chain, in `via`) or V1-only.
-const EXPECTED: Array<{ file: string; fn: string; line: number; tag: 'v2-reachable' | 'V1-only'; via: string }> = [
+// its import chain, in `via`), V1-only, or unreachable (zero importers anywhere —
+// neither shell renders the file; `via` explains why it was never deleted).
+const EXPECTED: Array<{
+  file: string;
+  fn: string;
+  line: number;
+  tag: 'v2-reachable' | 'V1-only' | 'unreachable';
+  via: string;
+}> = [
   {
     file: 'BookLedgerCard.tsx',
     fn: 'adjustBookBalance',
@@ -388,70 +413,69 @@ const EXPECTED: Array<{ file: string; fn: string; line: number; tag: 'v2-reachab
   // UnifiedWeekOverview) are ORPHANED: `pnpm deadcode` lists all three under
   // "Unused files" — zero importers anywhere in frontend/src (verified by
   // grep; no barrel, no dynamic import()). Neither shell renders them, so
-  // "V1-only" is the nearer of the two available tags (not v2-reachable) but
-  // is not literally true either; `via` says so explicitly rather than
-  // inventing a live chain.
+  // they carry the third tag, "unreachable"; `via` explains why each was
+  // never deleted rather than inventing a live chain.
   {
     file: 'history/LootLogPanel.tsx',
     fn: 'logLootAndUpdateGear',
     line: 52,
-    tag: 'V1-only',
+    tag: 'unreachable',
     via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
   },
   {
     file: 'history/PageBalancesPanel.tsx',
     fn: 'clearAllPageLedger',
     line: 82,
-    tag: 'V1-only',
+    tag: 'unreachable',
     via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
   },
   {
     file: 'history/PageBalancesPanel.tsx',
     fn: 'deletePlayerLedger',
     line: 86,
-    tag: 'V1-only',
+    tag: 'unreachable',
     via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
   },
   {
     file: 'history/PageBalancesPanel.tsx',
     fn: 'adjustBookBalance',
     line: 95,
-    tag: 'V1-only',
+    tag: 'unreachable',
     via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
   },
   {
     file: 'history/PageBalancesPanel.tsx',
     fn: 'markFloorCleared',
     line: 320,
-    tag: 'V1-only',
+    tag: 'unreachable',
     via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
   },
   {
     file: 'history/PageBalancesPanel.tsx',
     fn: 'adjustBookBalance',
     line: 336,
-    tag: 'V1-only',
+    tag: 'unreachable',
     via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
   },
   {
     file: 'history/UnifiedWeekOverview.tsx',
     fn: 'logLootAndUpdateGear',
     line: 285,
-    tag: 'V1-only',
+    tag: 'unreachable',
     via: 'UNREACHABLE — zero importers anywhere (knip: unused file); superseded by SectionedLogView, never deleted',
   },
   {
     file: 'history/UnifiedWeekOverview.tsx',
     fn: 'markFloorCleared',
     line: 376,
-    tag: 'V1-only',
+    tag: 'unreachable',
     via: 'UNREACHABLE — zero importers anywhere (knip: unused file); superseded by SectionedLogView, never deleted',
   },
   {
     file: 'history/UnifiedWeekOverview.tsx',
     fn: 'adjustBookBalance',
     line: 392,
-    tag: 'V1-only',
+    tag: 'unreachable',
     via: 'UNREACHABLE — zero importers anywhere (knip: unused file); superseded by SectionedLogView, never deleted',
   },
 ];
@@ -470,16 +494,18 @@ describe('one-logging-model call-site enumeration (DoD-2, R-D14-K)', () => {
 
   it('every pinned pair carries a reachability tag and an import chain (tag membership and non-empty via only — not verified against the real import graph)', () => {
     for (const entry of EXPECTED) {
-      expect(['v2-reachable', 'V1-only']).toContain(entry.tag);
+      expect(['v2-reachable', 'V1-only', 'unreachable']).toContain(entry.tag);
       expect(entry.via.length).toBeGreaterThan(0);
     }
   });
 
-  it('QuickLogDropModal is imported by exactly one non-test file within loot/ and history/: loot/LootPriorityPanel.tsx (V1-only chain)', () => {
-    // Scoped the same way as findCallSites: the importer could in principle
+  it('QuickLogDropModal is imported/re-exported by exactly two non-test files within loot/ and history/: index.ts (the barrel re-export) and loot/LootPriorityPanel.tsx (V1-only chain)', () => {
+    // Scoped the same way as findCallSites: an importer could in principle
     // live outside loot/** and history/**, which this scan would not see —
     // hence "within loot/ and history/" in the test name, not an absolute claim.
-    const IMPORT_RE = /\bimport\s*\{[^}]*\bQuickLogDropModal\b[^}]*\}\s*from/;
+    // Matches both `import { … QuickLogDropModal … } from` and the barrel's
+    // own re-export form, `export { … QuickLogDropModal … } from`.
+    const IMPORT_RE = /\b(?:import|export)\s*\{[^}]*\bQuickLogDropModal\b[^}]*\}\s*from/;
     const importers: string[] = [];
     for (const { modules, normalize } of SOURCE_GROUPS) {
       for (const [path, raw] of Object.entries(modules)) {
@@ -490,7 +516,7 @@ describe('one-logging-model call-site enumeration (DoD-2, R-D14-K)', () => {
         if (IMPORT_RE.test(raw)) importers.push(file);
       }
     }
-    expect(importers).toEqual(['LootPriorityPanel.tsx']);
+    expect(importers.sort()).toEqual(['LootPriorityPanel.tsx', 'index.ts']);
   });
 
   it('matches call expressions only, not comments or typeof mentions', () => {

@@ -84,7 +84,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'Phase D closed out in the docs',
         description:
-          'Every Phase D ruling was walked in the running app, and the parity matrix, the loot design and plan, the roadmap and the project guide now record Phase D as complete except D-18 (no Progress tab yet).',
+          'Every Phase D ruling was walked in the running app or, where no screen exists for it, recorded in the docs, and the parity matrix, the loot design and plan, the roadmap and the project guide now record Phase D as complete except D-18 (no Progress tab yet).',
         pr: 273,
         prTitle: 'feat(v2): D14b — Phase D close-out: v2-roster-hide-subs, DoD-2 enumeration, DoD sweep, write-back',
       },
