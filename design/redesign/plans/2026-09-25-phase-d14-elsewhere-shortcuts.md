@@ -271,4 +271,4 @@ Paste each result line.
      - the Phase D status in `ROLLOUT_ROADMAP.md` §7;
      - `CLAUDE.md`'s status line becomes "Phase D complete except D-18 (R-41: no Progress tab yet)".
 6. Internal release note, the gates, and a draft PR.
-7. **Holistic-review list:** R-D14-B placement and the card title.
+7. **Holistic-review list:** R-D14-B placement and the card title. **✅ closed 2026-09-25 (U-5, E1).**

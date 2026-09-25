@@ -57,6 +57,17 @@ The impeccable-assisted pass (the second half of the roadmap's Phase E bullet) i
 - **m1–m9:** folded in place.
 - **m10:** the old Task 2 is split into Task 2 (board) and Task 3 (palette), and the riskiest task gets its task-scoped review.
 
+**Outcome (2026-09-25):** 4 tasks, 2 fix waves. Task 2's task-scoped review: 0 Critical / 1 Important /
+5 Minors — one same-agent fix (T2-c6, the still-interactive fallback test, with an executed
+before/after mutation trace) folding all 4 remaining Minors, then a re-review confirming all
+addressed. Whole-branch review: 0 Critical / 1 Important / 7 Minors — the Important was the v2 help
+overlay still printing the literal "Ctrl+K" instead of the one-author label — one fix wave, re-review
+confirming all addressed. Browser pass 13 PASS / 1 SKIP (heatmap manager names — DEVTST data could not
+surface a titled cell; covered by the unit test instead) / 1 FAIL (the pre-existing not-found path,
+carried to Phase F below), 0 console errors. Lint 812 warnings, unchanged (0 errors). Knip 8 / 179 /
+139, unchanged. Dupes 320 clones, unchanged. Tests 3305 → 3358 passed. The PR lands at ≈1,650 changed
+lines against the ~1,500 budget — user-accepted as one PR (≈60% tests plus this plan).
+
 ---
 
 ## User rulings (2026-09-25)
