@@ -11,11 +11,13 @@ import type { ReactNode } from 'react';
  * Design-system rules (shared `ui/` layer — all at error level):
  * - No raw color (token classes only: bg-surface-card, border-border-subtle, text-text-tertiary)
  * - Readable text floor: title uses `text-xs` (12 px)
- * - A11y: title renders as a real `<h3>` heading element
+ * - A11y: title renders as a real heading element (see `level`); every
+ *   current caller passing a title sits directly under the page `<h1>`, so
+ *   the default `h2` keeps the outline unbroken (R-E2-A).
  */
 
 export interface CardShellProps {
-  /** Optional uppercase section heading. Renders as a real <h3> for a11y. */
+  /** Optional uppercase section heading. Renders as a real heading for a11y. */
   title?: string;
   /** Icon shown left of the title; decorative, aria-hidden. */
   icon?: ReactNode;
@@ -29,6 +31,8 @@ export interface CardShellProps {
    * nested inside another landmark (e.g. inside a <section>).
    */
   as?: 'section' | 'div';
+  /** Heading level for `title`. Default 'h2' (R-E2-A). */
+  level?: 'h2' | 'h3';
 }
 
 export function CardShell({
@@ -38,8 +42,10 @@ export function CardShell({
   children,
   className = '',
   as: Container = 'section',
+  level = 'h2',
 }: CardShellProps) {
   const hasHeader = Boolean(title || icon || headerRight);
+  const Heading = level;
 
   return (
     <Container
@@ -53,9 +59,9 @@ export function CardShell({
             </span>
           )}
           {title && (
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-text-tertiary leading-none">
+            <Heading className="text-xs font-semibold uppercase tracking-widest text-text-tertiary leading-none">
               {title}
-            </h3>
+            </Heading>
           )}
           {headerRight && <span className="ml-auto">{headerRight}</span>}
         </div>

@@ -78,8 +78,8 @@ describe('SessionList', () => {
     expect(screen.getByText('Next session')).toBeInTheDocument();
     expect(screen.getByText('Second Session')).toBeInTheDocument();
     // R-E1-I: the promoted ("next") card is no longer anonymous — its own
-    // title renders as a level-4 heading in the body.
-    expect(screen.getByRole('heading', { level: 4, name: 'First Session' })).toBeInTheDocument();
+    // title renders as a level-3 heading in the body (R-E2-A).
+    expect(screen.getByRole('heading', { level: 3, name: 'First Session' })).toBeInTheDocument();
   });
 
   it('renders no "Next session" title anywhere when isCurrentWeek is false', () => {
