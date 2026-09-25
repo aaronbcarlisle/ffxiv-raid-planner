@@ -359,10 +359,9 @@ describe('Home', () => {
     const main = player({ id: 'M', name: 'Main' });
     const sub = player({ id: 'S', name: 'Sub', isSubstitute: true });
     const unconfigured = player({ id: 'U', name: 'Unset', configured: false });
-    // 't1' is a REAL tier id — `getTierById` (from `gamedata/raid-tiers`, the
-    // module Home itself imports it from) is mocked to return real floors for
-    // it, so `floors` below is proof against the source expression, not just
-    // against whatever the mock always returns.
+    // 't1' is a placeholder id — the `getTierById` mock (:107) ignores its
+    // argument and always returns ['M9S','M10S'], so this proves Home threads
+    // the mocked floors through, not that it looks up the right tier.
     const tierWithMix = { tierId: 't1', players: [main, sub, unconfigured] } as unknown as TierSnapshot;
     renderHome({ tier: tierWithMix });
 
