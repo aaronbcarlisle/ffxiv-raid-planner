@@ -2699,14 +2699,27 @@ describe('Loot — D14 Task 2: v2 loot shortcuts (Alt+L/U everywhere, Alt+←/�
       expect(screen.getByText('Mark Floor Cleared')).toBeInTheDocument();
     });
 
-    it('Alt+B does nothing on Priority or History (Log only)', () => {
-      const priority = renderLoot({ tier: makeTier(players) }, ['/?lview=priority']);
+    // Review fix (D14a wave, IMPORTANT #1): the two assertions right after
+    // `pressAlt('b')` are vacuous on their own — `BookLedgerCard` only MOUNTS
+    // under `lview === 'log'`, so `queryByText` is null whether or not the
+    // action's `if (lview !== 'log') return;` guard ran. `markClearedOpen` is
+    // Loot's own component state (not view-gated on read), so a latched
+    // `true` from a Priority/History press would surface the instant the SAME
+    // instance switches to Log — caught here by switching views WITHOUT
+    // unmounting, through the same `SegmentedToggle` the person clicks.
+    it('Alt+B does nothing on Priority or History (Log only), and does not latch through to a later Log view', () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=priority']);
       pressAlt('b');
       expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
-      priority.unmount();
 
-      renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+      fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'History' }));
       pressAlt('b');
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Log' }));
       expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
     });
   });
@@ -2813,6 +2826,32 @@ describe('Loot — D14 Task 2: v2 loot shortcuts (Alt+L/U everywhere, Alt+←/�
       expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
       expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
       expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+    });
+
+    // Fix wave (D14a review, MINOR #6): the two legs of `shortcutsGuarded()`
+    // that cover `markClearedOpen`'s own modal — the state itself, and
+    // `focusInsideDialog()` once the modal grabs focus — are otherwise never
+    // isolated: every other test presses Alt+B and checks Alt+ArrowLeft only
+    // AFTER (or without regard to) the modal's focus move, so a pass never
+    // proves `markClearedOpen` alone is doing the guarding. `ui/Modal` moves
+    // focus into itself inside a `requestAnimationFrame` (the
+    // EditBookBalanceModal test above needs `await waitFor` for exactly this
+    // reason) — so asserted SYNCHRONOUSLY, right after Alt+B and before any
+    // `waitFor`/microtask flush, `focusInsideDialog()` is still false. Any
+    // guarding of Alt+ArrowLeft caught at that instant is `markClearedOpen`'s
+    // leg alone.
+    it("markClearedOpen alone guards the week keys, isolated from focusInsideDialog (checked before the modal's RAF-deferred focus move can land)", () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2']);
+      const searchBefore = screen.getByTestId('loc').getAttribute('data-search');
+
+      pressAlt('b');
+      expect(screen.getByText('Mark Floor Cleared')).toBeInTheDocument();
+      // Isolation proof: focus has not moved into the dialog yet.
+      expect(document.activeElement?.closest('[role="dialog"],[aria-modal="true"]')).toBeNull();
+
+      pressAlt('ArrowLeft');
+
+      expect(screen.getByTestId('loc').getAttribute('data-search')).toBe(searchBefore);
     });
 
     // Anti-vacuous for mutation check (b) — dropping `focusInsideDialog()`

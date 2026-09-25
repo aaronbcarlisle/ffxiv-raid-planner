@@ -33,16 +33,29 @@ describe('keyboardShortcutGroups — V2_SHORTCUT_GROUPS (R-D14-A/H)', () => {
   });
 
   it('contains none of A16\'s wrong rows', () => {
+    // Review fix (D14a wave, MINOR #3): `.not.toEqual(expect.arrayContaining([...]))`
+    // fails ONLY when the actual array contains every listed item — one
+    // surviving wrong row among several would pass this vacuously. Assert
+    // each item is absent individually instead.
     const v2 = rows(V2_SHORTCUT_GROUPS);
-    expect(v2.map((s) => s.key)).not.toEqual(expect.arrayContaining(['Alt+1-3', '1-4']));
-    expect(v2.map((s) => s.description)).not.toEqual(
-      expect.arrayContaining(['Switch sub tabs', 'Switch main tabs', 'Toggle grid view', 'Change week', 'Expand/collapse', 'Toggle subs']),
-    );
+    const keys = v2.map((s) => s.key);
+    const descriptions = v2.map((s) => s.description);
+    const texts = v2.map(text);
+
+    for (const badKey of ['Alt+1-3', '1-4']) {
+      expect(keys).not.toContain(badKey);
+    }
+    for (const badDescription of [
+      'Switch sub tabs', 'Switch main tabs', 'Toggle grid view',
+      'Change week', 'Expand/collapse', 'Toggle subs',
+    ]) {
+      expect(descriptions).not.toContain(badDescription);
+    }
     // V1's cross-tab quick actions were narrowed to the Loot screen (R-D14-E);
     // their V1 wording must not survive into v2's list.
-    expect(v2.map(text)).not.toEqual(
-      expect.arrayContaining(['Alt+L → Log Loot', 'Alt+U → Log Material', 'Alt+B → Mark Floor Cleared']),
-    );
+    for (const badText of ['Alt+L → Log Loot', 'Alt+U → Log Material', 'Alt+B → Mark Floor Cleared']) {
+      expect(texts).not.toContain(badText);
+    }
   });
 
   it('contains Task 2\'s Loot rows, the History search row and the palette row', () => {

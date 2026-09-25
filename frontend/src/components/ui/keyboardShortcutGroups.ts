@@ -140,9 +140,13 @@ export const V2_SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Roster',
     shortcuts: [
-      { key: 'V', description: 'Compact / expanded cards' },
-      { key: 'G', description: 'Toggle light-party grouping' },
-      { key: 'S', description: 'Separate substitutes' },
+      // Fix wave (D14a review, MINOR #7): all three act only on the Cards
+      // view (`Roster.tsx:166,296` — `active: rosterView === 'cards'`), never
+      // on Board, so the suffix matches the Loot rows' "(Log)"/"(Weapons)"
+      // truthfulness convention.
+      { key: 'V', description: 'Compact / expanded cards (Cards)' },
+      { key: 'G', description: 'Toggle light-party grouping (Cards)' },
+      { key: 'S', description: 'Separate substitutes (Cards)' },
     ],
   },
   {

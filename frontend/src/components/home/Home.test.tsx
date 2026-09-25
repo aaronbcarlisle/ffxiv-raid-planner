@@ -107,6 +107,7 @@ vi.mock('../../gamedata', () => ({
 vi.mock('../../gamedata/raid-tiers', () => ({ getTierById: () => ({ floors: ['M9S', 'M10S'] }) }));
 
 import { Home } from './Home';
+import { DEFAULT_SETTINGS } from '../../utils/constants';
 
 // ─── Fixtures ───────────────────────────────────────────────────────────────────
 const group = { id: 'g1', name: 'Crescent Static', userRole: 'owner' } as unknown as StaticGroup;
@@ -354,10 +355,14 @@ describe('Home', () => {
     expect(screen.queryByRole('heading', { name: 'Team Summary' })).not.toBeInTheDocument();
   });
 
-  it("feeds FairnessSummary only configured, non-substitute players (R-D14-D)", () => {
+  it("feeds FairnessSummary only configured, non-substitute players, plus the matching currentWeek, floors and settings (R-D14-D)", () => {
     const main = player({ id: 'M', name: 'Main' });
     const sub = player({ id: 'S', name: 'Sub', isSubstitute: true });
     const unconfigured = player({ id: 'U', name: 'Unset', configured: false });
+    // 't1' is a REAL tier id — `getTierById` (from `gamedata/raid-tiers`, the
+    // module Home itself imports it from) is mocked to return real floors for
+    // it, so `floors` below is proof against the source expression, not just
+    // against whatever the mock always returns.
     const tierWithMix = { tierId: 't1', players: [main, sub, unconfigured] } as unknown as TierSnapshot;
     renderHome({ tier: tierWithMix });
 
@@ -369,5 +374,14 @@ describe('Home', () => {
     // `expect(fedPlayers.map((p) => p.id)).toEqual(['M'])` fails with
     // `['M', 'S', 'U']` received.
     expect(fedPlayers.map((p) => p.id)).toEqual(['M']);
+
+    // R-D14-D: `currentWeek` is the store's `currentWeek` Home already reads
+    // (`clock.currentWeek`, mocked at 3 above); `floors` is Loot's source
+    // expression, `getTierById(tier.tierId)?.floors`; `settings` is
+    // `{ ...DEFAULT_SETTINGS, ...group.settings }` — the fixture group carries
+    // no `settings` override, so it's DEFAULT_SETTINGS verbatim.
+    expect(last.currentWeek).toBe(mocks.currentWeek);
+    expect(last.floors).toEqual(['M9S', 'M10S']);
+    expect(last.settings).toEqual(DEFAULT_SETTINGS);
   });
 });

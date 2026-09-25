@@ -28,7 +28,7 @@ import { toast } from '../../stores/toastStore';
 import type { ResetConfig } from '../ui/ResetConfirmModal';
 import type { SnapshotPlayer } from '../../types';
 
-export interface BookLedgerCardProps {
+type BookLedgerCardBaseProps = {
   groupId: string;
   tierId: string;
   players: SnapshotPlayer[];
@@ -54,15 +54,26 @@ export interface BookLedgerCardProps {
   canEdit: boolean;
   effectiveUserId?: string;
   className?: string;
-  /**
-   * R-D14-G: an optional controlled pair for the mark-floor-cleared modal, so
-   * `Loot.tsx`'s `Alt+B` can open it from outside. Omitted → the card keeps
-   * its own internal `showMarkCleared` state, unchanged. The card's own
-   * button and the modal's close both go through whichever source is active.
-   */
-  markClearedOpen?: boolean;
-  onMarkClearedOpenChange?: (open: boolean) => void;
-}
+};
+
+/**
+ * R-D14-G: an optional controlled pair for the mark-floor-cleared modal, so
+ * `Loot.tsx`'s `Alt+B` can open it from outside. Omitted (both props) → the
+ * card keeps its own internal `showMarkCleared` state, unchanged. The card's
+ * own button and the modal's close both go through whichever source is
+ * active.
+ *
+ * Fix wave (D14a review, MINOR #4): a HALF-controlled pair — one prop passed,
+ * the other left out — used to compile and silently yield a dead button
+ * (`onMarkClearedOpenChange` undefined, so the click handler had nothing to
+ * call). This union makes that shape a type error: the pair is either both
+ * present or both absent.
+ */
+type MarkClearedControlledProps =
+  | { markClearedOpen: boolean; onMarkClearedOpenChange: (open: boolean) => void }
+  | { markClearedOpen?: undefined; onMarkClearedOpenChange?: undefined };
+
+export type BookLedgerCardProps = BookLedgerCardBaseProps & MarkClearedControlledProps;
 
 type BookType = 'I' | 'II' | 'III' | 'IV';
 type BookKey = 'bookI' | 'bookII' | 'bookIII' | 'bookIV';

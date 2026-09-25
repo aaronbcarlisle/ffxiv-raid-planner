@@ -40,7 +40,8 @@ vi.mock('../../hooks/useGroupViewState', () => ({
 import { CommandPalette } from './CommandPalette';
 import { V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
-import type { StaticGroupListItem } from '../../types';
+import { useAuthStore } from '../../stores/authStore';
+import type { StaticGroupListItem, User } from '../../types';
 
 const groupA = {
   id: 'a',
@@ -60,6 +61,9 @@ beforeEach(() => {
   mockSetShowSettingsModal.mockClear();
   try { localStorage.clear(); } catch { /* ignore */ }
   useStaticGroupStore.setState({ groups: [groupA, groupB] });
+  // Default: no user (matches the store's own initial state) — the non-admin
+  // case for the footer's `adminOnly` filter (fix wave, IMPORTANT #2).
+  useAuthStore.setState({ user: null });
 
   // Radix / framer-motion stubs required in jsdom.
   vi.stubGlobal(
@@ -181,22 +185,48 @@ describe('CommandPalette', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('footer lists exactly v2\'s registry, in order, and no V1-only row (R-D14-A)', () => {
-    renderPalette();
+  function renderedFooterRows() {
     // The grid is the heading's sibling; each row is <span>desc</span><kbd>key</kbd>.
     const grid = screen.getByText('Keyboard Shortcuts').nextElementSibling;
     if (!grid) throw new Error('shortcut grid not found');
-    const rendered = Array.from(grid.children).map((row) => [
+    return Array.from(grid.children).map((row) => [
       row.querySelector('kbd')?.textContent ?? '',
       row.querySelector('span')?.textContent ?? '',
     ]);
-    expect(rendered).toStrictEqual(
-      V2_SHORTCUT_GROUPS.flatMap((g) => g.shortcuts.map((s) => [s.key, s.description])),
+  }
+
+  it('footer lists exactly v2\'s registry (minus adminOnly, non-admin), in order, and no V1-only row (R-D14-A)', () => {
+    renderPalette();
+    expect(renderedFooterRows()).toStrictEqual(
+      V2_SHORTCUT_GROUPS.flatMap((g) =>
+        g.shortcuts.filter((s) => !s.adminOnly).map((s) => [s.key, s.description]),
+      ),
     );
     // A16: V1's list must not be appended — these rows are V1-only.
     expect(screen.queryByText('Switch main tabs')).toBeNull();
     expect(screen.queryByText('Alt+1-3')).toBeNull();
     expect(screen.queryByText('Toggle grid view')).toBeNull();
+  });
+
+  // Fix wave (D14a review, IMPORTANT #2): the footer had no `adminOnly` filter
+  // at all, so a non-admin saw "Ctrl+Shift+S → Admin Dashboard" even though
+  // that binding is registered only for admins (`useGlobalKeyboardShortcuts.ts`)
+  // — a row that never fires for them. `KeyboardShortcutsHelp` already hides
+  // it; this footer must match.
+  it('a non-admin sees no Admin Dashboard row in the footer', () => {
+    useAuthStore.setState({ user: { id: 'u1', discordId: 'd1', discordUsername: 'nonadmin', isAdmin: false } as User });
+    renderPalette();
+    expect(screen.queryByText('Admin Dashboard')).toBeNull();
+    expect(renderedFooterRows().map(([key]) => key)).not.toContain('Ctrl+Shift+S');
+  });
+
+  it('an admin sees the Admin Dashboard row in the footer', () => {
+    useAuthStore.setState({ user: { id: 'u1', discordId: 'd1', discordUsername: 'admin', isAdmin: true } as User });
+    renderPalette();
+    expect(screen.getByText('Admin Dashboard')).toBeInTheDocument();
+    expect(renderedFooterRows()).toStrictEqual(
+      V2_SHORTCUT_GROUPS.flatMap((g) => g.shortcuts.map((s) => [s.key, s.description])),
+    );
   });
 
   it('renders the Keyboard Shortcuts section heading', () => {
