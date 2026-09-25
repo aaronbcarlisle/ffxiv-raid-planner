@@ -535,6 +535,19 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
     setUpdateGear(shouldCheckUpdateGear);
   }, [mode, isOpen, editEntry, allPlayers]);
 
+  // R-DC-D: an away-and-back in the edit door restores the entry's own selection.
+  // Back on the entry's recipient AND material, re-seed exactly as the open seed
+  // does (editGearSelection) — the options list already re-offers the recorded
+  // slot (withOriginalSlot), so the selection must agree with it. Anything else
+  // derives fresh. `updateGear` is the user's checkbox: never touched here.
+  function gearSelectionFor(player: SnapshotPlayer | undefined, m: MaterialType) {
+    if (mode === 'edit' && player?.id === editEntry!.recipientPlayerId && m === editEntry!.materialType) {
+      const { slot, augmentTome } = editGearSelection(m, editEntry!.slotAugmented, player);
+      return { slot, augmentTome };
+    }
+    return initialGearSelection(player, m);
+  }
+
   // Handle recipient change - update slot selection when user changes recipient
   const handleRecipientChange = (newPlayerId: string) => {
     userPickedRecipient.current = true;
@@ -542,7 +555,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
 
     // Compute and set slot for new recipient
     const player = allPlayers.find((p) => p.id === newPlayerId);
-    const { slot, augmentTome } = initialGearSelection(player, material);
+    const { slot, augmentTome } = gearSelectionFor(player, material);
     setSelectedSlot(slot);
     setAugmentTomeWeapon(augmentTome);
   };
@@ -588,7 +601,7 @@ export function QuickLogMaterialModal(props: QuickLogMaterialModalProps) {
   function applyMaterialChange(m: MaterialType, forPlayerId: string) {
     userPickedRecipient.current = false;
     const player = allPlayers.find((p) => p.id === forPlayerId);
-    const { slot, augmentTome } = initialGearSelection(player, m);
+    const { slot, augmentTome } = gearSelectionFor(player, m);
     setSelectedSlot(slot);
     setAugmentTomeWeapon(augmentTome);
   }

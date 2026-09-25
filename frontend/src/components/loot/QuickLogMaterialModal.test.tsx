@@ -1271,6 +1271,119 @@ describe('edit mode (R-21)', () => {
       errorSpy.mockRestore();
     });
   });
+
+  // R-DC-D (DC Task 3): an away-and-back recipient or material change in the edit door must
+  // restore the entry's own recorded gear selection instead of re-deriving it fresh.
+  describe('away-and-back restores the recorded gear selection (R-DC-D)', () => {
+    it('T3-a: Sara -> Theo -> Sara restores the recorded slot (Head, not Body); payload carries head; no gear preview line', async () => {
+      const { sara, theo } = editFixturePlayers();
+      renderEdit({}, [sara, theo]);
+
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(theo.name) }));
+      expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Body');
+
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(sara.name) }));
+
+      expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Head');
+      expect(screen.queryByText(/Un-mark/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^\+ Mark/)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await waitFor(() => expect(updateMaterialAndReconcileGearMock).toHaveBeenCalledTimes(1));
+      const [, , , , options] = updateMaterialAndReconcileGearMock.mock.calls[0] as [
+        string, string, MaterialLogEntry, unknown, UpdateMaterialOptions,
+      ];
+      expect(options).toEqual(expect.objectContaining({ slotToAugment: 'head' }));
+    });
+
+    it('T3-b1 (floor route): Twine -> Glaze -> Twine (same recipient) restores Head, no gear preview line', () => {
+      const { sara, theo } = editFixturePlayers();
+      renderEdit({}, [sara, theo]);
+
+      fireEvent.click(within(screen.getByRole('group', { name: 'Floor' })).getByRole('button', { name: 'M10S' }));
+      expect(within(screen.getByRole('group', { name: 'Material' })).getByRole('button', { name: 'Glaze' }))
+        .toHaveAttribute('aria-pressed', 'true');
+
+      fireEvent.click(within(screen.getByRole('group', { name: 'Floor' })).getByRole('button', { name: 'M11S' }));
+      expect(within(screen.getByRole('group', { name: 'Material' })).getByRole('button', { name: 'Twine' }))
+        .toHaveAttribute('aria-pressed', 'true');
+
+      expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Head');
+      expect(screen.queryByText(/Un-mark/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/^\+ Mark/)).not.toBeInTheDocument();
+    });
+
+    it('T3-b2 (material route): Twine -> Solvent -> Twine (same floor, same recipient) restores Head', () => {
+      const { sara, theo } = editFixturePlayers();
+      renderEdit({}, [sara, theo]);
+
+      fireEvent.click(within(screen.getByRole('group', { name: 'Material' })).getByRole('button', { name: 'Solvent' }));
+      fireEvent.click(within(screen.getByRole('group', { name: 'Material' })).getByRole('button', { name: 'Twine' }));
+
+      expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Head');
+    });
+
+    it('T3-c: a Solvent entry recorded as slotAugmented "tome_weapon": Sara -> Theo -> Sara restores the tome-weapon option, no revert line, payload augmentTomeWeapon: true', async () => {
+      const { sara, theo } = editFixturePlayers();
+      const entry = editEntryFixture({
+        materialType: 'solvent',
+        slotAugmented: 'tome_weapon',
+        floor: 'M11S',
+        recipientPlayerId: 'sara',
+        recipientPlayerName: 'Sara',
+      });
+      renderEdit({ editEntry: entry }, [sara, theo]);
+
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(theo.name) }));
+
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(sara.name) }));
+
+      // Sara has nothing solvent-eligible (weapon bisSource raid) — only the entry's own
+      // recorded 'tome_weapon' offers the option, and it never injects a real slot, so the
+      // gear control renders as static "Tome Weapon" text, not a Select.
+      expect(screen.getAllByRole('combobox')).toHaveLength(1);
+      expect(screen.getByText('Tome Weapon')).toBeInTheDocument();
+      expect(screen.queryByText(/Un-mark tome weapon as augmented/)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+      await waitFor(() => expect(updateMaterialAndReconcileGearMock).toHaveBeenCalledTimes(1));
+      const [, , , , options] = updateMaterialAndReconcileGearMock.mock.calls[0] as [
+        string, string, MaterialLogEntry, unknown, UpdateMaterialOptions,
+      ];
+      expect(options).toEqual(expect.objectContaining({ augmentTomeWeapon: true, slotToAugment: undefined }));
+    });
+
+    it('T3-d: an entry with slotAugmented: null restores the same first-eligible slot initialGearSelection would derive, not an invented one', () => {
+      const { sara, theo } = editFixturePlayers();
+      const entry = editEntryFixture({ slotAugmented: null });
+      renderEdit({ editEntry: entry }, [sara, theo]);
+
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(theo.name) }));
+
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(sara.name) }));
+
+      // slotAugmented: null seeds `updateGear: false` at open, so the Select stays hidden
+      // until checked — the derived `selectedSlot` is what's under test, not the checkbox.
+      fireEvent.click(checkboxByLabelText('Also mark gear as augmented for Sara'));
+      expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Body');
+    });
+
+    it('T3-e (control): Sara -> Theo shows Theo\'s Body (today\'s behavior, unaffected)', () => {
+      const { sara, theo } = editFixturePlayers();
+      renderEdit({}, [sara, theo]);
+
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Recipient' }), { key: 'Enter' });
+      fireEvent.click(screen.getByRole('option', { name: new RegExp(theo.name) }));
+
+      expect(screen.getAllByRole('combobox')[1]).toHaveTextContent('Body');
+    });
+  });
 });
 
 // D8 Task 7 (review gap closed): 'notes (R-26)' above only pins that pinned + showNotes RENDERS
