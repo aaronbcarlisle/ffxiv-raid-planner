@@ -37,6 +37,14 @@
 - **M4:** Task 1 goes to sonnet, and the enumeration test's `IS_TEST_FILE` regex is updated.
 - **m1–m6:** folded in place.
 
+**Outcome (2026-09-25):** 4 tasks + 1 un-reviewed cleanup commit, 0 fix waves. Whole-branch review
+(package excluding the three pure deletions): 0 Critical / 0 Important / 3 Minors, folded into the
+cleanup commit rather than a fix wave. Browser pass 3/3 PASS (edit-door away-and-back, week-1 roster
+jump, V1 `?shell=legacy` regression), 0 console errors. Lint 903 → 812 warnings (0 errors), no
+jsx-a11y rule rose. Knip unused files 15 → 8 (exports/types unchanged, 179/139). Tests 3290 + 1
+skipped (baseline) → 3305 passed, 0 skipped (the skip moved into `BookLedgerCard.test-d.tsx`, outside
+Vitest's scope; the review's duplicate-test Minor then removed one more). Dupes 326 → 320 clones.
+
 ---
 
 ## Rulings (bind every task)

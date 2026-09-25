@@ -252,8 +252,8 @@ B–F land as normal PRs.
   diffs gated by the existing lint/CI. Screenshots rule applies to every PR.
 - **F — Seam mitigation:** light docs restyle (tokens/typography alignment, consistent
   PageHeader — full non-group v2 chrome remains Ring 1); retarget user-menu items where
-  v2 equivalents exist; dead-code sweep (knip: 24 files/168 exports — hold anything
-  Phase B might restore); doc updates (CLAUDE.md Key Files/Component Reference,
+  v2 equivalents exist; dead-code sweep (knip: 8 files / 179 exports / 139 types as of DC — hold
+  anything Phase B might restore); doc updates (CLAUDE.md Key Files/Component Reference,
   UI_COMPONENTS.md, PRODUCT_MODEL §6, REDESIGN_SPEC §7 drop corrections, broken
   REDESIGN_SPEC link).
 
@@ -261,14 +261,36 @@ B–F land as normal PRs.
 D12 row):
 - `ui/Select`'s effect-ordering race — changing the recipient can clobber the slot `Select` back to
   placeholder, in both shells; the two-eligible-needers browser case is still owed.
+  **✅ CLOSED (DC, 2026-09-25).** The Radix race itself was already fixed in #239 (`ui/Select.tsx:147-160`
+  drops the phantom `''`). What D5 saw live was a **different** bug — `QuickLogMaterialModal`'s edit
+  door re-deriving the slot on every recipient/material change instead of consulting the entry —
+  fixed in DC Task 3 (`fix(v2): DC Task 3`) and demonstrated live (away-and-back restores the recorded
+  slot, no phantom gear line).
 - Legacy V1's no-op "clear notes": the PUT ignores a literal `notes: null`.
+  **✅ CLOSED — already fixed in #239.** `backend/app/routers/loot_tracking.py:449` (loot-log) and
+  `:1518` (material-log) honour `model_fields_set`. Regression tests:
+  `backend/tests/test_loot_tracking.py:427-520` (six notes tests). This entry only needed the doc
+  update; see R-DC-G.
 - `eslint.config.js`'s `a11yRecommendedWarn` mapping flips upstream-off `jsx-a11y` rules to `warn` and
   strips their options — a dedicated chore, not per-call-site patches.
+  **✅ CLOSED (DC Task 2).** Lint warnings 893 → 812, no jsx-a11y rule rose; two v2 directives freed by
+  the fix (`LogWeekGrid.tsx:593,632`) were deleted.
 - D12's three disclosed residuals: R-D12-C (a week-1 tier with no stored week routes to History),
   R-D12-H (the ring one-to-many / one-to-first asymmetry), R-D12-F cause 4 (Board view renders no
   anchor; user-ruled out of scope).
+  **R-D12-C ✅ CLOSED (DC Task 4).** A keyed `weekClockKey` (R-DC-E) distinguishes a genuinely
+  week-1 tier from an unfetched clock; `RosterCard` routes on a key match. Demonstrated live on a
+  week-1 tier (Alt+Click a card jumps to the Log with the pulse).
+  **R-D12-H and R-D12-F cause 4 → accepted and pinned (R-DC-F), no code.** H is inherent to the data
+  (no stored left/right ring), pinned by `rosterLedgerJumps.test.ts:81-93` (outbound) and `:177-182`
+  (inbound). F cause 4 was ruled out of scope by the user, pinned by `Roster.test.tsx:823-831`.
+  **R-D12-F cause 5 is still open, re-carried:** a folded section or hidden substitutes renders no
+  anchor at all (`specs/phase-d-loot-design.md:1095-1100`). It was never carried to this list before —
+  the design doc names four residuals against this list's three. D14b's persisted
+  `v2-roster-hide-subs` makes it more reachable.
 - Delete the orphaned `components/history/{LootLogPanel,PageBalancesPanel,UnifiedWeekOverview}.tsx` —
   zero importers in `frontend/src`, listed in knip's unused files.
+  **✅ CLOSED (DC Task 1).** The three files are deleted; knip's unused files 15 → 8.
 
 ## 7b. Phase P — Beta polish walkthrough (added 2026-07-25, user ruling)
 
