@@ -1,7 +1,10 @@
 /**
- * FairnessSummary — 4-stat-card fairness strip atop the History view
- * (F6d, spec §5.5). Presentational: rolls up `computeTierFairness` (Task 1)
- * over the store slices `Loot` already holds and renders the result.
+ * FairnessSummary — 4-stat-card fairness strip at the top of static Home's
+ * side column (F6d, spec §5.5; moved off Loot ▸ History in D14, R-40).
+ * Presentational: rolls up `computeTierFairness` (Task 1) over the store
+ * slices `Home` now holds and renders the result. Its grid is fitted for the
+ * narrow side column (two columns at every width ≥ `sm` — Home is its only
+ * mount, so there is no wide-History four-column step to size for).
  */
 import { useMemo } from 'react';
 import { computeTierFairness } from '../../utils/lootFairness';
@@ -42,7 +45,7 @@ export function FairnessSummary({
     : '';
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2">
       <StatCard
         label="Drops this tier"
         value={String(dropsThisTier)}

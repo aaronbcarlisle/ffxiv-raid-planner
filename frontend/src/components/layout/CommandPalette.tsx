@@ -8,7 +8,7 @@
  *   - Open Settings (via useGroupViewState().setShowSettingsModal)
  *   - Switch static — one row per group (via useNavigate)
  *
- * Also renders a "Keyboard Shortcuts" reference absorbed from keyboardShortcutGroups.
+ * Also renders a "Keyboard Shortcuts" reference — v2's list from keyboardShortcutGroups.
  *
  * Built on Modal (hideDefaultHeader). No cmdk dependency.
  * Platform-aware ⌘K (Mac) / Ctrl K (Windows/other) label.
@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Modal } from '../ui/Modal';
-import { SHORTCUT_GROUPS, V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
+import { V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
 import { useGroupViewState } from '../../hooks/useGroupViewState';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
@@ -77,6 +77,12 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   const openSettingsPanel = useSettingsPanelStore((s) => s.open);
   const groups = useStaticGroupStore((s) => s.groups);
   const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
+  // Fix wave (D14a review, IMPORTANT #2): same read as Layout.tsx's
+  // `isAdmin` (`state.user?.isAdmin ?? false`) — `V2_SHORTCUT_GROUPS` carries
+  // `adminOnly` rows (Ctrl+Shift+S → Admin Dashboard), and the help overlay
+  // already filters them (`KeyboardShortcutsHelp.tsx:33-38`); this footer must
+  // match, or a non-admin sees a binding that never fires for them.
+  const isAdmin = useAuthStore((s) => s.user?.isAdmin ?? false);
 
   // Compute at render time so tests can stub navigator.platform.
   const cmdkLabel = computeCmdkLabel();
@@ -259,26 +265,32 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
           Keyboard Shortcuts
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-0.5 max-h-40 overflow-y-auto">
-          {/* This file's sole mount is v2-only (NewShell.tsx) — see R-D11-I —
-              so appending V2_SHORTCUT_GROUPS here is not a V1 reach. */}
-          {[...SHORTCUT_GROUPS, ...V2_SHORTCUT_GROUPS].flatMap((group) =>
-            group.shortcuts.map((s) => (
-              <div
-                key={`${group.title}-${s.key}`}
-                className="flex items-center justify-between gap-2 py-0.5"
-              >
-                <span className="text-xs text-text-secondary truncate">
-                  {s.description}
-                </span>
-                <kbd
-                  className="font-mono text-xs px-1.5 py-0.5 bg-surface-elevated
+          {/* This file's sole mount is v2-only (NewShell.tsx), so the footer
+              lists v2's complete registry and nothing from V1's (R-D14-A):
+              a V1-only row here would advertise a binding v2 never fires.
+              `adminOnly` rows are filtered the same way `KeyboardShortcutsHelp`
+              filters them, so a non-admin never sees a row that never fires
+              for them (fix wave, IMPORTANT #2). */}
+          {V2_SHORTCUT_GROUPS.flatMap((group) =>
+            group.shortcuts
+              .filter((s) => !s.adminOnly || isAdmin)
+              .map((s) => (
+                <div
+                  key={`${group.title}-${s.key}`}
+                  className="flex items-center justify-between gap-2 py-0.5"
+                >
+                  <span className="text-xs text-text-secondary truncate">
+                    {s.description}
+                  </span>
+                  <kbd
+                    className="font-mono text-xs px-1.5 py-0.5 bg-surface-elevated
                              border border-border-default rounded text-text-muted
                              whitespace-nowrap flex-shrink-0"
-                >
-                  {s.key}
-                </kbd>
-              </div>
-            )),
+                  >
+                    {s.key}
+                  </kbd>
+                </div>
+              )),
           )}
         </div>
       </div>

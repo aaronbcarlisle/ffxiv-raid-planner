@@ -321,6 +321,64 @@ describe('BookLedgerCard', () => {
   });
 });
 
+// ── D14 Task 2 (R-D14-G): the controlled seam `Loot.tsx`'s `Alt+B` opens
+// through. Both modes exercised — omitted, the card is unchanged. ──
+describe('BookLedgerCard — markClearedOpen controlled seam (R-D14-G)', () => {
+  it('uncontrolled (markClearedOpen omitted): the card keeps its own internal state', () => {
+    render(<BookLedgerCard {...baseProps} />, { wrapper: MemoryRouter });
+    expect(screen.queryByTestId('mark-cleared-modal')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark floor cleared' }));
+    expect(screen.getByTestId('mark-cleared-modal')).toBeInTheDocument();
+
+    // The modal's own close, with no `onMarkClearedOpenChange` supplied,
+    // must still close it — through the card's internal state.
+    act(() => (markClearedCalls.at(-1)!.onClose as () => void)());
+    expect(screen.queryByTestId('mark-cleared-modal')).not.toBeInTheDocument();
+  });
+
+  it('controlled: the button click and the modal close both route through onMarkClearedOpenChange, never internal state', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <BookLedgerCard {...baseProps} markClearedOpen={false} onMarkClearedOpenChange={onChange} />,
+      { wrapper: MemoryRouter },
+    );
+    expect(screen.queryByTestId('mark-cleared-modal')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark floor cleared' }));
+    expect(onChange).toHaveBeenCalledWith(true);
+    // The prop hasn't moved yet — a controlled component doesn't grant
+    // itself visibility off its own click.
+    expect(screen.queryByTestId('mark-cleared-modal')).not.toBeInTheDocument();
+
+    rerender(<BookLedgerCard {...baseProps} markClearedOpen onMarkClearedOpenChange={onChange} />);
+    expect(screen.getByTestId('mark-cleared-modal')).toBeInTheDocument();
+
+    act(() => (markClearedCalls.at(-1)!.onClose as () => void)());
+    expect(onChange).toHaveBeenCalledWith(false);
+  });
+
+  // Fix wave (D14a review, MINOR #4): a HALF-controlled pair (one prop
+  // present, the other omitted) used to compile and yield a dead button. This
+  // is a compile-time assertion, not a runtime one — it exists to fail
+  // `pnpm build`'s `tsc -b` if the props type ever regresses to plain
+  // optionals. Never rendered; `@ts-expect-error` requires the LINE below it
+  // to be a real type error, so removing the union would turn this into an
+  // unused-directive build error.
+  it.skip('type-only: a half-controlled pair is a compile error', () => {
+    function halfControlled() {
+      // @ts-expect-error — onMarkClearedOpenChange is required once markClearedOpen is passed
+      return <BookLedgerCard {...baseProps} markClearedOpen={false} />;
+    }
+    function otherHalfControlled() {
+      // @ts-expect-error — markClearedOpen is required once onMarkClearedOpenChange is passed
+      return <BookLedgerCard {...baseProps} onMarkClearedOpenChange={() => {}} />;
+    }
+    void halfControlled;
+    void otherHalfControlled;
+  });
+});
+
 // ── C7 (D-05): the Books deep-link highlight ──
 // The roster kebab's "Edit Books" jump writes `?book={playerId}` on this same
 // route; the card scrolls that row into view and pulses it, then clears the

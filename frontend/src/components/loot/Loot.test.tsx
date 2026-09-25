@@ -778,11 +778,13 @@ describe('Loot', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'History' }));
 
-    // History body: fairness strip + record. Floor cards gone. D7b re-homed
-    // the Books card off History onto Log — assert its absence via the
+    // History body: search + record (FairnessSummary moved to Home in D14 —
+    // R-40 — so it never renders here). Floor cards gone. D7b re-homed the
+    // Books card off History onto Log — assert its absence via the
     // "Books scope" toggle (bare text 'Books' isn't distinctive enough; other
     // surfaces could render it).
-    expect(screen.getByText('Drops this tier')).toBeInTheDocument();
+    expect(screen.queryByText('Drops this tier')).not.toBeInTheDocument();
+    expect(searchBox()).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Books scope' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
     // lview is reflected in the URL.
@@ -791,7 +793,10 @@ describe('Loot', () => {
 
   it('mounts the History view directly from an ?lview=history deep-link', () => {
     renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
-    expect(screen.getByText('Drops this tier')).toBeInTheDocument();
+    // FairnessSummary moved to Home in D14 (R-40) — History renders the
+    // table instead.
+    expect(screen.queryByText('Drops this tier')).not.toBeInTheDocument();
+    expect(document.querySelector('table')).toBeInTheDocument();
     expect(screen.queryByTestId('floor-card')).not.toBeInTheDocument();
   });
 
@@ -908,7 +913,7 @@ describe('Loot', () => {
     expect(document.getElementById('loot-entry-50')).toBeInTheDocument();
   });
 
-  it('renders the History search block on History only, between the fairness card and the table (R-D10-H)', () => {
+  it('renders the History search block on History only, directly above the table (R-D10-H)', () => {
     const priority = renderLoot({ tier: makeTier(players) });
     expect(screen.queryByRole('textbox', { name: 'Search history' })).not.toBeInTheDocument();
     priority.unmount();
@@ -935,12 +940,12 @@ describe('Loot', () => {
         .getAllByRole('button')
         .map((b) => b.textContent),
     ).toEqual(['All', 'Bob', 'Sub', 'Alice']);
-    // R-D10-H: BELOW FairnessSummary ('Drops this tier'), ABOVE the table.
-    // Put it above the card and both of these still render — only the order
-    // assertions fail.
-    const fairness = screen.getByText('Drops this tier');
+    // R-D10-H, re-anchored for D14 (R-40 moved FairnessSummary off History
+    // onto Home): the search block is now the FIRST thing History's own grid
+    // renders, directly above the table — nothing sits between them any more.
+    const grid = box.closest('.grid')!;
+    expect(grid.firstElementChild?.contains(box)).toBe(true);
     const table = document.querySelector('table')!;
-    expect(fairness.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(box.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // And the toolbar slot it vacated stays empty (R-D10-H, LootToolbar:24).
     expect(screen.queryByTestId('week-scope')).not.toBeInTheDocument();
@@ -1990,7 +1995,7 @@ describe('Loot — D6b Task C: count bar + legend', () => {
     // (configured=false, isSubstitute=false — `backend/app/routers/tiers.py`)
     // for open roster slots. A raw `players` feed would render a nameless
     // 0-drop tile for this seat AND inflate the average's denominator,
-    // disagreeing with History's own `FairnessSummary`, which reads
+    // disagreeing with Home's own `FairnessSummary` (D14, R-40), which reads
     // `mainRosterPlayers` (`configured && !isSubstitute`). This placeholder
     // proves the bar is fed that same filtered read, not the raw roster.
     const placeholder = {
@@ -2005,8 +2010,8 @@ describe('Loot — D6b Task C: count bar + legend', () => {
     expect(last.week).not.toBe(5); // the seeded clock's currentWeek — divergence proof
     const fedPlayers = last.players as SnapshotPlayer[];
     // Excludes the unconfigured placeholder AND the substitute (`s1`) — the
-    // same `mainRosterPlayers` filter FairnessSummary already uses — never
-    // the raw `players` array.
+    // same `mainRosterPlayers` filter Home's `FairnessSummary` already uses —
+    // never the raw `players` array.
     expect(fedPlayers).not.toContain(placeholder);
     expect(fedPlayers.map((p) => p.id)).toEqual(['p1', 'p2']);
     expect(last.lootLog).toEqual(useLootTrackingStore.getState().lootLog);
@@ -2658,5 +2663,294 @@ describe('Loot — D11: Ctrl+Shift+F focuses History search (R-35 / R-D11-C)', (
     pressCtrlShiftF(box);
 
     expect(document.activeElement).not.toBe(box);
+  });
+});
+
+describe('Loot — D14 Task 2: v2 loot shortcuts (Alt+L/U everywhere, Alt+←/→/B on the Log) (R-D14-E/F/G)', () => {
+  function pressAlt(key: string, target: Window | Element = window) {
+    fireEvent.keyDown(target, { key, altKey: true });
+  }
+
+  describe('Editor (canEdit: true)', () => {
+    it('Alt+L opens the log-drop picker on Priority, Log and History', () => {
+      for (const lview of ['priority', 'log', 'history'] as const) {
+        const { unmount } = renderLoot({ tier: makeTier(players) }, [`/?lview=${lview}`]);
+        pressAlt('l');
+        expect(screen.getByTestId('recipient-picker')).toHaveAttribute('data-mode', 'log');
+        unmount();
+      }
+    });
+
+    it('Alt+U opens the freeform material log on Priority, Log and History', () => {
+      for (const lview of ['priority', 'log', 'history'] as const) {
+        const { unmount } = renderLoot({ tier: makeTier(players) }, [`/?lview=${lview}`]);
+        pressAlt('u');
+        expect(screen.getByTestId('material-modal')).toHaveAttribute('data-mode', 'freeform');
+        unmount();
+      }
+    });
+
+    it("Alt+B opens BookLedgerCard's mark-floor-cleared modal on the Log, end to end", () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+
+      pressAlt('b');
+
+      expect(screen.getByText('Mark Floor Cleared')).toBeInTheDocument();
+    });
+
+    // Review fix (D14a wave, IMPORTANT #1): the two assertions right after
+    // `pressAlt('b')` are vacuous on their own — `BookLedgerCard` only MOUNTS
+    // under `lview === 'log'`, so `queryByText` is null whether or not the
+    // action's `if (lview !== 'log') return;` guard ran. `markClearedOpen` is
+    // Loot's own component state (not view-gated on read), so a latched
+    // `true` from a Priority/History press would surface the instant the SAME
+    // instance switches to Log — caught here by switching views WITHOUT
+    // unmounting, through the same `SegmentedToggle` the person clicks.
+    it('Alt+B does nothing on Priority or History (Log only), and does not latch through to a later Log view', () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=priority']);
+      pressAlt('b');
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'History' }));
+      pressAlt('b');
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Viewer (canEdit: false)', () => {
+    it('Alt+L/U/B do nothing', () => {
+      renderLoot({ tier: makeTier(players), canEdit: false }, ['/?lview=log']);
+
+      pressAlt('l');
+      pressAlt('u');
+      pressAlt('b');
+
+      expect(screen.queryByTestId('recipient-picker')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+    });
+
+    it("Alt+←/→ step the Log's displayed week — no role gate", () => {
+      renderLoot({ tier: makeTier(players), canEdit: false }, ['/?lview=log']);
+      expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+
+      pressAlt('ArrowLeft'); // 3 -> 2
+      expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+
+      pressAlt('ArrowRight'); // 2 -> 3 (back to the clock's week, param clears)
+      expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+    });
+  });
+
+  // Anti-vacuous for mutation check (a) — dropping the `lview === 'log'`
+  // condition on the week keys makes ONE of these fail (the param would
+  // move). Pressed and asserted SEPARATELY: prev-then-next would cancel back
+  // to the starting week and pass vacuously even with the gate deleted.
+  it('Alt+← does nothing off the Log (view gate)', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=priority&week=2']);
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+
+    pressAlt('ArrowLeft');
+
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+  });
+
+  it('Alt+→ does nothing off the Log (view gate)', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=priority&week=2']);
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+
+    pressAlt('ArrowRight');
+
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toContain('week=2');
+  });
+
+  it('Alt+← at the first week does nothing', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=1']);
+    const searchBefore = screen.getByTestId('loc').getAttribute('data-search');
+    pressAlt('ArrowLeft');
+    expect(screen.getByTestId('loc').getAttribute('data-search')).toBe(searchBefore);
+  });
+
+  it("Alt+← is defaultPrevented on the Log, so the browser doesn't go Back", () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    const event = new KeyboardEvent('keydown', { key: 'ArrowLeft', altKey: true, cancelable: true, bubbles: true });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  describe('the one guard (R-D14-F): every key does nothing while an overlay is open', () => {
+    it('a typed Loot modal (the week-log wizard) blocks every key', () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+      fireEvent.click(screen.getByRole('button', { name: "Log this week's loot" }));
+      expect(screen.getByTestId('log-week-wizard')).toBeInTheDocument();
+      const searchBefore = screen.getByTestId('loc').getAttribute('data-search');
+
+      pressAlt('l');
+      pressAlt('u');
+      pressAlt('b');
+      pressAlt('ArrowLeft');
+
+      expect(screen.queryByTestId('recipient-picker')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+      expect(screen.getByTestId('loc').getAttribute('data-search')).toBe(searchBefore);
+    });
+
+    it("EditBookBalanceModal (BookLedgerCard's own local state) blocks every key", async () => {
+      useLootTrackingStore.setState({
+        pageBalances: [{ playerId: 'p1', playerName: 'Alice', bookI: 1, bookII: 2, bookIII: 3, bookIV: 4 }],
+      });
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+      fireEvent.click(screen.getByRole('button', { name: '1' }));
+      expect(screen.getByText('Edit Book I')).toBeInTheDocument();
+      // `ui/Modal` moves focus into itself inside a `requestAnimationFrame`
+      // (`Modal.tsx`'s "Set initial focus" effect) — not synchronous with the
+      // click, so the guard has nothing to see until this lands.
+      await waitFor(() => expect(document.activeElement?.closest('[role="dialog"]')).toBeTruthy());
+
+      pressAlt('l');
+      pressAlt('u');
+      pressAlt('b');
+      pressAlt('ArrowLeft');
+
+      expect(screen.queryByTestId('recipient-picker')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+      expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+    });
+
+    // Fix wave (D14a review, MINOR #6): the two legs of the Loot shortcut guard
+    // that cover `markClearedOpen`'s own modal — the state itself (the hook's
+    // `disabled: anyModalOpen || markClearedOpen`, since PR #272's dfb3e34) and
+    // `focusInsideDialog()` once the modal grabs focus — are otherwise never
+    // isolated: every other test presses Alt+B and checks Alt+ArrowLeft only
+    // AFTER (or without regard to) the modal's focus move, so a pass never
+    // proves `markClearedOpen` alone is doing the guarding. `ui/Modal` moves
+    // focus into itself inside a `requestAnimationFrame` (the
+    // EditBookBalanceModal test above needs `await waitFor` for exactly this
+    // reason) — so asserted SYNCHRONOUSLY, right after Alt+B and before any
+    // `waitFor`/microtask flush, `focusInsideDialog()` is still false. Any
+    // guarding of Alt+ArrowLeft caught at that instant is `markClearedOpen`'s
+    // leg alone.
+    it("markClearedOpen alone guards the week keys, isolated from focusInsideDialog (checked before the modal's RAF-deferred focus move can land)", () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log&week=2']);
+      const searchBefore = screen.getByTestId('loc').getAttribute('data-search');
+
+      pressAlt('b');
+      expect(screen.getByText('Mark Floor Cleared')).toBeInTheDocument();
+      // Isolation proof: focus has not moved into the dialog yet.
+      expect(document.activeElement?.closest('[role="dialog"],[aria-modal="true"]')).toBeNull();
+
+      pressAlt('ArrowLeft');
+
+      expect(screen.getByTestId('loc').getAttribute('data-search')).toBe(searchBefore);
+    });
+
+    // Anti-vacuous for mutation check (b) — dropping `focusInsideDialog()`
+    // from the guard makes this fail: `anyModalOpen`/`markClearedOpen` carry
+    // no signal for an overlay Loot's own state can't see.
+    it('the global Shift+? help (focus containment) blocks every key', () => {
+      renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+      // Stand in for `KeyboardShortcutsHelp`, exactly as T-24c does above.
+      const overlay = document.createElement('div');
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.tabIndex = -1;
+      document.body.appendChild(overlay);
+      overlay.focus();
+
+      pressAlt('l');
+      pressAlt('u');
+      pressAlt('b');
+      pressAlt('ArrowLeft');
+
+      expect(screen.queryByTestId('recipient-picker')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('material-modal')).not.toBeInTheDocument();
+      expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+      expect(screen.getByTestId('loc').getAttribute('data-search')).not.toContain('week=');
+      overlay.remove();
+    });
+  });
+});
+
+/**
+ * F1 (PR #272 review): registration, not an action-level check, is the gate.
+ * `useKeyboardShortcuts` calls `preventDefault()` on any key MATCH before any
+ * action runs, so a key registered off its scope swallows the browser's own
+ * default for that key — Alt+←/→ is Back/Forward. These assert
+ * `defaultPrevented` directly rather than trusting the no-op action, which a
+ * true real `KeyboardEvent`/`fireEvent.keyDown` dispatch can observe and a
+ * mocked action cannot.
+ */
+describe('Loot — PR #272 fix: shortcuts register only where live (F1)', () => {
+  function dispatchAlt(key: string): KeyboardEvent {
+    const event = new KeyboardEvent('keydown', { key, altKey: true, cancelable: true, bubbles: true });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    return event;
+  }
+
+  it('Alt+← is NOT defaultPrevented on Priority — the browser must still go Back', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=priority']);
+    const event = dispatchAlt('ArrowLeft');
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('Alt+← is NOT defaultPrevented on History — the browser must still go Back', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    const event = dispatchAlt('ArrowLeft');
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('Alt+L is NOT defaultPrevented for a viewer — the key is never registered for them', () => {
+    renderLoot({ tier: makeTier(players), canEdit: false }, ['/?lview=log']);
+    const event = dispatchAlt('l' as unknown as string);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  // Kept from D14a: the Log editor's own Alt+← must still swallow Back.
+  it('Alt+← is still defaultPrevented on the Log', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    const event = dispatchAlt('ArrowLeft');
+    expect(event.defaultPrevented).toBe(true);
+  });
+});
+
+/**
+ * F3 (PR #272 review): `markClearedOpen` must not survive a navigation off
+ * the Log — otherwise it both reopens the modal on the next Log visit and
+ * blocks every Loot shortcut on the other views in the meantime.
+ */
+describe('Loot — PR #272 fix: markClearedOpen resets off the Log (F3)', () => {
+  function pressAlt(key: string, target: Window | Element = window) {
+    fireEvent.keyDown(target, { key, altKey: true });
+  }
+
+  it('opening Mark Floor Cleared on the Log, then leaving the Log, un-latches the guard and does not auto-reopen the modal on return', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    pressAlt('b');
+    expect(screen.getByText('Mark Floor Cleared')).toBeInTheDocument();
+
+    // Re-render with a new `lview` the way a browser Back would — same Loot
+    // instance (mounts un-keyed), not a fresh one.
+    fireEvent.click(screen.getByRole('button', { name: 'Priority' }));
+    expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+
+    // The guard must not still be latched: Alt+L opens the log-a-drop flow.
+    pressAlt('l');
+    expect(screen.getByTestId('recipient-picker')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+    expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
   });
 });

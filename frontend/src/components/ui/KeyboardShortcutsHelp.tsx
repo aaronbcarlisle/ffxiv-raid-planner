@@ -17,36 +17,26 @@ interface KeyboardShortcutsHelpProps {
   /** Whether to show admin-only shortcuts */
   isAdmin?: boolean;
   /**
-   * Additional groups appended after `SHORTCUT_GROUPS` (D11, R-D11-C).
-   * Defaults to none, so the legacy V1 mount (which never passes this)
-   * renders byte-identical to before this prop existed. Only `Layout.tsx`'s
-   * v2 branch passes `V2_SHORTCUT_GROUPS` — see that file's comment.
+   * The shell's shortcut list (D14, R-D14-H). Defaults to the module-scope
+   * `SHORTCUT_GROUPS` reference — V1's frozen list, one stable identity — so
+   * the legacy V1 mount (which never passes this) renders byte-identical to
+   * `main`. Only `Layout.tsx`'s v2 branch passes `V2_SHORTCUT_GROUPS`.
    */
-  extraGroups?: ShortcutGroup[];
+  groups?: ShortcutGroup[];
 }
 
-/**
- * The default for `extraGroups`, hoisted to module scope so the legacy mount
- * (which passes nothing) gets ONE stable identity. A `= []` default literal is
- * a fresh array per render, which would make the memo below recompute on every
- * render of the V1 shell — the one branch this prop is supposed to leave
- * exactly as it was (whole-branch review, D11).
- */
-const NO_EXTRA_GROUPS: ShortcutGroup[] = [];
-
-export function KeyboardShortcutsHelp({ isOpen, onClose, isAdmin = false, extraGroups = NO_EXTRA_GROUPS }: KeyboardShortcutsHelpProps) {
+export function KeyboardShortcutsHelp({ isOpen, onClose, isAdmin = false, groups = SHORTCUT_GROUPS }: KeyboardShortcutsHelpProps) {
   // Initialize from localStorage
   const [enabled, setEnabled] = useState(() => areShortcutsEnabled());
 
   // Filter out admin-only shortcuts if user is not admin. `adminOnly`
-  // filtering applies across BOTH lists, so a caller-supplied group gets the
-  // same treatment as the built-in ones.
+  // filtering applies to whichever list the caller supplied.
   const filteredGroups = useMemo(() => {
-    return [...SHORTCUT_GROUPS, ...extraGroups].map(group => ({
+    return groups.map(group => ({
       ...group,
       shortcuts: group.shortcuts.filter(s => !s.adminOnly || isAdmin),
     }));
-  }, [isAdmin, extraGroups]);
+  }, [isAdmin, groups]);
 
   const handleToggle = (newValue: boolean) => {
     setEnabled(newValue);
