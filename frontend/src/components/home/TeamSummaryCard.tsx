@@ -88,11 +88,35 @@ const ROLE_CHIP: Record<SummaryRoleLabel, { text: string; tone: Tone }> = {
 
 type GearColor = Extract<ProgressBarColor, 'success' | 'warning' | 'accent' | 'muted'>;
 
-/** V1's completion thresholds, expressed as token keys. */
+/**
+ * V1's per-row completion thresholds (`TeamSummaryEnhanced` `SummaryRow`),
+ * expressed as token keys. Used for each player row only — the aggregate
+ * tile and Team Total footer use their own, different V1 thresholds below.
+ */
 function gearColor(percent: number): GearColor {
   if (percent === 100) return 'success';
   if (percent >= 75) return 'warning';
   if (percent >= 50) return 'accent';
+  return 'muted';
+}
+
+/**
+ * V1's aggregate-tile thresholds ("BiS Progress" stat card): only 100% is
+ * success, everything from 50% up is accent, no warning tier exists here.
+ */
+function tileGearColor(percent: number): GearColor {
+  if (percent === 100) return 'success';
+  if (percent >= 50) return 'accent';
+  return 'muted';
+}
+
+/**
+ * V1's Team Total footer thresholds: success at 100%, warning from 75%, and
+ * no accent tier at all below that (unlike the row and tile helpers).
+ */
+function footerGearColor(percent: number): GearColor {
+  if (percent === 100) return 'success';
+  if (percent >= 75) return 'warning';
   return 'muted';
 }
 
@@ -133,9 +157,10 @@ function TotalCell({ current, needed, textClass }: { current: number; needed: nu
   );
 }
 
-function GearPercent({ percent, className = '' }: { percent: number; className?: string }) {
+/** Color is always passed in — row, tile and footer each use a different V1 threshold helper. */
+function GearPercent({ percent, color, className = '' }: { percent: number; color: GearColor; className?: string }) {
   return (
-    <span className={`text-sm font-bold tabular-nums ${GEAR_TEXT_CLASS[gearColor(percent)]} ${className}`}>
+    <span className={`text-sm font-bold tabular-nums ${GEAR_TEXT_CLASS[color]} ${className}`}>
       {percent}%
     </span>
   );
@@ -178,7 +203,7 @@ function SummaryRow({ row, chip }: { row: TeamSummaryRow; chip: SummaryRoleLabel
       </td>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
-          <GearPercent percent={gearPercent} className="min-w-[2rem]" />
+          <GearPercent percent={gearPercent} color={gearColor(gearPercent)} className="min-w-[2rem]" />
           <ProgressBar
             value={gearPercent / 100}
             color={gearColor(gearPercent)}
@@ -221,7 +246,7 @@ export function TeamSummaryCard({ groupId, tierId }: TeamSummaryCardProps) {
   // only" with zero mains still shows the table, with no body rows.
   const isEmpty = rows.length === 0;
   const hasRegistrations = Object.keys(registrations).length > 0;
-  const avgColor = gearColor(totals.gearPercent);
+  const avgColor = tileGearColor(totals.gearPercent);
 
   return (
     <CardShell
@@ -311,7 +336,7 @@ export function TeamSummaryCard({ groupId, tierId }: TeamSummaryCardProps) {
                     Team Total
                   </th>
                   <td className="px-3 py-2">
-                    <GearPercent percent={totals.gearPercent} />
+                    <GearPercent percent={totals.gearPercent} color={footerGearColor(totals.gearPercent)} />
                   </td>
                   {COLUMNS.map((column) => (
                     <TotalCell key={column.key} {...columnValues(totals, column)} textClass={column.textClass} />

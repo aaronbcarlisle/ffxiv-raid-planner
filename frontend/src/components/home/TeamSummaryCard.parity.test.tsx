@@ -237,6 +237,66 @@ afterAll(() => {
 const EXPECTED_PLAYERS = ['Tank OneMain', 'Tank TwoMain', 'Healer OneAlt', 'Melee OneSub', 'Caster One'];
 const EXPECTED_MAINS = ['Tank One', 'Tank Two'];
 
+// ─── Tile / footer colour thresholds (PR #271 fix) ─────────────────────────
+// V1's three gear-% → colour mappings differ per surface (TeamSummaryEnhanced.tsx):
+//   row    (:108-113): 100→success, >=75→warning, >=50→accent, else→primary
+//   tile   (:444-450, "BiS Progress" stat card): 100→success, >=50→accent, else→primary
+//   footer (:529-535, Team Total): 100→success, >=75→warning, else→primary (no accent tier)
+// `100 raid slots, N complete` makes calculatePlayerCompletion return exactly N,
+// so a single-player totals.gearPercent lands on the boundary value untouched.
+function buildGearAtPercent(percent: number): GearSlotStatus[] {
+  return Array.from({ length: 100 }, (_, i) => createGearSlot({ hasItem: i < percent }));
+}
+
+function renderCardAtPercent(percent: number) {
+  const player = createPlayer({ id: 'solo', name: 'Solo', job: 'DRG', role: 'melee', gear: buildGearAtPercent(percent) });
+  useTierStore.setState({ currentTier: { tierId: TIER_ID, players: [player] } as unknown as TierSnapshot });
+  useLootTrackingStore.setState({ pageBalances: [], materialBalances: [] });
+  useStaticCharacterStore.setState({ registrationsByGroup: { [GROUP_ID]: {} } });
+  return render(<TeamSummaryCard groupId={GROUP_ID} tierId={TIER_ID} />).container;
+}
+
+function tileColorSpan(container: HTMLElement): HTMLElement {
+  const dt = within(container).getByText('Avg BiS progress').closest('dt')!;
+  return dt.nextElementSibling!.querySelector('span')!;
+}
+
+function footerColorSpan(container: HTMLElement): HTMLElement {
+  const table = within(container).getByRole('table');
+  const footerRow = table.querySelector('tfoot tr')!;
+  return footerRow.children[1].querySelector('span')!;
+}
+
+const TILE_EXPECTED: Record<number, string> = {
+  49: 'text-text-primary',
+  50: 'text-accent',
+  74: 'text-accent',
+  75: 'text-accent',
+  99: 'text-accent',
+  100: 'text-status-success',
+};
+
+const FOOTER_EXPECTED: Record<number, string> = {
+  49: 'text-text-primary',
+  50: 'text-text-primary',
+  74: 'text-text-primary',
+  75: 'text-status-warning',
+  99: 'text-status-warning',
+  100: 'text-status-success',
+};
+
+describe('TeamSummaryCard tile and footer colour thresholds (V1 parity, PR #271)', () => {
+  it.each([49, 50, 74, 75, 99, 100])('tile at %i%% uses the V1 aggregate-tile colour', (percent) => {
+    const container = renderCardAtPercent(percent);
+    expect(tileColorSpan(container).className).toContain(TILE_EXPECTED[percent]);
+  });
+
+  it.each([49, 50, 74, 75, 99, 100])('footer at %i%% uses the V1 Team Total colour', (percent) => {
+    const container = renderCardAtPercent(percent);
+    expect(footerColorSpan(container).className).toContain(FOOTER_EXPECTED[percent]);
+  });
+});
+
 describe('TeamSummaryCard parity with V1 TeamSummaryEnhanced (D-42)', () => {
   it('renders the same heading, toggle and legend', () => {
     const { v1, v2, tier } = renderBoth();
