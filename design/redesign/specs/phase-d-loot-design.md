@@ -1082,22 +1082,37 @@ header discloses.
    clock is already warm on the roster tab (`Roster.tsx:262` and `GroupViewContent.tsx:325-328` both
    call `fetchCurrentWeek` for `pageMode === 'roster'`), so the provisional window is sub-second and
    cannot be held open by hand.
+   **✅ AS BUILT (DC Task 4, R-DC-E, 2026-09-25):** a keyed `weekClockKey` (`lootTrackingStore.ts`)
+   records which `(groupId, tierId)` the current-week values were actually fetched for, set in the
+   same `set` call as `currentWeek`/`maxWeek` on every success path (`fetchCurrentWeek`,
+   `startNextWeek`, `revertWeek`). `RosterCard` trusts the clock only when the key matches this
+   tier, so a genuinely week-1 tier (key resolved, `currentWeek: 1`) now routes its week-1 jump to
+   the Log, while an unfetched or failed clock, or another tier's key, keeps History. Demonstrated
+   live: created a week-1 tier, logged a drop in week 1, Alt+Clicked the roster card, and it landed
+   on the Log with the highlight pulse.
 2. **The ring one-to-many/one-to-first asymmetry.** A generic `itemSlot: 'ring'` loot entry anchors to
    **`ring1`** inbound (**R-D12-H**, legacy parity, `useViewNavigation.ts:126`) — but `findLootEntry`'s
    own ring fallback lets **either** `ring1` or `ring2` claim a generic entry outbound. One-to-many
    outbound, one-to-first inbound; inherent to the data, since nothing on a generic-ring entry
    distinguishes the two ring slots.
+   **✅ ACCEPTED, pinned, no code (DC, R-DC-F):** a real fix needs a schema change (stored left/right
+   ring). Pinned by `rosterLedgerJumps.test.ts:81-93` (outbound) and `:177-182` (inbound).
 3. **R-D12-F cause 4 — Board view (`rview=board`) renders no anchor at all,** not even the card.
    Pre-existing since C7/D6a (the shipped `?player=` card jump already dead-ends there); user-ruled
    out of scope 2026-09-22; pinned by a test in `Roster.test.tsx` rather than fixed. (R-D12-F's other
    three causes — `slotAugmented === null`, compact density, a non-pursuing player's absent tome
    sub-row — all fall back to the card, which is already wired from `?player=` and costs nothing new.)
+   **✅ ACCEPTED, pinned, no code (DC, R-DC-F):** ruled out of scope by the user; pinned by
+   `Roster.test.tsx:823-831` ("lands nowhere in Board view (named residual)").
 4. **R-D12-F cause 5 — a folded light party or hidden substitutes hides the card entirely.**
    `RosterCards.tsx:457`'s `isFolded` (G1/G2/Unassigned/Subs, both grouped and flat views) and
    `:466,528-530`'s `subsHidden` both skip the section's card render outright when the section is
    collapsed or the substitutes are hidden, so `player-card-{id}` AND `gear-row-*` are both absent —
    the same dead-end as cause 4 (Board view), not a fallback to the card. Pre-existing for `?player=`
    since C7; found at PR #269 final review. A later slice may auto-unfold the section on landing.
+   **⚠ STILL OPEN, re-carried (DC, 2026-09-25):** never carried to `ROLLOUT_ROADMAP.md` §7, which
+   lists three residuals against this doc's four. D14b's persisted `v2-roster-hide-subs` makes it
+   more reachable. Not fixed by this slice.
 
 **Rulings taken this slice (R-D12-A…J, full reasoning in
 `plans/2026-09-22-phase-d12-the-jumps.md` §2):**

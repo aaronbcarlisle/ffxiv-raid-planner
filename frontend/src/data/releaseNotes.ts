@@ -60,6 +60,46 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.32',
+    date: '2026-09-25T14:00:00Z',
+    title: 'Phase D carry-outs — DC (v2 preview)',
+    items: [
+      {
+        category: 'fix',
+        title: 'Editing a material entry keeps its recorded slot',
+        description:
+          'V2 preview: in the material edit dialog, switching the recipient or the material away and back now restores the entry\'s recorded slot (or tome-weapon augment) instead of picking a fresh one, so saving no longer silently moves the augment to a different slot.',
+        pr: 274,
+        prTitle: 'fix(v2): DC — Phase D carry-outs: edit-door slot restore, week-1 roster jumps, a11y lint mapping, orphan cleanup',
+      },
+      {
+        category: 'fix',
+        title: 'Roster jumps land on the Log in a tier\'s first week',
+        description:
+          'V2 preview: jumping from a roster card to a drop now opens the Log when the tier is genuinely on week 1, instead of falling back to History — the app now records which tier the week clock was loaded for.',
+        pr: 274,
+        prTitle: 'fix(v2): DC — Phase D carry-outs: edit-door slot restore, week-1 roster jumps, a11y lint mapping, orphan cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Accessibility lint follows the upstream rule set',
+        description:
+          'The jsx-a11y lint rules now keep their upstream settings: rules that are off upstream stay off and each rule keeps its options, which removes 81 false-positive warnings.',
+        pr: 274,
+        prTitle: 'fix(v2): DC — Phase D carry-outs: edit-door slot restore, week-1 roster jumps, a11y lint mapping, orphan cleanup',
+      },
+      {
+        category: 'improvement',
+        title: 'Unused history panels removed',
+        description:
+          'Three unused history panels were deleted and the type-only tests renamed so the dead-code check counts them; unused files drop from 15 to 8.',
+        pr: 274,
+        prTitle: 'fix(v2): DC — Phase D carry-outs: edit-door slot restore, week-1 roster jumps, a11y lint mapping, orphan cleanup',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.31',
     date: '2026-09-25T11:00:00Z',
     title: 'Phase D slice D14b — close-out (v2 preview)',

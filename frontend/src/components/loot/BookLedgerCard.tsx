@@ -7,7 +7,8 @@
  *
  * Scope toggle (This week / All time) re-fetches `pageBalances` scoped to the
  * current week vs. cumulative; defaults to all-time (spec parity with the
- * legacy `PageBalancesPanel`'s default `viewMode`).
+ * legacy `PageBalancesPanel`'s default `viewMode` — that file was itself
+ * orphaned and deleted in DC; see git history).
  *
  * Member-own-row exception (spec §5.7): a non-editor can still adjust the
  * balances on their OWN row (`playersById.get(b.playerId)?.userId === effectiveUserId`)

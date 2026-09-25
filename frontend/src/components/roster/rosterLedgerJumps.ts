@@ -155,8 +155,9 @@ export function jumpAnchorSlotOf(item: HistoryItem): JumpAnchorSlot | null {
  * only the older case, but a newer entry is just as absent from that grid.
  *
  * `displayedWeek === null` means the caller could not name a week the Log's
- * mount is GUARANTEED to land on (R-D12-C: no concrete override, and a clock
- * still at its provisional `currentWeek: 1`). Routing there would let the Log
+ * mount is GUARANTEED to land on (R-D12-C: no concrete override, and this
+ * tier's clock has not been keyed by a successful fetch, R-DC-E's
+ * `weekClockKey`). Routing there would let the Log
  * mount at week 1 and then walk to the real current week the moment
  * `fetchCurrentWeek` lands — leaving the entry unpulsed with no second chance,
  * because the highlight effect's deps never move. History has no week axis, so

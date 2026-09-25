@@ -79,7 +79,7 @@ const TARGET_FNS = [
   'clearPlayerWeekPageLedger',
 ] as const;
 
-const IS_TEST_FILE = /\.(test|type-test)\.tsx?$/;
+const IS_TEST_FILE = /\.(test|test-d)\.tsx?$/;
 
 /**
  * Strips `//` and `/* *\/` comments so a target function NAMED in prose (a
@@ -195,14 +195,15 @@ function findCallSites(): CallSite[] {
 }
 
 // `line` and `via` are documentation (the cite as of this commit); the assert compares (file, fn) only.
-// The pinned set, AS IT IS on the branch (R-D14-K). `tag` is v2-reachable (with
-// its import chain, in `via`), V1-only, or unreachable (zero importers anywhere —
-// neither shell renders the file; `via` explains why it was never deleted).
+// The pinned set, AS IT IS on the branch (R-D14-K). `tag` is v2-reachable or
+// V1-only, each with its import chain in `via`. (DC: the third tag,
+// `unreachable`, is gone — its three carrier files, orphaned with zero
+// importers anywhere, were deleted in DC rather than kept as dead weight.)
 const EXPECTED: Array<{
   file: string;
   fn: string;
   line: number;
-  tag: 'v2-reachable' | 'V1-only' | 'unreachable';
+  tag: 'v2-reachable' | 'V1-only';
   via: string;
 }> = [
   {
@@ -343,7 +344,7 @@ const EXPECTED: Array<{
     line: 417,
     tag: 'V1-only',
     // Only live importer is LootLogModals.tsx (UnifiedWeekOverview.tsx also
-    // imports it, but that file is itself dead — see below).
+    // imported it, but that file was itself dead — deleted in DC).
     via: 'LootLogModals.tsx:16 -> SectionedLogView.tsx:17 -> HistoryView.tsx:17 -> GroupViewContent.tsx:40',
   },
   {
@@ -409,75 +410,12 @@ const EXPECTED: Array<{
     tag: 'V1-only',
     via: 'HistoryView.tsx:17 -> GroupViewContent.tsx:40',
   },
-  // The next three files (LootLogPanel, PageBalancesPanel,
-  // UnifiedWeekOverview) are ORPHANED: `pnpm deadcode` lists all three under
-  // "Unused files" — zero importers anywhere in frontend/src (verified by
-  // grep; no barrel, no dynamic import()). Neither shell renders them, so
-  // they carry the third tag, "unreachable"; `via` explains why each was
-  // never deleted rather than inventing a live chain.
-  {
-    file: 'history/LootLogPanel.tsx',
-    fn: 'logLootAndUpdateGear',
-    line: 52,
-    tag: 'unreachable',
-    via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
-  },
-  {
-    file: 'history/PageBalancesPanel.tsx',
-    fn: 'clearAllPageLedger',
-    line: 82,
-    tag: 'unreachable',
-    via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
-  },
-  {
-    file: 'history/PageBalancesPanel.tsx',
-    fn: 'deletePlayerLedger',
-    line: 86,
-    tag: 'unreachable',
-    via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
-  },
-  {
-    file: 'history/PageBalancesPanel.tsx',
-    fn: 'adjustBookBalance',
-    line: 95,
-    tag: 'unreachable',
-    via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
-  },
-  {
-    file: 'history/PageBalancesPanel.tsx',
-    fn: 'markFloorCleared',
-    line: 320,
-    tag: 'unreachable',
-    via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
-  },
-  {
-    file: 'history/PageBalancesPanel.tsx',
-    fn: 'adjustBookBalance',
-    line: 336,
-    tag: 'unreachable',
-    via: 'UNREACHABLE — zero importers anywhere (knip: unused file); pre-UnifiedWeekOverview panel, never deleted',
-  },
-  {
-    file: 'history/UnifiedWeekOverview.tsx',
-    fn: 'logLootAndUpdateGear',
-    line: 285,
-    tag: 'unreachable',
-    via: 'UNREACHABLE — zero importers anywhere (knip: unused file); superseded by SectionedLogView, never deleted',
-  },
-  {
-    file: 'history/UnifiedWeekOverview.tsx',
-    fn: 'markFloorCleared',
-    line: 376,
-    tag: 'unreachable',
-    via: 'UNREACHABLE — zero importers anywhere (knip: unused file); superseded by SectionedLogView, never deleted',
-  },
-  {
-    file: 'history/UnifiedWeekOverview.tsx',
-    fn: 'adjustBookBalance',
-    line: 392,
-    tag: 'unreachable',
-    via: 'UNREACHABLE — zero importers anywhere (knip: unused file); superseded by SectionedLogView, never deleted',
-  },
+  // DC: the three files formerly enumerated here (LootLogPanel,
+  // PageBalancesPanel, UnifiedWeekOverview) were ORPHANED — `pnpm deadcode`
+  // listed all three under "Unused files", zero importers anywhere in
+  // frontend/src (verified by grep; no barrel, no dynamic import()). Neither
+  // shell rendered them, so DC deleted them outright rather than keep the
+  // third tag, "unreachable", alive for a set that carried no live call site.
 ];
 
 describe('one-logging-model call-site enumeration (DoD-2, R-D14-K)', () => {
@@ -494,7 +432,7 @@ describe('one-logging-model call-site enumeration (DoD-2, R-D14-K)', () => {
 
   it('every pinned pair carries a reachability tag and an import chain (tag membership and non-empty via only — not verified against the real import graph)', () => {
     for (const entry of EXPECTED) {
-      expect(['v2-reachable', 'V1-only', 'unreachable']).toContain(entry.tag);
+      expect(['v2-reachable', 'V1-only']).toContain(entry.tag);
       expect(entry.via.length).toBeGreaterThan(0);
     }
   });

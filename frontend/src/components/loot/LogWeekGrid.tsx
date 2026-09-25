@@ -590,7 +590,6 @@ function FloorSection({
 
   return (
     <div className={isFirst ? '' : 'border-t border-border-default'}>
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- the kebab IconButton below is the real interactive route; onContextMenu here is a pointer-convenience duplicate (Shift+F10/menu-key on the focused kebab already fires `contextmenu`, which bubbles to this div, same as the cell wrapper's onContextMenu) */}
       <div
         className={`flex items-center gap-3 border-b border-border-default bg-surface-base px-4 py-3 ${FLOOR_ACCENT_CLASS[floorNumber]}`}
         onContextMenu={canEdit ? (e) => { e.preventDefault(); openFloorMenu(e); } : undefined}
@@ -629,7 +628,6 @@ function FloorSection({
                   AT no real column to describe (browser heuristics resolve it against
                   the ROW header below, "Loot" — a false label), so it stays a plain,
                   unlabeled `<td>` instead of reaching for an sr-only name to satisfy it. */}
-              {/* eslint-disable-next-line jsx-a11y/control-has-associated-label -- empty corner cell (role=cell, not a control); the rule is upstream-off and over-broad via the a11yRecommendedWarn mapping */}
               <td className="px-3 py-2" />
               {gearCells.map((cell) => (
                 <th key={cell.slot} scope="col" className="px-3 py-2 text-left text-xs font-medium text-text-muted">

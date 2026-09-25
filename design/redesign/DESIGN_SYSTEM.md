@@ -183,7 +183,7 @@ The v2 rule, kept verbatim because it's excellent: a `Tag` **must declare its ki
 
 Illegal-by-construction: a label tag can't have an onClick; a nav tag can't exist without a destination.
 
-`Tag` and `Tabs` are the canonical discriminated-union exemplars in this design system; their compile-time guarantees are locked by `frontend/src/components/ui/Tag.type-test.tsx` (`@ts-expect-error` assertions that fail the build if any guarantee regresses).
+`Tag` and `Tabs` are the canonical discriminated-union exemplars in this design system; their compile-time guarantees are locked by `frontend/src/components/ui/Tag.test-d.tsx` (`@ts-expect-error` assertions that fail the build if any guarantee regresses).
 
 ### 3.4 GearStatusCircle (kept — the gear atom)
 

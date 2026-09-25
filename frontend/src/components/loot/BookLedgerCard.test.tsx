@@ -358,25 +358,9 @@ describe('BookLedgerCard — markClearedOpen controlled seam (R-D14-G)', () => {
     expect(onChange).toHaveBeenCalledWith(false);
   });
 
-  // Fix wave (D14a review, MINOR #4): a HALF-controlled pair (one prop
-  // present, the other omitted) used to compile and yield a dead button. This
-  // is a compile-time assertion, not a runtime one — it exists to fail
-  // `pnpm build`'s `tsc -b` if the props type ever regresses to plain
-  // optionals. Never rendered; `@ts-expect-error` requires the LINE below it
-  // to be a real type error, so removing the union would turn this into an
-  // unused-directive build error.
-  it.skip('type-only: a half-controlled pair is a compile error', () => {
-    function halfControlled() {
-      // @ts-expect-error — onMarkClearedOpenChange is required once markClearedOpen is passed
-      return <BookLedgerCard {...baseProps} markClearedOpen={false} />;
-    }
-    function otherHalfControlled() {
-      // @ts-expect-error — markClearedOpen is required once onMarkClearedOpenChange is passed
-      return <BookLedgerCard {...baseProps} onMarkClearedOpenChange={() => {}} />;
-    }
-    void halfControlled;
-    void otherHalfControlled;
-  });
+  // The half-controlled compile-time assertion (D14a review, MINOR #4) moved
+  // to BookLedgerCard.test-d.tsx (DC: type-test normalization, R-DC-B) — it
+  // is not a runtime test, so it doesn't belong in this file.
 });
 
 // ── C7 (D-05): the Books deep-link highlight ──

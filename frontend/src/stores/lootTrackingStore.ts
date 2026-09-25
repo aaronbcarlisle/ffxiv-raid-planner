@@ -33,6 +33,9 @@ export interface WeekDataInfo {
   types: WeekEntryType[];
 }
 
+/** R-DC-E: which (static, tier) the currentWeek/maxWeek values were fetched for. */
+export const weekClockKeyOf = (groupId: string, tierId: string) => `${groupId}:${tierId}`;
+
 /** Granular loading states to prevent UI jitter */
 interface LoadingStates {
   lootLog: boolean;
@@ -55,6 +58,10 @@ interface LootTrackingState {
   materialBalances: MaterialBalance[];
   currentWeek: number;
   maxWeek: number; // max(currentWeek, maxLoggedWeek) for week selector
+  /** R-DC-E: `weekClockKeyOf(groupId, tierId)` of the (static, tier) a successful
+   *  server response last wrote `currentWeek` for; `null` until one has. Written
+   *  only in that same `set` — never at fetch start, never on failure. */
+  weekClockKey: string | null;
   weekStartDate: string | null;
   /** @deprecated Use loadingStates for granular loading. Kept for backward compatibility. */
   isLoading: boolean;
@@ -114,6 +121,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
   materialBalances: [],
   currentWeek: 1,
   maxWeek: 1,
+  weekClockKey: null,
   weekStartDate: null,
   isLoading: false,
   loadingStates: { ...INITIAL_LOADING_STATES },
@@ -303,6 +311,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       set((state) => ({
         currentWeek: response.currentWeek,
         maxWeek: response.maxWeek,
+        weekClockKey: weekClockKeyOf(groupId, tierId),
         weekStartDate: response.weekStartDate ?? null,
         loadingStates: { ...state.loadingStates, currentWeek: false },
       }));
@@ -746,7 +755,11 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       );
       // Update current week immediately to ensure state reflects backend
       const newWeek = response.currentWeek;
-      set({ currentWeek: newWeek, weekStartDate: response.weekStartDate ?? null });
+      set({
+        currentWeek: newWeek,
+        weekClockKey: weekClockKeyOf(groupId, tierId),
+        weekStartDate: response.weekStartDate ?? null,
+      });
 
       // Try to fetch fresh maxWeek, but don't fail if this secondary call fails
       try {
@@ -775,7 +788,11 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       );
       // Update current week immediately to ensure state reflects backend
       const newWeek = response.currentWeek;
-      set({ currentWeek: newWeek, weekStartDate: response.weekStartDate ?? null });
+      set({
+        currentWeek: newWeek,
+        weekClockKey: weekClockKeyOf(groupId, tierId),
+        weekStartDate: response.weekStartDate ?? null,
+      });
 
       // Try to fetch fresh maxWeek, but don't fail if this secondary call fails
       try {
@@ -807,6 +824,7 @@ export const useLootTrackingStore = create<LootTrackingState>((set, get) => ({
       materialBalances: [],
       currentWeek: 1,
       maxWeek: 1,
+      weekClockKey: null,
       weekStartDate: null,
       isLoading: false,
       loadingStates: { ...INITIAL_LOADING_STATES },

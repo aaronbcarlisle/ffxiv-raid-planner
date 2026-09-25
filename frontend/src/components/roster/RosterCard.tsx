@@ -64,7 +64,7 @@ import {
   type RosterCardActions,
 } from '../../hooks/useRosterCardActions';
 import { toast } from '../../stores/toastStore';
-import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { useLootTrackingStore, weekClockKeyOf } from '../../stores/lootTrackingStore';
 import { useSharedBisStore } from '../../stores/sharedBisStore';
 import type { DragAttributes, DragListeners } from './dragTypes';
 import {
@@ -294,7 +294,7 @@ export function RosterCard({
   // both views consume (scroll, pulse, self-clearing after 2.5s).
   const [jumpParams, setSearchParams] = useSearchParams();
   const clockCurrentWeek = useLootTrackingStore((s) => s.currentWeek);
-  const clockMaxWeek = useLootTrackingStore((s) => s.maxWeek);
+  const clockResolved = useLootTrackingStore((s) => s.weekClockKey === weekClockKeyOf(groupId, tierId));
 
   // ── R-28 (D12): the entry jump SPLITS by week ──
   // `lview=log` only when the entry sits in the week the Log will display;
@@ -308,21 +308,25 @@ export function RosterCard({
   // legacy-History seeding cohort (`Loot.tsx`'s header) from a screen with no
   // week control on it.
   //
-  // R-D12-C: the Log branch needs a week the Log's MOUNT is guaranteed to land
-  // on. A concrete override (`?week=` or a stored week) is one — it pins the
-  // week regardless of the clock. "Follow the clock" while the clock is still
-  // provisional (`lootTrackingStore` starts `currentWeek: 1, maxWeek: 1`) is
-  // NOT: the Log would mount at week 1, then `fetchCurrentWeek` lands,
-  // `logWeek.week` moves to the real current week, and the entry we asked it
-  // to pulse is no longer in the grid — with no second chance, because the
-  // highlight effect's deps (`[highlightId, highlightKind]`) never move.
+  // R-D12-C (closed by R-DC-E): the Log branch needs a week the Log's MOUNT is
+  // guaranteed to land on. A concrete override (`?week=` or a stored week) is
+  // one — it pins the week regardless of the clock. "Follow the clock" is one
+  // too, but only once THIS tier's fetch has succeeded: `weekClockKey` names
+  // the (static, tier) a server response wrote `currentWeek` for, in that same
+  // `set`. Until it names this card's own `(groupId, tierId)`, the values are
+  // the store's `1/1` start or another tier's (a tier switch whose fetch is
+  // still in flight); the Log would mount at that week, walk to the real one
+  // when `fetchCurrentWeek` lands, and the entry we asked it to pulse would
+  // leave the grid with no second chance, because the highlight effect's deps
+  // (`[highlightId, highlightKind]`) never move. Values alone can't tell: week
+  // 1 is both the start value and a real week. So a genuinely week-1 tier now
+  // routes to the Log, and an unfetched or failed clock keeps History.
   // (It is NOT the `setWeek` clobber it looks like: `Loot.tsx`'s F1/F2 guards
   // already make that unreachable. Checked at plan-vet.)
   const jumpToEntry = useCallback(
     (entryId: number, kind: JumpKind, entryWeek: number | null | undefined) => {
       const override = resolveLogWeekOverride(groupId, tierId, jumpParams.get('week'));
-      const clockSettled = Math.max(clockMaxWeek, clockCurrentWeek) > 1;
-      const displayedWeek = override ?? (clockSettled ? clockCurrentWeek : null);
+      const displayedWeek = override ?? (clockResolved ? clockCurrentWeek : null);
       const lview = entryJumpView(entryWeek, displayedWeek);
       setSearchParams((prev) => {
         const params = new URLSearchParams(prev);
@@ -349,7 +353,7 @@ export function RosterCard({
     // whenever `searchParams` changes (the churn `NewShell.tsx:241-246`
     // records). If a stable callback is ever wanted, BOTH go behind refs,
     // `Loot.tsx`'s `setSearchParamsRef` style — one ref alone buys nothing.
-    [jumpParams, clockMaxWeek, clockCurrentWeek, groupId, tierId, setSearchParams],
+    [jumpParams, clockResolved, clockCurrentWeek, groupId, tierId, setSearchParams],
   );
   // C7 (D-05): the kebab's Books jump — the same route, the Books card's own
   // highlight param (BookLedgerCard scrolls + pulses `book-row-{playerId}`).
