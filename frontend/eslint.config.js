@@ -10,8 +10,14 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 
 // jsx-a11y recommended, downgraded to warn for the legacy backlog. The shared
 // layer re-locks these to error below (it is small and clean).
+// Upstream recommended, downgraded to warn: `off` rules stay off and each
+// rule keeps its upstream options (the old keys→'warn' map re-enabled three
+// upstream-off rules and stripped seven rules' options).
 const a11yRecommendedWarn = Object.fromEntries(
-  Object.keys(jsxA11y.flatConfigs.recommended.rules).map((rule) => [rule, 'warn']),
+  Object.entries(jsxA11y.flatConfigs.recommended.rules).map(([rule, entry]) => {
+    const [severity, ...options] = Array.isArray(entry) ? entry : [entry]
+    return [rule, severity === 'off' || severity === 0 ? 'off' : ['warn', ...options]]
+  }),
 )
 
 export default defineConfig([
