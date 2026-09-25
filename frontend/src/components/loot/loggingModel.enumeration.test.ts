@@ -40,6 +40,10 @@ import { describe, it, expect } from 'vitest';
  * `createPageEntry` (the ninth book-changing store action, `lootTrackingStore.ts:81`)
  * has ZERO call sites anywhere in `frontend/src` — dead in both shells — so it
  * contributes no pinned pair.
+ *
+ * knip.json excludes this file from the vitest entries: its ?raw glob would
+ * otherwise mark every loot file as referenced and hide dead code in the
+ * subtree (D14b).
  */
 
 // Raw source of every file in this subtree, scanned as text (not parsed/executed).
