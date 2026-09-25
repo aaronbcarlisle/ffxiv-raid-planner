@@ -25,8 +25,9 @@
  *   - View/grouping state comes from the SAME `useGroupViewState` legacy uses
  *     (`groupView`/`subsView`/`sortPreset`/`clipboardPlayer`). `subsHidden` is
  *     GroupViewContent-LOCAL (localStorage `roster-hide-subs`), NOT part of the
- *     hook — so it is replicated here as local state with the same key, byte-for
- *     -byte. `reorderMode` is fresh local state (default off). Players are
+ *     hook — v2 persists it under its own `useRosterHideSubs` (§9/R-D14-J,
+ *     key `v2-roster-hide-subs`, legacy read as a one-way fallback only).
+ *     `reorderMode` is fresh local state (default off). Players are
  *     role-sorted with `sortPlayersByRole`/`SORT_PRESETS` (identical to legacy)
  *     so a custom drag order (sortPreset='custom') survives.
  *   - `onNavigate` / `onOpenRequests` are part of the slot contract (Task 11,
@@ -50,6 +51,7 @@ import { isJumpAnchorSlot, type JumpAnchorSlot } from './rosterLedgerJumps';
 import { scrollToGearRow } from './gearRowScroll';
 import { useRosterDensity } from './useRosterDensity';
 import { useRosterSortPreset } from './useRosterSortPreset';
+import { useRosterHideSubs } from './useRosterHideSubs';
 import { useRosterViewShortcuts } from './useRosterViewShortcuts';
 import { useRosterSections, visibleRosterSections } from './useRosterSections';
 import { useGroupViewState } from '../../hooks/useGroupViewState';
@@ -139,15 +141,11 @@ export function Roster({ group, tier, canManage }: RosterProps) {
     setClipboardPlayer,
   } = useGroupViewState();
 
-  // `subsHidden` is GroupViewContent-local (NOT in the hook) — replicate its
-  // localStorage-backed local state, same key, so the setting persists.
-  const [subsHidden, setSubsHidden] = useState<boolean>(() => {
-    try { return localStorage.getItem('roster-hide-subs') === 'true'; } catch { return false; }
-  });
-  const setSubsHiddenPersist = useCallback((hidden: boolean) => {
-    setSubsHidden(hidden);
-    try { localStorage.setItem('roster-hide-subs', String(hidden)); } catch { /* ignore */ }
-  }, []);
+  // `subsHidden` is GroupViewContent-local (NOT in the hook) — v2 persists it
+  // under its own key (`v2-roster-hide-subs`, §9/R-D14-J), reading legacy's
+  // `roster-hide-subs` only as a one-way fallback so a preference set in the
+  // old UI carries over without a v2 toggle bleeding back into it.
+  const { subsHidden, setSubsHidden: setSubsHiddenPersist } = useRosterHideSubs();
 
   // Drag-to-reorder is a transient, screen-local mode (off by default).
   const [reorderMode, setReorderMode] = useState(false);

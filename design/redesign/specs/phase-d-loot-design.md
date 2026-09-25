@@ -1806,6 +1806,14 @@ Note this is a *move*, not a restore: `FairnessSummary` is a v2-era artifact (`F
 F6d spec §5.5) with no v1 ancestor — D-42's row calls it "a *different, much smaller* artifact" than
 the Team Summary being restored. Its rollup (`computeTierFairness`) is unchanged by the move.
 
+**✅ As built (D14a, #272; R-D14-B/C/D).** `FairnessSummary` mounts at the top of Home's side column,
+above `StaticActivityFeed`, inside a titled `CardShell` "Loot fairness" (`Home.tsx:370-383`); its grid
+is re-fitted to two columns (`FairnessSummary.tsx:48`, `sm:grid-cols-2`), and Home is its only mount —
+the former `Loot.tsx` History mount is gone. Anyone who can view the static sees it (R-D14-C): for
+non-member viewers Home fetches the loot log, page ledger and material log read-only
+(`Home.tsx:150-162`); balances, registrations and `TeamSummaryCard` stay members-only (`:127-149`,
+`:366`). Team Summary itself (D13, #271) sits in the main column.
+
 ### R-41 · The Split Planner is reached from the **Progress tab** — closes F-04
 
 Split Clears become a Progress-tab surface alongside Goals, Farms and Collections. Home's F-11
@@ -1853,6 +1861,15 @@ makes the three drops defensible as *impossible* rather than merely unbuilt.
 narrowing is surface-death in every case. The nine `log:*` event listeners it also names are an
 implementation detail of the legacy event bus — the v2 surfaces own their state directly, so they do
 not return as such.
+
+**✅ As built (D11 #266 + D14a #272) — scope R-D14-E.** `Alt+L` / `Alt+U` on every Loot view (`canEdit`,
+the same state setters as `LootToolbar`'s buttons, `Loot.tsx:1230,1236`); `Alt+←` / `Alt+→` on the Log
+only, with no role gate; `Alt+B` on the Log only (`canEdit`); `Ctrl+Shift+F` on History (R-35). Loot's
+local `useKeyboardShortcuts` block (`Loot.tsx:616-702`) registers each key only where it is live — an
+out-of-scope key never matches, so it never swallows the browser's own `Alt+←/→` — and passes
+`disabled: anyModalOpen || markClearedOpen` (`:702`); both since `dfb3e34`, the #272 review fix. V1's
+cross-tab `Alt+L`/`U`/`B` (`useGroupViewKeyboardShortcuts.ts:178-198`) are narrowed to the Loot surface
+in v2. Written back to D-54.
 
 ---
 
@@ -1986,3 +2003,9 @@ v2. It becomes `v2-roster-hide-subs`, **reading legacy's key as a fallback for c
 writing v2-only** — the same shape as `useRosterSortPreset` (C6), whose identical defect the director
 caught. Closes the closeout's last open DoD item. Small severable micro-slice; not part of a Phase-D
 surface.
+
+**✅ Closed (D14b, #273; R-D14-J).** `components/roster/useRosterHideSubs.ts` reads `v2-roster-hide-subs`
+→ legacy `roster-hide-subs` → `false` (`:28-38`) and writes the v2 key only (`:49-56`); `Roster.tsx:148`
+consumes it. `GroupViewContent.tsx` is untouched by D14 (its legacy read/write, `:539,543`, is
+unchanged). D14b sweep T4-a/b: toggling v2's "Show subs" wrote only `v2-roster-hide-subs`; toggling
+V1's "Show Subs" wrote only `roster-hide-subs`.

@@ -65,6 +65,11 @@
   - R-D14-A's scope qualifier: "every v2 binding" means static-view and global keys; page-local keys on Profile, SetupWizard and the priority editors are out;
   - the D-54 narrowing (R-D14-E);
   - Loot's keys `preventDefault` while a Loot modal is open, because the local block no longer passes `disabled: anyModalOpen`.
+- **D14b outcome (2026-09-25):**
+  - Task 4 rebased `97cec462` → `5d655c4c` onto #272. The enumeration asserts the (file, fn) set, not line literals (`0fb0d1d0`), and since `12dadaf6` also scans `history/**` (35 pairs). knip's vitest entry negates the test so its `?raw` glob stops masking dead code (`9101f341`; 15/179/139 = main).
+  - DoD-1 sweep, after the director's re-sweep: 22 in-app PASS · D-30 (grid PASS; ×N chip not demonstrable on DEVTST → #244's live pass) · 4 doc-only (D-32, D-33, D-43, D-44) · D-18 open (R-41) = 28 rows. T4-a/b/c PASS, 0 console errors.
+  - DoD 3 PASS by attribution (the only legacy-only touches are #239/#240; #242 is the second approved exception). DoD 4 knip = main. DoD 5: no `FLOOR_COLORS[…]` in v2-authored files, `tokens:check` clean. DoD 6 `pnpm dupes` 3.53% / 3.98% < 5%. DoD 8 recorded, incl. D13's collapse → Phase P.
+  - The third "must record" item above is superseded: `dfb3e34` (in #272) restored `disabled: anyModalOpen || markClearedOpen` (`Loot.tsx:702`).
 
 **Main baselines** (`c0d4b4e2`): test 3244 · lint 0 errors / 903 warnings · knip files 15 / exports 179 / types 140.
 

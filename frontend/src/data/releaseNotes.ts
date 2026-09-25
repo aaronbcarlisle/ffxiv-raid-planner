@@ -60,6 +60,38 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.31',
+    date: '2026-09-25T11:00:00Z',
+    title: 'Phase D slice D14b — close-out (v2 preview)',
+    items: [
+      {
+        category: 'fix',
+        title: 'Hiding substitutes in the new Roster no longer touches the classic layout',
+        description:
+          'V2 preview: the new Roster\'s Show subs toggle keeps its own setting and reads the classic layout\'s setting only as a starting point, so flipping it in one layout no longer flips the other.',
+        pr: 273,
+        prTitle: 'feat(v2): D14b — Phase D close-out: v2-roster-hide-subs, DoD-2 enumeration, DoD sweep, write-back',
+      },
+      {
+        category: 'improvement',
+        title: 'One loot logging model, pinned by a test',
+        description:
+          'A test enumerates every place the new Loot screen (and the history dialogs it opens) logs a drop, a material or a book change, tagged by which layout reaches it, so a new call site fails the tests until it is recorded. The dead-code baseline stays at main\'s counts.',
+        pr: 273,
+        prTitle: 'feat(v2): D14b — Phase D close-out: v2-roster-hide-subs, DoD-2 enumeration, DoD sweep, write-back',
+      },
+      {
+        category: 'improvement',
+        title: 'Phase D closed out in the docs',
+        description:
+          'Every Phase D ruling was walked in the running app or, where no screen exists for it, recorded in the docs, and the parity matrix, the loot design and plan, the roadmap and the project guide now record Phase D as complete except D-18 (no Progress tab yet).',
+        pr: 273,
+        prTitle: 'feat(v2): D14b — Phase D close-out: v2-roster-hide-subs, DoD-2 enumeration, DoD sweep, write-back',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.30',
     date: '2026-09-25T08:00:00Z',
     title: 'Phase D slice D14a — fairness on Home, loot shortcuts, truthful shortcut help (v2 preview)',

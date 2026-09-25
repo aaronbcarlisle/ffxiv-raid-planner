@@ -9,5 +9,17 @@
     "e2e/**/*.spec.ts"
   ],
   "project": ["src/**/*.{ts,tsx}"],
-  "ignore": ["src/gamedata/**", "src/styles/tokens.generated.css"]
+  "vitest": {
+    "entry": [
+      "src/**/*.{bench,test,test-d,spec,spec-d}.?(c|m)[jt]s?(x)",
+      "scripts/**/*.test.mjs",
+      "**/__mocks__/**/*.?(c|m)[jt]s?(x)",
+      "!src/components/loot/loggingModel.enumeration.test.ts"
+    ]
+  },
+  "ignore": [
+    "src/gamedata/**",
+    "src/styles/tokens.generated.css",
+    "src/components/loot/loggingModel.enumeration.test.ts"
+  ]
 }
