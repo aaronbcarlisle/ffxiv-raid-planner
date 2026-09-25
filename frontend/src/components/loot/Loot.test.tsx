@@ -2880,3 +2880,76 @@ describe('Loot — D14 Task 2: v2 loot shortcuts (Alt+L/U everywhere, Alt+←/�
     });
   });
 });
+
+/**
+ * F1 (PR #272 review): registration, not an action-level check, is the gate.
+ * `useKeyboardShortcuts` calls `preventDefault()` on any key MATCH before any
+ * action runs, so a key registered off its scope swallows the browser's own
+ * default for that key — Alt+←/→ is Back/Forward. These assert
+ * `defaultPrevented` directly rather than trusting the no-op action, which a
+ * true real `KeyboardEvent`/`fireEvent.keyDown` dispatch can observe and a
+ * mocked action cannot.
+ */
+describe('Loot — PR #272 fix: shortcuts register only where live (F1)', () => {
+  function dispatchAlt(key: string): KeyboardEvent {
+    const event = new KeyboardEvent('keydown', { key, altKey: true, cancelable: true, bubbles: true });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    return event;
+  }
+
+  it('Alt+← is NOT defaultPrevented on Priority — the browser must still go Back', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=priority']);
+    const event = dispatchAlt('ArrowLeft');
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('Alt+← is NOT defaultPrevented on History — the browser must still go Back', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=history']);
+    const event = dispatchAlt('ArrowLeft');
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('Alt+L is NOT defaultPrevented for a viewer — the key is never registered for them', () => {
+    renderLoot({ tier: makeTier(players), canEdit: false }, ['/?lview=log']);
+    const event = dispatchAlt('l' as unknown as string);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  // Kept from D14a: the Log editor's own Alt+← must still swallow Back.
+  it('Alt+← is still defaultPrevented on the Log', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    const event = dispatchAlt('ArrowLeft');
+    expect(event.defaultPrevented).toBe(true);
+  });
+});
+
+/**
+ * F3 (PR #272 review): `markClearedOpen` must not survive a navigation off
+ * the Log — otherwise it both reopens the modal on the next Log visit and
+ * blocks every Loot shortcut on the other views in the meantime.
+ */
+describe('Loot — PR #272 fix: markClearedOpen resets off the Log (F3)', () => {
+  function pressAlt(key: string, target: Window | Element = window) {
+    fireEvent.keyDown(target, { key, altKey: true });
+  }
+
+  it('opening Mark Floor Cleared on the Log, then leaving the Log, un-latches the guard and does not auto-reopen the modal on return', () => {
+    renderLoot({ tier: makeTier(players) }, ['/?lview=log']);
+    pressAlt('b');
+    expect(screen.getByText('Mark Floor Cleared')).toBeInTheDocument();
+
+    // Re-render with a new `lview` the way a browser Back would — same Loot
+    // instance (mounts un-keyed), not a fresh one.
+    fireEvent.click(screen.getByRole('button', { name: 'Priority' }));
+    expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+
+    // The guard must not still be latched: Alt+L opens the log-a-drop flow.
+    pressAlt('l');
+    expect(screen.getByTestId('recipient-picker')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log' }));
+    expect(screen.queryByText('Mark Floor Cleared')).not.toBeInTheDocument();
+  });
+});

@@ -98,6 +98,9 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
   const lootLog = useLootTrackingStore((s) => s.lootLog);
   const materialLog = useLootTrackingStore((s) => s.materialLog);
   const pageLedger = useLootTrackingStore((s) => s.pageLedger);
+  // F2 (PR #272 review, declined): loaded for every viewer by NewShell's tier
+  // effect (`pages/NewShell.tsx:270`, `fetchCurrentWeek`), on cold load and on
+  // every tier switch — not fetched here.
   const currentWeek = useLootTrackingStore((s) => s.currentWeek);
   const fetchLootLog = useLootTrackingStore((s) => s.fetchLootLog);
   const fetchPageLedger = useLootTrackingStore((s) => s.fetchPageLedger);

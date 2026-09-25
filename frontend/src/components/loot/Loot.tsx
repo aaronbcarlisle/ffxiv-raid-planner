@@ -194,7 +194,7 @@ import { useWeekClock } from '../../hooks/useWeekClock';
 import { useLogWeek } from './useLogWeek';
 import { useUrlTabState } from '../../hooks/useUrlTabState';
 import { useDebounce } from '../../hooks/useDebounce';
-import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { useKeyboardShortcuts, type KeyboardShortcut } from '../../hooks/useKeyboardShortcuts';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { useTierStore } from '../../stores/tierStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -546,6 +546,18 @@ export function Loot({ group, tier, canEdit }: LootProps) {
   // cleared modal — kept OUT of `anyModalOpen` (R-D14-F) so the guard below
   // can name it explicitly, matching the ruling's literal shape.
   const [markClearedOpen, setMarkClearedOpen] = useState(false);
+  // F3 (PR #272 review): `markClearedOpen` must not survive a navigation off
+  // the Log. `BookLedgerCard` — the only mount of the modal, Log-only — can
+  // unmount (a browser Back changes `lview`; `Loot` mounts un-keyed, so this
+  // is the SAME instance re-rendering, not a fresh one) while the flag is
+  // still latched true: the modal would then reopen unprompted on the next
+  // visit to the Log, and every Loot shortcut on the OTHER views stays
+  // guarded (`disabled` below) in the meantime. Reset on every render where
+  // the Log isn't the visible view, rather than relying on an unmount
+  // cleanup `BookLedgerCard` doesn't own.
+  useEffect(() => {
+    if (lview !== 'log') setMarkClearedOpen(false);
+  }, [lview]);
 
   // ── R-35: `Ctrl+Shift+F` focuses History's search box (D11) ──
   // Registered v2-locally through the SHARED hook rather than in
@@ -583,98 +595,111 @@ export function Loot({ group, tier, canEdit }: LootProps) {
     pickerState !== null || wizardState !== null || materialState !== null ||
     adjustmentsOpen || deleteTarget !== null || resetConfig !== null ||
     isActionModalOpen;
-  // R-D14-F: the ONE guard every Loot key runs through, `Ctrl+Shift+F`
-  // included. `anyModalOpen` and `markClearedOpen` are Loot's own state
-  // (fresh every render); `focusInsideDialog()` is called from INSIDE each
-  // action, at keydown time, not baked into a render-time boolean, because it
-  // is the only leg that catches an overlay Loot's own state can't see — the
-  // GLOBAL `KeyboardShortcutsHelp` (`Shift+?`), which opens without
-  // re-rendering Loot at all (PR #266, Copilot).
-  const shortcutsGuarded = () => anyModalOpen || markClearedOpen || focusInsideDialog();
-  useKeyboardShortcuts({
-    shortcuts: [
-      {
-        key: 'f',
-        requireMod: true,
-        requireShift: true,
-        description: 'Search history',
-        // Gate 3 (view) lives INSIDE the action, not in a conditional shortcut
-        // array, so the registration is stable across view switches. The cost,
-        // stated rather than discovered: `useKeyboardShortcuts` calls
-        // `preventDefault()` on any MATCH, before running the action, so
-        // `Ctrl+Shift+F` is swallowed on Priority and Log too — where it
-        // no-ops. Focusing the box is the whole action; switching views under
-        // a focus shortcut would be a different feature.
-        action: () => {
-          if (lview !== 'history') return;
-          if (shortcutsGuarded()) return;
-          historySearchRef.current?.focus();
-        },
+  // F1 (PR #272 review): the REGISTRATION is the gate, not a check inside
+  // every action. `useKeyboardShortcuts` calls `event.preventDefault()` on
+  // any key MATCH, before any action-level check runs (`useKeyboardShortcuts.
+  // ts:82-84`) — so a key that is registered unconditionally swallows its
+  // browser default (Alt+←/→ is Back/Forward in Chrome/Firefox) even on a
+  // view where the action itself no-ops, and swallows a role-gated key for a
+  // viewer the same way. Building the array conditionally on `lview`/
+  // `canEdit` means an out-of-scope key is never in the `shortcuts` list
+  // `useKeyboardShortcuts` searches, so it never matches and never calls
+  // `preventDefault()` — confirmed by `T-1F-mut` below, which force-registers
+  // the week keys unconditionally and watches the Priority test go red.
+  // `shortcuts` is a fresh array every render (no `useMemo` — `logWeek` is
+  // itself a fresh object every render, see its own header, so memoizing
+  // would buy nothing); `useKeyboardShortcuts`' `handleKeyDown` is a
+  // `useCallback` keyed on `[shortcuts, disabled]` and its listener effect is
+  // keyed on `[handleKeyDown]` (`useKeyboardShortcuts.ts:86,88-91`), so a new
+  // array/disabled value re-subscribes the listener on the very next render —
+  // there is no stale-closure window.
+  const shortcuts: KeyboardShortcut[] = [];
+  if (lview === 'history') {
+    // R-35: History only — its action's own `lview !== 'history'` check is
+    // now redundant with the registration and was removed with it.
+    shortcuts.push({
+      key: 'f',
+      requireMod: true,
+      requireShift: true,
+      description: 'Search history',
+      action: () => {
+        // The one leg `disabled` (below) can't see: an overlay Loot holds no
+        // state for, e.g. the global `KeyboardShortcutsHelp` (`Shift+?`),
+        // which opens without re-rendering Loot at all (PR #266, Copilot).
+        // Read live at keydown, never baked into a render-time boolean.
+        if (focusInsideDialog()) return;
+        historySearchRef.current?.focus();
       },
+    });
+  }
+  if (canEdit) {
+    // R-D14-E: every Loot view — the same handlers `LootToolbar`'s
+    // "Log a drop" / "Log material" buttons call.
+    shortcuts.push(
       {
-        // R-D14-E: every Loot view, `canEdit` — the same handler
-        // `LootToolbar`'s "Log a drop" button calls (`onLogDrop`).
         key: 'l',
         requireAlt: true,
         description: 'Log a drop',
         action: () => {
-          if (shortcutsGuarded()) return;
-          if (!canEdit) return;
+          if (focusInsideDialog()) return;
           setPickerState({ mode: 'log' });
         },
       },
       {
-        // R-D14-E: every Loot view, `canEdit` — the same handler
-        // `LootToolbar`'s "Log material" button calls (`onLogMaterial`).
         key: 'u',
         requireAlt: true,
         description: 'Log material',
         action: () => {
-          if (shortcutsGuarded()) return;
-          if (!canEdit) return;
+          if (focusInsideDialog()) return;
           setMaterialState({ mode: 'freeform' });
         },
       },
+    );
+  }
+  if (lview === 'log') {
+    // R-D14-E: Log only, NO role gate — viewers use the chevrons too
+    // (`WeekScopeControl.tsx:233-240,294-300`). `logWeek.prev`/`.next`
+    // already no-op at the clock's edges.
+    shortcuts.push(
       {
-        // R-D14-E: Log only, NO role gate — viewers use the chevrons too
-        // (`WeekScopeControl.tsx:233-240,294-300`). `logWeek.prev` already
-        // no-ops when `canPrev` is false.
         key: 'ArrowLeft',
         requireAlt: true,
         description: 'Previous week (Log)',
         action: () => {
-          if (shortcutsGuarded()) return;
-          if (lview !== 'log') return;
+          if (focusInsideDialog()) return;
           logWeek.prev();
         },
       },
       {
-        // R-D14-E: Log only, NO role gate. `logWeek.next` already no-ops
-        // when `canNext` is false.
         key: 'ArrowRight',
         requireAlt: true,
         description: 'Next week (Log)',
         action: () => {
-          if (shortcutsGuarded()) return;
-          if (lview !== 'log') return;
+          if (focusInsideDialog()) return;
           logWeek.next();
         },
       },
-      {
-        // R-D14-E/G: Log only, `canEdit` — opens `BookLedgerCard`'s
-        // mark-floor-cleared modal through its controlled seam.
+    );
+    if (canEdit) {
+      // R-D14-E/G: Log + `canEdit` — opens `BookLedgerCard`'s
+      // mark-floor-cleared modal through its controlled seam.
+      shortcuts.push({
         key: 'b',
         requireAlt: true,
         description: 'Mark floor cleared (Log)',
         action: () => {
-          if (shortcutsGuarded()) return;
-          if (lview !== 'log') return;
-          if (!canEdit) return;
+          if (focusInsideDialog()) return;
           setMarkClearedOpen(true);
         },
-      },
-    ],
-  });
+      });
+    }
+  }
+  // F1: restores the hook-level `disabled` main carried before D14
+  // (`disabled: anyModalOpen`) plus `markClearedOpen` (R-D14-F/G) — a typed
+  // modal now lets its OWN key's browser default through too (e.g. Alt+←
+  // while the wizard is open no longer swallows Back), matching every other
+  // Loot key's un-swallowed behavior off its own view.
+  useKeyboardShortcuts({ shortcuts, disabled: anyModalOpen || markClearedOpen });
 
   // Mount fetch — v2 must not depend on legacy chrome's own loot effect ordering.
   const groupId = group.id;
