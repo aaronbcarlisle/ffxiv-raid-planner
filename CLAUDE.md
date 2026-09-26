@@ -12,8 +12,8 @@ Progression tool and home base for FFXIV statics: roster, schedule, loot, gear. 
 |------|--------------------------|
 | Build (CI gate) | `pnpm -C frontend build` — `tsc -b`, stricter than `typecheck` (`--noEmit`); run before every push |
 | Lint | `pnpm -C frontend lint` · `pnpm -C frontend check:design-system:strict` |
-| Tests | `pnpm -C frontend test` · one file: `pnpm -C frontend exec vitest run <path>` · e2e: `test:e2e` |
-| Dead code / dupes | `pnpm -C frontend deadcode` (knip) · `dupes` (jscpd) |
+| Tests | `pnpm -C frontend test` · one file: `pnpm -C frontend exec vitest run <path>` · e2e: `pnpm -C frontend test:e2e` |
+| Dead code / dupes | `pnpm -C frontend deadcode` (knip) · `pnpm -C frontend dupes` (jscpd) |
 | Backend | `cd backend && ./venv/Scripts/python.exe -m pytest tests/ -q` · `venv/Scripts/ruff.exe check <files>` (not CI-gated; ~1k legacy violations) |
 | Migrations | `.githooks/pre-push` runs `backend/scripts/check_migration_{heads,dialect}.py`; `git config core.hooksPath .githooks` once per clone |
 

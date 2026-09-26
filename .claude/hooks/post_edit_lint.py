@@ -64,18 +64,30 @@ def ruff_issues(ruff, rel, source):
     return json.loads(r.stdout.decode("utf-8") or "[]")
 
 
+def _identity(issue, lines):
+    """Rule + message + the flagged line's text: survives the line moving,
+    but a new violation can't cancel against a different removed one."""
+    row = issue["location"]["row"]
+    text = lines[row - 1].strip() if 0 < row <= len(lines) else ""
+    return issue["code"], issue["message"], text
+
+
 def ruff_delta(fp, rel):
     ruff = ruff_bin()
     if not ruff:
         return None
     with open(fp, "rb") as f:
-        now = ruff_issues(ruff, rel, f.read())
+        src = f.read()
+    now = ruff_issues(ruff, rel, src)
     base = run(["git", "show", f"HEAD:{rel}"])
-    before = ruff_issues(ruff, rel, base.stdout) if base.returncode == 0 else []
-    seen = Counter((i["code"], i["message"]) for i in before)
+    old = base.stdout if base.returncode == 0 else b""
+    before = ruff_issues(ruff, rel, old) if old else []
+    old_lines = old.decode("utf-8", "replace").splitlines()
+    new_lines = src.decode("utf-8", "replace").splitlines()
+    seen = Counter(_identity(i, old_lines) for i in before)
     new = []
     for i in now:
-        key = (i["code"], i["message"])
+        key = _identity(i, new_lines)
         if seen[key]:
             seen[key] -= 1
         else:

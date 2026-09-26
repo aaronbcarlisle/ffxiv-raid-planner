@@ -17,6 +17,7 @@ Fails OPEN on unexpected errors (a broken guard must not brick the run).
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 
@@ -34,27 +35,63 @@ def run(cmd, timeout=280):
 
 
 PROTECTED = {"main", "refs/heads/main"}
+# git global options that take their value as the NEXT token (`-C dir`, `-c k=v`).
+GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env"}
+# `git push` options that take their value as the NEXT token.
+PUSH_OPT_WITH_ARG = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
+
+
+def _tokens(seg):
+    try:
+        return shlex.split(seg, posix=True)
+    except ValueError:  # unbalanced quotes — best effort
+        return seg.split()
+
+
+def _push_args(toks):
+    """(git -C dir or None, args after `push`) for a `git ... push ...` command, else None."""
+    for i, t in enumerate(toks):
+        if os.path.basename(t).lower() not in ("git", "git.exe"):
+            continue
+        j, cdir = i + 1, None
+        while j < len(toks) and toks[j].startswith("-"):
+            if toks[j] in GIT_GLOBAL_WITH_ARG:
+                if toks[j] == "-C" and j + 1 < len(toks):
+                    cdir = toks[j + 1]
+                j += 2
+            else:
+                j += 1  # --no-pager, --git-dir=x, --bare, …
+        if j < len(toks) and toks[j] == "push":
+            return cdir, toks[j + 1:]
+    return None
 
 
 def push_targets_main(cmd):
     """True if any `git push` in `cmd` would update main on a remote."""
     for seg in re.split(r"&&|\|\||[;|\n]", cmd):
-        m = re.search(r"\bgit\b(?:\s+-C\s+\S+)?\s+push\b(.*)", seg)
-        if not m:
+        found = _push_args(_tokens(seg))
+        if not found:
             continue
-        toks = m.group(1).split()
-        flags = [t for t in toks if t.startswith("-")]
-        if "--all" in flags or "--mirror" in flags:
-            return True
-        refspecs = [t.strip("'\"") for t in toks if not t.startswith("-")][1:]
-        current = None
+        cdir, args = found
+        positional, k = [], 0
+        while k < len(args):
+            a = args[k]
+            if a in ("--all", "--mirror", "--branches"):
+                return True
+            if a in PUSH_OPT_WITH_ARG:
+                k += 2
+                continue
+            if not a.startswith("-"):
+                positional.append(a)
+            k += 1
+        refspecs = positional[1:]  # positional[0] is the remote
         if not refspecs or any(r.lstrip("+") == "HEAD" for r in refspecs):
-            current = run("git branch --show-current", timeout=10).stdout.strip()
+            git = f'git -C "{cdir}"' if cdir else "git"
+            current = run(f"{git} branch --show-current", timeout=10).stdout.strip()
             if current in PROTECTED:
                 return True
         for r in refspecs:
-            dst = r.lstrip("+").split(":")[-1]
-            if dst in PROTECTED:
+            if r.lstrip("+").split(":")[-1] in PROTECTED:
                 return True
     return False
 
