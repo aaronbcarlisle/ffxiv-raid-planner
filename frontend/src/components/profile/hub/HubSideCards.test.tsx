@@ -12,10 +12,13 @@ vi.mock('../../../stores/personalAvailabilityStore', () => ({
     sel ? sel(availState) : availState,
 }));
 
-const profileFetch = vi.fn();
+const profileState = {
+  fetchProfile: vi.fn(),
+  error: null as string | null,
+};
 vi.mock('../../../stores/playerProfileStore', () => ({
-  usePlayerProfileStore: (sel: (s: { fetchProfile: typeof profileFetch }) => unknown) =>
-    sel({ fetchProfile: profileFetch }),
+  usePlayerProfileStore: (sel: (s: typeof profileState) => unknown) =>
+    sel(profileState),
 }));
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -29,7 +32,7 @@ const baseProfile: PlayerProfile = {
 
 const usableSnap: GearSnapshot = {
   id: 's1', characterId: 'c1', job: 'BRD', source: 'plugin', syncedAt: '2026-09-26T00:00:00Z',
-  lastPluginSeenAt: null, avgItemLevel: 700, createdAt: '', updatedAt: '',
+  lastPluginSeenAt: null, avgItemLevel: 700, createdAt: '2026-09-25T00:00:00Z', updatedAt: '',
   gear: [{ slot: 'weapon', equippedItemLevel: 700 }],
 };
 
@@ -57,6 +60,8 @@ function renderCards(
 beforeEach(() => {
   availState.days = [];
   availState.fetchPersonalAvailability.mockReset();
+  profileState.fetchProfile.mockReset();
+  profileState.error = null;
   setTab.mockClear();
   onOpenLinkModal.mockClear();
   onAddJob.mockClear();
@@ -86,7 +91,9 @@ describe('Characters card', () => {
   it('empty state shown when no character; action opens link modal', () => {
     renderCards({ ...baseProfile, characters: [] });
     expect(screen.getByText('No character linked')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /link character/i }));
+    // Both CharactersCard empty state and ProfileSetupCard next step show "Link character"
+    const linkBtns = screen.getAllByRole('button', { name: /link character/i });
+    fireEvent.click(linkBtns[0]);
     expect(onOpenLinkModal).toHaveBeenCalledTimes(1);
   });
 
@@ -94,6 +101,28 @@ describe('Characters card', () => {
     renderCards();
     fireEvent.click(screen.getByRole('button', { name: /manage/i }));
     expect(setTab).toHaveBeenCalledWith('characters');
+  });
+
+  it('gear line falls back to createdAt when syncedAt is null (no "Never synced")', () => {
+    const snap = { ...usableSnap, syncedAt: null, createdAt: '2026-09-25T00:00:00Z' };
+    renderCards(baseProfile, { c1: [snap] });
+    expect(screen.getByText(/Gear ·/)).toBeInTheDocument();
+    expect(screen.queryByText(/Never synced/)).toBeNull();
+  });
+
+  it('shows error banner and Retry when profile load errored (not "No character linked")', () => {
+    profileState.error = 'Network error';
+    renderCards(null);
+    expect(screen.queryByText('No character linked')).toBeNull();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByText(/Failed to load/)).toBeInTheDocument();
+  });
+
+  it('Retry calls fetchProfile when in error state', () => {
+    profileState.error = 'Network error';
+    renderCards(null);
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+    expect(profileState.fetchProfile).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -143,5 +172,11 @@ describe('Profile setup card', () => {
     expect(btn).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(btn);
     expect(screen.getByRole('button', { name: /hide checklist/i })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('hidden when profile load errored (I2: must not show "Link character" as next step)', () => {
+    profileState.error = 'Network error';
+    renderCards(null);
+    expect(screen.queryByText(/profile setup/i)).toBeNull();
   });
 });

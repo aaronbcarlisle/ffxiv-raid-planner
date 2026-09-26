@@ -14,7 +14,6 @@ import { Dropdown, DropdownContent, DropdownItem, DropdownTrigger } from '../../
 import { Modal } from '../../ui/Modal';
 import { Input } from '../../ui/Input';
 import { InitialsAvatar } from '../../ui/InitialsAvatar';
-import { Tag } from '../../ui/Tag';
 import { useStaticGroupStore } from '../../../stores/staticGroupStore';
 import { useAuthStore } from '../../../stores/authStore';
 import { useToastStore } from '../../../stores/toastStore';
@@ -31,14 +30,13 @@ interface DeleteConfirmProps {
 function DeleteConfirm({ group, onClose }: DeleteConfirmProps) {
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
-  const { deleteGroup, fetchGroups } = useStaticGroupStore();
+  const { deleteGroup } = useStaticGroupStore();
   const addToast = useToastStore((s) => s.addToast);
 
   async function handleDelete() {
     setBusy(true);
     try {
       await deleteGroup(group.id);
-      await fetchGroups();
       addToast({ type: 'success', message: `"${group.name}" deleted.`, duration: 3000 });
       onClose();
     } catch {
@@ -104,14 +102,22 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic }: YourStati
   }
 
   async function handleCopyCode(g: StaticGroupListItem) {
-    await navigator.clipboard.writeText(g.shareCode);
-    addToast({ type: 'success', message: 'Share code copied.', duration: 2000 });
+    try {
+      await navigator.clipboard.writeText(g.shareCode);
+      addToast({ type: 'success', message: 'Share code copied.', duration: 2000 });
+    } catch {
+      addToast({ type: 'error', message: 'Failed to copy share code.', duration: 2000 });
+    }
   }
 
   async function handleCopyLink(g: StaticGroupListItem) {
     const url = `${window.location.origin}/group/${g.shareCode}`;
-    await navigator.clipboard.writeText(url);
-    addToast({ type: 'success', message: 'Share link copied.', duration: 2000 });
+    try {
+      await navigator.clipboard.writeText(url);
+      addToast({ type: 'success', message: 'Share link copied.', duration: 2000 });
+    } catch {
+      addToast({ type: 'error', message: 'Failed to copy share link.', duration: 2000 });
+    }
   }
 
   const hasGroups = groups.length > 0;
@@ -160,8 +166,9 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic }: YourStati
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text-primary">{g.name}</p>
                     <p className="flex items-center gap-1.5 text-xs text-text-muted">
-                      <Tag variant="label" tone={isLinked ? 'info' : 'muted'}>{roleLabel}</Tag>
-                      {g.memberCount} member{g.memberCount !== 1 ? 's' : ''}
+                      {/* design-system-ignore: uses text-membership-* semantic tokens per R-PH1-E */}
+                      <span className={`text-xs font-medium text-membership-${isLinked ? 'linked' : (g.userRole ?? 'member')}`}>{roleLabel}</span>
+                      {`${g.memberCount} member${g.memberCount !== 1 ? 's' : ''}`}
                     </p>
                   </div>
                   <Button
@@ -181,7 +188,7 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic }: YourStati
                       />
                     </DropdownTrigger>
                     <DropdownContent align="end">
-                      <DropdownItem onSelect={() => navigate(`/group/${g.shareCode}`)}>Open</DropdownItem>
+                      <DropdownItem onSelect={() => navigate(buildStaticNavHref(g.shareCode, { remember }))}>Open</DropdownItem>
                       <DropdownItem onSelect={() => void handleCopyCode(g)}>Copy share code</DropdownItem>
                       <DropdownItem onSelect={() => void handleCopyLink(g)}>Copy share link</DropdownItem>
                       <DropdownItem onSelect={() => void handleDuplicate(g)}>Duplicate</DropdownItem>

@@ -61,15 +61,28 @@ function CharactersCard({
   setTab: (tab: HubTab) => void;
 }) {
   const fetchProfile = usePlayerProfileStore((s) => s.fetchProfile);
+  const error = usePlayerProfileStore((s) => s.error);
   const characters = profile?.characters ?? [];
   const mainChar = characters.find((c) => c.isMain) ?? characters[0];
   const alts = characters.filter((c) => c !== mainChar);
   const ordered = mainChar ? [mainChar, ...alts] : characters;
 
   const gearSnap = newestUsableSnapshot(gearSnapshots);
+  // Use syncedAt ?? createdAt for display (same rule as the pick comparison)
   const gearLine = gearSnap
-    ? `Gear · ${formatSyncAge(gearSnap.syncedAt)} · ${formatSource(gearSnap.source)}`
+    ? `Gear · ${formatSyncAge(gearSnap.syncedAt ?? gearSnap.createdAt)} · ${formatSource(gearSnap.source)}`
     : 'No gear saved yet';
+
+  // Error branch: a failed profile load is distinct from "no character linked yet".
+  // Show Retry immediately without falsely suggesting the user must link a character.
+  if (error) {
+    return (
+      <CardShell title="Characters" as="div">
+        <p className="text-xs text-status-error mb-2">Failed to load profile.</p>
+        <Button variant="ghost" size="xs" onClick={() => void fetchProfile()}>Retry</Button>
+      </CardShell>
+    );
+  }
 
   if (characters.length === 0) {
     return (
@@ -90,7 +103,7 @@ function CharactersCard({
           <li key={c.id} className="flex items-center gap-2">
             <SafeAvatar
               src={c.avatarUrl}
-              alt={c.name}
+              alt=""
               className="h-6 w-6 flex-none rounded-full object-cover"
               fallback={
                 <InitialsAvatar
@@ -108,9 +121,6 @@ function CharactersCard({
         ))}
       </ul>
       <p className="text-xs text-text-muted mb-2">{gearLine}</p>
-      {profile === null && (
-        <Button variant="ghost" size="xs" onClick={() => void fetchProfile()}>Retry</Button>
-      )}
       <LinkText onClick={() => setTab('characters')}>Manage →</LinkText>
     </CardShell>
   );
@@ -157,8 +167,13 @@ function ProfileSetupCard({
   onAddJob: () => void;
   setTab: (tab: HubTab) => void;
 }) {
+  const error = usePlayerProfileStore((s) => s.error);
   const { days } = usePersonalAvailabilityStore();
   const [showChecklist, setShowChecklist] = useState(false);
+
+  // When the profile load errored, don't render "Link character" — that would
+  // mislead the user into thinking they haven't linked yet (R-PH1-F).
+  if (error) return null;
 
   const setup = deriveProfileSetup(profile, gearSnapshots, days, {
     onOpenLinkModal,
@@ -183,7 +198,7 @@ function ProfileSetupCard({
         <div className="flex items-center justify-between gap-2 mb-3">
           <span className="text-sm text-text-secondary">{setup.nextStep.label}</span>
           <Button variant="accent-subtle" size="xs" onClick={setup.nextStep.action}>
-            Go
+            {setup.nextStep.label}
           </Button>
         </div>
       )}

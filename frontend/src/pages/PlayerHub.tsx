@@ -6,7 +6,7 @@
  * tabs (with the legacy `?tab=` map from `hubTabs.ts`) and the tab bodies.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs } from '../components/ui/Tabs';
 import { HubIdentityHeader } from '../components/profile/hub/HubIdentityHeader';
 import { HUB_TABS, hubTabForId, hubTabParams, resolveHubTab, type HubTab } from '../components/profile/hub/hubTabs';
@@ -78,6 +78,7 @@ export function PlayerHub({
   onManageBiS,
 }: PlayerHubProps) {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { tab, canonical } = resolveHubTab(searchParams);
   const search = searchParams.toString();
@@ -140,9 +141,7 @@ export function PlayerHub({
           <HubOverview
             profile={profile}
             gearSnapshots={gearSnapshots}
-            collectionSuggestions={collectionSuggestions}
             staticSuggestions={staticSuggestions}
-            groups={groups}
             onOpenLinkModal={onOpenLinkModal}
             onAddJob={onAddJob}
             setTab={setTab}
@@ -222,7 +221,10 @@ export function PlayerHub({
       <SetupWizard
         isOpen={wizardOpen}
         onClose={() => setWizardOpen(false)}
-        onComplete={() => setWizardOpen(false)}
+        onComplete={(_groupId, shareCode) => {
+          setWizardOpen(false);
+          navigate(`/group/${shareCode}`);
+        }}
       />
     </div>
   );

@@ -4,18 +4,15 @@
  * Your statics spans cols 1-2; side stack is col 3.
  */
 
-import type { GearSnapshot, CollectionSuggestion, PlayerProfile, StaticSuggestion } from '../../../stores/playerProfileStore';
+import type { GearSnapshot, PlayerProfile, StaticSuggestion } from '../../../stores/playerProfileStore';
 import type { HubTab } from './hubTabs';
-import type { StaticGroupListItem } from '../../../types';
 import { YourStaticsCard } from './YourStaticsCard';
 import { HubSideCards } from './HubSideCards';
 
 interface HubOverviewProps {
   profile: PlayerProfile | null;
   gearSnapshots: Record<string, GearSnapshot[]>;
-  collectionSuggestions: CollectionSuggestion[];
   staticSuggestions: StaticSuggestion[];
-  groups: StaticGroupListItem[];
   onOpenLinkModal: () => void;
   onAddJob: () => void;
   setTab: (tab: HubTab) => void;

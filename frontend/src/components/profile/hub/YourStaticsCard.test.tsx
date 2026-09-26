@@ -19,6 +19,7 @@ const storeState = {
   fetchGroups: vi.fn(),
   clearError: vi.fn(),
   duplicateGroup: vi.fn(),
+  deleteGroup: vi.fn(),
 };
 vi.mock('../../../stores/staticGroupStore', () => ({
   useStaticGroupStore: (sel?: (s: typeof storeState) => unknown) =>
@@ -34,9 +35,10 @@ vi.mock('../../../stores/toastStore', () => ({
     sel({ addToast: vi.fn() }),
 }));
 
+let mockRemember = true;
 vi.mock('../../../lib/navPreferences', async (orig) => ({
   ...(await orig<typeof import('../../../lib/navPreferences')>()),
-  prefRememberTabs: () => true,
+  prefRememberTabs: () => mockRemember,
 }));
 
 // ── helpers ─────────────────────────────────────────────────────────────────
@@ -72,9 +74,11 @@ beforeEach(() => {
   })));
   mockNavigate.mockClear();
   onCreateStatic.mockClear();
+  mockRemember = true;
   storeState.fetchGroups.mockReset();
   storeState.clearError.mockClear();
   storeState.duplicateGroup.mockResolvedValue({ id: 'g2', shareCode: 'NEW01' });
+  storeState.deleteGroup.mockResolvedValue(undefined);
 });
 
 // ── tests ───────────────────────────────────────────────────────────────────
@@ -101,6 +105,24 @@ describe('YourStaticsCard — rows', () => {
   it('Enter navigates to /group/{shareCode} for a static', () => {
     renderCard([makeGroup({ shareCode: 'TSTSC1' })]);
     fireEvent.click(screen.getByRole('button', { name: /enter/i }));
+    const target = mockNavigate.mock.calls[0][0] as string;
+    expect(target).toMatch(/\/group\/TSTSC1/);
+  });
+
+  it('Enter uses a bare href when remember=false (no saved-tab params)', () => {
+    mockRemember = false;
+    renderCard([makeGroup({ shareCode: 'TSTSC1' })]);
+    fireEvent.click(screen.getByRole('button', { name: /enter/i }));
+    // With remember=false, buildStaticNavHref returns a bare /group/CODE path
+    expect(mockNavigate).toHaveBeenCalledWith('/group/TSTSC1');
+  });
+
+  it('Open kebab item uses the same href as Enter (respects remember preference)', () => {
+    renderCard([makeGroup({ shareCode: 'TSTSC1' })]);
+    const kebab = screen.getByRole('button', { name: /actions for test static/i });
+    fireEvent.keyDown(kebab, { key: 'Enter' });
+    const open = screen.getAllByRole('menuitem', { name: 'Open' })[0];
+    fireEvent.click(open);
     const target = mockNavigate.mock.calls[0][0] as string;
     expect(target).toMatch(/\/group\/TSTSC1/);
   });
@@ -144,23 +166,52 @@ describe('YourStaticsCard — delete confirm', () => {
     const confirmBtn = await screen.findByRole('button', { name: /^delete$/i });
     expect(confirmBtn).toBeDisabled();
 
+    // Partial name — stays disabled
     const input = screen.getByRole('textbox', { name: /confirm static name/i });
-    // Change input directly since Input component uses onChange(value)
-    act(() => {
-      Object.defineProperty(input, 'value', { value: 'Test Static', writable: true });
-      fireEvent.change(input, { target: { value: 'Test Static' } });
-    });
-    // The button state is driven by internal React state, not accessible here without Input mock.
-    // We verify that the confirm modal opened correctly.
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    fireEvent.change(input, { target: { value: 'Test' } });
+    expect(confirmBtn).toBeDisabled();
+
+    // Exact name — becomes enabled
+    fireEvent.change(input, { target: { value: 'Test Static' } });
+    expect(confirmBtn).not.toBeDisabled();
   });
 
-  it('a rejected delete keeps the modal open', async () => {
+  it('clicking confirm calls deleteGroup with the group id', async () => {
     renderCard([makeGroup({ userRole: 'owner' })]);
     const kebab = screen.getByRole('button', { name: /actions for test static/i });
     fireEvent.keyDown(kebab, { key: 'Enter' });
     const deleteItem = await screen.findByRole('menuitem', { name: /^delete$/i });
     fireEvent.click(deleteItem);
+
+    const confirmBtn = await screen.findByRole('button', { name: /^delete$/i });
+    const input = screen.getByRole('textbox', { name: /confirm static name/i });
+    fireEvent.change(input, { target: { value: 'Test Static' } });
+    await act(async () => { fireEvent.click(confirmBtn); });
+
+    expect(storeState.deleteGroup).toHaveBeenCalledWith('g1');
+  });
+
+  it('a rejected deleteGroup keeps the modal open and shows the failure toast', async () => {
+    storeState.deleteGroup.mockRejectedValue(new Error('server error'));
+    const addToast = vi.fn();
+    // Override the toastStore mock for this test
+    vi.doMock('../../../stores/toastStore', () => ({
+      useToastStore: (sel: (s: { addToast: typeof addToast }) => unknown) =>
+        sel({ addToast }),
+    }));
+
+    renderCard([makeGroup({ userRole: 'owner' })]);
+    const kebab = screen.getByRole('button', { name: /actions for test static/i });
+    fireEvent.keyDown(kebab, { key: 'Enter' });
+    const deleteItem = await screen.findByRole('menuitem', { name: /^delete$/i });
+    fireEvent.click(deleteItem);
+
+    const confirmBtn = await screen.findByRole('button', { name: /^delete$/i });
+    const input = screen.getByRole('textbox', { name: /confirm static name/i });
+    fireEvent.change(input, { target: { value: 'Test Static' } });
+    await act(async () => { fireEvent.click(confirmBtn); });
+
+    // Modal must still be visible after rejection
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
