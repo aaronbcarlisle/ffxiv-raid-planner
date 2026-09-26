@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Home, Search } from 'lucide-react';
 import { AppRail } from './AppRail';
-import type { RailEntry } from './railTypes';
+import type { RailEntry, RailAvatarItem } from './railTypes';
 
 beforeEach(() => {
   // jsdom has no matchMedia; Tooltip -> useDevice depends on it.
@@ -196,5 +196,49 @@ describe('AppRail', () => {
     expect(classTokens).toContain('sm:flex');
     expect(classTokens).toContain('flex-col');
     expect(classTokens).not.toContain('flex');
+  });
+});
+
+describe('AppRail avatar portrait — SafeAvatar fallback (R-PH1-G)', () => {
+  function avatarEntry(imageUrl?: string): RailAvatarItem {
+    return {
+      kind: 'avatar',
+      id: 'player-hub',
+      label: 'Player Hub',
+      initials: 'AF',
+      imageUrl,
+      isActive: true,
+      onSelect: vi.fn(),
+    };
+  }
+
+  it('renders an img for an allowed (safe) imageUrl', () => {
+    render(<AppRail entries={[avatarEntry('https://img2.finalfantasyxiv.com/avatar.png')]} />);
+    const btn = screen.getByRole('button', { name: 'Player Hub' });
+    expect(btn.querySelector('img')).not.toBeNull();
+    expect(screen.queryByText('AF')).toBeNull();
+  });
+
+  it('falls back to initials when the imageUrl is from a blocked host', () => {
+    render(<AppRail entries={[avatarEntry('https://blocked.example.com/avatar.png')]} />);
+    // SafeAvatar blocks untrusted hosts → InitialsAvatar renders
+    expect(screen.getByText('AF')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('falls back to initials on img onError (load failure)', () => {
+    render(<AppRail entries={[avatarEntry('https://img2.finalfantasyxiv.com/broken.png')]} />);
+    const img = screen.getByRole('button', { name: 'Player Hub' }).querySelector('img');
+    expect(img).not.toBeNull();
+    // Simulate load error — SafeAvatar tracks errored state and shows fallback
+    fireEvent.error(img!);
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByText('AF')).toBeInTheDocument();
+  });
+
+  it('renders initials when no imageUrl is provided', () => {
+    render(<AppRail entries={[avatarEntry(undefined)]} />);
+    expect(screen.getByText('AF')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).toBeNull();
   });
 });

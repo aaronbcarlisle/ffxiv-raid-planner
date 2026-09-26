@@ -137,6 +137,12 @@ vi.mock('../layout/TopBar', () => ({
 }));
 vi.mock('../layout/CommandPalette', () => ({ CommandPalette: () => null }));
 vi.mock('../../pages/V2SettingsHost', () => ({ V2SettingsHost: () => null }));
+// R-PH1-G: AppChrome now reads usePlayerProfileStore for the rail portrait;
+// stub with no profile so fetchProfile is not called against the network.
+vi.mock('../../stores/playerProfileStore', () => ({
+  usePlayerProfileStore: (sel: (s: Record<string, unknown>) => unknown) =>
+    sel({ profile: null, fetchProfile: vi.fn() }),
+}));
 // Backstop: no store action may hit the network in jsdom.
 vi.mock('../../services/api', () => ({
   api: {
