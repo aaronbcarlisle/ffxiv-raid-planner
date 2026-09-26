@@ -51,6 +51,12 @@ from app.schemas import (
 from app.schemas.loot_tracking import LootMethodEnum
 
 from app.services.priority_calculator import calculate_all_floors_priority, calculate_floor_priority, UPGRADE_MATERIAL_SLOTS, requires_augmentation
+from app.services.loot_context import (
+    calculate_week_number,
+    TIER_FLOOR_NAMES,
+    player_to_priority_dict as _player_to_dict,
+    material_entry_to_priority_dict as _material_entry_to_dict,
+)
 
 router = APIRouter(prefix="/api/static-groups", tags=["loot-tracking"])
 
@@ -101,15 +107,6 @@ async def get_tier_snapshot(
     if not tier:
         raise HTTPException(status_code=404, detail="Tier snapshot not found")
     return tier
-
-
-def calculate_week_number(tier: TierSnapshot) -> int:
-    """Calculate current week number based on tier start date"""
-    start_date_str = tier.week_start_date or tier.created_at
-    start_date = datetime.fromisoformat(start_date_str)
-    now = datetime.now(timezone.utc)
-    weeks_since_start = (now - start_date).days // 7
-    return weeks_since_start + 1
 
 
 async def ensure_week_start_date(session: AsyncSession, tier: TierSnapshot) -> None:
@@ -1601,47 +1598,6 @@ async def get_material_balances(
 
 
 # Priority Calculation Endpoint
-
-
-# Tier ID to floor names mapping (must match frontend/src/gamedata/raid-tiers.ts).
-# When adding a new tier, update both this dict and the frontend raid-tiers.ts.
-# Unknown tiers fall back to generic ["F1S", "F2S", "F3S", "F4S"] names.
-TIER_FLOOR_NAMES: dict[str, list[str]] = {
-    "aac-heavyweight": ["M9S", "M10S", "M11S", "M12S"],
-    "aac-cruiserweight": ["M5S", "M6S", "M7S", "M8S"],
-    "aac-light-heavyweight": ["M1S", "M2S", "M3S", "M4S"],
-    "anabaseios": ["P9S", "P10S", "P11S", "P12S"],
-}
-
-
-def _player_to_dict(player: SnapshotPlayer) -> dict:
-    """Convert a SnapshotPlayer ORM model to a dict matching the TypeScript SnapshotPlayer shape.
-
-    Note: weaponPriorities is omitted because the priority calculator only uses gear slots,
-    role, job, and loot adjustment — weapon priorities are a UI-only concern for weapon drops.
-    """
-    return {
-        "id": player.id,
-        "name": player.name,
-        "job": player.job,
-        "role": player.role,
-        "position": player.position,
-        "gear": player.gear or [],
-        "tomeWeapon": player.tome_weapon or {},
-        "lootAdjustment": player.loot_adjustment or 0,
-        "priorityModifier": player.priority_modifier or 0,
-        "configured": player.configured,
-        "isSubstitute": player.is_substitute,
-    }
-
-
-def _material_entry_to_dict(entry: MaterialLogEntry) -> dict:
-    """Convert a MaterialLogEntry ORM model to a dict for the priority calculator."""
-    return {
-        "materialType": entry.material_type,
-        "recipientPlayerId": entry.recipient_player_id,
-        "slotAugmented": entry.slot_augmented,
-    }
 
 
 @router.get("/{group_id}/tiers/{tier_id}/priority")
