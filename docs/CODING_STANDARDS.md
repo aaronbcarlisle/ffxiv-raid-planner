@@ -10,6 +10,7 @@ This document defines the coding standards, naming conventions, and patterns use
 - [CSS & Styling](#css--styling)
 - [Component Patterns](#component-patterns)
 - [UI Component Selection](#ui-component-selection) ← **Read before implementing UI**
+- [Domain Patterns](#domain-patterns)
 - [State Management](#state-management)
 - [Git Conventions](#git-conventions)
 - [Versioning](#versioning) ← **Follow semver for releases**
@@ -542,6 +543,31 @@ Use semantic sizes, never arbitrary `text-[Npx]`:
 - `text-lg`+ — headings
 
 **Floor rule:** no `text-[Npx]` below `text-xs` for readable text. The only sub-12px allowed is a numeric **badge count**, and never below `text-[9px]`. Never use `text-[7px]`/`text-[8px]`. Map arbitrary sizes: `text-[10–12px]` → `text-xs`, `text-[13px]` → `text-sm`. See [DESIGN_SYSTEM_SUMMARY.md](./DESIGN_SYSTEM_SUMMARY.md#-typography-scale--size-floor) for the full table.
+
+---
+
+## Domain Patterns
+
+Moved from CLAUDE.md (2026-09-26). Product rules that code must respect.
+
+### Key Patterns
+
+- **Gear reset:** Reset progress (clear hasItem/isAugmented, keep BiS) · Unlink BiS (clear bisLink/metadata, keep progress) · Reset everything.
+- **Tome weapon:** the BiS weapon is ALWAYS raid; the "Raid + Tome" toggle tracks an interim tome weapon. Never model the weapon as raid OR tome.
+- **iLv:** `bisSource` = BiS target (raid/tome); `currentSource` = what is equipped (9 categories); iLv uses the imported `itemLevel`, falling back to category math.
+- **Drag:** cross-group drag auto-swaps position (T1↔T2, H1↔H2, …). While a modal is open set the drag sensor distance to 999999.
+- **Destructive actions:** `useDoubleClickConfirm` — first click arms ("Confirm?"), second executes, auto-resets after 3 s.
+- **UI state:** localStorage keys `group-view-tab`, `loot-priority-subtab`, `party-view-mode`, `history-week-{groupId}-{tierId}`, `selected-tier-{groupId}`. All new tab/sub-tab URL syncing goes through `useUrlTabState`. Settings panel open/close + tab live in `settingsPanelStore` (Zustand), not the URL.
+- **Share links:** Shift+Click on the share code copies a `?tier=` URL; on load URL param > localStorage > active tier.
+- **Auth:** tokens in secure httpOnly cookies, SameSite=Lax, refresh on app load.
+- **Shortcuts:** `Shift+?` in GroupView — `hooks/useKeyboardShortcuts.ts`, `KeyboardShortcutsHelp.tsx`.
+- **Zustand:** use the selector hooks (`useTierPlayers`, `usePlayersByGroup`, `useCurrentTierMeta` from `stores/tierStore`) to avoid re-renders.
+- **SetupWizard** (Details → Roster → Share → Review) keeps transient local React state. **PlayerSetupBanner** on cards: unclaimed → "Assign Player" (owner/lead) or "Take Ownership" (member); claimed + no BiS → "Import BiS"; fully configured → hidden.
+- **Tier banners:** `cd frontend && python scripts/blend_tier_banners.py --fetch`.
+
+### Styling Summary
+
+Dark theme, teal accent (`index.css`). Exo 2 display + Inter body (`--font-display`, `--font-sans`). Motion presets in `lib/motion.ts` and `.stagger-children`; everything respects `prefers-reduced-motion`. Role colors tank #5a9fd4 · healer #5ad490 · melee #d45a5a · ranged #d4a05a · caster #b45ad4 — always via tokens (`text-role-tank` …). Semantic tokens: `text-membership-{owner|lead|member|viewer|linked}`, `text-material-{twine|glaze|solvent|tomestone}`, `status-{success|warning|error|info}`. Disabled = `opacity-50 cursor-not-allowed`.
 
 ---
 

@@ -77,6 +77,10 @@ every finding and for any check you'd otherwise answer with a bare "yes."
     is a finding.
   - Design-system / token rules: no raw hex in components, semantic tokens only,
     12px readable floor. Vocabulary: "static" never "group" in user-facing copy.
+  - Duplication (jscpd): judge clone pairs as a delta against main's current
+    clone-pair list, never against a fixed count — the count drifts between
+    releases with no new duplication. Only a clone pair the diff introduces is
+    a finding.
 
 Your final message **is** the report: begin directly with the spec-compliance
 verdict. Every line is a verdict, a finding with file:line, or a check you ran —
