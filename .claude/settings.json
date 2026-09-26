@@ -25,15 +25,12 @@
       "Bash(git reset --hard*)",
       "Bash(git tag -d*)",
       "Bash(git tag --delete*)",
-      "Bash(git push * --delete*)",
-      "Bash(git push * :*)",
       "Bash(git worktree remove*)",
       "Bash(gh repo delete*)",
       "PowerShell(git push --force*)",
       "PowerShell(git push -f*)",
       "PowerShell(git reset --hard*)",
-      "PowerShell(git tag -d*)",
-      "PowerShell(git push * --delete*)"
+      "PowerShell(git tag -d*)"
     ]
   },
   "hooks": {
