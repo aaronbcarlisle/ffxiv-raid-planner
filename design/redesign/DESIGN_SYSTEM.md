@@ -80,7 +80,7 @@ The old "data pages have no sidebar" rule is **retired**. The app now has a pers
 
 - **Rail** = Person layer (you, Player Hub, Static Finder, your statics). Always present. `72px`.
 - **Top bar** = static/track/week context + global actions. Present inside a static.
-- **Spine** = the 4 job tabs. Present inside a static. The Person layer has **no spine** (Player Hub/Finder are railed, tabless).
+- **Spine** = the 4 job tabs. Present inside a static. The Person layer has **no spine** (Player Hub/Finder are railed). The V2 Player Hub has an in-page tab bar under its identity header (`Tabs`, Overview · Characters & gear · Availability · Tracking · Sharing — PH1, spec H-3), not a spine.
 - **No fourth nav surface.** "More" is deleted. Settings is one place (top-bar gear).
 
 **Visual containment principle (kept, re-stated):** regions must read as defined zones, not elements floating on one identical background. Rail and top bar sit on `surface-raised`; content on `surface-base`; cards on `surface-card`. Depth = hierarchy.
@@ -95,7 +95,7 @@ The rail lives *outside* these; they cap the **content column**. (The old 2560px
 |---|---|---|
 | `size.container.data` | 2160px | data-dense spine pages (Roster, Loot) on ultrawide |
 | `size.container.standard` | 1760px | Home, Schedule (dashboards) |
-| `size.container.focus` | 1100px | Player Hub, settings, forms |
+| `size.container.focus` | 1100px | settings, forms (the V2 Player Hub uses the 120rem cap, left-aligned — PH1) |
 | `size.container.doc` | 960px | docs / reading |
 
 Content centers within `min(94vw, <ceiling>)` so ultrawide reads as designed.
@@ -242,6 +242,7 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
 - **Motion gap (v3.1):** enter/exit animation for the pill indicator and hover state are not yet specified — flagged under §7 (motion tokens).
 - **Built F6a (Task 7):** Delivered as `AppRail` (`frontend/src/components/layout/AppRail.tsx`) against this spec. Tokens scoped in Task 1 (`nav.*` / `surface.nav` / `motion.nav-pill`); hover/pressed state + SPA static-switch landed in the Task 7 review fixes. Motion (pill enter/exit) deferred to v3.1 per the gap above.
 - **Responsive (flip-p1 Task 6):** hidden below the `sm` breakpoint (`hidden sm:flex`, mirroring the legacy rail) — `MobileBottomNav` serves small viewports until the Ring-1 mobile pass gives the rail its own collapsed/narrow treatment.
+- **Player Hub portrait (PH1, 2026-09-26; spec H-2):** the first entry (signed-in only) is an **avatar** item labelled "Player Hub" — the main character's Lodestone portrait, or their initials (fallback chain: main character name → display name → Discord name). Avatar images render through `SafeAvatar` (allowlisted hosts; a blocked or failing image falls back to the `InitialsAvatar`). Same active pill, tooltip and 44px target as every item. The Home glyph is retired.
 
 ### 3.10 CommandPalette — F6a
 

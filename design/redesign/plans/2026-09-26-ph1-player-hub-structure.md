@@ -129,4 +129,11 @@ Size: ~250 lines incl. tests.
 
 **Gates (on the branch, pasted into the PR body):** `pnpm build` ✓ · `pnpm lint` 0 errors, warnings ≤ 809 · `pnpm check:design-system:strict` ✓ · `pnpm test` ≥ 3444 passing · `pnpm deadcode` ≤ 8 files / 179 exports / 139 types · `pnpm dupes` ≤ 321 clones · V1 `/profile` + `/dashboard` unchanged · light + dark shots of every touched surface.
 
-**Budget:** ~1,550–1,650 changed lines (code + tests) + docs across the slice, shipped as the two stacked PRs above: PH1a (Tasks 1–2, ~1,300–1,400) and PH1b (Task 3, ~250), each under the ~1,500 cap.
+**Budget:** ~1,550–1,650 changed lines (code + tests) + docs across the slice, shipped as the two stacked PRs above: PH1a (Tasks 1–2, ~1,300–1,400) and PH1b (Task 3, ~250), each under the ~1,500 cap. **SUPERSEDED — see "Outcome" below (three PRs).**
+
+## Outcome (2026-09-26)
+
+- **Size and split.** Task 1 landed at ~1,150 lines and Task 2 at ~1,305 (both about twice the estimate, mostly tests), so the planned two-PR split was amended to **three stacked PRs, one per task**, merged together as one stack: **PH1a** = spec + plan + Task 1 (+ its fix-wave commit), **PH1b** = Task 2 (+ fix wave), **PH1c** = Task 3 (+ fix wave) + this write-back. Each is under the ~1,500 cap; the stack is merged in one sitting so `main` never has an Overview-less Hub.
+- **Rulings that bind later slices:** `hubTabParams` drops `focus` only when switching to Overview (otherwise Overview is unreachable from a focus URL); the Characters card's error/Retry branches on the profile store's `error`, never on `profile === null` (also the cold first frame); `AppChrome` refetches the profile when `profile.userId !== user.id` and only trusts a matching profile for the portrait and breadcrumb.
+- **Reviews:** Task 1 task-scoped 0 C / 0 I / 9 M; whole-branch 0 C / 3 I (wizard `onComplete` suppressed the landing navigation; unreachable profile-load Retry; vacuous delete-confirm tests) — one fix wave, re-review all Important addressed. Residual minors are listed in the PR bodies and `ROLLOUT_ROADMAP.md` §7.
+- **Browser pass:** PASS in both themes at 1440 and 2560 (owner, member, static-less); V1 `/profile` and `/dashboard` unchanged; 0 console errors. The portrait `<img>` path is unit-tested only — no dev user has a linked character.
