@@ -29,12 +29,15 @@ export interface StatCellProps {
 export function StatCell({ value, label, detail, valueClassName, align = 'center' }: StatCellProps) {
   const alignClass = align === 'start' ? 'text-left' : 'text-center';
   const valueColor = valueClassName ?? 'text-text-primary';
+  // Explicit check, not truthiness: a numeric `detail` of 0 must render inside
+  // the detail block, not leak a bare "0" text node (`{0 && …}` renders 0).
+  const hasDetail = detail !== undefined && detail !== null && detail !== false;
 
   return (
     <div className={alignClass}>
       <p className={`text-lg font-display font-bold tabular-nums leading-none ${valueColor}`}>{value}</p>
       <p className="mt-1 text-xs uppercase tracking-wide text-text-tertiary leading-none">{label}</p>
-      {detail && <div className="mt-1 text-xs text-text-tertiary">{detail}</div>}
+      {hasDetail && <div className="mt-1 text-xs text-text-tertiary">{detail}</div>}
     </div>
   );
 }

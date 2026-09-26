@@ -41,6 +41,25 @@ describe('StatCell', () => {
     expect(screen.queryByText(/obtained/)).not.toBeInTheDocument();
   });
 
+  // PR #276 review: `{detail && …}` leaked a numeric 0 as a bare text node
+  // on the cell root instead of rendering it in the detail block.
+  it('renders detail={0} inside the detail block', () => {
+    const { container } = render(<StatCell value="7" label="Drops" detail={0} />);
+    const root = container.firstElementChild as HTMLElement;
+    const detailBlocks = Array.from(root.children).filter((el) => el.tagName === 'DIV');
+    expect(detailBlocks).toHaveLength(1);
+    expect(detailBlocks[0]).toHaveTextContent(/^0$/);
+    expect(detailBlocks[0]).toHaveClass('text-text-tertiary');
+    expect(screen.getByText('0')).toBe(detailBlocks[0]);
+  });
+
+  it('renders no detail block when detail is undefined', () => {
+    const { container } = render(<StatCell value="7" label="Drops" detail={undefined} />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(Array.from(root.children).filter((el) => el.tagName === 'DIV')).toHaveLength(0);
+    expect(root.children).toHaveLength(2);
+  });
+
   it('centers by default and left-aligns with align="start"', () => {
     const { rerender } = render(<StatCell value="1" label="X" />);
     expect(screen.getByText('X').parentElement).toHaveClass('text-center');
