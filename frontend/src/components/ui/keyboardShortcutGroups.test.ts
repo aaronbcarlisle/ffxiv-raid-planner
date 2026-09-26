@@ -69,6 +69,24 @@ describe('keyboardShortcutGroups — V2_SHORTCUT_GROUPS (R-D14-A/H)', () => {
     ]));
   });
 
+  it('PH1a: the static nav keys and the Player Hub tab keys each name their surface', () => {
+    const byTitle = new Map(V2_SHORTCUT_GROUPS.map((g) => [g.title, g.shortcuts.map(text)]));
+    expect(byTitle.get('Navigation')).toEqual(expect.arrayContaining([
+      '` → Home (Static)',
+      '1 → Schedule (Static)',
+      '2 → Roster (Static)',
+      '3 → Tracking (Static)',
+      '4 → Loot (Static)',
+    ]));
+    expect(byTitle.get('Player Hub')).toEqual([
+      '` → Overview (Player Hub)',
+      '1 → Characters & gear (Player Hub)',
+      '2 → Availability (Player Hub)',
+      '3 → Tracking (Player Hub)',
+      '4 → Sharing (Player Hub)',
+    ]);
+  });
+
   it('keeps exactly one adminOnly row, the Admin Dashboard one', () => {
     const admin = rows(V2_SHORTCUT_GROUPS).filter((s) => s.adminOnly);
     expect(admin.map(text)).toEqual(['Ctrl+Shift+S → Admin Dashboard']);

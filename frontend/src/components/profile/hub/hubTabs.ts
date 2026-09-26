@@ -18,6 +18,12 @@ export const HUB_TABS: ReadonlyArray<{ id: HubTab; label: string }> = [
   { id: 'sharing', label: 'Sharing' },
 ];
 
+/** The Hub's tab key: `` ` `` for the first tab, then `1`–`4` — the static
+ *  nav keys, rebound per surface. Shared by `PlayerHub` and the v2 help list. */
+export function hubTabShortcutKey(index: number): string {
+  return index === 0 ? '`' : String(index);
+}
+
 const TAB_FOR_ID: Record<string, HubTab> = {
   characters: 'characters',
   availability: 'availability',
