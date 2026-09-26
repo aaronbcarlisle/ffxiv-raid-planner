@@ -340,6 +340,8 @@ describe('AppChrome Player Hub portrait (R-PH1-G)', () => {
     mocks.profile = null;
     renderChrome('/profile');
     expect(mocks.fetchProfile).toHaveBeenCalledTimes(1);
+    // A plain fetch joins any in-flight GET (Profile.tsx's mount) — one request.
+    expect(mocks.fetchProfile).toHaveBeenCalledWith();
   });
 
   it('does not call fetchProfile when a profile is already loaded', () => {
@@ -361,6 +363,8 @@ describe('AppChrome Player Hub portrait (R-PH1-G)', () => {
     mocks.profile = { userId: 'u1', characters: [] };
     renderChrome('/profile');
     expect(mocks.fetchProfile).toHaveBeenCalledTimes(1);
+    // Forced: never joins a pre-switch GET still in flight.
+    expect(mocks.fetchProfile).toHaveBeenCalledWith({ force: true });
   });
 
   it('does not show the stale profile portrait when profile.userId !== user.id', () => {

@@ -57,19 +57,23 @@ export function AppChrome({ children }: AppChromeProps) {
   const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
 
   // R-PH1-G: read the player profile for the rail portrait. AppChrome fetches
-  // once when the user is signed in and no profile is loaded. The effect depends
-  // on `user` only — a rejected fetch never loops (profile is not in the deps).
+  // when the user is signed in and the loaded profile is not theirs. With no
+  // profile yet the call joins any in-flight GET (Profile.tsx's mount fires one
+  // on /profile), so the Hub issues ONE GET. Another account's profile (a stale
+  // result after an account switch) forces a fresh GET, which supersedes any
+  // pre-switch request (see the store's fetch coordination). Keyed on the
+  // owner id, not the profile object: a rejected fetch leaves it unchanged and
+  // a repeat mismatch leaves it unchanged, so neither loops.
   // Side effect (disclosed in PR): GET /api/player/profile creates the profile
   // row when missing, so V2 users get a row at app load rather than on first
   // /profile visit.
   const profile = usePlayerProfileStore((s) => s.profile);
   const fetchProfile = usePlayerProfileStore((s) => s.fetchProfile);
+  const profileOwnerId = profile?.userId ?? null;
   useEffect(() => {
-    if (user && (!profile || profile.userId !== user.id)) {
-      fetchProfile();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchProfile, user]);
+    if (!user || profileOwnerId === user.id) return;
+    void (profileOwnerId === null ? fetchProfile() : fetchProfile({ force: true }));
+  }, [fetchProfile, user, profileOwnerId]);
 
   // On a group route: which static is active (drives avatar isActive, the §1
   // host contract below, and the empty top-bar placeholder while the lazy

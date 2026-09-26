@@ -241,4 +241,18 @@ describe('AppRail avatar portrait — SafeAvatar fallback (R-PH1-G)', () => {
     expect(screen.getByText('AF')).toBeInTheDocument();
     expect(screen.queryByRole('img')).toBeNull();
   });
+
+  it('shows the new portrait when imageUrl changes after a load error (PR #282)', () => {
+    const portraitImg = () => screen.getByRole('button', { name: 'Player Hub' }).querySelector('img');
+    const { rerender } = render(<AppRail entries={[avatarEntry('https://img2.finalfantasyxiv.com/old.png')]} />);
+    const oldImg = portraitImg();
+    expect(oldImg).not.toBeNull();
+    if (oldImg) fireEvent.error(oldImg);
+    expect(portraitImg()).toBeNull();
+
+    // Same rail item identity, new account's portrait: the old error must not stick.
+    rerender(<AppRail entries={[avatarEntry('https://img2.finalfantasyxiv.com/new.png')]} />);
+    expect(portraitImg()).toHaveAttribute('src', 'https://img2.finalfantasyxiv.com/new.png');
+    expect(screen.queryByText('AF')).toBeNull();
+  });
 });

@@ -97,8 +97,10 @@ function RailAvatarItemButton({ entry }: RailAvatarItemProps) {
         )}
         {/* R-PH1-G: SafeAvatar blocks untrusted hosts and fires onError on load
             failures — both cases fall back to InitialsAvatar so the rail never
-            shows a broken image. */}
+            shows a broken image. Keyed on the URL: SafeAvatar's error state
+            survives a src change, so a new portrait must remount it. */}
         <SafeAvatar
+          key={entry.imageUrl}
           src={entry.imageUrl}
           alt=""
           className="rounded-full object-cover"
