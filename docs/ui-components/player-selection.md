@@ -116,7 +116,44 @@ import { TankRoleSelector } from '../components/player/TankRoleSelector';
 />
 ```
 
-**When to use:** Tank-specific role assignment.
+**When to use:** Tank-specific role assignment. V1 only — the V2 roster card uses `TankSeatSelector` instead (below).
+
+---
+
+### TankSeatSelector
+
+**Path:** `components/player/TankSeatSelector.tsx`
+
+**Purpose:** the V2 roster card's tank seat — role (MT/OT) and raid position (T1/T2) merged into one chip and one popover, so the card's header stays on one line. `TankRoleSelector` and `PositionSelector` stay untouched for V1.
+
+**Props:**
+```typescript
+interface TankSeatSelectorProps {
+  tankRole: TankRole | null | undefined;
+  position: RaidPosition | null | undefined;
+  onTankRoleSelect: (role: TankRole | undefined) => void;
+  onPositionSelect: (position: RaidPosition | undefined) => void;
+  player: SnapshotPlayer;
+  userRole?: MemberRole | null;
+  currentUserId?: string;
+  isAdmin?: boolean;
+}
+```
+
+**Usage:**
+```tsx
+import { TankSeatSelector } from '../components/player/TankSeatSelector';
+
+<TankSeatSelector
+  tankRole={player.tankRole}
+  position={player.position}
+  onTankRoleSelect={(role) => updatePlayer({ ...player, tankRole: role ?? null })}
+  onPositionSelect={(position) => updatePlayer({ ...player, position: position ?? null })}
+  player={player}
+/>
+```
+
+**When to use:** V2 roster card, tank players only. A pick does not close the popover — the two halves are usually set together.
 
 ---
 

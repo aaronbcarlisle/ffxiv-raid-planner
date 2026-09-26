@@ -18,6 +18,11 @@
  *     expanded gear table (C2) and on the Board — both through the one shared
  *     mutation path (`computeGearSlotUpdate`, mirrored from
  *     `PlayerCard.handleGearChange`).
+ *   - E2 (R-E2-D, option 2b): the header is ONE line that never wraps —
+ *     avatar · name · one seat chip (TankSeatSelector for tanks, the unchanged
+ *     PositionSelector otherwise, riding PlayerIdentity's name-line slot) ·
+ *     iLvl · kebab. SUB and "+N" moved to the subtitle, before the job text;
+ *     the job swap moved into the kebab ("Change Job"). Only the name shrinks.
  *   - Job change opens a card-owned confirm (Modal + RadioGroup). C7 (D-15)
  *     restored legacy's third outcome: the RadioGroup's modes are keep /
  *     update (change the job, then hand off to the import) / unlink, and the
@@ -31,6 +36,7 @@ import { AlertTriangle, ExternalLink, MoreVertical, Repeat, Swords, Target } fro
 import {
   CardShell,
   ContextMenu,
+  type ContextMenuItem,
   Input,
   LinkText,
   Modal,
@@ -58,7 +64,7 @@ import { equippedAverageIlv } from './rosterIlv';
 import { Button, IconButton, LongPressTooltip, Popover, PopoverContent, PopoverTrigger, Tooltip } from '../primitives';
 import { JobPicker } from '../player/JobPicker';
 import { PositionSelector } from '../player/PositionSelector';
-import { TankRoleSelector } from '../player/TankRoleSelector';
+import { TankSeatSelector } from '../player/TankSeatSelector';
 import {
   useRosterCardActions,
   type RosterCardActions,
@@ -71,12 +77,12 @@ import {
   calculateAverageItemLevel,
   computeGearSlotUpdate,
   fromGearState,
-  isSlotComplete,
   requiresAugmentation,
   toGearState,
   type GearState,
 } from '../../utils/calculations';
 import { relevantGear } from '../../utils/offhand';
+import { playerBisProgress } from '../../utils/playerBisProgress';
 import { canEditGear, canEditPlayer, type MemberRole } from '../../utils/permissions';
 import { formatSource } from '../profile/freshness';
 import { eventBus, Events } from '../../lib/eventBus';
@@ -416,6 +422,8 @@ export function RosterCard({
   const editingRef = useRef(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [showJobPicker, setShowJobPicker] = useState(false);
+  const kebabRef = useRef<HTMLButtonElement>(null);
+  const jobPickerRef = useRef<HTMLDivElement>(null);
   const [pendingJob, setPendingJob] = useState<string | null>(null);
   const [jobChangeMode, setJobChangeMode] = useState<JobChangeMode>('keep');
   const [hookModalOpen, setHookModalOpen] = useState(false);
@@ -488,6 +496,18 @@ export function RosterCard({
     setDraftName(player.name);
     setIsEditingName(true);
   };
+  // The seat chip and the subtitle tags now live inside the rename target
+  // (R-E2-D), and their portaled popovers are its React children, so a
+  // double-click that lands on a control, on a SUB / "+N" tag (marked
+  // `data-rename-ignore` — their tooltip is the tag's own interaction), or
+  // outside the wrapper's own DOM belongs to that element — never a rename.
+  const onIdentityDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (!e.currentTarget.contains(target)) return;
+    const control = target.closest('button, a, input, [role="button"], [data-rename-ignore]');
+    if (control && e.currentTarget.contains(control)) return;
+    beginNameEdit();
+  };
   const commitName = async () => {
     if (!editingRef.current) return;
     editingRef.current = false;
@@ -515,13 +535,30 @@ export function RosterCard({
   };
 
   // ── Job change → card-owned confirm → onUpdate({ job, role }) ──
-  const onJobPicked = (newJob: string) => {
+  // Closing the picker hands focus back to the kebab, its way in (R-E2-D).
+  // Radix would return it to the Popover's trigger, but that is the inert
+  // anchor span, so focus would fall to <body>. Only when focus was INSIDE
+  // the picker (Escape, a pick): an outside click or a Tab-away already put
+  // focus where the user sent it — Radix's own hasInteractedOutside rule.
+  const closeJobPicker = () => {
+    const focusWasInside = jobPickerRef.current?.contains(document.activeElement) ?? false;
     setShowJobPicker(false);
+    if (focusWasInside) kebabRef.current?.focus();
+  };
+  const onJobPicked = (newJob: string) => {
+    // Before the confirm opens, so the Modal records the kebab as its
+    // return-focus target.
+    closeJobPicker();
     if (newJob !== player.job) {
       setJobChangeMode('keep');
       setPendingJob(newJob);
     }
   };
+  // Stable on purpose (E2 review N-1): Modal re-captures its return-focus
+  // target whenever `onClose` changes identity, so an inline arrow would let
+  // any re-render while the confirm is open (a radio change) re-target it to
+  // the in-modal radio, which unmounts on close — focus would fall to <body>.
+  const cancelJobChange = useCallback(() => setPendingJob(null), []);
   const commitJobChange = async () => {
     if (!pendingJob) return;
     const nextRole = getRoleForJob(pendingJob);
@@ -548,9 +585,9 @@ export function RosterCard({
 
   // ── Derived display ──
   // Relevant slots only: an empty offhand off-PLD neither renders nor counts.
+  // The fraction is the shared per-player helper the Board prints too (R-E2-F).
   const countedGear = relevantGear(player.job, player.gear);
-  const totalSlots = countedGear.length || 11;
-  const completedSlots = countedGear.filter(isSlotComplete).length;
+  const { completed: completedSlots, total: totalSlots } = playerBisProgress(player);
   const ratio = completedSlots / totalSlots;
   const hasBis = !!player.bisLink;
 
@@ -621,7 +658,7 @@ export function RosterCard({
       ).length
   );
 
-  const identitySubtitle = [getJobDisplayName(player.job), player.lodestoneServer]
+  const jobLine = [getJobDisplayName(player.job), player.lodestoneServer]
     .filter(Boolean)
     .join(' · ');
 
@@ -636,6 +673,22 @@ export function RosterCard({
   const importAction = getMenuAction('Import BiS') ?? getMenuAction('Update BiS');
   const assignAction = getMenuAction('Assign User') ?? getMenuAction('Assign User (Admin)');
   const bisTargetsAction = getMenuAction('BiS Targets');
+
+  // R-E2-D (2b): the job swap left the header for the kebab. Same gate as the
+  // IconButton it replaces — present only when the card is editable (the
+  // button was hidden, never disabled) — and the same flow: the JobPicker
+  // popover, then the card-owned confirm. Slotted before "Flex Roles", its
+  // job-shaped neighbor.
+  const cardMenuItems = useMemo((): ContextMenuItem[] => {
+    if (!canEdit) return menuItems;
+    const changeJob: ContextMenuItem = {
+      label: 'Change Job',
+      icon: <Repeat className="h-4 w-4" />,
+      onClick: () => setShowJobPicker(true),
+    };
+    const at = menuItems.findIndex((i) => 'label' in i && i.label === 'Flex Roles');
+    return at < 0 ? [changeJob, ...menuItems] : [...menuItems.slice(0, at), changeJob, ...menuItems.slice(at)];
+  }, [canEdit, menuItems]);
 
   // One axis per location (C1 checkpoint ruling, 2026-07-26): the footer's
   // right side carries ONLY the claim/ownership state — every BiS concern
@@ -720,6 +773,105 @@ export function RosterCard({
 
   const dragProps = reorderMode ? { ...dragHandle?.attributes, ...dragHandle?.listeners } : {};
 
+  // ── PR #277 review (B1): serialize the tank seat chip's mutations ──
+  // Its popover stays open after a pick, so MT/OT and T1/T2 can both be sent
+  // before the first PUT resolves — and tierStore.updatePlayer replaces the
+  // WHOLE player with each response, so a late first response would restore
+  // the other half. Each seat update is sent only once the previous one has
+  // settled, so the last response always carries both halves. The tail
+  // absorbs a failure (tierStore has already rolled back and set `error`) so
+  // one failed pick doesn't strand the ones queued behind it.
+  const seatQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const queueSeatUpdate = (updates: Partial<SnapshotPlayer>) => {
+    const sent = seatQueueRef.current.then(() => actions.onUpdate(updates));
+    seatQueueRef.current = sent.catch(() => undefined);
+  };
+
+  // ── R-E2-D (2b): the header's ONE seat chip ──
+  // Tanks get the merged role+position chip; everyone else keeps today's
+  // PositionSelector. Both call the handlers the two separate chips did.
+  const seatChip =
+    role === 'tank' ? (
+      <TankSeatSelector
+        tankRole={player.tankRole}
+        position={player.position}
+        onTankRoleSelect={(tankRole) => queueSeatUpdate({ tankRole: tankRole ?? null })}
+        onPositionSelect={(position) => queueSeatUpdate({ position: position ?? null })}
+        player={player}
+        userRole={userRole}
+        currentUserId={currentUserId ?? undefined}
+        isAdmin={isAdminAccess}
+      />
+    ) : (
+      <PositionSelector
+        position={player.position}
+        role={player.role}
+        onSelect={(position) => actions.onUpdate({ position: position ?? null })}
+        player={player}
+        userRole={userRole}
+        currentUserId={currentUserId ?? undefined}
+        isAdmin={isAdminAccess}
+      />
+    );
+
+  // ── R-E2-D (2b): SUB and "+N" ride the subtitle, BEFORE the job text ──
+  // Both tags are shrink-0 and the job text truncates first. They keep the
+  // claim badges' treatment (review rounds 4 + 7): LongPressTooltip for the
+  // touch path, plus sr-only text so the meaning survives with no hover at
+  // all — "+1" over a Swords glyph says nothing on its own.
+  const hasSubtitle = Boolean(player.isSubstitute || showWeaponPriority || jobLine);
+  const identitySubtitle = hasSubtitle ? (
+    // A <div>, not a <span>: LongPressTooltip's touch branch wraps each tag in
+    // a <div> (E2 review B-6). `flex` made the span block-level already, so
+    // the box is unchanged.
+    <div data-testid="roster-card-subtitle" className="flex min-w-0 items-center gap-1.5">
+      {player.isSubstitute && (
+        <LongPressTooltip
+          delayDuration={200}
+          content={
+            <span aria-hidden="true">Substitute — a backup for the static&apos;s roster</span>
+          }
+        >
+          <span data-rename-ignore className="inline-flex shrink-0">
+            <Tag variant="label" tone="warning">
+              SUB
+              <span className="sr-only">
+                {' '}
+                Substitute — a backup for the static&apos;s roster
+              </span>
+            </Tag>
+          </span>
+        </LongPressTooltip>
+      )}
+      {showWeaponPriority && (
+        <LongPressTooltip
+          delayDuration={200}
+          content={
+            <span aria-hidden="true">
+              +{weaponPriorityCount} additional weapon{' '}
+              {weaponPriorityCount === 1 ? 'priority' : 'priorities'}
+            </span>
+          }
+        >
+          <span data-rename-ignore className="inline-flex shrink-0">
+            <Tag
+              variant="label"
+              tone="muted"
+              icon={<Swords className="h-3 w-3" aria-hidden="true" />}
+            >
+              +{weaponPriorityCount}
+              <span className="sr-only">
+                {' '}
+                additional weapon {weaponPriorityCount === 1 ? 'priority' : 'priorities'}
+              </span>
+            </Tag>
+          </span>
+        </LongPressTooltip>
+      )}
+      {jobLine && <span className="min-w-0 truncate">{jobLine}</span>}
+    </div>
+  ) : undefined;
+
   // ── C7 (D-55, R-062): Shift+Click the card copies its deep link ──
   // The ruled superuser affordance: a modifier-click, taught by the kebab's
   // hint tooltip (R-076) rather than advertised by a control. The kebab's
@@ -782,10 +934,17 @@ export function RosterCard({
           style={{ backgroundColor: getRoleColor(role) }}
         />
 
-        {/* ── Header: identity + inline edits · iLvl · kebab ── */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            {isEditingName ? (
+        {/* ── Header: identity · iLvl · kebab — ONE line that never wraps
+               (R-E2-D, 2b). Only the name shrinks: the seat chip rides the
+               name line through PlayerIdentity's slot, SUB/"+N" ride the
+               subtitle, and the right block is shrink-0. ── */}
+        <div data-testid="roster-card-header" className="relative flex items-start justify-between gap-3">
+          {isEditingName ? (
+            // The input fills the identity's whole width while editing (the
+            // seat chip and subtitle step aside, as the whole identity always
+            // did) — a V2-local wrapper plus Input's own `fullWidth`, so
+            // `ui/Input` is untouched for its other callers.
+            <div className="min-w-0 flex-1">
               <Input
                 ref={nameInputRef}
                 value={draftName}
@@ -794,135 +953,31 @@ export function RosterCard({
                 onKeyDown={onNameKeyDown}
                 aria-label="Player name"
                 size="sm"
-                className="w-40"
+                fullWidth
               />
-            ) : (
-              <div
-                className="min-w-0"
-                onDoubleClick={beginNameEdit}
-                title={canEdit ? 'Double-click to rename' : undefined}
-              >
-                {/* C5 (D-11, LEAN): the Lodestone portrait rides the expanded
-                    card's identity avatar (SafeAvatar allowlist + initials
-                    fallback are PlayerIdentity's own behavior); compact keeps
-                    the initials mark. */}
-                <PlayerIdentity
-                  name={player.name}
-                  job={player.job}
-                  role={role}
-                  subtitle={identitySubtitle}
-                  avatarUrl={
-                    isExpanded && hasLodestoneIdentity
-                      ? player.lodestoneAvatarUrl ?? undefined
-                      : undefined
-                  }
-                />
-              </div>
-            )}
-
-            {/* Both header tags follow the claim badges' treatment (review
-                rounds 4 + 7): LongPressTooltip for the touch path, plus
-                sr-only text so the meaning survives with no hover at all —
-                "+1" over a Swords glyph says nothing on its own. */}
-            {player.isSubstitute && (
-              <LongPressTooltip
-                delayDuration={200}
-                content={
-                  <span aria-hidden="true">Substitute — a backup for the static&apos;s roster</span>
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1" onDoubleClick={onIdentityDoubleClick}>
+              {/* C5 (D-11, LEAN): the Lodestone portrait rides the expanded
+                  card's identity avatar (SafeAvatar allowlist + initials
+                  fallback are PlayerIdentity's own behavior); compact keeps
+                  the initials mark. The name's hover text carries the full
+                  name, since the name is what truncates. */}
+              <PlayerIdentity
+                name={player.name}
+                nameTitle={canEdit ? `${player.name} — double-click to rename` : player.name}
+                nameAdornment={seatChip}
+                job={player.job}
+                role={role}
+                subtitle={identitySubtitle}
+                avatarUrl={
+                  isExpanded && hasLodestoneIdentity
+                    ? player.lodestoneAvatarUrl ?? undefined
+                    : undefined
                 }
-              >
-                <span className="inline-flex">
-                  <Tag variant="label" tone="warning">
-                    SUB
-                    <span className="sr-only">
-                      {' '}
-                      Substitute — a backup for the static&apos;s roster
-                    </span>
-                  </Tag>
-                </span>
-              </LongPressTooltip>
-            )}
-            {showWeaponPriority && (
-              <LongPressTooltip
-                delayDuration={200}
-                content={
-                  <span aria-hidden="true">
-                    +{weaponPriorityCount} additional weapon{' '}
-                    {weaponPriorityCount === 1 ? 'priority' : 'priorities'}
-                  </span>
-                }
-              >
-                <span className="inline-flex">
-                  <Tag
-                    variant="label"
-                    tone="muted"
-                    icon={<Swords className="h-3 w-3" aria-hidden="true" />}
-                  >
-                    +{weaponPriorityCount}
-                    <span className="sr-only">
-                      {' '}
-                      additional weapon {weaponPriorityCount === 1 ? 'priority' : 'priorities'}
-                    </span>
-                  </Tag>
-                </span>
-              </LongPressTooltip>
-            )}
-
-            {role === 'tank' && (
-              <TankRoleSelector
-                tankRole={player.tankRole}
-                onSelect={(tankRole) => actions.onUpdate({ tankRole: tankRole ?? null })}
-                player={player}
-                userRole={userRole}
-                currentUserId={currentUserId ?? undefined}
-                isAdmin={isAdminAccess}
               />
-            )}
-            <PositionSelector
-              position={player.position}
-              role={player.role}
-              onSelect={(position) => actions.onUpdate({ position: position ?? null })}
-              player={player}
-              userRole={userRole}
-              currentUserId={currentUserId ?? undefined}
-              isAdmin={isAdminAccess}
-            />
-
-            {canEdit && (
-              // Task 2 (feedback-polish): the PositionSelector/TankRoleSelector
-              // Radix Popover Portal pattern — CardShell's overflow-hidden was
-              // clipping the un-portaled dropdown. JobPicker itself stays
-              // portal-free (it's mounted bare inside its OWN portal at the
-              // wizard's RosterSlot and AddPlayerModal); PopoverContent's own
-              // decoration is neutralized (!bg/!border/!shadow/!p-0) so
-              // JobPicker's own panel (already fully decorated for its
-              // non-templateRole "standalone" mode) is the ONLY visible box —
-              // no double-bordered nesting, and no more w-72/w-80 width clash
-              // now that the old fixed-width wrapper is gone.
-              <Popover open={showJobPicker} onOpenChange={setShowJobPicker}>
-                <PopoverTrigger asChild>
-                  <IconButton
-                    aria-label="Change job"
-                    variant="ghost"
-                    size="sm"
-                    icon={<Repeat className="h-4 w-4" />}
-                  />
-                </PopoverTrigger>
-                <PopoverContent
-                  align="start"
-                  sideOffset={4}
-                  className="!border-0 !bg-transparent !p-0 !shadow-none"
-                >
-                  <JobPicker
-                    selectedJob={player.job}
-                    onJobSelect={onJobPicked}
-                    onRequestClose={() => setShowJobPicker(false)}
-                    hostControlsDismissal
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="flex shrink-0 items-center gap-2">
             {/* C5 (D-10): the Now-vs-BiS breakdown panel explains the readout;
@@ -1001,14 +1056,62 @@ export function RosterCard({
               }
             >
               <IconButton
+                ref={kebabRef}
                 aria-label="Player actions"
                 variant="ghost"
                 size="sm"
                 icon={<MoreVertical className="h-5 w-5" />}
-                onClick={openKebab}
+                // The kebab is the job picker's way in now (R-E2-D), so it
+                // also closes it. Radix's Popover sets
+                // `deferPointerDownOutside`: a primary-button pointerdown
+                // outside (mouse AND touch) defers the dismiss to the
+                // following click, and drops it when that click's
+                // propagation was stopped — which `openKebab` does. Without
+                // this close the picker would stay open under the menu.
+                onClick={(e) => {
+                  setShowJobPicker(false);
+                  openKebab(e);
+                }}
               />
             </Tooltip>
           </div>
+
+          {canEdit && (
+            // The kebab's "Change Job" opens this (R-E2-D). Task 2
+            // (feedback-polish) portals it — CardShell's overflow-hidden
+            // clipped the un-portaled dropdown — and neutralizes
+            // PopoverContent's own decoration (!bg/!border/!shadow/!p-0) so
+            // JobPicker's standalone panel is the ONLY visible box. The
+            // Popover primitive exports no Anchor part, so a zero-size,
+            // pointer-inert, aria-hidden trigger under the header's left
+            // edge places it where the old swap button did; nothing can
+            // reach it, so the menu item is the only way in.
+            <Popover
+              open={showJobPicker}
+              onOpenChange={(open) => (open ? setShowJobPicker(true) : closeJobPicker())}
+            >
+              <PopoverTrigger asChild>
+                <span
+                  aria-hidden="true"
+                  data-testid="roster-card-job-anchor"
+                  className="pointer-events-none absolute bottom-0 left-0 h-0 w-0"
+                />
+              </PopoverTrigger>
+              <PopoverContent
+                ref={jobPickerRef}
+                align="start"
+                sideOffset={4}
+                className="!border-0 !bg-transparent !p-0 !shadow-none"
+              >
+                <JobPicker
+                  selectedJob={player.job}
+                  onJobSelect={onJobPicked}
+                  onRequestClose={closeJobPicker}
+                  hostControlsDismissal
+                />
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
 
         {/* C5 (D-11, LEAN): the roster title is the one personalization line
@@ -1250,62 +1353,63 @@ export function RosterCard({
       {/* Kebab modals (hook-owned) + card-owned job-change confirm (both portal). */}
       {modalsNode}
 
-      {pendingJob && (
-        <Modal
-          isOpen
-          onClose={() => setPendingJob(null)}
-          size="sm"
-          title={
-            <span className="flex items-center gap-2">
-              <Repeat className="h-5 w-5 text-accent" />
-              Change Job
-            </span>
-          }
-        >
-          <p className="mb-4 text-text-secondary">
-            Change <span className="font-medium text-text-primary">{player.name}</span> from{' '}
-            <span className="font-medium text-text-primary">{getJobDisplayName(player.job)}</span> to{' '}
-            <span className="font-medium text-text-primary">{getJobDisplayName(pendingJob)}</span>?
-          </p>
-          <RadioGroup
-            name="rosterJobChangeBis"
-            value={jobChangeMode}
-            onChange={(value) => setJobChangeMode(value as JobChangeMode)}
-            options={[
-              {
-                value: 'keep',
-                label: 'Keep current BiS setup',
-                description: 'Position, gear progress, and the BiS link are left unchanged.',
-              },
-              {
-                value: 'import',
-                label: 'Update BiS for the new job',
-                description: 'Changes the job, then opens the BiS import for the new set.',
-              },
-              {
-                value: 'unlink',
-                label: 'Unlink BiS on change',
-                description: 'Clears the BiS link (the new job needs its own set). Progress is kept.',
-              },
-            ]}
-          />
-          <div className="mt-6 flex justify-end gap-3">
-            <Button type="button" variant="secondary" onClick={() => setPendingJob(null)}>
-              Cancel
-            </Button>
-            {/* The commit button names the chosen outcome — in the import mode
-                that is legacy's exact button string (user ruling 2026-07-27),
-                so the flow reads the same as v1's three-button confirm. */}
-            <Button type="button" variant="primary" onClick={commitJobChange}>
-              {jobChangeMode === 'import' ? 'Change Job & Update BiS' : 'Change Job'}
-            </Button>
-          </div>
-        </Modal>
-      )}
+      {/* Kept mounted with `isOpen` toggling (not `pendingJob &&`): Modal
+          returns focus to its opener only on an isOpen -> false transition,
+          which an unmount never delivers. */}
+      <Modal
+        isOpen={pendingJob !== null}
+        onClose={cancelJobChange}
+        size="sm"
+        title={
+          <span className="flex items-center gap-2">
+            <Repeat className="h-5 w-5 text-accent" />
+            Change Job
+          </span>
+        }
+      >
+        <p className="mb-4 text-text-secondary">
+          Change <span className="font-medium text-text-primary">{player.name}</span> from{' '}
+          <span className="font-medium text-text-primary">{getJobDisplayName(player.job)}</span> to{' '}
+          <span className="font-medium text-text-primary">{getJobDisplayName(pendingJob ?? '')}</span>?
+        </p>
+        <RadioGroup
+          name="rosterJobChangeBis"
+          value={jobChangeMode}
+          onChange={(value) => setJobChangeMode(value as JobChangeMode)}
+          options={[
+            {
+              value: 'keep',
+              label: 'Keep current BiS setup',
+              description: 'Position, gear progress, and the BiS link are left unchanged.',
+            },
+            {
+              value: 'import',
+              label: 'Update BiS for the new job',
+              description: 'Changes the job, then opens the BiS import for the new set.',
+            },
+            {
+              value: 'unlink',
+              label: 'Unlink BiS on change',
+              description: 'Clears the BiS link (the new job needs its own set). Progress is kept.',
+            },
+          ]}
+        />
+        <div className="mt-6 flex justify-end gap-3">
+          <Button type="button" variant="secondary" onClick={cancelJobChange}>
+            Cancel
+          </Button>
+          {/* The commit button names the chosen outcome — in the import mode
+              that is legacy's exact button string (user ruling 2026-07-27),
+              so the flow reads the same as v1's three-button confirm. */}
+          <Button type="button" variant="primary" onClick={commitJobChange}>
+            {jobChangeMode === 'import' ? 'Change Job & Update BiS' : 'Change Job'}
+          </Button>
+        </div>
+      </Modal>
 
       {contextMenu && (
         <ContextMenu
-          items={menuItems}
+          items={cardMenuItems}
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={closeKebab}

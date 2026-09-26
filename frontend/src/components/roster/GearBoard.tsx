@@ -4,7 +4,8 @@
  * The re-homed gearsheet: party-grouped rows × 11 slot columns + a BiS summary
  * column, and the bird's-eye gear-*editing* surface. Reuses the same store
  * derivations legacy GroupViewContent feeds the gear table (`groupPlayersByLightParty`,
- * `bisSlotTotals`, `calculateAverageItemLevel`) — no new aggregation. Clicking a
+ * `bisSlotTotals` for the no-BiS gate, `calculateAverageItemLevel`); the summary
+ * column prints RosterCard's own fraction (`playerBisProgress`, R-E2-F). Clicking a
  * cell cycles obtained state through the shared gear state machine
  * (`getNextGearState` → `computeGearSlotUpdate`) and persists via the per-player
  * `actionsForPlayer(player).onUpdate`. Visual target: `mockups/02-roster-board.html`.
@@ -41,9 +42,10 @@ import {
   fromGearState,
 } from '../../utils/calculations';
 import { bisSlotTotals } from '../../utils/rosterReadiness';
+import { playerBisProgress } from '../../utils/playerBisProgress';
 import { canEditGear } from '../../utils/permissions';
 import { getValidRole } from '../../gamedata';
-import { isOffhandRelevant, relevantGear } from '../../utils/offhand';
+import { isOffhandRelevant } from '../../utils/offhand';
 import type { GearSlot, GearSlotStatus, MemberRole, SnapshotPlayer } from '../../types';
 
 // Base column set; the off-hand column joins only when ANY roster player is
@@ -91,17 +93,19 @@ interface BoardCellKey {
 interface BoardRow {
   player: SnapshotPlayer;
   editable: boolean;
-  obtained: number;
+  /** BiS-target slots (`bisSlotTotals`) — the no-BiS gate ONLY (R-E2-F). */
   total: number;
+  /** The summary column's number and color — RosterCard's fraction (R-E2-F). */
+  progress: { completed: number; total: number };
   cells: Array<GearSlotStatus | undefined>;
   interactive: boolean[];
 }
 
 const cellKey = (playerId: string, slot: GearSlot) => `${playerId}/${slot}`;
 
-/** BiS-target slots that have the item / total BiS-target slots, for one player. */
-function playerBis(player: SnapshotPlayer): { obtained: number; total: number } {
-  return bisSlotTotals([{ ...player, configured: true, isSubstitute: false }]);
+/** BiS-target slot count for one player — the "No BiS imported" gate (#8 owns its semantics). */
+function playerBisTargets(player: SnapshotPlayer): number {
+  return bisSlotTotals([{ ...player, configured: true, isSubstitute: false }]).total;
 }
 
 function summaryColor(obtained: number, total: number): string {
@@ -123,9 +127,9 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
     // Per-row gear-edit gate (legacy GearTable's per-player canEditGear
     // pattern, adapted to one-row-per-player).
     const editable = canEditGear(userRole, player, currentUserId ?? undefined, isAdminAccess).allowed;
-    const { obtained, total } = playerBis(player);
+    const total = playerBisTargets(player);
     const cells = slotOrder.map((slot) => player.gear.find((x) => x.slot === slot));
-    return { player, editable, obtained, total, cells, interactive: cells.map((g) => editable && total > 0 && !!g?.bisSource) };
+    return { player, editable, total, progress: playerBisProgress(player), cells, interactive: cells.map((g) => editable && total > 0 && !!g?.bisSource) };
   };
   const sections = [
     { label: 'Light Party 1', rows: grouped.group1 },
@@ -224,7 +228,7 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                 </td>
               </tr>
               {section.rows.map((row) => {
-                const { player, editable, obtained, total, cells } = row;
+                const { player, editable, total, progress, cells } = row;
                 const rowIndex = rows.indexOf(row);
                 const role = getValidRole(player.role);
                 // Equipped-first, same expression as the RosterCard headline
@@ -282,12 +286,14 @@ export function GearBoard({ players, tierId, userRole, currentUserId, isAdminAcc
                         );
                       })
                     )}
-                    <td className={`border-b border-l border-border-default text-center font-display text-[13px] font-extrabold ${summaryColor(obtained, total)}`}>
+                    {/* R-E2-F (#7): the number and its color are the card's fraction
+                        (playerBisProgress); the `—` placeholder keeps the no-BiS gate. */}
+                    <td className={`border-b border-l border-border-default text-center font-display text-[13px] font-extrabold ${total === 0 ? 'text-text-muted' : summaryColor(progress.completed, progress.total)}`}>
                       {total === 0 ? '—' : (
                         <>
-                          {obtained}
+                          {progress.completed}
                           {/* design-system-ignore: board micro-label — dense gearsheet summary denominator (matches mockup 02-roster-board) */}
-                          <span className="font-sans text-[9.5px] font-semibold text-text-tertiary">/{relevantGear(player.job, player.gear).length || 11}</span>
+                          <span className="font-sans text-[9.5px] font-semibold text-text-tertiary">/{progress.total}</span>
                         </>
                       )}
                     </td>

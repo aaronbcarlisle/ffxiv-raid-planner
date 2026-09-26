@@ -60,6 +60,30 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.36',
+    date: '2026-09-26T00:00:00Z',
+    title: 'Phase E visual polish — E2b roster card header (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Roster card headers fit on one line',
+        description:
+          'V2 preview: each roster card\'s header is one line: the name truncates first (hover for the full name), a tank\'s role and position share one chip, SUB and weapon-priority tags move under the name, and Change Job lives in the card menu. The job badge no longer covers the avatar initials.',
+        pr: 277,
+        prTitle: 'feat(v2): E2b — roster card header on one line (2b), job badge, shared BiS progress',
+      },
+      {
+        category: 'fix',
+        title: 'Board and cards agree on BiS progress',
+        description:
+          'V2 preview: the Board\'s per-player BiS number and color now use the same count as the roster card.',
+        pr: 277,
+        prTitle: 'feat(v2): E2b — roster card header on one line (2b), job badge, shared BiS progress',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.35',
     date: '2026-09-25T23:00:00Z',
     title: 'Phase E visual polish — E2a (v2 preview)',
