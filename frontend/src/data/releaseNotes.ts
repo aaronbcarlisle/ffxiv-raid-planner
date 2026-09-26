@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.37',
+    date: '2026-09-26T06:30:00Z',
+    title: 'Player Hub — PH1a shell and tabs (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'Player Hub gets one navigation column and five tabs',
+        description:
+          'V2 preview: your Player Hub drops its second sidebar. It opens with your character header and five tabs — Overview, Characters & gear, Availability, Tracking and Sharing — and every old link lands on the right tab. /dashboard now opens the Hub.',
+        pr: 280,
+        prTitle: 'feat(v2): PH1a — Player Hub shell: V1-neutral seam, five tabs, legacy redirects, identity header',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.36',
     date: '2026-09-26T00:00:00Z',
     title: 'Phase E visual polish — E2b roster card header (v2 preview)',
