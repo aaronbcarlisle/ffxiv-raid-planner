@@ -415,7 +415,10 @@ describe('Schedule', () => {
         'sRec',
         { occurrenceDate: '2026-07-01', type: 'cancelled' },
       ));
-      expect(screen.queryByText('Delete recurring session')).not.toBeInTheDocument();
+      // The modal closes in `handleCancelOccurrence`'s `finally`, after the
+      // awaited `createException` settles — wait for it rather than racing it
+      // (flaked under full-suite load on #280).
+      await waitFor(() => expect(screen.queryByText('Delete recurring session')).not.toBeInTheDocument());
     });
 
     it('T4-d2: recurring delete → "Delete entire series" → ConfirmModal → the delete is called', async () => {

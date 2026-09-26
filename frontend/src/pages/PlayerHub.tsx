@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs } from '../components/ui/Tabs';
 import { HubIdentityHeader } from '../components/profile/hub/HubIdentityHeader';
-import { HUB_TABS, hubTabForId, hubTabParams, resolveHubTab, type HubTab } from '../components/profile/hub/hubTabs';
+import { HUB_TABS, hubTabForId, hubTabShortcutKey, hubTabParams, resolveHubTab, type HubTab } from '../components/profile/hub/hubTabs';
 import { HubOverview } from '../components/profile/hub/HubOverview';
 import { SuggestedFarmsCard } from '../components/profile/hub/SuggestedFarmsCard';
 import { SetupWizard } from '../components/wizard';
@@ -109,7 +109,7 @@ export function PlayerHub({
 
   const shortcuts = useMemo(
     () => HUB_TABS.map((t, index) => ({
-      key: index === 0 ? '`' : String(index),
+      key: hubTabShortcutKey(index),
       description: t.label,
       action: () => setTab(t.id),
     })),

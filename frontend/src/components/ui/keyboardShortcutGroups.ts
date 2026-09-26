@@ -142,14 +142,29 @@ export const V2_SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Navigation',
     shortcuts: [
-      { key: '`', description: 'Home' },
-      { key: '1', description: 'Schedule' },
-      { key: '2', description: 'Roster' },
-      { key: '3', description: 'Tracking' },
-      { key: '4', description: 'Loot' },
+      // PH1a review: the Player Hub rebinds these five keys to its own tabs,
+      // so each row names the surface it acts on — the same truthfulness
+      // convention as the Roster/Loot "(Cards)"/"(Log)" suffixes.
+      { key: '`', description: 'Home (Static)' },
+      { key: '1', description: 'Schedule (Static)' },
+      { key: '2', description: 'Roster (Static)' },
+      { key: '3', description: 'Tracking (Static)' },
+      { key: '4', description: 'Loot (Static)' },
       COMMAND_PALETTE_SHORTCUT,
       MY_STATICS,
       ADMIN_DASHBOARD,
+    ],
+  },
+  {
+    // Mirrors `HUB_TABS` + `hubTabShortcutKey` (`profile/hub/hubTabs.ts`);
+    // `ui/` may not import `profile/`, so `hubTabs.test.ts` pins the match.
+    title: 'Player Hub',
+    shortcuts: [
+      { key: '`', description: 'Overview (Player Hub)' },
+      { key: '1', description: 'Characters & gear (Player Hub)' },
+      { key: '2', description: 'Availability (Player Hub)' },
+      { key: '3', description: 'Tracking (Player Hub)' },
+      { key: '4', description: 'Sharing (Player Hub)' },
     ],
   },
   STATIC_TIER_GROUP,

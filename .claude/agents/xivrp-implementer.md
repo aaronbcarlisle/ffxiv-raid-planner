@@ -55,3 +55,28 @@ them.
   is the controller's job and is already scheduled.
 - **Escalate early.** `BLOCKED` or `NEEDS_CONTEXT` with what you tried beats a
   guessed architecture. You are not penalized for stopping.
+
+## Pre-completion self-check (mandatory — run it, don't recite it)
+
+Before writing the report, walk your own diff (`git diff <BASE>`) against each
+line. Fix what fails; anything you cannot satisfy goes under concerns.
+
+- **Gates re-run after the LAST edit** — a late fix after a green run means
+  the run no longer counts.
+- **Line endings and whitespace:** `git diff --check` clean; new files are LF
+  (`git ls-files --eol <file>`); multi-line content via Write/Edit, never a
+  Bash heredoc or PowerShell here-string.
+- **Escapes match the parser:** every `'` inside a single-quoted string in
+  `releaseNotes.ts` is `\'` (two build breaks); run
+  `pnpm -C frontend exec vitest run src/data/releaseNotes.test.ts` if you
+  touched it.
+- **JSX numeric conditionals:** no `{count && …}` with a number — it renders
+  `0` (StatCell). Use `count > 0 &&` or a ternary.
+- **Store reads:** no value captured from a store before a route change, and
+  no stale read in a not-found state — read through the selector hooks at
+  render.
+- **Async tests** await the queued work (`findBy*` / `waitFor`) before
+  asserting, and fail when the fix is reverted (TankSeatSelector race).
+- **Platform and focus:** shortcut labels from `lib/platform.ts`, never a
+  hardcoded `Ctrl+K`; focus stays inside open menus and modals.
+- **Commit messages** carry no AI attribution trailer.
