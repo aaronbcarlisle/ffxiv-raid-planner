@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.39',
+    date: '2026-09-26T06:50:00Z',
+    title: 'Player Hub — PH1c rail portrait and breadcrumb (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Your portrait opens the Player Hub',
+        description:
+          'V2 preview: the rail\'s first button is now your main character\'s portrait (or initials) instead of a Home icon, and the top bar reads "You › {character}" on the Hub.',
+        pr: 282,
+        prTitle: 'feat(v2): PH1c — Player Hub rail portrait and breadcrumb',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.38',
     date: '2026-09-26T06:40:00Z',
     title: 'Player Hub — PH1b Overview (v2 preview)',
