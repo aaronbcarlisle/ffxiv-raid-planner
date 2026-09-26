@@ -23,6 +23,11 @@ interface StaticGroupState {
   // Error state
   error: string | null;
   errorStack: string | null;
+  // R-PH1-fix1: distinguishes a *load* failure (fetchGroups/fetchGroup/fetchGroupByShareCode)
+  // from an *action* failure (create/duplicate/update/delete/membership), so callers can tell
+  // "the list failed to load" apart from "an action on an already-loaded list failed" without
+  // changing the shared `error` field V1 reads. Additive only — V1 never reads this field.
+  errorSource: 'load' | 'action' | null;
 
   // Actions
   fetchGroups: () => Promise<void>;
@@ -50,12 +55,13 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
   isCreating: false,
   error: null,
   errorStack: null,
+  errorSource: null,
 
   /**
    * Fetch all static groups for the current user
    */
   fetchGroups: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, errorSource: null });
 
     try {
       const groups = await authRequest<StaticGroupListItem[]>('/api/static-groups');
@@ -64,6 +70,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch groups',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'load',
         isLoading: false,
       });
     }
@@ -73,7 +80,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
    * Fetch a specific static group by ID
    */
   fetchGroup: async (groupId: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, errorSource: null });
 
     try {
       const group = await authRequest<StaticGroup>(`/api/static-groups/${groupId}`);
@@ -82,6 +89,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch group',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'load',
         isLoading: false,
       });
     }
@@ -91,7 +99,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
    * Fetch a static group by share code
    */
   fetchGroupByShareCode: async (shareCode: string) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, errorSource: null });
 
     try {
       const group = await authRequest<StaticGroup>(`/api/static-groups/by-code/${shareCode}`);
@@ -100,6 +108,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to fetch group',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'load',
         isLoading: false,
       });
     }
@@ -147,6 +156,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to create group',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'action',
         isCreating: false,
       });
       throw error;
@@ -201,6 +211,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to duplicate group',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'action',
         isCreating: false,
       });
       throw error;
@@ -241,6 +252,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to update group',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'action',
       });
       throw error;
     }
@@ -266,6 +278,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to delete group',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'action',
       });
       throw error;
     }
@@ -282,7 +295,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
    * Clear error state
    */
   clearError: () => {
-    set({ error: null, errorStack: null });
+    set({ error: null, errorStack: null, errorSource: null });
   },
 
   // ==================== Membership Actions ====================
@@ -318,6 +331,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to add member',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'action',
       });
       throw error;
     }
@@ -353,6 +367,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to update member role',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'action',
       });
       throw error;
     }
@@ -386,6 +401,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to remove member',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'action',
       });
       throw error;
     }
@@ -410,6 +426,7 @@ export const useStaticGroupStore = create<StaticGroupState>((set, get) => ({
       set({
         error: error instanceof Error ? error.message : 'Failed to transfer ownership',
         errorStack: error instanceof Error ? error.stack || null : null,
+        errorSource: 'action',
       });
       throw error;
     }
