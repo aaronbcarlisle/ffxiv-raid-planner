@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { RosterCard } from './RosterCard';
@@ -1743,6 +1743,27 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 
+  // E2 review B-7: the touch path is where the kebab's own close matters. A
+  // mouse pointerdown outside dismisses at once (the test above), but Radix
+  // defers a `pointerType: 'touch'` dismiss to the following document click —
+  // and the kebab's click stops propagation, so that click never arrives.
+  it('a TOUCH tap on the kebab while the picker is open closes it too', async () => {
+    renderCard(makePlayer());
+    openJobPicker();
+    expect(pickerOpen()).toBe(true);
+
+    await new Promise((r) => setTimeout(r, 0));
+    const kebab = screen.getByRole('button', { name: /player actions/i });
+    fireEvent.pointerDown(kebab, { pointerType: 'touch' });
+    fireEvent.mouseDown(kebab);
+    fireEvent.click(kebab);
+
+    expect(pickerOpen()).toBe(false);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(pickerOpen()).toBe(false);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
   it('an Escape from inside the search input closes the popover (end-to-end through the real Popover)', () => {
     renderCard(makePlayer());
     openJobPicker();
@@ -1777,6 +1798,17 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
       expect(pickerOpen()).toBe(false);
       expect(screen.getByRole('button', { name: 'Change Job' })).toBeInTheDocument();
 
+      // E2 review N-1: a radio change re-renders the card while the confirm is
+      // open. Modal re-captures its return-focus target whenever its onClose
+      // changes identity, so an inline onClose would re-target the in-modal
+      // radio (which unmounts on close → <body>). jsdom's click does not move
+      // focus, so the radio is focused explicitly, as a real click would.
+      const unlink = screen.getByRole('radio', { name: /Unlink BiS on change/ });
+      unlink.focus();
+      fireEvent.click(unlink);
+      expect(unlink).toBeChecked();
+      expect(unlink).toHaveFocus();
+
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(screen.queryByRole('button', { name: 'Change Job' })).not.toBeInTheDocument();
       expect(kebab()).toHaveFocus();
@@ -1793,6 +1825,23 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
       fireEvent.pointerDown(chip);
       chip.focus();
       fireEvent.click(document.body);
+
+      expect(pickerOpen()).toBe(false);
+      expect(chip).toHaveFocus();
+      expect(kebab()).not.toHaveFocus();
+    });
+
+    // The keyboard twin: Tab moves focus out of the picker first (focusin on
+    // the next control), and Radix dismisses on that focus-outside — so
+    // focus is already where the user sent it, not inside, when it closes.
+    it('a Tab-away onto another control leaves focus there too', () => {
+      renderCard(makePlayer());
+      openJobPicker();
+      expect(screen.getByPlaceholderText('Search jobs...')).toHaveFocus();
+
+      // Radix dispatches focus-outside as a non-discrete update — act flushes it.
+      const chip = screen.getByRole('button', { name: /^Tank role/ });
+      act(() => chip.focus());
 
       expect(pickerOpen()).toBe(false);
       expect(chip).toHaveFocus();
@@ -2346,6 +2395,28 @@ describe('RosterCard — one-line header (E2, R-E2-D)', () => {
     renderCard(makePlayer());
     fireEvent.doubleClick(screen.getByRole('button', { name: /^Tank role/ }));
     expect(screen.queryByLabelText('Player name')).not.toBeInTheDocument();
+    fireEvent.doubleClick(screen.getByText('Tank One'));
+    expect(screen.getByLabelText('Player name')).toBeInTheDocument();
+  });
+
+  // E2 review: SUB and "+N" moved INTO the rename target (the subtitle), so a
+  // double-click on either tag is the tag's (its long-press / hover tooltip),
+  // never a rename — as when they sat outside the rename wrapper.
+  it('a double-click on the SUB or "+N" tag never renames', () => {
+    renderCard(
+      makePlayer({
+        isSubstitute: true,
+        weaponPriorities: [{ job: 'PLD' }, { job: 'DRK' }] as SnapshotPlayer['weaponPriorities'],
+      })
+    );
+    const subtitle = screen.getByTestId('roster-card-subtitle');
+    // B-6: a <div> — LongPressTooltip's touch branch renders a <div> in it.
+    expect(subtitle.tagName).toBe('DIV');
+    fireEvent.doubleClick(within(subtitle).getByText('SUB'));
+    expect(screen.queryByLabelText('Player name')).not.toBeInTheDocument();
+    fireEvent.doubleClick(within(subtitle).getByText('+1'));
+    expect(screen.queryByLabelText('Player name')).not.toBeInTheDocument();
+    // The name itself still renames.
     fireEvent.doubleClick(screen.getByText('Tank One'));
     expect(screen.getByLabelText('Player name')).toBeInTheDocument();
   });

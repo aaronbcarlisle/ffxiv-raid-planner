@@ -14,8 +14,10 @@
  *     Outside click and Escape close it (Radix).
  *   - Opening focuses the selected (or first) tank-role option, so the rows
  *     are keyboard-reachable; Radix returns focus to the trigger on close.
+ *   - A row's Clear hands focus to that row's first option — Clear renders
+ *     only while its half is set, so it unmounts under the focus.
  */
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Shield } from 'lucide-react';
 import type { RaidPosition, SnapshotPlayer, TankRole } from '../../types';
 import { RAID_POSITIONS } from '../../types';
@@ -28,21 +30,25 @@ import { canEditPlayer, type MemberRole } from '../../utils/permissions';
 const TANK_ROLE_LABEL: Record<TankRole, string> = { MT: 'Main Tank', OT: 'Off Tank' };
 const POSITION_ROLE: Record<string, string> = { T: 'Tank', H: 'Healer', M: 'Melee', R: 'Ranged' };
 const positionLabel = (pos: RaidPosition) => `${POSITION_ROLE[pos[0]]} ${pos[1]}`;
-// PositionSelector's getSuggestedPositions('tank'), offered first.
+// PositionSelector's POSITION_INFO `group` line: a position's digit is its
+// light party (T1 → "Light Party 1 (G1)", T2 → "Light Party 2 (G2)").
+const lightPartyLabel = (pos: RaidPosition) => `Light Party ${pos[1]} (G${pos[1]})`;
+// PositionSelector's getSuggestedPositions('tank') — RAID_POSITIONS already
+// lists them first, so the grid keeps that order.
 const SUGGESTED: RaidPosition[] = ['T1', 'T2'];
 
 const TANK_ROLES: TankRole[] = ['MT', 'OT'];
-const POSITION_ORDER: RaidPosition[] = [
-  ...SUGGESTED,
-  ...RAID_POSITIONS.filter((pos) => !SUGGESTED.includes(pos)),
-];
 
-/** Selected fill per position letter (dark text on the bright role color). */
+/**
+ * Selected fill per position letter (dark text on the bright role color) —
+ * PositionSelector's getPositionBgClasses, where M and R share the melee fill,
+ * so the two chips' popovers paint a selected seat alike.
+ */
 const POSITION_SELECTED: Record<string, string> = {
   T: 'bg-role-tank text-surface-base',
   H: 'bg-role-healer text-surface-base',
   M: 'bg-role-melee text-surface-base',
-  R: 'bg-role-ranged text-surface-base',
+  R: 'bg-role-melee text-surface-base',
 };
 
 /**
@@ -81,11 +87,21 @@ export function TankSeatSelector({
   const [open, setOpen] = useState(false);
   const roleLabelId = useId();
   const positionLabelId = useId();
+  const roleOptionsRef = useRef<HTMLDivElement>(null);
+  const positionOptionsRef = useRef<HTMLDivElement>(null);
 
   const editPermission = canEditPlayer(userRole, player, currentUserId, isAdmin);
   const canEdit = editPermission.allowed;
   const isOpen = open && canEdit;
 
+  // A Clear unmounts under the focus once its half is unset, so it hands
+  // focus to its row's first option before clearing. (The tank-role options'
+  // `focusOnMount` ref can't cover this: when MT was the selected one, its
+  // ref never changes, so it never re-fires.)
+  const clearRow = (options: typeof roleOptionsRef, clear: () => void) => {
+    options.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    clear();
+  };
 
   const isSet = Boolean(tankRole || position);
   const baseClasses = isSet ? 'bg-role-tank/20 text-role-tank' : 'bg-surface-interactive text-text-muted';
@@ -103,6 +119,7 @@ export function TankSeatSelector({
       <div>
         <div className="font-medium">Tank Seat</div>
         <div className="mt-0.5 text-xs text-text-secondary">{describe}</div>
+        {position && <div className="text-xs text-text-secondary">{lightPartyLabel(position)}</div>}
       </div>
     </div>
   );
@@ -134,12 +151,17 @@ export function TankSeatSelector({
               Tank role
             </span>
             {tankRole && (
-              <Button variant="ghost" size="xs" aria-label="Clear tank role" onClick={() => onTankRoleSelect(undefined)}>
+              <Button
+                variant="ghost"
+                size="xs"
+                aria-label="Clear tank role"
+                onClick={() => clearRow(roleOptionsRef, () => onTankRoleSelect(undefined))}
+              >
                 Clear
               </Button>
             )}
           </div>
-          <div className="flex gap-1">
+          <div ref={roleOptionsRef} className="flex gap-1">
             {TANK_ROLES.map((role) => {
               const selected = tankRole === role;
               const focusMe = selected || (!tankRole && role === 'MT');
@@ -168,13 +190,18 @@ export function TankSeatSelector({
               Position
             </span>
             {position && (
-              <Button variant="ghost" size="xs" aria-label="Clear position" onClick={() => onPositionSelect(undefined)}>
+              <Button
+                variant="ghost"
+                size="xs"
+                aria-label="Clear position"
+                onClick={() => clearRow(positionOptionsRef, () => onPositionSelect(undefined))}
+              >
                 Clear
               </Button>
             )}
           </div>
-          <div className="grid w-max grid-cols-4 gap-1">
-            {POSITION_ORDER.map((pos) => {
+          <div ref={positionOptionsRef} className="grid w-max grid-cols-4 gap-1">
+            {RAID_POSITIONS.map((pos) => {
               const selected = position === pos;
               const suggested = SUGGESTED.includes(pos);
               return (

@@ -498,12 +498,13 @@ export function RosterCard({
   };
   // The seat chip and the subtitle tags now live inside the rename target
   // (R-E2-D), and their portaled popovers are its React children, so a
-  // double-click that lands on a control, or outside the wrapper's own DOM,
-  // belongs to that control — never a rename.
+  // double-click that lands on a control, on a SUB / "+N" tag (marked
+  // `data-rename-ignore` — their tooltip is the tag's own interaction), or
+  // outside the wrapper's own DOM belongs to that element — never a rename.
   const onIdentityDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     if (!e.currentTarget.contains(target)) return;
-    const control = target.closest('button, a, input, [role="button"]');
+    const control = target.closest('button, a, input, [role="button"], [data-rename-ignore]');
     if (control && e.currentTarget.contains(control)) return;
     beginNameEdit();
   };
@@ -553,6 +554,11 @@ export function RosterCard({
       setPendingJob(newJob);
     }
   };
+  // Stable on purpose (E2 review N-1): Modal re-captures its return-focus
+  // target whenever `onClose` changes identity, so an inline arrow would let
+  // any re-render while the confirm is open (a radio change) re-target it to
+  // the in-modal radio, which unmounts on close — focus would fall to <body>.
+  const cancelJobChange = useCallback(() => setPendingJob(null), []);
   const commitJobChange = async () => {
     if (!pendingJob) return;
     const nextRole = getRoleForJob(pendingJob);
@@ -801,7 +807,10 @@ export function RosterCard({
   // all — "+1" over a Swords glyph says nothing on its own.
   const hasSubtitle = Boolean(player.isSubstitute || showWeaponPriority || jobLine);
   const identitySubtitle = hasSubtitle ? (
-    <span data-testid="roster-card-subtitle" className="flex min-w-0 items-center gap-1.5">
+    // A <div>, not a <span>: LongPressTooltip's touch branch wraps each tag in
+    // a <div> (E2 review B-6). `flex` made the span block-level already, so
+    // the box is unchanged.
+    <div data-testid="roster-card-subtitle" className="flex min-w-0 items-center gap-1.5">
       {player.isSubstitute && (
         <LongPressTooltip
           delayDuration={200}
@@ -809,7 +818,7 @@ export function RosterCard({
             <span aria-hidden="true">Substitute — a backup for the static&apos;s roster</span>
           }
         >
-          <span className="inline-flex shrink-0">
+          <span data-rename-ignore className="inline-flex shrink-0">
             <Tag variant="label" tone="warning">
               SUB
               <span className="sr-only">
@@ -830,7 +839,7 @@ export function RosterCard({
             </span>
           }
         >
-          <span className="inline-flex shrink-0">
+          <span data-rename-ignore className="inline-flex shrink-0">
             <Tag
               variant="label"
               tone="muted"
@@ -846,7 +855,7 @@ export function RosterCard({
         </LongPressTooltip>
       )}
       {jobLine && <span className="min-w-0 truncate">{jobLine}</span>}
-    </span>
+    </div>
   ) : undefined;
 
   // ── C7 (D-55, R-062): Shift+Click the card copies its deep link ──
@@ -1039,9 +1048,12 @@ export function RosterCard({
                 size="sm"
                 icon={<MoreVertical className="h-5 w-5" />}
                 // The kebab is the job picker's way in now (R-E2-D), so it
-                // also closes it: `openKebab` stops the click's propagation,
-                // which Radix reads as an intercepted outside click and would
-                // otherwise leave the picker open under the menu.
+                // also closes it. Radix's Popover sets
+                // `deferPointerDownOutside`: a primary-button pointerdown
+                // outside (mouse AND touch) defers the dismiss to the
+                // following click, and drops it when that click's
+                // propagation was stopped — which `openKebab` does. Without
+                // this close the picker would stay open under the menu.
                 onClick={(e) => {
                   setShowJobPicker(false);
                   openKebab(e);
@@ -1332,7 +1344,7 @@ export function RosterCard({
           which an unmount never delivers. */}
       <Modal
         isOpen={pendingJob !== null}
-        onClose={() => setPendingJob(null)}
+        onClose={cancelJobChange}
         size="sm"
         title={
           <span className="flex items-center gap-2">
@@ -1369,7 +1381,7 @@ export function RosterCard({
           ]}
         />
         <div className="mt-6 flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => setPendingJob(null)}>
+          <Button type="button" variant="secondary" onClick={cancelJobChange}>
             Cancel
           </Button>
           {/* The commit button names the chosen outcome — in the import mode
