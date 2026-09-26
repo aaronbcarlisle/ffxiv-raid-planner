@@ -11,7 +11,8 @@
  * NEW surface, not a repoint. Draft state is seeded from the player's current
  * values ONLY on the open transition (wasOpenRef pattern, mirrors
  * RecipientPicker.tsx) so a mid-open store churn can't silently reset in-progress
- * edits. Saving diffs the draft against that seed and reports only the players
+ * edits. Saving diffs the draft against that seed (re-seeded per row after a
+ * partial failure — see `reseedIds`) and reports only the players
  * whose loot adjustment OR priority modifier actually changed — but each
  * reported update always carries BOTH current values (Task 9's `onSave` payload
  * contract), since a player's row is a single unit even if only one knob moved.
@@ -91,6 +92,22 @@ export function LootAdjustmentsModal({ isOpen, onClose, players, onSave }: LootA
       wasOpenRef.current = false;
     }
   }, [isOpen, players]);
+
+  // E2 review I-4: a partial failure keeps the modal open (R-E2-K), which
+  // leaves the open-time seed stale for exactly the rows that save sent — a
+  // success now holds the new value, a failure the rolled-back one. The catch
+  // marks those rows, and this effect re-seeds ONLY them from the live
+  // `players` once the store's post-save state has rendered (the catch's own
+  // closure still holds the pre-save `players`). The draft is untouched, and
+  // so is every other row's seed: a remote mid-open change to a row the user
+  // never saved must still not be overwritten by its stale open-time draft.
+  const [reseedIds, setReseedIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!reseedIds) return;
+    const live = seedFrom(players.filter((p) => reseedIds.includes(p.id)));
+    setSeed((prev) => ({ ...prev, ...live }));
+    setReseedIds(null);
+  }, [reseedIds, players]);
 
   const handleChange = (playerId: string, field: keyof DraftEntry, value: number | null) => {
     setDraft((prev) => ({
@@ -178,6 +195,7 @@ export function LootAdjustmentsModal({ isOpen, onClose, players, onSave }: LootA
       // (RosterCard.tsx's `err.message` pattern), not a generic string, and
       // stay open so the draft survives for a retry.
       toast.error(err instanceof Error ? err.message : 'Failed to save adjustments');
+      setReseedIds(updates.map((u) => u.playerId));
     } finally {
       setIsSaving(false);
     }

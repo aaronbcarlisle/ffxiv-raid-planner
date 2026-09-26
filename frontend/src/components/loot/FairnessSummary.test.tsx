@@ -97,3 +97,36 @@ describe('FairnessSummary', () => {
     expect(within(thisWeekCard).getByText('0')).toBeInTheDocument();
   });
 });
+
+// E2 Task 3.2 (R-E2-H): the strip renders through the shared StatCell idiom —
+// the four bordered, filled StatCard tiles are gone, and the empty roster
+// leaves no hole in the 2-column grid.
+describe('FairnessSummary — StatCell layout (R-E2-H)', () => {
+  it('carries none of the old tile chrome (no rounded-lg / bg-surface-card)', () => {
+    const lootLog = [makeDrop('a', 1), makeDrop('a', 1), makeDrop('b', 1)];
+    const { container } = render(<FairnessSummary {...base} lootLog={lootLog} />);
+    // The populated branch — all four stats render.
+    expect(screen.getByText('Most / fewest')).toBeInTheDocument();
+    expect(screen.getByText('Distribution')).toBeInTheDocument();
+    expect(container.querySelector('.rounded-lg')).toBeNull();
+    expect(container.querySelector('.bg-surface-card')).toBeNull();
+  });
+
+  it('empty roster: the two stats fill row 1 and the message spans row 2 — no empty grid cell', () => {
+    const { container } = render(<FairnessSummary {...base} players={[sub]} />);
+    const grid = container.firstElementChild as HTMLElement;
+    expect(grid).toHaveClass('grid', 'grid-cols-2');
+
+    const cells = Array.from(grid.children);
+    expect(cells).toHaveLength(3);
+    cells.forEach((cell) => expect(cell.textContent?.trim()).not.toBe(''));
+    expect(cells[0]).toHaveTextContent('Drops this tier');
+    expect(cells[1]).toHaveTextContent('This week');
+    expect(cells[0]).not.toHaveClass('col-span-2');
+    expect(cells[1]).not.toHaveClass('col-span-2');
+    expect(cells[2]).toHaveTextContent('No configured players on the roster yet.');
+    expect(cells[2]).toHaveClass('col-span-2');
+    expect(container.querySelector('.rounded-lg')).toBeNull();
+    expect(container.querySelector('.bg-surface-card')).toBeNull();
+  });
+});

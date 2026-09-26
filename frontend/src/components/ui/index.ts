@@ -38,7 +38,6 @@ export { SessionRsvpCard, type SessionRsvpCardProps } from './SessionRsvpCard';
 export { SearchableSelect, type SearchableSelectProps, type GroupConfig } from './SearchableSelect';
 export { SettingsPopover } from './SettingsPopover';
 export { SlideOutPanel } from './SlideOutPanel';
-export { StatCell, type StatCellProps } from './StatCell';
 export { TierActionsMenu } from './TierActionsMenu';
 export {
   Skeleton,

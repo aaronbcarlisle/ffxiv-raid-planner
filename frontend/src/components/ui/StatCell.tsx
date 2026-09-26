@@ -14,7 +14,11 @@ import type { ReactNode } from 'react';
 export interface StatCellProps {
   value: ReactNode;
   label: string;
-  /** Optional third line — a caption below the label (e.g. "4/5 obtained"). */
+  /**
+   * Optional third line — a caption below the label (e.g. "4/5 obtained").
+   * A block slot (rendered in a `<div>`), so it may carry block children —
+   * FairnessSummary passes two stacked `<div>` lines.
+   */
   detail?: ReactNode;
   /** Overrides the value's color token; omit for the default text-text-primary. */
   valueClassName?: string;
@@ -30,7 +34,7 @@ export function StatCell({ value, label, detail, valueClassName, align = 'center
     <div className={alignClass}>
       <p className={`text-lg font-display font-bold tabular-nums leading-none ${valueColor}`}>{value}</p>
       <p className="mt-1 text-xs uppercase tracking-wide text-text-tertiary leading-none">{label}</p>
-      {detail && <p className="mt-1 text-xs text-text-tertiary">{detail}</p>}
+      {detail && <div className="mt-1 text-xs text-text-tertiary">{detail}</div>}
     </div>
   );
 }

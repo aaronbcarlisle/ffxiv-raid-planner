@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { StatCell } from './StatCell';
 
@@ -8,6 +8,32 @@ describe('StatCell', () => {
     expect(screen.getByText('733')).toBeInTheDocument();
     expect(screen.getByText('Avg iLvl')).toBeInTheDocument();
     expect(screen.getByText('4/5 obtained')).toBeInTheDocument();
+  });
+
+  // E2 review I-1: `detail` is a block slot — FairnessSummary passes two
+  // `<div>` lines. A `<p>` wrapper made React 19 log "In HTML, <div> cannot
+  // be a descendant of <p>" on every Home render with a roster.
+  it('takes a block detail without an invalid-nesting console.error', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(
+        <StatCell
+          value="3 / 1"
+          label="Most / fewest"
+          detail={
+            <>
+              <div>Most: Alice</div>
+              <div>Fewest: Bob</div>
+            </>
+          }
+        />
+      );
+      expect(screen.getByText('Most: Alice')).toBeInTheDocument();
+      expect(screen.getByText('Most: Alice').closest('p')).toBeNull();
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it('omits the detail line when none is passed', () => {
