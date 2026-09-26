@@ -60,6 +60,30 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.38',
+    date: '2026-09-26T06:40:00Z',
+    title: 'Player Hub — PH1b Overview (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'Player Hub Overview: your statics at a glance',
+        description:
+          'V2 preview: the Hub\'s Overview lists your statics with your role and member count, an Enter button, and a menu to open, copy, duplicate, configure or delete each one — plus Create a static and Find a static. Beside it: your characters, your availability, and the next profile setup step.',
+        pr: 281,
+        prTitle: 'feat(v2): PH1b — Player Hub Overview: your statics, characters, availability, setup',
+      },
+      {
+        category: 'improvement',
+        title: 'Suggested farms move to Tracking',
+        description:
+          'V2 preview: collection farms detected from your latest sync now show at the top of the Tracking tab.',
+        pr: 281,
+        prTitle: 'feat(v2): PH1b — Player Hub Overview: your statics, characters, availability, setup',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.37',
     date: '2026-09-26T06:30:00Z',
     title: 'Player Hub — PH1a shell and tabs (v2 preview)',
