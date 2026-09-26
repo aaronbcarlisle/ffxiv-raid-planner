@@ -773,6 +773,20 @@ export function RosterCard({
 
   const dragProps = reorderMode ? { ...dragHandle?.attributes, ...dragHandle?.listeners } : {};
 
+  // ── PR #277 review (B1): serialize the tank seat chip's mutations ──
+  // Its popover stays open after a pick, so MT/OT and T1/T2 can both be sent
+  // before the first PUT resolves — and tierStore.updatePlayer replaces the
+  // WHOLE player with each response, so a late first response would restore
+  // the other half. Each seat update is sent only once the previous one has
+  // settled, so the last response always carries both halves. The tail
+  // absorbs a failure (tierStore has already rolled back and set `error`) so
+  // one failed pick doesn't strand the ones queued behind it.
+  const seatQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const queueSeatUpdate = (updates: Partial<SnapshotPlayer>) => {
+    const sent = seatQueueRef.current.then(() => actions.onUpdate(updates));
+    seatQueueRef.current = sent.catch(() => undefined);
+  };
+
   // ── R-E2-D (2b): the header's ONE seat chip ──
   // Tanks get the merged role+position chip; everyone else keeps today's
   // PositionSelector. Both call the handlers the two separate chips did.
@@ -781,8 +795,8 @@ export function RosterCard({
       <TankSeatSelector
         tankRole={player.tankRole}
         position={player.position}
-        onTankRoleSelect={(tankRole) => actions.onUpdate({ tankRole: tankRole ?? null })}
-        onPositionSelect={(position) => actions.onUpdate({ position: position ?? null })}
+        onTankRoleSelect={(tankRole) => queueSeatUpdate({ tankRole: tankRole ?? null })}
+        onPositionSelect={(position) => queueSeatUpdate({ position: position ?? null })}
         player={player}
         userRole={userRole}
         currentUserId={currentUserId ?? undefined}

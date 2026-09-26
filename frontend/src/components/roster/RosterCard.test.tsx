@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { act, render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
@@ -2377,14 +2377,90 @@ describe('RosterCard — one-line header (E2, R-E2-D)', () => {
     expect(within(header).queryByRole('button', { name: /^Tank role/ })).not.toBeInTheDocument();
   });
 
-  it('the seat chip calls the handlers the two selectors did', () => {
+  it('the seat chip calls the handlers the two selectors did', async () => {
     const onUpdate = vi.fn().mockResolvedValue(undefined);
     renderCard(makePlayer(), { actions: { ...actions, onUpdate } });
     fireEvent.click(screen.getByRole('button', { name: /^Tank role/ }));
     fireEvent.click(within(screen.getByRole('group', { name: 'Tank role' })).getByRole('button', { name: 'OT' }));
-    expect(onUpdate).toHaveBeenCalledWith({ tankRole: 'OT' });
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith({ tankRole: 'OT' }));
     fireEvent.click(screen.getByRole('button', { name: 'Clear position' }));
-    expect(onUpdate).toHaveBeenCalledWith({ position: null });
+    // Queued behind the first (PR #277 B1), so it lands a microtask later.
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith({ position: null }));
+  });
+
+  // PR #277 review (B1): the popover stays open after a pick, and
+  // tierStore.updatePlayer replaces the WHOLE player with each response. Two
+  // PUTs in flight whose responses land out of order would let the stale first
+  // response restore the other half.
+  it('serializes the seat chip: MT then T1 picked fast still ends MT · T1', async () => {
+    const base = makePlayer({ tankRole: null, position: null });
+    // tierStore stand-in: optimistic merge, then the whole player replaced by
+    // the response. The "server" merges each PUT's partial on receipt.
+    const store: { setPlayer?: Dispatch<SetStateAction<SnapshotPlayer>> } = {};
+    let server: Partial<SnapshotPlayer> = {};
+    const pending: Array<() => void> = [];
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const onUpdate = vi.fn((updates: Partial<SnapshotPlayer>) => {
+      store.setPlayer?.((p) => ({ ...p, ...updates }));
+      server = { ...server, ...updates };
+      const response = { ...base, ...server };
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      return new Promise<void>((resolve) => {
+        pending.push(() => {
+          inFlight -= 1;
+          store.setPlayer?.(response);
+          resolve();
+        });
+      });
+    });
+    function Harness() {
+      const [player, setPlayer] = useState(base);
+      useEffect(() => {
+        store.setPlayer = setPlayer;
+      }, []);
+      return (
+        <RosterCard
+          player={player}
+          userRole="owner"
+          currentUserId="u1"
+          isAdminAccess={false}
+          canManage
+          clipboardPlayer={null}
+          reorderMode={false}
+          groupId="g1"
+          tierId="tier1"
+          contentType="savage"
+          actions={{ ...actions, onUpdate }}
+        />
+      );
+    }
+    render(
+      <MemoryRouter>
+        <TooltipProvider>
+          <Harness />
+        </TooltipProvider>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /^Tank role/ }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Tank role' })).getByRole('button', { name: 'MT' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Position' })).getByRole('button', { name: 'T1' }));
+
+    // Settle newest-first: were both in flight, the stale MT response lands last.
+    for (let settled = 0; settled < 2; settled++) {
+      await waitFor(() => expect(pending.length).toBeGreaterThan(0));
+      await act(async () => {
+        pending.pop()!();
+      });
+    }
+
+    expect(screen.getByRole('button', { name: /^Tank role/ })).toHaveAccessibleName('Tank role MT, position T1');
+    // The T1 PUT was sent only after the MT one settled…
+    expect(maxInFlight).toBe(1);
+    // …and each carries only its own half — no stale copy of the other.
+    expect(onUpdate.mock.calls).toEqual([[{ tankRole: 'MT' }], [{ position: 'T1' }]]);
   });
 
   it('has no job-swap button in the header', () => {
