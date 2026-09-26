@@ -81,6 +81,9 @@ describe('HubIdentityHeader', () => {
   });
 
   it('dates the plugin chip from the newest usable plugin snapshot only', () => {
+    // upper (source: 'PLUGIN', hoursAgo(1)) is the newest when .toLowerCase() is applied;
+    // without it, upper would be excluded and 'newest' (3h ago) would win — so the
+    // assertion 'Synced 1h ago' is the mutation sentinel for the .toLowerCase() call.
     renderHeader({
       gearSnapshots: {
         c1: [
@@ -89,10 +92,10 @@ describe('HubIdentityHeader', () => {
           snapshot({ id: 'lodestone', source: 'lodestone', syncedAt: hoursAgo(0.1) }),
           snapshot({ id: 'unusable', gear: [{ slot: 'head' }], syncedAt: hoursAgo(0.1) }),
         ],
-        c2: [snapshot({ id: 'upper', source: 'PLUGIN', syncedAt: hoursAgo(5) })],
+        c2: [snapshot({ id: 'upper', source: 'PLUGIN', syncedAt: hoursAgo(1) })],
       },
     });
-    expect(screen.getByText('Plugin · Synced 3h ago')).toBeInTheDocument();
+    expect(screen.getByText('Plugin · Synced 1h ago')).toBeInTheDocument();
     expect(screen.queryByText('Plugin not synced')).toBeNull();
   });
 

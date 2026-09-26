@@ -143,10 +143,14 @@ describe('Profile — V2 seam', () => {
   });
 
   it("under the provider only the Hub's shortcuts run: 4 is Sharing, 6 does nothing", () => {
+    // Establish a non-empty known URL state first, then assert 6 doesn't change it.
+    // Without this, a V1 '6' → '?tab=statics' would be rewritten to '' by the
+    // Hub's canonical rewrite, making the assertion vacuously pass.
     renderProfile(true);
-    fireEvent.keyDown(window, { key: '6' });
-    expect(search()).toBe('');
     fireEvent.keyDown(window, { key: '4' });
+    expect(search()).toBe('?tab=sharing');
+    fireEvent.keyDown(window, { key: '6' });
+    // Hub has no shortcut for 6; the URL must remain at sharing
     expect(search()).toBe('?tab=sharing');
   });
 
