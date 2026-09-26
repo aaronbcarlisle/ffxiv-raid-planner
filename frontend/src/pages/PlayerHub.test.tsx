@@ -11,10 +11,14 @@ import type { StaticGroupListItem } from '../types';
 
 type Props = Record<string, unknown>;
 
-const { bodies, syncSeenAt, authState } = vi.hoisted(() => ({
+const { bodies, syncSeenAt, authState, hubCallbacks } = vi.hoisted(() => ({
   bodies: {} as Record<string, Props>,
   syncSeenAt: [] as string[],
   authState: { user: { id: 'u1', discordUsername: 'disc-user' } as Record<string, unknown> },
+  hubCallbacks: {
+    wizardOnComplete: null as ((groupId: string, shareCode: string) => void) | null,
+    hubOnCreateStatic: null as (() => void) | null,
+  },
 }));
 
 vi.mock('../stores/authStore', () => ({
@@ -49,6 +53,21 @@ vi.mock('../components/profile/PlayerAvailabilityTab', () => ({
 vi.mock('../components/profile/PreviewShareTab', () => ({
   PreviewShareTab: (p: Props) => { bodies.sharing = p; return <div data-testid="body-sharing" />; },
 }));
+vi.mock('../components/profile/hub/HubOverview', () => ({
+  HubOverview: ({ onCreateStatic }: { onCreateStatic?: () => void }) => {
+    hubCallbacks.hubOnCreateStatic = onCreateStatic ?? null;
+    return <div data-testid="hub-overview"><div data-testid="hub-overview-content" /></div>;
+  },
+}));
+vi.mock('../components/profile/hub/SuggestedFarmsCard', () => ({
+  SuggestedFarmsCard: () => <div data-testid="suggested-farms" />,
+}));
+vi.mock('../components/wizard', () => ({
+  SetupWizard: ({ onComplete }: { onComplete?: (groupId: string, shareCode: string) => void }) => {
+    hubCallbacks.wizardOnComplete = onComplete ?? null;
+    return null;
+  },
+}));
 
 const profile: PlayerProfile = {
   id: 'p1', userId: 'u1', visibility: 'shareable', shareCode: 'P1', shareEnabled: true, bio: null,
@@ -79,7 +98,7 @@ const openers = {
 function LocationProbe() {
   const location = useLocation();
   const navigationType = useNavigationType();
-  return <output data-testid="probe" data-search={location.search} data-nav={navigationType} />;
+  return <output data-testid="probe" data-search={location.search} data-nav={navigationType} data-path={location.pathname} />;
 }
 
 function renderHub(entry = '/profile', hubProfile: PlayerProfile | null = profile) {
@@ -107,6 +126,8 @@ beforeEach(() => {
   syncSeenAt.length = 0;
   authState.user = { id: 'u1', discordUsername: 'disc-user' };
   Object.values(openers).forEach((fn) => fn.mockClear());
+  hubCallbacks.wizardOnComplete = null;
+  hubCallbacks.hubOnCreateStatic = null;
 });
 
 describe('PlayerHub — tabs and URL', () => {
@@ -144,7 +165,7 @@ describe('PlayerHub — tabs and URL', () => {
     expect(probe()).toHaveAttribute('data-nav', 'PUSH');
     fireEvent.click(tab('Overview'));
     expect(probe()).toHaveAttribute('data-search', '?x=1');
-    expect(screen.getByTestId('hub-overview')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('hub-overview')).not.toBeEmptyDOMElement();
   });
 
   it('clears sub-tab params on a tab switch only when tabs are not remembered', () => {
@@ -270,6 +291,18 @@ describe('PlayerHub — layout', () => {
     for (const v1Label of ['Sync & Gear', 'Jobs & Gear', 'My Statics', 'Share']) {
       expect(screen.queryByText(v1Label)).toBeNull();
     }
-    expect(screen.getByTestId('hub-overview')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('hub-overview')).not.toBeEmptyDOMElement();
+  });
+});
+
+describe('PlayerHub — SetupWizard (I1)', () => {
+  it('onComplete closes the wizard and navigates to the new static (R-PH1-E)', () => {
+    renderHub();
+    // Trigger wizard open via the Overview's onCreateStatic callback
+    act(() => { hubCallbacks.hubOnCreateStatic?.(); });
+    // Wizard is now open; simulate it completing with a created group
+    act(() => { hubCallbacks.wizardOnComplete?.('g-new', 'NEWSC1'); });
+    // Should have navigated to the new static
+    expect(probe()).toHaveAttribute('data-path', '/group/NEWSC1');
   });
 });
