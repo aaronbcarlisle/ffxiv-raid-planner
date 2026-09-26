@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HubSideCards } from './HubSideCards';
 import type { GearSnapshot, PlayerProfile } from '../../../stores/playerProfileStore';
@@ -178,5 +178,17 @@ describe('Profile setup card', () => {
     profileState.error = 'Network error';
     renderCards(null);
     expect(screen.queryByText(/profile setup/i)).toBeNull();
+  });
+
+  it('checklist items expose an accessible done/not-done state, not just an icon', () => {
+    renderCards({ ...baseProfile, characters: [] });
+    fireEvent.click(screen.getByRole('button', { name: /show checklist/i }));
+    // "Character linked" is not done (no characters); "Main job selected" is done
+    // (baseProfile has a main job). Querying by accessible role/name proves the
+    // state isn't conveyed by the ✓/○ glyph alone.
+    const notDoneItem = screen.getByText('Character linked').closest('li')!;
+    expect(within(notDoneItem).getByRole('img', { name: 'Not done' })).toBeInTheDocument();
+    const doneItem = screen.getByText('Main job selected').closest('li')!;
+    expect(within(doneItem).getByRole('img', { name: 'Done' })).toBeInTheDocument();
   });
 });

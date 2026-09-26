@@ -217,7 +217,8 @@ function ProfileSetupCard({
         <ul className="mt-2 flex flex-col gap-1">
           {allItems.map((c) => (
             <li key={c.key} className={`flex items-center gap-2 text-xs ${c.done ? 'text-text-muted line-through' : 'text-text-secondary'}`}>
-              <span aria-hidden="true">{c.done ? '✓' : '○'}</span>
+              {/* Copilot suppressed finding (PR #281): done/not-done was icon-only (visual). */}
+              <span role="img" aria-label={c.done ? 'Done' : 'Not done'}>{c.done ? '✓' : '○'}</span>
               {c.label}
             </li>
           ))}

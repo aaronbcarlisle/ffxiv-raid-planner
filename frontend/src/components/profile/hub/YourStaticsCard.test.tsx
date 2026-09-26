@@ -16,6 +16,7 @@ const storeState = {
   groups: [] as StaticGroupListItem[],
   isLoading: false,
   error: null as string | null,
+  errorSource: null as 'load' | 'action' | null,
   fetchGroups: vi.fn(),
   clearError: vi.fn(),
   duplicateGroup: vi.fn(),
@@ -58,6 +59,7 @@ const onCreateStatic = vi.fn();
 function renderCard(groups: StaticGroupListItem[] = [], extra = {}) {
   storeState.groups = groups;
   storeState.error = null;
+  storeState.errorSource = null;
   storeState.isLoading = false;
   return render(
     <MemoryRouter>
@@ -265,18 +267,36 @@ describe('YourStaticsCard — error banner', () => {
     expect(screen.getByText('Test Static')).toBeInTheDocument();
   });
 
-  it('error with no statics replaces the body', () => {
+  it('a load error with no statics replaces the body (no create/find affordance)', () => {
     storeState.groups = [];
     storeState.error = 'Load failed';
+    storeState.errorSource = 'load';
     storeState.isLoading = false;
     render(<MemoryRouter><YourStaticsCard staticSuggestions={[]} onCreateStatic={onCreateStatic} /></MemoryRouter>);
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.queryByText('Test Static')).toBeNull();
+    expect(screen.queryByRole('button', { name: /create a static/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /find a static/i })).toBeNull();
+  });
+
+  // R-PH1-fix1 (PR #281 review): a non-load error (e.g. a failed createGroup from the
+  // SetupWizard, which the Hub never unmounts for) must not strand the zero-statics hub
+  // without its create/find affordance — only Dismiss was reachable before the fix.
+  it('an action error (e.g. failed create) with no statics still shows the create/find affordance', () => {
+    storeState.groups = [];
+    storeState.error = 'Failed to create group';
+    storeState.errorSource = 'action';
+    storeState.isLoading = false;
+    render(<MemoryRouter><YourStaticsCard staticSuggestions={[]} onCreateStatic={onCreateStatic} /></MemoryRouter>);
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to create group');
+    expect(screen.getByRole('button', { name: /create a static/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /find a static/i })).toBeInTheDocument();
   });
 
   it('Retry calls fetchGroups', () => {
     storeState.groups = [];
     storeState.error = 'Load failed';
+    storeState.errorSource = 'load';
     storeState.fetchGroups.mockResolvedValue(undefined);
     render(<MemoryRouter><YourStaticsCard staticSuggestions={[]} onCreateStatic={onCreateStatic} /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /retry/i }));
@@ -286,6 +306,7 @@ describe('YourStaticsCard — error banner', () => {
   it('Dismiss calls clearError', () => {
     storeState.groups = [];
     storeState.error = 'Load failed';
+    storeState.errorSource = 'load';
     render(<MemoryRouter><YourStaticsCard staticSuggestions={[]} onCreateStatic={onCreateStatic} /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
     expect(storeState.clearError).toHaveBeenCalledTimes(1);

@@ -83,10 +83,20 @@ const ROLE_LABEL: Record<string, string> = {
   owner: 'Owner', lead: 'Lead', member: 'Member', viewer: 'Viewer',
 };
 
+// R-PH1-fix4: literal class strings so Tailwind always emits them, regardless of what
+// other files happen to reference (was `text-membership-${...}` interpolated at runtime).
+const ROLE_TEXT_COLOR: Record<'owner' | 'lead' | 'member' | 'viewer' | 'linked', string> = {
+  owner: 'text-membership-owner',
+  lead: 'text-membership-lead',
+  member: 'text-membership-member',
+  viewer: 'text-membership-viewer',
+  linked: 'text-membership-linked',
+};
+
 export function YourStaticsCard({ staticSuggestions, onCreateStatic }: YourStaticsCardProps) {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const { groups, isLoading, error, fetchGroups, clearError, duplicateGroup } = useStaticGroupStore();
+  const { groups, isLoading, error, errorSource, fetchGroups, clearError, duplicateGroup } = useStaticGroupStore();
   const addToast = useToastStore((s) => s.addToast);
   const [deletingGroup, setDeletingGroup] = useState<StaticGroupListItem | null>(null);
 
@@ -122,7 +132,11 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic }: YourStati
 
   const hasGroups = groups.length > 0;
   const showErrorBanner = !!error;
-  const errorReplacesBody = showErrorBanner && !hasGroups;
+  // R-PH1-fix1: only a *load* failure (fetchGroups) blanks the body — an action failure
+  // (createGroup, duplicateGroup, ...) with zero statics must leave the empty-state's
+  // Create/Find affordance reachable, or a failed Create leaves the user stranded with
+  // only a banner and Dismiss (SetupWizard.tsx calls createGroup without remounting the Hub).
+  const errorReplacesBody = showErrorBanner && !hasGroups && errorSource === 'load';
   const skeleton = isLoading && !hasGroups;
 
   return (
@@ -166,8 +180,7 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic }: YourStati
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text-primary">{g.name}</p>
                     <p className="flex items-center gap-1.5 text-xs text-text-muted">
-                      {/* design-system-ignore: uses text-membership-* semantic tokens per R-PH1-E */}
-                      <span className={`text-xs font-medium text-membership-${isLinked ? 'linked' : (g.userRole ?? 'member')}`}>{roleLabel}</span>
+                      <span className={`text-xs font-medium ${ROLE_TEXT_COLOR[isLinked ? 'linked' : (g.userRole ?? 'member')]}`}>{roleLabel}</span>
                       {`${g.memberCount} member${g.memberCount !== 1 ? 's' : ''}`}
                     </p>
                   </div>
