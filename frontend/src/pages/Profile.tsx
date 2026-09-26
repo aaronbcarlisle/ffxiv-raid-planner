@@ -35,6 +35,7 @@ import { fadeInProps } from '../lib/motion';
 import { GameIcon } from '../components/ui/GameIcon';
 import { hasUsableGearSnapshot } from '../components/profile/jobGearUtils';
 import { MyStaticsPanel } from '../components/dashboard/MyStaticsPanel';
+import { PlayerHub } from './PlayerHub';
 
 type ProfileTab = 'overview' | 'sync' | 'jobs-gear' | 'collections' | 'availability' | 'preview' | 'statics';
 const PROFILE_TAB_IDS: ProfileTab[] = ['overview', 'sync', 'jobs-gear', 'collections', 'availability', 'preview', 'statics'];
@@ -111,6 +112,7 @@ function parseProfileTab(search: string): ProfileTab {
 }
 
 export default function Profile() {
+  const inV2Chrome = useInV2Chrome();
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
@@ -251,6 +253,7 @@ export default function Profile() {
       { key: '5', description: 'Share',               action: () => setActiveTab('preview') },
       { key: '6', description: 'My Statics',          action: () => setActiveTab('statics') },
     ],
+    disabled: inV2Chrome,
   });
 
   if (!authInitialized || authLoading) {
@@ -272,6 +275,57 @@ export default function Profile() {
         <Skeleton className="h-48 mb-4" />
         <Skeleton className="h-32" />
       </div>
+    );
+  }
+
+  const modals = (
+    <>
+      {linkModal.isOpen && <CharacterLinkModal onClose={linkModal.close} />}
+      {addJobModal.isOpen && <JobProfileModal onClose={addJobModal.close} />}
+      {editingJob && (
+        <JobProfileModal
+          existing={editingJob}
+          onClose={() => setEditingJob(null)}
+        />
+      )}
+      {managingBisJobId && (
+        <ManageBiSModal
+          jobProfileId={managingBisJobId.id}
+          job={managingBisJobId.job}
+          onClose={() => {
+            fetchTargets('player_job_profile', managingBisJobId.id);
+            setManagingBisJobId(null);
+          }}
+        />
+      )}
+    </>
+  );
+
+  // Stage-3 PH1 — SANCTIONED legacy-file seam. Under v2 chrome `/profile` is the
+  // V2 Player Hub: every data effect above still runs here, the modals stay
+  // hosted here, and this page's own shortcuts are disabled (the Hub registers
+  // its own). The gate is PROVABLY FALSE on every legacy render path — the
+  // V2ChromeContext provider is mounted only by AppChrome (Layout's v2 branch)
+  // and defaults to `false` — so the legacy page below renders byte-identically.
+  // It also makes ProfileSidebarNav's P4/M4 footer gate unreachable in the app;
+  // that gate stays for the legacy pin in Profile.rail.test.tsx.
+  if (inV2Chrome) {
+    return (
+      <>
+        <PlayerHub
+          profile={profile}
+          goals={goals}
+          gearSnapshots={gearSnapshots}
+          collectionSuggestions={collectionSuggestions}
+          staticSuggestions={staticSuggestions}
+          groups={groups}
+          onOpenLinkModal={linkModal.open}
+          onAddJob={addJobModal.open}
+          onEditJob={setEditingJob}
+          onManageBiS={setManagingBisJobId}
+        />
+        {modals}
+      </>
     );
   }
 
@@ -483,24 +537,7 @@ export default function Profile() {
       </div>{/* end right panel / scroll column */}
 
       {/* Modals */}
-      {linkModal.isOpen && <CharacterLinkModal onClose={linkModal.close} />}
-      {addJobModal.isOpen && <JobProfileModal onClose={addJobModal.close} />}
-      {editingJob && (
-        <JobProfileModal
-          existing={editingJob}
-          onClose={() => setEditingJob(null)}
-        />
-      )}
-      {managingBisJobId && (
-        <ManageBiSModal
-          jobProfileId={managingBisJobId.id}
-          job={managingBisJobId.job}
-          onClose={() => {
-            fetchTargets('player_job_profile', managingBisJobId.id);
-            setManagingBisJobId(null);
-          }}
-        />
-      )}
+      {modals}
 
       {/* No sticky bottom CTA — next action is inline in Overview tab */}
 
