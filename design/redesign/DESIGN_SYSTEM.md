@@ -167,9 +167,10 @@ Each component is specified as a **contract**: anatomy · variants (the finite l
 
 ### 3.2 Card
 
-- **Anatomy:** container on `card.bg`, `card.radius` (12px), `border.default`; optional uppercase `section-label` header with leading icon; body; optional footer divided by `border.subtle`.
+- **Anatomy:** container on `card.bg`, `card.radius`, `border.default`; optional uppercase `section-label` header with leading icon; body; optional footer divided by `border.subtle`.
 - **Variants:** `default` · `accent` (highlight border — the "primary/next" card) · `empty` (dashed border, centered call-to-action).
 - **Rule:** a card is a *defined region*, not a floating box — it must sit on a surface one step darker than itself.
+- **Drift reconciled (U-11, E2a):** this pre-code contract said `card.radius (12px)`; the built `CardShell` (§3.16) renders `rounded-lg` (8px) and that's the shipped value — corrected here, not just at §3.16.
 
 ### 3.3 Tag (constrained primitive — variant carries semantics)
 
@@ -178,10 +179,12 @@ The v2 rule, kept verbatim because it's excellent: a `Tag` **must declare its ki
 | Variant | Behavior | Affordance |
 |---|---|---|
 | `label` | inert, display-only | none |
-| `filter` | toggles a filter | `aria-pressed`; solid bg when on (`tag.selected-bg-opacity:1`), 20% tint when off |
+| `filter` | toggles a filter | `aria-pressed`; the tone's bg/text/border when on (pressed), a neutral `bg-transparent text-text-muted border-border-subtle` (not a dimmed tint of the tone) when off |
 | `nav` | navigates | chevron + real `href`/`onNavigate` (required by type) |
 
 Illegal-by-construction: a label tag can't have an onClick; a nav tag can't exist without a destination.
+
+**Shape (U-11, E2a):** every variant is a pill — `rounded-full`, `px-2 py-0.5`, `text-xs` — via one shared base class (`Tag.tsx`'s `BASE`). Never a squared or `rounded-md` tag.
 
 `Tag` and `Tabs` are the canonical discriminated-union exemplars in this design system; their compile-time guarantees are locked by `frontend/src/components/ui/Tag.test-d.tsx` (`@ts-expect-error` assertions that fail the build if any guarantee regresses).
 
@@ -199,7 +202,7 @@ PopoverSelect (badge-style, the documented `bg-{color}` selected / `bg-{color}/2
 
 ### 3.7 Inputs, Select, Searchable Select, Checkbox
 
-Kept from v2: text input (default/error/disabled, sizes, with-icon, input-group), Select, SearchableSelect (filterable, categorized with colored sticky headers), checkbox. All consume `component.input.*` tokens. **Surface note:** inputs map to `surface-interactive` (`#1e1e26`); `surface-elevated` (`#121218`) is for popovers/elevated cards (value unchanged; documented role moved).
+Kept from v2: text input (default/error/disabled, sizes, with-icon, input-group), Select, SearchableSelect (filterable, categorized with colored sticky headers), checkbox. All consume `component.input.*` tokens. **Surface note (drift reconciled, U-11, E2a):** `Input` (`ui/Input.tsx`) renders on `surface-elevated` (`#121218`), not `surface-interactive` — `surface-interactive` (`#1e1e26`, one step brighter) is for hover/pressed and other interactive-affordance surfaces, not the input field itself.
 
 ### 3.8 New components the redesign introduces
 
@@ -312,10 +315,10 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
 
 ### 3.16 CardShell — F6b
 
-- **Anatomy:** `surface-card` + `border-subtle` rounded container (`rounded-lg`, `p-4`); optional header row — leading `icon?` (aria-hidden, `text-text-tertiary`) + uppercase `text-xs` `<h3>` `title` + right-aligned `headerRight?` slot (`ml-auto`); `children` body.
-- **Props:** `{ title?: string; icon?: ReactNode; headerRight?: ReactNode; children: ReactNode; className?: string; as?: 'section'|'div' }`. Defaults `as='section'`; use `'div'` when the card is nested inside another landmark (e.g. inside a `<section>`).
+- **Anatomy:** `surface-card` + `border-subtle` rounded container (`rounded-lg`, `p-4`); optional header row — leading `icon?` (aria-hidden, `text-text-tertiary`) + uppercase `text-xs` heading `title` (level below) + right-aligned `headerRight?` slot (`ml-auto`); `children` body.
+- **Props:** `{ title?: string; icon?: ReactNode; headerRight?: ReactNode; children: ReactNode; className?: string; as?: 'section'|'div'; level?: 'h2'|'h3' }`. Defaults `as='section'`, `level='h2'` (E2a, R-E2-A — every current caller passing a title sits directly under the page `<h1>`, so the default keeps the outline unbroken); pass `level="h3"` when nested one level deeper (e.g. `SessionRsvpCard`'s inner session title). Use `'div'` when the card is nested inside another landmark (e.g. inside a `<section>`).
 - **States:** none (empty-content use case: render `EmptyStateInvite` as `children` — not the card's own responsibility).
-- **a11y:** when `title` is set it renders as a real `<h3>` heading element; the icon slot is `aria-hidden`.
+- **a11y:** when `title` is set it renders as a real heading element at `level` (`h2` or `h3`); an untitled `CardShell` renders no heading at all. The icon slot is `aria-hidden`.
 - **Usage rules:** supersedes the legacy `DashboardCard.tsx` (inline-hex debt). A card must sit on a surface one step darker than itself (`surface-base` under `surface-card`). Token-only: `bg-surface-card`, `border-border-subtle`, `text-text-tertiary`. No raw hex.
 
 ### 3.17 ProgressBar — F6b
@@ -354,7 +357,8 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
 - **Anatomy:** CSS grid — `main` (left actionable column, `1.85fr`) and `side` (right ambient column, `1fr`); `18px` gap via `gap-[18px]`; `items-start` so columns don't stretch. Collapses to a single column at ≤1180px via `min-[1181px]:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]`.
 - **Props:** `{ main: ReactNode; side: ReactNode; className?: string }`. Pure layout — no store, no color, no business logic.
 - **States:** two-column (≥1181px viewport width) | single-column (≤1180px — `side` stacks below `main`).
-- **Usage rules:** placed in `ui/` (shared) because both Home (ring-0) and Schedule (ring-1) consume it — only the shared layer is importable by both. `main` = primary/actionable content; `side` = ambient/glanceable. Do not use for non-dashboard layouts; this component encodes the Home/Schedule-specific proportions.
+- **Usage rules:** placed in `ui/` (shared) because it stayed reachable by both rings. `main` = primary/actionable content; `side` = ambient/glanceable. Do not use for non-dashboard layouts; this component encodes the Home/Schedule-specific proportions.
+- **Users (E2a, R-E2-G):** Schedule only (`Schedule.tsx:19,420`, unchanged). Home rendered it in F6b, but as of E2 renders both its rows in **one** grid instead (`Home.tsx:333-390`) — the `minmax(0,…)` track sizing this component pioneered is why that grid also uses `minmax(0,…)`. Home no longer imports this component.
 
 ### 3.22 AttentionRow — F6b
 
@@ -658,11 +662,22 @@ The nav rail is now fully specified. This is the build target; F3 formalizes the
   logs but renders only filtered rows, so a filtered-out target scrolls to nothing and clears its own
   params 2.5 s later, showing the right screen with no highlight and no reason why.
 
+### 3.37 StatCell — E2a (R-E2-H)
+
+- **Anatomy:** a value/label pair — `text-lg font-display font-bold tabular-nums` value over a `text-xs uppercase tracking-wide text-text-tertiary` label — plus an optional third `detail` line below (`text-xs text-text-tertiary`, a block slot so it may carry stacked children).
+- **Props:** `{ value: ReactNode; label: string; detail?: ReactNode; valueClassName?: string; align?: 'center'|'start' }`. `align` defaults `'center'`. **No tailwind-merge in the repo:** `text-text-primary` is applied to the value only when `valueClassName` is omitted — passing `valueClassName` fully replaces the default color rather than composing with it (two color classes on one element would otherwise resolve by CSS declaration order, not by which one the caller meant).
+- **States:** none — purely presentational, controlled by the caller.
+- **Usage rules:** the one stat idiom, extracted from `RosterReadinessCard`'s original inline `Stat` (which owned this exact markup first) to also replace `FairnessSummary`'s divergent `StatCard` tiles (rounded tile, its own radius/background — both dropped). `RosterReadinessCard` uses it centered in a `divide-x` row; `FairnessSummary` uses it `align="start"` in a 2×2 grid whose dividers are cell borders (`border-border-subtle`), with no per-cell radius or background.
+
 ---
 
 ## 4. Iconography & motion
 
-Icons: Lucide, stroke `1.5–2.5px` on dark (default 2px), sizes xs12/sm16/md20/lg24/xl32 — kept. Job icons: the FFXIV set, sizes xs–lg — kept. **⌘K affordance fix (validation finding):** show platform-correct modifier (`⌘K` on mac, `Ctrl K` on Windows — most of the audience) or fall back to a search icon + "Search"; never render a bare glyph that breaks without the font. Motion: not yet specified — flagged as a v3.1 gap (transitions, the toggle's orb slide, popover enter/exit need durations/easing tokens).
+Icons: Lucide, stroke `1.5–2.5px` on dark (default 2px), sizes xs12/sm16/md20/lg24/xl32 — kept. Job icons: the FFXIV set, sizes xs–lg — kept. **⌘K affordance fix (validation finding):** show platform-correct modifier (`⌘K` on mac, `Ctrl K` on Windows — most of the audience) or fall back to a search icon + "Search"; never render a bare glyph that breaks without the font.
+
+**Motion (drift reconciled, U-11, E2a):** two standard easings are in shipped use, not tokenized into one. `frontend/src/lib/motion.ts` defines one JS cubic-bezier constant, `ease = [0.4, 0, 0.2, 1]`, reused by every framer-motion variant (fade/slide/scale/stagger/toast/page transitions) with durations `DURATION_FAST/NORMAL/SLOW` (0.15/0.2/0.3s) mirroring the CSS `--duration-*` tokens. `index.css`'s own CSS transitions/animations (hover states, `.progress-fill`, the toast/slide/fade keyframes) instead use the plain CSS easing keywords `ease` / `ease-out` / `ease-in` — a second, untokenized easing set. The v3.1 gap is unifying these into shared tokens, not "motion is unspecified."
+
+**Ambient wash (recorded as intentional, U-11, E2a):** the teal radial-gradient background wash behind static content (`pages/GroupViewContent.tsx:717-718`, two `radial-gradient(...)` layers at 5.5%/2.2% alpha) is a deliberate system choice, not an unreviewed AI-palette default — flagged by the impeccable detector pass (`ai-color-palette`/`dark-glow`/`radial-spotlight-glow`) and kept as-is; text over it clears AA (flat surfaces, >8:1).
 
 ### 4.1 Glyph lexicon (one glyph = one meaning) — LOCKED
 
@@ -709,7 +724,7 @@ Writing the contract exposed real holes — these become validation agenda items
 2. ✅ **Gear cell duplication** — resolved in substance, not by the mechanism originally proposed: `GearBoardCell` (F6c, §3.29) replaced the mockups' ad-hoc pips; it derives state from the **same** `toGearState`/`requiresAugmentation` utilities as `GearStatusCircle` (§3.4) rather than rendering `GearStatusCircle` itself — visual unification is superseded by the dense gearsheet-cell (`.gcell`) design, which needed its own compact rendering that `GearStatusCircle`'s circle treatment doesn't fit. One state machine, two renderers, by design.
 3. ✅ **Recipient picker** — resolved in substance, not by the mechanism originally proposed: `RecipientPicker` (F6d, §3.31) consolidated the two forked modals (`QuickLogDropModal` + `AddLootEntryModal`) on `SegmentedToggle` (§3.28) + `RadioGroup`/the `GearBoardCell` radio-row pattern, rather than as a `PopoverSelect` (§3.6) specialization — the one-surface, payload-parity goal from this item is achieved; the mechanism differs from what was originally sketched.
 4. ✅ **⌘K affordance** — platform-aware label (`⌘K` mac / `Ctrl K` other) in `CommandPalette` §3.10. Font-safe `<kbd>` element.
-5. **Motion tokens** — undefined; durations/easing needed for toggle, popover, tab transitions, and the rail pill indicator.
+5. ✅ **Motion tokens** — `lib/motion.ts` + the CSS `--duration-*` vars now cover fade/slide/scale/stagger/toast/page transitions (§4). Remaining gap: the two easing systems (JS `motion.ts` cubic-bezier vs. CSS `ease`/`ease-out`/`ease-in` keywords, §4) aren't unified into shared tokens, and the toggle orb slide / popover enter-exit / the rail pill indicator (§3.9) still have no durations/easing specified.
 6. ✅ **Context rail** — fully specified in §3.9 (width, surface, corner ownership, item states, a11y) and **built F6a** as `AppRail`. Remaining gap: motion (pill enter/exit), deferred to v3.1.
 7. **New components** (§3.8) — ✅ F6a delivered: `AppRail` (§3.9), `Spine` (§3.13), `CommandPalette` (§3.10), `SkipLink` (§3.11), `NotificationBell` (§3.12), `SettingsGear` (§3.14), `StaticPicker` (§3.15). ✅ F6b delivered: `CardShell` (§3.16), `ProgressBar`+`ProgressBarLegend` (§3.17–3.18), `PlayerIdentity` (§3.19), `EmptyStateInvite` (§3.20), `TwoRegionDashboard` (§3.21), `AttentionRow` (§3.22), `SessionRsvpCard` (§3.23). Remaining proposals: availability heatmap, match-score listing (Finder).
 8. **Density** — no compact/comfortable density tokens; data-dense Board may want a compact mode. Flagged.

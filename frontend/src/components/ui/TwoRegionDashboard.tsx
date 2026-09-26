@@ -17,8 +17,11 @@ interface TwoRegionDashboardProps {
  * at ≤1180px via the `min-[1181px]` arbitrary breakpoint (matching the mockup
  * exactly). Pure layout — no store, no color, no business logic.
  *
- * Used by: Home (ring-0), Schedule (ring-1). Shared placement is required
- * because both rings consume it; `ui/` is the only layer importable by both.
+ * Used by: Schedule (ring-1). Shared placement (`ui/`) is required because a
+ * second ring-0 consumer (Home, F6b) used to need the same layer — Home now
+ * renders both its rows in one grid instead (E2, R-E2-G) and no longer
+ * imports this component, but `ui/` stays its home in case another ring-0/
+ * ring-1 pair needs it again.
  */
 export function TwoRegionDashboard({ main, side, className }: TwoRegionDashboardProps) {
   const base = 'grid grid-cols-1 min-[1181px]:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)] gap-[18px] items-start';

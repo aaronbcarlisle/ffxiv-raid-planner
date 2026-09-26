@@ -46,6 +46,7 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Page/section header | `PageHeader` | `components/layout/PageHeader.tsx` |
 | Segmented control | `SegmentedToggle` | `components/ui/SegmentedToggle.tsx` |
 | Three-state checkbox | `ThreeStateCheckbox` | `components/ui/ThreeStateCheckbox.tsx` |
+| Value/label stat display | `StatCell` | `components/ui/StatCell.tsx` |
 
 ### Constrained primitives (design language — enforced)
 
