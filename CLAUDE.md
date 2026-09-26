@@ -24,7 +24,7 @@ Before any new UI: check [docs/UI_COMPONENTS.md](./docs/UI_COMPONENTS.md) (Quick
 | Page/section header | `PageHeader` (icon + Title Case + actions) | a bespoke header |
 | Form controls | `Input` / `NumberInput` / `Select` / `Checkbox` / `Toggle` (`ui/`) | raw `<input>`, `<select>`, `<label>`, `<textarea>` |
 | Modal / confirm / menu | `Modal` + `useModal`, `ConfirmModal`, `ContextMenu` — rendered as `<div>`, never native `<dialog>`; every modal header has an icon | a new modal |
-| Job / position / tank role / BiS source | `JobPicker`, `PositionSelector`, `TankRoleSelector`, `BiSSourceSelector` (`player/`) | a new selector |
+| Job / position / tank role / BiS source | `JobPicker`, `PositionSelector`, `TankRoleSelector`, `BiSSourceSelector`, `TankSeatSelector` (V2 roster card's merged tank role + position) (`player/`) | a new selector |
 | Color | semantic token (`text-accent`, `var(--color-*)`, `color-mix(... var(--color-accent) ...)`) | inline hex/`rgb()`, `bg-[#…]` |
 | Text size | `text-xs`+ (12px floor) | `text-[7–11px]` for readable text |
 

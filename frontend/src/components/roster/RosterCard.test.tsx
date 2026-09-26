@@ -1743,10 +1743,13 @@ describe('RosterCard — JobPicker portal (Task 2)', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
 
-  // E2 review B-7: the touch path is where the kebab's own close matters. A
-  // mouse pointerdown outside dismisses at once (the test above), but Radix
-  // defers a `pointerType: 'touch'` dismiss to the following document click —
-  // and the kebab's click stops propagation, so that click never arrives.
+  // E2 review B-7: the touch path is where the kebab's own close matters.
+  // Radix's `deferPointerDownOutside` defers the dismiss to the following
+  // click for a primary-button pointerdown outside — mouse AND touch alike
+  // (no `pointerType` branch) — and drops it when that click's propagation
+  // was stopped, which the kebab's own `onClick` does (`RosterCard.tsx`).
+  // Without the kebab's explicit `setShowJobPicker(false)` neither pointer
+  // type would close the picker; both tests exist to pin that.
   it('a TOUCH tap on the kebab while the picker is open closes it too', async () => {
     renderCard(makePlayer());
     openJobPicker();

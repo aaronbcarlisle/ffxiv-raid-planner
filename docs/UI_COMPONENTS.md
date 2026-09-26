@@ -13,6 +13,7 @@ This document lists all reusable UI components in the FFXIV Raid Planner project
 | Job selector | `JobPicker` | `components/player/JobPicker.tsx` |
 | Position selector (T1-R2) | `PositionSelector` | `components/player/PositionSelector.tsx` |
 | Tank role (MT/OT) | `TankRoleSelector` | `components/player/TankRoleSelector.tsx` |
+| Tank role + position, merged (V2 roster card) | `TankSeatSelector` | `components/player/TankSeatSelector.tsx` |
 | BiS source (R/T/BT/C) | `BiSSourceSelector` | `components/player/BiSSourceSelector.tsx` |
 | Badge-style popover select | `PopoverSelect` | `components/primitives/PopoverSelect.tsx` |
 | Text input | `Input` | `components/ui/Input.tsx` |
