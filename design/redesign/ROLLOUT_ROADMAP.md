@@ -353,6 +353,19 @@ D12 row):
 - Lint's "warnings ≤ N" gate is not CI-enforced (`eslint .` has no `--max-warnings` in `ci.yml`) →
   repo setup.
 
+**Player Hub PH1 (Stage 3, `V2_COVERAGE_PLAN.md` §Stage 3) — built 2026-09-26** (`plans/2026-09-26-ph1-player-hub-structure.md`,
+three stacked PRs PH1a/b/c). The V2 `PlayerHub` behind one `Profile` seam (V1 byte-identical), five tabs with
+legacy redirects, a glance-first Overview that absorbs My Statics, `/dashboard` → `/profile`, the rail portrait
+and a `You › {character}` breadcrumb. #3 (roster-card richness) is **not** addressed by PH1 — still homed to the
+Player Hub work. **Carried out of PH1:**
+- PH2: "Needs you" + `GET /api/player/overview` (also tier / next session / floors / average BiS on static rows).
+- A later Stage-3 slice: the availability flip-blocker + one-editor mandate; the profile-tab analytics pass.
+- Phase P: swipe between Hub tabs and a mobile tab nav; the V2 loading skeleton still uses V1's centered frame.
+- V1-authorized pass: heading-level skips inside the V1-shared tab bodies (e.g. Collections' `h4`).
+- Test/polish residuals from the PH1 reviews (listed in the PR bodies): a seeded `static-nav` key for the
+  `remember=false` and kebab-Open tests; the `lastPluginSeenAt` preference guard; a dead `vi.doMock`;
+  the duplicated next-step label; the cold first frame reading "No character linked".
+
 ## 7b. Phase P — Beta polish walkthrough (added 2026-07-25, user ruling)
 
 The last build phase, immediately before the un-gate. A **page-by-page UX/styling

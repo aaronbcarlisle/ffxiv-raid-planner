@@ -36,6 +36,7 @@ import { useNotificationStore } from '../../stores/notificationStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import { DISCORD_INVITE_URL, GITHUB_REPO_URL } from '../../config';
 import type { User } from '../../types';
 
@@ -67,6 +68,8 @@ beforeEach(() => {
   useSettingsPanelStore.setState({ isOpen: false });
   useJoinRequestStore.setState({ pendingCount: 0, fetchGroupRequests: vi.fn() });
   useStaticGroupStore.setState({ currentGroup: null, groups: [] });
+  // R-PH1-H: seed with no profile by default; breadcrumb tests override per case.
+  usePlayerProfileStore.setState({ profile: null, fetchProfile: vi.fn() });
 });
 
 afterEach(() => {
@@ -89,8 +92,9 @@ const desktop = () => within(screen.getByTestId('non-group-topbar-desktop'));
 const mobile = () => within(screen.getByTestId('non-group-topbar-mobile'));
 
 describe('NonGroupTopBar — page identity (H2/H3)', () => {
+  // /profile is excluded here — it renders a breadcrumb, not plain identity text
+  // (see the 'breadcrumb on /profile' describe below for those assertions).
   it.each([
-    ['/profile', 'Player Hub'],
     ['/profile/ABCDEF', 'Player Profile'],
     ['/discover', 'Static Finder'],
     ['/dashboard', 'Dashboard'],
@@ -197,6 +201,63 @@ describe('NonGroupTopBar — mobile row, authed', () => {
     const row = mobile();
     expect(row.queryByRole('link', { name: 'Join our Discord community' })).toBeNull();
     expect(row.queryByRole('button', { name: 'Toggle theme' })).toBeNull();
+  });
+});
+
+describe('NonGroupTopBar — breadcrumb on /profile (R-PH1-H)', () => {
+  it('shows You › character name with aria-current="page" when profile is loaded', () => {
+    usePlayerProfileStore.setState({
+      profile: {
+        id: 'p1', userId: 'u1', visibility: 'private', shareCode: null, shareEnabled: false,
+        bio: null, jobProfiles: [], createdAt: '', updatedAt: '',
+        characters: [{
+          id: 'c1', name: 'Aria Frost', server: 'Tonberry', dataCenter: null,
+          avatarUrl: null, isMain: true, lodestoneId: '1', createdAt: '', updatedAt: '',
+        }],
+      },
+      fetchProfile: vi.fn(),
+    });
+    renderBar('/profile');
+    const row = desktop();
+    expect(row.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
+    expect(row.getByText('You')).toBeInTheDocument();
+    const current = row.getByText('Aria Frost');
+    expect(current).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('falls back to "Player Hub" when no profile is loaded', () => {
+    // profile stays null (default beforeEach state)
+    renderBar('/profile');
+    const row = desktop();
+    expect(row.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
+    const current = row.getByText('Player Hub');
+    expect(current).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('falls back to "Player Hub" when the profile belongs to a different user (stale after account switch)', () => {
+    // authedUser.id = 'u1'; the stale profile belongs to 'u-other'
+    usePlayerProfileStore.setState({
+      profile: {
+        id: 'p2', userId: 'u-other', visibility: 'private', shareCode: null, shareEnabled: false,
+        bio: null, jobProfiles: [], createdAt: '', updatedAt: '',
+        characters: [{ id: 'c2', name: 'Other User Char', server: 'Tonberry', dataCenter: null, avatarUrl: null, isMain: true, lodestoneId: '1', createdAt: '', updatedAt: '' }],
+      },
+      fetchProfile: vi.fn(),
+    });
+    renderBar('/profile');
+    const row = desktop();
+    // Must not show the other user's character name
+    expect(row.queryByText('Other User Char')).toBeNull();
+    const current = row.getByText('Player Hub');
+    expect(current).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('does not render a breadcrumb on non-profile routes', () => {
+    renderBar('/discover');
+    const row = desktop();
+    expect(row.queryByRole('navigation', { name: 'Breadcrumb' })).toBeNull();
+    expect(row.queryByText('You')).toBeNull();
+    expect(row.getByText('Static Finder')).toBeInTheDocument();
   });
 });
 

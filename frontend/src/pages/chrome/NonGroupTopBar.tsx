@@ -40,8 +40,10 @@
  * the same placement ruling that put `TierBreadcrumb` and `AppChrome` in pages/.
  */
 import { Link, useLocation } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import { useAuthStore, useAuthHydrated } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
+import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import { NotificationBell } from '../../components/layout/NotificationBell';
 import { SettingsGear } from '../../components/layout/SettingsGear';
 import { LoginButton, UserMenu } from '../../components/auth';
@@ -122,6 +124,15 @@ export function NonGroupTopBar() {
   const authLoading = !isHydrated || isLoading;
   const identity = pageIdentity(location.pathname);
 
+  // R-PH1-H: on /profile the desktop identity becomes a breadcrumb.
+  const profile = usePlayerProfileStore((s) => s.profile);
+  const isProfileRoute = location.pathname === '/profile';
+  // Only use the profile for the breadcrumb when it belongs to the current user —
+  // a stale profile (after an in-app account switch) must not show the old user's name.
+  const ownProfile = isProfileRoute && profile?.userId === user?.id ? profile : null;
+  const profileMainChar = ownProfile?.characters.find((c) => c.isMain) ?? ownProfile?.characters?.[0];
+  const profileBreadcrumbName = profileMainChar?.name ?? 'Player Hub';
+
   // M1: the mobile row's logo is the home affordance while the rail is hidden —
   // same target + accessible name pairing the rail logo uses.
   const logoHref = user ? '/profile' : '/';
@@ -140,7 +151,23 @@ export function NonGroupTopBar() {
           exposes at the same time (`hidden` = display:none = out of the a11y
           tree). */}
       <div data-testid="non-group-topbar-desktop" className="hidden sm:flex items-center gap-2 px-3 sm:px-4 h-14 min-w-0">
-        <span className="text-sm font-medium text-text-primary truncate">{identity}</span>
+        {/* R-PH1-H: /profile shows a You › {character} breadcrumb; all other
+            routes keep the plain page-identity label. */}
+        {isProfileRoute ? (
+          <nav aria-label="Breadcrumb">
+            <ol className="flex items-center gap-1 list-none m-0 p-0 text-sm">
+              <li className="text-text-muted">You</li>
+              <li aria-hidden="true">
+                <ChevronRight size={14} className="text-text-muted" />
+              </li>
+              <li aria-current="page" className="font-medium text-text-primary">
+                {profileBreadcrumbName}
+              </li>
+            </ol>
+          </nav>
+        ) : (
+          <span className="text-sm font-medium text-text-primary truncate">{identity}</span>
+        )}
 
         <div className="flex-1" />
 

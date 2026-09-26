@@ -96,7 +96,7 @@ Scope & structure requirements (all `[DIR]`):
 
 1. **Single chrome host** with slots, living in `src/pages/**` (boundary-legal: `components/layout/**` is `shell` type and must not import `person`/UserMenu; pages are exempt). `NewShell`'s rail/TopBar hoist **into** it; the group route supplies `TopBar`+`Spine` slots. Two parallel hosts are forbidden (the "update one, miss six" failure).
 2. **Route-class scope:** v2-chromed = Person + Discovery + Admin + Docs + `/dashboard`. **Excluded:** `/` (marketing — legacy Header already self-strips there; no coverage benefit) and the 3 bare routes.
-3. **Profile keeps `ProfileSidebarNav` in Stage 1** (accepted temporary double-rail, resolved at Stage 3). Suppressing it drops 7 destinations incl. My Statics — the founding complaint. No suppression without re-presentation.
+3. **Profile keeps `ProfileSidebarNav` in Stage 1** (accepted temporary double-rail, resolved at Stage 3). Suppressing it drops 7 destinations incl. My Statics — the founding complaint. No suppression without re-presentation. *(Resolved 2026-09-26 by Stage 3 PH1: under V2 chrome `/profile` renders the V2 `PlayerHub` — one rail, a five-tab bar, every destination re-presented; V1 keeps the sidebar.)*
 4. **Guest branch:** slim TopBar renders `LoginButton` for logged-out users (UserMenu returns `null` for guests; V1's Header shows login on every non-`/` route; guests *can* be on v2 — TryNewUiBanner has no auth gate).
 5. **The v2 Layout branch must still mount** `ViewAsBanner`, `SettingsPanelController`, `GlobalSettingsPanel`, `KeyboardShortcutsHelp` (silent loss here is type-invisible).
 6. **`#main-content` exists on every v2-chromed route** (AppRail's SkipLink targets it; today it exists only in NewShell).
@@ -116,6 +116,8 @@ B5 Goals→Progress-Engine tracks · B6 Plugin→Settings/Player Hub · B4 More 
 ### Stage 3 — Player Hub as a real V2 surface (B2)
 
 Close REDESIGN_SPEC §11 open decision #6 with the user (front-door vs light personal home) · analytics pass on profile-tab usage (roadmap §5.0 pattern) · full affordance-parity matrix for Profile's 7 sub-views + Dashboard/`MyStaticsPanel` · build per REDESIGN_SPEC §5.5 with mockup-05 re-validation · absorbs My Statics + `/dashboard` (route → redirect) · resolves the Stage-1 double-rail. **The availability flip-blocker + one-editor mandate land here** (re-hosted week editor or the Person→Static aggregation pipe).
+
+> **Status 2026-09-26 — in progress.** Spec `specs/2026-09-25-player-hub-design.md` (H-1…H-6; D6 closed by H-1). **PH1 built** (`plans/2026-09-26-ph1-player-hub-structure.md`, stacked PRs PH1a/b/c): the V2 `PlayerHub` behind one `Profile` seam, the five tabs with legacy redirects, the glance-first Overview absorbing My Statics, `/dashboard` → `/profile`, the rail portrait, the parity matrix (four drops user-signed-off). **Still owed by Stage 3:** PH2 ("Needs you" + `GET /api/player/overview`), the availability flip-blocker + one-editor mandate, the profile-tab analytics pass, mockup-05 re-validation.
 
 ### Stage 4 — Static Finder (B3)
 
@@ -156,7 +158,7 @@ Stage 1 deliberately pulls **B8 (chrome everywhere) ahead of B4–B7 (IA collaps
 | D3 | Backend notification href `/dashboard` → `/group/{share_code}` | **Approved** — lands post-G with sanctioned-edit justification + release note |
 | D4 | Shared copy-links and `shell` param | **Strip `shell`** (align `Loot.tsx:246` down to Roster) — post-G |
 | D5 | Stage-1 chrome parity matrix | **SATISFIED 2026-07-25** — `specs/stage1-chrome-parity-matrix.md` director-verified and user-signed ("approve all": M1–M4, G1, G2, G4 approved as recommended) |
-| D6 | (Stage 3) REDESIGN_SPEC §11 open decision #6: Player Hub as front door vs light personal home | **Open** — decide at Stage-3 kickoff |
+| D6 | (Stage 3) REDESIGN_SPEC §11 open decision #6: Player Hub as front door vs light personal home | ✅ **Closed 2026-09-25** (Player Hub H-1): glance-first dashboard; landing only for static-less users (L-2) |
 | D7 | Launch gate (added 2026-07-25, user-approved) | **The Phase-G merge ships the v2 opt-in DARK**: `TryNewUiBanner` is admin-gated so regular users/guests can't enter v2 pre-coverage; admins dogfood in prod; `?shell=v2` stays as a power-user escape hatch. **Un-gate criterion = Stage 1 landed** ("anything reachable from v2 stays in v2") **+ the Ring-0 blemishes** (A3 void-fix, mobile TopBar overlap). Phase H's opt-in-availability clock starts at un-gate. When `redesign/v2-nav-entry` merges, S1's user-menu "Try the new UI" item gets the same gate. **→ SUPERSEDED 2026-07-25 (post-Stage-1 user ruling): the un-gate moves to the VERY END — after Stages 2–6, Phases B–F, and the new Phase P beta-polish walkthrough (ROLLOUT_ROADMAP §7b) — so first-time users meet a finished V2. Escape hatch and admin dogfooding unchanged.** |
 
 The §2 ownership boundary (no wholesale V1 fork; shared behavior layer / frozen legacy-owned / growing V2-owned) is ratified alongside.

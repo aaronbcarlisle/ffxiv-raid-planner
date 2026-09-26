@@ -37,7 +37,7 @@ Applied to the three offending surfaces:
 
 | Surface | Identity under this map | Consequence |
 |---|---|---|
-| **Player Hub** | *The player's dashboard* (Person layer) | Moves behind the **user/avatar menu**; loses its rail slot (✅ F-01) |
+| **Player Hub** | *The player's dashboard* (Person layer) | Moves behind the **user/avatar menu**; loses its rail slot (✅ F-01) — *amended 2026-09-25 by Player Hub H-2: the rail keeps a first slot, rendered as your character portrait (built PH1, 2026-09-26)* |
 | **Static Home** | *The static's shared informational hub* (the weekly loop, readable by every role) | Stays the first Spine tab; lead signals appear as a **role-adaptive section**, not a separate page (✅ F-09) |
 | ~~A third "Lead Dashboard" page~~ | **Not created** unless lead-only content outgrows Home | Guards against re-creating the two-dashboard problem one level down |
 
@@ -100,7 +100,7 @@ Three of this map's proposals land in components **both shells render**. Each ca
 |---|---|---|---|
 | Danger Zone → Settings ▸ Static (§5) | `StaticSettingsHost` (settings panel is pure reuse) | `GroupView.tsx:99-101` | Adding Leave/Delete to Settings is a **V1-visible change** — needs its own decision inside F-12 |
 | Lodestone flow → Characters path (D-12 redesign) | `RosterCharacterPanel` | `GroupViewContent.tsx:948` | ✅ **RESOLVED (C8, 2026-07-28): v2-only mount, by structure.** The entry went into the **v2-owned** `CharacterManageBridge.tsx` (which wraps the shared panel) instead of the panel itself, so nothing in V1 changed and no shell gate was needed. User ruling 2026-07-27; the V1-delta option was rejected because legacy already reaches the flow from its card kebab. This exception is now closed — the panel stays untouched |
-| User-menu changes (F-01) | `UserMenu` (rendered by legacy `Header` on mobile) | `Header.tsx:70,412` | F-01's *addition* is nothing (the Player Hub item already exists in the menu); the change is **removing the v2 rail icon** — genuinely v2-only (`AppChrome.tsx:116-137`). Any menu restructuring beyond that touches V1 |
+| User-menu changes (F-01) | `UserMenu` (rendered by legacy `Header` on mobile) | `Header.tsx:70,412` | F-01's *addition* is nothing (the Player Hub item already exists in the menu); the change is **removing the v2 rail icon** — genuinely v2-only (`AppChrome.tsx:116-137`). Any menu restructuring beyond that touches V1. *Amended by H-2 (2026-09-25): the icon is replaced by the portrait, not removed (PH1)* |
 
 ---
 
@@ -113,7 +113,7 @@ parked entries below are therefore flagged, not hidden.)
 
 | System | Layer | Ring / track | Woven / parked | Owning surface | Entry point(s) | Notes |
 |---|---|---|---|---|---|---|
-| **Player Hub** (Overview, Sync & Gear, Jobs & Gear, Tracking, Availability, Share, My Statics) | Person | — (the Person layer itself) | Parked (deliberately — it's the Person layer's one surface) | Player Hub page | User menu (✅ F-01); landing L-2 | The player's dashboard. Personal availability/characters feed statics per §3.1 |
+| **Player Hub** (V2 since PH1: Overview · Characters & gear · Availability · Tracking · Sharing; V1 keeps the 7 sub-views) | Person | — (the Person layer itself) | Parked (deliberately — it's the Person layer's one surface) | Player Hub page | User menu (✅ F-01) + rail portrait (H-2); landing L-2 | The player's dashboard. Personal availability/characters feed statics per §3.1 |
 | **Static Finder** | Person↔Static | Ring 1 (recruitment-as-matching) | Parked (own page) | Finder page | Rail globe | Applicant side; the static side lives in Settings ▸ Recruitment |
 | **Static Home** | Static | Ring 0 readout | Woven (reads the loop) | Home tab | Spine · landing L-3 | Shared hub: hero/next session, this-week loot, readiness, objectives (D-66), member interest (D-70), activity (D-63 backend feed), role-adaptive attention section (✅ F-09) |
 | **Roster** | Static | Ring 0 | Woven (spine) | Roster tab | Spine | Phase C: restored expanded⇄compact card (D-01…D-10) |
@@ -130,7 +130,7 @@ parked entries below are therefore flagged, not hidden.)
 | **Settings panel** | Static (role-scoped) | — (configuration) | Woven (slide-out over any page) | Slide-out | Gear icon | Pure reuse both shells (**shared surface — §2.2**); Recruitment/Integrations/Members/Priority/Goals config live here |
 | **Dalamud Plugin (setup + guide)** | **Person (✅ F-05 ruled)** | Cross-cutting integration | Woven (setup lives in Hub/docs) | **Player Hub ▸ Sync & Gear (setup) + Docs (guide)** | Docs link/banner; NOT a tab (D-52) | PRODUCT_MODEL §3.5: "it is **setup**, not a daily destination". Statics see sync status only; the team dashboard row above is homed separately (Roster area) |
 | **Docs & Help** (10 routes: quick-start, roadmap, release notes, design system, …) | Person/global | Platform | Parked (own routes — appropriate for reference content) | `/docs/**` pages | User-menu Docs submenu | Becomes the Plugin guide's owning surface if F-05 rules docs-homed |
-| **`/dashboard` "My Statics"** | Person | — | **Duplicate surface** | Player Hub ▸ My Statics | (today: standalone route) | Same `MyStaticsPanel` mounted twice — exactly the class this map closes. Proposal: `/dashboard` redirects to the Hub tab; record in F-01 |
+| **`/dashboard` "My Statics"** | Person | — | **Duplicate surface** | Player Hub ▸ Overview "Your statics" (V2) | V2: redirects to `/profile` (PH1); V1: standalone route | Same `MyStaticsPanel` mounted twice — exactly the class this map closes. ✅ V2 built PH1 (2026-09-26): `/dashboard` → `/profile` Overview; V1 unchanged |
 | **Root `/` landing + static creation** | Person | — | — | Landing dispatcher (§2.1) + wizard | `/` · rail "+" | `/` stops being a destination; Create-a-static keeps a first-class path (L-2 landing + rail) |
 | **Public profile** (`/profile/:shareCode`) | Person | Ring 1 (recruitment adjacency) | Parked (public page — by nature) | Public profile page | Player Hub ▸ Share | The share target; no change proposed |
 | **Lodestone sync** | Person data feeding Static | Cross-cutting | Woven | Characters path | Characters modal / Player Hub (D-12 redesign) | **Shared surface — §2.2, ✅ resolved as a v2-only mount (C8, 2026-07-28).** No card-kebab entry returns; the per-player entry lives in the Characters modal's "Lodestone sync" section (v2-owned wrapper) and re-homes to Player Hub at Stage 3 |
@@ -210,7 +210,7 @@ already demanded this ("Junk drawer — **Delete it.**"). Per-card disposition �
 
 | ID | Question | Lean (rationale) |
 |---|---|---|
-| **F-01** | Player Hub moves behind the user menu; rail = statics + Finder only? (Includes: `/dashboard` redirects to Hub ▸ My Statics) | ✅ **RULED YES (2026-07-26).** User direction; kills the two-Home-buttons confusion. Menu item already exists; the build is *removing* the rail icon (v2-only, §2.2) |
+| **F-01** | Player Hub moves behind the user menu; rail = statics + Finder only? (Includes: `/dashboard` redirects to Hub ▸ My Statics) | ✅ **RULED YES (2026-07-26).** User direction; kills the two-Home-buttons confusion. Menu item already exists; the build is *removing* the rail icon (v2-only, §2.2). **Amended 2026-09-25 (Player Hub H-2):** the rail's first slot stays, as the character portrait (no Home glyph); `/dashboard` redirects to the Hub's Overview (no "My Statics" tab exists in V2). Built PH1, 2026-09-26 |
 | **F-02** | Landing rules L-1/L-2/L-3 + `/` as dispatcher + first-class Create-a-static path, as tabled in §2.1? | ✅ **RULED YES (2026-07-26).** Preserves the Hub's front-door role for static-less users only |
 | **F-03** | Does the tracks surface (Goals/Farms) get a Spine entry — **Progress** as the 5th tab (a **parked** surface; triggers delta R2) — or does **Settings ▸ Goals & Farms become the owning surface with the standalone GoalsPage dissolved**? | ✅ **RULED: PROGRESS 5TH SPINE TAB (2026-07-26)** — delta R2 triggers; `REDESIGN_SPEC.md` §3.2 and RECONCILIATION B7 get amended in the §1.1 write-back. Rationale held: the model's spine literally ends in Progress (§3.2); tracks get their one home; era-2 demand was real (goals 69/22) |
 | **F-04** | Split Planner's entry point? *(F-03-dependent)* | ✅ **RULED: PROGRESS TAB (2026-07-28, R-41).** Split clears are Ring-3 alt progression — the class F-03 made Progress the owner of. The Roster candidate was declined: Roster is a Ring-0 weekly surface and a split is an occasional objective. One home, no second entry; Home's F-11 attention row already links wherever this landed. **This was the last open decision point — F-01…F-12 are now all ruled.** |

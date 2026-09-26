@@ -7,6 +7,7 @@
 import type React from 'react';
 import { Tooltip } from '../primitives';
 import { InitialsAvatar } from '../ui/InitialsAvatar';
+import { SafeAvatar } from '../ui/SafeAvatar';
 import { SkipLink } from './SkipLink';
 import type { RailEntry, RailIconItem, RailAvatarItem } from './railTypes';
 
@@ -94,33 +95,34 @@ function RailAvatarItemButton({ entry }: RailAvatarItemProps) {
             }}
           />
         )}
-        {entry.imageUrl ? (
-          <img
-            src={entry.imageUrl}
-            alt=""
-            aria-hidden="true"
-            className="rounded-full object-cover"
-            style={{
-              width: 'var(--nav-item-icon-size, 24px)',
-              height: 'var(--nav-item-icon-size, 24px)',
-              border: entry.isActive
-                ? '2px solid var(--color-nav-item-active-indicator, var(--color-accent))'
-                : '1px solid var(--color-border-default)',
-            }}
-          />
-        ) : (
-          <InitialsAvatar
-            initials={entry.initials}
-            size="var(--nav-item-icon-size, 24px)"
-            background={entry.accent ?? 'var(--color-accent-dim)'}
-            className="text-text-primary"
-            borderColor={entry.isActive
-              ? 'var(--color-nav-item-active-indicator, var(--color-accent))'
-              : 'var(--color-border-default)'}
-            borderWidth={entry.isActive ? 2 : 1}
-            fontWeight="semibold"
-          />
-        )}
+        {/* R-PH1-G: SafeAvatar blocks untrusted hosts and fires onError on load
+            failures — both cases fall back to InitialsAvatar so the rail never
+            shows a broken image. */}
+        <SafeAvatar
+          src={entry.imageUrl}
+          alt=""
+          className="rounded-full object-cover"
+          style={{
+            width: 'var(--nav-item-icon-size, 24px)',
+            height: 'var(--nav-item-icon-size, 24px)',
+            border: entry.isActive
+              ? '2px solid var(--color-nav-item-active-indicator, var(--color-accent))'
+              : '1px solid var(--color-border-default)',
+          }}
+          fallback={
+            <InitialsAvatar
+              initials={entry.initials}
+              size="var(--nav-item-icon-size, 24px)"
+              background={entry.accent ?? 'var(--color-accent-dim)'}
+              className="text-text-primary"
+              borderColor={entry.isActive
+                ? 'var(--color-nav-item-active-indicator, var(--color-accent))'
+                : 'var(--color-border-default)'}
+              borderWidth={entry.isActive ? 2 : 1}
+              fontWeight="semibold"
+            />
+          }
+        />
         <span className="sr-only">{entry.label}</span>
       </button>
     </Tooltip>

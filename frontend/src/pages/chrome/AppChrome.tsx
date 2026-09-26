@@ -26,7 +26,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, matchPath, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Home, Globe } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import { AppRail } from '../../components/layout/AppRail';
 import { UserMenu } from '../../components/auth';
 import { V2ChromeContext } from '../../lib/chromeContext';
@@ -35,6 +35,7 @@ import { NonGroupTopBar } from './NonGroupTopBar';
 import { buildStaticNavHref, prefRememberTabs } from '../../lib/navPreferences';
 import { useAuthStore } from '../../stores/authStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import { getInitials } from '../../utils/initials';
 import type { RailEntry } from '../../components/layout/railTypes';
 
@@ -54,6 +55,21 @@ export function AppChrome({ children }: AppChromeProps) {
   const rememberStaticTab = useAuthStore((s) => prefRememberTabs(s.user));
   const groups = useStaticGroupStore((s) => s.groups);
   const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
+
+  // R-PH1-G: read the player profile for the rail portrait. AppChrome fetches
+  // once when the user is signed in and no profile is loaded. The effect depends
+  // on `user` only — a rejected fetch never loops (profile is not in the deps).
+  // Side effect (disclosed in PR): GET /api/player/profile creates the profile
+  // row when missing, so V2 users get a row at app load rather than on first
+  // /profile visit.
+  const profile = usePlayerProfileStore((s) => s.profile);
+  const fetchProfile = usePlayerProfileStore((s) => s.fetchProfile);
+  useEffect(() => {
+    if (user && (!profile || profile.userId !== user.id)) {
+      fetchProfile();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchProfile, user]);
 
   // On a group route: which static is active (drives avatar isActive, the §1
   // host contract below, and the empty top-bar placeholder while the lazy
@@ -109,12 +125,21 @@ export function AppChrome({ children }: AppChromeProps) {
     const entries: RailEntry[] = [];
     // Player Hub requires auth (Profile redirects unauthed; the legacy
     // ContextSwitcher is `user &&`-gated too) — guests get Static Finder only.
+    // R-PH1-G: the first slot becomes the player's portrait (SafeAvatar +
+    // InitialsAvatar fallback inside AppRail); initials fall back from the
+    // main character name → user displayName → discordUsername.
     if (user) {
+      // Only use the profile for portrait/initials when it belongs to the current user
+      // (stale profile after an in-app account switch must not bleed into the new user's rail).
+      const ownProfile = profile?.userId === user.id ? profile : null;
+      const mainChar = ownProfile?.characters.find((c) => c.isMain) ?? ownProfile?.characters?.[0];
+      const initialsName = mainChar?.name ?? user.displayName ?? user.discordUsername ?? '';
       entries.push({
-        kind: 'icon',
+        kind: 'avatar',
         id: 'player-hub',
         label: 'Player Hub',
-        icon: Home,
+        imageUrl: mainChar?.avatarUrl ?? undefined,
+        initials: getInitials(initialsName),
         isActive: location.pathname === '/profile',
         onSelect: () => navigate('/profile'),
       });
@@ -156,7 +181,7 @@ export function AppChrome({ children }: AppChromeProps) {
       }
     }
     return entries;
-  }, [user, groups, activeShareCode, onGroupRoute, location.pathname, navigate, rememberStaticTab, searchParams]);
+  }, [user, profile, groups, activeShareCode, onGroupRoute, location.pathname, navigate, rememberStaticTab, searchParams]);
 
   // M1 logo link: authed → /profile, guest → / (home). The accessible name
   // lives on the link and matches its target; the img is decorative (alt="")

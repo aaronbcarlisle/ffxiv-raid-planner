@@ -1,6 +1,6 @@
 # Player Hub (V2) — design
 
-**Status:** approved in brainstorm 2026-09-25 (sections 1–4); this written spec awaits the user's review.
+**Status:** approved in brainstorm 2026-09-25 (sections 1–4); written spec approved by the user 2026-09-25. **PH1 built** 2026-09-26 (plan `plans/2026-09-26-ph1-player-hub-structure.md`, three stacked PRs PH1a/b/c); PH2 next. Lines marked *(PH1 write-back)* record what the build ruled against the code.
 **Roadmap home:** Stage 3 (B2), `ROLLOUT_ROADMAP.md:116-118` — "Player Hub as a real V2 surface … resolves the Stage-1 double-rail".
 **Canvas:** `claude.ai/artifact/G5bWkMadnjCmSiUbZ8YMVb`, page "Player Hub" (today + options A/B/C; A chosen).
 **Inputs:** `docs/PRODUCT_MODEL.md` §3.1 (two layers), `REDESIGN_SPEC.md` §5.5, `specs/systems-flow-map.md` (F-01, F-02, R1, L-2), `mockups/05-player-hub.html`, `DESIGN_SYSTEM.md` §3.9 (context rail — locked), §3.22 (AttentionRow), CLAUDE.md § UI rules.
@@ -21,10 +21,10 @@ Under V2 chrome, `/profile` renders V1's `Profile` page unchanged except its foo
 ## 3. Structure
 
 - **Route:** `/profile` stays. Under V2 chrome (`useInV2Chrome()`), `Profile` renders a new V2-native `PlayerHub` page; the V1 path is untouched. One seam, the way the static tabs were switched.
-- **Tabs:** `useUrlTabState`, `?tab=overview|characters|availability|tracking|sharing`, default `overview`. Legacy ids redirect (today's map is `Profile.tsx:42-48,106-111`): `sync`, `jobs-gear`, `jobs`, `gear`, `characters` → `characters`; `preview`, `share` → `sharing`; `collections`, `goals` → `tracking`; `statics` → `overview`. `focus=availability` keeps scrolling to the editor. About 25 inbound links (`UserMenu`, `AppChrome`, `ContextSwitcher`, `Home`, `Schedule`, `JoinRequestModal`, `SplitClearAssignmentBoard`, `AvailabilityGrid`, `OverviewTab`, …) keep working without edits.
-- **`/dashboard`:** under V2 chrome it redirects to `/profile?tab=overview` (the same `MyStaticsPanel` it renders is folded into Overview). V1 unchanged.
+- **Tabs:** `useUrlTabState`, `?tab=overview|characters|availability|tracking|sharing`, default `overview`. Legacy ids redirect (today's map is `Profile.tsx:42-48,106-111`): `sync`, `jobs-gear`, `jobs`, `gear`, `characters` → `characters`; `preview`, `share` → `sharing`; `collections`, `goals` → `tracking`; `statics` → `overview`. `focus=availability` lands on the Availability tab (and wins when `tab` is absent) *(PH1 write-back: V1 never scrolled — `focusAvailability` only highlighted a chip, `OverviewTab.tsx:318` — so there is no scroll)*. The primary `tab` is hand-rolled rather than `useUrlTabState` (the hook can't map legacy ids, would flash Overview for one render, and doesn't clear sub-tab params — the reasons `useGroupViewState` hand-rolls it too); the `coll` sub-tab uses the hook. About 25 inbound links (`UserMenu`, `AppChrome`, `ContextSwitcher`, `Home`, `Schedule`, `JoinRequestModal`, `SplitClearAssignmentBoard`, `AvailabilityGrid`, `OverviewTab`, …) keep working without edits.
+- **`/dashboard`:** under V2 chrome it redirects to `/profile` — Overview, the default tab, omitted from the URL *(PH1 write-back; was `/profile?tab=overview`)* (the same `MyStaticsPanel` it renders is folded into Overview). V1 unchanged.
 - **Top bar:** breadcrumb `You › {main character name}`.
-- **Identity header** (replaces PageHeader on this surface; it holds the page `<h1>`): portrait, character name, home world, a summary line (`N characters · N jobs at max level · member of N statics`), and status chips (Discord linked, plugin synced {relative time}, profile visibility).
+- **Identity header** (replaces PageHeader on this surface; it holds the page `<h1>`): portrait, character name, home world, a summary line (`N characters · N jobs · member of N statics` — *PH1 write-back: "at max level" dropped, `PlayerJobProfile` carries no level*), and status chips (Discord linked, plugin synced {relative time}, profile visibility).
 - **Rail (H-2):** `AppChrome`'s first entry renders the portrait (`SafeAvatar` + `InitialsAvatar` fallback) with the rail's existing active indicator on `/profile`. The rail needs the main character's `avatarUrl` at app load — one small profile-summary fetch when signed in; guests keep Static Finder only (today's `user &&` gate). The Discord footer menu is unchanged.
 
 ## 4. Overview (glance first)
@@ -32,7 +32,7 @@ Under V2 chrome, `/profile` renders V1's `Profile` page unchanged except its foo
 One grid, the same tracks as Home after E2 (`minmax(0,1.15fr) minmax(0,1.15fr) minmax(0,1fr)`), main area spanning two columns:
 
 - **Needs you · across your statics** (PH2): `AttentionRow` rows — what, a detail line, the static tag, one action that deep-links into that static (RSVP → Schedule; you're #1 on a pending drop → Loot). Empty: "Nothing needs you right now." In PH1 the card is absent (not an empty shell).
-- **Your statics:** one row per static — initials, name, your role, current tier, member count (PH1; PH2 adds next session, floors cleared, average BiS), **Enter →**, and a kebab with the per-static actions `MyStaticsPanel` offers today (so nothing is dropped). The list ends with **Create or join a static**. With no statics: a prominent empty state with **Create a static** and **Find a static** (the L-2 landing).
+- **Your statics:** one row per static — initials, name, your role, member count (PH1; PH2 adds current tier, next session, floors cleared, average BiS — *PH1 write-back: the static-list payload has no tier field, so tier moved to PH2's endpoint*), **Enter →**, and a kebab with the per-static actions `MyStaticsPanel` offers today (so nothing is dropped). The list ends with **Create or join a static**. With no statics: a prominent empty state with **Create a static** and **Find a static** (the L-2 landing).
 - **Side column:** Characters (main + alts, Manage → Characters & gear) · Your availability (one-line summary, Edit → Availability) · Profile setup (progress + the single next step, client-derived as today `Profile.tsx:287-297`; hidden when complete).
 - **Removed:** the "Profile status" tile strip, the four "Raider snapshot" cards, Activity.
 
@@ -72,4 +72,5 @@ A later slice may merge Sync + Jobs into one card per character; out of scope he
 ## 9. Out of scope / carried
 
 - Merging Sync + Jobs per character; the BiS-staleness rule; mobile (Phase P); Static Finder's rework (Stage 4, B3 — its left-align ships in E2 per U-9).
-- `design/redesign/specs/systems-flow-map.md` F-01 is amended by H-2 (write-back when PH1 lands).
+- `design/redesign/specs/systems-flow-map.md` F-01 is amended by H-2 (written back with PH1).
+- *(PH1 write-back)* Carried out of PH1: the availability flip-blocker + one-editor mandate and the profile-tab analytics pass (`V2_COVERAGE_PLAN.md` Stage 3) → a later Stage-3 slice; swipe + mobile tab nav → Phase P; heading-level skips inside the V1-shared tab bodies → whenever V1 is authorized. Four V1 affordances were retired in V2 with the user's sign-off (plan § parity matrix, RETIRED-ACK).
