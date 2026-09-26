@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hubTabParams, resolveHubTab } from './hubTabs';
+import { V2_SHORTCUT_GROUPS } from '../../ui/keyboardShortcutGroups';
+import { HUB_TABS, hubTabParams, hubTabShortcutKey, resolveHubTab } from './hubTabs';
 
 const resolve = (search: string) => resolveHubTab(new URLSearchParams(search));
 
@@ -74,5 +75,16 @@ describe('hubTabParams', () => {
     const prev = params('tab=tracking&coll=browse');
     hubTabParams(prev, 'overview', false);
     expect(prev.toString()).toBe('tab=tracking&coll=browse');
+  });
+});
+
+describe('v2 help list — Player Hub group', () => {
+  // `ui/keyboardShortcutGroups.ts` can't import `profile/`, so its rows are a
+  // hand copy — this pins it to the keys `PlayerHub` actually binds.
+  it('matches HUB_TABS and hubTabShortcutKey, in order', () => {
+    const group = V2_SHORTCUT_GROUPS.find((g) => g.title === 'Player Hub');
+    expect(group?.shortcuts).toEqual(
+      HUB_TABS.map((t, i) => ({ key: hubTabShortcutKey(i), description: `${t.label} (Player Hub)` })),
+    );
   });
 });

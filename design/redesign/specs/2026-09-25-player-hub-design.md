@@ -1,6 +1,6 @@
 # Player Hub (V2) — design
 
-**Status:** approved in brainstorm 2026-09-25 (sections 1–4); this written spec awaits the user's review.
+**Status:** approved — sections 1–4 in brainstorm 2026-09-25; the written spec approved by the user 2026-09-25 (binding for PH1).
 **Roadmap home:** Stage 3 (B2), `ROLLOUT_ROADMAP.md:116-118` — "Player Hub as a real V2 surface … resolves the Stage-1 double-rail".
 **Canvas:** `claude.ai/artifact/G5bWkMadnjCmSiUbZ8YMVb`, page "Player Hub" (today + options A/B/C; A chosen).
 **Inputs:** `docs/PRODUCT_MODEL.md` §3.1 (two layers), `REDESIGN_SPEC.md` §5.5, `specs/systems-flow-map.md` (F-01, F-02, R1, L-2), `mockups/05-player-hub.html`, `DESIGN_SYSTEM.md` §3.9 (context rail — locked), §3.22 (AttentionRow), CLAUDE.md § UI rules.
