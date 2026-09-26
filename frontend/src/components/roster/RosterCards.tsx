@@ -315,8 +315,9 @@ function PartyHead({
       )}
       {/* A real heading: legacy renders the section labels as `<h3>`
           (`PlayerGrid.tsx:579`), and routing Unassigned through this component
-          at C6 must not downgrade it to a bare span (director F10). */}
-      <h3 className="text-xs font-bold uppercase tracking-wide text-text-tertiary">{label}</h3>
+          at C6 must not downgrade it to a bare span (director F10). Level h2
+          (R-E2-A) — this label sits directly under the page `<h1>`. */}
+      <h2 className="text-xs font-bold uppercase tracking-wide text-text-tertiary">{label}</h2>
       {barPlayers && (
         <div className="ml-2 flex items-center gap-2">
           {/* Width on a wrapper: ProgressBar's own root is w-full, and a width

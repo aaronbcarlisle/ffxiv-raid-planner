@@ -24,8 +24,9 @@
  *   baked into the design-system sidebar component; deferred to F3 page rebuild.
  *
  * design-system light: RESIDUAL — two page-level violations remain:
- *   (1) Same sidebar accordion labels: text-muted-light (#6b6b7e) at ~70%
- *       opacity on #ededf2 → #9292a1 = 2.62:1 on 9px normal text. F3 rebuild.
+ *   (1) Same sidebar accordion labels: text-muted-light (#606073, R-E2-J
+ *       token fix) at ~70% opacity on #ededf2 → #8a8a99 = 2.91:1 on 9px
+ *       normal text. F3 rebuild.
  *   (2) Active nav item ("Design Principles"): text-accent (#0c7d71) on
  *       bg-accent/10 tinted bg (#d7e2e5) = 3.79:1 on 9.8pt normal. The tinted
  *       background is applied by the sidebar's active-state styling; F3 rebuild.

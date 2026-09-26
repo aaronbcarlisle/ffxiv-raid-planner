@@ -251,7 +251,8 @@
   --color-text-primary: #1a1a24;
   --color-text-secondary: #4a4a58;
   --color-text-tertiary: #5a5a6e;
-  --color-text-muted: #6b6b7e;
+  /* U-9 / R-E2-J (E2a): light text-muted darkened #6b6b7e -> #606073 */
+  --color-text-muted: #606073;
   --color-text-disabled: #9898a8;
 
   /* Borders */

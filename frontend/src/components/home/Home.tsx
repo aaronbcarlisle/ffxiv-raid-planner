@@ -1,12 +1,13 @@
 /**
  * Home (ring0 `home/`) — the redesigned weekly-loop dashboard.
  *
- * The F6b assembly: a "This week" page header (dynamic subtitle), a 3-card hero
- * (next session + RSVP · this week's loot · roster readiness), and a two-region
- * dashboard (actionable left: "Needs your attention" + BiS-by-role + Team
- * Summary; ambient right: loot fairness + recent activity + a display-only
- * Track card). Wired in as the `overview` slot on `GroupViewContent` (see
- * NewShell).
+ * The F6b assembly, R-E2-G revised: a "This week" page header (dynamic
+ * subtitle) and ONE grid — a 3-card hero row (next session + RSVP · this
+ * week's loot · roster readiness) over a second row where the actionable
+ * stack (Needs your attention + BiS-by-role + Team Summary) spans the first
+ * two columns and the ambient stack (loot fairness + recent activity + a
+ * display-only Track card) is the third. Wired in as the `overview` slot on
+ * `GroupViewContent` (see NewShell).
  *
  * Boundary discipline (ring0): composes `home/` siblings + `loot/`'s
  * `FairnessSummary` (D14, R-40 — its one reuse outside `loot/`) + shared `ui/`
@@ -34,7 +35,6 @@ import type { PageMode, RsvpStatus, StaticGroup, TierSnapshot } from '../../type
 
 import { PageHeader } from '../layout/PageHeader';
 import { CardShell } from '../ui/CardShell';
-import { TwoRegionDashboard } from '../ui/TwoRegionDashboard';
 import { AttentionRow } from '../ui/AttentionRow';
 import { SessionRsvpCard } from '../ui/SessionRsvpCard';
 import { EmptyStateInvite } from '../ui/EmptyStateInvite';
@@ -329,63 +329,60 @@ export function Home({ group, tier, canManage, onNavigate, onOpenRequests }: Hom
     <div>
       <PageHeader title="This week" subtitle={subtitle} />
 
-      {/* HERO — the weekly loop at a glance (collapses below ~1180px) */}
-      <div className="grid grid-cols-1 gap-4 min-[1181px]:grid-cols-[1.15fr_1.15fr_1fr]">
+      {/* R-E2-G: one grid — the hero row (collapses below ~1180px) and the
+          dashboard row (actionable stack spans cols 1-2, ambient stack is
+          col 3) share it, so a single `gap-4` sets the spacing everywhere.
+          No grid-level `items-start`: the hero row's three cards keep
+          stretching to equal height; `self-start` sits only on the two
+          dashboard-row stacks below. */}
+      <div className="grid grid-cols-1 gap-4 min-[1181px]:grid-cols-[minmax(0,1.15fr)_minmax(0,1.15fr)_minmax(0,1fr)]">
         {heroSession}
         <WeeklyLootSummaryCard tierId={tierId} onLogWeek={() => onNavigate('gear')} />
         <RosterReadinessCard />
-      </div>
 
-      {/* DASHBOARD — actionable (left) + ambient (right) */}
-      <div className="mt-4">
-        <TwoRegionDashboard
-          main={
-            <div className="flex flex-col gap-4">
-              <CardShell title="Needs your attention" icon={<AlertTriangle size={14} />}>
-                {attentionItems.length === 0 ? (
-                  <EmptyStateInvite
-                    icon={<AlertTriangle className="h-5 w-5" />}
-                    title="You're all caught up"
-                    description="No BiS, roster, or recruitment items need you right now."
+        {/* DASHBOARD — actionable (spans cols 1-2) + ambient (col 3) */}
+        <div className="flex flex-col gap-4 self-start min-[1181px]:col-span-2">
+          <CardShell title="Needs your attention" icon={<AlertTriangle size={14} />}>
+            {attentionItems.length === 0 ? (
+              <EmptyStateInvite
+                icon={<AlertTriangle className="h-5 w-5" />}
+                title="You're all caught up"
+                description="No BiS, roster, or recruitment items need you right now."
+              />
+            ) : (
+              <div className="flex flex-col divide-y divide-border-subtle">
+                {attentionItems.map((item) => (
+                  <AttentionRow
+                    key={item.key}
+                    icon={item.icon}
+                    title={item.title}
+                    meta={item.meta}
+                    action={item.action}
                   />
-                ) : (
-                  <div className="flex flex-col divide-y divide-border-subtle">
-                    {attentionItems.map((item) => (
-                      <AttentionRow
-                        key={item.key}
-                        icon={item.icon}
-                        title={item.title}
-                        meta={item.meta}
-                        action={item.action}
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardShell>
-              <RoleBisCard />
-              {group.userRole && <TeamSummaryCard groupId={group.id} tierId={tierId} />}
-            </div>
-          }
-          side={
-            <div className="flex flex-col gap-4">
-              {tier && (
-                <CardShell title="Loot fairness" icon={<Scale size={14} />}>
-                  <FairnessSummary
-                    players={mainRosterPlayers}
-                    settings={settings}
-                    lootLog={lootLog}
-                    materialLog={materialLog}
-                    pageLedger={pageLedger}
-                    currentWeek={currentWeek}
-                    floors={fairnessFloors}
-                  />
-                </CardShell>
-              )}
-              <StaticActivityFeed />
-              <TrackCard />
-            </div>
-          }
-        />
+                ))}
+              </div>
+            )}
+          </CardShell>
+          <RoleBisCard />
+          {group.userRole && <TeamSummaryCard groupId={group.id} tierId={tierId} />}
+        </div>
+        <div className="flex flex-col gap-4 self-start">
+          {tier && (
+            <CardShell title="Loot fairness" icon={<Scale size={14} />}>
+              <FairnessSummary
+                players={mainRosterPlayers}
+                settings={settings}
+                lootLog={lootLog}
+                materialLog={materialLog}
+                pageLedger={pageLedger}
+                currentWeek={currentWeek}
+                floors={fairnessFloors}
+              />
+            </CardShell>
+          )}
+          <StaticActivityFeed />
+          <TrackCard />
+        </div>
       </div>
     </div>
   );

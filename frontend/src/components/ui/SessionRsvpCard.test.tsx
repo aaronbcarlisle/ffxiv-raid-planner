@@ -54,12 +54,20 @@ describe('SessionRsvpCard', () => {
     expect(screen.getByTestId('session-daytime')).toBeInTheDocument();
   });
 
-  it('renders the timezone line', () => {
+  it('renders the timezone line only when the viewer is in a different zone, without repeating the session time', () => {
     render(<SessionRsvpCard session={makeSession()} viewerTimezone="America/Los_Angeles" />);
     const tz = screen.getByTestId('session-tz-line');
     expect(tz).toBeInTheDocument();
-    // Session is 8:00 PM EST; viewer LA is 5:00 PM PST.
+    // Session is 8:00 PM EST; viewer LA is 5:00 PM PST. The session time
+    // already prints in the headline (`session-daytime`) — this line must not
+    // repeat it (R-E2-B).
     expect(tz.textContent).toMatch(/your time/i);
+    expect(tz.textContent).not.toMatch(/8:00\s*PM/i);
+  });
+
+  it('omits the timezone line when the viewer is in the same zone as the session', () => {
+    render(<SessionRsvpCard session={makeSession()} viewerTimezone="America/New_York" />);
+    expect(screen.queryByTestId('session-tz-line')).not.toBeInTheDocument();
   });
 
   it('fires onRsvp with "available" when "I\'m in" clicked', () => {
@@ -176,7 +184,7 @@ describe('SessionRsvpCard', () => {
 // card renders the F6b anatomy EXCEPT the sanctioned default-render deltas:
 //   1. the 'next'-variant accent ring (ring-1 ring-accent/40),
 //   2. trackAvailability === false → "Availability not required", and
-//   3. (R-E1-I) the session's own title as a real <h4> heading in the body.
+//   3. (R-E1-I) the session's own title as a real <h3> heading in the body.
 // ---------------------------------------------------------------------------
 
 describe('SessionRsvpCard — F6e regression lock (no new props → Home render)', () => {
@@ -190,9 +198,9 @@ describe('SessionRsvpCard — F6e regression lock (no new props → Home render)
     expect(screen.getByTestId('rsvp-counts').textContent).not.toContain('no answer');
     expect(screen.getAllByTestId('rsvp-avatar').length).toBe(session.rsvps.length); // stack, not grid
     // The sanctioned default deltas: the next-variant accent ring, and the
-    // session title rendered as a real level-4 heading (R-E1-I).
+    // session title rendered as a real level-3 heading (R-E1-I, R-E2-A).
     expect(document.querySelector('.ring-accent\\/40')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 4, name: 'Prog night' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Prog night' })).toBeInTheDocument();
   });
 });
 
@@ -208,12 +216,13 @@ describe('SessionRsvpCard — F6e new behaviors', () => {
     render(
       <SessionRsvpCard session={makeSession()} variant="later" currentUserRsvp="available" onRsvp={vi.fn()} />,
     );
-    // Title becomes the session title (CardShell <h3>), not "Next session".
-    expect(screen.getByText('Prog night')).toBeInTheDocument();
+    // Title becomes the session title (CardShell <h2> — R-E2-A), not "Next session".
+    expect(screen.getByRole('heading', { level: 2, name: 'Prog night' })).toBeInTheDocument();
     expect(screen.queryByText('Next session')).not.toBeInTheDocument();
     expect(document.querySelector('.ring-accent\\/40')).not.toBeInTheDocument();
-    // T4-b2: unchanged — no body-level <h4> title line is added for 'later'.
-    expect(screen.queryByRole('heading', { level: 4 })).not.toBeInTheDocument();
+    // T4-b2: unchanged — no body-level <h3> title line is added for 'later'
+    // (it would appear here if `showTitleLine` ever fired for isLater).
+    expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
     expect(screen.getAllByText('Prog night')).toHaveLength(1);
     // Inactive button carries the ghost variant (bg-transparent); the active
     // one (success) does not — class difference proves the ghost mapping.
@@ -241,6 +250,22 @@ describe('SessionRsvpCard — F6e new behaviors', () => {
     expect(counts).toContain('2 no answer');
     // Charlie + Delta have no rsvp → two no-answer glyphs in the grid.
     expect(within(grid).getAllByText('·')).toHaveLength(2);
+  });
+
+  it('R-E2-C: the status glyph sits right after the identity (no ml-auto) and is shrink-0', () => {
+    const session = makeSession({
+      rsvps: [makeRsvp({ username: 'Alpha', status: 'available' })],
+    });
+    render(<SessionRsvpCard session={session} members={gridMembers} memberDetail="grid" />);
+    const grid = screen.getByTestId('rsvp-member-grid');
+    const row = within(grid).getAllByRole('listitem')[0];
+    const glyph = within(row).getByText('✓');
+    expect(glyph.className).not.toContain('ml-auto');
+    expect(glyph.className).toContain('shrink-0');
+    // DOM order: the identity wrapper (min-w-0, shrinkable) comes first, the
+    // glyph immediately follows it — not pushed to the far edge.
+    expect(row.children[0].className).toContain('min-w-0');
+    expect(row.children[1]).toBe(glyph);
   });
 
   it('no-answer derivation is members-minus-rsvps (a member with an rsvp never shows ·)', () => {
@@ -321,21 +346,21 @@ describe('SessionRsvpCard — F6e new behaviors', () => {
 });
 
 describe('SessionRsvpCard — R-E1-I next-session title heading', () => {
-  it('T4-b1: next variant shows the "Next session" heading and the session title as a level-4 heading', () => {
+  it('T4-b1: next variant shows the "Next session" heading and the session title as a level-3 heading', () => {
     render(<SessionRsvpCard session={makeSession({ title: 'Savage prog' })} />);
-    expect(screen.getByText('Next session')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 4, name: 'Savage prog' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Next session' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Savage prog' })).toBeInTheDocument();
   });
 
   it('T4-b3: an empty title renders no heading line', () => {
     render(<SessionRsvpCard session={makeSession({ title: '   ' })} />);
-    expect(screen.queryByRole('heading', { level: 4 })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
   });
 
   it('T4-b4: with the title line rendered and no day label, the title appears once', () => {
     // An unparseable startTime makes formatDay return null, so the day/time
     // line's fallback would normally re-render session.title — it must be
-    // suppressed once the <h4> title line is already showing it.
+    // suppressed once the <h3> title line is already showing it.
     render(<SessionRsvpCard session={makeSession({ title: 'Savage prog', startTime: 'not-a-date' })} />);
     expect(screen.getAllByText('Savage prog')).toHaveLength(1);
   });

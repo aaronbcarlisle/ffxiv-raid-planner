@@ -786,6 +786,10 @@ kebab exists so every modifier action has a keyboard and AT route; right-click i
   reverts gear; v2's loot confirm exposes a revert-gear **checkbox** (the `DeleteLootConfirmModal`
   mount, `Loot.tsx:1146-1166`; the checkbox itself lives in `history/DeleteLootConfirmModal.tsx`)
   instead of hard-coding it.
+  **Update (R-E2-N, E2a, 2026-09-25):** that checkbox originally defaulted checked only for `method
+  === 'drop'`; a Book-method delete offered no revert at all. It now covers `drop` OR `book` (never
+  `isExtra`), default-checked for both — matching legacy's always-revert behavior for both delete
+  paths.
 - Out of D6a, ruled for **D6b**: the teaching tooltip, the recipient-badge hover-`×`, the count bar
   + legend, and the floor-header "Log floor" kebab (R-23/R-25/R-27's own build notes land there).
 

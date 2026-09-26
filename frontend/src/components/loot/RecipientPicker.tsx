@@ -616,6 +616,18 @@ export function RecipientPicker({
           )}
         </div>
       )}
+      {/* R-E2-M (#12): always-mounted so its arrival/departure doesn't shift
+          the footer layout. `selected` derives from the UNFILTERED entries
+          (its definition above) while `selectionVisible` requires the pick
+          to survive the active search — so this fires exactly when the
+          picker's default pre-selected player (or any prior pick) has been
+          searched out of view, which otherwise silently blocks Submit with
+          no visible row explaining why. */}
+      <p role="status" className="text-xs text-text-secondary">
+        {selected && !selectionVisible
+          ? `${selected.player.name} is selected but hidden by your search — pick a visible player or clear the search.`
+          : ''}
+      </p>
       <div className="flex justify-end gap-3">
         <Button type="button" variant="secondary" onClick={onClose}>
           Cancel

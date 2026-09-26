@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.17';
+export const CURRENT_VERSION = '2.1.34';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,77 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.35',
+    date: '2026-09-25T23:00:00Z',
+    title: 'Phase E visual polish — E2a (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'A calmer Home layout',
+        description:
+          'V2 preview: Home lays both rows on one grid, Roster readiness and Loot fairness share one flat stat style, the readiness stat reads "At full BiS", and Most / Fewest are two labelled lines.',
+        pr: 276,
+        prTitle: 'feat(v2): E2a — visual polish: session card, heading outline, Home levers, V1 readability fixes, loot fixes',
+      },
+      {
+        category: 'improvement',
+        title: 'Clearer next-session card',
+        description:
+          'V2 preview: each member\'s RSVP mark sits right after their name, and the "your time" line appears only when your time zone differs from the session\'s.',
+        pr: 276,
+        prTitle: 'feat(v2): E2a — visual polish: session card, heading outline, Home levers, V1 readability fixes, loot fixes',
+      },
+      {
+        category: 'fix',
+        title: 'Loot adjustments survive a partial failure',
+        description:
+          'V2 preview: if some adjustments fail to save, the dialog stays open with your edits and one error message; substitutes can now get adjustments in their own group.',
+        pr: 276,
+        prTitle: 'feat(v2): E2a — visual polish: session card, heading outline, Home levers, V1 readability fixes, loot fixes',
+      },
+      {
+        category: 'improvement',
+        title: 'Loot picker and Book deletes explain themselves',
+        description:
+          'V2 preview: the recipient picker says when your selected player is hidden by the search, and deleting a Book entry offers to revert the gear, checked by default.',
+        pr: 276,
+        prTitle: 'feat(v2): E2a — visual polish: session card, heading outline, Home levers, V1 readability fixes, loot fixes',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '2.1.34',
+    date: '2026-09-25T22:00:00Z',
+    title: 'Readability fixes',
+    items: [
+      {
+        category: 'fix',
+        title: 'Easier-to-read secondary text in light mode',
+        description:
+          'Muted text in the light theme is a little darker, so it now meets the WCAG AA contrast minimum on every light surface.',
+        pr: 276,
+        prTitle: 'feat(v2): E2a — visual polish: session card, heading outline, Home levers, V1 readability fixes, loot fixes',
+      },
+      {
+        category: 'fix',
+        title: 'Larger "Current" tier badge',
+        description:
+          'The "Current" badge in the tier selector is now 12 px, matching the app\'s minimum text size.',
+        pr: 276,
+        prTitle: 'feat(v2): E2a — visual polish: session card, heading outline, Home levers, V1 readability fixes, loot fixes',
+      },
+      {
+        category: 'fix',
+        title: 'Static Finder lines up with the rest of the app',
+        description:
+          'Static Finder is now left-aligned like every other page instead of centered on wide screens.',
+        pr: 276,
+        prTitle: 'feat(v2): E2a — visual polish: session card, heading outline, Home levers, V1 readability fixes, loot fixes',
+      },
+    ],
+  },
   {
     version: '2.1.33',
     date: '2026-09-25T18:00:00Z',

@@ -202,6 +202,35 @@ describe('RecipientPicker (assign mode)', () => {
     expect(submit).toBeEnabled();
   });
 
+  // R-E2-M (#12): a role="status" container beside the submit area, always
+  // mounted, non-empty only when the pinned selection is hidden by search.
+  it('hidden-recipient hint (R-E2-M): always mounted, filled when the search hides the selected player, emptied on clear or on picking a visible player', () => {
+    render(
+      <RecipientPicker {...baseProps} mode="assign"
+        item={{ slot: 'earring', floorName: 'M9S', floorNumber: 1, label: 'Earring' }} />
+    );
+    // Present even before any search — always-mounted, not conditionally rendered.
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('');
+
+    // Default pick pinned at open = Caster One; search for Melee hides it.
+    fireEvent.change(screen.getByPlaceholderText('Search players…'), { target: { value: 'Melee' } });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Caster One is selected but hidden by your search — pick a visible player or clear the search.',
+    );
+
+    // Clearing the search empties it again.
+    fireEvent.change(screen.getByPlaceholderText('Search players…'), { target: { value: '' } });
+    expect(screen.getByRole('status')).toHaveTextContent('');
+
+    // Re-hide it, then pick the now-visible Melee One instead of clearing —
+    // that also must empty the hint (selectionVisible becomes true).
+    fireEvent.change(screen.getByPlaceholderText('Search players…'), { target: { value: 'Melee' } });
+    expect(screen.getByRole('status')).not.toHaveTextContent('');
+    fireEvent.click(screen.getByText('Melee One'));
+    expect(screen.getByRole('status')).toHaveTextContent('');
+  });
+
   it('falls back to All members with a pre-selected recipient when nobody needs the item (A11)', () => {
     // Both players already hold the raid-BiS earring → the 'priority' scope
     // pool (needers only) is EMPTY. The picker must not open into a dead-end:

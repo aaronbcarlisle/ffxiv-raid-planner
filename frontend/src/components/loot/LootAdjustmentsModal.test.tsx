@@ -1,6 +1,7 @@
+import { useState, type Dispatch, type SetStateAction } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { LootAdjustmentsModal } from './LootAdjustmentsModal';
+import { LootAdjustmentsModal, type AdjustmentUpdate } from './LootAdjustmentsModal';
 import { toast } from '../../stores/toastStore';
 import type { SnapshotPlayer } from '../../types';
 
@@ -25,10 +26,10 @@ beforeEach(() => {
   );
 });
 
-function makePlayer(id: string, name: string, opts: { lootAdjustment?: number; priorityModifier?: number } = {}): SnapshotPlayer {
+function makePlayer(id: string, name: string, opts: { lootAdjustment?: number; priorityModifier?: number; isSubstitute?: boolean } = {}): SnapshotPlayer {
   return {
     id, tierSnapshotId: 't1', name, job: 'BLM', role: 'caster',
-    configured: true, sortOrder: 0, isSubstitute: false,
+    configured: true, sortOrder: 0, isSubstitute: opts.isSubstitute ?? false,
     gear: [], tomeWeapon: {}, weaponPriorities: [],
     lootAdjustment: opts.lootAdjustment,
     priorityModifier: opts.priorityModifier,
@@ -111,8 +112,8 @@ describe('LootAdjustmentsModal', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
-  it('keeps the modal open and toasts an error when onSave rejects', async () => {
-    const onSave = vi.fn().mockRejectedValue(new Error('boom'));
+  it('keeps the modal open and toasts the rejection error message when onSave rejects (R-E2-K)', async () => {
+    const onSave = vi.fn().mockRejectedValue(new Error('Failed to update 1 player(s)'));
     const onClose = vi.fn();
     render(<LootAdjustmentsModal isOpen players={players} onClose={onClose} onSave={onSave} />);
 
@@ -121,8 +122,22 @@ describe('LootAdjustmentsModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
-    expect(toast.error).toHaveBeenCalledWith('Failed to save adjustments');
+    // Exactly one toast, carrying onSave's own message (not a generic string).
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(toast.error).toHaveBeenCalledWith('Failed to update 1 player(s)');
     expect(onClose).not.toHaveBeenCalled();
+    // The draft survives the rejection intact.
+    expect(spinbuttons[0]).toHaveValue(10);
+  });
+
+  it('falls back to a generic message when the rejection is not an Error', async () => {
+    const onSave = vi.fn().mockRejectedValue('boom');
+    render(<LootAdjustmentsModal isOpen players={players} onClose={vi.fn()} onSave={onSave} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(toast.error).toHaveBeenCalledWith('Failed to save adjustments');
   });
 
   it('open-transition-only seeding: an in-progress edit survives a mid-open players churn, and a close/reopen re-seeds', () => {
@@ -167,6 +182,112 @@ describe('LootAdjustmentsModal', () => {
     // player3 is the 3rd row → spinbuttons[4] (loot adj), spinbuttons[5] (priority mod).
     expect(spinbuttons[4]).toHaveValue(30);
     expect(spinbuttons[5]).toHaveValue(5);
+  });
+
+  it('renders a substitute row under a Substitutes group label, after the main-roster rows (R-E2-L)', () => {
+    const sub = makePlayer('s1', 'Sub One', { isSubstitute: true });
+    render(<LootAdjustmentsModal isOpen players={[...players, sub]} onClose={vi.fn()} onSave={vi.fn()} />);
+
+    expect(screen.getByText('Substitutes')).toBeInTheDocument();
+    expect(screen.getByText('Sub One')).toBeInTheDocument();
+    const names = screen.getAllByText(/Player One|Player Two|Sub One/).map((el) => el.textContent);
+    expect(names).toEqual(['Player One', 'Player Two', 'Sub One']);
+  });
+
+  it('renders no Substitutes group label when there are no subs', () => {
+    render(<LootAdjustmentsModal isOpen players={players} onClose={vi.fn()} onSave={vi.fn()} />);
+    expect(screen.queryByText('Substitutes')).not.toBeInTheDocument();
+  });
+
+  it("saving a substitute's edit reports an update for that substitute", async () => {
+    const sub = makePlayer('s1', 'Sub One', { isSubstitute: true });
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<LootAdjustmentsModal isOpen players={[...players, sub]} onClose={vi.fn()} onSave={onSave} />);
+
+    // Rows: player1 (0,1), player2 (2,3), sub (4,5) — sub's loot-adj input.
+    const spinbuttons = screen.getAllByRole('spinbutton');
+    fireEvent.change(spinbuttons[4], { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave).toHaveBeenCalledWith([
+      { playerId: 's1', lootAdjustment: 7, priorityModifier: 0 },
+    ]);
+  });
+
+  // E2 review I-4: a partial failure keeps the modal open, so the rows the save
+  // sent must re-seed from the LIVE post-save values — otherwise reverting a
+  // row that DID save diffs equal to its stale open-time seed, sends nothing,
+  // and closes as a success while the store keeps the saved value.
+  it('after a partial failure, reverting a row that saved sends the revert (I-4)', async () => {
+    type SetLive = Dispatch<SetStateAction<SnapshotPlayer[]>>;
+    // Stands in for Loot: `players` is live store state the save mutates.
+    function Harness({ onSave, onClose }: {
+      onSave: (updates: AdjustmentUpdate[], setLive: SetLive) => Promise<void>;
+      onClose: () => void;
+    }) {
+      const [live, setLive] = useState<SnapshotPlayer[]>([
+        player1,
+        player2,
+        makePlayer('p3', 'Player Three', { lootAdjustment: 5 }),
+      ]);
+      return <LootAdjustmentsModal isOpen players={live} onClose={onClose} onSave={(u) => onSave(u, setLive)} />;
+    }
+
+    const onClose = vi.fn();
+    const onSave = vi
+      .fn<(updates: AdjustmentUpdate[], setLive: SetLive) => Promise<void>>()
+      .mockImplementationOnce(async (_updates, setLive) => {
+        await Promise.resolve(); // the PUTs are async
+        // tierStore.updatePlayer's outcome: p1's PUT succeeded (the store keeps
+        // 10), p2's failed (rolled back to 20/-10). p3, which this save never
+        // sent, moved remotely (5 → 40) in the meantime.
+        setLive((prev) =>
+          prev.map((p) =>
+            p.id === 'p1' ? { ...p, lootAdjustment: 10 } : p.id === 'p3' ? { ...p, lootAdjustment: 40 } : p
+          )
+        );
+        throw new Error('Failed to update 1 player(s)');
+      })
+      .mockResolvedValueOnce(undefined);
+    render(<Harness onSave={onSave} onClose={onClose} />);
+
+    // Rows: p1 (0,1), p2 (2,3), p3 (4,5).
+    const spinbuttons = screen.getAllByRole('spinbutton');
+    fireEvent.change(spinbuttons[0], { target: { value: '10' } });
+    fireEvent.change(spinbuttons[3], { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Failed to update 1 player(s)'));
+    expect(onSave).toHaveBeenNthCalledWith(
+      1,
+      [
+        { playerId: 'p1', lootAdjustment: 10, priorityModifier: 0 },
+        { playerId: 'p2', lootAdjustment: 20, priorityModifier: 15 },
+      ],
+      expect.any(Function)
+    );
+    expect(onClose).not.toHaveBeenCalled();
+    // The draft survives: both edits still show.
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveValue(10);
+    expect(screen.getAllByRole('spinbutton')[3]).toHaveValue(15);
+
+    // Revert p1 to its ORIGINAL value (0) — the store now holds 10.
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+    // p1's revert is sent; p2's failed edit is retried; p3 (never sent, moved
+    // remotely) is NOT overwritten with its stale open-time draft.
+    expect(onSave).toHaveBeenNthCalledWith(
+      2,
+      [
+        { playerId: 'p1', lootAdjustment: 0, priorityModifier: 0 },
+        { playerId: 'p2', lootAdjustment: 20, priorityModifier: 15 },
+      ],
+      expect.any(Function)
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
 
   it('re-seeds the draft from player values on each open transition', () => {

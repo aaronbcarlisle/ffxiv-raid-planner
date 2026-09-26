@@ -335,15 +335,11 @@ export function SessionRsvpCard({
         {dayLabel ? `${dayLabel}` : showTitleLine ? '' : session.title}
         {sessionTime && <span className="ml-2 text-text-secondary">{sessionTime}</span>}
       </div>
-      <div data-testid="session-tz-line" className="text-xs text-text-tertiary">
-        {sessionTime ?? ''}
-        {showViewerTime && (
-          <>
-            <span aria-hidden="true"> · </span>
-            <span>your time {viewerTime}</span>
-          </>
-        )}
-      </div>
+      {showViewerTime && (
+        <div data-testid="session-tz-line" className="text-xs text-text-tertiary">
+          your time {viewerTime}
+        </div>
+      )}
     </div>
   );
 
@@ -364,9 +360,9 @@ export function SessionRsvpCard({
     >
       <div className="flex flex-col gap-3">
         {showTitleLine && (
-          <h4 className="text-xl font-display font-bold text-text-primary leading-tight">
+          <h3 className="text-xl font-display font-bold text-text-primary leading-tight">
             {session.title}
-          </h4>
+          </h3>
         )}
         {/* Day / time — display font, optionally preceded by the day pill */}
         {showDayPill && dayPill ? (
@@ -401,7 +397,7 @@ export function SessionRsvpCard({
                         title={rsvp?.note ?? undefined}
                       >
                         <PlayerIdentity variant="rsvp-row" name={member.username ?? 'Unknown'} />
-                        <span aria-hidden="true" className={`ml-auto text-xs font-bold ${glyph.cls}`}>
+                        <span aria-hidden="true" className={`shrink-0 text-xs font-bold ${glyph.cls}`}>
                           {glyph.ch}
                         </span>
                         <span className="sr-only">{glyph.label}</span>

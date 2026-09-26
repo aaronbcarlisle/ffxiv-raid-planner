@@ -319,6 +319,35 @@ import { JobIcon } from '../components/ui/JobIcon';
 
 ---
 
+### StatCell
+
+**Path:** `components/ui/StatCell.tsx`
+
+**Purpose:** The one value/label(/detail) stat idiom — a big value over an uppercase label, with an optional caption line.
+
+**Props:**
+```typescript
+interface StatCellProps {
+  value: ReactNode;
+  label: string;
+  detail?: ReactNode;      // optional third line, e.g. "4/5 obtained"
+  valueClassName?: string; // overrides the value's color; omit for text-text-primary
+  align?: 'center' | 'start'; // default 'center'
+}
+```
+
+**Usage:**
+```tsx
+import { StatCell } from '../components/ui/StatCell';
+
+<StatCell value="87%" label="At full BiS" />
+<StatCell align="start" label="Distribution" value="Even" valueClassName="text-status-success" detail="spread 1" />
+```
+
+**When to use:** Any value/label stat display (Roster Readiness, Loot Fairness). Don't build a bespoke stat tile — this is the shared idiom.
+
+---
+
 ### TabNavigation
 
 **Path:** `components/ui/TabNavigation.tsx`

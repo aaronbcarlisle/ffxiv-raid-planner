@@ -256,7 +256,12 @@ B–F land as normal PRs.
   prominence, not text order (R-E1-J); U-2 TrackCard tags "Mount farm"; U-3 the next-session card gets
   a "Next session" eyebrow + real title; U-4 the roster subtitle describes the static, no change; U-5
   R-D14-B's fairness placement/title confirmed as built; U-6 the first-paint week order confirmed.
-  **E2 — the impeccable-assisted pass — remains**, unstarted.
+  **✅ Status (E2, 2026-09-25): ran, ships as two stacked PRs (E2a + E2b), in review.** E2a = the
+  plan + Task 1 (RSVP glyph, tz line, heading levels) + Task 3 (Home grid, StatCell, labels, the
+  V1-authorized TierSelector/light muted token/Discover fixes) + Task 4 (loot fixes). E2b = Task 2
+  (the roster card header on one line, the job badge, the shared BiS-progress helper) — split out
+  because the U-8/R-E2-D 2b ruling (`plans/2026-09-25-phase-e2-visual-polish.md` "Outcome") tripled
+  its size past the ~1,500-line PR budget.
 - **F — Seam mitigation:** light docs restyle (tokens/typography alignment, consistent
   PageHeader — full non-group v2 chrome remains Ring 1); retarget user-menu items where
   v2 equivalents exist; dead-code sweep (knip: 8 files / 179 exports / 139 types as of DC — hold
@@ -303,13 +308,15 @@ D12 row):
 
 **Carried out of E1** (`plans/2026-09-25-phase-e1-mechanical-polish.md`'s status-check table has the
 41-item detail; new items below):
-- Holistic / Phase P (design calls): #3 card richness · #7 Board denominator vs color · #8 two "no
-  BiS" signals · #12 search-hidden selection · #13 adjustments close-on-failure · #14 subs in
-  adjustments · #20 materials-picker unification · #22 accent-tint idiom · #32 membership
-  intersection · #34 rsvp-row role seam · R-E1-J's compact fight-only controls (the floor pills, "Log
-  floor — M12S", the picker's "Fight" Select — accepted as-built, U-1).
+- Holistic / Phase P (design calls). **✅ Shipped in E2 (U-12):** #5 spacing nit, #36 ultra-wide glyph
+  adjacency (E2a Task 1), #7 Board denominator vs color, #12 search-hidden selection, #13 adjustments
+  close-on-failure, #14 subs in adjustments (E2a Task 4 / E2b Task 2 per component). **Carried, with
+  homes:** #3 card richness → the Player Hub (spec approved 2026-09-25, PH1 next); #8 two "no BiS"
+  signals and #32 membership intersection → Phase F; #20 materials-picker unification and #22
+  accent-tint idiom → their own slices; #34 rsvp-row role seam → deferred. R-E1-J's compact
+  fight-only controls (the floor pills, "Log floor — M12S", the picker's "Fight" Select — accepted
+  as-built, U-1).
 - Phase P (mobile): #11 SegmentedToggle 44 px touch target.
-- E2 (impeccable pass, visual): #5 spacing nit · #36 ultra-wide glyph adjacency.
 - Phase F (semantics / shared store / enforcement / backend): #9 `currentSource` recalc · #24's
   remaining whole-store destructures (`LogWeekWizard/index.tsx:96`, `QuickLogMaterialModal.tsx:333`) ·
   #27 `clearAllPageLedger` player set · #38 boundary-evening week · #11 Split planner/Export re-home ·
@@ -323,12 +330,28 @@ D12 row):
   - `no-tiny-text` doesn't reach a class string held in a const (found via `GearBoardCell.tsx`'s
     `BASE`).
 - Next mechanical slice: #40 null-anchor strip (`WeekNavigatorStrip.tsx:49-53,66`).
-- Holistic (new from E1, un-homed items surfaced but not fixed): a Book-method loot entry syncs gear
-  but its v2 delete confirm offers no revert checkbox (`DeleteLootConfirmModal.tsx:29,82`,
-  default-checked only for `drop` — the drop-only default is the documented delta at
-  `specs/phase-d-loot-design.md:781-788`); PriorityRow's tooltip trigger is a non-focusable span, so
-  keyboard users can't reveal a truncated name; FairnessSummary's empty state leaves an empty grid
-  cell at `≥ sm`.
+- Holistic (new from E1, un-homed items surfaced but not fixed). **✅ Shipped in E2a (R-E2-N):** the
+  Book-method delete-confirm revert checkbox (`DeleteLootConfirmModal.tsx`, now default-checked for
+  `drop` OR `book`, matching legacy — `specs/phase-d-loot-design.md:781-788`). **✅ Closed in E2a
+  (R-E2-H):** FairnessSummary's empty-roster state no longer leaves an empty grid cell at `≥ sm`.
+  **Still carried:** PriorityRow's tooltip trigger is a non-focusable span, so keyboard users can't
+  reveal a truncated name.
+
+**Carried out of E2** (2026-09-25):
+- The V1-shared skipped-heading h3s R-E2-A left parked because the files are frozen legacy/V1-shared
+  (`schedule/AvailabilityGrid.tsx:531`, `TemplateRecommendations.tsx:48`, `loot/LootPriorityPanel.tsx:509`)
+  → fix whenever V1 is authorized for that file.
+- D1: a partial adjustments failure also opens the shell error overlay — `tierStore.updatePlayer`
+  (V1-shared) sets the global `error` on any failed update and both shells render the overlay by
+  design → the holistic review (mutation- vs load-error surfacing policy).
+- D3: the delete-confirm modal's initial focus lands on `Checkbox`'s `sr-only` input
+  (`Modal.tsx:106-125` always prefers the first `INPUT`; `Modal`/`Checkbox` are V1-shared) → the
+  holistic a11y pass.
+- D4: the Board's per-player BiS column (`playerBisProgress`) vs. the `bisSlotTotals` aggregates
+  feeding the Cards group bar (`RosterCards.tsx:288`) and Home readiness → Phase F, with #8 (unifying
+  the aggregate entangles the no-BiS denominator semantics #8 owns).
+- Lint's "warnings ≤ N" gate is not CI-enforced (`eslint .` has no `--max-warnings` in `ci.yml`) →
+  repo setup.
 
 ## 7b. Phase P — Beta polish walkthrough (added 2026-07-25, user ruling)
 

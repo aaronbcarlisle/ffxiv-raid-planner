@@ -15,4 +15,12 @@ describe('CardShell', () => {
     expect(screen.getByRole('heading', { name: /recent activity/i })).toBeInTheDocument();
     expect(screen.getByText('this week')).toBeInTheDocument();
   });
+  it('renders the title as an h2 by default (R-E2-A)', () => {
+    render(<CardShell title="Recent activity">x</CardShell>);
+    expect(screen.getByRole('heading', { level: 2, name: 'Recent activity' })).toBeInTheDocument();
+  });
+  it('renders the title as an h3 when level="h3"', () => {
+    render(<CardShell title="Recent activity" level="h3">x</CardShell>);
+    expect(screen.getByRole('heading', { level: 3, name: 'Recent activity' })).toBeInTheDocument();
+  });
 });
