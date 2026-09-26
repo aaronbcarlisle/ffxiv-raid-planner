@@ -306,6 +306,7 @@ describe('AppChrome Player Hub portrait (R-PH1-G)', () => {
   it('renders an img inside the Player Hub button when the main character has an allowed avatarUrl', () => {
     mocks.user = { id: 'u1', discordUsername: 'tester' };
     mocks.profile = {
+      userId: 'u1',
       characters: [{
         id: 'c1', name: 'Aria Frost', avatarUrl: 'https://img2.finalfantasyxiv.com/avatar.png',
         isMain: true, server: 'Tonberry', dataCenter: null, lodestoneId: '1',
@@ -320,6 +321,7 @@ describe('AppChrome Player Hub portrait (R-PH1-G)', () => {
   it('renders initials (no img) when the character has no avatarUrl', () => {
     mocks.user = { id: 'u1', discordUsername: 'tester' };
     mocks.profile = {
+      userId: 'u1',
       characters: [{
         id: 'c1', name: 'Aria Frost', avatarUrl: null,
         isMain: true, server: 'Tonberry', dataCenter: null, lodestoneId: '1',
@@ -342,7 +344,7 @@ describe('AppChrome Player Hub portrait (R-PH1-G)', () => {
 
   it('does not call fetchProfile when a profile is already loaded', () => {
     mocks.user = { id: 'u1', discordUsername: 'tester' };
-    mocks.profile = { characters: [] };
+    mocks.profile = { userId: 'u1', characters: [] };
     renderChrome('/profile');
     expect(mocks.fetchProfile).not.toHaveBeenCalled();
   });
@@ -352,5 +354,28 @@ describe('AppChrome Player Hub portrait (R-PH1-G)', () => {
     mocks.profile = null;
     renderChrome('/discover');
     expect(mocks.fetchProfile).not.toHaveBeenCalled();
+  });
+
+  it('refetches the profile when the loaded profile belongs to a different user (stale after account switch)', () => {
+    mocks.user = { id: 'u2', discordUsername: 'new-user' };
+    mocks.profile = { userId: 'u1', characters: [] };
+    renderChrome('/profile');
+    expect(mocks.fetchProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not show the stale profile portrait when profile.userId !== user.id', () => {
+    mocks.user = { id: 'u2', discordUsername: 'new-user' };
+    mocks.profile = {
+      userId: 'u1',
+      characters: [{
+        id: 'c1', name: 'Old User Char', avatarUrl: 'https://img2.finalfantasyxiv.com/old.png',
+        isMain: true, server: 'Tonberry', dataCenter: null, lodestoneId: '1',
+        createdAt: '', updatedAt: '',
+      }],
+    };
+    renderChrome('/profile');
+    const btn = screen.getByRole('button', { name: 'Player Hub' });
+    // Stale profile's avatarUrl must not reach the rail; initials for the new user instead
+    expect(btn.querySelector('img')).toBeNull();
   });
 });

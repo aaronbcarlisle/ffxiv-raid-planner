@@ -234,6 +234,24 @@ describe('NonGroupTopBar — breadcrumb on /profile (R-PH1-H)', () => {
     expect(current).toHaveAttribute('aria-current', 'page');
   });
 
+  it('falls back to "Player Hub" when the profile belongs to a different user (stale after account switch)', () => {
+    // authedUser.id = 'u1'; the stale profile belongs to 'u-other'
+    usePlayerProfileStore.setState({
+      profile: {
+        id: 'p2', userId: 'u-other', visibility: 'private', shareCode: null, shareEnabled: false,
+        bio: null, jobProfiles: [], createdAt: '', updatedAt: '',
+        characters: [{ id: 'c2', name: 'Other User Char', server: 'Tonberry', dataCenter: null, avatarUrl: null, isMain: true, lodestoneId: '1', createdAt: '', updatedAt: '' }],
+      },
+      fetchProfile: vi.fn(),
+    });
+    renderBar('/profile');
+    const row = desktop();
+    // Must not show the other user's character name
+    expect(row.queryByText('Other User Char')).toBeNull();
+    const current = row.getByText('Player Hub');
+    expect(current).toHaveAttribute('aria-current', 'page');
+  });
+
   it('does not render a breadcrumb on non-profile routes', () => {
     renderBar('/discover');
     const row = desktop();

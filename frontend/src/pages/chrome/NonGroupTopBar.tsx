@@ -127,9 +127,10 @@ export function NonGroupTopBar() {
   // R-PH1-H: on /profile the desktop identity becomes a breadcrumb.
   const profile = usePlayerProfileStore((s) => s.profile);
   const isProfileRoute = location.pathname === '/profile';
-  const profileMainChar = isProfileRoute
-    ? (profile?.characters.find((c) => c.isMain) ?? profile?.characters?.[0])
-    : undefined;
+  // Only use the profile for the breadcrumb when it belongs to the current user —
+  // a stale profile (after an in-app account switch) must not show the old user's name.
+  const ownProfile = isProfileRoute && profile?.userId === user?.id ? profile : null;
+  const profileMainChar = ownProfile?.characters.find((c) => c.isMain) ?? ownProfile?.characters?.[0];
   const profileBreadcrumbName = profileMainChar?.name ?? 'Player Hub';
 
   // M1: the mobile row's logo is the home affordance while the rail is hidden —

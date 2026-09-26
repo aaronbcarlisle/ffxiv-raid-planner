@@ -65,7 +65,7 @@ export function AppChrome({ children }: AppChromeProps) {
   const profile = usePlayerProfileStore((s) => s.profile);
   const fetchProfile = usePlayerProfileStore((s) => s.fetchProfile);
   useEffect(() => {
-    if (user && !profile) {
+    if (user && (!profile || profile.userId !== user.id)) {
       fetchProfile();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -129,7 +129,10 @@ export function AppChrome({ children }: AppChromeProps) {
     // InitialsAvatar fallback inside AppRail); initials fall back from the
     // main character name → user displayName → discordUsername.
     if (user) {
-      const mainChar = profile?.characters.find((c) => c.isMain) ?? profile?.characters?.[0];
+      // Only use the profile for portrait/initials when it belongs to the current user
+      // (stale profile after an in-app account switch must not bleed into the new user's rail).
+      const ownProfile = profile?.userId === user.id ? profile : null;
+      const mainChar = ownProfile?.characters.find((c) => c.isMain) ?? ownProfile?.characters?.[0];
       const initialsName = mainChar?.name ?? user.displayName ?? user.discordUsername ?? '';
       entries.push({
         kind: 'avatar',
