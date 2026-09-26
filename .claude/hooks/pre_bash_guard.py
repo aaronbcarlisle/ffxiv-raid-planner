@@ -1,11 +1,15 @@
 """PreToolUse guard for Bash/PowerShell tool calls.
 
-Two mechanical gates (see CLAUDE.md CI/CD section and the pr-checklist skill):
+Three mechanical gates (see CLAUDE.md CI/CD section and the pr-checklist skill):
   1. Commit guard  — `git commit` with frontend TS staged must pass `tsc -b`
                      (project-build mode; stricter than `tsc --noEmit`, matches CI).
   2. Merge guard   — `gh pr merge` requires `gh pr checks` fully green. Main's
                      branch protection enforces this server-side too; the hook
                      catches it earlier and also covers non-protected branches.
+  3. Push guard    — `git push` that targets `main` (explicit refspec, `HEAD`
+                     or a bare push while on main, `--all`/`--mirror`). Permission
+                     deny rules can't express this: #279 showed only a trailing
+                     `*` expands, so `git push * main` never matched.
 
 Exit 0 = allow. Exit 2 = block the tool call; stderr is fed back to Claude.
 Fails OPEN on unexpected errors (a broken guard must not brick the run).
@@ -29,6 +33,32 @@ def run(cmd, timeout=280):
     return subprocess.run(cmd, shell=True, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
 
 
+PROTECTED = {"main", "refs/heads/main"}
+
+
+def push_targets_main(cmd):
+    """True if any `git push` in `cmd` would update main on a remote."""
+    for seg in re.split(r"&&|\|\||[;|\n]", cmd):
+        m = re.search(r"\bgit\b(?:\s+-C\s+\S+)?\s+push\b(.*)", seg)
+        if not m:
+            continue
+        toks = m.group(1).split()
+        flags = [t for t in toks if t.startswith("-")]
+        if "--all" in flags or "--mirror" in flags:
+            return True
+        refspecs = [t.strip("'\"") for t in toks if not t.startswith("-")][1:]
+        current = None
+        if not refspecs or any(r.lstrip("+") == "HEAD" for r in refspecs):
+            current = run("git branch --show-current", timeout=10).stdout.strip()
+            if current in PROTECTED:
+                return True
+        for r in refspecs:
+            dst = r.lstrip("+").split(":")[-1]
+            if dst in PROTECTED:
+                return True
+    return False
+
+
 def main():
     global ROOT
     try:
@@ -40,6 +70,17 @@ def main():
     cmd = tool_input.get("command", "")
     if not cmd:
         return 0
+
+    # --- Push guard ---
+    try:
+        if push_targets_main(cmd):
+            sys.stderr.write(
+                "PUSH BLOCKED by push guard hook: this push would update `main`. "
+                "Push a branch and open a draft PR instead (see pr-checklist skill).\n"
+            )
+            return 2
+    except Exception:
+        pass  # fail open
 
     # --- Commit guard ---
     if re.search(r"\bgit\b[^|;&]*?\bcommit\b", cmd):
