@@ -35,16 +35,8 @@ import { NonGroupTopBar } from './NonGroupTopBar';
 import { buildStaticNavHref, prefRememberTabs } from '../../lib/navPreferences';
 import { useAuthStore } from '../../stores/authStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { getInitials } from '../../utils/initials';
 import type { RailEntry } from '../../components/layout/railTypes';
-
-/** Derive two-letter initials from a static name. (Moved from NewShell.) */
-function getInitials(name: string): string {
-  const words = name.trim().split(/\s+/);
-  if (words.length >= 2) {
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
-}
 
 const LOGO_LINK_CLASSES =
   'flex items-center justify-center rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring';
