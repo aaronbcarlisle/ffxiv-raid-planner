@@ -68,6 +68,7 @@ import { useTierStore } from '../../stores/tierStore';
 import { useInvitationStore } from '../../stores/invitationStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import type { StaticGroup, StaticGroupListItem, TierSnapshot, User } from '../../types';
 
 const groupFixture = {
@@ -132,6 +133,9 @@ beforeEach(() => {
   useInvitationStore.setState({ invitations: [], fetchInvitations: vi.fn() });
   useJoinRequestStore.setState({ pendingCount: 0, fetchGroupRequests: vi.fn() });
   useLootTrackingStore.setState({ fetchCurrentWeek: vi.fn() });
+  // R-PH1-G: AppChrome now reads the player profile for the rail portrait;
+  // seed with no profile so fetchProfile is not called against the real api.
+  usePlayerProfileStore.setState({ profile: null, fetchProfile: vi.fn() });
 });
 
 afterEach(() => {

@@ -42,6 +42,7 @@ import { useNotificationStore } from '../../stores/notificationStore';
 import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useStaticGroupStore } from '../../stores/staticGroupStore';
+import { usePlayerProfileStore } from '../../stores/playerProfileStore';
 import { useShellPreferenceStore } from '../../lib/shellPreference';
 import { V2_SHORTCUT_GROUPS } from '../ui/keyboardShortcutGroups';
 import {
@@ -83,6 +84,8 @@ beforeEach(() => {
   useSettingsPanelStore.setState({ isOpen: false });
   useJoinRequestStore.setState({ pendingCount: 0, fetchGroupRequests: vi.fn() });
   useStaticGroupStore.setState({ groups: [], currentGroup: null, fetchGroups: vi.fn() });
+  // R-PH1-G: AppChrome now reads the player profile for the rail portrait.
+  usePlayerProfileStore.setState({ profile: null, fetchProfile: vi.fn() });
 });
 
 afterEach(() => {

@@ -12,6 +12,20 @@ import type { SharedBiSTargetSet } from '../types';
 
 const logger = baseLogger.scope('playerProfile');
 
+// --- Profile fetch coordination ---
+// GET /api/player/profile has several concurrent owners: the V2 AppChrome rail
+// portrait (app load), Profile.tsx's mount, JoinRequestModal's open, and this
+// store's post-mutation refreshes. `profileInFlight` is the newest GET:
+//  - a plain fetch joins it (one GET; the GET creates a missing profile row
+//    server-side);
+//  - a `force` fetch always issues a new GET that supersedes it — used by the
+//    post-mutation refreshes, and by AppChrome when the loaded profile belongs
+//    to another account (the signed-in identity lives in authStore, which a
+//    store may not import);
+//  - a settled GET is applied only while it is still the newest, so a late
+//    pre-mutation or previous-account response never overwrites newer state.
+let profileInFlight: { promise: Promise<void> } | null = null;
+
 // --- Types ---
 
 export interface PlayerCharacter {
@@ -162,7 +176,8 @@ interface PlayerProfileState {
   error: string | null;
 
   // Actions
-  fetchProfile: () => Promise<void>;
+  /** Joins an in-flight GET unless `force`, which supersedes it (see coordination note above). */
+  fetchProfile: (options?: { force?: boolean }) => Promise<void>;
   updateProfile: (data: { visibility?: string; bio?: string; shareEnabled?: boolean }) => Promise<void>;
 
   // Characters
@@ -252,15 +267,35 @@ export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
   syncing: false,
   error: null,
 
-  fetchProfile: async () => {
-    set({ loading: true, error: null });
-    try {
-      const profile = await api.get<PlayerProfile>('/api/player/profile');
-      set({ profile, loading: false });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load profile';
-      logger.error('fetchProfile failed', { error: message });
-      set({ error: message, loading: false });
+  fetchProfile: async ({ force = false } = {}) => {
+    let request = profileInFlight;
+    if (force || !request) {
+      const next = { promise: Promise.resolve() };
+      // Registered before the GET starts so even a synchronous failure clears it.
+      profileInFlight = next;
+      request = next;
+      set({ loading: true, error: null });
+      next.promise = (async () => {
+        try {
+          const profile = await api.get<PlayerProfile>('/api/player/profile');
+          // Superseded by a newer GET: that one owns profile/loading/error.
+          if (profileInFlight !== next) return;
+          set({ profile, loading: false });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Failed to load profile';
+          logger.error('fetchProfile failed', { error: message });
+          if (profileInFlight !== next) return;
+          set({ error: message, loading: false });
+        } finally {
+          if (profileInFlight === next) profileInFlight = null;
+        }
+      })();
+    }
+    await request.promise;
+    // A GET still in flight here started after ours: settle only once it has,
+    // so every caller observes the freshest profile.
+    while (profileInFlight) {
+      await profileInFlight.promise;
     }
   },
 
@@ -279,7 +314,7 @@ export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
     try {
       const character = await api.post<PlayerCharacter>('/api/player/characters', data);
       // Refresh profile to get updated character list
-      await get().fetchProfile();
+      await get().fetchProfile({ force: true });
       return character;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to link character';
@@ -291,7 +326,7 @@ export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
   updateCharacter: async (id, data) => {
     try {
       await api.put<PlayerCharacter>(`/api/player/characters/${id}`, data);
-      await get().fetchProfile();
+      await get().fetchProfile({ force: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update character';
       logger.error('updateCharacter failed', { error: message });
@@ -306,7 +341,7 @@ export const usePlayerProfileStore = create<PlayerProfileState>((set, get) => ({
       const snapshots = { ...get().gearSnapshots };
       delete snapshots[id];
       set({ gearSnapshots: snapshots });
-      await get().fetchProfile();
+      await get().fetchProfile({ force: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to unlink character';
       logger.error('unlinkCharacter failed', { error: message });

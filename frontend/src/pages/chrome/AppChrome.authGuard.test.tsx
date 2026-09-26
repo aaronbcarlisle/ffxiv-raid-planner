@@ -47,6 +47,10 @@ vi.mock('../../stores/authStore', () => ({
 vi.mock('../../components/auth', () => ({
   UserMenu: () => null,
 }));
+vi.mock('../../stores/playerProfileStore', () => ({
+  usePlayerProfileStore: (sel: (s: Record<string, unknown>) => unknown) =>
+    sel({ profile: null, fetchProfile: vi.fn() }),
+}));
 
 import { AppChrome } from './AppChrome';
 

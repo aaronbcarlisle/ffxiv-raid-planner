@@ -172,7 +172,7 @@ Every shipped/planned capability from `CONSOLIDATED_STATUS.md`, placed. **Verdic
 ### Person layer
 | Capability | Verdict |
 |---|---|
-| Player Hub (solo profile) + public profile | ♻️ the **player's dashboard**, accessed via the **user menu** (not a rail/nav slot); its front-door role survives only as the landing surface for static-less users *(refined 2026-07-26 by the ruled `design/redesign/specs/systems-flow-map.md`, delta R1 — was "personal front door")* |
+| Player Hub (solo profile) + public profile | ♻️ the **player's dashboard** (glance first: your statics, characters, availability, setup; then Characters & gear · Availability · Tracking · Sharing tabs), accessed via the **user menu** and the rail's first slot — your character portrait; its front-door role survives only as the landing surface for static-less users *(refined 2026-07-26 by the ruled `design/redesign/specs/systems-flow-map.md`, delta R1 — was "personal front door"; amended 2026-09-25 by the Player Hub spec H-1/H-2, V2 built in PH1 2026-09-26)* |
 | Discord OAuth, multi-static membership, player ownership linking | ✅ identity/binding |
 | Personal availability, characters & alts | ✅ Person inputs feeding statics |
 | Recruitment profile (what I'm looking for) | ✅ feeds matching |
