@@ -49,6 +49,15 @@ vi.mock('../components/profile/PlayerAvailabilityTab', () => ({
 vi.mock('../components/profile/PreviewShareTab', () => ({
   PreviewShareTab: (p: Props) => { bodies.sharing = p; return <div data-testid="body-sharing" />; },
 }));
+vi.mock('../components/profile/hub/HubOverview', () => ({
+  HubOverview: () => <div data-testid="hub-overview"><div data-testid="hub-overview-content" /></div>,
+}));
+vi.mock('../components/profile/hub/SuggestedFarmsCard', () => ({
+  SuggestedFarmsCard: () => <div data-testid="suggested-farms" />,
+}));
+vi.mock('../components/wizard', () => ({
+  SetupWizard: () => null,
+}));
 
 const profile: PlayerProfile = {
   id: 'p1', userId: 'u1', visibility: 'shareable', shareCode: 'P1', shareEnabled: true, bio: null,
@@ -144,7 +153,7 @@ describe('PlayerHub — tabs and URL', () => {
     expect(probe()).toHaveAttribute('data-nav', 'PUSH');
     fireEvent.click(tab('Overview'));
     expect(probe()).toHaveAttribute('data-search', '?x=1');
-    expect(screen.getByTestId('hub-overview')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('hub-overview')).not.toBeEmptyDOMElement();
   });
 
   it('clears sub-tab params on a tab switch only when tabs are not remembered', () => {
@@ -270,6 +279,6 @@ describe('PlayerHub — layout', () => {
     for (const v1Label of ['Sync & Gear', 'Jobs & Gear', 'My Statics', 'Share']) {
       expect(screen.queryByText(v1Label)).toBeNull();
     }
-    expect(screen.getByTestId('hub-overview')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('hub-overview')).not.toBeEmptyDOMElement();
   });
 });

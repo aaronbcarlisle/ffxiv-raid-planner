@@ -5,11 +5,14 @@
  * the character/job/BiS modals; this page owns the identity header, the five
  * tabs (with the legacy `?tab=` map from `hubTabs.ts`) and the tab bodies.
  */
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs } from '../components/ui/Tabs';
 import { HubIdentityHeader } from '../components/profile/hub/HubIdentityHeader';
 import { HUB_TABS, hubTabForId, hubTabParams, resolveHubTab, type HubTab } from '../components/profile/hub/hubTabs';
+import { HubOverview } from '../components/profile/hub/HubOverview';
+import { SuggestedFarmsCard } from '../components/profile/hub/SuggestedFarmsCard';
+import { SetupWizard } from '../components/wizard';
 import { SyncCenterTab } from '../components/profile/SyncCenterTab';
 import { JobsGearTab } from '../components/profile/JobsGearTab';
 import { GoalsTab } from '../components/profile/GoalsTab';
@@ -66,6 +69,8 @@ export function PlayerHub({
   profile,
   goals,
   gearSnapshots,
+  collectionSuggestions,
+  staticSuggestions,
   groups,
   onOpenLinkModal,
   onAddJob,
@@ -79,6 +84,7 @@ export function PlayerHub({
   const [collView, setCollView] = useUrlTabState('coll', COLL_VIEWS, 'priorities');
   const syncRef = useRef<HTMLElement>(null);
   const jobsRef = useRef<HTMLElement>(null);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   useEffect(() => {
     if (canonical) return;
@@ -130,7 +136,19 @@ export function PlayerHub({
       />
 
       <div className="pt-4">
-        {tab === 'overview' && <div data-testid="hub-overview" />}
+        {tab === 'overview' && (
+          <HubOverview
+            profile={profile}
+            gearSnapshots={gearSnapshots}
+            collectionSuggestions={collectionSuggestions}
+            staticSuggestions={staticSuggestions}
+            groups={groups}
+            onOpenLinkModal={onOpenLinkModal}
+            onAddJob={onAddJob}
+            setTab={setTab}
+            onCreateStatic={() => setWizardOpen(true)}
+          />
+        )}
 
         {tab === 'characters' && (
           <div className="flex flex-col gap-8">
@@ -171,6 +189,9 @@ export function PlayerHub({
 
         {tab === 'tracking' && (
           <div className="flex flex-col gap-8">
+            {collectionSuggestions.length > 0 && (
+              <SuggestedFarmsCard collectionSuggestions={collectionSuggestions} />
+            )}
             <section aria-labelledby="hub-goals-heading">
               <h2 id="hub-goals-heading" className="sr-only">Goals</h2>
               <GoalsTab goals={goals} />
@@ -198,6 +219,11 @@ export function PlayerHub({
           </section>
         )}
       </div>
+      <SetupWizard
+        isOpen={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onComplete={() => setWizardOpen(false)}
+      />
     </div>
   );
 }
