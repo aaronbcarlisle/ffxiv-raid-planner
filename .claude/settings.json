@@ -25,7 +25,6 @@
       "Bash(git reset --hard*)",
       "Bash(git tag -d*)",
       "Bash(git tag --delete*)",
-      "Bash(git worktree remove*)",
       "Bash(gh repo delete*)",
       "PowerShell(git push --force*)",
       "PowerShell(git push -f*)",
