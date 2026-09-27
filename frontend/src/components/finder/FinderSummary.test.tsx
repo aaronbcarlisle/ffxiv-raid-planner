@@ -36,17 +36,22 @@ describe('summaryText', () => {
 describe('summarySubline', () => {
   it('shows with Best match and a template', () => {
     const viewer: FitViewer = { mainJob: 'DRG', mainRole: 'melee', missing: [] };
-    expect(summarySubline('best', viewer)).toBe('Ranked by fit · uses your Player Hub typical week');
+    expect(summarySubline('best', viewer, false)).toBe('Ranked by fit · uses your Player Hub typical week');
   });
 
   it('does not show without a template', () => {
     const viewer: FitViewer = { mainJob: null, mainRole: null, missing: ['template'] };
-    expect(summarySubline('best', viewer)).toBeNull();
+    expect(summarySubline('best', viewer, false)).toBeNull();
   });
 
   it('does not show for a sort other than best', () => {
     const viewer: FitViewer = { mainJob: 'DRG', mainRole: 'melee', missing: [] };
-    expect(summarySubline('recent', viewer)).toBeNull();
+    expect(summarySubline('recent', viewer, false)).toBeNull();
+  });
+
+  it('does not show for a guest, even if sort somehow reads "best" (item 1, PR-review fix wave)', () => {
+    const viewer: FitViewer = { mainJob: 'DRG', mainRole: 'melee', missing: [] };
+    expect(summarySubline('best', viewer, true)).toBeNull();
   });
 });
 

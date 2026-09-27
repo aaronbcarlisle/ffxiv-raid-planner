@@ -13,6 +13,10 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useAuthStore } from '../../stores/authStore';
 import { authRequest } from '../../services/api';
 import { getBrowserTimezone } from '../../utils/timezone';
+import { DATA_CENTERS, getWorldsForDC } from '../../gamedata';
+import {
+  JOB_OPTIONS, FINDER_RECRUITMENT_OPTIONS, INTENSITY_OPTIONS, DC_OPTIONS, TZ_OPTIONS, LANG_OPTIONS,
+} from './discoveryOptions';
 import type { FinderItem, FinderResponse, FitCounts, FitViewer } from './types';
 
 const ROLE_VALUES = new Set(['tank', 'healer', 'melee', 'ranged', 'caster']);
@@ -21,6 +25,19 @@ const SORT_VALUES = new Set(['best', 'recent', 'members', 'name']);
 
 /** Keys that open "More filters" by default when any is in the URL (m8). */
 const MORE_FILTER_KEYS = ['job', 'recruitmentStatus', 'dataCenter', 'server', 'timezone', 'language'] as const;
+
+/** The non-empty values of an option list `FinderFilters` renders (whole-branch review item 2). */
+function optionValues(options: { value: string }[]): Set<string> {
+  return new Set(options.filter(o => o.value).map(o => o.value));
+}
+
+const JOB_VALUES = optionValues(JOB_OPTIONS);
+const RECRUITMENT_STATUS_VALUES = optionValues(FINDER_RECRUITMENT_OPTIONS);
+const INTENSITY_VALUES = optionValues(INTENSITY_OPTIONS);
+const DATA_CENTER_VALUES = optionValues(DC_OPTIONS);
+const TIMEZONE_VALUES = optionValues(TZ_OPTIONS);
+const LANGUAGE_VALUES = optionValues(LANG_OPTIONS);
+const ALL_SERVER_VALUES = new Set(DATA_CENTERS.flatMap(dc => dc.worlds));
 
 function defaultSort(signedIn: boolean): string {
   return signedIn ? 'best' : 'recent';
@@ -37,6 +54,24 @@ function readRole(searchParams: URLSearchParams): string {
 function readHideGoalConflicts(searchParams: URLSearchParams): boolean {
   if (searchParams.get('hideGoalConflicts') === 'true') return true;
   return searchParams.get('hideConflicts') === 'true'; // V1 link (m8)
+}
+
+/**
+ * Reads a select-backed filter, validated against the same option list
+ * `FinderFilters` renders; a value outside it is dropped (m8 pattern) rather
+ * than sent to the API and shown as "Any …" while still filtering (whole-
+ * branch review item 2).
+ */
+function readOption(searchParams: URLSearchParams, key: string, validValues: Set<string>, migrate?: (raw: string) => string): string {
+  const raw = searchParams.get(key);
+  if (!raw) return '';
+  const value = migrate ? migrate(raw) : raw;
+  return validValues.has(value) ? value : '';
+}
+
+/** DiscoveryTab.tsx:148 migrates `limited` -> `selective` on save; a V1 link reads the same way. */
+function migrateRecruitmentStatus(raw: string): string {
+  return raw === 'limited' ? 'selective' : raw;
 }
 
 export interface FinderState {
@@ -120,13 +155,17 @@ export function useFinderQuery(): UseFinderQueryResult {
   });
   const [scheduleOverlap, setScheduleOverlap] = useState(() => searchParams.get('scheduleOverlap') === 'true');
   const [hideGoalConflicts, setHideGoalConflicts] = useState(() => readHideGoalConflicts(searchParams));
-  const [job, setJob] = useState(() => searchParams.get('job') ?? '');
-  const [recruitmentStatus, setRecruitmentStatus] = useState(() => searchParams.get('recruitmentStatus') ?? '');
-  const [intensity, setIntensity] = useState(() => searchParams.get('intensity') ?? '');
-  const [dataCenter, setDataCenterState] = useState(() => searchParams.get('dataCenter') ?? '');
-  const [server, setServer] = useState(() => searchParams.get('server') ?? '');
-  const [timezone, setTimezone] = useState(() => searchParams.get('timezone') ?? '');
-  const [language, setLanguage] = useState(() => searchParams.get('language') ?? '');
+  const [job, setJob] = useState(() => readOption(searchParams, 'job', JOB_VALUES));
+  const [recruitmentStatus, setRecruitmentStatus] = useState(() =>
+    readOption(searchParams, 'recruitmentStatus', RECRUITMENT_STATUS_VALUES, migrateRecruitmentStatus));
+  const [intensity, setIntensity] = useState(() => readOption(searchParams, 'intensity', INTENSITY_VALUES));
+  const [dataCenter, setDataCenterState] = useState(() => readOption(searchParams, 'dataCenter', DATA_CENTER_VALUES));
+  const [server, setServer] = useState(() => {
+    const validServers = dataCenter ? new Set(getWorldsForDC(dataCenter)) : ALL_SERVER_VALUES;
+    return readOption(searchParams, 'server', validServers);
+  });
+  const [timezone, setTimezone] = useState(() => readOption(searchParams, 'timezone', TIMEZONE_VALUES));
+  const [language, setLanguage] = useState(() => readOption(searchParams, 'language', LANGUAGE_VALUES));
 
   const [moreFiltersInitiallyOpen] = useState(() => MORE_FILTER_KEYS.some(k => searchParams.has(k)));
 
@@ -151,11 +190,21 @@ export function useFinderQuery(): UseFinderQueryResult {
   }, []);
 
   // Re-derive an un-set sort when signedIn flips (item 7, whole-branch review).
+  // A guest can never keep `sort=best`: a cookie-session user can render once
+  // with `user === null` before the session resolves, so this clamps on
+  // every render where signedIn/sort settle, not only at mount — and clears
+  // the explicit flag so a later sign-in still restores `best` (item 1,
+  // PR-review fix wave).
   useEffect(() => {
+    if (!signedIn && sort === 'best') {
+      sortExplicitRef.current = false;
+      setSortState('recent');
+      return;
+    }
     if (!sortExplicitRef.current) {
       setSortState(defaultSort(signedIn));
     }
-  }, [signedIn]);
+  }, [signedIn, sort]);
 
   const setters = useMemo<FinderSetters>(() => ({
     setQ, setSort, setAsRole, setDayGroup, setGoalCategory,
@@ -237,6 +286,14 @@ export function useFinderQuery(): UseFinderQueryResult {
       setFitCounts(data.fitCounts);
       setViewer(data.viewer);
       missingRef.current = data.viewer?.missing ?? [];
+      // `missingRef` only helps starting with the NEXT request — on first load,
+      // a viewer with no typical week would otherwise leave the checkbox
+      // checked-but-disabled with no way to untick it. Clear it here too, which
+      // drops `scheduleOverlap` from the URL and refetches (item 3, PR-review
+      // fix wave).
+      if (scheduleOverlap && missingRef.current.includes('template')) {
+        setScheduleOverlap(false);
+      }
       setLoading(false);
     } catch (err) {
       if (seq !== seqRef.current) return;

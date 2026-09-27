@@ -37,9 +37,15 @@ export function summaryText(fitCounts: FitCounts | null, total: number, roleKey:
   return `${n} of ${total} statics are a good fit for you${roleLabel ? ` as a ${roleLabel}` : ''}`;
 }
 
-/** R-SF-P/m16: only with Best match and a typical week (no `template` in `missing`). */
-export function summarySubline(sort: string, viewer: FitViewer | null): string | null {
-  if (sort !== 'best' || !viewer || viewer.missing.includes('template')) return null;
+/**
+ * R-SF-P/m16: only with Best match and a typical week (no `template` in
+ * `missing`). `isGuest` is a belt-and-suspenders gate on top of `sort`
+ * itself: a guest's `sort` state briefly reads `best` while a cookie session
+ * is still resolving (PR-review fix wave item 1), and this line should never
+ * key off that transient value.
+ */
+export function summarySubline(sort: string, viewer: FitViewer | null, isGuest: boolean): string | null {
+  if (isGuest || sort !== 'best' || !viewer || viewer.missing.includes('template')) return null;
   return 'Ranked by fit · uses your Player Hub typical week';
 }
 
@@ -56,7 +62,7 @@ interface FinderSummaryProps {
 export function FinderSummary({ total, fitCounts, viewer, asRole, sort, onSortChange, isGuest }: FinderSummaryProps) {
   const roleKey = asRole || viewer?.mainRole || null;
   const text = summaryText(fitCounts, total, roleKey);
-  const subline = summarySubline(sort, viewer);
+  const subline = summarySubline(sort, viewer, isGuest);
 
   return (
     <div className="flex items-start justify-between gap-3 mb-4 flex-wrap" data-testid="finder-summary">

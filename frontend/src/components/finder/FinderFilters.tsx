@@ -96,7 +96,18 @@ export function FinderFilters({
                 key={role}
                 variant="filter"
                 pressed={effectiveRole === role}
-                onClick={() => setters.setAsRole(state.asRole === role ? '' : role)}
+                onClick={() => {
+                  // The main's chip is pressed via the `viewer.mainRole` fallback, never by
+                  // setting `asRole` to it — clicking it always clears back to that fallback.
+                  // Clicking an already-pressed explicit chip clears it the same way; clicking
+                  // any other chip sets it. With no main role this is a plain toggle (whole-
+                  // branch review item 4).
+                  if (viewer?.mainRole === role) {
+                    setters.setAsRole('');
+                  } else {
+                    setters.setAsRole(state.asRole === role ? '' : role);
+                  }
+                }}
               >
                 {ROLE_CHIP_LABELS[role]}
               </Tag>
@@ -119,7 +130,7 @@ export function FinderFilters({
         {!isGuest && (
           <Checkbox
             id="finder-schedule-overlap"
-            checked={state.scheduleOverlap}
+            checked={noTemplate ? false : state.scheduleOverlap}
             onChange={setters.setScheduleOverlap}
             disabled={noTemplate}
             label="Fits my typical week"

@@ -155,19 +155,30 @@ describe('useFinderQuery', () => {
     expect(latest.error).toBeNull();
   });
 
-  it("(i) viewer.missing including 'template': the next request omits scheduleOverlap, the URL keeps it", async () => {
-    mockAuthRequest.mockResolvedValueOnce(
+  it('(h2) recruitmentStatus=limited migrates to selective, and a bogus job is dropped (PR-review fix wave item 2)', async () => {
+    renderHarness('/discover?recruitmentStatus=limited&job=NOTAJOB');
+    await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
+    expect(latest.state.recruitmentStatus).toBe('selective');
+    expect(latest.state.job).toBe('');
+    const params = lastRequestParams();
+    expect(params.get('recruitmentStatus')).toBe('selective');
+    expect(params.has('job')).toBe(false);
+    await waitFor(() => expect(search()).toContain('recruitmentStatus=selective'));
+    expect(search()).not.toContain('job=');
+  });
+
+  it("(i) viewer.missing including 'template' on first load clears scheduleOverlap from state and the URL, and a second request omits it (PR-review fix wave item 3)", async () => {
+    mockAuthRequest.mockResolvedValue(
       baseResponse({ viewer: { mainJob: null, mainRole: null, missing: ['template'] } }),
     );
     renderHarness('/discover?scheduleOverlap=true');
-    await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
-    expect(lastRequestParams().get('scheduleOverlap')).toBe('true');
-
-    mockAuthRequest.mockResolvedValueOnce(baseResponse());
-    act(() => { latest.setters.setJob('WAR'); });
+    // Processing the first response clears the checkbox, which auto-refetches
+    // a second time — this settles at exactly 2 calls (the second's own
+    // response carries the same missing:['template'], so it doesn't loop).
     await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(2));
     expect(lastRequestParams().has('scheduleOverlap')).toBe(false);
-    expect(search()).toContain('scheduleOverlap=true');
+    expect(latest.state.scheduleOverlap).toBe(false);
+    await waitFor(() => expect(search()).not.toContain('scheduleOverlap=true'));
   });
 
   it('(j) a guest defaults to sort=recent, with no sort in the URL', async () => {
@@ -204,6 +215,14 @@ describe('useFinderQuery', () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(latest.state.sort).toBe('best'));
+  });
+
+  it('(n) a guest on ?sort=best is clamped to recent, including in the request (PR-review fix wave item 1)', async () => {
+    authState.user = null;
+    renderHarness('/discover?sort=best');
+    await waitFor(() => expect(latest.state.sort).toBe('recent'));
+    await waitFor(() => expect(lastRequestParams().get('sort')).toBe('recent'));
+    expect(search()).not.toMatch(/(?:^|[?&])sort=/);
   });
 
   it('(m) an explicit sort pick survives an auth flip', async () => {

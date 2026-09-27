@@ -100,6 +100,27 @@ describe('FinderFilters', () => {
     expect(screen.getByText('Matching as your DRG')).toBeInTheDocument();
   });
 
+  it('clicking the pressed main role chip is a no-op — never sets asRole to the main role (PR-review fix wave item 4)', () => {
+    let latest: FinderState | undefined;
+    render(<Harness viewer={{ mainJob: 'DRG', mainRole: 'melee', missing: [] }} onStateChange={(s) => { latest = s; }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Melee' }));
+    expect(latest?.asRole).toBe('');
+    expect(screen.getByRole('button', { name: 'Melee' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText(/Match as your DRG again/)).toBeNull();
+  });
+
+  it('clicking an explicit non-main chip again clears back to the main role (PR-review fix wave item 4)', () => {
+    let latest: FinderState | undefined;
+    render(<Harness viewer={{ mainJob: 'DRG', mainRole: 'melee', missing: [] }} onStateChange={(s) => { latest = s; }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tank' }));
+    expect(latest?.asRole).toBe('tank');
+    fireEvent.click(screen.getByRole('button', { name: 'Tank' }));
+    expect(latest?.asRole).toBe('');
+    expect(screen.getByRole('button', { name: 'Melee' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('content checkboxes build the goalCategory CSV', () => {
     let latest: FinderState | undefined;
     render(<Harness onStateChange={(s) => { latest = s; }} />);
