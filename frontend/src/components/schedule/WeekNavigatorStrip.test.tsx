@@ -3,9 +3,20 @@
 // `components/loot/WeekScopeControl.test.tsx`), so we follow that
 // established convention here.
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterAll } from 'vitest';
 import { WeekNavigatorStrip } from './WeekNavigatorStrip';
 import type { WeekClock } from '../../hooks/useWeekClock';
+
+// vitest.config.ts pins TZ=UTC, where a formatter that lost its
+// `timeZone: 'UTC'` still renders the right day. A UTC-negative zone, set
+// before the component loads (hoisted above the imports), keeps the
+// date-range assertions a live guard on every host and in CI.
+vi.hoisted(() => {
+  vi.stubEnv('TZ', 'America/New_York');
+});
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
 
 const clock = {
   currentWeek: 3,

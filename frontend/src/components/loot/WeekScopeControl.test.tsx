@@ -3,8 +3,19 @@
 // (see `components/roster/RosterToolbar.test.tsx`), so we follow that
 // established convention here.
 import { render, screen, fireEvent, within, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { WeekScopeControl, type WeekScopeControlProps } from './WeekScopeControl';
+
+// vitest.config.ts pins TZ=UTC, where a formatter that lost its
+// `timeZone: 'UTC'` still renders the right day. A UTC-negative zone, set
+// before the component loads (hoisted above the imports), keeps the
+// UTC-pinned date-range assertion a live guard on every host and in CI.
+vi.hoisted(() => {
+  vi.stubEnv('TZ', 'America/New_York');
+});
+afterAll(() => {
+  vi.unstubAllEnvs();
+});
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
 import { toast } from '../../stores/toastStore';
 import type { WeekClock } from '../../hooks/useWeekClock';

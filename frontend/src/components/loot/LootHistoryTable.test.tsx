@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, within, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterAll, beforeEach, afterEach } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { LootHistoryTable } from './LootHistoryTable';
 import { historyRowDomId } from './logWeekGridData';
@@ -75,13 +75,22 @@ function q(query = '') {
 /**
  * A UTC-pinned range generator: week N starts Jun 16 2026 UTC + (N-1) weeks.
  * Week 3 therefore spans Jun 30 - Jul 7. Built from `Date.UTC` so that a
- * formatter which lost its `timeZone: 'UTC'` renders a DIFFERENT day — note
- * this only bites off UTC (it does locally, `America/New_York`; a UTC CI
- * runner cannot tell the two apart, so treat this as a local guard).
+ * formatter which lost its `timeZone: 'UTC'` renders a DIFFERENT day. That only
+ * bites off UTC, and vitest.config.ts pins TZ=UTC, so this file switches to a
+ * UTC-negative zone for its own run: the guard holds on every host and in CI.
  */
 const rangeOfWeek = (week: number) => ({
   start: new Date(Date.UTC(2026, 5, 16 + (week - 1) * 7)),
   end: new Date(Date.UTC(2026, 5, 23 + (week - 1) * 7)),
+});
+
+// Hoisted above the imports: the component's formatters are module-level, so
+// the zone must be set before LootHistoryTable/WeekScopeControl load.
+vi.hoisted(() => {
+  vi.stubEnv('TZ', 'America/New_York');
+});
+afterAll(() => {
+  vi.unstubAllEnvs();
 });
 
 /**
