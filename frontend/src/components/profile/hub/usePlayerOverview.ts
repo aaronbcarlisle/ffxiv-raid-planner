@@ -69,10 +69,10 @@ export function usePlayerOverview(): UsePlayerOverviewResult {
     };
   }, []);
 
-  const load = useCallback(() => {
-    const requestId = ++requestIdRef.current;
-    setIsLoading(true);
-    setError(null);
+  // No setState here: the mount effect below calls this with state already
+  // in its initial shape (isLoading true, error null), so nothing needs
+  // resetting on that first call. `retry` resets state itself before calling in.
+  const fetchOverview = useCallback((requestId: number) => {
     api
       .get<PlayerOverview>('/api/player/overview')
       .then((response) => {
@@ -88,9 +88,15 @@ export function usePlayerOverview(): UsePlayerOverviewResult {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch on mount; the stale/unmount races this rule guards against are handled by requestIdRef/mountedRef above
-    load();
-  }, [load]);
+    fetchOverview(requestIdRef.current);
+  }, [fetchOverview]);
 
-  return { data, isLoading, error, retry: load };
+  const retry = useCallback(() => {
+    const requestId = ++requestIdRef.current;
+    setIsLoading(true);
+    setError(null);
+    fetchOverview(requestId);
+  }, [fetchOverview]);
+
+  return { data, isLoading, error, retry };
 }

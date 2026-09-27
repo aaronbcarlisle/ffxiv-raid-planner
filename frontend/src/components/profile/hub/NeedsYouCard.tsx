@@ -14,11 +14,11 @@ import { EmptyStateInvite } from '../../ui/EmptyStateInvite';
 import { Tag } from '../../ui/Tag';
 import { Button } from '../../primitives/Button';
 import { formatSessionStart } from './overviewFormat';
+import { SkeletonRows } from './SkeletonRows';
 import type { OverviewActionItem, OverviewActionItemType, PlayerOverview } from './usePlayerOverview';
 
 interface NeedsYouCardProps {
   data: PlayerOverview | null;
-  isLoading: boolean;
   error: string | null;
   retry: () => void;
 }
@@ -53,11 +53,7 @@ export function NeedsYouCard({ data, error, retry }: NeedsYouCardProps) {
       headerRight={<span className="text-xs text-text-muted">Across your statics</span>}
     >
       {!data && !error ? (
-        <div className="flex flex-col gap-2">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-10 animate-pulse rounded bg-surface-interactive" />
-          ))}
-        </div>
+        <SkeletonRows />
       ) : error && !data ? (
         <div className="flex flex-col items-center gap-2 py-4 text-center">
           <p className="text-sm text-text-secondary">Couldn&apos;t load what needs you.</p>

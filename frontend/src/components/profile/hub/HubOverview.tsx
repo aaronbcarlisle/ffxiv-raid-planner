@@ -35,7 +35,7 @@ export function HubOverview({
   onCreateStatic,
 }: HubOverviewProps) {
   const groups = useStaticGroupStore((s) => s.groups);
-  const { data, isLoading, error, retry } = usePlayerOverview();
+  const { data, error, retry } = usePlayerOverview();
 
   const overviewById = useMemo(() => {
     if (!data) return undefined;
@@ -51,7 +51,7 @@ export function HubOverview({
       {/* Main area: spans cols 1-2 — Needs you (R-PH2-K) then Your statics */}
       <div className="min-[1181px]:col-span-2 self-start flex flex-col gap-4">
         {groups.length > 0 && (
-          <NeedsYouCard data={data} isLoading={isLoading} error={error} retry={retry} />
+          <NeedsYouCard data={data} error={error} retry={retry} />
         )}
         <YourStaticsCard
           staticSuggestions={staticSuggestions}

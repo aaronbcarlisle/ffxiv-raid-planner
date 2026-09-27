@@ -21,6 +21,7 @@ import { getInitials } from '../../../utils/initials';
 import { buildStaticNavHref, prefRememberTabs } from '../../../lib/navPreferences';
 import { getTierById } from '../../../gamedata/raid-tiers';
 import { formatSessionStart } from './overviewFormat';
+import { SkeletonRows } from './SkeletonRows';
 import type { StaticSuggestion } from '../../../stores/playerProfileStore';
 import type { OverviewStatic } from './usePlayerOverview';
 import type { StaticGroupListItem } from '../../../types';
@@ -181,17 +182,15 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic, overviewByI
         )}
 
         {errorReplacesBody ? null : skeleton ? (
-          <div className="flex flex-col gap-2">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded bg-surface-interactive" />
-            ))}
-          </div>
+          <SkeletonRows />
         ) : hasGroups ? (
           <ul className="flex flex-col divide-y divide-border-subtle">
             {groups.map((g) => {
               const isOwner = g.userRole === 'owner';
               const isLinked = g.source === 'linked';
               const roleLabel = isLinked ? 'Linked' : (ROLE_LABEL[g.userRole ?? ''] ?? (g.userRole ?? ''));
+              const overview = overviewById?.get(g.id);
+              const overviewParts = overview != null ? overviewSummaryParts(overview) : [];
               return (
                 <li key={g.id} className="flex items-center gap-3 py-2">
                   <InitialsAvatar
@@ -205,13 +204,9 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic, overviewByI
                       <span className={`text-xs font-medium ${ROLE_TEXT_COLOR[isLinked ? 'linked' : (g.userRole ?? 'member')]}`}>{roleLabel}</span>
                       {`${g.memberCount} member${g.memberCount !== 1 ? 's' : ''}`}
                     </p>
-                    {(() => {
-                      const overview = overviewById?.get(g.id);
-                      if (!overview) return null;
-                      const parts = overviewSummaryParts(overview);
-                      if (parts.length === 0) return null;
-                      return <p className="text-xs text-text-muted mt-0.5">{parts.join(' · ')}</p>;
-                    })()}
+                    {overviewParts.length > 0 && (
+                      <p className="text-xs text-text-muted mt-0.5">{overviewParts.join(' · ')}</p>
+                    )}
                   </div>
                   <Button
                     variant="secondary"

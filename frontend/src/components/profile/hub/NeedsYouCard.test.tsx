@@ -39,7 +39,7 @@ function renderCard(props: Partial<ComponentProps<typeof NeedsYouCard>> = {}) {
   const retry = vi.fn();
   render(
     <MemoryRouter>
-      <NeedsYouCard data={null} isLoading={true} error={null} retry={retry} {...props} />
+      <NeedsYouCard data={null} error={null} retry={retry} {...props} />
     </MemoryRouter>,
   );
   return { retry };
@@ -50,22 +50,21 @@ beforeEach(() => {
 });
 
 describe('NeedsYouCard — loading', () => {
-  it('shows a skeleton while loading', () => {
-    renderCard({ data: null, isLoading: true, error: null });
-    expect(screen.queryByText(/nothing needs you/i)).toBeNull();
+  it('a cold frame ({ data: null, error: null }, before the first response lands) shows the skeleton, never the empty state', () => {
+    renderCard({ data: null, error: null });
     expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/nothing needs you/i)).toBeNull();
   });
 
-  it('a cold frame ({ data: null, error: null, isLoading: false }) shows the skeleton, never the empty state', () => {
-    renderCard({ data: null, isLoading: false, error: null });
-    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
-    expect(screen.queryByText(/nothing needs you/i)).toBeNull();
+  it('renders exactly two skeleton placeholder rows', () => {
+    renderCard({ data: null, error: null });
+    expect(document.querySelectorAll('.animate-pulse')).toHaveLength(2);
   });
 });
 
 describe('NeedsYouCard — error', () => {
   it('shows an error message and Retry calls retry', () => {
-    const { retry } = renderCard({ data: null, isLoading: false, error: 'Network error' });
+    const { retry } = renderCard({ data: null, error: 'Network error' });
     expect(screen.getByText(/couldn't load what needs you/i)).toBeInTheDocument();
     const retryBtn = screen.getByRole('button', { name: /retry/i });
     retryBtn.click();
@@ -73,7 +72,7 @@ describe('NeedsYouCard — error', () => {
   });
 
   it('an error with stale data keeps the rows (no blanking on a failed refetch)', () => {
-    renderCard({ data: overviewOf([rsvpItem]), isLoading: false, error: 'Network error' });
+    renderCard({ data: overviewOf([rsvpItem]), error: 'Network error' });
     expect(screen.getByText('RSVP for Prog Night')).toBeInTheDocument();
     expect(screen.queryByText(/couldn't load what needs you/i)).toBeNull();
   });
@@ -81,13 +80,13 @@ describe('NeedsYouCard — error', () => {
 
 describe('NeedsYouCard — empty', () => {
   it('shows the empty state when there are no items', () => {
-    renderCard({ data: overviewOf([]), isLoading: false, error: null });
+    renderCard({ data: overviewOf([]), error: null });
     expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
   });
 
   it('an item whose href does not start with /group/ is filtered out; the empty state shows if it is the only one', () => {
     const badItem = { ...lootItem, href: '/discover' };
-    renderCard({ data: overviewOf([badItem]), isLoading: false, error: null });
+    renderCard({ data: overviewOf([badItem]), error: null });
     expect(screen.queryByText(badItem.title)).toBeNull();
     expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
   });
@@ -95,7 +94,7 @@ describe('NeedsYouCard — empty', () => {
 
 describe('NeedsYouCard — rows', () => {
   it('renders title, static tag, rsvp meta and loot meta, with RSVP / View loot action labels', () => {
-    renderCard({ data: overviewOf([rsvpItem, lootItem]), isLoading: false, error: null });
+    renderCard({ data: overviewOf([rsvpItem, lootItem]), error: null });
 
     expect(screen.getByText('RSVP for Prog Night')).toBeInTheDocument();
     expect(screen.getByText('Weeknight Static')).toBeInTheDocument();
@@ -110,24 +109,28 @@ describe('NeedsYouCard — rows', () => {
   });
 
   it('clicking RSVP navigates with exactly the item href', () => {
-    renderCard({ data: overviewOf([rsvpItem]), isLoading: false, error: null });
+    renderCard({ data: overviewOf([rsvpItem]), error: null });
     screen.getByRole('button', { name: 'RSVP' }).click();
     expect(mockNavigate).toHaveBeenCalledWith(rsvpItem.href);
     expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
   it('clicking View loot navigates with exactly the item href', () => {
-    renderCard({ data: overviewOf([lootItem]), isLoading: false, error: null });
+    renderCard({ data: overviewOf([lootItem]), error: null });
     screen.getByRole('button', { name: 'View loot' }).click();
     expect(mockNavigate).toHaveBeenCalledWith(lootItem.href);
     expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
   it('the leading icon slot is aria-hidden and the action is a real button', () => {
-    renderCard({ data: overviewOf([rsvpItem]), isLoading: false, error: null });
+    renderCard({ data: overviewOf([rsvpItem]), error: null });
     const button = screen.getByRole('button', { name: 'RSVP' });
     expect(button.tagName).toBe('BUTTON');
-    const hiddenIcon = document.querySelector('[aria-hidden="true"]');
-    expect(hiddenIcon).not.toBeNull();
+    // Scoped to the row itself (AttentionRow's `div.flex.items-center.gap-3.py-2`),
+    // not the CardShell header's own aria-hidden BellRing icon, which is always
+    // present and would satisfy an unscoped query regardless of the row's markup.
+    const row = button.closest('.py-2') as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(row.querySelector('[aria-hidden="true"]')).not.toBeNull();
   });
 });
