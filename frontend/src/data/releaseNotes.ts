@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.49',
+    date: '2026-09-27T22:00:00Z',
+    title: 'Static Finder — SF1b page frame (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'The Static Finder gets its own V2 page',
+        description:
+          'V2 preview plumbing: under V2 chrome, /discover now renders a native Static Finder frame — filters (content, role, schedule fit, vibe, and V1\'s data center/server/timezone/language/job/status), a match summary with a sort select, loading/empty/error states and minimal result cards. V1\'s Discover page is unchanged everywhere else, and guests reach a reduced branch with a plain listing count and no fit filters.',
+        pr: 310,
+        prTitle: 'feat(v2): SF1b — Static Finder page frame and query hook',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.48',
     date: '2026-09-27T20:00:00Z',
     title: 'Recruitment auto-fill uses your static\'s timezone',

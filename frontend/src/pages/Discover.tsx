@@ -21,13 +21,22 @@ import { useAuthStore } from '../stores/authStore';
 import { useJoinRequestStore } from '../stores/joinRequestStore';
 import { JoinRequestModal } from '../components/static-group/JoinRequestModal';
 import { useModal } from '../hooks/useModal';
+import { useInV2Chrome } from '../lib/chromeContext';
+import { StaticFinder } from '../components/finder/StaticFinder';
 import {
-  RAID_JOBS,
-  DC_NAMES,
-  getWorldsForDC,
   TIMEZONES,
   LANGUAGES,
 } from '../gamedata';
+import {
+  JOB_OPTIONS,
+  INTENSITY_OPTIONS,
+  GOAL_CATEGORY_LABELS,
+  GOAL_CATEGORY_OPTIONS,
+  DC_OPTIONS,
+  TZ_OPTIONS,
+  LANG_OPTIONS,
+  buildServerOptions,
+} from '../components/finder/discoveryOptions';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -112,13 +121,6 @@ const ROLE_OPTIONS = [
   { value: 'caster', label: 'Caster' },
 ];
 
-const INTENSITY_OPTIONS = [
-  { value: '', label: 'Any vibe' },
-  { value: 'casual', label: 'Casual' },
-  { value: 'midcore', label: 'Midcore' },
-  { value: 'hardcore', label: 'Hardcore' },
-];
-
 const RECRUITMENT_OPTIONS = [
   { value: '', label: 'Any status' },
   { value: 'open', label: 'Open' },
@@ -132,26 +134,6 @@ const SORT_OPTIONS = [
   { value: 'name', label: 'Name A–Z' },
 ];
 
-const DC_OPTIONS = [
-  { value: '', label: 'Any data center' },
-  ...DC_NAMES.map(dc => ({ value: dc, label: dc })),
-];
-
-const TZ_OPTIONS = [
-  { value: '', label: 'Any timezone' },
-  ...TIMEZONES.map(tz => ({ value: tz.value, label: tz.label })),
-];
-
-const LANG_OPTIONS = [
-  { value: '', label: 'Any language' },
-  ...LANGUAGES.map(l => ({ value: l.code, label: l.label })),
-];
-
-const JOB_OPTIONS = [
-  { value: '', label: 'Any job' },
-  ...RAID_JOBS.map(j => ({ value: j.abbreviation, label: `${j.abbreviation} — ${j.name}` })),
-];
-
 const STATUS_COLORS: Record<string, string> = {
   open:    'bg-status-success/15 text-status-success border-status-success/25',
   limited: 'bg-status-warning/15 text-status-warning border-status-warning/25',
@@ -162,20 +144,6 @@ const STATUS_BORDER: Record<string, string> = {
   open:    'rgba(74,222,128,0.35)',
   limited: 'rgba(234,179,8,0.3)',
   closed:  'rgba(255,255,255,0.06)',
-};
-
-const GOAL_CATEGORY_LABELS: Record<string, string> = {
-  ultimate_clear:     'Ultimate — Clear',
-  ultimate_farm:      'Ultimate — Farm',
-  savage_bis:         'Savage — BiS',
-  savage_mount:       'Savage — Mount',
-  savage_achievement: 'Savage — Achievement',
-  savage_alt_jobs:    'Savage — Alt Jobs',
-  criterion_title:    'Criterion — Title',
-  gil_farm:           'Gil Farm',
-  loot_farm:          'Loot Farm',
-  mount_farm:         'Mount Farm',
-  custom:             'Custom',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -205,21 +173,6 @@ function isSafeUrl(url: string): boolean {
   return lower.startsWith('https://') || lower.startsWith('http://');
 }
 
-const GOAL_CATEGORY_OPTIONS = [
-  { value: '', label: 'Any objectives' },
-  { value: 'ultimate_clear',     label: 'Ultimate — Clear' },
-  { value: 'ultimate_farm',      label: 'Ultimate — Farm' },
-  { value: 'savage_bis',         label: 'Savage — BiS' },
-  { value: 'savage_mount',       label: 'Savage — Mount' },
-  { value: 'savage_achievement', label: 'Savage — Achievement' },
-  { value: 'savage_alt_jobs',    label: 'Savage — Alt Jobs' },
-  { value: 'criterion_title',    label: 'Criterion — Title' },
-  { value: 'gil_farm',           label: 'Gil Farm' },
-  { value: 'loot_farm',          label: 'Loot Farm' },
-  { value: 'mount_farm',         label: 'Mount Farm' },
-  { value: 'custom',             label: 'Custom' },
-];
-
 /** Filter keys that map 1:1 to URL params and API query params */
 const FILTER_KEYS = ['role', 'job', 'intensity', 'recruitmentStatus', 'dataCenter', 'server', 'timezone', 'language', 'goalCategory'] as const;
 type FilterKey = (typeof FILTER_KEYS)[number];
@@ -234,7 +187,7 @@ const FIT_OVERALL_LABELS: Record<string, { label: string; className: string }> =
 
 // ─── Page Component ──────────────────────────────────────────
 
-export function Discover() {
+function LegacyDiscover() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Read initial state from URL
@@ -270,12 +223,7 @@ export function Discover() {
   }, [user, fetchMyRequests]);
 
   // Server options depend on DC
-  const serverOptions = useMemo(() =>
-    filters.dataCenter
-      ? [{ value: '', label: 'Any server' }, ...getWorldsForDC(filters.dataCenter).map(w => ({ value: w, label: w }))]
-      : [{ value: '', label: 'Select data center first' }],
-    [filters.dataCenter],
-  );
+  const serverOptions = useMemo(() => buildServerOptions(filters.dataCenter), [filters.dataCenter]);
 
   const setFilter = useCallback((key: FilterKey, value: string) => {
     setFilters(prev => {
@@ -889,6 +837,13 @@ function FitSummarySection({ fit }: { fit: FitSummary }) {
       </div>
     </div>
   );
+}
+
+// Stage-4 SF1 — SANCTIONED legacy-file seam: V2 chrome renders the Static Finder.
+// Provably false on every legacy render path (no V2ChromeContext provider).
+export function Discover() {
+  const inV2Chrome = useInV2Chrome();
+  return inV2Chrome ? <StaticFinder /> : <LegacyDiscover />;
 }
 
 export default Discover;
