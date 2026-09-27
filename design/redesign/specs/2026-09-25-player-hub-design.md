@@ -90,11 +90,11 @@ A later slice may merge Sync + Jobs into one card per character; out of scope he
 
 ## 9. Out of scope / carried
 
-- Merging Sync + Jobs per character; the BiS-staleness rule; mobile (Phase P); Static Finder's rework (Stage 4, B3 — its left-align ships in E2 per U-9).
+- Merging Sync + Jobs per character; mobile (Phase P); Static Finder's rework (Stage 4, B3 — its left-align ships in E2 per U-9). *(The BiS-staleness rule, listed here through PH2, is defined by H-8 and ships in PH3, §10.3.)*
 - `design/redesign/specs/systems-flow-map.md` F-01 is amended by H-2 (written back with PH1).
 - *(PH1 write-back)* Carried out of PH1: the availability flip-blocker + one-editor mandate and the profile-tab analytics pass (`V2_COVERAGE_PLAN.md` Stage 3) → a later Stage-3 slice; swipe + mobile tab nav → Phase P; heading-level skips inside the V1-shared tab bodies → whenever V1 is authorized. Four V1 affordances were retired in V2 with the user's sign-off (plan § parity matrix, RETIRED-ACK).
 - *(PH2 write-back)* Carried out of PH2:
-  - "Your BiS is out of date" (the rule is still undefined) → a later Stage-3 slice.
+  - "Your BiS is out of date" → **PH3** (the rule is H-8, §10.3; was undefined at PH2).
   - `loot_priority` under enhanced scoring and for the weapon → with the plugin priority work. It needs a backend port of the drought/balance and weapon priorities, or a parity suite.
   - A Queues / `floor=` deep link into Loot → Loot polish.
   - The plugin `priority` endpoint ranks with the raw settings blob, so a static with no saved settings gets an empty role order. There is also the `roleOrder == []` `||`/`or` gap. Both → a plugin-contract ticket.
