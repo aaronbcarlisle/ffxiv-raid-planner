@@ -277,3 +277,23 @@ Size: ~500–600 lines incl. tests.
 - light + dark shots of every touched surface
 
 **Budget:** ~1,600–1,900 changed lines (code + tests) + docs across the slice at plan estimates, or ~3,000+ at PH1's measured 2×. Planned as three stacked PRs, one per task (PH2a ~550–650 est., PH2b ~550–650, PH2c ~500–600), each under the ~1,500 cap even at 2×. Adjacent PRs collapse at Finish when their measured sum is ≤ ~1,500.
+
+## Outcome (2026-09-26)
+
+- **Size and split.** Measured: plan +279; Task 1 +1,042/−52; Task 2 +834/−29; Task 3 +635/−7; the fix wave +114/−54 (backend +53/−8, frontend +61/−46). No adjacent pair fits under ~1,500, so the stack stays at three PRs, each with its own `internal: true` release note (2.1.40–2.1.42):
+  - **PH2a** #286 = this plan + Task 1;
+  - **PH2b** #287 = Task 2 + the backend fix-wave commit;
+  - **PH2c** #288 = Task 3 + the frontend fix-wave commit + this write-back + the shots.
+- **Rulings that bind later slices:**
+  - A backend echo of a Loot-tab ranking ranks with the **client-effective** settings (`effective_priority_settings` in `services/loot_context.py`: the client `DEFAULT_SETTINGS` mirror with the served settings on top), never the raw blob. The two diverge for a static with no saved settings.
+  - "Logged" means logged by any method (`utils/lootFairness.ts`).
+  - Where the backend port cannot reproduce the client's ranking, the item is suppressed, never guessed: enhanced scoring, ties, the weapon, and the `disabled` and `manual-planning` modes.
+- **Reviews:**
+  - Task 2, task-scoped: 0 C / 0 I / 5 M.
+  - Whole branch: 0 C / 0 I / 8 M, spec compliant on all three tasks.
+  - One fix wave, which the owner asked for. It addressed 7 of 8. The residual Minors are in the PR bodies: a still-maskable `aria-hidden` assertion, the material-log test's setup, one comment's wording, the mount request id, and the hook's now-unread `isLoading`.
+- **Browser pass: PASS** at 1440 and 2560, in both themes.
+  - The Hub's #1 matched the Loot tab's Queues view on a static with saved settings, and on one without, where the client and schema default role orders disagree.
+  - An RSVP and two skip paths (the disabled mode, an unclaimed player) cleared their items live.
+  - Error with Retry, the static-less user, and V1 `/profile` + `/dashboard` all checked out, with 0 console errors.
+  - On an exact tie, Queues shows a tiebroken #1 while the Hub stays silent. That goes to the owner as part of F14.

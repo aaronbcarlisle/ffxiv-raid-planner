@@ -358,13 +358,30 @@ three stacked PRs PH1a/b/c). The V2 `PlayerHub` behind one `Profile` seam (V1 by
 legacy redirects, a glance-first Overview that absorbs My Statics, `/dashboard` → `/profile`, the rail portrait
 and a `You › {character}` breadcrumb. #3 (roster-card richness) is **not** addressed by PH1 — still homed to the
 Player Hub work. **Carried out of PH1:**
-- PH2: "Needs you" + `GET /api/player/overview` (also tier / next session / floors / average BiS on static rows).
+- PH2: "Needs you" + `GET /api/player/overview` (also tier / next session / floors / average BiS on static rows). ✅ Built 2026-09-26 (below).
 - A later Stage-3 slice: the availability flip-blocker + one-editor mandate; the profile-tab analytics pass.
 - Phase P: swipe between Hub tabs and a mobile tab nav; the V2 loading skeleton still uses V1's centered frame.
 - V1-authorized pass: heading-level skips inside the V1-shared tab bodies (e.g. Collections' `h4`).
 - Test/polish residuals from the PH1 reviews (listed in the PR bodies): a seeded `static-nav` key for the
   `remember=false` and kebab-Open tests; the `lastPluginSeenAt` preference guard; a dead `vi.doMock`;
   the duplicated next-step label; the cold first frame reading "No character linked".
+
+**Player Hub PH2 (Stage 3) — built 2026-09-26** (`plans/2026-09-26-ph2-player-hub-needs-you.md`, three stacked
+PRs PH2a/b/c). A read-only `GET /api/player/overview` computes, over the caller's memberships, a summary per static
+(tier, next session, floors cleared this week, average BiS) and two action-item types, `rsvp_pending` and
+`loot_priority`. The latter is the calculator's strict #1 on an unlogged floor-1–3 drop, ranked with the
+client-effective settings. It was browser-checked against the Loot tab's Queues view on a static with saved
+settings and on one without. The Hub Overview gains a **Needs you** card and a summary line on each Your statics
+row. Four priority-input helpers moved from the loot router into `services/loot_context.py`, so the plugin's
+`priority` endpoint is unchanged; V1 is unchanged. **Carried out of PH2** (spec §9):
+- "Your BiS is out of date" once its rule is defined → a later Stage-3 slice.
+- `loot_priority` under enhanced scoring and for the weapon → with the plugin priority work.
+- A Queues / `floor=` deep link into Loot → Loot polish.
+- The plugin `priority` endpoint's raw-settings ranking (empty role order when unset) plus the `roleOrder == []`
+  `||`/`or` gap → a plugin-contract ticket.
+- `objective_goals.py`'s next session ignores recurrence and cancellations → a backend bug ticket.
+- Owner questions in the PR body (F14): keep the conservative `loot_priority` skips, including ties, where Queues
+  still shows a tiebroken #1? Is "{n}% of BiS slots" the right copy?
 
 ## 7b. Phase P — Beta polish walkthrough (added 2026-07-25, user ruling)
 

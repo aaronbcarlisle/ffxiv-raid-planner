@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { HubOverview } from './HubOverview';
+import type { PlayerOverview } from './usePlayerOverview';
 
 // R-PH1-fix2: mock only the stores/data YourStaticsCard and HubSideCards read, so both
 // render for real — unlike the previous version of this file, which mocked out both
@@ -43,6 +44,18 @@ vi.mock('../../../stores/playerProfileStore', () => ({
   usePlayerProfileStore: (sel: (s: typeof playerProfileState) => unknown) => sel(playerProfileState),
 }));
 
+// R-PH2-N: HubOverview mounts real, so usePlayerOverview must be mocked here
+// to avoid an unmocked api.get.
+const overviewState = {
+  data: null as PlayerOverview | null,
+  isLoading: false,
+  error: null as string | null,
+  retry: vi.fn(),
+};
+vi.mock('./usePlayerOverview', () => ({
+  usePlayerOverview: () => overviewState,
+}));
+
 const defaultProps = {
   profile: null,
   gearSnapshots: {},
@@ -61,6 +74,13 @@ function closestWithClass(el: Element, substr: string): Element | null {
   }
   return node;
 }
+
+beforeEach(() => {
+  staticGroupState.groups = [];
+  overviewState.data = null;
+  overviewState.isLoading = false;
+  overviewState.error = null;
+});
 
 describe('HubOverview', () => {
   it('renders the hub-overview testid', () => {
@@ -91,11 +111,32 @@ describe('HubOverview', () => {
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
-  it('does not render Needs you, Profile status, Raider Snapshot or Activity', () => {
+  it('with zero statics, there is no Needs you card (and no Profile status, Raider Snapshot or Activity)', () => {
     render(<MemoryRouter><HubOverview {...defaultProps} /></MemoryRouter>);
-    expect(screen.queryByText(/needs you/i)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Needs you' })).toBeNull();
     expect(screen.queryByText(/profile status/i)).toBeNull();
     expect(screen.queryByText(/raider snapshot/i)).toBeNull();
     expect(screen.queryByText(/^activity$/i)).toBeNull();
+  });
+
+  it('with statics, Needs you renders above Your statics (DOM order); the side stack is unchanged', () => {
+    staticGroupState.groups = [{ id: 'g1', name: 'Test Static', shareCode: 'ABC123' }];
+    overviewState.data = {
+      statics: [],
+      actionItems: [{
+        type: 'rsvp_pending', staticId: 'g1', staticName: 'Test Static',
+        title: 'RSVP for Prog Night', detail: 'No response yet',
+        href: '/group/ABC123?tab=schedule&sessionId=sess-1', startsAt: '2026-10-03T18:30:00Z',
+      }],
+    };
+    render(<MemoryRouter><HubOverview {...defaultProps} /></MemoryRouter>);
+
+    const needsYou = screen.getByRole('heading', { name: 'Needs you' });
+    const yourStatics = screen.getByRole('heading', { name: 'Your statics' });
+    expect(needsYou.compareDocumentPosition(yourStatics) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // side stack unchanged
+    expect(screen.getByRole('heading', { name: 'Characters' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Your availability' })).toBeInTheDocument();
   });
 });

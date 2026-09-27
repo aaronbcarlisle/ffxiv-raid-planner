@@ -57,6 +57,11 @@ vi.mock('../components/profile/CharacterLinkModal', () => ({
   CharacterLinkModal: () => <div data-testid="character-link-modal" />,
 }));
 vi.mock('../components/profile/JobProfileModal', () => ({ JobProfileModal: () => null }));
+// R-PH2-N: the real HubOverview mounts under the V2 provider and would
+// otherwise make an unmocked GET /api/player/overview.
+vi.mock('../components/profile/hub/usePlayerOverview', () => ({
+  usePlayerOverview: () => ({ data: null, isLoading: false, error: null, retry: vi.fn() }),
+}));
 vi.mock('../components/profile/ManageBiSModal', () => ({
   ManageBiSModal: (p: Props) => <div data-testid="manage-bis-modal">{String(p.job)}</div>,
 }));

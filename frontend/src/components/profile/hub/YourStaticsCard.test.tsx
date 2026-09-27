@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { YourStaticsCard } from './YourStaticsCard';
+import { formatSessionStart } from './overviewFormat';
+import type { OverviewStatic } from './usePlayerOverview';
 import type { StaticGroupListItem } from '../../../types';
 
 // ── mocks ──────────────────────────────────────────────────────────────────
@@ -310,5 +312,56 @@ describe('YourStaticsCard — error banner', () => {
     render(<MemoryRouter><YourStaticsCard staticSuggestions={[]} onCreateStatic={onCreateStatic} /></MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: /dismiss/i }));
     expect(storeState.clearError).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('YourStaticsCard — overview summary (R-PH2-L)', () => {
+  function overview(overrides: Partial<OverviewStatic> = {}): OverviewStatic {
+    return {
+      id: 'g1', shareCode: 'TSTSC1', name: 'Test Static', role: 'member',
+      tierId: 'aac-heavyweight', memberCount: 4,
+      nextSession: null, floorsCleared: null, avgBisPct: null,
+      ...overrides,
+    };
+  }
+
+  it('renders all four parts, in order, joined by " · "', () => {
+    const session = { sessionId: 's1', title: 'Prog Night', startsAt: '2026-10-03T18:30:00Z' };
+    const overviewById = new Map([['g1', overview({ nextSession: session, floorsCleared: 2, avgBisPct: 63 })]]);
+    renderCard([makeGroup()], { overviewById });
+
+    const expected = [
+      'AAC Heavyweight (Savage)',
+      `Next ${formatSessionStart(session.startsAt)}`,
+      '2/4 floors this week',
+      '63% of BiS slots',
+    ].join(' · ');
+    expect(screen.getByText(expected)).toBeInTheDocument();
+  });
+
+  it('renders only the parts present (partial data)', () => {
+    const overviewById = new Map([['g1', overview({ floorsCleared: 1 })]]);
+    renderCard([makeGroup()], { overviewById });
+    expect(screen.getByText('AAC Heavyweight (Savage) · 1/4 floors this week')).toBeInTheDocument();
+  });
+
+  it('avgBisPct: 0 still renders (guarded with != null, not &&)', () => {
+    const overviewById = new Map([['g1', overview({ tierId: null, avgBisPct: 0 })]]);
+    renderCard([makeGroup()], { overviewById });
+    expect(screen.getByText('0% of BiS slots')).toBeInTheDocument();
+  });
+
+  it('an unknown tierId omits the tier part', () => {
+    const overviewById = new Map([['g1', overview({ tierId: 'not-a-real-tier', floorsCleared: 3 })]]);
+    renderCard([makeGroup()], { overviewById });
+    expect(screen.getByText('3/4 floors this week')).toBeInTheDocument();
+    expect(screen.queryByText(/AAC Heavyweight/)).toBeNull();
+  });
+
+  it('no overviewById entry for the row shows no summary line, and the PH1 row is unchanged', () => {
+    renderCard([makeGroup()], { overviewById: new Map() });
+    expect(screen.getByText('Test Static')).toBeInTheDocument();
+    expect(screen.queryByText(/floors this week/)).toBeNull();
+    expect(screen.queryByText(/of BiS slots/)).toBeNull();
   });
 });
