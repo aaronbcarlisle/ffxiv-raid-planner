@@ -248,7 +248,7 @@ No capability is silently dropped: every row is a rebuild, an import-only reuse,
 
 ### 6.3 Flip-blocker ledger (F6e appends; the parity-flip spec must clear these)
 
-1. **Availability editing** — deleting legacy chrome orphans the only editor feeding the static heatmap (`UserAvailability`). Before flip: land the Person→Static aggregation pipe (backend, Ring 1) **or** re-host a static-week editor (e.g. on the Player Hub). Until then the v2 heatmap reads data edited on the legacy route.
+1. **Availability editing** — deleting legacy chrome orphans the only editor feeding the static heatmap (`UserAvailability`). Before flip: land the Person→Static aggregation pipe (backend, Ring 1) **or** re-host a static-week editor (e.g. on the Player Hub). Until then the v2 heatmap reads data edited on the legacy route. ✅ **Closed by PH3 (#304 backend, #305 frontend, 2026-09-27):** the Person→Static pipe (`plans/2026-09-27-ph3-player-hub-availability-pipe.md`) fills the v2 heatmap and Best Times from each member's personal template for any week they haven't painted, so the heatmap no longer depends on the legacy grid. The stopgap modal stays as the only v2 place to paint a specific week; the V2-native exceptions editor is carried (player-hub spec H-10, §9).
 2. **Integrations panel** — must re-home into the Settings panel (its natural host; `ScheduleSettings.can_manage` gating already matches) before legacy deletion.
 3. (Carried from F6d, unchanged: `Sync` sub-tab disposition.)
 

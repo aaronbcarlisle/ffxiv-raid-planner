@@ -88,7 +88,7 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
     deleteSession,
     createException,
   } = useScheduleStore();
-  const { data, fetchAvailability } = useAvailabilityStore();
+  const { layeredData, fetchAvailability } = useAvailabilityStore();
 
   // ── Clock + scope (Loot pattern): follow the shared clock until the user
   // steps a week; the override is NOT URL-synced (spec §5.6). ─────────────────
@@ -132,7 +132,7 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
 
   useEffect(() => {
     const { startDate, endDate } = getUtcDateRange(weekDates);
-    void fetchAvailability(group.id, startDate, endDate);
+    void fetchAvailability(group.id, startDate, endDate, { includeTemplates: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group.id, weekDates.join(','), fetchAvailability]);
 
@@ -203,8 +203,8 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
 
   const [durationMinutes, setDurationMinutes] = useState(120);
   const recommendations = useMemo(
-    () => computeAvailabilityRecommendations(data, members, weekDates, durationMinutes),
-    [data, members, weekDates, durationMinutes],
+    () => computeAvailabilityRecommendations(layeredData, members, weekDates, durationMinutes),
+    [layeredData, members, weekDates, durationMinutes],
   );
 
   // ── RSVP ────────────────────────────────────────────────────────────────────
@@ -283,15 +283,16 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
   }, [highlightedSessionId]);
 
   // ── Availability edit modal (Task 10 §5.1 stopgap) ──────────────────────────
-  // Hosts the legacy AvailabilityGrid import-only until Ring-1's Person→Static
-  // pipe replaces it. Gated the same way `canRsvp` gates RSVP controls — any
-  // non-viewer member can paint their own week (mirrors AvailabilityGrid's own
-  // `canSubmit` semantics, verified against ScheduleTab.tsx:402).
+  // Hosts the legacy AvailabilityGrid import-only; painting a week here writes
+  // a dated row that outranks the layered personal-template fill (R-PH3-C).
+  // Gated the same way `canRsvp` gates RSVP controls — any non-viewer member
+  // can paint their own week (mirrors AvailabilityGrid's own `canSubmit`
+  // semantics, verified against ScheduleTab.tsx:402).
   const editModal = useModal();
   const handleEditClose = () => {
     editModal.close();
     const { startDate, endDate } = getUtcDateRange(weekDates);
-    void fetchAvailability(group.id, startDate, endDate);
+    void fetchAvailability(group.id, startDate, endDate, { includeTemplates: true });
   };
 
   // ── Create / edit modal ─────────────────────────────────────────────────────
@@ -441,7 +442,7 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
         side={
           <div className="grid gap-3.5">
             <AvailabilityHeatmap
-              data={data}
+              data={layeredData}
               members={members}
               weekDates={weekDates}
               sessions={occurrences}
@@ -459,7 +460,7 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
             />
             <PersonLayerEntryPoint
               title="Your availability"
-              description="Your typical week lives on your profile — leads pull it into this static's grid."
+              description="Your typical week lives on your profile and fills this schedule for any week you haven't painted."
               actionLabel="Edit"
               onAction={() => navigate('/profile?tab=availability')}
             />
@@ -490,11 +491,11 @@ export function Schedule({ group, tier, canManage, currentUserId }: ScheduleProp
             staticName={group.name}
             shareCode={group.shareCode}
             onCreateSessionDraft={(draft) => {
-              // handleEditClose (not editModal.close()) — AvailabilityGrid's
-              // own mount-fetch wholesale-replaces the shared store's `data`
-              // with its rolling today→+6d window, so this path must also
-              // repair the store with the scoped-week re-fetch, same as the
-              // plain close path.
+              // handleEditClose (not editModal.close()) — the grid's own
+              // mount-fetch wholesale-replaces the shared store's `data` with
+              // its rolling today→+6d window, but this screen no longer reads
+              // `data` for the heatmap or Best Times; the close-refetch stays
+              // so a newly painted week shows in `layeredData` right away.
               handleEditClose();
               handlePropose(draft);
             }}

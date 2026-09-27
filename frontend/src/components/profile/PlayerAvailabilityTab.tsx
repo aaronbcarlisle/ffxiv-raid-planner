@@ -28,9 +28,17 @@ const DAY_LABELS: Record<string, string> = {
 interface PlayerAvailabilityTabProps {
   primaryStatic?: StaticGroupListItem | null;
   staticGroups?: StaticGroupListItem[];
+  /** V2 only (R-PH3-F): the availability pipe layers the typical week into
+   *  the schedule of every static the user raids with (non-viewer
+   *  memberships). Defaults false so V1's copy stays untouched. */
+  layeredSchedule?: boolean;
 }
 
-export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primaryStatic ? [primaryStatic] : [] }: PlayerAvailabilityTabProps) {
+export function PlayerAvailabilityTab({
+  primaryStatic,
+  staticGroups = primaryStatic ? [primaryStatic] : [],
+  layeredSchedule = false,
+}: PlayerAvailabilityTabProps) {
   const { days, fetchPersonalAvailability } = usePersonalAvailabilityStore();
 
   useEffect(() => {
@@ -54,7 +62,9 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
             </div>
             <h2 className="font-display text-xl font-semibold text-text-primary">Typical Availability</h2>
             <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-              Set your usual raid times once. When used in a static, it copies into that static&apos;s week so you can adjust exceptions there.
+              {layeredSchedule
+                ? "Set your usual raid times once. Every static you raid with uses it for any week you haven't painted; paint a week in that static's schedule to make an exception."
+                : "Set your usual raid times once. When used in a static, it copies into that static's week so you can adjust exceptions there."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -84,7 +94,11 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
               <Sparkles className="h-3.5 w-3.5" />
               Used by schedule quick fill
             </div>
-            <p className="mt-1 text-xs text-text-tertiary">Fills empty This Week days only.</p>
+            <p className="mt-1 text-xs text-text-tertiary">
+              {layeredSchedule
+                ? "Paints a specific week in a static's schedule when you want an exception."
+                : 'Fills empty This Week days only.'}
+            </p>
           </div>
           <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
             <div className="flex items-center gap-1.5 text-xs font-medium text-accent">
@@ -95,7 +109,9 @@ export function PlayerAvailabilityTab({ primaryStatic, staticGroups = primarySta
           </div>
           <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
             <div className="text-xs font-medium text-accent">Schedule matching</div>
-            <p className="mt-1 text-xs text-text-tertiary">Used later for schedule matching.</p>
+            <p className="mt-1 text-xs text-text-tertiary">
+              {layeredSchedule ? 'Fills the schedule of every static you raid with.' : 'Used later for schedule matching.'}
+            </p>
           </div>
         </div>
 

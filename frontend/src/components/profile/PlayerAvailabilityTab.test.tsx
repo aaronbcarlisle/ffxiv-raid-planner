@@ -50,4 +50,41 @@ describe('PlayerAvailabilityTab', () => {
     expect(screen.queryByText(/Future\s*-\s*ready/i)).toBeNull();
     expect(screen.getByRole('button', { name: /Choose static schedule/i })).toBeInTheDocument();
   });
+
+  // R-PH3-F: V1 pin. Without `layeredSchedule`, the copy is byte-identical to
+  // today's — the pipe's own language must not leak into the shell that never
+  // reads `layeredData`.
+  it('V1 pin: without layeredSchedule, shows the pre-pipe copy', () => {
+    render(
+      <MemoryRouter>
+        <PlayerAvailabilityTab
+          staticGroups={[
+            { id: 'static-1', name: 'Weeknight Static', shareCode: 'WKNT01', userRole: 'lead' },
+          ] as never}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/copies into that static's week/)).toBeInTheDocument();
+    expect(screen.getByText(/Fills empty This Week days only\./)).toBeInTheDocument();
+    expect(screen.queryByText(/uses it for any week you haven't painted/)).not.toBeInTheDocument();
+  });
+
+  it('with layeredSchedule, shows the pipe copy', () => {
+    render(
+      <MemoryRouter>
+        <PlayerAvailabilityTab
+          staticGroups={[
+            { id: 'static-1', name: 'Weeknight Static', shareCode: 'WKNT01', userRole: 'lead' },
+          ] as never}
+          layeredSchedule
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText(/uses it for any week you haven't painted/)).toBeInTheDocument();
+    expect(screen.queryByText(/copies into that static's week/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Fills empty This Week days only\./)).not.toBeInTheDocument();
+    expect(screen.getByText(/Fills the schedule of every static you raid with\./)).toBeInTheDocument();
+  });
 });

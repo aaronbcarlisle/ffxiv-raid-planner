@@ -183,7 +183,7 @@ export function PlayerHub({
         )}
 
         {tab === 'availability' && (
-          <PlayerAvailabilityTab primaryStatic={primaryStatic} staticGroups={groups} />
+          <PlayerAvailabilityTab primaryStatic={primaryStatic} staticGroups={groups} layeredSchedule />
         )}
 
         {tab === 'tracking' && (

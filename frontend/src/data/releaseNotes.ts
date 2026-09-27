@@ -60,6 +60,30 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.45',
+    date: '2026-09-27T14:00:00Z',
+    title: 'Player Hub — PH3b availability pipe (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'Your typical week fills every static\'s schedule',
+        description:
+          'V2 preview: a static\'s availability heatmap and Best Times now count each member\'s typical week from their profile for any week they haven\'t painted, shown at the right day and time for your timezone. A week painted in the schedule still wins, and the legacy schedule is unchanged.',
+        pr: 305,
+        prTitle: 'feat(v2): PH3b — availability pipe frontend: your typical week fills every static\'s schedule',
+      },
+      {
+        category: 'improvement',
+        title: 'The Hub says where your typical week goes',
+        description:
+          'V2 preview: the Hub\'s Availability tab and its Overview card now explain that your typical week fills the schedule of every static you raid with unless you paint a week there.',
+        pr: 305,
+        prTitle: 'feat(v2): PH3b — availability pipe frontend: your typical week fills every static\'s schedule',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.44',
     date: '2026-09-27T12:00:00Z',
     title: 'Player Hub — PH3a availability pipe (v2 preview)',

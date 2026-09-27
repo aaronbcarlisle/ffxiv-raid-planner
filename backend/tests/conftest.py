@@ -2,14 +2,22 @@
 
 import logging
 import secrets
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Generator
+from contextlib import contextmanager
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.auth_utils import create_access_token
 from app.database import Base, get_session
@@ -269,3 +277,30 @@ async def test_tier(session: AsyncSession, test_group: Any) -> Any:
     from tests.factories import create_tier_snapshot
 
     return await create_tier_snapshot(session, static_group=test_group)
+
+
+@pytest.fixture
+def count_statements() -> Any:
+    """Shared statement-counting listener (R-PH3-D) for query-budget tests.
+
+    Returns a context-manager factory: `with count_statements(engine) as
+    counts:` listens on that engine's sync side via `before_cursor_execute`
+    for the block's duration and leaves `counts.n` holding the tally. Single
+    source so query-budget tests never hand-roll their own counter/listener
+    pair (test_player_overview.py, test_availability_layering.py).
+    """
+
+    @contextmanager
+    def _count_statements(engine: AsyncEngine) -> Generator[SimpleNamespace, None, None]:
+        counts = SimpleNamespace(n=0)
+
+        def _listener(conn, cursor, statement, parameters, context, executemany):
+            counts.n += 1
+
+        event.listen(engine.sync_engine, "before_cursor_execute", _listener)
+        try:
+            yield counts
+        finally:
+            event.remove(engine.sync_engine, "before_cursor_execute", _listener)
+
+    return _count_statements
