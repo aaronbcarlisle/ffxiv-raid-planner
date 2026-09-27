@@ -63,7 +63,7 @@ async def test_overview_route_returns_camel_case_wire_json(
     assert "tierId" in row and row["tierId"] == tier.tier_id
     assert row["nextSession"]["startsAt"]
     assert "sessionId" in row["nextSession"]
-    assert sched.id  # sanity: session created
+    assert row["nextSession"]["sessionId"] == sched.id
 
 
 def _auth_headers(user) -> dict[str, str]:
@@ -896,6 +896,39 @@ class TestLootPriority:
         result = await build_player_overview(session, caller.id, NOW)
         assert _loot_items(result)[0].detail == "M10S Head"
 
+    async def test_material_drop_listed_then_logging_it_removes_it(self, session: AsyncSession):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller, name="Glaze Static")
+        tier = await create_tier_snapshot(session, group, tier_id="aac-heavyweight", content_type="savage")
+        # A tome earring needing augmentation: floor 2 ranks "glaze" for the
+        # caller. No raid-source slots at all, so this is the only drop -- the
+        # sole test that reaches the `is_material=True` branch of `_is_drop_logged`.
+        caller_player = await create_snapshot_player(
+            session, tier, name="Caller", job="DRG", role="melee", sort_order=0,
+            gear=[{"slot": "earring", "bisSource": "tome", "hasItem": True, "isAugmented": False}],
+        )
+        caller_player.user_id = caller.id
+        await session.flush()
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _loot_items(result)
+        assert len(items) == 1
+        assert items[0].detail == "M10S Glaze"
+
+        # slot_augmented is set so `get_priority_for_upgrade_material`'s own
+        # "received" bookkeeping (which only counts entries with a falsy
+        # `slotAugmented`) does NOT already drop the caller from the ranking:
+        # the removal below must come from `_is_drop_logged`'s material
+        # branch, not from that upstream received-count subtraction.
+        week = calculate_week_number(tier)
+        await create_material_log_entry(
+            session, tier, caller_player, caller,
+            material_type="glaze", floor="M10S", week_number=week, slot_augmented="earring",
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result) == []
+
     async def test_unknown_tier_id_yields_none(self, session: AsyncSession):
         caller = await create_user(session)
         await _seed_loot_static(session, caller, tier_id="some-future-tier")
@@ -1014,16 +1047,22 @@ class TestLootPriority:
 
 
 async def test_action_items_rsvp_by_time_then_loot_by_static_name(session: AsyncSession):
+    # Named so SQLite's BINARY collation (which get_user_static_groups orders
+    # by) puts "Beta" ('B'=66) before "alpha" ('a'=97) -- the opposite of the
+    # casefolded loot_items order this test exercises -- so a deleted
+    # loot_items.sort actually changes the asserted order (see the regression
+    # this replaced: both statics named with the same leading-case order left
+    # this assertion true whether or not the sort ran).
     caller = await create_user(session)
-    beta, _t1, _c1, _o1 = await _seed_loot_static(session, caller, name="beta")
-    alpha, _t2, _c2, _o2 = await _seed_loot_static(session, caller, name="Alpha")
+    beta, _t1, _c1, _o1 = await _seed_loot_static(session, caller, name="Beta")
+    alpha, _t2, _c2, _o2 = await _seed_loot_static(session, caller, name="alpha")
     await _one_off_session(session, beta, caller, NOW + timedelta(days=1))
     await _one_off_session(session, alpha, caller, NOW + timedelta(days=3))
 
     result = await build_player_overview(session, caller.id, NOW)
     assert [(item.type, item.static_name) for item in result.action_items] == [
-        ("rsvp_pending", "beta"),
-        ("rsvp_pending", "Alpha"),
-        ("loot_priority", "Alpha"),
-        ("loot_priority", "beta"),
+        ("rsvp_pending", "Beta"),
+        ("rsvp_pending", "alpha"),
+        ("loot_priority", "alpha"),
+        ("loot_priority", "Beta"),
     ]

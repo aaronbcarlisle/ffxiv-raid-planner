@@ -3,6 +3,10 @@
 Moved verbatim from `app.routers.loot_tracking` (R-PH2-B) so `services/player_overview.py`
 can reuse them without importing a router module. `loot_tracking.py` re-imports these
 under its original private names, so every call site there is unchanged.
+
+Also owns the client-default priority mirror (`CLIENT_DEFAULT_PRIORITY_SETTINGS`) and
+the two settings helpers built on it (`served_settings`, `effective_priority_settings`)
+that let a server-side ranking agree with what the Loot tab computes client-side.
 """
 
 from datetime import datetime, timezone

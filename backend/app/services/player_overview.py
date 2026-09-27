@@ -65,7 +65,9 @@ logger = structlog.get_logger(__name__)
 # The `rsvp_pending` window: `now < start <= now + RSVP_WINDOW` (R-PH2-F).
 RSVP_WINDOW = timedelta(days=7)
 
-# Floors whose drops the calculator models; floor 4 is the weapon (R-PH2-G).
+# Floors whose drops the calculator models; floor 4 (the weapon) is skipped
+# because this port omits the per-job weapon priority lists the calculator
+# needs for it (`loot_context.py` carries no weapon-priority equivalent) (R-PH2-G).
 _LOOT_FLOORS = (1, 2, 3)
 
 # Must match frontend/src/utils/lootFairness.ts RING_SLOTS: a ring drop counts as
