@@ -27,6 +27,10 @@ describe('summaryText', () => {
     expect(summaryText(null, 5, null)).toBe('5 statics');
     expect(summaryText(null, 1, null)).toBe('1 static');
   });
+
+  it('total === 0 reads "0 statics", not the no-match string (whole-branch review item 6)', () => {
+    expect(summaryText(counts(), 0, 'tank')).toBe('0 statics');
+  });
 });
 
 describe('summarySubline', () => {

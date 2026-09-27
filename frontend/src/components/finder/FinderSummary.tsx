@@ -19,9 +19,14 @@ export function sortOptionsFor(isGuest: boolean): SelectOption[] {
   return isGuest ? GUEST_SORT_OPTIONS : SIGNED_IN_SORT_OPTIONS;
 }
 
-/** R-SF-P: "{n} of {total} statics are a good fit for you[ as a {role}]"; guests get a plain count. */
+/**
+ * R-SF-P: "{n} of {total} statics are a good fit for you[ as a {role}]"; guests
+ * get a plain count. `total === 0` also reads as a plain count (whole-branch
+ * review item 6) — "No strong matches yet" implies listings exist to loosen
+ * filters against, which would contradict the empty state rendered below it.
+ */
 export function summaryText(fitCounts: FitCounts | null, total: number, roleKey: string | null): string {
-  if (!fitCounts) {
+  if (!fitCounts || total === 0) {
     return `${total} ${total === 1 ? 'static' : 'statics'}`;
   }
   const n = fitCounts.strong + fitCounts.good;

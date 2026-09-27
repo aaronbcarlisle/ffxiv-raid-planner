@@ -183,4 +183,41 @@ describe('useFinderQuery', () => {
     await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
     expect(latest.moreFiltersInitiallyOpen).toBe(true);
   });
+
+  it('(k) ?q=zzz alone sets hasFilters, and clearFilters empties it (whole-branch review item 1)', async () => {
+    renderHarness('/discover?q=zzz');
+    await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(latest.hasFilters).toBe(true));
+    act(() => { latest.clearFilters(); });
+    await waitFor(() => expect(latest.hasFilters).toBe(false));
+  });
+
+  it('(l) an auth flip re-derives an un-set sort (whole-branch review item 7)', async () => {
+    authState.user = null;
+    const { rerender } = renderHarness();
+    await waitFor(() => expect(latest.state.sort).toBe('recent'));
+
+    authState.user = { id: 'u1' };
+    rerender(
+      <MemoryRouter initialEntries={['/discover']}>
+        <Harness />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(latest.state.sort).toBe('best'));
+  });
+
+  it('(m) an explicit sort pick survives an auth flip', async () => {
+    const { rerender } = renderHarness();
+    await waitFor(() => expect(latest.state.sort).toBe('best'));
+    act(() => { latest.setters.setSort('name'); });
+    expect(latest.state.sort).toBe('name');
+
+    authState.user = null;
+    rerender(
+      <MemoryRouter initialEntries={['/discover']}>
+        <Harness />
+      </MemoryRouter>,
+    );
+    expect(latest.state.sort).toBe('name');
+  });
 });

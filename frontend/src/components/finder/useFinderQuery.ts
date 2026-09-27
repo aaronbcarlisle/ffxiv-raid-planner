@@ -95,10 +95,19 @@ export function useFinderQuery(): UseFinderQueryResult {
   const signedIn = !!user;
 
   const [q, setQ] = useState(() => searchParams.get('q') ?? '');
-  const [sort, setSort] = useState(() => {
-    const raw = searchParams.get('sort');
-    return raw && SORT_VALUES.has(raw) ? raw : defaultSort(signedIn);
-  });
+  const initialSortRaw = searchParams.get('sort');
+  const [sort, setSortState] = useState(() =>
+    initialSortRaw && SORT_VALUES.has(initialSortRaw) ? initialSortRaw : defaultSort(signedIn));
+  // Whether `sort` was set explicitly (a valid `sort` in the URL at mount, or
+  // a later user pick) rather than defaulted. An auth flip after mount (a
+  // guest logging in, or the reverse) re-derives an un-set sort below, so a
+  // guest's `recent` default doesn't survive as a value the signed-in Select
+  // no longer offers (and vice versa).
+  const sortExplicitRef = useRef(!!(initialSortRaw && SORT_VALUES.has(initialSortRaw)));
+  const setSort = useCallback((value: string) => {
+    sortExplicitRef.current = true;
+    setSortState(value);
+  }, []);
   const [asRole, setAsRole] = useState(() => readRole(searchParams));
   const [dayGroup, setDayGroup] = useState(() => {
     const raw = searchParams.get('dayGroup');
@@ -141,11 +150,18 @@ export function useFinderQuery(): UseFinderQueryResult {
     setServer(''); // reset server when DC changes, as V1 does
   }, []);
 
+  // Re-derive an un-set sort when signedIn flips (item 7, whole-branch review).
+  useEffect(() => {
+    if (!sortExplicitRef.current) {
+      setSortState(defaultSort(signedIn));
+    }
+  }, [signedIn]);
+
   const setters = useMemo<FinderSetters>(() => ({
     setQ, setSort, setAsRole, setDayGroup, setGoalCategory,
     setScheduleOverlap, setHideGoalConflicts, setJob, setRecruitmentStatus,
     setIntensity, setDataCenter, setServer, setTimezone, setLanguage,
-  }), [setDataCenter]);
+  }), [setDataCenter, setSort]);
 
   const state = useMemo<FinderState>(() => ({
     q, sort, asRole, dayGroup, goalCategory, scheduleOverlap, hideGoalConflicts,
@@ -154,9 +170,9 @@ export function useFinderQuery(): UseFinderQueryResult {
       job, recruitmentStatus, intensity, dataCenter, server, timezone, language]);
 
   const hasFilters = useMemo(() =>
-    !!(asRole || dayGroup || goalCategory.length || scheduleOverlap || hideGoalConflicts ||
+    !!(debouncedQ || asRole || dayGroup || goalCategory.length || scheduleOverlap || hideGoalConflicts ||
        job || recruitmentStatus || intensity || dataCenter || server || timezone || language),
-    [asRole, dayGroup, goalCategory, scheduleOverlap, hideGoalConflicts,
+    [debouncedQ, asRole, dayGroup, goalCategory, scheduleOverlap, hideGoalConflicts,
      job, recruitmentStatus, intensity, dataCenter, server, timezone, language],
   );
 
@@ -181,7 +197,10 @@ export function useFinderQuery(): UseFinderQueryResult {
     if (timezone) params.set('timezone', timezone);
     if (language) params.set('language', language);
     setSearchParams(params, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setSearchParams identity is stable per router
+    // setSearchParams is left out of deps on purpose: react-router recreates it on every
+    // render, and depending on it would re-run this sync effect (and re-replace the URL) on
+    // every change IT makes, not just on a real state change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see rationale above
   }, [debouncedQ, sort, asRole, dayGroup, goalCategory, scheduleOverlap, hideGoalConflicts,
       job, recruitmentStatus, intensity, dataCenter, server, timezone, language, signedIn]);
 

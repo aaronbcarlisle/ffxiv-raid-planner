@@ -20,7 +20,7 @@ import {
   buildServerOptions,
 } from './discoveryOptions';
 
-const GROUP_LABEL = 'text-text-muted text-[10px] font-medium uppercase tracking-widest opacity-60 mb-2';
+const GROUP_LABEL = 'text-text-muted text-xs font-medium uppercase tracking-widest opacity-60 mb-2';
 
 interface FinderFiltersProps {
   state: FinderState;
@@ -57,6 +57,7 @@ export function FinderFilters({
       </div>
 
       <Input
+        id="finder-search"
         value={state.q}
         onChange={setters.setQ}
         placeholder="Search by name or description..."
@@ -69,11 +70,20 @@ export function FinderFilters({
           {GOAL_CATEGORY_OPTIONS.filter(o => o.value).map(o => (
             <Checkbox
               key={o.value}
+              id={`finder-goal-${o.value}`}
               checked={state.goalCategory.includes(o.value)}
               onChange={() => toggleGoalCategory(o.value)}
               label={GOAL_CATEGORY_LABELS[o.value] ?? o.label}
             />
           ))}
+          {!isGuest && (
+            <Checkbox
+              id="finder-hide-goal-conflicts"
+              checked={state.hideGoalConflicts}
+              onChange={setters.setHideGoalConflicts}
+              label="Hide goal conflicts"
+            />
+          )}
         </div>
       </div>
 
@@ -108,6 +118,7 @@ export function FinderFilters({
         <p className={GROUP_LABEL}>Schedule fit</p>
         {!isGuest && (
           <Checkbox
+            id="finder-schedule-overlap"
             checked={state.scheduleOverlap}
             onChange={setters.setScheduleOverlap}
             disabled={noTemplate}
@@ -131,15 +142,6 @@ export function FinderFilters({
             Weekends
           </Tag>
         </div>
-        {!isGuest && (
-          <div className="mt-2">
-            <Checkbox
-              checked={state.hideGoalConflicts}
-              onChange={setters.setHideGoalConflicts}
-              label="Hide goal conflicts"
-            />
-          </div>
-        )}
       </div>
 
       <div>
@@ -164,23 +166,25 @@ export function FinderFilters({
         </LinkText>
         {moreOpen && (
           <div className="flex flex-col gap-3 mt-3">
-            <Select value={state.job} onChange={setters.setJob} options={JOB_OPTIONS} aria-label="Job" />
+            <Select id="finder-job" value={state.job} onChange={setters.setJob} options={JOB_OPTIONS} aria-label="Job" />
             <Select
+              id="finder-recruitment-status"
               value={state.recruitmentStatus}
               onChange={setters.setRecruitmentStatus}
               options={FINDER_RECRUITMENT_OPTIONS}
               aria-label="Recruitment status"
             />
-            <Select value={state.dataCenter} onChange={setters.setDataCenter} options={DC_OPTIONS} aria-label="Data center" />
+            <Select id="finder-data-center" value={state.dataCenter} onChange={setters.setDataCenter} options={DC_OPTIONS} aria-label="Data center" />
             <Select
+              id="finder-server"
               value={state.server}
               onChange={setters.setServer}
               options={buildServerOptions(state.dataCenter)}
               disabled={!state.dataCenter}
               aria-label="Server"
             />
-            <Select value={state.timezone} onChange={setters.setTimezone} options={TZ_OPTIONS} aria-label="Timezone" />
-            <Select value={state.language} onChange={setters.setLanguage} options={LANG_OPTIONS} aria-label="Language" />
+            <Select id="finder-timezone" value={state.timezone} onChange={setters.setTimezone} options={TZ_OPTIONS} aria-label="Timezone" />
+            <Select id="finder-language" value={state.language} onChange={setters.setLanguage} options={LANG_OPTIONS} aria-label="Language" />
           </div>
         )}
       </div>
