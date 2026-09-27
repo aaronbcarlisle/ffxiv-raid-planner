@@ -75,6 +75,62 @@ export const RELEASES: Release[] = [
     ],
   },
   {
+    version: '2.1.42',
+    date: '2026-09-26T21:20:00Z',
+    title: 'Player Hub — PH2c Needs you (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'Needs you, across your statics',
+        description:
+          'V2 preview: the Hub\'s Overview opens with a Needs you card listing sessions in the next 7 days you haven\'t answered and loot you\'re first in line for this week, each with a button into that static.',
+        pr: 288,
+        prTitle: 'feat(v2): PH2c — Player Hub "Needs you" card and static-row summary',
+      },
+      {
+        category: 'improvement',
+        title: 'Your statics show where each one stands',
+        description:
+          'V2 preview: each static on the Hub\'s Overview now shows its current tier, next session, floors cleared this week and share of BiS slots filled.',
+        pr: 288,
+        prTitle: 'feat(v2): PH2c — Player Hub "Needs you" card and static-row summary',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '2.1.41',
+    date: '2026-09-26T21:10:00Z',
+    title: 'Player Hub — PH2b what needs you (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'The overview finds what needs you',
+        description:
+          'V2 preview groundwork: the overview now lists sessions in the next 7 days you haven\'t answered and this week\'s drops you\'re first in line for, ranked the way the Loot tab ranks them. Nothing changes on screen yet.',
+        pr: 287,
+        prTitle: 'feat(v2): PH2b — player overview action items: rsvp_pending and loot_priority',
+      },
+    ],
+    internal: true,
+  },
+  {
+    version: '2.1.40',
+    date: '2026-09-26T21:00:00Z',
+    title: 'Player Hub — PH2a overview endpoint (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'One overview of your statics',
+        description:
+          'V2 preview groundwork: a new overview gathers, for each static you belong to, its current tier, next session, floors cleared this week and average BiS. Nothing changes on screen yet.',
+        pr: 286,
+        prTitle: 'feat(v2): PH2a — player overview endpoint: static summaries, membership scoping, loot-context helper move',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.39',
     date: '2026-09-26T06:50:00Z',
     title: 'Player Hub — PH1c rail portrait and breadcrumb (v2 preview)',

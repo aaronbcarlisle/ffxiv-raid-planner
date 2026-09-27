@@ -70,7 +70,7 @@ A free, web-based raid planning tool for FFXIV static groups. Track gear progres
 ## Getting Started
 
 ### Prerequisites
-- Node.js 20.19+ and pnpm
+- Node.js 24 (22.22+ also works) and pnpm
 - Python 3.11+
 - PostgreSQL (or SQLite for development)
 

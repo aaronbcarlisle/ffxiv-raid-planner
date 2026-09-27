@@ -1,11 +1,25 @@
 """Test data factories for creating test fixtures"""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSnapshot, User, LootLogEntry, WeeklyAssignment
+from app.models import (
+    Membership,
+    MemberRole,
+    MaterialLogEntry,
+    PageLedgerEntry,
+    ScheduleException,
+    ScheduleRsvp,
+    ScheduleSession,
+    SnapshotPlayer,
+    StaticGroup,
+    TierSnapshot,
+    User,
+    LootLogEntry,
+    WeeklyAssignment,
+)
 from app.models.player_character import PlayerCharacter
 from app.models.player_profile import PlayerProfile
 from app.models.static_character_registration import StaticCharacterRegistration
@@ -188,6 +202,164 @@ async def create_loot_log_entry(
     session.add(entry)
     await session.flush()
     return entry
+
+
+async def create_page_ledger_entry(
+    session: AsyncSession,
+    tier_snapshot: TierSnapshot,
+    player: SnapshotPlayer,
+    created_by: User,
+    *,
+    week_number: int = 1,
+    floor: str = "M9S",
+    book_type: str = "I",
+    transaction_type: str = "earned",
+    quantity: int = 1,
+    notes: str | None = None,
+) -> PageLedgerEntry:
+    """Create a page ledger entry for testing."""
+    entry = PageLedgerEntry(
+        tier_snapshot_id=tier_snapshot.id,
+        player_id=player.id,
+        week_number=week_number,
+        floor=floor,
+        book_type=book_type,
+        transaction_type=transaction_type,
+        quantity=quantity,
+        notes=notes,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        created_by_user_id=created_by.id,
+    )
+    session.add(entry)
+    await session.flush()
+    return entry
+
+
+async def create_material_log_entry(
+    session: AsyncSession,
+    tier_snapshot: TierSnapshot,
+    recipient_player: SnapshotPlayer,
+    created_by: User,
+    *,
+    week_number: int = 1,
+    floor: str = "M9S",
+    material_type: str = "twine",
+    slot_augmented: str | None = None,
+    method: str = "drop",
+    notes: str | None = None,
+) -> MaterialLogEntry:
+    """Create a material log entry for testing."""
+    entry = MaterialLogEntry(
+        tier_snapshot_id=tier_snapshot.id,
+        week_number=week_number,
+        floor=floor,
+        material_type=material_type,
+        recipient_player_id=recipient_player.id,
+        slot_augmented=slot_augmented,
+        method=method,
+        notes=notes,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        created_by_user_id=created_by.id,
+    )
+    session.add(entry)
+    await session.flush()
+    return entry
+
+
+async def create_schedule_session(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    created_by: User,
+    *,
+    title: str = "Test Session",
+    description: str | None = None,
+    start_time: str | None = None,
+    end_time: str | None = None,
+    timezone_name: str = "UTC",
+    is_recurring: bool = False,
+    recurrence_rule: str | None = None,
+    track_availability: bool = True,
+) -> ScheduleSession:
+    """Create a schedule session for testing.
+
+    Defaults to a one-off session starting one day from now (still in the
+    future for `next_occurrence` checks) unless `start_time`/`end_time` are
+    given explicitly.
+    """
+    now = datetime.now(timezone.utc)
+    default_start = (now.replace(microsecond=0) + timedelta(days=1)).isoformat()
+    default_end = (now.replace(microsecond=0) + timedelta(days=1, hours=2)).isoformat()
+    sched = ScheduleSession(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        created_by_id=created_by.id,
+        title=title,
+        description=description,
+        start_time=start_time if start_time is not None else default_start,
+        end_time=end_time if end_time is not None else default_end,
+        timezone=timezone_name,
+        is_recurring=is_recurring,
+        recurrence_rule=recurrence_rule,
+        track_availability=track_availability,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(sched)
+    await session.flush()
+    return sched
+
+
+async def create_schedule_exception(
+    session: AsyncSession,
+    schedule_session: ScheduleSession,
+    created_by: User,
+    *,
+    occurrence_date: str,
+    type: str = "cancelled",
+    override_start_time: str | None = None,
+    override_end_time: str | None = None,
+    override_title: str | None = None,
+    cancellation_reason: str | None = None,
+) -> ScheduleException:
+    """Create a schedule exception (cancelled or edited occurrence) for testing."""
+    exc = ScheduleException(
+        id=str(uuid.uuid4()),
+        session_id=schedule_session.id,
+        occurrence_date=occurrence_date,
+        type=type,
+        override_start_time=override_start_time,
+        override_end_time=override_end_time,
+        override_title=override_title,
+        cancellation_reason=cancellation_reason,
+        created_by_id=created_by.id,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(exc)
+    await session.flush()
+    return exc
+
+
+async def create_schedule_rsvp(
+    session: AsyncSession,
+    schedule_session: ScheduleSession,
+    user: User,
+    *,
+    status: str = "yes",
+    note: str | None = None,
+) -> ScheduleRsvp:
+    """Create an RSVP for a schedule session for testing."""
+    rsvp = ScheduleRsvp(
+        id=str(uuid.uuid4()),
+        session_id=schedule_session.id,
+        user_id=user.id,
+        status=status,
+        note=note,
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(rsvp)
+    await session.flush()
+    return rsvp
 
 
 async def create_weekly_assignment(
