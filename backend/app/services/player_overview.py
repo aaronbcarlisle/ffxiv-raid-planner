@@ -16,16 +16,17 @@ belongs to (R-PH2-D). The builders below only read the `_OverviewContext`.
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
-import structlog
 from pydantic import ValidationError
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import (
+    BiSTargetSet,
     LootLogEntry,
     MaterialLogEntry,
     MemberRole,
@@ -38,6 +39,7 @@ from ..models import (
     TierSnapshot,
 )
 from ..models.membership import Membership
+from ..models.player_profile import PlayerProfile
 from ..permissions import get_user_static_groups
 from ..schemas.player_overview import (
     OverviewActionItem,
@@ -60,7 +62,7 @@ from .priority_calculator import (
 )
 from .recurrence import OccurrenceSpec, next_occurrence
 
-logger = structlog.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # The `rsvp_pending` window: `now < start <= now + RSVP_WINDOW` (R-PH2-F).
 RSVP_WINDOW = timedelta(days=7)
@@ -115,29 +117,46 @@ class _OverviewContext:
     tier_ids_with_loot_log: set[str] = field(default_factory=set)
     # Loot-log rows at each active tier's current week (the "logged" check).
     week_loot_by_tier_id: dict[str, list[LootLogEntry]] = field(default_factory=dict)
+    # The caller's active Hub BiS set per job (`bis_stale`, R-PH3-G).
+    hub_bis_set_by_job: dict[str, BiSTargetSet] = field(default_factory=dict)
+    # created_at of every loot-log row ever received by one of the caller's
+    # configured, non-substitute roster players, across every active tier.
+    loot_created_at_by_player_id: dict[str, list[str]] = field(default_factory=dict)
 
 
-def _parse_occurrence_start(value: str, *, session_id: str) -> datetime | None:
-    """Parse an occurrence's `start_time` to an aware UTC datetime.
+def _parse_iso_utc(value: str) -> datetime | None:
+    """Parse an ISO timestamp to an aware UTC datetime, or `None` if it doesn't parse.
 
-    A naive value is read as UTC. A value that doesn't parse is skipped (a
-    session's stored `start_time`/`override_start_time` is an unvalidated
-    string, `schemas/schedule.py:74,165`) rather than raised, so a single bad
-    row can never 500 the endpoint. Shared by `nextSession` and (Task 2)
-    `rsvp_pending`.
+    A naive value is read as UTC. Every stored timestamp this service reads
+    (`start_time`/`override_start_time`, `BiSTargetSet.updated_at`,
+    `LootLogEntry.created_at`) is an unvalidated `Text` column, so callers
+    never let a single bad row 500 the endpoint (R-PH3-I).
     """
     try:
         parsed = datetime.fromisoformat(value)
     except (ValueError, TypeError):
-        logger.warning(
-            "player_overview_unparseable_occurrence_start",
-            session_id=session_id,
-            value=value,
-        )
         return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+def _parse_occurrence_start(value: str, *, session_id: str) -> datetime | None:
+    """`_parse_iso_utc`, with a warning naming the session on failure.
+
+    A value that doesn't parse is skipped (a session's stored
+    `start_time`/`override_start_time` is an unvalidated string,
+    `schemas/schedule.py:74,165`) rather than raised, so a single bad row can
+    never 500 the endpoint. Shared by `nextSession` and `rsvp_pending`.
+    """
+    parsed = _parse_iso_utc(value)
+    if parsed is None:
+        logger.warning(
+            "player_overview: unparseable occurrence start_time %r (session %s)",
+            value,
+            session_id,
+        )
+    return parsed
 
 
 async def _load_context(session: AsyncSession, user_id: str, now: datetime) -> _OverviewContext:
@@ -238,7 +257,56 @@ async def _load_context(session: AsyncSession, user_id: str, now: datetime) -> _
         for loot in week_loot_result.scalars().all():
             ctx.week_loot_by_tier_id.setdefault(loot.tier_snapshot_id, []).append(loot)
 
+    # The caller's active Hub BiS set per job, across every PlayerProfile the
+    # caller owns; on duplicates (two job profiles for one job) keep the
+    # newest `updated_at` (R-PH3-G).
+    bis_result = await session.execute(
+        select(BiSTargetSet)
+        .join(PlayerProfile, PlayerProfile.id == BiSTargetSet.profile_id)
+        .where(
+            PlayerProfile.user_id == user_id,
+            BiSTargetSet.owner_type == "player_job_profile",
+            BiSTargetSet.is_active.is_(True),
+        )
+    )
+    for bis in bis_result.scalars().all():
+        existing = ctx.hub_bis_set_by_job.get(bis.job)
+        if existing is None or _is_newer_bis(bis, existing):
+            ctx.hub_bis_set_by_job[bis.job] = bis
+
+    # `created_at` of every loot-log row ever received by one of the caller's
+    # roster players, across every active tier (not gated to savage/known
+    # tier ids the way `loot_priority` is, R-PH3-G). One statement, skipped
+    # entirely when the caller has no roster player anywhere.
+    caller_player_ids: set[str] = set()
+    for tier in active_tiers:
+        _roster, tier_caller_ids = _caller_roster(ctx, tier)
+        caller_player_ids |= tier_caller_ids
+    if caller_player_ids:
+        loot_created_result = await session.execute(
+            select(LootLogEntry.recipient_player_id, LootLogEntry.created_at).where(
+                LootLogEntry.recipient_player_id.in_(caller_player_ids)
+            )
+        )
+        for recipient_id, created_at in loot_created_result.all():
+            ctx.loot_created_at_by_player_id.setdefault(recipient_id, []).append(created_at)
+
     return ctx
+
+
+def _is_newer_bis(candidate: BiSTargetSet, existing: BiSTargetSet) -> bool:
+    """Whether `candidate.updated_at` is strictly newer than `existing`'s.
+
+    An unparseable candidate is never preferred; an unparseable existing
+    value loses to any parseable candidate.
+    """
+    candidate_ts = _parse_iso_utc(candidate.updated_at)
+    if candidate_ts is None:
+        return False
+    existing_ts = _parse_iso_utc(existing.updated_at)
+    if existing_ts is None:
+        return True
+    return candidate_ts > existing_ts
 
 
 def _next_occurrence_for(ctx: _OverviewContext, sess: ScheduleSession) -> OccurrenceSpec | None:
@@ -401,6 +469,18 @@ def _is_drop_logged(
     return any(e.floor == floor_name and e.item_slot == key for e in week_loot)
 
 
+def _caller_roster(ctx: _OverviewContext, tier: TierSnapshot) -> tuple[list[SnapshotPlayer], set[str]]:
+    """The active roster (configured, non-substitute, sort order) and the ids
+    within it that belong to the caller (R-PH2-G's population, shared with
+    `bis_stale`, R-PH3-L)."""
+    roster = sorted(
+        (p for p in ctx.players_by_tier_id.get(tier.id, []) if p.configured and not p.is_substitute),
+        key=lambda p: p.sort_order,
+    )
+    caller_player_ids = {p.id for p in roster if p.user_id == ctx.user_id}
+    return roster, caller_player_ids
+
+
 def _build_loot_item(ctx: _OverviewContext, group: StaticGroup) -> OverviewActionItem | None:
     """The `loot_priority` item for one static, or `None` (R-PH2-G).
 
@@ -413,11 +493,7 @@ def _build_loot_item(ctx: _OverviewContext, group: StaticGroup) -> OverviewActio
     if tier is None or tier.content_type != "savage" or tier.tier_id not in TIER_FLOOR_NAMES:
         return None
 
-    roster = sorted(
-        (p for p in ctx.players_by_tier_id.get(tier.id, []) if p.configured and not p.is_substitute),
-        key=lambda p: p.sort_order,
-    )
-    caller_player_ids = {p.id for p in roster if p.user_id == ctx.user_id}
+    roster, caller_player_ids = _caller_roster(ctx, tier)
     if not caller_player_ids:
         return None
 
@@ -425,7 +501,9 @@ def _build_loot_item(ctx: _OverviewContext, group: StaticGroup) -> OverviewActio
         effective = effective_priority_settings(group.settings)
     except ValidationError as exc:
         # A blob the static-group response itself could not serialize; never 500 the Hub over it.
-        logger.warning("player_overview_invalid_settings_blob", static_id=group.id, error=str(exc))
+        logger.warning(
+            "player_overview: invalid settings blob for static %s: %s", group.id, exc,
+        )
         return None
 
     if get_effective_priority_mode(effective) in ("disabled", "manual-planning"):
@@ -484,6 +562,70 @@ def _build_loot_item(ctx: _OverviewContext, group: StaticGroup) -> OverviewActio
     )
 
 
+def _build_bis_stale_items(
+    ctx: _OverviewContext, group: StaticGroup, membership: Membership
+) -> list[OverviewActionItem]:
+    """`bis_stale` items for one static (R-PH3-G).
+
+    The caller's active Hub BiS set for a roster player's job is older than
+    loot that player has since received. Skipped for viewers and for a
+    static with no active tier of any content type (no content-type gate
+    otherwise: an ultimate tier with a stale set still builds the item).
+    """
+    if membership.role == MemberRole.VIEWER.value:
+        return []
+    tier = ctx.active_tier_by_static_id.get(group.id)
+    if tier is None:
+        return []
+
+    roster, caller_player_ids = _caller_roster(ctx, tier)
+    caller_players = [p for p in roster if p.id in caller_player_ids]
+    multiple = len(caller_players) > 1
+
+    items: list[OverviewActionItem] = []
+    for player in caller_players:
+        bis = ctx.hub_bis_set_by_job.get(player.job)
+        if bis is None:
+            continue
+        updated = _parse_iso_utc(bis.updated_at)
+        if updated is None:
+            logger.warning(
+                "player_overview: unparseable BiS target set updated_at %r (set %s)",
+                bis.updated_at,
+                bis.id,
+            )
+            continue
+        n = 0
+        for raw in ctx.loot_created_at_by_player_id.get(player.id, []):
+            created = _parse_iso_utc(raw)
+            if created is None:
+                logger.warning(
+                    "player_overview: unparseable loot-log created_at %r (player %s)",
+                    raw,
+                    player.id,
+                )
+                continue
+            if created > updated:
+                n += 1
+        if n == 0:
+            continue
+        detail = f"{n} item{'' if n == 1 else 's'} logged since your BiS was last updated"
+        if multiple:
+            detail = f"{player.name or player.job} · {detail}"
+        items.append(
+            OverviewActionItem(
+                type="bis_stale",
+                static_id=group.id,
+                static_name=group.name,
+                title="Your BiS may be out of date",
+                detail=detail,
+                href="/profile?tab=characters",
+                starts_at=None,
+            )
+        )
+    return items
+
+
 async def build_player_overview(
     session: AsyncSession, user_id: str, now: datetime
 ) -> PlayerOverviewResponse:
@@ -491,13 +633,15 @@ async def build_player_overview(
 
     `now` must be timezone-aware UTC. Action items are `rsvp_pending` by
     start ascending, then `loot_priority` by static name, case-insensitive,
-    with no cap (R-PH2-H).
+    then `bis_stale` by (static name, detail), case-insensitive, with no cap
+    (R-PH2-H, R-PH3-H).
     """
     ctx = await _load_context(session, user_id, now)
 
     statics: list[OverviewStatic] = []
     rsvp_items: list[tuple[datetime, OverviewActionItem]] = []
     loot_items: list[OverviewActionItem] = []
+    bis_items: list[OverviewActionItem] = []
     for group, membership in ctx.groups_and_memberships:
         active_tier = ctx.active_tier_by_static_id.get(group.id)
         statics.append(
@@ -517,9 +661,11 @@ async def build_player_overview(
         loot_item = _build_loot_item(ctx, group)
         if loot_item is not None:
             loot_items.append(loot_item)
+        bis_items.extend(_build_bis_stale_items(ctx, group, membership))
 
     rsvp_items.sort(key=lambda pair: pair[0])
     loot_items.sort(key=lambda item: item.static_name.casefold())
-    action_items = [item for _start, item in rsvp_items] + loot_items
+    bis_items.sort(key=lambda item: (item.static_name.casefold(), item.detail))
+    action_items = [item for _start, item in rsvp_items] + loot_items + bis_items
 
     return PlayerOverviewResponse(statics=statics, action_items=action_items)

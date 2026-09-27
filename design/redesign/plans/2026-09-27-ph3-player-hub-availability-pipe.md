@@ -183,3 +183,43 @@ Size: ~450–550 lines incl. tests.
 3. Gates on the head, counts pasted into each PR body.
 4. Draft → ready once per PR; merge bottom-first per `slice-loop` § Stacked PRs.
 5. Final message per the skill; rewrite `SESSION_HANDOFF.md`.
+
+## Outcome (2026-09-27)
+
+**Shipped as three PRs, as first planned.**
+- **#304 PH3a:** Task 1, the pipe backend. +932/−26. The owner merged it alone as `e147aa05`. Copilot reported no findings and `claude[bot]` found nothing blocking.
+- **#305 PH3b:** Task 2, the pipe frontend and Hub copy, plus the fix wave's pipe-side tests, the pipe write-backs and the shots. +361/−87.
+- **#306 PH3c:** Task 3, `bis_stale`, plus the fix wave's overview-side tests, its write-backs, spec §9 and the shots. +721/−39.
+
+The Finish collapse rule was applied once and then overtaken. The controller had ruled to fold Task 2 into #304 (a+b = 1,234 lines), but the owner merged #304 alone first. The loop then restacked #305 and #306 onto `main` and restored #304's release note to its merged text. No plan-vet fold was overruled.
+
+**Reviews.**
+- Task 1 riskiest-task review: 0 Critical / 0 Important / 2 Minor.
+- Whole-branch review (Tasks 1–3 against `main`): spec-compliant on all three tasks, V1-safe on every shared hunk, 0 Critical / 1 Important / 5 Minor. The Important was the release note, which the collapse would have made false.
+- One fix wave: M1 (a vacuous heatmap half-assertion, now a real `aria-label` check with an executed mutation trace), M2, M3, M4 (one `count_statements` fixture in `backend/tests/conftest.py`) and Task 1's ruff Minor.
+- The re-review found everything addressed, plus one new Minor, which is parked.
+
+**Rulings that bind later work** are in spec §9's PH3 write-back:
+- the Hub tile 1 title against its new body goes to the holistic review;
+- the stdlib log lines go to logging unification.
+
+**Parked, disclosed in the PR bodies:**
+- `Schedule.test.tsx:353-354` claimed the assertion is independent of the host's timezone. It held only for hosts at UTC−5…UTC+3, which covers CI and the owner's machine. Fixed in the bot triage: the comment now says so.
+- A corrupt `slots` row would 500 through `json.loads`. The PUT schema makes this unreachable.
+
+**Post-ready bot triage:** Copilot raised 4 threads (#305: 3, #306: 1) and claude[bot] raised none. Fixed: the V2 pipe copy now says "every static you raid with", since viewer memberships aren't layered (R-PH3-D); `fetchAvailability` drops a response from a superseded request; an unparseable loot `created_at` is skipped with a warning.
+
+**Browser pass:** one live walk in `America/New_York`, 13 of 13 steps passing, 0 console errors. Shots are `docs/redesign/pr-shots/ph3b-*` and `ph3c-*`.
+
+**Loop numbers (D12 in brackets):**
+
+| Measure | PH3 | D12 |
+|---|---|---|
+| Tasks | 3 | 8 |
+| Fix waves | 1 | 8 rounds |
+| Commits | 10 (2 squashed in #304, 4 in #305, 4 in #306) | 30 |
+| Workspace artifacts | ~290 KB | 838 KB |
+| Wall clock | ~1 h 45 m (05:02–06:47 EDT) from branch to ready | ~12 h |
+| Reviewer dispatches | 3 (riskiest task, whole branch, fix-wave re-review) | — |
+| Implementer dispatches | 4 (3 tasks + 1 wave) | — |
+| Browser dispatches | 1 | — |

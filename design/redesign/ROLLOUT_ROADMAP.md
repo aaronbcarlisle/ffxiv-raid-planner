@@ -374,7 +374,7 @@ client-effective settings. It was browser-checked against the Loot tab's Queues 
 settings and on one without. The Hub Overview gains a **Needs you** card and a summary line on each Your statics
 row. Four priority-input helpers moved from the loot router into `services/loot_context.py`, so the plugin's
 `priority` endpoint is unchanged; V1 is unchanged. **Carried out of PH2** (spec §9):
-- "Your BiS is out of date" once its rule is defined → a later Stage-3 slice.
+- "Your BiS is out of date" once its rule is defined → a later Stage-3 slice. → ✅ PH3c (#306): the Needs you card's `bis_stale` item (spec H-8, §10.3).
 - `loot_priority` under enhanced scoring and for the weapon → with the plugin priority work.
 - A Queues / `floor=` deep link into Loot → Loot polish.
 - The plugin `priority` endpoint's raw-settings ranking (empty role order when unset) plus the `roleOrder == []`

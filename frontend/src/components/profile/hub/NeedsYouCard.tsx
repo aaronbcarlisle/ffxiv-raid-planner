@@ -1,13 +1,14 @@
 /**
  * NeedsYouCard — Overview's "Needs you" card (R-PH2-J).
- * Rows are AttentionRows over the Hub's usePlayerOverview data: pending RSVPs
- * and drops the caller is first in line for, across every static. Markup is
- * written fresh (not imported from home/), per ring 0.
+ * Rows are AttentionRows over the Hub's usePlayerOverview data: pending RSVPs,
+ * drops the caller is first in line for, and out-of-date BiS entries
+ * (bis_stale, R-PH3-G/H), across every static. Markup is written fresh (not
+ * imported from home/), per ring 0.
  */
 
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BellRing, CalendarClock, Gem } from 'lucide-react';
+import { BellRing, CalendarClock, Gem, Shirt } from 'lucide-react';
 import { CardShell } from '../../ui/CardShell';
 import { AttentionRow } from '../../ui/AttentionRow';
 import { EmptyStateInvite } from '../../ui/EmptyStateInvite';
@@ -26,10 +27,13 @@ interface NeedsYouCardProps {
 const ACTION_LABEL: Record<OverviewActionItemType, string> = {
   rsvp_pending: 'RSVP',
   loot_priority: 'View loot',
+  bis_stale: 'Review BiS',
 };
 
 function itemIcon(type: OverviewActionItemType): ReactNode {
-  return type === 'rsvp_pending' ? <CalendarClock size={18} /> : <Gem size={18} />;
+  if (type === 'rsvp_pending') return <CalendarClock size={18} />;
+  if (type === 'bis_stale') return <Shirt size={18} />;
+  return <Gem size={18} />;
 }
 
 function itemMeta(item: OverviewActionItem): string {
@@ -42,9 +46,12 @@ function itemMeta(item: OverviewActionItem): string {
 export function NeedsYouCard({ data, error, retry }: NeedsYouCardProps) {
   const navigate = useNavigate();
 
-  // Defensive: the backend only ever builds `/group/...` hrefs, but a dead
-  // action button must never render (director F13; AttentionRow requires one).
-  const items = (data?.actionItems ?? []).filter((item) => item.href.startsWith('/group/'));
+  // Defensive: the backend only ever builds `/group/...` or `/profile...`
+  // hrefs, but a dead action button must never render (director F13;
+  // AttentionRow requires one).
+  const items = (data?.actionItems ?? []).filter(
+    (item) => item.href.startsWith('/group/') || item.href === '/profile' || item.href.startsWith('/profile?'),
+  );
 
   return (
     <CardShell
@@ -63,13 +70,13 @@ export function NeedsYouCard({ data, error, retry }: NeedsYouCardProps) {
         <EmptyStateInvite
           icon={<BellRing className="h-5 w-5" />}
           title="Nothing needs you right now."
-          description="Session RSVPs and loot you're first in line for show up here."
+          description="Session RSVPs, loot you're first in line for and out-of-date BiS show up here."
         />
       ) : (
         <div className="flex flex-col divide-y divide-border-subtle">
-          {items.map((item) => (
+          {items.map((item, index) => (
             <AttentionRow
-              key={item.href}
+              key={`${item.type}:${item.href}:${index}`}
               icon={itemIcon(item.type)}
               title={<>{item.title} <Tag variant="label">{item.staticName}</Tag></>}
               meta={itemMeta(item)}

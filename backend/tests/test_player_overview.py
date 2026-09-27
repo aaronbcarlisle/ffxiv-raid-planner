@@ -1,5 +1,6 @@
 """Tests for GET /api/player/overview and services.player_overview.build_player_overview."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -10,10 +11,13 @@ from app.models import MemberRole
 from app.services.loot_context import calculate_week_number, served_settings
 from app.services.player_overview import build_player_overview
 from tests.factories import (
+    create_hub_bis_target_set,
     create_loot_log_entry,
     create_material_log_entry,
     create_membership,
     create_page_ledger_entry,
+    create_player_job_profile,
+    create_player_profile,
     create_schedule_exception,
     create_schedule_rsvp,
     create_schedule_session,
@@ -524,6 +528,10 @@ def _rsvp_items(result):
 
 def _loot_items(result):
     return [item for item in result.action_items if item.type == "loot_priority"]
+
+
+def _bis_items(result):
+    return [item for item in result.action_items if item.type == "bis_stale"]
 
 
 async def _one_off_session(session, group, user, start: datetime, **kwargs):
@@ -1067,3 +1075,449 @@ async def test_action_items_rsvp_by_time_then_loot_by_static_name(session: Async
         ("loot_priority", "alpha"),
         ("loot_priority", "Beta"),
     ]
+
+
+# ==================== bis_stale (R-PH3-G, R-PH3-H) ====================
+
+
+async def _seed_bis_static(
+    session,
+    caller,
+    *,
+    name: str = "BiS Static",
+    tier_id: str = "aac-heavyweight",
+    content_type: str = "savage",
+    job: str = "DRG",
+    player_name: str = "Caller Player",
+    caller_configured: bool = True,
+    caller_substitute: bool = False,
+    link_caller: bool = True,
+    membership_role: MemberRole | None = None,
+    owner: object | None = None,
+):
+    """A static with an active tier and one roster player for `job`.
+
+    Owned by `caller` unless `owner` is given, in which case `caller` joins
+    with `membership_role` (default MEMBER) instead.
+    """
+    group_owner = owner if owner is not None else caller
+    group = await create_static_group(session, group_owner, name=name)
+    if owner is not None:
+        await create_membership(
+            session, caller, group, role=membership_role or MemberRole.MEMBER,
+        )
+    tier = await create_tier_snapshot(session, group, tier_id=tier_id, content_type=content_type)
+    player = await create_snapshot_player(
+        session, tier, name=player_name, job=job, configured=caller_configured,
+    )
+    if link_caller:
+        player.user_id = caller.id
+    player.is_substitute = caller_substitute
+    await session.flush()
+    return group, tier, player
+
+
+async def _seed_bis_profile(
+    session,
+    caller,
+    *,
+    job: str = "DRG",
+    is_active: bool = True,
+    updated_at: str | None = None,
+):
+    """A PlayerProfile + PlayerJobProfile(job) + one Hub BiS set for the caller."""
+    profile = await create_player_profile(session, caller)
+    job_profile = await create_player_job_profile(session, profile, job=job)
+    bis = await create_hub_bis_target_set(
+        session, profile, job_profile, is_active=is_active, updated_at=updated_at,
+    )
+    return profile, job_profile, bis
+
+
+class TestBisStale:
+    async def test_one_item_since_bis_updated(self, session: AsyncSession):
+        caller = await create_user(session)
+        group, tier, player = await _seed_bis_static(session, caller)
+        await _seed_bis_profile(session, caller, updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _bis_items(result)
+        assert len(items) == 1
+        item = items[0]
+        assert item.type == "bis_stale"
+        assert item.static_id == group.id
+        assert item.static_name == group.name
+        assert item.title == "Your BiS may be out of date"
+        assert item.detail == "1 item logged since your BiS was last updated"
+        assert item.href == "/profile?tab=characters"
+        assert item.starts_at is None
+
+    async def test_three_newer_entries_pluralizes_count(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller)
+        await _seed_bis_profile(session, caller, updated_at=(NOW - timedelta(days=2)).isoformat())
+        for offset in (timedelta(days=1), timedelta(hours=12), timedelta(hours=1)):
+            await create_loot_log_entry(
+                session, tier, player, caller, created_at=(NOW - offset).isoformat(),
+            )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _bis_items(result)
+        assert len(items) == 1
+        assert items[0].detail == "3 items logged since your BiS was last updated"
+
+    async def test_entry_equal_to_updated_at_is_not_stale_strict(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller)
+        updated_at = (NOW - timedelta(days=1)).isoformat()
+        await _seed_bis_profile(session, caller, updated_at=updated_at)
+        await create_loot_log_entry(session, tier, player, caller, created_at=updated_at)
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _bis_items(result) == []
+
+    async def test_entry_older_than_updated_at_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller)
+        await _seed_bis_profile(session, caller, updated_at=(NOW - timedelta(days=1)).isoformat())
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=2)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _bis_items(result) == []
+
+    async def test_no_player_profile_yields_none_200(self, client, session: AsyncSession, test_user):
+        _group, tier, player = await _seed_bis_static(session, test_user)
+        await create_loot_log_entry(
+            session, tier, player, test_user, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+        await session.commit()
+
+        response = await client.get("/api/player/overview", headers=_auth_headers(test_user))
+        assert response.status_code == 200
+        body = response.json()
+        assert not any(item["type"] == "bis_stale" for item in body["actionItems"])
+
+    async def test_no_job_profile_for_players_job_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller, job="DRG")
+        # A profile exists, but no job profile / BiS set for DRG at all.
+        await create_player_profile(session, caller)
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _bis_items(result) == []
+
+    async def test_inactive_set_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller)
+        await _seed_bis_profile(
+            session, caller, is_active=False, updated_at=(NOW - timedelta(days=2)).isoformat(),
+        )
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _bis_items(result) == []
+
+    async def test_active_set_for_a_different_job_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller, job="DRG")
+        await _seed_bis_profile(session, caller, job="PLD", updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _bis_items(result) == []
+
+    async def test_two_active_sets_for_same_job_newest_updated_at_decides(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller, job="DRG")
+        profile = await create_player_profile(session, caller)
+        old_job_profile = await create_player_job_profile(session, profile, job="DRG")
+        await create_hub_bis_target_set(
+            session, profile, old_job_profile, updated_at=(NOW - timedelta(hours=72)).isoformat(),
+        )
+        new_job_profile = await create_player_job_profile(session, profile, job="DRG")
+        await create_hub_bis_target_set(
+            session, profile, new_job_profile, updated_at=(NOW - timedelta(hours=24)).isoformat(),
+        )
+        # After the OLD set's updated_at but before the NEW (newest) one's:
+        # only the stale (older) set would call this stale.
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(hours=36)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _bis_items(result) == []
+
+    async def test_naive_updated_at_read_as_utc_still_detected(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller)
+        naive_updated_at = (NOW - timedelta(days=2)).replace(tzinfo=None).isoformat()
+        await _seed_bis_profile(session, caller, updated_at=naive_updated_at)
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _bis_items(result)
+        assert len(items) == 1
+        assert items[0].detail == "1 item logged since your BiS was last updated"
+
+    async def test_garbage_updated_at_yields_none_200_and_one_warning(
+        self, client, session: AsyncSession, test_user, caplog,
+    ):
+        _group, tier, player = await _seed_bis_static(session, test_user)
+        await _seed_bis_profile(session, test_user, updated_at="garbage")
+        await create_loot_log_entry(
+            session, tier, player, test_user, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+        await session.commit()
+
+        with caplog.at_level(logging.WARNING, logger="app.services.player_overview"):
+            response = await client.get("/api/player/overview", headers=_auth_headers(test_user))
+        assert response.status_code == 200
+        body = response.json()
+        assert not any(item["type"] == "bis_stale" for item in body["actionItems"])
+        warnings = [
+            r for r in caplog.records
+            if r.name == "app.services.player_overview" and r.levelno == logging.WARNING
+        ]
+        assert len(warnings) == 1
+        assert "garbage" in warnings[0].getMessage()
+
+    async def test_garbage_loot_created_at_skipped_with_one_warning(
+        self, client, session: AsyncSession, test_user, caplog,
+    ):
+        _group, tier, player = await _seed_bis_static(session, test_user)
+        stale_updated_at = (NOW - timedelta(days=2)).isoformat()
+        await _seed_bis_profile(session, test_user, updated_at=stale_updated_at)
+        await create_loot_log_entry(
+            session, tier, player, test_user, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+        await create_loot_log_entry(
+            session, tier, player, test_user, created_at="garbage",
+        )
+        await session.commit()
+
+        with caplog.at_level(logging.WARNING, logger="app.services.player_overview"):
+            response = await client.get("/api/player/overview", headers=_auth_headers(test_user))
+        assert response.status_code == 200
+        body = response.json()
+        bis_items = [item for item in body["actionItems"] if item["type"] == "bis_stale"]
+        assert len(bis_items) == 1
+        assert bis_items[0]["detail"] == "1 item logged since your BiS was last updated"
+        warnings = [
+            r for r in caplog.records
+            if r.name == "app.services.player_overview" and r.levelno == logging.WARNING
+        ]
+        assert len(warnings) == 1
+        assert "garbage" in warnings[0].getMessage()
+
+    async def test_substitute_player_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller, caller_substitute=True)
+        await _seed_bis_profile(session, caller, updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _bis_items(result) == []
+
+    async def test_viewer_membership_with_claimed_player_yields_none(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        owner = await create_user(session, discord_username="owner")
+        _group, tier, player = await _seed_bis_static(
+            session, caller, owner=owner, membership_role=MemberRole.VIEWER,
+        )
+        await _seed_bis_profile(session, caller, updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _bis_items(result) == []
+
+    async def test_ultimate_tier_stale_set_still_builds_item(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller, content_type="ultimate")
+        await _seed_bis_profile(session, caller, updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert len(_bis_items(result)) == 1
+
+    async def test_two_stale_caller_players_get_name_prefixed_details(self, session: AsyncSession):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller, name="Two Player Static")
+        tier = await create_tier_snapshot(session, group)
+        drg_player = await create_snapshot_player(session, tier, name="Aaa Drg", job="DRG", sort_order=0)
+        drg_player.user_id = caller.id
+        pld_player = await create_snapshot_player(session, tier, name="Bbb Pld", job="PLD", sort_order=1)
+        pld_player.user_id = caller.id
+        await session.flush()
+
+        profile = await create_player_profile(session, caller)
+        drg_jp = await create_player_job_profile(session, profile, job="DRG")
+        await create_hub_bis_target_set(
+            session, profile, drg_jp, updated_at=(NOW - timedelta(days=2)).isoformat(),
+        )
+        pld_jp = await create_player_job_profile(session, profile, job="PLD")
+        await create_hub_bis_target_set(
+            session, profile, pld_jp, updated_at=(NOW - timedelta(days=2)).isoformat(),
+        )
+        await create_loot_log_entry(
+            session, tier, drg_player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+        await create_loot_log_entry(
+            session, tier, pld_player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _bis_items(result)
+        assert len(items) == 2
+        details = sorted(item.detail for item in items)
+        assert details == [
+            "Aaa Drg · 1 item logged since your BiS was last updated",
+            "Bbb Pld · 1 item logged since your BiS was last updated",
+        ]
+
+    async def test_one_stale_player_of_two_in_roster_still_gets_name_prefix(
+        self, session: AsyncSession,
+    ):
+        # Two caller players sit in this static's roster (so the "more than
+        # one player in that roster" prefix condition looks at roster
+        # membership, not at how many of them actually go stale).
+        caller = await create_user(session)
+        group = await create_static_group(session, caller, name="One Stale Static")
+        tier = await create_tier_snapshot(session, group)
+        drg_player = await create_snapshot_player(session, tier, name="Aaa Drg", job="DRG", sort_order=0)
+        drg_player.user_id = caller.id
+        pld_player = await create_snapshot_player(session, tier, name="Bbb Pld", job="PLD", sort_order=1)
+        pld_player.user_id = caller.id
+        await session.flush()
+
+        profile = await create_player_profile(session, caller)
+        drg_jp = await create_player_job_profile(session, profile, job="DRG")
+        await create_hub_bis_target_set(
+            session, profile, drg_jp, updated_at=(NOW - timedelta(days=2)).isoformat(),
+        )
+        # No BiS set at all for PLD: only the DRG player can go stale.
+        await create_loot_log_entry(
+            session, tier, drg_player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _bis_items(result)
+        assert len(items) == 1
+        assert items[0].detail == "Aaa Drg · 1 item logged since your BiS was last updated"
+
+    async def test_solo_caller_player_in_roster_has_no_name_prefix(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, player = await _seed_bis_static(session, caller)
+        await _seed_bis_profile(session, caller, updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _bis_items(result)
+        assert len(items) == 1
+        assert items[0].detail == "1 item logged since your BiS was last updated"
+        assert not items[0].detail.startswith(player.name)
+
+    async def test_set_active_route_bumps_updated_at_and_clears_the_item(
+        self, client, session: AsyncSession, test_user,
+    ):
+        _group, tier, player = await _seed_bis_static(session, test_user)
+        _profile, _jp, bis = await _seed_bis_profile(
+            session, test_user, updated_at=(NOW - timedelta(days=2)).isoformat(),
+        )
+        await create_loot_log_entry(
+            session, tier, player, test_user, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+        await session.commit()
+
+        # Sanity: the set is stale relative to the fixed NOW before the bump.
+        result = await build_player_overview(session, test_user.id, NOW)
+        assert len(_bis_items(result)) == 1
+
+        response = await client.post(
+            f"/api/bis-targets/{bis.id}/set-active", headers=_auth_headers(test_user),
+        )
+        assert response.status_code == 200
+
+        result = await build_player_overview(session, test_user.id, NOW)
+        assert _bis_items(result) == []
+
+    async def test_order_rsvp_then_loot_then_bis(self, session: AsyncSession):
+        caller = await create_user(session)
+        group, tier, _cp, _op = await _seed_loot_static(session, caller, name="Order Static")
+        await _one_off_session(session, group, caller, NOW + timedelta(days=1))
+        bis_player = await create_snapshot_player(
+            session, tier, name="Bis Player", job="SGE", sort_order=2,
+        )
+        bis_player.user_id = caller.id
+        await session.flush()
+        await _seed_bis_profile(session, caller, job="SGE", updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, tier, bis_player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert [item.type for item in result.action_items] == [
+            "rsvp_pending", "loot_priority", "bis_stale",
+        ]
+
+    async def test_two_bis_items_across_statics_sorted_by_static_name(self, session: AsyncSession):
+        caller = await create_user(session)
+        beta, beta_tier, beta_player = await _seed_bis_static(session, caller, name="Beta", job="SGE")
+        alpha, alpha_tier, alpha_player = await _seed_bis_static(session, caller, name="Alpha", job="SGE")
+        await _seed_bis_profile(session, caller, job="SGE", updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, beta_tier, beta_player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+        await create_loot_log_entry(
+            session, alpha_tier, alpha_player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _bis_items(result)
+        assert len(items) == 2
+        assert [item.static_name for item in items] == ["Alpha", "Beta"]
+
+    async def test_statement_count_one_static_vs_three_same_count(
+        self, session: AsyncSession, engine, count_statements,
+    ):
+        caller = await create_user(session)
+        group, tier, player = await _seed_bis_static(session, caller, name="Bis Solo")
+        await _seed_bis_profile(session, caller, updated_at=(NOW - timedelta(days=2)).isoformat())
+        await create_loot_log_entry(
+            session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+
+        with count_statements(engine) as counts_one:
+            await build_player_overview(session, caller.id, NOW)
+
+        for name in ("Second", "Third"):
+            g, t, p = await _seed_bis_static(session, caller, name=f"Bis {name}")
+            await create_loot_log_entry(
+                session, t, p, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
+            )
+
+        with count_statements(engine) as counts_three:
+            await build_player_overview(session, caller.id, NOW)
+
+        assert counts_one.n == counts_three.n

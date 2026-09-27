@@ -35,6 +35,16 @@ const lootItem: OverviewActionItem = {
   startsAt: null,
 };
 
+const bisItem: OverviewActionItem = {
+  type: 'bis_stale',
+  staticId: 's3',
+  staticName: 'Prog Static',
+  title: 'Your BiS may be out of date',
+  detail: '2 items logged since your BiS was last updated',
+  href: '/profile?tab=characters',
+  startsAt: null,
+};
+
 function renderCard(props: Partial<ComponentProps<typeof NeedsYouCard>> = {}) {
   const retry = vi.fn();
   render(
@@ -90,6 +100,13 @@ describe('NeedsYouCard — empty', () => {
     expect(screen.queryByText(badItem.title)).toBeNull();
     expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
   });
+
+  it('shows the empty-state description naming RSVPs, loot and out-of-date BiS', () => {
+    renderCard({ data: overviewOf([]), error: null });
+    expect(
+      screen.getByText("Session RSVPs, loot you're first in line for and out-of-date BiS show up here."),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('NeedsYouCard — rows', () => {
@@ -132,5 +149,27 @@ describe('NeedsYouCard — rows', () => {
     const row = button.closest('.py-2') as HTMLElement;
     expect(row).not.toBeNull();
     expect(row.querySelector('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('renders a bis_stale row with its title, static tag, detail as meta and a Review BiS button', () => {
+    renderCard({ data: overviewOf([bisItem]), error: null });
+
+    expect(screen.getByText('Your BiS may be out of date')).toBeInTheDocument();
+    expect(screen.getByText('Prog Static')).toBeInTheDocument();
+    expect(screen.getByText('2 items logged since your BiS was last updated')).toBeInTheDocument();
+
+    const button = screen.getByRole('button', { name: 'Review BiS' });
+    button.click();
+    expect(mockNavigate).toHaveBeenCalledWith(bisItem.href);
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('two bis_stale items sharing the same href both render (two Review BiS buttons)', () => {
+    const second = { ...bisItem, staticId: 's4', staticName: 'Other Static', title: 'Your BiS may be out of date' };
+    renderCard({ data: overviewOf([bisItem, second]), error: null });
+
+    expect(screen.getAllByRole('button', { name: 'Review BiS' })).toHaveLength(2);
+    expect(screen.getByText('Prog Static')).toBeInTheDocument();
+    expect(screen.getByText('Other Static')).toBeInTheDocument();
   });
 });
