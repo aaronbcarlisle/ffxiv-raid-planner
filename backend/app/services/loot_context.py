@@ -3,11 +3,50 @@
 Moved verbatim from `app.routers.loot_tracking` (R-PH2-B) so `services/player_overview.py`
 can reuse them without importing a router module. `loot_tracking.py` re-imports these
 under its original private names, so every call site there is unchanged.
+
+Also owns the client-default priority mirror (`CLIENT_DEFAULT_PRIORITY_SETTINGS`) and
+the two settings helpers built on it (`served_settings`, `effective_priority_settings`)
+that let a server-side ranking agree with what the Loot tab computes client-side.
 """
 
 from datetime import datetime, timezone
 
 from app.models import MaterialLogEntry, SnapshotPlayer, TierSnapshot
+from app.schemas.static_group import StaticSettingsSchema
+
+# Client-side priority defaults (must match frontend/src/utils/constants.ts DEFAULT_SETTINGS).
+# The Loot tab ranks with `{...DEFAULT_SETTINGS, ...group.settings}` (Loot.tsx), so a
+# server-side ranking that must agree with it merges the served settings over these.
+# Only the priority-relevant keys are mirrored. When changing DEFAULT_SETTINGS there,
+# update this dict too. Note the role order differs from StaticSettingsSchema's own
+# default (melee, ranged, caster, ...): the schema default only applies once a blob exists.
+CLIENT_DEFAULT_PRIORITY_SETTINGS: dict = {
+    "lootPriority": ["melee", "caster", "ranged", "tank", "healer"],
+    "priorityMode": "automatic",
+    "jobPriorityModifiers": None,
+    "showPriorityScores": True,
+    "enableEnhancedScoring": False,
+}
+
+
+def served_settings(raw: dict | None) -> dict:
+    """The settings blob as the static-group API serves it.
+
+    Mirrors `routers/static_groups.py` `settings_to_schema` + the response model:
+    an empty or missing blob is served as `null` (the client then spreads nothing),
+    so it is `{}` here; otherwise the schema fills every default and the dump keeps
+    `None` values (the static-group routes use no `exclude_none`).
+    A non-object blob raises `ValidationError`, never `TypeError`.
+    """
+    if not raw:
+        return {}
+    return StaticSettingsSchema.model_validate(raw).model_dump(by_alias=True)
+
+
+def effective_priority_settings(raw: dict | None) -> dict:
+    """The settings the client ranks with: served settings over the client defaults."""
+    return {**CLIENT_DEFAULT_PRIORITY_SETTINGS, **served_settings(raw)}
+
 
 # Tier ID to floor names mapping (must match frontend/src/gamedata/raid-tiers.ts).
 # When adding a new tier, update both this dict and the frontend raid-tiers.ts.

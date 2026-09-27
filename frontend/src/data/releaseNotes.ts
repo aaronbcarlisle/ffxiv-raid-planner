@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.41',
+    date: '2026-09-26T21:10:00Z',
+    title: 'Player Hub — PH2b what needs you (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'The overview finds what needs you',
+        description:
+          'V2 preview groundwork: the overview now lists sessions in the next 7 days you haven\'t answered and this week\'s drops you\'re first in line for, ranked the way the Loot tab ranks them. Nothing changes on screen yet.',
+        pr: 287,
+        prTitle: 'feat(v2): PH2b — player overview action items: rsvp_pending and loot_priority',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.40',
     date: '2026-09-26T21:00:00Z',
     title: 'Player Hub — PH2a overview endpoint (v2 preview)',
