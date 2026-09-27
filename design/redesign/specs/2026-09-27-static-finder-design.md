@@ -1,6 +1,6 @@
 # Static Finder (V2) — design
 
-**Status:** approved in brainstorm 2026-09-27 (sections 1–3); written spec awaiting the user's review. Plan next (three stacked PRs SF1a/b/c).
+**Status:** approved in brainstorm 2026-09-27 (sections 1–3); SF-7 (day groups) added at spec review; written spec awaiting the user's review. Plan next (three stacked PRs SF1a/b/c).
 **Roadmap home:** Stage 4 (B3), `V2_COVERAGE_PLAN.md:122-124`: "Same discipline per §5.6 + mockup-06 re-validation; unifies Discover + recruitment settings + invitations (recruitment-as-matching, Ring 1)."
 **Inputs:**
 - `REDESIGN_SPEC.md` §5.6 (`:211-215`), recruitment as *matching*.
@@ -18,7 +18,7 @@
 - **Role fit misses role-level needs.** `_compute_job_fit` (`fit_score.py:119`) matches your jobs against `neededJobs` (or a `recruitingJobs` key nothing writes, `:131`). The listing form stores `recruitingRoles: {role, priority, jobs}` and derives `neededJobs` from it (`components/settings/DiscoveryTab.tsx` save, `types/index.ts:674`). So a role listed with no specific jobs ("a melee") matches nobody, and needed versus nice-to-have is ignored.
 - **The page body is V1.** Mockup 06's filter rail, match summary, explained cards and "Post a listing" entry were never built.
 
-## 2. Rulings (user, 2026-09-27)
+## 2. Rulings (user, 2026-09-27; SF-7 at spec review)
 
 - **SF-1 Goal:** better matches plus a V2 body. Stage 4 is centred on a real matching upgrade and a V2-native Finder body built to mockup 06. The lead-side home (listing management, invitations and join requests moving out of Settings) is **not** in this stage (§9).
 - **SF-2 Schedule fit = per-night coverage.**
@@ -36,6 +36,11 @@
   - **View** goes to `/group/:shareCode`.
   - **Request to join** reuses `JoinRequestModal` with the pending (cancel), accepted and declined states. The wording stays "Request to join" rather than the mockup's "Apply", because it is a request.
   - **"Leading a static?"** routes to that static's Settings → Recruitment.
+- **SF-7 Day groups use the viewer's calendar.**
+  - Weekends are Sat–Sun and weeknights are Mon–Fri.
+  - A raid night counts by the **local day it starts on in the viewer's zone** (`fitV2.schedule.nights[].localDay`), not the static's. A static's Fri 8 PM New York raid is a Saturday-morning raid for a viewer in Sydney.
+  - A listing that can't be placed on a clock (`basis: 'day'`, §3.1) falls back to its own `scheduleDays`.
+  - The filter is the only consumer; it doesn't affect tiers, sort or reasons.
 
 ## 3. Engine (SF1a, backend)
 
@@ -81,7 +86,7 @@ The endpoint stays `GET /api/discovery/statics` (`routers/discovery.py:167`). It
 | `asRole` | One of the five role keys. It needs `fitV2`, and changes only role fit. |
 | `sort=best` | Adds a value to `SortOption` (`:35`). Guests, or requests without `fitV2`, fall back to `recent`. |
 | `scheduleOverlap=true` | Existing flag. With `fitV2` it filters on the new status (`match`/`partial`); without it, the behaviour is unchanged. |
-| `dayGroup=weeknights\|weekends` | Keeps a listing with at least one raid night in the group (weeknights Mon–Thu, weekends Fri–Sun). |
+| `dayGroup=weeknights\|weekends` | Keeps a listing with at least one raid night in the group: weekends are Sat–Sun, weeknights are Mon–Fri (SF-7). |
 | `goalCategory` | Also accepts a comma-separated list, where any one matches. A single value behaves exactly as before. |
 
 **Additive response fields.**
@@ -145,17 +150,18 @@ DiscoveryListResponse.fitCounts: { strong, good, partial, weak, unknown }   // w
 2. A listing with `recruitingRoles: [{role: 'melee', priority: 'needed', jobs: []}]` gives `match` for a viewer whose main is any melee job, and `partial` when the melee job is an alt.
 3. `asRole=tank` changes only role fit, and `fitCounts` reflects it.
 4. `sort=best` orders by tier, then by the number of match reasons. `fitCounts` counts the whole filtered set, not the page.
-5. Without the new parameters, the old fields in the response equal today's output (snapshot test).
-6. Under V2 chrome, `/discover` renders `StaticFinder`; under V1, `Discover` renders unchanged.
-7. Every card shows a tier and reason rows, with times in the viewer's zone. The nudge appears only when `missing` is non-empty.
-8. Request to join, cancel, and the accepted and declined states behave as in V1.
+5. `dayGroup=weekends` keeps a Fri 8 PM America/New_York listing for a viewer in Australia/Sydney, whose local start day is Saturday, and drops it for a viewer in New York.
+6. Without the new parameters, the old fields in the response equal today's output (snapshot test).
+7. Under V2 chrome, `/discover` renders `StaticFinder`; under V1, `Discover` renders unchanged.
+8. Every card shows a tier and reason rows, with times in the viewer's zone. The nudge appears only when `missing` is non-empty.
+9. Request to join, cancel, and the accepted and declined states behave as in V1.
 
 ## 8. Test plan
 
 - **pytest (`fit_score` + discovery router):**
   - The coverage matrix: same zone; cross zone; midnight crossing; two-day span; the DST week; no time or no zone falling back to day level; an unloadable zone.
   - The role matrix: main/alt × needed/nice × `asRole`, plus the legacy `neededJobs` mapping.
-  - Tier and sort order; `fitCounts` counted before pagination; `dayGroup`; the comma-separated `goalCategory`.
+  - Tier and sort order; `fitCounts` counted before pagination; `dayGroup` judged on the viewer's local start day (a Fri-evening New York listing is a weekend night for a Sydney viewer) with the `basis: 'day'` fallback; the comma-separated `goalCategory`.
   - A V1 snapshot.
 - **vitest:**
   - Reason copy, including local times.
