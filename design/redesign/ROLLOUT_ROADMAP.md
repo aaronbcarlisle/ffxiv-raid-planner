@@ -359,7 +359,7 @@ legacy redirects, a glance-first Overview that absorbs My Statics, `/dashboard` 
 and a `You › {character}` breadcrumb. #3 (roster-card richness) is **not** addressed by PH1 — still homed to the
 Player Hub work. **Carried out of PH1:**
 - PH2: "Needs you" + `GET /api/player/overview` (also tier / next session / floors / average BiS on static rows). ✅ Built 2026-09-26 (below).
-- A later Stage-3 slice: the availability flip-blocker + one-editor mandate; the profile-tab analytics pass.
+- A later Stage-3 slice: the availability flip-blocker + one-editor mandate; the profile-tab analytics pass. → Pipe ✅ PH3 (#304, `plans/2026-09-27-ph3-player-hub-availability-pipe.md`): the flip-blocker is closed; the one-editor mandate is carried as the V2-native exceptions editor (spec H-10); the analytics pass is retired (H-7).
 - Phase P: swipe between Hub tabs and a mobile tab nav; the V2 loading skeleton still uses V1's centered frame.
 - V1-authorized pass: heading-level skips inside the V1-shared tab bodies (e.g. Collections' `h4`).
 - Test/polish residuals from the PH1 reviews (listed in the PR bodies): a seeded `static-nav` key for the
