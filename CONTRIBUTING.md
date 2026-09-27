@@ -16,7 +16,7 @@ idea to merged PR.
 
 ## Development Setup
 
-Prerequisites: **Node.js 20.19+** with [pnpm](https://pnpm.io), **Python 3.11+**.
+Prerequisites: **Node.js 24** (22.22+ also works) with [pnpm](https://pnpm.io), **Python 3.11+**.
 
 Do the one-time setup first — create the backend venv, install dependencies, and
 configure `backend/.env` — following the step-by-step instructions in the
@@ -92,9 +92,9 @@ These are enforced by lint rules and CI, not just convention:
 
 ### Notes for fork PRs
 
-CI installs with pnpm 9 and Node 20; the committed lockfiles are authoritative. A few
+CI installs with pnpm 9 and Node 24; the committed lockfiles are authoritative. A few
 non-required workflows (automated review, Vercel preview deploys) skip or fail on PRs
-from forks — that's expected and does **not** block your PR. Only the five required
+from forks — that's expected and does **not** block your PR. Only the six required
 checks matter.
 
 ## Code of Conduct
