@@ -12,7 +12,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   build: {
@@ -21,30 +21,57 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Core React ecosystem
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        // Function form: Vite 8 (Rolldown) only accepts manualChunks as a
+        // function, not the plain object map. `inPkg` matches a package's own
+        // node_modules path segment, so `react` never matches `react-dom`.
+        manualChunks(id) {
+          const inPkg = (pkg: string) => id.includes(`/node_modules/${pkg}/`)
+
+          // Core React ecosystem. `scheduler` (react-dom's) and `react-router`
+          // (which react-router-dom re-exports) are otherwise-unassigned
+          // transitive deps; the object form pulled them in with their
+          // parents, so we do the same here.
+          if (
+            inPkg('react') ||
+            inPkg('react-dom') ||
+            inPkg('scheduler') ||
+            inPkg('react-router') ||
+            inPkg('react-router-dom')
+          ) {
+            return 'react-vendor'
+          }
 
           // State management
-          'state': ['zustand'],
+          if (inPkg('zustand')) {
+            return 'state'
+          }
 
-          // Drag and drop (used for player reordering)
-          'dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          // Drag and drop (used for player reordering). `@dnd-kit/` covers
+          // @dnd-kit/core, sortable, utilities and core's own transitive dep
+          // @dnd-kit/accessibility.
+          if (id.includes('/node_modules/@dnd-kit/')) {
+            return 'dnd'
+          }
 
-          // Radix UI components (modals, tooltips, dropdowns)
-          'radix': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-tooltip',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-select',
-          ],
+          // Radix UI components (modals, tooltips, dropdowns) and the
+          // @floating-ui/* positioning primitives Radix's popper pieces pull
+          // in transitively.
+          if (id.includes('/node_modules/@radix-ui/') || id.includes('/node_modules/@floating-ui/')) {
+            return 'radix'
+          }
 
-          // Animation library
-          'motion': ['framer-motion'],
+          // Animation library. `motion-dom`/`motion-utils` are framer-
+          // motion's own otherwise-unassigned transitive deps.
+          if (inPkg('framer-motion') || inPkg('motion-dom') || inPkg('motion-utils')) {
+            return 'motion'
+          }
 
           // Icons (can be large)
-          'icons': ['lucide-react'],
+          if (inPkg('lucide-react')) {
+            return 'icons'
+          }
+
+          return undefined
         },
       },
     },
