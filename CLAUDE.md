@@ -6,7 +6,7 @@ Progression tool and home base for FFXIV statics: roster, schedule, loot, gear. 
 
 ## Commands
 
-`./dev.sh` / `./dev.ps1` starts both servers (`stop`, `logs`). API :8001 · frontend :5174.
+`./dev.sh` starts both servers (`stop`, `logs`; logs in `.logs/`). API :8001 · frontend :5174. In a Claude session run `mkdir -p .logs` first (a new worktree has none), then start each as its own background task (a server started in a foreground tool call dies when the call returns): `cd backend && ./venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8001 > ../.logs/backend.log 2>&1` and `pnpm -C frontend dev --port 5174 --strictPort > .logs/frontend.log 2>&1`. `./dev.ps1` can't start the frontend (`Start-Process` rejects the pnpm shim).
 
 | Area | Command (from repo root) |
 |------|--------------------------|
@@ -27,14 +27,14 @@ Progression tool and home base for FFXIV statics: roster, schedule, loot, gear. 
 - Repo is `eol=lf`; generated text must be LF. The post-edit hook warns on CRLF and on new ruff F-errors.
 - JSX `{n && …}` renders `0` for numbers — use `n > 0 &&`.
 - Async tests await queued work (`findBy*` / `waitFor`) and fail without the fix.
-- No stale store reads on route change or in not-found states — use the selector hooks (`useTierPlayers`, `usePlayersByGroup`, `useCurrentTierMeta`).
+- No stale store reads on route change or in not-found states — use the selector hooks (`useTierPlayers`, `usePlayersByGroup`).
 - Shortcut labels come from `lib/platform.ts`; never hardcode `Ctrl+K`.
 - `backend/app/database.py`: no edits without owner approval.
 - **Plugin contract:** the Dalamud plugin (`../XIVRaidPlannerPlugin`, released separately and currently behind) calls `auth/me`, `static-groups`, tier `priority`, player `gear` + `PUT`, `loot-log`, `material-log`, `mark-floor-cleared` and `plugin/collections/sync` with an `X-Api-Key` header and camelCase JSON. Keep those contracts backward-compatible.
 
 ## UI rules (mandatory)
 
-Before new UI: read the Quick Reference in [docs/UI_COMPONENTS.md](./docs/UI_COMPONENTS.md) and run `pnpm check:design-system`. ESLint's design-system plugin flags violations; CI blocks them. The short version:
+Before new UI: read the Quick Reference in [docs/UI_COMPONENTS.md](./docs/UI_COMPONENTS.md) and run `pnpm -C frontend check:design-system`. ESLint's design-system plugin flags violations; CI blocks them. The short version:
 
 - Actions: `Button` / `IconButton`; navigation: `LinkText` / `NavRow`; view switch: `Tabs` (never route-changing); pills: `Tag` `variant=label|filter|nav`; have/missing: `TriStateToggle`; headers: `PageHeader`.
 - Forms: `Input` / `NumberInput` / `Select` / `Checkbox` / `Toggle` — never raw `<button>`, `<input>`, `<select>`, `<label>`, `<textarea>`, `<div onClick>`.
@@ -52,7 +52,8 @@ Before new UI: read the Quick Reference in [docs/UI_COMPONENTS.md](./docs/UI_COM
 
 - PRs run build, lint, design-system strict, vitest, pytest and migration checks. **Invoke the `pr-checklist` skill before opening or finalizing any PR.** Keep PRs under ~1,500 changed lines or slice them.
 - Name the agent (or `model:`) on every dispatch. Run V2 slices with the **`slice-loop` skill** (agent roster + slice rules, PR #270). **Never load `superpowers:subagent-driven-development` here.**
-- `SESSION_HANDOFF.md` (git-ignored, never committed) is where a fresh session starts; a SessionStart hook prints its head. Rewrite it at session end.
+- `SESSION_HANDOFF.md` (git-ignored, never committed) is where a fresh session starts; a SessionStart hook prints its head and the newest Progress Log lines. Rewrite it at session end.
+- Hooks lint and typecheck the checkout that holds the edited file, so agents in `.claude/worktrees/<name>/` get feedback only after `pnpm -C frontend install` there. Copy `frontend/.npmrc` in first: it is git-excluded, and without `node-linker=hoisted` pnpm makes junctions Windows refuses. Stacked PRs: § Stacked PRs in the `slice-loop` skill.
 
 # Compact instructions
 
