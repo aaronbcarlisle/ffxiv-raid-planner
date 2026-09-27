@@ -57,12 +57,14 @@ from ..schemas.player import (
     PluginBatchGearsetSyncResult,
     PluginBatchGearsetSyncJobResult,
 )
+from ..schemas.player_overview import PlayerOverviewResponse
 from ..schemas.schedule import (
     VALID_DAYS,
     PersonalAvailabilityTemplateDaySummary,
     PersonalAvailabilityTemplateResponse,
     PersonalAvailabilityTemplateSubmit,
 )
+from ..services.player_overview import build_player_overview
 from ..services.player_profile_service import get_or_create_profile
 from ..services.share_code import generate_profile_share_code
 
@@ -307,6 +309,17 @@ async def get_profile(
     profile = await _get_or_create_profile(session, current_user)
     await session.commit()
     return _profile_to_response(profile)
+
+
+@router.get("/overview", response_model=PlayerOverviewResponse)
+@limiter.limit(RATE_LIMITS["general"])
+async def get_player_overview(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    """Player Hub "Needs you": per-static summaries + action items across your statics."""
+    return await build_player_overview(session, current_user.id, datetime.now(timezone.utc))
 
 
 @router.put("/profile", response_model=PlayerProfileResponse)

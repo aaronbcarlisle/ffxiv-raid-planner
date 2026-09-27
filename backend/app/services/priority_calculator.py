@@ -119,6 +119,11 @@ def _get_effective_priority_mode(settings: dict) -> str:
     return settings.get("priorityMode") or "automatic"
 
 
+def get_effective_priority_mode(settings: dict) -> str:
+    """Public wrapper for `_get_effective_priority_mode`, for callers outside this module."""
+    return _get_effective_priority_mode(settings)
+
+
 def requires_augmentation(slot: dict) -> bool:
     """Check if a BiS slot requires augmentation to be complete.
 
