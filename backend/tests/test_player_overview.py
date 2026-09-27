@@ -1295,6 +1295,34 @@ class TestBisStale:
         assert len(warnings) == 1
         assert "garbage" in warnings[0].getMessage()
 
+    async def test_garbage_loot_created_at_skipped_with_one_warning(
+        self, client, session: AsyncSession, test_user, caplog,
+    ):
+        _group, tier, player = await _seed_bis_static(session, test_user)
+        stale_updated_at = (NOW - timedelta(days=2)).isoformat()
+        await _seed_bis_profile(session, test_user, updated_at=stale_updated_at)
+        await create_loot_log_entry(
+            session, tier, player, test_user, created_at=(NOW - timedelta(days=1)).isoformat(),
+        )
+        await create_loot_log_entry(
+            session, tier, player, test_user, created_at="garbage",
+        )
+        await session.commit()
+
+        with caplog.at_level(logging.WARNING, logger="app.services.player_overview"):
+            response = await client.get("/api/player/overview", headers=_auth_headers(test_user))
+        assert response.status_code == 200
+        body = response.json()
+        bis_items = [item for item in body["actionItems"] if item["type"] == "bis_stale"]
+        assert len(bis_items) == 1
+        assert bis_items[0]["detail"] == "1 item logged since your BiS was last updated"
+        warnings = [
+            r for r in caplog.records
+            if r.name == "app.services.player_overview" and r.levelno == logging.WARNING
+        ]
+        assert len(warnings) == 1
+        assert "garbage" in warnings[0].getMessage()
+
     async def test_substitute_player_yields_none(self, session: AsyncSession):
         caller = await create_user(session)
         _group, tier, player = await _seed_bis_static(session, caller, caller_substitute=True)

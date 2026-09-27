@@ -595,11 +595,18 @@ def _build_bis_stale_items(
                 bis.id,
             )
             continue
-        n = sum(
-            1
-            for raw in ctx.loot_created_at_by_player_id.get(player.id, [])
-            if (c := _parse_iso_utc(raw)) is not None and c > updated
-        )
+        n = 0
+        for raw in ctx.loot_created_at_by_player_id.get(player.id, []):
+            created = _parse_iso_utc(raw)
+            if created is None:
+                logger.warning(
+                    "player_overview: unparseable loot-log created_at %r (player %s)",
+                    raw,
+                    player.id,
+                )
+                continue
+            if created > updated:
+                n += 1
         if n == 0:
             continue
         detail = f"{n} item{'' if n == 1 else 's'} logged since your BiS was last updated"

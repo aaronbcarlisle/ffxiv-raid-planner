@@ -204,8 +204,10 @@ The Finish collapse rule was applied once and then overtaken. The controller had
 - the stdlib log lines go to logging unification.
 
 **Parked, disclosed in the PR bodies:**
-- `Schedule.test.tsx:353-354` claims the assertion is independent of the host's timezone. It holds only for hosts at UTC−5…UTC+3, which covers CI and the owner's machine. Pinning `TZ` for vitest fixes it.
+- `Schedule.test.tsx:353-354` claimed the assertion is independent of the host's timezone. It held only for hosts at UTC−5…UTC+3, which covers CI and the owner's machine. Fixed in the bot triage: the comment now says so.
 - A corrupt `slots` row would 500 through `json.loads`. The PUT schema makes this unreachable.
+
+**Post-ready bot triage:** Copilot raised 4 threads (#305: 3, #306: 1) and claude[bot] raised none. Fixed: the V2 pipe copy now says "every static you raid with", since viewer memberships aren't layered (R-PH3-D); `fetchAvailability` drops a response from a superseded request; an unparseable loot `created_at` is skipped with a warning.
 
 **Browser pass:** one live walk in `America/New_York`, 13 of 13 steps passing, 0 console errors. Shots are `docs/redesign/pr-shots/ph3b-*` and `ph3c-*`.
 
