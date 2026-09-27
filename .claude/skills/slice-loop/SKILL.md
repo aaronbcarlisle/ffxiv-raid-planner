@@ -34,7 +34,7 @@ Name the agent (or pass `model:`) on every dispatch — an omitted model or effo
 | Whole-branch review (one per slice) | `redesign-reviewer` | fable · xhigh, never downgraded; task-scoped only for the plan's riskiest task; re-review a fix wave's diff only |
 | Contested finding / adjudication | main session | bump to xhigh for the one decision, then drop back |
 
-**Stop for only four things:** an irreversible or destructive operation; a security-sensitive action; a side effect outside the worktree (merge, push to a shared branch, publish); a plan so broken that every path forward is a guess. Everything else you rule on and ledger: `Ruling: <what> — <why> — cost if wrong: <…>`. Never merge — the user merges.
+**Stop for only four things:** an irreversible or destructive operation; a security-sensitive action; a side effect outside the worktree (push to a shared branch, publish); a plan so broken that every path forward is a guess. Everything else you rule on and ledger: `Ruling: <what> — <why> — cost if wrong: <…>`. Merging your own PR is not a stop: merge once every check is green and every review thread is resolved (the merge guard enforces the checks; § Stacked PRs for a stack).
 
 ## 0. Setup (once per slice)
 
@@ -74,8 +74,17 @@ After the last task, walk every touched v2 surface live (dev-auth login → `/gr
 1. Plan/spec write-back **once**: only rulings that bind a later slice, one commit.
 2. Invoke the `pr-checklist` skill: release note, screenshots, `git diff --check`, fork guard.
 3. Gates on the branch, counts pasted into the PR body: `pnpm build`, `pnpm lint` (0 errors, warnings ≤ main's count), `pnpm check:design-system:strict`, `pnpm test`, `pnpm deadcode` unchanged; backend `pytest` if backend changed.
-4. `gh pr create --draft`; push any late fixes to the draft; mark ready once. Bots run on ready. The user merges.
-5. Final message = "Rulings I made" (every `Ruling:` line from the ledger, in order, with cost-if-wrong) + the PR link + the loop's numbers for this slice (tasks, fix waves, commits, artifact KB, wall clock) against D12's 8 / 8 rounds / 30 / 838 KB / ~12 h. Rewrite `SESSION_HANDOFF.md` (≤ ~5 KB). After the user merges: delete the workspace and the branch both ends.
+4. `gh pr create --draft`; push any late fixes to the draft; mark ready once. Bots run on ready. Merge when every check is green and every review thread is resolved.
+5. Final message = "Rulings I made" (every `Ruling:` line from the ledger, in order, with cost-if-wrong) + the PR link + the loop's numbers for this slice (tasks, fix waves, commits, artifact KB, wall clock) against D12's 8 / 8 rounds / 30 / 838 KB / ~12 h. Rewrite `SESSION_HANDOFF.md` (≤ ~5 KB). After the merge: delete the workspace and the branch both ends.
+
+## Stacked PRs
+
+GitHub treats PRs based on each other (#286 → #287 → #288) as a native stack.
+
+- **Merge bottom-first through the REST API.** `gh pr merge` refuses a stacked PR. Run `gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge-async -f merge_method=squash -f sha=<head>`, then poll `gh api repos/{owner}/{repo}/pulls/<n>/merge-async/<uuid>` until `status` is `merged`. It merges everything up to and including `<n>`, so request the bottom PR to go one at a time. The merge guard runs `gh pr checks <n>` first.
+- **Restack the next PR.** It retargets to `main` by itself (`delete_branch_on_merge`) and goes CONFLICTING, because the squash commit shares no history with the lower branch. Run `git rebase --onto origin/main <old lower head> <upper branch>`, then `git push --force-with-lease --force-if-includes`, and wait for CI before the next merge.
+- **A fix to a lower PR after ready:** commit it on the lower branch and push, then rebase each upper branch onto the new lower head the same way.
+- `--force-with-lease` is the only force push: plain `--force`, `-f` and `+refspec` are blocked by the deny rules and the push guard.
 
 ## Ledger lines
 
