@@ -28,9 +28,10 @@ class OverviewStatic(CamelModel):
 
 
 class OverviewActionItem(CamelModel):
-    """One "needs you" item: a pending RSVP or an unassigned loot drop you're first for."""
+    """One "needs you" item: a pending RSVP, a loot drop you're first for, or an
+    out-of-date Hub BiS set."""
 
-    type: Literal["rsvp_pending", "loot_priority"]
+    type: Literal["rsvp_pending", "loot_priority", "bis_stale"]
     static_id: str
     static_name: str
     title: str

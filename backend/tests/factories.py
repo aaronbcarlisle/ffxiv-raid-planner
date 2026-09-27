@@ -22,8 +22,10 @@ from app.models import (
     WeeklyAssignment,
 )
 from app.models.availability import UserAvailability
+from app.models.bis_target_set import BiSTargetSet
 from app.models.personal_availability import PersonalAvailabilityTemplate
 from app.models.player_character import PlayerCharacter
+from app.models.player_job_profile import PlayerJobProfile
 from app.models.player_profile import PlayerProfile
 from app.models.static_character_registration import StaticCharacterRegistration
 
@@ -187,6 +189,7 @@ async def create_loot_log_entry(
     notes: str | None = None,
     weapon_job: str | None = None,
     is_extra: bool = False,
+    created_at: str | None = None,
 ) -> LootLogEntry:
     """Create a loot log entry for testing."""
     entry = LootLogEntry(
@@ -199,7 +202,7 @@ async def create_loot_log_entry(
         notes=notes,
         weapon_job=weapon_job,
         is_extra=is_extra,
-        created_at=datetime.now(timezone.utc).isoformat(),
+        created_at=created_at if created_at is not None else datetime.now(timezone.utc).isoformat(),
         created_by_user_id=created_by.id,
     )
     session.add(entry)
@@ -438,6 +441,54 @@ async def create_player_character(
     session.add(char)
     await session.flush()
     return char
+
+
+async def create_player_job_profile(
+    session: AsyncSession,
+    profile: PlayerProfile,
+    *,
+    job: str = "DRG",
+) -> PlayerJobProfile:
+    """Create a PlayerJobProfile for a PlayerProfile."""
+    job_profile = PlayerJobProfile(
+        id=str(uuid.uuid4()),
+        profile_id=profile.id,
+        job=job,
+        role="melee",
+        created_at=datetime.now(timezone.utc).isoformat(),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(job_profile)
+    await session.flush()
+    return job_profile
+
+
+async def create_hub_bis_target_set(
+    session: AsyncSession,
+    profile: PlayerProfile,
+    job_profile: PlayerJobProfile,
+    *,
+    is_active: bool = True,
+    updated_at: str | None = None,
+) -> BiSTargetSet:
+    """Create a Hub (`owner_type="player_job_profile"`) BiS target set for testing."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    bis_set = BiSTargetSet(
+        id=str(uuid.uuid4()),
+        owner_type="player_job_profile",
+        owner_id=job_profile.id,
+        job_profile_id=job_profile.id,
+        profile_id=profile.id,
+        job=job_profile.job,
+        name="Test BiS",
+        items_json=None,
+        is_active=is_active,
+        created_at=now_iso,
+        updated_at=updated_at if updated_at is not None else now_iso,
+    )
+    session.add(bis_set)
+    await session.flush()
+    return bis_set
 
 
 async def create_static_character_registration(

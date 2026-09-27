@@ -28,7 +28,7 @@ export interface OverviewStatic {
   avgBisPct: number | null;
 }
 
-export type OverviewActionItemType = 'rsvp_pending' | 'loot_priority';
+export type OverviewActionItemType = 'rsvp_pending' | 'loot_priority' | 'bis_stale';
 
 export interface OverviewActionItem {
   type: OverviewActionItemType;
