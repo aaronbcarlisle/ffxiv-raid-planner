@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.40',
+    date: '2026-09-26T21:00:00Z',
+    title: 'Player Hub — PH2a overview endpoint (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'One overview of your statics',
+        description:
+          'V2 preview groundwork: a new overview gathers, for each static you belong to, its current tier, next session, floors cleared this week and average BiS. Nothing changes on screen yet.',
+        pr: 286,
+        prTitle: 'feat(v2): PH2a — player overview endpoint: static summaries, membership scoping, loot-context helper move',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.39',
     date: '2026-09-26T06:50:00Z',
     title: 'Player Hub — PH1c rail portrait and breadcrumb (v2 preview)',
