@@ -30,6 +30,12 @@ _BYDAY_MAP = {
 
 _MAX_BATCH = 100  # Safety ceiling for a single generation call
 
+# Safety ceiling for candidates generated at/before `after` (never returned,
+# just walked past). This is independent of `max_iterations` below so a
+# long-running series doesn't starve the walk toward its first future
+# occurrence. ~32 years at 3 candidates/week, ~13 years daily.
+_MAX_SKIPPED_OCCURRENCES = 5000
+
 
 @dataclass
 class OccurrenceSpec:
@@ -273,11 +279,10 @@ def generate_occurrences(
     results: list[OccurrenceSpec] = []
     generated_count = 0
     iterations = 0
+    skipped = 0
     max_iterations = count * 60  # guard against infinite loops
 
-    while len(results) < count and iterations < max_iterations:
-        iterations += 1
-
+    while len(results) < count and iterations < max_iterations and skipped < _MAX_SKIPPED_OCCURRENCES:
         if not candidates_queue:
             break
 
@@ -290,6 +295,19 @@ def generate_occurrences(
             break
 
         generated_count += 1
+
+        # Candidates at/before `after` are walked past, not returned, so they
+        # count against `skipped` (bounded separately) instead of
+        # `max_iterations` — otherwise a long-running series can exhaust
+        # max_iterations before ever reaching a future candidate. A candidate
+        # after `after` counts toward max_iterations whether or not it turns
+        # out to be cancelled, same as before this change.
+        if current <= after:
+            skipped += 1
+            if skipped >= _MAX_SKIPPED_OCCURRENCES:
+                logger.warning("recurrence_skip_ceiling_reached", rrule=rrule_str)
+        else:
+            iterations += 1
 
         # occurrence_date: use event-timezone local date when known, UTC otherwise.
         # This ensures the key matches what the frontend uses for cancellation.

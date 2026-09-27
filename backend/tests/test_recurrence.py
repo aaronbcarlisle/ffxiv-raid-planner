@@ -1,6 +1,7 @@
 """Tests for recurrence.py — RRULE parsing, occurrence generation, exception handling."""
 
-from datetime import datetime, timezone
+import time
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -690,6 +691,89 @@ def test_weekly_single_byday_divergent_interval_2():
         count=2,
     )
     assert [o.occurrence_date for o in occs] == ["2020-01-18", "2020-02-01"]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Long-running series: pre-`after` walk must not exhaust max_iterations
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def test_next_occurrence_weekly_multi_byday_long_running_series():
+    """A weekly TU/WE/TH series DTSTART ~1 year before `after` must still find
+    its next occurrence. Before the fix, skipped pre-`after` candidates (~156
+    for a year of 3x/week) blew through `max_iterations` (count=1 * 60 = 60)
+    and `next_occurrence` returned None.
+    """
+    occ = next_occurrence(
+        "2024-07-02T20:00:00+00:00",  # Tuesday
+        "2024-07-02T23:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TU,WE,TH",
+        after=datetime(2025, 7, 1, tzinfo=timezone.utc),
+    )
+    assert occ is not None
+    assert occ.start_time == "2025-07-01T20:00:00+00:00"
+    assert occ.occurrence_date == "2025-07-01"
+
+
+def test_next_occurrence_daily_long_running_series():
+    """A daily series DTSTART ~200 days before `after` must still find its
+    next occurrence. Before the fix, 200 skipped candidates exceeded
+    max_iterations (60) and returned None.
+    """
+    occ = next_occurrence(
+        "2025-01-01T10:00:00+00:00",
+        "2025-01-01T11:00:00+00:00",
+        "FREQ=DAILY",
+        after=datetime(2025, 7, 20, 12, 0, 0, tzinfo=timezone.utc),
+    )
+    assert occ is not None
+    assert occ.start_time == "2025-07-21T10:00:00+00:00"
+    assert occ.occurrence_date == "2025-07-21"
+
+
+def test_next_occurrence_weekly_byday_timezone_long_running_series():
+    """Timezone-aware WEEKLY+BYDAY path with an old DTSTART (~76 weeks before
+    `after`) must still find its next occurrence past the old iteration cap.
+    """
+    occ = next_occurrence(
+        "2024-01-04T01:00:00+00:00",  # Thu 8 PM EST Jan 3 2024
+        "2024-01-04T04:00:00+00:00",
+        "FREQ=WEEKLY;BYDAY=TH",
+        after=datetime(2025, 6, 24, tzinfo=timezone.utc),
+        timezone_name="America/New_York",
+    )
+    assert occ is not None
+    assert occ.start_time == "2025-06-27T00:00:00+00:00"  # Thu Jun 26 8 PM EDT
+    assert occ.occurrence_date == "2025-06-26"
+
+
+def test_count_rule_still_honored_for_long_running_series():
+    """RRULE COUNT still counts from DTSTART and is unaffected by the skip fix:
+    a COUNT=5 weekly series started a year ago has already exhausted its 5
+    occurrences, so next_occurrence must return None (not resurrect the rule).
+    """
+    after = datetime.now(timezone.utc)
+    dtstart = (after - timedelta(days=365)).isoformat()
+    dtend = (after - timedelta(days=365) + timedelta(hours=3)).isoformat()
+    occ = next_occurrence(dtstart, dtend, "FREQ=WEEKLY;COUNT=5", after=after)
+    assert occ is None
+
+
+def test_skip_ceiling_stops_pathological_series_without_hanging():
+    """A daily series whose DTSTART is far beyond the skip ceiling (~5000
+    candidates) returns empty and returns promptly instead of hanging or
+    silently generating results past the ceiling.
+    """
+    after = datetime.now(timezone.utc)
+    dtstart = (after - timedelta(days=6000)).isoformat()
+    dtend = (after - timedelta(days=6000) + timedelta(hours=1)).isoformat()
+
+    start = time.monotonic()
+    occs = generate_occurrences(dtstart, dtend, "FREQ=DAILY", after=after, count=3)
+    elapsed = time.monotonic() - start
+
+    assert occs == []
+    assert elapsed < 2.0, f"generate_occurrences took too long: {elapsed}s"
 
 
 def test_weekly_single_byday_divergent_with_timezone():
