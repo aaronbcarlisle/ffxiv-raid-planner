@@ -262,6 +262,30 @@ async def test_next_session_naive_start_time_read_as_utc(session: AsyncSession):
     assert next_sess.starts_at.endswith("+00:00")
 
 
+async def test_next_session_edited_override_before_now_is_null(session: AsyncSession):
+    caller = await create_user(session)
+    group = await create_static_group(session, caller)
+    # Weekly series whose original next occurrence (before any override) is ~now + 2 days.
+    base_start = NOW - timedelta(days=5)
+    sched = await create_schedule_session(
+        session, group, caller,
+        start_time=base_start.isoformat(),
+        end_time=(base_start + timedelta(hours=2)).isoformat(),
+        is_recurring=True,
+        recurrence_rule="RRULE:FREQ=WEEKLY",
+    )
+    original_next = NOW + timedelta(days=2)
+    await create_schedule_exception(
+        session, sched, caller,
+        occurrence_date=original_next.date().isoformat(),
+        type="edited",
+        override_start_time=(NOW - timedelta(hours=1)).isoformat(),
+    )
+
+    result = await build_player_overview(session, caller.id, NOW)
+    assert result.statics[0].next_session is None
+
+
 async def test_next_session_unparseable_occurrence_skipped_returns_200(
     client, session: AsyncSession, test_user,
 ):
@@ -311,6 +335,22 @@ async def test_floors_cleared_counts_distinct_floors(session: AsyncSession):
     # Ignored: spent, and a different week.
     await create_page_ledger_entry(session, tier, player, caller, week_number=week, floor="M11S", transaction_type="spent")
     await create_page_ledger_entry(session, tier, player, caller, week_number=week + 1, floor="M12S", transaction_type="earned")
+
+    result = await build_player_overview(session, caller.id, NOW)
+    assert result.statics[0].floors_cleared == 2
+
+
+async def test_floors_cleared_ignores_unknown_floor(session: AsyncSession):
+    caller = await create_user(session)
+    group = await create_static_group(session, caller)
+    tier = await create_tier_snapshot(session, group, tier_id="aac-heavyweight", content_type="savage")
+    player = await create_snapshot_player(session, tier)
+    week = calculate_week_number(tier)
+
+    await create_page_ledger_entry(session, tier, player, caller, week_number=week, floor="M9S", transaction_type="earned")
+    await create_page_ledger_entry(session, tier, player, caller, week_number=week, floor="M10S", transaction_type="earned")
+    # A stale/invalid floor for this tier (not in TIER_FLOOR_NAMES["aac-heavyweight"]).
+    await create_page_ledger_entry(session, tier, player, caller, week_number=week, floor="M13S", transaction_type="earned")
 
     result = await build_player_overview(session, caller.id, NOW)
     assert result.statics[0].floors_cleared == 2

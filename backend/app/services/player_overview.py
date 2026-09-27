@@ -149,7 +149,8 @@ def _compute_next_session(ctx: _OverviewContext, static_id: str) -> OverviewNext
     """The earliest `next_occurrence(after=now)` over all of a static's sessions.
 
     Every session counts regardless of `track_availability` (R-PH2-E); a
-    `None` occurrence, or one whose `start_time` doesn't parse, is skipped.
+    `None` occurrence, one whose `start_time` doesn't parse, or one an edited
+    override moved to or before `now` is skipped.
     """
     best_start: datetime | None = None
     best_session: ScheduleSession | None = None
@@ -173,6 +174,10 @@ def _compute_next_session(ctx: _OverviewContext, static_id: str) -> OverviewNext
         parsed = _parse_occurrence_start(occ.start_time, session_id=sess.id)
         if parsed is None:
             continue
+        # An `edited` override can move an occurrence before `now`: recurrence
+        # filters on the original slot, then applies `override_start_time`.
+        if parsed <= ctx.now:
+            continue
         if best_start is None or parsed < best_start:
             best_start = parsed
             best_session = sess
@@ -188,11 +193,12 @@ def _compute_next_session(ctx: _OverviewContext, static_id: str) -> OverviewNext
 
 
 def _compute_floors_cleared(ctx: _OverviewContext, active_tier: TierSnapshot | None) -> int | None:
-    """Distinct tier floors with an `earned` ledger row at the current week.
+    """Distinct known tier floors (`TIER_FLOOR_NAMES`) with an `earned` ledger row at the current week.
 
     `None` unless the active tier is a savage tier whose `tier_id` is a known
     key of `TIER_FLOOR_NAMES` (director F12: the generic `F1S…` fallback never
-    matches a logged floor name).
+    matches a logged floor name). The ledger accepts any floor string, so an
+    unknown floor never counts.
     """
     if active_tier is None:
         return None
@@ -200,7 +206,8 @@ def _compute_floors_cleared(ctx: _OverviewContext, active_tier: TierSnapshot | N
         return None
     if active_tier.tier_id not in TIER_FLOOR_NAMES:
         return None
-    return len(ctx.earned_floors_by_tier_id.get(active_tier.id, set()))
+    known_floors = set(TIER_FLOOR_NAMES[active_tier.tier_id])
+    return len(ctx.earned_floors_by_tier_id.get(active_tier.id, set()) & known_floors)
 
 
 def _compute_avg_bis_pct(ctx: _OverviewContext, active_tier: TierSnapshot | None) -> int | None:
