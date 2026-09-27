@@ -27,10 +27,17 @@ export default defineConfig({
         manualChunks(id) {
           const inPkg = (pkg: string) => id.includes(`/node_modules/${pkg}/`)
 
-          // Core React ecosystem. `scheduler` is react-dom's otherwise-
-          // unassigned transitive dep; the object form pulled it in with
-          // its parent, so we do the same here.
-          if (inPkg('react') || inPkg('react-dom') || inPkg('scheduler') || inPkg('react-router-dom')) {
+          // Core React ecosystem. `scheduler` (react-dom's) and `react-router`
+          // (which react-router-dom re-exports) are otherwise-unassigned
+          // transitive deps; the object form pulled them in with their
+          // parents, so we do the same here.
+          if (
+            inPkg('react') ||
+            inPkg('react-dom') ||
+            inPkg('scheduler') ||
+            inPkg('react-router') ||
+            inPkg('react-router-dom')
+          ) {
             return 'react-vendor'
           }
 
