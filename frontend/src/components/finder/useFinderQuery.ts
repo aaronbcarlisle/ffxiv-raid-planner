@@ -13,7 +13,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useAuthStore } from '../../stores/authStore';
 import { authRequest } from '../../services/api';
 import { getBrowserTimezone } from '../../utils/timezone';
-import { DATA_CENTERS, getWorldsForDC } from '../../gamedata';
+import { getWorldsForDC } from '../../gamedata';
 import {
   JOB_OPTIONS, FINDER_RECRUITMENT_OPTIONS, INTENSITY_OPTIONS, DC_OPTIONS, TZ_OPTIONS, LANG_OPTIONS,
 } from './discoveryOptions';
@@ -37,7 +37,6 @@ const INTENSITY_VALUES = optionValues(INTENSITY_OPTIONS);
 const DATA_CENTER_VALUES = optionValues(DC_OPTIONS);
 const TIMEZONE_VALUES = optionValues(TZ_OPTIONS);
 const LANGUAGE_VALUES = optionValues(LANG_OPTIONS);
-const ALL_SERVER_VALUES = new Set(DATA_CENTERS.flatMap(dc => dc.worlds));
 
 function defaultSort(signedIn: boolean): string {
   return signedIn ? 'best' : 'recent';
@@ -160,10 +159,12 @@ export function useFinderQuery(): UseFinderQueryResult {
     readOption(searchParams, 'recruitmentStatus', RECRUITMENT_STATUS_VALUES, migrateRecruitmentStatus));
   const [intensity, setIntensity] = useState(() => readOption(searchParams, 'intensity', INTENSITY_VALUES));
   const [dataCenter, setDataCenterState] = useState(() => readOption(searchParams, 'dataCenter', DATA_CENTER_VALUES));
-  const [server, setServer] = useState(() => {
-    const validServers = dataCenter ? new Set(getWorldsForDC(dataCenter)) : ALL_SERVER_VALUES;
-    return readOption(searchParams, 'server', validServers);
-  });
+  // `server` only survives with a valid `dataCenter` it actually belongs to —
+  // `FinderFilters` renders the server Select disabled with no `dataCenter`
+  // (PR re-review fix item 2), so a server without one would silently filter
+  // while the trigger shows "Any server".
+  const [server, setServer] = useState(() =>
+    dataCenter ? readOption(searchParams, 'server', new Set(getWorldsForDC(dataCenter))) : '');
   const [timezone, setTimezone] = useState(() => readOption(searchParams, 'timezone', TIMEZONE_VALUES));
   const [language, setLanguage] = useState(() => readOption(searchParams, 'language', LANGUAGE_VALUES));
 
@@ -225,30 +226,38 @@ export function useFinderQuery(): UseFinderQueryResult {
      job, recruitmentStatus, intensity, dataCenter, server, timezone, language],
   );
 
-  // Sync state → URL. `sort` is omitted when it equals the signed-in/guest
-  // default; every other key is omitted when empty/false. This is also what
-  // rewrites a V1 link's `role`/`hideConflicts` to `asRole`/`hideGoalConflicts`,
-  // since those legacy keys are never written back (m8).
+  // Sync state → URL. Seeded from the CURRENT params (not a blank slate) so a
+  // foreign key this hook doesn't own (`?shell=v2`, `?viewAs=`, ...) survives
+  // the rewrite instead of disappearing on the very next sync (PR re-review
+  // fix item 1) — only the Finder's own keys below, plus the legacy V1 keys,
+  // are ever added or removed. `sort` is omitted when it equals the signed-
+  // in/guest default; every other key is omitted when empty/false. This is
+  // also what rewrites a V1 link's `role`/`hideConflicts` to
+  // `asRole`/`hideGoalConflicts`, since those legacy keys are never written
+  // back (m8).
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (debouncedQ) params.set('q', debouncedQ);
-    if (sort !== defaultSort(signedIn)) params.set('sort', sort);
-    if (asRole) params.set('asRole', asRole);
-    if (dayGroup) params.set('dayGroup', dayGroup);
-    if (goalCategory.length) params.set('goalCategory', goalCategory.join(','));
-    if (scheduleOverlap) params.set('scheduleOverlap', 'true');
-    if (hideGoalConflicts) params.set('hideGoalConflicts', 'true');
-    if (job) params.set('job', job);
-    if (recruitmentStatus) params.set('recruitmentStatus', recruitmentStatus);
-    if (intensity) params.set('intensity', intensity);
-    if (dataCenter) params.set('dataCenter', dataCenter);
-    if (server) params.set('server', server);
-    if (timezone) params.set('timezone', timezone);
-    if (language) params.set('language', language);
+    const params = new URLSearchParams(searchParams);
+    if (debouncedQ) params.set('q', debouncedQ); else params.delete('q');
+    if (sort !== defaultSort(signedIn)) params.set('sort', sort); else params.delete('sort');
+    if (asRole) params.set('asRole', asRole); else params.delete('asRole');
+    if (dayGroup) params.set('dayGroup', dayGroup); else params.delete('dayGroup');
+    if (goalCategory.length) params.set('goalCategory', goalCategory.join(',')); else params.delete('goalCategory');
+    if (scheduleOverlap) params.set('scheduleOverlap', 'true'); else params.delete('scheduleOverlap');
+    if (hideGoalConflicts) params.set('hideGoalConflicts', 'true'); else params.delete('hideGoalConflicts');
+    if (job) params.set('job', job); else params.delete('job');
+    if (recruitmentStatus) params.set('recruitmentStatus', recruitmentStatus); else params.delete('recruitmentStatus');
+    if (intensity) params.set('intensity', intensity); else params.delete('intensity');
+    if (dataCenter) params.set('dataCenter', dataCenter); else params.delete('dataCenter');
+    if (server) params.set('server', server); else params.delete('server');
+    if (timezone) params.set('timezone', timezone); else params.delete('timezone');
+    if (language) params.set('language', language); else params.delete('language');
+    params.delete('role'); // V1 link (m8) — always rewritten to asRole
+    params.delete('hideConflicts'); // V1 link (m8) — always rewritten to hideGoalConflicts
     setSearchParams(params, { replace: true });
     // setSearchParams is left out of deps on purpose: react-router recreates it on every
     // render, and depending on it would re-run this sync effect (and re-replace the URL) on
-    // every change IT makes, not just on a real state change.
+    // every change IT makes, not just on a real state change. `searchParams` is left out for
+    // the same reason it's read, not depended on: it changes on every write THIS effect makes.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see rationale above
   }, [debouncedQ, sort, asRole, dayGroup, goalCategory, scheduleOverlap, hideGoalConflicts,
       job, recruitmentStatus, intensity, dataCenter, server, timezone, language, signedIn]);

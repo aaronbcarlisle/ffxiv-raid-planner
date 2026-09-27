@@ -145,6 +145,25 @@ describe('useFinderQuery', () => {
     expect(search()).not.toContain('hideConflicts=');
   });
 
+  it('(g2) a foreign param (?shell=v2) survives the sync alongside the Finder\'s own keys (PR re-review fix item 1)', async () => {
+    renderHarness('/discover?shell=v2&asRole=tank');
+    await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(search()).toContain('shell=v2');
+      expect(search()).toContain('asRole=tank');
+    });
+  });
+
+  it('(g3) a legacy role=tank link keeps the foreign shell param while rewriting role -> asRole (PR re-review fix item 1)', async () => {
+    renderHarness('/discover?shell=v2&role=tank');
+    await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(search()).toContain('shell=v2');
+      expect(search()).toContain('asRole=tank');
+    });
+    expect(search()).not.toMatch(/(?:^|[?&])role=/);
+  });
+
   it('(h) values outside the allowed set are dropped, and sort falls back to the default', async () => {
     renderHarness('/discover?asRole=dps&dayGroup=never&sort=oldest');
     await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
@@ -165,6 +184,26 @@ describe('useFinderQuery', () => {
     expect(params.has('job')).toBe(false);
     await waitFor(() => expect(search()).toContain('recruitmentStatus=selective'));
     expect(search()).not.toContain('job=');
+  });
+
+  it('(h3) server is dropped without a valid dataCenter (PR re-review fix item 2)', async () => {
+    renderHarness('/discover?server=Balmung');
+    await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
+    expect(latest.state.server).toBe('');
+    expect(lastRequestParams().has('server')).toBe(false);
+    expect(search()).not.toContain('server=');
+  });
+
+  it('(h4) a server that belongs to the given dataCenter is kept', async () => {
+    renderHarness('/discover?dataCenter=Crystal&server=Balmung');
+    await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
+    expect(latest.state.server).toBe('Balmung');
+  });
+
+  it('(h5) a server that does not belong to the given dataCenter is dropped', async () => {
+    renderHarness('/discover?dataCenter=Crystal&server=Cactuar');
+    await waitFor(() => expect(mockAuthRequest).toHaveBeenCalledTimes(1));
+    expect(latest.state.server).toBe('');
   });
 
   it("(i) viewer.missing including 'template' on first load clears scheduleOverlap from state and the URL, and a second request omits it (PR-review fix wave item 3)", async () => {
