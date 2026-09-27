@@ -6,14 +6,24 @@ import type {
   AvailabilityTemplateDaySummary,
 } from '../types';
 
+interface FetchAvailabilityOptions {
+  includeTemplates?: boolean;
+}
+
 interface AvailabilityState {
   data: AvailabilityDateSummary[];
+  layeredData: AvailabilityDateSummary[];
   templateData: AvailabilityTemplateDaySummary[];
   isLoading: boolean;
   isLoadingTemplate: boolean;
   error: string | null;
 
-  fetchAvailability: (groupId: string, startDate: string, endDate: string) => Promise<void>;
+  fetchAvailability: (
+    groupId: string,
+    startDate: string,
+    endDate: string,
+    options?: FetchAvailabilityOptions
+  ) => Promise<void>;
   submitAvailability: (groupId: string, date: string, slots: string[]) => Promise<void>;
   fetchTemplates: (groupId: string) => Promise<void>;
   submitTemplate: (groupId: string, dayOfWeek: string, slots: string[]) => Promise<void>;
@@ -22,18 +32,30 @@ interface AvailabilityState {
 
 export const useAvailabilityStore = create<AvailabilityState>((set) => ({
   data: [],
+  layeredData: [],
   templateData: [],
   isLoading: false,
   isLoadingTemplate: false,
   error: null,
 
-  fetchAvailability: async (groupId: string, startDate: string, endDate: string) => {
+  fetchAvailability: async (
+    groupId: string,
+    startDate: string,
+    endDate: string,
+    options?: FetchAvailabilityOptions
+  ) => {
     set({ isLoading: true, error: null });
     try {
-      const data = await api.get<AvailabilityDateSummary[]>(
-        `/api/static-groups/${groupId}/availability?start_date=${startDate}&end_date=${endDate}`
-      );
-      set({ data, isLoading: false });
+      const includeTemplates = options?.includeTemplates ?? false;
+      const url = `/api/static-groups/${groupId}/availability?start_date=${startDate}&end_date=${endDate}${
+        includeTemplates ? '&include_templates=true' : ''
+      }`;
+      const result = await api.get<AvailabilityDateSummary[]>(url);
+      if (includeTemplates) {
+        set({ layeredData: result, isLoading: false });
+      } else {
+        set({ data: result, isLoading: false });
+      }
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false });
     }
@@ -124,5 +146,5 @@ export const useAvailabilityStore = create<AvailabilityState>((set) => ({
     }
   },
 
-  clearAvailability: () => set({ data: [], templateData: [], error: null }),
+  clearAvailability: () => set({ data: [], layeredData: [], templateData: [], error: null }),
 }));

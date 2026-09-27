@@ -147,6 +147,7 @@ function AvailabilityCard({ setTab }: { setTab: (tab: HubTab) => void }) {
   return (
     <CardShell title="Your availability" as="div">
       <p className="text-sm text-text-secondary mb-2">{summary}</p>
+      <p className="text-xs text-text-muted mb-2">Fills every static's schedule unless you paint a week.</p>
       <LinkText onClick={() => setTab('availability')}>Edit →</LinkText>
     </CardShell>
   );

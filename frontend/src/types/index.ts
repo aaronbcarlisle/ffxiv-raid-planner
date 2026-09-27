@@ -1678,11 +1678,12 @@ export interface DiscordMirrorStatus {
 // ==================== Availability Types ====================
 
 export interface UserAvailabilitySlot {
-  id: string;
+  id: string | null;
   userId: string;
   username: string | null;
   date: string;
   slots: string[];
+  source?: 'dated' | 'personal_template';
 }
 
 export interface AvailabilityDateSummary {

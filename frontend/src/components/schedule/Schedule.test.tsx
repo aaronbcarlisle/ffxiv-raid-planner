@@ -112,7 +112,7 @@ beforeEach(() => {
     updateSession: vi.fn(async () => {}), deleteSession: vi.fn(async () => {}),
     createException: vi.fn(async () => ({}) as never),
   } as never);
-  useAvailabilityStore.setState({ data: [], fetchAvailability: vi.fn() } as never);
+  useAvailabilityStore.setState({ data: [], layeredData: [], fetchAvailability: vi.fn() } as never);
   useLootTrackingStore.setState({ currentWeek: 2, maxWeek: 2, weekStartDate: '2026-06-23' } as never);
 });
 
@@ -134,11 +134,12 @@ describe('Schedule', () => {
     expect(useScheduleStore.getState().fetchSessions).toHaveBeenCalledWith('g1');
 
     await waitFor(() => expect(availabilityMock()).toHaveBeenCalled());
-    const [gid, startDate, endDate] = availabilityMock().mock.calls[0];
+    const [gid, startDate, endDate, options] = availabilityMock().mock.calls[0];
     expect(gid).toBe('g1');
     // Padded UTC range around week 2's dates (2026-06-30 … 07-06).
     expect(startDate < '2026-06-30').toBe(true);
     expect(endDate > '2026-07-06').toBe(true);
+    expect(options).toEqual({ includeTemplates: true });
   });
 
   it('re-fetches availability for the previous week when stepping back', async () => {
@@ -299,6 +300,55 @@ describe('Schedule', () => {
     expect(clearSessions).not.toHaveBeenCalled();
   });
 
+  it("shows the pipe's 'Your availability' copy", () => {
+    renderSchedule();
+    expect(
+      screen.getByText("Your typical week lives on your profile and fills this schedule for any week you haven't painted."),
+    ).toBeInTheDocument();
+  });
+
+  // R-PH3-F: the heatmap and Best Times must derive from `layeredData`, never
+  // `data`. `data` is seeded with a CONFLICTING fixture (a UTC slot the pipe
+  // never emitted, and too few slots to ever form a 2h recommendation) so a
+  // regression that reads `data` instead renders the all-zero/empty-state copy.
+  it('derives the heatmap and Best Times from layeredData, not the conflicting data fixture', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-25T00:00:00Z'));
+    useAvailabilityStore.setState({
+      data: [
+        {
+          date: '2026-07-01',
+          responses: [{ id: 'd1', userId: 'u1', username: 'Alice', date: '2026-07-01', slots: ['12:00', '12:30'], source: 'dated' }],
+        },
+      ],
+      layeredData: [
+        {
+          date: '2026-07-01',
+          responses: [
+            {
+              id: null,
+              userId: 'u1',
+              username: 'Alice',
+              date: '2026-07-01',
+              slots: ['22:00', '22:30', '23:00', '23:30'],
+              source: 'personal_template',
+            },
+          ],
+        },
+      ],
+    } as never);
+
+    renderSchedule();
+    await act(async () => {});
+
+    expect(
+      screen.getByText(/Aggregated from each member's availability/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No availability marked yet/)).not.toBeInTheDocument();
+    expect(screen.getByText('1/1')).toBeInTheDocument();
+    expect(screen.queryByText('Not enough availability data yet.')).not.toBeInTheDocument();
+  });
+
   // Task 10 (§5.1 stopgap): the only availability EDITOR reachable from v2 is
   // the legacy AvailabilityGrid, hosted in a modal off the heatmap's Edit-week
   // affordance, until the Ring-1 Person→Static pipe replaces it.
@@ -346,10 +396,11 @@ describe('Schedule', () => {
 
       expect(screen.queryByTestId('availability-grid-stub')).not.toBeInTheDocument();
       await waitFor(() => expect(availabilityMock()).toHaveBeenCalledTimes(2));
-      const [gid, secondStart, secondEnd] = availabilityMock().mock.calls[1];
+      const [gid, secondStart, secondEnd, secondOptions] = availabilityMock().mock.calls[1];
       expect(gid).toBe('g1');
       expect(secondStart).toBe(firstStart);
       expect(secondEnd).toBe(firstEnd);
+      expect(secondOptions).toEqual({ includeTemplates: true });
     });
 
     it("the grid's draft callback re-fetches scoped-week availability, then closes the edit modal and opens the create modal with the draft", async () => {

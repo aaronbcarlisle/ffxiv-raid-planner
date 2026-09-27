@@ -148,6 +148,11 @@ describe('Availability card', () => {
     fireEvent.click(screen.getByRole('button', { name: /edit/i }));
     expect(setTab).toHaveBeenCalledWith('availability');
   });
+
+  it('shows the pipe copy (R-PH3-F)', () => {
+    renderCards();
+    expect(screen.getByText("Fills every static's schedule unless you paint a week.")).toBeInTheDocument();
+  });
 });
 
 // ── Profile setup card ───────────────────────────────────────────────────────
