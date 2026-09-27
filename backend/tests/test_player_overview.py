@@ -1471,7 +1471,7 @@ class TestBisStale:
         assert [item.static_name for item in items] == ["Alpha", "Beta"]
 
     async def test_statement_count_one_static_vs_three_same_count(
-        self, session: AsyncSession, engine,
+        self, session: AsyncSession, engine, count_statements,
     ):
         caller = await create_user(session)
         group, tier, player = await _seed_bis_static(session, caller, name="Bis Solo")
@@ -1480,20 +1480,8 @@ class TestBisStale:
             session, tier, player, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
         )
 
-        def _make_counter():
-            counts = {"n": 0}
-
-            def _count(conn, cursor, statement, parameters, context, executemany):
-                counts["n"] += 1
-
-            return counts, _count
-
-        counts_one, listener_one = _make_counter()
-        event.listen(engine.sync_engine, "before_cursor_execute", listener_one)
-        try:
+        with count_statements(engine) as counts_one:
             await build_player_overview(session, caller.id, NOW)
-        finally:
-            event.remove(engine.sync_engine, "before_cursor_execute", listener_one)
 
         for name in ("Second", "Third"):
             g, t, p = await _seed_bis_static(session, caller, name=f"Bis {name}")
@@ -1501,11 +1489,7 @@ class TestBisStale:
                 session, t, p, caller, created_at=(NOW - timedelta(days=1)).isoformat(),
             )
 
-        counts_three, listener_three = _make_counter()
-        event.listen(engine.sync_engine, "before_cursor_execute", listener_three)
-        try:
+        with count_statements(engine) as counts_three:
             await build_player_overview(session, caller.id, NOW)
-        finally:
-            event.remove(engine.sync_engine, "before_cursor_execute", listener_three)
 
-        assert counts_one["n"] == counts_three["n"]
+        assert counts_one.n == counts_three.n

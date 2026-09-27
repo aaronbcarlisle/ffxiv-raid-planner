@@ -1,8 +1,9 @@
 /**
  * NeedsYouCard — Overview's "Needs you" card (R-PH2-J).
- * Rows are AttentionRows over the Hub's usePlayerOverview data: pending RSVPs
- * and drops the caller is first in line for, across every static. Markup is
- * written fresh (not imported from home/), per ring 0.
+ * Rows are AttentionRows over the Hub's usePlayerOverview data: pending RSVPs,
+ * drops the caller is first in line for, and out-of-date BiS entries
+ * (bis_stale, R-PH3-G/H), across every static. Markup is written fresh (not
+ * imported from home/), per ring 0.
  */
 
 import type { ReactNode } from 'react';
