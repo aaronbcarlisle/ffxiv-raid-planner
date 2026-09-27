@@ -402,12 +402,14 @@ async def create_weekly_assignment(
 async def create_player_profile(
     session: AsyncSession,
     user: User,
+    *,
+    visibility: str = "private",
 ) -> PlayerProfile:
     """Create a PlayerProfile for a user."""
     profile = PlayerProfile(
         id=str(uuid.uuid4()),
         user_id=user.id,
-        visibility="private",
+        visibility=visibility,
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
     )
@@ -448,13 +450,16 @@ async def create_player_job_profile(
     profile: PlayerProfile,
     *,
     job: str = "DRG",
+    role: str | None = None,
+    priority: str = "flex",
 ) -> PlayerJobProfile:
-    """Create a PlayerJobProfile for a PlayerProfile."""
+    """Create a PlayerJobProfile for a PlayerProfile (`role=None` keeps the old "melee")."""
     job_profile = PlayerJobProfile(
         id=str(uuid.uuid4()),
         profile_id=profile.id,
         job=job,
-        role="melee",
+        role=role if role is not None else "melee",
+        priority=priority,
         created_at=datetime.now(timezone.utc).isoformat(),
         updated_at=datetime.now(timezone.utc).isoformat(),
     )

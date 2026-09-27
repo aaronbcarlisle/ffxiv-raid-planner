@@ -1,0 +1,889 @@
+{
+  "discoverable_filtered": {
+    "response": {
+      "items": [
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": "We raid on weekends",
+          "fitSummary": {
+            "bis": {
+              "status": "ready"
+            },
+            "comms": {
+              "status": "unknown"
+            },
+            "goals": {
+              "aligned": 1,
+              "conflicts": 0,
+              "missing": 0,
+              "partial": 0
+            },
+            "jobs": {
+              "matchedJobs": [
+                "WHM"
+              ],
+              "status": "partial"
+            },
+            "overall": "strong",
+            "schedule": {
+              "status": "partial"
+            }
+          },
+          "goalAlignment": {
+            "aligned": 1,
+            "conflicts": 0,
+            "missing": 0,
+            "partial": 0,
+            "unknown": 0
+          },
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-05T10:00:00+00:00",
+          "memberCount": 1,
+          "name": "Alpha Raiders",
+          "neededJobs": [
+            "WAR",
+            "WHM"
+          ],
+          "neededRoles": [
+            "tank",
+            "healer"
+          ],
+          "objectiveCategories": [
+            "savage_bis"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Saturday",
+            "Sunday"
+          ],
+          "scheduleEndTime": "23:00",
+          "scheduleStartTime": "20:00",
+          "server": "Jenova",
+          "shareCode": "ALPHA1",
+          "timezone": "America/New_York"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": "We raid on weekends",
+          "fitSummary": {
+            "bis": {
+              "status": "ready"
+            },
+            "comms": {
+              "status": "unknown"
+            },
+            "goals": {
+              "aligned": 1,
+              "conflicts": 0,
+              "missing": 0,
+              "partial": 1
+            },
+            "jobs": {
+              "matchedJobs": [],
+              "status": "unknown"
+            },
+            "overall": "strong",
+            "schedule": {
+              "status": "match"
+            }
+          },
+          "goalAlignment": {
+            "aligned": 1,
+            "conflicts": 0,
+            "missing": 0,
+            "partial": 0,
+            "unknown": 1
+          },
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-02T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Delta Dragoons",
+          "neededJobs": null,
+          "neededRoles": null,
+          "objectiveCategories": [
+            "savage_bis",
+            "savage_mount"
+          ],
+          "recruitingRoles": [
+            {
+              "jobs": [],
+              "priority": "needed",
+              "role": "melee"
+            },
+            {
+              "jobs": [
+                "SGE"
+              ],
+              "priority": "nice_to_have",
+              "role": "healer"
+            }
+          ],
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Friday",
+            "Saturday"
+          ],
+          "scheduleEndTime": "23:00",
+          "scheduleStartTime": "20:00",
+          "server": "Jenova",
+          "shareCode": "DELTA4",
+          "timezone": "America/New_York"
+        }
+      ],
+      "total": 2
+    },
+    "statements": 8
+  },
+  "discoverable_sort_name": {
+    "response": {
+      "items": [
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": "We raid on weekends",
+          "fitSummary": {
+            "bis": {
+              "status": "ready"
+            },
+            "comms": {
+              "status": "unknown"
+            },
+            "goals": {
+              "aligned": 1,
+              "conflicts": 0,
+              "missing": 0,
+              "partial": 0
+            },
+            "jobs": {
+              "matchedJobs": [
+                "WHM"
+              ],
+              "status": "partial"
+            },
+            "overall": "strong",
+            "schedule": {
+              "status": "partial"
+            }
+          },
+          "goalAlignment": {
+            "aligned": 1,
+            "conflicts": 0,
+            "missing": 0,
+            "partial": 0,
+            "unknown": 0
+          },
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-05T10:00:00+00:00",
+          "memberCount": 1,
+          "name": "Alpha Raiders",
+          "neededJobs": [
+            "WAR",
+            "WHM"
+          ],
+          "neededRoles": [
+            "tank",
+            "healer"
+          ],
+          "objectiveCategories": [
+            "savage_bis"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Saturday",
+            "Sunday"
+          ],
+          "scheduleEndTime": "23:00",
+          "scheduleStartTime": "20:00",
+          "server": "Jenova",
+          "shareCode": "ALPHA1",
+          "timezone": "America/New_York"
+        },
+        {
+          "communicationStyle": {
+            "voiceRequirement": "required"
+          },
+          "contactMethod": "discord",
+          "contactValue": "bravo#0001",
+          "dataCenter": "Light",
+          "description": "Ultimate prog four nights a week. Voice required, no exceptions.",
+          "fitSummary": {
+            "bis": {
+              "status": "ready"
+            },
+            "comms": {
+              "status": "unknown"
+            },
+            "goals": {
+              "aligned": 0,
+              "conflicts": 0,
+              "missing": 0,
+              "partial": 1
+            },
+            "jobs": {
+              "matchedJobs": [
+                "DRG"
+              ],
+              "status": "match"
+            },
+            "overall": "strong",
+            "schedule": {
+              "status": "partial"
+            }
+          },
+          "goalAlignment": {
+            "aligned": 0,
+            "conflicts": 0,
+            "missing": 1,
+            "partial": 0,
+            "unknown": 0
+          },
+          "intensity": "hardcore",
+          "languages": [
+            "en",
+            "de"
+          ],
+          "lastUpdated": "2026-05-04T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Bravo Brigade",
+          "neededJobs": [
+            "DRG"
+          ],
+          "neededRoles": [
+            "melee"
+          ],
+          "objectiveCategories": [
+            "ultimate_clear"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Friday"
+          ],
+          "scheduleEndTime": "22:00",
+          "scheduleStartTime": "19:00",
+          "server": "Odin",
+          "shareCode": "BRAVO2",
+          "timezone": "Europe/London"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Elemental",
+          "description": "We raid on weekends",
+          "fitSummary": {
+            "bis": {
+              "status": "ready"
+            },
+            "comms": {
+              "status": "unknown"
+            },
+            "goals": {
+              "aligned": 0,
+              "conflicts": 1,
+              "missing": 0,
+              "partial": 0
+            },
+            "jobs": {
+              "matchedJobs": [],
+              "status": "none"
+            },
+            "overall": "weak",
+            "schedule": {
+              "status": "conflict"
+            }
+          },
+          "goalAlignment": {
+            "aligned": 0,
+            "conflicts": 0,
+            "missing": 0,
+            "partial": 0,
+            "unknown": 1
+          },
+          "intensity": "casual",
+          "languages": [
+            "ja",
+            "en"
+          ],
+          "lastUpdated": "2026-05-03T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Charlie Casuals",
+          "neededJobs": [
+            "BLM",
+            "SMN"
+          ],
+          "neededRoles": [
+            "caster"
+          ],
+          "objectiveCategories": [
+            "gil_farm"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Monday",
+            "Wednesday"
+          ],
+          "scheduleEndTime": "00:00",
+          "scheduleStartTime": "21:00",
+          "server": "Tonberry",
+          "shareCode": "CHARL3",
+          "timezone": "Asia/Tokyo"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": "We raid on weekends",
+          "fitSummary": {
+            "bis": {
+              "status": "ready"
+            },
+            "comms": {
+              "status": "unknown"
+            },
+            "goals": {
+              "aligned": 1,
+              "conflicts": 0,
+              "missing": 0,
+              "partial": 1
+            },
+            "jobs": {
+              "matchedJobs": [],
+              "status": "unknown"
+            },
+            "overall": "strong",
+            "schedule": {
+              "status": "match"
+            }
+          },
+          "goalAlignment": {
+            "aligned": 1,
+            "conflicts": 0,
+            "missing": 0,
+            "partial": 0,
+            "unknown": 1
+          },
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-02T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Delta Dragoons",
+          "neededJobs": null,
+          "neededRoles": null,
+          "objectiveCategories": [
+            "savage_bis",
+            "savage_mount"
+          ],
+          "recruitingRoles": [
+            {
+              "jobs": [],
+              "priority": "needed",
+              "role": "melee"
+            },
+            {
+              "jobs": [
+                "SGE"
+              ],
+              "priority": "nice_to_have",
+              "role": "healer"
+            }
+          ],
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Friday",
+            "Saturday"
+          ],
+          "scheduleEndTime": "23:00",
+          "scheduleStartTime": "20:00",
+          "server": "Jenova",
+          "shareCode": "DELTA4",
+          "timezone": "America/New_York"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": null,
+          "fitSummary": {
+            "bis": {
+              "status": "ready"
+            },
+            "comms": {
+              "status": "unknown"
+            },
+            "goals": {
+              "aligned": 0,
+              "conflicts": 0,
+              "missing": 0,
+              "partial": 0
+            },
+            "jobs": {
+              "matchedJobs": [],
+              "status": "none"
+            },
+            "overall": "weak",
+            "schedule": {
+              "status": "match"
+            }
+          },
+          "goalAlignment": null,
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-01T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Echo Eight",
+          "neededJobs": [
+            "BRD"
+          ],
+          "neededRoles": [
+            "ranged"
+          ],
+          "objectiveCategories": [],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "FR",
+            "SA"
+          ],
+          "scheduleEndTime": null,
+          "scheduleStartTime": null,
+          "server": "Jenova",
+          "shareCode": "ECHO05",
+          "timezone": "Australia/Sydney"
+        }
+      ],
+      "total": 5
+    },
+    "statements": 8
+  },
+  "guest": {
+    "response": {
+      "items": [
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": "We raid on weekends",
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-05T10:00:00+00:00",
+          "memberCount": 1,
+          "name": "Alpha Raiders",
+          "neededJobs": [
+            "WAR",
+            "WHM"
+          ],
+          "neededRoles": [
+            "tank",
+            "healer"
+          ],
+          "objectiveCategories": [
+            "savage_bis"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Saturday",
+            "Sunday"
+          ],
+          "scheduleEndTime": "23:00",
+          "scheduleStartTime": "20:00",
+          "server": "Jenova",
+          "shareCode": "ALPHA1",
+          "timezone": "America/New_York"
+        },
+        {
+          "communicationStyle": {
+            "voiceRequirement": "required"
+          },
+          "contactMethod": "discord",
+          "contactValue": "bravo#0001",
+          "dataCenter": "Light",
+          "description": "Ultimate prog four nights a week. Voice required, no exceptions.",
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "hardcore",
+          "languages": [
+            "en",
+            "de"
+          ],
+          "lastUpdated": "2026-05-04T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Bravo Brigade",
+          "neededJobs": [
+            "DRG"
+          ],
+          "neededRoles": [
+            "melee"
+          ],
+          "objectiveCategories": [
+            "ultimate_clear"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Friday"
+          ],
+          "scheduleEndTime": "22:00",
+          "scheduleStartTime": "19:00",
+          "server": "Odin",
+          "shareCode": "BRAVO2",
+          "timezone": "Europe/London"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Elemental",
+          "description": "We raid on weekends",
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "casual",
+          "languages": [
+            "ja",
+            "en"
+          ],
+          "lastUpdated": "2026-05-03T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Charlie Casuals",
+          "neededJobs": [
+            "BLM",
+            "SMN"
+          ],
+          "neededRoles": [
+            "caster"
+          ],
+          "objectiveCategories": [
+            "gil_farm"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Monday",
+            "Wednesday"
+          ],
+          "scheduleEndTime": "00:00",
+          "scheduleStartTime": "21:00",
+          "server": "Tonberry",
+          "shareCode": "CHARL3",
+          "timezone": "Asia/Tokyo"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": "We raid on weekends",
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-02T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Delta Dragoons",
+          "neededJobs": null,
+          "neededRoles": null,
+          "objectiveCategories": [
+            "savage_bis",
+            "savage_mount"
+          ],
+          "recruitingRoles": [
+            {
+              "jobs": [],
+              "priority": "needed",
+              "role": "melee"
+            },
+            {
+              "jobs": [
+                "SGE"
+              ],
+              "priority": "nice_to_have",
+              "role": "healer"
+            }
+          ],
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Friday",
+            "Saturday"
+          ],
+          "scheduleEndTime": "23:00",
+          "scheduleStartTime": "20:00",
+          "server": "Jenova",
+          "shareCode": "DELTA4",
+          "timezone": "America/New_York"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": null,
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-01T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Echo Eight",
+          "neededJobs": [
+            "BRD"
+          ],
+          "neededRoles": [
+            "ranged"
+          ],
+          "objectiveCategories": [],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "FR",
+            "SA"
+          ],
+          "scheduleEndTime": null,
+          "scheduleStartTime": null,
+          "server": "Jenova",
+          "shareCode": "ECHO05",
+          "timezone": "Australia/Sydney"
+        }
+      ],
+      "total": 5
+    },
+    "statements": 2
+  },
+  "private_viewer": {
+    "response": {
+      "items": [
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": "We raid on weekends",
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-05T10:00:00+00:00",
+          "memberCount": 1,
+          "name": "Alpha Raiders",
+          "neededJobs": [
+            "WAR",
+            "WHM"
+          ],
+          "neededRoles": [
+            "tank",
+            "healer"
+          ],
+          "objectiveCategories": [
+            "savage_bis"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Saturday",
+            "Sunday"
+          ],
+          "scheduleEndTime": "23:00",
+          "scheduleStartTime": "20:00",
+          "server": "Jenova",
+          "shareCode": "ALPHA1",
+          "timezone": "America/New_York"
+        },
+        {
+          "communicationStyle": {
+            "voiceRequirement": "required"
+          },
+          "contactMethod": "discord",
+          "contactValue": "bravo#0001",
+          "dataCenter": "Light",
+          "description": "Ultimate prog four nights a week. Voice required, no exceptions.",
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "hardcore",
+          "languages": [
+            "en",
+            "de"
+          ],
+          "lastUpdated": "2026-05-04T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Bravo Brigade",
+          "neededJobs": [
+            "DRG"
+          ],
+          "neededRoles": [
+            "melee"
+          ],
+          "objectiveCategories": [
+            "ultimate_clear"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Friday"
+          ],
+          "scheduleEndTime": "22:00",
+          "scheduleStartTime": "19:00",
+          "server": "Odin",
+          "shareCode": "BRAVO2",
+          "timezone": "Europe/London"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Elemental",
+          "description": "We raid on weekends",
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "casual",
+          "languages": [
+            "ja",
+            "en"
+          ],
+          "lastUpdated": "2026-05-03T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Charlie Casuals",
+          "neededJobs": [
+            "BLM",
+            "SMN"
+          ],
+          "neededRoles": [
+            "caster"
+          ],
+          "objectiveCategories": [
+            "gil_farm"
+          ],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Monday",
+            "Wednesday"
+          ],
+          "scheduleEndTime": "00:00",
+          "scheduleStartTime": "21:00",
+          "server": "Tonberry",
+          "shareCode": "CHARL3",
+          "timezone": "Asia/Tokyo"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": "We raid on weekends",
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-02T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Delta Dragoons",
+          "neededJobs": null,
+          "neededRoles": null,
+          "objectiveCategories": [
+            "savage_bis",
+            "savage_mount"
+          ],
+          "recruitingRoles": [
+            {
+              "jobs": [],
+              "priority": "needed",
+              "role": "melee"
+            },
+            {
+              "jobs": [
+                "SGE"
+              ],
+              "priority": "nice_to_have",
+              "role": "healer"
+            }
+          ],
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "Friday",
+            "Saturday"
+          ],
+          "scheduleEndTime": "23:00",
+          "scheduleStartTime": "20:00",
+          "server": "Jenova",
+          "shareCode": "DELTA4",
+          "timezone": "America/New_York"
+        },
+        {
+          "communicationStyle": null,
+          "contactMethod": null,
+          "contactValue": null,
+          "dataCenter": "Aether",
+          "description": null,
+          "fitSummary": null,
+          "goalAlignment": null,
+          "intensity": "midcore",
+          "languages": [
+            "en"
+          ],
+          "lastUpdated": "2026-05-01T10:00:00+00:00",
+          "memberCount": 0,
+          "name": "Echo Eight",
+          "neededJobs": [
+            "BRD"
+          ],
+          "neededRoles": [
+            "ranged"
+          ],
+          "objectiveCategories": [],
+          "recruitingRoles": null,
+          "recruitmentStatus": "open",
+          "scheduleDays": [
+            "FR",
+            "SA"
+          ],
+          "scheduleEndTime": null,
+          "scheduleStartTime": null,
+          "server": "Jenova",
+          "shareCode": "ECHO05",
+          "timezone": "Australia/Sydney"
+        }
+      ],
+      "total": 5
+    },
+    "statements": 4
+  }
+}
