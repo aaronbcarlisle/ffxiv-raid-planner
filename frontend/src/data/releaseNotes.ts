@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.44',
+    date: '2026-09-27T12:00:00Z',
+    title: 'Player Hub — PH3a availability pipe (v2 preview)',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Your typical week can reach every static\'s schedule',
+        description:
+          'V2 preview groundwork: a static\'s schedule can now fill each member\'s unpainted days from the typical week they set on their profile, converted to the right day and time for their timezone. A week painted in the schedule still wins. Nothing changes on screen yet.',
+        pr: 304,
+        prTitle: 'feat(v2): PH3a — availability pipe backend: personal templates layered behind include_templates',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.43',
     date: '2026-09-27T00:00:00Z',
     title: 'Long-running recurring sessions keep their Discord event',
