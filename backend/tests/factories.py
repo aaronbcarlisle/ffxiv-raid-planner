@@ -1,7 +1,8 @@
 """Test data factories for creating test fixtures"""
 
+import json
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +21,8 @@ from app.models import (
     LootLogEntry,
     WeeklyAssignment,
 )
+from app.models.availability import UserAvailability
+from app.models.personal_availability import PersonalAvailabilityTemplate
 from app.models.player_character import PlayerCharacter
 from app.models.player_profile import PlayerProfile
 from app.models.static_character_registration import StaticCharacterRegistration
@@ -468,6 +471,51 @@ async def create_static_character_registration(
     session.add(reg)
     await session.flush()
     return reg
+
+
+async def create_user_availability(
+    session: AsyncSession,
+    static_group: StaticGroup,
+    user: User,
+    *,
+    date: str,
+    slots: list[str],
+) -> UserAvailability:
+    """Create a dated availability row (UTC "HH:MM" slots) for a user in a static."""
+    row = UserAvailability(
+        id=str(uuid.uuid4()),
+        static_group_id=static_group.id,
+        user_id=user.id,
+        date=date,
+        slots=json.dumps(slots),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+    session.add(row)
+    await session.flush()
+    return row
+
+
+async def create_personal_availability_template(
+    session: AsyncSession,
+    user: User,
+    *,
+    day_of_week: str,
+    slots: list[str],
+    timezone: str = "UTC",
+) -> PersonalAvailabilityTemplate:
+    """Create a personal weekly template day (local "HH:MM" slots in `timezone`)."""
+    # `timezone` (the IANA name) shadows datetime.timezone here, hence UTC.
+    template = PersonalAvailabilityTemplate(
+        id=str(uuid.uuid4()),
+        user_id=user.id,
+        day_of_week=day_of_week,
+        slots=json.dumps(slots),
+        timezone=timezone,
+        updated_at=datetime.now(UTC).isoformat(),
+    )
+    session.add(template)
+    await session.flush()
+    return template
 
 
 def _generate_share_code() -> str:

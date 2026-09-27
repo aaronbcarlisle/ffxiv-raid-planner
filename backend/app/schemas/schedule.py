@@ -2,6 +2,7 @@
 
 from enum import Enum
 import re
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
@@ -211,11 +212,14 @@ class AvailabilitySubmit(CamelModel):
 
 
 class UserAvailabilityResponse(CamelModel):
-    id: str
+    # `id` is None and `source` is "personal_template" on rows derived from a
+    # member's personal template (list endpoint, `include_templates=true`).
+    id: str | None
     user_id: str
     username: str | None = None
     date: str
     slots: list[str]
+    source: Literal["dated", "personal_template"] = "dated"
 
 
 class AvailabilityDateSummary(CamelModel):
