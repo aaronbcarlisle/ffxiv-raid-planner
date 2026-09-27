@@ -82,7 +82,9 @@ After the last task, walk every touched v2 surface live (dev-auth login → `/gr
 GitHub treats PRs based on each other (#286 → #287 → #288) as a native stack.
 
 - **Merge bottom-first through the REST API.** `gh pr merge` refuses a stacked PR. Run `gh api -X PUT repos/{owner}/{repo}/pulls/<n>/merge-async -f merge_method=squash -f sha=<head>`, then poll `gh api repos/{owner}/{repo}/pulls/<n>/merge-async/<uuid>` until `status` is `merged`. It merges everything up to and including `<n>`, so request the bottom PR to go one at a time. The merge guard runs `gh pr checks <n>` first.
-- **Restack the next PR.** It retargets to `main` by itself (`delete_branch_on_merge`) and goes CONFLICTING, because the squash commit shares no history with the lower branch. Run `git rebase --onto origin/main <old lower head> <upper branch>`, then `git push --force-with-lease --force-if-includes`, and wait for CI before the next merge.
+- **Update the whole stack before the first merge.** Strict protection refuses a BEHIND bottom PR. Merge `origin/main` into the bottom branch, then each lower head into the one above it, and fast-forward push, so CI covers every PR against the new `main` before anything merges.
+- **GitHub restacks the next PR itself.** Within seconds of each squash it rebases every upper branch onto the squash commit and retargets its base to `main`: new SHAs, redundant merge commits dropped, nothing to push (PH2, #286–#288). `git fetch`, check that the new upper head's tree matches the old head's (`git rev-parse <sha>^{tree}`), reset any local copy to the remote, and wait for CI on the new SHA before the next merge. The PR shows BLOCKED until that CI runs.
+- **Fallback, only if the upper PR goes CONFLICTING instead:** run `git rebase --onto origin/main <old lower head> <upper branch>`, then `git push --force-with-lease --force-if-includes`, and wait for CI.
 - **A fix to a lower PR after ready:** commit it on the lower branch and push, then rebase each upper branch onto the new lower head the same way.
 - `--force-with-lease` is the only force push: plain `--force`, `-f` and `+refspec` are blocked by the deny rules and the push guard.
 
