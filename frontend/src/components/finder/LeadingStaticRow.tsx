@@ -52,6 +52,7 @@ export function LeadingStaticRow() {
       ) : (
         <div className="w-56 flex-shrink-0">
           <Select
+            id="leading-static-choose"
             value=""
             onChange={postListing}
             options={led.map((g) => ({ value: g.shareCode, label: g.name }))}

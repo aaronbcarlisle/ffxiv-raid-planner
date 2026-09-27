@@ -158,6 +158,16 @@ describe('FinderCard — Looking for', () => {
     expect(screen.getByText('Tank')).toBeInTheDocument();
     expect(screen.getByText('WAR')).toBeInTheDocument();
   });
+
+  it('a malformed entry (no jobs, an unrecognized priority) reads as needed with no job tags (whole-branch review item 8)', () => {
+    renderCard({
+      item: item({
+        recruitingRoles: [{ role: 'caster' }] as unknown as FinderItem['recruitingRoles'],
+      }),
+    });
+    expect(screen.getByText('Caster open')).toBeInTheDocument();
+    expect(screen.queryByText('undefined')).toBeNull();
+  });
 });
 
 describe('FinderCard — Copy link', () => {
@@ -212,6 +222,14 @@ describe('FinderCard — No details yet', () => {
   it('not shown when contact info is present', () => {
     renderCard({ item: item({ description: null, contactMethod: 'discord', contactValue: 'foo#1234' }) });
     expect(screen.queryByText('No details yet. Open the listing to learn more.')).toBeNull();
+  });
+});
+
+describe('FinderCard — Contact', () => {
+  it('keeps V1\'s method label, not the value alone (whole-branch review item 10)', () => {
+    renderCard({ item: item({ description: null, contactMethod: 'discord', contactValue: 'foo#1234' }) });
+    expect(screen.getByText('Discord:')).toBeInTheDocument();
+    expect(screen.getByText('foo#1234', { exact: false })).toBeInTheDocument();
   });
 });
 

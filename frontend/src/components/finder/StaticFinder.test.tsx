@@ -7,7 +7,7 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { StaticFinder } from './StaticFinder';
 import type { UseFinderQueryResult } from './useFinderQuery';
@@ -169,8 +169,13 @@ describe('StaticFinder', () => {
   it('clicking Request to join on a card opens the shared JoinRequestModal with that item', () => {
     hookResult = baseHook({ items: [item({ shareCode: 'abc', name: 'Twilight Wardens' })], total: 1 });
     renderFinder();
-    screen.getByRole('button', { name: 'Request to join' }).click();
-    expect(screen.getByRole('heading', { name: /Twilight Wardens/i })).toBeInTheDocument();
+    // The modal is absent (Modal returns null when closed) until the click.
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Request to join' }));
+    // `staticName` renders in a <span> inside the dialog body, not a heading
+    // (the dialog's own title is fixed: "Request to Join") — and the card's
+    // own <h3> already matches the name, so this must scope to the dialog.
+    expect(within(screen.getByRole('dialog')).getByText('Twilight Wardens')).toBeInTheDocument();
   });
 
   it('guest branch: plain count summary, no role chips, fit checkboxes, tier tags, nudge or Leading row; no fetchMyRequests/fetchGroups', () => {

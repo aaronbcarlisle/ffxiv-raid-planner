@@ -63,8 +63,12 @@ export function scheduleReasonText(reason: FitReason, nights: FitNight[]): strin
     const suffix = DAY_BASIS_SUFFIX[reason.status];
     return `Raids ${days} — no time listed${suffix}`;
   }
+  // The time basis's contract says localStart/localEnd are never null here —
+  // but if that's ever wrong, skip the night's time text rather than invent
+  // "12:00 AM" (whole-branch review item 9).
   return nights
-    .map(n => `${dayShort(n.localDay ?? n.day)} ${formatTimeLabel(n.localStart ?? '00:00')}–${formatTimeLabel(n.localEnd ?? '00:00')} ${coverageWord(n.coverage)}`)
+    .filter(n => n.localStart != null && n.localEnd != null)
+    .map(n => `${dayShort(n.localDay ?? n.day)} ${formatTimeLabel(n.localStart!)}–${formatTimeLabel(n.localEnd!)} ${coverageWord(n.coverage)}`)
     .join(' · ');
 }
 

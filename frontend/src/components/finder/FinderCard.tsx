@@ -33,7 +33,13 @@ const RECRUITMENT_TONE: Record<string, Tone> = {
   open: 'success', selective: 'warning', limited: 'warning', paused: 'muted', closed: 'error',
 };
 
-interface LookingForEntry { role: string; priority: 'needed' | 'nice_to_have'; jobs: string[] }
+// Mirrors V1's CONTACT_LABELS (pages/Discover.tsx) — kept local rather than
+// moved into discoveryOptions.ts, since pages/Discover.tsx is touchable only
+// for R-SF-M-style option-list moves, not this component's own contact
+// rendering (whole-branch review item 10).
+const CONTACT_LABELS: Record<string, string> = { discord: 'Discord', discord_server: 'Discord Server', url: 'Link', text: 'Contact' };
+
+interface LookingForEntry { role: string; priority?: string; jobs?: string[] }
 
 function tzShortLabel(value: string): string {
   return (TIMEZONES.find(t => t.value === value)?.label ?? value).split(' ')[0];
@@ -57,11 +63,16 @@ function roleChip(role: string): string {
   return ROLE_CHIP_LABELS[role as RoleKey] ?? role;
 }
 
+/** R-SF-D: a priority other than "nice_to_have" counts as "needed". */
+function isNiceToHave(entry: LookingForEntry): boolean {
+  return entry.priority === 'nice_to_have';
+}
+
 function LookingForRow({ item }: { item: FinderItem }) {
   const entries = (item.recruitingRoles ?? []) as unknown as LookingForEntry[];
 
   if (entries.length > 0) {
-    const ordered = [...entries].sort((a, b) => (a.priority === b.priority ? 0 : a.priority === 'needed' ? -1 : 1));
+    const ordered = [...entries].sort((a, b) => Number(isNiceToHave(a)) - Number(isNiceToHave(b)));
     const matchedRole = item.fitV2 && (item.fitV2.role.status === 'match' || item.fitV2.role.status === 'partial')
       ? item.fitV2.role.matchedRole
       : null;
@@ -69,13 +80,14 @@ function LookingForRow({ item }: { item: FinderItem }) {
       <div className="flex flex-wrap gap-1">
         {ordered.map((entry) => {
           const chip = roleChip(entry.role);
+          const jobs = entry.jobs ?? [];
           const label = entry.role === matchedRole
             ? `${chip} — your fit`
-            : entry.priority === 'needed' ? `${chip} open` : `${chip} (nice to have)`;
+            : isNiceToHave(entry) ? `${chip} (nice to have)` : `${chip} open`;
           return (
             <Fragment key={entry.role}>
               <Tag variant="label">{label}</Tag>
-              {entry.jobs.map(j => <Tag key={j} variant="label" tone="muted">{j}</Tag>)}
+              {jobs.map(j => <Tag key={j} variant="label" tone="muted">{j}</Tag>)}
             </Fragment>
           );
         })}
@@ -168,7 +180,10 @@ export function FinderCard({ item, onRequestJoin }: { item: FinderItem; onReques
       ) : null}
 
       {hasContact && (
-        <p className="text-xs text-text-secondary break-all">{item.contactValue}</p>
+        <p className="text-xs text-text-secondary break-all">
+          <span className="text-text-muted">{CONTACT_LABELS[item.contactMethod!] ?? 'Contact'}:</span>{' '}
+          {item.contactValue}
+        </p>
       )}
 
       {item.memberCount > 0 && (

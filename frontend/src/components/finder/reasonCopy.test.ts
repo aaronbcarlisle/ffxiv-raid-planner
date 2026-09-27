@@ -81,6 +81,17 @@ describe('scheduleReasonText — time basis', () => {
     const r = reason({ kind: 'schedule', status: 'conflict', params: { basis: 'time' } });
     expect(scheduleReasonText(r, [night({ coverage: 'none' })])).toBe('Fri 8:00 PM–11:00 PM busy');
   });
+
+  it('a night missing localStart/localEnd is skipped rather than shown as 12:00 AM (whole-branch review item 9)', () => {
+    const r = reason({ kind: 'schedule', status: 'partial', params: { basis: 'time' } });
+    const nights = [
+      night({ day: 'FR', localDay: 'FR', localStart: null, localEnd: null, coverage: 'full' }),
+      night({ day: 'SA', localDay: 'SA', localStart: '20:00', localEnd: '23:00', coverage: 'part' }),
+    ];
+    const text = scheduleReasonText(r, nights);
+    expect(text).toBe('Sat 8:00 PM–11:00 PM partly free');
+    expect(text).not.toMatch(/12:00 AM/);
+  });
 });
 
 describe('scheduleReasonText — day basis', () => {
