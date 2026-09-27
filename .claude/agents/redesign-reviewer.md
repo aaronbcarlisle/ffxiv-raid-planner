@@ -47,9 +47,9 @@ the whole branch again.
   an **executed** mutation trace only against a specific test you believe is
   vacuous, and name the test.
 
-Follow the rubric and output format from the
-`superpowers:subagent-driven-development` task-reviewer template (or
-`requesting-code-review` for whole-branch): spec compliance (missing / extra /
+Follow the rubric and output format in the dispatch template
+(`.claude/skills/slice-loop/whole-branch-review.md`, or `fix-wave-rereview.md`
+for a fix wave): spec compliance (missing / extra /
 misunderstood), then code quality (separation, error handling, DRY-without-
 premature-abstraction, edge cases, tests verifying real behavior, structure).
 Severity-calibrate honestly — not everything is Critical. Cite **file:line** for

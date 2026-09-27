@@ -79,4 +79,3 @@ line. Fix what fails; anything you cannot satisfy goes under concerns.
   asserting, and fail when the fix is reverted (TankSeatSelector race).
 - **Platform and focus:** shortcut labels from `lib/platform.ts`, never a
   hardcoded `Ctrl+K`; focus stays inside open menus and modals.
-- **Commit messages** carry no AI attribution trailer.
