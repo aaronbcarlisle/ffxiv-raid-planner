@@ -36,10 +36,11 @@ def served_settings(raw: dict | None) -> dict:
     an empty or missing blob is served as `null` (the client then spreads nothing),
     so it is `{}` here; otherwise the schema fills every default and the dump keeps
     `None` values (the static-group routes use no `exclude_none`).
+    A non-object blob raises `ValidationError`, never `TypeError`.
     """
     if not raw:
         return {}
-    return StaticSettingsSchema(**raw).model_dump(by_alias=True)
+    return StaticSettingsSchema.model_validate(raw).model_dump(by_alias=True)
 
 
 def effective_priority_settings(raw: dict | None) -> dict:

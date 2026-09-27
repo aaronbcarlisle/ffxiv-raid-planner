@@ -3,11 +3,12 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MemberRole
-from app.services.loot_context import calculate_week_number
+from app.services.loot_context import calculate_week_number, served_settings
 from app.services.player_overview import build_player_overview
 from tests.factories import (
     create_loot_log_entry,
@@ -985,6 +986,21 @@ class TestLootPriority:
         )
         result = await build_player_overview(session, caller.id, NOW)
         assert _loot_items(result) == []
+
+    def test_served_settings_non_object_blob_raises_validation_error(self):
+        with pytest.raises(ValidationError):
+            served_settings(["x"])
+
+    async def test_settings_non_object_blob_skips_loot_item_no_500(
+        self, client, session: AsyncSession, test_user,
+    ):
+        await _seed_loot_static(session, test_user, settings=["x"])
+        await session.commit()
+
+        response = await client.get("/api/player/overview", headers=_auth_headers(test_user))
+        assert response.status_code == 200
+        body = response.json()
+        assert not any(item["type"] == "loot_priority" for item in body["actionItems"])
 
     @pytest.mark.parametrize(
         ("configured", "substitute"),
