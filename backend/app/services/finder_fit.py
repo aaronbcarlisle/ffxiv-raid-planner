@@ -147,11 +147,11 @@ def recruit_entries(listing: dict) -> list[RecruitEntry]:
             role = raw_role.strip().lower()
             if role in ROLE_KEYS and role not in roles:
                 roles.append(role)
-    jobs = [
+    jobs = list(dict.fromkeys(  # upper-cased, de-duplicated, order kept
         job.upper()
         for job in (needed_jobs if isinstance(needed_jobs, list) else [])
         if isinstance(job, str)
-    ]
+    ))
     by_role: dict[str, list[str]] = {
         role: [job for job in jobs if role_for_job(job) == role] for role in roles
     }
@@ -163,8 +163,7 @@ def recruit_entries(listing: dict) -> list[RecruitEntry]:
         if role not in by_role:
             by_role[role] = []
             order.append(role)
-        if job not in by_role[role]:
-            by_role[role].append(job)
+        by_role[role].append(job)
     return [RecruitEntry(role=role, priority="needed", jobs=tuple(by_role[role])) for role in order]
 
 

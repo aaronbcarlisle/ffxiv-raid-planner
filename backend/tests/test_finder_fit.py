@@ -109,6 +109,14 @@ def test_legacy_fields_map_like_init_recruiting_roles():
     ]
 
 
+def test_legacy_jobs_are_de_duplicated_in_both_branches():
+    listing = {"neededRoles": ["melee"], "neededJobs": ["DRG", "drg", "WHM", "WHM", "DRG"]}
+    assert recruit_entries(listing) == [
+        RecruitEntry("melee", "needed", ("DRG",)),
+        RecruitEntry("healer", "needed", ("WHM",)),
+    ]
+
+
 def test_legacy_only_jobs_and_unknown_role_string():
     assert recruit_entries({"neededJobs": ["BRD", "MCH"]}) == [
         RecruitEntry("ranged", "needed", ("BRD", "MCH")),

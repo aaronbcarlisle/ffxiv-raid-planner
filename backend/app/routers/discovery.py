@@ -243,6 +243,14 @@ def _sort_items(items: list[DiscoveryListItem], sort: SortOption) -> list[Discov
     return sorted(items, key=lambda i: i.last_updated or "", reverse=True)
 
 
+def _best_key(item: DiscoveryListItem) -> tuple[int, int]:
+    """`sort=best` key from the item's own fitV2 (R-SF-G); an item without one sorts as unknown."""
+    fit = item.fit_v2
+    if fit is None:
+        return best_match_key("unknown", [])
+    return best_match_key(fit.tier, [{"status": reason.status} for reason in fit.reasons])
+
+
 @router.get("/statics", response_model=DiscoveryListResponse)
 @limiter.limit("60/minute")
 async def list_discoverable_statics(
@@ -393,9 +401,13 @@ async def list_discoverable_statics(
         if user_profile or fit_v2_active:
             # Personal availability — collect unique days (loaded by user id even with
             # no profile on the fitV2 path, R-SF-E)
+            # Ordered so viewer_display_zone's "ties go to the first row" is deterministic.
             avail_result = await session.execute(
-                select(PersonalAvailabilityTemplate).where(
-                    PersonalAvailabilityTemplate.user_id == current_user.id,
+                select(PersonalAvailabilityTemplate)
+                .where(PersonalAvailabilityTemplate.user_id == current_user.id)
+                .order_by(
+                    PersonalAvailabilityTemplate.updated_at.desc(),
+                    PersonalAvailabilityTemplate.id,
                 )
             )
             avail_rows = list(avail_result.scalars().all())
@@ -422,7 +434,6 @@ async def list_discoverable_statics(
         wanted_categories = []
 
     items: list[DiscoveryListItem] = []
-    best_keys: dict[int, tuple[int, int]] = {}
     for group, member_count in rows:
         if not _is_discoverable(group):
             continue
@@ -532,19 +543,16 @@ async def list_discoverable_statics(
         ):
             continue
 
-        item = _to_list_item(
+        items.append(_to_list_item(
             group, discovery, member_count, categories, goal_alignment, fit_summary,
             fit_v2=fit_v2_obj, static_id=group.id if fit_v2_active else None,
-        )
-        if fit_v2_obj is not None:
-            best_keys[id(item)] = best_match_key(raw_v2["tier"], raw_v2["reasons"])
-        items.append(item)
+        ))
 
     # Sort: best = tier rank, then match reasons, then recency (R-SF-G); for guests or
     # without fitV2 it sorts as recent.
     if sort == "best" and fit_v2_active:
         items.sort(key=lambda i: i.last_updated or "", reverse=True)
-        items.sort(key=lambda i: best_keys[id(i)])
+        items.sort(key=_best_key)
     else:
         items = _sort_items(items, "recent" if sort == "best" else sort)
 

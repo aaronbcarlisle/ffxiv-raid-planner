@@ -39,6 +39,21 @@ from tests.factories import (
 pytestmark = pytest.mark.asyncio
 
 ENDPOINT = "/api/discovery/statics"
+# The router places raid nights on their next occurrence from datetime.now(UTC) (R-SF-C), so
+# local times move with DST. Every route test here runs on this pin (a Wednesday; New York
+# on EDT, London on BST, Sydney on AEST), the same one test_finder_fit.py uses.
+FROZEN_NOW = datetime(2026, 6, 3, 12, tzinfo=UTC)
+
+
+class _FrozenDatetime(datetime):
+    @classmethod
+    def now(cls, tz=None):  # type: ignore[override]
+        return FROZEN_NOW if tz is None else FROZEN_NOW.astimezone(tz)
+
+
+@pytest.fixture(autouse=True)
+def frozen_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.routers.discovery.datetime", _FrozenDatetime)
 GOLDEN_PATH = Path(__file__).parent / "golden" / "discovery_v1.json"
 ADDITIVE_TOP_KEYS = ("fitCounts", "viewer")
 ADDITIVE_ITEM_KEYS = ("fitV2",)
@@ -621,6 +636,30 @@ async def test_viewer_tz_is_the_fallback_display_zone(
     assert bad["items"][0]["fitV2"]["schedule"]["nights"] == []
     dropped = await _get(client, {**params, "viewerTz": "Not/AZone"}, auth_headers_user2)
     assert dropped["total"] == 0
+
+
+async def test_display_zone_tie_goes_to_the_first_row_by_id(
+    client: AsyncClient, session: AsyncSession, test_user, test_user_2, auth_headers_user2
+):
+    """Two template rows with one updated_at: the router orders by (updated_at desc, id)."""
+    await _static(
+        session, test_user, name="Friday Night", share_code="FRINYC",
+        updated_at="2026-05-02T10:00:00+00:00", settings=_listing(schedule_days=["Friday"]),
+    )
+    from app.models.personal_availability import PersonalAvailabilityTemplate
+
+    for row_id, day, tz in (
+        ("00000000-0000-0000-0000-000000000002", "SA", "Europe/London"),
+        ("00000000-0000-0000-0000-000000000001", "FR", "America/New_York"),
+    ):
+        session.add(PersonalAvailabilityTemplate(
+            id=row_id, user_id=test_user_2.id, day_of_week=day, slots=json.dumps(["20:00"]),
+            timezone=tz, updated_at="2026-05-01T00:00:00+00:00",
+        ))
+    await session.flush()
+    body = await _get(client, {"fitV2": "true"}, auth_headers_user2)
+    night = body["items"][0]["fitV2"]["schedule"]["nights"][0]
+    assert (night["localDay"], night["localStart"]) == ("FR", "20:00")  # New York, id ...0001
 
 
 async def test_goal_category_accepts_a_comma_separated_union(client: AsyncClient, world):
