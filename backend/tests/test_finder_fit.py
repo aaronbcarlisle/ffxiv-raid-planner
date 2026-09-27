@@ -328,7 +328,12 @@ def test_schedule_day_basis_partial_and_no_days():
 
 def test_schedule_only_empty_template_rows_is_unknown():
     fit = _schedule([_day("FR", []), _day("SA", ["nope"])], _listing(["Friday"]), display_zone=None)
-    assert fit == {"status": "unknown", "basis": "day", "nights": []}
+    # PR-review contract: a timed listing always carries its nights; with no display zone
+    # they read in UTC (Fri 20:00 EDT = Sat 00:00 UTC), coverage None. Was `nights: []`.
+    assert fit == {
+        "status": "unknown", "basis": "day",
+        "nights": [_expect("FR", "SA", "00:00", "03:00", None)],
+    }
     # An empty row still names its zone, so local times are shown with no coverage.
     fit = _schedule([_day("FR", [])], _listing(["Friday"]), display_zone=NY)
     assert fit["status"] == "unknown"
@@ -353,7 +358,24 @@ def test_schedule_no_template_gives_local_times_without_coverage():
     assert fit["status"] == "unknown"
     assert fit["basis"] == "day"
     assert fit["nights"] == [_expect("FR", "SA", "09:00", "12:00", None)]
-    assert _schedule([], listing, display_zone=None)["nights"] == []
+
+
+def test_schedule_no_template_and_no_display_zone_gives_utc_times():
+    """PR-review contract: no typical week, no viewerTz, a timed listing -> nights in UTC.
+
+    Fri 19:00-22:00 New York (EDT) is Fri 23:00-Sat 02:00 UTC; coverage stays None and
+    the basis "day". This case used to answer `nights: []`.
+    """
+    fit = _schedule([], _listing(["Friday"], "19:00", "22:00"), display_zone=None)
+    assert fit["status"] == "unknown"
+    assert fit["basis"] == "day"
+    assert fit["nights"] == [_expect("FR", "FR", "23:00", "02:00", None)]
+    # An unloadable display zone reads as UTC too.
+    fit = _schedule([], _listing(["Friday"], "19:00", "22:00"), display_zone="Not/AZone")
+    assert fit["nights"] == [_expect("FR", "FR", "23:00", "02:00", None)]
+    # A listing without times still has no clock to place: no local fields.
+    fit = _schedule([], _listing(["Friday"], start=None), display_zone=None)
+    assert fit == {"status": "unknown", "basis": "day", "nights": []}
 
 
 # ---------------------------------------------------------------------------

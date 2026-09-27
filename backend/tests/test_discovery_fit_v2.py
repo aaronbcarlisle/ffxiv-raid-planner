@@ -53,7 +53,9 @@ class _FrozenDatetime(datetime):
 
 @pytest.fixture(autouse=True)
 def frozen_clock(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("app.routers.discovery.datetime", _FrozenDatetime)
+    # raising=False: the golden-regen procedure runs this module on the base commit, whose
+    # router has no `datetime`.
+    monkeypatch.setattr("app.routers.discovery.datetime", _FrozenDatetime, raising=False)
 GOLDEN_PATH = Path(__file__).parent / "golden" / "discovery_v1.json"
 ADDITIVE_TOP_KEYS = ("fitCounts", "viewer")
 ADDITIVE_ITEM_KEYS = ("fitV2",)
@@ -632,10 +634,14 @@ async def test_viewer_tz_is_the_fallback_display_zone(
     assert fit["missing"] == ["template", "jobs"]
     assert sydney["viewer"] == {"mainJob": None, "mainRole": None, "missing": ["template", "jobs"]}
 
+    # PR-review contract: an invalid viewerTz is ignored (200, no 422) and, with no template
+    # zone either, the nights read in UTC (Fri 19:00 EDT = Fri 23:00 UTC). Was `nights == []`.
     bad = await _get(client, {"fitV2": "true", "viewerTz": "Not/AZone"}, auth_headers_user2)
-    assert bad["items"][0]["fitV2"]["schedule"]["nights"] == []
+    assert bad["items"][0]["fitV2"]["schedule"]["nights"] == [{
+        "day": "FR", "localDay": "FR", "localStart": "23:00", "localEnd": "02:00", "coverage": None,
+    }]
     dropped = await _get(client, {**params, "viewerTz": "Not/AZone"}, auth_headers_user2)
-    assert dropped["total"] == 0
+    assert dropped["total"] == 0  # its UTC day is still Friday
 
 
 async def test_display_zone_tie_goes_to_the_first_row_by_id(
@@ -648,9 +654,11 @@ async def test_display_zone_tie_goes_to_the_first_row_by_id(
     )
     from app.models.personal_availability import PersonalAvailabilityTemplate
 
+    # The New York row has the smaller id but the later day code, so the unique
+    # (user_id, day_of_week) index order would put London first: only the ORDER BY picks it.
     for row_id, day, tz in (
-        ("00000000-0000-0000-0000-000000000002", "SA", "Europe/London"),
-        ("00000000-0000-0000-0000-000000000001", "FR", "America/New_York"),
+        ("00000000-0000-0000-0000-000000000002", "FR", "Europe/London"),
+        ("00000000-0000-0000-0000-000000000001", "SA", "America/New_York"),
     ):
         session.add(PersonalAvailabilityTemplate(
             id=row_id, user_id=test_user_2.id, day_of_week=day, slots=json.dumps(["20:00"]),

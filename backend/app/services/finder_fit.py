@@ -320,7 +320,14 @@ def compute_schedule_fit(
     now: datetime,
     display_zone: str | None,
 ) -> dict:
-    """Per-night schedule fit: `{status, basis, nights}` (R-SF-C, SF-2)."""
+    """Per-night schedule fit: `{status, basis, nights}` (R-SF-C, SF-2).
+
+    Contract: whenever the listing has a time basis (start, end and a loadable
+    listing zone), every night carries `local_day`/`local_start`/`local_end` in
+    the display zone (`"UTC"` when `display_zone` is None or doesn't load).
+    `coverage` is None when the viewer has no typical week to test, and `basis`
+    names how coverage was judged (`"day"` when it wasn't).
+    """
     codes = listing_day_codes(listing.get("scheduleDays"))
     if not codes:
         return {"status": "unknown", "basis": "day", "nights": []}
@@ -345,11 +352,9 @@ def compute_schedule_fit(
             windows.append((code, window_start, window_end))
 
     if not has_typical_week(template_days):
-        nights = (
-            [_night(code, s, e, display, None) for code, s, e in windows]
-            if windows and display is not None
-            else []
-        )
+        # No typical week: the placed nights still carry their local times (UTC when no
+        # display zone is known) with no coverage to report.
+        nights = [_night(code, s, e, display or UTC, None) for code, s, e in windows]
         return {"status": "unknown", "basis": "day", "nights": nights}
 
     if not windows:

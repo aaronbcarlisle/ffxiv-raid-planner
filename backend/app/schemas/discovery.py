@@ -96,7 +96,15 @@ class FitSummary(CamelModel):
 
 
 class FitNight(CamelModel):
-    """One listed raid night in the viewer's display zone (R-SF-C)."""
+    """One listed raid night (R-SF-C).
+
+    Contract: `localDay`/`localStart`/`localEnd` are present whenever the listing
+    has times (start, end and a loadable listing zone), in the viewer's display
+    zone: the newest typical-week row's zone, else `viewerTz`, else UTC. They are
+    None only when the window can't be placed on a clock. `coverage` is None when
+    the viewer has no typical week to test; `FitV2Schedule.basis` names how
+    coverage was judged.
+    """
     day: str  # the listing's iCal code
     local_day: str | None  # viewer's iCal code of the raid start; None when the window isn't placed
     local_start: str | None  # "HH:MM" in the viewer's display zone
@@ -114,6 +122,10 @@ class FitV2Role(CamelModel):
 
 
 class FitV2Schedule(CamelModel):
+    """`basis` names how coverage was judged: "time" per 30-minute slot against the
+    viewer's typical week, "day" by weekday only (or not at all: status "unknown").
+    `nights` has one entry per listed day whenever the listing has days; each carries
+    local times whenever the listing has times (see FitNight)."""
     status: Literal["match", "partial", "conflict", "unknown"]
     basis: Literal["time", "day"]
     nights: list[FitNight] = Field(default_factory=list)

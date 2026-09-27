@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.43';
+export const CURRENT_VERSION = '2.1.48';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -62,18 +62,26 @@ export const RELEASES: Release[] = [
   {
     version: '2.1.48',
     date: '2026-09-27T20:00:00Z',
-    title: 'Static Finder — SF1a fit engine and API (v2 preview)',
+    title: 'Recruitment auto-fill uses your static\'s timezone',
     items: [
+      {
+        category: 'fix',
+        title: 'Recruitment auto-fill suggests your static\'s local raid days and times',
+        description:
+          'Auto-fill on the recruitment listing used to read your session times in UTC, so a Thursday 7 pm New York raid was suggested as Friday midnight. It now suggests the day and time in your static\'s own timezone. Listings you already saved are unchanged.',
+        pr: 309,
+        prTitle: 'feat(v2): SF1a — Static Finder fit engine and API (fitV2)',
+      },
       {
         category: 'feature',
         title: 'Discovery API gains the Static Finder fit engine (fitV2)',
         description:
-          'V2 preview plumbing: GET /api/discovery/statics accepts fitV2, asRole, dayGroup, viewerTz and sort=best, and answers with a per-night schedule fit in the viewer\'s zone, a role fit from the listing\'s recruiting roles, a tier with reason rows, fit counts and the viewer\'s main job. V1 requests are byte-for-byte unchanged (golden test). Also fixes the listing autofill so session days and times land in the suggested timezone instead of UTC.',
+          'V2 preview plumbing: GET /api/discovery/statics accepts fitV2, asRole, dayGroup, viewerTz and sort=best, and answers with a per-night schedule fit in the viewer\'s zone, a role fit from the listing\'s recruiting roles, a tier with reason rows, fit counts and the viewer\'s main job. V1 requests keep every existing field and value (golden test); the three new fields (fitV2, fitCounts, viewer) are nullable and V1 ignores them.',
         pr: 309,
         prTitle: 'feat(v2): SF1a — Static Finder fit engine and API (fitV2)',
+        internal: true,
       },
     ],
-    internal: true,
   },
   {
     version: '2.1.47',
