@@ -8,6 +8,40 @@ under its original private names, so every call site there is unchanged.
 from datetime import datetime, timezone
 
 from app.models import MaterialLogEntry, SnapshotPlayer, TierSnapshot
+from app.schemas.static_group import StaticSettingsSchema
+
+# Client-side priority defaults (must match frontend/src/utils/constants.ts DEFAULT_SETTINGS).
+# The Loot tab ranks with `{...DEFAULT_SETTINGS, ...group.settings}` (Loot.tsx), so a
+# server-side ranking that must agree with it merges the served settings over these.
+# Only the priority-relevant keys are mirrored. When changing DEFAULT_SETTINGS there,
+# update this dict too. Note the role order differs from StaticSettingsSchema's own
+# default (melee, ranged, caster, ...): the schema default only applies once a blob exists.
+CLIENT_DEFAULT_PRIORITY_SETTINGS: dict = {
+    "lootPriority": ["melee", "caster", "ranged", "tank", "healer"],
+    "priorityMode": "automatic",
+    "jobPriorityModifiers": None,
+    "showPriorityScores": True,
+    "enableEnhancedScoring": False,
+}
+
+
+def served_settings(raw: dict | None) -> dict:
+    """The settings blob as the static-group API serves it.
+
+    Mirrors `routers/static_groups.py` `settings_to_schema` + the response model:
+    an empty or missing blob is served as `null` (the client then spreads nothing),
+    so it is `{}` here; otherwise the schema fills every default and the dump keeps
+    `None` values (the static-group routes use no `exclude_none`).
+    """
+    if not raw:
+        return {}
+    return StaticSettingsSchema(**raw).model_dump(by_alias=True)
+
+
+def effective_priority_settings(raw: dict | None) -> dict:
+    """The settings the client ranks with: served settings over the client defaults."""
+    return {**CLIENT_DEFAULT_PRIORITY_SETTINGS, **served_settings(raw)}
+
 
 # Tier ID to floor names mapping (must match frontend/src/gamedata/raid-tiers.ts).
 # When adding a new tier, update both this dict and the frontend raid-tiers.ts.

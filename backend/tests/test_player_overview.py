@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +10,7 @@ from app.models import MemberRole
 from app.services.loot_context import calculate_week_number
 from app.services.player_overview import build_player_overview
 from tests.factories import (
+    create_loot_log_entry,
     create_material_log_entry,
     create_membership,
     create_page_ledger_entry,
@@ -461,9 +463,23 @@ async def test_avg_bis_pct_total_zero_is_null(session: AsyncSession):
 # ==================== Query budget (R-PH2-D) ====================
 
 
+async def _seed_static_with_tier_and_session(session: AsyncSession, caller, *, name: str) -> None:
+    """A static with an active tier, a player and a session, so every guarded batch runs."""
+    group = await create_static_group(session, caller, name=name)
+    tier = await create_tier_snapshot(session, group)
+    player = await create_snapshot_player(session, tier, gear=[_gear_slot("head")])
+    player.user_id = caller.id
+    await create_schedule_session(
+        session, group, caller,
+        start_time=(NOW + timedelta(days=1)).isoformat(),
+        end_time=(NOW + timedelta(days=1, hours=2)).isoformat(),
+    )
+    await session.flush()
+
+
 async def test_query_budget_constant_across_static_count(session: AsyncSession, engine):
     caller = await create_user(session)
-    await create_static_group(session, caller, name="Solo")
+    await _seed_static_with_tier_and_session(session, caller, name="Solo")
 
     def _make_counter():
         counts = {"n": 0}
@@ -480,8 +496,8 @@ async def test_query_budget_constant_across_static_count(session: AsyncSession, 
     finally:
         event.remove(engine.sync_engine, "before_cursor_execute", listener_one)
 
-    await create_static_group(session, caller, name="Second")
-    await create_static_group(session, caller, name="Third")
+    await _seed_static_with_tier_and_session(session, caller, name="Second")
+    await _seed_static_with_tier_and_session(session, caller, name="Third")
 
     counts_three, listener_three = _make_counter()
     event.listen(engine.sync_engine, "before_cursor_execute", listener_three)
@@ -511,3 +527,503 @@ async def test_factories_schedule_rsvp_and_material_log_entry_smoke(session: Asy
     material = await create_material_log_entry(session, tier, player, caller, material_type="twine")
     assert material.tier_snapshot_id == tier.id
     assert material.recipient_player_id == player.id
+
+
+# ==================== Action items: shared helpers ====================
+
+
+def _rsvp_items(result):
+    return [item for item in result.action_items if item.type == "rsvp_pending"]
+
+
+def _loot_items(result):
+    return [item for item in result.action_items if item.type == "loot_priority"]
+
+
+async def _one_off_session(session, group, user, start: datetime, **kwargs):
+    return await create_schedule_session(
+        session, group, user,
+        start_time=start.isoformat(),
+        end_time=(start + timedelta(hours=2)).isoformat(),
+        **kwargs,
+    )
+
+
+async def _weekly_series_next_in_two_days(session, group, user):
+    """A weekly series whose occurrences are NOW-12d, NOW-5d, NOW+2d, NOW+9d, ..."""
+    base_start = NOW - timedelta(days=12)
+    return await create_schedule_session(
+        session, group, user,
+        start_time=base_start.isoformat(),
+        end_time=(base_start + timedelta(hours=2)).isoformat(),
+        is_recurring=True,
+        recurrence_rule="RRULE:FREQ=WEEKLY",
+    )
+
+
+async def _seed_loot_static(
+    session,
+    caller,
+    *,
+    name: str = "Loot Static",
+    settings: dict | None = None,
+    tier_id: str = "aac-heavyweight",
+    content_type: str = "savage",
+    caller_role: str = "melee",
+    caller_job: str = "DRG",
+    other_role: str = "healer",
+    other_job: str = "WHM",
+    caller_slots: tuple[str, ...] = ("earring", "head"),
+    other_slots: tuple[str, ...] = ("earring", "head"),
+    link_caller: bool = True,
+    caller_configured: bool = True,
+    caller_substitute: bool = False,
+):
+    """A savage static owned by `caller` with the caller's player and one other player.
+
+    Every slot listed is a raid BiS slot not yet obtained, so it is both a
+    "need" for that drop and part of the weighted-need score. The caller's
+    player is named to sort FIRST on the calculator's name tie-break, so a tie
+    at the top can only be rejected by the strict-first check, never by luck.
+
+    Score arithmetic (role-based mode, default advanced options):
+      role_priority = (5 - index of role in lootPriority) * 25
+      need          = sum of slot weights of unobtained slots * 10
+                      (earring/necklace/bracelet/ring 0.8, head/hands/feet 1.0,
+                       body/legs 1.5, weapon 3.0)
+      score         = role_priority + need
+    """
+    group = await create_static_group(session, caller, name=name, settings=settings)
+    tier = await create_tier_snapshot(session, group, tier_id=tier_id, content_type=content_type)
+    caller_player = await create_snapshot_player(
+        session, tier, name="Aaa Caller", job=caller_job, role=caller_role, sort_order=0,
+        configured=caller_configured, gear=[_gear_slot(slot) for slot in caller_slots],
+    )
+    if link_caller:
+        caller_player.user_id = caller.id
+    caller_player.is_substitute = caller_substitute
+    other_player = await create_snapshot_player(
+        session, tier, name="Zzz Other", job=other_job, role=other_role, sort_order=1,
+        gear=[_gear_slot(slot) for slot in other_slots],
+    )
+    await session.flush()
+    return group, tier, caller_player, other_player
+
+
+# ==================== rsvp_pending (R-PH2-F) ====================
+
+
+class TestRsvpPending:
+    async def test_item_shape_for_session_in_window(self, session: AsyncSession):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller, name="Shape Static")
+        sched = await _one_off_session(
+            session, group, caller, NOW + timedelta(hours=1), title="Prog Night",
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _rsvp_items(result)
+        assert len(items) == 1
+        item = items[0]
+        assert item.type == "rsvp_pending"
+        assert item.static_id == group.id
+        assert item.static_name == "Shape Static"
+        assert item.title == "RSVP for Prog Night"
+        assert item.detail == "No response yet"
+        assert item.starts_at == (NOW + timedelta(hours=1)).isoformat()
+        assert item.href == f"/group/{group.share_code}?tab=schedule&sessionId={sched.id}"
+
+    @pytest.mark.parametrize(
+        ("offset", "expected"),
+        [
+            pytest.param(timedelta(hours=1), 1, id="plus_1h"),
+            pytest.param(timedelta(0), 0, id="exactly_now"),
+            pytest.param(timedelta(minutes=-1), 0, id="minus_1min"),
+            pytest.param(timedelta(days=7, minutes=-1), 1, id="7d_minus_1min"),
+            pytest.param(timedelta(days=7), 1, id="exactly_7d"),
+            pytest.param(timedelta(days=7, minutes=1), 0, id="7d_plus_1min"),
+        ],
+    )
+    async def test_window_edges(self, session: AsyncSession, offset, expected):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller)
+        await _one_off_session(session, group, caller, NOW + offset)
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert len(_rsvp_items(result)) == expected
+
+    @pytest.mark.parametrize("status", ["available", "tentative", "unavailable"])
+    async def test_existing_rsvp_of_any_status_suppresses_item(self, session: AsyncSession, status):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller)
+        sched = await _one_off_session(session, group, caller, NOW + timedelta(days=1))
+        await create_schedule_rsvp(session, sched, caller, status=status)
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _rsvp_items(result) == []
+
+    async def test_another_users_rsvp_keeps_callers_item(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        member2 = await create_user(session, discord_username="member2")
+        group = await create_static_group(session, caller)
+        await create_membership(session, member2, group, role=MemberRole.MEMBER)
+        sched = await _one_off_session(session, group, caller, NOW + timedelta(days=1))
+        await create_schedule_rsvp(session, sched, member2, status="available")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert len(_rsvp_items(result)) == 1
+
+    async def test_track_availability_false_suppresses_item(self, session: AsyncSession):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller)
+        await _one_off_session(
+            session, group, caller, NOW + timedelta(days=1), track_availability=False,
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _rsvp_items(result) == []
+
+    async def test_viewer_membership_gets_no_item(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        owner = await create_user(session, discord_username="owner")
+        group = await create_static_group(session, owner)
+        await create_membership(session, caller, group, role=MemberRole.VIEWER)
+        await _one_off_session(session, group, owner, NOW + timedelta(days=1))
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert result.statics[0].id == group.id  # the static itself is still listed
+        assert _rsvp_items(result) == []
+
+    async def test_weekly_series_uses_next_occurrence(self, session: AsyncSession):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller)
+        await _weekly_series_next_in_two_days(session, group, caller)
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _rsvp_items(result)
+        assert len(items) == 1
+        assert items[0].starts_at == (NOW + timedelta(days=2)).isoformat()
+
+    async def test_weekly_series_cancelled_next_falls_outside_window(self, session: AsyncSession):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller)
+        sched = await _weekly_series_next_in_two_days(session, group, caller)
+        await create_schedule_exception(
+            session, sched, caller,
+            occurrence_date=(NOW + timedelta(days=2)).date().isoformat(),
+            type="cancelled",
+        )
+
+        # The occurrence after the cancelled one is NOW + 9d: outside the window.
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _rsvp_items(result) == []
+
+    @pytest.mark.parametrize(
+        "moved_to",
+        [
+            pytest.param(timedelta(days=8), id="moved_past_window"),
+            pytest.param(timedelta(hours=-1), id="moved_into_past"),
+        ],
+    )
+    async def test_edited_occurrence_moved_out_of_window(self, session: AsyncSession, moved_to):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller)
+        sched = await _weekly_series_next_in_two_days(session, group, caller)
+        await create_schedule_exception(
+            session, sched, caller,
+            occurrence_date=(NOW + timedelta(days=2)).date().isoformat(),
+            type="edited",
+            override_start_time=(NOW + moved_to).isoformat(),
+            override_end_time=(NOW + moved_to + timedelta(hours=2)).isoformat(),
+        )
+
+        # next_occurrence still returns the NOW + 2d slot, with the override start
+        # applied; only the explicit window bounds keep it out.
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _rsvp_items(result) == []
+
+    async def test_daily_series_yields_exactly_one_item(self, session: AsyncSession):
+        caller = await create_user(session)
+        group = await create_static_group(session, caller)
+        base_start = NOW - timedelta(days=2, hours=-1)  # occurrences at ..., NOW+1h, NOW+1d+1h, ...
+        await create_schedule_session(
+            session, group, caller,
+            start_time=base_start.isoformat(),
+            end_time=(base_start + timedelta(hours=2)).isoformat(),
+            is_recurring=True,
+            recurrence_rule="RRULE:FREQ=DAILY",
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _rsvp_items(result)
+        assert len(items) == 1
+        assert items[0].starts_at == (NOW + timedelta(hours=1)).isoformat()
+
+    async def test_non_member_static_session_is_ignored(self, session: AsyncSession):
+        caller = await create_user(session, discord_username="caller")
+        other = await create_user(session, discord_username="other")
+        other_group = await create_static_group(session, other)
+        await _one_off_session(session, other_group, other, NOW + timedelta(days=1))
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert result.statics == []
+        assert result.action_items == []
+
+    async def test_ordered_by_starts_at_across_statics(self, session: AsyncSession):
+        caller = await create_user(session)
+        later_named = await create_static_group(session, caller, name="Zeta Static")
+        earlier_named = await create_static_group(session, caller, name="Alpha Static")
+        await _one_off_session(session, later_named, caller, NOW + timedelta(days=1))
+        await _one_off_session(session, earlier_named, caller, NOW + timedelta(days=3))
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert [item.static_name for item in _rsvp_items(result)] == ["Zeta Static", "Alpha Static"]
+
+
+# ==================== loot_priority (R-PH2-G) ====================
+
+
+class TestLootPriority:
+    async def test_lists_drops_in_floor_order_with_exact_shape(self, session: AsyncSession):
+        caller = await create_user(session)
+        # Caller melee: (5-0)*25 = 125 + (0.8 + 1.0)*10 = 18 -> 143.
+        # Other healer: (5-4)*25 = 25 + 18 -> 43. Caller strictly first on earring and head.
+        group, _tier, _cp, _op = await _seed_loot_static(session, caller, name="Loot Static")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _loot_items(result)
+        assert len(items) == 1
+        item = items[0]
+        assert item.type == "loot_priority"
+        assert item.static_id == group.id
+        assert item.static_name == "Loot Static"
+        assert item.title == "You're first in line for 2 drops"
+        assert item.detail == "M9S Earring · M10S Head"
+        assert item.href == f"/group/{group.share_code}?tab=gear"
+        assert "week=" not in item.href
+        assert item.starts_at is None
+
+    async def test_settings_none_ranks_with_client_default_role_order(self, session: AsyncSession):
+        caller = await create_user(session)
+        # settings=None (the common case). Client default lootPriority is
+        # melee, caster, ranged, tank, healer:
+        #   caller caster: (5-1)*25 = 100 + 0.8*10 = 8 -> 108
+        #   other ranged:  (5-2)*25 =  75 + 8         ->  83   -> caller strictly first.
+        # Under the schema default (melee, ranged, caster, ...) ranged would be 100
+        # vs caster 83 (other first); under the raw {} blob both would be 8 (a tie).
+        await _seed_loot_static(
+            session, caller,
+            caller_role="caster", caller_job="PCT", other_role="ranged", other_job="BRD",
+            caller_slots=("earring",), other_slots=("earring",),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _loot_items(result)
+        assert len(items) == 1
+        assert items[0].detail == "M9S Earring"
+
+    async def test_partial_blob_is_filled_with_schema_defaults(self, session: AsyncSession):
+        caller = await create_user(session)
+        # A stored blob with only hideSetupBanners is served with every schema
+        # default filled, so lootPriority becomes melee, RANGED, CASTER, tank, healer:
+        #   caller ranged: (5-1)*25 = 100 + 8 -> 108
+        #   other caster:  (5-2)*25 =  75 + 8 ->  83   -> caller strictly first.
+        # Under the client default order the caster would be first and no item built.
+        await _seed_loot_static(
+            session, caller,
+            settings={"hideSetupBanners": True},
+            caller_role="ranged", caller_job="BRD", other_role="caster", other_job="PCT",
+            caller_slots=("earring",), other_slots=("earring",),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _loot_items(result)
+        assert len(items) == 1
+        assert items[0].detail == "M9S Earring"
+
+    @pytest.mark.parametrize("method", ["drop", "book"])
+    async def test_logged_drop_of_any_method_is_excluded(self, session: AsyncSession, method):
+        caller = await create_user(session)
+        _group, tier, _cp, other_player = await _seed_loot_static(session, caller)
+        await create_loot_log_entry(
+            session, tier, other_player, caller,
+            week_number=calculate_week_number(tier), floor="M9S", item_slot="earring", method=method,
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _loot_items(result)
+        assert len(items) == 1
+        assert items[0].title == "You're first in line for 1 drop"
+        assert items[0].detail == "M10S Head"
+
+    async def test_drop_logged_previous_week_is_still_listed(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, _cp, other_player = await _seed_loot_static(session, caller)
+        # Back-date the tier so the current week is 3 (the log rejects week 0).
+        tier.week_start_date = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+        await session.flush()
+        week = calculate_week_number(tier)
+        assert week == 3
+        await create_loot_log_entry(
+            session, tier, other_player, caller,
+            week_number=week - 1, floor="M9S", item_slot="earring", method="drop",
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result)[0].detail == "M9S Earring · M10S Head"
+
+    async def test_ring_listed_when_unlogged(self, session: AsyncSession):
+        caller = await create_user(session)
+        # ring1 0.8 + head 1.0 -> the same 143 vs 43 as the earring fixture.
+        await _seed_loot_static(
+            session, caller, caller_slots=("ring1", "head"), other_slots=("ring1", "head"),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result)[0].detail == "M9S Ring · M10S Head"
+
+    @pytest.mark.parametrize("logged_slot", ["ring1", "ring2"])
+    async def test_ring_logged_as_either_ring_slot_is_excluded(self, session: AsyncSession, logged_slot):
+        caller = await create_user(session)
+        _group, tier, _cp, other_player = await _seed_loot_static(
+            session, caller, caller_slots=("ring1", "head"), other_slots=("ring1", "head"),
+        )
+        await create_loot_log_entry(
+            session, tier, other_player, caller,
+            week_number=calculate_week_number(tier), floor="M9S", item_slot=logged_slot,
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result)[0].detail == "M10S Head"
+
+    async def test_unknown_tier_id_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        await _seed_loot_static(session, caller, tier_id="some-future-tier")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result) == []
+
+    async def test_tie_at_top_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        # Both melee with the same need: 143 vs 143. The name tie-break puts
+        # "Aaa Caller" first, so only the strict-first check rejects this.
+        await _seed_loot_static(session, caller, other_role="melee", other_job="MNK")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result) == []
+
+    async def test_other_player_strictly_first_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        # Caller healer: 25 + 18 = 43. Other melee: 125 + 18 = 143. Other first.
+        await _seed_loot_static(
+            session, caller, caller_role="healer", caller_job="WHM", other_role="melee", other_job="DRG",
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result) == []
+
+    @pytest.mark.parametrize(
+        "settings",
+        [
+            pytest.param({"prioritySettings": {"mode": "manual-planning"}}, id="manual_planning"),
+            pytest.param({"priorityMode": "disabled"}, id="disabled"),
+        ],
+    )
+    async def test_manual_planning_and_disabled_modes_yield_none(self, session: AsyncSession, settings):
+        caller = await create_user(session)
+        await _seed_loot_static(session, caller, settings=settings)
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result) == []
+
+    async def test_enhanced_scoring_gates_on_any_loot_log_row(self, session: AsyncSession):
+        caller = await create_user(session)
+        _group, tier, _cp, other_player = await _seed_loot_static(
+            session, caller, settings={"enableEnhancedScoring": True},
+        )
+
+        # No rows yet: enhanced scoring is not in effect on the Loot tab either.
+        result = await build_player_overview(session, caller.id, NOW)
+        assert len(_loot_items(result)) == 1
+
+        # Any row, any week or floor, and the Loot tab switches to enhanced scoring.
+        await create_loot_log_entry(
+            session, tier, other_player, caller, week_number=1, floor="M11S", item_slot="body",
+        )
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result) == []
+
+    @pytest.mark.parametrize(
+        ("configured", "substitute"),
+        [pytest.param(False, False, id="unconfigured"), pytest.param(True, True, id="substitute")],
+    )
+    async def test_substitute_or_unconfigured_caller_yields_none(
+        self, session: AsyncSession, configured, substitute,
+    ):
+        caller = await create_user(session)
+        await _seed_loot_static(
+            session, caller, caller_configured=configured, caller_substitute=substitute,
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result) == []
+
+    async def test_no_linked_player_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        await _seed_loot_static(session, caller, link_caller=False)
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result) == []
+
+    async def test_ultimate_tier_yields_none(self, session: AsyncSession):
+        caller = await create_user(session)
+        await _seed_loot_static(session, caller, content_type="ultimate")
+
+        result = await build_player_overview(session, caller.id, NOW)
+        assert _loot_items(result) == []
+
+    async def test_floor_four_weapon_never_appears(self, session: AsyncSession):
+        caller = await create_user(session)
+        # Caller melee needs weapon + earring: 125 + (3.0 + 0.8)*10 = 163.
+        # Other healer needs earring: 25 + 8 = 33. The weapon need counts toward
+        # the score but floor 4 is never listed.
+        await _seed_loot_static(
+            session, caller, caller_slots=("weapon", "earring"), other_slots=("earring",),
+        )
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _loot_items(result)
+        assert len(items) == 1
+        assert items[0].title == "You're first in line for 1 drop"
+        assert items[0].detail == "M9S Earring"
+
+    async def test_more_than_three_drops_truncates_and_pluralizes(self, session: AsyncSession):
+        caller = await create_user(session)
+        five = ("earring", "necklace", "bracelet", "head", "hands")
+        # Caller melee: 125 + (0.8*3 + 1.0*2)*10 = 44 -> 169. Other healer: 25 + 44 = 69.
+        await _seed_loot_static(session, caller, caller_slots=five, other_slots=five)
+
+        result = await build_player_overview(session, caller.id, NOW)
+        items = _loot_items(result)
+        assert len(items) == 1
+        assert items[0].title == "You're first in line for 5 drops"
+        assert items[0].detail == "M9S Earring · M9S Necklace · M9S Bracelet · +2 more"
+
+
+# ==================== Order (R-PH2-H) ====================
+
+
+async def test_action_items_rsvp_by_time_then_loot_by_static_name(session: AsyncSession):
+    caller = await create_user(session)
+    beta, _t1, _c1, _o1 = await _seed_loot_static(session, caller, name="beta")
+    alpha, _t2, _c2, _o2 = await _seed_loot_static(session, caller, name="Alpha")
+    await _one_off_session(session, beta, caller, NOW + timedelta(days=1))
+    await _one_off_session(session, alpha, caller, NOW + timedelta(days=3))
+
+    result = await build_player_overview(session, caller.id, NOW)
+    assert [(item.type, item.static_name) for item in result.action_items] == [
+        ("rsvp_pending", "beta"),
+        ("rsvp_pending", "Alpha"),
+        ("loot_priority", "Alpha"),
+        ("loot_priority", "beta"),
+    ]
