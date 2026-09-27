@@ -631,3 +631,30 @@ Size: ~650–850 lines including tests.
 3. Gates on each head, with the counts pasted into each PR body.
 4. Draft → ready once per PR. Merge bottom-first per `slice-loop` § Stacked PRs, polling for the restack. The docs PR has already merged, and SF1b and SF1c merge together (m14).
 5. The final message per the skill, then rewrite `SESSION_HANDOFF.md`.
+
+## Outcome
+
+- **PRs:**
+  - Docs #308 (merged, `cd63abd1`).
+  - SF1a #309 (merged, `30a4756d`): +2,901/− at review, 889 of the insertions the golden fixture.
+  - SF1b #310 (+1,721/−67).
+  - SF1c #311 (+1,301/−36, including this write-back; the number is to be confirmed).
+- **Rulings that bind later slices only:**
+  - V2 recruitment statuses are a separate list from V1's (m9 gap: a V1 link with `recruitmentStatus=limited` shows "Any status" in V2 while still filtering).
+  - `hideConflicts` is V1-only; V2 uses `hideGoalConflicts`.
+  - No `displayZone` field. Add one additively if a later slice needs a zone label.
+  - `dayGroup` with no known zone is judged on the UTC day (API-only edge).
+- **Carried follow-ups:**
+  - (a) The R-SF-K residual: `DiscoveryTab.tsx:819` fills `timezone` only when it's empty, so a form already set to another zone still mislabels the auto-filled times.
+  - (b) The "Post a listing" root cause: `openSettings({section})` → the `initialSection` handoff loses to same-commit URL writes (`hooks/useGroupViewState.ts`, `components/settings/RecruitmentTab.tsx`, read-only this slice). SF1c works around it by seeding `?rcsub=listing` in the navigated URL.
+  - (c) The lead-side recruitment home (SF-1), reverse matching, logged-out polish and mobile (spec §9).
+- **Loop numbers:**
+  - 3 tasks.
+  - Reviews: 1 task-scoped (SF1a) + 1 whole-branch (SF1b+c), each followed by one fix wave with a re-review.
+  - Plus one PR-bot fix on #309 (Copilot: 2.1.48 made a public release for the auto-fill fix; claude-review: the `nights` contract).
+  - 0 Critical findings; Important findings: 1 (SF1a) and 3 (SF1b+c).
+  - About 11 commits across the three PRs.
+  - SDD artifacts about 366 KB, of which about 314 KB are review diff packages.
+  - Wall clock about 3.5 h, from the golden capture to the fix wave.
+  - D12's baseline was 8 tasks / 8 rounds / 30 commits / 838 KB / ~12 h.
+- **Plan-vet:** the loop didn't overrule any fold, but it did settle the `nights` contract after vet, at the SF1a review (§4, above).
