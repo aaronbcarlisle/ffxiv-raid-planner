@@ -76,7 +76,7 @@ export const RELEASES: Release[] = [
         category: 'improvement',
         title: 'The Hub says where your typical week goes',
         description:
-          'V2 preview: the Hub\'s Availability tab and its Overview card now explain that your typical week fills every static\'s schedule unless you paint a week there.',
+          'V2 preview: the Hub\'s Availability tab and its Overview card now explain that your typical week fills the schedule of every static you raid with unless you paint a week there.',
         pr: 305,
         prTitle: 'feat(v2): PH3b — availability pipe frontend: your typical week fills every static\'s schedule',
       },

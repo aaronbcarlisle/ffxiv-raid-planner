@@ -151,7 +151,9 @@ describe('Availability card', () => {
 
   it('shows the pipe copy (R-PH3-F)', () => {
     renderCards();
-    expect(screen.getByText("Fills every static's schedule unless you paint a week.")).toBeInTheDocument();
+    expect(
+      screen.getByText('Fills the schedule of every static you raid with unless you paint a week.')
+    ).toBeInTheDocument();
   });
 });
 

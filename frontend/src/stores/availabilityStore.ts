@@ -10,6 +10,10 @@ interface FetchAvailabilityOptions {
   includeTemplates?: boolean;
 }
 
+// A response from a superseded request is dropped, so a quick week or static
+// change can't overwrite the current range's rows.
+const latestRequest = { legacy: 0, layered: 0 };
+
 interface AvailabilityState {
   data: AvailabilityDateSummary[];
   layeredData: AvailabilityDateSummary[];
@@ -44,19 +48,23 @@ export const useAvailabilityStore = create<AvailabilityState>((set) => ({
     endDate: string,
     options?: FetchAvailabilityOptions
   ) => {
+    const includeTemplates = options?.includeTemplates ?? false;
+    const kind = includeTemplates ? 'layered' : 'legacy';
+    const requestId = ++latestRequest[kind];
     set({ isLoading: true, error: null });
     try {
-      const includeTemplates = options?.includeTemplates ?? false;
       const url = `/api/static-groups/${groupId}/availability?start_date=${startDate}&end_date=${endDate}${
         includeTemplates ? '&include_templates=true' : ''
       }`;
       const result = await api.get<AvailabilityDateSummary[]>(url);
+      if (requestId !== latestRequest[kind]) return;
       if (includeTemplates) {
         set({ layeredData: result, isLoading: false });
       } else {
         set({ data: result, isLoading: false });
       }
     } catch (err) {
+      if (requestId !== latestRequest[kind]) return;
       set({ error: (err as Error).message, isLoading: false });
     }
   },

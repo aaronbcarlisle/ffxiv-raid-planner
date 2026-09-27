@@ -68,6 +68,60 @@ describe('availabilityStore fetchAvailability', () => {
     expect(useAvailabilityStore.getState().data).toEqual(datedFixture);
   });
 
+  it('layered: a response from a superseded request is dropped, even if it resolves later', async () => {
+    let resolveFirst!: (value: AvailabilityDateSummary[]) => void;
+    let resolveSecond!: (value: AvailabilityDateSummary[]) => void;
+    const first = new Promise<AvailabilityDateSummary[]>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const second = new Promise<AvailabilityDateSummary[]>((resolve) => {
+      resolveSecond = resolve;
+    });
+    vi.mocked(api.get).mockReturnValueOnce(first).mockReturnValueOnce(second);
+
+    const firstFetch = useAvailabilityStore
+      .getState()
+      .fetchAvailability('g1', '2026-07-01', '2026-07-07', { includeTemplates: true });
+    const secondFetch = useAvailabilityStore
+      .getState()
+      .fetchAvailability('g1', '2026-07-08', '2026-07-14', { includeTemplates: true });
+
+    resolveSecond(layeredFixture);
+    await secondFetch;
+    resolveFirst([{ date: '2026-06-24', responses: [] }]);
+    await firstFetch;
+
+    expect(useAvailabilityStore.getState().layeredData).toEqual(layeredFixture);
+    expect(useAvailabilityStore.getState().isLoading).toBe(false);
+  });
+
+  it('legacy: a response from a superseded request is dropped, even if it resolves later', async () => {
+    let resolveFirst!: (value: AvailabilityDateSummary[]) => void;
+    let resolveSecond!: (value: AvailabilityDateSummary[]) => void;
+    const first = new Promise<AvailabilityDateSummary[]>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const second = new Promise<AvailabilityDateSummary[]>((resolve) => {
+      resolveSecond = resolve;
+    });
+    vi.mocked(api.get).mockReturnValueOnce(first).mockReturnValueOnce(second);
+
+    const firstFetch = useAvailabilityStore
+      .getState()
+      .fetchAvailability('g1', '2026-07-01', '2026-07-07');
+    const secondFetch = useAvailabilityStore
+      .getState()
+      .fetchAvailability('g1', '2026-07-08', '2026-07-14');
+
+    resolveSecond(datedFixture);
+    await secondFetch;
+    resolveFirst([{ date: '2026-06-24', responses: [] }]);
+    await firstFetch;
+
+    expect(useAvailabilityStore.getState().data).toEqual(datedFixture);
+    expect(useAvailabilityStore.getState().isLoading).toBe(false);
+  });
+
   it('clearAvailability empties both `data` and `layeredData`', () => {
     useAvailabilityStore.setState({ data: datedFixture, layeredData: layeredFixture });
 

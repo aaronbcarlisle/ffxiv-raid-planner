@@ -29,7 +29,8 @@ interface PlayerAvailabilityTabProps {
   primaryStatic?: StaticGroupListItem | null;
   staticGroups?: StaticGroupListItem[];
   /** V2 only (R-PH3-F): the availability pipe layers the typical week into
-   *  every static's schedule. Defaults false so V1's copy stays untouched. */
+   *  the schedule of every static the user raids with (non-viewer
+   *  memberships). Defaults false so V1's copy stays untouched. */
   layeredSchedule?: boolean;
 }
 
@@ -62,7 +63,7 @@ export function PlayerAvailabilityTab({
             <h2 className="font-display text-xl font-semibold text-text-primary">Typical Availability</h2>
             <p className="mt-1 max-w-2xl text-sm text-text-secondary">
               {layeredSchedule
-                ? "Set your usual raid times once. Every static's schedule uses it for any week you haven't painted; paint a week in that static's schedule to make an exception."
+                ? "Set your usual raid times once. Every static you raid with uses it for any week you haven't painted; paint a week in that static's schedule to make an exception."
                 : "Set your usual raid times once. When used in a static, it copies into that static's week so you can adjust exceptions there."}
             </p>
           </div>
@@ -109,7 +110,7 @@ export function PlayerAvailabilityTab({
           <div className="rounded-lg border border-border-subtle bg-surface-elevated/70 px-3 py-2">
             <div className="text-xs font-medium text-accent">Schedule matching</div>
             <p className="mt-1 text-xs text-text-tertiary">
-              {layeredSchedule ? "Fills every static's schedule automatically." : 'Used later for schedule matching.'}
+              {layeredSchedule ? 'Fills the schedule of every static you raid with.' : 'Used later for schedule matching.'}
             </p>
           </div>
         </div>

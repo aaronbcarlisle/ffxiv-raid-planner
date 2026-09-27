@@ -85,6 +85,6 @@ describe('PlayerAvailabilityTab', () => {
     expect(screen.getByText(/uses it for any week you haven't painted/)).toBeInTheDocument();
     expect(screen.queryByText(/copies into that static's week/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Fills empty This Week days only\./)).not.toBeInTheDocument();
-    expect(screen.getByText(/Fills every static's schedule automatically\./)).toBeInTheDocument();
+    expect(screen.getByText(/Fills the schedule of every static you raid with\./)).toBeInTheDocument();
   });
 });
