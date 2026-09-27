@@ -2,7 +2,7 @@
 #    uv pip compile requirements.in -o requirements.txt --universal --python-version 3.11
 aiosqlite==0.22.1
     # via -r requirements.in
-alembic==1.19.1
+alembic==1.20.0
     # via -r requirements.in
 annotated-doc==0.0.5
     # via fastapi
@@ -91,7 +91,7 @@ six==1.17.0
     # via ecdsa
 slowapi==0.1.10
     # via -r requirements.in
-sqlalchemy==2.0.52
+sqlalchemy==2.0.54
     # via
     #   -r requirements.in
     #   alembic
@@ -115,9 +115,9 @@ typing-inspection==0.4.2
     #   fastapi
     #   pydantic
     #   pydantic-settings
-tzdata==2026.3
+tzdata==2026.4
     # via -r requirements.in
-uvicorn==0.52.4
+uvicorn==0.53.0
     # via -r requirements.in
 uvloop==0.22.1 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'
     # via uvicorn
