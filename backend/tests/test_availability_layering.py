@@ -11,11 +11,11 @@ from datetime import date
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy import event, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth_utils import create_access_token
-from app.models import Membership, MemberRole, User
+from app.models import MemberRole, Membership, User
 from app.models.availability import UserAvailability
 from app.services.availability_layering import (
     TemplateDay,
@@ -344,7 +344,8 @@ async def _set_joined_at(session: AsyncSession, group_id: str, user_id: str, val
 
 class TestListAvailabilityFlagOff:
     async def test_returns_todays_dated_rows_with_source_dated(
-        self, client: AsyncClient, session: AsyncSession, test_group, test_user, member_user, member_headers
+        self, client: AsyncClient, session: AsyncSession, test_group, test_user,
+        member_user, member_headers,
     ):
         await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
         owner_row = await create_user_availability(
@@ -407,9 +408,12 @@ class TestListAvailabilityFlagOff:
 
 class TestListAvailabilityFlagOn:
     async def test_layers_personal_templates_under_dated_rows(
-        self, client: AsyncClient, session: AsyncSession, test_group, test_user, member_user, member_headers
+        self, client: AsyncClient, session: AsyncSession, test_group, test_user,
+        member_user, member_headers,
     ):
-        membership = await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
+        membership = await create_membership(
+            session, member_user, test_group, role=MemberRole.MEMBER
+        )
         await _set_joined_at(session, test_group.id, test_user.id, "2026-01-01T00:00:00+00:00")
         membership.joined_at = "2026-01-02T00:00:00+00:00"
         await session.flush()
@@ -417,13 +421,15 @@ class TestListAvailabilityFlagOn:
         # Owner: template only. Member: a dated Monday and a template Monday.
         # Both templates are New York local (EDT, UTC-4, in June).
         await create_personal_availability_template(
-            session, test_user, day_of_week="MO", slots=["20:00", "23:30"], timezone="America/New_York"
+            session, test_user, day_of_week="MO",
+            slots=["20:00", "23:30"], timezone="America/New_York",
         )
         dated = await create_user_availability(
             session, test_group, member_user, date="2026-06-01", slots=["20:00"]
         )
         await create_personal_availability_template(
-            session, member_user, day_of_week="MO", slots=["19:00", "23:30"], timezone="America/New_York"
+            session, member_user, day_of_week="MO",
+            slots=["19:00", "23:30"], timezone="America/New_York",
         )
 
         response = await client.get(
@@ -465,7 +471,8 @@ class TestListAvailabilityFlagOn:
         ]
 
     async def test_viewer_templates_are_not_layered_but_viewer_can_read(
-        self, client: AsyncClient, session: AsyncSession, test_group, test_user, viewer_user, viewer_headers
+        self, client: AsyncClient, session: AsyncSession, test_group, test_user,
+        viewer_user, viewer_headers,
     ):
         await create_membership(session, viewer_user, test_group, role=MemberRole.VIEWER)
         await create_personal_availability_template(
@@ -510,7 +517,8 @@ class TestListAvailabilityFlagOn:
         ],
     )
     async def test_range_validation_still_applies(
-        self, client: AsyncClient, session: AsyncSession, test_group, member_user, member_headers, start, end
+        self, client: AsyncClient, session: AsyncSession, test_group,
+        member_user, member_headers, start, end,
     ):
         await create_membership(session, member_user, test_group, role=MemberRole.MEMBER)
 
@@ -523,35 +531,28 @@ class TestListAvailabilityFlagOn:
 # ==================== Statement budget (R-PH3-D) ====================
 
 
-async def _count_statements(engine, run) -> int:
-    counts = {"n": 0}
-
-    def _count(conn, cursor, statement, parameters, context, executemany):
-        counts["n"] += 1
-
-    event.listen(engine.sync_engine, "before_cursor_execute", _count)
-    try:
-        await run()
-    finally:
-        event.remove(engine.sync_engine, "before_cursor_execute", _count)
-    return counts["n"]
-
-
 async def _statements_for_get(
-    client: AsyncClient, session: AsyncSession, engine, group_id: str, headers, *, include_templates: bool
+    client: AsyncClient,
+    session: AsyncSession,
+    engine,
+    group_id: str,
+    headers,
+    *,
+    include_templates: bool,
+    count_statements,
 ) -> int:
     # Start each measurement from an empty identity map so a relationship
     # load cannot be skipped because the previous request already loaded it.
     session.expunge_all()
 
-    async def _get():
+    with count_statements(engine) as counts:
         response = await client.get(
             _url(group_id, "2026-06-01", "2026-06-07", include_templates=include_templates),
             headers=headers,
         )
         assert response.status_code == 200
 
-    return await _count_statements(engine, _get)
+    return counts.n
 
 
 @pytest.mark.parametrize(
@@ -565,6 +566,7 @@ async def test_flag_on_adds_exactly_two_statements(
     test_group,
     test_user,
     auth_headers,
+    count_statements,
     extra_members: int,
     with_templates: bool,
 ):
@@ -585,10 +587,12 @@ async def test_flag_on_adds_exactly_two_statements(
             )
 
     off = await _statements_for_get(
-        client, session, engine, test_group.id, auth_headers, include_templates=False
+        client, session, engine, test_group.id, auth_headers,
+        include_templates=False, count_statements=count_statements,
     )
     on = await _statements_for_get(
-        client, session, engine, test_group.id, auth_headers, include_templates=True
+        client, session, engine, test_group.id, auth_headers,
+        include_templates=True, count_statements=count_statements,
     )
 
     assert on - off == 2

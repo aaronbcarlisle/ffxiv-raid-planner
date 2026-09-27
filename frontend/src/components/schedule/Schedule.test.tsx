@@ -36,6 +36,7 @@ import { Schedule } from './Schedule';
 import { useScheduleStore } from '../../stores/scheduleStore';
 import { useAvailabilityStore } from '../../stores/availabilityStore';
 import { useLootTrackingStore } from '../../stores/lootTrackingStore';
+import { utcSlotToLocal, formatTimeLabel } from './availabilityUtils';
 import type { ScheduleSession, ScheduleSessionCreate, StaticGroup } from '../../types';
 
 function makeSession(overrides: Partial<ScheduleSession> = {}): ScheduleSession {
@@ -345,13 +346,26 @@ describe('Schedule', () => {
       screen.getByText(/Aggregated from each member's availability/),
     ).toBeInTheDocument();
     expect(screen.queryByText(/No availability marked yet/)).not.toBeInTheDocument();
+    // The heatmap cell itself: only layeredData's 22:00/23:00 UTC slots can
+    // ever produce a "1 of 1 free — Alice" cell here — the conflicting `data`
+    // fixture's noon slot falls outside the prime-hour window (18:00–02:00,
+    // scheduleWeek.ts PRIME_HOURS) and can never surface a cell at all. Labels
+    // are derived through the same UTC→local conversion the component uses so
+    // this doesn't depend on the host's timezone.
+    const heatmapHourLabels = ['22:00', '23:00'].map((utcTime) =>
+      formatTimeLabel(utcSlotToLocal('2026-07-01', utcTime).localTime),
+    );
+    expect(
+      screen.getAllByLabelText(new RegExp(`(${heatmapHourLabels.join('|')}) — 1 of 1 free — Alice`)).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText('1/1')).toBeInTheDocument();
     expect(screen.queryByText('Not enough availability data yet.')).not.toBeInTheDocument();
   });
 
   // Task 10 (§5.1 stopgap): the only availability EDITOR reachable from v2 is
   // the legacy AvailabilityGrid, hosted in a modal off the heatmap's Edit-week
-  // affordance, until the Ring-1 Person→Static pipe replaces it.
+  // affordance (H-10: the pipe fills the schedule but does not replace this
+  // exceptions editor).
   describe('availability edit modal (Task 10 stopgap)', () => {
     it("opens via the heatmap's Edit week affordance, mounting AvailabilityGrid with legacy-mirrored props", async () => {
       renderSchedule();

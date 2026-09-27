@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MemberRole
@@ -478,36 +477,22 @@ async def _seed_static_with_tier_and_session(session: AsyncSession, caller, *, n
     await session.flush()
 
 
-async def test_query_budget_constant_across_static_count(session: AsyncSession, engine):
+async def test_query_budget_constant_across_static_count(
+    session: AsyncSession, engine, count_statements
+):
     caller = await create_user(session)
     await _seed_static_with_tier_and_session(session, caller, name="Solo")
 
-    def _make_counter():
-        counts = {"n": 0}
-
-        def _count(conn, cursor, statement, parameters, context, executemany):
-            counts["n"] += 1
-
-        return counts, _count
-
-    counts_one, listener_one = _make_counter()
-    event.listen(engine.sync_engine, "before_cursor_execute", listener_one)
-    try:
+    with count_statements(engine) as counts_one:
         await build_player_overview(session, caller.id, NOW)
-    finally:
-        event.remove(engine.sync_engine, "before_cursor_execute", listener_one)
 
     await _seed_static_with_tier_and_session(session, caller, name="Second")
     await _seed_static_with_tier_and_session(session, caller, name="Third")
 
-    counts_three, listener_three = _make_counter()
-    event.listen(engine.sync_engine, "before_cursor_execute", listener_three)
-    try:
+    with count_statements(engine) as counts_three:
         await build_player_overview(session, caller.id, NOW)
-    finally:
-        event.remove(engine.sync_engine, "before_cursor_execute", listener_three)
 
-    assert counts_one["n"] == counts_three["n"]
+    assert counts_one.n == counts_three.n
 
 
 # Keep create_schedule_rsvp and create_material_log_entry exercised so the new
