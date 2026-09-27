@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.50',
+    date: '2026-09-27T23:00:00Z',
+    title: 'Static Finder — SF1c cards, join and entry points (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'Static Finder cards get reasons, tags, and a join flow',
+        description:
+          'V2 preview: each Static Finder card now shows why it fits (role, schedule, goals, comms, and BiS reasons, plus a "Your time:" line when your typical week isn\'t set), the static\'s Looking For tags, a Copy link and View static, and Request to join with pending/accepted/declined states. Signed-in viewers missing a typical week or jobs see a nudge to the Hub, and static leads see a "Leading a static?" row to post their own listing.',
+        pr: 311,
+        prTitle: 'feat(v2): SF1c — Static Finder cards, join and entry points',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.49',
     date: '2026-09-27T22:00:00Z',
     title: 'Static Finder — SF1b page frame (v2 preview)',

@@ -123,6 +123,8 @@ Close REDESIGN_SPEC §11 open decision #6 with the user (front-door vs light per
 
 Same discipline per §5.6 + mockup-06 re-validation; unifies Discover + recruitment settings + invitations (recruitment-as-matching, Ring 1).
 
+> **Status 2026-09-27:** Finder built (SF1 #309/#310/#311); lead-side home carried per SF-1, Stage 4 stays open. Mockup-06 re-validation is **closed**: title/subtitle, filters, summary headline/subline, best-match sort, reason rows, footer schedule + members, View, and "Leading a static instead?" → Post a listing are built; match % deviated to the tier tag, meta-line content/progress deviated to objective tags, Apply deviated to Request to join (SF-6), the vibe reason row was dropped (no viewer vibe input), and the decorative initials badge was dropped. Spec `specs/2026-09-27-static-finder-design.md` (SF-1…SF-7).
+
 ### Stage 5 — Docs & Admin fit-and-finish
 
 Docs: light restyle inside v2 chrome (pulls Phase F's docs scope in). Admin: **stays a separate gated area** (PRODUCT_MODEL §5 — no port mandate) but v2-chromed from Stage 1; deeper restyle optional; admin boundary-lint constraints noted (ring→admin edges are fail-on-new).

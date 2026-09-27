@@ -1,6 +1,6 @@
 # Static Finder (V2) — design
 
-**Status:** approved in brainstorm 2026-09-27 (sections 1–3); SF-7 (day groups) added at spec review; written spec awaiting the user's review. Plan next (three stacked PRs SF1a/b/c).
+**Status:** SF1 built — SF1a #309, SF1b #310, SF1c #311. Stage 4 stays open for the lead-side home (§9); `RECONCILIATION.md` B3 is `[PARTIAL]`.
 **Roadmap home:** Stage 4 (B3), `V2_COVERAGE_PLAN.md:122-124`: "Same discipline per §5.6 + mockup-06 re-validation; unifies Discover + recruitment settings + invitations (recruitment-as-matching, Ring 1)."
 **Inputs:**
 - `REDESIGN_SPEC.md` §5.6 (`:211-215`), recruitment as *matching*.
@@ -98,19 +98,26 @@ The endpoint stays `GET /api/discovery/statics` (`routers/discovery.py:167`). It
 DiscoveryListItem.fitV2: {            // null for guests or without the flag
   tier: 'strong' | 'good' | 'partial' | 'weak' | 'unknown',
   missing: ('template' | 'jobs')[],   // drives the Hub nudge
-  role:     { status, matchedJob?, matchedRole?, priority? },
+  role:     { status, matchedJob?, matchedRole?, priority?, isMain, asRole? },
   schedule: { status, basis: 'time' | 'day',
-              nights: [{ day, localDay, localStart, localEnd, coverage: 'full' | 'part' | 'none' }] },
+              nights: [{ day, localDay, localStart, localEnd, coverage: 'full' | 'part' | 'none' | null }] },
   reasons:  [{ kind: 'role' | 'schedule' | 'goals' | 'comms' | 'bis', status, params }]
 }
-DiscoveryListResponse.fitCounts: { strong, good, partial, weak, unknown }   // whole filtered set, before pagination; null without fitV2
+FinderListItem.id: string             // subclass of DiscoveryListItem; only with fitV2 and a signed-in caller (see below)
+DiscoveryListResponse.fitCounts: { strong, good, partial, weak, unknown } | null   // whole filtered set, before pagination; null without fitV2
+DiscoveryListResponse.viewer: { mainJob, mainRole, missing: ('template' | 'jobs')[] } | null   // the viewer's own fit inputs; null without fitV2 or for guests
 ```
 
-`nights[].localDay/localStart/localEnd` are the raid window in the **viewer's** zone. The card never converts times itself.
+**As built** (`schemas/discovery.py`):
 
-**Contracts.** Without the new parameters, the response is byte-identical apart from the two new nullable fields. The existing `fit` object keeps today's semantics. The Dalamud plugin calls none of these routes.
+- **`id`.** Emitted only when `fitV2` is on **and** the caller is signed in. It lands on a separate subclass, `FinderListItem(DiscoveryListItem)`, which the router instantiates only on that path; `DiscoveryListResponse.items` is typed `list[SerializeAsAny[DiscoveryListItem]]` so a plain item serializes with **no `id` key at all** (not `null`) and a `FinderListItem` keeps its `id`. Guests and V1 requests always get the plain shape. This is a deliberate flip of the endpoint's "no internal IDs" guard (`tests/test_discovery.py:270,281`), scoped to signed-in V2 viewers only.
+- **`viewer` (`FitViewer`).** The signed-in viewer's own `mainJob`/`mainRole` and `missing` (`template`/`jobs`), independent of any one listing — the Finder's nudge and role-chip default read it once instead of re-deriving it per card. `null` without `fitV2` or for a guest.
+- **`fitCounts` (`FitCounts`).** Tier counts over the whole filtered set, before pagination. `null` without `fitV2`.
+- **`viewerTz`.** A request parameter only (§4 table), not a response field: the viewer's browser IANA zone, used solely as the display/day-group zone fallback when no typical-week row's zone loads (SF-7). It never appears in the response.
+- **`nights[].coverage` (nullable).** `'full' | 'part' | 'none'` when the viewer has a typical week to test that night against; `null` when they don't (no typical week at all, or `basis: 'day'` with nothing to compare). `FitV2Schedule.basis` separately names *how* coverage was judged (`'time'` per 30-minute slot, `'day'` by weekday only) — `basis` is never itself `null`; only a night's `coverage` can be.
+- **The `nights` contract, settled in review (#309).** `nights` is populated whenever the listing has days, one entry per listed day, regardless of whether local times could be placed. `localDay`/`localStart`/`localEnd` are additionally present whenever the listing has times (a start, an end, and a loadable listing zone) — in the **display zone**: the newest typical-week row's zone, else the request's `viewerTz`, else UTC. They are `null` only when the window can't be placed on a clock (no start time, no zone, or an unloadable zone), in which case the card falls back to day-level text.
 
-**Amended at plan review (owner, 2026-09-27):** each item also carries the static's `id`, but only with `fitV2` and a signed-in caller, so V2 can match join requests by id. That is a deliberate flip of the endpoint's "no internal IDs" guard: signed-in V2 viewers now receive internal static ids; guests and V1 do not, and get no `id` key at all. The full §4 amendment (`id`, `viewer`, `fitCounts`, `viewerTz`) is written back as built at SF1c.
+**Contracts.** Without the new parameters, the response is byte-identical apart from the new nullable fields (`fitV2`, `fitCounts`, `viewer`) and the absent `id` key. The existing `fit` object keeps today's semantics. The Dalamud plugin calls none of these routes.
 
 ## 5. UI (SF1b, V2 only)
 
@@ -126,7 +133,7 @@ DiscoveryListResponse.fitCounts: { strong, good, partial, weak, unknown }   // w
 - **Summary bar:** driven by `fitCounts`, for example "3 statics are a strong fit for your melee opening and schedule". A `Select` for sort defaults to **Best match**; Recent, Members and Name stay available.
 - **Nudge:** when any item's `fitV2.missing` includes `template`, one inline line says "Add your typical week on the Hub to match schedules", with a `LinkText` to `/profile?tab=availability`. For `jobs` it says "Add your jobs…" and links to `/profile?tab=characters`.
 - **Card:**
-  - **Header:** name, DC/server, content progress, and the tier `Tag` (semantic status tokens).
+  - **Header:** name, DC/server, objective tags (no progress data), and the tier `Tag` (semantic status tokens).
   - **Reason rows:** each has a match, partial, conflict or unknown icon, with copy built from `reasons`. For example:
     - "Needs a tank — your WAR (main)"
     - "Fri 8–11 PM ✓ · Sat 8–11 PM partly free", in your local time

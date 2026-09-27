@@ -3,25 +3,41 @@
  * Rendered by pages/Discover.tsx's seam under V2 chrome; V1's `Discover`
  * (renamed `LegacyDiscover`) renders unchanged everywhere else.
  */
+import { useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { PageHeader } from '../layout/PageHeader';
 import { EmptyState } from '../ui/EmptyState';
 import { CardSkeleton } from '../ui/Skeleton';
 import { Button } from '../primitives';
+import { JoinRequestModal } from '../static-group/JoinRequestModal';
+import { useModalWithData } from '../../hooks/useModal';
 import { useAuthStore } from '../../stores/authStore';
+import { useJoinRequestStore } from '../../stores/joinRequestStore';
 import { useFinderQuery } from './useFinderQuery';
 import { FinderFilters } from './FinderFilters';
 import { FinderSummary } from './FinderSummary';
 import { FinderCard } from './FinderCard';
+import { FinderNudge } from './FinderNudge';
+import { LeadingStaticRow } from './LeadingStaticRow';
+import type { FinderItem } from './types';
 
 export function StaticFinder() {
   const user = useAuthStore((s) => s.user);
   const isGuest = !user;
+  const fetchMyRequests = useJoinRequestStore((s) => s.fetchMyRequests);
 
   const {
     state, setters, items, total, fitCounts, viewer, loading, error,
     retry, clearFilters, hasFilters, moreFiltersInitiallyOpen,
   } = useFinderQuery();
+
+  // R-SF-I: never fetched for a guest (F1).
+  useEffect(() => {
+    if (user) fetchMyRequests();
+  }, [user, fetchMyRequests]);
+
+  // One JoinRequestModal per page, not per card (R-SF-I).
+  const joinModal = useModalWithData<FinderItem>();
 
   return (
     <div data-testid="static-finder" className="w-full max-w-[120rem] px-3 sm:px-6 pb-6">
@@ -54,6 +70,8 @@ export function StaticFinder() {
             />
           )}
 
+          {!loading && !error && <FinderNudge viewer={viewer} />}
+
           {loading ? (
             <div data-testid="finder-loading" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               <CardSkeleton />
@@ -83,12 +101,24 @@ export function StaticFinder() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {items.map((item) => (
-                <FinderCard key={item.shareCode} item={item} />
+                <FinderCard key={item.shareCode} item={item} onRequestJoin={joinModal.open} />
               ))}
             </div>
           )}
+
+          {!loading && !error && <LeadingStaticRow />}
         </div>
       </div>
+
+      <JoinRequestModal
+        isOpen={joinModal.isOpen}
+        onClose={joinModal.close}
+        shareCode={joinModal.data?.shareCode ?? ''}
+        staticName={joinModal.data?.name ?? ''}
+        neededJobs={joinModal.data?.neededJobs ?? undefined}
+        neededRoles={joinModal.data?.neededRoles ?? undefined}
+        recruitmentStatus={joinModal.data?.recruitmentStatus}
+      />
     </div>
   );
 }
