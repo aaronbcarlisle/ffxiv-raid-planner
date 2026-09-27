@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.47',
+    date: '2026-09-27T17:10:00Z',
+    title: 'Test runs pinned to UTC',
+    items: [
+      {
+        category: 'improvement',
+        title: 'Frontend tests run in UTC on every machine',
+        description:
+          'The test runner now pins its timezone to UTC, so timezone-sensitive schedule tests behave the same locally as in CI.',
+        pr: 307,
+        prTitle: 'chore: Stage 3 housekeeping — stacked-PR restack fallback, TZ-pinned vitest',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.46',
     date: '2026-09-27T14:10:00Z',
     title: 'Player Hub — PH3c out-of-date BiS (v2 preview)',
