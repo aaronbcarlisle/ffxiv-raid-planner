@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.48',
+    date: '2026-09-27T20:00:00Z',
+    title: 'Static Finder — SF1a fit engine and API (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'Discovery API gains the Static Finder fit engine (fitV2)',
+        description:
+          'V2 preview plumbing: GET /api/discovery/statics accepts fitV2, asRole, dayGroup, viewerTz and sort=best, and answers with a per-night schedule fit in the viewer\'s zone, a role fit from the listing\'s recruiting roles, a tier with reason rows, fit counts and the viewer\'s main job. V1 requests are byte-for-byte unchanged (golden test). Also fixes the listing autofill so session days and times land in the suggested timezone instead of UTC.',
+        pr: 309,
+        prTitle: 'feat(v2): SF1a — Static Finder fit engine and API (fitV2)',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.47',
     date: '2026-09-27T17:10:00Z',
     title: 'Test runs pinned to UTC',

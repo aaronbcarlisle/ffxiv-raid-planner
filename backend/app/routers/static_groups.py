@@ -60,6 +60,7 @@ from ..schemas import (
     StaticSettingsSchema,
 )
 from ..services import generate_share_code
+from ..services.availability_layering import load_zone
 
 router = APIRouter(prefix="/api/static-groups", tags=["static-groups"])
 logger = structlog.get_logger(__name__)
@@ -1282,12 +1283,26 @@ async def get_discovery_suggestions(
             days: set[str] = set()
             start_times: list[str] = []
             end_times: list[str] = []
+            # R-SF-K: the weekday and HH:MM are taken in the suggested (majority) zone
+            # printed beside them, not in UTC; a zone that doesn't load reads as UTC.
+            suggested_tz = suggestions.get("timezone")
+            suggested_zone = (
+                load_zone(suggested_tz) if isinstance(suggested_tz, str) and suggested_tz else None
+            ) or timezone.utc
             for s in recurring:
                 # Parse ISO datetime to extract day of week and time
                 try:
                     from datetime import datetime as dt
                     start_dt = dt.fromisoformat(s.start_time.replace("Z", "+00:00"))
                     end_dt = dt.fromisoformat(s.end_time.replace("Z", "+00:00"))
+                    # A naive ISO string is UTC (services/discord_guild_events.py pattern);
+                    # astimezone() alone would read it as the server's local time.
+                    if start_dt.tzinfo is None:
+                        start_dt = start_dt.replace(tzinfo=timezone.utc)
+                    if end_dt.tzinfo is None:
+                        end_dt = end_dt.replace(tzinfo=timezone.utc)
+                    start_dt = start_dt.astimezone(suggested_zone)
+                    end_dt = end_dt.astimezone(suggested_zone)
                     day_name = start_dt.strftime("%A")
                     days.add(day_name)
                     start_times.append(start_dt.strftime("%H:%M"))

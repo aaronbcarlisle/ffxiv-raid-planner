@@ -51,7 +51,7 @@ def weekday_code(day: date) -> str:
     return WEEKDAY_CODES[day.weekday()]
 
 
-def _parse_slot(slot: object) -> time | None:
+def parse_slot(slot: object) -> time | None:
     """Strict "HH:MM" with 0 <= HH < 24 and 0 <= MM < 60; anything else -> None."""
     if not isinstance(slot, str):
         return None
@@ -64,7 +64,7 @@ def _parse_slot(slot: object) -> time | None:
     return time(hours, minutes)
 
 
-def _load_zone(name: str) -> tzinfo | None:
+def load_zone(name: str) -> tzinfo | None:
     """`ZoneInfo(name)`, or None when the name is unusable.
 
     `ZoneInfo("America")` raises PermissionError on Windows and
@@ -99,7 +99,7 @@ def expand_personal_templates(
     for day in days:
         zone = zones.get(day.timezone)
         if zone is None:
-            loaded = _load_zone(day.timezone)
+            loaded = load_zone(day.timezone)
             if loaded is None:
                 logger.warning(
                     "personal availability template has unknown timezone %r (user %s); "
@@ -113,7 +113,7 @@ def expand_personal_templates(
         parsed: list[time] = []
         bad_slots: list[object] = []
         for slot in day.slots:
-            wall_time = _parse_slot(slot)
+            wall_time = parse_slot(slot)
             if wall_time is None:
                 bad_slots.append(slot)
             else:

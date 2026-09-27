@@ -1,6 +1,8 @@
 """Pydantic schemas for static discovery API"""
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny
 
 from .static_group import to_camel
 
@@ -90,6 +92,63 @@ class FitSummary(CamelModel):
     bis: FitBis
 
 
+# --- Static Finder V2 fit (Stage 4 SF1a, plan R-SF-A) — additive, null without fitV2 ---
+
+
+class FitNight(CamelModel):
+    """One listed raid night in the viewer's display zone (R-SF-C)."""
+    day: str  # the listing's iCal code
+    local_day: str | None  # viewer's iCal code of the raid start; None when the window isn't placed
+    local_start: str | None  # "HH:MM" in the viewer's display zone
+    local_end: str | None
+    coverage: Literal["full", "part", "none"] | None  # None: no typical week to test
+
+
+class FitV2Role(CamelModel):
+    status: Literal["match", "partial", "none", "unknown"]
+    matched_job: str | None = None
+    matched_role: str | None = None
+    priority: Literal["needed", "nice_to_have"] | None = None
+    is_main: bool = False
+    as_role: str | None = None
+
+
+class FitV2Schedule(CamelModel):
+    status: Literal["match", "partial", "conflict", "unknown"]
+    basis: Literal["time", "day"]
+    nights: list[FitNight] = Field(default_factory=list)
+
+
+class FitReason(CamelModel):
+    """One reason row; it carries no English, the frontend owns the copy (R-SF-P)."""
+    kind: Literal["role", "schedule", "goals", "comms", "bis"]
+    status: Literal["match", "partial", "conflict"]
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class FitV2(CamelModel):
+    tier: Literal["strong", "good", "partial", "weak", "unknown"]
+    missing: list[Literal["template", "jobs"]] = Field(default_factory=list)
+    role: FitV2Role
+    schedule: FitV2Schedule
+    reasons: list[FitReason] = Field(default_factory=list)
+
+
+class FitCounts(CamelModel):
+    """Tier counts over the whole filtered set, before pagination (R-SF-F)."""
+    strong: int = 0
+    good: int = 0
+    partial: int = 0
+    weak: int = 0
+    unknown: int = 0
+
+
+class FitViewer(CamelModel):
+    main_job: str | None
+    main_role: str | None
+    missing: list[Literal["template", "jobs"]] = Field(default_factory=list)
+
+
 class DiscoveryListItem(CamelModel):
     """Public-safe DTO returned by the discovery endpoint"""
 
@@ -118,10 +177,25 @@ class DiscoveryListItem(CamelModel):
     goal_alignment: GoalAlignmentSummarySlim | None = None
     # Fit summary — None when unauthenticated or player has no discoverable profile
     fit_summary: FitSummary | None = None
+    # Static Finder V2 fit — None for guests or without fitV2 (R-SF-A)
+    fit_v2: FitV2 | None = None
+
+
+class FinderListItem(DiscoveryListItem):
+    """A list item for a signed-in fitV2 caller: carries the static's id (OWNER-3).
+
+    Built only on that path, so guests and V1 requests get no `id` key at all
+    (tests/test_discovery.py guards "must not leak internal IDs").
+    """
+
+    id: str
 
 
 class DiscoveryListResponse(CamelModel):
     """Response wrapper for discovery endpoint"""
 
-    items: list[DiscoveryListItem]
+    # SerializeAsAny: a FinderListItem keeps its `id`; a plain item has no `id` key.
+    items: list[SerializeAsAny[DiscoveryListItem]]
     total: int
+    fit_counts: FitCounts | None = None
+    viewer: FitViewer | None = None

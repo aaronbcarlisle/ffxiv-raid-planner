@@ -235,7 +235,9 @@ async def world(
     drg = await create_player_job_profile(
         session, viewer_profile, job="DRG", role="melee", priority="main"
     )
-    await create_player_job_profile(session, viewer_profile, job="WHM", role="healer", priority="flex")
+    await create_player_job_profile(
+        session, viewer_profile, job="WHM", role="healer", priority="flex"
+    )
     for day in ("FR", "SA"):
         await create_personal_availability_template(
             session, test_user_2, day_of_week=day, slots=NY_EVENING, timezone="America/New_York"
@@ -244,7 +246,9 @@ async def world(
     await _public_bis(session, drg)
 
     private_profile = await create_player_profile(session, test_user_3, visibility="private")
-    await create_player_job_profile(session, private_profile, job="DRG", role="melee", priority="main")
+    await create_player_job_profile(
+        session, private_profile, job="DRG", role="melee", priority="main"
+    )
     await _goal(session, private_profile, "gil_farm")
 
     return SimpleNamespace(
@@ -335,3 +339,330 @@ async def test_v1_response_unchanged(
     for name, _, _ in GOLDEN_CAPTURES:
         assert captured[name]["response"] == golden[name]["response"], name
         assert captured[name]["statements"] == golden[name]["statements"], name
+
+
+# ---------------------------------------------------------------------------
+# fitV2 (R-SF-A, E, F, G)
+# ---------------------------------------------------------------------------
+
+
+async def _get(client: AsyncClient, params: dict, headers: dict | None = None) -> dict:
+    resp = await client.get(ENDPOINT, params=params, headers=headers)
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+def _by_code(body: dict) -> dict[str, dict]:
+    return {item["shareCode"]: item for item in body["items"]}
+
+
+def _names(body: dict) -> list[str]:
+    return [item["name"] for item in body["items"]]
+
+
+async def test_fit_v2_off_leaves_new_fields_null_and_no_id(client: AsyncClient, world):
+    for headers in (world.viewer_headers, world.private_headers, None):
+        body = await _get(client, {}, headers)
+        assert body["fitCounts"] is None
+        assert body["viewer"] is None
+        assert body["total"] == 5
+        for item in body["items"]:
+            assert item["fitV2"] is None
+            assert "id" not in item
+
+
+async def test_id_only_with_fit_v2_and_signed_in(client: AsyncClient, world):
+    signed_in = await _get(client, {"fitV2": "true"}, world.viewer_headers)
+    assert {i["shareCode"]: i["id"] for i in signed_in["items"]} == {
+        g.share_code: g.id for g in world.groups.values()
+    }
+    guest = await _get(client, {"fitV2": "true"})
+    assert guest["total"] == 5
+    assert all("id" not in item for item in guest["items"])
+
+
+async def test_fit_v2_on_for_discoverable_viewer(client: AsyncClient, world):
+    body = await _get(client, {"fitV2": "true"}, world.viewer_headers)
+    assert body["viewer"] == {"mainJob": "DRG", "mainRole": "melee", "missing": []}
+    assert all(item["fitV2"] is not None for item in body["items"])
+    assert sum(body["fitCounts"].values()) == body["total"] == 5
+    items = _by_code(body)
+    delta = items["DELTA4"]["fitV2"]
+    assert delta["tier"] == "strong"
+    assert delta["role"] == {
+        "status": "match", "matchedJob": "DRG", "matchedRole": "melee", "priority": "needed",
+        "isMain": True, "asRole": None,
+    }
+    assert delta["schedule"]["status"] == "match"
+    assert delta["schedule"]["basis"] == "time"
+    assert [n["coverage"] for n in delta["schedule"]["nights"]] == ["full", "full"]
+    assert [(r["kind"], r["status"]) for r in delta["reasons"]] == [
+        ("role", "match"), ("schedule", "match"), ("goals", "match"), ("bis", "match"),
+    ]
+    # V1's fields are still there and unchanged next to the new object.
+    assert items["DELTA4"]["fitSummary"]["jobs"]["status"] == "unknown"
+    # Echo has no times: day basis with no local times.
+    echo = items["ECHO05"]["fitV2"]
+    assert echo["schedule"]["basis"] == "day"
+    assert echo["schedule"]["nights"][0] == {
+        "day": "FR", "localDay": None, "localStart": None, "localEnd": None, "coverage": "full",
+    }
+
+
+async def test_private_profile_gets_fit_v2_but_no_fit_summary(client: AsyncClient, world):
+    body = await _get(client, {"fitV2": "true"}, world.private_headers)
+    assert body["viewer"]["mainJob"] == "DRG"
+    assert body["viewer"]["missing"] == ["template"]
+    for item in body["items"]:
+        assert item["fitV2"] is not None
+        assert item["fitSummary"] is None
+        assert item["goalAlignment"] is None
+    # The private viewer's public gil_farm goal feeds their own V2 fit (Charlie wants gil_farm).
+    charlie = _by_code(body)["CHARL3"]["fitV2"]
+    assert {
+        "kind": "goals", "status": "match",
+        "params": {"aligned": 1, "partial": 0, "conflicts": 0, "missing": 0},
+    } in charlie["reasons"]
+    assert charlie["schedule"]["status"] == "unknown"  # no typical week
+
+
+async def test_guest_fit_v2_is_ignored(client: AsyncClient, world):
+    recent = await _get(client, {"sort": "recent"})
+    body = await _get(client, {"fitV2": "true", "sort": "best", "asRole": "tank"})
+    assert body["viewer"] is None
+    assert body["fitCounts"] is None
+    assert all(item["fitV2"] is None for item in body["items"])
+    assert _names(body) == _names(recent)
+
+
+async def test_as_role_changes_only_role_fit(client: AsyncClient, world):
+    plain = await _get(client, {"fitV2": "true"}, world.viewer_headers)
+    as_tank = await _get(client, {"fitV2": "true", "asRole": "tank"}, world.viewer_headers)
+
+    def strip(body: dict) -> dict:
+        out = {k: v for k, v in body.items() if k != "fitCounts"}
+        out["items"] = []
+        for item in body["items"]:
+            fit = dict(item["fitV2"])
+            fit.pop("role")
+            fit.pop("tier")
+            fit["reasons"] = [r for r in fit["reasons"] if r["kind"] != "role"]
+            out["items"].append({**item, "fitV2": fit})
+        return out
+
+    assert strip(plain) == strip(as_tank)
+    tank = _by_code(as_tank)
+    assert all(item["fitV2"]["role"]["asRole"] == "tank" for item in tank.values())
+    assert tank["ALPHA1"]["fitV2"]["role"]["status"] == "match"  # legacy tank needed (WAR)
+    assert tank["DELTA4"]["fitV2"]["role"]["status"] == "none"
+    assert _by_code(plain)["DELTA4"]["fitV2"]["role"]["status"] == "match"
+    assert as_tank["fitCounts"] != plain["fitCounts"]
+
+
+async def test_sort_best_orders_by_tier_then_matches_then_recency(
+    client: AsyncClient, session: AsyncSession, world
+):
+    # Foxtrot is the newest listing and a "good" fit (alt WHM hits healer needed, every night
+    # free, no objectives), so recent would put it first and best puts it after Delta.
+    await _static(
+        session, world.owner, name="Foxtrot Flex", share_code="FOXTR6",
+        updated_at="2026-05-06T10:00:00+00:00",
+        settings=_listing(needed_roles=["healer"], needed_jobs=["WHM"],
+                          schedule_days=["Friday", "Saturday"]),
+    )
+    body = await _get(client, {"fitV2": "true", "sort": "best"}, world.viewer_headers)
+    tiers = [(i["name"], i["fitV2"]["tier"]) for i in body["items"]]
+    assert tiers == [
+        ("Delta Dragoons", "strong"),
+        ("Foxtrot Flex", "good"),
+        ("Alpha Raiders", "partial"),
+        ("Bravo Brigade", "weak"),  # two match reasons (role, bis), newer than Echo
+        ("Echo Eight", "weak"),  # two match reasons (schedule, bis)
+        ("Charlie Casuals", "weak"),  # one match reason (bis)
+    ]
+    recent = await _get(client, {"fitV2": "true", "sort": "recent"}, world.viewer_headers)
+    assert _names(recent)[0] == "Foxtrot Flex"
+
+
+async def _viewer_with_friday_template(session, user, *, tz="America/New_York"):
+    profile = await create_player_profile(session, user, visibility="discoverable")
+    await create_player_job_profile(session, profile, job="DRG", role="melee", priority="main")
+    await create_player_job_profile(session, profile, job="WHM", role="healer", priority="flex")
+    await create_personal_availability_template(
+        session, user, day_of_week="FR", slots=NY_EVENING, timezone=tz
+    )
+    return profile
+
+
+async def test_schedule_partial_caps_the_tier(
+    client: AsyncClient, session: AsyncSession, test_user, test_user_2, auth_headers_user2
+):
+    await _viewer_with_friday_template(session, test_user_2)
+    melee_needed = [{"role": "melee", "priority": "needed", "jobs": []}]
+    healer_nice = [{"role": "healer", "priority": "nice_to_have", "jobs": []}]
+    await _static(
+        session, test_user, name="A two nights", share_code="CAPAAA",
+        updated_at="2026-05-03T10:00:00+00:00",
+        settings=_listing(needed_roles=None, needed_jobs=None, recruiting_roles=melee_needed,
+                          schedule_days=["Friday", "Saturday"]),
+    )
+    await _static(
+        session, test_user, name="B two nights", share_code="CAPBBB",
+        updated_at="2026-05-02T10:00:00+00:00",
+        settings=_listing(needed_roles=None, needed_jobs=None, recruiting_roles=healer_nice,
+                          schedule_days=["Friday", "Saturday"]),
+    )
+    await _static(
+        session, test_user, name="C friday only", share_code="CAPCCC",
+        updated_at="2026-05-01T10:00:00+00:00",
+        settings=_listing(needed_roles=None, needed_jobs=None, recruiting_roles=melee_needed,
+                          schedule_days=["Friday"]),
+    )
+    body = await _get(client, {"fitV2": "true"}, auth_headers_user2)
+    items = _by_code(body)
+    assert items["CAPAAA"]["fitV2"]["role"]["status"] == "match"
+    assert items["CAPAAA"]["fitV2"]["schedule"]["status"] == "partial"
+    assert items["CAPAAA"]["fitV2"]["tier"] == "partial"
+    assert items["CAPBBB"]["fitV2"]["role"]["status"] == "partial"
+    assert items["CAPBBB"]["fitV2"]["role"]["priority"] == "nice_to_have"
+    assert items["CAPBBB"]["fitV2"]["tier"] == "partial"
+    assert items["CAPCCC"]["fitV2"]["schedule"]["status"] == "match"
+    assert items["CAPCCC"]["fitV2"]["tier"] == "strong"
+    assert body["fitCounts"] == {"strong": 1, "good": 0, "partial": 2, "weak": 0, "unknown": 0}
+    # V1's fitSummary keeps its own reading of the same listing (the cap is V2-only): V1 reads
+    # no jobs from a recruitingRoles-only listing (jobs unknown), one shared day (partial) and
+    # a public BiS (ready), which _compute_overall calls good.
+    assert items["CAPAAA"]["fitSummary"]["jobs"]["status"] == "unknown"
+    assert items["CAPAAA"]["fitSummary"]["overall"] == "good"
+
+
+async def test_fit_counts_cover_the_whole_list_before_pagination(client: AsyncClient, world):
+    body = await _get(client, {"fitV2": "true", "limit": 2}, world.viewer_headers)
+    assert len(body["items"]) == 2
+    assert body["total"] == 5
+    assert sum(body["fitCounts"].values()) == 5
+
+
+async def test_schedule_overlap_uses_the_v2_status(client: AsyncClient, world):
+    body = await _get(client, {"fitV2": "true", "scheduleOverlap": "true"}, world.viewer_headers)
+    assert sorted(_names(body)) == ["Alpha Raiders", "Delta Dragoons", "Echo Eight"]
+    for item in body["items"]:
+        assert item["fitV2"]["schedule"]["status"] in ("match", "partial")
+
+
+async def test_hide_goal_conflicts_works_for_a_private_profile(client: AsyncClient, world):
+    """F4: the private viewer's public gil_farm goal conflicts with Alpha, Bravo and Delta."""
+    with_v2 = await _get(
+        client, {"fitV2": "true", "hideGoalConflicts": "true"}, world.private_headers
+    )
+    assert sorted(_names(with_v2)) == ["Charlie Casuals", "Echo Eight"]
+    without = await _get(client, {"hideGoalConflicts": "true"}, world.private_headers)
+    assert without["total"] == 5  # today's discoverable-only gate keeps them all
+
+
+async def _friday_night_listings(session, owner):
+    friday = await _static(
+        session, owner, name="Friday Night", share_code="FRINYC",
+        updated_at="2026-05-02T10:00:00+00:00",
+        settings=_listing(schedule_days=["Friday"]),
+    )
+    no_days = await _static(
+        session, owner, name="No Days", share_code="NODAYS",
+        updated_at="2026-05-01T10:00:00+00:00",
+        settings=_listing(schedule_days=None),
+    )
+    return friday, no_days
+
+
+async def test_day_group_uses_the_viewers_calendar(
+    client: AsyncClient, session: AsyncSession, test_user, test_user_2, test_user_3,
+    auth_headers_user2, auth_headers_user3,
+):
+    await _friday_night_listings(session, test_user)
+    # A Sydney viewer's template row with a valid slot: without one the listing would fall
+    # to the day basis and be judged on its own FR (dropped, for the wrong reason).
+    await create_personal_availability_template(
+        session, test_user_2, day_of_week="SA", slots=["09:00"], timezone="Australia/Sydney"
+    )
+    await create_personal_availability_template(
+        session, test_user_3, day_of_week="FR", slots=["20:00"], timezone="America/New_York"
+    )
+    params = {"fitV2": "true", "dayGroup": "weekends"}
+    sydney = await _get(client, params, auth_headers_user2)
+    assert _names(sydney) == ["Friday Night"]
+    assert sydney["items"][0]["fitV2"]["schedule"]["nights"][0]["localDay"] == "SA"
+    new_york = await _get(client, params, auth_headers_user3)
+    assert _names(new_york) == []
+    weeknights = await _get(client, {"fitV2": "true", "dayGroup": "weeknights"}, auth_headers_user3)
+    assert _names(weeknights) == ["Friday Night"]  # No Days is dropped whenever dayGroup is set
+
+
+async def test_viewer_tz_is_the_fallback_display_zone(
+    client: AsyncClient, session: AsyncSession, test_user, test_user_2, auth_headers_user2
+):
+    await _static(
+        session, test_user, name="Friday Night", share_code="FRINYC",
+        updated_at="2026-05-02T10:00:00+00:00",
+        settings=_listing(schedule_days=["Friday"], schedule_start_time="19:00",
+                          schedule_end_time="22:00"),
+    )
+    params = {"fitV2": "true", "dayGroup": "weekends", "viewerTz": "Australia/Sydney"}
+    sydney = await _get(client, params, auth_headers_user2)
+    assert _names(sydney) == ["Friday Night"]
+    fit = sydney["items"][0]["fitV2"]
+    assert fit["schedule"]["status"] == "unknown"
+    assert fit["schedule"]["nights"] == [{
+        "day": "FR", "localDay": "SA", "localStart": "09:00", "localEnd": "12:00", "coverage": None,
+    }]
+    assert fit["missing"] == ["template", "jobs"]
+    assert sydney["viewer"] == {"mainJob": None, "mainRole": None, "missing": ["template", "jobs"]}
+
+    bad = await _get(client, {"fitV2": "true", "viewerTz": "Not/AZone"}, auth_headers_user2)
+    assert bad["items"][0]["fitV2"]["schedule"]["nights"] == []
+    dropped = await _get(client, {**params, "viewerTz": "Not/AZone"}, auth_headers_user2)
+    assert dropped["total"] == 0
+
+
+async def test_goal_category_accepts_a_comma_separated_union(client: AsyncClient, world):
+    union = await _get(client, {"goalCategory": "savage_bis,ultimate_clear"})
+    assert sorted(_names(union)) == ["Alpha Raiders", "Bravo Brigade", "Delta Dragoons"]
+    single = await _get(client, {"goalCategory": "savage_bis"})
+    assert sorted(_names(single)) == ["Alpha Raiders", "Delta Dragoons"]
+    stripped = await _get(client, {"goalCategory": " savage_bis , ,ultimate_clear"})
+    assert sorted(_names(stripped)) == ["Alpha Raiders", "Bravo Brigade", "Delta Dragoons"]
+
+
+async def test_fit_v2_adds_no_statements_for_a_discoverable_viewer(
+    client: AsyncClient, session: AsyncSession, engine, count_statements, world
+):
+    _, off = await _get_counted(client, session, engine, count_statements, {}, world.viewer_headers)
+    _, on = await _get_counted(
+        client, session, engine, count_statements, {"fitV2": "true"}, world.viewer_headers
+    )
+    assert on - off == 0
+
+
+async def test_fit_v2_statement_count_is_independent_of_listing_count(
+    client: AsyncClient, session: AsyncSession, engine, count_statements,
+    test_user, test_user_2, auth_headers_user2,
+):
+    await _viewer_with_friday_template(session, test_user_2)
+    await _static(
+        session, test_user, name="Static 0", share_code="STAT00",
+        updated_at="2026-05-01T10:00:00+00:00", settings=_listing(),
+        objectives=[("savage_bis", "required")],
+    )
+    _, one = await _get_counted(
+        client, session, engine, count_statements, {"fitV2": "true"}, auth_headers_user2
+    )
+    for index in range(1, 5):
+        await _static(
+            session, test_user, name=f"Static {index}", share_code=f"STAT0{index}",
+            updated_at=f"2026-05-0{index + 1}T10:00:00+00:00", settings=_listing(),
+            objectives=[("savage_bis", "required")],
+        )
+    body, five = await _get_counted(
+        client, session, engine, count_statements, {"fitV2": "true"}, auth_headers_user2
+    )
+    assert body["total"] == 5
+    assert one == five

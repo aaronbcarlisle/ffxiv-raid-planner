@@ -720,6 +720,89 @@ async def test_suggestions_with_lodestone_server(
     assert data.get("server") == "Jenova"
 
 
+# --- Discovery suggestions: session times in the suggested zone (R-SF-K) ---
+# No earlier test asserted the autofilled days or times, so none encoded the
+# old UTC reading (a Thu 19:00 New York session autofilled as Friday 00:00).
+
+
+async def _recurring_session(
+    session, test_group, test_user, start: str, end: str, tz: str = "America/New_York"
+):
+    from tests.factories import create_schedule_session
+
+    return await create_schedule_session(
+        session, test_group, test_user, start_time=start, end_time=end,
+        timezone_name=tz, is_recurring=True, recurrence_rule="FREQ=WEEKLY",
+    )
+
+
+async def _suggestions(client: AsyncClient, auth_headers: dict, test_group) -> dict:
+    resp = await client.get(SUGGESTIONS_URL.format(test_group.id), headers=auth_headers)
+    assert resp.status_code == 200
+    return resp.json()
+
+
+@pytest.mark.asyncio
+async def test_suggestions_times_land_in_suggested_zone_est(
+    client: AsyncClient, auth_headers: dict, test_group, session, test_user: User
+):
+    """Thu 19:00-22:00 New York (EST) stored as 00:00Z-03:00Z Friday autofills as Thursday."""
+    await _recurring_session(
+        session, test_group, test_user, "2026-02-27T00:00:00.000Z", "2026-02-27T03:00:00.000Z"
+    )
+    data = await _suggestions(client, auth_headers, test_group)
+    assert data["timezone"] == "America/New_York"
+    assert data["scheduleDays"] == ["Thursday"]
+    assert data["scheduleStartTime"] == "19:00"
+    assert data["scheduleEndTime"] == "22:00"
+
+
+@pytest.mark.asyncio
+async def test_suggestions_times_land_in_suggested_zone_edt(
+    client: AsyncClient, auth_headers: dict, test_group, session, test_user: User
+):
+    """Fri 19:00-22:00 New York (EDT) stored as 23:00Z-02:00Z autofills as Friday."""
+    await _recurring_session(
+        session, test_group, test_user, "2026-07-03T23:00:00.000Z", "2026-07-04T02:00:00.000Z"
+    )
+    data = await _suggestions(client, auth_headers, test_group)
+    assert data["scheduleDays"] == ["Friday"]
+    assert data["scheduleStartTime"] == "19:00"
+    assert data["scheduleEndTime"] == "22:00"
+
+
+@pytest.mark.asyncio
+async def test_suggestions_naive_iso_is_read_as_utc(
+    client: AsyncClient, auth_headers: dict, test_group, session, test_user: User
+):
+    """A stored start/end with no offset is UTC, so it autofills like the EST case."""
+    await _recurring_session(
+        session, test_group, test_user, "2026-02-27T00:00:00", "2026-02-27T03:00:00"
+    )
+    data = await _suggestions(client, auth_headers, test_group)
+    assert data["scheduleDays"] == ["Thursday"]
+    assert data["scheduleStartTime"] == "19:00"
+    assert data["scheduleEndTime"] == "22:00"
+
+
+@pytest.mark.asyncio
+async def test_suggestions_use_the_majority_zone_for_every_session(
+    client: AsyncClient, auth_headers: dict, test_group, session, test_user: User
+):
+    """All sessions convert into the suggested majority zone, not each into its own.
+
+    Converting the London session in its own zone would add Friday and 00:00.
+    """
+    est = ("2026-02-27T00:00:00.000Z", "2026-02-27T03:00:00.000Z")
+    await _recurring_session(session, test_group, test_user, *est)
+    await _recurring_session(session, test_group, test_user, *est)
+    await _recurring_session(session, test_group, test_user, *est, tz="Europe/London")
+    data = await _suggestions(client, auth_headers, test_group)
+    assert data["timezone"] == "America/New_York"
+    assert data["scheduleDays"] == ["Thursday"]
+    assert data["scheduleStartTime"] == "19:00"
+
+
 # --- Text search tests ---
 
 
