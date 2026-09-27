@@ -41,6 +41,7 @@
   - A raid night counts by the **local day it starts on in the viewer's zone** (`fitV2.schedule.nights[].localDay`), not the static's. A static's Fri 8 PM New York raid is a Saturday-morning raid for a viewer in Sydney.
   - A listing that can't be placed on a clock (`basis: 'day'`, §3.1) falls back to its own `scheduleDays`.
   - The filter is the only consumer; it doesn't affect tiers, sort or reasons.
+  - **Amended at plan review (owner, 2026-09-27):** the viewer's zone is the zone of their newest typical-week row whose zone loads, else the browser zone the V2 Finder sends (`viewerTz`, §4), else UTC. A viewer with no typical week still gets local times and day groups from the browser zone; their schedule fit stays `unknown`.
 
 ## 3. Engine (SF1a, backend)
 
@@ -62,7 +63,7 @@ All of this lives in `services/fit_score.py` as pure functions with no database 
 
 ### 3.2 Role
 
-- **Listing entries:** `recruitingRoles`. When that is absent, legacy `neededRoles`/`neededJobs` are mapped to entries the way `initRecruitingRoles` does in `DiscoveryTab.tsx` (each needed role gets its matching jobs, and an orphan job gets its own role entry, priority `needed`). The dead `recruitingJobs` read is removed.
+- **Listing entries:** `recruitingRoles`. When that is absent, legacy `neededRoles`/`neededJobs` are mapped to entries the way `initRecruitingRoles` does in `DiscoveryTab.tsx` (each needed role gets its matching jobs, and an orphan job gets its own role entry, priority `needed`). The dead `recruitingJobs` read stays (plan-vet fold, 2026-09-27): `fit_score.py` is read-only in SF1 (plan R-SF-R), so V1's read at `fit_score.py:131` is untouched. The V2 engine never reads the key.
 - **Your jobs:** `PlayerJobProfile` in priority order, as today (`discovery.py:257-268`); the first is your main.
 - **A hit:** a job hits an entry when the entry's `jobs` includes it, **or** the entry's `jobs` is empty and the job's role equals `entry.role`. Roles use the app's five keys: tank / healer / melee / ranged / caster.
 - **Status:** `match` if your main hits a `needed` entry. `partial` if an alt hits a `needed` entry, or any job hits a `nice_to_have` one. `none` if no job hits. `unknown` if the listing has no entries or you have no jobs.
@@ -71,6 +72,7 @@ All of this lives in `services/fit_score.py` as pure functions with no database 
 ### 3.3 Tier, reasons, sort
 
 - **Tier:** today's `_compute_overall` rules (`fit_score.py:260`), fed by the new role and schedule statuses. Any conflict, including role `none`, makes it `weak`. After that come `strong`, `good`, `partial` and `unknown`, as the function already orders them.
+  - **Amended at plan review (owner, 2026-09-27):** in fitV2, schedule `partial` caps the tier at `partial`; V1 unchanged.
 - **Reasons:** an ordered `reasons[]` of `{kind, status, params}`, one row per resolved component: role, schedule, goals, comms and BiS. The rows carry **no English**; the frontend owns the copy.
 - **Best match:** order by tier rank, then by the number of `match` reasons, then by recency.
 
@@ -88,6 +90,7 @@ The endpoint stays `GET /api/discovery/statics` (`routers/discovery.py:167`). It
 | `scheduleOverlap=true` | Existing flag. With `fitV2` it filters on the new status (`match`/`partial`); without it, the behaviour is unchanged. |
 | `dayGroup=weeknights\|weekends` | Keeps a listing with at least one raid night in the group: weekends are Sat–Sun, weeknights are Mon–Fri (SF-7). |
 | `goalCategory` | Also accepts a comma-separated list, where any one matches. A single value behaves exactly as before. |
+| `viewerTz` | The viewer's browser IANA zone, which the V2 Finder sends with `fitV2`. It is the fallback display and day-group zone when no typical-week row has a zone that loads (SF-7). An invalid or missing value is ignored, with no 422. Amended at plan review (owner, 2026-09-27). |
 
 **Additive response fields.**
 
@@ -107,10 +110,12 @@ DiscoveryListResponse.fitCounts: { strong, good, partial, weak, unknown }   // w
 
 **Contracts.** Without the new parameters, the response is byte-identical apart from the two new nullable fields. The existing `fit` object keeps today's semantics. The Dalamud plugin calls none of these routes.
 
+**Amended at plan review (owner, 2026-09-27):** each item also carries the static's `id`, but only with `fitV2` and a signed-in caller, so V2 can match join requests by id. That is a deliberate flip of the endpoint's "no internal IDs" guard: signed-in V2 viewers now receive internal static ids; guests and V1 do not, and get no `id` key at all. The full §4 amendment (`id`, `viewer`, `fitCounts`, `viewerTz`) is written back as built at SF1c.
+
 ## 5. UI (SF1b, V2 only)
 
 - **Seam:** a single `useInV2Chrome()` branch at the top of `Discover` renders `StaticFinder`, the same pattern as `Profile` → `PlayerHub`. The V1 body is untouched. New code goes in `frontend/src/components/finder/`.
-- **Layout:** left-aligned inside the 120rem shell, with nothing sticky. A `PageHeader` ("Static Finder" / "Find a group that fits your content, schedule and role") sits above a filter column and the results.
+- **Layout:** left-aligned inside the 120rem shell, with nothing sticky. A `PageHeader` ("Static Finder" / "Find a static that fits your content, schedule and role.") sits above a filter column and the results. (Plan-vet fold, 2026-09-27: the subtitle says "static", since user-facing copy never says "group".)
 - **Filters:** all sync to the URL using the existing parameter names, so V1 links keep working.
   - **Search:** `q`.
   - **Content:** a `Checkbox` per goal category, writing the comma-separated `goalCategory`.
@@ -134,9 +139,12 @@ DiscoveryListResponse.fitCounts: { strong, good, partial, weak, unknown }   // w
   - If you lead none, the existing Create-a-static flow.
   - The settings panel opens through its Zustand store, not the URL (memory `project_settings_panel_store`). The plan settles the hand-off.
 - **States:** skeleton cards while loading. "No statics match" with Clear filters. An inline retry when loading fails.
-- **Out of reach:** guests can't enter V2 (D7), so the V2 Finder is signed-in only. Mobile is deferred to the end-phase pass.
+- **Guests (plan-vet fold, 2026-09-27):** guests do reach the V2 Finder. `Layout.tsx:71` turns V2 chrome on from the shell alone, with no auth check, so `?shell=v2` or a persisted `ui-shell` works logged out (`V2_COVERAGE_PLAN.md:100`). The first draft's "guests can't enter V2 (D7)" was false. Guests get a guest branch: no fit, tier or reason rows, a plain count, and V1's "Log in to join" (plan R-SF-N).
+- **Out of reach:** mobile is deferred to the end-phase pass.
 
-## 6. Closing the stage (SF1c)
+## 6. Closing SF1 (SF1c)
+
+**Plan-vet fold, 2026-09-27:** SF1c closes the Finder, not Stage 4. `V2_COVERAGE_PLAN.md:124` scopes Stage 4 as "unifies Discover + recruitment settings + invitations", and SF-1 keeps the lead-side home out of SF1 (§9). So Stage 4 stays open after SF1c, and `RECONCILIATION.md` B3 becomes `[PARTIAL]`, not built.
 
 - **Parity matrix:** every V1 Discover affordance marked keep, fold or drop, with the user's sign-off, as Stage 3 did.
 - **Mockup-06 re-validation:** light and dark shots in `docs/redesign/pr-shots/`, with the deliberate deviations listed: the tier badge instead of a %, and "Request to join".
@@ -150,7 +158,7 @@ DiscoveryListResponse.fitCounts: { strong, good, partial, weak, unknown }   // w
 2. A listing with `recruitingRoles: [{role: 'melee', priority: 'needed', jobs: []}]` gives `match` for a viewer whose main is any melee job, and `partial` when the melee job is an alt.
 3. `asRole=tank` changes only role fit, and `fitCounts` reflects it.
 4. `sort=best` orders by tier, then by the number of match reasons. `fitCounts` counts the whole filtered set, not the page.
-5. `dayGroup=weekends` keeps a Fri 8 PM America/New_York listing for a viewer in Australia/Sydney, whose local start day is Saturday, and drops it for a viewer in New York.
+5. `dayGroup=weekends` keeps a Fri 8 PM America/New_York listing for a viewer in Australia/Sydney, whose local start day is Saturday, and drops it for a viewer in New York. **Amended at plan review (owner, 2026-09-27):** this holds for a Sydney viewer with no typical week too, through the `viewerTz` fallback (SF-7).
 6. Without the new parameters, the old fields in the response equal today's output (snapshot test).
 7. Under V2 chrome, `/discover` renders `StaticFinder`; under V1, `Discover` renders unchanged.
 8. Every card shows a tier and reason rows, with times in the viewer's zone. The nudge appears only when `missing` is non-empty.
@@ -178,7 +186,7 @@ DiscoveryListResponse.fitCounts: { strong, good, partial, weak, unknown }   // w
 - **The lead-side home.** Listing management, invitations and join requests stay in Settings → Recruitment (`RecruitmentTab`). §5.6's "replaces … the recruitment settings tab + the invitations modal, unified" is carried to a later Ring-1 slice.
 - **Player↔static discovery the other way round** (leads browsing matching players). Mockup 06's CTA copy hints at it; carried.
 - **The static typical-week template as a matching input** (carried from PH3 §9 too).
-- **Logged-out V2,** which waits for the un-gate (D7).
+- **Logged-out V2,** which waits for the un-gate (D7). (Plan-vet fold, 2026-09-27: guests can already reach the V2 Finder, and SF1 gives them a guest branch, §5. What waits for the un-gate is a logged-out *entry* into V2.)
 - **Mobile,** deferred to the end-phase pass.
 
 ## 10. Delivery
