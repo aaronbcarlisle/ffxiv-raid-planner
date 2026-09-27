@@ -60,6 +60,22 @@ export interface Release {
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
   {
+    version: '2.1.46',
+    date: '2026-09-27T14:10:00Z',
+    title: 'Player Hub — PH3c out-of-date BiS (v2 preview)',
+    items: [
+      {
+        category: 'feature',
+        title: 'Needs you spots an out-of-date BiS',
+        description:
+          'V2 preview: the Hub\'s Needs you card now tells you when loot has been logged to your character in a static since you last updated your BiS set for that job, with a Review BiS button that opens your Characters & gear tab.',
+        pr: 306,
+        prTitle: 'feat(v2): PH3c — Needs you flags an out-of-date BiS set',
+      },
+    ],
+    internal: true,
+  },
+  {
     version: '2.1.45',
     date: '2026-09-27T14:00:00Z',
     title: 'Player Hub — PH3b availability pipe (v2 preview)',

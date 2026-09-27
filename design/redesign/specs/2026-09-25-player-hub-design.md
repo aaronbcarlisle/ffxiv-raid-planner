@@ -104,6 +104,9 @@ A later slice may merge Sync + Jobs into one card per character; out of scope he
   - Timezones *(corrected at plan-vet)*: dated rows are **UTC** (`AvailabilityGrid.tsx` converts on save, the heatmap converts back on read); the personal template is **local time plus a saved timezone**; the static's typical-week template is local time with **no** timezone. The pipe converts the personal template properly (H-9). Carried: the static template as a pipe layer (it needs a timezone column first) and the quick-fill's 1:1 copy, which has the same latent bug.
   - The pipe under V1 (the flag stays off there until V1 is authorized or deleted).
   - "Only slots that differ from BiS" as a sharper staleness rule needs BiS slots keyed to loot items (a migration); H-8's timestamp rule ships first.
+- *(PH3 write-back, #304–#306)* Carried out of the PH3 build:
+  - The Hub Availability tab's first tile keeps its title "Used by schedule quick fill" (R-PH3-F kept the tile titles) above the new body "Paints a specific week in a static's schedule when you want an exception.", so the two read slightly off → the holistic review.
+  - `services/availability_layering.py` and `services/player_overview.py` log through stdlib `logging` so `caplog` can assert their warnings; in production those lines print as plain text beside structlog's JSON → whenever logging is unified.
 
 ## 10. PH3 — the availability pipe and BiS staleness
 
