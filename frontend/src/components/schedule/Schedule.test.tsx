@@ -351,8 +351,8 @@ describe('Schedule', () => {
     // fixture's noon slot falls outside the prime-hour window (18:00–02:00,
     // scheduleWeek.ts PRIME_HOURS) and can never surface a cell at all. Labels
     // are derived through the same UTC→local conversion the component uses,
-    // but PRIME_HOURS is local, so the cell only renders on hosts from
-    // UTC−5 to UTC+3 (CI runs in UTC).
+    // but PRIME_HOURS is local, so the cell only renders from UTC−5 to UTC+3;
+    // vitest.config.ts pins TZ=UTC so every host runs it the way CI does.
     const heatmapHourLabels = ['22:00', '23:00'].map((utcTime) =>
       formatTimeLabel(utcSlotToLocal('2026-07-01', utcTime).localTime),
     );
