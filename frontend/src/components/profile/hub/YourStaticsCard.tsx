@@ -19,8 +19,28 @@ import { useAuthStore } from '../../../stores/authStore';
 import { useToastStore } from '../../../stores/toastStore';
 import { getInitials } from '../../../utils/initials';
 import { buildStaticNavHref, prefRememberTabs } from '../../../lib/navPreferences';
+import { getTierById } from '../../../gamedata/raid-tiers';
+import { formatSessionStart } from './overviewFormat';
 import type { StaticSuggestion } from '../../../stores/playerProfileStore';
+import type { OverviewStatic } from './usePlayerOverview';
 import type { StaticGroupListItem } from '../../../types';
+
+/** R-PH2-L: the row's one-line overview summary, only the parts present. */
+function overviewSummaryParts(overview: OverviewStatic): string[] {
+  const parts: string[] = [];
+  const tier = overview.tierId != null ? getTierById(overview.tierId) : undefined;
+
+  if (tier != null) parts.push(tier.name);
+  if (overview.nextSession != null) {
+    parts.push(`Next ${formatSessionStart(overview.nextSession.startsAt)}`);
+  }
+  if (overview.floorsCleared != null) {
+    parts.push(`${overview.floorsCleared}/${tier?.floors.length ?? 4} floors this week`);
+  }
+  if (overview.avgBisPct != null) parts.push(`${overview.avgBisPct}% of BiS slots`);
+
+  return parts;
+}
 
 interface DeleteConfirmProps {
   group: StaticGroupListItem;
@@ -77,6 +97,8 @@ function DeleteConfirm({ group, onClose }: DeleteConfirmProps) {
 interface YourStaticsCardProps {
   staticSuggestions: StaticSuggestion[];
   onCreateStatic: () => void;
+  /** R-PH2-L: overview data for the summary line, keyed by static id. */
+  overviewById?: ReadonlyMap<string, OverviewStatic>;
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -93,7 +115,7 @@ const ROLE_TEXT_COLOR: Record<'owner' | 'lead' | 'member' | 'viewer' | 'linked',
   linked: 'text-membership-linked',
 };
 
-export function YourStaticsCard({ staticSuggestions, onCreateStatic }: YourStaticsCardProps) {
+export function YourStaticsCard({ staticSuggestions, onCreateStatic, overviewById }: YourStaticsCardProps) {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { groups, isLoading, error, errorSource, fetchGroups, clearError, duplicateGroup } = useStaticGroupStore();
@@ -183,6 +205,13 @@ export function YourStaticsCard({ staticSuggestions, onCreateStatic }: YourStati
                       <span className={`text-xs font-medium ${ROLE_TEXT_COLOR[isLinked ? 'linked' : (g.userRole ?? 'member')]}`}>{roleLabel}</span>
                       {`${g.memberCount} member${g.memberCount !== 1 ? 's' : ''}`}
                     </p>
+                    {(() => {
+                      const overview = overviewById?.get(g.id);
+                      if (!overview) return null;
+                      const parts = overviewSummaryParts(overview);
+                      if (parts.length === 0) return null;
+                      return <p className="text-xs text-text-muted mt-0.5">{parts.join(' · ')}</p>;
+                    })()}
                   </div>
                   <Button
                     variant="secondary"
