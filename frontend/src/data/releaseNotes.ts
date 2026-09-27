@@ -9,7 +9,7 @@
  * CURRENT_VERSION or RELEASES, ensure the changelog script still works.
  */
 
-export const CURRENT_VERSION = '2.1.34';
+export const CURRENT_VERSION = '2.1.43';
 
 export type ReleaseCategory = 'feature' | 'fix' | 'improvement' | 'breaking';
 
@@ -59,6 +59,21 @@ export interface Release {
 
 // Releases ordered newest-first
 export const RELEASES: Release[] = [
+  {
+    version: '2.1.43',
+    date: '2026-09-27T00:00:00Z',
+    title: 'Long-running recurring sessions keep their Discord event',
+    items: [
+      {
+        category: 'fix',
+        title: 'Recurring statics keep syncing to Discord long-term',
+        description:
+          'A recurring static session running for many months (roughly 20+ weeks for a 3x/week schedule, or 60+ days daily) could stop finding its next occurrence, so its Discord event mirror silently fell back to one-off events instead of staying a single recurring event. Long-running series now keep syncing correctly.',
+        pr: 0,
+        prTitle: 'fix(schedule): recurring sessions keep a next occurrence past 60 occurrences',
+      },
+    ],
+  },
   {
     version: '2.1.39',
     date: '2026-09-26T06:50:00Z',
