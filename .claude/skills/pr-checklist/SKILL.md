@@ -5,7 +5,13 @@ description: Pre-PR requirements for the FFXIV Raid Planner repo — the CI-enfo
 
 # Pre-PR Checklist (FFXIV Raid Planner)
 
-PRs to main run: `build` (`tsc -b && vite build`), `lint`, `check:design-system:strict`, `test`. All must pass.
+Non-draft PRs to main run these `ci.yml` jobs, and all must pass:
+- **Frontend Checks:** `tokens:check`, `lint`, `check:design-system:strict`, `test`, `build` (`tsc -b && vite build`), `dupes`, `deadcode`.
+- **Backend Tests:** `pytest tests/`.
+- **Migration Graph Check** (one Alembic head) and **Migration Execution (PostgreSQL)** (`alembic upgrade head`, then the model-table check).
+- **Scripts Tests:** `npm test` in `scripts/`, plus the screenshot size budget.
+
+`release-notes-reminder.yml` adds **Release Notes Required**, and CodeQL runs its own analysis.
 
 > **⚠️ `tsc --noEmit` ≠ `tsc -b`** — The build script runs `tsc -b` (project build mode), which is stricter than `tsc --noEmit`. Running `tsc --noEmit` locally will NOT catch all the same errors CI catches. Always run `pnpm build` before pushing to confirm the build is clean.
 

@@ -6,7 +6,7 @@ Progression tool and home base for FFXIV statics: roster, schedule, loot, gear. 
 
 ## Commands
 
-`./dev.sh` starts both servers (`stop`, `logs`; logs in `.logs/`). API :8001 · frontend :5174. In a Claude session start each as its own background task (a server started in a foreground tool call dies when the call returns): `cd backend && ./venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8001 > ../.logs/backend.log 2>&1` and `pnpm -C frontend dev --port 5174 --strictPort > .logs/frontend.log 2>&1`. `./dev.ps1` can't start the frontend (`Start-Process` rejects the pnpm shim).
+`./dev.sh` starts both servers (`stop`, `logs`; logs in `.logs/`). API :8001 · frontend :5174. In a Claude session run `mkdir -p .logs` first (a new worktree has none), then start each as its own background task (a server started in a foreground tool call dies when the call returns): `cd backend && ./venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8001 > ../.logs/backend.log 2>&1` and `pnpm -C frontend dev --port 5174 --strictPort > .logs/frontend.log 2>&1`. `./dev.ps1` can't start the frontend (`Start-Process` rejects the pnpm shim).
 
 | Area | Command (from repo root) |
 |------|--------------------------|
