@@ -34,7 +34,7 @@ Dates must be full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`).
 
 Since 2026-09-23 `claude-code-review.yml` triggers on `opened` / `ready_for_review` / `reopened` only (no `synchronize`) and skips docs-only PRs, and the Copilot ruleset no longer reviews on push. So:
 
-1. **Open as a draft** (`gh pr create --draft`) while the branch is still moving. CI runs on every push regardless (`ci.yml` skips drafts — flip to ready when you want the full gate).
+1. **Open as a draft** (`gh pr create --draft`) while the branch is still moving. Drafts get no CI: `ci.yml` runs on pushes to `main` / `redesign/**` and on non-draft PRs only. Run the gates locally (audit item 5 below); marking ready runs the full gate.
 2. **Mark ready exactly once**, when the branch is final. That `ready_for_review` event is the AI review.
 3. **Fix commits after ready get no automatic re-review.** Comment `@claude review` on the PR to request one; Copilot re-review is the "re-request review" button.
 4. **Docs-only / agent-prompt / SDD-artifact PRs** get no Claude review by design (`paths-ignore`). Do not wait for one.
@@ -78,15 +78,18 @@ The `Screenshot size budget` step in the `Scripts Tests` job fails the PR if any
 
 ## Pre-PR Audit Checklist
 
-Before declaring a branch ready, run:
+Before declaring a branch ready, list what the branch changed against the PR's base (`origin/main`, or the parent branch for a stacked PR). A bare `git diff` shows only unstaged edits and misses every commit:
 ```powershell
-git diff --name-only | Select-String "frontend/src|backend/app"
-git diff --name-only | Select-String "releaseNotes.ts"
-git diff --name-only | Select-String ".github/workflows"
-git diff --name-only | Select-String "pr-shots"
+git fetch -q origin
+$changed = git diff --name-only origin/main...HEAD
+$changed | Select-String "frontend/src|backend/app"
+$changed | Select-String "releaseNotes.ts"
+$changed | Select-String ".github/workflows"
+$changed | Select-String "pr-shots"
 ```
 
 1. If `frontend/src/` or `backend/app/` changed and `releaseNotes.ts` did **not** change → stop and add the release note entry.
 2. If `.github/workflows/` changed and the workflow writes to PRs → confirm the fork guard exists.
 3. If screenshots were added → run `python scripts/shrink-pr-shots.py` on them, or `node scripts/check-pr-shots.mjs <files>` to confirm they are within budget.
-4. Run `git diff --check` to catch whitespace errors.
+4. Run `git diff --check origin/main...HEAD` to catch whitespace errors.
+5. Run the CI gates locally and paste the counts into the PR body: `pnpm -C frontend build`, `pnpm -C frontend lint` (0 errors), `pnpm -C frontend check:design-system:strict`, `pnpm -C frontend test`, and backend `pytest` if `backend/` changed.

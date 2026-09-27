@@ -1,8 +1,10 @@
 """SessionStart hook: surface SESSION_HANDOFF.md (git-ignored, local) at startup,
 resume and after compaction, so a fresh or compacted session sees the open work.
 
-Prints a one-line header plus the first HEAD_LINES lines (capped at MAX_CHARS);
-/resume reads the rest. Silent when the file is absent. Always exits 0.
+Prints a one-line header, the first HEAD_LINES lines (capped at MAX_CHARS) and
+the last LOG_LINES entries of `## Progress Log`, which `/handoff log` appends at
+the end of the file and which are newer than the body. /resume reads the rest.
+Silent when the file is absent. Always exits 0.
 """
 import os
 import subprocess
@@ -12,6 +14,19 @@ import time
 ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 HEAD_LINES = 25
 MAX_CHARS = 2500
+LOG_LINES = 5
+LOG_CHARS = 1500
+
+
+def progress_tail(lines):
+    """The last LOG_LINES entries under `## Progress Log` beyond the head, or ''."""
+    for i, line in enumerate(lines):
+        if line.strip().lower() == "## progress log":
+            entries = [l for l in lines[max(i + 1, HEAD_LINES):] if l.strip()]
+            if not entries:
+                return ""
+            return "## Progress Log (newest last):\n" + "\n".join(entries[-LOG_LINES:])[-LOG_CHARS:]
+    return ""
 
 
 def main():
@@ -28,9 +43,10 @@ def main():
         ).stdout.strip() or "?"
         head = "\n".join(lines[:HEAD_LINES])[:MAX_CHARS]
         more = f" ({len(lines) - HEAD_LINES} more lines — /resume reads it all)" if len(lines) > HEAD_LINES else ""
+        tail = progress_tail(lines)
         out = (
             f"SESSION_HANDOFF.md (updated {age_h:.0f} h ago; current branch: {branch}){more}:\n"
-            f"{head}\n"
+            f"{head}\n" + (f"…\n{tail}\n" if tail else "")
         )
         # Windows Python defaults stdout to cp1252; the handoff has em-dashes/arrows.
         sys.stdout.buffer.write(out.encode("utf-8"))

@@ -10,7 +10,7 @@ Rules for AI agents (Codex, Claude, Copilot, etc.) and human contributors workin
 
 1. **No AI attribution.** Never add "Co-Authored-By: Claude", "Generated with Claude Code", or any AI tool credit to commits, PRs, or code comments.
 2. **No touching `backend/app/database.py`** without explicit owner approval.
-3. **No pushing** unless explicitly instructed.
+3. **Never push to `main`.** Push a feature branch and open a draft PR. No plain force-push; `--force-with-lease` only, on your own branch.
 
 ---
 
@@ -25,7 +25,7 @@ frontend/src/data/releaseNotes.ts
 - **Internal-only changes** (tests, refactors, CI fixes, backend plumbing, security hardening, workflow changes): use `internal: true` so the entry is hidden from users but satisfies CI.
 - Do **NOT** bump `CURRENT_VERSION` for internal-only entries.
 - **User-facing changes** get a normal visible release note.
-- Dates: full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`). Each item needs a `commits` array.
+- Dates: full ISO 8601 (`YYYY-MM-DDTHH:MM:SSZ`). Each item needs a `description`, and references its PR with `pr: <number>` + `prTitle` (not a `commits` array with a placeholder hash).
 
 ---
 
@@ -52,22 +52,26 @@ Write operations requiring this guard:
 Before marking a branch as ready, verify:
 
 ```powershell
+# What the branch changed against the PR's base (a bare `git diff` misses commits)
+git fetch -q origin
+$changed = git diff --name-only origin/main...HEAD
+
 # Check if app code changed
-git diff --name-only | Select-String "frontend/src|backend/app"
+$changed | Select-String "frontend/src|backend/app"
 
 # Check if release notes were updated
-git diff --name-only | Select-String "releaseNotes.ts"
+$changed | Select-String "releaseNotes.ts"
 
 # Check if workflows changed
-git diff --name-only | Select-String ".github/workflows"
+$changed | Select-String ".github/workflows"
 
 # Check for PR-writing actions in workflow changes
-git diff | Select-String "addLabels|createLabel|addAssignees|createComment|updateComment|pull-requests: write"
+git diff origin/main...HEAD | Select-String "addLabels|createLabel|addAssignees|createComment|updateComment|pull-requests: write"
 ```
 
 1. If `frontend/src/` or `backend/app/` changed but `releaseNotes.ts` did not → **stop and add the release note**.
 2. If `.github/workflows/` changed and the diff contains PR-write actions → **confirm the fork guard exists**.
-3. Run `git diff --check` to catch whitespace errors.
+3. Run `git diff --check origin/main...HEAD` to catch whitespace errors.
 
 ---
 
@@ -79,4 +83,4 @@ Before implementing UI, read `docs/UI_COMPONENTS.md` and run `pnpm check:design-
 
 ## CI Checks
 
-All PRs must pass: `tsc --noEmit`, `lint`, `check:design-system:strict`, `test`, `build`.
+Non-draft PRs must pass: `build` (`tsc -b && vite build`; stricter than `tsc --noEmit`), `lint`, `check:design-system:strict`, `test`, backend `pytest`, and the migration checks. Draft PRs get no CI, so run these locally before marking a PR ready.
