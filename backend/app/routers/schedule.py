@@ -40,6 +40,12 @@ from ..models import Membership, MemberRole, SnapshotPlayer, StaticGroup, TierSn
 from ..models.notification import Notification
 from .notifications import create_notification
 from ..models.availability import AvailabilityTemplate, UserAvailability
+from ..models.personal_availability import PersonalAvailabilityTemplate
+from ..services.availability_layering import (
+    TemplateDay,
+    expand_personal_templates,
+    layer_availability,
+)
 from ..models.schedule import DiscordInstallClaim, DiscordMessageMapping, ScheduleDiscordMirror, ScheduleException, ScheduleRsvp, ScheduleSession, ScheduleSettings, StaticDiscordLink
 from ..services.recurrence import generate_occurrences, next_occurrence
 from ..services.discord_guild_events import check_bot_permissions, delete_session_mirrors, sync_group_sessions_for_discord_link, sync_session_mirror
@@ -1455,10 +1461,24 @@ async def list_availability(
     response: Response,
     start_date: str = Query(..., description="Start date in ISO format (UTC)"),
     end_date: str = Query(..., description="End date in ISO format (UTC)"),
+    include_templates: bool = Query(
+        False,
+        description=(
+            "Layer each current non-viewer member's personal weekly template "
+            "(converted from its timezone to UTC) under their dated rows; derived "
+            "rows have id null and source 'personal_template'"
+        ),
+    ),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> list[AvailabilityDateSummary]:
-    """List availability for all members in a date range."""
+    """List availability for all members in a date range.
+
+    With `include_templates` off this is today's query and rows (each with
+    `source="dated"`). With it on, two more statements load the current
+    non-viewer members and their personal templates, and dates a member has
+    not painted are filled from the template (`services/availability_layering`).
+    """
     set_no_store_cache_headers(response)
     await get_static_group(session, group_id)
     await require_membership(session, current_user.id, group_id)
@@ -1489,34 +1509,57 @@ async def list_availability(
         .options(selectinload(UserAvailability.user))
         .order_by(UserAvailability.date)
     )
-    rows = result.scalars().all()
+    rows = list(result.scalars().all())
 
-    by_date: dict[str, list[UserAvailabilityResponse]] = defaultdict(list)
-    for row in rows:
-        slots = json.loads(row.slots) if isinstance(row.slots, str) else row.slots
-        by_date[row.date].append(
-            UserAvailabilityResponse(
-                id=row.id,
-                user_id=row.user_id,
-                username=row.user.discord_username if row.user else None,
-                date=row.date,
-                slots=slots,
-            )
-        )
-
-    result_list = []
+    dates: list[str] = []
     current = start
     while current <= end:
-        date_str = current.isoformat()
-        result_list.append(
-            AvailabilityDateSummary(
-                date=date_str,
-                responses=by_date.get(date_str, []),
-            )
-        )
+        dates.append(current.isoformat())
         current += timedelta(days=1)
 
-    return result_list
+    members: list[tuple[str, str | None]] = []
+    personal: dict[tuple[str, str], list[str]] = {}
+    if include_templates:
+        member_result = await session.execute(
+            select(Membership.user_id, User.discord_username)
+            .join(User, User.id == Membership.user_id)
+            .where(
+                Membership.static_group_id == group_id,
+                Membership.role != MemberRole.VIEWER.value,
+            )
+            .order_by(Membership.joined_at, Membership.user_id)
+        )
+        members = [(user_id, username) for user_id, username in member_result.all()]
+        member_ids = [user_id for user_id, _ in members]
+        if member_ids:
+            template_result = await session.execute(
+                select(PersonalAvailabilityTemplate).where(
+                    PersonalAvailabilityTemplate.user_id.in_(member_ids)
+                )
+            )
+            days = [
+                TemplateDay(
+                    user_id=template.user_id,
+                    day_of_week=template.day_of_week,
+                    slots=tuple(
+                        json.loads(template.slots)
+                        if isinstance(template.slots, str)
+                        else template.slots
+                    ),
+                    timezone=template.timezone,
+                )
+                for template in template_result.scalars().all()
+            ]
+            personal = expand_personal_templates(days=days, start=start, end=end)
+
+    by_date = layer_availability(
+        dates=dates, members=members, dated_rows=rows, personal=personal
+    )
+
+    return [
+        AvailabilityDateSummary(date=date_str, responses=by_date.get(date_str, []))
+        for date_str in dates
+    ]
 
 
 @router.put(
