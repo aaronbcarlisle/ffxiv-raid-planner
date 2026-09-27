@@ -1,8 +1,16 @@
 /**
  * LeadingStaticRow — "Leading a static?" (R-SF-J). Renders only when signed
- * in; `fetchGroups()` is never called for a guest (F1).
+ * in.
+ *
+ * Reads `groups` but never fetches them itself: `AppChrome` (mounted by
+ * `Layout`'s v2 branch on every v2 route, including this page) already runs
+ * the identical guarded cold-load fetch (`if (user && groups.length === 0)
+ * fetchGroups()`, AppChrome.tsx:115-125) to populate the rail avatars, so a
+ * second copy here duplicated `GET /api/static-groups` on every cold load.
+ * `stores/*` is read-only, so this can't add its own in-flight guard either
+ * — it just relies on the store AppChrome already keeps warm (PR-review fix
+ * wave item 6).
  */
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../primitives';
 import { Select } from '../ui/Select';
@@ -15,14 +23,9 @@ import { useSettingsPanelStore } from '../../stores/settingsPanelStore';
 export function LeadingStaticRow() {
   const user = useAuthStore((s) => s.user);
   const groups = useStaticGroupStore((s) => s.groups);
-  const fetchGroups = useStaticGroupStore((s) => s.fetchGroups);
   const openSettings = useSettingsPanelStore((s) => s.open);
   const navigate = useNavigate();
   const wizard = useModal();
-
-  useEffect(() => {
-    if (user && groups.length === 0) fetchGroups();
-  }, [user, groups.length, fetchGroups]);
 
   if (!user) return null;
 
@@ -40,7 +43,7 @@ export function LeadingStaticRow() {
   };
 
   return (
-    <div data-testid="leading-static-row" className="bg-surface-card border border-border-default rounded-lg p-4 flex items-center justify-between gap-4 flex-wrap">
+    <div data-testid="leading-static-row" className="mt-6 bg-surface-card border border-border-default rounded-lg p-4 flex items-center justify-between gap-4 flex-wrap">
       <div className="min-w-0">
         <h2 className="text-sm font-semibold text-text-primary">Leading a static?</h2>
         <p className="text-xs text-text-muted mt-0.5">Post a recruitment listing so matching players can find you.</p>

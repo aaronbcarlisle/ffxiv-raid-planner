@@ -60,9 +60,15 @@ export function JoinAction({ item, onRequestJoin }: JoinActionProps) {
     return (
       <div className="flex items-center gap-2">
         <span className="text-xs text-status-warning font-medium">Request pending</span>
-        <Button variant="ghost" size="sm" onClick={handleCancel} loading={cancelling}>
-          Cancel request
-        </Button>
+        {existing.status === 'pending' && (
+          // Cancel only for `pending`: the API rejects a cancel once a lead has
+          // moved a request to `under_review` (backend/app/routers/join_requests.py:631-635,
+          // out of scope) — `under_review` keeps the pending label with no action
+          // (PR-review fix wave item 5).
+          <Button variant="ghost" size="sm" onClick={handleCancel} loading={cancelling}>
+            Cancel request
+          </Button>
+        )}
       </div>
     );
   }

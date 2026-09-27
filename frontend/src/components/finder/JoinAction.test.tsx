@@ -57,12 +57,19 @@ beforeEach(() => {
 });
 
 describe('JoinAction', () => {
-  it.each(['pending', 'under_review'] as const)('%s reads "Request pending" + Cancel request, which calls cancelRequest(id)', async (status) => {
-    myRequests = [request({ id: 'r9', status })];
+  it('pending reads "Request pending" + Cancel request, which calls cancelRequest(id)', async () => {
+    myRequests = [request({ id: 'r9', status: 'pending' })];
     render(<JoinAction item={item()} onRequestJoin={vi.fn()} />);
     expect(screen.getByText('Request pending')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel request' }));
     await waitFor(() => expect(cancelRequest).toHaveBeenCalledWith('r9'));
+  });
+
+  it('under_review reads "Request pending" with no Cancel action — the API only allows cancelling pending (PR-review fix wave item 5)', () => {
+    myRequests = [request({ id: 'r9', status: 'under_review' })];
+    render(<JoinAction item={item()} onRequestJoin={vi.fn()} />);
+    expect(screen.getByText('Request pending')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel request' })).toBeNull();
   });
 
   it('a rejected cancel shows a toast', async () => {

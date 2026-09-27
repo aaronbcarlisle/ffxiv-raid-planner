@@ -70,11 +70,7 @@ export function StaticFinder() {
             />
           )}
 
-          {!loading && !error && (
-            <div className="mb-4">
-              <FinderNudge viewer={viewer} />
-            </div>
-          )}
+          {!loading && !error && <FinderNudge viewer={viewer} />}
 
           {loading ? (
             <div data-testid="finder-loading" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -110,11 +106,7 @@ export function StaticFinder() {
             </div>
           )}
 
-          {!loading && !error && (
-            <div className="mt-6">
-              <LeadingStaticRow />
-            </div>
-          )}
+          {!loading && !error && <LeadingStaticRow />}
         </div>
       </div>
 

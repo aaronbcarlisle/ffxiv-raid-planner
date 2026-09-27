@@ -19,7 +19,7 @@ export function FinderNudge({ viewer }: FinderNudgeProps) {
   if (!missingTemplate && !missingJobs) return null;
 
   return (
-    <div data-testid="finder-nudge" className="bg-accent/5 border border-accent/20 rounded-lg p-3 text-sm text-text-secondary flex flex-col gap-1">
+    <div data-testid="finder-nudge" className="mb-4 bg-accent/5 border border-accent/20 rounded-lg p-3 text-sm text-text-secondary flex flex-col gap-1">
       {missingTemplate && (
         <p>
           Add your typical week on the Hub to match raid times.{' '}

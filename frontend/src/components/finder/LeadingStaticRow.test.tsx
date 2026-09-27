@@ -104,9 +104,9 @@ describe('LeadingStaticRow', () => {
     expect(screen.getByRole('button', { name: 'Create a static' })).toBeInTheDocument();
   });
 
-  it('fetches groups on mount when groups is empty', () => {
+  it('never fetches groups itself, even when empty — AppChrome already owns the cold-load fetch (PR-review fix wave item 6)', () => {
     renderRow();
-    expect(fetchGroups).toHaveBeenCalledTimes(1);
+    expect(fetchGroups).not.toHaveBeenCalled();
   });
 
   it('a guest: the row is not rendered, and fetchGroups is never called (F1)', () => {
