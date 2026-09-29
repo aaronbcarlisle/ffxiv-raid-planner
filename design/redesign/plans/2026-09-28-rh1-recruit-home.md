@@ -240,3 +240,48 @@
 3. Gates on each head, counts pasted into each PR body; the task-scoped `redesign-reviewer` review on Task 2 before RH1b is marked ready; the whole-branch review on RH1c+RH1d.
 4. **Browser walk at DEVTST, before the Task 5 doc flip is committed (M13),** with screenshots in the RH1d PR: every opener lands on the route (Home Review, Roster review, TopBar Invite with and without a valid invite, Alt+I, More page, the bell's `new_application`, the Finder's Post a listing); TopBar Invite then browser Back lands on Home in one step; a member on `/recruit` lands on Home; a tierless static shows the page; `?rcsub=listing` from an old link lands on Listing; the header `Select` to Paused makes the static vanish from `/discover` on the next query and the join banner hides its button (criterion 8); Accept a waiting request and see "Link to roster slot" appear, and Decline another with its second click (criterion 7); create, copy and revoke an invite (criterion 9); the Home line and the Needs-you item (criterion 10); the page at 390 px wide has no horizontal scroll.
 5. PRs open via `/ship` after the slice review; merge bottom-first per `slice-loop` § Stacked PRs (RH1b and RH1c together); then rewrite `SESSION_HANDOFF.md`.
+
+## Outcome
+
+RH1 is built and Stage 4 is closed. Five PRs, all squash-merged into `main` on 2026-09-29:
+
+| PR | Slice | Size | Commits | Merge |
+|---|---|---|---|---|
+| #312 | Docs: spec and plan | +358/−0, 2 files | — | `6739b9f5` |
+| #313 | RH1a: Task 1, backend status, applicant fit, overview item | +1,931/−221, 26 files | 7 | `975f87a6` |
+| #314 | RH1b: Task 2, route, page frame and the seam | +1,993/−65, 37 files | 5 | `66cf557a` |
+| #315 | RH1c: Task 3, Applicants tab | +1,605/−109, 26 files | 6 | `6b606cdc` |
+| #316 | RH1d: Tasks 4 and 5, Listing and Invites tabs, entry points, doc flips | +1,665/−261, 50 files, including this write-back | 8 | see the PR |
+
+- **Rulings that bind later work:**
+  - A missing, empty or unknown `recruitmentStatus` reads as open everywhere: backend `normalize_status`, `utils/recruitmentStatus.ts`, and (after #316's review round) the `DiscoveryTab` editor in both shells. A brand-new listing still starts explicitly closed.
+  - Paused and closed listings leave the Finder for every caller, and a join request against them gets a 409 (not-public or not-enabled keeps its 403).
+  - Applicant fit caps the tier at `partial` whenever `missing` is non-empty (OWNER-5, join-request path only; the Finder path is unchanged).
+  - Under V2, every `openSettings({tab:'recruitment'})` redirects to `/group/:code/recruit` and the V2 dock hides the Recruitment tab. V1 keeps its dock tab, and `/recruit` redirects to the static under V1.
+  - R-RH-N is superseded for `LeadingStaticRow`: it shell-branches. `DiscoveryTab` (V1) carries a `useResolvedShell()` copy branch only, with the legacy string byte-identical.
+  - Store reads of the join-request count are scoped by static: `applicants.groupId` for the Recruiting page, `groupRequestsGroupId` for Static Home. `fetchApplicants` and `fetchInvitations` both carry a request-sequence guard.
+  - RH1d does not owe a Roster review link: V2 `Roster.tsx` receives `onOpenRequests` and never uses it.
+- **Carried to the holistic review:**
+  - "Live" is shown for a paused or closed listing that is still discoverable-enabled (spec-compliant per R-RH-L/P, misleading copy).
+  - The same-tab TopBar Invite leaves one dead Back entry (a push, then a replace).
+  - A failed invitations fetch shows "No invitations yet." and never reads the store's `error`.
+  - The shared `Checkbox` has no accessible name (the Finder too), and the `DiscoveryTab` role toggles are unnamed (V1).
+  - V2 Roster has no review link, since it never uses `onOpenRequests`.
+  - `JoinRequestBanner` and `FinderCard` treat a declined request as still active and never re-offer Request to Join, although the backend allows a new request. The dossier's "Maybe Later" marks the request under review rather than closing it.
+  - jscpd is 340 against main's 339: one clone pair came in with the RH1d review wave.
+  - `NotificationCenter` builds the V2 href with a string append (safe while backend hrefs carry no query string), and `DiscoveryTab` re-renders on URL writes through `useResolvedShell`.
+- **Loop numbers:**
+  - 5 tasks across four code PRs, plus the docs PR.
+  - Reviews:
+    - RH1a: one whole-branch review, 0/1/4 (Critical/Important/Minor), one wave, re-review clean.
+    - RH1b: task-scoped review on Task 2, the riskiest task, 0/1/7, one wave, re-review clean.
+    - RH1c: whole-branch review scoped from `main`, so it also covered RH1b's later commits, 0/3/10. One wave, plus a second fix for a failed cold load the wave introduced, then re-review clean.
+    - RH1d: whole-branch review, 0/2/7, one wave (4 of 4 addressed), re-review clean.
+  - PR bot rounds:
+    - #312: Copilot, 5 Low, folded.
+    - #315: claude 2 Consider plus Copilot 1 High, all fixed (`5ef3281a`).
+    - #316: claude 2 Consider plus Copilot 3 Medium, all fixed (`25bdb8d6`).
+  - Browser walks on every code PR. RH1d's walk covered 12 items and found 2 live defects plus a wrong pointer, all fixed before review. The walk left 8 screenshots.
+  - RH1d alone took about 2 h 40 min from dispatch to ready, with 6 commits before the bot round. Its SDD artifacts were about 175 KB, of which 172 KB were the two review diff packages.
+  - Frontend tests went from 3,952 at #315's head to 4,017 at #316's bot-round head. Lint stayed at 0 errors / 809 warnings. knip ended at 177 unused exports / 138 unused types, against main's 177/140.
+  - The RH1a–c ledger was deleted after those merges, so their numbers above come from the PR bodies.
